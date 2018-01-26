@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/account_history_api_plugin/account_history_api_plugin.hpp>
+#include <eosio/account_history_api_plugin/account_history_api_plugin.hpp>
 #include <eosio/chain/chain_controller.hpp>
 #include <eosio/chain/exceptions.hpp>
 
@@ -11,6 +11,8 @@
 namespace eosio {
 
 using namespace eosio;
+
+static appbase::abstract_plugin& _account_history_api_plugin = app().register_plugin<account_history_api_plugin>();
 
 account_history_api_plugin::account_history_api_plugin(){}
 account_history_api_plugin::~account_history_api_plugin(){}

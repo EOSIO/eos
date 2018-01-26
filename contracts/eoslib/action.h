@@ -110,5 +110,39 @@ extern "C" {
     */
    account_name current_receiver();
 
+   /**
+    *  Send an inline action in the context of this action's parent transaction
+    * @param serialized_action
+    * @param size
+    */
+   void send_inline(char *serialized_action, size_t size);
+
+   /**
+    *  Verifies that @ref name exists in the set of write locks held on a action. Throws if not found
+    *  @brief Verifies that @ref name exists in the set of write locks held
+    *  @param name - name of the account to be verified
+    */
+   void require_write_lock( account_name name );
+
+   /**
+    *  Verifies that @ref name exists in the set of read locks held on a action. Throws if not found
+    *  @brief Verifies that @ref name exists in the set of read locks held
+    *  @param name - name of the account to be verified
+    */
+   void require_read_lock( account_name name );
+
+   /**
+    *  Returns the time in seconds from 1970 of the publication_time
+    *  @brief Get the publication time
+    *  @return the time in seconds from 1970 of the publication_time
+    */
+   time  publication_time();
+
+   /**
+    *  Get the account which specifies the sender of the action
+    *  @brief Get the sender of the action
+    *  @return the account which specifies the sender of the action
+    */
+   account_name current_sender();
    ///@ } actioncapi
 }

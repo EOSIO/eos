@@ -20,6 +20,7 @@ FC_REFLECT(eosio::detail::wallet_api_plugin_empty, );
 
 namespace eosio {
 
+static appbase::abstract_plugin& _wallet_api_plugin = app().register_plugin<wallet_api_plugin>();
 
 using namespace eosio;
 

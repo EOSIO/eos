@@ -49,7 +49,7 @@ Please check the account names and try again!)text");
 const char* missing_abi_help_text = _(R"text(The ABI for action "${2}" on code account "${1}" is unknown.
 The payload cannot be automatically serialized.
 
-You can push an arbitrary transaction using the 'push transaction' subcommand)text");
+You can push an arbitrary transaction using the 'push action' subcommand)text");
 
 const char* unknown_wallet_help_text = _("Unable to find a wallet named \"${1}\", are you sure you typed the name correctly?");
 
@@ -62,7 +62,7 @@ const char* duplicate_key_import_help_text = _("This key is already imported int
 const char* unknown_abi_table_help_text = _(R"text(The ABI for the code on account "${1}" does not specify table "${2}".
 
 Please check the account and table name, and verify that the account has the expected code using:
-  eosc get code ${1})text");
+  eosioc get code ${1})text");
 
 const char* help_regex_error = _("Error locating help text: ${code} ${what}");
 

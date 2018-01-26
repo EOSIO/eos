@@ -43,6 +43,10 @@ namespace eosiosystem {
       native_tokens    quantity;
    };
 
+   struct transfer_memo : public transfer {
+      string memo;
+   };
+
 
    /**
     * This will transfer tokens from from.balance to to.vote_stake 

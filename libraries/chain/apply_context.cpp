@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/chain_controller.hpp>
 #include <eosio/chain/wasm_interface.hpp>
@@ -11,7 +12,7 @@ namespace eosio { namespace chain {
 void apply_context::exec_one()
 {
    try {
-      auto native = mutable_controller.find_apply_handler(receiver, act.scope, act.name);
+      auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
       if (native) {
          (*native)(*this);
       } else {
@@ -29,10 +30,30 @@ void apply_context::exec_one()
       }
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 
+   if (!_write_scopes.empty()) {
+      std::sort(_write_scopes.begin(), _write_scopes.end());
+   }
+
+   if (!_read_locks.empty()) {
+      std::sort(_read_locks.begin(), _read_locks.end());
+      // remove any write_scopes
+      auto r_iter = _read_locks.begin();
+      for( auto w_iter = _write_scopes.cbegin(); (w_iter != _write_scopes.cend()) && (r_iter != _read_locks.end()); ++w_iter) {
+         shard_lock w_lock = {receiver, *w_iter};
+         while(r_iter != _read_locks.end() && *r_iter < w_lock ) {
+            ++r_iter;
+         }
+
+         if (*r_iter == w_lock) {
+            r_iter = _read_locks.erase(r_iter);
+         }
+      }
+   }
+
    // create a receipt for this
    vector<data_access_info> data_access;
-   data_access.reserve(trx.write_scope.size() + trx.read_scope.size());
-   for (const auto& scope: trx.write_scope) {
+   data_access.reserve(_write_scopes.size() + _read_locks.size());
+   for (const auto& scope: _write_scopes) {
       auto key = boost::make_tuple(scope, receiver);
       const auto& scope_sequence = mutable_controller.get_database().find<scope_sequence_object, by_scope_receiver>(key);
       if (scope_sequence == nullptr) {
@@ -54,23 +75,25 @@ void apply_context::exec_one()
       }
    }
 
-   for (const auto& scope: trx.read_scope) {
-      auto key = boost::make_tuple(scope, receiver);
+   for (const auto& lock: _read_locks) {
+      auto key = boost::make_tuple(lock.scope, lock.account);
       const auto& scope_sequence = mutable_controller.get_database().find<scope_sequence_object, by_scope_receiver>(key);
       if (scope_sequence == nullptr) {
-         data_access.emplace_back(data_access_info{data_access_info::read, scope, 0});
+         data_access.emplace_back(data_access_info{data_access_info::read, lock.scope, 0});
       } else {
-         data_access.emplace_back(data_access_info{data_access_info::read, scope, scope_sequence->sequence});
+         data_access.emplace_back(data_access_info{data_access_info::read, lock.scope, scope_sequence->sequence});
       }
    }
 
    results.applied_actions.emplace_back(action_trace {receiver, act, _pending_console_output.str(), 0, 0, move(data_access)});
    _pending_console_output = std::ostringstream();
+   _read_locks.clear();
+   _write_scopes.clear();
 }
 
 void apply_context::exec()
 {
-   _notified.push_back(act.scope);
+   _notified.push_back(act.account);
 
    for( uint32_t i = 0; i < _notified.size(); ++i ) {
       receiver = _notified[i];
@@ -78,7 +101,7 @@ void apply_context::exec()
    }
 
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
-      apply_context ncontext( mutable_controller, mutable_db, trx, _inline_actions[i], published, sender);
+      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta);
       ncontext.exec();
       append_results(move(ncontext.results));
    }
@@ -100,28 +123,36 @@ void apply_context::require_authorization(const account_name& account,
               ("account",account)("permission",permission) );
 }
 
-void apply_context::require_write_scope(const account_name& account)const {
-   for( const auto& s : trx.write_scope )
-      if( s == account ) return;
-
-   if( trx.write_scope.size() == 1 && trx.write_scope.front() == config::eosio_all_scope )
-      return;
-
-   EOS_ASSERT( false, tx_missing_write_scope, "missing write scope ${account}", 
-               ("account",account) );
+static bool scopes_contain(const vector<scope_name>& scopes, const scope_name& scope) {
+   return std::find(scopes.begin(), scopes.end(), scope) != scopes.end();
 }
 
-void apply_context::require_read_scope(const account_name& account)const {
-   for( const auto& s : trx.write_scope )
-      if( s == account ) return;
-   for( const auto& s : trx.read_scope )
-      if( s == account ) return;
+static bool locks_contain(const vector<shard_lock>& locks, const account_name& account, const scope_name& scope) {
+   return std::find(locks.begin(), locks.end(), shard_lock{account, scope}) != locks.end();
+}
 
-   if( trx.write_scope.size() == 1 && trx.write_scope.front() == config::eosio_all_scope )
-      return;
+void apply_context::require_write_lock(const scope_name& scope) {
+   if (trx_meta.allowed_write_locks) {
+      EOS_ASSERT( locks_contain(**trx_meta.allowed_write_locks, receiver, scope), block_lock_exception, "write lock \"${a}::${s}\" required but not provided", ("a", receiver)("s",scope) );
+   }
 
-   EOS_ASSERT( false, tx_missing_read_scope, "missing read scope ${account}", 
-               ("account",account) );
+   if (!scopes_contain(_write_scopes, scope)) {
+      _write_scopes.emplace_back(scope);
+   }
+}
+
+void apply_context::require_read_lock(const account_name& account, const scope_name& scope) {
+   if (trx_meta.allowed_read_locks || trx_meta.allowed_write_locks ) {
+      bool locked_for_read = trx_meta.allowed_read_locks && locks_contain(**trx_meta.allowed_read_locks, account, scope);
+      if (!locked_for_read && trx_meta.allowed_write_locks) {
+         locked_for_read = locks_contain(**trx_meta.allowed_write_locks, account, scope);
+      }
+      EOS_ASSERT( locked_for_read , block_lock_exception, "read lock \"${a}::${s}\" required but not provided", ("a", account)("s",scope) );
+   }
+
+   if (!locks_contain(_read_locks, account, scope)) {
+      _read_locks.emplace_back(shard_lock{account, scope});
+   }
 }
 
 bool apply_context::has_recipient( account_name code )const {
@@ -161,8 +192,6 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
          controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
       }
 
-      controller.validate_scope( trx );
-
       trx.sender = receiver; //  "Attempting to send from another account"
       trx.set_reference_block(controller.head_block_id());
 
@@ -176,23 +205,32 @@ void apply_context::cancel_deferred( uint32_t sender_id ) {
 }
 
 const contracts::table_id_object* apply_context::find_table( name scope, name code, name table ) {
-   require_read_scope(scope);
+   require_read_lock(code, scope);
    return db.find<table_id_object, contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));
 }
 
 const contracts::table_id_object& apply_context::find_or_create_table( name scope, name code, name table ) {
-   require_read_scope(scope);
+   require_read_lock(code, scope);
    const auto* existing_tid =  db.find<contracts::table_id_object, contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));
    if (existing_tid != nullptr) {
       return *existing_tid;
    }
 
-   require_write_scope(scope);
+   require_write_lock(scope);
    return mutable_db.create<contracts::table_id_object>([&](contracts::table_id_object &t_id){
       t_id.scope = scope;
       t_id.code = code;
       t_id.table = table;
    });
+}
+
+vector<account_name> apply_context::get_active_producers() const {
+   const auto& gpo = controller.get_global_properties();
+   vector<account_name> accounts;
+   for(const auto& producer : gpo.active_producers.producers)
+      accounts.push_back(producer.producer_name);
+
+   return accounts;
 }
 
 } } /// eosio::chain

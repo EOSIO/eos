@@ -14,14 +14,13 @@
 #include <stdlib.h>
 
 #define IEEE_8087
-#define NO_HEX_FP
 #define NO_INFNAN_CHECK
-#define strtod parseDecimalF64
-#define dtoa printDecimalF64
+#define strtod parseNonSpecialF64
+#define dtoa printNonSpecialF64
 
 #ifdef _MSC_VER
 	#pragma warning(push)
-	#pragma warning(disable : 4244 4083 4706 4701 4703)
+	#pragma warning(disable : 4244 4083 4706 4701 4703 4018)
 #elif defined(__GNUC__) && !defined(__clang__)
 	#pragma GCC diagnostic push
 	#pragma GCC diagnostic ignored "-Wsign-compare"
@@ -43,7 +42,6 @@
 #endif
 
 #undef IEEE_8087
-#undef NO_HEX_FP
 #undef NO_STRTOD_BIGCOMP
 #undef NO_INFNAN_CHECK
 #undef strtod
@@ -70,8 +68,10 @@ static U64 parseHexUnsignedInt(const char*& nextChar,ParseState& state,U64 maxVa
 	
 	U64 result = 0;
 	U8 hexit = 0;
-	while(tryParseHexit(nextChar,hexit))
+	while(true)
 	{
+		if(*nextChar == '_') { ++nextChar; continue; }
+		if(!tryParseHexit(nextChar,hexit)) { break; }
 		if(result > (maxValue - hexit) / 16)
 		{
 			parseErrorf(state,firstHexit,"integer literal is too large");
@@ -91,8 +91,11 @@ static U64 parseDecimalUnsignedInt(const char*& nextChar,ParseState& state,U64 m
 {
 	U64 result = 0;
 	const char* firstDigit = nextChar;
-	while(*nextChar >= '0' && *nextChar <= '9')
+	while(true)
 	{
+		if(*nextChar == '_') { ++nextChar; continue; }
+		if(*nextChar < '0' || *nextChar > '9') { break; }
+
 		const U8 digit = *nextChar - '0';
 		++nextChar;
 
@@ -100,7 +103,7 @@ static U64 parseDecimalUnsignedInt(const char*& nextChar,ParseState& state,U64 m
 		{
 			parseErrorf(state,firstDigit,"%s is too large",context);
 			result = maxValue;
-			while(*nextChar >= '0' && *nextChar <= '9') { ++nextChar; };
+			while((*nextChar >= '0' && *nextChar <= '9') || *nextChar == '_') { ++nextChar; };
 			break;
 		}
 		assert(result * 10 + digit >= result);
@@ -158,121 +161,58 @@ Float parseInfinity(const char* nextChar)
 // Parses a decimal floating point literal, advancing nextChar past the parsed characters.
 // Assumes it will only be called for input that's already been accepted by the lexer as a decimal float literal.
 template<typename Float>
-Float parseDecimalFloat(const char*& nextChar,ParseState& state)
+Float parseFloat(const char*& nextChar,ParseState& state)
 {
-	// Use David Gay's strtod to parse a floating point number.
+	// Scan the token's characters for underscores, and make a copy of it without the underscores for strtod.
 	const char* firstChar = nextChar;
-	F64 f64 = parseDecimalF64(nextChar,const_cast<char**>(&nextChar));
-	if(nextChar == firstChar)
+	std::string noUnderscoreString;
+	bool hasUnderscores = false;
+	while(true)
 	{
+		// Determine whether the next character is still part of the number.
+		bool isNumericChar = false;
+		switch(*nextChar)
+		{
+		case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+		case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
+		case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
+		case '+': case '-': case 'x': case 'X': case '.': case 'p': case 'P': case '_':
+			isNumericChar = true;
+			break;
+		};
+		if(!isNumericChar) { break; }
+
+		if(*nextChar == '_' && !hasUnderscores)
+		{
+			// If this is the first underscore encountered, copy the preceding characters of the number to a std::string.
+			noUnderscoreString = std::string(firstChar,nextChar);
+			hasUnderscores = true;
+		}
+		else if(*nextChar != '_' && hasUnderscores)
+		{
+			// If an underscore has previously been encountered, copy non-underscore characters to that string.
+			noUnderscoreString += *nextChar;
+		}
+
 		++nextChar;
+	};
+
+	// Pass the underscore-free string to parseNonSpecialF64 instead of the original input string.
+	if(hasUnderscores) { firstChar = noUnderscoreString.c_str(); }
+
+	// Use David Gay's strtod to parse a floating point number.
+	char* endChar = nullptr;
+	F64 f64 = parseNonSpecialF64(firstChar,&endChar);
+	if(endChar == firstChar)
+	{
 		Errors::fatalf("strtod failed to parse number accepted by lexer");
 	}
-	if(f64 < std::numeric_limits<Float>::lowest() || f64 > std::numeric_limits<Float>::max())
+	if(Float(f64) < std::numeric_limits<Float>::lowest() || Float(f64) > std::numeric_limits<Float>::max())
 	{
 		parseErrorf(state,firstChar,"float literal is too large");
 	}
 
 	return (Float)f64;
-}
-
-// Parses a hexadecimal floating point literal, advancing nextChar past the parsed characters.
-// Assumes it will only be called for input that's already been accepted by the lexer as a hexadecimal float literal.
-template<typename Float>
-Float parseHexFloat(const char*& nextChar,ParseState& state)
-{
-	typedef typename Floats::FloatComponents<Float> FloatComponents;
-	typedef typename FloatComponents::Bits FloatBits;
-	FloatComponents resultComponents;
-
-	resultComponents.bits.sign = parseSign(nextChar) ? 1 : 0;
-
-	assert(nextChar[0] == '0' && (nextChar[1] == 'x' || nextChar[1] == 'X'));
-	nextChar += 2;
-
-	// Parse hexits into a 64-bit fixed point number, keeping track of where the point is in exponent.
-	U64 fixedPoI64 = 0;
-	bool hasSeenPoint = false;
-	I64 exponent = 0;
-	while(true)
-	{
-		U8 hexit = 0;
-		if(tryParseHexit(nextChar,hexit))
-		{
-			// Once there are too many hexits to accumulate in the 64-bit fixed point number, ignore
-			// the hexits, but continue to update exponent so we get an accurate but imprecise number.
-			if(fixedPoI64 <= (UINT64_MAX - 15) / 16)
-			{
-				assert(fixedPoI64 * 16 + hexit >= fixedPoI64);
-				fixedPoI64 = fixedPoI64 * 16 + hexit;
-				exponent -= hasSeenPoint ? 4 : 0;
-			}
-			else
-			{
-				exponent += hasSeenPoint ? 0 : 4;
-			}
-		}
-		else if(*nextChar == '.')
-		{
-			assert(!hasSeenPoint);
-			hasSeenPoint = true;
-			++nextChar;
-		}
-		else { break; }
-	}
-
-	// Parse an optional exponent.
-	if(*nextChar == 'p' || *nextChar == 'P')
-	{
-		++nextChar;
-		const bool isExponentNegative = parseSign(nextChar);
-		const U64 userExponent = parseDecimalUnsignedInt(nextChar,state,U64(-INT32_MIN),"float literal exponent");
-		exponent = isExponentNegative ? exponent - userExponent : exponent + userExponent;
-	}
-
-	if(!fixedPoI64)
-	{
-		// If both the integer and fractional part are zero, just return zero.
-		resultComponents.bits.exponent = 0;
-		resultComponents.bits.significand = 0;
-	}
-	else
-	{
-		// Shift the fixed point number's most significant set bit into the MSB.
-		const Uptr leadingZeroes = Platform::countLeadingZeroes(fixedPoI64);
-		fixedPoI64 <<= leadingZeroes;
-		exponent += 64;
-		exponent -= leadingZeroes;
-		
-		const I64 exponentWithImplicitLeadingOne = exponent - 1;
-		if(exponentWithImplicitLeadingOne > FloatComponents::maxNormalExponent)
-		{
-			// If the number is out of range, produce an error and return infinity.
-			resultComponents.bits.exponent = FloatComponents::maxExponentBits;
-			resultComponents.bits.significand = FloatComponents::maxSignificand;
-			parseErrorf(state,state.nextToken,"hexadecimal float literal is out of range");
-		}
-		else if(exponentWithImplicitLeadingOne < FloatComponents::minNormalExponent)
-		{
-			// Denormals are encoded as if their exponent is minNormalExponent, but
-			// with the significand shifted down to include the leading 1 that is implicit for
-			// normal numbers, and with the encoded exponent = 0.
-			const Uptr denormalShift = FloatComponents::minNormalExponent - exponent;
-			fixedPoI64 = denormalShift >= 64 ? 0 : (fixedPoI64 >> denormalShift);
-			resultComponents.bits.exponent = 0;
-			resultComponents.bits.significand = FloatBits(fixedPoI64 >> (64 - FloatComponents::numSignificandBits));
-		}
-		else
-		{
-			// Encode a normal floating point value.
-			assert(exponentWithImplicitLeadingOne >= FloatComponents::minNormalExponent);
-			assert(exponentWithImplicitLeadingOne <= FloatComponents::maxNormalExponent);
-			resultComponents.bits.exponent = FloatBits(exponentWithImplicitLeadingOne + FloatComponents::exponentBias);
-			resultComponents.bits.significand = FloatBits(fixedPoI64 >> (63 - FloatComponents::numSignificandBits));
-		}
-	}
-
-	return resultComponents.value;
 }
 
 // Tries to parse an numeric literal token as an integer, advancing state.nextToken.
@@ -315,9 +255,9 @@ bool tryParseFloat(ParseState& state,Float& outFloat)
 	switch(state.nextToken->type)
 	{
 	case t_decimalInt:
-	case t_decimalFloat: outFloat = parseDecimalFloat<Float>(nextChar,state); break;
+	case t_decimalFloat: outFloat = parseFloat<Float>(nextChar,state); break;
 	case t_hexInt:
-	case t_hexFloat: outFloat = parseHexFloat<Float>(nextChar,state); break;
+	case t_hexFloat: outFloat = parseFloat<Float>(nextChar,state); break;
 	case t_floatNaN: outFloat = parseNaN<Float>(nextChar,state); break;
 	case t_floatInf: outFloat = parseInfinity<Float>(nextChar); break;
 	default:

@@ -7,8 +7,10 @@ high-performance, horizontally scalable, blockchain infrastructure upon which de
 can be built.
 
 This code is currently alpha-quality and under rapid development. That said,
-there is plenty early experimenters can do including, running a private multi-node test network and
-develop applications (smart contracts).
+there is plenty early experimenters can do including running a private multi-node test network and
+developing applications (smart contracts).
+
+The public testnet described in the [wiki](https://github.com/EOSIO/eos/wiki/Testnet%3A%20Public) is running the `dawn-2.x` branch.  The `master` branch is no longer compatible with the public testnet.  Instructions are provided below for building either option.
 
 # Resources
 1. [EOS.IO Website](https://eos.io)
@@ -24,8 +26,10 @@ develop applications (smart contracts).
 1. [Getting Started](#gettingstarted)
 2. [Setting up a build/development environment](#setup)
 	1. [Automated build script](#autobuild)
-	    1. [Clean install Ubuntu 16.10](#autoubuntu)
-	    2. [MacOS Sierra 10.12.6](#automac)
+      1. [Clean install Ubuntu 16.10 for a local testnet](#autoubuntulocal)
+      2. [Clean install Ubuntu 16.10 for the public testnet](#autobuntupublic)
+      3. [MacOS Sierra 10.12.6 for a local testnet](#automaclocal)
+      4. [MacOS Sierra 10.12.6 for the public testnet](#automacpublic)
 3. [Building EOS and running a node](#runanode)
 	1. [Getting the code](#getcode)
 	2. [Building from source code](#build)
@@ -38,15 +42,16 @@ develop applications (smart contracts).
 	5. [Pushing a message to a sample contract](#pushamessage)
 	6. [Reading Currency Contract Balance](#readingcontract)
 5. [Running local testnet](#localtestnet)
-6. [Doxygen documentation](#doxygen)
-7. [Running EOS in Docker](#docker)
-8. [Manual installation of the dependencies](#manualdep)
+6. [Running a node on the public testnet](#publictestnet)
+7. [Doxygen documentation](#doxygen)
+8. [Running EOS in Docker](#docker)
+9. [Manual installation of the dependencies](#manualdep)
    1. [Clean install Ubuntu 16.10](#ubuntu)
    2. [MacOS Sierra 10.12.6](#macos)
 
 <a name="gettingstarted"></a>
 ## Getting Started
-The following instructions overview the process of getting the software, building it, running a simple test network that produces blocks, creating an account, and uploading a sample contract to the blockchain.
+The following instructions detail the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain.
 
 <a name="setup"></a>
 ## Setting up a build/development environment
@@ -54,21 +59,21 @@ The following instructions overview the process of getting the software, buildin
 <a name="autobuild"></a>
 ### Automated build script
 
-For Ubuntu 16.10 and MacOS Sierra, there is an automated build script that can install all dependencies and build EOS.
+For Ubuntu 16.10 and MacOS Sierra, there is an automated build script that can install all dependencies and builds EOS.
 
-It is called build.sh with the following inputs:
+It is called build.sh with the following inputs.
 - architecture [ubuntu|darwin]
 - optional mode [full|build]
 
-The second optional input can be `full` or `build` where `full` implies that it installs dependencies and builds EOS. If you omit this input, then the build script will install dependencies and then builds EOS.
+The second optional input can be `full` or `build` where `full` implies that it installs dependencies and builds eos. If you omit this input then the build script installs dependencies and then builds eos.
 
 ```bash
 ./build.sh <architecture> <optional mode>
 ```
-Clone EOS repository recursively as below and run build.sh located in root `eos` folder.
+Choose whether you will be building for a local testnet or for the public testnet and jump to the appropriate section below.  Clone the EOS repository recursively as described and run build.sh located in the root `eos` folder.
 
-<a name="autoubuntu"></a>
-#### Clean install Ubuntu 16.10
+<a name="autoubuntulocal"></a>
+#### Clean install Ubuntu 16.10 for a local testnet
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
@@ -79,15 +84,30 @@ cd eos
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
 
-<a name="automac"></a>
-#### MacOS Sierra
+<a name="autoubuntupublic"></a>
+#### Clean install Ubuntu 16.10 for the public testnet
 
-Before running the script, make sure you have updated XCode and Homebrew:
+```bash
+git clone https://github.com/eosio/eos --recursive
+
+cd eos
+git checkout dawn-2.x
+./build.sh ubuntu
+```
+
+Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
+
+<a name="automaclocal"></a>
+#### MacOS Sierra for a local testnet
+
+Before running the script make sure you have updated XCode and brew:
 
 ```bash
 xcode-select --install
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 ```
+
+Then clone the EOS repository recursively and run build.sh in the root `eos` folder.
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
@@ -97,6 +117,28 @@ cd eos
 ```
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
+
+<a name="automacpublic"></a>
+#### MacOS Sierra for the public testnet
+
+Before running the script make sure you have updated XCode and brew:
+
+```bash
+xcode-select --install
+ruby -e "$(curl -fsSl https://raw.githubusercontent.com/Homebrew/install/master/install)"
+```
+
+Then clone the EOS repository recursively, checkout the branch that is compatible with the public testnet, and run build.sh in the root `eos` folder.
+
+```bash
+git clone https://github.com/eosio/eos --recursive
+
+cd eos
+git checkout dawn-2.x
+./build.sh darwin
+```
+
+Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
 
 <a name="runanode"></a>
 ## Building EOS and running a node
@@ -142,15 +184,15 @@ EOS comes with a number of programs you can find in `~/eos/build/programs`. They
 
 * eosiod - server-side blockchain node component
 * eosioc - command line interface to interact with the blockchain
-* eos-walletd - EOS wallet
+* eosio-walletd - EOS wallet
 * launcher - application for nodes network composing and deployment; [more on launcher](https://github.com/EOSIO/eos/blob/master/testnet.md)
 
 <a name="singlenode"></a>
 ### Creating and launching a single-node testnet
 
-After successfully building the project, the `eosiod` binary should be present in the `build/programs/eosiod` directory. Go ahead and run `eosiod` -- it will probably exit with an error, but if not, close it immediately with <kbd>Ctrl-C</kbd>. Note that `eosiod` created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `eosiod`.
+After successfully building the project, the `eosiod` binary should be present in the `build/programs/eosiod` directory. Run `eosiod` -- it will probably exit with an error, but if not, close it immediately with <kbd>Ctrl-C</kbd>. If it exited with an error, note that `eosiod` created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `eosiod`.  These instructions will continue to use the default directory.
 
-Edit the `config.ini` file, adding the following settings to the defaults already in place:
+Edit the `config.ini` file, adding/updating the following settings to the defaults already in place:
 
 ```
 # Load the testnet genesis state, which creates some initial block producers with the default key
@@ -246,7 +288,7 @@ This will output two pairs of public and private keys
 
 ```
 Private key: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-Public key:  XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+Public key: EOSXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 
 **Important:**
@@ -270,12 +312,12 @@ If all went well, you will receive output similar to the following:
 
 ```json
 {
-  "name": "currency",
-  "eos_balance": 0,
-  "staked_balance": 1,
-  "unstaking_balance": 0,
-  "last_unstaking_time": "2106-02-07T06:28:15"
-}
+  "account_name": "currency",
+  "eos_balance": "0.0000 EOS",
+  "staked_balance": "0.0001 EOS",
+  "unstaking_balance": "0.0000 EOS",
+  "last_unstaking_time": "2035-10-29T06:32:22",
+...
 ```
 
 Now import the active private key generated previously in the wallet:
@@ -313,14 +355,20 @@ It will return something like:
 code hash: 9b9db1a7940503a88535517049e64467a6e8f4e9e03af15e9968ec89dd794975
 ```
 
+Before using the currency contract, you must issue the currency.
+
+```bash
+./eosioc push action currency issue '{"to":"currency","quantity":"1000.0000 CUR"}' --permission currency@active
+```
+
 Next verify the currency contract has the proper initial balance:
 
 ```bash
 ./eosioc get table currency currency account
 {
   "rows": [{
-     "account": "account",
-     "balance": 1000000000
+     "currency": 1381319428,
+     "balance": 10000000
      }
   ],
   "more": false
@@ -332,19 +380,17 @@ Next verify the currency contract has the proper initial balance:
 
 Anyone can send any message to any contract at any time, but the contracts may reject messages which are not given necessary permission. Messages are not sent "from" anyone, they are sent "with permission of" one or more accounts and permission levels. The following commands show a "transfer" message being sent to the "currency" contract.
 
-The content of the message is `'{"from":"currency","to":"inita","quantity":50}'`. In this case we are asking the currency contract to transfer funds from itself to someone else. This requires the permission of the currency contract.
+The content of the message is `'{"from":"currency","to":"inita","quantity":"20.0000 CUR","memo":"any string"}'`. In this case we are asking the currency contract to transfer funds from itself to someone else. This requires the permission of the currency contract.
 
 ```bash
-./eosioc push message currency transfer '{"from":"currency","to":"inita","amount":50}' --scope currency,inita --permission currency@active
+./eosioc push action currency transfer '{"from":"currency","to":"inita","quantity":"20.0000 CUR","memo":"my first transfer"}' --permission currency@active
 ```
 
 Below is a generalization that shows the `currency` account is only referenced once, to specify which contract to deliver the `transfer` message to.
 
 ```bash
-./eosioc push message currency transfer '{"from":"${usera}","to":"${userb}","amount":50}' --scope ${usera},${userb} --permission ${usera}@active
+./eosioc push action currency transfer '{"from":"${usera}","to":"${userb}","quantity":"20.0000 CUR","memo":""}' --permission ${usera}@active
 ```
-
-We specify the `--scope ...` argument to give the currency contract read/write permission to those users so it can modify their balances.  In a future release scope will be determined automatically.
 
 As confirmation of a successfully submitted transaction, you will receive JSON output that includes a `transaction_id` field.
 
@@ -357,8 +403,8 @@ So now check the state of both of the accounts involved in the previous transact
 ./eosioc get table inita currency account
 {
   "rows": [{
-      "account": "account",
-      "balance": 50
+      "currency": 1381319428,
+      "balance": 200000
        }
     ],
   "more": false
@@ -366,15 +412,15 @@ So now check the state of both of the accounts involved in the previous transact
 ./eosioc get table currency currency account
 {
   "rows": [{
-      "account": "account",
-      "balance": 999999950
+      "currency": 1381319428,
+      "balance": 9800000
     }
   ],
   "more": false
 }
 ```
 
-As expected, the receiving account **inita** now has a balance of **50** tokens, and the sending account now has **50** less tokens than its initial supply.
+As expected, the receiving account **inita** now has a balance of **20** tokens, and the sending account now has **20** less tokens than its initial supply.
 
 <a name="localtestnet"></a>
 ## Running multi-node local testnet
@@ -389,9 +435,9 @@ cp ../genesis.json ./
 ./programs/launcher/launcher -p2 --skip-signature
 ```
 
-This command will generate two data folders for each instance of the node: `tn_data_0` and `tn_data_1`.
+This command will generate two data folders for each instance of the node: `tn_data_00` and `tn_data_01`.
 
-You should see a following response:
+You should see the following response:
 
 ```bash
 spawning child, programs/eosiod/eosiod --skip-transaction-signatures --data-dir tn_data_0
@@ -424,12 +470,12 @@ This command will use the data folder provided for the instance called `testnet_
 You should see the following response:
 
 ```bash
-Launched eosiod.
-See testnet_np/stderr.txt for eosiod output.
+Launched eosd.
+See testnet_np/stderr.txt for eosd output.
 Synching requires at least 8 minutes, depending on network conditions.
 ```
 
-To confirm eosiod operation and synchronization:
+To confirm eosd operation and synchronization:
 
 ```bash
 tail -F testnet_np/stderr.txt
@@ -451,8 +497,8 @@ Synchronization is complete when you see log messages similar to:
 42793ms            chain_controller.cpp:208      _push_block          ] initd #351949 @2017-12-12T22:59:48  | 0 trx, 0 pending, exectime_ms=0
 ```
 
-This eosiod instance listens on 127.0.0.1:8888 for http requests, on all interfaces at port 9877
-for P2P requests, and includes the wallet plugins.
+This eosd instance listens on 127.0.0.1:8888 for http requests, on all interfaces at port 9877
+for p2p requests, and includes the wallet plugins.
 
 <a name="doxygen"></a>
 ## Doxygen documentation
@@ -562,7 +608,7 @@ Your environment is set up. Now you can <a href="#runanode">build EOS and run a 
 
 macOS additional Dependencies:
 
-* Homebrew
+* Brew
 * Newest XCode
 
 Upgrade your XCode to the newest version:
@@ -571,7 +617,7 @@ Upgrade your XCode to the newest version:
 xcode-select --install
 ```
 
-Install Homebrew:
+Install homebrew:
 
 ```bash
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
@@ -581,7 +627,8 @@ Install the dependencies:
 
 ```bash
 brew update
-brew install git automake libtool boost openssl llvm@4 gmp
+brew install git automake libtool boost openssl llvm@4 gmp ninja gettext
+brew link gettext --force
 ```
 
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
@@ -613,7 +660,8 @@ echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
 source ~/.bash_profile
 ```
 
-Build LLVM and Clang for WASM:
+
+Build LLVM and clang for WASM:
 
 ```bash
 mkdir  ~/wasm-compiler

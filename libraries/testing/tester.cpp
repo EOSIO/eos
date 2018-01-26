@@ -2,6 +2,7 @@
 #include <eosio/chain/asset.hpp>
 #include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/contracts/eos_contract.hpp>
+#include <eosio/chain/contracts/contract_table_objects.hpp>
 
 #include <fc/utility.hpp>
 #include <fc/io/json.hpp>
@@ -60,7 +61,7 @@ namespace eosio { namespace testing {
          for( const auto& region : trace.block.regions) {
             for( const auto& cycle : region.cycles_summary ) {
                for ( const auto& shard : cycle ) {
-                  for( const auto& receipt: shard ) {
+                  for( const auto& receipt: shard.transactions ) {
                      chain_transactions.emplace(receipt.id, receipt);
                   }
                }
@@ -93,7 +94,6 @@ namespace eosio { namespace testing {
    void tester::create_account( account_name a, asset initial_balance, account_name creator, bool multisig ) {
       signed_transaction trx;
       set_tapos( trx );
-      trx.write_scope = { creator, config::eosio_auth_scope };
 
       authority owner_auth;
       if (multisig) {
@@ -133,7 +133,6 @@ namespace eosio { namespace testing {
    }
    transaction_trace tester::transfer( account_name from, account_name to, asset amount, string memo ) {
       signed_transaction trx;
-      trx.write_scope = {from,to};
       trx.actions.emplace_back( vector<permission_level>{{from,config::active_name}},
                                 contracts::transfer{
                                    .from   = from,
@@ -151,7 +150,6 @@ namespace eosio { namespace testing {
                                authority auth,
                                permission_name parent ) { try {
       signed_transaction trx;
-      trx.write_scope = {config::eosio_auth_scope};
       trx.actions.emplace_back( vector<permission_level>{{account,perm}},
                                 contracts::updateauth{
                                    .account    = account,
@@ -211,7 +209,6 @@ namespace eosio { namespace testing {
       auto wasm = assemble(wast);
 
       signed_transaction trx;
-      trx.write_scope = {config::eosio_auth_scope, account};
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
                                 contracts::setcode{
                                    .account    = account,
@@ -228,7 +225,6 @@ namespace eosio { namespace testing {
    void tester::set_abi( account_name account, const char* abi_json) {
       auto abi = fc::json::from_string(abi_json).template as<contracts::abi_def>();
       signed_transaction trx;
-      trx.write_scope = {config::eosio_auth_scope};
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
                                 contracts::setabi{
                                    .account    = account,
@@ -251,6 +247,27 @@ namespace eosio { namespace testing {
    share_type tester::get_balance( const account_name& account ) const {
       const auto& db = control->get_database();
       return contracts::get_eosio_balance(db, account);
+   }
+
+   /**
+    *  Reads balance as stored by generic_currency contract
+    */
+   asset tester::get_currency_balance( const account_name& code,
+                                            const asset_symbol& symbol,
+                                            const account_name& account ) const {
+      const auto& db  = control->get_database();
+      const auto* tbl = db.find<contracts::table_id_object, contracts::by_scope_code_table>(boost::make_tuple(account, code, N(account)));
+      share_type result = 0;
+
+      // the balance is implied to be 0 if either the table or row does not exist
+      if (tbl) {
+         const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, symbol));
+         if (obj) {
+            fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
+            fc::raw::unpack(ds, result);
+         }
+      }
+      return asset(result, symbol);
    }
 
 

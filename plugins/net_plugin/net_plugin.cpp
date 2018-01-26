@@ -33,6 +33,8 @@ namespace fc {
 }
 
 namespace eosio {
+  static appbase::abstract_plugin& _net_plugin = app().register_plugin<net_plugin>();
+
   using std::vector;
 
   using boost::asio::ip::tcp;
@@ -286,7 +288,7 @@ namespace eosio {
   constexpr auto     def_txn_expire_wait = std::chrono::seconds(3);
   constexpr auto     def_resp_expected_wait = std::chrono::seconds(1);
   constexpr auto     def_sync_fetch_span = 100;
-  constexpr auto     def_max_just_send = 1500 * 3; // "mtu" * 3
+  constexpr auto     def_max_just_send = 1500 * 8; // "mtu" * 8
   constexpr auto     def_send_whole_blocks = true;
 
   constexpr auto     message_header_size = 4;
@@ -1337,7 +1339,7 @@ namespace eosio {
       auto socket = std::make_shared<tcp::socket>( std::ref( app().get_io_service() ) );
       acceptor->async_accept( *socket, [socket,this]( boost::system::error_code ec ) {
           if( !ec ) {
-            int visitors = 0;
+            uint32_t visitors = 0;
             for (auto &conn : connections) {
               if(conn->current() && conn->peer_addr.empty()) {
                 visitors++;

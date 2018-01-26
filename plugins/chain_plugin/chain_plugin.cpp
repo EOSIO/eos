@@ -45,6 +45,7 @@ public:
 
    fc::optional<fork_database>      fork_db;
    fc::optional<block_log>          block_logger;
+   fc::optional<chain_controller::controller_config> chain_config = chain_controller::controller_config();
    fc::optional<chain_controller>   chain;
    chain_id_type                    chain_id;
    uint32_t                         rcvd_block_txn_execution_time;
@@ -135,15 +136,12 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    }
 
    if (options.at("replay-blockchain").as<bool>()) {
-      fc::remove_all(app().data_dir() / default_shared_memory_dir);
       ilog("Replay requested: wiping database");
-      /// TODO:   db->wipe_database();
+      fc::remove_all(app().data_dir() / default_shared_memory_dir);
    }
    if (options.at("resync-blockchain").as<bool>()) {
+      ilog("Resync requested: wiping database and blocks");
       fc::remove_all(app().data_dir() / default_shared_memory_dir);
-      ilog("Resync requested: wiping blocks");
-
-      /// TODO:   db->wipe_database();
       fc::remove_all(my->block_log_dir);
    }
    if (options.at("skip-transaction-signatures").as<bool>()) {
@@ -184,26 +182,20 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    my->rate_limits.per_code_account = options.at("per-code-account-transaction-msg-rate-limit").as<uint32_t>();*/
 }
 
-using applied_irreversible_block_func = typename decltype(((chain_controller*)nullptr)->applied_irreversible_block)::slot_type;
-
-void chain_plugin::plugin_startup() 
+void chain_plugin::plugin_startup()
 { try {
-   optional<applied_irreversible_block_func> applied_func;
-
-   FC_ASSERT( fc::exists( my->genesis_file ), 
+   FC_ASSERT( fc::exists( my->genesis_file ),
               "unable to find genesis file '${f}', check --genesis-json argument", 
               ("f",my->genesis_file.generic_string()) );
-
-   chain_controller::controller_config config;
-   config.block_log_dir = my->block_log_dir;
-   config.shared_memory_dir = app().data_dir() / default_shared_memory_dir;
-   config.read_only = my->readonly;
-   config.genesis = fc::json::from_file(my->genesis_file).as<contracts::genesis_state_type>();
+   my->chain_config->block_log_dir = my->block_log_dir;
+   my->chain_config->shared_memory_dir = app().data_dir() / default_shared_memory_dir;
+   my->chain_config->read_only = my->readonly;
+   my->chain_config->genesis = fc::json::from_file(my->genesis_file).as<contracts::genesis_state_type>();
    if (my->genesis_timestamp.sec_since_epoch() > 0) {
-      config.genesis.initial_timestamp = my->genesis_timestamp;
+      my->chain_config->genesis.initial_timestamp = my->genesis_timestamp;
    }
 
-   my->chain.emplace(config);
+   my->chain.emplace(*my->chain_config);
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
@@ -211,9 +203,11 @@ void chain_plugin::plugin_startup()
    }
 
    ilog("Blockchain started; head block is #${num}, genesis timestamp is ${ts}",
-        ("num", my->chain->head_block_num())("ts", (std::string)config.genesis.initial_timestamp));
+        ("num", my->chain->head_block_num())("ts", (std::string)my->chain_config->genesis.initial_timestamp));
 
-} FC_CAPTURE_AND_RETHROW( (my->genesis_file.generic_string()) ) }
+   my->chain_config.reset();
+
+   } FC_CAPTURE_AND_RETHROW( (my->genesis_file.generic_string()) ) }
 
 void chain_plugin::plugin_shutdown() {
    my->chain.reset();
@@ -250,6 +244,11 @@ bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
 
 bool chain_plugin::is_skipping_transaction_signatures() const {
    return my->skip_flags & skip_transaction_signatures;
+}
+
+chain_controller::controller_config& chain_plugin::chain_config() {
+   // will trigger optional assert if called before/after plugin_initialize()
+   return *my->chain_config;
 }
 
 chain_controller& chain_plugin::chain() { return *my->chain; }
@@ -330,6 +329,42 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
          return get_table_rows_ex<contracts::key64x64x64_value_index, contracts::by_scope_tertiary>(p,abi);
    }
    FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("key",table_key)("abi",abi));
+}
+
+vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
+   vector<asset> results;
+   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.account, p.code, N(account), [&](const contracts::key_value_object& obj){
+      share_type balance;
+      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+      fc::raw::unpack(ds, balance);
+      auto cursor = asset(balance, obj.primary_key);
+
+      if (p.symbol || cursor.symbol_name().compare(*p.symbol) == 0) {
+         results.emplace_back(balance, obj.primary_key);
+      }
+
+      // return false if we are looking for one and found it, true otherwise
+      return p.symbol || cursor.symbol_name().compare(*p.symbol) != 0;
+   });
+
+   return results;
+}
+
+fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_params& p )const {
+   fc::mutable_variant_object results;
+   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.code, N(stat), [&](const contracts::key_value_object& obj){
+      share_type balance;
+      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+      fc::raw::unpack(ds, balance);
+      auto cursor = asset(balance, obj.primary_key);
+
+      read_only::get_currency_stats_result result;
+      result.supply = cursor;
+      results[cursor.symbol_name()] = result;
+      return true;
+   });
+
+   return results;
 }
 
 read_only::get_block_results read_only::get_block(const read_only::get_block_params& params) const {

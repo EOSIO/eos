@@ -148,15 +148,15 @@ bool processAction(TestScriptState& state,Action* action,Result& outResult)
 		ModuleInstance* moduleInstance = getModuleContextByInternalName(state,invokeAction->locus,"invoke",invokeAction->internalModuleName);
 
 		// A null module instance at this point indicates a module that failed to link or instantiate, so don't produce further errors.
-		if(moduleInstance)
-		{
-			// Find the named export in the module instance.
-			auto functionInstance = asFunctionNullable(getInstanceExport(moduleInstance,invokeAction->exportName));
-			if(!functionInstance) { testErrorf(state,invokeAction->locus,"couldn't find exported function with name: %s",invokeAction->exportName.c_str()); return false; }
+		if(!moduleInstance) { return false; }
 
-			// Execute the invoke
-			outResult = invokeFunction(functionInstance,invokeAction->arguments);
-		}
+		// Find the named export in the module instance.
+		auto functionInstance = asFunctionNullable(getInstanceExport(moduleInstance,invokeAction->exportName));
+		if(!functionInstance) { testErrorf(state,invokeAction->locus,"couldn't find exported function with name: %s",invokeAction->exportName.c_str()); return false; }
+
+		// Execute the invoke
+		outResult = invokeFunction(functionInstance,invokeAction->arguments);
+
 		return true;
 	}
 	case ActionType::get:

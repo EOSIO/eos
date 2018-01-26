@@ -19,6 +19,7 @@ FC_REFLECT(eosio::detail::net_api_plugin_empty, );
 
 namespace eosio {
 
+static appbase::abstract_plugin& _net_api_plugin = app().register_plugin<net_api_plugin>();
 
 using namespace eosio;
 

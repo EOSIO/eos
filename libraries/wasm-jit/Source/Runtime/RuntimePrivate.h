@@ -97,8 +97,9 @@ namespace Runtime
 	{
 		GlobalType type;
 		UntaggedValue value;
+		UntaggedValue initialValue;
 
-		GlobalInstance(GlobalType inType,UntaggedValue inValue): GCObject(ObjectKind::global), type(inType), value(inValue) {}
+		GlobalInstance(GlobalType inType,UntaggedValue inValue): GCObject(ObjectKind::global), type(inType), value(inValue), initialValue(value) {}
 	};
 
 	// An instance of a WebAssembly module.
@@ -117,6 +118,8 @@ namespace Runtime
 		TableInstance* defaultTable;
 
 		LLVMJIT::JITModuleBase* jitModule;
+
+		Uptr startFunctionIndex = UINTPTR_MAX;
 
 		ModuleInstance(
 			std::vector<FunctionInstance*>&& inFunctionImports,

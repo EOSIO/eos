@@ -13,15 +13,13 @@
 #include <fc/io/json.hpp>
 #include <fc/exception/exception.hpp>
 
-#include <eos/native_contract/native_contract_chain_initializer.hpp>
-#include <eos/types/abi_serializer.hpp>
-#include <eos/abi_generator/abi_generator.hpp>
-
-#include "../common/database_fixture.hpp"
+#include <eosio/chain/contracts/chain_initializer.hpp>
+#include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/abi_generator/abi_generator.hpp>
 
 using namespace eosio;
 using namespace chain;
-using namespace eosio::types;
+using namespace chain::contracts;
 
 BOOST_AUTO_TEST_SUITE(abi_tests)
 
@@ -33,11 +31,11 @@ fc::variant verify_round_trip_conversion( const abi_serializer& abis, const type
 
    std::string r = fc::json::to_string(var2);
 
-   //std::cout << r << std::endl;
+   std::cout << r << std::endl;
 
    auto bytes2 = abis.variant_to_binary(type, var2);
 
-   BOOST_CHECK_EQUAL( fc::to_hex(bytes), fc::to_hex(bytes2) );
+   BOOST_TEST( fc::to_hex(bytes) == fc::to_hex(bytes2) );
 
    return var2;
 }
@@ -48,112 +46,277 @@ const char* my_abi = R"=====(
   "structs": [{
       "name"  : "A",
       "base"  : "PublicKeyTypes",
-      "fields": {}
+      "fields": []
     },
     {
       "name": "PublicKeyTypes",
       "base" : "AssetTypes",
-      "fields": {
-        "publickey"      : "public_key",
-        "publickey_arr"  : "public_key[]",
-      }
+      "fields": [{
+         "name": "publickey",
+         "type": "public_key"
+      },{
+         "name": "publickey_arr",
+         "type": "public_key[]"
+      }]
     },{
       "name": "AssetTypes",
       "base" : "NativeTypes",
-      "fields": {
-        "asset"       : "asset",
-        "asset_arr"   : "asset[]",
-        "price"       : "price",
-        "price_arr"   : "price[]",
-      }
+      "fields": [{
+         "name": "asset",
+         "type": "asset"
+      },{
+         "name": "asset_arr",
+         "type": "asset[]"
+      },{
+         "name": "price",
+         "type": "price"
+      },{
+         "name": "price_arr",
+         "type": "price[]"
+      }]
     },{
       "name": "NativeTypes",
-      "base" : "GeneratedTypes",
-      "fields" : {
-        "string"            : "string",
-        "string_arr"        : "string[]",
-        "time"              : "time",
-        "time_arr"          : "time[]",
-        "signature"         : "signature",
-        "signature_arr"     : "signature[]",
-        "checksum"          : "checksum",
-        "checksum_arr"      : "checksum[]",
-        "fieldname"         : "field_name",
-        "fieldname_arr"     : "field_name[]",
-        "fixedstring32"     : "fixed_string32",
-        "fixedstring32_ar"  : "fixed_string32[]",
-        "fixedstring16"     : "fixed_string16",
-        "fixedstring16_ar"  : "fixed_string16[]",
-        "typename"          : "type_name",
-        "typename_arr"      : "type_name[]",
-        "bytes"             : "bytes",
-        "bytes_arr"         : "bytes[]",
-        "uint8"             : "uint8",
-        "uint8_arr"         : "uint8[]",
-        "uint16"            : "uint16",
-        "uint16_arr"        : "uint16[]",
-        "uint32"            : "uint32",
-        "uint32_arr"        : "uint32[]",
-        "uint64"            : "uint64",
-        "uint64_arr"        : "uint64[]",
-        "uint128"           : "uint128",
-        "uint128_arr"       : "uint128[]",
-        "uint256"           : "uint256",
-        "uint256_arr"       : "uint256[]",
-        "int8"              : "int8",
-        "int8_arr"          : "int8[]",
-        "int16"             : "int16",
-        "int16_arr"         : "int16[]",
-        "int32"             : "int32",
-        "int32_arr"         : "int32[]",
-        "int64"             : "int64",
-        "int64_arr"         : "int64[]",
-        "name"              : "name",
-        "name_arr"          : "name[]",
-        "field"             : "field",
-        "field_arr"         : "field[]",
-        "struct"            : "struct_t",
-        "struct_arr"        : "struct_t[]",
-        "fields"            : "fields",
-        "fields_arr"        : "fields[]"
-
-      }
-    },{
-      "name"   : "GeneratedTypes",
-      "fields" : {
-        "accountname":"account_name",
-        "accountname_arr":"account_name[]",
-        "permname":"permission_name",
-        "permname_arr":"permission_name[]",
-        "funcname":"func_name",
-        "funcname_arr":"func_name[]",
-        "messagename":"message_name",
-        "messagename_arr":"message_name[]",
-        "apermission":"account_permission",
-        "apermission_arr":"account_permission[]",
-        "message":"message",
-        "message_arr":"message[]",
-        "apweight":"account_permission_weight",
-        "apweight_arr":"account_permission_weight[]",
-        "transaction":"transaction",
-        "transaction_arr":"transaction[]",
-        "strx":"signed_transaction",
-        "strx_arr":"signed_transaction[]",
-        "kpweight":"key_permission_weight",
-        "kpweight_arr":"key_permission_weight[]",
-        "authority":"authority",
-        "authority_arr":"authority[]",
-        "blkcconfig":"blockchain_configuration",
-        "blkcconfig_arr":"blockchain_configuration[]",
-        "typedef":"type_def",
-        "typedef_arr":"type_def[]",
-        "action":"action",
-        "action_arr":"action[]",
-        "table":"table",
-        "table_arr":"table[]",
-        "abi":"abi",
-        "abi_arr":"abi[]"
-      }
+      "fields" : [{
+         "name": "string",
+         "type": "string"
+      },{
+         "name": "string_arr",
+         "type": "string[]"
+      },{
+         "name": "time",
+         "type": "time"
+      },{
+         "name": "time_arr",
+         "type": "time[]"
+      },{
+         "name": "signature",
+         "type": "signature"
+      },{
+         "name": "signature_arr",
+         "type": "signature[]"
+      },{
+         "name": "checksum",
+         "type": "checksum"
+      },{
+         "name": "checksum_arr",
+         "type": "checksum[]"
+      },{
+         "name": "fieldname",
+         "type": "field_name"
+      },{
+         "name": "fieldname_arr",
+         "type": "field_name[]"
+      },{
+         "name": "fixedstring32",
+         "type": "fixed_string32"
+      },{
+         "name": "fixedstring32_ar",
+         "type": "fixed_string32[]"
+      },{
+         "name": "fixedstring16",
+         "type": "fixed_string16"
+      },{
+         "name": "fixedstring16_ar",
+         "type": "fixed_string16[]"
+      },{
+         "name": "typename",
+         "type": "type_name"
+      },{
+         "name": "typename_arr",
+         "type": "type_name[]"
+      },{
+         "name": "bytes",
+         "type": "bytes"
+      },{
+         "name": "bytes_arr",
+         "type": "bytes[]"
+      },{
+         "name": "uint8",
+         "type": "uint8"
+      },{
+         "name": "uint8_arr",
+         "type": "uint8[]"
+      },{
+         "name": "uint16",
+         "type": "uint16"
+      },{
+         "name": "uint16_arr",
+         "type": "uint16[]"
+      },{
+         "name": "uint32",
+         "type": "uint32"
+      },{
+         "name": "uint32_arr",
+         "type": "uint32[]"
+      },{
+         "name": "uint64",
+         "type": "uint64"
+      },{
+         "name": "uint64_arr",
+         "type": "uint64[]"
+      },{
+         "name": "uint128",
+         "type": "uint128"
+      },{
+         "name": "uint128_arr",
+         "type": "uint128[]"
+      },{
+         "name": "uint256",
+         "type": "uint256"
+      },{
+         "name": "uint256_arr",
+         "type": "uint256[]"
+      },{
+         "name": "int8",
+         "type": "int8"
+      },{
+         "name": "int8_arr",
+         "type": "int8[]"
+      },{
+         "name": "int16",
+         "type": "int16"
+      },{
+         "name": "int16_arr",
+         "type": "int16[]"
+      },{
+         "name": "int32",
+         "type": "int32"
+      },{
+         "name": "int32_arr",
+         "type": "int32[]"
+      },{
+         "name": "int64",
+         "type": "int64"
+      },{
+         "name": "int64_arr",
+         "type": "int64[]"
+      },{
+         "name": "name",
+         "type": "name"
+      },{
+         "name": "name_arr",
+         "type": "name[]"
+      },{
+         "name": "field",
+         "type": "field"
+      },{
+         "name": "field_arr",
+         "type": "field[]"
+      },{
+         "name": "struct",
+         "type": "struct_def"
+      },{
+         "name": "struct_arr",
+         "type": "struct_def[]"
+      },{
+         "name": "fields",
+         "type": "fields"
+      },{
+         "name": "fields_arr",
+         "type": "fields[]"
+      },{
+         "name": "accountname",
+         "type": "account_name"
+      },{
+         "name": "accountname_arr",
+         "type": "account_name[]"
+      },{
+         "name": "permname",
+         "type": "permission_name"
+      },{
+         "name": "permname_arr",
+         "type": "permission_name[]"
+      },{
+         "name": "actionname",
+         "type": "action_name"
+      },{
+         "name": "actionname_arr",
+         "type": "action_name[]"
+      },{
+         "name": "scopename",
+         "type": "scope_name"
+      },{
+         "name": "scopename_arr",
+         "type": "scope_name[]"
+      },{
+         "name": "permlvl",
+         "type": "permission_level"
+      },{
+         "name": "permlvl_arr",
+         "type": "permission_level[]"
+      },{
+         "name": "action",
+         "type": "action"
+      },{
+         "name": "action_arr",
+         "type": "action[]"
+      },{
+         "name": "permlvlwgt",
+         "type": "permission_level_weight"
+      },{
+         "name": "permlvlwgt_arr",
+         "type": "permission_level_weight[]"
+      },{
+         "name": "transaction",
+         "type": "transaction"
+      },{
+         "name": "transaction_arr",
+         "type": "transaction[]"
+      },{
+         "name": "strx",
+         "type": "signed_transaction"
+      },{
+         "name": "strx_arr",
+         "type": "signed_transaction[]"
+      },{
+         "name": "keyweight",
+         "type": "key_weight"
+      },{
+         "name": "keyweight_arr",
+         "type": "key_weight[]"
+      },{
+         "name": "authority",
+         "type": "authority"
+      },{
+         "name": "authority_arr",
+         "type": "authority[]"
+      },{
+         "name": "chainconfig",
+         "type": "chain_config"
+      },{
+         "name": "chainconfig_arr",
+         "type": "chain_config[]"
+      },{
+         "name": "typedef",
+         "type": "type_def"
+      },{
+         "name": "typedef_arr",
+         "type": "type_def[]"
+      },{
+         "name": "actiondef",
+         "type": "action_def"
+      },{
+         "name": "actiondef_arr",
+         "type": "action_def[]"
+      },{
+         "name": "tabledef",
+         "type": "table_def"
+      },{
+         "name": "tabledef_arr",
+         "type": "table_def[]"
+      },{
+         "name": "abidef",
+         "type": "abi_def"
+      },{
+         "name": "abidef_arr",
+         "type": "abi_def[]"
+      },{
+         "name": "nonce",
+         "type": "nonce"
+      },{
+         "name": "nonce_arr",
+         "type": "nonce[]"
+      }]
     }
   ],
   "actions": [],
@@ -161,29 +324,35 @@ const char* my_abi = R"=====(
 }
 )=====";
 
-BOOST_FIXTURE_TEST_CASE(uint_types, testing_fixture)
+BOOST_AUTO_TEST_CASE(uint_types)
 { try {
    
    const char* currency_abi = R"=====(
    {
        "types": [],
        "structs": [{
-       "name": "transfer",
+           "name": "transfer",
            "base": "",
-           "fields": {
-             "amount64": "uint64",
-             "amount32": "uint32",
-             "amount16": "uint16",
-             "amount8" : "uint8"
-           }
-         }
-       ],
+           "fields": [{
+               "name": "amount64",
+               "type": "uint64"
+           },{
+               "name": "amount32",
+               "type": "uint32"
+           },{
+               "name": "amount16",
+               "type": "uint16"
+           },{
+               "name": "amount8",
+               "type": "uint8"
+           }]
+       }],
        "actions": [],
        "tables": []
    }
    )=====";
 
-   auto abi = fc::json::from_string(currency_abi).as<types::abi>();
+   auto abi = fc::json::from_string(currency_abi).as<abi_def>();
 
    abi_serializer abis(abi);
    abis.validate();
@@ -197,26 +366,14 @@ BOOST_FIXTURE_TEST_CASE(uint_types, testing_fixture)
    }
    )=====";
 
+
    auto var = fc::json::from_string(test_data);
-
-   //std::cout << "var type =>" << var.get_type() << std::endl;
-   
-   auto bytes = abis.variant_to_binary("transfer", var);
-
-   auto var2 = abis.binary_to_variant("transfer", bytes);
-   
-   std::string r = fc::json::to_string(var2);
-
-   //std::cout << r << std::endl;
-   
-   auto bytes2 = abis.variant_to_binary("transfer", var2);
-
-   BOOST_CHECK_EQUAL( fc::to_hex(bytes), fc::to_hex(bytes2) );
+   verify_round_trip_conversion(abi, "transfer", var);
 
 } FC_LOG_AND_RETHROW() }
 
 
-BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
+BOOST_AUTO_TEST_CASE(generator)
 { try {
 
   if( std::getenv("EOSLIB") == nullptr ) {
@@ -230,26 +387,26 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
   auto is_abi_generation_exception =[](const eosio::abi_generation_exception& e) -> bool { return true; };
 
   auto generate_abi = [this](const char* source, const char* abi, bool opt_sfs=false) -> bool {
-    
+
     const char* eoslib_path = std::getenv("EOSLIB");
     FC_ASSERT(eoslib_path != NULL);
 
     std::string include_param = std::string("-I") + eoslib_path;
-    
-    eosio::types::abi output;
-    bool res = runToolOnCodeWithArgs(new generate_abi_action(false, opt_sfs, "", output), source, 
+
+    abi_def output;
+    bool res = runToolOnCodeWithArgs(new generate_abi_action(false, opt_sfs, "", output), source,
       {"-fparse-all-comments", "--std=c++14", "--target=wasm32", include_param});
-    
+
     FC_ASSERT(res == true);
     abi_serializer(output).validate();
 
-    auto abi1 = fc::json::from_string(abi).as<eosio::types::abi>();
+    auto abi1 = fc::json::from_string(abi).as<abi_def>();
 
     auto e = fc::to_hex(fc::raw::pack(abi1)) == fc::to_hex(fc::raw::pack(output));
-    
+
     if(!e) {
-      std::cout << "expected: " <<  std::endl << fc::json::to_pretty_string(abi1) << std::endl << std::endl; 
-      std::cout << "generated: " <<  std::endl << fc::json::to_pretty_string(output) << std::endl << std::endl; 
+      std::cout << "expected: " <<  std::endl << fc::json::to_pretty_string(abi1) << std::endl << std::endl;
+      std::cout << "generated: " <<  std::endl << fc::json::to_pretty_string(output) << std::endl << std::endl;
     }
 
     return e;
@@ -258,35 +415,35 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    const char* unknown_type = R"=====(
    #include <eoslib/types.h>
    //@abi action
-   struct Transfer {
+   struct transfer {
       uint64_t param1;
       char*    param2;
    };
    )=====";
 
    BOOST_CHECK_EXCEPTION( generate_abi(unknown_type, ""), eosio::abi_generation_exception, is_abi_generation_exception );
-   
+
    const char* all_types = R"=====(
     #include <eoslib/types.hpp>
     #include <eoslib/string.hpp>
 
     typedef int field;
-    typedef int struct_t;
+    typedef int struct_def;
     typedef int fields;
-    typedef int message_name;
-    typedef int account_permission;
-    typedef int message;
-    typedef int account_permission_weight;
+    typedef int permission_level;
+    typedef int action;
+    typedef int permission_level_weight;
     typedef int transaction;
     typedef int signed_transaction;
-    typedef int key_permission_weight;
+    typedef int key_weight;
     typedef int authority;
-    typedef int blockchain_configuration;
+    typedef int chain_config;
     typedef int type_def;
-    typedef int action;
-    typedef int table;
-    typedef int abi;
-   
+    typedef int action_def;
+    typedef int table_def;
+    typedef int abi_def;
+    typedef int nonce;
+
    //@abi action
    struct test_struct {
       eosio::string           field1;
@@ -303,30 +460,35 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
       uint32_t                field12;
       uint64_t                field13;
       uint128_t               field14;
+      uint256                 field15;
       int8_t                  field16;
       int16_t                 field17;
       int32_t                 field18;
       int64_t                 field19;
       eosio::name             field20;
       field                   field21;
-      struct_t                field22;
+      struct_def              field22;
       fields                  field23;
       account_name            field24;
       permission_name         field25;
-      func_name               field26;
-      message_name            field27;
-      account_permission      field28;
-      message                 field29;
-      account_permission_weight field30;
-      transaction               field31;
-      signed_transaction        field32;
-      key_permission_weight     field33;
-      authority                 field34;
-      blockchain_configuration  field35;
-      type_def                  field36;
-      action                    field37;
-      table                     field38;
-      abi                       field39;
+      action_name             field26;
+      scope_name              field27;
+      permission_level        field28;
+      action                  field29;
+      permission_level_weight field30;
+      transaction             field31;
+      signed_transaction      field32;
+      key_weight              field33;
+      authority               field34;
+      chain_config            field35;
+      type_def                field36;
+      action_def              field37;
+      table_def               field38;
+      abi_def                 field39;
+      nonce                   field40;
+      public_key              field41;
+      asset                   field42;
+      price                   field43;
    };
    )=====";
 
@@ -336,55 +498,145 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
        "structs": [{
           "name" : "test_struct",
           "base" : "",
-          "fields" : {
-            "field1" : "string",
-            "field2" : "time",
-            "field3" : "signature",
-            "field4" : "checksum",
-            "field5" : "field_name",
-            "field6" : "fixed_string32",
-            "field7" : "fixed_string16",
-            "field8" : "type_name",
-            "field9" : "bytes",
-            "field10" : "uint8",
-            "field11" : "uint16",
-            "field12" : "uint32",
-            "field13" : "uint64",
-            "field14" : "uint128",
-            "field16" : "int8",
-            "field17" : "int16",
-            "field18" : "int32",
-            "field19" : "int64",
-            "field20" : "name",
-            "field21" : "field",
-            "field22" : "struct_t",
-            "field23" : "fields",
-            "field24" : "account_name",
-            "field25" : "permission_name",
-            "field26" : "func_name",
-            "field27" : "message_name",
-            "field28" : "account_permission",
-            "field29" : "message",
-            "field30" : "account_permission_weight",
-            "field31" : "transaction",
-            "field32" : "signed_transaction",
-            "field33" : "key_permission_weight",
-            "field34" : "authority",
-            "field35" : "blockchain_configuration",
-            "field36" : "type_def",
-            "field37" : "action",
-            "field38" : "table",
-            "field39" : "abi"
-          }
-       }],
-       "actions": [{
-          "action_name" : "teststruct",
-          "type" : "test_struct"
-       }],
+          "fields" : [{
+               "name": "field1",
+               "type": "string"
+          },{
+             "name": "field2",
+             "type": "time"
+          },{
+             "name": "field3",
+             "type": "signature"
+          },{
+             "name": "field4",
+             "type": "checksum"
+          },{
+             "name": "field5",
+             "type": "field_name"
+          },{
+             "name": "field6",
+             "type": "fixed_string32"
+          },{
+             "name": "field7",
+             "type": "fixed_string16"
+          },{
+             "name": "field8",
+             "type": "type_name"
+          },{
+             "name": "field9",
+             "type": "bytes"
+          },{
+             "name": "field10",
+             "type": "uint8"
+          },{
+             "name": "field11",
+             "type": "uint16"
+          },{
+             "name": "field12",
+             "type": "uint32"
+          },{
+             "name": "field13",
+             "type": "uint64"
+          },{
+             "name": "field14",
+             "type": "uint128"
+          },{
+             "name": "field15",
+             "type": "uint256"
+          },{
+             "name": "field16",
+             "type": "int8"
+          },{
+             "name": "field17",
+             "type": "int16"
+          },{
+             "name": "field18",
+             "type": "int32"
+          },{
+             "name": "field19",
+             "type": "int64"
+          },{
+             "name": "field20",
+             "type": "name"
+          },{
+             "name": "field21",
+             "type": "field"
+          },{
+             "name": "field22",
+             "type": "struct_def"
+          },{
+             "name": "field23",
+             "type": "fields"
+          },{
+             "name": "field24",
+             "type": "account_name"
+          },{
+             "name": "field25",
+             "type": "permission_name"
+          },{
+             "name": "field26",
+             "type": "action_name"
+          },{
+             "name": "field27",
+             "type": "scope_name"
+          },{
+             "name": "field28",
+             "type": "permission_level"
+          },{
+             "name": "field29",
+             "type": "action"
+          },{
+             "name": "field30",
+             "type": "permission_level_weight"
+          },{
+             "name": "field31",
+             "type": "transaction"
+          },{
+             "name": "field32",
+             "type": "signed_transaction"
+          },{
+             "name": "field33",
+             "type": "key_weight"
+          },{
+             "name": "field34",
+             "type": "authority"
+          },{
+             "name": "field35",
+             "type": "chain_config"
+          },{
+             "name": "field36",
+             "type": "type_def"
+          },{
+             "name": "field37",
+             "type": "action_def"
+          },{
+             "name": "field38",
+             "type": "table_def"
+          },{
+             "name": "field39",
+             "type": "abi_def"
+          },{
+             "name": "field40",
+             "type": "nonce"
+          },{
+             "name": "field41",
+             "type": "public_key"
+          },{
+             "name": "field42",
+             "type": "asset"
+          },{
+             "name": "field43",
+             "type": "price"
+          }]
+           }],
+           "actions": [{
+              "name" : "teststruct",
+              "type" : "test_struct"
+           }],
        "tables": []
    }
    )=====";
-  BOOST_CHECK_EQUAL( generate_abi(all_types, all_types_abi), true );
+   BOOST_TEST( generate_abi(all_types, all_types_abi) == true);
 
    const char* double_base = R"=====(
    #include <eoslib/types.h>
@@ -395,7 +647,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    struct B {
       uint64_t param2;
    };
-   
+
    //@abi action
    struct C : A,B {
       uint64_t param1;
@@ -413,7 +665,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    struct B : A {
       uint64_t param2;
    };
-   
+
    //@abi action action1 action2
    struct C : B {
       uint64_t param1;
@@ -426,27 +678,30 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
        "structs": [{
           "name" : "A",
           "base" : "",
-          "fields" : {
-            "param3" : "uint64",
-          }
+          "fields" : [{
+            "name" : "param3",
+            "type" : "uint64"
+          }]
        },{
           "name" : "B",
           "base" : "A",
-          "fields" : {
-            "param2" : "uint64",
-          }
+          "fields" : [{
+            "name" : "param2",
+            "type" : "uint64"
+          }]
        },{
           "name" : "C",
           "base" : "B",
-          "fields" : {
-            "param1" : "uint64",
-          }
+          "fields" : [{
+            "name" : "param1",
+            "type" : "uint64"
+          }]
        }],
        "actions": [{
-          "action_name" : "action1",
+          "name" : "action1",
           "type" : "C"
        },{
-          "action_name" : "action2",
+          "name" : "action2",
           "type" : "C"
        }],
        "tables": []
@@ -454,7 +709,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    )=====";
 
 
-   BOOST_CHECK_EQUAL( generate_abi(double_action, double_action_abi), true );
+   BOOST_TEST( generate_abi(double_action, double_action_abi) == true );
 
    const char* all_indexes = R"=====(
    #include <eoslib/types.hpp>
@@ -463,32 +718,32 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    using namespace eosio;
 
    //@abi table
-   struct Table1 {
+   struct table1 {
       uint64_t field1;
    };
 
    //@abi table
-   struct Table2 {
+   struct table2 {
       uint128_t field1;
       uint128_t field2;
    };
 
    //@abi table
-   struct Table3 {
+   struct table3 {
       uint64_t field1;
       uint64_t field2;
       uint64_t field3;
    };
 
-   struct MyComplexValue {
+   struct my_complex_value {
       uint64_t    a;
       account_name b;
    };
 
    //@abi table
-   struct Table4 {
+   struct table4 {
       eosio::string key;
-      MyComplexValue value;
+      my_complex_value value;
    };
 
    )=====";
@@ -497,46 +752,61 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    {
        "types": [],
        "structs": [{
-          "name" : "Table1",
+          "name" : "table1",
           "base" : "",
-          "fields" : {
-            "field1" : "uint64",
-          }
+          "fields" : [{
+            "name" : "field1",
+            "type" : "uint64"
+          }]
        },{
-          "name" : "Table2",
+          "name" : "table2",
           "base" : "",
-          "fields" : {
-            "field1" : "uint128",
-            "field2" : "uint128",
-          }
+          "fields" : [{
+            "name" : "field1",
+            "type" : "uint128"
+          },{
+            "name" : "field2",
+            "type" : "uint128"
+          }]
        },{
-          "name" : "Table3",
+          "name" : "table3",
           "base" : "",
-          "fields" : {
-            "field1" : "uint64",
-            "field2" : "uint64",
-            "field3" : "uint64",
-          }
+          "fields" : [{
+            "name" : "field1",
+            "type" : "uint64"
+          },{
+            "name" : "field2",
+            "type" : "uint64"
+          },{
+            "name" : "field3",
+            "type" : "uint64"
+          }]
        },{
-          "name" : "MyComplexValue",
+          "name" : "my_complex_value",
           "base" : "",
-          "fields" : {
-            "a" : "uint64",
-            "b" : "account_name",
-          }
+          "fields" : [{
+            "name" : "a",
+            "type" : "uint64"
+          },{
+            "name" : "b",
+            "type" : "account_name"
+          }]
        },{
-          "name" : "Table4",
+          "name" : "table4",
           "base" : "",
-          "fields" : {
-            "key" : "string",
-            "value" : "MyComplexValue",
-          }
+          "fields" : [{
+            "name" : "key",
+            "type" : "string"
+          },{
+            "name" : "value",
+            "type" : "my_complex_value"
+          }]
        }],
        "actions": [],
        "tables": [
         {
-          "table_name": "table1",
-          "type": "Table1",
+          "name": "table1",
+          "type": "table1",
           "index_type": "i64",
           "key_names": [
             "field1"
@@ -545,8 +815,8 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
             "uint64"
           ]
         },{
-          "table_name": "table2",
-          "type": "Table2",
+          "name": "table2",
+          "type": "table2",
           "index_type": "i128i128",
           "key_names": [
             "field1",
@@ -557,8 +827,8 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
             "uint128"
           ]
         },{
-          "table_name": "table3",
-          "type": "Table3",
+          "name": "table3",
+          "type": "table3",
           "index_type": "i64i64i64",
           "key_names": [
             "field1",
@@ -571,8 +841,8 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
             "uint64"
           ]
         },{
-          "table_name": "table4",
-          "type": "Table4",
+          "name": "table4",
+          "type": "table4",
           "index_type": "str",
           "key_names": [
             "key",
@@ -586,13 +856,13 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    }
    )=====";
 
-   BOOST_CHECK_EQUAL( generate_abi(all_indexes, all_indexes_abi), true );
+   BOOST_TEST( generate_abi(all_indexes, all_indexes_abi) == true );
 
    const char* unable_to_determine_index = R"=====(
    #include <eoslib/types.h>
-   
+
    //@abi table
-   struct PACKED(Table1) {
+   struct PACKED(table1) {
       uint32_t field1;
       uint64_t field2;
    };
@@ -606,9 +876,9 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
   // typedef fixed_string16 FieldName;
    const char* long_field_name = R"=====(
    #include <eoslib/types.h>
-   
+
    //@abi table
-   struct PACKED(Table1) {
+   struct PACKED(table1) {
       uint64_t thisisaverylongfieldname;
    };
 
@@ -619,13 +889,13 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    const char* long_type_name = R"=====(
    #include <eoslib/types.h>
 
-   struct ThisIsAVeryVeryVeryVeryLongTypeName {
+   struct this_is_a_very_very_very_very_long_type_name {
       uint64_t field;
    };
 
    //@abi table
-   struct PACKED(Table1) {
-      ThisIsAVeryVeryVeryVeryLongTypeName filed1;
+   struct PACKED(table1) {
+      this_is_a_very_very_very_very_long_type_name field1;
    };
 
    )=====";
@@ -638,14 +908,14 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
 
    namespace A {
      //@abi table
-     struct Table1 {
+     struct table1 {
         uint64_t field1;
      };
    }
 
    namespace B {
      //@abi table
-     struct Table1 {
+     struct table1 {
         uint64_t field2;
      };
    }
@@ -658,7 +928,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    #include <eoslib/types.h>
 
    //@abi table i64
-   struct Table1 {
+   struct table1 {
       uint32_t key;
       uint64_t field1;
       uint64_t field2;
@@ -672,7 +942,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    #include <eoslib/types.hpp>
 
    //@abi table i64
-   class Table1 {
+   class table1 {
    public:
       uint64_t  id;
       eosio::name name;
@@ -685,19 +955,24 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    {
        "types": [],
        "structs": [{
-          "name" : "Table1",
+          "name" : "table1",
           "base" : "",
-          "fields" : {
-            "id" : "uint64",
+          "fields" : [{
+            "name" : "id",
+            "type" : "uint64"
+          },{
             "name" : "name",
-            "age" : "uint32"
-          }
+            "type" : "name"
+          },{
+            "name" : "age",
+            "type" : "uint32"
+          }]
        }],
        "actions": [],
        "tables": [
         {
-          "table_name": "table1",
-          "type": "Table1",
+          "name": "table1",
+          "type": "table1",
           "index_type": "i64",
           "key_names": [
             "id"
@@ -709,13 +984,59 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    }
    )=====";
 
-   BOOST_CHECK_EQUAL( generate_abi(full_table_decl, full_table_decl_abi), true );
+   BOOST_TEST( generate_abi(full_table_decl, full_table_decl_abi) == true );
+
+   const char* str_table_decl = R"=====(
+   #include <eoslib/types.hpp>
+   #include <eoslib/string.hpp>
+
+   //@abi table
+   class table1 {
+   public:
+      eosio::string name;
+      uint32_t age;
+   };
+
+   )=====";
+
+   const char* str_table_decl_abi = R"=====(
+   {
+     "types": [],
+     "structs": [{
+         "name": "table1",
+         "base": "",
+         "fields": [{
+            "name" : "name",
+            "type" : "string"
+          },{
+            "name" : "age",
+            "type" : "uint32"
+          }]
+       }
+     ],
+     "actions": [],
+     "tables": [{
+         "name": "table1",
+         "index_type": "str",
+         "key_names": [
+           "name"
+         ],
+         "key_types": [
+           "string"
+         ],
+         "type": "table1"
+       }
+     ]
+   }
+   )=====";
+
+   BOOST_TEST( generate_abi(str_table_decl, str_table_decl_abi) == true );
 
    const char* union_table = R"=====(
    #include <eoslib/types.h>
 
    //@abi table
-   union Table1 {
+   union table1 {
       uint64_t field1;
       uint32_t field2;
    };
@@ -728,12 +1049,12 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    #include <eoslib/types.h>
 
    //@abi action action1
-   struct Table1 {
+   struct table1 {
       uint64_t field1;
    };
 
    //@abi action action1
-   struct Table2 {
+   struct table2 {
       uint64_t field1;
    };
 
@@ -745,14 +1066,14 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    #include <eoslib/types.h>
 
    template<typename T>
-   class Base {
+   class base {
       T field;
    };
 
-   typedef Base<uint32_t> Base32;
+   typedef base<uint32_t> base32;
 
    //@abi table i64
-   class Table1 : Base32 {
+   class table1 : base32 {
    public:
       uint64_t id;
    };
@@ -763,23 +1084,25 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    {
        "types": [],
        "structs": [{
-          "name" : "Base32",
+          "name" : "base32",
           "base" : "",
-          "fields" : {
-            "field" : "uint32",
-          }
+          "fields" : [{
+            "name" : "field",
+            "type" : "uint32"
+          }]
        },{
-          "name" : "Table1",
-          "base" : "Base32",
-          "fields" : {
-            "id" : "uint64",
-          }
+          "name" : "table1",
+          "base" : "base32",
+          "fields" : [{
+            "name" : "id",
+            "type" : "uint64"
+          }]
        }],
        "actions": [],
        "tables": [
         {
-          "table_name": "table1",
-          "type": "Table1",
+          "name": "table1",
+          "type": "table1",
           "index_type": "i64",
           "key_names": [
             "id"
@@ -791,7 +1114,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    }
    )=====";
 
-   BOOST_CHECK_EQUAL( generate_abi(template_base, template_base_abi), true );
+   BOOST_TEST( generate_abi(template_base, template_base_abi) == true );
 
    const char* action_and_table = R"=====(
    #include <eoslib/types.h>
@@ -799,7 +1122,7 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
   /* @abi table
    * @abi action
    */
-   class TableAction {
+   class table_action {
    public:
       uint64_t id;
    };
@@ -810,20 +1133,21 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    {
        "types": [],
        "structs": [{
-          "name" : "TableAction",
+          "name" : "table_action",
           "base" : "",
-          "fields" : {
-            "id" : "uint64",
-          }
+          "fields" : [{
+            "name" : "id",
+            "type" : "uint64"
+          }]
        }],
        "actions": [{
-          "action_name" : "tableaction",
-          "type" : "TableAction"
+          "name" : "tableaction",
+          "type" : "table_action"
        }],
        "tables": [
         {
-          "table_name": "tableaction",
-          "type": "TableAction",
+          "name": "tableaction",
+          "type": "table_action",
           "index_type": "i64",
           "key_names": [
             "id"
@@ -835,23 +1159,23 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    }
    )=====";
 
-   BOOST_CHECK_EQUAL( generate_abi(action_and_table, action_and_table_abi), true );
+   BOOST_TEST( generate_abi(action_and_table, action_and_table_abi) == true );
 
    const char* simple_typedef = R"=====(
    #include <eoslib/types.hpp>
 
    using namespace eosio;
 
-   struct CommonParams {
+   struct common_params {
       uint64_t c1;
       uint64_t c2;
       uint64_t c3;
    };
 
-   typedef CommonParams MyBaseAlias;
+   typedef common_params my_base_alias;
 
    //@abi action
-   struct MainAction : MyBaseAlias {
+   struct main_action : my_base_alias {
       uint64_t param1;
    };
 
@@ -860,53 +1184,59 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    const char* simple_typedef_abi = R"=====(
    {
        "types": [{
-          "new_type_name" : "MyBaseAlias",
-          "type" : "CommonParams"
+          "new_type_name" : "my_base_alias",
+          "type" : "common_params"
        }],
        "structs": [{
-          "name" : "CommonParams",
+          "name" : "common_params",
           "base" : "",
-          "fields" : {
-            "c1" : "uint64",
-            "c2" : "uint64",
-            "c3" : "uint64"
-          }
+          "fields" : [{
+            "name" : "c1",
+            "type" : "uint64"
+          },{
+            "name" : "c2",
+            "type" : "uint64"
+          },{
+            "name" : "c3",
+            "type" : "uint64"
+          }]
        },{
-          "name" : "MainAction",
-          "base" : "MyBaseAlias",
-          "fields" : {
-            "param1" : "uint64"
-          }
+          "name" : "main_action",
+          "base" : "my_base_alias",
+          "fields" : [{
+            "name" : "param1",
+            "type" : "uint64"
+          }]
        }],
        "actions": [{
-          "action_name" : "mainaction",
-          "type" : "MainAction"
+          "name" : "mainaction",
+          "type" : "main_action"
        }],
        "tables": []
    }
    )=====";
 
-   BOOST_CHECK_EQUAL( generate_abi(simple_typedef, simple_typedef_abi), true );
+   BOOST_TEST( generate_abi(simple_typedef, simple_typedef_abi) == true );
 
    const char* field_typedef = R"=====(
    #include <eoslib/types.hpp>
 
    using namespace eosio;
 
-   typedef name MyNameAlias;
+   typedef name my_name_alias;
 
-   struct ComplexField {
+   struct complex_field {
       uint64_t  f1;
-      uint32_t  f2; 
+      uint32_t  f2;
    };
 
-   typedef ComplexField MyComplexFieldAlias;
+   typedef complex_field my_complex_field_alias;
 
    //@abi table
-   struct PACKED(Table1) {
+   struct PACKED(table1) {
       uint64_t            field1;
-      MyComplexFieldAlias field2;
-      MyNameAlias         name;
+      my_complex_field_alias field2;
+      my_name_alias         name;
    };
 
    )=====";
@@ -914,32 +1244,40 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    const char* field_typedef_abi = R"=====(
    {
        "types": [{
-          "new_type_name" : "MyComplexFieldAlias",
-          "type" : "ComplexField"
+          "new_type_name" : "my_complex_field_alias",
+          "type" : "complex_field"
        },{
-          "new_type_name" : "MyNameAlias",
+          "new_type_name" : "my_name_alias",
           "type" : "name"
        }],
        "structs": [{
-          "name" : "ComplexField",
+          "name" : "complex_field",
           "base" : "",
-          "fields" : {
-            "f1" : "uint64",
-            "f2" : "uint32",
-          }
+          "fields" : [{
+            "name": "f1",
+            "type": "uint64"
+          }, {
+            "name": "f2",
+            "type": "uint32"
+          }]
        },{
-          "name" : "Table1",
+          "name" : "table1",
           "base" : "",
-          "fields" : {
-            "field1" : "uint64",
-            "field2" : "MyComplexFieldAlias",
-            "name"   : "MyNameAlias"
-          }
+          "fields" : [{
+            "name": "field1",
+            "type": "uint64"
+          },{
+            "name": "field2",
+            "type": "my_complex_field_alias"
+          },{
+            "name": "name",
+            "type": "my_name_alias"
+          }]
        }],
        "actions": [],
        "tables": [{
-          "table_name": "table1",
-          "type": "Table1",
+          "name": "table1",
+          "type": "table1",
           "index_type": "i64",
           "key_names": [
             "field1"
@@ -951,15 +1289,15 @@ BOOST_FIXTURE_TEST_CASE(generator, testing_fixture)
    }
    )=====";
 
-   BOOST_CHECK_EQUAL( generate_abi(field_typedef, field_typedef_abi), true );
+   BOOST_TEST( generate_abi(field_typedef, field_typedef_abi) == true );
 
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
+BOOST_AUTO_TEST_CASE(general)
 { try {
 
-   auto abi = fc::json::from_string(my_abi).as<types::abi>();
+   auto abi = fc::json::from_string(my_abi).as<abi_def>();
 
    abi_serializer abis(abi);
    abis.validate();
@@ -977,8 +1315,8 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
       "string_arr"        : ["ola ke ase","ola ke desi"],
       "time"              : "2021-12-20T15:30",
       "time_arr"          : ["2021-12-20T15:30","2021-12-20T15:31"],
-      "signature"         : "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00",
-      "signature_arr"     : ["ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00","ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00"],
+      "signature"         : "EOSJzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwT77X1U",
+      "signature_arr"     : ["EOSJzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwT77X1U","EOSJzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwT77X1U"],
       "checksum"          : "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
       "checksum_arr"      : ["ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad","ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"],
       "fieldname"         : "name1",
@@ -1013,138 +1351,192 @@ BOOST_FIXTURE_TEST_CASE(general, testing_fixture)
       "int64_arr"         : [164,165],
       "name"              : "xname1",
       "name_arr"          : ["xname2","xname3"],
-      "field"             : {"name1":"type1"},
-      "field_arr"         : {"name2":"type2", "name3":"type3"},
-      "struct"            : {"name":"struct1", "base":"base1", "fields": {"name1":"type1", "name2":"type2", "name3":"type3", "name4":"type4"} },
-      "struct_arr"        : [{"name":"struct1", "base":"base1", "fields": {"name1":"type1", "name2":"type2"}},{"name":"struct1", "base":"base1", "fields": {"name1":"type1", "name2":"type2"}}],
-      "fields"            : {"name1":"type1", "name2":"type2"},
-      "fields_arr"        : [{"name1":"type1", "name2":"type2"},{"name3":"type3", "name4":"type4"}],
-      "accountname"       : "thename",
-      "accountname_arr"   : ["name1","name2"],
+      "field"             : {"name":"name1", "type":"type1"},
+      "field_arr"         : [{"name":"name1", "type":"type1"}, {"name":"name2", "type":"type2"}],
+      "struct"            : {"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type":"type1"}, {"name":"name2", "type":"type2"}]},
+      "struct_arr"        : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type":"type1"}, {"name":"name2", "type":"type2"}]},{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type":"type1"}, {"name":"name2", "type":"type2"}]}],
+      "fields"            : [{"name":"name1", "type":"type1"}, {"name":"name2", "type":"type2"}],
+      "fields_arr"        : [[{"name":"name1", "type":"type1"}, {"name":"name2", "type":"type2"}],[{"name":"name3", "type":"type3"}, {"name":"name4", "type":"type4"}]],
+      "accountname"       : "acc1",
+      "accountname_arr"   : ["acc1","acc2"],
       "permname"          : "pername",
       "permname_arr"      : ["pername1","pername2"],
-      "funcname"          : "funname",
-      "funcname_arr"      : ["funname1","funnname2"],
-      "messagename"       : "msg1",
-      "messagename_arr"   : ["msg1","msg2"],
-      "apermission" : {"account":"acc1","permission":"permname1"},
-      "apermission_arr": [{"account":"acc1","permission":"permname1"},{"account":"acc2","permission":"permname2"}],
-      "message"           : {"code":"a1b2", "type":"type1", "data":"445566"},
-      "message_arr"       : [{"code":"a1b2", "type":"type1", "data":"445566"},{"code":"2233", "type":"type2", "data":""}],
-      "apweight": {"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},
-      "apweight_arr": [{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}],
-      "transaction"       : { 
+      "actionname"        : "actionname",
+      "actionname_arr"    : ["actionname1","actionname2"],
+      "scopename"         : "acc1",
+      "scopename_arr"     : ["acc1","acc2"],
+      "permlvl"           : {"actor":"acc1","permission":"permname1"},
+      "permlvl_arr"       : [{"actor":"acc1","permission":"permname1"},{"actor":"acc2","permission":"permname2"}],
+      "action"            : {"scope":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"},
+      "action_arr"        : [{"scope":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"},{"scope":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}],
+      "permlvlwgt"        : {"permission":{"actor":"acc1","permission":"permname1"},"weight":"1"},
+      "permlvlwgt_arr"    : [{"permission":{"actor":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"actor":"acc2","permission":"permname2"},"weight":"2"}],
+      "transaction"       : {
         "ref_block_num":"1",
         "ref_block_prefix":"2",
         "expiration":"2021-12-20T15:30",
-        "scope":["acc1","acc2"],
-        "messages":[{"code":"a1b2", "type":"type1", "data":"445566"}]
+        "region": "1",
+        "read_scope":["acc1"],
+        "write_scope":["acc1"],
+        "actions":[{"scope":"scopename1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}]
       },
-      "transaction_arr": [
-      { 
+      "transaction_arr": [{
         "ref_block_num":"1",
         "ref_block_prefix":"2",
         "expiration":"2021-12-20T15:30",
-        "scope":["acc1","acc2"],
-        "messages":[{"code":"a1b2", "type":"type1", "data":"445566"}]
-      },
-      { 
+        "region": "1",
+        "read_scope":["acc1"],
+        "write_scope":["acc1"],
+        "actions":[{"scope":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}]
+      },{
         "ref_block_num":"2",
         "ref_block_prefix":"3",
         "expiration":"2021-12-20T15:40",
-        "scope":["acc3","acc4"],
-        "messages":[{"code":"3344", "type":"type2", "data":"778899"}]
+        "region": "1",
+        "read_scope":["acc2"],
+        "write_scope":["acc2"],
+        "actions":[{"scope":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}]
       }],
       "strx": {
         "ref_block_num":"1",
         "ref_block_prefix":"2",
         "expiration":"2021-12-20T15:30",
-        "scope":["acc1","acc2"],
-        "messages":[{"code":"a1b2", "type":"type1", "data":"445566"}],
-        "signatures" : ["ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00","ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00"],
-        "authorizations" : [{"account":"acc1","permission":"permname1"},{"account":"acc2","permission":"permname2"}]
+        "region": "1",
+        "read_scope":["acc1"],
+        "write_scope":["acc1"],
+        "signatures" : ["EOSJzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwT77X1U"],
+        "actions":[{"scope":"scopename1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}]
       },
       "strx_arr": [{
         "ref_block_num":"1",
         "ref_block_prefix":"2",
         "expiration":"2021-12-20T15:30",
-        "scope":["acc1","acc2"],
-        "messages":[{"code":"a1b2", "type":"type1", "data":"445566"}],
-        "signatures" : ["ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00","ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00"],
-        "authorizations" : [{"account":"acc1","permission":"permname1"},{"account":"acc2","permission":"permname2"}]
+        "region": "1",
+        "read_scope":["acc1"],
+        "write_scope":["acc1"],
+        "signatures" : ["EOSJzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwT77X1U"],
+        "actions":[{"scope":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}]
       },{
-        "ref_block_num":"1",
-        "ref_block_prefix":"2",
-        "expiration":"2021-12-20T15:30",
-        "scope":["acc1","acc2"],
-        "messages":[{"code":"a1b2", "type":"type1", "data":"445566"}],
-        "signatures" : ["ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00","ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00"],
-        "authorizations" : [{"account":"acc1","permission":"permname1"},{"account":"acc2","permission":"permname2"}]
+        "ref_block_num":"2",
+        "ref_block_prefix":"3",
+        "expiration":"2021-12-20T15:40",
+        "region": "1",
+        "read_scope":["acc2"],
+        "write_scope":["acc2"],
+        "signatures" : ["EOSJzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwT77X1U"],
+        "actions":[{"scope":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}]
       }],
-      "kpweight": {"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},
-      "kpweight_arr": [{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}],
-      "authority": { 
-         "threshold":"10", 
-         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}], 
-         "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
+      "keyweight": {"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},
+      "keyweight_arr": [{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}],
+      "authority": {
+         "threshold":"10",
+         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}],
+         "accounts":[{"permission":{"actor":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"actor":"acc2","permission":"permname2"},"weight":"2"}]
        },
-      "authority_arr": [{ 
-         "threshold":"10", 
-         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}], 
-         "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
-       },{ 
-         "threshold":"10", 
-         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}], 
-         "accounts":[{"permission":{"account":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"account":"acc2","permission":"permname2"},"weight":"2"}]
+      "authority_arr": [{
+         "threshold":"10",
+         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}],
+         "accounts":[{"permission":{"actor":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"actor":"acc2","permission":"permname2"},"weight":"2"}]
+       },{
+         "threshold":"10",
+         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}],
+         "accounts":[{"permission":{"actor":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"actor":"acc2","permission":"permname2"},"weight":"2"}]
        }],
-      "blkcconfig": {"max_blk_size": "100","target_blk_size" : "200", "max_storage_size":"300","elected_pay" : "400", "runner_up_pay" : "500", "min_eos_balance" : "600", "max_trx_lifetime"  : "700"},
-      "blkcconfig_arr": [
-        {"max_blk_size": "100","target_blk_size" : "200", "max_storage_size":"300","elected_pay" : "400", "runner_up_pay" : "500", "min_eos_balance" : "600", "max_trx_lifetime"  : "700"},
-        {"max_blk_size": "100","target_blk_size" : "200", "max_storage_size":"300","elected_pay" : "400", "runner_up_pay" : "500", "min_eos_balance" : "600", "max_trx_lifetime"  : "700"}
-      ],
+      "chainconfig": {
+         "producer_pay": "100",
+         "target_block_size": "200",
+         "max_block_size": "300",
+         "target_block_acts_per_scope": "400",
+         "max_block_acts_per_scope": "500",
+         "target_block_acts": "600",
+         "max_block_acts": "700",
+         "real_threads": "800",
+         "max_storage_size": "900",
+         "max_transaction_lifetime": "1000",
+         "max_authority_depth": "1100",
+         "max_transaction_exec_time": "1200",
+         "max_inline_depth": "1300",
+         "max_inline_action_size": "1400",
+         "max_generated_transaction_size": "1500"
+      },
+      "chainconfig_arr": [{
+         "producer_pay": "100",
+         "target_block_size": "200",
+         "max_block_size": "300",
+         "target_block_acts_per_scope": "400",
+         "max_block_acts_per_scope": "500",
+         "target_block_acts": "600",
+         "max_block_acts": "700",
+         "real_threads": "800",
+         "max_storage_size": "900",
+         "max_transaction_lifetime": "1000",
+         "max_authority_depth": "1100",
+         "max_transaction_exec_time": "1200",
+         "max_inline_depth": "1300",
+         "max_inline_action_size": "1400",
+         "max_generated_transaction_size": "1500"
+      },{
+         "producer_pay": "100",
+         "target_block_size": "200",
+         "max_block_size": "300",
+         "target_block_acts_per_scope": "400",
+         "max_block_acts_per_scope": "500",
+         "target_block_acts": "600",
+         "max_block_acts": "700",
+         "real_threads": "800",
+         "max_storage_size": "900",
+         "max_transaction_lifetime": "1000",
+         "max_authority_depth": "1100",
+         "max_transaction_exec_time": "1200",
+         "max_inline_depth": "1300",
+         "max_inline_action_size": "1400",
+         "max_generated_transaction_size": "1500"
+      }],
       "typedef" : {"new_type_name":"new", "type":"old"},
       "typedef_arr": [{"new_type_name":"new", "type":"old"},{"new_type_name":"new", "type":"old"}],
-      "action": {"action_name":"action1","type":"type1"},
-      "action_arr": [{"action_name":"action1","type":"type1"},{"action_name":"action2","type":"type2"}],
-      "table": {"table_name":"table1","type":"type1"},
-      "table_arr": [{"table_name":"table1","type":"type1"},{"table_name":"table1","type":"type1"}],
-      "abi":{
+      "actiondef"       : {"name":"actionname1", "type":"type1"},
+      "actiondef_arr"   : [{"name":"actionname1", "type":"type1"},{"name":"actionname2", "type":"type2"}],
+      "tabledef": {"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"},
+      "tabledef_arr": [
+         {"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"},
+         {"name":"table2","index_type":"indextype2","key_names":["keyname2"],"key_types":["typename2"],"type":"type2"}
+      ],
+      "abidef":{
         "types" : [{"new_type_name":"new", "type":"old"}],
-        "structs" : [{"name":"struct1", "base":"base1", "fields": {"name1":"type1", "name2":"type2", "name3":"type3", "name4":"type4"} }],
-        "actions" : [{"action_name":"action1","type":"type1"}],
-        "tables" : [{"table_name":"table1","type":"type1"}]
+        "structs" : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type": "type1"}, {"name":"name2", "type": "type2"}] }],
+        "actions" : [{"name":"action1","type":"type1"}],
+        "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}]
       },
-      "abi_arr": [{
+      "abidef_arr": [{
         "types" : [{"new_type_name":"new", "type":"old"}],
-        "structs" : [{"name":"struct1", "base":"base1", "fields": {"name1":"type1", "name2":"type2", "name3":"type3", "name4":"type4"} }],
-        "actions" : [{"action_name":"action1","type":"type1"}],
-        "tables" : [{"table_name":"table1","type":"type1"}]
+        "structs" : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type": "type1"}, {"name":"name2", "type": "type2"}] }],
+        "actions" : [{"name":"action1","type":"type1"}],
+        "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}]
       },{
         "types" : [{"new_type_name":"new", "type":"old"}],
-        "structs" : [{"name":"struct1", "base":"base1", "fields": {"name1":"type1", "name2":"type2", "name3":"type3", "name4":"type4"} }],
-        "actions" : [{"action_name":"action1","type":"type1"}],
-        "tables" : [{"table_name":"table1","type":"type1"}]
+        "structs" : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type": "type1"}, {"name":"name2", "type": "type2"}] }],
+        "actions" : [{"name":"action1","type":"type1"}],
+        "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}]
+      }],
+      "nonce": {
+         "value": "nonce1"
+      },
+      "nonce_arr": [{
+         "value": "nonce1"
+      },{
+         "value": "nonce2"
       }]
     }
    )=====";
 
    auto var = fc::json::from_string(my_other);
-
-   auto bytes = abis.variant_to_binary("A", var);
-   auto var2 = abis.binary_to_variant("A", bytes);
-   std::string r = fc::json::to_string(var2);
-
-   std::cout << r << std::endl;
-   
-   auto bytes2 = abis.variant_to_binary("A", var2);
-
-   BOOST_CHECK_EQUAL( fc::to_hex(bytes), fc::to_hex(bytes2) );
+   verify_round_trip_conversion(abi, "A", var);
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(abi_cycle, testing_fixture)
+BOOST_AUTO_TEST_CASE(abi_cycle)
 { try {
-  
+
    const char* typedef_cycle_abi = R"=====(
    {
        "types": [{
@@ -1166,37 +1558,37 @@ BOOST_FIXTURE_TEST_CASE(abi_cycle, testing_fixture)
        "structs": [{
          "name": "A",
          "base": "B",
-         "fields": {}
+         "fields": []
        },{
          "name": "B",
          "base": "C",
-         "fields": {}
+         "fields": []
        },{
          "name": "C",
          "base": "A",
-         "fields": {}
+         "fields": []
        }],
        "actions": [],
        "tables": []
    }
    )=====";
 
-   auto abi = fc::json::from_string(typedef_cycle_abi).as<types::abi>();
+   auto abi = fc::json::from_string(typedef_cycle_abi).as<abi_def>();
    abi_serializer abis(abi);
-   
+
    auto is_assert_exception = [](fc::assert_exception const & e) -> bool { std::cout << e.to_string() << std::endl; return true; };
    BOOST_CHECK_EXCEPTION( abis.validate(), fc::assert_exception, is_assert_exception );
 
-   abi = fc::json::from_string(struct_cycle_abi).as<types::abi>();
+   abi = fc::json::from_string(struct_cycle_abi).as<abi_def>();
    abis.set_abi(abi);
    BOOST_CHECK_EXCEPTION( abis.validate(), fc::assert_exception, is_assert_exception );
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
+BOOST_AUTO_TEST_CASE(transfer)
 { try {
 
-   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi());
 
    const char* test_data = R"=====(
    {
@@ -1209,27 +1601,27 @@ BOOST_FIXTURE_TEST_CASE(transfer, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto transfer = var.as<eosio::types::transfer>();
-   BOOST_CHECK_EQUAL("from.acct", transfer.from);
-   BOOST_CHECK_EQUAL("to.acct", transfer.to);
-   BOOST_CHECK_EQUAL(18446744073709551515u, transfer.amount);
-   BOOST_CHECK_EQUAL("really important transfer", transfer.memo);
+   auto transfer = var.as<contracts::transfer>();
+   BOOST_TEST("from.acct" == transfer.from);
+   BOOST_TEST("to.acct" == transfer.to);
+   BOOST_TEST(18446744073709551515u == transfer.amount);
+   BOOST_TEST("really important transfer" == transfer.memo);
 
    auto var2 = verify_round_trip_conversion( abis, "transfer", var );
-   auto transfer2 = var2.as<eosio::types::transfer>();
-   BOOST_CHECK_EQUAL(transfer.from, transfer2.from);
-   BOOST_CHECK_EQUAL(transfer.to, transfer2.to);
-   BOOST_CHECK_EQUAL(transfer.amount, transfer2.amount);
-   BOOST_CHECK_EQUAL(transfer.memo, transfer2.memo);
+   auto transfer2 = var2.as<contracts::transfer>();
+   BOOST_TEST(transfer.from == transfer2.from);
+   BOOST_TEST(transfer.to == transfer2.to);
+   BOOST_TEST(transfer.amount == transfer2.amount);
+   BOOST_TEST(transfer.memo == transfer2.memo);
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(lock, testing_fixture)
+BOOST_AUTO_TEST_CASE(lock)
 { try {
 
-   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi());
 
-   BOOST_CHECK(true);
+   BOOST_CHECK(true);   
    const char* test_data = R"=====(
    {
      "from" : "from.acct",
@@ -1240,23 +1632,23 @@ BOOST_FIXTURE_TEST_CASE(lock, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto lock = var.as<eosio::types::lock>();
-   BOOST_CHECK_EQUAL("from.acct", lock.from);
-   BOOST_CHECK_EQUAL("to.acct", lock.to);
-   BOOST_CHECK_EQUAL(-9223372036854775807, lock.amount);
+   auto lock = var.as<contracts::lock>();
+   BOOST_TEST("from.acct" == lock.from);
+   BOOST_TEST("to.acct" == lock.to);
+   BOOST_TEST(-9223372036854775807 == lock.amount);
 
    auto var2 = verify_round_trip_conversion( abis, "lock", var );
-   auto lock2 = var2.as<eosio::types::lock>();
-   BOOST_CHECK_EQUAL(lock.from, lock2.from);
-   BOOST_CHECK_EQUAL(lock.to, lock2.to);
-   BOOST_CHECK_EQUAL(lock.amount, lock2.amount);
+   auto lock2 = var2.as<contracts::lock>();
+   BOOST_TEST(lock.from == lock2.from);
+   BOOST_TEST(lock.to == lock2.to);
+   BOOST_TEST(lock.amount == lock2.amount);
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(unlock, testing_fixture)
+BOOST_AUTO_TEST_CASE(unlock)
 { try {
 
-   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1268,21 +1660,21 @@ BOOST_FIXTURE_TEST_CASE(unlock, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto unlock = var.as<eosio::types::unlock>();
-   BOOST_CHECK_EQUAL("an.acct", unlock.account);
-   BOOST_CHECK_EQUAL(-9223372036854775807, unlock.amount);
+   auto unlock = var.as<contracts::unlock>();
+   BOOST_TEST("an.acct" == unlock.account);
+   BOOST_TEST(-9223372036854775807 == unlock.amount);
 
    auto var2 = verify_round_trip_conversion( abis, "unlock", var );
-   auto unlock2 = var2.as<eosio::types::unlock>();
-   BOOST_CHECK_EQUAL(unlock.account, unlock2.account);
-   BOOST_CHECK_EQUAL(unlock.amount, unlock2.amount);
+   auto unlock2 = var2.as<contracts::unlock>();
+   BOOST_TEST(unlock.account == unlock2.account);
+   BOOST_TEST(unlock.amount == unlock2.amount);
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(claim, testing_fixture)
+BOOST_AUTO_TEST_CASE(claim)
 { try {
 
-   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1294,21 +1686,21 @@ BOOST_FIXTURE_TEST_CASE(claim, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto claim = var.as<eosio::types::claim>();
-   BOOST_CHECK_EQUAL("an.acct", claim.account);
-   BOOST_CHECK_EQUAL(-9223372036854775807, claim.amount);
+   auto claim = var.as<contracts::claim>();
+   BOOST_TEST("an.acct" == claim.account);
+   BOOST_TEST(-9223372036854775807 == claim.amount);
 
    auto var2 = verify_round_trip_conversion( abis, "claim", var );
-   auto claim2 = var2.as<eosio::types::claim>();
-   BOOST_CHECK_EQUAL(claim.account, claim2.account);
-   BOOST_CHECK_EQUAL(claim.amount, claim2.amount);
+   auto claim2 = var2.as<contracts::claim>();
+   BOOST_TEST(claim.account == claim2.account);
+   BOOST_TEST(claim.amount == claim2.amount);
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(okproducer, testing_fixture)
+BOOST_AUTO_TEST_CASE(okproducer)
 { try {
 
-   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1321,84 +1713,94 @@ BOOST_FIXTURE_TEST_CASE(okproducer, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto okproducer = var.as<eosio::types::okproducer>();
-   BOOST_CHECK_EQUAL("an.acct", okproducer.voter);
-   BOOST_CHECK_EQUAL("an.acct2", okproducer.producer);
-   BOOST_CHECK_EQUAL(-128, okproducer.approve);
+   auto okproducer = var.as<contracts::okproducer>();
+   BOOST_TEST("an.acct" == okproducer.voter);
+   BOOST_TEST("an.acct2" == okproducer.producer);
+   BOOST_TEST(-128 == okproducer.approve);
 
    auto var2 = verify_round_trip_conversion( abis, "okproducer", var );
-   auto okproducer2 = var2.as<eosio::types::okproducer>();
-   BOOST_CHECK_EQUAL(okproducer.voter, okproducer2.voter);
-   BOOST_CHECK_EQUAL(okproducer.producer, okproducer2.producer);
-   BOOST_CHECK_EQUAL(okproducer.approve, okproducer2.approve);
+   auto okproducer2 = var2.as<contracts::okproducer>();
+   BOOST_TEST(okproducer.voter == okproducer2.voter);
+   BOOST_TEST(okproducer.producer == okproducer2.producer);
+   BOOST_TEST(okproducer.approve == okproducer2.approve);
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(setproducer, testing_fixture)
+BOOST_AUTO_TEST_CASE(setproducer)
 { try {
 
-   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
-
+   abi_serializer abis(chain_initializer::eos_contract_abi());
    const char* test_data = R"=====(
    {
      "name" : "acct.name",
      "key" : "EOS5PnYq6BZn7H9GvL68cCLjWUZThRemTJoJmybCn1iEpVUXLb5Az",
      "configuration" : {
-        "max_blk_size" : 2147483135,
-        "target_blk_size" : 2147483145,
-        "max_storage_size" : 9223372036854775805,
-        "elected_pay" : -9223372036854775807,
-        "runner_up_pay" : -9223372036854775717,
-        "min_eos_balance" : -9223372036854775707,
-        "max_trx_lifetime" : 4294967071,
-        "auth_depth_limit" : 32777,
-        "max_trx_runtime" : 4294967007,
-        "in_depth_limit" : 32770,
-        "max_in_msg_size" : 4294966943,
-        "max_gen_trx_size" : 4294966911
+        "producer_pay": "-9223372036854775717",
+        "target_block_size": "2147483145",
+        "max_block_size": "2147483135",
+        "target_block_acts_per_scope": "2147473155",
+        "max_block_acts_per_scope": "2147483165",
+        "target_block_acts": "4194967295",
+        "max_block_acts": "4294957295",
+        "real_threads": "9223372036854772717",
+        "max_storage_size": "9223372036854775805",
+        "max_transaction_lifetime": "2147483125",
+        "max_authority_depth": "63777",
+        "max_transaction_exec_time": "2146483015",
+        "max_inline_depth": "64267",
+        "max_inline_action_size": "4294867295",
+        "max_generated_transaction_size": "4292967295"
      }
    }
    )=====";
 
    auto var = fc::json::from_string(test_data);
 
-   auto setproducer = var.as<eosio::types::setproducer>();
-   BOOST_CHECK_EQUAL("acct.name", setproducer.name);
-   BOOST_CHECK_EQUAL("EOS5PnYq6BZn7H9GvL68cCLjWUZThRemTJoJmybCn1iEpVUXLb5Az", (std::string)setproducer.key);
-   BOOST_CHECK_EQUAL(2147483135u, setproducer.configuration.max_blk_size);
-   BOOST_CHECK_EQUAL(2147483145u, setproducer.configuration.target_blk_size);
-   BOOST_CHECK_EQUAL(9223372036854775805u, setproducer.configuration.max_storage_size);
-   BOOST_CHECK_EQUAL(-9223372036854775807, setproducer.configuration.elected_pay);
-   BOOST_CHECK_EQUAL(-9223372036854775717, setproducer.configuration.runner_up_pay);
-   BOOST_CHECK_EQUAL(-9223372036854775707, setproducer.configuration.min_eos_balance);
-   BOOST_CHECK_EQUAL(4294967071u, setproducer.configuration.max_trx_lifetime);
-   BOOST_CHECK_EQUAL(32777u, setproducer.configuration.auth_depth_limit);
-   BOOST_CHECK_EQUAL(4294967007u, setproducer.configuration.max_trx_runtime);
-   BOOST_CHECK_EQUAL(32770u, setproducer.configuration.in_depth_limit);
-   BOOST_CHECK_EQUAL(4294966943u, setproducer.configuration.max_in_msg_size);
-   BOOST_CHECK_EQUAL(4294966911u, setproducer.configuration.max_gen_trx_size);
+   auto setproducer = var.as<contracts::setproducer>();
+   BOOST_TEST("acct.name" == setproducer.name);
+   BOOST_TEST("EOS5PnYq6BZn7H9GvL68cCLjWUZThRemTJoJmybCn1iEpVUXLb5Az" == (string)setproducer.key);
+   BOOST_TEST(-9223372036854775717 == setproducer.configuration.producer_pay);
+   BOOST_TEST(2147483145u == setproducer.configuration.target_block_size);
+   BOOST_TEST(2147483135u == setproducer.configuration.max_block_size);
+   BOOST_TEST(2147473155u == setproducer.configuration.target_block_acts_per_scope);
+   BOOST_TEST(2147483165u == setproducer.configuration.max_block_acts_per_scope);
+   BOOST_TEST(4194967295u == setproducer.configuration.target_block_acts);
+   BOOST_TEST(4294957295u == setproducer.configuration.max_block_acts);
+   BOOST_TEST(9223372036854772717u == setproducer.configuration.real_threads);
+   BOOST_TEST(9223372036854775805u == setproducer.configuration.max_storage_size);
+   BOOST_TEST(2147483125u == setproducer.configuration.max_transaction_lifetime);
+   BOOST_TEST(63777u == setproducer.configuration.max_authority_depth);
+   BOOST_TEST(2146483015u == setproducer.configuration.max_transaction_exec_time);
+   BOOST_TEST(64267u == setproducer.configuration.max_inline_depth);
+   BOOST_TEST(4294867295u == setproducer.configuration.max_inline_action_size);
+   BOOST_TEST(4292967295u == setproducer.configuration.max_generated_transaction_size);
 
    auto var2 = verify_round_trip_conversion( abis, "setproducer", var );
-   auto setproducer2 = var2.as<eosio::types::setproducer>();
-   BOOST_CHECK_EQUAL(setproducer.configuration.max_blk_size, setproducer2.configuration.max_blk_size);
-   BOOST_CHECK_EQUAL(setproducer.configuration.target_blk_size, setproducer2.configuration.target_blk_size);
-   BOOST_CHECK_EQUAL(setproducer.configuration.max_storage_size, setproducer2.configuration.max_storage_size);
-   BOOST_CHECK_EQUAL(setproducer.configuration.elected_pay, setproducer2.configuration.elected_pay);
-   BOOST_CHECK_EQUAL(setproducer.configuration.runner_up_pay, setproducer2.configuration.runner_up_pay);
-   BOOST_CHECK_EQUAL(setproducer.configuration.min_eos_balance, setproducer2.configuration.min_eos_balance);
-   BOOST_CHECK_EQUAL(setproducer.configuration.max_trx_lifetime, setproducer2.configuration.max_trx_lifetime);
-   BOOST_CHECK_EQUAL(setproducer.configuration.auth_depth_limit, setproducer2.configuration.auth_depth_limit);
-   BOOST_CHECK_EQUAL(setproducer.configuration.max_trx_runtime, setproducer2.configuration.max_trx_runtime);
-   BOOST_CHECK_EQUAL(setproducer.configuration.in_depth_limit, setproducer2.configuration.in_depth_limit);
-   BOOST_CHECK_EQUAL(setproducer.configuration.max_in_msg_size, setproducer2.configuration.max_in_msg_size);
-   BOOST_CHECK_EQUAL(setproducer.configuration.max_gen_trx_size, setproducer2.configuration.max_gen_trx_size);
+   auto setproducer2 = var2.as<contracts::setproducer>();
+   BOOST_TEST(setproducer.name == setproducer2.name);
+   BOOST_TEST((string)setproducer.key == (string)setproducer2.key);
+   BOOST_TEST(setproducer.configuration.producer_pay == setproducer2.configuration.producer_pay);
+   BOOST_TEST(setproducer.configuration.target_block_size == setproducer2.configuration.target_block_size);
+   BOOST_TEST(setproducer.configuration.max_block_size == setproducer2.configuration.max_block_size);
+   BOOST_TEST(setproducer.configuration.target_block_acts_per_scope == setproducer2.configuration.target_block_acts_per_scope);
+   BOOST_TEST(setproducer.configuration.max_block_acts_per_scope == setproducer2.configuration.max_block_acts_per_scope);
+   BOOST_TEST(setproducer.configuration.target_block_acts == setproducer2.configuration.target_block_acts);
+   BOOST_TEST(setproducer.configuration.max_block_acts == setproducer2.configuration.max_block_acts);
+   BOOST_TEST(setproducer.configuration.real_threads == setproducer2.configuration.real_threads);
+   BOOST_TEST(setproducer.configuration.max_storage_size == setproducer2.configuration.max_storage_size);
+   BOOST_TEST(setproducer.configuration.max_transaction_lifetime == setproducer2.configuration.max_transaction_lifetime);
+   BOOST_TEST(setproducer.configuration.max_authority_depth == setproducer2.configuration.max_authority_depth);
+   BOOST_TEST(setproducer.configuration.max_transaction_exec_time == setproducer2.configuration.max_transaction_exec_time);
+   BOOST_TEST(setproducer.configuration.max_inline_depth == setproducer2.configuration.max_inline_depth);
+   BOOST_TEST(setproducer.configuration.max_inline_action_size == setproducer2.configuration.max_inline_action_size);
+   BOOST_TEST(setproducer.configuration.max_generated_transaction_size == setproducer2.configuration.max_generated_transaction_size);
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(setproxy, testing_fixture)
+BOOST_AUTO_TEST_CASE(setproxy)
 { try {
 
-   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1410,21 +1812,21 @@ BOOST_FIXTURE_TEST_CASE(setproxy, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto setproxy = var.as<eosio::types::setproxy>();
-   BOOST_CHECK_EQUAL("stake.hldr", setproxy.stakeholder);
-   BOOST_CHECK_EQUAL("stkhdr.prxy", setproxy.proxy);
+   auto setproxy = var.as<contracts::setproxy>();
+   BOOST_TEST("stake.hldr" == setproxy.stakeholder);
+   BOOST_TEST("stkhdr.prxy" == setproxy.proxy);
 
    auto var2 = verify_round_trip_conversion( abis, "setproxy", var );
-   auto setproxy2 = var2.as<eosio::types::setproxy>();
-   BOOST_CHECK_EQUAL(setproxy.stakeholder, setproxy2.stakeholder);
-   BOOST_CHECK_EQUAL(setproxy.proxy, setproxy2.proxy);
+   auto setproxy2 = var2.as<contracts::setproxy>();
+   BOOST_TEST(setproxy.stakeholder == setproxy2.stakeholder);
+   BOOST_TEST(setproxy.proxy == setproxy2.proxy);
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(linkauth, testing_fixture)
+BOOST_AUTO_TEST_CASE(linkauth)
 { try {
 
-   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1438,25 +1840,25 @@ BOOST_FIXTURE_TEST_CASE(linkauth, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto linkauth = var.as<eosio::types::linkauth>();
-   BOOST_CHECK_EQUAL("lnkauth.acct", linkauth.account);
-   BOOST_CHECK_EQUAL("lnkauth.code", linkauth.code);
-   BOOST_CHECK_EQUAL("lnkauth.type", linkauth.type);
-   BOOST_CHECK_EQUAL("lnkauth.rqm", linkauth.requirement);
+   auto linkauth = var.as<contracts::linkauth>();
+   BOOST_TEST("lnkauth.acct" == linkauth.account);
+   BOOST_TEST("lnkauth.code" == linkauth.code);
+   BOOST_TEST("lnkauth.type" == linkauth.type);
+   BOOST_TEST("lnkauth.rqm" == linkauth.requirement);
 
    auto var2 = verify_round_trip_conversion( abis, "linkauth", var );
-   auto linkauth2 = var2.as<eosio::types::linkauth>();
-   BOOST_CHECK_EQUAL(linkauth.account, linkauth2.account);
-   BOOST_CHECK_EQUAL(linkauth.code, linkauth2.code);
-   BOOST_CHECK_EQUAL(linkauth.type, linkauth2.type);
-   BOOST_CHECK_EQUAL(linkauth.requirement, linkauth2.requirement);
+   auto linkauth2 = var2.as<contracts::linkauth>();
+   BOOST_TEST(linkauth.account == linkauth2.account);
+   BOOST_TEST(linkauth.code == linkauth2.code);
+   BOOST_TEST(linkauth.type == linkauth2.type);
+   BOOST_TEST(linkauth.requirement == linkauth2.requirement);
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(unlinkauth, testing_fixture)
+BOOST_AUTO_TEST_CASE(unlinkauth)
 { try {
 
-   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1469,23 +1871,23 @@ BOOST_FIXTURE_TEST_CASE(unlinkauth, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto unlinkauth = var.as<eosio::types::unlinkauth>();
-   BOOST_CHECK_EQUAL("lnkauth.acct", unlinkauth.account);
-   BOOST_CHECK_EQUAL("lnkauth.code", unlinkauth.code);
-   BOOST_CHECK_EQUAL("lnkauth.type", unlinkauth.type);
+   auto unlinkauth = var.as<contracts::unlinkauth>();
+   BOOST_TEST("lnkauth.acct" == unlinkauth.account);
+   BOOST_TEST("lnkauth.code" == unlinkauth.code);
+   BOOST_TEST("lnkauth.type" == unlinkauth.type);
 
    auto var2 = verify_round_trip_conversion( abis, "unlinkauth", var );
-   auto unlinkauth2 = var2.as<eosio::types::unlinkauth>();
-   BOOST_CHECK_EQUAL(unlinkauth.account, unlinkauth2.account);
-   BOOST_CHECK_EQUAL(unlinkauth.code, unlinkauth2.code);
-   BOOST_CHECK_EQUAL(unlinkauth.type, unlinkauth2.type);
+   auto unlinkauth2 = var2.as<contracts::unlinkauth>();
+   BOOST_TEST(unlinkauth.account == unlinkauth2.account);
+   BOOST_TEST(unlinkauth.code == unlinkauth2.code);
+   BOOST_TEST(unlinkauth.type == unlinkauth2.type);
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(updateauth, testing_fixture)
+BOOST_AUTO_TEST_CASE(updateauth)
 { try {
 
-   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1493,66 +1895,66 @@ BOOST_FIXTURE_TEST_CASE(updateauth, testing_fixture)
      "account" : "updauth.acct",
      "permission" : "updauth.prm",
      "parent" : "updauth.prnt",
-     "new_authority" : {
+     "data" : {
         "threshold" : "2147483145",
         "keys" : [ {"key" : "EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im", "weight" : 57005},
                    {"key" : "EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf", "weight" : 57605} ],
-        "accounts" : [ {"permission" : {"account" : "prm.acct1", "permission" : "prm.prm1"}, "weight" : 53005 },
-                       {"permission" : {"account" : "prm.acct2", "permission" : "prm.prm2"}, "weight" : 53405 }]
+        "accounts" : [ {"permission" : {"actor" : "prm.acct1", "permission" : "prm.prm1"}, "weight" : 53005 },
+                       {"permission" : {"actor" : "prm.acct2", "permission" : "prm.prm2"}, "weight" : 53405 }]
      }
    }
    )=====";
 
    auto var = fc::json::from_string(test_data);
 
-   auto updateauth = var.as<eosio::types::updateauth>();
-   BOOST_CHECK_EQUAL("updauth.acct", updateauth.account);
-   BOOST_CHECK_EQUAL("updauth.prm", updateauth.permission);
-   BOOST_CHECK_EQUAL("updauth.prnt", updateauth.parent);
-   BOOST_CHECK_EQUAL(2147483145u, updateauth.new_authority.threshold);
+   auto updateauth = var.as<contracts::updateauth>();
+   BOOST_TEST("updauth.acct" == updateauth.account);
+   BOOST_TEST("updauth.prm" == updateauth.permission);
+   BOOST_TEST("updauth.prnt" == updateauth.parent);
+   BOOST_TEST(2147483145u == updateauth.data.threshold);
 
-   BOOST_REQUIRE_EQUAL(2, updateauth.new_authority.keys.size());
-   BOOST_CHECK_EQUAL("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im", (std::string)updateauth.new_authority.keys[0].key);
-   BOOST_CHECK_EQUAL(57005u, updateauth.new_authority.keys[0].weight);
-   BOOST_CHECK_EQUAL("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf", (std::string)updateauth.new_authority.keys[1].key);
-   BOOST_CHECK_EQUAL(57605u, updateauth.new_authority.keys[1].weight);
+   BOOST_TEST_REQUIRE(2 == updateauth.data.keys.size());
+   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == (std::string)updateauth.data.keys[0].key);
+   BOOST_TEST(57005u == updateauth.data.keys[0].weight);
+   BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == (std::string)updateauth.data.keys[1].key);
+   BOOST_TEST(57605u == updateauth.data.keys[1].weight);
 
-   BOOST_REQUIRE_EQUAL(2, updateauth.new_authority.accounts.size());
-   BOOST_CHECK_EQUAL("prm.acct1", updateauth.new_authority.accounts[0].permission.account);
-   BOOST_CHECK_EQUAL("prm.prm1", updateauth.new_authority.accounts[0].permission.permission);
-   BOOST_CHECK_EQUAL(53005u, updateauth.new_authority.accounts[0].weight);
-   BOOST_CHECK_EQUAL("prm.acct2", updateauth.new_authority.accounts[1].permission.account);
-   BOOST_CHECK_EQUAL("prm.prm2", updateauth.new_authority.accounts[1].permission.permission);
-   BOOST_CHECK_EQUAL(53405u, updateauth.new_authority.accounts[1].weight);
+   BOOST_TEST_REQUIRE(2 == updateauth.data.accounts.size());
+   BOOST_TEST("prm.acct1" == updateauth.data.accounts[0].permission.actor);
+   BOOST_TEST("prm.prm1" == updateauth.data.accounts[0].permission.permission);
+   BOOST_TEST(53005u == updateauth.data.accounts[0].weight);
+   BOOST_TEST("prm.acct2" == updateauth.data.accounts[1].permission.actor);
+   BOOST_TEST("prm.prm2" == updateauth.data.accounts[1].permission.permission);
+   BOOST_TEST(53405u == updateauth.data.accounts[1].weight);
 
    auto var2 = verify_round_trip_conversion( abis, "updateauth", var );
-   auto updateauth2 = var2.as<eosio::types::updateauth>();
-   BOOST_CHECK_EQUAL(updateauth.account, updateauth2.account);
-   BOOST_CHECK_EQUAL(updateauth.permission, updateauth2.permission);
-   BOOST_CHECK_EQUAL(updateauth.parent, updateauth2.parent);
+   auto updateauth2 = var2.as<contracts::updateauth>();
+   BOOST_TEST(updateauth.account == updateauth2.account);
+   BOOST_TEST(updateauth.permission == updateauth2.permission);
+   BOOST_TEST(updateauth.parent == updateauth2.parent);
 
-   BOOST_CHECK_EQUAL(updateauth.new_authority.threshold, updateauth2.new_authority.threshold);
+   BOOST_TEST(updateauth.data.threshold == updateauth2.data.threshold);
 
-   BOOST_REQUIRE_EQUAL(updateauth.new_authority.keys.size(), updateauth2.new_authority.keys.size());
-   BOOST_CHECK_EQUAL(updateauth.new_authority.keys[0].key, updateauth2.new_authority.keys[0].key);
-   BOOST_CHECK_EQUAL(updateauth.new_authority.keys[0].weight, updateauth2.new_authority.keys[0].weight);
-   BOOST_CHECK_EQUAL(updateauth.new_authority.keys[1].key, updateauth2.new_authority.keys[1].key);
-   BOOST_CHECK_EQUAL(updateauth.new_authority.keys[1].weight, updateauth2.new_authority.keys[1].weight);
+   BOOST_TEST_REQUIRE(updateauth.data.keys.size() == updateauth2.data.keys.size());
+   BOOST_TEST(updateauth.data.keys[0].key == updateauth2.data.keys[0].key);
+   BOOST_TEST(updateauth.data.keys[0].weight == updateauth2.data.keys[0].weight);
+   BOOST_TEST(updateauth.data.keys[1].key == updateauth2.data.keys[1].key);
+   BOOST_TEST(updateauth.data.keys[1].weight == updateauth2.data.keys[1].weight);
 
-   BOOST_REQUIRE_EQUAL(updateauth.new_authority.accounts.size(), updateauth2.new_authority.accounts.size());
-   BOOST_CHECK_EQUAL(updateauth.new_authority.accounts[0].permission.account, updateauth2.new_authority.accounts[0].permission.account);
-   BOOST_CHECK_EQUAL(updateauth.new_authority.accounts[0].permission.permission, updateauth2.new_authority.accounts[0].permission.permission);
-   BOOST_CHECK_EQUAL(updateauth.new_authority.accounts[0].weight, updateauth2.new_authority.accounts[0].weight);
-   BOOST_CHECK_EQUAL(updateauth.new_authority.accounts[1].permission.account, updateauth2.new_authority.accounts[1].permission.account);
-   BOOST_CHECK_EQUAL(updateauth.new_authority.accounts[1].permission.permission, updateauth2.new_authority.accounts[1].permission.permission);
-   BOOST_CHECK_EQUAL(updateauth.new_authority.accounts[1].weight, updateauth2.new_authority.accounts[1].weight);
+   BOOST_TEST_REQUIRE(updateauth.data.accounts.size() == updateauth2.data.accounts.size());
+   BOOST_TEST(updateauth.data.accounts[0].permission.actor == updateauth2.data.accounts[0].permission.actor);
+   BOOST_TEST(updateauth.data.accounts[0].permission.permission == updateauth2.data.accounts[0].permission.permission);
+   BOOST_TEST(updateauth.data.accounts[0].weight == updateauth2.data.accounts[0].weight);
+   BOOST_TEST(updateauth.data.accounts[1].permission.actor == updateauth2.data.accounts[1].permission.actor);
+   BOOST_TEST(updateauth.data.accounts[1].permission.permission == updateauth2.data.accounts[1].permission.permission);
+   BOOST_TEST(updateauth.data.accounts[1].weight == updateauth2.data.accounts[1].weight);
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(deleteauth, testing_fixture)
+BOOST_AUTO_TEST_CASE(deleteauth)
 { try {
 
-   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1564,21 +1966,21 @@ BOOST_FIXTURE_TEST_CASE(deleteauth, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto deleteauth = var.as<eosio::types::deleteauth>();
-   BOOST_CHECK_EQUAL("delauth.acct", deleteauth.account);
-   BOOST_CHECK_EQUAL("delauth.prm", deleteauth.permission);
+   auto deleteauth = var.as<contracts::deleteauth>();
+   BOOST_TEST("delauth.acct" == deleteauth.account);
+   BOOST_TEST("delauth.prm" == deleteauth.permission);
 
    auto var2 = verify_round_trip_conversion( abis, "deleteauth", var );
-   auto deleteauth2 = var2.as<eosio::types::deleteauth>();
-   BOOST_CHECK_EQUAL(deleteauth.account, deleteauth2.account);
-   BOOST_CHECK_EQUAL(deleteauth.permission, deleteauth2.permission);
+   auto deleteauth2 = var2.as<contracts::deleteauth>();
+   BOOST_TEST(deleteauth.account == deleteauth2.account);
+   BOOST_TEST(deleteauth.permission == deleteauth2.permission);
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(newaccount, testing_fixture)
+BOOST_AUTO_TEST_CASE(newaccount)
 { try {
 
-   abi_serializer abis(native_contract::native_contract_chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi());
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1589,22 +1991,22 @@ BOOST_FIXTURE_TEST_CASE(newaccount, testing_fixture)
         "threshold" : 2147483145,
         "keys" : [ {"key" : "EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im", "weight" : 57005},
                    {"key" : "EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf", "weight" : 57605} ],
-        "accounts" : [ {"permission" : {"account" : "prm.acct1", "permission" : "prm.prm1"}, "weight" : 53005 },
-                       {"permission" : {"account" : "prm.acct2", "permission" : "prm.prm2"}, "weight" : 53405 }]
+        "accounts" : [ {"permission" : {"actor" : "prm.acct1", "permission" : "prm.prm1"}, "weight" : 53005 },
+                       {"permission" : {"actor" : "prm.acct2", "permission" : "prm.prm2"}, "weight" : 53405 }]
      },
      "active" : {
         "threshold" : 2146483145,
         "keys" : [ {"key" : "EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im", "weight" : 57005},
                    {"key" : "EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf", "weight" : 57605} ],
-        "accounts" : [ {"permission" : {"account" : "prm.acct1", "permission" : "prm.prm1"}, "weight" : 53005 },
-                       {"permission" : {"account" : "prm.acct2", "permission" : "prm.prm2"}, "weight" : 53405 }]
+        "accounts" : [ {"permission" : {"actor" : "prm.acct1", "permission" : "prm.prm1"}, "weight" : 53005 },
+                       {"permission" : {"actor" : "prm.acct2", "permission" : "prm.prm2"}, "weight" : 53405 }]
      },
      "recovery" : {
         "threshold" : 2145483145,
         "keys" : [ {"key" : "EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im", "weight" : 57005},
                    {"key" : "EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf", "weight" : 57605} ],
-        "accounts" : [ {"permission" : {"account" : "prm.acct1", "permission" : "prm.prm1"}, "weight" : 53005 },
-                       {"permission" : {"account" : "prm.acct2", "permission" : "prm.prm2"}, "weight" : 53405 }]
+        "accounts" : [ {"permission" : {"actor" : "prm.acct1", "permission" : "prm.prm1"}, "weight" : 53005 },
+                       {"permission" : {"actor" : "prm.acct2", "permission" : "prm.prm2"}, "weight" : 53405 }]
      },
      "deposit" : "-90000000.0000 EOS"
    }
@@ -1612,120 +2014,432 @@ BOOST_FIXTURE_TEST_CASE(newaccount, testing_fixture)
 
    auto var = fc::json::from_string(test_data);
 
-   auto newaccount = var.as<eosio::types::newaccount>();
-   BOOST_CHECK_EQUAL("newacct.crtr", newaccount.creator);
-   BOOST_CHECK_EQUAL("newacct.name", newaccount.name);
+   auto newaccount = var.as<contracts::newaccount>();
+   BOOST_TEST("newacct.crtr" == newaccount.creator);
+   BOOST_TEST("newacct.name" == newaccount.name);
 
-   BOOST_CHECK_EQUAL(2147483145u, newaccount.owner.threshold);
+   BOOST_TEST(2147483145u == newaccount.owner.threshold);
 
-   BOOST_REQUIRE_EQUAL(2, newaccount.owner.keys.size());
-   BOOST_CHECK_EQUAL("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im", (std::string)newaccount.owner.keys[0].key);
-   BOOST_CHECK_EQUAL(57005u, newaccount.owner.keys[0].weight);
-   BOOST_CHECK_EQUAL("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf", (std::string)newaccount.owner.keys[1].key);
-   BOOST_CHECK_EQUAL(57605u, newaccount.owner.keys[1].weight);
+   BOOST_TEST_REQUIRE(2 == newaccount.owner.keys.size());
+   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == (std::string)newaccount.owner.keys[0].key);
+   BOOST_TEST(57005u == newaccount.owner.keys[0].weight);
+   BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == (std::string)newaccount.owner.keys[1].key);
+   BOOST_TEST(57605u == newaccount.owner.keys[1].weight);
 
-   BOOST_REQUIRE_EQUAL(2, newaccount.owner.accounts.size());
-   BOOST_CHECK_EQUAL("prm.acct1", newaccount.owner.accounts[0].permission.account);
-   BOOST_CHECK_EQUAL("prm.prm1", newaccount.owner.accounts[0].permission.permission);
-   BOOST_CHECK_EQUAL(53005u, newaccount.owner.accounts[0].weight);
-   BOOST_CHECK_EQUAL("prm.acct2", newaccount.owner.accounts[1].permission.account);
-   BOOST_CHECK_EQUAL("prm.prm2", newaccount.owner.accounts[1].permission.permission);
-   BOOST_CHECK_EQUAL(53405u, newaccount.owner.accounts[1].weight);
+   BOOST_TEST_REQUIRE(2 == newaccount.owner.accounts.size());
+   BOOST_TEST("prm.acct1" == newaccount.owner.accounts[0].permission.actor);
+   BOOST_TEST("prm.prm1" == newaccount.owner.accounts[0].permission.permission);
+   BOOST_TEST(53005u == newaccount.owner.accounts[0].weight);
+   BOOST_TEST("prm.acct2" == newaccount.owner.accounts[1].permission.actor);
+   BOOST_TEST("prm.prm2" == newaccount.owner.accounts[1].permission.permission);
+   BOOST_TEST(53405u == newaccount.owner.accounts[1].weight);
 
-   BOOST_CHECK_EQUAL(2146483145u, newaccount.active.threshold);
+   BOOST_TEST(2146483145u == newaccount.active.threshold);
 
-   BOOST_REQUIRE_EQUAL(2, newaccount.active.keys.size());
-   BOOST_CHECK_EQUAL("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im", (std::string)newaccount.active.keys[0].key);
-   BOOST_CHECK_EQUAL(57005u, newaccount.active.keys[0].weight);
-   BOOST_CHECK_EQUAL("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf", (std::string)newaccount.active.keys[1].key);
-   BOOST_CHECK_EQUAL(57605u, newaccount.active.keys[1].weight);
+   BOOST_TEST_REQUIRE(2 == newaccount.active.keys.size());
+   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == (std::string)newaccount.active.keys[0].key);
+   BOOST_TEST(57005u == newaccount.active.keys[0].weight);
+   BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == (std::string)newaccount.active.keys[1].key);
+   BOOST_TEST(57605u == newaccount.active.keys[1].weight);
 
-   BOOST_REQUIRE_EQUAL(2, newaccount.active.accounts.size());
-   BOOST_CHECK_EQUAL("prm.acct1", newaccount.active.accounts[0].permission.account);
-   BOOST_CHECK_EQUAL("prm.prm1", newaccount.active.accounts[0].permission.permission);
-   BOOST_CHECK_EQUAL(53005u, newaccount.active.accounts[0].weight);
-   BOOST_CHECK_EQUAL("prm.acct2", newaccount.active.accounts[1].permission.account);
-   BOOST_CHECK_EQUAL("prm.prm2", newaccount.active.accounts[1].permission.permission);
-   BOOST_CHECK_EQUAL(53405u, newaccount.active.accounts[1].weight);
+   BOOST_TEST_REQUIRE(2 == newaccount.active.accounts.size());
+   BOOST_TEST("prm.acct1" == newaccount.active.accounts[0].permission.actor);
+   BOOST_TEST("prm.prm1" == newaccount.active.accounts[0].permission.permission);
+   BOOST_TEST(53005u == newaccount.active.accounts[0].weight);
+   BOOST_TEST("prm.acct2" == newaccount.active.accounts[1].permission.actor);
+   BOOST_TEST("prm.prm2" == newaccount.active.accounts[1].permission.permission);
+   BOOST_TEST(53405u == newaccount.active.accounts[1].weight);
 
-   BOOST_CHECK_EQUAL(2145483145u, newaccount.recovery.threshold);
+   BOOST_TEST(2145483145u == newaccount.recovery.threshold);
 
-   BOOST_REQUIRE_EQUAL(2, newaccount.recovery.keys.size());
-   BOOST_CHECK_EQUAL("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im", (std::string)newaccount.recovery.keys[0].key);
-   BOOST_CHECK_EQUAL(57005u, newaccount.recovery.keys[0].weight);
-   BOOST_CHECK_EQUAL("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf", (std::string)newaccount.recovery.keys[1].key);
-   BOOST_CHECK_EQUAL(57605u, newaccount.recovery.keys[1].weight);
+   BOOST_TEST_REQUIRE(2 == newaccount.recovery.keys.size());
+   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == (std::string)newaccount.recovery.keys[0].key);
+   BOOST_TEST(57005u == newaccount.recovery.keys[0].weight);
+   BOOST_TEST("EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf" == (std::string)newaccount.recovery.keys[1].key);
+   BOOST_TEST(57605u == newaccount.recovery.keys[1].weight);
 
-   BOOST_REQUIRE_EQUAL(2, newaccount.recovery.accounts.size());
-   BOOST_CHECK_EQUAL("prm.acct1", newaccount.recovery.accounts[0].permission.account);
-   BOOST_CHECK_EQUAL("prm.prm1", newaccount.recovery.accounts[0].permission.permission);
-   BOOST_CHECK_EQUAL(53005u, newaccount.recovery.accounts[0].weight);
-   BOOST_CHECK_EQUAL("prm.acct2", newaccount.recovery.accounts[1].permission.account);
-   BOOST_CHECK_EQUAL("prm.prm2", newaccount.recovery.accounts[1].permission.permission);
-   BOOST_CHECK_EQUAL(53405u, newaccount.recovery.accounts[1].weight);
+   BOOST_TEST_REQUIRE(2 == newaccount.recovery.accounts.size());
+   BOOST_TEST("prm.acct1" == newaccount.recovery.accounts[0].permission.actor);
+   BOOST_TEST("prm.prm1" == newaccount.recovery.accounts[0].permission.permission);
+   BOOST_TEST(53005u == newaccount.recovery.accounts[0].weight);
+   BOOST_TEST("prm.acct2" == newaccount.recovery.accounts[1].permission.actor);
+   BOOST_TEST("prm.prm2" == newaccount.recovery.accounts[1].permission.permission);
+   BOOST_TEST(53405u == newaccount.recovery.accounts[1].weight);
 
-   BOOST_CHECK_EQUAL(-900000000000, newaccount.deposit.amount);
-   BOOST_CHECK_EQUAL(EOS_SYMBOL, newaccount.deposit.symbol);
+   BOOST_TEST(-900000000000 == newaccount.deposit.amount);
+   BOOST_TEST(EOS_SYMBOL == newaccount.deposit.symbol);
 
    auto var2 = verify_round_trip_conversion( abis, "newaccount", var );
-   auto newaccount2 = var2.as<eosio::types::newaccount>();
-   BOOST_CHECK_EQUAL(newaccount.creator, newaccount2.creator);
-   BOOST_CHECK_EQUAL(newaccount.name, newaccount2.name);
+   auto newaccount2 = var2.as<contracts::newaccount>();
+   BOOST_TEST(newaccount.creator == newaccount2.creator);
+   BOOST_TEST(newaccount.name == newaccount2.name);
 
-   BOOST_CHECK_EQUAL(newaccount.owner.threshold, newaccount2.owner.threshold);
+   BOOST_TEST(newaccount.owner.threshold == newaccount2.owner.threshold);
 
-   BOOST_REQUIRE_EQUAL(newaccount.owner.keys.size(), newaccount2.owner.keys.size());
-   BOOST_CHECK_EQUAL(newaccount.owner.keys[0].key, newaccount2.owner.keys[0].key);
-   BOOST_CHECK_EQUAL(newaccount.owner.keys[0].weight, newaccount2.owner.keys[0].weight);
-   BOOST_CHECK_EQUAL(newaccount.owner.keys[1].key, newaccount2.owner.keys[1].key);
-   BOOST_CHECK_EQUAL(newaccount.owner.keys[1].weight, newaccount2.owner.keys[1].weight);
+   BOOST_TEST_REQUIRE(newaccount.owner.keys.size() == newaccount2.owner.keys.size());
+   BOOST_TEST(newaccount.owner.keys[0].key == newaccount2.owner.keys[0].key);
+   BOOST_TEST(newaccount.owner.keys[0].weight == newaccount2.owner.keys[0].weight);
+   BOOST_TEST(newaccount.owner.keys[1].key == newaccount2.owner.keys[1].key);
+   BOOST_TEST(newaccount.owner.keys[1].weight == newaccount2.owner.keys[1].weight);
 
-   BOOST_REQUIRE_EQUAL(newaccount.owner.accounts.size(), newaccount2.owner.accounts.size());
-   BOOST_CHECK_EQUAL(newaccount.owner.accounts[0].permission.account, newaccount2.owner.accounts[0].permission.account);
-   BOOST_CHECK_EQUAL(newaccount.owner.accounts[0].permission.permission, newaccount2.owner.accounts[0].permission.permission);
-   BOOST_CHECK_EQUAL(newaccount.owner.accounts[0].weight, newaccount2.owner.accounts[0].weight);
-   BOOST_CHECK_EQUAL(newaccount.owner.accounts[1].permission.account, newaccount2.owner.accounts[1].permission.account);
-   BOOST_CHECK_EQUAL(newaccount.owner.accounts[1].permission.permission, newaccount2.owner.accounts[1].permission.permission);
-   BOOST_CHECK_EQUAL(newaccount.owner.accounts[1].weight, newaccount2.owner.accounts[1].weight);
+   BOOST_TEST_REQUIRE(newaccount.owner.accounts.size() == newaccount2.owner.accounts.size());
+   BOOST_TEST(newaccount.owner.accounts[0].permission.actor == newaccount2.owner.accounts[0].permission.actor);
+   BOOST_TEST(newaccount.owner.accounts[0].permission.permission == newaccount2.owner.accounts[0].permission.permission);
+   BOOST_TEST(newaccount.owner.accounts[0].weight == newaccount2.owner.accounts[0].weight);
+   BOOST_TEST(newaccount.owner.accounts[1].permission.actor == newaccount2.owner.accounts[1].permission.actor);
+   BOOST_TEST(newaccount.owner.accounts[1].permission.permission == newaccount2.owner.accounts[1].permission.permission);
+   BOOST_TEST(newaccount.owner.accounts[1].weight == newaccount2.owner.accounts[1].weight);
 
-   BOOST_CHECK_EQUAL(newaccount.active.threshold, newaccount2.active.threshold);
+   BOOST_TEST(newaccount.active.threshold == newaccount2.active.threshold);
 
-   BOOST_REQUIRE_EQUAL(newaccount.active.keys.size(), newaccount2.active.keys.size());
-   BOOST_CHECK_EQUAL(newaccount.active.keys[0].key, newaccount2.active.keys[0].key);
-   BOOST_CHECK_EQUAL(newaccount.active.keys[0].weight, newaccount2.active.keys[0].weight);
-   BOOST_CHECK_EQUAL(newaccount.active.keys[1].key, newaccount2.active.keys[1].key);
-   BOOST_CHECK_EQUAL(newaccount.active.keys[1].weight, newaccount2.active.keys[1].weight);
+   BOOST_TEST_REQUIRE(newaccount.active.keys.size() == newaccount2.active.keys.size());
+   BOOST_TEST(newaccount.active.keys[0].key == newaccount2.active.keys[0].key);
+   BOOST_TEST(newaccount.active.keys[0].weight == newaccount2.active.keys[0].weight);
+   BOOST_TEST(newaccount.active.keys[1].key == newaccount2.active.keys[1].key);
+   BOOST_TEST(newaccount.active.keys[1].weight == newaccount2.active.keys[1].weight);
 
-   BOOST_REQUIRE_EQUAL(newaccount.active.accounts.size(), newaccount2.active.accounts.size());
-   BOOST_CHECK_EQUAL(newaccount.active.accounts[0].permission.account, newaccount2.active.accounts[0].permission.account);
-   BOOST_CHECK_EQUAL(newaccount.active.accounts[0].permission.permission, newaccount2.active.accounts[0].permission.permission);
-   BOOST_CHECK_EQUAL(newaccount.active.accounts[0].weight, newaccount2.active.accounts[0].weight);
-   BOOST_CHECK_EQUAL(newaccount.active.accounts[1].permission.account, newaccount2.active.accounts[1].permission.account);
-   BOOST_CHECK_EQUAL(newaccount.active.accounts[1].permission.permission, newaccount2.active.accounts[1].permission.permission);
-   BOOST_CHECK_EQUAL(newaccount.active.accounts[1].weight, newaccount2.active.accounts[1].weight);
+   BOOST_TEST_REQUIRE(newaccount.active.accounts.size() == newaccount2.active.accounts.size());
+   BOOST_TEST(newaccount.active.accounts[0].permission.actor == newaccount2.active.accounts[0].permission.actor);
+   BOOST_TEST(newaccount.active.accounts[0].permission.permission == newaccount2.active.accounts[0].permission.permission);
+   BOOST_TEST(newaccount.active.accounts[0].weight == newaccount2.active.accounts[0].weight);
+   BOOST_TEST(newaccount.active.accounts[1].permission.actor == newaccount2.active.accounts[1].permission.actor);
+   BOOST_TEST(newaccount.active.accounts[1].permission.permission == newaccount2.active.accounts[1].permission.permission);
+   BOOST_TEST(newaccount.active.accounts[1].weight == newaccount2.active.accounts[1].weight);
 
-   BOOST_CHECK_EQUAL(newaccount.recovery.threshold, newaccount2.recovery.threshold);
+   BOOST_TEST(newaccount.recovery.threshold == newaccount2.recovery.threshold);
 
-   BOOST_REQUIRE_EQUAL(newaccount.recovery.keys.size(), newaccount2.recovery.keys.size());
-   BOOST_CHECK_EQUAL(newaccount.recovery.keys[0].key, newaccount2.recovery.keys[0].key);
-   BOOST_CHECK_EQUAL(newaccount.recovery.keys[0].weight, newaccount2.recovery.keys[0].weight);
-   BOOST_CHECK_EQUAL(newaccount.recovery.keys[1].key, newaccount2.recovery.keys[1].key);
-   BOOST_CHECK_EQUAL(newaccount.recovery.keys[1].weight, newaccount2.recovery.keys[1].weight);
+   BOOST_TEST_REQUIRE(newaccount.recovery.keys.size() == newaccount2.recovery.keys.size());
+   BOOST_TEST(newaccount.recovery.keys[0].key == newaccount2.recovery.keys[0].key);
+   BOOST_TEST(newaccount.recovery.keys[0].weight == newaccount2.recovery.keys[0].weight);
+   BOOST_TEST(newaccount.recovery.keys[1].key == newaccount2.recovery.keys[1].key);
+   BOOST_TEST(newaccount.recovery.keys[1].weight == newaccount2.recovery.keys[1].weight);
 
-   BOOST_REQUIRE_EQUAL(newaccount.recovery.accounts.size(), newaccount2.recovery.accounts.size());
-   BOOST_CHECK_EQUAL(newaccount.recovery.accounts[0].permission.account, newaccount2.recovery.accounts[0].permission.account);
-   BOOST_CHECK_EQUAL(newaccount.recovery.accounts[0].permission.permission, newaccount2.recovery.accounts[0].permission.permission);
-   BOOST_CHECK_EQUAL(newaccount.recovery.accounts[0].weight, newaccount2.recovery.accounts[0].weight);
-   BOOST_CHECK_EQUAL(newaccount.recovery.accounts[1].permission.account, newaccount2.recovery.accounts[1].permission.account);
-   BOOST_CHECK_EQUAL(newaccount.recovery.accounts[1].permission.permission, newaccount2.recovery.accounts[1].permission.permission);
-   BOOST_CHECK_EQUAL(newaccount.recovery.accounts[1].weight, newaccount2.recovery.accounts[1].weight);
+   BOOST_TEST_REQUIRE(newaccount.recovery.accounts.size() == newaccount2.recovery.accounts.size());
+   BOOST_TEST(newaccount.recovery.accounts[0].permission.actor == newaccount2.recovery.accounts[0].permission.actor);
+   BOOST_TEST(newaccount.recovery.accounts[0].permission.permission == newaccount2.recovery.accounts[0].permission.permission);
+   BOOST_TEST(newaccount.recovery.accounts[0].weight == newaccount2.recovery.accounts[0].weight);
+   BOOST_TEST(newaccount.recovery.accounts[1].permission.actor == newaccount2.recovery.accounts[1].permission.actor);
+   BOOST_TEST(newaccount.recovery.accounts[1].permission.permission == newaccount2.recovery.accounts[1].permission.permission);
+   BOOST_TEST(newaccount.recovery.accounts[1].weight == newaccount2.recovery.accounts[1].weight);
 
-   BOOST_CHECK_EQUAL(newaccount.deposit.amount, newaccount2.deposit.amount);
-   BOOST_CHECK_EQUAL(newaccount.deposit.symbol, newaccount2.deposit.symbol);
+   BOOST_TEST(newaccount.deposit.amount == newaccount2.deposit.amount);
+   BOOST_TEST(newaccount.deposit.symbol == newaccount2.deposit.symbol);
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(abi_type_repeat, testing_fixture)
+
+BOOST_AUTO_TEST_CASE(setcode)
+{ try {
+
+   abi_serializer abis(chain_initializer::eos_contract_abi());
+
+   const char* test_data = R"=====(
+   {
+     "account" : "setcode.acc",
+     "vmtype" : "0",
+     "vmversion" : "0",
+     "code" : "0061736d0100000001390a60037e7e7f017f60047e7e7f7f017f60017e0060057e7e7e7f7f"
+   }
+   )=====";
+
+   auto var = fc::json::from_string(test_data);
+
+   auto setcode = var.as<contracts::setcode>();
+   BOOST_TEST("setcode.acc" == setcode.account);
+   BOOST_TEST(0 == setcode.vmtype);
+   BOOST_TEST(0 == setcode.vmversion);
+   BOOST_TEST("0061736d0100000001390a60037e7e7f017f60047e7e7f7f017f60017e0060057e7e7e7f7f" == fc::to_hex(setcode.code.data(), setcode.code.size()));
+
+   auto var2 = verify_round_trip_conversion( abis, "setcode", var );
+   auto setcode2 = var2.as<contracts::setcode>();
+   BOOST_TEST(setcode.account == setcode2.account);
+   BOOST_TEST(setcode.vmtype == setcode2.vmtype);
+   BOOST_TEST(setcode.vmversion == setcode2.vmversion);
+   BOOST_TEST(setcode.code == setcode2.code);
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(setabi)
+{ try {
+
+   abi_serializer abis(chain_initializer::eos_contract_abi());
+
+   const char* test_data = R"=====(
+   {
+      "account": "setabi.acc",
+      "abi":  {
+        "types": [{
+            "new_type_name": "account_name",
+            "type": "name"
+          }
+        ],
+        "structs": [{
+            "name": "transfer_base",
+            "base": "",
+            "fields": [{
+               "name": "memo",
+               "type": "string"
+            }]
+          },{
+            "name": "transfer",
+            "base": "transfer_base",
+            "fields": [{
+               "name": "from",
+               "type": "account_name"
+            },{
+               "name": "to",
+               "type": "account_name"
+            },{
+               "name": "amount",
+               "type": "uint64"
+            }]
+          },{
+            "name": "account",
+            "base": "",
+            "fields": [{
+               "name": "account",
+               "type": "name"
+            },{
+               "name": "balance",
+               "type": "uint64"
+            }]
+          }
+        ],
+        "actions": [{
+            "name": "transfer",
+            "type": "transfer"
+          }
+        ],
+        "tables": [{
+            "name": "account",
+            "type": "account",
+            "index_type": "i64",
+            "key_names" : ["account"],
+            "key_types" : ["name"]
+          }
+        ]
+      }
+   }
+   )=====";
+
+   auto var = fc::json::from_string(test_data);
+
+   auto setabi = var.as<contracts::setabi>();
+   BOOST_TEST("setabi.acc" == setabi.account);
+
+   BOOST_TEST_REQUIRE(1 == setabi.abi.types.size());
+
+   BOOST_TEST("account_name" == setabi.abi.types[0].new_type_name);
+   BOOST_TEST("name" == setabi.abi.types[0].type);
+
+   BOOST_TEST_REQUIRE(3 == setabi.abi.structs.size());
+
+   BOOST_TEST("transfer_base" == setabi.abi.structs[0].name);
+   BOOST_TEST("" == setabi.abi.structs[0].base);
+   BOOST_TEST_REQUIRE(1 == setabi.abi.structs[0].fields.size());
+   BOOST_TEST("memo" == setabi.abi.structs[0].fields[0].name);
+   BOOST_TEST("string" == setabi.abi.structs[0].fields[0].type);
+
+   BOOST_TEST("transfer" == setabi.abi.structs[1].name);
+   BOOST_TEST("transfer_base" == setabi.abi.structs[1].base);
+   BOOST_TEST_REQUIRE(3 == setabi.abi.structs[1].fields.size());
+   BOOST_TEST("from" == setabi.abi.structs[1].fields[0].name);
+   BOOST_TEST("account_name" == setabi.abi.structs[1].fields[0].type);
+   BOOST_TEST("to" == setabi.abi.structs[1].fields[1].name);
+   BOOST_TEST("account_name" == setabi.abi.structs[1].fields[1].type);
+   BOOST_TEST("amount" == setabi.abi.structs[1].fields[2].name);
+   BOOST_TEST("uint64" == setabi.abi.structs[1].fields[2].type);
+
+   BOOST_TEST("account" == setabi.abi.structs[2].name);
+   BOOST_TEST("" == setabi.abi.structs[2].base);
+   BOOST_TEST_REQUIRE(2 == setabi.abi.structs[2].fields.size());
+   BOOST_TEST("account" == setabi.abi.structs[2].fields[0].name);
+   BOOST_TEST("name" == setabi.abi.structs[2].fields[0].type);
+   BOOST_TEST("balance" == setabi.abi.structs[2].fields[1].name);
+   BOOST_TEST("uint64" == setabi.abi.structs[2].fields[1].type);
+
+   BOOST_TEST_REQUIRE(1 == setabi.abi.actions.size());
+   BOOST_TEST("transfer" == setabi.abi.actions[0].name);
+   BOOST_TEST("transfer" == setabi.abi.actions[0].type);
+
+   BOOST_TEST_REQUIRE(1 == setabi.abi.tables.size());
+   BOOST_TEST("account" == setabi.abi.tables[0].name);
+   BOOST_TEST("account" == setabi.abi.tables[0].type);
+   BOOST_TEST("i64" == setabi.abi.tables[0].index_type);
+   BOOST_TEST_REQUIRE(1 == setabi.abi.tables[0].key_names.size());
+   BOOST_TEST("account" == setabi.abi.tables[0].key_names[0]);
+   BOOST_TEST_REQUIRE(1 == setabi.abi.tables[0].key_types.size());
+   BOOST_TEST("name" == setabi.abi.tables[0].key_types[0]);
+
+   auto var2 = verify_round_trip_conversion( abis, "setabi", var );
+   auto setabi2 = var2.as<contracts::setabi>();
+
+   BOOST_TEST(setabi.account == setabi2.account);
+
+   BOOST_TEST_REQUIRE(setabi.abi.types.size() == setabi2.abi.types.size());
+
+   BOOST_TEST(setabi.abi.types[0].new_type_name == setabi2.abi.types[0].new_type_name);
+   BOOST_TEST(setabi.abi.types[0].type == setabi2.abi.types[0].type);
+
+   BOOST_TEST_REQUIRE(setabi.abi.structs.size() == setabi2.abi.structs.size());
+
+   BOOST_TEST(setabi.abi.structs[0].name == setabi2.abi.structs[0].name);
+   BOOST_TEST(setabi.abi.structs[0].base == setabi2.abi.structs[0].base);
+   BOOST_TEST_REQUIRE(setabi.abi.structs[0].fields.size() == setabi2.abi.structs[0].fields.size());
+   BOOST_TEST(setabi.abi.structs[0].fields[0].name == setabi2.abi.structs[0].fields[0].name);
+   BOOST_TEST(setabi.abi.structs[0].fields[0].type == setabi2.abi.structs[0].fields[0].type);
+
+   BOOST_TEST(setabi.abi.structs[1].name == setabi2.abi.structs[1].name);
+   BOOST_TEST(setabi.abi.structs[1].base == setabi2.abi.structs[1].base);
+   BOOST_TEST_REQUIRE(setabi.abi.structs[1].fields.size() == setabi2.abi.structs[1].fields.size());
+   BOOST_TEST(setabi.abi.structs[1].fields[0].name == setabi2.abi.structs[1].fields[0].name);
+   BOOST_TEST(setabi.abi.structs[1].fields[0].type == setabi2.abi.structs[1].fields[0].type);
+   BOOST_TEST(setabi.abi.structs[1].fields[1].name == setabi2.abi.structs[1].fields[1].name);
+   BOOST_TEST(setabi.abi.structs[1].fields[1].type == setabi2.abi.structs[1].fields[1].type);
+   BOOST_TEST(setabi.abi.structs[1].fields[2].name == setabi2.abi.structs[1].fields[2].name);
+   BOOST_TEST(setabi.abi.structs[1].fields[2].type == setabi2.abi.structs[1].fields[2].type);
+
+   BOOST_TEST(setabi.abi.structs[2].name == setabi2.abi.structs[2].name);
+   BOOST_TEST(setabi.abi.structs[2].base == setabi2.abi.structs[2].base);
+   BOOST_TEST_REQUIRE(setabi.abi.structs[2].fields.size() == setabi2.abi.structs[2].fields.size());
+   BOOST_TEST(setabi.abi.structs[2].fields[0].name == setabi2.abi.structs[2].fields[0].name);
+   BOOST_TEST(setabi.abi.structs[2].fields[0].type == setabi2.abi.structs[2].fields[0].type);
+   BOOST_TEST(setabi.abi.structs[2].fields[1].name == setabi2.abi.structs[2].fields[1].name);
+   BOOST_TEST(setabi.abi.structs[2].fields[1].type == setabi2.abi.structs[2].fields[1].type);
+
+   BOOST_TEST_REQUIRE(setabi.abi.actions.size() == setabi2.abi.actions.size());
+   BOOST_TEST(setabi.abi.actions[0].name == setabi2.abi.actions[0].name);
+   BOOST_TEST(setabi.abi.actions[0].type == setabi2.abi.actions[0].type);
+
+   BOOST_TEST_REQUIRE(setabi.abi.tables.size() == setabi2.abi.tables.size());
+   BOOST_TEST(setabi.abi.tables[0].name == setabi2.abi.tables[0].name);
+   BOOST_TEST(setabi.abi.tables[0].type == setabi2.abi.tables[0].type);
+   BOOST_TEST(setabi.abi.tables[0].index_type == setabi2.abi.tables[0].index_type);
+   BOOST_TEST_REQUIRE(setabi.abi.tables[0].key_names.size() == setabi2.abi.tables[0].key_names.size());
+   BOOST_TEST(setabi.abi.tables[0].key_names[0] == setabi2.abi.tables[0].key_names[0]);
+   BOOST_TEST_REQUIRE(setabi.abi.tables[0].key_types.size() == setabi2.abi.tables[0].key_types.size());
+   BOOST_TEST(setabi.abi.tables[0].key_types[0] == setabi2.abi.tables[0].key_types[0]);
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(postrecovery)
+{ try {
+
+   abi_serializer abis(chain_initializer::eos_contract_abi());
+
+   const char* test_data = R"=====(
+   {
+     "account" : "postrec.acc",
+     "data": {
+        "threshold" : "2147483145",
+        "keys" : [ {"key" : "EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im", "weight" : 57005} ],
+        "accounts" : [ {"permission" : {"actor" : "postrec.acc", "permission" : "prm.prm1"}, "weight" : 57005 } ]
+     }
+     "memo": "postrec.memo"
+   }
+   )=====";
+
+   auto var = fc::json::from_string(test_data);
+
+   auto postrecovery = var.as<contracts::postrecovery>();
+   BOOST_TEST("postrec.acc" == postrecovery.account);
+   BOOST_TEST(2147483145u == postrecovery.data.threshold);
+
+   BOOST_TEST_REQUIRE(1 == postrecovery.data.keys.size());
+   BOOST_TEST("EOS65rXebLhtk2aTTzP4e9x1AQZs7c5NNXJp89W8R3HyaA6Zyd4im" == (std::string)postrecovery.data.keys[0].key);
+   BOOST_TEST(57005u == postrecovery.data.keys[0].weight);
+
+   BOOST_TEST_REQUIRE(1 == postrecovery.data.accounts.size());
+   BOOST_TEST("postrec.acc" == postrecovery.data.accounts[0].permission.actor);
+   BOOST_TEST("prm.prm1" == postrecovery.data.accounts[0].permission.permission);
+   BOOST_TEST(57005u == postrecovery.data.accounts[0].weight);
+   BOOST_TEST("postrec.memo" == postrecovery.memo);
+
+   auto var2 = verify_round_trip_conversion( abis, "postrecovery", var );
+   auto postrecovery2 = var2.as<contracts::postrecovery>();
+   BOOST_TEST(postrecovery.account == postrecovery2.account);
+   BOOST_TEST(postrecovery.data.threshold == postrecovery2.data.threshold);
+
+   BOOST_TEST_REQUIRE(postrecovery.data.keys.size() == postrecovery2.data.keys.size());
+   BOOST_TEST(postrecovery.data.keys[0].key == postrecovery2.data.keys[0].key);
+   BOOST_TEST(postrecovery.data.keys[0].weight == postrecovery2.data.keys[0].weight);
+
+   BOOST_TEST_REQUIRE(postrecovery.data.accounts.size() == postrecovery2.data.accounts.size());
+   BOOST_TEST(postrecovery.data.accounts[0].permission.actor == postrecovery2.data.accounts[0].permission.actor);
+   BOOST_TEST(postrecovery.data.accounts[0].permission.permission == postrecovery2.data.accounts[0].permission.permission);
+   BOOST_TEST(postrecovery.data.accounts[0].weight == postrecovery2.data.accounts[0].weight);
+   BOOST_TEST(postrecovery.memo == postrecovery2.memo);
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(passrecovery)
+{ try {
+
+   abi_serializer abis(chain_initializer::eos_contract_abi());
+
+   const char* test_data = R"=====(
+   {
+     "account" : "passrec.acc"
+   }
+   )=====";
+
+   auto var = fc::json::from_string(test_data);
+
+   auto passrecovery = var.as<contracts::passrecovery>();
+   BOOST_TEST("passrec.acc" == passrecovery.account);
+
+   auto var2 = verify_round_trip_conversion( abis, "passrecovery", var );
+   auto passrecovery2 = var2.as<contracts::passrecovery>();
+   BOOST_TEST(passrecovery.account == passrecovery2.account);
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(vetorecovery)
+{ try {
+
+   abi_serializer abis(chain_initializer::eos_contract_abi());
+
+   const char* test_data = R"=====(
+   {
+     "account" : "vetorec.acc"
+   }
+   )=====";
+
+   auto var = fc::json::from_string(test_data);
+
+   auto vetorecovery = var.as<contracts::vetorecovery>();
+   BOOST_TEST("vetorec.acc" == vetorecovery.account);
+
+   auto var2 = verify_round_trip_conversion( abis, "vetorecovery", var );
+   auto vetorecovery2 = var2.as<contracts::vetorecovery>();
+   BOOST_TEST(vetorecovery.account == vetorecovery2.account);
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(nonce)
+{ try {
+
+   abi_serializer abis(chain_initializer::eos_contract_abi());
+
+   const char* test_data = R"=====(
+   {
+     "value" : "nonce.value"
+   }
+   )=====";
+
+   auto var = fc::json::from_string(test_data);
+
+   auto nonce = var.as<contracts::nonce>();
+   BOOST_TEST("nonce.value" == nonce.value);
+
+   auto var2 = verify_round_trip_conversion( abis, "nonce", var );
+   auto nonce2 = var2.as<contracts::nonce>();
+   BOOST_TEST(nonce.value == nonce2.value);
+
+} FC_LOG_AND_RETHROW() }
+
+
+BOOST_AUTO_TEST_CASE(abi_type_repeat)
 { try {
 
    const char* repeat_abi = R"=====(
@@ -1741,27 +2455,35 @@ BOOST_FIXTURE_TEST_CASE(abi_type_repeat, testing_fixture)
      "structs": [{
          "name": "transfer",
          "base": "",
-         "fields": {
-           "from": "account_name",
-           "to": "account_name",
-           "amount": "uint64"
-         }
+         "fields": [{
+            "name": "from",
+            "type": "account_name"
+         },{
+            "name": "to",
+            "type": "account_name"
+         },{
+            "name": "amount",
+            "type": "uint64"
+         }]
        },{
          "name": "account",
          "base": "",
-         "fields": {
-           "account": "name",
-           "balance": "uint64"
-         }
+         "fields": [{
+            "name": "account",
+            "type": "name"
+         },{
+            "name": "balance",
+            "type": "uint64"
+         }]
        }
      ],
      "actions": [{
-         "action_name": "transfer",
+         "name": "transfer",
          "type": "transfer"
        }
      ],
      "tables": [{
-         "table_name": "account",
+         "name": "account",
          "type": "account",
          "index_type": "i64",
          "key_names" : ["account"],
@@ -1771,12 +2493,12 @@ BOOST_FIXTURE_TEST_CASE(abi_type_repeat, testing_fixture)
    }
    )=====";
 
-   auto abi = fc::json::from_string(repeat_abi).as<types::abi>();
+   auto abi = fc::json::from_string(repeat_abi).as<abi_def>();
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("types.size") != std::string::npos; };
    BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(abi_struct_repeat, testing_fixture)
+BOOST_AUTO_TEST_CASE(abi_struct_repeat)
 { try {
 
    const char* repeat_abi = R"=====(
@@ -1789,27 +2511,35 @@ BOOST_FIXTURE_TEST_CASE(abi_struct_repeat, testing_fixture)
      "structs": [{
          "name": "transfer",
          "base": "",
-         "fields": {
-           "from": "account_name",
-           "to": "account_name",
-           "amount": "uint64"
-         }
+         "fields": [{
+            "name": "from",
+            "type": "account_name"
+         },{
+            "name": "to",
+            "type": "account_name"
+         },{
+            "name": "amount",
+            "type": "uint64"
+         }]
        },{
          "name": "transfer",
          "base": "",
-         "fields": {
-           "account": "name",
-           "balance": "uint64"
-         }
+         "fields": [{
+            "name": "account",
+            "type": "name"
+         },{
+            "name": "balance",
+            "type": "uint64"
+         }]
        }
      ],
      "actions": [{
-         "action_name": "transfer",
+         "name": "transfer",
          "type": "transfer"
        }
      ],
      "tables": [{
-         "table_name": "account",
+         "name": "account",
          "type": "account",
          "index_type": "i64",
          "key_names" : ["account"],
@@ -1819,12 +2549,12 @@ BOOST_FIXTURE_TEST_CASE(abi_struct_repeat, testing_fixture)
    }
    )=====";
 
-   auto abi = fc::json::from_string(repeat_abi).as<types::abi>();
+   auto abi = fc::json::from_string(repeat_abi).as<abi_def>();
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("structs.size") != std::string::npos; };
    BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(abi_action_repeat, testing_fixture)
+BOOST_AUTO_TEST_CASE(abi_action_repeat)
 { try {
 
    const char* repeat_abi = R"=====(
@@ -1837,30 +2567,38 @@ BOOST_FIXTURE_TEST_CASE(abi_action_repeat, testing_fixture)
      "structs": [{
          "name": "transfer",
          "base": "",
-         "fields": {
-           "from": "account_name",
-           "to": "account_name",
-           "amount": "uint64"
-         }
+         "fields": [{
+            "name": "from",
+            "type": "account_name"
+         },{
+            "name": "to",
+            "type": "account_name"
+         },{
+            "name": "amount",
+            "type": "uint64"
+         }]
        },{
          "name": "account",
          "base": "",
-         "fields": {
-           "account": "name",
-           "balance": "uint64"
-         }
+         "fields": [{
+            "name": "account",
+            "type": "name"
+         },{
+            "name": "balance",
+            "type": "uint64"
+         }]
        }
      ],
      "actions": [{
-         "action_name": "transfer",
+         "name": "transfer",
          "type": "transfer"
        },{
-         "action_name": "transfer",
+         "name": "transfer",
          "type": "transfer"
        }
      ],
      "tables": [{
-         "table_name": "account",
+         "name": "account",
          "type": "account",
          "index_type": "i64",
          "key_names" : ["account"],
@@ -1870,12 +2608,12 @@ BOOST_FIXTURE_TEST_CASE(abi_action_repeat, testing_fixture)
    }
    )=====";
 
-   auto abi = fc::json::from_string(repeat_abi).as<types::abi>();
+   auto abi = fc::json::from_string(repeat_abi).as<abi_def>();
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("actions.size") != std::string::npos; };
    BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(abi_table_repeat, testing_fixture)
+BOOST_AUTO_TEST_CASE(abi_table_repeat)
 { try {
 
    const char* repeat_abi = R"=====(
@@ -1888,33 +2626,41 @@ BOOST_FIXTURE_TEST_CASE(abi_table_repeat, testing_fixture)
      "structs": [{
          "name": "transfer",
          "base": "",
-         "fields": {
-           "from": "account_name",
-           "to": "account_name",
-           "amount": "uint64"
-         }
+         "fields": [{
+            "name": "from",
+            "type": "account_name"
+         },{
+            "name": "to",
+            "type": "account_name"
+         },{
+            "name": "amount",
+            "type": "uint64"
+         }]
        },{
          "name": "account",
          "base": "",
-         "fields": {
-           "account": "name",
-           "balance": "uint64"
-         }
+         "fields": [{
+            "name": "account",
+            "type": "name"
+         },{
+            "name": "balance",
+            "type": "uint64"
+         }]
        }
      ],
      "actions": [{
-         "action_name": "transfer",
+         "name": "transfer",
          "type": "transfer"
        }
      ],
      "tables": [{
-         "table_name": "account",
+         "name": "account",
          "type": "account",
          "index_type": "i64",
          "key_names" : ["account"],
          "key_types" : ["name"]
        },{
-         "table_name": "account",
+         "name": "account",
          "type": "account",
          "index_type": "i64",
          "key_names" : ["account"],
@@ -1924,7 +2670,7 @@ BOOST_FIXTURE_TEST_CASE(abi_table_repeat, testing_fixture)
    }
    )=====";
 
-   auto abi = fc::json::from_string(repeat_abi).as<types::abi>();
+   auto abi = fc::json::from_string(repeat_abi).as<abi_def>();
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("tables.size") != std::string::npos; };
    BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
