@@ -20,6 +20,5 @@ var searchData=
   ['require_5frecipient',['require_recipient',['../group__actioncapi.html#gae232893c733f02b94dbb70fae39d19f7',1,'require_recipient():&#160;action.h'],['../group__actioncppapi.html#ga8d2d8ca22e484fab7dbfe99cc8564e04',1,'eosio::require_recipient()']]],
   ['require_5fwrite_5flock',['require_write_lock',['../group__actioncapi.html#ga9893f539cf6d56989eb6e0d4ce51a813',1,'action.h']]],
   ['reserve',['reserve',['../classeosio_1_1vector.html#affd755e65937766d1d77e6c820efa69d',1,'eosio::vector']]],
-  ['reset_5fgame',['reset_game',['../structtic__tac__toe_1_1game.html#a9a68ac4f22a8862caa07f4ab2e83c295',1,'tic_tac_toe::game']]],
   ['resize',['resize',['../classeosio_1_1string.html#a8d395e277ce5848b5a642b0d40babe9b',1,'eosio::string::resize()'],['../classeosio_1_1vector.html#a3028d9696b8e9e043d48c1985b5a228a',1,'eosio::vector::resize()']]]
 ];

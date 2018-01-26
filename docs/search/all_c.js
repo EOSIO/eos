@@ -21,8 +21,6 @@ var searchData=
   ['memory_20c_20api',['Memory C API',['../group__memorycapi.html',1,'']]],
   ['memory_20c_2b_2b_20api',['Memory C++ API',['../group__memorycppapi.html',1,'']]],
   ['memset',['memset',['../group__memorycapi.html#gad8eef9133e11fe77cd34792771f81761',1,'memory.h']]],
-  ['message',['message',['../structasserter_1_1assertdef.html#a2d8e1bc1efae946fc1e1d4874f8a6cf1',1,'asserter::assertdef']]],
-  ['message_5flength',['message_length',['../structasserter_1_1assertdef.html#a9fe38179503231e33d1cb743dac748e9',1,'asserter::assertdef']]],
   ['meta',['meta',['../structeosio_1_1generic__currency_1_1issue.html#ae02349b4ae5d6ef313d0155b264458d7',1,'eosio::generic_currency::issue']]],
   ['min',['min',['../group__mathcppapi.html#gac459e1d6c24d9178441fed9163accc79',1,'eosio']]],
   ['min_2ehpp',['min.hpp',['../min_8hpp.html',1,'(Global Namespace)'],['../selection_2min_8hpp.html',1,'(Global Namespace)']]],

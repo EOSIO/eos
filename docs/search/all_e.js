@@ -1,13 +1,10 @@
 var searchData=
 [
-  ['offer',['offer',['../structdice_1_1offer.html',1,'dice']]],
   ['offer_5fbet',['offer_bet',['../structdice_1_1offer__bet.html',1,'dice']]],
   ['offer_5fprimary_5fkey',['offer_primary_key',['../structdice_1_1offer__primary__key.html',1,'dice']]],
   ['offers',['offers',['../namespacedice.html#a34385e2eead0de37a8d80374ce2532cd',1,'dice']]],
   ['on',['on',['../classbancor_1_1converter__contract.html#a9042eadac31dfc5a4133cfbecaefb66e',1,'bancor::converter_contract::on(const typename converter_currency::transfer_memo &amp;trans)'],['../classbancor_1_1converter__contract.html#a05d78a86731dfec1c38f8997d3392f79',1,'bancor::converter_contract::on(const typename Currency::transfer_memo &amp;trans)'],['../classeosio_1_1generic__currency.html#a9bddd3a5b34e52d8f127973bfc90768d',1,'eosio::generic_currency::on(const issue &amp;act)'],['../classeosio_1_1generic__currency.html#a103e4501e8dc86fc3048ba5f04aa7892',1,'eosio::generic_currency::on(const transfer &amp;act)'],['../namespaceeosiosystem.html#a8a502c589b78b453338d6b2c5b4f405d',1,'eosiosystem::on(const eosiosystem::transfer &amp;act)'],['../namespaceeosiosystem.html#aa212f913d019104df46d66e024f6a449',1,'eosiosystem::on(const eosiosystem::stakevote &amp;act)']]],
   ['on_5fconvert',['on_convert',['../classbancor_1_1converter__contract.html#a606723604418ba5f0432493ba2ffd818',1,'bancor::converter_contract::on_convert(const typename converter_currency::transfer &amp;trans, const converter_args &amp;args, converter_state &amp;state)'],['../classbancor_1_1converter__contract.html#af868857d116887b596094fec4a4cb1e3',1,'bancor::converter_contract::on_convert(const typename ConnectorType::currency_type::transfer &amp;trans, const converter_args &amp;args, converter_state &amp;state)']]],
-  ['open_5foffers',['open_offers',['../structdice_1_1account.html#aff85abfa26f5d464fb84983ec6f62cfa',1,'dice::account']]],
-  ['open_5forders',['open_orders',['../structexchange_1_1account.html#a765957760889dff2be565626fefc14a2',1,'exchange::account']]],
   ['operator_20asset',['operator asset',['../structeosio_1_1token.html#a956b92cdc5c80fc527fa57eeeaebabdf',1,'eosio::token']]],
   ['operator_20bool',['operator bool',['../structeosio_1_1token.html#a543f3b1ed39e748f9e940b978d5721d4',1,'eosio::token']]],
   ['operator_20int32_5ft',['operator int32_t',['../structsigned__int.html#afe5db7c1297bb56cc454fe413959c07c',1,'signed_int']]],
@@ -38,5 +35,5 @@ var searchData=
   ['order_5fid',['order_id',['../structexchange_1_1order__id.html',1,'exchange']]],
   ['other_5fcurrency',['other_currency',['../namespacebancor.html#a9f9b21ac6bd6f6257a96dc058106341d',1,'bancor']]],
   ['overload_2ehpp',['overload.hpp',['../overload_8hpp.html',1,'']]],
-  ['owner',['owner',['../structdice_1_1offer__primary__key.html#ad060fb372bea546f038f1a14b11b9d82',1,'dice::offer_primary_key::owner()'],['../structdice_1_1account.html#a1c70512308ee179de15f38753650fdfe',1,'dice::account::owner()'],['../structexchange_1_1account.html#abec031d9e79fa34604f78181bfc65888',1,'exchange::account::owner()'],['../structproxy_1_1set__owner.html#a22b1abfee4f3a3a585619445edd054e0',1,'proxy::set_owner::owner()'],['../structproxy_1_1config.html#a23e1f5c9482d7508502f321b9539a2c3',1,'proxy::config::owner()'],['../group__storageapi.html#gae575e042fe703690579af727398fe0b5',1,'TOKEN_NAME::link::owner()']]]
+  ['owner',['owner',['../structdice_1_1offer__primary__key.html#ad060fb372bea546f038f1a14b11b9d82',1,'dice::offer_primary_key::owner()'],['../structproxy_1_1config.html#a23e1f5c9482d7508502f321b9539a2c3',1,'proxy::config::owner()']]]
 ];

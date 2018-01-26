@@ -13,8 +13,6 @@ var searchData=
   ['converter_2ehpp',['converter.hpp',['../converter_8hpp.html',1,'']]],
   ['counter_2ehpp',['counter.hpp',['../counter_8hpp.html',1,'(Global Namespace)'],['../detail_2counter_8hpp.html',1,'(Global Namespace)']]],
   ['crypto_2eh',['crypto.h',['../crypto_8h.html',1,'']]],
-  ['currency_2eabi_2ehpp',['currency.abi.hpp',['../currency_8abi_8hpp.html',1,'']]],
   ['currency_2ecpp',['currency.cpp',['../currency_8cpp.html',1,'']]],
-  ['currency_2ehpp',['currency.hpp',['../currency_8hpp.html',1,'']]],
-  ['currency_2ewast_2ehpp',['currency.wast.hpp',['../currency_8wast_8hpp.html',1,'']]]
+  ['currency_2ehpp',['currency.hpp',['../currency_8hpp.html',1,'']]]
 ];

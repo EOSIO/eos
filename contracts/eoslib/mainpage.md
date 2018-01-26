@@ -13,9 +13,7 @@ Welcome to the EOS.IO Documentation
  - [Wiki](https://github.com/EOSIO/eos/wiki/)
 
 ## Environment Setup
-- Automatic Build Scripts
- 	- [Ubuntu 16.10](https://github.com/EOSIO/eos#autoubuntu)
-	- [macOS Sierra 10.12.6](https://github.com/EOSIO/eos#automac)
+- [Automatic Build Scripts](https://github.com/EOSIO/eos#automated-build-script)
 - [Manual Installation of Dependencies](https://github.com/EOSIO/eos#manualdep)
 	- [Clean Install Ubuntu 16.10](https://github.com/EOSIO/eos#ubuntu)
 	- [Clean Install macOS Sierra 10.12.6](https://github.com/EOSIO/eos#macos)
@@ -28,7 +26,8 @@ Welcome to the EOS.IO Documentation
 	- @ref chainapi - Define API for querying internal chain state
 	- @ref database - APIs that store and retreive data on the blockchainEOS.IO organizes data according to the following broad structure
 	- @ref mathapi - Defines common math function
-	- @ref messageapi - Define API for querying message properties
+	- @ref actionapi - Defines API for querying action properties
+	- @ref memoryapi - Defines common memory functions
 	- @ref consoleapi - Enables applications to log/print text messages
 	- @ref systemapi - 	Define API for interating with system level intrinsics
 	- @ref tokens - Defines the ABI for interfacing with standard-compatible token messages and database tables

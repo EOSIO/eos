@@ -7,7 +7,7 @@
 
 extern "C" {
    /**
-    * @defgroup actionapi action API
+    * @defgroup actionapi Action API
     * @ingroup contractdev
     * @brief Define API for querying action properties
     *

@@ -1,7 +1,6 @@
 var searchData=
 [
-  ['game',['game',['../structtic__tac__toe_1_1game.html',1,'tic_tac_toe::game'],['../structdice_1_1game.html',1,'dice::game'],['../structtic__tac__toe_1_1game.html#aafe53ebe5ef0e55cf4a70799644229e0',1,'tic_tac_toe::game::game()'],['../structtic__tac__toe_1_1game.html#abbe7bb4d600ca653e8d49c72ce653277',1,'tic_tac_toe::game::game(account_name challenger, account_name host)']]],
-  ['gameid',['gameid',['../structdice_1_1claim__expired.html#abb0ae435213c7e74f388634e61aae159',1,'dice::claim_expired::gameid()'],['../structdice_1_1offer.html#a2c0dccc35fbfb2d46ca606772a0db73e',1,'dice::offer::gameid()'],['../structdice_1_1game.html#a7ef1bb7b2c24d8df5abe2ec0305de056',1,'dice::game::gameid()']]],
+  ['gameid',['gameid',['../structdice_1_1claim__expired.html#abb0ae435213c7e74f388634e61aae159',1,'dice::claim_expired']]],
   ['games',['Games',['../namespacetic__tac__toe.html#a3455767150132ad7ccdfe8c0e5a71989',1,'tic_tac_toe']]],
   ['generic_5fcurrency',['generic_currency',['../classeosio_1_1generic__currency.html',1,'eosio']]],
   ['generic_5fcurrency_2ehpp',['generic_currency.hpp',['../generic__currency_8hpp.html',1,'']]],
