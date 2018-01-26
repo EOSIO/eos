@@ -4,7 +4,6 @@
  */
 #pragma once
 #include <eos/chain/block.hpp>
-#include <eos/net_plugin/protocol.hpp>
 #include <chrono>
 
 namespace eosio {
