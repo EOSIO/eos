@@ -6,6 +6,7 @@
 #include <eoslib/system.h>
 #include <eoslib/memory.h>
 
+
 namespace eosio {
 /**
  *  @brief A data stream for reading and writing data in the form of bytes
@@ -381,3 +382,6 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint8_t& d) {
 }
 
 }
+
+
+

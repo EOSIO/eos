@@ -4,6 +4,7 @@
 #include <eoslib/token.hpp>
 #include <eoslib/asset.hpp>
 #include <eoslib/dispatcher.hpp>
+#include <eoslib/serialize.hpp>
 
 namespace eosio {
 
@@ -16,30 +17,21 @@ namespace eosio {
           static const uint64_t accounts_table_name = N(account);
           static const uint64_t stats_table_name    = N(stat);
 
-          struct issue : action_meta<code,N(issue)> {
+          ACTION( code, issue ) {
              typedef action_meta<code,N(issue)> meta;
              account_name to;
              asset        quantity;
 
-             template<typename DataStream>
-             friend DataStream& operator << ( DataStream& ds, const issue& t ){
-                return ds << t.to << t.quantity;
-             }
-             template<typename DataStream>
-             friend DataStream& operator >> ( DataStream& ds, issue& t ){
-                return ds >> t.to >> t.quantity;
-             }
+             EOSLIB_SERIALIZE( issue, (to)(quantity) )
           };
 
-          struct transfer : action_meta<code,N(transfer)> {
+          ACTION( code, transfer ) {
              transfer(){}
              transfer( account_name f, account_name t, token_type q ):from(f),to(t),quantity(q){}
 
              account_name from;
              account_name to;
              asset        quantity;
-
-             //EOSLIB_SERIALIZE( transfer, (from)(to)(quantity)(symbol) )
 
              template<typename DataStream>
              friend DataStream& operator << ( DataStream& ds, const transfer& t ){
@@ -60,44 +52,21 @@ namespace eosio {
 
              string       memo;
 
-             template<typename DataStream>
-             friend DataStream& operator << ( DataStream& ds, const transfer_memo& t ){
-                ds << static_cast<const transfer&>(t);
-                return ds << t.memo;
-             }
-             template<typename DataStream>
-             friend DataStream& operator >> ( DataStream& ds, transfer_memo& t ){
-                ds >> static_cast<transfer&>(t);
-                return ds >> t.memo;
-             }
+             EOSLIB_SERIALIZE_DERIVED( transfer_memo, transfer, (memo) )
           };
 
           struct account {
              uint64_t   symbol = token_type::symbol;
              token_type balance;
 
-             template<typename DataStream>
-             friend DataStream& operator << ( DataStream& ds, const account& t ){
-                return ds << t.symbol << t.balance;
-             }
-             template<typename DataStream>
-             friend DataStream& operator >> ( DataStream& ds, account& t ){
-                return ds >> t.symbol >> t.balance;
-             }
+             EOSLIB_SERIALIZE( account, (symbol)(balance) )
           };
 
           struct currency_stats {
              uint64_t   symbol = token_type::symbol;
              token_type supply;
 
-             template<typename DataStream>
-             friend DataStream& operator << ( DataStream& ds, const currency_stats& t ){
-                return ds << t.symbol << t.supply;
-             }
-             template<typename DataStream>
-             friend DataStream& operator >> ( DataStream& ds, currency_stats& t ){
-                return ds >> t.symbol >> t.supply;
-             }
+             EOSLIB_SERIALIZE( currency_stats, (symbol)(supply) )
           };
 
           /**

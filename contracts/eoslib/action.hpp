@@ -165,3 +165,6 @@ namespace eosio {
 
 EOSLIB_REFLECT( eosio::permission_level, (actor)(permission) )
 EOSLIB_REFLECT( eosio::action, (account)(name)(authorization)(data) )
+
+
+#define ACTION( CODE, NAME ) struct NAME : action_meta<CODE, ::eosio::string_to_name(#NAME) >
