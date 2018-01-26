@@ -165,7 +165,6 @@ $ curl  http://127.0.0.1:8888/v1/chain/get_code -X POST -d '{"account_name":"cur
   "code_hash":"a1c8c84b4700c09c8edb83522237439e33cf011a4d7ace51075998bd002e04c9",
   "wast":"(module\n  (type $0 (func (param i64 i64 i32) (result i32)))\n ...truncated",
   "abi": {
-<<<<<<< HEAD
   "types": [{
       "new_type_name": "account_name",
       "type": "name"
@@ -407,7 +406,7 @@ Lock all wallets
 
 @subsubsection examplewalletlockall Example wallet_lock_all Usage
 ```
-$ curl http://localhost:8889/v1/wallet/lock_all 
+$ curl http://localhost:8889/v1/wallet/lock_all
 ```
 
 @subsubsection examplewalletlockallresult  Example wallet_lock_all Result
@@ -477,7 +476,7 @@ List all public keys across all wallets
 
 @subsubsection examplewalletgetpublickeys Example wallet_get_public_keys Usage
 ```
-$ curl http://localhost:8889/v1/wallet/get_public_keys 
+$ curl http://localhost:8889/v1/wallet/get_public_keys
 ```
 
 @subsubsection examplewallegetpublickeysresult  Example wallet_get_public_keys Result
