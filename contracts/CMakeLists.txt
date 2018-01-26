@@ -9,6 +9,8 @@ add_subdirectory(test_api)
 #add_subdirectory(simpledb)
 #add_subdirectory(storage)
 #add_subdirectory(social)
+add_subdirectory(dice)
 
 install( DIRECTORY eoslib DESTINATION include/ )
+install( DIRECTORY eosio.system DESTINATION include/ )
 install( DIRECTORY skeleton DESTINATION share/ )

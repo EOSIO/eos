@@ -64,7 +64,7 @@ namespace eosio {
       public:
       
          enum optimization {
-            OPT_SINGLE_FIELD_STRUCT
+            OPT_SINGLE_FIELD_STRUCT = 0x001
          };
    
          abi_generator()
@@ -116,6 +116,11 @@ namespace eosio {
           * @param tag_decl declaration to handle
           */
          void handle_tagdecl_definition(TagDecl* tag_decl);
+         
+         /**
+         * @brief Remove structs with only one field (and no base) from ABI.
+         */
+         void simplify_single_field_structs();
 
       private:
 
@@ -180,6 +185,13 @@ namespace eosio {
       void HandleTagDeclDefinition(TagDecl* tag_decl) override {
          abi_gen.handle_tagdecl_definition(tag_decl);
       }
+
+      void  HandleTranslationUnit (ASTContext& astctx) override {
+         if( abi_gen.is_opt_enabled(abi_generator::OPT_SINGLE_FIELD_STRUCT) ) {
+            abi_gen.simplify_single_field_structs();
+         }
+      }
+
    };
    
    class generate_abi_action : public ASTFrontendAction {
@@ -193,8 +205,9 @@ namespace eosio {
             abi_gen.set_verbose(verbose);
             abi_gen.set_abi_context(abi_context);
 
-            if(opt_sfs)
+            if(opt_sfs) {
                abi_gen.enable_optimizaton(abi_generator::OPT_SINGLE_FIELD_STRUCT);
+            }
          }
 
       protected:

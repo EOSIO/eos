@@ -7,6 +7,7 @@
 #include <eoslib/token.hpp>
 #include <eoslib/db.hpp>
 #include <eoslib/reflect.hpp>
+#include <eoslib/string.hpp>
 
 namespace eosiosystem {
 
@@ -19,7 +20,7 @@ namespace eosiosystem {
    /**
    * We create the native EOSIO token type
    */
-   typedef eosio::token<uint64_t,N(eosio)> native_tokens;
+   typedef eosio::token<N(eosio), S(4,EOS), uint64_t> native_tokens;
    const account_name system_code   = N(eosio.system);
    const table_name   account_table = N(account);
 
@@ -44,7 +45,7 @@ namespace eosiosystem {
    };
 
    struct transfer_memo : public transfer {
-      string memo;
+      eosio::string memo;
    };
 
 
