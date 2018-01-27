@@ -1,0 +1,152 @@
+# Note: you need to configure your eosroot according to your folder structure
+eosroot='/Users/'$USER'/projects/eos'
+# Note : you need to update your testnet key file path
+testnet_key_file=$eosroot/testnet_key.uu
+
+# Note:  update testnets as and when there are changes in IP and port
+testnets=(10.160.11.221 10.160.12.222 10.160.13.223 10.160.11.224 10.160.12.225 10.160.13.226 10.160.11.227 10.160.12.228 10.160.13.229 10.160.11.230 10.160.12.231 10.160.13.232 10.160.11.233 10.160.12.234 10.160.13.235 10.160.11.236 10.160.12.237 10.160.13.238 10.160.11.239 10.160.12.240 10.160.13.241)
+testnet_port=8888
+
+
+alias ll='ls -lG'
+alias build='cd $eosroot;./build.sh darwin build'
+alias builddir='cd $eosroot/build'
+alias eosc='$eosroot/build/programs/eosc/eosc'
+alias eosd='cd $eosroot/build/programs/eosd; ./eosd'
+alias remote_eosc='$eosroot/build/programs/eosc/eosc --host=${testnets[0]} --port=8888'
+
+unlock_wallet()
+{
+  password=`cat $eosroot/wallet.password`
+  eosc wallet open && eosc wallet unlock --password $password
+}
+
+
+connect_testnet()
+{
+  local testnet_host=${testnets[$1]}
+  ssh -i $testnet_key_file -o ConnectTimeout=5 testnet@$testnet_host
+}
+
+set_contract()
+{
+  local testnet_host=
+  eosc set contract $1 $eosroot/build/contracts/$1/$1.wast $eosroot/build/contracts/$1/$1.abi
+}
+
+create_account()
+{
+  eosc create key > /tmp/key1
+  eosc create key > /tmp/key2
+  prkey1=$(grep "Private key: " /tmp/key1 |cut -d ":" -f2)
+  prkey2=$(grep "Private key: " /tmp/key2 |cut -d ":" -f2)
+  pukey1=$(grep "Public key: " /tmp/key1 |cut -d ":" -f2)
+  pukey2=$(grep "Public key: " /tmp/key2 |cut -d ":" -f2)
+  eosc create account inita $1 $pukey1 $pukey2
+  eosc get account $1
+  eosc wallet import $prkey1
+  eosc wallet import $prkey2
+}
+
+check_testnets()
+{
+  for item in ${testnets[*]}
+  do
+    check_testnet $item
+  done
+}
+check_testnet()
+{
+  echo checking the testnet $1
+  (ssh -oStrictHostKeyChecking=no -o BatchMode=yes -i $testnet_key_file -o ConnectTimeout=5 testnet@$1 echo ok)
+}
+
+check_participation()
+{
+   participation=$(eosc --host $1 --port $testnet_port get info |grep participation_rate|cut -d ":" -f2|tr -d '"')
+   verifyErrorCode "$1 eosd participation"
+   echo "  participation rate " $participation
+}
+
+check_p2p()
+{
+   primary_testnet_host=${testnets[0]} 
+   msg="transfer 10k inita->initb" 
+   echo $msg from $primary_testnet_host
+   eosc --host ${testnets[0]} --port $testnet_port transfer inita initb 10000 "$msg" -f > /tmp/null
+   verifyErrorCode $msg
+   echo "transfer completed"
+
+   expected_inita_bal=0
+   expected_initb_bal=0
+   passed=0
+   failed=0
+   for curr_testnet_host in ${testnets[*]}
+   do
+     echo $curr_testnet_host
+     check_participation $curr_testnet_host
+     inita_bal=$(eosc --host $curr_testnet_host --port $testnet_port get account inita | grep eos_balance | cut -d ":" -f2|cut -d " " -f2 | tr -d '"')
+     verifyErrorCode "inita balance"
+     initb_bal=$(eosc --host $curr_testnet_host --port $testnet_port get account initb | grep eos_balance | cut -d ":" -f2|cut -d " " -f2 | tr -d '"')
+     verifyErrorCode "initb balance"
+     echo "  inita balance " $inita_bal
+     echo "  initb balance " $initb_bal
+
+     
+     if [ "$primary_testnet_host" == "$curr_testnet_host" ]
+     then 
+       expected_inita_bal=$inita_bal
+       expected_initb_bal=$initb_bal
+     else
+       if [ "$expected_inita_bal" == "$inita_bal" ] && [ "$expected_initb_bal" == "$initb_bal" ] 
+       then
+          echo "Pass"
+          passed=$(expr $passed + 1)
+       else
+          echo "Fail"
+          failed=$(expr $failed + 1)
+       fi
+     fi
+
+     
+     sleep 15
+   done  
+   echo "Passed=" $passed ", Failed=" $failed
+}
+
+check_ratelimit()
+{
+  txn_count=$1
+  for i in `seq 1 $txn_count`;
+  do
+    remote_eosc transfer inita initb 10 "transfer $i" -f
+  done
+
+}
+
+verifyErrorCode()
+{
+  rc=$?
+  if [[ $rc != 0 ]]; then
+    error "FAILURE - $1 returned error code $rc"
+  fi
+}
+
+restart_testnet()
+{
+   primary_testnet_host=${testnets[0]}
+   timestamp=`date '+%Y-%m-%d %H:%M:%S'`
+   index=0 
+   for curr_testnet_host in ${testnets[*]}
+   do
+     strIndex=$(printf %02d $index)
+     echo "Killing eosd instance at " $curr_testnet_host ", at index " $strIndex
+     echo "Logs will be backed up to " "/home/testnet/STAT/build/tn_data_$strIndex/stderr.txt.$timestamp"
+     (ssh -oStrictHostKeyChecking=no -o BatchMode=yes -i $testnet_key_file -o ConnectTimeout=5 testnet@$curr_testnet_host "pkill -9 eosd; cp -rf /home/testnet/STAT/build/tn_data_$strIndex/stderr.txt '/home/testnet/STAT/build/tn_data_$strIndex/stderr.txt.$timestamp'")
+     index=$(expr $index + 1)
+   done
+   echo "Starting the launcher..." "cd /home/testnet/STAT/build;  programs/launcher/launcher -s /home/testnet/22star.json --host-map /home/testnet/22star_hosts.json"
+   (ssh -oStrictHostKeyChecking=no -o BatchMode=yes -i $testnet_key_file -o ConnectTimeout=5 testnet@$primary_testnet_host "cd /home/testnet/STAT/build;  programs/launcher/launcher -s /home/testnet/22star.json --host-map /home/testnet/22star_hosts.json")
+}
+
+
