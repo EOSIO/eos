@@ -84,8 +84,9 @@ deploy:
   provider: releases
   api_key:
     secure: t3z8TNgeAUcLs/Ci4vHsUEIxjqapXiZXlIpEL12c19XiIQoBJ0zFxHeUSBlNi12NtWYNhml1jGsa7av5JMfGsERBOZV0oXIKJdW354qU4F7MLHcfdQuHO4XF2WG6UoNrSVvOn9Fo/KP0AdrvLrMkH7XBKLjBjpjYLsuuaffYHoPcH955FACW4MZhT4rdCX85X+9vp2ZIZvbVX17MMW1lySDH4M1m1ov1F9a6VT6an1k4I79ET/DUAubagAEfGDCnLJp6m1yWF14S6UUydqDRW9V4GI9iy8yNsZi09U5jD+BjhA7EFtpuN5UhvJN7zUUJQ0SWvZIUWNaLLy3VSpnXzsYOXCrfJ9wqMexQnQuKhUUMyFftCwkoz0ucyFnE2JY0XQ6NBw5iyNume2Jo3l9l+bqi3RJaAEKwvoZqUEjcNJ28xIQeb3ANXAaR8wwWe4+Kmvc6ZMHIibKoiTqxCRe4vcndP4hb+hN6nqBDB9hyzGb81HtsuORT5NpoejXIqDGGzHoMWosa1D3vkJ6Aqn2lF29Qdvwjnj2l07h8cTlWz0wjkB1rs8iWK/J82nniXG0iQjlnokRkOKavZBXUHxNquzyb8BvrwqM60HiW+elkwUQJwFjAt/6rTthC7tJr/WD6sq2J2RDuLXf6l3/ZuoeckkqueHT6YeX0mLRJ4ZsVIS4=
-  file: $TRAVIS_BUILD_DIR/build/packages/EOS.IO-*.deb
+  file: "$TRAVIS_BUILD_DIR/build/packages/EOS.IO-*"
   skip_cleanup: true
+  file_glob: true
   on:
     tags: true
     repo: asiniscalchi/eos
