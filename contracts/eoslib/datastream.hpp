@@ -389,7 +389,7 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint8_t& d) {
  */
 template<typename Stream, typename T>
 inline datastream<Stream>& operator<<(datastream<Stream>& ds, const eosio::vector<T>& v) {
-   ds << size_t(v.size());
+   ds << uint32_t(v.size());
    for (auto& x : v) {
       ds << x;
    }
@@ -405,7 +405,7 @@ inline datastream<Stream>& operator<<(datastream<Stream>& ds, const eosio::vecto
 template<typename Stream, typename T>
 inline datastream<Stream>& operator>>(datastream<Stream>& ds, eosio::vector<T>& v) {
    v.clear();
-   size_t n;
+   uint32_t n;
    ds >> n;
    v.resize(n); //works only for default-constructible T
    for (size_t i = 0; i < n; ++i) {

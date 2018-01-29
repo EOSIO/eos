@@ -2,13 +2,17 @@
 
 #include <eoslib/chain.h>
 #include <eoslib/dispatcher.hpp>
+#include <eoslib/singleton.hpp>
 #include <eoslib/table.hpp>
 #include <eoslib/vector.hpp>
 
 namespace identity {
-   using eosio::vector;
-   using eosio::string;
    using eosio::action_meta;
+   using eosio::table_i64i64i64;
+   using eosio::table64;
+   using eosio::singleton;
+   using eosio::string;
+   using eosio::vector;
 
    /**
     *  This contract maintains a graph database of certified statements about an
@@ -186,6 +190,19 @@ namespace identity {
             }
          };
 
+         struct accountrow {
+            identity_name identity;
+
+            template<typename DataStream>
+            friend DataStream& operator << ( DataStream& ds, const accountrow& r ){
+               return ds << r.identity;
+            }
+            template<typename DataStream>
+            friend DataStream& operator >> ( DataStream& ds, accountrow& r ){
+               return ds >> r.identity;
+            }
+         };
+
          struct trustrow {
             account_name account;
             uint8_t      trusted;
@@ -202,19 +219,66 @@ namespace identity {
 
          typedef table_i64i64i64<code, N(certs), certrow>  certs_table;
          typedef table64<code, N(ident), identrow>         idents_table;
+         typedef singleton<code, N(account), identity_name> accounts_table;
          typedef table64<code, N(trust), trustrow>         trust_table;
 
+         static identity_name get_claimed_identity( account_name acnt ) {
+            return accounts_table::get_or_default(acnt, 0);
+         }
+
          static account_name get_owner_for_identity( identity_name ident ) {
-             // for each trusted owner certification 
-             //   check to see if the certification is still trusted
-             //   check to see if the account has claimed it
-             return 0;
+            // for each trusted owner certification 
+            //   check to see if the certification is still trusted
+            //   check to see if the account has claimed it
+            certs_table certs( ident );
+            certrow row;
+            bool ok = certs.primary_lower_bound(row, ident, 1, 0);
+            while (ok && row.ident == ident && row.property_name == "owner" && row.trusted) {
+               if (sizeof(account_name) == row.data.size()) {
+                  account_name account = *reinterpret_cast<account_name*>(row.data.data());
+                  if (ident == get_claimed_identity(account)) {
+                     if (is_trusted(row.certifier) ) {
+                        // the certifier is still trusted
+                        return account;
+                     } else if (DeployToAccount == current_receiver()){
+                        //the certifier is no longer trusted, need to unset the flag
+                        row.trusted = 0;
+                        certs.store( row, row.bill_storage_to ); //should we bill again ?
+                     } else {
+                        // the certifier is no longer trusted, but the code runs in read-only mode
+                     }
+                  }
+               } else {
+                  // bad row - skip it
+               }
+               ok = next_primary(row, row);
+            }
+            // trusted certification not found
+            // let's see if some of untrusted certifications became trusted
+            ok = certs.primary_lower_bound(row, ident, 0, 0);
+            while (ok && row.ident == ident && row.property_name == "owner" && !row.trusted) {
+               if (sizeof(account_name) == row.data.size()) {
+                  account_name account = *reinterpret_cast<account_name*>(row.data.data());
+                  if (ident == get_claimed_identity(account) && is_trusted(row.certifier)) {
+                     // the certifier became trusted, need to set the flag
+                     row.trusted = 1;
+                     certs.store( row, row.bill_storage_to ); //should we bill again ?
+                     return *reinterpret_cast<account_name*>(row.data.data());
+                  }
+               } else {
+                  // bad row - skip it
+               }
+               ok = next_primary(row, row);
+            }
+
+            return 0;
          }
 
          static identity_name get_identity_for_account( account_name acnt ) {
-             //  check what identity the account has self certified owner
-             //  verify that a trusted certifier has confirmed owner
-             return 0;
+            //  check what identity the account has self certified owner
+            //  verify that a trusted certifier has confirmed owner
+            auto identity = get_claimed_identity(acnt);
+            return (identity != 0 && acnt == get_owner_for_identity(identity)) ? identity : 0;
          }
 
          static bool is_trusted_by( account_name trusted, account_name by ) {
@@ -277,6 +341,11 @@ namespace identity {
                row.data       = value.data;
 
                certs.store( row, cert.bill_storage_to );
+               if (value.property == N(owner)) {
+                  assert(sizeof(account_name) == row.data.size(), "data size doesn't match account_name size");
+                  account_name acnt = *reinterpret_cast<account_name*>(row.data.data());
+                  accounts_table::set( cert.identity, acnt );
+               }
             }
          }
 

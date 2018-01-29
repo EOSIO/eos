@@ -35,6 +35,20 @@ namespace  eosio {
             return result;
          }
 
+         static T get_or_default( scope_name scope = Code, const T& def = T() ) {
+            char temp[1024+8];
+            *reinterpret_cast<uint64_t *>(temp) = SingletonName;
+            auto read = load_i64( scope, Code, SingletonName, temp, sizeof(temp) );
+            if ( read > 0 ) {
+               return def;
+            }
+            datastream<const char*> ds(temp + sizeof(SingletonName), read);
+
+            T result;
+            raw::unpack( ds, result );
+            return result;
+         }
+
          static T get_or_create( scope_name scope = Code, const T& def = T() ) {
             char temp[1024+8];
             *reinterpret_cast<uint64_t *>(temp) = SingletonName;
