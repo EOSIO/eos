@@ -3,8 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
-#ifndef PEER_H
-#define PEER_H
+#pragma once
 
 #include "remote.hpp"
 
@@ -50,5 +49,3 @@ struct Peer : public Remote
 
 } // namespace client
 } // namespace eosio
-
-#endif // PEER_H

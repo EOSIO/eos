@@ -3,8 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
-#ifndef FUNCTIONS_HPP
-#define FUNCTIONS_HPP
+#pragma once
 
 #include <string>
 
@@ -51,4 +50,3 @@ const std::string wallet_sign_trx_endpoint = wallet_base_endpoint + "/sign_trans
 } // namespace client
 } // namespace eosio
 
-#endif // FUNCTIONS_HPP

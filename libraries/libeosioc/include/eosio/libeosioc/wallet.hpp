@@ -3,8 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
-#ifndef WALLET_HPP
-#define WALLET_HPP
+#pragma once
 
 #include "remote.hpp"
 
@@ -33,4 +32,3 @@ struct Wallet : public Remote
 } // namespace client
 } // namespace eosio
 
-#endif // WALLET_HPP

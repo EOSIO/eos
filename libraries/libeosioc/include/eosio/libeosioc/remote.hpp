@@ -3,8 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
-#ifndef REMOTE_H
-#define REMOTE_H
+#pragma once
 
 #include <fc/variant.hpp>
 
@@ -40,4 +39,3 @@ private:
 } // namespace client
 } // namespace eosio
 
-#endif // REMOTE_H
