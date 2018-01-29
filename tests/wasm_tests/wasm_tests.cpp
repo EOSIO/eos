@@ -4,7 +4,7 @@
 #include <asserter/asserter.wast.hpp>
 #include <asserter/asserter.abi.hpp>
 
-#include <test_api/test_api.wast.hpp>
+//#include <test_api/test_api.wast.hpp>
 
 #include <proxy/proxy.wast.hpp>
 #include <proxy/proxy.abi.hpp>
@@ -49,6 +49,7 @@ struct provereset {
 
 FC_REFLECT_EMPTY(provereset);
 
+#if 0
 constexpr uint32_t DJBH(const char* cp)
 {
    uint32_t hash = 5381;
@@ -62,6 +63,7 @@ constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
 }
 
 
+
 template<uint64_t NAME>
 struct test_api_action {
    static account_name get_account() {
@@ -73,7 +75,7 @@ struct test_api_action {
    }
 };
 FC_REFLECT_TEMPLATE((uint64_t T), test_api_action<T>, BOOST_PP_SEQ_NIL);
-
+#endif
 
 BOOST_AUTO_TEST_SUITE(wasm_tests)
 
@@ -221,6 +223,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
 
 } FC_LOG_AND_RETHROW() /// prove_mem_reset
 
+#if 0
 BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
    produce_blocks(2);
 
@@ -260,7 +263,7 @@ BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
       BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
    }
 } FC_LOG_AND_RETHROW() /// test_api_bootstrap
-
+#endif
 
 BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
    produce_blocks(2);

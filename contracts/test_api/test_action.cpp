@@ -40,7 +40,7 @@ void test_action::read_action_to_0() {
 }
 
 void test_action::read_action_to_64k() {
-   uint32_t total = read_action( (void *)((1<<16)-1), 0x7FFFFFFF);
+   uint32_t total = read_action( (void *)((1<<16)-2), 0x7FFFFFFF);
 }
 
 void test_action::require_notice() {

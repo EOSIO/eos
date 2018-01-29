@@ -13,7 +13,7 @@ void test_transaction::send_action() {
    dummy_action payload = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
    //auto msg = message_create(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), &payload, sizeof(dummy_action));
 
-   action<> act(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), payload);
+   action act(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), payload);
    char act_buff[sizeof(act)];
    act.pack(act_buff, sizeof(act_buff));
    send_inline(act_buff, sizeof(act_buff));

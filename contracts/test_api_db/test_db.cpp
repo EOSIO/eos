@@ -372,9 +372,8 @@ void test_db::key_i64_general() {
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &dave, sizeof(test_model));
   assert(res == sizeof(test_model) && dave.age == 46 && dave.phone == 6535354, "dave error 1");
 
-  // TODO fix this
-  //res = load_i64(current_receiver(), N(other_code), N(test_table), &alice, sizeof(test_model));
- // assert(res == 0, "other_code");
+  res = load_i64(current_receiver(), N(other_code), N(test_table), &alice, sizeof(test_model));
+  assert(res == sizeof(test_model), "other_code");
 
   res = load_i64(current_receiver(), current_receiver(), N(other_table), &alice, sizeof(test_model));
   assert(res == 0, "other_table");

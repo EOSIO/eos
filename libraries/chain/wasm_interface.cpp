@@ -446,15 +446,15 @@ class context_aware_api {
       uint32_t&          sbrk_bytes;
 };
 
-class producer_api : public context_aware_api {
+class chain_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
       int get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
-         auto active_producers = context.get_active_producers();
-         size_t len = std::min(datalen / sizeof(chain::account_name), active_producers.size());
-         memcpy(producers, active_producers.data(), len);
-         return active_producers.size() * sizeof(chain::account_name);
+         auto active_prods = context.get_active_producers();
+         size_t len = std::min(datalen / sizeof(chain::account_name), active_prods.size());
+         memcpy(producers, active_prods.data(), len);
+         return active_prods.size() * sizeof(chain::account_name);
       }
 };
 
@@ -496,19 +496,6 @@ class system_api : public context_aware_api {
       fc::time_point_sec now() {
          return context.controller.head_block_time();
       } 
-};
-
-class crypto_api : public context_aware_api {
-   public:
-      using context_aware_api::context_aware_api;
-      void assert_sha256(char* data, uint32_t len, fc::sha256& hash) {
-         auto res = fc::sha256::hash(data, len); 
-         FC_ASSERT( res == hash, "hash miss match" );
-      }
-
-      void sha256( char* data, uint32_t len, fc::sha256& hash) {
-         hash = fc::sha256::hash(data, len);
-      }
 };
 
 class action_api : public context_aware_api {
@@ -666,7 +653,7 @@ class db_index_api : public context_aware_api {
    int call(ContextMethodType method, const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
       auto maybe_t_id = context.find_table(scope, context.receiver, table);
       if (maybe_t_id == nullptr) {
-         return -1;
+         return 0;
       }
 
       const auto& t_id = *maybe_t_id;
@@ -677,6 +664,7 @@ class db_index_api : public context_aware_api {
       size_t record_len = data_len - sizeof(KeyArrayType);
 
       auto res = (context.*(method))(t_id, keys, record_data, record_len);
+      std::cout << "RES " << res << " size " << sizeof(KeyArrayType) << "\n";
       if (res != 0) {
          res += sizeof(KeyArrayType);
       }
@@ -970,20 +958,6 @@ class account_api : public context_aware_api {
 };
 */
 
-class chain_api : public context_aware_api {
-   public:
-      using context_aware_api::context_aware_api;
-
-      void get_active_producers(account_name* data, uint32_t len) {
-         const auto& gpo = context.controller.get_global_properties();
-         for (int i=0; i < gpo.active_producers.producers.size(); i++) {
-            if (i > len)
-               return;
-            data[i] = gpo.active_producers.producers[i].producer_name;
-         }
-      }
-};
-
 class math_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
@@ -1071,7 +1045,7 @@ REGISTER_INTRINSICS(math_api,
 );
 
 REGISTER_INTRINSICS(chain_api,
-   (get_active_producers,     void(int, int32_t)  )
+   (get_active_producers,     int(int, int)  )
 );
 
 REGISTER_INTRINSICS(compiler_builtins,
@@ -1082,10 +1056,6 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__lshrti3,     void(int, int64_t, int64_t, int)  )
    (__divti3,      void(int, int64_t, int64_t, int64_t, int64_t) )
    (__multi3,      void(int, int64_t, int64_t, int64_t, int64_t) )
-
-REGISTER_INTRINSICS(crypto_api,
-   (assert_sha256,  void(int, int, int))
-   (sha256,         void(int, int, int))
 );
 
 REGISTER_INTRINSICS(string_api,
