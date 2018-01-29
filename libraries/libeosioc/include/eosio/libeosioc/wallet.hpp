@@ -13,7 +13,7 @@
 namespace eosio {
 namespace client {
 
-struct Wallet : public Remote
+struct wallet : public remote
 {
     fc::variant create(const std::string &name) const;
     fc::variant open(const std::string &name) const;

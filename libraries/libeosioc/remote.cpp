@@ -10,27 +10,27 @@ using boost::asio::ip::tcp;
 namespace eosio {
 namespace client {
 
-std::string Remote::host() const
+std::string remote::host() const
 {
     return m_host;
 }
 
-void Remote::set_host(const std::string &host)
+void remote::set_host(const std::string &host)
 {
     m_host = host;
 }
 
-uint32_t Remote::port() const
+uint32_t remote::port() const
 {
     return m_port;
 }
 
-void Remote::set_port(uint32_t port)
+void remote::set_port(uint32_t port)
 {
     m_port = port;
 }
 
-fc::variant Remote::call(const std::string &path, const fc::variant &postdata) const
+fc::variant remote::call(const std::string &path, const fc::variant &postdata) const
 {
     try {
         std::string postjson;

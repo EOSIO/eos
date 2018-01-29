@@ -13,7 +13,7 @@
 namespace eosio {
 namespace client {
 
-struct Peer : public Remote
+struct peer : public remote
 {
     fc::variant connect_to(const std::string& host) const;
     fc::variant disconnect_from(const std::string& host) const;
