@@ -181,13 +181,13 @@ public:
 
    get_table_rows_result get_table_rows( const get_table_rows_params& params )const;
 
-   void copy_row(const chain::contracts::key_value_object& obj, vector<char>& data)const {
+   static void copy_row(const chain::contracts::key_value_object& obj, vector<char>& data) {
       data.resize( sizeof(uint64_t) + obj.value.size() );
       memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
       memcpy( data.data()+sizeof(uint64_t), obj.value.data(), obj.value.size() );
    }
 
-   void copy_row(const chain::contracts::keystr_value_object& obj, vector<char>& data)const {
+   static void copy_row(const chain::contracts::keystr_value_object& obj, vector<char>& data) {
       data.resize( obj.primary_key.size() + obj.value.size() + 8 );
       fc::datastream<char*> ds(data.data(), data.size());
       fc::raw::pack(ds, obj.primary_key);
@@ -195,14 +195,14 @@ public:
       data.resize(ds.tellp());
    }
 
-   void copy_row(const chain::contracts::key128x128_value_object& obj, vector<char>& data)const {
+   static void copy_row(const chain::contracts::key128x128_value_object& obj, vector<char>& data) {
       data.resize( 2*sizeof(uint128_t) + obj.value.size() );
       memcpy( data.data(), &obj.primary_key, sizeof(uint128_t) );
       memcpy( data.data()+sizeof(uint128_t), &obj.secondary_key, sizeof(uint128_t) );
       memcpy( data.data()+2*sizeof(uint128_t), obj.value.data(), obj.value.size() );
    }
 
-   void copy_row(const chain::contracts::key64x64x64_value_object& obj, vector<char>& data)const {
+   static void copy_row(const chain::contracts::key64x64x64_value_object& obj, vector<char>& data) {
       data.resize( 3*sizeof(uint64_t) + obj.value.size() );
       memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
       memcpy( data.data()+sizeof(uint64_t), &obj.secondary_key, sizeof(uint64_t) );
