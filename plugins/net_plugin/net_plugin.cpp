@@ -1477,11 +1477,11 @@ namespace eosio {
               ("i", msg.last_irreversible_block_num)("h", msg.head_num));
          valid = false;
       }
-      if (msg.p2p_address == "") {
+      if (msg.p2p_address.empty()) {
          wlog("Handshake message validation: p2p_address is null string");
          valid = false;
       }
-      if (msg.os == "") {
+      if (msg.os.empty()) {
          wlog("Handshake message validation: os field is null string");
          valid = false;
       }
