@@ -23,7 +23,7 @@ public:
 protected:
     remote() = default;
 
-    fc::variant call(const std::string &path, const fc::variant &postdata = fc::variant()) const;
+    fc::variant call(const std::string& path, const fc::variant& postdata = fc::variant()) const;
 
     template<typename T>
     fc::variant call(const std::string& path, const T& v ) const

@@ -30,7 +30,7 @@ void remote::set_port(uint32_t port)
     m_port = port;
 }
 
-fc::variant remote::call(const std::string &path, const fc::variant &postdata) const
+fc::variant remote::call(const std::string &path, const fc::variant& postdata) const
 {
     try {
         std::string postjson;

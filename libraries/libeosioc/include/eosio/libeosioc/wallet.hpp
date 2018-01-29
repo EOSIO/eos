@@ -15,12 +15,12 @@ namespace client {
 
 struct wallet : public remote
 {
-    fc::variant create(const std::string &name) const;
-    fc::variant open(const std::string &name) const;
-    fc::variant lock(const std::string &name) const;
+    fc::variant create(const std::string& name) const;
+    fc::variant open(const std::string& name) const;
+    fc::variant lock(const std::string& name) const;
     fc::variant lock_all() const;
-    fc::variant unlock(const std::string &name, const std::string& passwd) const;
-    fc::variant import_key(const std::string &name, const std::string &passwd) const;
+    fc::variant unlock(const std::string& name, const std::string& passwd) const;
+    fc::variant import_key(const std::string& name, const std::string& passwd) const;
     fc::variant list() const;
     fc::variant list_keys() const;
     fc::variant public_keys() const;
