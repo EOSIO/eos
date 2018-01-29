@@ -4,26 +4,83 @@
  */
 #include <eoslib/transaction.hpp>
 #include <eoslib/action.hpp>
-
+#include <eoslib/eos.hpp>
 #include "test_api.hpp"
 
-#define WASM_TEST_FAIL 1
+#pragma pack(push, 1)
+template <uint64_t ACCOUNT, uint64_t NAME>
+struct test_action_action {
+   static account_name get_account() {
+      return account_name(ACCOUNT);
+   }
+
+   static action_name get_name() {
+      return action_name(NAME);
+   }
+
+   vector<char> data;
+   
+   template <typename DataStream>
+   friend DataStream& operator << ( DataStream& ds, const test_action_action& a ) {
+      raw::pack(ds, a.data);
+      return ds;
+   }
+   
+   template <typename DataStream>
+   friend DataStream& operator >> ( DataStream& ds, test_action_action& a ) {
+      raw::unpack(ds. a.data);
+      return ds;
+   }
+};
+
+template <uint64_t ACCOUNT, uint64_t NAME>
+struct test_dummy_action {
+   static account_name get_account() {
+      return account_name(ACCOUNT);
+   }
+
+   static action_name get_name() {
+      return action_name(NAME);
+   }
+   char a;
+   unsigned long long b;
+   int32_t c;
+
+   template <typename DataStream>
+   friend DataStream& operator << ( DataStream& ds, const test_dummy_action& a ) {
+      ds << a.a;
+      ds << a.b;
+      ds << a.c;
+      return ds;
+   }
+   
+   template <typename DataStream>
+   friend DataStream& operator >> ( DataStream& ds, test_dummy_action& a ) {
+      ds >> a.a;
+      ds >> a.b;
+      ds >> a.c;
+      return ds;
+   }
+};
+#pragma pack(pop)
+
+void copy_data(char* data, size_t data_len, vector<char>& data_out) {
+   for (int i=0; i < data_len; i++)
+      data_out.push_back(data[i]);
+}
 
 void test_transaction::send_action() {
-   dummy_action payload = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
-   //auto msg = message_create(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), &payload, sizeof(dummy_action));
-
-   action act(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), payload);
-   char act_buff[sizeof(act)];
-   act.pack(act_buff, sizeof(act_buff));
-   send_inline(act_buff, sizeof(act_buff));
+   test_dummy_action<N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal")> test_action = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
+   action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
+   act.send();
 }
 
 void test_transaction::send_action_empty() {
-   action<> act(N(testapi), WASM_TEST_ACTION("test_action", "assert_true"), nullptr);
-   char act_buff[sizeof(act)];
-   act.pack(act_buff, sizeof(act_buff));
-   send_inline(act_buff, sizeof(act_buff));
+   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "assert_true")> test_action;
+
+   action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
+
+   act.send();
 }
 
 /**
@@ -31,7 +88,10 @@ void test_transaction::send_action_empty() {
  */
 void test_transaction::send_action_large() {
    char large_message[8 * 1024];
-   action<> act(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), large_message);
+   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal")> test_action;
+   copy_data(large_message, 8*1024, test_action.data); 
+   action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
+   act.send();
    assert(false, "send_message_large() should've thrown an error");
 }
 
@@ -41,35 +101,38 @@ void test_transaction::send_action_large() {
 void test_transaction::send_action_recurse() {
    char buffer[1024];
    uint32_t size = read_action(buffer, 1024);
-   action<> act(N(testapi), WASM_TEST_ACTION("test_transaction", "send_message_recurse"), buffer);
-   char act_buff[sizeof(act)];
-   act.pack(act_buff, sizeof(act_buff));
-   send_inline(act_buff, sizeof(act_buff));
+
+   test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "send_action_recurse")> test_action;
+   copy_data(buffer, 1024, test_action.data); 
+   action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
+   
+   act.send();
 }
 
 /**
  * cause failure due to inline TX failure
  */
 void test_transaction::send_action_inline_fail() {
-   action<> act(N(testapi), WASM_TEST_ACTION("test_action", "assert_false"), nullptr);
-   char act_buff[sizeof(act)];
-   act.pack(act_buff, sizeof(act_buff));
-   send_inline(act_buff, sizeof(act_buff));
+   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "assert_false")> test_action;
+
+   action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
+
+   act.send();
 }
 
 void test_transaction::send_transaction() {
    dummy_action payload = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
-   action<> act(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), payload);
-   
-   auto trx = transaction<256, 2, 4>();
-   trx.add_read_scope(N(testapi));
-   trx.add_action(act);
+
+   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal")> test_action;
+   copy_data((char*)&payload, sizeof(dummy_action), test_action.data); 
+  
+   auto trx = transaction();
+   trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
    trx.send(0);
 }
 
 void test_transaction::send_transaction_empty() {
-   auto trx = transaction<256, 2, 4>();
-   trx.add_read_scope(N(testapi));
+   auto trx = transaction();
    trx.send(0);
 
    assert(false, "send_transaction_empty() should've thrown an error");
@@ -79,12 +142,12 @@ void test_transaction::send_transaction_empty() {
  * cause failure due to a large transaction size
  */
 void test_transaction::send_transaction_large() {
-   auto trx = transaction<256, 2, 4>();
-   trx.add_read_scope(N(testapi));
+   auto trx = transaction();
    for (int i = 0; i < 32; i ++) {
       char large_message[1024];
-      action<> act(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), large_message);
-      trx.add_action(act);
+      test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal")> test_action;
+      copy_data(large_message, 1024, test_action.data); 
+      trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
    }
 
    trx.send(0);

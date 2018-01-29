@@ -4,7 +4,6 @@
 #include <fc/optional.hpp>
 #include "Runtime/Runtime.h"
 #include "IR/Types.h"
-#include <iostream>
 
 #include <boost/multiprecision/cpp_dec_float.hpp>
 
@@ -90,7 +89,7 @@ struct array_ptr {
 
    static T* validated_ptr (wasm_interface& wasm, U32 ptr, size_t length) {
       auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
-      if(!mem || ptr + length >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
+      if(!mem || ptr + length > IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
          Runtime::causeException(Exception::Cause::accessViolation);
 
       return (T*)(getMemoryBaseAddress(mem) + ptr);
@@ -238,7 +237,6 @@ auto convert_native_to_wasm(wasm_interface &wasm, char* ptr) {
       Runtime::causeException(Exception::Cause::accessViolation);
    char* base = (char*)getMemoryBaseAddress(mem);
    char* top_of_memory = base + IR::numBytesPerPage*Runtime::getMemoryNumPages(mem);
-   std::cout << "BASE " << std::hex << base << "\n";
    if(ptr < base || ptr >= top_of_memory)
       Runtime::causeException(Exception::Cause::accessViolation);
    return (int)(ptr - base);

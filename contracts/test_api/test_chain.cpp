@@ -4,6 +4,7 @@
  */
 #include <eoslib/action.h>
 #include <eoslib/chain.h>
+#include <eoslib/eos.hpp>
 
 #include "test_api.hpp"
 
@@ -24,7 +25,6 @@ void test_chain::test_activeprods() {
   get_active_producers(api_prods.producers, sizeof(account_name)*21);
 
 
-  for( int i = 0; i < 21 ; ++i ) {
-     assert(api_prods.producers[i] == act_prods.producers[i], "Active producer");
-  }
+  for( int i = 0; i < 21 ; ++i )
+      assert(api_prods.producers[i] == act_prods.producers[i], "Active producer");
 }

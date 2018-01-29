@@ -449,10 +449,10 @@ class context_aware_api {
 class chain_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
-
-      int get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
+   
+      int32_t get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
          auto active_prods = context.get_active_producers();
-         size_t len = std::min(datalen / sizeof(chain::account_name), active_prods.size());
+         size_t len = std::min(datalen, active_prods.size() * sizeof(chain::account_name));
          memcpy(producers, active_prods.data(), len);
          return active_prods.size() * sizeof(chain::account_name);
       }
@@ -664,7 +664,6 @@ class db_index_api : public context_aware_api {
       size_t record_len = data_len - sizeof(KeyArrayType);
 
       auto res = (context.*(method))(t_id, keys, record_data, record_len);
-      std::cout << "RES " << res << " size " << sizeof(KeyArrayType) << "\n";
       if (res != 0) {
          res += sizeof(KeyArrayType);
       }

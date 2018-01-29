@@ -124,10 +124,7 @@ void CallFunction(tester& test, T ac, const vector<char>& data, const vector<acc
             pl.push_back({scope[i], config::active_name});
 
       action act(pl, ac);
-      std::cout << data.size() << "\n";
       act.data = data;
-      //vector<char>& dest = *(vector<char> *)(&act.data);
-      //std::copy(data.begin(), data.end(), std::back_inserter(dest));
       trx.actions.push_back(act);
 
 		test.set_tapos(trx);
@@ -216,6 +213,7 @@ uint32_t last_fnc_err = 0;
 	}
 */
 
+#if 0
 // TODO missing intrinsic account_balance_get
 /*************************************************************************************
  * account_tests test case
@@ -257,7 +255,7 @@ BOOST_FIXTURE_TEST_CASE(account_tests, tester) { try {
    transfer( N(inita), N(acc1), "5000.0000 EOS", "memo" );
    BOOST_CHECK_EQUAL(get_balance(N(acc1)), 50250000);
 } FC_LOG_AND_RETHROW() }
-
+#endif
 
 /*************************************************************************************
  * action_tests test case
@@ -285,37 +283,26 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
 
    dummy_action dummy13{DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
    CALL_TEST_FUNCTION( *this, "test_action", "read_action_normal", fc::raw::pack(dummy13));
-
-   //std::vector<char> raw_bytes((1<<16));
-   std::vector<char> raw_bytes(8);
+   std::vector<char> raw_bytes((1<<16));
    CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_0", raw_bytes );
-/*
-	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_0", raw_bytes ), eosio::chain::wasm_execution_error,
-         [](const eosio::chain::wasm_execution_error& e) {
-            return expect_assert_message(e, "access violation");
-         }
-      );
-*/
 
-   std::vector<char> raw_bytes2((1<<16)+1);
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_0", raw_bytes2), eosio::chain::wasm_execution_error, 
+   raw_bytes.resize((1<<16)+1);
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_0", raw_bytes), eosio::chain::wasm_execution_error, 
          [](const eosio::chain::wasm_execution_error& e) {
             return expect_assert_message(e, "access violation");
          }
       );
 
    raw_bytes.resize(1);
-	//CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_64k", raw_bytes );
+	CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_64k", raw_bytes );
 
-   raw_bytes.resize(2);
+   raw_bytes.resize(3);
 	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "read_action_to_64k", raw_bytes ), eosio::chain::wasm_execution_error,
          [](const eosio::chain::wasm_execution_error& e) {
             return expect_assert_message(e, "access violation");
          }
       );
 
-   CALL_TEST_FUNCTION( *this, "test_action", "require_notice", raw_bytes );
-   
    auto scope = std::vector<account_name>{N(testapi)};
    auto test_require_notice = [](auto& test, std::vector<char>& data, std::vector<account_name>& scope){
       signed_transaction trx;
@@ -366,7 +353,6 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
    auto a3a4_scope = std::vector<account_name>{N(acc3), N(acc4)};
    {
       signed_transaction trx;
-		//trx.write_scope = a3a4_scope;
       auto tm = test_api_action<TEST_METHOD("test_action", "require_auth")>{};
       auto pl = a3a4;
       if (a3a4_scope.size() > 1)
@@ -450,16 +436,15 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_empty", {});
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), fc::assert_exception,
          [](const fc::assert_exception& e) {
-            return expect_assert_message(e, "payload exceeds maximum size");
+            return expect_assert_message(e, "inline action too big");
          }
       );
 
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_recurse", {}), fc::assert_exception,
-         [](const fc::assert_exception& e) {
-            return expect_assert_message(e, "payload exceeds maximum size");
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_recurse", {}), eosio::chain::wasm_execution_error,
+         [](const eosio::chain::wasm_execution_error& e) {
+            return expect_assert_message(e, "stack overflow");
          }
       );
-
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_inline_fail", {}), fc::assert_exception,
          [](const fc::assert_exception& e) {
             return expect_assert_message(e, "test_action::assert_false");
@@ -472,12 +457,13 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
             return expect_assert_message(e, "transaction must have at least one action");
          }
       );
-
+#if 0
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_large", {}), fc::assert_exception,
          [](const fc::assert_exception& e) {
             return !expect_assert_message(e, "send_transaction_large() should've thrown an error");
          }
       );
+#endif
 } FC_LOG_AND_RETHROW() }
 
 
@@ -486,14 +472,14 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(chain_tests, tester) { try {
 	produce_blocks(2);
-	create_account( N(testapi), asset::from_string("1000.0000 EOS") );
+	create_account( N(testapi), asset::from_string("100000.0000 EOS") );
 	create_account( N(acc1), asset::from_string("0.0000 EOS") );
 	produce_blocks(1000);
 	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
 
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
-	produce_blocks(1);
+	produce_blocks(1000);
    
    auto& gpo = control->get_global_properties();   
    std::vector<account_name> prods(gpo.active_producers.producers.size());
@@ -548,12 +534,12 @@ return;
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(fixedpoint_tests, tester) { try {
 	produce_blocks(2);
-	create_account( N(testapi), asset::from_string("1000.0000 EOS") );
+	create_account( N(testapi), asset::from_string("100000.0000 EOS") );
 	produce_blocks(1000);
 	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
-	produce_blocks(1);
+	produce_blocks(1000);
 
 	CALL_TEST_FUNCTION( *this, "test_fixedpoint", "create_instances", {});
 	CALL_TEST_FUNCTION( *this, "test_fixedpoint", "test_addition", {});
@@ -610,7 +596,7 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, tester) { try {
    CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha256", {} );
    CALL_TEST_FUNCTION( *this, "test_crypto", "sha256_no_data", {} );
    // TODO this works, not sure if this should
-#if 0
+#if 1
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_crypto", "sha256_null", {} ), fc::assert_exception,
          [](const fc::assert_exception& e) {
             return !expect_assert_message(e, "should've thrown an error");

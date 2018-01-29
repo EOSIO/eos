@@ -15,7 +15,7 @@
 #include "test_real.cpp"
 #include "test_crypto.cpp"
 #include "test_chain.cpp"
-//#include "test_transaction.cpp"
+#include "test_transaction.cpp"
 
 extern "C" {
 
@@ -74,7 +74,6 @@ extern "C" {
       WASM_TEST_HANDLER(test_crypto, assert_sha256_false);
       WASM_TEST_HANDLER(test_crypto, assert_sha256_true);
 
-#if 0
       //test transaction
       WASM_TEST_HANDLER(test_transaction, send_action);
       WASM_TEST_HANDLER(test_transaction, send_action_empty);
@@ -84,7 +83,6 @@ extern "C" {
       WASM_TEST_HANDLER(test_transaction, send_transaction);
       WASM_TEST_HANDLER(test_transaction, send_transaction_empty);
       WASM_TEST_HANDLER(test_transaction, send_transaction_large);
-#endif
 
       //test chain
       WASM_TEST_HANDLER(test_chain, test_activeprods);
