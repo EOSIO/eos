@@ -202,6 +202,8 @@ namespace eosio {
 
       size_t cache_txn( const transaction_id_type, const signed_transaction &txn);
 
+      bool is_valid( const handshake_message &msg);
+
       void handle_message( connection_ptr c, const handshake_message &msg);
       void handle_message( connection_ptr c, const go_away_message &msg );
       /** \name Peer Timestamps
@@ -362,11 +364,9 @@ namespace eosio {
 
    class connection : public std::enable_shared_from_this<connection> {
    public:
-      connection( string endpoint,
-                  size_t send_buf_size = def_send_buffer_size );
+      explicit connection( string endpoint );
 
-      connection( socket_ptr s,
-                  size_t send_buf_size = def_send_buffer_size );
+      explicit connection( socket_ptr s );
       ~connection();
       void initialize();
 
@@ -377,7 +377,6 @@ namespace eosio {
       socket_ptr              socket;
 
       message_buffer<1024*1024>    pending_message_buffer;
-      vector<char>            send_buffer;
       vector<char>            blk_buffer;
 
       deque< transaction_id_type > txn_queue;
@@ -548,8 +547,7 @@ namespace eosio {
 
    //---------------------------------------------------------------------------
 
-   connection::connection( string endpoint,
-                           size_t send_buf_size )
+   connection::connection( string endpoint )
       : block_state(),
         trx_state(),
         sync_receiving(),
@@ -572,8 +570,7 @@ namespace eosio {
       initialize();
    }
 
-   connection::connection( socket_ptr s,
-                           size_t send_buf_size )
+   connection::connection( socket_ptr s )
       : block_state(),
         trx_state(),
         sync_receiving(),
@@ -945,12 +942,13 @@ namespace eosio {
 
       size_t buffer_size = header_size + payload_size;
 
-      fc::datastream<char*> ds( send_buffer.data(), buffer_size);
+      auto send_buffer = std::make_shared<vector<char>>(buffer_size);
+      fc::datastream<char*> ds( send_buffer->data(), buffer_size);
       ds.write( header, header_size );
       fc::raw::pack( ds, m );
 
       write_depth++;
-      queue_write(std::make_shared<vector<char>>(send_buffer.begin(), send_buffer.begin()+buffer_size),
+      queue_write(send_buffer,
                   [this](boost::system::error_code ec, std::size_t ) {
                      write_depth--;
                      if(out_queue.size()) {
@@ -1480,11 +1478,11 @@ namespace eosio {
               ("i", msg.last_irreversible_block_num)("h", msg.head_num));
          valid = false;
       }
-      if (msg.p2p_address == "") {
+      if (msg.p2p_address.empty()) {
          wlog("Handshake message validation: p2p_address is null string");
          valid = false;
       }
-      if (msg.os == "") {
+      if (msg.os.empty()) {
          wlog("Handshake message validation: os field is null string");
          valid = false;
       }
