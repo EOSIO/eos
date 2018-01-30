@@ -21,15 +21,21 @@ struct transaction_metadata {
    {}
 
    transaction_metadata( const signed_transaction& t, chain_id_type chainid, const time_point& published )
-      :trx(t)
+      :decompressed_trx(t.get_transaction())
+      ,trx(*decompressed_trx)
       ,id(trx.id())
-      ,bandwidth_usage( fc::raw::pack_size(t) )
+      ,bandwidth_usage( (uint32_t)fc::raw::pack_size(t) )
       ,published(published)
    { }
 
+
+   // things for signed_transactions
+   optional<transaction>                 decompressed_trx;
+   optional<flat_set<public_key_type>>   signing_keys;
+
    const transaction&                    trx;
    transaction_id_type                   id;
-   optional<flat_set<public_key_type>>   signing_keys;
+
    uint32_t                              region_id       = 0;
    uint32_t                              cycle_index     = 0;
    uint32_t                              shard_index     = 0;

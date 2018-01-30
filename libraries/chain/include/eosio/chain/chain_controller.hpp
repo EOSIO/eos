@@ -210,7 +210,7 @@ namespace eosio { namespace chain {
             auto on_exit = fc::make_scoped_exit( [&](){ 
                for( const auto& t : old_input ) {
                   try {
-                     if (!is_known_transaction(t.id()))
+                     if (!is_known_transaction(t.get_transaction().id()))
                         push_transaction( t );
                   } catch ( ... ){}
                }

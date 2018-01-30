@@ -590,7 +590,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
    /// summary
    map<transaction_id_type,const signed_transaction*> trx_index;
    for( const auto& t : next_block.input_transactions ) {
-      trx_index[t.id()] = &t;
+      trx_index[t.get_transaction().id()] = &t;
    }
 
    block_trace next_block_trace(next_block);
@@ -701,7 +701,8 @@ flat_set<public_key_type> chain_controller::get_required_keys(const signed_trans
                                      get_global_properties().configuration.max_authority_depth,
                                      candidate_keys);
 
-   for (const auto& act : trx.actions ) {
+   const auto decompressed = trx.get_transaction();
+   for (const auto& act : decompressed.actions ) {
       for (const auto& declared_auth : act.authorization) {
          if (!checker.satisfied(declared_auth)) {
             EOS_ASSERT(checker.satisfied(declared_auth), tx_missing_sigs,
@@ -758,7 +759,8 @@ void chain_controller::check_authorization( const vector<action>& actions,
 void chain_controller::check_transaction_authorization(const signed_transaction& trx, 
                                                        bool allow_unused_signatures)const 
 {
-   check_authorization( trx.actions, trx.get_signature_keys( chain_id_type{} ), allow_unused_signatures );
+   auto decompressed = trx.get_transaction();
+   check_authorization( decompressed.actions, trx.get_signature_keys( chain_id_type{} ), allow_unused_signatures );
 }
 
 optional<permission_name> chain_controller::lookup_minimum_permission(account_name authorizer_account,
@@ -791,7 +793,7 @@ optional<permission_name> chain_controller::lookup_minimum_permission(account_na
 void chain_controller::validate_uniqueness( const signed_transaction& trx )const {
    if( !should_check_for_duplicate_transactions() ) return;
 
-   auto transaction = _db.find<transaction_object, by_trx_id>(trx.id());
+   auto transaction = _db.find<transaction_object, by_trx_id>(trx.get_transaction().id());
    EOS_ASSERT(transaction == nullptr, tx_duplicate, "transaction is not unique");
 }
 
@@ -1080,9 +1082,9 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          ctrace.shard_traces.emplace_back();
          auto& strace = ctrace.shard_traces.back();
 
-         signed_transaction genesis_setup_transaction; // not actually signed, signature checking is skipped
+         transaction genesis_setup_transaction; // not actually signed, signature checking is skipped
          genesis_setup_transaction.actions = move(acts);
-         block.input_transactions.emplace_back(genesis_setup_transaction);
+         block.input_transactions.emplace_back(genesis_setup_transaction, signed_transaction::zlib);
 
          ilog( "applying genesis transaction" );
          with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check | received_block | genesis_setup, 
