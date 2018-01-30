@@ -162,7 +162,7 @@ namespace identity {
             property_name       property;
             uint64_t            trusted;
             account_name        certifier;
-            uint64_t            confidence = 0;
+            uint8_t             confidence = 0;
             string              type;
             vector<char>        data;
 
@@ -187,19 +187,6 @@ namespace identity {
             template<typename DataStream>
             friend DataStream& operator >> ( DataStream& ds, identrow& r ){
                return ds >> r.identity >> r.creator;
-            }
-         };
-
-         struct accountrow {
-            identity_name identity;
-
-            template<typename DataStream>
-            friend DataStream& operator << ( DataStream& ds, const accountrow& r ){
-               return ds << r.identity;
-            }
-            template<typename DataStream>
-            friend DataStream& operator >> ( DataStream& ds, accountrow& r ){
-               return ds >> r.identity;
             }
          };
 
@@ -337,6 +324,7 @@ namespace identity {
                row.trusted    = is_trusted( cert.certifier );
                row.certifier  = cert.certifier;
                row.confidence = value.confidence;
+               assert(value.type.get_size() <= 32, "certrow::type shouldn't be longer than 32 bytes");
                row.type       = value.type;
                row.data       = value.data;
 

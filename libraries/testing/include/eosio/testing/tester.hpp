@@ -62,6 +62,14 @@ namespace eosio { namespace testing {
                                                              const asset_symbol& symbol,
                                                              const account_name& account ) const;
 
+        static vector<uint8_t> to_uint8_vector(const string& s);
+
+        static vector<uint8_t> to_uint8_vector(uint64_t x);
+
+        static uint64_t to_uint64(fc::variant x);
+
+        static string to_string(fc::variant x);
+
       private:
          fc::temp_directory                            tempdir;
          chain_controller::controller_config           cfg;
