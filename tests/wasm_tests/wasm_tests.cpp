@@ -9,6 +9,9 @@
 #include <proxy/proxy.wast.hpp>
 #include <proxy/proxy.abi.hpp>
 
+#include <noop/noop.wast.hpp>
+#include <noop/noop.abi.hpp>
+
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
@@ -513,5 +516,67 @@ BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
    BOOST_CHECK_THROW(set_code(N(current_memory), grow_memory_wast), fc::unhandled_exception);
 
 } FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(noop, tester) try {
+   produce_blocks(2);
+   create_accounts( {N(noop), N(alice)}, asset::from_string("1000.0000 EOS") );
+   produce_block();
+
+   set_code(N(noop), noop_wast);
+   set_abi(N(noop), noop_abi);
+   const auto& accnt  = control->get_database().get<account_object,by_name>(N(noop));
+   abi_def abi;
+   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+   abi_serializer abi_ser(abi);
+
+   {
+      produce_blocks(5);
+      signed_transaction trx;
+      action act;
+      act.account = N(noop);
+      act.name = N(anyaction);
+      act.authorization = vector<permission_level>{{N(noop), config::active_name}};
+
+      act.data = abi_ser.variant_to_binary("anyaction", mutable_variant_object()
+                                           ("from", "noop")
+                                           ("type", "some type")
+                                           ("data", "some data goes here")
+                                           );
+
+      trx.actions.emplace_back(std::move(act));
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(noop), "active"), chain_id_type());
+      control->push_transaction(trx);
+      produce_block();
+
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+   {
+      produce_blocks(5);
+      signed_transaction trx;
+      action act;
+      act.account = N(noop);
+      act.name = N(anyaction);
+      act.authorization = vector<permission_level>{{N(alice), config::active_name}};
+
+      act.data = abi_ser.variant_to_binary("anyaction", mutable_variant_object()
+                                           ("from", "alice")
+                                           ("type", "some type")
+                                           ("data", "some data goes here")
+                                           );
+
+      trx.actions.emplace_back(std::move(act));
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(alice), "active"), chain_id_type());
+      control->push_transaction(trx);
+      produce_block();
+
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+ } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()
