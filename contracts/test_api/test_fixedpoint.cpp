@@ -62,6 +62,11 @@ void test_fixedpoint::test_subtraction()
         fixed_point64<0> c = a - b;
         fixed_point64<0> d = 0;
         assert(c == d, "fixed_point64 instances subtraction with zero decmimals");
+
+        fixed_point64<0> a1(0);
+        fixed_point64<0> c1 = a1 - b;
+        fixed_point64<0> d1 = -100;
+        assert(c1 == d1, "fixed_point64 instances subtraction with zero decmimals");
     }
     {
         // Various ways to create fixed_point32
@@ -70,6 +75,13 @@ void test_fixedpoint::test_subtraction()
         fixed_point32<0> c = a - b;
         fixed_point32<0> d = 0;
         assert(c == d, "fixed_point32 instances subtraction with zero decmimals");
+
+        // Various ways to create fixed_point32
+        fixed_point32<0> a1(0);
+        fixed_point32<0> c1 = a1 - b;
+        fixed_point32<0> d1 = -100;
+        assert(c1 == d1, "fixed_point32 instances subtraction with zero decmimals");
+
     }
 };
 
@@ -105,6 +117,7 @@ void test_fixedpoint::test_division()
         fixed_point128<5> c = a / b;
 
         fixed_point128<5> e = fixed_divide<5>(lhs, rhs);
+        print(e);
         assert(c == e, "fixed_point64 instances division result from operator and function and compare in fixed_point128");
 
     }

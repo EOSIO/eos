@@ -272,6 +272,7 @@ namespace LLVMJIT
 
 			// Cast the pointer to the appropriate type.
 			auto bytePointer = irBuilder.CreateInBoundsGEP(moduleContext.defaultMemoryBase,byteIndex);
+            
 			return irBuilder.CreatePointerCast(bytePointer,memoryType->getPointerTo());
 		}
 

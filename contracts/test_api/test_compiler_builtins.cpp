@@ -248,42 +248,27 @@ void test_compiler_builtins::test_ashrti3() {
       return ret;
    };
    
-   auto bit_pattern = [](__int128 in, char* buff) {
-      uint64_t high = in >> 64;
-      uint64_t low = in;
-      for (int i=0; i < 64; i++) {
-         buff[63-i] = (low & (1<<i)) ? '1' : '0';
-         buff[(127-i)] = (high & (1<<i)) ? '1' : '0';
-      }
-      buff[128] = '\0';
-   };
-
    __int128 res      = 0;
    __int128 val      = atoi128("-170141183460469231731687303715884105728");
 
    __ashrti3(res, val, (val >> 64), 0);
    assert(res == atoi128("-170141183460469231731687303715884105728"), "__ashrti3 result should be 2^127");
-   char buff[129] = {0};
-   bit_pattern(-2, buff);
-   prints("BITS A ");
-   prints(buff);
-   prints("\n");
-   return;
-   assert((res >> 64) >> 63, "should be one");
 
    __ashrti3(res, val, (val >> 64), 1);
-   uint128_t a(res);
-   uint128_t v(val);
-   prints("RES ");
-   printi128(&a);
-   prints("\n");
-   prints("VAL ");
-   printi128(&v);
-   prints("\n");
-   assert(res == atoi128("85070591730234615865843651857942052864"), "__ashrti3 result should be 2^126");
+   assert(res == atoi128("-85070591730234615865843651857942052864"), "__ashrti3 result should be 2^126");
 
-   __ashrti3(res, val, (val >> 64), 63);
-   assert(res == atoi128("18446744073709551616"), "__ashrti3 result should be 2^64");
+   __ashrti3(res, val, (val >> 64), 2);
+   {
+
+      uint128_t r(res);
+      uint128_t v(val);
+      prints("RES ");
+      printi128(&r);
+      prints("\n VAL ");
+      printi128(&v);
+      prints("\n");
+   }
+   assert(res == atoi128("-127605887595351923798765477786913079296"), "__ashrti3 result should be 2^64");
 
    __ashrti3(res, val, (val >> 64), 64);
    assert(res == 0x8000000000000000, "__ashrti3 result should be 2^63");
@@ -294,3 +279,4 @@ void test_compiler_builtins::test_ashrti3() {
    __ashrti3(res, val, (val >> 64), 127);
    assert(res == 0x1, "__ashrti3 result should be 2^0");
 }
+

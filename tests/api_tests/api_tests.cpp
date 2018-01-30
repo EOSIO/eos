@@ -412,7 +412,7 @@ BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, tester) { try {
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_lshlti3", {});
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_lshrti3", {});
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_ashlti3", {});
-   //CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_ashrti3", {});
+   CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_ashrti3", {});
 } FC_LOG_AND_RETHROW() }
 
 
@@ -524,6 +524,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, tester) { try {
 	CALL_TEST_FUNCTION( *this, "test_db", "key_i64_front_back", {});
 	//CALL_TEST_FUNCTION( *this, "test_db", "key_i64i64i64_general", {});
 	CALL_TEST_FUNCTION( *this, "test_db", "key_i128i128_general", {});
+   return;
 return;
 } FC_LOG_AND_RETHROW() }
 #endif
@@ -571,7 +572,7 @@ BOOST_FIXTURE_TEST_CASE(real_tests, tester) { try {
    CALL_TEST_FUNCTION( *this, "test_real", "test_addition", {} );
    CALL_TEST_FUNCTION( *this, "test_real", "test_multiplication", {} );
    CALL_TEST_FUNCTION( *this, "test_real", "test_division", {} );
-	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_fixedpoint", "test_division_by_0", {}), fc::assert_exception,
+	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_real", "test_division_by_0", {}), fc::assert_exception,
          [](const fc::assert_exception& e) {
             return expect_assert_message(e, "divide by zero");
          }
@@ -586,7 +587,7 @@ BOOST_FIXTURE_TEST_CASE(real_tests, tester) { try {
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(crypto_tests, tester) { try {
    produce_blocks(1000);
-   create_account(N(testapi), asset::from_string("1000.0000 EOS"));
+   create_account(N(testapi), asset::from_string("100000.0000 EOS"));
    produce_blocks(1000);
    transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
    produce_blocks(1000);
@@ -595,11 +596,12 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, tester) { try {
 
    CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha256", {} );
    CALL_TEST_FUNCTION( *this, "test_crypto", "sha256_no_data", {} );
-   // TODO this works, not sure if this should
+
+   // TODO need a way to represent nullptr 
 #if 1
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_crypto", "sha256_null", {} ), fc::assert_exception,
          [](const fc::assert_exception& e) {
-            return !expect_assert_message(e, "should've thrown an error");
+            return expect_assert_message(e, "should've thrown an error");
          }
       );
 #endif
@@ -618,7 +620,7 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, tester) { try {
 /*************************************************************************************
  * memory_tests test cases
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(memory_test, tester) { try {
+BOOST_FIXTURE_TEST_CASE(memory_tests, tester) { try {
    produce_blocks(1000);
    create_account(N(testapi), asset::from_string("1000.0000 EOS"));
    produce_blocks(1000);
@@ -794,7 +796,7 @@ BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
 	BOOST_CHECK_EQUAL( captured.substr(0, 39), U128Str(-1) );
 	BOOST_CHECK_EQUAL( captured.substr(39, 1), U128Str(0) );
 	BOOST_CHECK_EQUAL( captured.substr(40, 11), U128Str(87654323456) );
-      
+  
 } FC_LOG_AND_RETHROW() }
 
 

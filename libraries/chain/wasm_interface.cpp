@@ -28,6 +28,7 @@
 #include <mutex>
 #include <thread>
 #include <condition_variable>
+#include <iostream>
 
 using namespace IR;
 using namespace Runtime;
@@ -866,10 +867,12 @@ class compiler_builtins : public context_aware_api {
       }
 
       void __ashrti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
-         constexpr uint32_t SHIFT_WIDTH = sizeof(uint64_t)-1;
-         uint64_t sign_bit = high & (1 << SHIFT_WIDTH); //(high >> SHIFT_WIDTH);
+         uint64_t mask = 1;
+         mask <<= SHIFT_WIDTH;
+         uint64_t sign_bit = high & mask;
          fc::uint128_t i(high, low);
          i >>= shift;
+         std::cout << "SIGN " << ((:wi >> 64 | sign_bit) << " " << i << "\n";
          fc::uint128_t r(i.high_bits() | sign_bit, i.low_bits());
          ret = (unsigned __int128)r; 
       }
@@ -887,8 +890,6 @@ class compiler_builtins : public context_aware_api {
       }
       
       void __divti3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
-         constexpr uint32_t SHIFT_WIDTH = sizeof(uint64_t)-1;
-         
          // grab the sign bits;
          bool sa = (ha >> SHIFT_WIDTH);
          bool sb = (hb >> SHIFT_WIDTH);
@@ -914,7 +915,6 @@ class compiler_builtins : public context_aware_api {
       } 
 
       void __multi3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
-         constexpr uint32_t SHIFT_WIDTH = sizeof(uint64_t)-1;
          // grab the sign bits;
          bool sa = (ha >> SHIFT_WIDTH);
          bool sb = (hb >> SHIFT_WIDTH);
@@ -941,7 +941,7 @@ class compiler_builtins : public context_aware_api {
 
       }
 
-      static constexpr uint32_t SHIFT_WIDTH = sizeof(uint64_t)-1;
+      static constexpr uint32_t SHIFT_WIDTH = (sizeof(uint64_t)*8)-1;
 };
 
 /*
@@ -1144,18 +1144,14 @@ using db_index_api_key64x64x64_value_index_by_scope_secondary = db_index_api<key
 using db_index_api_key64x64x64_value_index_by_scope_tertiary  = db_index_api<key64x64x64_value_index,by_scope_tertiary>;
 
 REGISTER_INTRINSICS(db_api_key_value_object,         DB_METHOD_SEQ(i64));
-//REGISTER_INTRINSICS(db_api_keystr_value_object,      DB_METHOD_SEQ(str));
 REGISTER_INTRINSICS(db_api_key128x128_value_object,  DB_METHOD_SEQ(i128i128));
 REGISTER_INTRINSICS(db_api_key64x64x64_value_object, DB_METHOD_SEQ(i64i64i64));
-
 REGISTER_INTRINSICS(db_api_keystr_value_object,
    (store_str,                int32_t(int64_t, int64_t, int, int, int, int)  )
    (update_str,               int32_t(int64_t, int64_t, int, int, int, int)  )
    (remove_str,               int32_t(int64_t, int64_t, int, int)  ));
 
 REGISTER_INTRINSICS(db_index_api_key_value_index_by_scope_primary,           DB_INDEX_METHOD_SEQ(i64));
-//REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,        DB_INDEX_METHOD_SEQ(str));
-#if 1
 REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,
    (load_str,            int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
    (front_str,           int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
@@ -1164,7 +1160,6 @@ REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,
    (previous_str,        int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
    (lower_bound_str,     int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
    (upper_bound_str,     int32_t(int64_t, int64_t, int64_t, int, int, int, int)  ));
-#endif
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_primary,    DB_INDEX_METHOD_SEQ(primary_i128i128));
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_secondary,  DB_INDEX_METHOD_SEQ(secondary_i128i128));
 REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_primary,   DB_INDEX_METHOD_SEQ(primary_i64i64i64));

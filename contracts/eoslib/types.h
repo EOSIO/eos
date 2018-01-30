@@ -77,5 +77,6 @@ struct account_permission {
    permission_name permission;
 };
 
-} /// extern "C"
+/// extern "C"
 /// @}
+}

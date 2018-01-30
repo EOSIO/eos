@@ -3,8 +3,11 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eoslib/eos.hpp>
+#include <eoslib/fixedpoint.hpp>
+#include <eoslib/print.hpp>
 
 #include "test_api.hpp"
+using namespace eosio;
 
 void test_print::test_prints() {
   prints("ab");

@@ -1,5 +1,6 @@
 #pragma once
 #include <eoslib/types.h>
+#include <eoslib/print.hpp>
 
 namespace eosio
 {
@@ -149,7 +150,14 @@ ope        * fixed_point128<3> b(a);
             return val << (32-Q);
         }
 
-        
+        void print() const {
+           uint128_t ip(int_part());
+           uint128_t fp(frac_part());
+           printi128(&ip);
+           prints(".");
+           printi128(&fp);
+        } 
+
         // Various assignment operators
         template <uint8_t qr> fixed_point128 &operator=(const fixed_point32<qr> &r);
         template <uint8_t qr> fixed_point128 &operator=(const fixed_point64<qr> &r);
@@ -174,7 +182,7 @@ ope        * fixed_point128<3> b(a);
     * @endcode
     */
     template <uint8_t Q>
-    struct fixed_point64 
+    struct fixed_point64
     {
         static_assert(Q < 128, "Maximum number of decimals supported in fixed_point64 is 128 decimals");
         int64_t val;
@@ -225,6 +233,13 @@ ope        * fixed_point128<3> b(a);
             return val << (32-Q);
         }
 
+        void print() const {
+           printi(int_part());
+           prints(".");
+           printi(frac_part());
+        } 
+
+
         // Various assignment operators
         template <uint8_t QR> fixed_point64 &operator=(const fixed_point32<QR> &r);
         template <uint8_t QR> fixed_point64 &operator=(const fixed_point64<QR> &r);
@@ -260,7 +275,7 @@ ope        * fixed_point128<3> b(a);
      */
     // fixed_point 32 bit version. The template param 'q' is the scale factor 
     template <uint8_t Q>
-    struct fixed_point32
+    struct fixed_point32 
     {
         static_assert(Q < 128, "Maximum number of decimals supported in fixed_point32 is 128 decimals");
         // translates given double variable to the int32 based on the scale factor
@@ -294,6 +309,13 @@ ope        * fixed_point128<3> b(a);
             if(!Q) return 0;
             return val << (32-Q);
         }
+
+        void print() const {
+           printi(int_part());
+           prints(".");
+           printi(frac_part());
+        } 
+
 
         // Various assignment operators
         template <uint8_t QR> fixed_point32 &operator=(const fixed_point32<QR> &r);
@@ -440,6 +462,7 @@ ope        * fixed_point128<3> b(a);
         // std::cout << "Performing division on " << val << ", with " << q << " precision / " << r.val << ", with " << qr << " precision. Result precision " << ((q>qr) ? q:qr) << std::endl;
         // Convert val to 128 bit by additionally shifting 64 bit and take the result to 128bit
         // Q(X+64-Y) = Q(X+64) / Q(Y)
+        assert(!(r.int_part() == 0 && r.frac_part() == 0), "divide by zero");
         return fixed_point128<Q+64-QR>((int128_t(val)<<64)/r.val);
     }
 
@@ -536,6 +559,7 @@ ope        * fixed_point128<3> b(a);
     fixed_point64<Q+32-QR> fixed_point32<Q>::operator/(const fixed_point32<QR> &r) const {
         // Convert val into 64 bit and perform the division
         // Q(X+32-Y) = Q(X+32) / Q(Y)
+        assert(!(r.int_part() == 0 && r.frac_part() == 0), "divide by zero");
         return fixed_point64<Q+32-QR>((int64_t(val)<<32)/r.val);
     }
 
@@ -552,6 +576,7 @@ ope        * fixed_point128<3> b(a);
     template <uint8_t Q>
     fixed_point64<Q> fixed_divide(uint32_t lhs, uint32_t rhs)
     {
+        assert(rhs != 0, "divide by zero");
         fixed_point64<Q> result = fixed_point32<0>(lhs) / fixed_point32<0>(rhs);
         return result;
     }
@@ -569,6 +594,7 @@ ope        * fixed_point128<3> b(a);
     template <uint8_t Q>
     fixed_point128<Q> fixed_divide(uint64_t lhs, uint64_t rhs)
     {
+        assert(rhs != 0, "divide by zero");
         fixed_point128<Q> result = fixed_point64<0>(lhs) / fixed_point64<0>(rhs);
         return fixed_point128<Q>(result);
     }

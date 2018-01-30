@@ -6,6 +6,8 @@
 #include <eoslib/print.h>
 #include <eoslib/types.hpp>
 #include <eoslib/math.hpp>
+#include <eoslib/fixedpoint.hpp>
+#include <eoslib/utility.hpp>
 
 namespace eosio {
 
@@ -87,11 +89,11 @@ namespace eosio {
       prints(val?"true":"false");
    }
 
+
    template<typename T>
    inline void print( T&& t ) {
       t.print();
    }
-
 
    /**
     *  @defgroup consoleCppapi Console C++ API

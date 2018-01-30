@@ -3,7 +3,6 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-
 extern "C" {
    /**
     *  @defgroup consoleapi Console API
@@ -97,5 +96,6 @@ extern "C" {
    /**
     */
    void printhex( void* data, uint32_t datalen );
+
    /// @}
 }
