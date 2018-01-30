@@ -757,4 +757,7 @@ BOOST_FIXTURE_TEST_CASE(noop, tester) try {
 
  } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( test_table_key_validation, tester ) try {
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_SUITE_END()
