@@ -27,7 +27,7 @@ namespace eosio {
       uint64_t     amount = 0;
       symbol_name  symbol = S(4,EOS);
 
-      asset( uint64_t a = 0, uint64_t s = S(4,EOS))
+      explicit asset( uint64_t a = 0, uint64_t s = S(4,EOS))
       :amount(a),symbol(s){}
 
 
