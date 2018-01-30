@@ -121,6 +121,8 @@ namespace eosio { namespace chain {
           * @return True if the controller is now applying a block; false otherwise
           */
          bool is_applying_block()const { return _currently_applying_block; }
+         bool is_start_of_round( block_num_type n )const;
+         uint32_t blocks_per_round()const; 
 
 
          chain_id_type get_chain_id()const { return chain_id_type(); } /// TODO: make this hash of constitution

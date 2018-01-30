@@ -224,7 +224,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
          ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");
          break;
       case block_production_condition::not_my_turn:
-         ilog("Not producing block because it isn't my turn");
+         ilog("Not producing block because it isn't my turn, its ${scheduled_producer}", (capture) );
          break;
       case block_production_condition::not_time_yet:
          ilog("Not producing block because slot has not yet arrived");
