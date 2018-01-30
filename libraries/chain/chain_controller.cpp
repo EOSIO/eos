@@ -922,7 +922,7 @@ producer_schedule_type chain_controller::_calculate_producer_schedule()const {
 /**
  *  Returns the most recent and/or pending producer schedule
  */
-const producer_schedule_type& chain_controller::_head_producer_schedule()const {
+const shared_producer_schedule_type& chain_controller::_head_producer_schedule()const {
    const auto& gpo = get_global_properties();
    if( gpo.pending_active_producers.size() ) 
       return gpo.pending_active_producers.back().second;
@@ -948,7 +948,13 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
          if( props.pending_active_producers.size() && props.pending_active_producers.back().first == b.block_num() )
             props.pending_active_producers.back().second = schedule;
          else
-            props.pending_active_producers.push_back( make_pair(b.block_num(),schedule) );
+         {
+            props.pending_active_producers.emplace_back( props.pending_active_producers.get_allocator() );// props.pending_active_producers.size()+1, props.pending_active_producers.get_allocator() );
+            auto& back = props.pending_active_producers.back();
+            back.first = b.block_num();
+            back.second = schedule;
+
+         }
       });
 
 

@@ -321,7 +321,7 @@ namespace eosio { namespace chain {
          void _initialize_chain(contracts::chain_initializer& starter);
 
          producer_schedule_type _calculate_producer_schedule()const;
-         const producer_schedule_type& _head_producer_schedule()const;
+         const shared_producer_schedule_type& _head_producer_schedule()const;
 
 
          void replay();

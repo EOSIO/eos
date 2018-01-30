@@ -1,6 +1,7 @@
 #pragma once
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/types.hpp>
+#include <chainbase/chainbase.hpp>
 
 namespace eosio { namespace chain {
 
@@ -23,7 +24,31 @@ namespace eosio { namespace chain {
     */
    struct producer_schedule_type {
       uint32_t                                       version = 0; ///< sequentially incrementing version number
-      fc::array<producer_key,config::producer_count> producers;
+      vector<producer_key>                           producers;
+   };
+
+   struct shared_producer_schedule_type {
+      shared_producer_schedule_type( chainbase::allocator<char> alloc )
+      :producers(alloc){}
+
+      shared_producer_schedule_type& operator=( const producer_schedule_type& a ) {
+         version = a.version;
+         producers.reserve( a.producers.size() );
+         for( const auto& p : a.producers )
+            producers.push_back(p);
+         return *this;
+      }
+
+      operator producer_schedule_type()const {
+         producer_schedule_type result;
+         result.producers.reserve(producers.size());
+         for( const auto& p : producers )
+            result.producers.push_back(p);
+         return result;
+      }
+
+      uint32_t                                       version = 0; ///< sequentially incrementing version number
+      shared_vector<producer_key>                    producers;
    };
 
 

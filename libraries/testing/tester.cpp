@@ -20,24 +20,7 @@ namespace eosio { namespace testing {
       cfg.shared_memory_size = 1024*1024*8;
 
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-      cfg.genesis.initial_accounts.resize( config::producer_count );
-      cfg.genesis.initial_producers.resize( config::producer_count );
-
-
-     // uint64_t init_name = N(inita);
-      string init_name = "inita";
-      for( uint32_t i = 0; i < config::producer_count; ++i ) {
-         auto pubkey = get_public_key(init_name);
-         cfg.genesis.initial_accounts[i].name               = string(account_name(init_name));
-         cfg.genesis.initial_accounts[i].owner_key          = get_public_key(init_name,"owner");
-         cfg.genesis.initial_accounts[i].active_key         = get_public_key(init_name,"active");
-         cfg.genesis.initial_accounts[i].liquid_balance     = asset::from_string( "1000000.0000 EOS" );
-         cfg.genesis.initial_accounts[i].staking_balance    = asset::from_string( "1000000.0000 EOS" );
-         cfg.genesis.initial_producers[i].owner_name        = string(account_name(init_name));
-         cfg.genesis.initial_producers[i].block_signing_key = get_public_key( init_name, "producer" );
-
-         init_name[4]++;
-      }
+      cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
 
       open();
    }
@@ -110,7 +93,6 @@ namespace eosio { namespace testing {
                                    .owner    = owner_auth,
                                    .active   = authority( get_public_key( a, "active" ) ),
                                    .recovery = authority( get_public_key( a, "recovery" ) ),
-                                   .deposit  = initial_balance
                                 });
 
       trx.sign( get_private_key( creator, "active" ), chain_id_type()  ); 
@@ -128,6 +110,7 @@ namespace eosio { namespace testing {
    }
    
 
+   /*
    transaction_trace tester::transfer( account_name from, account_name to, string amount, string memo ) {
       return transfer( from, to, asset::from_string(amount), memo );
    }
@@ -144,6 +127,7 @@ namespace eosio { namespace testing {
       trx.sign( get_private_key( from, "active" ), chain_id_type()  ); 
       return control->push_transaction( trx );
    }
+   */
 
    void tester::set_authority( account_name account,
                                permission_name perm,
@@ -244,10 +228,8 @@ namespace eosio { namespace testing {
    }
 
    share_type tester::get_balance( const account_name& account ) const {
-      const auto& db = control->get_database();
-      return contracts::get_eosio_balance(db, account);
+      return get_currency_balance( config::system_account_name, asset_symbol(EOS_SYMBOL), account ).amount;
    }
-
    /**
     *  Reads balance as stored by generic_currency contract
     */

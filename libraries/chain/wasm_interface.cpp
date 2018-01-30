@@ -420,6 +420,59 @@ class context_aware_api {
       apply_context&     context;
 };
 
+class privileged_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      /**
+       *  This should schedule the feature to be activated once the
+       *  block that includes this call is irreversible. It should
+       *  fail if the feature is already pending.
+       *
+       *  Feature name should be base32 encoded name. 
+       */
+      void activate_feature( uint64_t feature_name ) {
+      }
+
+      /**
+       * This should return true if a feature is active and irreversible, false if not.
+       *
+       * Irreversiblity by fork-database is not consensus safe, therefore, this defines
+       * irreversiblity only by block headers not by BFT short-cut.
+       */
+      bool is_feature_active( uint64_t feature_name ) {
+         return false;
+      }
+
+      void set_resource_average_period( uint32_t seconds = 60*60*24*3 /*3 days*/ ) {
+      }
+
+      uint32_t get_resource_average_period() {
+        return 60*60*24*3;
+      }
+
+      void set_resource_limits( account_name account, 
+                                uint64_t ram_bytes, uint64_t net_bytes_per_period,
+                                uint64_t cpu_usec_per_period ) {
+      }
+
+      void get_resource_limits( account_name account, 
+                                uint64_t& ram_bytes, uint64_t& net_bytes_per_period,
+                                uint64_t& cpu_usec_per_period ) {
+      }
+                                               
+      int set_active_producers( const array_ptr<chain::account_name> producers, size_t datalen) {
+      }
+
+      void set_privileged( account_name, bool is_priv ) {
+      }
+
+      void freeze_account( account_name, bool should_freeze ) {
+      }
+
+      /// TODO: add inline/deferred with support for arbitrary permissions rather than code/current auth
+};
+
 class producer_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
