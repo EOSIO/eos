@@ -41,14 +41,10 @@ namespace eosiosystem {
 
 
          static void apply( account_name code, action_name act ) {
-            if( !eosio::dispatch<contract, 
-//                   typename currency::transfer_memo, 
- //                  typename currency::issue,
-                   regproducer,
-                   regproxy
-                   >( code, act) ) 
-            {
-               assert( false, "received unexpected action" );
+            if( !eosio::dispatch<contract, regproducer, regproxy>( code, act) ) {
+               if ( !eosio::dispatch<currency, typename currency::transfer_memo, typename currency::issue>( code, act ) ) {
+                  assert( false, "received unexpected action" );
+               }
             }
          } /// apply 
    };

@@ -831,21 +831,27 @@ int main( int argc, char** argv ) {
    transfer->add_flag("-s,--skip-sign", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(transfer);
    transfer->set_callback([&] {
+      auto transfer = fc::mutable_variant_object
+            ("from", sender)
+            ("to", recipient)
+            ("quantity", asset(amount))
+            ("memo", memo);
+      auto args = fc::mutable_variant_object
+            ("code", name(config::eosio_system_acount_name))
+            ("action", "transfer")
+            ("args", transfer);
+
+      cerr << "before call" << endl;
+      auto result = call(json_to_bin_func, args);
+      cerr << "after call" << endl;
+
       signed_transaction trx;
+      trx.actions.emplace_back(vector<chain::permission_level>{{sender,"active"}},
+                               config::eosio_system_acount_name, "transfer", result.get_object()["binargs"].as<bytes>());
 
       if (tx_force_unique) {
-         if (memo.size() == 0) {
-            // use the memo to add a nonce
-            memo = fc::to_string(generate_nonce_value());
-         } else {
-            // add a nonce actions
-            trx.actions.emplace_back( generate_nonce() );
-         }
+         trx.actions.emplace_back( generate_nonce() );
       }
-
-      trx.actions.emplace_back( vector<chain::permission_level>{{sender,"active"}}, 
-                                contracts::transfer{ .from = sender, .to = recipient, .amount = amount, .memo = memo});
-
 
       auto info = get_info();
       trx.expiration = info.head_block_time + tx_expiration;
