@@ -36,11 +36,12 @@ namespace eosio { namespace chain {
     */
    class global_property_object : public chainbase::object<global_property_object_type, global_property_object>
    {
-      OBJECT_CTOR(global_property_object, (active_producers)(pending_active_producers) )
+      OBJECT_CTOR(global_property_object, (active_producers)(new_active_producers)(pending_active_producers) )
 
       id_type                                                  id;
       chain_config                                             configuration;
       shared_producer_schedule_type                            active_producers;
+      shared_producer_schedule_type                            new_active_producers;
 
       /** every block that has change in producer schedule gets inserted into this list, this includes
        * all blocks that see a change in producer signing keys or vote order.

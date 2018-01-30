@@ -5,6 +5,7 @@
 #include <boost/core/ignore_unused.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/io/raw.hpp>
 #include <fc/utf8.hpp>
 
 #include <Runtime/Runtime.h>
@@ -461,7 +462,15 @@ class privileged_api : public context_aware_api {
                                 uint64_t& cpu_usec_per_period ) {
       }
                                                
-      int set_active_producers( const array_ptr<chain::account_name> producers, size_t datalen) {
+      int set_active_producers( const array_ptr<const char> packed_producer_schedule, size_t datalen) {
+         datastream<const char*> ds( packed_producer_schedule, datalen );
+         producer_schedule_type psch;
+         fc::raw::unpack(ds, psch);
+
+         context.mutable_db.modify( context.controller.get_global_properties(), 
+            [&]( auto& gprops ) {
+                 gprops.new_active_producers = psch;
+         });
       }
 
       void set_privileged( account_name, bool is_priv ) {
