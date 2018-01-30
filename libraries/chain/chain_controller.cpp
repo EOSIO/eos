@@ -22,7 +22,7 @@
 
 #include <eosio/chain/wasm_interface.hpp>
 
-#include <eos/utilities/rand.hpp>
+#include <eosio/utilities/rand.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>

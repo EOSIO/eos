@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
-#include <eos/utilities/tempdir.hpp>
+#include <eosio/utilities/tempdir.hpp>
 
 #include <cstdlib>
 

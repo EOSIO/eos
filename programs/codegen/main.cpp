@@ -120,10 +120,10 @@ struct codegen {
    void generate() {
       ostringstream output;
       output << "#pragma once" << endl;
-      output << "#include <eoslib/types.hpp>" << endl;
-      output << "#include <eoslib/message.hpp>" << endl;
-      output << "#include <eoslib/datastream.hpp>" << endl;
-      output << "#include <eoslib/raw_fwd.hpp>" << endl;
+      output << "#include <eosiolib/types.hpp>" << endl;
+      output << "#include <eosiolib/message.hpp>" << endl;
+      output << "#include <eosiolib/datastream.hpp>" << endl;
+      output << "#include <eosiolib/raw_fwd.hpp>" << endl;
       
       output << endl;
 
@@ -135,7 +135,7 @@ struct codegen {
       }
       output << "} }" << endl << endl;
 
-      output << "#include <eoslib/raw.hpp>" << endl;
+      output << "#include <eosiolib/raw.hpp>" << endl;
 
       output << "namespace eosio {" << endl;
       

@@ -71,7 +71,7 @@ Options:
 #include <fc/io/json.hpp>
 #include <fc/io/console.hpp>
 #include <fc/exception/exception.hpp>
-#include <eos/utilities/key_conversion.hpp>
+#include <eosio/utilities/key_conversion.hpp>
 
 #include <eosio/chain/config.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>

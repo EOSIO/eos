@@ -2,9 +2,9 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eoslib/eos.hpp>
-#include <eoslib/token.hpp>
-#include <eoslib/db.hpp>
+#include <eosiolib/eos.hpp>
+#include <eosiolib/token.hpp>
+#include <eosiolib/db.hpp>
 
 /**
  *  @defgroup examplecontract Example Storage

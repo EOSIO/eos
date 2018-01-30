@@ -3,8 +3,8 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <proxy/proxy.hpp>
-#include <eoslib/native_currency.hpp>
-#include <eoslib/transaction.hpp>
+#include <eosiolib/native_currency.hpp>
+#include <eosiolib/transaction.hpp>
 
 namespace proxy {
    using namespace eosio;

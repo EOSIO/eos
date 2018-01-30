@@ -17,7 +17,7 @@
 #include <eosio/chain/contracts/genesis_state.hpp>
 #include <eosio/chain/contracts/eos_contract.hpp>
 
-#include <eos/utilities/key_conversion.hpp>
+#include <eosio/utilities/key_conversion.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 
 #include <fc/io/json.hpp>
