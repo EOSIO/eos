@@ -326,7 +326,7 @@ namespace identity {
             if( cert.bill_storage_to != cert.certifier )
                require_auth( cert.bill_storage_to );
 
-            assert( !idents_table::exists( cert.identity ), "identity does not exist" );
+            assert( idents_table::exists( cert.identity ), "identity does not exist" );
 
             /// the table exists in the scope of the identity 
             certs_table certs( cert.identity );

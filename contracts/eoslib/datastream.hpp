@@ -381,6 +381,26 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint8_t& d) {
   return ds;
 }
 
+template<typename Stream> inline void pack( Stream& s, const uint32_t& v ) {
+   uint64_t val = v;
+   do {
+      uint8_t b = uint8_t(val) & 0x7f;
+      val >>= 7;
+      b |= ((val > 0) << 7);
+      s.write((char*)&b,1);//.put(b);
+   }while( val );
+}
+
+template<typename Stream> inline void unpack( Stream& s, uint32_t& vi ) {
+   uint64_t v = 0; char b = 0; uint8_t by = 0;
+   do {
+      s.get(b);
+      v |= uint32_t(uint8_t(b) & 0x7f) << by;
+      by += 7;
+   } while( uint8_t(b) & 0x80 );
+   vi = static_cast<uint32_t>(v);
+}
+
 /**
  *  Serialize a vector into a stream
  *  @brief Serialize a vector
@@ -389,7 +409,7 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint8_t& d) {
  */
 template<typename Stream, typename T>
 inline datastream<Stream>& operator<<(datastream<Stream>& ds, const eosio::vector<T>& v) {
-   ds << uint32_t(v.size());
+   pack(ds, v.size());
    for (auto& x : v) {
       ds << x;
    }
@@ -406,7 +426,7 @@ template<typename Stream, typename T>
 inline datastream<Stream>& operator>>(datastream<Stream>& ds, eosio::vector<T>& v) {
    v.clear();
    uint32_t n;
-   ds >> n;
+   unpack(ds, n);
    v.resize(n); //works only for default-constructible T
    for (size_t i = 0; i < n; ++i) {
       ds >> v[i];
