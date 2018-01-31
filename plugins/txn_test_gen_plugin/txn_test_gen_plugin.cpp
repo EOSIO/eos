@@ -62,7 +62,7 @@ struct txn_test_gen_plugin_impl {
       chain_controller& cc = app().get_plugin<chain_plugin>().chain();
       chain::chain_id_type chainid;
       app().get_plugin<chain_plugin>().get_chain_id(chainid);
-      uint64_t stake = 10000;
+      asset stake(10000);
 
       fc::crypto::private_key txn_test_receiver_A_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
       fc::crypto::private_key txn_test_receiver_B_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
