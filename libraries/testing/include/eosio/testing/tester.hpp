@@ -59,7 +59,7 @@ namespace eosio { namespace testing {
          share_type                    get_balance( const account_name& account ) const;
 
          asset                         get_currency_balance( const account_name& contract,
-                                                             const asset_symbol& symbol,
+                                                             const symbol&       asset_symbol,
                                                              const account_name& account ) const;
 
       private:

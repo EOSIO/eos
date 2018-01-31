@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['infinite',['infinite',['../namespaceinfinite.html',1,'']]]
+  ['currency',['currency',['../namespacecurrency.html',1,'']]]
 ];

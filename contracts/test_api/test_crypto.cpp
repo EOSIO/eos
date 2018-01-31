@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eoslib/eos.hpp>
-#include <eoslib/crypto.h>
+#include <eosiolib/eos.hpp>
+#include <eosiolib/crypto.h>
 
 #include "test_api.hpp"
 

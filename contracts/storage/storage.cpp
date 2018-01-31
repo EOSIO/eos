@@ -100,10 +100,6 @@ namespace TOKEN_NAME {
 using namespace TOKEN_NAME;
 
 extern "C" {
-    void init()  {
-       // How do we initialize the storage capacity? By how much here?
-       accounts::store( account( storage_tokens(1000ll*1000ll*1000ll) ), N(storage) );
-    }
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {

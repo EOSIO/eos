@@ -1,8 +1,8 @@
 var searchData=
 [
-  ['eos_20command_20line_20client_20_28eosc_29',['EOS Command Line Client (eosc)',['../group__eosc.html',1,'']]],
-  ['eos_20contract',['EOS Contract',['../group__eoscontract.html',1,'']]],
-  ['eosd_20rpc_20interface',['eosd RPC Interface',['../group__eosiorpc.html',1,'']]],
-  ['eos_20wallet_20process_20_28eos_2dwalletd_29',['EOS Wallet Process (eos-walletd)',['../group__eoswallet.html',1,'']]],
-  ['example_20contract',['Example Contract',['../group__examplecontract.html',1,'']]]
+  ['database_20api',['Database API',['../group__database.html',1,'']]],
+  ['database_20c_20api',['Database C API',['../group__database_c.html',1,'']]],
+  ['database_20c_2b_2b_20api',['Database C++ API',['../group__database_cpp.html',1,'']]],
+  ['dual_20128_20bit_20index_20table',['Dual 128 bit Index table',['../group__dbi128i128.html',1,'']]],
+  ['dual_20index_20table',['Dual Index Table',['../group__dualindextable.html',1,'']]]
 ];

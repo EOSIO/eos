@@ -22,7 +22,7 @@
 
 #include <eosio/chain/wasm_interface.hpp>
 
-#include <eos/utilities/rand.hpp>
+#include <eosio/utilities/rand.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -278,9 +278,9 @@ static void record_locks_for_data_access(const vector<action_trace>& action_trac
    for (const auto& at: action_traces) {
       for (const auto& access: at.data_access) {
          if (access.type == data_access_info::read) {
-            read_locks.emplace_back(shard_lock{at.receiver, access.scope});
+            read_locks.emplace_back(shard_lock{access.code, access.scope});
          } else {
-            write_locks.emplace_back(shard_lock{at.receiver, access.scope});
+            write_locks.emplace_back(shard_lock{access.code, access.scope});
          }
       }
    }

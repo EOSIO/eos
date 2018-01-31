@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['messagehandle',['MessageHandle',['../group__transactioncapi.html#gaa42fca851fc0bcfd9dffc229c9552ce5',1,'transaction.h']]]
+  ['meta',['meta',['../structeosio_1_1generic__currency_1_1issue.html#ae02349b4ae5d6ef313d0155b264458d7',1,'eosio::generic_currency::issue']]]
 ];

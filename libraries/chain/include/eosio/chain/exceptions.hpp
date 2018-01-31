@@ -6,7 +6,7 @@
 
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/protocol.hpp>
-#include <eos/utilities/exception_macros.hpp>
+#include <eosio/utilities/exception_macros.hpp>
 
 namespace eosio { namespace chain {
 
