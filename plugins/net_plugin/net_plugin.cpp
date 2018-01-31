@@ -170,7 +170,7 @@ namespace eosio {
       int16_t                       network_version = 0;
       bool                          network_version_match = false;
       chain_id_type                 chain_id;
-      fc::sha256                    node_id;
+      chain::private_key_type       node_key; ///< Private key of node, either first configured, first producer, or ephemeral
 
       string                        user_agent_name;
       chain_plugin*                 chain_plug;
@@ -247,17 +247,18 @@ namespace eosio {
        * \return False if the peer should not connect, true otherwise.
        */
       bool authenticate_peer(const handshake_message& msg) const;
-      /** \brief Retrieve public key used to authenticate with peers.
+      /** \brief Select private key used to identify the node.
        *
-       * Finds a key to use for authentication.  If this node is a producer, use
-       * the front of the producer key map.  If the node is not a producer but has
-       * a configured private key, use it.  If the node is neither a producer nor has
-       * a private key, returns an empty key.
+       * Finds a key to use for authentication.  If the node has a configured
+       * private key, use it.  If this node has no configured private key but
+       * is a producer, use the front of the producer key map.  If the node
+       * neither has a configured private key nor is a producer, generate an
+       * ephemeral key.
        *
        * \note On a node with multiple private keys configured, the key with the first
        *       numerically smaller byte will always be used.
        */
-      chain::public_key_type get_authentication_key() const;
+      chain::private_key_type select_node_key() const;
       /** \brief Returns a signature of the digest using the corresponding private key of the signer.
        *
        * If there are no configured private keys, returns an empty signature.
@@ -389,7 +390,8 @@ namespace eosio {
       };
       deque<queued_write>     write_queue;
 
-      fc::sha256              node_id;
+      chain::public_key_type  node_key;
+      sha512                  shared_secret; ///< Shared secret computed from our node keys.
       handshake_message       last_handshake_recv;
       handshake_message       last_handshake_sent;
       int16_t                 sent_handshake_count;
@@ -490,9 +492,10 @@ namespace eosio {
        *
        * Process the next message from the pending_message_buffer.
        * message_length is the already determined length of the data
-       * part of the message and impl in the net plugin implementation
+       * part of the message and impl is the net plugin implementation
        * that will handle the message.
-       * Returns true is successful. Returns false if an error was
+       *
+       * @returns true if successful or false if an error was
        * encountered unpacking or processing the message.
        */
       bool process_next_message(net_plugin_impl& impl, uint32_t message_length);
@@ -556,7 +559,6 @@ namespace eosio {
         sync_requested(),
         socket( std::make_shared<tcp::socket>( std::ref( app().get_io_service() ))),
         send_buffer(send_buf_size),
-        node_id(),
         last_handshake_recv(),
         last_handshake_sent(),
         sent_handshake_count(0),
@@ -581,7 +583,6 @@ namespace eosio {
         sync_requested(),
         socket( s ),
         send_buffer(send_buf_size),
-        node_id(),
         last_handshake_recv(),
         last_handshake_sent(),
         sent_handshake_count(0),
@@ -606,8 +607,7 @@ namespace eosio {
    }
 
    void connection::initialize() {
-      auto *rnd = node_id.data();
-      rnd[0] = 0;
+      node_key = chain::public_key_type();
       response_expected.reset(new boost::asio::steady_timer(app().get_io_service()));
    }
 
@@ -1481,13 +1481,13 @@ namespace eosio {
          c->connecting = false;
       }
       if (msg.generation == 1) {
-         if( msg.node_id == node_id) {
+         if( msg.node_key == node_key.get_public_key()) {
             elog( "Self connection detected. Closing connection");
             c->enqueue( go_away_message( self ) );
             return;
          }
 
-         if( c->peer_addr.empty() || c->last_handshake_recv.node_id == fc::sha256()) {
+         if( c->peer_addr.empty() || c->last_handshake_recv.node_key == chain::public_key_type()) {
             fc_dlog(logger, "checking for duplicate" );
             for(const auto &check : connections) {
                if(check == c)
@@ -1502,7 +1502,7 @@ namespace eosio {
 
                   fc_dlog(logger, "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
                   go_away_message gam(go_away_reason::duplicate);
-                  gam.node_id = node_id;
+                  gam.node_key = node_key.get_public_key();
                   c->enqueue(gam);
                   c->no_retry = duplicate;
                   return;
@@ -1510,7 +1510,7 @@ namespace eosio {
             }
          }
          else {
-            fc_dlog(logger, "skipping duplicate check, addr == ${pa}, id = ${ni}",("pa",c->peer_addr)("ni",c->last_handshake_recv.node_id));
+            fc_dlog(logger, "skipping duplicate check, addr == ${pa}, id = ${ni}",("pa",c->peer_addr)("ni",c->last_handshake_recv.node_key));
          }
 
          if( msg.chain_id != chain_id) {
@@ -1525,13 +1525,13 @@ namespace eosio {
                c->enqueue(go_away_message(wrong_version));
                return;
             } else {
-               wlog("Peer network version does not match expected ${nv} but got ${mnv}",
+               ilog("Peer network version does not match expected ${nv} but got ${mnv}",
                     ("nv", network_version)("mnv", msg.network_version));
             }
          }
 
-         if(  c->node_id != msg.node_id) {
-            c->node_id = msg.node_id;
+         if(  c->node_key != msg.node_key) {
+            c->node_key = msg.node_key;
          }
 
          if(!authenticate_peer(msg)) {
@@ -1564,6 +1564,7 @@ namespace eosio {
          }
       }
 
+      c->shared_secret = node_key.generate_shared_secret(msg.node_key);
       c->last_handshake_recv = msg;
       sync_master->reset_lib_num();
       c->syncing = false;
@@ -1642,7 +1643,7 @@ namespace eosio {
       ilog( "received a go away message, reason = ${r}",("r",rsn));
       c->no_retry = msg.reason;
       if(msg.reason == go_away_reason::duplicate ) {
-         c->node_id = msg.node_id;
+         c->node_key = msg.node_key;
       }
       c->flush_queues();
       close (c);
@@ -2237,15 +2238,15 @@ namespace eosio {
          return true;
 
       if(allowed_connections & (Producers | Specified)) {
-         auto allowed_it = std::find(allowed_peers.begin(), allowed_peers.end(), msg.key);
-         auto private_it = private_keys.find(msg.key);
+         auto allowed_it = std::find(allowed_peers.begin(), allowed_peers.end(), msg.node_key);
+         auto private_it = private_keys.find(msg.node_key);
          bool found_producer_key = false;
          producer_plugin* pp = app().find_plugin<producer_plugin>();
          if(pp != nullptr)
-            found_producer_key = pp->is_producer_key(msg.key);
+            found_producer_key = pp->is_producer_key(msg.node_key);
          if( allowed_it == allowed_peers.end() && private_it == private_keys.end() && !found_producer_key) {
             elog( "Peer ${peer} sent a handshake with an unauthorized key: ${key}.",
-                  ("peer", msg.p2p_address)("key", msg.key));
+                  ("peer", msg.p2p_address)("key", msg.node_key));
             return false;
          }
       }
@@ -2275,7 +2276,7 @@ namespace eosio {
                   ("peer", msg.p2p_address));
             return false;
          }
-         if((allowed_connections & (Producers | Specified)) && peer_key != msg.key) {
+         if((allowed_connections & (Producers | Specified)) && peer_key != msg.node_key) {
             elog( "Peer ${peer} sent a handshake with an unauthenticated key.",
                   ("peer", msg.p2p_address));
             return false;
@@ -2288,13 +2289,13 @@ namespace eosio {
       return true;
    }
 
-   chain::public_key_type net_plugin_impl::get_authentication_key() const {
+   chain::private_key_type net_plugin_impl::select_node_key() const {
       if(!private_keys.empty())
-         return private_keys.begin()->first;
+         return private_keys.begin()->second;
       producer_plugin* pp = app().find_plugin<producer_plugin>();
       if(pp != nullptr && pp->get_state() == abstract_plugin::started)
-         return pp->first_producer_public_key();
-      return chain::public_key_type();
+         return pp->first_producer_private_key();
+      return private_key_type::generate();
    }
 
    chain::signature_type net_plugin_impl::sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const
@@ -2312,15 +2313,14 @@ namespace eosio {
    handshake_initializer::populate( handshake_message &hello) {
       hello.network_version = my_impl->network_version;
       hello.chain_id = my_impl->chain_id;
-      hello.node_id = my_impl->node_id;
-      hello.key = my_impl->get_authentication_key();
+      hello.node_key = my_impl->node_key.get_public_key();
       hello.time = std::chrono::system_clock::now().time_since_epoch().count();
       hello.token = fc::sha256::hash(hello.time);
-      hello.sig = my_impl->sign_compact(hello.key, hello.token);
+      hello.sig = my_impl->sign_compact(hello.node_key, hello.token);
       // If we couldn't sign, don't send a token.
       if(hello.sig == chain::signature_type())
          hello.token = sha256();
-      hello.p2p_address = my_impl->p2p_address + " - " + hello.node_id.str().substr(0,7);
+      hello.p2p_address = my_impl->p2p_address;
 #if defined( __APPLE__ )
       hello.os = "osx";
 #elif defined( __linux__ )
@@ -2514,8 +2514,9 @@ namespace eosio {
 
       my->chain_plug = app().find_plugin<chain_plugin>();
       my->chain_plug->get_chain_id(my->chain_id);
-      fc::rand_pseudo_bytes(my->node_id.data(), my->node_id.data_size());
-      ilog("my node_id is ${id}",("id",my->node_id));
+//      fc::rand_pseudo_bytes(my->node_id.data(), my->node_id.data_size());
+      my->node_key = my->select_node_key();
+      ilog("my node id is ${id}",("id",my->node_key));
 
       my->keepalive_timer.reset(new boost::asio::steady_timer(app().get_io_service()));
       my->ticker();

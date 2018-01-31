@@ -17,8 +17,7 @@ namespace eosio {
    struct handshake_message {
       int16_t                    network_version = 0; ///< derived from git commit hash, not sequential
       chain_id_type              chain_id; ///< used to identify chain
-      fc::sha256                 node_id; ///< used to identify peers and prevent self-connect
-      chain::public_key_type     key; ///< authentication key; may be a producer or peer key, or empty
+      chain::public_key_type     node_key; ///< authentication and identification key; may be a producer, peer key, or an ephemural key; also used to prevent self-connect
       tstamp                     time;
       fc::sha256                 token; ///< digest of time to prove we own the private key of the key above
       chain::signature_type      sig; ///< signature for the digest
@@ -66,9 +65,9 @@ namespace eosio {
   }
 
   struct go_away_message {
-    go_away_message (go_away_reason r = no_reason) : reason(r), node_id() {}
+    go_away_message (go_away_reason r = no_reason) : reason(r), node_key() {}
     go_away_reason reason;
-    fc::sha256 node_id; ///< for duplicate notification
+    chain::public_key_type node_key; ///< for duplicate notification
   };
 
    typedef std::chrono::system_clock::duration::rep tstamp;
@@ -163,12 +162,12 @@ namespace eosio {
 
 FC_REFLECT( eosio::select_ids<fc::sha256>, (mode)(pending)(ids) )
 FC_REFLECT( eosio::handshake_message,
-            (network_version)(chain_id)(node_id)(key)
+            (network_version)(chain_id)(node_key)
             (time)(token)(sig)(p2p_address)
             (last_irreversible_block_num)(last_irreversible_block_id)
             (head_num)(head_id)
             (os)(agent)(generation) )
-FC_REFLECT( eosio::go_away_message, (reason)(node_id) )
+FC_REFLECT( eosio::go_away_message, (reason)(node_key) )
 FC_REFLECT( eosio::time_message, (org)(rec)(xmt)(dst) )
 #if 0 //disabling block summary support
 FC_REFLECT( eosio::processed_trans_summary, (id)(outmsgs) )

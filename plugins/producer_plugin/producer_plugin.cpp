@@ -89,13 +89,15 @@ void producer_plugin::set_program_options(
    config_file_options.add(producer_options);
 }
 
-chain::public_key_type producer_plugin::first_producer_public_key() const
+chain::private_key_type producer_plugin::first_producer_private_key() const
 {
   chain::chain_controller& chain = app().get_plugin<chain_plugin>().chain();
   try {
-    return chain.get_producer(*my->_producers.begin()).signing_key;
+    auto signing_key = chain.get_producer(*my->_producers.begin()).signing_key;
+    auto private_key_iter = my->_private_keys.find(signing_key);
+    return private_key_iter->second;
   } catch(std::out_of_range) {
-    return chain::public_key_type();
+    return chain::private_key_type();
   }
 }
 

@@ -18,6 +18,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
+#include <fc/crypto/private_key.hpp>
 #include <fc/io/json.hpp>
 #include <fc/network/ip.hpp>
 #include <fc/reflect/variant.hpp>
@@ -104,16 +105,6 @@ struct local_identity {
 
 } local_id;
 
-
-struct keypair {
-  string public_key;
-  string wif_private_key;
-
-  keypair ()
-    : public_key("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"),
-      wif_private_key("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3")
-  {}
-};
 
 class eosd_def;
 
@@ -227,12 +218,12 @@ private:
 
 class tn_node_def {
 public:
-  string          name;
-  vector<keypair> keys;
-  vector<string>  peers;
-  vector<string>  producers;
-  eosd_def*       instance;
-  string          gelf_endpoint;
+  string                          name;
+  vector<fc::crypto::private_key> keys;
+  vector<string>                  peers;
+  vector<string>                  producers;
+  eosd_def*                       instance;
+  string                          gelf_endpoint;
 };
 
 void
@@ -692,8 +683,8 @@ launcher_def::bind_nodes () {
         tn_node_def node;
         node.name = inst.name;
         node.instance = &inst;
-        keypair kp;
-        node.keys.emplace_back (move(kp));
+        auto key = fc::crypto::private_key::generate();
+        node.keys.emplace_back (move(key));
         if (i < prod_nodes) {
           int count = per_node;
           if (extra) {
@@ -871,9 +862,9 @@ launcher_def::write_config_file (tn_node_def &node) {
     }
     if (allowed_connections & PC_SPECIFIED) {
       cfg << "allowed-connection = specified\n";
-      cfg << "peer-key = \"" << node.keys.begin()->public_key << "\"\n";
-      cfg << "peer-private-key = [\"" << node.keys.begin()->public_key
-          << "\",\"" << node.keys.begin()->wif_private_key << "\"]\n";
+      cfg << "peer-key = \"" << node.keys.begin()->get_public_key() << "\"\n";
+      cfg << "peer-private-key = [\"" << string(node.keys.begin()->get_public_key())
+          << "\",\"" << string(*node.keys.begin()) << "\"]\n";
     }
   }
   for (const auto &p : node.peers) {
@@ -881,9 +872,9 @@ launcher_def::write_config_file (tn_node_def &node) {
   }
   if (instance.has_db || node.producers.size()) {
     cfg << "required-participation = true\n";
-    for (const auto &kp : node.keys ) {
-      cfg << "private-key = [\"" << kp.public_key
-          << "\",\"" << kp.wif_private_key << "\"]\n";
+    for (const auto &key : node.keys ) {
+      cfg << "private-key = [\"" << string(key.get_public_key())
+          << "\",\"" << string(key) << "\"]\n";
     }
     for (auto &p : node.producers) {
       cfg << "producer-name = " << p << "\n";
@@ -1466,8 +1457,6 @@ int main (int argc, char *argv[]) {
 
 //-------------------------------------------------------------
 
-
-FC_REFLECT( keypair, (public_key)(wif_private_key) )
 
 FC_REFLECT( remote_deploy,
             (ssh_cmd)(scp_cmd)(ssh_identity)(ssh_args) )
