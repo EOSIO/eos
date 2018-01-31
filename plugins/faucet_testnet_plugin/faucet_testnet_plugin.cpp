@@ -4,7 +4,7 @@
  */
 #include <eosio/faucet_testnet_plugin/faucet_testnet_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
-#include <eos/utilities/key_conversion.hpp>
+#include <eosio/utilities/key_conversion.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
@@ -222,7 +222,7 @@ struct faucet_testnet_plugin_impl {
       auto& plugin = _app.get_plugin<chain_plugin>();
       plugin.get_chain_id(chainid);
       chain_controller& cc = plugin.chain();
-      const uint64_t deposit = 1;
+      const asset deposit(1);
 
       signed_transaction trx;
       auto memo = fc::variant(fc::time_point::now()).as_string() + " " + fc::variant(fc::time_point::now().time_since_epoch()).as_string();

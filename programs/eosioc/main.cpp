@@ -71,7 +71,7 @@ Options:
 #include <fc/io/json.hpp>
 #include <fc/io/console.hpp>
 #include <fc/exception/exception.hpp>
-#include <eos/utilities/key_conversion.hpp>
+#include <eosio/utilities/key_conversion.hpp>
 
 #include <eosio/chain/config.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
@@ -291,7 +291,7 @@ void create_account(name creator, name newaccount, public_key_type owner, public
       auto active_auth  = eosio::chain::authority{1, {{active, 1}}, {}};
       auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
 
-      uint64_t deposit = staked_deposit;
+      asset deposit(staked_deposit);
 
       signed_transaction trx;
       trx.actions.emplace_back( vector<chain::permission_level>{{creator,"active"}},
@@ -1030,7 +1030,7 @@ int main( int argc, char** argv ) {
         auto active_auth  = eosio::chain::authority{1, {{active, 1}}, {}};
         auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
         
-        uint64_t deposit = 1;
+        asset deposit(1);
         
         signed_transaction trx;
         trx.actions.emplace_back( vector<chain::permission_level>{{creator,"active"}},

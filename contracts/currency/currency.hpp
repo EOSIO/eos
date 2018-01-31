@@ -3,10 +3,10 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
-#include <eoslib/eos.hpp>
-#include <eoslib/token.hpp>
-#include <eoslib/db.hpp>
-#include <eoslib/generic_currency.hpp>
+#include <eosiolib/eosio.hpp>
+#include <eosiolib/token.hpp>
+#include <eosiolib/db.hpp>
+#include <eosiolib/generic_currency.hpp>
 
 
 namespace currency {

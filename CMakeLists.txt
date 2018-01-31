@@ -159,7 +159,9 @@ endif( WIN32 )
 set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build Eos for code coverage analysis")
 
 if(ENABLE_COVERAGE_TESTING)
-    SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
+  SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
+  find_program( LCOV_PATH  lcov )
+  find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
 include(wasm)
@@ -174,6 +176,8 @@ else()
   message(STATUS "--------------------------------------------------------------------")
 endif()
 
+include(installer)
+
 add_subdirectory( libraries )
 add_subdirectory( plugins )
 add_subdirectory( programs )
@@ -183,5 +187,5 @@ add_subdirectory( tools )
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis.json ${CMAKE_CURRENT_BINARY_DIR}/genesis.json COPYONLY)
 
-include(installer)
+
 include(doxygen)

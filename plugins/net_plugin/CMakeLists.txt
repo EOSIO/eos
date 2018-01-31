@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eos/net_plugin/*.hpp")
+file(GLOB HEADERS "include/eosio/net_plugin/*.hpp")
 add_library( net_plugin
              net_plugin.cpp
              ${HEADERS} )
@@ -13,4 +13,4 @@ install( TARGETS
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib
 )
-install( FILES ${HEADERS} DESTINATION "include/eos/net_plugin" )
+install( FILES ${HEADERS} DESTINATION "include/eosio/net_plugin" )

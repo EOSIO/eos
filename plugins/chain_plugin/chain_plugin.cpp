@@ -17,7 +17,7 @@
 #include <eosio/chain/contracts/genesis_state.hpp>
 #include <eosio/chain/contracts/eos_contract.hpp>
 
-#include <eos/utilities/key_conversion.hpp>
+#include <eosio/utilities/key_conversion.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 
 #include <fc/io/json.hpp>
@@ -337,10 +337,10 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
       share_type balance;
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
       fc::raw::unpack(ds, balance);
-      auto cursor = asset(balance, obj.primary_key);
+      auto cursor = asset(balance, symbol(obj.primary_key));
 
       if (p.symbol || cursor.symbol_name().compare(*p.symbol) == 0) {
-         results.emplace_back(balance, obj.primary_key);
+         results.emplace_back(balance, symbol(obj.primary_key));
       }
 
       // return false if we are looking for one and found it, true otherwise
@@ -356,7 +356,7 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
       share_type balance;
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
       fc::raw::unpack(ds, balance);
-      auto cursor = asset(balance, obj.primary_key);
+      auto cursor = asset(balance, symbol(obj.primary_key));
 
       read_only::get_currency_stats_result result;
       result.supply = cursor;

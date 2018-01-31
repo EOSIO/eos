@@ -2,9 +2,9 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eoslib/message.h>
-//#include <eoslib/types.hpp>
-#include <eoslib/memory.hpp>
+#include <eosiolib/message.h>
+//#include <eosiolib/types.hpp>
+#include <eosiolib/memory.hpp>
 
 extern "C" {
     void init()
