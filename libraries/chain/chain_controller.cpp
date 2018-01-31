@@ -22,13 +22,14 @@
 
 #include <eosio/chain/wasm_interface.hpp>
 
-#include <eos/utilities/rand.hpp>
+#include <eosio/utilities/rand.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
 #include <fc/crypto/digest.hpp>
 
 #include <boost/range/algorithm/copy.hpp>
+#include <boost/range/algorithm_ext/erase.hpp>
 #include <boost/range/algorithm_ext/is_sorted.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/adaptor/map.hpp>
@@ -277,9 +278,9 @@ static void record_locks_for_data_access(const vector<action_trace>& action_trac
    for (const auto& at: action_traces) {
       for (const auto& access: at.data_access) {
          if (access.type == data_access_info::read) {
-            read_locks.emplace_back(shard_lock{at.receiver, access.scope});
+            read_locks.emplace_back(shard_lock{access.code, access.scope});
          } else {
-            write_locks.emplace_back(shard_lock{at.receiver, access.scope});
+            write_locks.emplace_back(shard_lock{access.code, access.scope});
          }
       }
    }
@@ -1304,12 +1305,10 @@ void chain_controller::update_last_irreversible_block()
       }
       if( new_producer_schedule ) {
          _db.modify( gpo, [&]( auto& props ){
-             /// TODO: use upper / lower bound to remove range
-              while( gpo.pending_active_producers.size() ) {
-                 if( gpo.pending_active_producers.front().first < new_last_irreversible_block_num ) {
-                   props.pending_active_producers.erase(props.pending_active_producers.begin());
-                 }
-              }
+              boost::range::remove_erase_if(props.pending_active_producers,
+                                            [new_last_irreversible_block_num](const typename decltype(props.pending_active_producers)::value_type& v) -> bool {
+                                               return v.first < new_last_irreversible_block_num;
+                                            });
               props.active_producers = *new_producer_schedule;
          });
       }

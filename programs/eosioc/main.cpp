@@ -71,7 +71,7 @@ Options:
 #include <fc/io/json.hpp>
 #include <fc/io/console.hpp>
 #include <fc/exception/exception.hpp>
-#include <eos/utilities/key_conversion.hpp>
+#include <eosio/utilities/key_conversion.hpp>
 
 #include <eosio/chain/config.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
@@ -136,6 +136,8 @@ const string get_block_func = chain_func_base + "/get_block";
 const string get_account_func = chain_func_base + "/get_account";
 const string get_table_func = chain_func_base + "/get_table_rows";
 const string get_code_func = chain_func_base + "/get_code";
+const string get_currency_balance_func = chain_func_base + "/get_currency_balance";
+const string get_currency_stats_func = chain_func_base + "/get_currency_stats";
 const string get_required_keys = chain_func_base + "/get_required_keys";
 
 const string account_history_func_base = "/v1/account_history";
@@ -599,7 +601,49 @@ int main( int argc, char** argv ) {
                 << std::endl;
    });
 
+   // currency accessors
+   // get currency balance
+   string symbol;
+   auto get_currency = get->add_subcommand( "currency", localized("Retrieve information related to standard currencies"), true);
+   auto get_balance = get_currency->add_subcommand( "balance", localized("Retrieve the balance of an account for a given currency"), false);
+   get_balance->add_option( "contract", code, localized("The contract that operates the currency") )->required();
+   get_balance->add_option( "account", accountName, localized("The account to query balances for") )->required();
+   get_balance->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
+   get_balance->set_callback([&] {
+      auto result = call(get_currency_balance_func, fc::mutable_variant_object("json", false)
+         ("account", accountName)
+         ("code", code)
+         ("symbol", symbol)
+      );
 
+      const auto& rows = result.get_array();
+      if (symbol.empty()) {
+         std::cout << fc::json::to_pretty_string(rows)
+                   << std::endl;
+      } else if ( rows.size() > 0 ){
+         std::cout << fc::json::to_pretty_string(rows[0])
+                   << std::endl;
+      }
+   });
+
+   auto get_currency_stats = get_currency->add_subcommand( "stats", localized("Retrieve the stats of for a given currency"), false);
+   get_currency_stats->add_option( "contract", code, localized("The contract that operates the currency") )->required();
+   get_currency_stats->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
+   get_currency_stats->set_callback([&] {
+      auto result = call(get_currency_stats_func, fc::mutable_variant_object("json", false)
+         ("code", code)
+         ("symbol", symbol)
+      );
+
+      if (symbol.empty()) {
+         std::cout << fc::json::to_pretty_string(result)
+                   << std::endl;
+      } else {
+         const auto& mapping = result.get_object();
+         std::cout << fc::json::to_pretty_string(mapping[symbol])
+                   << std::endl;
+      }
+   });
 
    // get accounts
    string publicKey;
@@ -1086,7 +1130,7 @@ int main( int argc, char** argv ) {
    auto push = app.add_subcommand("push", localized("Push arbitrary transactions to the blockchain"), false);
    push->require_subcommand();
 
-   // push actions
+   // push action
    string contract;
    string action;
    string data;
@@ -1112,12 +1156,7 @@ int main( int argc, char** argv ) {
       auto accountPermissions = get_account_permissions(permissions);
 
       signed_transaction trx;
-      eosio::chain::action act;
-      act.account = contract;
-      act.name = action;
-      act.authorization = accountPermissions;
-      act.data = result.get_object()["binargs"].as<bytes>();
-      trx.actions.push_back(act);
+      trx.actions.emplace_back(accountPermissions, contract, action, result.get_object()["binargs"].as<bytes>());
 
       if (tx_force_unique) {
          trx.actions.emplace_back( generate_nonce() );

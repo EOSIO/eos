@@ -78,3 +78,16 @@ script:
   - ${CMAKE_DIR}cmake -G Ninja -DWASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext -DBINARYEN_ROOT=$TRAVIS_BUILD_DIR/ext/wasm-compiler -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/ext -DCMAKE_BUILD_TYPE=Release -DBUILD_MONGO_DB_PLUGIN=true $EOS_CMAKE_OPTIONS ..
   - ninja -j4
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || ctest --output-on-failure'
+  - cpack
+
+deploy:
+  provider: releases
+  api_key:
+    secure: "PvCGYnK5Wq0MdB141TSuS7tljYRs7BAlk4tUzvYcHV/8s+cocKGA6DBzeXAVIAahc6r0ccKxMSZV98J6FBa3cdHLvay0qnihXsg8YR2gk3O2Ei8v38WO+BmRJ94W79vvRkmd7bbIDylhyWnTjWXt0eNWbeuZxPrIkEFTDu9hxsvcTX+WzamRRtPaqUhddO7VMsV+KKYsegzSKd9OiMk4+1dieNfkp0P6gWBoPw/9t5NIj4tFDpDmvUcWXy4y2ENQY9YULuFaRd+SjvfciAMznqf3wOAxXBa5NXCfUPHPEt+cC5rvOrvI3CTduJL2sFY5628Z3iGEoc9pSe/GJiygcl6CQkH9BkDMH8TpID6kPhfXqg1ObKe5AwNcNX009PdTGl0pdljrVETHOtMk8tPLyg9BoMBU6i+rePHxIlrBRj1VYX4qoidPTA0EcauFj3t4c5cOtamgovIt+U3HSI3+UhCl7+yF6YFKi0y8NAFNDYp3EdeCdvOzBLvoScBUGoWdDEm99HZTqdfd/OJlHqWJHR8DE+PW64OaDjs+2q0Sn3n5+huy9zvimMUl0XfsErthSLhGTAIn0Ipl1UBmZgZa4Rbrc0DpWv6rDZBCEu3JPFJS/x5gMT2DuQg/JUO5f5WJjIAUWI4hD/z80pzheky07hEBTKbAQqGwE1GKwFNfkLw="
+  file: "$TRAVIS_BUILD_DIR/build/packages/EOS.IO-*"
+  skip_cleanup: true
+  file_glob: true
+  on:
+    tags: true
+    repo: EOSIO/eos
+    branch: master

@@ -5,6 +5,7 @@
 #include <boost/core/ignore_unused.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/utf8.hpp>
 
 #include <Runtime/Runtime.h>
 #include "IR/Module.h"
@@ -93,14 +94,8 @@ namespace eosio { namespace chain {
     */
    struct wasm_cache_impl {
       wasm_cache_impl()
-      :_ios()
-      ,_work(_ios)
       {
          Runtime::init();
-
-         _utility_thread = std::thread([](io_service* ios){
-            ios->run();
-         }, &_ios);
       }
 
       /**
@@ -111,9 +106,6 @@ namespace eosio { namespace chain {
        * returned before this can be destroyed
        */
       ~wasm_cache_impl() {
-         _work.reset();
-         _ios.stop();
-         _utility_thread.join();
          freeUnreferencedObjects({});
       }
 
@@ -155,8 +147,8 @@ namespace eosio { namespace chain {
        * @return - varies depending on the signature of the lambda
        */
       template<typename F>
-      auto with_lock(F f) {
-         std::lock_guard<std::mutex> lock(_cache_lock);
+      auto with_lock(std::mutex &l, F f) {
+         std::lock_guard<std::mutex> lock(l);
          return f();
       };
 
@@ -167,7 +159,7 @@ namespace eosio { namespace chain {
        * @return
        */
       optional_info_ref fetch_info(const digest_type& code_id) {
-         return with_lock([&,this](){
+         return with_lock(_cache_lock, [&,this](){
             auto iter = _cache.find(code_id);
             if (iter != _cache.end()) {
                return optional_info_ref(iter->second);
@@ -183,7 +175,7 @@ namespace eosio { namespace chain {
        * @return - reference to the entry when one is available
        */
       optional_entry_ref try_fetch_entry(const digest_type& code_id) {
-         return with_lock([&,this](){
+         return with_lock(_cache_lock, [&,this](){
             auto iter = _cache.find(code_id);
             if (iter != _cache.end() && iter->second.available_instances > 0) {
                auto &ptr = iter->second.instances.at(--(iter->second.available_instances));
@@ -211,7 +203,7 @@ namespace eosio { namespace chain {
 
          // compilation is not thread safe, so we dispatch it to a io_service running on a single thread to
          // queue up and synchronize compilations
-         _ios.post([&,this](){
+         with_lock(_compile_lock, [&,this](){
             // check to see if someone returned what we need before making a new one
             auto pending_result = try_fetch_entry(code_id);
             std::exception_ptr pending_error;
@@ -252,7 +244,7 @@ namespace eosio { namespace chain {
 
                if (pending_error == nullptr) {
                   // grab the lock and put this in the cache as unavailble
-                  with_lock([&,this]() {
+                  with_lock(_cache_lock, [&,this]() {
                      // find or create a new entry
                      auto iter = _cache.emplace(code_id, code_info(mem_end, std::move(mem_image))).first;
 
@@ -262,25 +254,14 @@ namespace eosio { namespace chain {
                }
             }
 
-            // publish result under lock
-            with_lock([&](){
-               if (pending_error != nullptr) {
-                  error = pending_error;
-               } else {
-                  result = pending_result;
-               }
-            });
+           if (pending_error != nullptr) {
+              error = pending_error;
+           } else {
+              result = pending_result;
+           }
 
-            condition.notify_all();
          });
 
-         // wait for the other thread to compile a copy for us
-         {
-            std::unique_lock<std::mutex> lock(_cache_lock);
-            condition.wait(lock, [&]{
-               return error != nullptr || result.valid();
-            });
-         }
 
          try {
             if (error != nullptr) {
@@ -300,43 +281,39 @@ namespace eosio { namespace chain {
        * @param entry - the entry to return
        */
       void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
-         _ios.post([&,code_id,this](){
-            // sanitize by reseting the memory that may now be dirty
-            auto& info = (*fetch_info(code_id)).get();
-            if(getDefaultMemory(entry.instance)) {
-               char* memstart = &memoryRef<char>( getDefaultMemory(entry.instance), 0 );
-               memset( memstart + info.mem_end, 0, ((1<<16) - info.mem_end) );
-               memcpy( memstart, info.mem_image.data(), info.mem_end);
-            }
-            resetGlobalInstances(entry.instance);
+        // sanitize by reseting the memory that may now be dirty
+        auto& info = (*fetch_info(code_id)).get();
+        if(getDefaultMemory(entry.instance)) {
+           char* memstart = &memoryRef<char>( getDefaultMemory(entry.instance), 0 );
+           memset( memstart + info.mem_end, 0, ((1<<16) - info.mem_end) );
+           memcpy( memstart, info.mem_image.data(), info.mem_end);
+        }
+        resetGlobalInstances(entry.instance);
 
-            // under a lock, put this entry back in the available instances side of the instances vector
-            with_lock([&,this](){
-               // walk the vector and find this entry
-               auto iter = info.instances.begin();
-               while (iter->get() != &entry) {
-                  ++iter;
-               }
+        // under a lock, put this entry back in the available instances side of the instances vector
+        with_lock(_cache_lock, [&,this](){
+           // walk the vector and find this entry
+           auto iter = info.instances.begin();
+           while (iter->get() != &entry) {
+              ++iter;
+           }
 
-               FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
+           FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
 
-               auto first_unavailable = (info.instances.begin() + info.available_instances);
-               if (iter != first_unavailable) {
-                  std::swap(iter, first_unavailable);
-               }
-               info.available_instances++;
-            });
-         });
+           auto first_unavailable = (info.instances.begin() + info.available_instances);
+           if (iter != first_unavailable) {
+              std::swap(iter, first_unavailable);
+           }
+           info.available_instances++;
+        });
       }
 
       // mapping of digest to an entry for the code
       map<digest_type, code_info> _cache;
       std::mutex _cache_lock;
 
-      // compilation and cleanup thread
-      std::thread _utility_thread;
-      io_service _ios;
-      optional<io_service::work> _work;
+      // compilation lock
+      std::mutex _compile_lock;
    };
 
    wasm_cache::wasm_cache()
@@ -426,201 +403,6 @@ namespace eosio { namespace chain {
       my->call("error", args, code, context);
    }
 
-#if 0
-  DEFINE_INTRINSIC_FUNCTION2(env,assert,assert,none,i32,test,i32,msg) {
-      elog( "assert" );
-      /*
-      const char* m = &Runtime::memoryRef<char>( wasm_interface::get().current_memory, msg );
-     std::string message( m );
-     if( !test ) edump((message));
-     FC_ASSERT( test, "assertion failed: ${s}", ("s",message)("ptr",msg) );
-     */
-   }
-
-   DEFINE_INTRINSIC_FUNCTION1(env,printi,printi,none,i64,val) {
-     std::cerr << uint64_t(val);
-   }
-   DEFINE_INTRINSIC_FUNCTION1(env,printd,printd,none,i64,val) {
-     //std::cerr << DOUBLE(*reinterpret_cast<double *>(&val));
-   }
-
-   DEFINE_INTRINSIC_FUNCTION1(env,printi128,printi128,none,i32,val) {
-      /*
-      auto& wasm  = wasm_interface::get();
-      auto  mem   = wasm.memory();
-      auto& value = memoryRef<unsigned __int128>( mem, val );
-      fc::uint128_t v(value>>64, uint64_t(value) );
-      std::cerr << fc::variant(v).get_string();
-      */
-
-   }
-   DEFINE_INTRINSIC_FUNCTION1(env,printn,printn,none,i64,val) {
-     std::cerr << name(val).to_string();
-   }
-
-
-
-
-
-   DEFINE_INTRINSIC_FUNCTION1(env,prints,prints,none,i32,charptr) {
-     auto& wasm  = wasm_interface::get();
-     auto  mem   = wasm.memory();
-
-     const char* str = &memoryRef<const char>( mem, charptr );
-     const auto allocated_memory = wasm.memory_size(); //Runtime::getDefaultMemorySize(state.instance);
-
-     std::cerr << std::string( str, strnlen(str, allocated_memory-charptr) );
-   }
-
-DEFINE_INTRINSIC_FUNCTION2(env,readMessage,readMessage,i32,i32,destptr,i32,destsize) {
-   FC_ASSERT( destsize > 0 );
-
-   /*
-   wasm_interface& wasm = wasm_interface::get();
-   auto  mem   = wasm.current_memory;
-   char* begin = memoryArrayPtr<char>( mem, destptr, uint32_t(destsize) );
-
-   int minlen = std::min<int>(wasm.current_validate_context->msg.data.size(), destsize);
-
-//   wdump((destsize)(wasm.current_validate_context->msg.data.size()));
-   memcpy( begin, wasm.current_validate_context->msg.data.data(), minlen );
-   */
-   return 0;//minlen;
-}
-
-
-
-DEFINE_INTRINSIC_FUNCTION1(env,printi128,printi128,none,i32,val) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-  auto& value = memoryRef<unsigned __int128>( mem, val );
-  fc::uint128_t v(value>>64, uint64_t(value) );
-  std::cerr << fc::variant(v).get_string();
-}
-DEFINE_INTRINSIC_FUNCTION1(env,printn,printn,none,i64,val) {
-  std::cerr << name(val).to_string();
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,prints,prints,none,i32,charptr) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  const char* str = &memoryRef<const char>( mem, charptr );
-
-  std::cerr << std::string( str, strnlen(str, wasm.current_state->mem_end-charptr) );
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,prints_l,prints_l,none,i32,charptr,i32,len) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  const char* str = &memoryRef<const char>( mem, charptr );
-
-  std::cerr << std::string( str, len );
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,printhex,printhex,none,i32,data,i32,datalen) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  char* buff = memoryArrayPtr<char>(mem, data, datalen);
-  std::cerr << fc::to_hex(buff, datalen);
-}
-
-
-DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
-}
-
-#define DEFINE_RECORD_READ_FUNCTIONS(OBJTYPE, FUNCPREFIX, INDEX, SCOPE) \
-   DEFINE_INTRINSIC_FUNCTION5(env,load_##FUNCPREFIX##OBJTYPE,load_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(load_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,front_##FUNCPREFIX##OBJTYPE,front_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(front_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,back_##FUNCPREFIX##OBJTYPE,back_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(back_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,next_##FUNCPREFIX##OBJTYPE,next_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(next_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,previous_##FUNCPREFIX##OBJTYPE,previous_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(previous_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,lower_bound_##FUNCPREFIX##OBJTYPE,lower_bound_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(lower_bound_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,upper_bound_##FUNCPREFIX##OBJTYPE,upper_bound_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(upper_bound_record, INDEX, SCOPE); \
-   }
-DEFINE_INTRINSIC_FUNCTION2(env,account_balance_get,account_balance_get,i32,i32,charptr,i32,len) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  const uint32_t account_balance_size = sizeof(account_balance);
-  FC_ASSERT( len == account_balance_size, "passed in len ${len} is not equal to the size of an account_balance struct == ${real_len}", ("len",len)("real_len",account_balance_size) );
-
-  account_balance& total_balance = memoryRef<account_balance>( mem, charptr );
-
-  wasm.current_apply_context->require_scope(total_balance.account);
-
-  auto& db = wasm.current_apply_context->db;
-  auto* balance        = db.find< balance_object,by_owner_name >( total_balance.account );
-  auto* staked_balance = db.find<staked_balance_object,by_owner_name>( total_balance.account );
-
-  if (balance == nullptr || staked_balance == nullptr)
-     return false;
-
-  total_balance.eos_balance          = asset(balance->balance, EOS_SYMBOL);
-  total_balance.staked_balance       = asset(staked_balance->staked_balance);
-  total_balance.unstaking_balance    = asset(staked_balance->unstaking_balance);
-  total_balance.last_unstaking_time  = staked_balance->last_unstaking_time;
-
-  return true;
-}
-
-#define UPDATE_RECORD(UPDATEFUNC, INDEX, DATASIZE) \
-   return 0;
-
-   /*
-   auto lambda = [&](apply_context* ctx, INDEX::value_type::key_type* keys, char *data, uint32_t datalen) -> int32_t { \
-      return ctx->UPDATEFUNC<INDEX::value_type>( Name(scope), Name(ctx->code.value), Name(table), keys, data, datalen); \
-   }; \
-   return validate<decltype(lambda), INDEX::value_type::key_type, INDEX::value_type::number_of_keys>(valueptr, DATASIZE, lambda);
-   */
-
-#define DEFINE_RECORD_UPDATE_FUNCTIONS(OBJTYPE, INDEX) \
-   DEFINE_INTRINSIC_FUNCTION4(env,store_##OBJTYPE,store_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) { \
-      UPDATE_RECORD(store_record, INDEX, valuelen); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION4(env,update_##OBJTYPE,update_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) { \
-      UPDATE_RECORD(update_record, INDEX, valuelen); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION3(env,remove_##OBJTYPE,remove_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr) { \
-      UPDATE_RECORD(remove_record, INDEX, sizeof(typename INDEX::value_type::key_type)*INDEX::value_type::number_of_keys); \
-   }
-
-DEFINE_RECORD_READ_FUNCTIONS(i64,,key_value_index, by_scope_primary);
-DEFINE_RECORD_UPDATE_FUNCTIONS(i64, key_value_index);
-
-DEFINE_INTRINSIC_FUNCTION1(env,requireAuth,requireAuth,none,i64,account) {
-   //wasm_interface::get().current_validate_context->require_authorization( Name(account) );
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,requireNotice,requireNotice,none,i64,account) {
-   //wasm_interface::get().current_validate_context->require_authorization( Name(account) );
-}
-DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
-   /*
-   auto dur = wasm_interface::get().current_execution_time();
-   if (dur > CHECKTIME_LIMIT) {
-      wlog("checktime called ${d}", ("d", dur));
-      throw checktime_exceeded();
-   }
-   */
-}
-#endif
-
 #if defined(assert)
    #undef assert
 #endif
@@ -636,6 +418,43 @@ class context_aware_api {
       uint32_t&          sbrk_bytes;
       wasm_cache::entry& code;
       apply_context&     context;
+};
+
+class producer_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      int get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
+         auto active_producers = context.get_active_producers();
+         size_t len = std::min(datalen / sizeof(chain::account_name), active_producers.size());
+         memcpy(producers, active_producers.data(), len);
+         return active_producers.size() * sizeof(chain::account_name);
+      }
+};
+
+class crypto_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void assert_sha256(array_ptr<char> data, size_t datalen, const fc::sha256& hash_val) {
+         auto result = fc::sha256::hash( data, datalen );
+         FC_ASSERT( result == hash_val, "hash miss match" );
+      }
+
+      void sha256(array_ptr<char> data, size_t datalen, fc::sha256& hash_val) {
+         hash_val = fc::sha256::hash( data, datalen );
+      }
+};
+
+class string_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void assert_is_utf8(array_ptr<const char> str, size_t datalen, null_terminated_ptr msg) {
+         const bool test = fc::is_utf8(std::string( str, datalen ));
+
+         FC_ASSERT( test, "assertion failed: ${s}", ("s",msg.value) );
+      }
 };
 
 class system_api : public context_aware_api {
@@ -900,6 +719,19 @@ class transaction_api : public context_aware_api {
       }
 
 };
+
+REGISTER_INTRINSICS(producer_api,
+   (get_active_producers,      int(int, int))
+);
+
+REGISTER_INTRINSICS(crypto_api,
+   (assert_sha256,  void(int, int, int))
+   (sha256,         void(int, int, int))
+);
+
+REGISTER_INTRINSICS(string_api,
+   (assert_is_utf8,  void(int, int, int))
+);
 
 REGISTER_INTRINSICS(system_api,
    (assert,      void(int, int))

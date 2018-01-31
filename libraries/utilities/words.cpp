@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <stdint.h>
-#include <eos/utilities/words.hpp>
+#include <eosio/utilities/words.hpp>
 
 namespace eosio { namespace words {
 
