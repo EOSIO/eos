@@ -46,13 +46,15 @@ public:
                   bool skip_sign,
                   bool tx_force_unique);
 
+    std::vector<chain::permission_level> get_account_permissions(const std::vector<std::string>& permissions);
+
+    eosio::chain_apis::read_only::get_info_results get_info();
+
     fc::variant push_transaction(eosio::chain::signed_transaction& trx, bool sign); ///< \todo make private
     std::vector<uint8_t> assemble_wast(const std::string &wast); ///< \todo make private
 private:
     void send_transaction(const std::vector<chain::action>& actions, bool skip_sign = false);
     void sign_transaction(eosio::chain::signed_transaction& trx);
-    eosio::chain_apis::read_only::get_info_results get_info();
-    std::vector<chain::permission_level> get_account_permissions(const std::vector<std::string>& permissions);
     chain::action create_deleteauth(const chain::name& account, const chain::name& permission, const chain::name& permissionAuth);
     chain::action create_updateauth(const chain::name& account, const chain::name& permission, const chain::name& parent, const chain::authority& auth, const chain::name& permissionAuth);
     chain::action create_unlinkauth(const chain::name& account, const chain::name& code, const chain::name& type);

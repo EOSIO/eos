@@ -16,6 +16,16 @@
 #include "localize.hpp"
 
 FC_DECLARE_EXCEPTION( explained_exception, 9000000, "explained exception, see error log" );
+#define EOSC_ASSERT( TEST, ... ) \
+  FC_EXPAND_MACRO( \
+    FC_MULTILINE_MACRO_BEGIN \
+      if( UNLIKELY(!(TEST)) ) \
+      {                                                   \
+        std::cerr << localized( __VA_ARGS__ ) << std::endl;  \
+        FC_THROW_EXCEPTION( explained_exception, #TEST ); \
+      }                                                   \
+    FC_MULTILINE_MACRO_END \
+  )
 
 namespace eosio {
 namespace client {
@@ -140,18 +150,18 @@ eosio::chain_apis::read_only::get_info_results eosioclient::get_info() {
     return m_peer.get_info().as<eosio::chain_apis::read_only::get_info_results>();
 }
 
-//std::vector<chain::permission_level> Eosioclient::get_account_permissions(const std::vector<std::string>& permissions)
-//{
-//   auto fixedPermissions = permissions | boost::adaptors::transformed([](const std::string& p) {
-//      std::vector<std::string> pieces;
-//      split(pieces, p, boost::algorithm::is_any_of("@"));
-//      EOSC_ASSERT(pieces.size() == 2, "Invalid permission: ${p}", ("p", p));
-//      return chain::permission_level{ .actor = pieces[0], .permission = pieces[1] };
-//   });
-//   std::vector<chain::permission_level> accountPermissions;
-//   boost::range::copy(fixedPermissions, back_inserter(accountPermissions));
-//   return accountPermissions;
-//}
+std::vector<chain::permission_level> eosioclient::get_account_permissions(const std::vector<std::string>& permissions)
+{
+   auto fixedPermissions = permissions | boost::adaptors::transformed([](const std::string& p) {
+      std::vector<std::string> pieces;
+      split(pieces, p, boost::algorithm::is_any_of("@"));
+      EOSC_ASSERT(pieces.size() == 2, "Invalid permission: ${p}", ("p", p));
+      return chain::permission_level{ .actor = pieces[0], .permission = pieces[1] };
+   });
+   std::vector<chain::permission_level> accountPermissions;
+   boost::range::copy(fixedPermissions, back_inserter(accountPermissions));
+   return accountPermissions;
+}
 
 void eosioclient::set_account_permission(const std::string& accountStr,
                                          const std::string& permissionStr,

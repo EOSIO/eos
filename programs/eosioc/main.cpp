@@ -151,22 +151,6 @@ chain::action generate_nonce() {
    return chain::action( {}, contracts::nonce{.value = generate_nonce_value()} );
 }
 
-vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
-   auto fixedPermissions = permissions | boost::adaptors::transformed([](const string& p) {
-      vector<string> pieces;
-      split(pieces, p, boost::algorithm::is_any_of("@"));
-      EOSC_ASSERT(pieces.size() == 2, "Invalid permission: ${p}", ("p", p));
-      return chain::permission_level{ .actor = pieces[0], .permission = pieces[1] };
-   });
-   vector<chain::permission_level> accountPermissions;
-   boost::range::copy(fixedPermissions, back_inserter(accountPermissions));
-   return accountPermissions;
-}
-
-eosio::chain_apis::read_only::get_info_results get_info() {
-  return remote_peer.get_info().as<eosio::chain_apis::read_only::get_info_results>();
-}
-
 struct set_account_permission_subcommand {
    string accountStr;
    string permissionStr;
@@ -329,7 +313,7 @@ int main( int argc, char** argv ) {
       if (permissions.empty()) {
          permissions.push_back(account_name + "@active");
       }
-      auto account_permissions = get_account_permissions(permissions);
+      auto account_permissions = eosioclient.get_account_permissions(permissions);
 
       signed_transaction trx;
       trx.actions.emplace_back(  account_permissions, contracts::setproducer{account_name, public_key_type(ownerKey), chain_config{}} );
@@ -567,7 +551,7 @@ int main( int argc, char** argv ) {
       if (permissions.empty()) {
          permissions.push_back(account_name + "@active");
       }
-      auto account_permissions = get_account_permissions(permissions);
+      auto account_permissions = eosioclient.get_account_permissions(permissions);
 
       signed_transaction trx;
       trx.actions.emplace_back( account_permissions, contracts::okproducer{account_name, producer, approve});
@@ -590,7 +574,7 @@ int main( int argc, char** argv ) {
       if (permissions.empty()) {
          permissions.push_back(account_name + "@active");
       }
-      auto account_permissions = get_account_permissions(permissions);
+      auto account_permissions = eosioclient.get_account_permissions(permissions);
       if (proxy.empty()) {
          proxy = account_name;
       }
@@ -786,7 +770,7 @@ int main( int argc, char** argv ) {
         EOSC_ASSERT( number_of_accounts >= 2, "must create at least 2 accounts" );
       }
 
-      auto info = get_info();
+      auto info = eosioclient.get_info();
 
       vector<signed_transaction> batch;
       batch.reserve( number_of_accounts );
@@ -808,7 +792,7 @@ int main( int argc, char** argv ) {
         trx.expiration = info.head_block_time + tx_expiration;
         trx.set_reference_block(info.head_block_id);
         batch.emplace_back(trx);
-    info = get_info();
+    info = eosioclient.get_info();
       }
       auto result = remote_peer.push_transactions(batch);
       std::cout << fc::json::to_pretty_string(result) << std::endl;
@@ -825,7 +809,7 @@ int main( int argc, char** argv ) {
       EOSC_ASSERT( number_of_accounts >= 2, "must create at least 2 accounts" );
 
       std::cerr << localized("Funding ${number_of_accounts} accounts from init", ("number_of_accounts",number_of_accounts)) << std::endl;
-      auto info = get_info();
+      auto info = eosioclient.get_info();
       vector<signed_transaction> batch;
       batch.reserve(100);
       for( uint32_t i = 0; i < number_of_accounts; ++i ) {
@@ -855,7 +839,7 @@ int main( int argc, char** argv ) {
 
       std::cerr << localized("Generating random ${number_of_transfers} transfers among ${number_of_accounts}",("number_of_transfers",number_of_transfers)("number_of_accounts",number_of_accounts)) << std::endl;
       while( true ) {
-         auto info = get_info();
+         auto info = eosioclient.get_info();
          uint64_t amount = 1;
 
          for( uint32_t i = 0; i < number_of_transfers; ++i ) {
@@ -879,7 +863,7 @@ int main( int argc, char** argv ) {
                auto result = remote_peer.push_transactions(batch);
                //std::cout << fc::json::to_pretty_string(result) << std::endl;
                batch.resize(0);
-                info = get_info();
+                info = eosioclient.get_info();
             }
          }
 
@@ -887,7 +871,7 @@ int main( int argc, char** argv ) {
            auto result = remote_peer.push_transactions(batch);
                std::cout << fc::json::to_pretty_string(result) << std::endl;
                batch.resize(0);
-               info = get_info();
+               info = eosioclient.get_info();
      }
          if( !loop ) break;
       }
@@ -917,7 +901,7 @@ int main( int argc, char** argv ) {
    actionsSubcommand->set_callback([&] {
       ilog("Converting argument to binary...");
       auto result = remote_peer.json_to_bin(contract, action, data);
-      auto accountPermissions = get_account_permissions(permissions);
+      auto accountPermissions = eosioclient.get_account_permissions(permissions);
 
       signed_transaction trx;
       trx.actions.emplace_back(accountPermissions, contract, action, result.get_object()["binargs"].as<bytes>());
