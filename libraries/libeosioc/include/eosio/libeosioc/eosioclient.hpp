@@ -50,6 +50,43 @@ public:
 
     eosio::chain_apis::read_only::get_info_results get_info();
 
+    void get_code(const std::string& account,
+                  const std::string& code_filename,
+                  const std::string& abi_filename);
+
+    void get_table(const std::string& scope, const std::string& code, const std::string& table);
+    void execute_random_transactions(uint64_t number_account,
+                                     uint64_t number_of_transfers,
+                                     bool loop,
+                                     const std::string &memo);
+
+    void configure_benchmarks(uint64_t number_of_accounts,
+                                          const std::string& c_account,
+                                          const std::string& owner_key,
+                                          const std::string& active_key);
+
+    void push_transaction_with_single_action(const std::string& contract,
+                                             const std::string& action,
+                                             const std::string& data,
+                                             const std::vector<std::string>& permissions,
+                                             bool skip_sign,
+                                             bool tx_force_unique);
+
+    void set_proxy_account_for_voting(const std::string& account_name,
+                                      std::string proxy,
+                                      std::vector<std::string> permissions,
+                                      bool skip_sign);
+
+    void approve_unapprove_producer(const std::string& account_name,
+                                    const std::string& producer,
+                                    std::vector<std::string> permissions,
+                                    bool approve,
+                                    bool skip_sign);
+
+    void get_balance(const std::string& account_name,
+                     const std::string& code,
+                     const std::string& symbol);
+
     fc::variant push_transaction(eosio::chain::signed_transaction& trx, bool sign); ///< \todo make private
     std::vector<uint8_t> assemble_wast(const std::string &wast); ///< \todo make private
 private:

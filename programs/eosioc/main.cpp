@@ -345,24 +345,7 @@ int main( int argc, char** argv ) {
    getCode->add_option("name", accountName, localized("The name of the account whose code should be retrieved"))->required();
    getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract .wast to") );
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
-   getCode->set_callback([&] {
-      auto result = remote_peer.get_code(accountName);
-
-      std::cout << localized("code hash: ${code_hash}", ("code_hash", result["code_hash"].as_string())) << std::endl;
-
-      if( codeFilename.size() ){
-         std::cout << localized("saving wast to ${codeFilename}", ("codeFilename", codeFilename)) << std::endl;
-         auto code = result["wast"].as_string();
-         std::ofstream out( codeFilename.c_str() );
-         out << code;
-      }
-      if( abiFilename.size() ) {
-         std::cout << localized("saving abi to ${abiFilename}", ("abiFilename", abiFilename)) << std::endl;
-         auto abi  = fc::json::to_pretty_string( result["abi"] );
-         std::ofstream abiout( abiFilename.c_str() );
-         abiout << abi;
-      }
-   });
+   getCode->set_callback([&] { eosioclient.get_code(accountName, codeFilename, abiFilename); });
 
    // get table
    string scope;
@@ -381,13 +364,7 @@ int main( int argc, char** argv ) {
    getTable->add_option( "-k,--key", limit, localized("The name of the key to index by as defined by the abi, defaults to primary key") );
    getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
-
-   getTable->set_callback([&] {
-      auto result = remote_peer.get_table(scope, code, table);
-
-      std::cout << fc::json::to_pretty_string(result)
-                << std::endl;
-   });
+   getTable->set_callback([&] { eosioclient.get_table(scope, code, table); });
 
    // currency accessors
    // get currency balance
@@ -397,18 +374,7 @@ int main( int argc, char** argv ) {
    get_balance->add_option( "contract", code, localized("The contract that operates the currency") )->required();
    get_balance->add_option( "account", accountName, localized("The account to query balances for") )->required();
    get_balance->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
-   get_balance->set_callback([&] {
-      auto result = remote_peer.get_currency_balance(account_name, code, symbol);
-
-      const auto& rows = result.get_array();
-      if (symbol.empty()) {
-         std::cout << fc::json::to_pretty_string(rows)
-                   << std::endl;
-      } else if ( rows.size() > 0 ){
-         std::cout << fc::json::to_pretty_string(rows[0])
-                   << std::endl;
-      }
-   });
+   get_balance->set_callback([&] { eosioclient.get_balance(accountName, code, symbol); });
 
    auto get_currency_stats = get_currency->add_subcommand( "stats", localized("Retrieve the stats of for a given currency"), false);
    get_currency_stats->add_option( "contract", code, localized("The contract that operates the currency") )->required();
@@ -537,21 +503,12 @@ int main( int argc, char** argv ) {
                               localized("An account and permission level to authorize, as in 'account@permission' (default user@active)"));
    producerSubcommand->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(producerSubcommand);
-   producerSubcommand->set_callback([&] {
-      // don't need to check unapproveCommand because one of approve or unapprove is required
-      bool approve = producerSubcommand->got_subcommand(approveCommand);
-      if (permissions.empty()) {
-         permissions.push_back(account_name + "@active");
-      }
-      auto account_permissions = eosioclient.get_account_permissions(permissions);
-
-      signed_transaction trx;
-      trx.actions.emplace_back( account_permissions, contracts::okproducer{account_name, producer, approve});
-
-      eosioclient.push_transaction(trx, !skip_sign);
-      std::cout << localized("Set producer approval from ${name} for ${producer} to ${approve}",
-         ("name", account_name)("producer", producer)("value", approve ? "approve" : "unapprove")) << std::endl;
-   });
+   bool approve = producerSubcommand->got_subcommand(approveCommand);
+   producerSubcommand->set_callback([&] { eosioclient.approve_unapprove_producer(account_name,
+                                                                                 producer,
+                                                                                 permissions,
+                                                                                 approve,
+                                                                                 skip_sign); });
 
    // set proxy subcommand
    string proxy;
@@ -562,21 +519,10 @@ int main( int argc, char** argv ) {
                                   localized("An account and permission level to authorize, as in 'account@permission' (default user@active)"));
    proxySubcommand->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(proxySubcommand);
-   proxySubcommand->set_callback([&] {
-      if (permissions.empty()) {
-         permissions.push_back(account_name + "@active");
-      }
-      auto account_permissions = eosioclient.get_account_permissions(permissions);
-      if (proxy.empty()) {
-         proxy = account_name;
-      }
-
-      signed_transaction trx;
-      trx.actions.emplace_back( account_permissions, contracts::setproxy{account_name, proxy});
-
-      eosioclient.push_transaction(trx, !skip_sign);
-      std::cout << localized("Set proxy for ${name} to ${proxy}", ("name", account_name)("proxy", proxy)) << std::endl;
-   });
+   proxySubcommand->set_callback([&] { eosioclient.set_proxy_account_for_voting(account_name,
+                                                                                proxy,
+                                                                                permissions,
+                                                                                skip_sign); });
 
    // set account
    auto setAccount = setSubcommand->add_subcommand("account", localized("set or update blockchain account state"))->require_subcommand();
@@ -742,53 +688,10 @@ int main( int argc, char** argv ) {
    benchmark_setup->add_option("active", active_key, localized("The active key to use for account creation"))->required();
    add_standard_transaction_options(benchmark_setup);
 
-   benchmark_setup->set_callback([&]{
-      auto response_servants = remote_peer.get_controlled_accounts(c_account);
-      fc::variant_object response_var;
-      fc::from_variant(response_servants, response_var);
-      std::vector<std::string> controlled_accounts_vec;
-      fc::from_variant(response_var["controlled_accounts"], controlled_accounts_vec);
-       long num_existing_accounts = std::count_if(controlled_accounts_vec.begin(),
-                                    controlled_accounts_vec.end(),
-                    [](auto const &s) { return s.find("benchmark") != std::string::npos;});
-      boost::format fmter("%1% accounts already exist");
-      fmter % num_existing_accounts;
-      EOSC_ASSERT( number_of_accounts > num_existing_accounts, fmter.str().c_str());
-
-      number_of_accounts -= num_existing_accounts;
-      std::cerr << localized("Creating ${number_of_accounts} accounts with initial balances", ("number_of_accounts",number_of_accounts)) << std::endl;
-
-      if (num_existing_accounts == 0) {
-        EOSC_ASSERT( number_of_accounts >= 2, "must create at least 2 accounts" );
-      }
-
-      auto info = eosioclient.get_info();
-
-      vector<signed_transaction> batch;
-      batch.reserve( number_of_accounts );
-      for( uint32_t i = num_existing_accounts; i < num_existing_accounts + number_of_accounts; ++i ) {
-        name newaccount( name("benchmark").value + i );
-        public_key_type owner(owner_key), active(active_key);
-        name creator(c_account);
-
-        auto owner_auth   = eosio::chain::authority{1, {{owner, 1}}, {}};
-        auto active_auth  = eosio::chain::authority{1, {{active, 1}}, {}};
-        auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
-
-        uint64_t deposit = 1;
-
-        signed_transaction trx;
-        trx.actions.emplace_back( vector<chain::permission_level>{{creator,"active"}},
-                                  contracts::newaccount{creator, newaccount, owner_auth, active_auth, recovery_auth, deposit});
-
-        trx.expiration = info.head_block_time + tx_expiration;
-        trx.set_reference_block(info.head_block_id);
-        batch.emplace_back(trx);
-    info = eosioclient.get_info();
-      }
-      auto result = remote_peer.push_transactions(batch);
-      std::cout << fc::json::to_pretty_string(result) << std::endl;
-   });
+   benchmark_setup->set_callback([&]{ eosioclient.configure_benchmarks(number_of_accounts,
+                                                                       c_account,
+                                                                       owner_key,
+                                                                       active_key); });
 
    auto benchmark_transfer = benchmark->add_subcommand( "transfer", localized("executes random transfers among accounts") );
    uint64_t number_of_transfers = 0;
@@ -797,79 +700,10 @@ int main( int argc, char** argv ) {
    benchmark_transfer->add_option("count", number_of_transfers, localized("the number of transfers to execute"))->required();
    benchmark_transfer->add_option("loop", loop, localized("whether or not to loop for ever"));
    add_standard_transaction_options(benchmark_transfer);
-   benchmark_transfer->set_callback([&]{
-      EOSC_ASSERT( number_of_accounts >= 2, "must create at least 2 accounts" );
-
-      std::cerr << localized("Funding ${number_of_accounts} accounts from init", ("number_of_accounts",number_of_accounts)) << std::endl;
-      auto info = eosioclient.get_info();
-      vector<signed_transaction> batch;
-      batch.reserve(100);
-      for( uint32_t i = 0; i < number_of_accounts; ++i ) {
-         name sender( "initb" );
-         name recipient( name("benchmark").value + i);
-         uint32_t amount = 100000;
-
-         signed_transaction trx;
-         trx.actions.emplace_back( vector<chain::permission_level>{{sender,"active"}},
-                                   contracts::transfer{ .from = sender, .to = recipient, .amount = amount, .memo = memo});
-         trx.expiration = info.head_block_time + tx_expiration;
-         trx.set_reference_block(info.head_block_id);
-
-         batch.emplace_back(trx);
-         if( batch.size() == 100 ) {
-            auto result = remote_peer.push_transactions(batch);
-      //      std::cout << fc::json::to_pretty_string(result) << std::endl;
-            batch.resize(0);
-         }
-      }
-      if( batch.size() ) {
-         auto result = remote_peer.push_transactions(batch);
-         //std::cout << fc::json::to_pretty_string(result) << std::endl;
-         batch.resize(0);
-      }
-
-
-      std::cerr << localized("Generating random ${number_of_transfers} transfers among ${number_of_accounts}",("number_of_transfers",number_of_transfers)("number_of_accounts",number_of_accounts)) << std::endl;
-      while( true ) {
-         auto info = eosioclient.get_info();
-         uint64_t amount = 1;
-
-         for( uint32_t i = 0; i < number_of_transfers; ++i ) {
-            signed_transaction trx;
-
-            name sender( name("benchmark").value + rand() % number_of_accounts );
-            name recipient( name("benchmark").value + rand() % number_of_accounts );
-
-            while( recipient == sender )
-               recipient = name( name("benchmark").value + rand() % number_of_accounts );
-
-
-            auto memo = fc::variant(fc::time_point::now()).as_string() + " " + fc::variant(fc::time_point::now().time_since_epoch()).as_string();
-            trx.actions.emplace_back(  vector<chain::permission_level>{{sender,"active"}},
-                                       contracts::transfer{ .from = sender, .to = recipient, .amount = amount, .memo = memo});
-            trx.expiration = info.head_block_time + tx_expiration;
-            trx.set_reference_block( info.head_block_id);
-
-            batch.emplace_back(trx);
-            if( batch.size() == 40 ) {
-               auto result = remote_peer.push_transactions(batch);
-               //std::cout << fc::json::to_pretty_string(result) << std::endl;
-               batch.resize(0);
-                info = eosioclient.get_info();
-            }
-         }
-
-     if (batch.size() > 0) {
-           auto result = remote_peer.push_transactions(batch);
-               std::cout << fc::json::to_pretty_string(result) << std::endl;
-               batch.resize(0);
-               info = eosioclient.get_info();
-     }
-         if( !loop ) break;
-      }
-   });
-
-
+   benchmark_transfer->set_callback([&]{ eosioclient.execute_random_transactions(number_of_accounts,
+                                                                                 number_of_transfers,
+                                                                                 loop,
+                                                                                 memo); });
 
    // Push subcommand
    auto push = app.add_subcommand("push", localized("Push arbitrary transactions to the blockchain"), false);
@@ -890,19 +724,13 @@ int main( int argc, char** argv ) {
                                  localized("An account and permission level to authorize, as in 'account@permission'"));
    actionsSubcommand->add_flag("-s,--skip-sign", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(actionsSubcommand);
-   actionsSubcommand->set_callback([&] {
-      ilog("Converting argument to binary...");
-      auto result = remote_peer.json_to_bin(contract, action, data);
-      auto accountPermissions = eosioclient.get_account_permissions(permissions);
+   actionsSubcommand->set_callback([&] { eosioclient.push_transaction_with_single_action(contract,
+                                                                                         action,
+                                                                                         data,
+                                                                                         permissions,
+                                                                                         skip_sign,
+                                                                                         tx_force_unique);
 
-      signed_transaction trx;
-      trx.actions.emplace_back(accountPermissions, contract, action, result.get_object()["binargs"].as<bytes>());
-
-      if (tx_force_unique) {
-         trx.actions.emplace_back( generate_nonce() );
-      }
-
-      std::cout << fc::json::to_pretty_string(eosioclient.push_transaction(trx, !skip_sign )) << std::endl;
    });
 
    // push transaction
