@@ -92,6 +92,7 @@ Options:
 #include <fc/io/fstream.hpp>
 #include <eosio/libeosioc/peer.hpp>
 #include <eosio/libeosioc/wallet.hpp>
+#include <eosio/libeosioc/eosioclient.hpp>
 
 #include "CLI11.hpp"
 #include "help_text.hpp"
@@ -121,8 +122,9 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
   )
 
 string program = "eosc";
-eosio::client::peer remote_peer;
-eosio::client::wallet remote_wallet;
+eosio::client::peer remote_peer; ///< \todo remove
+eosio::client::wallet remote_wallet; ///< \todo remove
+eosio::client::Eosioclient eosioclient(remote_peer, remote_wallet);
 
 inline std::vector<name> sort_names( const std::vector<name>& names ) {
    auto results = std::vector<name>(names);
@@ -226,57 +228,6 @@ fc::variant push_transaction( signed_transaction& trx, bool sign ) {
     return remote_peer.push_transaction( trx );
 }
 
-
-void create_account(name creator, name newaccount, public_key_type owner, public_key_type active, bool sign, uint64_t staked_deposit) {
-      auto owner_auth   = eosio::chain::authority{1, {{owner, 1}}, {}};
-      auto active_auth  = eosio::chain::authority{1, {{active, 1}}, {}};
-      auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
-
-      uint64_t deposit = staked_deposit;
-
-      signed_transaction trx;
-      trx.actions.emplace_back( vector<chain::permission_level>{{creator,"active"}},
-                                contracts::newaccount{creator, newaccount, owner_auth, active_auth, recovery_auth, deposit});
-
-      std::cout << fc::json::to_pretty_string(push_transaction(trx, sign)) << std::endl;
-}
-
-chain::action create_updateauth(const name& account, const name& permission, const name& parent, const authority& auth, const name& permissionAuth) {
-   return action { vector<chain::permission_level>{{account,permissionAuth}},
-                   contracts::updateauth{account, permission, parent, auth}};
-}
-
-chain::action create_deleteauth(const name& account, const name& permission, const name& permissionAuth) {
-   return action { vector<chain::permission_level>{{account,permissionAuth}},
-                   contracts::deleteauth{account, permission}};
-}
-
-chain::action create_linkauth(const name& account, const name& code, const name& type, const name& requirement) {
-   return action { vector<chain::permission_level>{{account,"active"}},
-                   contracts::linkauth{account, code, type, requirement}};
-}
-
-chain::action create_unlinkauth(const name& account, const name& code, const name& type) {
-   return action { vector<chain::permission_level>{{account,"active"}},
-                   contracts::unlinkauth{account, code, type}};
-}
-
-void send_transaction(const std::vector<chain::action>& actions, bool skip_sign = false) {
-   signed_transaction trx;
-   for (const auto& m: actions) {
-      trx.actions.emplace_back( m );
-   }
-
-   auto info = get_info();
-   trx.expiration = info.head_block_time + tx_expiration;
-   trx.set_reference_block(info.head_block_id);
-   if (!skip_sign) {
-      sign_transaction(trx);
-   }
-
-   std::cout << fc::json::to_pretty_string( remote_peer.push_transaction( trx )) << std::endl;
-}
-
 struct set_account_permission_subcommand {
    string accountStr;
    string permissionStr;
@@ -295,56 +246,13 @@ struct set_account_permission_subcommand {
       permissions->add_flag("-s,--skip-sign", skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
       add_standard_transaction_options(permissions);
 
-      permissions->set_callback([this] {
-         name account = name(accountStr);
-         name permission = name(permissionStr);
-         bool is_delete = boost::iequals(authorityJsonOrFile, "null");
-
-         if (is_delete) {
-            send_transaction({create_deleteauth(account, permission, name(permissionAuth))}, skip_sign);
-         } else {
-            authority auth;
-            if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
-               auth = authority(public_key_type(authorityJsonOrFile));
-            } else {
-               fc::variant parsedAuthority;
-               if (boost::istarts_with(authorityJsonOrFile, "{")) {
-                  parsedAuthority = fc::json::from_string(authorityJsonOrFile);
-               } else {
-                  parsedAuthority = fc::json::from_file(authorityJsonOrFile);
-               }
-
-               auth = parsedAuthority.as<authority>();
-            }
-
-            name parent;
-            if (parentStr.size() == 0 && permissionStr != "owner") {
-               // see if we can auto-determine the proper parent
-               const auto account_result = remote_peer.get_account(accountStr);
-               const auto& existing_permissions = account_result.get_object()["permissions"].get_array();
-               auto permissionPredicate = [this](const auto& perm) {
-                  return perm.is_object() &&
-                        perm.get_object().contains("permission") &&
-                        boost::equals(perm.get_object()["permission"].get_string(), permissionStr);
-               };
-
-               auto itr = boost::find_if(existing_permissions, permissionPredicate);
-               if (itr != existing_permissions.end()) {
-                  parent = name((*itr).get_object()["parent"].get_string());
-               } else {
-                  // if this is a new permission and there is no parent we default to "active"
-                  parent = name("active");
-
-               }
-            } else {
-               parent = name(parentStr);
-            }
-
-            send_transaction({create_updateauth(account, permission, parent, auth, name(permissionAuth))}, skip_sign);
-         }
-      });
+      permissions->set_callback([this] { eosioclient.set_account_permission(accountStr,
+                                                                    permissionStr,
+                                                                    authorityJsonOrFile,
+                                                                    parentStr,
+                                                                    permissionAuth,
+                                                                    skip_sign); });
    }
-
 };
 
 struct set_action_permission_subcommand {
@@ -363,19 +271,11 @@ struct set_action_permission_subcommand {
       permissions->add_flag("-s,--skip-sign", skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
       add_standard_transaction_options(permissions);
 
-      permissions->set_callback([this] {
-         name account = name(accountStr);
-         name code = name(codeStr);
-         name type = name(typeStr);
-         bool is_delete = boost::iequals(requirementStr, "null");
-
-         if (is_delete) {
-            send_transaction({create_unlinkauth(account, code, type)}, skip_sign);
-         } else {
-            name requirement = name(requirementStr);
-            send_transaction({create_linkauth(account, code, type, requirement)}, skip_sign);
-         }
-      });
+      permissions->set_callback([this] { eosioclient.set_action_permission(accountStr,
+                                                                           codeStr,
+                                                                           typeStr,
+                                                                           requirementStr,
+                                                                           skip_sign); });
    }
 };
 
@@ -470,9 +370,12 @@ int main( int argc, char** argv ) {
    createAccount->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    createAccount->add_option("--staked-deposit", staked_deposit, localized("the staked deposit transfered to the new account"));
    add_standard_transaction_options(createAccount);
-   createAccount->set_callback([&] {
-                   create_account(creator, account_name, public_key_type(ownerKey), public_key_type(activeKey), !skip_sign, staked_deposit);
-   });
+   createAccount->set_callback([&] { eosioclient.create_account(creator,
+                                                                account_name,
+                                                                public_key_type(ownerKey),
+                                                                public_key_type(activeKey),
+                                                                !skip_sign,
+                                                                staked_deposit); });
 
    // create producer
    vector<string> permissions;
@@ -784,33 +687,12 @@ int main( int argc, char** argv ) {
    transfer->add_option("memo", memo, localized("The memo for the transfer"));
    transfer->add_flag("-s,--skip-sign", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(transfer);
-   transfer->set_callback([&] {
-      signed_transaction trx;
-
-      if (tx_force_unique) {
-         if (memo.size() == 0) {
-            // use the memo to add a nonce
-            memo = fc::to_string(generate_nonce_value());
-         } else {
-            // add a nonce actions
-            trx.actions.emplace_back( generate_nonce() );
-         }
-      }
-
-      trx.actions.emplace_back( vector<chain::permission_level>{{sender,"active"}},
-                                contracts::transfer{ .from = sender, .to = recipient, .amount = amount, .memo = memo});
-
-
-      auto info = get_info();
-      trx.expiration = info.head_block_time + tx_expiration;
-      trx.set_reference_block( info.head_block_id);
-      if (!skip_sign) {
-         sign_transaction(trx);
-      }
-
-      std::cout << fc::json::to_pretty_string( remote_peer.push_transaction( trx )) << std::endl;
-   });
-
+   transfer->set_callback([&] { eosioclient.transfer(sender,
+                                                     recipient,
+                                                     amount,
+                                                     memo,
+                                                     skip_sign,
+                                                     tx_force_unique); });
    // Net subcommand
    string new_host;
    auto net = app.add_subcommand( "net", localized("Interact with local p2p network connections"), false );
