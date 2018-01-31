@@ -363,9 +363,9 @@ namespace eosio {
 
    class connection : public std::enable_shared_from_this<connection> {
    public:
-      connection( string endpoint );
+      explicit connection( string endpoint );
 
-      connection( socket_ptr s );
+      explicit connection( socket_ptr s );
       ~connection();
       void initialize();
 
