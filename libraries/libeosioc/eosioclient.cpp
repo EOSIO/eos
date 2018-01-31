@@ -15,7 +15,7 @@ namespace client {
 
 const auto tx_expiration = fc::seconds(30);
 
-eosioclient::eosioclient(peer &peer, wallet &wallet):
+eosioclient::eosioclient(peer& peer, wallet& wallet):
     m_wallet(wallet),
     m_peer(peer)
 {

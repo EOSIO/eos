@@ -12,7 +12,7 @@ namespace client {
 class eosioclient
 {
 public:
-    eosioclient(peer &peer, wallet &wallet);
+    eosioclient(peer& peer, wallet& wallet);
 
     void create_account(chain::name creator,
                         chain::name newaccount,
@@ -26,35 +26,35 @@ public:
                          std::vector<std::string> permissions,
                          bool skip_sign);
 
-    void set_account_permission(const std::string &accountStr,
-                                const std::string &permissionStr,
-                                const std::string &authorityJsonOrFile,
-                                const std::string &parentStr,
-                                const std::string &permissionAuth,
+    void set_account_permission(const std::string& accountStr,
+                                const std::string& permissionStr,
+                                const std::string& authorityJsonOrFile,
+                                const std::string& parentStr,
+                                const std::string& permissionAuth,
                                 bool skip_sign);
 
-    void set_action_permission(const std::string &accountStr,
-                               const std::string &codeStr,
-                               const std::string &typeStr,
-                               const std::string &requirementStr,
+    void set_action_permission(const std::string& accountStr,
+                               const std::string& codeStr,
+                               const std::string& typeStr,
+                               const std::string& requirementStr,
                                bool skip_sign);
 
-    void transfer(const std::string &sender,
-                  const std::string &recipient,
+    void transfer(const std::string& sender,
+                  const std::string& recipient,
                   uint64_t amount,
                   std::string memo,
                   bool skip_sign,
                   bool tx_force_unique);
 private:
-    fc::variant push_transaction(eosio::chain::signed_transaction &trx, bool sign);
-    void send_transaction(const std::vector<chain::action> &actions, bool skip_sign = false);
-    void sign_transaction(eosio::chain::signed_transaction &trx);
+    fc::variant push_transaction(eosio::chain::signed_transaction& trx, bool sign);
+    void send_transaction(const std::vector<chain::action>& actions, bool skip_sign = false);
+    void sign_transaction(eosio::chain::signed_transaction& trx);
     eosio::chain_apis::read_only::get_info_results get_info();
-    std::vector<chain::permission_level> get_account_permissions(const std::vector<std::string> &permissions);
-    chain::action create_deleteauth(const chain::name &account, const chain::name &permission, const chain::name &permissionAuth);
-    chain::action create_updateauth(const chain::name &account, const chain::name &permission, const chain::name &parent, const chain::authority &auth, const chain::name &permissionAuth);
-    chain::action create_unlinkauth(const chain::name &account, const chain::name &code, const chain::name &type);
-    chain::action create_linkauth(const chain::name &account, const chain::name &code, const chain::name &type, const chain::name &requirement);
+    std::vector<chain::permission_level> get_account_permissions(const std::vector<std::string>& permissions);
+    chain::action create_deleteauth(const chain::name& account, const chain::name& permission, const chain::name& permissionAuth);
+    chain::action create_updateauth(const chain::name& account, const chain::name& permission, const chain::name& parent, const chain::authority& auth, const chain::name& permissionAuth);
+    chain::action create_unlinkauth(const chain::name& account, const chain::name& code, const chain::name& type);
+    chain::action create_linkauth(const chain::name& account, const chain::name& code, const chain::name& type, const chain::name& requirement);
     uint64_t generate_nonce_value();
     chain::action generate_nonce();
 
