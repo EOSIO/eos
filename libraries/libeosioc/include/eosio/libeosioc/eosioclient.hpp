@@ -45,8 +45,9 @@ public:
                   std::string memo,
                   bool skip_sign,
                   bool tx_force_unique);
+
+    fc::variant push_transaction(eosio::chain::signed_transaction& trx, bool sign); ///< \todo make private
 private:
-    fc::variant push_transaction(eosio::chain::signed_transaction& trx, bool sign);
     void send_transaction(const std::vector<chain::action>& actions, bool skip_sign = false);
     void sign_transaction(eosio::chain::signed_transaction& trx);
     eosio::chain_apis::read_only::get_info_results get_info();

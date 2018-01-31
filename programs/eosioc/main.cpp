@@ -134,15 +134,6 @@ inline std::vector<name> sort_names( const std::vector<name>& names ) {
    return results;
 }
 
-void sign_transaction(eosio::chain::signed_transaction& trx) {
-   // TODO better error checking
-   const auto& public_keys = remote_wallet.public_keys();
-   const auto& required_keys = remote_peer.get_keys_required(trx, public_keys);
-   // TODO determine chain id
-   const auto& signed_trx = remote_wallet.sign_transaction(trx, required_keys, eosio::chain::chain_id_type{});
-   trx = signed_trx.as<eosio::chain::signed_transaction>();
-}
-
 vector<uint8_t> assemble_wast( const std::string& wast ) {
    IR::Module module;
    std::vector<WAST::Error> parseErrors;
@@ -214,18 +205,6 @@ vector<chain::permission_level> get_account_permissions(const vector<string>& pe
 
 eosio::chain_apis::read_only::get_info_results get_info() {
   return remote_peer.get_info().as<eosio::chain_apis::read_only::get_info_results>();
-}
-
-fc::variant push_transaction( signed_transaction& trx, bool sign ) {
-    auto info = get_info();
-    trx.expiration = info.head_block_time + tx_expiration;
-    trx.set_reference_block(info.head_block_id);
-
-    if (sign) {
-       sign_transaction(trx);
-    }
-
-    return remote_peer.push_transaction( trx );
 }
 
 struct set_account_permission_subcommand {
@@ -395,7 +374,7 @@ int main( int argc, char** argv ) {
       signed_transaction trx;
       trx.actions.emplace_back(  account_permissions, contracts::setproducer{account_name, public_key_type(ownerKey), chain_config{}} );
 
-      std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
+      std::cout << fc::json::to_pretty_string(eosioclient.push_transaction(trx, !skip_sign)) << std::endl;
    });
 
    // Get subcommand
@@ -607,7 +586,7 @@ int main( int argc, char** argv ) {
       }
 
       std::cout << localized("Publishing contract...") << std::endl;
-      std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
+      std::cout << fc::json::to_pretty_string(eosioclient.push_transaction(trx, !skip_sign)) << std::endl;
    });
 
    // set producer approve/unapprove subcommand
@@ -633,7 +612,7 @@ int main( int argc, char** argv ) {
       signed_transaction trx;
       trx.actions.emplace_back( account_permissions, contracts::okproducer{account_name, producer, approve});
 
-      push_transaction(trx, !skip_sign);
+      eosioclient.push_transaction(trx, !skip_sign);
       std::cout << localized("Set producer approval from ${name} for ${producer} to ${approve}",
          ("name", account_name)("producer", producer)("value", approve ? "approve" : "unapprove")) << std::endl;
    });
@@ -659,7 +638,7 @@ int main( int argc, char** argv ) {
       signed_transaction trx;
       trx.actions.emplace_back( account_permissions, contracts::setproxy{account_name, proxy});
 
-      push_transaction(trx, !skip_sign);
+      eosioclient.push_transaction(trx, !skip_sign);
       std::cout << localized("Set proxy for ${name} to ${proxy}", ("name", account_name)("proxy", proxy)) << std::endl;
    });
 
@@ -987,7 +966,7 @@ int main( int argc, char** argv ) {
          trx.actions.emplace_back( generate_nonce() );
       }
 
-      std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign )) << std::endl;
+      std::cout << fc::json::to_pretty_string(eosioclient.push_transaction(trx, !skip_sign )) << std::endl;
    });
 
    // push transaction
