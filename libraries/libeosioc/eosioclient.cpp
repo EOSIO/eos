@@ -40,6 +40,20 @@ eosioclient::eosioclient(peer& peer, wallet& wallet):
 
 }
 
+void eosioclient::get_currency_stats(const std::string &code, const std::string &symbol)
+{
+    auto result = m_peer.get_currency_stats(code, symbol);
+
+    if (symbol.empty()) {
+       std::cout << fc::json::to_pretty_string(result)
+                 << std::endl;
+    } else {
+       const auto& mapping = result.get_object();
+       std::cout << fc::json::to_pretty_string(mapping[symbol])
+                 << std::endl;
+    }
+}
+
 void eosioclient::create_account(chain::name creator,
                                  chain::name newaccount,
                                  chain::public_key_type owner,

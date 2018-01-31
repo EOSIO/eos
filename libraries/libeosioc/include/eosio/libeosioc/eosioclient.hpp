@@ -14,6 +14,9 @@ class eosioclient
 public:
     eosioclient(peer& peer, wallet& wallet);
 
+    void get_currency_stats(const std::string& code,
+                            const std::string& symbol);
+
     void create_account(chain::name creator,
                         chain::name newaccount,
                         chain::public_key_type owner,

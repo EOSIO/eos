@@ -319,7 +319,7 @@ int main( int argc, char** argv ) {
 
    // get info
    get->add_subcommand("info", localized("Get current blockchain information"))->set_callback([] {
-      std::cout << fc::json::to_pretty_string(remote_peer.get_info().as<eosio::chain_apis::read_only::get_info_results>()) << std::endl;
+      std::cout << fc::json::to_pretty_string(eosioclient.get_info()) << std::endl;
    });
 
    // get block
@@ -379,18 +379,7 @@ int main( int argc, char** argv ) {
    auto get_currency_stats = get_currency->add_subcommand( "stats", localized("Retrieve the stats of for a given currency"), false);
    get_currency_stats->add_option( "contract", code, localized("The contract that operates the currency") )->required();
    get_currency_stats->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
-   get_currency_stats->set_callback([&] {
-      auto result = remote_peer.get_currency_stats(code, symbol);
-
-      if (symbol.empty()) {
-         std::cout << fc::json::to_pretty_string(result)
-                   << std::endl;
-      } else {
-         const auto& mapping = result.get_object();
-         std::cout << fc::json::to_pretty_string(mapping[symbol])
-                   << std::endl;
-      }
-   });
+   get_currency_stats->set_callback([&] { eosioclient.get_currency_stats(code, symbol); });
 
    // get accounts
    string publicKey;
