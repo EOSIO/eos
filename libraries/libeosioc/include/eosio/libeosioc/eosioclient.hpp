@@ -1,5 +1,9 @@
-#ifndef EOSIOCLIENT_H
-#define EOSIOCLIENT_H
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
+
+#pragma once
 
 #include "eosio/chain/transaction.hpp"
 #include "eosio/chain_plugin/chain_plugin.hpp"
@@ -109,4 +113,3 @@ private:
 } // namespace client
 } // namespace eosio
 
-#endif // EOSIOCLIENT_H
