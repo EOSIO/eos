@@ -47,6 +47,7 @@ public:
                   bool tx_force_unique);
 
     fc::variant push_transaction(eosio::chain::signed_transaction& trx, bool sign); ///< \todo make private
+    std::vector<uint8_t> assemble_wast(const std::string &wast); ///< \todo make private
 private:
     void send_transaction(const std::vector<chain::action>& actions, bool skip_sign = false);
     void sign_transaction(eosio::chain::signed_transaction& trx);

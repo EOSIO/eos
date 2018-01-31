@@ -126,46 +126,6 @@ eosio::client::peer remote_peer; ///< \todo remove
 eosio::client::wallet remote_wallet; ///< \todo remove
 eosio::client::eosioclient eosioclient(remote_peer, remote_wallet);
 
-inline std::vector<name> sort_names( const std::vector<name>& names ) {
-   auto results = std::vector<name>(names);
-   std::sort( results.begin(), results.end() );
-   auto itr = std::unique( results.begin(), results.end() );
-   results.erase( itr, results.end() );
-   return results;
-}
-
-vector<uint8_t> assemble_wast( const std::string& wast ) {
-   IR::Module module;
-   std::vector<WAST::Error> parseErrors;
-   WAST::parseModule(wast.c_str(),wast.size(),module,parseErrors);
-   if(parseErrors.size())
-   {
-      // Print any parse errors;
-      std::cerr << localized("Error parsing WebAssembly text file:") << std::endl;
-      for(auto& error : parseErrors)
-      {
-         std::cerr << ":" << error.locus.describe() << ": " << error.message.c_str() << std::endl;
-         std::cerr << error.locus.sourceLine << std::endl;
-         std::cerr << std::setw(error.locus.column(8)) << "^" << std::endl;
-      }
-      FC_THROW_EXCEPTION( explained_exception, "wast parse error" );
-   }
-
-   try
-   {
-      // Serialize the WebAssembly module.
-      Serialization::ArrayOutputStream stream;
-      WASM::serialize(stream,module);
-      return stream.getBytes();
-   }
-   catch(Serialization::FatalSerializationException exception)
-   {
-      std::cerr << localized("Error serializing WebAssembly binary file:") << std::endl;
-      std::cerr << exception.message << std::endl;
-      FC_THROW_EXCEPTION( explained_exception, "wasm serialize error");
-   }
-}
-
 auto tx_expiration = fc::seconds(30);
 bool tx_force_unique = false;
 void add_standard_transaction_options(CLI::App* cmd) {
@@ -568,7 +528,7 @@ int main( int argc, char** argv ) {
       }
       else {
          std::cout << localized("Assembling WASM...") << std::endl;
-         wasm = assemble_wast(wast);
+         wasm = eosioclient.assemble_wast(wast);
       }
 
       contracts::setcode handler;
