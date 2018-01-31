@@ -76,7 +76,7 @@ namespace eosio { namespace chain {
 
 
          void push_block( const signed_block& b, uint32_t skip = skip_nothing );
-         transaction_trace push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+         transaction_trace push_transaction( const packed_transaction& trx, uint32_t skip = skip_nothing );
          void push_deferred_transactions( bool flush = false );
 
 
@@ -104,7 +104,7 @@ namespace eosio { namespace chain {
           * This signal is emitted any time a new transaction is added to the pending
           * block state.
           */
-         signal<void(const signed_transaction&)> on_pending_transaction;
+         signal<void(const packed_transaction&)> on_pending_transaction;
 
 
 
@@ -164,7 +164,7 @@ namespace eosio { namespace chain {
           * @return Subset of candidate_keys whose private keys should be used to sign transaction
           * @throws fc::exception if candidate_keys does not contain all required keys
           */
-         flat_set<public_key_type> get_required_keys(const signed_transaction& trx, const flat_set<public_key_type>& candidate_keys)const;
+         flat_set<public_key_type> get_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys)const;
 
 
          bool _push_block( const signed_block& b );
@@ -199,19 +199,19 @@ namespace eosio { namespace chain {
          template<typename Function>
          auto without_pending_transactions( Function&& f )
          {
-            vector<signed_transaction> old_input;
+            vector<transaction_metadata> old_input;
 
             if( _pending_block )
-               old_input = move(_pending_block->input_transactions);
+               old_input = move(_pending_transaction_metas);
 
             clear_pending();
 
             /** after applying f() push previously input transactions on top */
             auto on_exit = fc::make_scoped_exit( [&](){ 
-               for( const auto& t : old_input ) {
+               for( auto& t : old_input ) {
                   try {
-                     if (!is_known_transaction(t.get_transaction().id()))
-                        push_transaction( t );
+                     if (!is_known_transaction(t.id))
+                        _push_transaction( std::move(t) );
                   } catch ( ... ){}
                }
             });
@@ -310,8 +310,8 @@ namespace eosio { namespace chain {
          //@}
 
 
-         transaction_trace _push_transaction( const signed_transaction& trx );
-         transaction_trace _push_transaction( transaction_metadata& data );
+         transaction_trace _push_transaction( const packed_transaction& trx );
+         transaction_trace _push_transaction( transaction_metadata&& data );
          transaction_trace _apply_transaction( transaction_metadata& data );
          transaction_trace __apply_transaction( transaction_metadata& data );
          transaction_trace _apply_error( transaction_metadata& data );
@@ -338,7 +338,8 @@ namespace eosio { namespace chain {
             return f();
          }
 
-         void check_transaction_authorization(const signed_transaction& trx, 
+         void check_transaction_authorization(const transaction& trx,
+                                              const vector<signature_type>& signatures,
                                               bool allow_unused_signatures = false)const;
 
 
@@ -361,7 +362,7 @@ namespace eosio { namespace chain {
          } FC_CAPTURE_AND_RETHROW( (trx) ) }
          
          /// Validate transaction helpers @{
-         void validate_uniqueness(const signed_transaction& trx)const;
+         void validate_uniqueness(const transaction& trx)const;
          void validate_tapos(const transaction& trx)const;
          void validate_referenced_accounts(const transaction& trx)const;
          void validate_expiration(const transaction& trx) const;
@@ -418,7 +419,7 @@ namespace eosio { namespace chain {
          optional<database::session>      _pending_block_session;
          optional<signed_block>           _pending_block;
          optional<block_trace>            _pending_block_trace;
-         uint32_t                         _pending_transaction_count = 0; 
+         vector<transaction_metadata>     _pending_transaction_metas;
          optional<cycle_trace>            _pending_cycle_trace;
 
          bool                             _currently_applying_block = false;

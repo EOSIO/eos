@@ -22,6 +22,7 @@ namespace eosio { namespace testing {
          signed_block      produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) );
          void              produce_blocks( uint32_t n = 1 );
 
+         transaction_trace push_transaction( packed_transaction& trx );
          transaction_trace push_transaction( signed_transaction& trx );
          void              set_tapos( signed_transaction& trx ) const;
 

@@ -197,7 +197,7 @@ namespace eosio {
       //    template<typename VerifierFunc>
       //    void send_all(net_message_ptr msg, VerifierFunc verify);
       void send_all_txn(const signed_transaction& txn);
-      static void transaction_ready( const signed_transaction& txn);
+      static void transaction_ready( const packed_transaction& txn);
       void broadcast_block_impl( const signed_block &sb);
 
       size_t cache_txn( const transaction_id_type, const signed_transaction &txn);
@@ -1915,7 +1915,8 @@ namespace eosio {
       }
 
       try {
-         chain_plug->accept_transaction( msg );
+         // TODO: avoid this reserialization by adjusting messages to deal with packed transactions.
+         chain_plug->accept_transaction( packed_transaction(msg) );
          fc_dlog(logger, "chain accepted transaction" );
       } catch( const fc::exception &ex) {
          // received a block due to out of sequence
@@ -2199,8 +2200,10 @@ namespace eosio {
    /**
     * This one is necessary to hook into the boost notifier api
     **/
-   void net_plugin_impl::transaction_ready( const signed_transaction& txn) {
-      my_impl->send_all_txn( txn );
+   void net_plugin_impl::transaction_ready( const packed_transaction& txn) {
+      // TODO: avoid this reserialization by updating protocol to use packed_transactions directly
+      auto strx = signed_transaction(txn.get_transaction(), txn.signatures);
+      my_impl->send_all_txn( strx );
    }
 
    void net_plugin_impl::broadcast_block_impl( const chain::signed_block &sb) {

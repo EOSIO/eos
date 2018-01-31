@@ -89,7 +89,7 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(currency), "active"), chain_id_type());
-      control->push_transaction(trx);
+      push_transaction(trx);
       produce_block();
 
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -113,7 +113,7 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(currency), "active"), chain_id_type());
-      control->push_transaction(trx);
+      push_transaction(trx);
       produce_block();
 
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -137,7 +137,7 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(alice), "active"), chain_id_type());
-      BOOST_CHECK_EXCEPTION(control->push_transaction(trx), fc::assert_exception, assert_message_is("integer underflow subtracting token balance"));
+      BOOST_CHECK_EXCEPTION(push_transaction(trx), fc::assert_exception, assert_message_is("integer underflow subtracting token balance"));
       produce_block();
 
       BOOST_REQUIRE_EQUAL(false, chain_has_transaction(trx.id()));
@@ -162,7 +162,7 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(alice), "active"), chain_id_type());
-      control->push_transaction(trx);
+      push_transaction(trx);
       produce_block();
 
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));

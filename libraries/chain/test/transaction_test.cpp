@@ -37,8 +37,8 @@ BOOST_AUTO_TEST_SUITE(transaction_test)
          trx.actions.emplace_back(vector<permission_level>{{N(decomp), config::active_name}},
                                   test_action {"random data here"});
 
-         signed_transaction t;
-         t.set_transaction(trx, signed_transaction::zlib);
+         packed_transaction t;
+         t.set_transaction(trx, packed_transaction::zlib);
 
          auto actual = fc::to_hex(t.data);
          BOOST_CHECK_EQUAL(expected, actual);
@@ -58,10 +58,10 @@ BOOST_AUTO_TEST_SUITE(transaction_test)
 
          char compressed_tx_raw[] = "78da63606060d8bf7ff5eab2198ace8c13962fe3909cb0f114835aa9248866044a3284784ef402d12bde1a19090a1425e6a5e4e72aa42496242a64a416a50200a9d114bb";
 
-         signed_transaction t;
+         packed_transaction t;
          t.data.resize((sizeof(compressed_tx_raw) - 1) / 2);
          fc::from_hex(compressed_tx_raw, t.data.data(), t.data.size());
-         t.compression= signed_transaction::zlib;
+         t.compression= packed_transaction::zlib;
 
          auto actual = t.get_transaction();
          BOOST_CHECK_EQUAL(expected.region, actual.region);

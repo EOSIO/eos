@@ -71,31 +71,21 @@ digest_type transaction::sig_digest( const chain_id_type& chain_id )const {
    return enc.result();
 }
 
-const signature_type& signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id) {
-   signatures.push_back(key.sign(get_transaction().sig_digest(chain_id)));
-   return signatures.back();
-}
-
-signature_type signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id)const {
-   return key.sign(get_transaction().sig_digest(chain_id));
-}
-
-flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id_type& chain_id )const
+flat_set<public_key_type> transaction::get_signature_keys( const vector<signature_type>& signatures, const chain_id_type& chain_id )const
 { try {
    using boost::adaptors::transformed;
 
    constexpr size_t recovery_cache_size = 100000;
    static recovery_cache_type recovery_cache;
-   const auto trx = get_transaction();
-   const digest_type digest = trx.sig_digest(chain_id);
+   const digest_type digest = sig_digest(chain_id);
 
    flat_set<public_key_type> recovered_pub_keys;
    for(const signature_type& sig : signatures) {
       recovery_cache_type::index<by_sig>::type::iterator it = recovery_cache.get<by_sig>().find(sig);
 
-      if(it == recovery_cache.get<by_sig>().end() || it->trx_id != trx.id()) {
+      if(it == recovery_cache.get<by_sig>().end() || it->trx_id != id()) {
          public_key_type recov = public_key_type(sig, digest);
-         recovery_cache.emplace_back( cached_pub_key{trx.id(), recov, sig} ); //could fail on dup signatures; not a problem
+         recovery_cache.emplace_back( cached_pub_key{id(), recov, sig} ); //could fail on dup signatures; not a problem
          recovered_pub_keys.insert(recov);
          continue;
       }
@@ -107,6 +97,21 @@ flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id
 
    return recovered_pub_keys;
 } FC_CAPTURE_AND_RETHROW() }
+
+
+const signature_type& signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id) {
+   signatures.push_back(key.sign(sig_digest(chain_id)));
+   return signatures.back();
+}
+
+signature_type signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id)const {
+   return key.sign(sig_digest(chain_id));
+}
+
+flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id_type& chain_id )const
+{
+   return transaction::get_signature_keys(signatures, chain_id);
+}
 
 namespace bio = boost::iostreams;
 
@@ -149,6 +154,24 @@ static transaction zlib_decompress_transaction(const bytes& data) {
    }
 }
 
+static bytes zlib_decompress(const bytes& data) {
+   try {
+      bytes out;
+      bio::filtering_ostream decomp;
+      decomp.push(bio::zlib_decompressor());
+      decomp.push(read_limiter<10*1024*1024>()); // limit to 10 megs decompressed for zip bomb protections
+      decomp.push(bio::back_inserter(out));
+      bio::write(decomp, data.data(), data.size());
+      bio::close(decomp);
+      return out;
+   } catch( fc::exception& er ) {
+      throw;
+   } catch( ... ) {
+      fc::unhandled_exception er( FC_LOG_MESSAGE( warn, "internal decompression error"), std::current_exception() );
+      throw er;
+   }
+}
+
 static bytes pack_transaction(const transaction& t) {
    return fc::raw::pack(t);
 }
@@ -164,7 +187,21 @@ static bytes zlib_compress_transaction(const transaction& t) {
    return out;
 }
 
-transaction signed_transaction::get_transaction()const
+bytes packed_transaction::get_raw_transaction() const
+{
+   try {
+      switch(compression) {
+         case none:
+            return data;
+         case zlib:
+            return zlib_decompress(data);
+         default:
+            FC_THROW("Unknown transaction compression algorithm");
+      }
+   } FC_CAPTURE_AND_RETHROW((compression)(data))
+}
+
+transaction packed_transaction::get_transaction()const
 {
    try {
       switch(compression) {
@@ -178,7 +215,12 @@ transaction signed_transaction::get_transaction()const
    } FC_CAPTURE_AND_RETHROW((compression)(data))
 }
 
-void signed_transaction::set_transaction(const transaction& t, signed_transaction::compression_type _compression)
+signed_transaction packed_transaction::get_signed_transaction() const
+{
+   return signed_transaction(get_transaction(), signatures);
+}
+
+void packed_transaction::set_transaction(const transaction& t, packed_transaction::compression_type _compression)
 {
    try {
       switch(_compression) {

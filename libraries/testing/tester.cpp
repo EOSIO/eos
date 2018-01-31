@@ -113,14 +113,18 @@ namespace eosio { namespace testing {
                                    .deposit  = initial_balance
                                 });
 
-      trx.sign( get_private_key( creator, "active" ), chain_id_type()  ); 
+      set_tapos(trx);
+      trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+      push_transaction( trx );
+   }
 
-      control->push_transaction( trx );
+   transaction_trace tester::push_transaction( packed_transaction& trx ) {
+      return control->push_transaction( trx );
    }
 
    transaction_trace tester::push_transaction( signed_transaction& trx ) {
-      set_tapos(trx);
-      return control->push_transaction( trx );
+      auto ptrx = packed_transaction(trx);
+      return push_transaction( ptrx );
    }
 
    void tester::create_account( account_name a, string initial_balance, account_name creator, bool multisig  ) {
@@ -141,8 +145,9 @@ namespace eosio { namespace testing {
                                    .memo   = memo
                                 } );
 
-      trx.sign( get_private_key( from, "active" ), chain_id_type()  ); 
-      return control->push_transaction( trx );
+      set_tapos(trx);
+      trx.sign( get_private_key( from, "active" ), chain_id_type()  );
+      return push_transaction( trx );
    }
 
    void tester::set_authority( account_name account,
@@ -160,7 +165,7 @@ namespace eosio { namespace testing {
 
       set_tapos( trx );
       trx.sign( get_private_key( account, "active" ), chain_id_type()  ); 
-      control->push_transaction( trx );
+      push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account)(perm)(auth)(parent) ) }
 
    void tester::set_code( account_name account, const char* wast ) try {
@@ -218,7 +223,7 @@ namespace eosio { namespace testing {
 
       set_tapos( trx );
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
-      control->push_transaction( trx );
+      push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account)(wast) )
 
    void tester::set_abi( account_name account, const char* abi_json) {
@@ -232,7 +237,7 @@ namespace eosio { namespace testing {
 
       set_tapos( trx );
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
-      control->push_transaction( trx );
+      push_transaction( trx );
    }
 
    bool tester::chain_has_transaction( const transaction_id_type& txid ) const {

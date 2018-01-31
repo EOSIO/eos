@@ -69,9 +69,9 @@ BOOST_AUTO_TEST_CASE( transfer_test ) { try {
                                 } );
 
       test.set_tapos( trx );
-      BOOST_REQUIRE_THROW( test.control->push_transaction( trx ), tx_missing_sigs );
+      BOOST_REQUIRE_THROW( test.push_transaction( trx ), tx_missing_sigs );
       trx.sign( test.get_private_key( from, "active" ), chain_id_type()  ); 
-      test.control->push_transaction( trx );
+      test.push_transaction( trx );
   }
 
   {
@@ -90,7 +90,7 @@ BOOST_AUTO_TEST_CASE( transfer_test ) { try {
       test.set_tapos( trx );
       trx.sign( test.get_private_key( to, "active" ), chain_id_type()  ); 
       /// action not provided from authority
-      BOOST_REQUIRE_THROW( test.control->push_transaction( trx ), tx_missing_auth);
+      BOOST_REQUIRE_THROW( test.push_transaction( trx ), tx_missing_auth);
   }
 
 } FC_LOG_AND_RETHROW() } /// transfer_test
@@ -143,7 +143,7 @@ BOOST_AUTO_TEST_CASE( transfer_delegation ) { try {
       wdump((fc::raw::pack_size(trx)));
 
       /// action not provided from authority
-      test.control->push_transaction( trx );
+      test.push_transaction( trx );
   }
 
 } FC_LOG_AND_RETHROW() }

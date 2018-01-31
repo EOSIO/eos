@@ -94,6 +94,7 @@ namespace impl {
    template<typename T>
    constexpr bool single_type_requires_abi_v() {
       return std::is_base_of<transaction, T>::value ||
+             std::is_same<T, packed_transaction>::value ||
              std::is_same<T, action>::value ||
              std::is_same<T, transaction_trace>::value ||
              std::is_same<T, action_trace>::value;
@@ -135,6 +136,85 @@ namespace impl {
    template<typename T>
    using require_abi_t = std::enable_if_t<type_requires_abi_v<T>(), int>;
 
+   struct abi_to_variant {
+      /**
+       * template which overloads add for types which are not relvant to ABI information
+       * and can be degraded to the normal ::to_variant(...) processing
+       */
+      template<typename M, typename Resolver, not_require_abi_t<M> = 1>
+      static void add( mutable_variant_object &mvo, const char* name, const M& v, Resolver )
+      {
+         mvo(name,v);
+      }
+
+      /**
+       * template which overloads add for types which contain ABI information in their trees
+       * for these types we create new ABI aware visitors
+       */
+      template<typename M, typename Resolver, require_abi_t<M> = 1>
+      static void add( mutable_variant_object &mvo, const char* name, const M& v, Resolver resolver );
+
+      /**
+       * template which overloads add for vectors of types which contain ABI information in their trees
+       * for these members we call ::add in order to trigger further processing
+       */
+      template<typename M, typename Resolver, require_abi_t<M> = 1>
+      static void add( mutable_variant_object &mvo, const char* name, const vector<M>& v, Resolver resolver )
+      {
+         vector<variant> array(v.size());
+         for (const auto& iter: v) {
+            mutable_variant_object elem_mvo;
+            add(elem_mvo, "_", iter, resolver);
+            array.emplace_back(std::move(elem_mvo["_"]));
+         }
+         mvo(name, std::move(array));
+      }
+
+      /**
+       * overload of to_variant_object for actions
+       * @tparam Resolver
+       * @param act
+       * @param resolver
+       * @return
+       */
+      template<typename Resolver>
+      static void add(mutable_variant_object &out, const char* name, const action& act, Resolver resolver) {
+         mutable_variant_object mvo;
+         mvo("account", act.account);
+         mvo("name", act.name);
+         mvo("authorization", act.authorization);
+
+         auto abi = resolver(act.account);
+         if (abi.valid()) {
+            auto type = abi->get_action_type(act.name);
+            mvo("data", abi->binary_to_variant(type, act.data));
+            mvo("hex_data", act.data);
+         } else {
+            mvo("data", act.data);
+         }
+         out(name, std::move(mvo));
+      }
+
+      /**
+       * overload of to_variant_object for packed_transaction
+       * @tparam Resolver
+       * @param act
+       * @param resolver
+       * @return
+       */
+      template<typename Resolver>
+      static void add(mutable_variant_object &out, const char* name, const packed_transaction& ptrx, Resolver resolver) {
+         mutable_variant_object mvo;
+         mvo("signatures", ptrx.signatures);
+         mvo("compression", ptrx.compression);
+         mvo("data", ptrx.data);
+
+         transaction trx = ptrx.get_transaction();
+         add(mvo, "transaction", trx, resolver);
+         out(name, std::move(mvo));
+      }
+   };
+
    /**
     * Reflection visitor that uses a resolver to resolve ABIs for nested types
     * this will degrade to the common fc::to_variant as soon as the type no longer contains
@@ -162,77 +242,110 @@ namespace impl {
          template<typename Member, class Class, Member (Class::*member) >
          void operator()( const char* name )const
          {
-            this->add(_vo,name,(_val.*member));
+            abi_to_variant::add(_vo, name, (_val.*member), _resolver);
          }
 
       private:
-
-         /**
-          * template which overloads add for types which are not relvant to ABI information
-          * and can be degraded to the normal ::to_variant(...) processing
-          */
-         template<typename M, not_require_abi_t<M> = 1>
-         void add( mutable_variant_object& vo, const char* name, const M& v )const
-         {
-            vo(name,v);
-         }
-
-         /**
-          * template which overloads add for types which contain ABI information in their trees
-          * for these types we create new ABI aware visitors
-          */
-         template<typename M, require_abi_t<M> = 1>
-         void add( mutable_variant_object& vo, const char* name, const M& v )const
-         {
-            mutable_variant_object mvo;
-            fc::reflector<M>::visit( impl::abi_to_variant_visitor<M, decltype(_resolver)>( mvo, v, _resolver ) );
-            vo(name, std::move(mvo));
-         }
-
-         /**
-          * template which overloads add for vectors of types which contain ABI information in their trees
-          * for these members we call ::add in order to trigger further processing
-          */
-         template<typename M, require_abi_t<M> = 1>
-         void add( mutable_variant_object& vo, const char* name, const vector<M>& v )const
-         {
-            vector<variant> array(v.size());
-            for (const auto& iter: v) {
-               mutable_variant_object mvo;
-               add(mvo, "_", iter);
-               array.emplace_back(std::move(mvo["_"]));
-            }
-            vo(name, std::move(array));
-         }
-
-         /**
-          * Non templated overload that has priority for the action structure
-          * this type has members which must be directly translated by the ABI so it is
-          * exploded and processed explicitly
-          */
-         void add( mutable_variant_object& vo, const char* name, const action& v )const
-         {
-            mutable_variant_object mvo;
-            mvo("account", v.account);
-            mvo("name", v.name);
-            mvo("authorization", v.authorization);
-
-            auto abi = _resolver(v.account);
-            if (abi.valid()) {
-               auto type = abi->get_action_type(v.name);
-               mvo("data", abi->binary_to_variant(type, v.data));
-               mvo("hex_data", v.data);
-            } else {
-               mvo("data", v.data);
-            }
-
-            vo(name, std::move( mvo ));
-         }
-
-
          mutable_variant_object& _vo;
          const T& _val;
          Resolver _resolver;
+   };
+
+   struct abi_from_variant {
+      /**
+       * template which overloads extract for types which are not relvant to ABI information
+       * and can be degraded to the normal ::from_variant(...) processing
+       */
+      template<typename M, typename Resolver, not_require_abi_t<M> = 1>
+      static void extract( const variant& v, M& o, Resolver )
+      {
+         from_variant(v, o);
+      }
+
+      /**
+       * template which overloads extract for types which contain ABI information in their trees
+       * for these types we create new ABI aware visitors
+       */
+      template<typename M, typename Resolver, require_abi_t<M> = 1>
+      static void extract( const variant& v, M& o, Resolver resolver );
+
+      /**
+       * template which overloads extract for vectors of types which contain ABI information in their trees
+       * for these members we call ::extract in order to trigger further processing
+       */
+      template<typename M, typename Resolver, require_abi_t<M> = 1>
+      static void extract( const variant& v, vector<M>& o, Resolver resolver )
+      {
+         const variants& array = v.get_array();
+         o.clear();
+         o.reserve( array.size() );
+         for( auto itr = array.begin(); itr != array.end(); ++itr ) {
+            M o_iter;
+            extract(*itr, o_iter, resolver);
+            o.emplace_back(std::move(o_iter));
+         }
+      }
+
+      /**
+       * Non templated overload that has priority for the action structure
+       * this type has members which must be directly translated by the ABI so it is
+       * exploded and processed explicitly
+       */
+      template<typename Resolver>
+      static void extract( const variant& v, action& act, Resolver resolver )
+      {
+         const variant_object& vo = v.get_object();
+         FC_ASSERT(vo.contains("account"));
+         FC_ASSERT(vo.contains("name"));
+         from_variant(vo["account"], act.account);
+         from_variant(vo["name"], act.name);
+
+         if (vo.contains("authorization")) {
+            from_variant(vo["authorization"], act.authorization);
+         }
+
+         if( vo.contains( "data" ) ) {
+            const auto& data = vo["data"];
+            if( data.is_string() ) {
+               from_variant(data, act.data);
+            } else if ( data.is_object() ) {
+               auto abi = resolver(act.account);
+               if (abi.valid()) {
+                  auto type = abi->get_action_type(act.name);
+                  act.data = std::move(abi->variant_to_binary(type, data));
+               }
+            }
+         }
+
+         if (act.data.empty()) {
+            if( vo.contains( "hex_data" ) ) {
+               const auto& data = vo["hex_data"];
+               if( data.is_string() ) {
+                  from_variant(data, act.data);
+               }
+            }
+         }
+
+         FC_ASSERT(!act.data.empty(), "Failed to deserialize data for ${account}:${name}", ("account", act.account)("name", act.name));
+      }
+
+      template<typename Resolver>
+      static void extract( const variant& v, packed_transaction& ptrx, Resolver resolver ) {
+         const variant_object& vo = v.get_object();
+         FC_ASSERT(vo.contains("signatures"));
+         FC_ASSERT(vo.contains("compression"));
+         from_variant(vo["signatures"], ptrx.signatures);
+         from_variant(vo["compression"], ptrx.compression);
+
+         if (vo.contains("data") && vo["data"].is_string() && !vo["data"].as_string().empty()) {
+            from_variant(vo["data"], ptrx.data);
+         } else {
+            FC_ASSERT(vo.contains("transaction"));
+            transaction trx;
+            extract(vo["transaction"], trx, resolver);
+            ptrx.set_transaction(trx, ptrx.compression);
+         }
+      }
    };
 
    /**
@@ -264,109 +377,40 @@ namespace impl {
          {
             auto itr = _vo.find(name);
             if( itr != _vo.end() )
-               extract( itr->value(), _val.*member );
+               abi_from_variant::extract( itr->value(), _val.*member, _resolver );
          }
 
       private:
-
-         /**
-          * template which overloads extract for types which are not relvant to ABI information
-          * and can be degraded to the normal ::from_variant(...) processing
-          */
-         template<typename M, not_require_abi_t<M> = 1>
-         void extract( const variant& v, M& o )const
-         {
-            from_variant(v, o);
-         }
-
-         /**
-          * template which overloads extract for types which contain ABI information in their trees
-          * for these types we create new ABI aware visitors
-          */
-         template<typename M, require_abi_t<M> = 1>
-         void extract( const variant& v, M& o )const
-         {
-            const variant_object& vo = v.get_object();
-            fc::reflector<M>::visit( abi_from_variant_visitor<M, decltype(_resolver)>( vo, o, _resolver ) );
-         }
-
-         /**
-          * template which overloads extract for vectors of types which contain ABI information in their trees
-          * for these members we call ::extract in order to trigger further processing
-          */
-         template<typename M, require_abi_t<M> = 1>
-         void extract( const variant& v, vector<M>& o )const
-         {
-            const variants& array = v.get_array();
-            o.clear();
-            o.reserve( array.size() );
-            for( auto itr = array.begin(); itr != array.end(); ++itr ) {
-               M o_iter;
-               extract(*itr, o_iter);
-               o.emplace_back(std::move(o_iter));
-            }
-         }
-
-         /**
-          * Non templated overload that has priority for the action structure
-          * this type has members which must be directly translated by the ABI so it is
-          * exploded and processed explicitly
-          */
-         void extract( const variant& v, action& act )const
-         {
-            const variant_object& vo = v.get_object();
-            FC_ASSERT(vo.contains("account"));
-            FC_ASSERT(vo.contains("name"));
-            from_variant(vo["account"], act.account);
-            from_variant(vo["name"], act.name);
-
-            if (vo.contains("authorization")) {
-               from_variant(vo["authorization"], act.authorization);
-            }
-
-            if( vo.contains( "data" ) ) {
-               const auto& data = vo["data"];
-               if( data.is_string() ) {
-                  from_variant(data, act.data);
-               } else if ( data.is_object() ) {
-                  auto abi = _resolver(act.account);
-                  if (abi.valid()) {
-                     auto type = abi->get_action_type(act.name);
-                     act.data = std::move(abi->variant_to_binary(type, data));
-                  }
-               }
-            }
-
-            if (act.data.empty()) {
-               if( vo.contains( "hex_data" ) ) {
-                  const auto& data = vo["hex_data"];
-                  if( data.is_string() ) {
-                     from_variant(data, act.data);
-                  }
-               }
-            }
-
-            FC_ASSERT(!act.data.empty(), "Failed to deserialize data for ${account}:${name}", ("account", act.account)("name", act.name));
-         }
-
-
          const variant_object& _vo;
          T& _val;
          Resolver _resolver;
    };
+
+
+   template<typename M, typename Resolver, require_abi_t<M>>
+   void abi_to_variant::add( mutable_variant_object &mvo, const char* name, const M& v, Resolver resolver ) {
+      mutable_variant_object member_mvo;
+      fc::reflector<M>::visit( impl::abi_to_variant_visitor<M, Resolver>( member_mvo, v, resolver ) );
+      mvo(name, std::move(member_mvo));
+   }
+
+   template<typename M, typename Resolver, require_abi_t<M>>
+   void abi_from_variant::extract( const variant& v, M& o, Resolver resolver ) {
+      const variant_object& vo = v.get_object();
+      fc::reflector<M>::visit( abi_from_variant_visitor<M, decltype(resolver)>( vo, o, resolver ) );
+   }
 }
 
 template<typename T, typename Resolver>
 void abi_serializer::to_variant( const T& o, variant& vo, Resolver resolver ) try {
    mutable_variant_object mvo;
-   fc::reflector<T>::visit( impl::abi_to_variant_visitor<T, Resolver>( mvo, o, resolver ) );
-   vo = std::move(mvo);
+   impl::abi_to_variant::add(mvo, "_", o, resolver);
+   vo = std::move(mvo["_"]);
 } FC_RETHROW_EXCEPTIONS(error, "Failed to serialize type", ("object",o))
 
 template<typename T, typename Resolver>
 void abi_serializer::from_variant( const variant& v, T& o, Resolver resolver ) try {
-   const variant_object& vo = v.get_object();
-   fc::reflector<T>::visit( impl::abi_from_variant_visitor<T, Resolver>( vo, o, resolver ) );
+   impl::abi_from_variant::extract(v, o, resolver);
 } FC_RETHROW_EXCEPTIONS(error, "Failed to deserialize variant", ("variant",v))
 
 
