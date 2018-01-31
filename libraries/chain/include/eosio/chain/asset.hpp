@@ -87,38 +87,8 @@ struct asset
 
 };
 
-struct price
-{
-   asset base;
-   asset quote;
-
-   price(const asset& base = asset(), const asset& quote = asset())
-      :base(base),quote(quote){}
-
-   static price max(const symbol& base, const symbol& quote);
-   static price min(const symbol& base, const symbol& quote);
-
-   price max()const { return price::max(base.symbol(), quote.symbol()); }
-   price min()const { return price::min(base.symbol(), quote.symbol()); }
-
-   double to_real()const { return base.to_real() / quote.to_real(); }
-
-   bool is_null()const;
-   void validate()const;
-};
-
-price operator / (const asset& base, const asset& quote);
-inline price operator~(const price& p) { return price{p.quote,p.base}; }
-
 bool  operator <  (const asset& a, const asset& b);
 bool  operator <= (const asset& a, const asset& b);
-bool  operator <  (const price& a, const price& b);
-bool  operator <= (const price& a, const price& b);
-bool  operator >  (const price& a, const price& b);
-bool  operator >= (const price& a, const price& b);
-bool  operator == (const price& a, const price& b);
-bool  operator != (const price& a, const price& b);
-asset operator *  (const asset& a, const price& b);
 
 }} // namespace eosio::chain
 
@@ -130,4 +100,3 @@ inline void from_variant(const fc::variant& var, eosio::chain::asset& vo) {
 }
 
 FC_REFLECT(eosio::chain::asset, (amount)(sym))
-FC_REFLECT(eosio::chain::price, (base)(quote))

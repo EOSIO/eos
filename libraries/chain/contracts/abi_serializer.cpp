@@ -57,7 +57,6 @@ namespace eosio { namespace chain { namespace contracts {
 
       //asset.hpp
       built_in_types.emplace("asset",                     pack_unpack<asset>());
-      built_in_types.emplace("price",                     pack_unpack<price>());
 
       //native.hpp
       built_in_types.emplace("string",                    pack_unpack<string>());
