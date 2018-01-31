@@ -23,7 +23,31 @@ using namespace fc;
 
 class identity_tester : public tester {
 public:
-   uint64_t get_result_uint64(abi_serializer& abi_ser) {
+
+   identity_tester() {
+      produce_blocks(2);
+
+      create_accounts( {N(identity), N(identitytest), N(alice), N(bob)}, asset::from_string("100000.0000 EOS") );
+      produce_blocks(1000);
+
+      set_code(N(identity), identity_wast);
+      set_abi(N(identity), identity_abi);
+      set_code(N(identitytest), identity_test_wast);
+      set_abi(N(identitytest), identity_test_abi);
+      produce_blocks(1);
+
+      const auto& accnt = control->get_database().get<account_object,by_name>( N(identity) );
+      abi_def abi;
+      BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+      abi_ser.set_abi(abi);
+
+      const auto& acnt_test = control->get_database().get<account_object,by_name>( N(identitytest) );
+      abi_def abi_test;
+      BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(acnt_test.abi, abi_test), true);
+      abi_ser_test.set_abi(abi_test);
+   }
+
+   uint64_t get_result_uint64() {
       const auto& db = control->get_database();
       const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(0, N(identitytest), N(result)));
       FC_ASSERT(t_id != 0, "Table id not found");
@@ -38,14 +62,14 @@ public:
       return *reinterpret_cast<const uint64_t*>(itr->value.data());
    }
 
-   uint64_t get_owner_for_identity(abi_serializer& abi_ser, uint64_t identity)
+   uint64_t get_owner_for_identity(uint64_t identity)
    {
       signed_transaction trx;
       action get_owner_act;
       get_owner_act.account = N(identitytest);
       get_owner_act.name = N(getowner);
-      get_owner_act.data = abi_ser.variant_to_binary("getowner", mutable_variant_object()
-                                                     ("identity", identity)
+      get_owner_act.data = abi_ser_test.variant_to_binary("getowner", mutable_variant_object()
+                                                          ("identity", identity)
       );
       trx.actions.emplace_back(std::move(get_owner_act));
       set_tapos(trx);
@@ -53,239 +77,257 @@ public:
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
 
-      return get_result_uint64(abi_ser);
+      return get_result_uint64();
    }
-};
 
-BOOST_AUTO_TEST_SUITE(identity_tests)
-
-BOOST_FIXTURE_TEST_CASE( identity_test, identity_tester ) try {
-   produce_blocks(2);
-
-   constexpr uint64_t identity_val = 1;
-   create_accounts( {N(identity), N(identitytest), N(alice), N(bob)}, asset::from_string("100000.0000 EOS") );
-   produce_blocks(1000);
-
-   set_code(N(identity), identity_wast);
-   set_abi(N(identity), identity_abi);
-   set_code(N(identitytest), identity_test_wast);
-   set_abi(N(identitytest), identity_test_abi);
-   produce_blocks(1);
-
-   const auto& accnt = control->get_database().get<account_object,by_name>( N(identity) );
-   abi_def abi;
-   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-   abi_serializer abi_ser(abi);
-
-   const auto& acnt_test = control->get_database().get<account_object,by_name>( N(identitytest) );
-   abi_def abi_test;
-   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(acnt_test.abi, abi_test), true);
-   abi_serializer abi_ser_test(abi_test);
-
-   //identity doesn't exist
-   BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(abi_ser_test, identity_val));
-
-   //create identity
-   {
+   string create_identity(const string& account_name, uint64_t identity, bool auth = true) {
       signed_transaction trx;
       action create_act;
       create_act.account = N(identity);
       create_act.name = N(create);
-      create_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
+      if (auth) {
+         create_act.authorization = vector<permission_level>{{string_to_name(account_name.c_str()), config::active_name}};
+      }
       create_act.data = abi_ser.variant_to_binary("create", mutable_variant_object()
-                                                  ("creator", "alice")
-                                                  ("identity", identity_val)
+                                                  ("creator", account_name)
+                                                  ("identity", identity)
       );
       trx.actions.emplace_back(std::move(create_act));
       set_tapos(trx);
-      trx.sign(get_private_key(N(alice), "active"), chain_id_type());
-      control->push_transaction(trx);
+      if (auth) {
+         trx.sign(get_private_key(string_to_name(account_name.c_str()), "active"), chain_id_type());
+      }
+      try {
+         control->push_transaction(trx);
+      } catch (const fc::exception& ex) {
+         return error(ex.top_message());
+      }
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+      return success();
+   }
 
+   fc::variant get_identity(uint64_t idnt) {
       const auto& db = control->get_database();
       const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(N(identity), N(identity), N(ident)));
       FC_ASSERT(t_id != 0, "object not found");
 
       const auto& idx = db.get_index<key_value_index, by_scope_primary>();
 
+      auto itr = idx.lower_bound(boost::make_tuple(t_id->id, idnt));
+      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
+      BOOST_REQUIRE_EQUAL(idnt, itr->primary_key);
+
+      vector<char> data;
+      read_only::copy_row(*itr, data);
+      return abi_ser.binary_to_variant("identrow", data);
+   }
+
+   string certify(const string& certifier, uint64_t identity, const vector<fc::variant>& fields, bool auth = true) {
+      signed_transaction trx;
+      action cert_act;
+      cert_act.account = N(identity);
+      cert_act.name = N(certprop);
+      if (auth) {
+         cert_act.authorization = vector<permission_level>{{string_to_name(certifier.c_str()), config::active_name}};
+      }
+      cert_act.data = abi_ser.variant_to_binary("certprop", mutable_variant_object()
+                                                ("bill_storage_to", "alice")
+                                                ("certifier", certifier)
+                                                ("identity", identity)
+                                                ("value", fields)
+      );
+      trx.actions.emplace_back(std::move(cert_act));
+      set_tapos(trx);
+      if (auth) {
+         trx.sign(get_private_key(string_to_name(certifier.c_str()), "active"), chain_id_type());
+      }
+      try {
+         control->push_transaction(trx);
+      } catch (const fc::exception& ex) {
+         return error(ex.top_message());
+      }
+      produce_block();
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+      return success();
+   }
+
+   fc::variant get_certrow(uint64_t identity, const string& property, uint64_t trusted, const string& certifier) {
+      const auto& db = control->get_database();
+      const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(identity, N(identity), N(certs)));
+      FC_ASSERT(t_id != 0, "certrow not found");
+
+      uint64_t prop = string_to_name(property.c_str());
+      uint64_t cert = string_to_name(certifier.c_str());
+      const auto& idx = db.get_index<key64x64x64_value_index, by_scope_primary>();
+      auto itr = idx.lower_bound(boost::make_tuple(t_id->id, prop, trusted, cert));
+      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
+
+      BOOST_REQUIRE_EQUAL(prop, itr->primary_key);
+      BOOST_REQUIRE_EQUAL(trusted, itr->secondary_key);
+      BOOST_REQUIRE_EQUAL(cert, itr->tertiary_key);
+
+      vector<char> data;
+      read_only::copy_row(*itr, data);
+      return abi_ser.binary_to_variant("certrow", data);
+   }
+
+   fc::variant get_accountrow(const string& account) {
+      const auto& db = control->get_database();
+      const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(string_to_name(account.c_str()), N(identity), N(account)));
+      FC_ASSERT(t_id != 0, "object not found");
+      const auto& idx = db.get_index<key_value_index, by_scope_primary>();
       auto itr = idx.lower_bound(boost::make_tuple(t_id->id));
       FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
+      BOOST_REQUIRE_EQUAL(N(account), itr->primary_key);
 
       vector<char> data;
       read_only::copy_row(*itr, data);
-      fc::variant obj = abi_ser.binary_to_variant("identrow", data);
-      BOOST_REQUIRE_EQUAL( identity_val, obj["identity"].as_uint64());
-      BOOST_REQUIRE_EQUAL( "alice", obj["creator"].as_string());
+      return abi_ser.binary_to_variant("accountrow", data);
    }
 
-   //identity exists, but nobody claimed it so far
-   BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(abi_ser_test, identity_val));
 
-   //certify 2 fields
-   {
-      signed_transaction trx;
-      action cert_act;
-      cert_act.account = N(identity);
-      cert_act.name = N(certprop);
-      cert_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
-
-
-      vector<fc::variant> fields;
-      fields.push_back(mutable_variant_object()
-         ("property", "email")
-         ("type", "string")
-         ("data", to_uint8_vector("alice@alice.name"))
-         ("memo", "official email")
-         ("confidence", 95)
-      );
-      fields.push_back(mutable_variant_object()
-         ("property", "address")
-         ("type", "string")
-         ("data", to_uint8_vector("1750 Kraft Drive SW, Blacksburg, VA 24060"))
-         ("memo", "official address")
-         ("confidence", 80)
-      );
-
-      cert_act.data = abi_ser.variant_to_binary("certprop", mutable_variant_object()
-                                                ("bill_storage_to", "alice")
-                                                ("certifier","alice")
-                                                ("identity", identity_val)
-                                                ("value", std::move(fields))
-      );
-      trx.actions.emplace_back(std::move(cert_act));
-      set_tapos(trx);
-      trx.sign(get_private_key(N(alice), "active"), chain_id_type());
-      control->push_transaction(trx);
-      produce_block();
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-
-      const auto& db = control->get_database();
-      const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(identity_val, N(identity), N(certs)));
-      FC_ASSERT(t_id != 0, "object not found");
-
-      const auto& idx = db.get_index<key64x64x64_value_index, by_scope_primary>();
-
-      auto itr = idx.lower_bound(boost::make_tuple(t_id->id, N(email), 0 /*trusted*/, N(alice)));
-      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
-
-      vector<char> data;
-      read_only::copy_row(*itr, data);
-      fc::variant obj = abi_ser.binary_to_variant("certrow", data);
-      BOOST_REQUIRE_EQUAL( "email", obj["property"].as_string() );
-      BOOST_REQUIRE_EQUAL( 0, obj["trusted"].as_uint64() );
-      BOOST_REQUIRE_EQUAL( "alice", obj["certifier"].as_string() );
-      BOOST_REQUIRE_EQUAL( 95, obj["confidence"].as_uint64() );
-      BOOST_REQUIRE_EQUAL( "string", obj["type"].as_string() );
-      BOOST_REQUIRE_EQUAL( "alice@alice.name", to_string(obj["data"]) );
-
-      itr = idx.lower_bound(boost::make_tuple(t_id->id, N(address), 0 /*trusted*/, N(alice)));
-      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
-      data.clear();
-      read_only::copy_row(*itr, data);
-      obj = abi_ser.binary_to_variant("certrow", data);
-      BOOST_REQUIRE_EQUAL( "address", obj["property"].as_string() );
-      BOOST_REQUIRE_EQUAL( 0, obj["trusted"].as_uint64() );
-      BOOST_REQUIRE_EQUAL( "alice", obj["certifier"].as_string() );
-      BOOST_REQUIRE_EQUAL( 80, obj["confidence"].as_uint64() );
-      BOOST_REQUIRE_EQUAL( "string", obj["type"].as_string() );
-      BOOST_REQUIRE_EQUAL( "1750 Kraft Drive SW, Blacksburg, VA 24060", to_string(obj["data"]) );
-   }
-
-   // certify owner, should populate "account" singleton
-   {
-      signed_transaction trx;
-      action cert_act;
-      cert_act.account = N(identity);
-      cert_act.name = N(certprop);
-      cert_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
-      cert_act.data = abi_ser.variant_to_binary("certprop", mutable_variant_object()
-                                                ("bill_storage_to", "alice")
-                                                ("certifier","alice")
-                                                ("identity", identity_val)
-                                                ("value", vector<fc::variant>(1, mutable_variant_object()
-                                                                              ("property", "owner")
-                                                                              ("type", "account")
-                                                                              ("data", to_uint8_vector(N(alice)))
-                                                                              ("memo", "claiming onwership")
-                                                                              ("confidence", 100)
-                                                ))
-      );
-      trx.actions.emplace_back(std::move(cert_act));
-      set_tapos(trx);
-      trx.sign(get_private_key(N(alice), "active"), chain_id_type());
-      control->push_transaction(trx);
-      produce_block();
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-
-      const auto& db = control->get_database();
-      const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(identity_val, N(identity), N(certs)));
-      FC_ASSERT(t_id != 0, "object not found");
-
-      const auto& idx = db.get_index<key64x64x64_value_index, by_scope_primary>();
-
-      auto itr = idx.lower_bound(boost::make_tuple(t_id->id, N(owner), 0 /*trusted*/, N(alice)));
-      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
-
-      vector<char> data;
-      read_only::copy_row(*itr, data);
-      fc::variant certrow = abi_ser.binary_to_variant("certrow", data);
-      BOOST_REQUIRE_EQUAL( "owner", certrow["property"].as_string() );
-      BOOST_REQUIRE_EQUAL( 0, certrow["trusted"].as_uint64() );
-      BOOST_REQUIRE_EQUAL( "alice", certrow["certifier"].as_string() );
-      BOOST_REQUIRE_EQUAL( 100, certrow["confidence"].as_uint64() );
-      BOOST_REQUIRE_EQUAL( "account", certrow["type"].as_string() );
-      BOOST_REQUIRE_EQUAL( N(alice), to_uint64(certrow["data"]) );
-
-      t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(N(alice), N(identity), N(account)));
-      FC_ASSERT(t_id != 0, "object not found");
-      const auto& acnt_idx = db.get_index<key_value_index, by_scope_primary>();
-      auto acnt_itr = acnt_idx.lower_bound(boost::make_tuple(t_id->id));
-      FC_ASSERT( acnt_itr != acnt_idx.end() && acnt_itr->t_id == t_id->id, "lower_bound failed");
-      data.clear();
-      read_only::copy_row(*acnt_itr, data);
-
-      fc::variant acntrow = abi_ser.binary_to_variant("accountrow", data);
-      BOOST_REQUIRE_EQUAL( N(account), acntrow["singleton_name"].as_uint64() );
-      BOOST_REQUIRE_EQUAL( identity_val, acntrow["identity"].as_uint64() );
-   }
-
-   // ownership was certified by alice, but not by a block producer or someone trusted by a block producer
-   BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(abi_ser_test, identity_val));
-
-   // settrust, check that certified property became trusted
+   string settrust(const string& trustor, const string& trusting, uint64_t trust, bool auth = true)
    {
       signed_transaction trx;
       action settrust_act;
       settrust_act.account = N(identity);
       settrust_act.name = N(settrust);
-      settrust_act.authorization = vector<permission_level>{{N(bob), config::active_name}};
+      auto tr = string_to_name(trustor.c_str());
+      if (auth) {
+         settrust_act.authorization = vector<permission_level>{{tr, config::active_name}};
+      }
       settrust_act.data = abi_ser.variant_to_binary("settrust", mutable_variant_object()
-                                                    ("trustor", "bob")
-                                                    ("trusting","alice")
-                                                    ("trust", 1)
+                                                    ("trustor", trustor)
+                                                    ("trusting", trusting)
+                                                    ("trust", trust)
       );
       trx.actions.emplace_back(std::move(settrust_act));
       set_tapos(trx);
-      trx.sign(get_private_key(N(bob), "active"), chain_id_type());
-      control->push_transaction(trx);
+      if (auth) {
+         trx.sign(get_private_key(tr, "active"), chain_id_type());
+      }
+      try {
+         control->push_transaction(trx);
+      } catch (const fc::exception& ex) {
+         return error(ex.top_message());
+      }
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+      return success();
+   }
 
+   fc::variant get_trustrow(const string& trustor, const string& trusting) {
       const auto& db = control->get_database();
-      const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(N(bob), N(identity), N(trust)));
+      const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(string_to_name(trustor.c_str()), N(identity), N(trust)));
       FC_ASSERT(t_id != 0, "object not found");
 
+      uint64_t tng = string_to_name(trusting.c_str());
       const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-      auto itr = idx.lower_bound(boost::make_tuple(t_id->id, N(alice)));
+      auto itr = idx.lower_bound(boost::make_tuple(t_id->id, tng));
       FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
+      BOOST_REQUIRE_EQUAL(tng, itr->primary_key);
 
       vector<char> data;
       read_only::copy_row(*itr, data);
-      fc::variant row = abi_ser.binary_to_variant("trustrow", data);
-      BOOST_REQUIRE_EQUAL( "alice", row["account"].as_string() );
-      BOOST_REQUIRE_EQUAL( 1, row["trusted"].as_uint64() );
+      return abi_ser.binary_to_variant("trustrow", data);
    }
+
+public:
+   abi_serializer abi_ser;
+   abi_serializer abi_ser_test;
+};
+
+BOOST_AUTO_TEST_SUITE(identity_tests)
+
+BOOST_FIXTURE_TEST_CASE( identity_test, identity_tester ) try {
+   constexpr uint64_t identity_val = 0xffffffffffffffff; //64-bit value
+
+   BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(identity_val));
+
+   BOOST_REQUIRE_EQUAL(success(), create_identity("alice", identity_val));
+   fc::variant idnt = get_identity(identity_val);
+   BOOST_REQUIRE_EQUAL( identity_val, idnt["identity"].as_uint64());
+   BOOST_REQUIRE_EQUAL( "alice", idnt["creator"].as_string());
+
+   BOOST_REQUIRE_EQUAL(error("condition: assertion failed: identity already exists"), create_identity("alice", identity_val));
+
+   // alice can create multiple identities
+   BOOST_REQUIRE_EQUAL(success(), create_identity("alice", 2));
+   fc::variant idnt2 = get_identity(2);
+   BOOST_REQUIRE_EQUAL( 2, idnt2["identity"].as_uint64());
+   BOOST_REQUIRE_EQUAL( "alice", idnt2["creator"].as_string());
+
+   //attemp to create identity without signature
+   //BOOST_REQUIRE_EQUAL(error("x"), create_identity("alice", 3, false));
+
+   BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(identity_val)); //nobody claimed ownership so far
+
+   //certify 2 fields
+   vector<fc::variant> fields;
+   fields.push_back(mutable_variant_object()
+                    ("property", "email")
+                    ("type", "string")
+                    ("data", to_uint8_vector("alice@alice.name"))
+                    ("memo", "official email")
+                    ("confidence", 95)
+   );
+   fields.push_back(mutable_variant_object()
+                    ("property", "address")
+                    ("type", "string")
+                    ("data", to_uint8_vector("1750 Kraft Drive SW, Blacksburg, VA 24060"))
+                    ("memo", "official address")
+                    ("confidence", 80)
+   );
+
+   BOOST_REQUIRE_EQUAL(error("missing authority of alice"), certify("alice", identity_val, fields, false));
+
+   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, fields));
+
+   auto obj = get_certrow(identity_val, "email", 0, "alice");
+   BOOST_REQUIRE_EQUAL( "email", obj["property"].as_string() );
+   BOOST_REQUIRE_EQUAL( 0, obj["trusted"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "alice", obj["certifier"].as_string() );
+   BOOST_REQUIRE_EQUAL( 95, obj["confidence"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "string", obj["type"].as_string() );
+   BOOST_REQUIRE_EQUAL( "alice@alice.name", to_string(obj["data"]) );
+
+   obj = get_certrow(identity_val, "address", 0, "alice");
+   BOOST_REQUIRE_EQUAL( "address", obj["property"].as_string() );
+   BOOST_REQUIRE_EQUAL( 0, obj["trusted"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "alice", obj["certifier"].as_string() );
+   BOOST_REQUIRE_EQUAL( 80, obj["confidence"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "string", obj["type"].as_string() );
+   BOOST_REQUIRE_EQUAL( "1750 Kraft Drive SW, Blacksburg, VA 24060", to_string(obj["data"]) );
+
+   // certify owner, should populate "account" singletons
+   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>(1, mutable_variant_object()
+                                                                              ("property", "owner")
+                                                                              ("type", "account")
+                                                                              ("data", to_uint8_vector(N(alice)))
+                                                                              ("memo", "claiming onwership")
+                                                                              ("confidence", 100)
+                                                )));
+   fc::variant certrow = get_certrow(identity_val, "owner", 0, "alice");
+   BOOST_REQUIRE_EQUAL( "owner", certrow["property"].as_string() );
+   BOOST_REQUIRE_EQUAL( 0, certrow["trusted"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "alice", certrow["certifier"].as_string() );
+   BOOST_REQUIRE_EQUAL( 100, certrow["confidence"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "account", certrow["type"].as_string() );
+   BOOST_REQUIRE_EQUAL( N(alice), to_uint64(certrow["data"]) );
+
+   fc::variant acntrow = get_accountrow("alice");
+   BOOST_REQUIRE_EQUAL( N(account), acntrow["singleton_name"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( identity_val, acntrow["identity"].as_uint64() );
+
+   // ownership was certified by alice, but not by a block producer or someone trusted by a block producer
+   BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(identity_val));
+
+   // settrust, check that certified property became trusted
+   BOOST_REQUIRE_EQUAL(success(), settrust("bob", "alice", 1));
+   auto trustrow = get_trustrow("bob", "alice");
+   BOOST_REQUIRE_EQUAL( "alice", trustrow["account"].as_string() );
+   BOOST_REQUIRE_EQUAL( 1, trustrow["trusted"].as_uint64() );
 
    // settrust to 0, check that certified property became untrusted
    {

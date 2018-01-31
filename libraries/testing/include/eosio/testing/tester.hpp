@@ -70,6 +70,10 @@ namespace eosio { namespace testing {
 
         static string to_string(fc::variant x);
 
+        static string success() { return string(); }
+
+        static string error(const string& msg) { return msg; }
+
       private:
          fc::temp_directory                            tempdir;
          chain_controller::controller_config           cfg;
