@@ -124,7 +124,7 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
 string program = "eosc";
 eosio::client::peer remote_peer; ///< \todo remove
 eosio::client::wallet remote_wallet; ///< \todo remove
-eosio::client::Eosioclient eosioclient(remote_peer, remote_wallet);
+eosio::client::eosioclient eosioclient(remote_peer, remote_wallet);
 
 inline std::vector<name> sort_names( const std::vector<name>& names ) {
    auto results = std::vector<name>(names);

@@ -9,10 +9,10 @@
 namespace eosio {
 namespace client {
 
-class Eosioclient
+class eosioclient
 {
 public:
-    Eosioclient(peer &peer, wallet &wallet);
+    eosioclient(peer &peer, wallet &wallet);
 
     void create_account(chain::name creator,
                         chain::name newaccount,
