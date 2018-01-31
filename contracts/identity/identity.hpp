@@ -60,16 +60,6 @@ namespace identity {
          typedef uint64_t property_name;
          typedef uint64_t property_type_name;
 
-         enum reserved_names {
-            owner      = N(owner),
-            trusted    = N(trusted),
-            unique     = N(unique),
-            firstname  = N(firstname),
-            lastname   = N(lastname),
-            midname    = N(midname)
-         };
-
-
          /**
           * This action create a new globally unique 64 bit identifier,
           * to minimize collisions each account is automatically assigned
@@ -219,8 +209,8 @@ namespace identity {
             //   check to see if the account has claimed it
             certs_table certs( ident );
             certrow row;
-            bool ok = certs.primary_lower_bound(row, ident, 1, 0);
-            while (ok && row.ident == ident && row.property_name == "owner" && row.trusted) {
+            bool ok = certs.primary_lower_bound(row, N(owner), 1, 0);
+            while (ok && row.property == N(owner) && row.trusted) {
                if (sizeof(account_name) == row.data.size()) {
                   account_name account = *reinterpret_cast<account_name*>(row.data.data());
                   if (ident == get_claimed_identity(account)) {
@@ -230,7 +220,7 @@ namespace identity {
                      } else if (DeployToAccount == current_receiver()){
                         //the certifier is no longer trusted, need to unset the flag
                         row.trusted = 0;
-                        certs.store( row, row.bill_storage_to ); //should we bill again ?
+                        certs.store( row, 0 ); //assuming 0 means bill to the same account
                      } else {
                         // the certifier is no longer trusted, but the code runs in read-only mode
                      }
@@ -238,24 +228,24 @@ namespace identity {
                } else {
                   // bad row - skip it
                }
-               ok = next_primary(row, row);
+               ok = certs.next_primary(row, row);
             }
             // trusted certification not found
             // let's see if some of untrusted certifications became trusted
-            ok = certs.primary_lower_bound(row, ident, 0, 0);
-            while (ok && row.ident == ident && row.property_name == "owner" && !row.trusted) {
+            ok = certs.primary_lower_bound(row, N(owner), 0, 0);
+            while (ok && row.property == N(owner) && !row.trusted) {
                if (sizeof(account_name) == row.data.size()) {
                   account_name account = *reinterpret_cast<account_name*>(row.data.data());
                   if (ident == get_claimed_identity(account) && is_trusted(row.certifier)) {
                      // the certifier became trusted, need to set the flag
                      row.trusted = 1;
-                     certs.store( row, row.bill_storage_to ); //should we bill again ?
+                     certs.store( row, 0 ); //assuming 0 means bill to the same account
                      return *reinterpret_cast<account_name*>(row.data.data());
                   }
                } else {
                   // bad row - skip it
                }
-               ok = next_primary(row, row);
+               ok = certs.next_primary(row, row);
             }
 
             return 0;
@@ -269,7 +259,10 @@ namespace identity {
          }
 
          static bool is_trusted_by( account_name trusted, account_name by ) {
-            return false;
+            trustrow def;
+            def.trusted = 0;
+            trustrow row = trust_table::get_or_default( trusted, by, def );
+            return def.trusted;
          }
 
          static bool is_trusted( account_name acnt ) {

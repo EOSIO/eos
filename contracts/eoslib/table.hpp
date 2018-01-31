@@ -49,6 +49,21 @@ namespace eosio {
             return result;
          }
 
+         static T get_or_default( uint64_t key, scope_name scope = DefaultScope, const T& def = T() ) {
+            char temp[1024];
+            *reinterpret_cast<uint64_t *>(temp) = key;
+
+            auto read = load_i64( scope, DefaultScope, TableName, temp, sizeof(temp) );
+            if( read < 0 ) {
+               return def;
+            }
+
+            datastream<const char*> ds(temp, read);
+            T result;
+            ds >> result;
+            return result;
+         }
+
          static void set( const T& value = T(), scope_name scope = DefaultScope ) {
             auto size = raw::pack_size( value );
             char buf[size];
@@ -90,6 +105,7 @@ namespace eosio {
 
             datastream<const char*> ds( (char*)temp, sizeof(temp) );
             ds >> result;
+            return true;
          }
 
          bool next_primary( T& result, const T& current ) {
@@ -104,6 +120,7 @@ namespace eosio {
 
             datastream<const char*> ds( (char*)temp, sizeof(temp) );
             ds >> result;
+            return true;
          }
 
          void store( const T& value, account_name bill_to ) {
