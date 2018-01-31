@@ -1,4 +1,4 @@
-#include <eosio/libeosioc/eosioclient.hpp>
+#include "eosioc_helper.hpp"
 
 #include <boost/format.hpp>
 #include <boost/range/algorithm/find_if.hpp>

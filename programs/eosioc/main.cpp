@@ -92,12 +92,12 @@ Options:
 #include <fc/io/fstream.hpp>
 #include <eosio/libeosioc/peer.hpp>
 #include <eosio/libeosioc/wallet.hpp>
-#include <eosio/libeosioc/eosioclient.hpp>
 
 #include "CLI11.hpp"
 #include "help_text.hpp"
 #include "localize.hpp"
 #include "config.hpp"
+#include "eosioc_helper.hpp"
 
 using namespace std;
 using namespace eosio;

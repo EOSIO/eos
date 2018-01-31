@@ -25,7 +25,7 @@ set(LOCALEDIR ${CMAKE_INSTALL_PREFIX}/share/locale)
 set(LOCALEDOMAIN eosioc)
 configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 
-add_executable(eosioc-bin main.cpp httpc.cpp help_text.cpp localize.hpp config.hpp CLI11.hpp)
+add_executable(eosioc-bin main.cpp httpc.cpp help_text.cpp localize.hpp config.hpp CLI11.hpp eosioc_helper.cpp)
 target_include_directories(eosioc-bin PUBLIC ${Intl_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(eosioc-bin PRIVATE
     appbase

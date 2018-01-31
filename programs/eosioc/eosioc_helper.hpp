@@ -5,10 +5,10 @@
 
 #pragma once
 
-#include "eosio/chain/transaction.hpp"
-#include "eosio/chain_plugin/chain_plugin.hpp"
-#include "wallet.hpp"
-#include "peer.hpp"
+#include <eosio/chain/transaction.hpp>
+#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/libeosioc/wallet.hpp>
+#include <eosio/libeosioc/peer.hpp>
 
 namespace eosio {
 namespace client {

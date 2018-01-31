@@ -12,7 +12,7 @@ namespace eosio { namespace client { namespace localize {
    #define _(str) str
    #endif
 
-   #define localized(str, ...) localized_with_variant((str), fc::mutable_variant_object() __VA_ARGS__ )
+   #define localized(str, ...) eosio::client::localize::localized_with_variant((str), fc::mutable_variant_object() __VA_ARGS__ )
 
    inline auto localized_with_variant( const char* raw_fmt, const fc::variant_object& args) {
       if (raw_fmt != nullptr) {
