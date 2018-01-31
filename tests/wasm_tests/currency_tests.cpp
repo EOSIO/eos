@@ -206,21 +206,21 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
 
    // from empty string
    {
-      BOOST_CHECK_EXCEPTION(symbol empty = symbol::from_string(""),
+      BOOST_CHECK_EXCEPTION(symbol::from_string(""),
                             fc::assert_exception, assert_message_is("creating symbol from empty string"));
    }
 
    
    // precision part missing
    {
-      BOOST_CHECK_EXCEPTION(symbol incomplete = symbol::from_string("RND"),
+      BOOST_CHECK_EXCEPTION(symbol::from_string("RND"),
                             fc::assert_exception, assert_message_is("missing comma in symbol"));
    }
 
 
    // precision part missing
    {
-      BOOST_CHECK_EXCEPTION(symbol incomplete = symbol::from_string("0,EURO"),
+      BOOST_CHECK_EXCEPTION(symbol::from_string("0,EURO"),
                             fc::assert_exception, assert_message_is("zero decimals in symbol"));
    }
 
@@ -240,7 +240,7 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
 
    // invalid - missing decimal point
    {
-      BOOST_CHECK_EXCEPTION(asset a = asset::from_string("10 CUR"),
+      BOOST_CHECK_EXCEPTION(asset::from_string("10 CUR"),
                             fc::assert_exception, assert_message_is("dot missing in asset from string"));
    }
 
