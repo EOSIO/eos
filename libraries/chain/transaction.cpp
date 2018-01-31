@@ -123,7 +123,7 @@ struct read_limiter {
    template<typename Sink>
    size_t write(Sink &sink, const char* s, size_t count)
    {
-      EOS_ASSERT(_total + count <= Limit, tx_decompression_error, "Exceeded maximum decopressed transaction size");
+      EOS_ASSERT(_total + count <= Limit, tx_decompression_error, "Exceeded maximum decompressed transaction size");
       _total += count;
       return bio::write(sink, s, count);
    }
@@ -136,30 +136,12 @@ static transaction unpack_transaction(const bytes& data) {
 }
 
 
-static transaction zlib_decompress_transaction(const bytes& data) {
-   try {
-      bytes out;
-      bio::filtering_ostream decomp;
-      decomp.push(bio::zlib_decompressor());
-      decomp.push(read_limiter<10*1024*1024>()); // limit to 10 megs decompressed for zip bomb protections
-      decomp.push(bio::back_inserter(out));
-      bio::write(decomp, data.data(), data.size());
-      bio::close(decomp);
-      return unpack_transaction(out);
-   } catch( fc::exception& er ) {
-      throw;
-   } catch( ... ) {
-      fc::unhandled_exception er( FC_LOG_MESSAGE( warn, "internal decompression error"), std::current_exception() );
-      throw er;
-   }
-}
-
 static bytes zlib_decompress(const bytes& data) {
    try {
       bytes out;
       bio::filtering_ostream decomp;
       decomp.push(bio::zlib_decompressor());
-      decomp.push(read_limiter<10*1024*1024>()); // limit to 10 megs decompressed for zip bomb protections
+      decomp.push(read_limiter<1*1024*1024>()); // limit to 10 megs decompressed for zip bomb protections
       decomp.push(bio::back_inserter(out));
       bio::write(decomp, data.data(), data.size());
       bio::close(decomp);
@@ -170,6 +152,11 @@ static bytes zlib_decompress(const bytes& data) {
       fc::unhandled_exception er( FC_LOG_MESSAGE( warn, "internal decompression error"), std::current_exception() );
       throw er;
    }
+}
+
+static transaction zlib_decompress_transaction(const bytes& data) {
+   bytes out = zlib_decompress(data);
+   return unpack_transaction(out);
 }
 
 static bytes pack_transaction(const transaction& t) {
