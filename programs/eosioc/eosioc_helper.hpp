@@ -99,8 +99,6 @@ public:
                                     const std::string& abi_path,
                                     bool skip_sign);
 
-    fc::variant push_transaction(eosio::chain::signed_transaction& trx, bool sign); ///< \todo make private
-    std::vector<uint8_t> assemble_wast(const std::string &wast); ///< \todo make private
 private:
     void send_transaction(const std::vector<chain::action>& actions, bool skip_sign = false);
     void sign_transaction(eosio::chain::signed_transaction& trx);
@@ -110,6 +108,8 @@ private:
     chain::action create_linkauth(const chain::name& account, const chain::name& code, const chain::name& type, const chain::name& requirement);
     uint64_t generate_nonce_value();
     chain::action generate_nonce();
+    fc::variant push_transaction(eosio::chain::signed_transaction& trx, bool sign);
+    std::vector<uint8_t> assemble_wast(const std::string &wast);
 
     wallet& m_wallet;
     peer& m_peer;
