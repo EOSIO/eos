@@ -433,6 +433,7 @@ class privileged_api : public context_aware_api {
        *  Feature name should be base32 encoded name. 
        */
       void activate_feature( uint64_t feature_name ) {
+         FC_ASSERT( !"Unsupported Harfork Detected" );
       }
 
       /**
@@ -445,24 +446,35 @@ class privileged_api : public context_aware_api {
          return false;
       }
 
-      void set_resource_average_period( uint32_t seconds = 60*60*24*3 /*3 days*/ ) {
-      }
-
-      uint32_t get_resource_average_period() {
-        return 60*60*24*3;
-      }
-
       void set_resource_limits( account_name account, 
-                                uint64_t ram_bytes, uint64_t net_bytes_per_period,
+                                uint64_t ram_bytes, uint64_t net_weight, uint64_t cpu_weight,
                                 uint64_t cpu_usec_per_period ) {
+         auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
+         FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free to much space" );
+
+         auto& gdp = context.controller.get_dynamic_global_properties();
+         context.mutable_db.modify( gdp, [&]( auto& p ) {
+           p.total_net_weight -= buo.net_weight;
+           p.total_net_weight += net_weight;
+           p.total_cpu_weight -= buo.cpu_weight;
+           p.total_cpu_weight += cpu_weight;
+           p.total_db_reserved -= buo.db_reserved_capacity;
+           p.total_db_reserved += ram_bytes;
+         });
+
+         context.mutable_db.modify( buo, [&]( auto& o ){
+            o.net_weight = net_weight;
+            o.cpu_weight = cpu_weight;
+            o.db_reserved_capacity = ram_bytes;
+         });
       }
+
 
       void get_resource_limits( account_name account, 
-                                uint64_t& ram_bytes, uint64_t& net_bytes_per_period,
-                                uint64_t& cpu_usec_per_period ) {
+                                uint64_t& ram_bytes, uint64_t& net_weight, uint64_t cpu_weight ) {
       }
                                                
-      int set_active_producers( const array_ptr<const char> packed_producer_schedule, size_t datalen) {
+      void set_active_producers( const array_ptr<const char> packed_producer_schedule, size_t datalen) {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          producer_schedule_type psch;
          fc::raw::unpack(ds, psch);
@@ -473,10 +485,24 @@ class privileged_api : public context_aware_api {
          });
       }
 
-      void set_privileged( account_name, bool is_priv ) {
+      bool is_privileged( account_name n )const {
+         return context.db.get<account_object, by_name>( n ).privileged;
+      }
+      bool is_frozen( account_name n )const {
+         return context.db.get<account_object, by_name>( n ).frozen;
+      }
+      void set_privileged( account_name n, bool is_priv ) {
+         const auto& a = context.db.get<account_object, by_name>( n );
+         context.mutable_db.modify( a, [&]( auto& ma ){
+            ma.privileged = is_priv;
+         });
       }
 
-      void freeze_account( account_name, bool should_freeze ) {
+      void freeze_account( account_name n , bool should_freeze ) {
+         const auto& a = context.db.get<account_object, by_name>( n );
+         context.mutable_db.modify( a, [&]( auto& ma ){
+            ma.frozen = should_freeze;
+         });
       }
 
       /// TODO: add inline/deferred with support for arbitrary permissions rather than code/current auth

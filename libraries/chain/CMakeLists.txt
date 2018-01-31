@@ -22,8 +22,6 @@ add_library( eosio_chain
              chain_controller.cpp
 
              contracts/eosio_contract.cpp
-             contracts/producer_objects.cpp
-             contracts/staked_balance_objects.cpp
              contracts/chain_initializer.cpp
              contracts/genesis_state.cpp
              contracts/abi_serializer.cpp

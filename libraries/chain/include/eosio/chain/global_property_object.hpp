@@ -72,7 +72,10 @@ namespace eosio { namespace chain {
         time_point           time;
         account_name         current_producer;
 
-        share_type           total_staked_tokens;
+        uint64_t total_net_weight  = 1;
+        uint64_t total_cpu_weight  = 1;
+        uint64_t total_db_capacity = 1024*1024*1024ull*1024ull;
+        uint64_t total_db_reserved = 0;
         
         /**
          * The current absolute slot number.  Equal to the total

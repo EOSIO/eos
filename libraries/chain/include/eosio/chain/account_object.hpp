@@ -19,6 +19,8 @@ namespace eosio { namespace chain {
       account_name         name;
       uint8_t              vm_type      = 0;
       uint8_t              vm_version   = 0;
+      bool                 privileged   = false;
+      bool                 frozen       = false;
       digest_type          code_version;
       block_timestamp_type creation_date;
 

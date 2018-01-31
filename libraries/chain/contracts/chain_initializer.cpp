@@ -3,7 +3,6 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/chain/contracts/chain_initializer.hpp>
-#include <eosio/chain/contracts/objects.hpp>
 #include <eosio/chain/contracts/eos_contract.hpp>
 #include <eosio/chain/contracts/types.hpp>
 
@@ -31,9 +30,6 @@ producer_schedule_type  chain_initializer::get_chain_start_producers() {
 }
 
 void chain_initializer::register_types(chain_controller& chain, chainbase::database& db) {
-   // Install the native contract's indexes; we can't do anything until our objects are recognized
-   db.add_index<staked_balance_multi_index>();
-   db.add_index<producer_votes_multi_index>();
 
 #define SET_APP_HANDLER( contract, scope, action, nspace ) \
    chain._set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(contracts::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
@@ -223,7 +219,12 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
          p.auth.threshold = 1;
          p.auth.keys.push_back( key_weight{ .key = genesis.initial_key, .weight = 1 } );
       });
-      db.create<bandwidth_usage_object>([&](auto& sb) { sb.owner = name; });
+      db.create<bandwidth_usage_object>([&](auto& sb) { 
+         sb.owner = name;      
+         sb.net_weight  = -1;
+         sb.cpu_weight  = -1;
+         sb.db_reserved_capacity = -1;
+      });
 
       db.create<producer_object>( [&]( auto& pro ) {
          pro.owner = config::system_account_name;

@@ -13,7 +13,6 @@
 
 
 #include <eosio/chain/contracts/chain_initializer.hpp>
-#include <eosio/chain/contracts/staked_balance_objects.hpp>
 #include <eosio/chain/contracts/genesis_state.hpp>
 #include <eosio/chain/contracts/eos_contract.hpp>
 
@@ -30,7 +29,6 @@ using namespace eosio::chain;
 using namespace eosio::chain::config;
 using fc::flat_map;
 
-#warning TODO: rate limiting
 //using txn_msg_rate_limits = chain_controller::txn_msg_rate_limits;
 
 

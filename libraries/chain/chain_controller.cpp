@@ -4,7 +4,6 @@
  */
 
 #include <eosio/chain/chain_controller.hpp>
-#include <eosio/chain/contracts/staked_balance_objects.hpp>
 
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
@@ -16,7 +15,6 @@
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/authority_checker.hpp>
 #include <eosio/chain/contracts/chain_initializer.hpp>
-#include <eosio/chain/contracts/producer_objects.hpp>
 #include <eosio/chain/scope_sequence_object.hpp>
 #include <eosio/chain/merkle.hpp>
 
@@ -918,28 +916,8 @@ void chain_controller::create_block_summary(const signed_block& next_block) {
  *  block_signing_key is null.  
  */
 producer_schedule_type chain_controller::_calculate_producer_schedule()const {
+   producer_schedule_type schedule = get_global_properties().new_active_producers;
 
-   return get_global_properties().active_producers;
-
-   //const auto& producers_by_vote = _db.get_index<contracts::producer_votes_multi_index,contracts::by_votes>();
-   //auto itr = producers_by_vote.begin();
-   // FC_ASSERT( itr != producers_by_vote.end() );
-   
-   producer_schedule_type schedule;
-   uint32_t count = 0;
-   wdump((schedule.producers));
-   /*
-   while( itr != producers_by_vote.end() && count < schedule.producers.size() ) {
-      ilog( "." );
-      schedule.producers[count].producer_name = itr->owner_name;
-      schedule.producers[count].block_signing_key = get_producer(itr->owner_name).signing_key;
-      ++itr;
-      if( schedule.producers[count].block_signing_key != public_key_type() ) {
-         ++count;
-      }
-   }
-   */
-   ilog( "." );
    const auto& hps = _head_producer_schedule();
    schedule.version = hps.version;
    if( hps != schedule )
@@ -1087,6 +1065,7 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          const auto& gp = _db.create<global_property_object>([&starter](global_property_object& p) {
             p.configuration = starter.get_chain_start_configuration();
             p.active_producers = starter.get_chain_start_producers();
+            p.new_active_producers = starter.get_chain_start_producers();
             wdump((starter.get_chain_start_producers()));
          });
 
@@ -1590,38 +1569,33 @@ void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_us
 
    auto head_time = head_block_time();
    for( const auto& authaccnt : authorizing_accounts ) {
+
       const auto& buo = _db.get<bandwidth_usage_object,by_owner>( authaccnt.first );
       _db.modify( buo, [&]( auto& bu ){
           bu.bytes.add_usage( trx_size, head_time );
           bu.acts.add_usage( act_usage, head_time );
       });
-      const auto& sbo = _db.get<contracts::staked_balance_object, contracts::by_owner_name>(authaccnt.first);
-      // TODO enable this after fixing divide by 0 with virtual_net_bandwidth and total_staked_tokens
-      /// note: buo.bytes.value is in ubytes and virtual_net_bandwidth is in bytes, so
-      //  we convert to fixed int uin128_t with 60 bits of precision, divide by rate limiting precision
-      //  then divide by virtual max_block_size which gives us % of virtual max block size in fixed width
 
       uint128_t  used_ubytes        = buo.bytes.value;
       uint128_t  used_uacts         = buo.acts.value;
       uint128_t  virtual_max_ubytes = dgpo.virtual_net_bandwidth * config::rate_limiting_precision;
       uint128_t  virtual_max_uacts  = dgpo.virtual_act_bandwidth * config::rate_limiting_precision;
-      uint64_t   user_stake         = sbo.staked_balance;
       
       if( !(_skip_flags & genesis_setup) ) {
-         FC_ASSERT( (used_ubytes * dgpo.total_staked_tokens) <=  (user_stake * virtual_max_ubytes), "authorizing account '${n}' has insufficient net bandwidth for this transaction",
+         FC_ASSERT( (used_ubytes * dgpo.total_net_weight) <=  (buo.net_weight * virtual_max_ubytes), "authorizing account '${n}' has insufficient net bandwidth for this transaction",
                     ("n",name(authaccnt.first))
                     ("used_bytes",double(used_ubytes)/1000000.)
-                    ("user_stake",user_stake)
+                    ("user_net_weight",buo.net_weight)
                     ("virtual_max_bytes", double(virtual_max_ubytes)/1000000. )
-                    ("total_staked_tokens", dgpo.total_staked_tokens)
+                    ("total_net_weight", dgpo.total_net_weight)
                     );
-         FC_ASSERT( (used_uacts * dgpo.total_staked_tokens)  <=  (user_stake * virtual_max_uacts),  "authorizing account '${n}' has insufficient compute bandwidth for this transaction",
+         FC_ASSERT( (used_uacts * dgpo.total_cpu_weight)  <=  (buo.cpu_weight* virtual_max_uacts),  "authorizing account '${n}' has insufficient compute bandwidth for this transaction",
                     ("n",name(authaccnt.first))
                     ("used_acts",double(used_uacts)/1000000.)
-                    ("user_stake",user_stake)
+                    ("user_cpu_weight",buo.cpu_weight)
                     ("virtual_max_uacts", double(virtual_max_uacts)/1000000. )
-                    ("total_staked_tokens", dgpo.total_staked_tokens)
-                    );
+                    ("total_cpu_tokens", dgpo.total_cpu_weight)
+                  );
       }
 
       // for any transaction not sent by code, update the affirmative last time a given permission was used

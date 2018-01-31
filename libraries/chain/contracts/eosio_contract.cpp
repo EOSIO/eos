@@ -15,8 +15,6 @@
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/contracts/staked_balance_objects.hpp>
-#include <eosio/chain/contracts/producer_objects.hpp>
 #include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/producer_object.hpp>
 
