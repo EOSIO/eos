@@ -19,11 +19,11 @@ class chain_controller;
 class apply_context {
 
    public:
-      apply_context(chain_controller& con, chainbase::database& db, const action& a, const transaction_metadata& trx_meta)
+      apply_context(chain_controller& con, chainbase::database& db, const action& a, const transaction_metadata& trx_meta, uint32_t checktime_limit)
 
       :controller(con), db(db), act(a), mutable_controller(con),
        mutable_db(db), used_authorizations(act.authorization.size(), false),
-       trx_meta(trx_meta) {}
+       trx_meta(trx_meta), _checktime_limit(checktime_limit) {}
 
       void exec();
 
@@ -181,6 +181,9 @@ class apply_context {
          console_append(fc::format_string(fmt, vo));
       }
 
+      void checktime_start();
+
+      void checktime() const;
 
    private:
       void append_results(apply_results &&other) {
@@ -198,6 +201,8 @@ class apply_context {
       vector<shard_lock>                  _read_locks;
       vector<scope_name>                  _write_scopes;
       bytes                               _cached_trx;
+      fc::time_point                      _checktime_start;
+      const uint32_t                      _checktime_limit;
 };
 
 using apply_handler = std::function<void(apply_context&)>;

@@ -39,6 +39,16 @@
 
 namespace eosio { namespace chain {
 
+#ifdef NDEBUG
+const uint32_t chain_controller::default_received_block_transaction_execution_time_ms = 12;
+const uint32_t chain_controller::default_transaction_execution_time_ms = 3;
+const uint32_t chain_controller::default_create_block_transaction_execution_time_ms = 3;
+#else
+const uint32_t chain_controller::default_received_block_transaction_execution_time_ms = 72;
+const uint32_t chain_controller::default_transaction_execution_time_ms = 18;
+const uint32_t chain_controller::default_create_block_transaction_execution_time_ms = 18;
+#endif
+
 bool chain_controller::is_start_of_round( block_num_type block_num )const  {
   return 0 == (block_num % blocks_per_round());
 }
@@ -51,7 +61,10 @@ chain_controller::chain_controller( const chain_controller::controller_config& c
 :_db( cfg.shared_memory_dir, 
       (cfg.read_only ? database::read_only : database::read_write), 
       cfg.shared_memory_size), 
- _block_log(cfg.block_log_dir) 
+ _block_log(cfg.block_log_dir),
+ _create_block_txn_execution_time(default_create_block_transaction_execution_time_ms * 1000),
+ _rcvd_block_txn_execution_time(default_received_block_transaction_execution_time_ms * 1000),
+ _txn_execution_time(default_transaction_execution_time_ms * 1000)
 {
    _initialize_indexes();
 
@@ -446,7 +459,7 @@ signed_block chain_controller::generate_block(
    uint32_t skip /* = 0 */
    )
 { try {
-   return with_skip_flags( skip, [&](){
+   return with_skip_flags( skip | created_block, [&](){
       return _db.with_write_lock( [&](){
          return _generate_block( when, producer, block_signing_private_key );
       });
@@ -1413,7 +1426,7 @@ static void log_handled_exceptions(const transaction& trx) {
 transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta ) {
    transaction_trace result(meta.id);
    for (const auto &act : meta.trx.actions) {
-      apply_context context(*this, _db, act, meta);
+      apply_context context(*this, _db, act, meta, txn_execution_time());
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
@@ -1466,7 +1479,7 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    try {
       auto temp_session = _db.start_undo_session(true);
 
-      apply_context context(*this, _db, etrx.actions.front(), meta);
+      apply_context context(*this, _db, etrx.actions.front(), meta, txn_execution_time());
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
@@ -1625,6 +1638,22 @@ const apply_handler* chain_controller::find_apply_handler( account_name receiver
          return &handler->second;
    }
    return nullptr;
+}
+
+void chain_controller::set_txn_execution_times(uint32_t create_block_txn_execution_time, uint32_t rcvd_block_txn_execution_time, uint32_t txn_execution_time)
+{
+   _create_block_txn_execution_time = create_block_txn_execution_time;
+   _rcvd_block_txn_execution_time   = rcvd_block_txn_execution_time;
+   _txn_execution_time              = txn_execution_time;
+}
+
+uint32_t chain_controller::txn_execution_time() const
+{
+   return _skip_flags & received_block
+         ?  _rcvd_block_txn_execution_time
+         : (_skip_flags && created_block
+            ? _create_block_txn_execution_time
+            : _txn_execution_time);
 }
 
 } } /// eosio::chain
