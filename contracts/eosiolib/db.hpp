@@ -83,16 +83,16 @@ struct table_impl<sizeof(uint128_t),sizeof(uint128_t)> {
        return lower_bound_secondary_i128i128( scope, code, table_n, data, len );
     }
 
-    static int32_t remove( uint64_t scope, uint64_t table_n, const void* data ) {
-       return remove_i128i128( scope, table_n, data );
+    static int32_t remove( uint64_t scope, uint64_t table_n, account_name bta, const void* data ) {
+       return remove_i128i128( scope, table_n, bta, data );
     }
 
-    static int32_t store( account_name scope, table_name table_n, const void* data, uint32_t len ) {
-       return store_i128i128( scope, table_n, data, len );
+    static int32_t store( account_name scope, table_name table_n, account_name bta, const void* data, uint32_t len ) {
+       return store_i128i128( scope, table_n, bta, data, len );
     }
 
-    static int32_t update( account_name scope, table_name table_n, const void* data, uint32_t len ) {
-       return update_i128i128( scope, table_n, data, len );
+    static int32_t update( account_name scope, table_name table_n, account_name bta, const void* data, uint32_t len ) {
+       return update_i128i128( scope, table_n, bta, data, len );
     }
 };
 
@@ -175,7 +175,7 @@ struct table_impl<sizeof(uint128_t),sizeof(uint128_t)> {
  *  @ingroup databaseCpp
   * @{
  */
-template<uint64_t scope, uint64_t code, uint64_t table_n, typename Record, typename PrimaryType, typename SecondaryType = void>
+template<uint64_t scope, uint64_t code, uint64_t table_n, uint64_t bta, typename Record, typename PrimaryType, typename SecondaryType = void>
 struct table {
    private:
    typedef table_impl<sizeof( PrimaryType ), sizeof( SecondaryType )> impl;
@@ -387,8 +387,8 @@ struct table {
      *
      *  @return true if successful store.
      */
-    static bool store( const Record& r, uint64_t s = scope ) {
-       assert( impl::store( s, table_n, &r, sizeof(r) ), "error storing record" );
+    static bool store( const Record& r, uint64_t s = scope, uint64_t b = bta ) {
+       assert( impl::store( s, table_n, b, &r, sizeof(r) ), "error storing record" );
        return true;
     }
 
@@ -400,8 +400,8 @@ struct table {
     *
     *  @return true if successful update.
     */
-    static bool update( const Record& r, uint64_t s = scope ) {
-       assert( impl::update( s, table_n, &r, sizeof(r) ), "error updating record" );
+    static bool update( const Record& r, uint64_t s = scope, uint64_t b = bta ) {
+       assert( impl::update( s, table_n, b, &r, sizeof(r) ), "error updating record" );
        return true;
     }
 
@@ -413,8 +413,8 @@ struct table {
     *
     *  @return true if successful remove.
     */
-    static bool remove( const Record& r, uint64_t s = scope ) {
-       return impl::remove( s, table_n, &r ) != 0;
+    static bool remove( const Record& r, uint64_t s = scope, uint64_t b = bta ) {
+       return impl::remove( s, table_n, b, &r ) != 0;
     }
  };
 /// @}
@@ -450,16 +450,16 @@ struct table_impl<sizeof(uint64_t),0> {
         return upper_bound_i64(scope, code, table_n, data, len);
     }
 
-    static int32_t remove( uint64_t scope, uint64_t table_n, const void* data ) {
-       return remove_i64( scope, table_n, (uint64_t*)data);
+    static int32_t remove( uint64_t scope, uint64_t table_n, account_name bta, const void* data ) {
+       return remove_i64( scope, table_n, bta, (uint64_t*)data);
     }
 
-    static int32_t store( account_name scope, table_name table_n, const void* data, uint32_t len ) {
-       return store_i64( scope, table_n, data, len );
+    static int32_t store( account_name scope, table_name table_n, account_name bta, const void* data, uint32_t len ) {
+       return store_i64( scope, table_n, bta, data, len );
     }
 
-    static int32_t update( account_name scope, table_name table_n, const void* data, uint32_t len ) {
-       return update_i64( scope, table_n, data, len );
+    static int32_t update( account_name scope, table_name table_n, account_name bta, const void* data, uint32_t len ) {
+       return update_i64( scope, table_n, bta, data, len );
     }
 };
 
@@ -531,8 +531,8 @@ struct table_impl<sizeof(uint64_t),0> {
   *  @ingroup databaseCpp
   *  @{
   */
-template<uint64_t scope, uint64_t code, uint64_t table_n, typename Record, typename PrimaryType>
-struct table<scope,code,table_n,Record,PrimaryType,void> {
+template<uint64_t scope, uint64_t code, uint64_t table_n, uint64_t bta, typename Record, typename PrimaryType>
+struct table<scope,code,table_n,bta,Record,PrimaryType,void> {
    private:
    typedef table_impl<sizeof( PrimaryType ),0> impl;
    static_assert( sizeof(PrimaryType) <= sizeof(Record), "invalid template parameters" );
@@ -667,8 +667,8 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
      * @param s - scope; defaults to scope of the class.
      * @return true if store succeeds.
      */
-   static bool store( const Record& r, uint64_t s = scope ) {
-      return impl::store( s, table_n, &r, sizeof(r) ) != 0;
+   static bool store( const Record& r, uint64_t s = scope, uint64_t b = bta ) {
+      return impl::store( s, table_n, b, &r, sizeof(r) ) != 0;
    }
 
     /**
@@ -678,8 +678,8 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
      * @param s - scope; defaults to scope of the class.
      * @return true if update succeeds.
      */
-   static bool update( const Record& r, uint64_t s = scope ) {
-      return impl::update( s, table_n, &r, sizeof(r) ) != 0;
+   static bool update( const Record& r, uint64_t s = scope, uint64_t b = bta ) {
+      return impl::update( s, table_n, b, &r, sizeof(r) ) != 0;
    }
 
     /**
@@ -689,20 +689,20 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
      * @param s - scope; defaults to scope of the class.
      * @return true if remove succeeds.
      */
-   static bool remove( const Record& r, uint64_t s = scope ) {
-      return impl::remove( s, table_n, &r ) != 0;
+   static bool remove( const Record& r, uint64_t s = scope, uint64_t b = bta ) {
+      return impl::remove( s, table_n, b, &r ) != 0;
    }
 }; /// @} singleindextable
 
 template<>
 struct table_impl_obj<char*> {
     
-    static int32_t store( account_name scope, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
-        return store_str( scope, table_n, key, keylen, data, datalen );
+    static int32_t store( account_name scope, table_name table_n, account_name bta, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+       return store_str( scope, table_n, bta, key, keylen, data, datalen );
     }
 
-    static int32_t update( account_name scope, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
-        return update_str( scope, table_n, key, keylen, data, datalen );
+    static int32_t update( account_name scope, table_name table_n, account_name bta, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+       return update_str( scope, table_n, bta, key, keylen, data, datalen );
     }
 
     static int32_t front( account_name scope, account_name code, table_name table_n, char* data, uint32_t len ) {
@@ -733,8 +733,8 @@ struct table_impl_obj<char*> {
         return upper_bound_str( scope, code, table_n, key, keylen, data, datalen );
     }
 
-    static int32_t remove( account_name scope, table_name table_n, char* key, uint32_t keylen ) {
-        return remove_str( scope, table_n, key, keylen );
+    static int32_t remove( account_name scope, table_name table_n, account_name bta, char* key, uint32_t keylen ) {
+       return remove_str( scope, table_n, bta, key, keylen );
     }
 };
 
@@ -751,7 +751,7 @@ struct table_impl_obj<char*> {
   *  @{
   */
 
-template<account_name scope, account_name code, table_name table_n, typename PrimaryType>
+template<account_name scope, account_name code, table_name table_n, account_name bta, typename PrimaryType>
 struct var_table {
     private:
     typedef table_impl_obj<PrimaryType> impl;
@@ -769,7 +769,7 @@ struct var_table {
      * @return 1 if a new record was created, 0 if an existing record was updated
      */
     int32_t store( primary key, uint32_t keylen, char* record, uint32_t len ) {
-        return impl::store( scope, table_n, key, keylen, record, len );
+       return impl::store( scope, table_n, bta, key, keylen, record, len );
     }
 
     /**
@@ -782,7 +782,7 @@ struct var_table {
      * @return 1 if the record was updated, 0 if no record with key was found
      */
     int32_t update( primary key, uint32_t keylen, char* record, uint32_t len ) {
-        return impl::update( scope, table_n, key, keylen, record, len );
+       return impl::update( scope, table_n, bta, key, keylen, record, len );
     }
     
     /**
@@ -886,7 +886,7 @@ struct var_table {
      * @return 1 if a record was removed, and 0 if no record with key was found
      */
     int32_t remove( primary key, uint32_t keylen ) {
-       return impl::remove( scope, table_n, key, keylen );
+       return impl::remove( scope, table_n, bta, key, keylen );
     }
 };
 

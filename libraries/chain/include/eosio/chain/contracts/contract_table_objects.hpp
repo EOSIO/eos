@@ -21,6 +21,7 @@ namespace eosio { namespace chain { namespace contracts {
       scope_name     scope;
       account_name   code;
       table_name     table;
+      account_name   bta;
    };
 
    struct by_scope_code_table;
@@ -35,7 +36,8 @@ namespace eosio { namespace chain { namespace contracts {
             composite_key< table_id_object,
                member<table_id_object, scope_name,   &table_id_object::scope>,
                member<table_id_object, account_name, &table_id_object::code>,
-               member<table_id_object, table_name,   &table_id_object::table>
+               member<table_id_object, table_name,   &table_id_object::table>,
+               member<table_id_object, account_name, &table_id_object::bta>
             >
          >
       >

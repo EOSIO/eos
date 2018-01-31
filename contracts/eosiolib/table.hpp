@@ -7,7 +7,7 @@ namespace eosio {
     *  @tparam TableName - the name of the table with rows of type T
     *  @tparam T - a struct where the first 8 bytes are used as primary/unique key
     */
-   template<uint64_t DefaultScope, uint64_t TableName, typename T>
+   template<uint64_t DefaultScope, uint64_t TableName, uint64_t BillToAccount, typename T>
    class table64
    {
       public:
@@ -44,7 +44,7 @@ namespace eosio {
             return result;
          }
 
-         static void set( const T& value = T(), scope_name scope = DefaultScope ) {
+         static void set( const T& value = T(), scope_name scope = DefaultScope, uint64_t bta = BillToAccount ) {
             auto size = pack_size( value );
             char buf[size];
             assert( size <= 1024, "singleton too big to store" );
@@ -52,7 +52,7 @@ namespace eosio {
             datastream<char*> ds( buf, size );
             ds << value;
             
-            store_i64( scope, TableName, buf, sizeof(buf) );
+            store_i64( scope, TableName, bta, buf, sizeof(buf) );
          }
    };
 

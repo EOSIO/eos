@@ -559,18 +559,18 @@ class db_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      int store(const scope_name& scope, const name& table, array_ptr<const char> data, size_t data_len) {
+      int store(const scope_name& scope, const name& table, const scope_name& bta, array_ptr<const char> data, size_t data_len) {
          auto res = call(&apply_context::store_record<ObjectType>, scope, table, data, data_len);
          //ilog("STORE [${scope},${code},${table}] => ${res} :: ${HEX}", ("scope",scope)("code",context.receiver)("table",table)("res",res)("HEX", fc::to_hex(data, data_len)));
          return res;
 
       }
 
-      int update(const scope_name& scope, const name& table, array_ptr<const char> data, size_t data_len) {
+      int update(const scope_name& scope, const name& table, const scope_name& bta, array_ptr<const char> data, size_t data_len) {
          return call(&apply_context::update_record<ObjectType>, scope, table, data, data_len);
       }
 
-      int remove(const scope_name& scope, const name& table, const KeyArrayType &keys) {
+      int remove(const scope_name& scope, const name& table, const scope_name& bta, const KeyArrayType &keys) {
          const auto& t_id = context.find_or_create_table(scope, context.receiver, table);
          return context.remove_record<ObjectType>(t_id, keys);
       }
@@ -777,9 +777,9 @@ REGISTER_INTRINSICS(memory_api,
 
 
 #define DB_METHOD_SEQ(SUFFIX) \
-   (store,        int32_t(int64_t, int64_t, int, int),            "store_"#SUFFIX )\
-   (update,       int32_t(int64_t, int64_t, int, int),            "update_"#SUFFIX )\
-   (remove,       int32_t(int64_t, int64_t, int),                 "remove_"#SUFFIX )
+   (store,        int32_t(int64_t, int64_t, int64_t, int, int),   "store_"#SUFFIX ) \
+   (update,       int32_t(int64_t, int64_t, int64_t, int, int),   "update_"#SUFFIX ) \
+   (remove,       int32_t(int64_t, int64_t, int64_t, int),        "remove_"#SUFFIX )
 
 #define DB_INDEX_METHOD_SEQ(SUFFIX)\
    (load,         int32_t(int64_t, int64_t, int64_t, int, int),   "load_"#SUFFIX )\
