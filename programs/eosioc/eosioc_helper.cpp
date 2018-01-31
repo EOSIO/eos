@@ -35,11 +35,44 @@ namespace client {
 
 const auto tx_expiration = fc::seconds(30);
 
-eosioc_helper::eosioc_helper(peer& peer, wallet& wallet):
-    m_wallet(wallet),
-    m_peer(peer)
+std::string eosioc_helper::host_wallet() const
 {
+    return m_wallet.host();
+}
 
+void eosioc_helper::set_host_wallet(const std::string &host)
+{
+    m_wallet.set_host(host);
+}
+
+uint32_t eosioc_helper::port_wallet() const
+{
+    return m_wallet.port();
+}
+
+void eosioc_helper::set_port_wallet(uint32_t port)
+{
+    m_wallet.set_port(port);
+}
+
+std::string eosioc_helper::host_peer() const
+{
+    return m_peer.host();
+}
+
+void eosioc_helper::set_host_peer(const std::string &host)
+{
+    m_peer.set_host(host);
+}
+
+uint32_t eosioc_helper::port_peer() const
+{
+    return m_peer.port();
+}
+
+void eosioc_helper::set_port_peer(uint32_t port)
+{
+    m_peer.set_port(port);
 }
 
 void eosioc_helper::get_block(const std::string &id)

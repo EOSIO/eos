@@ -16,7 +16,15 @@ namespace client {
 class eosioc_helper
 {
 public:
-    eosioc_helper(peer& peer, wallet& wallet);
+    std::string host_wallet() const;
+    void set_host_wallet(const std::string& host);
+    uint32_t port_wallet() const;
+    void set_port_wallet(uint32_t port);
+
+    std::string host_peer() const;
+    void set_host_peer(const std::string& host);
+    uint32_t port_peer() const;
+    void set_port_peer(uint32_t port);
 
     void get_block(const std::string& id);
     void get_account(const std::string& account);
@@ -134,8 +142,8 @@ private:
     fc::variant push_transaction(eosio::chain::signed_transaction& trx, bool sign);
     std::vector<uint8_t> assemble_wast(const std::string &wast);
 
-    wallet& m_wallet;
-    peer& m_peer;
+    wallet m_wallet;
+    peer m_peer;
 };
 
 } // namespace client

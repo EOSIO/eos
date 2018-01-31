@@ -90,8 +90,6 @@ Options:
 #include <WASM/WASM.h>
 #include <Runtime/Runtime.h>
 #include <fc/io/fstream.hpp>
-#include <eosio/libeosioc/peer.hpp>
-#include <eosio/libeosioc/wallet.hpp>
 
 #include "CLI11.hpp"
 #include "help_text.hpp"
@@ -122,9 +120,8 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
   )
 
 string program = "eosc";
-eosio::client::peer remote_peer; ///< \todo remove
-eosio::client::wallet remote_wallet; ///< \todo remove
-eosio::client::eosioc_helper eosioclient(remote_peer, remote_wallet);
+
+eosio::client::eosioc_helper helper;
 
 auto tx_expiration = fc::seconds(30);
 bool tx_force_unique = false;
@@ -161,7 +158,7 @@ struct set_account_permission_subcommand {
       permissions->add_flag("-s,--skip-sign", skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
       add_standard_transaction_options(permissions);
 
-      permissions->set_callback([this] { eosioclient.set_account_permission(accountStr,
+      permissions->set_callback([this] { helper.set_account_permission(accountStr,
                                                                     permissionStr,
                                                                     authorityJsonOrFile,
                                                                     parentStr,
@@ -186,7 +183,7 @@ struct set_action_permission_subcommand {
       permissions->add_flag("-s,--skip-sign", skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
       add_standard_transaction_options(permissions);
 
-      permissions->set_callback([this] { eosioclient.set_action_permission(accountStr,
+      permissions->set_callback([this] { helper.set_action_permission(accountStr,
                                                                            codeStr,
                                                                            typeStr,
                                                                            requirementStr,
@@ -214,7 +211,7 @@ int main( int argc, char** argv ) {
        if (!CLI::detail::lexical_cast(res[0], variable))
            return false;
 
-       remote_peer.set_host(variable);
+       helper.set_host_peer(variable);
        return true; }, localized("the host where eosd is running"), true );
    app.add_option( "-p,--port", [&](CLI::results_t res) {
        if(res.size() != 1)
@@ -224,7 +221,7 @@ int main( int argc, char** argv ) {
        if (!CLI::detail::lexical_cast(res[0], variable))
            return false;
 
-       remote_peer.set_port(variable);
+       helper.set_port_peer(variable);
        return true; }, localized("the port where eosd is running"), true );
    app.add_option( "--wallet-host", [&](CLI::results_t res) {
        if(res.size() != 1)
@@ -234,7 +231,7 @@ int main( int argc, char** argv ) {
        if (!CLI::detail::lexical_cast(res[0], variable))
            return false;
 
-       remote_wallet.set_host(variable);
+       helper.set_host_wallet(variable);
        return true; }, localized("the host where eos-walletd is running"), true );
    app.add_option( "--wallet-port", [&](CLI::results_t res) {
        if(res.size() != 1)
@@ -244,7 +241,7 @@ int main( int argc, char** argv ) {
        if (!CLI::detail::lexical_cast(res[0], variable))
            return false;
 
-       remote_wallet.set_port(variable);
+       helper.set_port_wallet(variable);
        return true; }, localized("the port where eos-walletd is running"), true );
 
    bool verbose_errors = false;
@@ -285,7 +282,7 @@ int main( int argc, char** argv ) {
    createAccount->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    createAccount->add_option("--staked-deposit", staked_deposit, localized("the staked deposit transfered to the new account"));
    add_standard_transaction_options(createAccount);
-   createAccount->set_callback([&] { eosioclient.create_account(creator,
+   createAccount->set_callback([&] { helper.create_account(creator,
                                                                 account_name,
                                                                 public_key_type(ownerKey),
                                                                 public_key_type(activeKey),
@@ -302,7 +299,7 @@ int main( int argc, char** argv ) {
    createProducer->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(createProducer);
    createProducer->set_callback([&account_name, &ownerKey, &permissions, &skip_sign] {
-       eosioclient.create_producer(account_name, ownerKey, permissions, skip_sign);
+       helper.create_producer(account_name, ownerKey, permissions, skip_sign);
       });
 
    // Get subcommand
@@ -311,20 +308,20 @@ int main( int argc, char** argv ) {
 
    // get info
    get->add_subcommand("info", localized("Get current blockchain information"))->set_callback([] {
-      std::cout << fc::json::to_pretty_string(eosioclient.get_info()) << std::endl;
+      std::cout << fc::json::to_pretty_string(helper.get_info()) << std::endl;
    });
 
    // get block
    string blockArg;
    auto getBlock = get->add_subcommand("block", localized("Retrieve a full block from the blockchain"), false);
    getBlock->add_option("block", blockArg, localized("The number or ID of the block to retrieve"))->required();
-   getBlock->set_callback([&blockArg] { eosioclient.get_block(blockArg); });
+   getBlock->set_callback([&blockArg] { helper.get_block(blockArg); });
 
    // get account
    string accountName;
    auto getAccount = get->add_subcommand("account", localized("Retrieve an account from the blockchain"), false);
    getAccount->add_option("name", accountName, localized("The name of the account to retrieve"))->required();
-   getAccount->set_callback([&] { eosioclient.get_account(accountName); });
+   getAccount->set_callback([&] { helper.get_account(accountName); });
 
    // get code
    string codeFilename;
@@ -333,7 +330,7 @@ int main( int argc, char** argv ) {
    getCode->add_option("name", accountName, localized("The name of the account whose code should be retrieved"))->required();
    getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract .wast to") );
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
-   getCode->set_callback([&] { eosioclient.get_code(accountName, codeFilename, abiFilename); });
+   getCode->set_callback([&] { helper.get_code(accountName, codeFilename, abiFilename); });
 
    // get table
    string scope;
@@ -352,7 +349,7 @@ int main( int argc, char** argv ) {
    getTable->add_option( "-k,--key", limit, localized("The name of the key to index by as defined by the abi, defaults to primary key") );
    getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
-   getTable->set_callback([&] { eosioclient.get_table(scope, code, table); });
+   getTable->set_callback([&] { helper.get_table(scope, code, table); });
 
    // currency accessors
    // get currency balance
@@ -362,30 +359,30 @@ int main( int argc, char** argv ) {
    get_balance->add_option( "contract", code, localized("The contract that operates the currency") )->required();
    get_balance->add_option( "account", accountName, localized("The account to query balances for") )->required();
    get_balance->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
-   get_balance->set_callback([&] { eosioclient.get_balance(accountName, code, symbol); });
+   get_balance->set_callback([&] { helper.get_balance(accountName, code, symbol); });
 
    auto get_currency_stats = get_currency->add_subcommand( "stats", localized("Retrieve the stats of for a given currency"), false);
    get_currency_stats->add_option( "contract", code, localized("The contract that operates the currency") )->required();
    get_currency_stats->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
-   get_currency_stats->set_callback([&] { eosioclient.get_currency_stats(code, symbol); });
+   get_currency_stats->set_callback([&] { helper.get_currency_stats(code, symbol); });
 
    // get accounts
    string publicKey;
    auto getAccounts = get->add_subcommand("accounts", localized("Retrieve accounts associated with a public key"), false);
    getAccounts->add_option("public_key", publicKey, localized("The public key to retrieve accounts for"))->required();
-   getAccounts->set_callback([&] { eosioclient.get_key_accounts(publicKey); });
+   getAccounts->set_callback([&] { helper.get_key_accounts(publicKey); });
 
    // get servants
    string controllingAccount;
    auto getServants = get->add_subcommand("servants", localized("Retrieve accounts which are servants of a given account "), false);
    getServants->add_option("account", controllingAccount, localized("The name of the controlling account"))->required();
-   getServants->set_callback([&] { eosioclient.get_controlled_accounts(controllingAccount); });
+   getServants->set_callback([&] { helper.get_controlled_accounts(controllingAccount); });
 
    // get transaction
    string transactionId;
    auto getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"), false);
    getTransaction->add_option("id", transactionId, localized("ID of the transaction to retrieve"))->required();
-   getTransaction->set_callback([&] { eosioclient.get_transaction(transactionId); });
+   getTransaction->set_callback([&] { helper.get_transaction(transactionId); });
 
    // get transactions
    string skip_seq;
@@ -394,7 +391,7 @@ int main( int argc, char** argv ) {
    getTransactions->add_option("account_name", account_name, localized("name of account to query on"))->required();
    getTransactions->add_option("skip_seq", skip_seq, localized("Number of most recent transactions to skip (0 would start at most recent transaction)"));
    getTransactions->add_option("num_seq", num_seq, localized("Number of transactions to return"));
-   getTransactions->set_callback([&] { eosioclient.get_transactions(account_name, skip_seq, num_seq); });
+   getTransactions->set_callback([&] { helper.get_transactions(account_name, skip_seq, num_seq); });
 
    // set subcommand
    auto setSubcommand = app.add_subcommand("set", localized("Set or update blockchain state"));
@@ -408,11 +405,11 @@ int main( int argc, char** argv ) {
    contractSubcommand->add_option("account", account, localized("The account to publish a contract for"))->required();
    contractSubcommand->add_option("wast-file", wastPath, localized("The file containing the contract WAST or WASM"))->required()
          ->check(CLI::ExistingFile);
-   auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract"))
-              ->check(CLI::ExistingFile);
+   contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract"))
+         ->check(CLI::ExistingFile);
    contractSubcommand->add_flag("-s,--skip-sign", skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
    add_standard_transaction_options(contractSubcommand);
-   contractSubcommand->set_callback([&] { eosioclient.create_and_update_contract(account, wastPath, abiPath, skip_sign); });
+   contractSubcommand->set_callback([&] { helper.create_and_update_contract(account, wastPath, abiPath, skip_sign); });
 
    // set producer approve/unapprove subcommand
    string producer;
@@ -427,7 +424,7 @@ int main( int argc, char** argv ) {
    producerSubcommand->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(producerSubcommand);
    bool approve = producerSubcommand->got_subcommand(approveCommand);
-   producerSubcommand->set_callback([&] { eosioclient.approve_unapprove_producer(account_name,
+   producerSubcommand->set_callback([&] { helper.approve_unapprove_producer(account_name,
                                                                                  producer,
                                                                                  permissions,
                                                                                  approve,
@@ -442,7 +439,7 @@ int main( int argc, char** argv ) {
                                   localized("An account and permission level to authorize, as in 'account@permission' (default user@active)"));
    proxySubcommand->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(proxySubcommand);
-   proxySubcommand->set_callback([&] { eosioclient.set_proxy_account_for_voting(account_name,
+   proxySubcommand->set_callback([&] { helper.set_proxy_account_for_voting(account_name,
                                                                                 proxy,
                                                                                 permissions,
                                                                                 skip_sign); });
@@ -471,7 +468,7 @@ int main( int argc, char** argv ) {
    transfer->add_option("memo", memo, localized("The memo for the transfer"));
    transfer->add_flag("-s,--skip-sign", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(transfer);
-   transfer->set_callback([&] { eosioclient.transfer(sender,
+   transfer->set_callback([&] { helper.transfer(sender,
                                                      recipient,
                                                      amount,
                                                      memo,
@@ -483,18 +480,18 @@ int main( int argc, char** argv ) {
    net->require_subcommand();
    auto connect = net->add_subcommand("connect", localized("start a new connection to a peer"), false);
    connect->add_option("host", new_host, localized("The hostname:port to connect to."))->required();
-   connect->set_callback([&] { eosioclient.start_new_connection_to_peer(new_host); });
+   connect->set_callback([&] { helper.start_new_connection_to_peer(new_host); });
 
    auto disconnect = net->add_subcommand("disconnect", localized("close an existing connection"), false);
    disconnect->add_option("host", new_host, localized("The hostname:port to disconnect from."))->required();
-   disconnect->set_callback([&] { eosioclient.close_connection_to_peer(new_host); });
+   disconnect->set_callback([&] { helper.close_connection_to_peer(new_host); });
 
    auto status = net->add_subcommand("status", localized("status of existing connection"), false);
    status->add_option("host", new_host, localized("The hostname:port to query status of connection"))->required();
-   status->set_callback([&] { eosioclient.status_of_connection_to_peer(new_host); });
+   status->set_callback([&] { helper.status_of_connection_to_peer(new_host); });
 
    auto connections = net->add_subcommand("peers", localized("status of all existing peers"), false);
-   connections->set_callback([&] { eosioclient.status_of_all_existing_peers(new_host); });
+   connections->set_callback([&] { helper.status_of_all_existing_peers(new_host); });
 
    // Wallet subcommand
    auto wallet = app.add_subcommand( "wallet", localized("Interact with local wallet"), false );
@@ -503,43 +500,43 @@ int main( int argc, char** argv ) {
    string wallet_name = "default";
    auto createWallet = wallet->add_subcommand("create", localized("Create a new wallet locally"), false);
    createWallet->add_option("-n,--name", wallet_name, localized("The name of the new wallet"), true);
-   createWallet->set_callback([&wallet_name] { eosioclient.create_wallet(wallet_name); });
+   createWallet->set_callback([&wallet_name] { helper.create_wallet(wallet_name); });
 
    // open wallet
    auto openWallet = wallet->add_subcommand("open", localized("Open an existing wallet"), false);
    openWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to open"));
-   openWallet->set_callback([&wallet_name] { eosioclient.open_existing_wallet(wallet_name); });
+   openWallet->set_callback([&wallet_name] { helper.open_existing_wallet(wallet_name); });
 
    // lock wallet
    auto lockWallet = wallet->add_subcommand("lock", localized("Lock wallet"), false);
    lockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to lock"));
-   lockWallet->set_callback([&wallet_name] { eosioclient.lock_wallet(wallet_name); });
+   lockWallet->set_callback([&wallet_name] { helper.lock_wallet(wallet_name); });
 
    // lock all wallets
    auto locakAllWallets = wallet->add_subcommand("lock_all", localized("Lock all unlocked wallets"), false);
-   locakAllWallets->set_callback([] { eosioclient.lock_all(); });
+   locakAllWallets->set_callback([] { helper.lock_all(); });
 
    // unlock wallet
    string wallet_pw;
    auto unlockWallet = wallet->add_subcommand("unlock", localized("Unlock wallet"), false);
    unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
    unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
-   unlockWallet->set_callback([&wallet_name, &wallet_pw] { eosioclient.unlock_wallet(wallet_name, wallet_pw); });
+   unlockWallet->set_callback([&wallet_name, &wallet_pw] { helper.unlock_wallet(wallet_name, wallet_pw); });
 
    // import keys into wallet
    string wallet_key;
    auto importWallet = wallet->add_subcommand("import", localized("Import private key into wallet"), false);
    importWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to import key into"));
    importWallet->add_option("key", wallet_key, localized("Private key in WIF format to import"))->required();
-   importWallet->set_callback([&wallet_name, &wallet_key] { eosioclient.import_private_key(wallet_name, wallet_key); });
+   importWallet->set_callback([&wallet_name, &wallet_key] { helper.import_private_key(wallet_name, wallet_key); });
 
    // list wallets
    auto listWallet = wallet->add_subcommand("list", localized("List opened wallets, * = unlocked"), false);
-   listWallet->set_callback([] { eosioclient.list_opened_wallet(); });
+   listWallet->set_callback([] { helper.list_opened_wallet(); });
 
    // list keys
    auto listKeys = wallet->add_subcommand("keys", localized("List of private keys from all unlocked wallets in wif format."), false);
-   listKeys->set_callback([] { eosioclient.list_private_keys_from_opened_wallets(); });
+   listKeys->set_callback([] { helper.list_private_keys_from_opened_wallets(); });
 
    // Benchmark subcommand
    auto benchmark = app.add_subcommand( "benchmark", localized("Configure and execute benchmarks"), false );
@@ -554,8 +551,7 @@ int main( int argc, char** argv ) {
    benchmark_setup->add_option("owner", owner_key, localized("The owner key to use for account creation"))->required();
    benchmark_setup->add_option("active", active_key, localized("The active key to use for account creation"))->required();
    add_standard_transaction_options(benchmark_setup);
-
-   benchmark_setup->set_callback([&]{ eosioclient.configure_benchmarks(number_of_accounts,
+   benchmark_setup->set_callback([&]{ helper.configure_benchmarks(number_of_accounts,
                                                                        c_account,
                                                                        owner_key,
                                                                        active_key); });
@@ -567,7 +563,7 @@ int main( int argc, char** argv ) {
    benchmark_transfer->add_option("count", number_of_transfers, localized("the number of transfers to execute"))->required();
    benchmark_transfer->add_option("loop", loop, localized("whether or not to loop for ever"));
    add_standard_transaction_options(benchmark_transfer);
-   benchmark_transfer->set_callback([&]{ eosioclient.execute_random_transactions(number_of_accounts,
+   benchmark_transfer->set_callback([&]{ helper.execute_random_transactions(number_of_accounts,
                                                                                  number_of_transfers,
                                                                                  loop,
                                                                                  memo); });
@@ -591,7 +587,7 @@ int main( int argc, char** argv ) {
                                  localized("An account and permission level to authorize, as in 'account@permission'"));
    actionsSubcommand->add_flag("-s,--skip-sign", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(actionsSubcommand);
-   actionsSubcommand->set_callback([&] { eosioclient.push_transaction_with_single_action(contract,
+   actionsSubcommand->set_callback([&] { helper.push_transaction_with_single_action(contract,
                                                                                          action,
                                                                                          data,
                                                                                          permissions,
@@ -604,12 +600,12 @@ int main( int argc, char** argv ) {
    string trxJson;
    auto trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
    trxSubcommand->add_option("transaction", trxJson, localized("The JSON of the transaction to push"))->required();
-   trxSubcommand->set_callback([&] { eosioclient.push_JSON_transaction(trxJson); });
+   trxSubcommand->set_callback([&] { helper.push_JSON_transaction(trxJson); });
 
    string trxsJson;
    auto trxsSubcommand = push->add_subcommand("transactions", localized("Push an array of arbitrary JSON transactions"));
    trxsSubcommand->add_option("transactions", trxsJson, localized("The JSON array of the transactions to push"))->required();
-   trxsSubcommand->set_callback([&] { eosioclient.push_JSON_transaction(trxsJson); });
+   trxsSubcommand->set_callback([&] { helper.push_JSON_transaction(trxsJson); });
 
    try {
        app.parse(argc, argv);
@@ -620,10 +616,10 @@ int main( int argc, char** argv ) {
    } catch (const fc::exception& e) {
       auto errorString = e.to_detail_string();
       if (errorString.find("Connection refused") != string::npos) {
-         if (errorString.find(fc::json::to_string(remote_peer.port())) != string::npos) {
-            std::cerr << localized("Failed to connect to eosd at ${ip}:${port}; is eosd running?", ("ip", remote_peer.host())("port", remote_peer.port())) << std::endl;
-         } else if (errorString.find(fc::json::to_string(remote_wallet.port())) != string::npos) {
-            std::cerr << localized("Failed to connect to eos-walletd at ${ip}:${port}; is eos-walletd running?", ("ip", remote_wallet.host())("port", remote_wallet.port())) << std::endl;
+         if (errorString.find(fc::json::to_string(helper.port_peer())) != string::npos) {
+            std::cerr << localized("Failed to connect to eosd at ${ip}:${port}; is eosd running?", ("ip", helper.host_peer())("port", helper.port_peer())) << std::endl;
+         } else if (errorString.find(fc::json::to_string(helper.port_wallet())) != string::npos) {
+            std::cerr << localized("Failed to connect to eos-walletd at ${ip}:${port}; is eos-walletd running?", ("ip", helper.host_wallet())("port", helper.port_wallet())) << std::endl;
          } else {
             std::cerr << localized("Failed to connect") << std::endl;
          }
