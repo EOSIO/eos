@@ -312,20 +312,30 @@ namespace identity {
             certs_table certs( cert.identity );
 
             for( const auto& value : cert.values ) {
-               certrow row;
-               row.property   = value.property;
-               row.trusted    = is_trusted( cert.certifier );
-               row.certifier  = cert.certifier;
-               row.confidence = value.confidence;
-               assert(value.type.get_size() <= 32, "certrow::type shouldn't be longer than 32 bytes");
-               row.type       = value.type;
-               row.data       = value.data;
+               if (value.confidence) {
+                  certrow row;
+                  row.property   = value.property;
+                  row.trusted    = is_trusted( cert.certifier );
+                  row.certifier  = cert.certifier;
+                  row.confidence = value.confidence;
+                  assert(value.type.get_size() <= 32, "certrow::type shouldn't be longer than 32 bytes");
+                  row.type       = value.type;
+                  row.data       = value.data;
 
-               certs.store( row, cert.bill_storage_to );
-               if (value.property == N(owner)) {
-                  assert(sizeof(account_name) == row.data.size(), "data size doesn't match account_name size");
-                  account_name acnt = *reinterpret_cast<account_name*>(row.data.data());
-                  accounts_table::set( cert.identity, acnt );
+                  certs.store( row, cert.bill_storage_to );
+                  //remove row with different "trusted" value
+                  certs.remove(value.property, !row.trusted, cert.certifier);
+
+                  //special handling for owner
+                  if (value.property == N(owner)) {
+                     assert(sizeof(account_name) == row.data.size(), "data size doesn't match account_name size");
+                     account_name acnt = *reinterpret_cast<account_name*>(row.data.data());
+                     accounts_table::set( cert.identity, acnt );
+                  }
+               } else {
+                  //remove both tursted and untrusted because we cannot now if it was trusted back at creation time
+                  certs.remove(value.property, 0, cert.certifier);
+                  certs.remove(value.property, 1, cert.certifier);
                }
             }
          }

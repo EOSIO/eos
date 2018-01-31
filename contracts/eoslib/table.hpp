@@ -130,6 +130,12 @@ namespace eosio {
 
             store_i64i64i64( _scope, TableName, temp, ds.tellp() );
          }
+
+         void remove(uint64_t primary_key, uint64_t seconday_key, uint64_t tertiary_key) {
+            uint64_t temp[3] = { primary_key, seconday_key, tertiary_key };
+            remove_i64i64i64(_scope, TableName, temp);
+         }
+
       private:
          uint64_t _scope;
    };

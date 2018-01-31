@@ -132,7 +132,7 @@ public:
          cert_act.authorization = vector<permission_level>{{string_to_name(certifier.c_str()), config::active_name}};
       }
       cert_act.data = abi_ser.variant_to_binary("certprop", mutable_variant_object()
-                                                ("bill_storage_to", "alice")
+                                                ("bill_storage_to", certifier)
                                                 ("certifier", certifier)
                                                 ("identity", identity)
                                                 ("value", fields)
@@ -161,15 +161,14 @@ public:
       uint64_t cert = string_to_name(certifier.c_str());
       const auto& idx = db.get_index<key64x64x64_value_index, by_scope_primary>();
       auto itr = idx.lower_bound(boost::make_tuple(t_id->id, prop, trusted, cert));
-      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
 
-      BOOST_REQUIRE_EQUAL(prop, itr->primary_key);
-      BOOST_REQUIRE_EQUAL(trusted, itr->secondary_key);
-      BOOST_REQUIRE_EQUAL(cert, itr->tertiary_key);
-
-      vector<char> data;
-      read_only::copy_row(*itr, data);
-      return abi_ser.binary_to_variant("certrow", data);
+      if (itr != idx.end() && itr->t_id == t_id->id && prop == itr->primary_key && trusted == itr->secondary_key && cert == itr->tertiary_key) {
+         vector<char> data;
+         read_only::copy_row(*itr, data);
+         return abi_ser.binary_to_variant("certrow", data);
+      } else {
+         return fc::variant(nullptr);
+      }
    }
 
    fc::variant get_accountrow(const string& account) {
@@ -238,32 +237,67 @@ public:
    abi_serializer abi_ser_test;
 };
 
+constexpr uint64_t identity_val = 0xffffffffffffffff; //64-bit value
+
 BOOST_AUTO_TEST_SUITE(identity_tests)
 
-BOOST_FIXTURE_TEST_CASE( identity_test, identity_tester ) try {
-   constexpr uint64_t identity_val = 0xffffffffffffffff; //64-bit value
-
-   BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(identity_val));
+BOOST_FIXTURE_TEST_CASE( identity_create, identity_tester ) try {
 
    BOOST_REQUIRE_EQUAL(success(), create_identity("alice", identity_val));
    fc::variant idnt = get_identity(identity_val);
    BOOST_REQUIRE_EQUAL( identity_val, idnt["identity"].as_uint64());
    BOOST_REQUIRE_EQUAL( "alice", idnt["creator"].as_string());
 
+   //attempts to create already existing identity should fail
    BOOST_REQUIRE_EQUAL(error("condition: assertion failed: identity already exists"), create_identity("alice", identity_val));
+   BOOST_REQUIRE_EQUAL(error("condition: assertion failed: identity already exists"), create_identity("bob", identity_val));
 
-   // alice can create multiple identities
+   //alice can create more identities
    BOOST_REQUIRE_EQUAL(success(), create_identity("alice", 2));
    fc::variant idnt2 = get_identity(2);
    BOOST_REQUIRE_EQUAL( 2, idnt2["identity"].as_uint64());
    BOOST_REQUIRE_EQUAL( "alice", idnt2["creator"].as_string());
 
-   //attemp to create identity without signature
-   //BOOST_REQUIRE_EQUAL(error("x"), create_identity("alice", 3, false));
+   //creating adentity without authentication is not allowed
+   BOOST_REQUIRE_EQUAL(error("missing authority of alice"), create_identity("alice", 3, false));
 
-   BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(identity_val)); //nobody claimed ownership so far
+   //bob can create an identity as well
+   BOOST_REQUIRE_EQUAL(success(), create_identity("bob", 1));
+   fc::variant idnt_bob = get_identity(1);
+   BOOST_REQUIRE_EQUAL( 1, idnt_bob["identity"].as_uint64());
+   BOOST_REQUIRE_EQUAL( "bob", idnt_bob["creator"].as_string());
 
-   //certify 2 fields
+   //previously created identity should still exist
+   idnt = get_identity(identity_val);
+   BOOST_REQUIRE_EQUAL( identity_val, idnt["identity"].as_uint64());
+
+ } FC_LOG_AND_RETHROW() //identity_create
+
+BOOST_FIXTURE_TEST_CASE( certify_decertify, identity_tester ) try {
+   BOOST_REQUIRE_EQUAL(success(), create_identity("alice", identity_val));
+
+   //alice (creator of the identity) certifies 1 property
+   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>(1, mutable_variant_object()
+                                                                                     ("property", "name")
+                                                                                     ("type", "string")
+                                                                                     ("data", to_uint8_vector("Alice Smith"))
+                                                                                     ("memo", "")
+                                                                                     ("confidence", 100)
+                                          )));
+
+   auto obj = get_certrow(identity_val, "name", 0, "alice");
+   BOOST_REQUIRE_EQUAL(true, obj.is_object());
+   BOOST_REQUIRE_EQUAL( "name", obj["property"].as_string() );
+   BOOST_REQUIRE_EQUAL( 0, obj["trusted"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "alice", obj["certifier"].as_string() );
+   BOOST_REQUIRE_EQUAL( 100, obj["confidence"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "string", obj["type"].as_string() );
+   BOOST_REQUIRE_EQUAL( "Alice Smith", to_string(obj["data"]) );
+
+   //check that there is no trusted row with the same data
+   BOOST_REQUIRE_EQUAL(true, get_certrow(identity_val, "name", 1, "alice").is_null());
+
+   //bob certifies 2 properties
    vector<fc::variant> fields;
    fields.push_back(mutable_variant_object()
                     ("property", "email")
@@ -280,25 +314,75 @@ BOOST_FIXTURE_TEST_CASE( identity_test, identity_tester ) try {
                     ("confidence", 80)
    );
 
-   BOOST_REQUIRE_EQUAL(error("missing authority of alice"), certify("alice", identity_val, fields, false));
+   //shouldn't be able to certify without authorization
+   BOOST_REQUIRE_EQUAL(error("missing authority of bob"), certify("bob", identity_val, fields, false));
 
-   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, fields));
+   BOOST_REQUIRE_EQUAL(success(), certify("bob", identity_val, fields));
 
-   auto obj = get_certrow(identity_val, "email", 0, "alice");
+   obj = get_certrow(identity_val, "email", 0, "bob");
+   BOOST_REQUIRE_EQUAL(true, obj.is_object());
    BOOST_REQUIRE_EQUAL( "email", obj["property"].as_string() );
    BOOST_REQUIRE_EQUAL( 0, obj["trusted"].as_uint64() );
-   BOOST_REQUIRE_EQUAL( "alice", obj["certifier"].as_string() );
+   BOOST_REQUIRE_EQUAL( "bob", obj["certifier"].as_string() );
    BOOST_REQUIRE_EQUAL( 95, obj["confidence"].as_uint64() );
    BOOST_REQUIRE_EQUAL( "string", obj["type"].as_string() );
    BOOST_REQUIRE_EQUAL( "alice@alice.name", to_string(obj["data"]) );
 
-   obj = get_certrow(identity_val, "address", 0, "alice");
+   obj = get_certrow(identity_val, "address", 0, "bob");
+   BOOST_REQUIRE_EQUAL(true, obj.is_object());
    BOOST_REQUIRE_EQUAL( "address", obj["property"].as_string() );
    BOOST_REQUIRE_EQUAL( 0, obj["trusted"].as_uint64() );
-   BOOST_REQUIRE_EQUAL( "alice", obj["certifier"].as_string() );
+   BOOST_REQUIRE_EQUAL( "bob", obj["certifier"].as_string() );
    BOOST_REQUIRE_EQUAL( 80, obj["confidence"].as_uint64() );
    BOOST_REQUIRE_EQUAL( "string", obj["type"].as_string() );
    BOOST_REQUIRE_EQUAL( "1750 Kraft Drive SW, Blacksburg, VA 24060", to_string(obj["data"]) );
+
+   //now alice certifies another email
+   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>(1, mutable_variant_object()
+                                                                                     ("property", "email")
+                                                                                     ("type", "string")
+                                                                                     ("data", to_uint8_vector("alice.smith@gmail.com"))
+                                                                                     ("memo", "")
+                                                                                     ("confidence", 100)
+                                          )));
+   obj = get_certrow(identity_val, "email", 0, "alice");
+   BOOST_REQUIRE_EQUAL(true, obj.is_object());
+   BOOST_REQUIRE_EQUAL( "email", obj["property"].as_string() );
+   BOOST_REQUIRE_EQUAL( 0, obj["trusted"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "alice", obj["certifier"].as_string() );
+   BOOST_REQUIRE_EQUAL( 100, obj["confidence"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "string", obj["type"].as_string() );
+   BOOST_REQUIRE_EQUAL( "alice.smith@gmail.com", to_string(obj["data"]) );
+
+   //email certification made by bob should be still in place
+   obj = get_certrow(identity_val, "email", 0, "bob");
+   BOOST_REQUIRE_EQUAL( "bob", obj["certifier"].as_string() );
+   BOOST_REQUIRE_EQUAL( "alice@alice.name", to_string(obj["data"]) );
+
+   //remove email certification made by alice
+   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>(1, mutable_variant_object()
+                                                                                     ("property", "email")
+                                                                                     ("type", "string")
+                                                                                     ("data", to_uint8_vector(""))
+                                                                                     ("memo", "")
+                                                                                     ("confidence", 0)
+                                          )));
+   BOOST_REQUIRE_EQUAL(true, get_certrow(identity_val, "email", 0, "alice").is_null());
+
+   //email certification made by bob should still be in place
+   obj = get_certrow(identity_val, "email", 0, "bob");
+   BOOST_REQUIRE_EQUAL( "bob", obj["certifier"].as_string() );
+   BOOST_REQUIRE_EQUAL( "alice@alice.name", to_string(obj["data"]) );
+
+   //name certification made by alice should still be in place
+   obj = get_certrow(identity_val, "name", 0, "alice");
+   BOOST_REQUIRE_EQUAL(true, obj.is_object());
+   BOOST_REQUIRE_EQUAL( "Alice Smith", to_string(obj["data"]) );
+
+ } FC_LOG_AND_RETHROW() //certify_decertify
+
+BOOST_FIXTURE_TEST_CASE( certify_owner, identity_tester ) try {
+   BOOST_REQUIRE_EQUAL(success(), create_identity("alice", identity_val));
 
    // certify owner, should populate "account" singletons
    BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>(1, mutable_variant_object()
@@ -333,6 +417,6 @@ BOOST_FIXTURE_TEST_CASE( identity_test, identity_tester ) try {
    {
    }
 
-} FC_LOG_AND_RETHROW() /// identity_test
+} FC_LOG_AND_RETHROW() //certify_owner
 
 BOOST_AUTO_TEST_SUITE_END()
