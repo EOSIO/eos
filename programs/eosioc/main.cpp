@@ -310,16 +310,8 @@ int main( int argc, char** argv ) {
    createProducer->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(createProducer);
    createProducer->set_callback([&account_name, &ownerKey, &permissions, &skip_sign] {
-      if (permissions.empty()) {
-         permissions.push_back(account_name + "@active");
-      }
-      auto account_permissions = eosioclient.get_account_permissions(permissions);
-
-      signed_transaction trx;
-      trx.actions.emplace_back(  account_permissions, contracts::setproducer{account_name, public_key_type(ownerKey), chain_config{}} );
-
-      std::cout << fc::json::to_pretty_string(eosioclient.push_transaction(trx, !skip_sign)) << std::endl;
-   });
+       eosioclient.create_producer(account_name, ownerKey, permissions, skip_sign);
+      });
 
    // Get subcommand
    auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"), false);

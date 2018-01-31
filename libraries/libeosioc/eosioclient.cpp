@@ -59,21 +59,21 @@ void eosioclient::create_account(chain::name creator,
     std::cout << fc::json::to_pretty_string(push_transaction(trx, sign)) << std::endl;
 }
 
-//void Eosioclient::create_producer(const std::string &account_name, const std::string &owner_key, std::vector<std::string> permissions, bool skip_sign)
-//{
-//    if (permissions.empty()) {
-//       permissions.push_back(account_name + "@active");
-//    }
-//    auto account_permissions = get_account_permissions(permissions);
+void eosioclient::create_producer(const std::string &account_name, const std::string &owner_key, std::vector<std::string> permissions, bool skip_sign)
+{
+    if (permissions.empty()) {
+       permissions.push_back(account_name + "@active");
+    }
+    auto account_permissions = get_account_permissions(permissions);
 
-//    chain::signed_transaction trx;
-//    trx.actions.emplace_back(account_permissions,
-//                             chain::contracts::setproducer{account_name,
-//                                                           chain::public_key_type(owner_key),
-//                                                           chain::chain_config{}} );
+    chain::signed_transaction trx;
+    trx.actions.emplace_back(account_permissions,
+                             chain::contracts::setproducer{account_name,
+                                                           chain::public_key_type(owner_key),
+                                                           chain::chain_config{}} );
 
-//    std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
-//}
+    std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
+}
 
 void eosioclient::send_transaction(const std::vector<chain::action>& actions, bool skip_sign) {
     eosio::chain::signed_transaction trx;
