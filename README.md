@@ -61,16 +61,16 @@ The following instructions detail the process of getting the software, building 
 
 For Ubuntu 16.10 and MacOS Sierra, there is an automated build script that can install all dependencies and builds EOS.
 
-It is called build.sh with the following inputs.
+It is called eosio-build.sh with the following inputs.
 - architecture [ubuntu|darwin]
 - optional mode [full|build]
 
 The second optional input can be `full` or `build` where `full` implies that it installs dependencies and builds eos. If you omit this input then the build script installs dependencies and then builds eos.
 
 ```bash
-./build.sh <architecture> <optional mode>
+./eosio-build.sh <architecture> <optional mode>
 ```
-Choose whether you will be building for a local testnet or for the public testnet and jump to the appropriate section below.  Clone the EOS repository recursively as described and run build.sh located in the root `eos` folder.
+Choose whether you will be building for a local testnet or for the public testnet and jump to the appropriate section below.  Clone the EOS repository recursively as described and run eosio-build.sh located in the root `eos` folder.
 
 <a name="autoubuntulocal"></a>
 #### Clean install Ubuntu 16.10 for a local testnet
@@ -79,7 +79,7 @@ Choose whether you will be building for a local testnet or for the public testne
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
-./build.sh ubuntu
+./eosio-build.sh ubuntu
 ```
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
@@ -92,7 +92,7 @@ git clone https://github.com/eosio/eos --recursive
 
 cd eos
 git checkout dawn-2.x
-./build.sh ubuntu
+./eosio-build.sh ubuntu
 ```
 
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
@@ -107,13 +107,13 @@ xcode-select --install
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 ```
 
-Then clone the EOS repository recursively and run build.sh in the root `eos` folder.
+Then clone the EOS repository recursively and run eosio-build.sh in the root `eos` folder.
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
-./build.sh darwin
+./eosio-build.sh darwin
 ```
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
@@ -128,14 +128,14 @@ xcode-select --install
 ruby -e "$(curl -fsSl https://raw.githubusercontent.com/Homebrew/install/master/install)"
 ```
 
-Then clone the EOS repository recursively, checkout the branch that is compatible with the public testnet, and run build.sh in the root `eos` folder.
+Then clone the EOS repository recursively, checkout the branch that is compatible with the public testnet, and run eosio-build.sh in the root `eos` folder.
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
 git checkout dawn-2.x
-./build.sh darwin
+./eosio-build.sh darwin
 ```
 
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
@@ -184,8 +184,8 @@ EOS comes with a number of programs you can find in `~/eos/build/programs`. They
 
 * eosiod - server-side blockchain node component
 * eosioc - command line interface to interact with the blockchain
-* eosio-walletd - EOS wallet
-* launcher - application for nodes network composing and deployment; [more on launcher](https://github.com/EOSIO/eos/blob/master/testnet.md)
+* eosiowd - EOS wallet
+* eosio-launcher - application for nodes network composing and deployment; [more on eosio-launcher](https://github.com/EOSIO/eos/blob/master/testnet.md)
 
 <a name="singlenode"></a>
 ### Creating and launching a single-node testnet
@@ -425,14 +425,14 @@ As expected, the receiving account **inita** now has a balance of **20** tokens,
 <a name="localtestnet"></a>
 ## Running multi-node local testnet
 
-To run a local testnet you can use a `launcher` application provided in the `~/eos/build/programs/launcher` folder.
+To run a local testnet you can use the `eosio-launcher` application provided in the `~/eos/build/programs/eosio-launcher` folder.
 
 For testing purposes you will run two local production nodes talking to each other.
 
 ```bash
 cd ~/eos/build
 cp ../genesis.json ./
-./programs/launcher/launcher -p2 --skip-signature
+./programs/eosio-launcher/eosio-launcher -p2 --skip-signature
 ```
 
 This command will generate two data folders for each instance of the node: `tn_data_00` and `tn_data_01`.
@@ -453,7 +453,7 @@ To confirm the nodes are running, run the following `eosioc` commands:
 
 For each command, you should get a JSON response with blockchain information.
 
-You can read more on launcher and its settings [here](https://github.com/EOSIO/eos/blob/master/testnet.md)
+You can read more on eosio-launcher and its settings [here](https://github.com/EOSIO/eos/blob/master/testnet.md)
 
 <a name="publictestnet"></a>
 ## Running a local node connected to the public testnet

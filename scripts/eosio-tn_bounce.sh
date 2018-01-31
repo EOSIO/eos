@@ -1,14 +1,14 @@
 #!/bin/bash
 #
-# tn_bounce is used to restart a node that is acting badly or is down.
-# usage: tn_bounce.sh [arglist]
+# eosio-tn_bounce is used to restart a node that is acting badly or is down.
+# usage: eosio-tn_bounce.sh [arglist]
 # arglist will be passed to the node's command line. First with no modifiers
 # then with --replay and then a third time with --resync
 #
 # the data directory and log file are set by this script. Do not pass them on
 # the command line.
 #
-# in most cases, simply running ./tn_bounce.sh is sufficient.
+# in most cases, simply running ./eosio-tn_bounce.sh is sufficient.
 #
 
 cd $EOSIO_HOME
@@ -40,8 +40,8 @@ fi
 echo DD = $DD
 
 export EOSIO_TN_RESTART_DATA_DIR=$DD
-bash $EOSIO_HOME/scripts/tn_down.sh
-bash $EOSIO_HOME/scripts/tn_up.sh $*
+bash $EOSIO_HOME/scripts/eosio-tn_down.sh
+bash $EOSIO_HOME/scripts/eosio-tn_up.sh $*
 unset EOSIO_TN_RESTART_DATA_DIR
 
 cd -
