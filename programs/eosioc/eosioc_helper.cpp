@@ -13,8 +13,9 @@
 #include <WAST/WAST.h>
 #include <WASM/WASM.h>
 #include <fc/io/fstream.hpp>
+#include <fc/io/console.hpp>
+#include <fc/io/json.hpp>
 
-#include "fc/io/json.hpp"
 #include "localize.hpp"
 
 FC_DECLARE_EXCEPTION( explained_exception, 9000000, "explained exception, see error log" );
@@ -39,6 +40,143 @@ eosioc_helper::eosioc_helper(peer& peer, wallet& wallet):
     m_peer(peer)
 {
 
+}
+
+void eosioc_helper::get_block(const std::string &id)
+{
+    std::cout << fc::json::to_pretty_string(m_peer.get_block(id)) << std::endl;
+}
+
+void eosioc_helper::get_account(const std::string &account)
+{
+    std::cout << fc::json::to_pretty_string(m_peer.get_account(account)) << std::endl;
+}
+
+void eosioc_helper::get_key_accounts(const std::string &public_key)
+{
+    std::cout << fc::json::to_pretty_string(m_peer.get_key_accounts(public_key)) << std::endl;
+}
+
+void eosioc_helper::get_controlled_accounts(const std::string &controllingAccount)
+{
+    std::cout << fc::json::to_pretty_string(m_peer.get_controlled_accounts(controllingAccount)) << std::endl;
+}
+
+void eosioc_helper::get_transaction(const std::string &id)
+{
+    std::cout << fc::json::to_pretty_string(m_peer.get_transaction(id)) << std::endl;
+}
+
+void eosioc_helper::get_transactions(const std::string &account, const std::string &skip_seq, const std::string &num_seq)
+{
+    auto result = m_peer.get_transactions(account, skip_seq, num_seq);
+    std::cout << fc::json::to_pretty_string(result) << std::endl;
+
+    const auto& trxs = result.get_object()["transactions"].get_array();
+    for( const auto& t : trxs ) {
+       const auto& tobj = t.get_object();
+       int64_t seq_num  = tobj["seq_num"].as<int64_t>();
+       string  id       = tobj["transaction_id"].as_string();
+       const auto& trx  = tobj["transaction"].get_object();
+       const auto& exp  = trx["expiration"].as<fc::time_point_sec>();
+       const auto& msgs = trx["actions"].get_array();
+       std::cout << tobj["seq_num"].as_string() <<"] " << id << "  " << trx["expiration"].as_string() << std::endl;
+    }
+}
+
+void eosioc_helper::start_new_connection_to_peer(const std::string &host)
+{
+    const auto& v = m_peer.connect_to(host);
+    std::cout << fc::json::to_pretty_string(v) << std::endl;
+}
+
+void eosioc_helper::close_connection_to_peer(const std::string &host)
+{
+    const auto& v = m_peer.disconnect_from(host);
+    std::cout << fc::json::to_pretty_string(v) << std::endl;
+}
+
+void eosioc_helper::status_of_connection_to_peer(const std::string &host)
+{
+    const auto& v = m_peer.status(host);
+    std::cout << fc::json::to_pretty_string(v) << std::endl;
+}
+
+void eosioc_helper::status_of_all_existing_peers(const std::string &host)
+{
+    const auto& v = m_peer.connections(host);
+    std::cout << fc::json::to_pretty_string(v) << std::endl;
+}
+
+void eosioc_helper::create_wallet(const std::string &name)
+{
+    const auto& v = m_wallet.create(name);
+    std::cout << localized("Creating wallet: ${wallet_name}", ("wallet_name", name)) << std::endl;
+    std::cout << localized("Save password to use in the future to unlock this wallet.") << std::endl;
+    std::cout << localized("Without password imported keys will not be retrievable.") << std::endl;
+    std::cout << fc::json::to_pretty_string(v) << std::endl;
+}
+
+void eosioc_helper::open_existing_wallet(const std::string &name)
+{
+    /*const auto& v = */m_wallet.open(name);
+    //std::cout << fc::json::to_pretty_string(v) << std::endl;
+    std::cout << localized("Opened: ${wallet_name}", ("wallet_name", name)) << std::endl;
+}
+
+void eosioc_helper::lock_wallet(const std::string &name)
+{
+    /*const auto& v = */m_wallet.lock(name);
+    std::cout << localized("Locked: ${wallet_name}", ("wallet_name", name)) << std::endl;
+    //std::cout << fc::json::to_pretty_string(v) << std::endl;
+}
+
+void eosioc_helper::lock_all()
+{
+    /*const auto& v = */m_wallet.lock_all();
+    //std::cout << fc::json::to_pretty_string(v) << std::endl;
+    std::cout << localized("Locked All Wallets") << std::endl;
+}
+
+void eosioc_helper::unlock_wallet(const std::string &name, std::string passwd)
+{
+    if( passwd.size() == 0 ) {
+       std::cout << localized("password: ");
+       fc::set_console_echo(false);
+       std::getline( std::cin, passwd, '\n' );
+       fc::set_console_echo(true);
+    }
+    /*const auto& v = */m_wallet.unlock(name, passwd);
+    std::cout << localized("Unlocked: ${wallet_name}", ("wallet_name", name)) << std::endl;
+    //std::cout << fc::json::to_pretty_string(v) << std::endl;
+}
+
+void eosioc_helper::import_private_key(const std::string &name, std::string wallet_key)
+{
+    chain::private_key_type key( wallet_key );
+    chain::public_key_type pubkey = key.get_public_key();
+    const auto& v = m_wallet.import_key(name, wallet_key);
+    std::cout << localized("imported private key for: ${pubkey}", ("pubkey", std::string(pubkey))) << std::endl;
+    //std::cout << fc::json::to_pretty_string(v) << std::endl;
+}
+
+void eosioc_helper::list_opened_wallet()
+{
+    std::cout << localized("Wallets:") << std::endl;
+    const auto& v = m_wallet.list();
+    std::cout << fc::json::to_pretty_string(v) << std::endl;
+}
+
+void eosioc_helper::list_private_keys_from_opened_wallets()
+{
+    const auto& v = m_wallet.list_keys();
+    std::cout << fc::json::to_pretty_string(v) << std::endl;
+}
+
+void eosioc_helper::push_JSON_transaction(const std::string &trx)
+{
+    auto trxs_result = m_peer.push_JSON_transaction( fc::json::from_string(trx));
+    std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
 }
 
 void eosioc_helper::get_currency_stats(const std::string &code, const std::string &symbol)

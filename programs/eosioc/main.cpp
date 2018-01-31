@@ -318,17 +318,13 @@ int main( int argc, char** argv ) {
    string blockArg;
    auto getBlock = get->add_subcommand("block", localized("Retrieve a full block from the blockchain"), false);
    getBlock->add_option("block", blockArg, localized("The number or ID of the block to retrieve"))->required();
-   getBlock->set_callback([&blockArg] {
-      std::cout << fc::json::to_pretty_string(remote_peer.get_block(blockArg)) << std::endl;
-   });
+   getBlock->set_callback([&blockArg] { eosioclient.get_block(blockArg); });
 
    // get account
    string accountName;
    auto getAccount = get->add_subcommand("account", localized("Retrieve an account from the blockchain"), false);
    getAccount->add_option("name", accountName, localized("The name of the account to retrieve"))->required();
-   getAccount->set_callback([&] {
-      std::cout << fc::json::to_pretty_string(remote_peer.get_account(accountName)) << std::endl;
-   });
+   getAccount->set_callback([&] { eosioclient.get_account(accountName); });
 
    // get code
    string codeFilename;
@@ -377,26 +373,19 @@ int main( int argc, char** argv ) {
    string publicKey;
    auto getAccounts = get->add_subcommand("accounts", localized("Retrieve accounts associated with a public key"), false);
    getAccounts->add_option("public_key", publicKey, localized("The public key to retrieve accounts for"))->required();
-   getAccounts->set_callback([&] {
-      std::cout << fc::json::to_pretty_string(remote_peer.get_key_accounts(publicKey)) << std::endl;
-   });
-
+   getAccounts->set_callback([&] { eosioclient.get_key_accounts(publicKey); });
 
    // get servants
    string controllingAccount;
    auto getServants = get->add_subcommand("servants", localized("Retrieve accounts which are servants of a given account "), false);
    getServants->add_option("account", controllingAccount, localized("The name of the controlling account"))->required();
-   getServants->set_callback([&] {
-      std::cout << fc::json::to_pretty_string(remote_peer.get_controlled_accounts(controllingAccount)) << std::endl;
-   });
+   getServants->set_callback([&] { eosioclient.get_controlled_accounts(controllingAccount); });
 
    // get transaction
    string transactionId;
    auto getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"), false);
    getTransaction->add_option("id", transactionId, localized("ID of the transaction to retrieve"))->required();
-   getTransaction->set_callback([&] {
-      std::cout << fc::json::to_pretty_string(remote_peer.get_transaction(transactionId)) << std::endl;
-   });
+   getTransaction->set_callback([&] { eosioclient.get_transaction(transactionId); });
 
    // get transactions
    string skip_seq;
@@ -405,22 +394,7 @@ int main( int argc, char** argv ) {
    getTransactions->add_option("account_name", account_name, localized("name of account to query on"))->required();
    getTransactions->add_option("skip_seq", skip_seq, localized("Number of most recent transactions to skip (0 would start at most recent transaction)"));
    getTransactions->add_option("num_seq", num_seq, localized("Number of transactions to return"));
-   getTransactions->set_callback([&] {
-      auto result = remote_peer.get_transactions(account_name, skip_seq, num_seq); ///< \todo why called twice ???
-      std::cout << fc::json::to_pretty_string(result) << std::endl;
-
-      const auto& trxs = result.get_object()["transactions"].get_array();
-      for( const auto& t : trxs ) {
-         const auto& tobj = t.get_object();
-         int64_t seq_num  = tobj["seq_num"].as<int64_t>();
-         string  id       = tobj["transaction_id"].as_string();
-         const auto& trx  = tobj["transaction"].get_object();
-         const auto& exp  = trx["expiration"].as<fc::time_point_sec>();
-         const auto& msgs = trx["actions"].get_array();
-         std::cout << tobj["seq_num"].as_string() <<"] " << id << "  " << trx["expiration"].as_string() << std::endl;
-      }
-
-   });
+   getTransactions->set_callback([&] { eosioclient.get_transactions(account_name, skip_seq, num_seq); });
 
    // set subcommand
    auto setSubcommand = app.add_subcommand("set", localized("Set or update blockchain state"));
@@ -509,32 +483,18 @@ int main( int argc, char** argv ) {
    net->require_subcommand();
    auto connect = net->add_subcommand("connect", localized("start a new connection to a peer"), false);
    connect->add_option("host", new_host, localized("The hostname:port to connect to."))->required();
-   connect->set_callback([&] {
-      const auto& v = remote_peer.connect_to(new_host);
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
-   });
+   connect->set_callback([&] { eosioclient.start_new_connection_to_peer(new_host); });
 
    auto disconnect = net->add_subcommand("disconnect", localized("close an existing connection"), false);
    disconnect->add_option("host", new_host, localized("The hostname:port to disconnect from."))->required();
-   disconnect->set_callback([&] {
-      const auto& v = remote_peer.disconnect_from(new_host);
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
-   });
+   disconnect->set_callback([&] { eosioclient.close_connection_to_peer(new_host); });
 
    auto status = net->add_subcommand("status", localized("status of existing connection"), false);
    status->add_option("host", new_host, localized("The hostname:port to query status of connection"))->required();
-   status->set_callback([&] {
-      const auto& v = remote_peer.status(new_host);
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
-   });
+   status->set_callback([&] { eosioclient.status_of_connection_to_peer(new_host); });
 
    auto connections = net->add_subcommand("peers", localized("status of all existing peers"), false);
-   connections->set_callback([&] {
-      const auto& v = remote_peer.connections(new_host);
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
-   });
-
-
+   connections->set_callback([&] { eosioclient.status_of_all_existing_peers(new_host); });
 
    // Wallet subcommand
    auto wallet = app.add_subcommand( "wallet", localized("Interact with local wallet"), false );
@@ -543,85 +503,43 @@ int main( int argc, char** argv ) {
    string wallet_name = "default";
    auto createWallet = wallet->add_subcommand("create", localized("Create a new wallet locally"), false);
    createWallet->add_option("-n,--name", wallet_name, localized("The name of the new wallet"), true);
-   createWallet->set_callback([&wallet_name] {
-      const auto& v = remote_wallet.create(wallet_name);
-      std::cout << localized("Creating wallet: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
-      std::cout << localized("Save password to use in the future to unlock this wallet.") << std::endl;
-      std::cout << localized("Without password imported keys will not be retrievable.") << std::endl;
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
-   });
+   createWallet->set_callback([&wallet_name] { eosioclient.create_wallet(wallet_name); });
 
    // open wallet
    auto openWallet = wallet->add_subcommand("open", localized("Open an existing wallet"), false);
    openWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to open"));
-   openWallet->set_callback([&wallet_name] {
-      /*const auto& v = */remote_wallet.open(wallet_name);
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
-      std::cout << localized("Opened: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
-   });
+   openWallet->set_callback([&wallet_name] { eosioclient.open_existing_wallet(wallet_name); });
 
    // lock wallet
    auto lockWallet = wallet->add_subcommand("lock", localized("Lock wallet"), false);
    lockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to lock"));
-   lockWallet->set_callback([&wallet_name] {
-      /*const auto& v = */remote_wallet.lock(wallet_name);
-      std::cout << localized("Locked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
-
-   });
+   lockWallet->set_callback([&wallet_name] { eosioclient.lock_wallet(wallet_name); });
 
    // lock all wallets
    auto locakAllWallets = wallet->add_subcommand("lock_all", localized("Lock all unlocked wallets"), false);
-   locakAllWallets->set_callback([] {
-      /*const auto& v = */remote_wallet.lock_all();
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
-      std::cout << localized("Locked All Wallets") << std::endl;
-   });
+   locakAllWallets->set_callback([] { eosioclient.lock_all(); });
 
    // unlock wallet
    string wallet_pw;
    auto unlockWallet = wallet->add_subcommand("unlock", localized("Unlock wallet"), false);
    unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
    unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
-   unlockWallet->set_callback([&wallet_name, &wallet_pw] {
-      if( wallet_pw.size() == 0 ) {
-         std::cout << localized("password: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, wallet_pw, '\n' );
-         fc::set_console_echo(true);
-      }
-      /*const auto& v = */remote_wallet.unlock(wallet_name, wallet_pw);
-      std::cout << localized("Unlocked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
-   });
+   unlockWallet->set_callback([&wallet_name, &wallet_pw] { eosioclient.unlock_wallet(wallet_name, wallet_pw); });
 
    // import keys into wallet
    string wallet_key;
    auto importWallet = wallet->add_subcommand("import", localized("Import private key into wallet"), false);
    importWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to import key into"));
    importWallet->add_option("key", wallet_key, localized("Private key in WIF format to import"))->required();
-   importWallet->set_callback([&wallet_name, &wallet_key] {
-      private_key_type key( wallet_key );
-      public_key_type pubkey = key.get_public_key();
-      const auto& v = remote_wallet.import_key(wallet_name, wallet_key);
-      std::cout << localized("imported private key for: ${pubkey}", ("pubkey", std::string(pubkey))) << std::endl;
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
-   });
+   importWallet->set_callback([&wallet_name, &wallet_key] { eosioclient.import_private_key(wallet_name, wallet_key); });
 
    // list wallets
    auto listWallet = wallet->add_subcommand("list", localized("List opened wallets, * = unlocked"), false);
-   listWallet->set_callback([] {
-      std::cout << localized("Wallets:") << std::endl;
-      const auto& v = remote_wallet.list();
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
-   });
+   listWallet->set_callback([] { eosioclient.list_opened_wallet(); });
 
    // list keys
    auto listKeys = wallet->add_subcommand("keys", localized("List of private keys from all unlocked wallets in wif format."), false);
-   listKeys->set_callback([] {
-      const auto& v = remote_wallet.list_keys();
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
-   });
+   listKeys->set_callback([] { eosioclient.list_private_keys_from_opened_wallets(); });
 
    // Benchmark subcommand
    auto benchmark = app.add_subcommand( "benchmark", localized("Configure and execute benchmarks"), false );
@@ -686,19 +604,12 @@ int main( int argc, char** argv ) {
    string trxJson;
    auto trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
    trxSubcommand->add_option("transaction", trxJson, localized("The JSON of the transaction to push"))->required();
-   trxSubcommand->set_callback([&] {
-      auto trx_result = remote_peer.push_JSON_transaction( fc::json::from_string(trxJson));
-      std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
-   });
-
+   trxSubcommand->set_callback([&] { eosioclient.push_JSON_transaction(trxJson); });
 
    string trxsJson;
    auto trxsSubcommand = push->add_subcommand("transactions", localized("Push an array of arbitrary JSON transactions"));
    trxsSubcommand->add_option("transactions", trxsJson, localized("The JSON array of the transactions to push"))->required();
-   trxsSubcommand->set_callback([&] {
-      auto trxs_result = remote_peer.push_JSON_transaction( fc::json::from_string(trxsJson));
-      std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
-   });
+   trxsSubcommand->set_callback([&] { eosioclient.push_JSON_transaction(trxsJson); });
 
    try {
        app.parse(argc, argv);

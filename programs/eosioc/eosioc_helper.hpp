@@ -18,6 +18,29 @@ class eosioc_helper
 public:
     eosioc_helper(peer& peer, wallet& wallet);
 
+    void get_block(const std::string& id);
+    void get_account(const std::string& account);
+    void get_key_accounts(const std::string& public_key);
+    void get_controlled_accounts(const std::string& controllingAccount);
+    void get_transaction(const std::string& id);
+    void get_transactions(const std::string& account,
+                          const std::string& skip_seq,
+                          const std::string& num_seq);
+    void start_new_connection_to_peer(const std::string& host);
+    void close_connection_to_peer(const std::string& host);
+    void status_of_connection_to_peer(const std::string& host);
+    void status_of_all_existing_peers(const std::string& host);
+
+    void create_wallet(const std::string& name);
+    void open_existing_wallet(const std::string& name);
+    void lock_wallet(const std::string& name);
+    void lock_all();
+    void unlock_wallet(const std::string& name, std::string passwd);
+    void import_private_key(const std::string& name, std::string wallet_key);
+    void list_opened_wallet();
+    void list_private_keys_from_opened_wallets();
+    void push_JSON_transaction(const std::string& trx);
+
     void get_currency_stats(const std::string& code,
                             const std::string& symbol);
 
