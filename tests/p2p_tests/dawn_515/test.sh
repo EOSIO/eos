@@ -9,9 +9,264 @@ total_nodes=3
 topo=star
 delay=1
 
+read -d '' config00 << EOF
+shared-file-size = 8192
+p2p-server-address = localhost:9876
+plugin = eosio::producer_plugin
+plugin = eosio::chain_api_plugin
+plugin = eosio::account_history_plugin
+plugin = eosio::account_history_api_plugin
+required-participation = true
+shared-file-dir = blockchain
+http-server-address = 127.0.0.1:8888
+block-log-dir = blocks
+p2p-listen-endpoint = 0.0.0.0:9876
+allowed-connection = any
+private-key = ['EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV','5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3']
+send-whole-blocks = true
+readonly = 0
+genesis-json = ./genesis.json
+producer-name = inita
+producer-name = initb
+producer-name = initc
+producer-name = initd
+producer-name = inite
+producer-name = initf
+producer-name = initg
+producer-name = inith
+producer-name = initi
+producer-name = initj
+producer-name = initk
+producer-name = initl
+producer-name = initm
+producer-name = initn
+producer-name = inito
+producer-name = initp
+producer-name = initq
+producer-name = initr
+producer-name = inits
+producer-name = initt
+producer-name = initu
+EOF
+
+read -d '' config01 << EOF
+genesis-json = ./genesis.json
+block-log-dir = blocks
+readonly = 0
+send-whole-blocks = true
+shared-file-dir = blockchain
+shared-file-size = 8192
+http-server-address = 127.0.0.1:8889
+p2p-listen-endpoint = 0.0.0.0:9877
+p2p-server-address = localhost:9877
+allowed-connection = any
+p2p-peer-address = localhost:9876
+plugin = eosio::chain_api_plugin
+plugin = eosio::account_history_plugin
+plugin = eosio::account_history_api_plugin
+EOF
+
+read -d '' config02 << EOF
+genesis-json = ./genesis.json
+block-log-dir = blocks
+readonly = 0
+send-whole-blocks = true
+shared-file-dir = blockchain
+shared-file-size = 8192
+http-server-address = 127.0.0.1:8890
+p2p-listen-endpoint = 0.0.0.0:9878
+p2p-server-address = localhost:9877
+allowed-connection = any
+p2p-peer-address = localhost:9876
+plugin = eosio::chain_api_plugin
+plugin = eosio::account_history_plugin
+plugin = eosio::account_history_api_plugin
+EOF
+
+read -d '' logging00 << EOF
+{
+  "includes": [],
+  "appenders": [{
+      "name": "stderr",
+      "type": "console",
+      "args": {
+        "stream": "std_error",
+        "level_colors": [{
+            "level": "debug",
+            "color": "green"
+          },{
+            "level": "warn",
+            "color": "brown"
+          },{
+            "level": "error",
+            "color": "red"
+          }
+        ]
+      },
+      "enabled": true
+    },{
+      "name": "stdout",
+      "type": "console",
+      "args": {
+        "stream": "std_out",
+        "level_colors": [{
+            "level": "debug",
+            "color": "green"
+          },{
+            "level": "warn",
+            "color": "brown"
+          },{
+            "level": "error",
+            "color": "red"
+          }
+        ]
+      },
+      "enabled": true
+    }
+  ],
+  "loggers": [{
+      "name": "default",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    }
+  ]
+}
+EOF
+
+read -d '' logging01 << EOF
+{
+  "includes": [],
+  "appenders": [{
+      "name": "stderr",
+      "type": "console",
+      "args": {
+        "stream": "std_error",
+        "level_colors": [{
+            "level": "debug",
+            "color": "green"
+          },{
+            "level": "warn",
+            "color": "brown"
+          },{
+            "level": "error",
+            "color": "red"
+          }
+        ]
+      },
+      "enabled": true
+    },{
+      "name": "stdout",
+      "type": "console",
+      "args": {
+        "stream": "std_out",
+        "level_colors": [{
+            "level": "debug",
+            "color": "green"
+          },{
+            "level": "warn",
+            "color": "brown"
+          },{
+            "level": "error",
+            "color": "red"
+          }
+        ]
+      },
+      "enabled": true
+    }
+  ],
+  "loggers": [{
+      "name": "default",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    }
+  ]
+}
+EOF
+
+read -d '' logging02 << EOF
+{
+  "includes": [],
+  "appenders": [{
+      "name": "stderr",
+      "type": "console",
+      "args": {
+        "stream": "std_error",
+        "level_colors": [{
+            "level": "debug",
+            "color": "green"
+          },{
+            "level": "warn",
+            "color": "brown"
+          },{
+            "level": "error",
+            "color": "red"
+          }
+        ]
+      },
+      "enabled": true
+    },{
+      "name": "stdout",
+      "type": "console",
+      "args": {
+        "stream": "std_out",
+        "level_colors": [{
+            "level": "debug",
+            "color": "green"
+          },{
+            "level": "warn",
+            "color": "brown"
+          },{
+            "level": "error",
+            "color": "red"
+          }
+        ]
+      },
+      "enabled": true
+    }
+  ],
+  "loggers": [{
+      "name": "default",
+      "level": "debug",
+      "enabled": true,
+      "additivity": false,
+      "appenders": [
+        "stderr"
+      ]
+    }
+  ]
+}
+EOF
+
 rm -rf staging
 rm -rf tn_data_*
-sed '/^#!/,/^__DATA__$/D' "$0" | uudecode -o - | tar -zxf -
+
+cName=config.ini
+lName=logging.json
+
+path=staging/tn_data_00
+mkdir -p $path
+echo "$config00" > $path/$cName
+echo "$logging00" > $path/$lName
+
+path=staging/tn_data_01
+mkdir -p $path
+echo "$config01" > $path/$cName
+echo "$logging01" > $path/$lName
+
+path=staging/tn_data_02
+mkdir -p $path
+echo "$config02" > $path/$cName
+echo "$logging02" > $path/$lName
+
+
 programs/launcher/launcher -p $pnodes -n $total_nodes --nogen -d $delay
 
 sleep 1
@@ -27,25 +282,3 @@ programs/launcher/launcher -k 15
 rm -rf staging
 rm -rf tn_data_*
 exit $res
-
-__DATA__
-begin-base64 644 configs.tgz
-H4sIAIt8ZVoAA+2ZUVPbOBDHefan8PgZg21iO8nMPdwdbW961x40Hdpeh8kothILjORIcnKh0+9+
-a4ccDlGAh0zSlP0xg5P/yitb611rQWkyYnx0rHk/JZr0Pe/4YNN4QByG82MU1Udgcaw/+yfBiR/E
-ERwPvOpLdGCHG78SA6XSRNr2QZGx/LFx04zSRwfsJ2o1/rkYVdLRlRJ8I3NUAY5arXXx9+Mgvot/
-FMcQeM8PIzDb3kZmf4IXHv9vlm07jCd5mVLldO2vl4eVQoqC8pTKWqrGVDic3FAQHKXBJJ3Dha5n
-Ra0ngiuR03sDkaPKw8KBXZ0qKbm5c9IHL+LeD5hzOqF5PxG5WJ66aa5OTumgHDVOrK31aZV1JCnl
-TsP4/XCdoymRfK2fgRTTZ/p5eCfLjiRNl9z8//nSWjheLBnlZJDD8K6tZUmt5VmbERCl3kAEml5w
-/desP/yep0VVGtclRUqHpMwbMVmzWA9muI9UmjLNJkzPwDIkuWqYmtnYjGSdhlbzVuprtb4/O/8N
-9R+eoSEbHTHONlRjnqj/gRcED97/YYD1fzuMKKeKKbd62du/2EfHd0L99rcGuUiuXXjq3ZRJMNff
-lQUFJBU8n4HiWQoeTXeaQdVx52ZQ69RRGYG8c4cMLI3Tk4wwvmRU7JaCte13AivTunAVlRMqXcgI
-SVXlD56MIw9+/G4bsIqgcHOmNOUuTF4IxnV1KfUQr9tpx1E9ZMUNTE/yTCg9H0PyXEzhIuCB5zTR
-rF4Bwmdwf+OSVZdXEKlZwgpyZ6zvq5BsQjR1r2m1AF+dV3/3oncfZr9enY/bZRpnF++/JEN+cfZ2
-nFwUKnkf9kT7t0z/Ub75Mn71MXxz+in8/cI5dMI/z6fybDBN/4rOss/l1b+fTuLXvd75P/5bNlW9
-j61kfH57Smef9Vncub2evD49cS5hdpGWCdxWVXdgfkhTTYzqwKgmRjU1qtSoDo3qyKhmRpUZ1Suj
-em1Uc6N6Y1S5URVGtTCqY6MqjaoyqtqollaRl1B+4SsVioludzGqPzes2Ovk6ZOCrRtAkkSUXPcz
-SA8hZ88d1vC464qEbJOV97+/4/4/bNX9f+sE+/9tYIj/j9H/+7j/2wbY/+9B/4n9/27X/yX1//7W
-+38vCoMH7/8w8FtY/7fBHvb/naf7//gZ/X+8vv+vTi7oY386+Gn6spX8D3a8/4993P9vEUP8f4z9
-f4D1fxvg/n8P9p+4/9/t+r+k/X+w0/2/3wq9+f//Yqz/22D/9v8d7+n9fxv3/wiCIAiCIAiCIAiC
-IAiCIAiCIAiCIAiCIAiCIAiC/LT8B31T5+MAUAAA
-====
