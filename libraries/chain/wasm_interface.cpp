@@ -867,14 +867,11 @@ class compiler_builtins : public context_aware_api {
       }
 
       void __ashrti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
-         uint64_t mask = 1;
-         mask <<= SHIFT_WIDTH;
-         uint64_t sign_bit = high & mask;
-         fc::uint128_t i(high, low);
-         i >>= shift;
-         std::cout << "SIGN " << ((:wi >> 64 | sign_bit) << " " << i << "\n";
-         fc::uint128_t r(i.high_bits() | sign_bit, i.low_bits());
-         ret = (unsigned __int128)r; 
+         // retain the signedness
+         ret = high;
+         ret <<= 64;
+         ret |= low;
+         ret >>= shift;
       }
 
       void __lshlti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
@@ -890,55 +887,82 @@ class compiler_builtins : public context_aware_api {
       }
       
       void __divti3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
-         // grab the sign bits;
-         bool sa = (ha >> SHIFT_WIDTH);
-         bool sb = (hb >> SHIFT_WIDTH);
+         __int128 lhs = ha;
+         __int128 rhs = hb;
          
-         fc::uint128_t a(ha, la);
-         fc::uint128_t b(hb, lb);
+         lhs <<= 64;
+         lhs |=  la;
 
-         FC_ASSERT(b != 0, "divide by zero");    
+         rhs <<= 64;
+         rhs |=  lb;
 
-         // negate if needed
-         a = sa ? (~a + 1) : a;
-         b = sb ? (~b + 1) : b;
-         
-         // get the sign of the result 
-         sa ^= sb; 
+         FC_ASSERT(rhs != 0, "divide by zero");    
 
-         a /= b; 
+         lhs /= rhs; 
 
-         // negate back if needed
-         a = sa ? ~a + 1 : a;
-
-         ret = (unsigned __int128)a;
+         ret = lhs;
       } 
 
+      void __udivti3(unsigned __int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+         unsigned __int128 lhs = ha;
+         unsigned __int128 rhs = hb;
+         
+         lhs <<= 64;
+         lhs |=  la;
+
+         rhs <<= 64;
+         rhs |=  lb;
+
+         FC_ASSERT(rhs != 0, "divide by zero");    
+
+         lhs /= rhs; 
+         ret = lhs;
+      }
+
       void __multi3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
-         // grab the sign bits;
-         bool sa = (ha >> SHIFT_WIDTH);
-         bool sb = (hb >> SHIFT_WIDTH);
+         __int128 lhs = ha;
+         __int128 rhs = hb;
 
-         fc::uint128_t a(ha, la);
-         fc::uint128_t b(hb, lb);
-        
-         // negate if needed
-         a = sa ? (~a + 1) : a;
-         b = sb ? (~b + 1) : b;
+         lhs <<= 64;
+         lhs |=  la;
 
-         // get the sign of the result
-         sa ^= sb; 
+         rhs <<= 64;
+         rhs |=  lb;
 
-         a *= b; 
-
-         // negate back if needed
-         a = sa ? ~a + 1 : a;
-
-         ret = (unsigned __int128)a;
+         lhs *= rhs; 
+         ret = lhs;
       } 
 
       void __modti3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+         __int128 lhs = ha;
+         __int128 rhs = hb;
 
+         lhs <<= 64;
+         lhs |=  la;
+   
+         rhs <<= 64;
+         rhs |=  lb;
+         
+         FC_ASSERT(rhs != 0, "divide by zero");
+
+         lhs %= rhs;
+         ret = lhs;
+      }
+
+      void __umodti3(unsigned __int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+         unsigned __int128 lhs = ha;
+         unsigned __int128 rhs = hb;
+
+         lhs <<= 64;
+         lhs |=  la;
+   
+         rhs <<= 64;
+         rhs |=  lb;
+         
+         FC_ASSERT(rhs != 0, "divide by zero");
+
+         lhs %= rhs;
+         ret = lhs;
       }
 
       static constexpr uint32_t SHIFT_WIDTH = (sizeof(uint64_t)*8)-1;
@@ -1054,6 +1078,9 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__lshlti3,     void(int, int64_t, int64_t, int)  )
    (__lshrti3,     void(int, int64_t, int64_t, int)  )
    (__divti3,      void(int, int64_t, int64_t, int64_t, int64_t) )
+   (__udivti3,      void(int, int64_t, int64_t, int64_t, int64_t) )
+   (__modti3,      void(int, int64_t, int64_t, int64_t, int64_t) )
+   (__umodti3,      void(int, int64_t, int64_t, int64_t, int64_t) )
    (__multi3,      void(int, int64_t, int64_t, int64_t, int64_t) )
 );
 
