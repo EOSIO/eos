@@ -171,18 +171,22 @@ public:
       }
    }
 
-   fc::variant get_accountrow(const string& account) {
+   fc::variant get_accountrow(uint64_t identity, const string& account) {
       const auto& db = control->get_database();
-      const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(string_to_name(account.c_str()), N(identity), N(account)));
-      FC_ASSERT(t_id != 0, "object not found");
+      const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(identity, N(identity), N(account)));
+      if (!t_id) {
+         return fc::variant(nullptr);
+      }
       const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-      auto itr = idx.lower_bound(boost::make_tuple(t_id->id));
-      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
-      BOOST_REQUIRE_EQUAL(N(account), itr->primary_key);
-
-      vector<char> data;
-      read_only::copy_row(*itr, data);
-      return abi_ser.binary_to_variant("accountrow", data);
+      uint64_t acnt = string_to_name(account.c_str());
+      auto itr = idx.lower_bound(boost::make_tuple(t_id->id, acnt));
+      if( itr != idx.end() && itr->t_id == t_id->id && acnt == itr->primary_key) {
+         vector<char> data;
+         read_only::copy_row(*itr, data);
+         return abi_ser.binary_to_variant("accountrow", data);
+      } else {
+         return fc::variant(nullptr);
+      }
    }
 
 
@@ -219,17 +223,20 @@ public:
    fc::variant get_trustrow(const string& trustor, const string& trusting) {
       const auto& db = control->get_database();
       const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(string_to_name(trustor.c_str()), N(identity), N(trust)));
-      FC_ASSERT(t_id != 0, "object not found");
+      if (!t_id) {
+         return fc::variant(nullptr);
+      }
 
       uint64_t tng = string_to_name(trusting.c_str());
       const auto& idx = db.get_index<key_value_index, by_scope_primary>();
       auto itr = idx.lower_bound(boost::make_tuple(t_id->id, tng));
-      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
-      BOOST_REQUIRE_EQUAL(tng, itr->primary_key);
-
-      vector<char> data;
-      read_only::copy_row(*itr, data);
-      return abi_ser.binary_to_variant("trustrow", data);
+      if ( itr != idx.end() && itr->t_id == t_id->id && tng == itr->primary_key ) {
+         vector<char> data;
+         read_only::copy_row(*itr, data);
+         return abi_ser.binary_to_variant("trustrow", data);
+      } else {
+         return fc::variant(nullptr);
+      }
    }
 
 public:
@@ -257,6 +264,9 @@ BOOST_FIXTURE_TEST_CASE( identity_create, identity_tester ) try {
    fc::variant idnt2 = get_identity(2);
    BOOST_REQUIRE_EQUAL( 2, idnt2["identity"].as_uint64());
    BOOST_REQUIRE_EQUAL( "alice", idnt2["creator"].as_string());
+
+   //identity == 0 has special meaning, should be impossible to create
+   BOOST_REQUIRE_EQUAL(error("condition: assertion failed: identity=0 is not allowed"), create_identity("alice", 0));
 
    //creating adentity without authentication is not allowed
    BOOST_REQUIRE_EQUAL(error("missing authority of alice"), create_identity("alice", 3, false));
@@ -379,12 +389,29 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify, identity_tester ) try {
    BOOST_REQUIRE_EQUAL(true, obj.is_object());
    BOOST_REQUIRE_EQUAL( "Alice Smith", to_string(obj["data"]) );
 
- } FC_LOG_AND_RETHROW() //certify_decertify
+} FC_LOG_AND_RETHROW() //certify_decertify
 
-BOOST_FIXTURE_TEST_CASE( certify_owner, identity_tester ) try {
+BOOST_FIXTURE_TEST_CASE( trust_untrust, identity_tester ) try {
+   BOOST_REQUIRE_EQUAL(success(), settrust("bob", "alice", 1));
+   auto obj = get_trustrow("bob", "alice");
+   BOOST_REQUIRE_EQUAL(true, obj.is_object());
+   BOOST_REQUIRE_EQUAL( "alice", obj["account"].as_string() );
+   BOOST_REQUIRE_EQUAL( 1, obj["trusted"].as_uint64() );
+
+   obj = get_trustrow("alice", "bob");
+   BOOST_REQUIRE_EQUAL(true, obj.is_null());
+
+   //remove trust
+   BOOST_REQUIRE_EQUAL(success(), settrust("bob", "alice", 0));
+   obj = get_trustrow("bob", "alice");
+   BOOST_REQUIRE_EQUAL(true, obj.is_null());
+
+} FC_LOG_AND_RETHROW() //trust_untrust
+
+BOOST_FIXTURE_TEST_CASE( certify_decertify_owner, identity_tester ) try {
    BOOST_REQUIRE_EQUAL(success(), create_identity("alice", identity_val));
 
-   // certify owner, should populate "account" singletons
+   // certify owner, should populate "account" singleton
    BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>(1, mutable_variant_object()
                                                                               ("property", "owner")
                                                                               ("type", "account")
@@ -393,6 +420,7 @@ BOOST_FIXTURE_TEST_CASE( certify_owner, identity_tester ) try {
                                                                               ("confidence", 100)
                                                 )));
    fc::variant certrow = get_certrow(identity_val, "owner", 0, "alice");
+   BOOST_REQUIRE_EQUAL( true, certrow.is_object() );
    BOOST_REQUIRE_EQUAL( "owner", certrow["property"].as_string() );
    BOOST_REQUIRE_EQUAL( 0, certrow["trusted"].as_uint64() );
    BOOST_REQUIRE_EQUAL( "alice", certrow["certifier"].as_string() );
@@ -400,22 +428,28 @@ BOOST_FIXTURE_TEST_CASE( certify_owner, identity_tester ) try {
    BOOST_REQUIRE_EQUAL( "account", certrow["type"].as_string() );
    BOOST_REQUIRE_EQUAL( N(alice), to_uint64(certrow["data"]) );
 
-   fc::variant acntrow = get_accountrow("alice");
-   BOOST_REQUIRE_EQUAL( N(account), acntrow["singleton_name"].as_uint64() );
-   BOOST_REQUIRE_EQUAL( identity_val, acntrow["identity"].as_uint64() );
+   //check that singleton "account" in the scope of identity contains the owner
+   fc::variant acntrow = get_accountrow(identity_val, "alice");
+   BOOST_REQUIRE_EQUAL( true, certrow.is_object() );
+   BOOST_REQUIRE_EQUAL( "alice", acntrow["account"].as_string() );
 
    // ownership was certified by alice, but not by a block producer or someone trusted by a block producer
    BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(identity_val));
 
-   // settrust, check that certified property became trusted
-   BOOST_REQUIRE_EQUAL(success(), settrust("bob", "alice", 1));
-   auto trustrow = get_trustrow("bob", "alice");
-   BOOST_REQUIRE_EQUAL( "alice", trustrow["account"].as_string() );
-   BOOST_REQUIRE_EQUAL( 1, trustrow["trusted"].as_uint64() );
+   //remove owner certification
+   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>(1, mutable_variant_object()
+                                                                              ("property", "owner")
+                                                                              ("type", "account")
+                                                                              ("data", to_uint8_vector(N(alice)))
+                                                                              ("memo", "claiming onwership")
+                                                                              ("confidence", 0)
+                                          )));
+   certrow = get_certrow(identity_val, "owner", 0, "alice");
+   BOOST_REQUIRE_EQUAL(true, certrow.is_null());
 
-   // settrust to 0, check that certified property became untrusted
-   {
-   }
+   //check that singleton "account" in the scope of identity contains the owner
+   acntrow = get_accountrow(identity_val, "alice");
+   BOOST_REQUIRE_EQUAL(true, certrow.is_null());
 
 } FC_LOG_AND_RETHROW() //certify_owner
 

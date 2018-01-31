@@ -75,7 +75,7 @@ namespace eosio {
             store_i64( scope, TableName, buf, ds.tellp() );
          }
 
-         static void remove(uint64_t key, scope_name scope = DefaultScope) {
+         static void remove( uint64_t key, scope_name scope = DefaultScope ) {
             remove_i64(scope, TableName, &key);
          }
    };

@@ -78,6 +78,11 @@ namespace  eosio {
             
             store_i64( scope, SingletonName, buf, sizeof(buf) );
          }
+
+         static void remove( scope_name scope = Code ) {
+            uint64_t key = SingletonName;
+            remove_i64( scope, SingletonName, &key );
+         }
    };
 
 } /// namespace eosio
