@@ -143,14 +143,6 @@ void add_standard_transaction_options(CLI::App* cmd) {
    cmd->add_flag("-f,--force-unique", tx_force_unique, localized("force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"));
 }
 
-uint64_t generate_nonce_value() {
-   return fc::time_point::now().time_since_epoch().count();
-}
-
-chain::action generate_nonce() {
-   return chain::action( {}, contracts::nonce{.value = generate_nonce_value()} );
-}
-
 struct set_account_permission_subcommand {
    string accountStr;
    string permissionStr;
