@@ -33,14 +33,14 @@ namespace client {
 
 const auto tx_expiration = fc::seconds(30);
 
-eosioclient::eosioclient(peer& peer, wallet& wallet):
+eosioc_helper::eosioc_helper(peer& peer, wallet& wallet):
     m_wallet(wallet),
     m_peer(peer)
 {
 
 }
 
-void eosioclient::get_currency_stats(const std::string &code, const std::string &symbol)
+void eosioc_helper::get_currency_stats(const std::string &code, const std::string &symbol)
 {
     auto result = m_peer.get_currency_stats(code, symbol);
 
@@ -54,7 +54,7 @@ void eosioclient::get_currency_stats(const std::string &code, const std::string 
     }
 }
 
-void eosioclient::create_account(chain::name creator,
+void eosioc_helper::create_account(chain::name creator,
                                  chain::name newaccount,
                                  chain::public_key_type owner,
                                  chain::public_key_type active,
@@ -74,7 +74,7 @@ void eosioclient::create_account(chain::name creator,
     std::cout << fc::json::to_pretty_string(push_transaction(trx, sign)) << std::endl;
 }
 
-void eosioclient::create_producer(const std::string &account_name, const std::string &owner_key, std::vector<std::string> permissions, bool skip_sign)
+void eosioc_helper::create_producer(const std::string &account_name, const std::string &owner_key, std::vector<std::string> permissions, bool skip_sign)
 {
     if (permissions.empty()) {
        permissions.push_back(account_name + "@active");
@@ -90,7 +90,7 @@ void eosioclient::create_producer(const std::string &account_name, const std::st
     std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
 }
 
-void eosioclient::send_transaction(const std::vector<chain::action>& actions, bool skip_sign) {
+void eosioc_helper::send_transaction(const std::vector<chain::action>& actions, bool skip_sign) {
     eosio::chain::signed_transaction trx;
     for (const auto& m: actions) {
         trx.actions.emplace_back( m );
@@ -106,7 +106,7 @@ void eosioclient::send_transaction(const std::vector<chain::action>& actions, bo
     std::cout << fc::json::to_pretty_string(m_peer.push_transaction( trx )) << std::endl;
 }
 
-fc::variant eosioclient::push_transaction(eosio::chain::signed_transaction& trx, bool sign )
+fc::variant eosioc_helper::push_transaction(eosio::chain::signed_transaction& trx, bool sign )
 {
     auto info = get_info();
     trx.expiration = info.head_block_time + tx_expiration;
@@ -119,7 +119,7 @@ fc::variant eosioclient::push_transaction(eosio::chain::signed_transaction& trx,
     return m_peer.push_transaction( trx );
 }
 
-std::vector<uint8_t> eosioclient::assemble_wast( const std::string& wast ) {
+std::vector<uint8_t> eosioc_helper::assemble_wast( const std::string& wast ) {
    IR::Module module;
    std::vector<WAST::Error> parseErrors;
    WAST::parseModule(wast.c_str(),wast.size(),module,parseErrors);
@@ -151,7 +151,7 @@ std::vector<uint8_t> eosioclient::assemble_wast( const std::string& wast ) {
    }
 }
 
-void eosioclient::sign_transaction(eosio::chain::signed_transaction& trx)
+void eosioc_helper::sign_transaction(eosio::chain::signed_transaction& trx)
 {
     // TODO better error checking
     const auto& public_keys = m_wallet.public_keys();
@@ -161,11 +161,11 @@ void eosioclient::sign_transaction(eosio::chain::signed_transaction& trx)
     trx = signed_trx.as<eosio::chain::signed_transaction>();
 }
 
-eosio::chain_apis::read_only::get_info_results eosioclient::get_info() {
+eosio::chain_apis::read_only::get_info_results eosioc_helper::get_info() {
     return m_peer.get_info().as<eosio::chain_apis::read_only::get_info_results>();
 }
 
-void eosioclient::get_code(const std::string& account, const std::string& code_filename, const std::string& abi_filename)
+void eosioc_helper::get_code(const std::string& account, const std::string& code_filename, const std::string& abi_filename)
 {
     auto result = m_peer.get_code(account);
 
@@ -185,7 +185,7 @@ void eosioclient::get_code(const std::string& account, const std::string& code_f
     }
 }
 
-void eosioclient::get_table(const std::string &scope, const std::string &code, const std::string &table)
+void eosioc_helper::get_table(const std::string &scope, const std::string &code, const std::string &table)
 {
     auto result = m_peer.get_table(scope, code, table);
 
@@ -193,7 +193,7 @@ void eosioclient::get_table(const std::string &scope, const std::string &code, c
               << std::endl;
 }
 
-void eosioclient::execute_random_transactions(uint64_t number_of_accounts, uint64_t number_of_transfers, bool loop, const std::string& memo)
+void eosioc_helper::execute_random_transactions(uint64_t number_of_accounts, uint64_t number_of_transfers, bool loop, const std::string& memo)
 {
     EOSC_ASSERT( number_of_accounts >= 2, "must create at least 2 accounts" );
 
@@ -266,7 +266,7 @@ void eosioclient::execute_random_transactions(uint64_t number_of_accounts, uint6
     }
 }
 
-void eosioclient::configure_benchmarks(uint64_t number_of_accounts, const std::string &c_account, const std::string &owner_key, const std::string &active_key)
+void eosioc_helper::configure_benchmarks(uint64_t number_of_accounts, const std::string &c_account, const std::string &owner_key, const std::string &active_key)
 {
     auto response_servants = m_peer.get_controlled_accounts(c_account);
     fc::variant_object response_var;
@@ -315,7 +315,7 @@ void eosioclient::configure_benchmarks(uint64_t number_of_accounts, const std::s
     std::cout << fc::json::to_pretty_string(result) << std::endl;
 }
 
-void eosioclient::push_transaction_with_single_action(const std::string& contract,
+void eosioc_helper::push_transaction_with_single_action(const std::string& contract,
                                                       const std::string& action,
                                                       const std::string& data,
                                                       const std::vector<std::string>& permissions,
@@ -336,7 +336,7 @@ void eosioclient::push_transaction_with_single_action(const std::string& contrac
     std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign )) << std::endl;
 }
 
-void eosioclient::set_proxy_account_for_voting(const std::string &account_name, std::string proxy, std::vector<std::string> permissions, bool skip_sign)
+void eosioc_helper::set_proxy_account_for_voting(const std::string &account_name, std::string proxy, std::vector<std::string> permissions, bool skip_sign)
 {
     if (permissions.empty()) {
        permissions.push_back(account_name + "@active");
@@ -353,7 +353,7 @@ void eosioclient::set_proxy_account_for_voting(const std::string &account_name, 
     std::cout << localized("Set proxy for ${name} to ${proxy}", ("name", account_name)("proxy", proxy)) << std::endl;
 }
 
-void eosioclient::approve_unapprove_producer(const std::string &account_name, const std::string &producer, std::vector<std::string> permissions, bool approve, bool skip_sign)
+void eosioc_helper::approve_unapprove_producer(const std::string &account_name, const std::string &producer, std::vector<std::string> permissions, bool approve, bool skip_sign)
 {
     // don't need to check unapproveCommand because one of approve or unapprove is required
     if (permissions.empty()) {
@@ -369,7 +369,7 @@ void eosioclient::approve_unapprove_producer(const std::string &account_name, co
                            ("name", account_name)("producer", producer)("value", approve ? "approve" : "unapprove")) << std::endl;
 }
 
-void eosioclient::get_balance(const std::string &account_name, const std::string &code, const std::string &symbol)
+void eosioc_helper::get_balance(const std::string &account_name, const std::string &code, const std::string &symbol)
 {
     auto result = m_peer.get_currency_balance(account_name, code, symbol);
 
@@ -383,7 +383,7 @@ void eosioclient::get_balance(const std::string &account_name, const std::string
     }
 }
 
-std::vector<chain::permission_level> eosioclient::get_account_permissions(const std::vector<std::string>& permissions)
+std::vector<chain::permission_level> eosioc_helper::get_account_permissions(const std::vector<std::string>& permissions)
 {
    auto fixedPermissions = permissions | boost::adaptors::transformed([](const std::string& p) {
       std::vector<std::string> pieces;
@@ -396,7 +396,7 @@ std::vector<chain::permission_level> eosioclient::get_account_permissions(const 
    return accountPermissions;
 }
 
-void eosioclient::set_account_permission(const std::string& accountStr,
+void eosioc_helper::set_account_permission(const std::string& accountStr,
                                          const std::string& permissionStr,
                                          const std::string& authorityJsonOrFile,
                                          const std::string& parentStr,
@@ -451,7 +451,7 @@ void eosioclient::set_account_permission(const std::string& accountStr,
     }
 }
 
-void eosioclient::set_action_permission(const std::string& accountStr,
+void eosioc_helper::set_action_permission(const std::string& accountStr,
                                         const std::string& codeStr,
                                         const std::string& typeStr,
                                         const std::string& requirementStr,
@@ -470,7 +470,7 @@ void eosioclient::set_action_permission(const std::string& accountStr,
     }
 }
 
-void eosioclient::transfer(const std::string& sender,
+void eosioc_helper::transfer(const std::string& sender,
                            const std::string& recipient,
                            uint64_t amount,
                            std::string memo,
@@ -504,7 +504,7 @@ void eosioclient::transfer(const std::string& sender,
 }
 
 
-chain::action eosioclient::create_deleteauth(const chain::name& account,
+chain::action eosioc_helper::create_deleteauth(const chain::name& account,
                                              const chain::name& permission,
                                              const chain::name& permissionAuth)
 {
@@ -512,7 +512,7 @@ chain::action eosioclient::create_deleteauth(const chain::name& account,
         chain::contracts::deleteauth{account, permission}};
 }
 
-chain::action eosioclient::create_updateauth(const chain::name& account,
+chain::action eosioc_helper::create_updateauth(const chain::name& account,
                                              const chain::name& permission,
                                              const chain::name& parent,
                                              const chain::authority& auth,
@@ -522,7 +522,7 @@ chain::action eosioclient::create_updateauth(const chain::name& account,
         chain::contracts::updateauth{account, permission, parent, auth}};
 }
 
-chain::action eosioclient::create_linkauth(const chain::name& account,
+chain::action eosioc_helper::create_linkauth(const chain::name& account,
                                            const chain::name& code,
                                            const chain::name& type,
                                            const chain::name& requirement)
@@ -531,7 +531,7 @@ chain::action eosioclient::create_linkauth(const chain::name& account,
         chain::contracts::linkauth{account, code, type, requirement}};
 }
 
-chain::action eosioclient::create_unlinkauth(const chain::name& account,
+chain::action eosioc_helper::create_unlinkauth(const chain::name& account,
                                              const chain::name& code,
                                              const chain::name& type)
 {
@@ -539,11 +539,11 @@ chain::action eosioclient::create_unlinkauth(const chain::name& account,
         chain::contracts::unlinkauth{account, code, type}};
 }
 
-uint64_t eosioclient::generate_nonce_value() {
+uint64_t eosioc_helper::generate_nonce_value() {
    return fc::time_point::now().time_since_epoch().count();
 }
 
-chain::action eosioclient::generate_nonce() {
+chain::action eosioc_helper::generate_nonce() {
    return chain::action( {}, chain::contracts::nonce{.value = generate_nonce_value()} );
 }
 

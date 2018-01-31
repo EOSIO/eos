@@ -124,7 +124,7 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
 string program = "eosc";
 eosio::client::peer remote_peer; ///< \todo remove
 eosio::client::wallet remote_wallet; ///< \todo remove
-eosio::client::eosioclient eosioclient(remote_peer, remote_wallet);
+eosio::client::eosioc_helper eosioclient(remote_peer, remote_wallet);
 
 auto tx_expiration = fc::seconds(30);
 bool tx_force_unique = false;

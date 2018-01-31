@@ -13,10 +13,10 @@
 namespace eosio {
 namespace client {
 
-class eosioclient
+class eosioc_helper
 {
 public:
-    eosioclient(peer& peer, wallet& wallet);
+    eosioc_helper(peer& peer, wallet& wallet);
 
     void get_currency_stats(const std::string& code,
                             const std::string& symbol);
