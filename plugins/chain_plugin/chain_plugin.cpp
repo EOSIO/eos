@@ -504,9 +504,9 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
 }
 
 read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params )const {
-   packed_transaction pretty_input;
+   transaction pretty_input;
    from_variant(params.transaction, pretty_input);
-   auto required_keys_set = db.get_required_keys(pretty_input.get_transaction(), params.available_keys);
+   auto required_keys_set = db.get_required_keys(pretty_input, params.available_keys);
    get_required_keys_result result;
    result.required_keys = required_keys_set;
    return result;

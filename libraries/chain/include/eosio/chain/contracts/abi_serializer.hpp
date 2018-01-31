@@ -161,7 +161,9 @@ namespace impl {
       template<typename M, typename Resolver, require_abi_t<M> = 1>
       static void add( mutable_variant_object &mvo, const char* name, const vector<M>& v, Resolver resolver )
       {
-         vector<variant> array(v.size());
+         vector<variant> array;
+         array.reserve(v.size());
+
          for (const auto& iter: v) {
             mutable_variant_object elem_mvo;
             add(elem_mvo, "_", iter, resolver);
@@ -207,10 +209,10 @@ namespace impl {
          mutable_variant_object mvo;
          mvo("signatures", ptrx.signatures);
          mvo("compression", ptrx.compression);
-         mvo("data", ptrx.data);
+         mvo("hex_data", ptrx.data);
 
          transaction trx = ptrx.get_transaction();
-         add(mvo, "transaction", trx, resolver);
+         add(mvo, "data", trx, resolver);
          out(name, std::move(mvo));
       }
    };
@@ -337,13 +339,17 @@ namespace impl {
          from_variant(vo["signatures"], ptrx.signatures);
          from_variant(vo["compression"], ptrx.compression);
 
-         if (vo.contains("data") && vo["data"].is_string() && !vo["data"].as_string().empty()) {
-            from_variant(vo["data"], ptrx.data);
+         if (vo.contains("hex_data") && vo["hex_data"].is_string() && !vo["hex_data"].as_string().empty()) {
+            from_variant(vo["hex_data"], ptrx.data);
          } else {
-            FC_ASSERT(vo.contains("transaction"));
-            transaction trx;
-            extract(vo["transaction"], trx, resolver);
-            ptrx.set_transaction(trx, ptrx.compression);
+            FC_ASSERT(vo.contains("data"));
+            if (vo["data"].is_string()) {
+               from_variant(vo["data"], ptrx.data);
+            } else {
+               transaction trx;
+               extract(vo["data"], trx, resolver);
+               ptrx.set_transaction(trx, ptrx.compression);
+            }
          }
       }
    };
