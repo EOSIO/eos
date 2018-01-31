@@ -35,6 +35,10 @@ extern "C" {
   void __multi3(__int128& res, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb);
 
   void __divti3(__int128& res, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb);
+  void __udivti3(unsigned __int128& res, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb);
+
+  void __modti3(__int128& res, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb);
+  void __umodti3(unsigned __int128& res, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb);
 
   void __lshlti3(__int128& res, uint64_t lo, uint64_t hi, uint32_t shift);
   void __lshrti3(__int128& res, uint64_t lo, uint64_t hi, uint32_t shift);
