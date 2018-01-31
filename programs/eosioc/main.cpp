@@ -446,39 +446,7 @@ int main( int argc, char** argv ) {
               ->check(CLI::ExistingFile);
    contractSubcommand->add_flag("-s,--skip-sign", skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
    add_standard_transaction_options(contractSubcommand);
-   contractSubcommand->set_callback([&] {
-      std::string wast;
-      std::cout << localized("Reading WAST...") << std::endl;
-      fc::read_file_contents(wastPath, wast);
-
-      vector<uint8_t> wasm;
-      const string binary_wasm_header = "\x00\x61\x73\x6d";
-      if(wast.compare(0, 4, binary_wasm_header) == 0) {
-         std::cout << localized("Using already assembled WASM...") << std::endl;
-         wasm = vector<uint8_t>(wast.begin(), wast.end());
-      }
-      else {
-         std::cout << localized("Assembling WASM...") << std::endl;
-         wasm = eosioclient.assemble_wast(wast);
-      }
-
-      contracts::setcode handler;
-      handler.account = account;
-      handler.code.assign(wasm.begin(), wasm.end());
-
-      signed_transaction trx;
-      trx.actions.emplace_back( vector<chain::permission_level>{{account,"active"}}, handler);
-
-      if (abi->count()) {
-         contracts::setabi handler;
-         handler.account = account;
-         handler.abi = fc::json::from_file(abiPath).as<contracts::abi_def>();
-         trx.actions.emplace_back( vector<chain::permission_level>{{account,"active"}}, handler);
-      }
-
-      std::cout << localized("Publishing contract...") << std::endl;
-      std::cout << fc::json::to_pretty_string(eosioclient.push_transaction(trx, !skip_sign)) << std::endl;
-   });
+   contractSubcommand->set_callback([&] { eosioclient.create_and_update_contract(account, wastPath, abiPath, skip_sign); });
 
    // set producer approve/unapprove subcommand
    string producer;

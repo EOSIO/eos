@@ -94,6 +94,11 @@ public:
                      const std::string& code,
                      const std::string& symbol);
 
+    void create_and_update_contract(const std::string& account,
+                                    const std::string& wast_path,
+                                    const std::string& abi_path,
+                                    bool skip_sign);
+
     fc::variant push_transaction(eosio::chain::signed_transaction& trx, bool sign); ///< \todo make private
     std::vector<uint8_t> assemble_wast(const std::string &wast); ///< \todo make private
 private:

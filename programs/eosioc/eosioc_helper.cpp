@@ -12,6 +12,7 @@
 #include <IR/Validate.h>
 #include <WAST/WAST.h>
 #include <WASM/WASM.h>
+#include <fc/io/fstream.hpp>
 
 #include "fc/io/json.hpp"
 #include "localize.hpp"
@@ -381,6 +382,41 @@ void eosioc_helper::get_balance(const std::string &account_name, const std::stri
        std::cout << fc::json::to_pretty_string(rows[0])
                  << std::endl;
     }
+}
+
+void eosioc_helper::create_and_update_contract(const std::string &account, const std::string &wast_path, const std::string &abi_path, bool skip_sign)
+{
+    std::string wast;
+    std::cout << localized("Reading WAST...") << std::endl;
+    fc::read_file_contents(wast_path, wast);
+
+    std::vector<uint8_t> wasm;
+    const string binary_wasm_header = "\x00\x61\x73\x6d";
+    if(wast.compare(0, 4, binary_wasm_header) == 0) {
+       std::cout << localized("Using already assembled WASM...") << std::endl;
+       wasm = std::vector<uint8_t>(wast.begin(), wast.end());
+    }
+    else {
+       std::cout << localized("Assembling WASM...") << std::endl;
+       wasm = assemble_wast(wast);
+    }
+
+    chain::contracts::setcode handler;
+    handler.account = account;
+    handler.code.assign(wasm.begin(), wasm.end());
+
+    chain::signed_transaction trx;
+    trx.actions.emplace_back( vector<chain::permission_level>{{account,"active"}}, handler);
+
+    if (!abi_path.empty()) {
+       chain::contracts::setabi handler;
+       handler.account = account;
+       handler.abi = fc::json::from_file(abi_path).as<chain::contracts::abi_def>();
+       trx.actions.emplace_back( vector<chain::permission_level>{{account,"active"}}, handler);
+    }
+
+    std::cout << localized("Publishing contract...") << std::endl;
+    std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
 }
 
 std::vector<chain::permission_level> eosioc_helper::get_account_permissions(const std::vector<std::string>& permissions)
