@@ -423,7 +423,11 @@ class context_aware_api {
 
 class privileged_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      privileged_api( wasm_interface& wasm )
+      :context_aware_api(wasm)
+      {
+         FC_ASSERT( context.privileged, "${code} does not have permission to call this API", ("code",context.receiver) );
+      }
 
       /**
        *  This should schedule the feature to be activated once the
@@ -432,7 +436,7 @@ class privileged_api : public context_aware_api {
        *
        *  Feature name should be base32 encoded name. 
        */
-      void activate_feature( uint64_t feature_name ) {
+      void activate_feature( int64_t feature_name ) {
          FC_ASSERT( !"Unsupported Harfork Detected" );
       }
 
@@ -442,13 +446,13 @@ class privileged_api : public context_aware_api {
        * Irreversiblity by fork-database is not consensus safe, therefore, this defines
        * irreversiblity only by block headers not by BFT short-cut.
        */
-      bool is_feature_active( uint64_t feature_name ) {
+      int is_feature_active( int64_t feature_name ) {
          return false;
       }
 
       void set_resource_limits( account_name account, 
-                                uint64_t ram_bytes, uint64_t net_weight, uint64_t cpu_weight,
-                                uint64_t cpu_usec_per_period ) {
+                                int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight,
+                                int64_t cpu_usec_per_period ) {
          auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
          FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free to much space" );
 
@@ -474,7 +478,7 @@ class privileged_api : public context_aware_api {
                                 uint64_t& ram_bytes, uint64_t& net_weight, uint64_t cpu_weight ) {
       }
                                                
-      void set_active_producers( const array_ptr<const char> packed_producer_schedule, size_t datalen) {
+      void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          producer_schedule_type psch;
          fc::raw::unpack(ds, psch);
@@ -808,6 +812,17 @@ class transaction_api : public context_aware_api {
 
 };
 
+
+REGISTER_INTRINSICS(privileged_api,
+   (activate_feature,          void(int64_t))
+   (is_feature_active,         int(int64_t))
+   (set_resource_limits,       void(int64_t,int64_t,int64_t,int64_t,int64_t))
+   (set_active_producers,      void(int,int))
+   (is_privileged,             int(int64_t))
+   (set_privileged,            void(int64_t, int))
+   (freeze_account,            void(int64_t, int))
+   (is_frozen,                 int(int64_t))
+);
 REGISTER_INTRINSICS(producer_api,
    (get_active_producers,      int(int, int))
 );

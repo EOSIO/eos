@@ -201,6 +201,7 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
       db.create<account_object>([this, &name](account_object& a) {
          a.name = name;
          a.creation_date = genesis.initial_timestamp;
+         a.privileged = true;
 
          if( name == config::system_account_name ) {
             a.set_abi(eos_contract_abi());

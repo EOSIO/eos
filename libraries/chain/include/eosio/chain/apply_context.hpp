@@ -100,6 +100,7 @@ class apply_context {
       const chainbase::database&    db;  ///< database where state is stored
       const action&                 act; ///< message being applied
       account_name                  receiver; ///< the code that is currently running
+      bool                          privileged = false;
 
       chain_controller&             mutable_controller;
       chainbase::database&          mutable_db;
