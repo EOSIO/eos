@@ -10,6 +10,7 @@
 #include "test_api.hpp"
 
 using namespace eosio;
+
 unsigned __int128 operator "" _ULLL( const char* lit ) {
       __int128 ret = 0;
       size_t   i = 0;
@@ -59,6 +60,7 @@ __int128 operator "" _LLL( const char* lit ) {
 
       return ret;
 }
+
 
 void test_compiler_builtins::test_multi3() {
    /*
@@ -215,10 +217,10 @@ void test_compiler_builtins::test_lshlti3() {
    assert( res == ( 1 << 1 ), "__lshlti3 result should be 2" );
 
    __lshlti3( res, val, ( val >> 64 ), 31 );
-   assert( res == 2147483648_ULLL, "__lshlti3 result should be 2^31" );
+   assert( res == 0x80000000, "__lshlti3 result should be 2^31" );
    
    __lshlti3( res, val, ( val >> 64 ), 63 );
-   assert( res == 9223372036854775808_ULLL, "__lshlti3 result should be 2^63" );
+   assert( res == 0x8000000000000000, "__lshlti3 result should be 2^63" );
 
    __lshlti3( res, val, ( val >> 64 ), 64 );
    assert( res == test_res, "__lshlti3 result should be 2^64" );
@@ -249,10 +251,10 @@ void test_compiler_builtins::test_ashlti3() {
    assert( res == (1 << 1), "__ashlti3 result should be 2" );
 
    __ashlti3( res, val, (val >> 64), 31 );
-   assert( res == 2147483648_ULLL, "__ashlti3 result should be 2^31" );
+   assert( res == 0x80000000, "__ashlti3 result should be 2^31" );
    
    __ashlti3( res, val, (val >> 64), 63 );
-   assert( res == 9223372036854775808_ULLL, "__ashlti3 result should be 2^63" );
+   assert( res == 0x8000000000000000, "__ashlti3 result should be 2^63" );
 
    __ashlti3( res, val, (val >> 64), 64 );
    assert( res == test_res, "__ashlti3 result should be 2^64" );
@@ -305,16 +307,16 @@ void test_compiler_builtins::test_lshrti3() {
    assert( res == test_res, "__lshrti3 result should be 2^127" );
 
    __lshrti3( res, val, (val >> 64), 1 );
-   assert( res == 85070591730234615865843651857942052864_ULLL, "__lshrti3 result should be 2^126" );
+   assert( res == atoi128("85070591730234615865843651857942052864"), "__lshrti3 result should be 2^126" );
 
    __lshrti3( res, val, (val >> 64), 63 );
-   assert( res == 18446744073709551616_ULLL, "__lshrti3 result should be 2^64" );
+   assert( res == atoi128("18446744073709551616"), "__lshrti3 result should be 2^64" );
 
    __lshrti3( res, val, (val >> 64), 64 );
-   assert( res == 9223372036854775808_ULLL, "__lshrti3 result should be 2^63" );
+   assert( res == 0x8000000000000000, "__lshrti3 result should be 2^63" );
 
    __lshrti3( res, val, (val >> 64), 96 );
-   assert( res == 2147483649_ULLL, "__lshrti3 result should be 2^31" );
+   assert( res == 0x80000000, "__lshrti3 result should be 2^31" );
 
    __lshrti3( res, val, (val >> 64), 127 );
    assert( res == 0x1, "__lshrti3 result should be 2^0" );

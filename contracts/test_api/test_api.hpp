@@ -191,6 +191,12 @@ struct test_compiler_builtins {
    static void test_multi3();
    static void test_divti3();
    static void test_divti3_by_0();
+   static void test_udivti3();
+   static void test_udivti3_by_0();
+   static void test_modti3();
+   static void test_modti3_by_0();
+   static void test_umodti3();
+   static void test_umodti3_by_0();
    static void test_lshlti3();
    static void test_lshrti3();
    static void test_ashlti3();

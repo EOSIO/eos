@@ -409,6 +409,21 @@ BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, tester) { try {
          }
       );
 
+   CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_udivti3", {});
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_udivti3_by_0", {}), fc::assert_exception,
+         [](const fc::assert_exception& e) {
+            return expect_assert_message(e, "divide by zero");
+         }
+      );
+
+
+   CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_modti3", {});
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_modti3_by_0", {}), fc::assert_exception,
+         [](const fc::assert_exception& e) {
+            return expect_assert_message(e, "divide by zero");
+         }
+      );
+
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_lshlti3", {});
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_lshrti3", {});
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_ashlti3", {});
