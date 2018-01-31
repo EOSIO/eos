@@ -79,3 +79,15 @@ script:
   - ninja -j4
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || ctest --output-on-failure'
   - cpack
+
+deploy:
+  provider: releases
+  api_key:
+    secure: <GITHUB OAUTH TOKEN>
+  file: "$TRAVIS_BUILD_DIR/build/packages/EOS.IO-*"
+  skip_cleanup: true
+  file_glob: true
+  on:
+    tags: true
+    repo: EOSIO/eos
+    branch: master
