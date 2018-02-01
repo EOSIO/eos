@@ -172,16 +172,16 @@ public:
       }
    }
 
-   fc::variant get_accountrow(uint64_t identity, const string& account) {
+   fc::variant get_accountrow(const string& account) {
       const auto& db = control->get_database();
-      const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(identity, N(identity), N(account)));
+      uint64_t acnt = string_to_name(account.c_str());
+      const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(acnt, N(identity), N(account)));
       if (!t_id) {
          return fc::variant(nullptr);
       }
       const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-      uint64_t acnt = string_to_name(account.c_str());
-      auto itr = idx.lower_bound(boost::make_tuple(t_id->id, acnt));
-      if( itr != idx.end() && itr->t_id == t_id->id && acnt == itr->primary_key) {
+      auto itr = idx.lower_bound(boost::make_tuple(t_id->id, N(account)));
+      if( itr != idx.end() && itr->t_id == t_id->id && N(account) == itr->primary_key) {
          vector<char> data;
          read_only::copy_row(*itr, data);
          return abi_ser.binary_to_variant("accountrow", data);
@@ -288,13 +288,13 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify, identity_tester ) try {
    BOOST_REQUIRE_EQUAL(success(), create_identity("alice", identity_val));
 
    //alice (creator of the identity) certifies 1 property
-   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>(1, mutable_variant_object()
+   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>{ mutable_variant_object()
                                                                                      ("property", "name")
                                                                                      ("type", "string")
                                                                                      ("data", to_uint8_vector("Alice Smith"))
                                                                                      ("memo", "")
                                                                                      ("confidence", 100)
-                                          )));
+               }));
 
    auto obj = get_certrow(identity_val, "name", 0, "alice");
    BOOST_REQUIRE_EQUAL(true, obj.is_object());
@@ -309,21 +309,19 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify, identity_tester ) try {
    BOOST_REQUIRE_EQUAL(true, get_certrow(identity_val, "name", 1, "alice").is_null());
 
    //bob certifies 2 properties
-   vector<fc::variant> fields;
-   fields.push_back(mutable_variant_object()
-                    ("property", "email")
-                    ("type", "string")
-                    ("data", to_uint8_vector("alice@alice.name"))
-                    ("memo", "official email")
-                    ("confidence", 95)
-   );
-   fields.push_back(mutable_variant_object()
-                    ("property", "address")
-                    ("type", "string")
-                    ("data", to_uint8_vector("1750 Kraft Drive SW, Blacksburg, VA 24060"))
-                    ("memo", "official address")
-                    ("confidence", 80)
-   );
+   vector<fc::variant> fields = { mutable_variant_object()
+                                  ("property", "email")
+                                  ("type", "string")
+                                  ("data", to_uint8_vector("alice@alice.name"))
+                                  ("memo", "official email")
+                                  ("confidence", 95),
+                                  mutable_variant_object()
+                                  ("property", "address")
+                                  ("type", "string")
+                                  ("data", to_uint8_vector("1750 Kraft Drive SW, Blacksburg, VA 24060"))
+                                  ("memo", "official address")
+                                  ("confidence", 80)
+   };
 
    //shouldn't be able to certify without authorization
    BOOST_REQUIRE_EQUAL(error("missing authority of bob"), certify("bob", identity_val, fields, false));
@@ -349,13 +347,13 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify, identity_tester ) try {
    BOOST_REQUIRE_EQUAL( "1750 Kraft Drive SW, Blacksburg, VA 24060", to_string(obj["data"]) );
 
    //now alice certifies another email
-   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>(1, mutable_variant_object()
+   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>{ mutable_variant_object()
                                                                                      ("property", "email")
                                                                                      ("type", "string")
                                                                                      ("data", to_uint8_vector("alice.smith@gmail.com"))
                                                                                      ("memo", "")
                                                                                      ("confidence", 100)
-                                          )));
+               }));
    obj = get_certrow(identity_val, "email", 0, "alice");
    BOOST_REQUIRE_EQUAL(true, obj.is_object());
    BOOST_REQUIRE_EQUAL( "email", obj["property"].as_string() );
@@ -371,13 +369,13 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify, identity_tester ) try {
    BOOST_REQUIRE_EQUAL( "alice@alice.name", to_string(obj["data"]) );
 
    //remove email certification made by alice
-   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>(1, mutable_variant_object()
+   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>{ mutable_variant_object()
                                                                                      ("property", "email")
                                                                                      ("type", "string")
                                                                                      ("data", to_uint8_vector(""))
                                                                                      ("memo", "")
                                                                                      ("confidence", 0)
-                                          )));
+               }));
    BOOST_REQUIRE_EQUAL(true, get_certrow(identity_val, "email", 0, "alice").is_null());
 
    //email certification made by bob should still be in place
@@ -413,13 +411,13 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify_owner, identity_tester ) try {
    BOOST_REQUIRE_EQUAL(success(), create_identity("alice", identity_val));
 
    // certify owner, should populate "account" singleton
-   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>(1, mutable_variant_object()
+   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>{ mutable_variant_object()
                                                                               ("property", "owner")
                                                                               ("type", "account")
                                                                               ("data", to_uint8_vector(N(alice)))
                                                                               ("memo", "claiming onwership")
                                                                               ("confidence", 100)
-                                                )));
+               }));
    fc::variant certrow = get_certrow(identity_val, "owner", 0, "alice");
    BOOST_REQUIRE_EQUAL( true, certrow.is_object() );
    BOOST_REQUIRE_EQUAL( "owner", certrow["property"].as_string() );
@@ -430,29 +428,68 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify_owner, identity_tester ) try {
    BOOST_REQUIRE_EQUAL( N(alice), to_uint64(certrow["data"]) );
 
    //check that singleton "account" in the scope of identity contains the owner
-   fc::variant acntrow = get_accountrow(identity_val, "alice");
+   fc::variant acntrow = get_accountrow("alice");
    BOOST_REQUIRE_EQUAL( true, certrow.is_object() );
-   BOOST_REQUIRE_EQUAL( "alice", acntrow["account"].as_string() );
+   BOOST_REQUIRE_EQUAL( identity_val, acntrow["identity"].as_uint64() );
 
    // ownership was certified by alice, but not by a block producer or someone trusted by a block producer
    BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(identity_val));
 
    //remove owner certification
-   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>(1, mutable_variant_object()
+   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>{ mutable_variant_object()
                                                                               ("property", "owner")
                                                                               ("type", "account")
                                                                               ("data", to_uint8_vector(N(alice)))
                                                                               ("memo", "claiming onwership")
                                                                               ("confidence", 0)
-                                          )));
+               }));
    certrow = get_certrow(identity_val, "owner", 0, "alice");
    BOOST_REQUIRE_EQUAL(true, certrow.is_null());
 
    //check that singleton "account" in the scope of identity contains the owner
-   acntrow = get_accountrow(identity_val, "alice");
+   acntrow = get_accountrow("alice");
    BOOST_REQUIRE_EQUAL(true, certrow.is_null());
 
-} FC_LOG_AND_RETHROW() //certify_owner
+} FC_LOG_AND_RETHROW() //certify_decertify_owner
+
+BOOST_FIXTURE_TEST_CASE( trusted_owner, identity_tester ) try {
+   BOOST_REQUIRE_EQUAL(success(), create_identity("alice", identity_val));
+
+   // certify owner by a block producer, should result in trusted certification
+   BOOST_REQUIRE_EQUAL(success(), certify("inita", identity_val, vector<fc::variant>{ mutable_variant_object()
+               ("property", "owner")
+               ("type", "account")
+               ("data", to_uint8_vector(N(alice)))
+               ("memo", "")
+               ("confidence", 100)
+               }));
+   fc::variant certrow = get_certrow(identity_val, "owner", 1, "inita");
+   BOOST_REQUIRE_EQUAL( true, certrow.is_object() );
+   BOOST_REQUIRE_EQUAL( "owner", certrow["property"].as_string() );
+   BOOST_REQUIRE_EQUAL( 1, certrow["trusted"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "inita", certrow["certifier"].as_string() );
+   BOOST_REQUIRE_EQUAL( N(alice), to_uint64(certrow["data"]) );
+
+   //uncertified copy of that row shouldn't exist
+   BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 0, "inita").is_null());
+
+   //alice still has not claimed the identity - she is not the official owner yet
+   BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(identity_val));
+
+   //now alice claims it
+   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>{ mutable_variant_object()
+               ("property", "owner")
+               ("type", "account")
+               ("data", to_uint8_vector(N(alice)))
+               ("memo", "claiming onwership")
+               ("confidence", 100)
+               }));
+   std::cout << "Identity val: " << identity_val << std::endl;
+   BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 0, "alice").is_object());
+   //now alice should be the official owner
+   BOOST_REQUIRE_EQUAL(N(alice), get_owner_for_identity(identity_val));
+
+} FC_LOG_AND_RETHROW() //trusted_owner
 
 BOOST_AUTO_TEST_SUITE_END()
 #endif

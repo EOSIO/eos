@@ -683,7 +683,7 @@ class db_index_api : public context_aware_api {
 
 
    int call(ContextMethodType method, const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-      auto maybe_t_id = context.find_table(scope, context.receiver, table);
+      auto maybe_t_id = context.find_table(scope, code, table);
       if (maybe_t_id == nullptr) {
          return -1;
       }

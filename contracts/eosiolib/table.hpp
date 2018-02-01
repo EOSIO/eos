@@ -93,7 +93,7 @@ namespace eosio {
             temp[1] = secondary;
             temp[2] = tertiary;
             
-            auto read = lower_bound_primary_i64i64i64( Code, _scope, TableName, 
+            auto read = lower_bound_primary_i64i64i64( _scope, Code, TableName,
                                                 (char*)temp, sizeof(temp) );
             if( read <= 0 ) {
                return false;
