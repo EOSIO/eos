@@ -319,7 +319,7 @@ int main( int argc, char** argv ) {
    getCode->add_option("name", accountName, localized("The name of the account whose code should be retrieved"))->required();
    getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract .wast to") );
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
-   getCode->set_callback([&] { helper.get_code(accountName, codeFilename, abiFilename); });
+   getCode->set_callback([&] { helper.save_code(accountName, codeFilename, abiFilename); });
 
    // get table
    string scope;
@@ -338,7 +338,7 @@ int main( int argc, char** argv ) {
    getTable->add_option( "-k,--key", limit, localized("The name of the key to index by as defined by the abi, defaults to primary key") );
    getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
-   getTable->set_callback([&] { helper.get_table(scope, code, table); });
+   getTable->set_callback([&] { helper.print_table(scope, code, table); });
 
    // currency accessors
    // get currency balance

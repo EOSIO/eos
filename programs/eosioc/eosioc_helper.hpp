@@ -91,11 +91,11 @@ public:
 
     eosio::chain_apis::read_only::get_info_results get_info();
 
-    void get_code(const std::string& account,
+    void save_code(const std::string& account,
                   const std::string& code_filename,
                   const std::string& abi_filename);
 
-    void get_table(const std::string& scope, const std::string& code, const std::string& table);
+    void print_table(const std::string& scope, const std::string& code, const std::string& table);
     void execute_random_transactions(uint64_t number_account,
                                      uint64_t number_of_transfers,
                                      bool loop,

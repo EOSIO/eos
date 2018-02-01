@@ -345,7 +345,7 @@ eosio::chain_apis::read_only::get_info_results eosioc_helper::get_info() {
     return m_peer.get_info().as<eosio::chain_apis::read_only::get_info_results>();
 }
 
-void eosioc_helper::get_code(const std::string& account, const std::string& code_filename, const std::string& abi_filename)
+void eosioc_helper::save_code(const std::string& account, const std::string& code_filename, const std::string& abi_filename)
 {
     auto result = m_peer.get_code(account);
 
@@ -365,7 +365,7 @@ void eosioc_helper::get_code(const std::string& account, const std::string& code
     }
 }
 
-void eosioc_helper::get_table(const std::string &scope, const std::string &code, const std::string &table)
+void eosioc_helper::print_table(const std::string &scope, const std::string &code, const std::string &table)
 {
     auto result = m_peer.get_table(scope, code, table);
 
