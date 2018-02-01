@@ -104,7 +104,7 @@ Get information related to an account.
 
 @subsubsection examplegetaccount  Example get_account Usage
 ```
-$ curl  http://127.0.0.1:8888/v1/chain/get_account -X POST -d '{"name":"inita"}'
+$ curl  http://127.0.0.1:8888/v1/chain/get_account -X POST -d '{"account_name":"inita"}'
 ```
 
 @subsubsection examplegetaccountresult  Example get_account Result
