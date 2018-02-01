@@ -49,7 +49,7 @@ before_install:
       cd boost_1_64_0
       ./bootstrap.sh --prefix=$TRAVIS_BUILD_DIR/ext
       echo 'using clang : 4.0 : clang++-4.0 ;' >> project-config.jam
-      ./b2 -d0 -j4 --with-thread --with-date_time --with-system --with-filesystem --with-program_options --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine toolset=clang link=static install
+      ./b2 -d0 -j4 --with-iostreams --with-thread --with-date_time --with-system --with-filesystem --with-program_options --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine toolset=clang link=static install
       cd $TRAVIS_BUILD_DIR/ext
       wget https://cmake.org/files/v3.9/cmake-3.9.0-Linux-x86_64.tar.gz
       tar xzf cmake-3.9.0-Linux-x86_64.tar.gz
