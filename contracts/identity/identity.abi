@@ -63,13 +63,6 @@
         {"name":"creator", "type":"account_name"}
       ]
     },{
-      "name": "trustrow",
-      "base": "",
-      "fields": [
-        {"name":"account", "type":"account_name"},
-        {"name":"trusted", "type":"uint8"}
-      ]
-    },{
       "name": "accountrow",
       "base": "",
       "fields": [
@@ -111,7 +104,7 @@
       "key_types": [ "uint64" ]
     },{
       "name": "trust",
-      "type": "trustrow",
+      "type": "account_name",
       "index_type": "i64",
       "key_names" : [ "account" ],
       "key_types": [ "account_name" ]

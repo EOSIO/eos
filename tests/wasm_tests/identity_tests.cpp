@@ -221,23 +221,17 @@ public:
       return success();
    }
 
-   fc::variant get_trustrow(const string& trustor, const string& trusting) {
+   bool get_trust(const string& trustor, const string& trusting) {
       const auto& db = control->get_database();
       const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(string_to_name(trustor.c_str()), N(identity), N(trust)));
       if (!t_id) {
-         return fc::variant(nullptr);
+         return false;
       }
 
       uint64_t tng = string_to_name(trusting.c_str());
       const auto& idx = db.get_index<key_value_index, by_scope_primary>();
       auto itr = idx.lower_bound(boost::make_tuple(t_id->id, tng));
-      if ( itr != idx.end() && itr->t_id == t_id->id && tng == itr->primary_key ) {
-         vector<char> data;
-         read_only::copy_row(*itr, data);
-         return abi_ser.binary_to_variant("trustrow", data);
-      } else {
-         return fc::variant(nullptr);
-      }
+      return ( itr != idx.end() && itr->t_id == t_id->id && tng == itr->primary_key ); //true if found
    }
 
 public:
@@ -392,18 +386,14 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify, identity_tester ) try {
 
 BOOST_FIXTURE_TEST_CASE( trust_untrust, identity_tester ) try {
    BOOST_REQUIRE_EQUAL(success(), settrust("bob", "alice", 1));
-   auto obj = get_trustrow("bob", "alice");
-   BOOST_REQUIRE_EQUAL(true, obj.is_object());
-   BOOST_REQUIRE_EQUAL( "alice", obj["account"].as_string() );
-   BOOST_REQUIRE_EQUAL( 1, obj["trusted"].as_uint64() );
+   BOOST_REQUIRE_EQUAL(true, get_trust("bob", "alice"));
 
-   obj = get_trustrow("alice", "bob");
-   BOOST_REQUIRE_EQUAL(true, obj.is_null());
+   //relation of trust in opposite direction should not exist
+   BOOST_REQUIRE_EQUAL(false, get_trust("alice", "bob"));
 
    //remove trust
    BOOST_REQUIRE_EQUAL(success(), settrust("bob", "alice", 0));
-   obj = get_trustrow("bob", "alice");
-   BOOST_REQUIRE_EQUAL(true, obj.is_null());
+   BOOST_REQUIRE_EQUAL(false, get_trust("bob", "alice"));
 
 } FC_LOG_AND_RETHROW() //trust_untrust
 
@@ -548,7 +538,7 @@ BOOST_FIXTURE_TEST_CASE( owner_certified_by_trusted_account, identity_tester ) t
 
    //block producer trusts bob
    BOOST_REQUIRE_EQUAL(success(), settrust("initb", "bob", 1));
-   BOOST_REQUIRE_EQUAL(true, get_trustrow("initb", "bob").is_object());
+   BOOST_REQUIRE_EQUAL(true, get_trust("initb", "bob"));
 
    // bob (trusted account) certifies alice's ownership, it should result in trusted certification
    BOOST_REQUIRE_EQUAL(success(), certify("bob", identity_val, vector<fc::variant>{ mutable_variant_object()
@@ -567,7 +557,7 @@ BOOST_FIXTURE_TEST_CASE( owner_certified_by_trusted_account, identity_tester ) t
 
    //block producer stops trusting bob
    BOOST_REQUIRE_EQUAL(success(), settrust("initb", "bob", 0));
-   BOOST_REQUIRE_EQUAL(true, get_trustrow("initb", "bob").is_null());
+   BOOST_REQUIRE_EQUAL(false, get_trust("initb", "bob"));
 
    //certification made by bob is still flaged as trusted
    BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 1, "bob").is_object() );
@@ -606,7 +596,7 @@ BOOST_FIXTURE_TEST_CASE( owner_certification_becomes_trusted, identity_tester ) 
 
    //block producer trusts bob
    BOOST_REQUIRE_EQUAL(success(), settrust("initb", "bob", 1));
-   BOOST_REQUIRE_EQUAL(true, get_trustrow("initb", "bob").is_object());
+   BOOST_REQUIRE_EQUAL(true, get_trust("initb", "bob"));
 
    //old certification made by bob still shouldn't be flaged as trusted
    BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 0, "bob").is_object() );

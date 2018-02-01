@@ -181,24 +181,10 @@ namespace identity {
             }
          };
 
-         struct trustrow {
-            account_name account;
-            uint8_t      trusted;
-
-            template<typename DataStream>
-            friend DataStream& operator << ( DataStream& ds, const trustrow& r ){
-               return ds << r.account << r.trusted;
-            }
-            template<typename DataStream>
-            friend DataStream& operator >> ( DataStream& ds, trustrow& r ){
-               return ds >> r.account >> r.trusted;
-            }
-         };
-
-         typedef table_i64i64i64<code, N(certs), certrow>  certs_table;
-         typedef table64<code, N(ident), identrow>         idents_table;
-         typedef singleton<code, N(account), identity_name>  accounts_table;
-         typedef table64<code, N(trust), trustrow>         trust_table;
+         typedef table_i64i64i64<code, N(certs), certrow>   certs_table;
+         typedef table64<code, N(ident), identrow>          idents_table;
+         typedef singleton<code, N(account), identity_name> accounts_table;
+         typedef table64<code, N(trust), account_name>      trust_table;
 
          static identity_name get_claimed_identity( account_name acnt ) {
             return accounts_table::get_or_default(acnt, 0);
@@ -278,10 +264,7 @@ namespace identity {
          }
 
          static bool is_trusted_by( account_name trusted, account_name by ) {
-            trustrow def;
-            def.trusted = 0;
-            trustrow row = trust_table::get_or_default( trusted, by, def );
-            return row.trusted;
+            return trust_table::exists(trusted, by);
          }
 
          static bool is_trusted( account_name acnt ) {
@@ -303,13 +286,9 @@ namespace identity {
             require_recipient( t.trusting );
 
             if( t.trust != 0 ) {
-               trustrow  row{ .account = t.trusting,
-                              .trusted = t.trust };
-               trust_table::set( row, t.trustor );
+               trust_table::set( t.trusting, t.trustor );
             } else {
-               trustrow  row{ .account = t.trusting,
-                              .trusted = t.trust };
-               trust_table::remove( row.account, t.trustor );
+               trust_table::remove( t.trusting, t.trustor );
             }
          }
 
