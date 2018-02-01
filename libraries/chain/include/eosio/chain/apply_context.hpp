@@ -96,6 +96,8 @@ class apply_context {
 
       vector<account_name> get_active_producers() const;
 
+      const bytes&         get_packed_transaction();
+
       const chain_controller&       controller;
       const chainbase::database&    db;  ///< database where state is stored
       const action&                 act; ///< message being applied
@@ -194,6 +196,7 @@ class apply_context {
 
       vector<shard_lock>                  _read_locks;
       vector<scope_name>                  _write_scopes;
+      bytes                               _cached_trx;
 };
 
 using apply_handler = std::function<void(apply_context&)>;

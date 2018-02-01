@@ -61,5 +61,39 @@ extern "C" {
 
    void send_deferred(uint32_t sender_id, time delay_until, char *serialized_transaction, size_t size);
 
+   /**
+    * access a copy of the currently executing transaction
+    *
+    * @param buffer - a buffer to write the current transaction to
+    * @param size - the size of the buffer
+    * @return the size of the transaction written to the buffer
+    */
+   size_t read_transaction(char *buffer, size_t size);
+
+   /**
+    * get the size of the currently executing transaction
+    * @return
+    */
+   size_t transaction_size();
+
+   /**
+    * get the block number used for TAPOS on the currently executing transaction
+    *
+    * @return
+    */
+   int tapos_block_num();
+
+   /**
+    * get the block prefix used for TAPOS on the currently executing transaction
+    * @return
+    */
+   int tapos_block_prefix();
+
+   /**
+    * get the expiration of the currently executing transaction
+    * @return
+    */
+   time expiration();
+
    ///@ } transactioncapi
 }

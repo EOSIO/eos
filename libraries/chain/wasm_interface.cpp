@@ -690,18 +690,16 @@ class transaction_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      size_t current_transaction( array_ptr<char> data, size_t data_len ) {
-         if( !context.trx_meta.packed_trx.size() ) {
-            auto size = fc::raw::pack_size( context.trx_meta.trx );
-            if( size > data_len ) 
-                return size;
-            datastream<char*> ds( data, data_len );
-            fc::raw::pack( ds, context.trx_meta.trx );
-         } 
-         auto size = context.trx_meta.packed_trx.size();
-         if( data_len >= size );
-            memcpy( data, context.trx_meta.packed_trx.data(), size );
-         return size;
+      int read_transaction( array_ptr<char> data, size_t data_len ) {
+         bytes trx = context.get_packed_transaction();
+         if (data_len >= trx.size()) {
+            memcpy(data, trx.data(), trx.size());
+         }
+         return trx.size();
+      }
+
+      int transaction_size() {
+         return context.get_packed_transaction().size();
       }
 
       int expiration() {
@@ -711,7 +709,7 @@ class transaction_api : public context_aware_api {
       int tapos_block_num() {
         return context.trx_meta.trx.ref_block_num;
       }
-      int tapos_prefix() {
+      int tapos_block_prefix() {
         return context.trx_meta.trx.ref_block_prefix;
       }
 
@@ -785,10 +783,12 @@ REGISTER_INTRINSICS(console_api,
 );
 
 REGISTER_INTRINSICS(transaction_api,
-   (expiration,            int()  )
-   (tapos_prefix,          int()  )
-   (tapos_block_num,       int()  )
-   (send_inline,           void(int, int)  )
+   (read_transaction,       int(int, int)            )
+   (transaction_size,       int()                    )
+   (expiration,             int()                    )
+   (tapos_block_prefix,     int()                    )
+   (tapos_block_num,        int()                    )
+   (send_inline,           void(int, int)            )
    (send_deferred,         void(int, int, int, int)  )
 );
 
