@@ -23,6 +23,7 @@ namespace eosio { namespace testing {
          void              produce_blocks( uint32_t n = 1 );
 
          transaction_trace push_transaction( signed_transaction& trx );
+         string            push_action(action&& cert_act, uint64_t authorizer);
          void              set_tapos( signed_transaction& trx ) const;
 
          void              create_accounts( vector<account_name> names, asset init_bal, bool multisig = false ) {
