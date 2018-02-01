@@ -4,6 +4,7 @@
  */
 #include <eosio/txn_test_gen_plugin/txn_test_gen_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/utilities/key_conversion.hpp>
 
 #include <fc/variant.hpp>
@@ -30,19 +31,6 @@ namespace eosio { namespace detail {
 }}
 
 FC_REFLECT(eosio::detail::txn_test_gen_empty, );
-
-static std::vector<uint8_t> assemble_wast( const std::string& wast ) {
-   IR::Module module;
-   std::vector<WAST::Error> parseErrors;
-   WAST::parseModule(wast.c_str(),wast.size(),module,parseErrors);
-   if(parseErrors.size())
-      FC_THROW_EXCEPTION(fc::parse_error_exception, "wast parsing failure");
-
-   // Serialize the WebAssembly module.
-   Serialization::ArrayOutputStream stream;
-   WASM::serialize(stream,module);
-   return stream.getBytes();
-}
 
 namespace eosio {
 
@@ -141,7 +129,7 @@ struct txn_test_gen_plugin_impl {
       //create currency contract
       {
       signed_transaction trx;
-      vector<uint8_t> wasm = assemble_wast(std::string(currency_wast));
+      vector<uint8_t> wasm = wast_to_wasm(std::string(currency_wast));
 
       contracts::setcode handler;
       handler.account = newaccountC;
