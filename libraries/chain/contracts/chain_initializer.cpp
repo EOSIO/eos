@@ -125,7 +125,6 @@ abi_def chain_initializer::eos_contract_abi()
          {"owner", "authority"},
          {"active", "authority"},
          {"recovery", "authority"},
-         {"deposit", "asset"},
       }
    });
 
