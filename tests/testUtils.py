@@ -23,7 +23,7 @@ class Utils:
 
     EosServerName="eosiod"
     EosClientPath="programs/eosioc/eosioc"
-    EosWalletPath="programs/eosio-walletd/eosiowd"
+    EosWalletPath="programs/eosiowd/eosiowd"
     EosServerName="eosiod"
     EosServerPath="programs/eosiod/%s" % (EosServerName)
 
