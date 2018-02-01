@@ -23,11 +23,11 @@ class Utils:
 
     EosServerName="eosiod"
     EosClientPath="programs/eosioc/eosioc"
-    EosWalletPath="programs/eosio-walletd/eosio-walletd"
+    EosWalletPath="programs/eosio-walletd/eosiowd"
     EosServerName="eosiod"
     EosServerPath="programs/eosiod/%s" % (EosServerName)
 
-    EosLauncherPath="programs/launcher/launcher"
+    EosLauncherPath="programs/launcher/eosio-launcher"
     MongoPath="mongo"
     
     @staticmethod
