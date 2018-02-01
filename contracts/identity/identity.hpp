@@ -317,7 +317,7 @@ namespace identity {
                   row.trusted    = is_trusted( cert.certifier );
                   row.certifier  = cert.certifier;
                   row.confidence = value.confidence;
-                  assert(value.type.get_size() <= 32, "certrow::type shouldn't be longer than 32 bytes");
+                  assert(value.type.get_size() <= 32, "certrow::type should be not longer than 32 bytes");
                   row.type       = value.type;
                   row.data       = value.data;
 

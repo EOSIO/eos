@@ -278,6 +278,30 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify, identity_tester ) try {
    //shouldn't be able to certify without authorization
    BOOST_REQUIRE_EQUAL(error("missing authority of bob"), certify("bob", identity_val, fields, false));
 
+   //certifying non-existent identity is not allowed
+   uint64_t non_existent = 11;
+   BOOST_REQUIRE_EQUAL(error("condition: assertion failed: identity does not exist"),
+                       certify("alice", non_existent, vector<fc::variant>{ mutable_variant_object()
+                                ("property", "name")
+                                ("type", "string")
+                                ("data", to_uint8_vector("Alice Smith"))
+                                ("memo", "")
+                                ("confidence", 100)
+                                })
+   );
+
+   //parameter "type" should be not longer than 32 bytes
+   BOOST_REQUIRE_EQUAL(error("condition: assertion failed: certrow::type should be not longer than 32 bytes"),
+                       certify("alice", identity_val, vector<fc::variant>{ mutable_variant_object()
+                                ("property", "height")
+                                ("type", "super_long_type_name_wich_is_not_allowed")
+                                ("data", to_uint8_vector("Alice Smith"))
+                                ("memo", "")
+                                ("confidence", 100)
+                                })
+   );
+
+   //bob also should be able to certify
    BOOST_REQUIRE_EQUAL(success(), certify("bob", identity_val, fields));
 
    obj = get_certrow(identity_val, "email", 0, "bob");
