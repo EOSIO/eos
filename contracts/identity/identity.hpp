@@ -234,8 +234,8 @@ namespace identity {
                } else {
                   // bad row - skip it
                }
-               ok = certs.primary_upper_bound(row, row.property, row.trusted, row.certifier);
-               //ok = certs.next_primary(row, row);
+               //ok = certs.primary_upper_bound(row, row.property, row.trusted, row.certifier);
+               ok = certs.next_primary(row, row);
             }
             if (owner) {
                //owner found, no contradictions among certifications flaged as trusted
@@ -263,8 +263,8 @@ namespace identity {
                } else {
                   // bad row - skip it
                }
-               ok = certs.primary_upper_bound(row, row.property, row.trusted, row.certifier);
-               //ok = certs.next_primary(row, row);
+               //ok = certs.primary_upper_bound(row, row.property, row.trusted, row.certifier);
+               ok = certs.next_primary(row, row);
             }
             return owner;
          }

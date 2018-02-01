@@ -541,9 +541,6 @@ DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
    DEFINE_INTRINSIC_FUNCTION5(env,back_##FUNCPREFIX##OBJTYPE,back_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
       READ_RECORD(back_record, INDEX, SCOPE); \
    } \
-   DEFINE_INTRINSIC_FUNCTION5(env,next_##FUNCPREFIX##OBJTYPE,next_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(next_record, INDEX, SCOPE); \
-   } \
    DEFINE_INTRINSIC_FUNCTION5(env,previous_##FUNCPREFIX##OBJTYPE,previous_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
       READ_RECORD(previous_record, INDEX, SCOPE); \
    } \
@@ -816,10 +813,6 @@ class db_index_api : public context_aware_api {
          return call(&apply_context::back_record<IndexType, Scope>, scope, code, table, data, data_len);
       }
 
-      int next(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::next_record<IndexType, Scope>, scope, code, table, data, data_len);
-      }
-
       int previous(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
          return call(&apply_context::previous_record<IndexType, Scope>, scope, code, table, data, data_len);
       }
@@ -970,7 +963,6 @@ REGISTER_INTRINSICS(chain_api,
    (load,         int32_t(int64_t, int64_t, int64_t, int, int),   "load_"#SUFFIX )\
    (front,        int32_t(int64_t, int64_t, int64_t, int, int),   "front_"#SUFFIX )\
    (back,         int32_t(int64_t, int64_t, int64_t, int, int),   "back_"#SUFFIX )\
-   (next,         int32_t(int64_t, int64_t, int64_t, int, int),   "next_"#SUFFIX )\
    (previous,     int32_t(int64_t, int64_t, int64_t, int, int),   "previous_"#SUFFIX )\
    (lower_bound,  int32_t(int64_t, int64_t, int64_t, int, int),   "lower_bound_"#SUFFIX )\
    (upper_bound,  int32_t(int64_t, int64_t, int64_t, int, int),   "upper_bound_"#SUFFIX )\
