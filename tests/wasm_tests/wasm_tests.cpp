@@ -527,7 +527,7 @@ BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
       set_tapos(trx);
       trx.sign(get_private_key( N(current_memory), "active" ), chain_id_type());
 
-      BOOST_CHECK_THROW(control->push_transaction(trx), fc::unhandled_exception);
+      BOOST_CHECK_THROW(push_transaction(trx), fc::unhandled_exception);
    }
 
    produce_blocks(1);
@@ -542,7 +542,7 @@ BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
       set_tapos(trx);
       trx.sign(get_private_key( N(current_memory), "active" ), chain_id_type());
 
-      BOOST_CHECK_THROW(control->push_transaction(trx), fc::unhandled_exception);
+      BOOST_CHECK_THROW(push_transaction(trx), fc::unhandled_exception);
       produce_blocks(1);
    }
 
