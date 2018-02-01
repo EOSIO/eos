@@ -110,14 +110,13 @@ struct txn_test_gen_plugin_impl {
       signed_transaction trx;
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.set_reference_block(cc.head_block_id());
-//todo      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::lock{creator, creator, 300});
 
       //create "A" account
       {
       auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
       auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
       auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
-//todo      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountA, owner_auth, active_auth, recovery_auth, stake});
+      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountA, owner_auth, active_auth, recovery_auth});
       }
       //create "B" account
       {
@@ -125,7 +124,7 @@ struct txn_test_gen_plugin_impl {
       auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
       auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
 
-//todo      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountB, owner_auth, active_auth, recovery_auth, stake});
+      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountB, owner_auth, active_auth, recovery_auth});
       }
       //create "currency" account
       {
@@ -133,23 +132,11 @@ struct txn_test_gen_plugin_impl {
       auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
       auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
 
-      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountC, owner_auth, active_auth, recovery_auth, stake});
+      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountC, owner_auth, active_auth, recovery_auth});
       }
       
       trx.sign(creator_priv_key, chainid);
       cc.push_transaction(packed_transaction(trx));
-
-      //now, transfer some balance to new accounts (for native currency)
-      {
-      uint64_t balance = 10000;
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::transfer{creator, newaccountA, balance, memo});
-      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::transfer{creator, newaccountB, balance, memo});
-      trx.expiration = cc.head_block_time() + fc::seconds(30);
-      trx.set_reference_block(cc.head_block_id());
-      trx.sign(creator_priv_key, chainid);
-      cc.push_transaction(packed_transaction(trx));
-      }
 
       //create currency contract
       {
@@ -171,7 +158,7 @@ struct txn_test_gen_plugin_impl {
 
       trx.set_reference_block(cc.head_block_id());
       trx.sign(txn_test_receiver_C_priv_key, chainid);
-      cc.push_transaction(trx);
+      cc.push_transaction(packed_transaction(trx));
       }
 
       //issue & fund the two accounts with currency contract currency
@@ -206,7 +193,7 @@ struct txn_test_gen_plugin_impl {
 
       trx.set_reference_block(cc.head_block_id());
       trx.sign(txn_test_receiver_C_priv_key, chainid);
-      cc.push_transaction(trx);
+      cc.push_transaction(packed_transaction(trx));
       }
    }
 
@@ -274,18 +261,17 @@ struct txn_test_gen_plugin_impl {
       {
       signed_transaction trx;
       trx.actions.push_back(act_a_to_b);
-      trx.actions.emplace_back(chain::action({}, contracts::nonce{.value = nonce}));
+      trx.actions.emplace_back(action({}, config::eosio_system_acount_name, "nonce", fc::raw::pack(nonce)));
       trx.set_reference_block(cc.head_block_id());
-
-      fc::crypto::private_key creator_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
-      trx.sign(creator_priv_key, chainid);
+      trx.expiration = cc.head_block_time() + fc::seconds(30);
+      trx.sign(a_priv_key, chainid);
       cc.push_transaction(packed_transaction(trx));
       }
 
       {
       signed_transaction trx;
       trx.actions.push_back(act_b_to_a);
-      trx.actions.emplace_back(chain::action({}, contracts::nonce{.value = nonce++}));
+      trx.actions.emplace_back(action({}, config::eosio_system_acount_name, "nonce", fc::raw::pack(nonce)));
       trx.set_reference_block(cc.head_block_id());
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.sign(b_priv_key, chainid);
