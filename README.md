@@ -27,7 +27,7 @@ The public testnet described in the [wiki](https://github.com/EOSIO/eos/wiki/Tes
 2. [Setting up a build/development environment](#setup)
 	1. [Automated build script](#autobuild)
       1. [Clean install Ubuntu 16.10 for a local testnet](#autoubuntulocal)
-      2. [Clean install Ubuntu 16.10 for the public testnet](#autobuntupublic)
+      2. [Clean install Ubuntu 16.10 for the public testnet](#autoubuntupublic)
       3. [MacOS Sierra 10.12.6 for a local testnet](#automaclocal)
       4. [MacOS Sierra 10.12.6 for the public testnet](#automacpublic)
 3. [Building EOS and running a node](#runanode)
