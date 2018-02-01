@@ -27,7 +27,7 @@ namespace  eosio {
             char temp[1024+8];
             *reinterpret_cast<uint64_t *>(temp) = SingletonName;
             auto read = load_i64( scope, Code, SingletonName, temp, sizeof(temp) );
-            assert( read > 0, "singleton does not exist" );
+            assert( read < 0, "singleton does not exist" );
             datastream<const char*> ds(temp + sizeof(SingletonName), read);
 
             T result;
@@ -39,7 +39,7 @@ namespace  eosio {
             char temp[1024+8];
             *reinterpret_cast<uint64_t *>(temp) = SingletonName;
             auto read = load_i64( scope, Code, SingletonName, temp, sizeof(temp) );
-            if ( read > 0 ) {
+            if ( read < 0 ) {
                return def;
             }
             datastream<const char*> ds(temp + sizeof(SingletonName), read);
