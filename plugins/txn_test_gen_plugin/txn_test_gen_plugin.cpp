@@ -93,7 +93,7 @@ struct txn_test_gen_plugin_impl {
       trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountB, owner_auth, active_auth, recovery_auth, stake});
       }
       trx.sign(creator_priv_key, chainid);
-      cc.push_transaction(trx);
+      cc.push_transaction(packed_transaction(trx));
 
       //now, transfer some balance to new accounts
       {
@@ -104,7 +104,7 @@ struct txn_test_gen_plugin_impl {
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.set_reference_block(cc.head_block_id());
       trx.sign(creator_priv_key, chainid);
-      cc.push_transaction(trx);
+      cc.push_transaction(packed_transaction(trx));
       }
    }
 
@@ -156,7 +156,7 @@ struct txn_test_gen_plugin_impl {
 
       fc::crypto::private_key creator_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
       trx.sign(creator_priv_key, chainid);
-      cc.push_transaction(trx);
+      cc.push_transaction(packed_transaction(trx));
       }
 
       //make transaction b->a
@@ -168,7 +168,7 @@ struct txn_test_gen_plugin_impl {
 
       fc::crypto::private_key b_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
       trx.sign(b_priv_key, chainid);
-      cc.push_transaction(trx);
+      cc.push_transaction(packed_transaction(trx));
       }
    }
 

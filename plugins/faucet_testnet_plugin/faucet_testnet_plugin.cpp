@@ -240,7 +240,7 @@ struct faucet_testnet_plugin_impl {
       trx.sign(_create_account_private_key, chainid);
 
       try {
-         cc.push_transaction(trx);
+         cc.push_transaction(packed_transaction(trx));
       } catch (const account_name_exists_exception& ) {
          // another transaction ended up adding the account, so look for alternates
          return find_alternates(new_account_name);
