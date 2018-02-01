@@ -248,7 +248,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
          template<typename ObjectType>
          static auto& get(ObjectType& o) {
-            return o.primary_key;
+            return o.secondary_key;
          }
       };
 
@@ -261,7 +261,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
          template<typename ObjectType>
          static auto& get( ObjectType& o) {
-            return o.primary_key;
+            return o.tertiary_key;
          }
       };
 
@@ -658,4 +658,4 @@ using apply_handler = std::function<void(apply_context&)>;
 
 } } // namespace eosio::chain
 
-FC_REFLECT(eosio::chain::apply_context::apply_results, (applied_actions)(generated_transactions));
+FC_REFLECT(eosio::chain::apply_context::apply_results, (applied_actions)(generated_transactions))

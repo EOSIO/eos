@@ -1,6 +1,6 @@
 #pragma once
 #include <eosiolib/db.hpp>
-#include <eosiolib/raw.hpp>
+#include <eosiolib/datastream.hpp>
 
 namespace  eosio {
 
@@ -31,7 +31,7 @@ namespace  eosio {
             datastream<const char*> ds(temp + sizeof(SingletonName), read);
 
             T result;
-            raw::unpack( ds, result );
+            unpack( ds, result );
             return result;
          }
 
@@ -53,7 +53,7 @@ namespace  eosio {
          }
 
          static void set( const T& value = T(), scope_name scope = Code ) {
-            auto size = raw::pack_size( value );
+            auto size = pack_size( value );
             char buf[size+ sizeof(SingletonName)];
 
             assert( sizeof(buf) <= 1024 + 8, "singleton too big to store" );
