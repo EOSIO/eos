@@ -15,7 +15,7 @@ namespace noop {
    /**
       noop contract
       All it does is require sender authorization.
-      Actions: anyaction and a template staticany.
+      Actions: anyaction
     */
 
 
@@ -33,24 +33,9 @@ namespace noop {
             EOSLIB_SERIALIZE(anyaction, (from)(type)(data))
          };
 
-         template <typename T, uint64_t Name>
-         struct staticany: action_meta<N(noop), Name> {
-            account_name from;
-            T data;
-               
-            EOSLIB_SERIALIZE(staticany, (from)(data))
-         };
-
          static void on(const anyaction& act)
          {
             require_auth(act.from);
          }
-
-         template <typename T, uint64_t Name>
-         static void on(const staticany<T, Name>& act)
-         {
-            require_auth(act.from);
-         }
-
    };
 } /// noop
