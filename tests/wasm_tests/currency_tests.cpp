@@ -51,7 +51,7 @@ BOOST_FIXTURE_TEST_CASE( test_generic_currency, tester ) try {
          std::cerr << act.console << "\n";
       produce_block();
 
-      auto actual = get_currency_balance(N(currency), expected.symbol(), N(usera));
+      auto actual = get_currency_balance(N(currency), expected.get_symbol(), N(usera));
       BOOST_REQUIRE_EQUAL(expected, actual);
    }
 
@@ -93,7 +93,7 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
       produce_block();
 
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol(), N(currency)), asset::from_string( "1000000.0000 CUR" ));
+      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.get_symbol(), N(currency)), asset::from_string( "1000000.0000 CUR" ));
    }
 
    // make a transfer from the contract to a user
@@ -117,7 +117,7 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
       produce_block();
 
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol(), N(alice)), asset::from_string( "100.0000 CUR" ));
+      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.get_symbol(), N(alice)), asset::from_string( "100.0000 CUR" ));
    }
 
    // Overspend!
@@ -141,8 +141,8 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
       produce_block();
 
       BOOST_REQUIRE_EQUAL(false, chain_has_transaction(trx.id()));
-      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol(), N(alice)), asset::from_string( "100.0000 CUR" ));
-      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol(), N(bob)), asset::from_string( "0.0000 CUR" ));
+      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.get_symbol(), N(alice)), asset::from_string( "100.0000 CUR" ));
+      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.get_symbol(), N(bob)), asset::from_string( "0.0000 CUR" ));
    }
 
    // Full spend
@@ -166,8 +166,8 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
       produce_block();
 
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol(), N(alice)), asset::from_string( "0.0000 CUR" ));
-      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol(), N(bob)), asset::from_string( "100.0000 CUR" ));
+      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.get_symbol(), N(alice)), asset::from_string( "0.0000 CUR" ));
+      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.get_symbol(), N(bob)), asset::from_string( "100.0000 CUR" ));
    }
 
 } FC_LOG_AND_RETHROW() /// test_currency
