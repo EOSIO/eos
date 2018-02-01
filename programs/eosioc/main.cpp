@@ -64,14 +64,10 @@ Options:
 */
 #include <string>
 #include <vector>
-#include <boost/asio.hpp>
-#include <boost/format.hpp>
 #include <iostream>
-#include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 #include <fc/io/console.hpp>
 #include <fc/exception/exception.hpp>
-#include <eos/utilities/key_conversion.hpp>
 
 #include <eosio/chain/config.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
@@ -83,14 +79,6 @@ Options:
 #include <boost/range/algorithm/copy.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
-#include <Inline/BasicTypes.h>
-#include <IR/Module.h>
-#include <IR/Validate.h>
-#include <WAST/WAST.h>
-#include <WASM/WASM.h>
-#include <Runtime/Runtime.h>
-#include <fc/io/fstream.hpp>
-
 #include "CLI11.hpp"
 #include "help_text.hpp"
 #include "localize.hpp"
@@ -100,7 +88,6 @@ Options:
 using namespace std;
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::utilities;
 using namespace eosio::client::help;
 using namespace eosio::client::localize;
 using namespace eosio::client::config;
