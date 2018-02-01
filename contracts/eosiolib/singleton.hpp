@@ -27,12 +27,18 @@ namespace  eosio {
             char temp[1024+8];
             *reinterpret_cast<uint64_t *>(temp) = SingletonName;
             auto read = load_i64( scope, Code, SingletonName, temp, sizeof(temp) );
-            assert( read > 0, "singleton does not exist" );
-            datastream<const char*> ds(temp + sizeof(SingletonName), read);
+            assert( read < 0, "singleton does not exist" );
+            return unpack<T>( temp + sizeof(SingletonName), read );
+         }
 
-            T result;
-            unpack( ds, result );
-            return result;
+         static T get_or_default( scope_name scope = Code, const T& def = T() ) {
+            char temp[1024+8];
+            *reinterpret_cast<uint64_t *>(temp) = SingletonName;
+            auto read = load_i64( scope, Code, SingletonName, temp, sizeof(temp) );
+            if ( read < 0 ) {
+               return def;
+            }
+            return unpack<T>( temp + sizeof(SingletonName), read );
          }
 
          static T get_or_create( scope_name scope = Code, const T& def = T() ) {
@@ -45,11 +51,7 @@ namespace  eosio {
                set( def, scope );
                return def;
             }
-
-            datastream<const char*> ds(temp + sizeof(SingletonName), read);
-            T result;
-            ds >> result;
-            return result;
+            return unpack<T>( temp + sizeof(SingletonName), read );
          }
 
          static void set( const T& value = T(), scope_name scope = Code ) {
@@ -63,6 +65,11 @@ namespace  eosio {
             ds << value;
             
             store_i64( scope, SingletonName, buf, sizeof(buf) );
+         }
+
+         static void remove( scope_name scope = Code ) {
+            uint64_t key = SingletonName;
+            remove_i64( scope, SingletonName, &key );
          }
    };
 

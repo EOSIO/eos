@@ -346,7 +346,7 @@ using apply_handler = std::function<void(apply_context&)>;
       template< typename KeyType, int NullKeyCount, typename Scope, typename ... Args >
       struct lower_bound_tuple_impl {
          static auto get(const contracts::table_id_object& tid, const KeyType* keys, Args... args) {
-            return lower_bound_tuple_impl<KeyType, NullKeyCount - 1, Scope, KeyType, Args...>::get(tid, keys, KeyType(0), args...);
+            return lower_bound_tuple_impl<KeyType, NullKeyCount - 1, Scope, KeyType, Args...>::get(tid, keys, raw_key_value(keys, scope_to_key_index_v<Scope> + NullKeyCount), args...);
          }
       };
 
@@ -363,7 +363,7 @@ using apply_handler = std::function<void(apply_context&)>;
       template< typename KeyType, int NullKeyCount, typename Scope, typename ... Args >
       struct upper_bound_tuple_impl {
          static auto get(const contracts::table_id_object& tid, const KeyType* keys, Args... args) {
-            return upper_bound_tuple_impl<KeyType, NullKeyCount - 1, Scope, KeyType, Args...>::get(tid, keys, KeyType(-1), args...);
+            return upper_bound_tuple_impl<KeyType, NullKeyCount - 1, Scope, KeyType, Args...>::get(tid, keys, raw_key_value(keys, scope_to_key_index_v<Scope> + NullKeyCount), args...);
          }
       };
 

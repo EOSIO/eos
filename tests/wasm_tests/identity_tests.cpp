@@ -410,7 +410,21 @@ BOOST_FIXTURE_TEST_CASE( trust_untrust, identity_tester ) try {
 BOOST_FIXTURE_TEST_CASE( certify_decertify_owner, identity_tester ) try {
    BOOST_REQUIRE_EQUAL(success(), create_identity("alice", identity_val));
 
-   // certify owner, should populate "account" singleton
+   //bob certifies ownership for alice
+   BOOST_REQUIRE_EQUAL(success(), certify("bob", identity_val, vector<fc::variant>{ mutable_variant_object()
+                                                                              ("property", "owner")
+                                                                              ("type", "account")
+                                                                              ("data", to_uint8_vector(N(alice)))
+                                                                              ("memo", "claiming onwership")
+                                                                              ("confidence", 100)
+               }));
+   BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 0, "bob").is_object() );
+   //it should not affect "account" singleton in alice's scope since it's not self-certification
+   BOOST_REQUIRE_EQUAL( true, get_accountrow("alice").is_null() );
+   //it also shouldn't affect "account" singleton in bob's scope since he certified not himself
+   BOOST_REQUIRE_EQUAL( true, get_accountrow("bob").is_null() );
+
+   // alice certifies her ownership, should populate "account" singleton
    BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>{ mutable_variant_object()
                                                                               ("property", "owner")
                                                                               ("type", "account")
@@ -427,13 +441,26 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify_owner, identity_tester ) try {
    BOOST_REQUIRE_EQUAL( "account", certrow["type"].as_string() );
    BOOST_REQUIRE_EQUAL( N(alice), to_uint64(certrow["data"]) );
 
-   //check that singleton "account" in the scope of identity contains the owner
+   //check that singleton "account" in the alice's scope contains the identity
    fc::variant acntrow = get_accountrow("alice");
    BOOST_REQUIRE_EQUAL( true, certrow.is_object() );
    BOOST_REQUIRE_EQUAL( identity_val, acntrow["identity"].as_uint64() );
 
    // ownership was certified by alice, but not by a block producer or someone trusted by a block producer
    BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(identity_val));
+
+   //remove bob's certification
+   BOOST_REQUIRE_EQUAL(success(), certify("bob", identity_val, vector<fc::variant>{ mutable_variant_object()
+               ("property", "owner")
+               ("type", "account")
+               ("data", to_uint8_vector(N(alice)))
+               ("memo", "claiming onwership")
+               ("confidence", 0)
+               }));
+   //singleton "account" in the alice's scope still should contain the identity
+   acntrow = get_accountrow("alice");
+   BOOST_REQUIRE_EQUAL( true, certrow.is_object() );
+   BOOST_REQUIRE_EQUAL( identity_val, acntrow["identity"].as_uint64() );
 
    //remove owner certification
    BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>{ mutable_variant_object()
@@ -446,13 +473,13 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify_owner, identity_tester ) try {
    certrow = get_certrow(identity_val, "owner", 0, "alice");
    BOOST_REQUIRE_EQUAL(true, certrow.is_null());
 
-   //check that singleton "account" in the scope of identity contains the owner
+   //check that singleton "account" in the alice's scope doesn't contain the identity
    acntrow = get_accountrow("alice");
    BOOST_REQUIRE_EQUAL(true, certrow.is_null());
 
 } FC_LOG_AND_RETHROW() //certify_decertify_owner
 
-BOOST_FIXTURE_TEST_CASE( trusted_owner, identity_tester ) try {
+BOOST_FIXTURE_TEST_CASE( owner_certified_by_producer, identity_tester ) try {
    BOOST_REQUIRE_EQUAL(success(), create_identity("alice", identity_val));
 
    // certify owner by a block producer, should result in trusted certification
@@ -476,7 +503,7 @@ BOOST_FIXTURE_TEST_CASE( trusted_owner, identity_tester ) try {
    //alice still has not claimed the identity - she is not the official owner yet
    BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(identity_val));
 
-   //now alice claims it
+   //alice claims it
    BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>{ mutable_variant_object()
                ("property", "owner")
                ("type", "account")
@@ -484,12 +511,110 @@ BOOST_FIXTURE_TEST_CASE( trusted_owner, identity_tester ) try {
                ("memo", "claiming onwership")
                ("confidence", 100)
                }));
-   std::cout << "Identity val: " << identity_val << std::endl;
    BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 0, "alice").is_object());
+
    //now alice should be the official owner
    BOOST_REQUIRE_EQUAL(N(alice), get_owner_for_identity(identity_val));
 
-} FC_LOG_AND_RETHROW() //trusted_owner
+   //block producer decertifies ownership
+   BOOST_REQUIRE_EQUAL(success(), certify("inita", identity_val, vector<fc::variant>{ mutable_variant_object()
+               ("property", "owner")
+               ("type", "account")
+               ("data", to_uint8_vector(N(alice)))
+               ("memo", "")
+               ("confidence", 0)
+               }));
+   //self-certification made by alice still exists
+   BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 0, "alice").is_object());
+   //but now she is not official owner
+   BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(identity_val));
+
+} FC_LOG_AND_RETHROW() //owner_certified_by_producer
+
+BOOST_FIXTURE_TEST_CASE( owner_certified_by_trusted_account, identity_tester ) try {
+   BOOST_REQUIRE_EQUAL(success(), create_identity("bob", identity_val));
+
+   //alice claims the identity created by bob
+   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>{ mutable_variant_object()
+               ("property", "owner")
+               ("type", "account")
+               ("data", to_uint8_vector(N(alice)))
+               ("memo", "claiming onwership")
+               ("confidence", 100)
+               }));
+   BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 0, "alice").is_object());
+   //alice claimed the identity, but it hasn't been certified yet - she is not the official owner
+   BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(identity_val));
+
+   //block producer trusts bob
+   BOOST_REQUIRE_EQUAL(success(), settrust("initb", "bob", 1));
+   BOOST_REQUIRE_EQUAL(true, get_trustrow("initb", "bob").is_object());
+
+   // bob (trusted account) certifies alice's ownership, it should result in trusted certification
+   BOOST_REQUIRE_EQUAL(success(), certify("bob", identity_val, vector<fc::variant>{ mutable_variant_object()
+               ("property", "owner")
+               ("type", "account")
+               ("data", to_uint8_vector(N(alice)))
+               ("memo", "")
+               ("confidence", 100)
+               }));
+   BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 1, "bob").is_object() );
+   //no untrusted row should exist
+   BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 0, "bob").is_null() );
+
+   //now alice should be the official owner
+   BOOST_REQUIRE_EQUAL(N(alice), get_owner_for_identity(identity_val));
+
+   //block producer stops trusting bob
+   BOOST_REQUIRE_EQUAL(success(), settrust("initb", "bob", 0));
+   BOOST_REQUIRE_EQUAL(true, get_trustrow("initb", "bob").is_null());
+
+   //certification made by bob is still flaged as trusted
+   BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 1, "bob").is_object() );
+
+   //but now alice shouldn't be the official owner
+   BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(identity_val));
+
+} FC_LOG_AND_RETHROW() //owner_certified_by_trusted_account
+
+BOOST_FIXTURE_TEST_CASE( owner_certification_becomes_trusted, identity_tester ) try {
+   BOOST_REQUIRE_EQUAL(success(), create_identity("bob", identity_val));
+
+   // bob (not trusted so far) certifies alice's ownership, it should result in untrusted certification
+   BOOST_REQUIRE_EQUAL(success(), certify("bob", identity_val, vector<fc::variant>{ mutable_variant_object()
+               ("property", "owner")
+               ("type", "account")
+               ("data", to_uint8_vector(N(alice)))
+               ("memo", "")
+               ("confidence", 100)
+               }));
+   BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 0, "bob").is_object() );
+   //no trusted row should exist
+   BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 1, "bob").is_null() );
+
+   //alice claims the identity created by bob
+   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>{ mutable_variant_object()
+               ("property", "owner")
+               ("type", "account")
+               ("data", to_uint8_vector(N(alice)))
+               ("memo", "claiming onwership")
+               ("confidence", 100)
+               }));
+   BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 0, "alice").is_object());
+   //alice claimed the identity, but it is certified by untrusted accounts only - she is not the official owner
+   BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(identity_val));
+
+   //block producer trusts bob
+   BOOST_REQUIRE_EQUAL(success(), settrust("initb", "bob", 1));
+   BOOST_REQUIRE_EQUAL(true, get_trustrow("initb", "bob").is_object());
+
+   //old certification made by bob still shouldn't be flaged as trusted
+   BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 0, "bob").is_object() );
+
+   //but effectively bob's certification should became trusted
+   BOOST_REQUIRE_EQUAL(N(alice), get_owner_for_identity(identity_val));
+
+ } FC_LOG_AND_RETHROW() //owner_certification_becomes_trusted
 
 BOOST_AUTO_TEST_SUITE_END()
 #endif

@@ -238,9 +238,11 @@ namespace identity {
                if (sizeof(account_name) == row.data.size()) {
                   account_name account = *reinterpret_cast<account_name*>(row.data.data());
                   if (ident == get_claimed_identity(account) && is_trusted(row.certifier)) {
-                     // the certifier became trusted, need to set the flag
-                     row.trusted = 1;
-                     certs.store( row, 0 ); //assuming 0 means bill to the same account
+                     if (DeployToAccount == current_receiver()) {
+                        // the certifier became trusted and we have permission to update the flag
+                        row.trusted = 1;
+                        certs.store( row, 0 ); //assuming 0 means bill to the same account
+                     }
                      return *reinterpret_cast<account_name*>(row.data.data());
                   }
                } else {
@@ -263,7 +265,7 @@ namespace identity {
             trustrow def;
             def.trusted = 0;
             trustrow row = trust_table::get_or_default( trusted, by, def );
-            return def.trusted;
+            return row.trusted;
          }
 
          static bool is_trusted( account_name acnt ) {
@@ -332,17 +334,21 @@ namespace identity {
                   if (value.property == N(owner)) {
                      assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
                      account_name acnt = *reinterpret_cast<const account_name*>(value.data.data());
-                     accounts_table::set( cert.identity, acnt );
+                     if (cert.certifier == acnt) { //only self-certitication affects accounts_table
+                        accounts_table::set( cert.identity, acnt );
+                     }
                   }
                } else {
-                  //remove both tursted and untrusted because we cannot now if it was trusted back at creation time
+                  //remove both tursted and untrusted because we cannot know if it was trusted back at creation time
                   certs.remove(value.property, 0, cert.certifier);
                   certs.remove(value.property, 1, cert.certifier);
                   //special handling for owner
                   if (value.property == N(owner)) {
                      assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
                      account_name acnt = *reinterpret_cast<const account_name*>(value.data.data());
-                     accounts_table::remove( acnt );
+                     if (cert.certifier == acnt) { //only self-certitication affects accounts_table
+                        accounts_table::remove( acnt );
+                     }
                   }
                }
             }
