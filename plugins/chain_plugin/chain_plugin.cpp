@@ -13,7 +13,6 @@
 
 
 #include <eosio/chain/contracts/chain_initializer.hpp>
-#include <eosio/chain/contracts/staked_balance_objects.hpp>
 #include <eosio/chain/contracts/genesis_state.hpp>
 #include <eosio/chain/contracts/eos_contract.hpp>
 
@@ -30,7 +29,6 @@ using namespace eosio::chain;
 using namespace eosio::chain::config;
 using fc::flat_map;
 
-#warning TODO: rate limiting
 //using txn_msg_rate_limits = chain_controller::txn_msg_rate_limits;
 
 
@@ -54,17 +52,6 @@ public:
    //txn_msg_rate_limits              rate_limits;
 };
 
-#ifdef NDEBUG
-const uint32_t chain_plugin::default_received_block_transaction_execution_time = 12;
-const uint32_t chain_plugin::default_transaction_execution_time = 3;
-const uint32_t chain_plugin::default_create_block_transaction_execution_time = 3;
-#else
-const uint32_t chain_plugin::default_received_block_transaction_execution_time = 72;
-const uint32_t chain_plugin::default_transaction_execution_time = 18;
-const uint32_t chain_plugin::default_create_block_transaction_execution_time = 18;
-#endif
-
-
 chain_plugin::chain_plugin()
 :my(new chain_plugin_impl()) {
 }
@@ -79,11 +66,11 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the block log (absolute path or relative to application data dir)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("rcvd-block-trans-execution-time", bpo::value<uint32_t>()->default_value(default_received_block_transaction_execution_time),
+         ("rcvd-block-trans-execution-time", bpo::value<uint32_t>()->default_value(chain_controller::default_received_block_transaction_execution_time_ms),
           "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute from a received block.")
-         ("trans-execution-time", bpo::value<uint32_t>()->default_value(default_transaction_execution_time),
+         ("trans-execution-time", bpo::value<uint32_t>()->default_value(chain_controller::default_transaction_execution_time_ms),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute.")
-         ("create-block-trans-execution-time", bpo::value<uint32_t>()->default_value(default_create_block_transaction_execution_time),
+         ("create-block-trans-execution-time", bpo::value<uint32_t>()->default_value(chain_controller::default_create_block_transaction_execution_time_ms),
           "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute while creating a block.")
 #warning TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
@@ -450,13 +437,6 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.account_name = params.account_name;
 
    const auto& d = db.get_database();
-   share_type  balance        = contracts::get_eosio_balance(d, params.account_name );
-   const auto& staked_balance = d.get<staked_balance_object,by_owner_name>( params.account_name );
-
-   result.eos_balance          = asset(balance, EOS_SYMBOL);
-   result.staked_balance       = asset(staked_balance.staked_balance);
-   result.unstaking_balance    = asset(staked_balance.unstaking_balance);
-   result.last_unstaking_time  = staked_balance.last_unstaking_time;
 
    const auto& permissions = d.get_index<permission_index,by_owner>();
    auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );

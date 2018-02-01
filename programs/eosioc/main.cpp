@@ -227,7 +227,8 @@ uint64_t generate_nonce_value() {
 }
 
 chain::action generate_nonce() {
-   return chain::action( {}, contracts::nonce{.value = generate_nonce_value()} ); 
+   auto v = generate_nonce_value();
+   return chain::action( {}, config::eosio_system_acount_name, "nonce", fc::raw::pack(v));
 }
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
@@ -300,18 +301,16 @@ void send_transaction( signed_transaction& trx, bool skip_sign, packed_transacti
    std::cout << fc::json::to_pretty_string(push_transaction(trx, skip_sign, compression)) << std::endl;
 }
 
-void create_account(name creator, name newaccount, public_key_type owner, public_key_type active, bool sign, uint64_t staked_deposit) {
+void create_account(name creator, name newaccount, public_key_type owner, public_key_type active, bool skip_sign) {
       auto owner_auth   = eosio::chain::authority{1, {{owner, 1}}, {}};
       auto active_auth  = eosio::chain::authority{1, {{active, 1}}, {}};
       auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
 
-      asset deposit(staked_deposit);
-
       vector<chain::action> actions;
       actions.emplace_back( vector<chain::permission_level>{{creator,"active"}},
-                                contracts::newaccount{creator, newaccount, owner_auth, active_auth, recovery_auth, deposit});
+                                contracts::newaccount{creator, newaccount, owner_auth, active_auth, recovery_auth});
 
-      send_actions(std::move(actions), !sign);
+      send_actions(std::move(actions), skip_sign);
 }
 
 chain::action create_updateauth(const name& account, const name& permission, const name& parent, const authority& auth, const name& permissionAuth) {
@@ -482,37 +481,15 @@ int main( int argc, char** argv ) {
    string ownerKey;
    string activeKey;
    bool skip_sign = false;
-   uint64_t staked_deposit=10000;
    auto createAccount = create->add_subcommand("account", localized("Create a new account on the blockchain"), false);
    createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
    createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
    createAccount->add_option("OwnerKey", ownerKey, localized("The owner public key for the account"))->required();
    createAccount->add_option("ActiveKey", activeKey, localized("The active public key for the account"))->required();
    createAccount->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
-   createAccount->add_option("--staked-deposit", staked_deposit, localized("the staked deposit transfered to the new account"));
    add_standard_transaction_options(createAccount);
    createAccount->set_callback([&] {
-                   create_account(creator, account_name, public_key_type(ownerKey), public_key_type(activeKey), !skip_sign, staked_deposit);
-   });
-
-   // create producer
-   vector<string> permissions;
-   auto createProducer = create->add_subcommand("producer", localized("Create a new producer on the blockchain"), false);
-   createProducer->add_option("name", account_name, localized("The name of the new producer"))->required();
-   createProducer->add_option("OwnerKey", ownerKey, localized("The public key for the producer"))->required();
-   createProducer->add_option("-p,--permission", permissions,
-                              localized("An account and permission level to authorize, as in 'account@permission' (default user@active)"));
-   createProducer->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
-   add_standard_transaction_options(createProducer);
-   createProducer->set_callback([&account_name, &ownerKey, &permissions, &skip_sign] {
-      if (permissions.empty()) {
-         permissions.push_back(account_name + "@active");
-      }
-      auto account_permissions = get_account_permissions(permissions);
-
-      vector<chain::action> actions;
-      actions.emplace_back(  account_permissions, contracts::setproducer{account_name, public_key_type(ownerKey), chain_config{}} );
-      send_actions(std::move(actions), skip_sign);
+                   create_account(creator, account_name, public_key_type(ownerKey), public_key_type(activeKey), skip_sign);
    });
 
    // Get subcommand
@@ -751,59 +728,6 @@ int main( int argc, char** argv ) {
       send_actions(std::move(actions), skip_sign, packed_transaction::zlib);
    });
 
-   // set producer approve/unapprove subcommand
-   string producer;
-   auto producerSubcommand = setSubcommand->add_subcommand("producer", localized("Approve/unapprove producer"));
-   producerSubcommand->require_subcommand();
-   auto approveCommand = producerSubcommand->add_subcommand("approve", localized("Approve producer"));
-   producerSubcommand->add_subcommand("unapprove", localized("Unapprove producer"));
-   producerSubcommand->add_option("user-name", account_name, localized("The name of the account approving"))->required();
-   producerSubcommand->add_option("producer-name", producer, localized("The name of the producer to approve"))->required();
-   producerSubcommand->add_option("-p,--permission", permissions,
-                              localized("An account and permission level to authorize, as in 'account@permission' (default user@active)"));
-   producerSubcommand->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
-   add_standard_transaction_options(producerSubcommand);
-   producerSubcommand->set_callback([&] {
-      // don't need to check unapproveCommand because one of approve or unapprove is required
-      bool approve = producerSubcommand->got_subcommand(approveCommand);
-      if (permissions.empty()) {
-         permissions.push_back(account_name + "@active");
-      }
-      auto account_permissions = get_account_permissions(permissions);
-
-      vector<chain::action> actions;
-      actions.emplace_back( account_permissions, contracts::okproducer{account_name, producer, approve});
-
-      push_actions(std::move(actions), skip_sign);
-      std::cout << localized("Set producer approval from ${name} for ${producer} to ${approve}",
-         ("name", account_name)("producer", producer)("value", approve ? "approve" : "unapprove")) << std::endl;
-   });
-
-   // set proxy subcommand
-   string proxy;
-   auto proxySubcommand = setSubcommand->add_subcommand("proxy", localized("Set proxy account for voting"));
-   proxySubcommand->add_option("user-name", account_name, localized("The name of the account to proxy from"))->required();
-   proxySubcommand->add_option("proxy-name", proxy, localized("The name of the account to proxy (unproxy if not provided)"));
-   proxySubcommand->add_option("-p,--permission", permissions,
-                                  localized("An account and permission level to authorize, as in 'account@permission' (default user@active)"));
-   proxySubcommand->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
-   add_standard_transaction_options(proxySubcommand);
-   proxySubcommand->set_callback([&] {
-      if (permissions.empty()) {
-         permissions.push_back(account_name + "@active");
-      }
-      auto account_permissions = get_account_permissions(permissions);
-      if (proxy.empty()) {
-         proxy = account_name;
-      }
-
-      vector<chain::action> actions;
-      actions.emplace_back( account_permissions, contracts::setproxy{account_name, proxy});
-
-      push_actions(std::move(actions), skip_sign);
-      std::cout << localized("Set proxy for ${name} to ${proxy}", ("name", account_name)("proxy", proxy)) << std::endl;
-   });
-
    // set account
    auto setAccount = setSubcommand->add_subcommand("account", localized("set or update blockchain account state"))->require_subcommand();
 
@@ -829,20 +753,25 @@ int main( int argc, char** argv ) {
    transfer->add_flag("-s,--skip-sign", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(transfer);
    transfer->set_callback([&] {
+      auto transfer = fc::mutable_variant_object
+            ("from", sender)
+            ("to", recipient)
+            ("quantity", asset(amount))
+            ("memo", memo);
+      auto args = fc::mutable_variant_object
+            ("code", name(config::eosio_system_acount_name))
+            ("action", "transfer")
+            ("args", transfer);
+
+      auto result = call(json_to_bin_func, args);
+
       std::vector<chain::action> actions;
+      actions.emplace_back(vector<chain::permission_level>{{sender,"active"}},
+                               config::eosio_system_acount_name, "transfer", result.get_object()["binargs"].as<bytes>());
 
       if (tx_force_unique) {
-         if (memo.size() == 0) {
-            // use the memo to add a nonce
-            memo = fc::to_string(generate_nonce_value());
-         } else {
-            // add a nonce actions
-            actions.emplace_back( generate_nonce() );
-         }
+         actions.emplace_back( generate_nonce() );
       }
-
-      actions.emplace_back( vector<chain::permission_level>{{sender,"active"}},
-                            contracts::transfer{ .from = sender, .to = recipient, .amount = amount, .memo = memo});
 
       send_actions(std::move(actions), skip_sign);
    });
@@ -972,150 +901,6 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
-   // Benchmark subcommand
-   auto benchmark = app.add_subcommand( "benchmark", localized("Configure and execute benchmarks"), false );
-   benchmark->require_subcommand();
-   auto benchmark_setup = benchmark->add_subcommand( "setup", localized("Configures initial condition for benchmark") );
-   uint64_t number_of_accounts = 2;
-   benchmark_setup->add_option("accounts", number_of_accounts, localized("the number of accounts in transfer among"))->required();
-   string c_account;
-   benchmark_setup->add_option("creator", c_account, localized("The creator account for benchmark accounts"))->required();
-   string owner_key;
-   string active_key;
-   benchmark_setup->add_option("owner", owner_key, localized("The owner key to use for account creation"))->required();
-   benchmark_setup->add_option("active", active_key, localized("The active key to use for account creation"))->required();
-   add_standard_transaction_options(benchmark_setup);
-
-   benchmark_setup->set_callback([&]{
-      auto controlling_account_arg = fc::mutable_variant_object( "controlling_account", c_account);
-      auto response_servants = call(get_controlled_accounts_func, controlling_account_arg);
-      fc::variant_object response_var;
-      fc::from_variant(response_servants, response_var);
-      std::vector<std::string> controlled_accounts_vec;
-      fc::from_variant(response_var["controlled_accounts"], controlled_accounts_vec);
-       long num_existing_accounts = std::count_if(controlled_accounts_vec.begin(),
-                   		            controlled_accounts_vec.end(),
-					[](auto const &s) { return s.find("benchmark") != std::string::npos;});
-      boost::format fmter("%1% accounts already exist");
-      fmter % num_existing_accounts;
-      EOSC_ASSERT( number_of_accounts > num_existing_accounts, fmter.str().c_str());
-
-      number_of_accounts -= num_existing_accounts;
-      std::cerr << localized("Creating ${number_of_accounts} accounts with initial balances", ("number_of_accounts",number_of_accounts)) << std::endl;
-
-      if (num_existing_accounts == 0) {
-      	EOSC_ASSERT( number_of_accounts >= 2, "must create at least 2 accounts" );
-      }   
-
-      auto info = get_info();
-
-      vector<signed_transaction> batch;
-      batch.reserve( number_of_accounts );
-      for( uint32_t i = num_existing_accounts; i < num_existing_accounts + number_of_accounts; ++i ) {
-        name newaccount( name("benchmark").value + i );
-        public_key_type owner(owner_key), active(active_key);
-        name creator(c_account);
-
-        auto owner_auth   = eosio::chain::authority{1, {{owner, 1}}, {}};
-        auto active_auth  = eosio::chain::authority{1, {{active, 1}}, {}};
-        auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
-        
-        asset deposit(1);
-        
-        signed_transaction trx;
-        trx.actions.emplace_back( vector<chain::permission_level>{{creator,"active"}},
-                                  contracts::newaccount{creator, newaccount, owner_auth, active_auth, recovery_auth, deposit});
-
-        trx.expiration = info.head_block_time + tx_expiration; 
-        trx.set_reference_block(info.head_block_id);
-        batch.emplace_back(trx);
-	info = get_info();
-      }
-      auto result = call( push_txns_func, batch );
-      std::cout << fc::json::to_pretty_string(result) << std::endl;
-   });
-
-   auto benchmark_transfer = benchmark->add_subcommand( "transfer", localized("executes random transfers among accounts") );
-   uint64_t number_of_transfers = 0;
-   bool loop = false;
-   benchmark_transfer->add_option("accounts", number_of_accounts, localized("the number of accounts in transfer among"))->required();
-   benchmark_transfer->add_option("count", number_of_transfers, localized("the number of transfers to execute"))->required();
-   benchmark_transfer->add_option("loop", loop, localized("whether or not to loop for ever"));
-   add_standard_transaction_options(benchmark_transfer);
-   benchmark_transfer->set_callback([&]{
-      EOSC_ASSERT( number_of_accounts >= 2, "must create at least 2 accounts" );
-
-      std::cerr << localized("Funding ${number_of_accounts} accounts from init", ("number_of_accounts",number_of_accounts)) << std::endl;
-      auto info = get_info();
-      vector<signed_transaction> batch;
-      batch.reserve(100);
-      for( uint32_t i = 0; i < number_of_accounts; ++i ) {
-         name sender( "initb" );
-         name recipient( name("benchmark").value + i);
-         uint32_t amount = 100000;
-
-         signed_transaction trx;
-         trx.actions.emplace_back( vector<chain::permission_level>{{sender,"active"}},
-                                   contracts::transfer{ .from = sender, .to = recipient, .amount = amount, .memo = memo});
-         trx.expiration = info.head_block_time + tx_expiration; 
-         trx.set_reference_block(info.head_block_id);
-
-         batch.emplace_back(trx);
-         if( batch.size() == 100 ) {
-            auto result = call( push_txns_func, batch );
-      //      std::cout << fc::json::to_pretty_string(result) << std::endl;
-            batch.resize(0);
-         }
-      }
-      if( batch.size() ) {
-         auto result = call( push_txns_func, batch );
-         //std::cout << fc::json::to_pretty_string(result) << std::endl;
-         batch.resize(0);
-      }
-
-
-      std::cerr << localized("Generating random ${number_of_transfers} transfers among ${number_of_accounts}",("number_of_transfers",number_of_transfers)("number_of_accounts",number_of_accounts)) << std::endl;
-      while( true ) {
-         auto info = get_info();
-         uint64_t amount = 1;
-
-         for( uint32_t i = 0; i < number_of_transfers; ++i ) {
-            signed_transaction trx;
-
-            name sender( name("benchmark").value + rand() % number_of_accounts );
-            name recipient( name("benchmark").value + rand() % number_of_accounts );
-
-            while( recipient == sender )
-               recipient = name( name("benchmark").value + rand() % number_of_accounts );
-
-
-            auto memo = fc::variant(fc::time_point::now()).as_string() + " " + fc::variant(fc::time_point::now().time_since_epoch()).as_string();
-            trx.actions.emplace_back(  vector<chain::permission_level>{{sender,"active"}},
-                                       contracts::transfer{ .from = sender, .to = recipient, .amount = amount, .memo = memo});
-            trx.expiration = info.head_block_time + tx_expiration; 
-            trx.set_reference_block( info.head_block_id);
-
-            batch.emplace_back(trx);
-            if( batch.size() == 40 ) {
-               auto result = call( push_txns_func, batch );
-               //std::cout << fc::json::to_pretty_string(result) << std::endl;
-               batch.resize(0);
-	            info = get_info();
-            }
-         }
-
-	 if (batch.size() > 0) {
-	       auto result = call( push_txns_func, batch );
-               std::cout << fc::json::to_pretty_string(result) << std::endl;
-               batch.resize(0);
-               info = get_info();
-	 }
-         if( !loop ) break;
-      }
-   });
-
-   
-
    // Push subcommand
    auto push = app.add_subcommand("push", localized("Push arbitrary transactions to the blockchain"), false);
    push->require_subcommand();
@@ -1124,6 +909,7 @@ int main( int argc, char** argv ) {
    string contract;
    string action;
    string data;
+   vector<string> permissions;
    auto actionsSubcommand = push->add_subcommand("action", localized("Push a transaction with a single action"));
    actionsSubcommand->fallthrough(false);
    actionsSubcommand->add_option("contract", contract,

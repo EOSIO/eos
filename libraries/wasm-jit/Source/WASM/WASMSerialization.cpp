@@ -238,13 +238,18 @@ public:
    {
    }
 
+   void adjustIfFunctionIndex(Uptr& index, ObjectKind kind)
+   {
+      if (kind == ObjectKind::function)
+         ++index;
+   }
+
    void adjustExportIndex(Module& module)
    {
       // all function exports need to have their index increased to account for inserted definition
       for (auto& exportDef : module.exports)
       {
-         if (exportDef.kind == ObjectKind::function)
-            ++exportDef.index;
+         adjustIfFunctionIndex(exportDef.index, exportDef.kind);
       }
    }
 
@@ -271,6 +276,7 @@ struct NoOpInjection
    void addImport(Module& ) {}
    template<typename Imm>
    void conditionallyAddCall(Opcode , const Imm& , const Module& , Serialization::OutputStream& ) {}
+   void adjustIfFunctionIndex(Uptr& , ObjectKind ) {}
    void adjustExportIndex(Module& ) {}
    template<typename Imm>
    void adjustCallIndex(const Module& , Imm& ) {}
@@ -859,6 +865,7 @@ namespace WASM
          {
             serializeVarUInt32(sectionStream,module.startFunctionIndex);
          });
+         injection.adjustIfFunctionIndex(module.startFunctionIndex, ObjectKind::function);
       }
 
       template<typename Stream>

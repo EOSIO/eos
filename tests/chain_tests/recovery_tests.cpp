@@ -1,8 +1,6 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 
-#include <eosio/chain/contracts/staked_balance_objects.hpp>
-
 
 using namespace eosio;
 using namespace eosio::chain;
@@ -40,10 +38,10 @@ auto make_vetorecovery(const tester &t, account_name account, permission_name ve
 auto push_nonce(tester &t, const string& role) {
    // ensure the old owner key is valid
    signed_transaction trx;
+   auto v = t.control->head_block_num();
    trx.actions.emplace_back( vector<permission_level>{{N(alice),config::owner_name}},
-                             nonce{
-                                .value = t.control->head_block_num()
-                             } );
+                             config::eosio_system_acount_name, N(nonce),
+                             fc::raw::pack(v) );
    t.set_tapos(trx);
    trx.sign(t.get_private_key(N(alice), role), chain_id_type());
    t.push_transaction(trx);

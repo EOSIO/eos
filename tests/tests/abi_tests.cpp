@@ -1573,244 +1573,6 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_AUTO_TEST_CASE(transfer)
-{ try {
-
-   abi_serializer abis(chain_initializer::eos_contract_abi());
-
-   const char* test_data = R"=====(
-   {
-     "from" : "from.acct",
-     "to" : "to.acct",
-     "amount" : 18446744073709551515,
-     "memo" : "really important transfer"
-   }
-   )=====";
-
-   auto var = fc::json::from_string(test_data);
-
-   auto transfer = var.as<contracts::transfer>();
-   BOOST_TEST("from.acct" == transfer.from);
-   BOOST_TEST("to.acct" == transfer.to);
-   BOOST_TEST(18446744073709551515u == transfer.amount);
-   BOOST_TEST("really important transfer" == transfer.memo);
-
-   auto var2 = verify_round_trip_conversion( abis, "transfer", var );
-   auto transfer2 = var2.as<contracts::transfer>();
-   BOOST_TEST(transfer.from == transfer2.from);
-   BOOST_TEST(transfer.to == transfer2.to);
-   BOOST_TEST(transfer.amount == transfer2.amount);
-   BOOST_TEST(transfer.memo == transfer2.memo);
-
-} FC_LOG_AND_RETHROW() }
-
-BOOST_AUTO_TEST_CASE(lock)
-{ try {
-
-   abi_serializer abis(chain_initializer::eos_contract_abi());
-
-   BOOST_CHECK(true);   
-   const char* test_data = R"=====(
-   {
-     "from" : "from.acct",
-     "to" : "to.acct",
-     "amount" : -9223372036854775807,
-   }
-   )=====";
-
-   auto var = fc::json::from_string(test_data);
-
-   auto lock = var.as<contracts::lock>();
-   BOOST_TEST("from.acct" == lock.from);
-   BOOST_TEST("to.acct" == lock.to);
-   BOOST_TEST(-9223372036854775807 == lock.amount);
-
-   auto var2 = verify_round_trip_conversion( abis, "lock", var );
-   auto lock2 = var2.as<contracts::lock>();
-   BOOST_TEST(lock.from == lock2.from);
-   BOOST_TEST(lock.to == lock2.to);
-   BOOST_TEST(lock.amount == lock2.amount);
-
-} FC_LOG_AND_RETHROW() }
-
-BOOST_AUTO_TEST_CASE(unlock)
-{ try {
-
-   abi_serializer abis(chain_initializer::eos_contract_abi());
-
-   BOOST_CHECK(true);
-   const char* test_data = R"=====(
-   {
-     "account" : "an.acct",
-     "amount" : -9223372036854775807,
-   }
-   )=====";
-
-   auto var = fc::json::from_string(test_data);
-
-   auto unlock = var.as<contracts::unlock>();
-   BOOST_TEST("an.acct" == unlock.account);
-   BOOST_TEST(-9223372036854775807 == unlock.amount);
-
-   auto var2 = verify_round_trip_conversion( abis, "unlock", var );
-   auto unlock2 = var2.as<contracts::unlock>();
-   BOOST_TEST(unlock.account == unlock2.account);
-   BOOST_TEST(unlock.amount == unlock2.amount);
-
-} FC_LOG_AND_RETHROW() }
-
-BOOST_AUTO_TEST_CASE(claim)
-{ try {
-
-   abi_serializer abis(chain_initializer::eos_contract_abi());
-
-   BOOST_CHECK(true);
-   const char* test_data = R"=====(
-   {
-     "account" : "an.acct",
-     "amount" : -9223372036854775807,
-   }
-   )=====";
-
-   auto var = fc::json::from_string(test_data);
-
-   auto claim = var.as<contracts::claim>();
-   BOOST_TEST("an.acct" == claim.account);
-   BOOST_TEST(-9223372036854775807 == claim.amount);
-
-   auto var2 = verify_round_trip_conversion( abis, "claim", var );
-   auto claim2 = var2.as<contracts::claim>();
-   BOOST_TEST(claim.account == claim2.account);
-   BOOST_TEST(claim.amount == claim2.amount);
-
-} FC_LOG_AND_RETHROW() }
-
-BOOST_AUTO_TEST_CASE(okproducer)
-{ try {
-
-   abi_serializer abis(chain_initializer::eos_contract_abi());
-
-   BOOST_CHECK(true);
-   const char* test_data = R"=====(
-   {
-     "voter" : "an.acct",
-     "producer" : "an.acct2",
-     "approve" : -128,
-   }
-   )=====";
-
-   auto var = fc::json::from_string(test_data);
-
-   auto okproducer = var.as<contracts::okproducer>();
-   BOOST_TEST("an.acct" == okproducer.voter);
-   BOOST_TEST("an.acct2" == okproducer.producer);
-   BOOST_TEST(-128 == okproducer.approve);
-
-   auto var2 = verify_round_trip_conversion( abis, "okproducer", var );
-   auto okproducer2 = var2.as<contracts::okproducer>();
-   BOOST_TEST(okproducer.voter == okproducer2.voter);
-   BOOST_TEST(okproducer.producer == okproducer2.producer);
-   BOOST_TEST(okproducer.approve == okproducer2.approve);
-
-} FC_LOG_AND_RETHROW() }
-
-BOOST_AUTO_TEST_CASE(setproducer)
-{ try {
-
-   abi_serializer abis(chain_initializer::eos_contract_abi());
-   const char* test_data = R"=====(
-   {
-     "name" : "acct.name",
-     "key" : "EOS5PnYq6BZn7H9GvL68cCLjWUZThRemTJoJmybCn1iEpVUXLb5Az",
-     "configuration" : {
-        "producer_pay": "-9223372036854775717",
-        "target_block_size": "2147483145",
-        "max_block_size": "2147483135",
-        "target_block_acts_per_scope": "2147473155",
-        "max_block_acts_per_scope": "2147483165",
-        "target_block_acts": "4194967295",
-        "max_block_acts": "4294957295",
-        "real_threads": "9223372036854772717",
-        "max_storage_size": "9223372036854775805",
-        "max_transaction_lifetime": "2147483125",
-        "max_authority_depth": "63777",
-        "max_transaction_exec_time": "2146483015",
-        "max_inline_depth": "64267",
-        "max_inline_action_size": "4294867295",
-        "max_generated_transaction_size": "4292967295"
-     }
-   }
-   )=====";
-
-   auto var = fc::json::from_string(test_data);
-
-   auto setproducer = var.as<contracts::setproducer>();
-   BOOST_TEST("acct.name" == setproducer.name);
-   BOOST_TEST("EOS5PnYq6BZn7H9GvL68cCLjWUZThRemTJoJmybCn1iEpVUXLb5Az" == (string)setproducer.key);
-   BOOST_TEST(-9223372036854775717 == setproducer.configuration.producer_pay);
-   BOOST_TEST(2147483145u == setproducer.configuration.target_block_size);
-   BOOST_TEST(2147483135u == setproducer.configuration.max_block_size);
-   BOOST_TEST(2147473155u == setproducer.configuration.target_block_acts_per_scope);
-   BOOST_TEST(2147483165u == setproducer.configuration.max_block_acts_per_scope);
-   BOOST_TEST(4194967295u == setproducer.configuration.target_block_acts);
-   BOOST_TEST(4294957295u == setproducer.configuration.max_block_acts);
-   BOOST_TEST(9223372036854772717u == setproducer.configuration.real_threads);
-   BOOST_TEST(9223372036854775805u == setproducer.configuration.max_storage_size);
-   BOOST_TEST(2147483125u == setproducer.configuration.max_transaction_lifetime);
-   BOOST_TEST(63777u == setproducer.configuration.max_authority_depth);
-   BOOST_TEST(2146483015u == setproducer.configuration.max_transaction_exec_time);
-   BOOST_TEST(64267u == setproducer.configuration.max_inline_depth);
-   BOOST_TEST(4294867295u == setproducer.configuration.max_inline_action_size);
-   BOOST_TEST(4292967295u == setproducer.configuration.max_generated_transaction_size);
-
-   auto var2 = verify_round_trip_conversion( abis, "setproducer", var );
-   auto setproducer2 = var2.as<contracts::setproducer>();
-   BOOST_TEST(setproducer.name == setproducer2.name);
-   BOOST_TEST((string)setproducer.key == (string)setproducer2.key);
-   BOOST_TEST(setproducer.configuration.producer_pay == setproducer2.configuration.producer_pay);
-   BOOST_TEST(setproducer.configuration.target_block_size == setproducer2.configuration.target_block_size);
-   BOOST_TEST(setproducer.configuration.max_block_size == setproducer2.configuration.max_block_size);
-   BOOST_TEST(setproducer.configuration.target_block_acts_per_scope == setproducer2.configuration.target_block_acts_per_scope);
-   BOOST_TEST(setproducer.configuration.max_block_acts_per_scope == setproducer2.configuration.max_block_acts_per_scope);
-   BOOST_TEST(setproducer.configuration.target_block_acts == setproducer2.configuration.target_block_acts);
-   BOOST_TEST(setproducer.configuration.max_block_acts == setproducer2.configuration.max_block_acts);
-   BOOST_TEST(setproducer.configuration.real_threads == setproducer2.configuration.real_threads);
-   BOOST_TEST(setproducer.configuration.max_storage_size == setproducer2.configuration.max_storage_size);
-   BOOST_TEST(setproducer.configuration.max_transaction_lifetime == setproducer2.configuration.max_transaction_lifetime);
-   BOOST_TEST(setproducer.configuration.max_authority_depth == setproducer2.configuration.max_authority_depth);
-   BOOST_TEST(setproducer.configuration.max_transaction_exec_time == setproducer2.configuration.max_transaction_exec_time);
-   BOOST_TEST(setproducer.configuration.max_inline_depth == setproducer2.configuration.max_inline_depth);
-   BOOST_TEST(setproducer.configuration.max_inline_action_size == setproducer2.configuration.max_inline_action_size);
-   BOOST_TEST(setproducer.configuration.max_generated_transaction_size == setproducer2.configuration.max_generated_transaction_size);
-
-} FC_LOG_AND_RETHROW() }
-
-BOOST_AUTO_TEST_CASE(setproxy)
-{ try {
-
-   abi_serializer abis(chain_initializer::eos_contract_abi());
-
-   BOOST_CHECK(true);
-   const char* test_data = R"=====(
-   {
-     "stakeholder" : "stake.hldr",
-     "proxy" : "stkhdr.prxy"
-   }
-   )=====";
-
-   auto var = fc::json::from_string(test_data);
-
-   auto setproxy = var.as<contracts::setproxy>();
-   BOOST_TEST("stake.hldr" == setproxy.stakeholder);
-   BOOST_TEST("stkhdr.prxy" == setproxy.proxy);
-
-   auto var2 = verify_round_trip_conversion( abis, "setproxy", var );
-   auto setproxy2 = var2.as<contracts::setproxy>();
-   BOOST_TEST(setproxy.stakeholder == setproxy2.stakeholder);
-   BOOST_TEST(setproxy.proxy == setproxy2.proxy);
-
-} FC_LOG_AND_RETHROW() }
-
 BOOST_AUTO_TEST_CASE(linkauth)
 { try {
 
@@ -1995,8 +1757,7 @@ BOOST_AUTO_TEST_CASE(newaccount)
                    {"key" : "EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf", "weight" : 57605} ],
         "accounts" : [ {"permission" : {"actor" : "prm.acct1", "permission" : "prm.prm1"}, "weight" : 53005 },
                        {"permission" : {"actor" : "prm.acct2", "permission" : "prm.prm2"}, "weight" : 53405 }]
-     },
-     "deposit" : "-90000000.0000 EOS"
+     }
    }
    )=====";
 
@@ -2054,9 +1815,6 @@ BOOST_AUTO_TEST_CASE(newaccount)
    BOOST_TEST("prm.prm2" == newaccount.recovery.accounts[1].permission.permission);
    BOOST_TEST(53405u == newaccount.recovery.accounts[1].weight);
 
-   BOOST_TEST(-900000000000 == newaccount.deposit.amount);
-   BOOST_TEST(symbol(EOS_SYMBOL) == newaccount.deposit.symbol());
-
    auto var2 = verify_round_trip_conversion( abis, "newaccount", var );
    auto newaccount2 = var2.as<contracts::newaccount>();
    BOOST_TEST(newaccount.creator == newaccount2.creator);
@@ -2109,9 +1867,6 @@ BOOST_AUTO_TEST_CASE(newaccount)
    BOOST_TEST(newaccount.recovery.accounts[1].permission.actor == newaccount2.recovery.accounts[1].permission.actor);
    BOOST_TEST(newaccount.recovery.accounts[1].permission.permission == newaccount2.recovery.accounts[1].permission.permission);
    BOOST_TEST(newaccount.recovery.accounts[1].weight == newaccount2.recovery.accounts[1].weight);
-
-   BOOST_TEST(newaccount.deposit.amount == newaccount2.deposit.amount);
-   BOOST_TEST(newaccount.deposit.symbol() == newaccount2.deposit.symbol());
 
 } FC_LOG_AND_RETHROW() }
 
@@ -2403,29 +2158,6 @@ BOOST_AUTO_TEST_CASE(vetorecovery)
    BOOST_TEST(vetorecovery.account == vetorecovery2.account);
 
 } FC_LOG_AND_RETHROW() }
-
-BOOST_AUTO_TEST_CASE(nonce)
-{ try {
-
-   abi_serializer abis(chain_initializer::eos_contract_abi());
-
-   const char* test_data = R"=====(
-   {
-     "value" : "nonce.value"
-   }
-   )=====";
-
-   auto var = fc::json::from_string(test_data);
-
-   auto nonce = var.as<contracts::nonce>();
-   BOOST_TEST("nonce.value" == nonce.value);
-
-   auto var2 = verify_round_trip_conversion( abis, "nonce", var );
-   auto nonce2 = var2.as<contracts::nonce>();
-   BOOST_TEST(nonce.value == nonce2.value);
-
-} FC_LOG_AND_RETHROW() }
-
 
 BOOST_AUTO_TEST_CASE(abi_type_repeat)
 { try {
