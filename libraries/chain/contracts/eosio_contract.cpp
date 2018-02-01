@@ -238,12 +238,11 @@ void apply_eosio_setcode(apply_context& context) {
       // Added resize(0) here to avoid bug in boost vector container
       a.code.resize( 0 );
       a.code.resize( act.code.size() );
+      a.last_code_update = context.controller.head_block_time();
       memcpy( a.code.data(), act.code.data(), act.code.size() );
 
    });
 
-   // make sure the code gets a chance to initialize itself
-   context.require_recipient(act.account);
 }
 
 void apply_eosio_setabi(apply_context& context) {

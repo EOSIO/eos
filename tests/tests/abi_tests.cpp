@@ -67,12 +67,6 @@ const char* my_abi = R"=====(
       },{
          "name": "asset_arr",
          "type": "asset[]"
-      },{
-         "name": "price",
-         "type": "price"
-      },{
-         "name": "price_arr",
-         "type": "price[]"
       }]
     },{
       "name": "NativeTypes",
@@ -488,7 +482,6 @@ BOOST_AUTO_TEST_CASE(generator)
       nonce                   field40;
       public_key              field41;
       asset                   field42;
-      price                   field43;
    };
    )=====";
 
@@ -624,9 +617,6 @@ BOOST_AUTO_TEST_CASE(generator)
           },{
              "name": "field42",
              "type": "asset"
-          },{
-             "name": "field43",
-             "type": "price"
           }]
            }],
            "actions": [{
@@ -1308,8 +1298,6 @@ BOOST_AUTO_TEST_CASE(general)
       "publickey_arr" :  ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"],
       "asset"         : "100.00 EOS",
       "asset_arr"     : ["100.00 EOS","100.00 EOS"],
-      "price"         : { "base" : "100.00 EOS", "quote" : "200.00 BTC" },
-      "price_arr"     : [{ "base" : "100.00 EOS", "quote" : "200.00 BTC" },{ "base" : "100.00 EOS", "quote" : "200.00 BTC" }],
 
       "string"            : "ola ke ase",
       "string_arr"        : ["ola ke ase","ola ke desi"],
@@ -2067,7 +2055,7 @@ BOOST_AUTO_TEST_CASE(newaccount)
    BOOST_TEST(53405u == newaccount.recovery.accounts[1].weight);
 
    BOOST_TEST(-900000000000 == newaccount.deposit.amount);
-   BOOST_TEST(EOS_SYMBOL == newaccount.deposit.symbol);
+   BOOST_TEST(symbol(EOS_SYMBOL) == newaccount.deposit.symbol());
 
    auto var2 = verify_round_trip_conversion( abis, "newaccount", var );
    auto newaccount2 = var2.as<contracts::newaccount>();
@@ -2123,7 +2111,7 @@ BOOST_AUTO_TEST_CASE(newaccount)
    BOOST_TEST(newaccount.recovery.accounts[1].weight == newaccount2.recovery.accounts[1].weight);
 
    BOOST_TEST(newaccount.deposit.amount == newaccount2.deposit.amount);
-   BOOST_TEST(newaccount.deposit.symbol == newaccount2.deposit.symbol);
+   BOOST_TEST(newaccount.deposit.symbol() == newaccount2.deposit.symbol());
 
 } FC_LOG_AND_RETHROW() }
 

@@ -484,11 +484,20 @@ BOOST_FIXTURE_TEST_CASE( check_global_reset, tester ) try {
    produce_blocks(1);
 
    signed_transaction trx;
+   {
    action act;
    act.account = N(globalreset);
-   act.name = N();
+   act.name = 0ULL;
    act.authorization = vector<permission_level>{{N(globalreset),config::active_name}};
    trx.actions.push_back(act);
+   }
+   {
+   action act;
+   act.account = N(globalreset);
+   act.name = 1ULL;
+   act.authorization = vector<permission_level>{{N(globalreset),config::active_name}};
+   trx.actions.push_back(act);
+   }
 
    set_tapos(trx);
    trx.sign(get_private_key( N(globalreset), "active" ), chain_id_type());
@@ -507,10 +516,35 @@ BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
    transfer( N(inita), N(current_memory), "10.0000 EOS", "memo" );
    produce_block();
 
-   BOOST_CHECK_THROW(set_code(N(current_memory), current_memory_wast), fc::unhandled_exception);
+   set_code(N(current_memory), current_memory_wast);
    produce_blocks(1);
+   {
+      signed_transaction trx;
+      action act;
+      act.account = N(current_memory);
+      act.authorization = vector<permission_level>{{N(current_memory),config::active_name}};
+      trx.actions.push_back(act);
+      set_tapos(trx);
+      trx.sign(get_private_key( N(current_memory), "active" ), chain_id_type());
 
-   BOOST_CHECK_THROW(set_code(N(current_memory), grow_memory_wast), fc::unhandled_exception);
+      BOOST_CHECK_THROW(control->push_transaction(trx), fc::unhandled_exception);
+   }
+
+   produce_blocks(1);
+   set_code(N(current_memory), grow_memory_wast);
+   produce_blocks(1);
+   {
+      signed_transaction trx;
+      action act;
+      act.account = N(current_memory);
+      act.authorization = vector<permission_level>{{N(current_memory),config::active_name}};
+      trx.actions.push_back(act);
+      set_tapos(trx);
+      trx.sign(get_private_key( N(current_memory), "active" ), chain_id_type());
+
+      BOOST_CHECK_THROW(control->push_transaction(trx), fc::unhandled_exception);
+      produce_blocks(1);
+   }
 
 } FC_LOG_AND_RETHROW()
 
