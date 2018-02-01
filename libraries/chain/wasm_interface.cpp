@@ -219,7 +219,7 @@ namespace eosio { namespace chain {
                try {
                   Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
                   #warning TODO: restore checktime injection?
-                  WASM::serialize(stream, *module);
+                  WASM::serializeWithInjection(stream, *module);
 
                   root_resolver resolver;
                   LinkResult link_result = linkModule(*module, resolver);
@@ -368,6 +368,7 @@ namespace eosio { namespace chain {
       FC_ASSERT( getFunctionType(call)->parameters.size() == args.size() );
 
       auto context_guard = scoped_context(current_context, code, context);
+      context.checktime_start();
       runInstanceStartFunc(code.instance);
       Runtime::invokeFunction(call,args);
    } catch( const Runtime::Exception& e ) {
@@ -506,6 +507,15 @@ class privileged_api : public context_aware_api {
       }
 
       /// TODO: add inline/deferred with support for arbitrary permissions rather than code/current auth
+};
+
+class checktime_api : public context_aware_api {
+public:
+   using context_aware_api::context_aware_api;
+
+   void checktime() {
+      context.checktime();
+   }
 };
 
 class producer_api : public context_aware_api {
@@ -842,6 +852,11 @@ REGISTER_INTRINSICS(privileged_api,
    (freeze_account,            void(int64_t, int))
    (is_frozen,                 int(int64_t))
 );
+
+REGISTER_INTRINSICS(checktime_api,
+   (checktime,      void())
+);
+
 REGISTER_INTRINSICS(producer_api,
    (get_active_producers,      int(int, int))
 );

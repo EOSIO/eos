@@ -50,7 +50,7 @@ namespace eosio { namespace chain {
       skip_output_check           = 1 << 13, ///< used to skip checks for outputs in block exactly matching those created from apply
       pushed_transaction          = 1 << 14, ///< used to indicate that the origination of the call was from a push_transaction, to determine time allotment
       created_block               = 1 << 15, ///< used to indicate that the origination of the call was for creating a block, to determine time allotment
-      received_block              = 1 << 16,  ///< used to indicate that the origination of the call was for a received block, to determine time allotment
+      received_block              = 1 << 16, ///< used to indicate that the origination of the call was for a received block, to determine time allotment
       genesis_setup               = 1 << 17, ///< used to indicate that the origination of the call was for a genesis transaction
       skip_missed_block_penalty   = 1 << 18, ///< used to indicate that missed blocks shouldn't count against producers (used in long unit tests)
    };
@@ -294,9 +294,16 @@ namespace eosio { namespace chain {
                                    )const;
 
 
+         void set_txn_execution_times(uint32_t create_block_txn_execution_time, uint32_t rcvd_block_txn_execution_time, uint32_t txn_execution_time);
+
+         static const uint32_t default_received_block_transaction_execution_time_ms;
+         static const uint32_t default_transaction_execution_time_ms;
+         static const uint32_t default_create_block_transaction_execution_time_ms;
 
       private:
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
+
+         uint32_t txn_execution_time() const;
 
 
          friend class contracts::chain_initializer;
@@ -434,6 +441,10 @@ namespace eosio { namespace chain {
          map< account_name, map<handler_key, apply_handler> >   _apply_handlers;
 
          wasm_cache                       _wasm_cache;
+
+         uint32_t                         _create_block_txn_execution_time;
+         uint32_t                         _rcvd_block_txn_execution_time;
+         uint32_t                         _txn_execution_time;
    };
 
 } }
