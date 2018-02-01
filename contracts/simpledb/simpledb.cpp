@@ -19,7 +19,7 @@ extern "C" {
          if( action == N(insertkv1) ) {
             // eosc push message simpledb insertkv1 '{"key":"a", "value":"aa"}' -S simpledb
             // eosc get table simpledb simpledb keyvalue1
-            auto kv1 = eosio::current_message<key_value1>();
+            const auto &kv1 = eosio::current_message<key_value1>();
             eosio::print("Inserting key_value1\n");
             eosio::dump(kv1);
             bytes b = eosio::raw::pack(kv1.value);
@@ -27,7 +27,7 @@ extern "C" {
          } else if( action == N(insertkv2) ) {
             // eosc push message simpledb insertkv2 '{"key":"a", "value":{"name":"aaa", "age":10}}' -S simpledb
             // eosc get table simpledb simpledb keyvalue2
-            auto kv2 = eosio::current_message<key_value2>();
+            const auto &kv2 = eosio::current_message<key_value2>();
             eosio::print("Inserting key_value2\n");
             eosio::dump(kv2);
             bytes b = eosio::raw::pack(kv2.value);
@@ -35,7 +35,7 @@ extern "C" {
          } else if( action == N(insert1) ) {
             // eosc push message simpledb insert1 '{"key":75}' -S simpledb
             // eosc get table simpledb simpledb record1
-            auto tmp = eosio::current_message<record1>();
+            const auto &tmp = eosio::current_message<record1>();
             eosio::print("Inserting record1\n");
             eosio::dump(tmp);
             auto bytes = eosio::raw::pack(tmp);
@@ -43,7 +43,7 @@ extern "C" {
          } else if(action == N(insert2)) {
             // eosc push message simpledb insert2 '{"key1":"75", "key2":"77"}' -S simpledb
             // eosc get table simpledb simpledb record2
-            auto tmp = eosio::current_message<record2>();
+            const auto &tmp = eosio::current_message<record2>();
             eosio::print("Inserting record2\n");
             eosio::dump(tmp);
             auto bytes = eosio::raw::pack(tmp);
@@ -51,7 +51,7 @@ extern "C" {
          } else if(action == N(insert3)) {
             // eosc push message simpledb insert3 '{"key1":75, "key2":77, "key3":79}' -S simpledb
             // eosc get table simpledb simpledb record3
-            auto tmp = eosio::current_message<record3>();
+            const auto &tmp = eosio::current_message<record3>();
             eosio::print("Inserting record3\n");
             eosio::dump(tmp);
             auto bytes = eosio::raw::pack(tmp);

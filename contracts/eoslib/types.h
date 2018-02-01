@@ -42,7 +42,7 @@ typedef uint64_t func_name;
 typedef uint64_t asset_symbol;
 typedef int64_t share_type;
 
-#define PACKED(X) __attribute((packed)) X
+#define PACKED(X) __attribute__((packed)) X
 
 struct public_key {
    uint8_t data[33];
