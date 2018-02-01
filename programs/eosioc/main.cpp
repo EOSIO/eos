@@ -133,7 +133,6 @@ struct set_account_permission_subcommand {
       permissions->add_option("parent", parentStr, localized("[create] The permission name of this parents permission (Defaults to: \"Active\")"));
       permissions->add_flag("-s,--skip-sign", skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
       add_standard_transaction_options(permissions);
-
       permissions->set_callback([this] { helper.set_account_permission(accountStr,
                                                                     permissionStr,
                                                                     authorityJsonOrFile,
@@ -158,7 +157,6 @@ struct set_action_permission_subcommand {
       permissions->add_option("requirement", requirementStr, localized("[delete] NULL, [set/update] The permission name require for executing the given action"))->required();
       permissions->add_flag("-s,--skip-sign", skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
       add_standard_transaction_options(permissions);
-
       permissions->set_callback([this] { helper.set_action_permission(accountStr,
                                                                            codeStr,
                                                                            typeStr,
@@ -566,9 +564,7 @@ int main( int argc, char** argv ) {
                                                                                          data,
                                                                                          permissions,
                                                                                          skip_sign,
-                                                                                         tx_force_unique);
-
-   });
+                                                                                         tx_force_unique); });
 
    // push transaction
    string trxJson;

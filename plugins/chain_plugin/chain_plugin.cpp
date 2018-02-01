@@ -230,7 +230,7 @@ bool chain_plugin::accept_block(const signed_block& block, bool currently_syncin
    return true;
 }
 
-void chain_plugin::accept_transaction(const signed_transaction& trx) {
+void chain_plugin::accept_transaction(const packed_transaction& trx) {
    chain().push_transaction(trx, my->skip_flags);
 }
 
@@ -387,7 +387,7 @@ read_write::push_block_results read_write::push_block(const read_write::push_blo
 }
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
-   signed_transaction pretty_input;
+   packed_transaction pretty_input;
    auto resolver = [&,this]( const account_name& name ) -> optional<abi_serializer> {
       const auto* accnt  = db.get_database().find<account_object,by_name>( name );
       if (accnt != nullptr) {
@@ -405,7 +405,7 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
 #warning TODO: get transaction results asynchronously
    fc::variant pretty_output;
    abi_serializer::to_variant(result, pretty_output, resolver);
-   return read_write::push_transaction_results{ pretty_input.id(), pretty_output };
+   return read_write::push_transaction_results{ result.id, pretty_output };
 }
 
 read_write::push_transactions_results read_write::push_transactions(const read_write::push_transactions_params& params) {
@@ -504,7 +504,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
 }
 
 read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params )const {
-   signed_transaction pretty_input;
+   transaction pretty_input;
    from_variant(params.transaction, pretty_input);
    auto required_keys_set = db.get_required_keys(pretty_input, params.available_keys);
    get_required_keys_result result;
