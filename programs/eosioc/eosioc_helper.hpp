@@ -98,7 +98,7 @@ public:
     void execute_random_transactions(uint64_t number_account,
                                      uint64_t number_of_transfers,
                                      bool loop,
-                                     const std::string &memo) const;
+                                     const std::string& memo) const;
 
     void configure_benchmarks(uint64_t number_of_accounts,
                               const std::string& c_account,
