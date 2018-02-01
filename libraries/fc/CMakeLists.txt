@@ -9,6 +9,8 @@ SET( CMAKE_DEBUG_POSTFIX _debug )
 SET( BUILD_SHARED_LIBS NO )
 SET( ECC_IMPL secp256k1 CACHE STRING "secp256k1 or openssl or mixed" )
 
+find_package(Threads REQUIRED)
+
 set(platformBitness 32)
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   set(platformBitness 64)
@@ -170,7 +172,7 @@ target_include_directories(fc
 IF(NOT WIN32)
   set(LINK_USR_LOCAL_LIB -L/usr/local/lib)
 ENDIF()
-target_link_libraries( fc PUBLIC ${LINK_USR_LOCAL_LIB} ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} ${BZIP2_LIBRARIES} ${PLATFORM_SPECIFIC_LIBS} ${RPCRT4} ${CMAKE_DL_LIBS} ${rt_library} ${readline_libraries} ${ECC_LIB} )
+target_link_libraries( fc PUBLIC ${CMAKE_THREAD_LIBS_INIT} ${LINK_USR_LOCAL_LIB} ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} ${BZIP2_LIBRARIES} ${PLATFORM_SPECIFIC_LIBS} ${RPCRT4} ${CMAKE_DL_LIBS} ${rt_library} ${readline_libraries} ${ECC_LIB} )
 
 
 SET(OPENSSL_CONF_TARGET )
