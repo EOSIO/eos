@@ -251,7 +251,7 @@ transaction_trace chain_controller::push_transaction(const packed_transaction& t
 
 transaction_trace chain_controller::_push_transaction(const packed_transaction& trx) {
    transaction_metadata   mtrx( trx, get_chain_id(), head_block_time());
-   check_transaction_authorization(mtrx.trx, trx.signatures);
+   check_transaction_authorization(mtrx.trx(), trx.signatures);
 
    auto result = _push_transaction(std::move(mtrx));
 
@@ -278,7 +278,7 @@ static void record_locks_for_data_access(const vector<action_trace>& action_trac
 
 transaction_trace chain_controller::_push_transaction( transaction_metadata&& data )
 {
-   const transaction& trx = data.trx;
+   const transaction& trx = data.trx();
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
    if( !_pending_block ) {
@@ -494,9 +494,7 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
 
    auto result = move( *_pending_block );
 
-   _pending_block_trace.reset();
-   _pending_block.reset();
-   _pending_block_session.reset();
+   clear_pending();
 
    if (!(skip&skip_fork_db)) {
       _fork_db.push_block(result);
@@ -524,6 +522,7 @@ void chain_controller::clear_pending()
    _pending_block_trace.reset();
    _pending_block.reset();
    _pending_block_session.reset();
+   _pending_transaction_metas.clear();
 } FC_CAPTURE_AND_RETHROW() }
 
 //////////////////// private methods ////////////////////
@@ -1397,7 +1396,7 @@ static void log_handled_exceptions(const transaction& trx) {
 
 transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta ) {
    transaction_trace result(meta.id);
-   for (const auto &act : meta.trx.actions) {
+   for (const auto &act : meta.trx().actions) {
       apply_context context(*this, _db, act, meta);
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
@@ -1418,7 +1417,7 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
    }
 
    update_usage(meta, act_usage);
-   record_transaction(meta.trx);
+   record_transaction(meta.trx());
    return result;
 }
 
@@ -1434,7 +1433,7 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
          throw;
       }
       // log exceptions we can handle with the error handle, throws otherwise
-      log_handled_exceptions(meta.trx);
+      log_handled_exceptions(meta.trx());
 
       return _apply_error( meta );
    }
@@ -1464,7 +1463,7 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
       }
 
       update_usage(meta, act_usage);
-      record_transaction(meta.trx);
+      record_transaction(meta.trx());
 
       temp_session.squash();
       return result;
@@ -1535,7 +1534,7 @@ void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_us
 {
    set<std::pair<account_name, permission_name>> authorizing_accounts;
 
-   for( const auto& act : meta.trx.actions )
+   for( const auto& act : meta.trx().actions )
       for( const auto& auth : act.authorization )
          authorizing_accounts.emplace( auth.actor, auth.permission );
 

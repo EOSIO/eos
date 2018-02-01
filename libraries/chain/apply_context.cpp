@@ -237,10 +237,10 @@ vector<account_name> apply_context::get_active_producers() const {
 const bytes& apply_context::get_packed_transaction() {
    if( !trx_meta.packed_trx.size() ) {
       if (_cached_trx.empty()) {
-         auto size = fc::raw::pack_size(trx_meta.trx);
+         auto size = fc::raw::pack_size(trx_meta.trx());
          _cached_trx.resize(size);
          fc::datastream<char *> ds(_cached_trx.data(), size);
-         fc::raw::pack(ds, trx_meta.trx);
+         fc::raw::pack(ds, trx_meta.trx());
       }
 
       return _cached_trx;
