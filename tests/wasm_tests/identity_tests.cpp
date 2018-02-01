@@ -65,65 +65,37 @@ public:
 
    uint64_t get_owner_for_identity(uint64_t identity)
    {
-      signed_transaction trx;
       action get_owner_act;
       get_owner_act.account = N(identitytest);
       get_owner_act.name = N(getowner);
       get_owner_act.data = abi_ser_test.variant_to_binary("getowner", mutable_variant_object()
                                                           ("identity", identity)
       );
-      trx.actions.emplace_back(std::move(get_owner_act));
-      set_tapos(trx);
-      control->push_transaction(trx);
-      produce_block();
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-
+      BOOST_REQUIRE_EQUAL(success(), push_action(std::move(get_owner_act), 0));
       return get_result_uint64();
    }
 
    uint64_t get_identity_for_account(const string& account)
    {
-      signed_transaction trx;
       action get_identity_act;
       get_identity_act.account = N(identitytest);
       get_identity_act.name = N(getidentity);
       get_identity_act.data = abi_ser_test.variant_to_binary("getidentity", mutable_variant_object()
                                                           ("account", account)
       );
-      trx.actions.emplace_back(std::move(get_identity_act));
-      set_tapos(trx);
-      control->push_transaction(trx);
-      produce_block();
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-
+      BOOST_REQUIRE_EQUAL(success(), push_action(std::move(get_identity_act), 0));
       return get_result_uint64();
    }
 
    string create_identity(const string& account_name, uint64_t identity, bool auth = true) {
-      signed_transaction trx;
       action create_act;
       create_act.account = N(identity);
       create_act.name = N(create);
-      if (auth) {
-         create_act.authorization = vector<permission_level>{{string_to_name(account_name.c_str()), config::active_name}};
-      }
       create_act.data = abi_ser.variant_to_binary("create", mutable_variant_object()
                                                   ("creator", account_name)
                                                   ("identity", identity)
       );
-      trx.actions.emplace_back(std::move(create_act));
-      set_tapos(trx);
-      if (auth) {
-         trx.sign(get_private_key(string_to_name(account_name.c_str()), "active"), chain_id_type());
-      }
-      try {
-         control->push_transaction(trx);
-      } catch (const fc::exception& ex) {
-         return error(ex.top_message());
-      }
-      produce_block();
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-      return success();
+      return push_action( std::move(create_act), (auth ? string_to_name(account_name.c_str()) : 0) );
    }
 
    fc::variant get_identity(uint64_t idnt) {
@@ -143,32 +115,16 @@ public:
    }
 
    string certify(const string& certifier, uint64_t identity, const vector<fc::variant>& fields, bool auth = true) {
-      signed_transaction trx;
       action cert_act;
       cert_act.account = N(identity);
       cert_act.name = N(certprop);
-      if (auth) {
-         cert_act.authorization = vector<permission_level>{{string_to_name(certifier.c_str()), config::active_name}};
-      }
       cert_act.data = abi_ser.variant_to_binary("certprop", mutable_variant_object()
                                                 ("bill_storage_to", certifier)
                                                 ("certifier", certifier)
                                                 ("identity", identity)
                                                 ("value", fields)
       );
-      trx.actions.emplace_back(std::move(cert_act));
-      set_tapos(trx);
-      if (auth) {
-         trx.sign(get_private_key(string_to_name(certifier.c_str()), "active"), chain_id_type());
-      }
-      try {
-         control->push_transaction(trx);
-      } catch (const fc::exception& ex) {
-         return error(ex.top_message());
-      }
-      produce_block();
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-      return success();
+      return push_action( std::move(cert_act), (auth ? string_to_name(certifier.c_str()) : 0) );
    }
 
    fc::variant get_certrow(uint64_t identity, const string& property, uint64_t trusted, const string& certifier) {
@@ -208,35 +164,19 @@ public:
       }
    }
 
-
    string settrust(const string& trustor, const string& trusting, uint64_t trust, bool auth = true)
    {
       signed_transaction trx;
       action settrust_act;
       settrust_act.account = N(identity);
       settrust_act.name = N(settrust);
-      auto tr = string_to_name(trustor.c_str());
-      if (auth) {
-         settrust_act.authorization = vector<permission_level>{{tr, config::active_name}};
-      }
       settrust_act.data = abi_ser.variant_to_binary("settrust", mutable_variant_object()
                                                     ("trustor", trustor)
                                                     ("trusting", trusting)
                                                     ("trust", trust)
       );
-      trx.actions.emplace_back(std::move(settrust_act));
-      set_tapos(trx);
-      if (auth) {
-         trx.sign(get_private_key(tr, "active"), chain_id_type());
-      }
-      try {
-         control->push_transaction(trx);
-      } catch (const fc::exception& ex) {
-         return error(ex.top_message());
-      }
-      produce_block();
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-      return success();
+      auto tr = string_to_name(trustor.c_str());
+      return push_action( std::move(settrust_act), (auth ? tr : 0) );
    }
 
    bool get_trust(const string& trustor, const string& trusting) {

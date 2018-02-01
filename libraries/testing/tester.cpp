@@ -1,3 +1,4 @@
+#include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/asset.hpp>
 #include <eosio/chain/contracts/types.hpp>
@@ -108,6 +109,26 @@ namespace eosio { namespace testing {
    transaction_trace tester::push_transaction( signed_transaction& trx ) {
       auto ptrx = packed_transaction(trx);
       return push_transaction( ptrx );
+   }
+
+   string tester::push_action(action&& cert_act, uint64_t authorizer) {
+      signed_transaction trx;
+      if (authorizer) {
+         cert_act.authorization = vector<permission_level>{{authorizer, config::active_name}};
+      }
+      trx.actions.emplace_back(std::move(cert_act));
+      set_tapos(trx);
+      if (authorizer) {
+         trx.sign(get_private_key(authorizer, "active"), chain_id_type());
+      }
+      try {
+         control->push_transaction(trx);
+      } catch (const fc::exception& ex) {
+         return error(ex.top_message());
+      }
+      produce_block();
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+      return success();
    }
 
    void tester::create_account( account_name a, string initial_balance, account_name creator, bool multisig  ) {
