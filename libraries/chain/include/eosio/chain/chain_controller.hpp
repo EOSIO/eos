@@ -121,6 +121,8 @@ namespace eosio { namespace chain {
           * @return True if the controller is now applying a block; false otherwise
           */
          bool is_applying_block()const { return _currently_applying_block; }
+         bool is_start_of_round( block_num_type n )const;
+         uint32_t blocks_per_round()const; 
 
 
          chain_id_type get_chain_id()const { return chain_id_type(); } /// TODO: make this hash of constitution
@@ -321,7 +323,7 @@ namespace eosio { namespace chain {
          void _initialize_chain(contracts::chain_initializer& starter);
 
          producer_schedule_type _calculate_producer_schedule()const;
-         const producer_schedule_type& _head_producer_schedule()const;
+         const shared_producer_schedule_type& _head_producer_schedule()const;
 
 
          void replay();

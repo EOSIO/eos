@@ -13,7 +13,6 @@
 
 
 #include <eosio/chain/contracts/chain_initializer.hpp>
-#include <eosio/chain/contracts/staked_balance_objects.hpp>
 #include <eosio/chain/contracts/genesis_state.hpp>
 #include <eosio/chain/contracts/eos_contract.hpp>
 
@@ -30,7 +29,6 @@ using namespace eosio::chain;
 using namespace eosio::chain::config;
 using fc::flat_map;
 
-#warning TODO: rate limiting
 //using txn_msg_rate_limits = chain_controller::txn_msg_rate_limits;
 
 
@@ -450,13 +448,6 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.account_name = params.account_name;
 
    const auto& d = db.get_database();
-   share_type  balance        = contracts::get_eosio_balance(d, params.account_name );
-   const auto& staked_balance = d.get<staked_balance_object,by_owner_name>( params.account_name );
-
-   result.eos_balance          = asset(balance, EOS_SYMBOL);
-   result.staked_balance       = asset(staked_balance.staked_balance);
-   result.unstaking_balance    = asset(staked_balance.unstaking_balance);
-   result.last_unstaking_time  = staked_balance.last_unstaking_time;
 
    const auto& permissions = d.get_index<permission_index,by_owner>();
    auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );

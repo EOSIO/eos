@@ -4,7 +4,6 @@
  */
 
 #include <eosio/chain/chain_controller.hpp>
-#include <eosio/chain/contracts/staked_balance_objects.hpp>
 
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
@@ -16,7 +15,6 @@
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/authority_checker.hpp>
 #include <eosio/chain/contracts/chain_initializer.hpp>
-#include <eosio/chain/contracts/producer_objects.hpp>
 #include <eosio/chain/scope_sequence_object.hpp>
 #include <eosio/chain/merkle.hpp>
 
@@ -41,8 +39,12 @@
 
 namespace eosio { namespace chain {
 
-bool is_start_of_round( block_num_type block_num ) {
-  return (block_num % config::blocks_per_round) == 0; 
+bool chain_controller::is_start_of_round( block_num_type block_num )const  {
+  return 0 == (block_num % blocks_per_round());
+}
+
+uint32_t chain_controller::blocks_per_round()const {
+  return get_global_properties().active_producers.producers.size()*config::producer_repititions;
 }
 
 chain_controller::chain_controller( const chain_controller::controller_config& cfg )
@@ -425,10 +427,11 @@ void chain_controller::_finalize_block( const block_trace& trace ) { try {
    update_global_properties( b );
    update_global_dynamic_data( b );
    update_signing_producer(signing_producer, b);
-   update_last_irreversible_block();
 
    create_block_summary(b);
    clear_expired_transactions();
+
+   update_last_irreversible_block();
 
    applied_block( trace ); //emit
    if (_currently_replaying_blocks)
@@ -454,54 +457,65 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
                                               account_name producer, 
                                               const private_key_type& block_signing_key )
 { try {
-   uint32_t skip     = _skip_flags;
-   uint32_t slot_num = get_slot_at_time( when );
-   FC_ASSERT( slot_num > 0 );
-   account_name scheduled_producer = get_scheduled_producer( slot_num );
-   FC_ASSERT( scheduled_producer == producer );
+   
+   try {
+      uint32_t skip     = _skip_flags;
+      uint32_t slot_num = get_slot_at_time( when );
+      FC_ASSERT( slot_num > 0 );
+      account_name scheduled_producer = get_scheduled_producer( slot_num );
+      FC_ASSERT( scheduled_producer == producer );
 
-   const auto& producer_obj = get_producer(scheduled_producer);
+      const auto& producer_obj = get_producer(scheduled_producer);
 
-   if( !_pending_block ) {
+      if( !_pending_block ) {
+         _start_pending_block();
+      }
+
+      _finalize_pending_cycle();
+
+      if( !(skip & skip_producer_signature) )
+         FC_ASSERT( producer_obj.signing_key == block_signing_key.get_public_key() );
+
+         _pending_block->timestamp   = when;
+         _pending_block->producer    = producer_obj.owner;
+         _pending_block->previous    = head_block_id();
+         _pending_block->block_mroot = get_dynamic_global_properties().block_merkle_root.get_root();
+         _pending_block->transaction_mroot = transaction_metadata::calculate_transaction_merkle_root( _pending_transaction_metas );
+         _pending_block->action_mroot = _pending_block_trace->calculate_action_merkle_root();
+
+         if( is_start_of_round( _pending_block->block_num() ) ) {
+         auto latest_producer_schedule = _calculate_producer_schedule();
+         if( latest_producer_schedule != _head_producer_schedule() )
+            _pending_block->new_producers = latest_producer_schedule;
+      }
+
+      if( !(skip & skip_producer_signature) )
+         _pending_block->sign( block_signing_key );
+
+      _finalize_block( *_pending_block_trace );
+
+      _pending_block_session->push();
+
+      auto result = move( *_pending_block );
+
+      _pending_block_trace.reset();
+      _pending_block.reset();
+      _pending_block_session.reset();
+
+      if (!(skip&skip_fork_db)) {
+         _fork_db.push_block(result);
+      }
+
+      return result;
+   } catch ( ... ) {
+      _pending_block_trace.reset();
+      _pending_block.reset();
+      _pending_block_session.reset();
+
+      elog( "error while producing block" );
       _start_pending_block();
+      throw;
    }
-
-   _finalize_pending_cycle();
-
-   if( !(skip & skip_producer_signature) )
-      FC_ASSERT( producer_obj.signing_key == block_signing_key.get_public_key() );
-
-      _pending_block->timestamp   = when;
-      _pending_block->producer    = producer_obj.owner;
-      _pending_block->previous    = head_block_id();
-      _pending_block->block_mroot = get_dynamic_global_properties().block_merkle_root.get_root();
-      _pending_block->transaction_mroot = transaction_metadata::calculate_transaction_merkle_root( _pending_transaction_metas );
-      _pending_block->action_mroot = _pending_block_trace->calculate_action_merkle_root();
-
-
-      if( is_start_of_round( _pending_block->block_num() ) ) {
-      auto latest_producer_schedule = _calculate_producer_schedule();
-      if( latest_producer_schedule != _head_producer_schedule() )
-         _pending_block->new_producers = latest_producer_schedule;
-   }
-
-   if( !(skip & skip_producer_signature) )
-      _pending_block->sign( block_signing_key );
-
-   _finalize_block( *_pending_block_trace );
-
-   _pending_block_session->push();
-
-   auto result = move( *_pending_block );
-
-   _pending_block_trace.reset();
-   _pending_block.reset();
-   _pending_block_session.reset();
-
-   if (!(skip&skip_fork_db)) {
-      _fork_db.push_block(result);
-   }
-   return result;
 
 } FC_CAPTURE_AND_RETHROW( (producer) ) }
 
@@ -862,7 +876,8 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
       elog("Did not produce block within block_interval ${bi}ms, took ${t}ms)",
            ("bi", config::block_interval_ms)("t", (time_point(next_block.timestamp) - head_block_time()).count() / 1000));
    }
-   if (next_block.block_num() % config::blocks_per_round != 0) {
+
+   if( !is_start_of_round( next_block.block_num() ) )  {
       EOS_ASSERT(!next_block.new_producers, block_validate_exception,
                  "Producer changes may only occur at the end of a round.");
    }
@@ -896,18 +911,8 @@ void chain_controller::create_block_summary(const signed_block& next_block) {
  *  block_signing_key is null.  
  */
 producer_schedule_type chain_controller::_calculate_producer_schedule()const {
-   const auto& producers_by_vote = _db.get_index<contracts::producer_votes_multi_index,contracts::by_votes>();
-   auto itr = producers_by_vote.begin();
-   producer_schedule_type schedule;
-   uint32_t count = 0;
-   while( itr != producers_by_vote.end() && count < schedule.producers.size() ) {
-      schedule.producers[count].producer_name = itr->owner_name;
-      schedule.producers[count].block_signing_key = get_producer(itr->owner_name).signing_key;
-      ++itr;
-      if( schedule.producers[count].block_signing_key != public_key_type() ) {
-         ++count;
-      }
-   }
+   producer_schedule_type schedule = get_global_properties().new_active_producers;
+
    const auto& hps = _head_producer_schedule();
    schedule.version = hps.version;
    if( hps != schedule )
@@ -918,7 +923,7 @@ producer_schedule_type chain_controller::_calculate_producer_schedule()const {
 /**
  *  Returns the most recent and/or pending producer schedule
  */
-const producer_schedule_type& chain_controller::_head_producer_schedule()const {
+const shared_producer_schedule_type& chain_controller::_head_producer_schedule()const {
    const auto& gpo = get_global_properties();
    if( gpo.pending_active_producers.size() ) 
       return gpo.pending_active_producers.back().second;
@@ -944,9 +949,14 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
          if( props.pending_active_producers.size() && props.pending_active_producers.back().first == b.block_num() )
             props.pending_active_producers.back().second = schedule;
          else
-            props.pending_active_producers.push_back( make_pair(b.block_num(),schedule) );
-      });
+         {
+            props.pending_active_producers.emplace_back( props.pending_active_producers.get_allocator() );// props.pending_active_producers.size()+1, props.pending_active_producers.get_allocator() );
+            auto& back = props.pending_active_producers.back();
+            back.first = b.block_num();
+            back.second = schedule;
 
+         }
+      });
 
 
       auto active_producers_authority = authority(config::producers_authority_threshold, {}, {});
@@ -1050,6 +1060,8 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          const auto& gp = _db.create<global_property_object>([&starter](global_property_object& p) {
             p.configuration = starter.get_chain_start_configuration();
             p.active_producers = starter.get_chain_start_producers();
+            p.new_active_producers = starter.get_chain_start_producers();
+            wdump((starter.get_chain_start_producers()));
          });
 
          _db.create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
@@ -1224,7 +1236,7 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
          dgp.recent_slots_filled += 1;
          dgp.recent_slots_filled <<= missed_blocks;
       } else
-         if(config::percent_100 * get_global_properties().active_producers.producers.size() / config::blocks_per_round > config::required_producer_participation)
+         if(config::percent_100 * get_global_properties().active_producers.producers.size() / blocks_per_round() > config::required_producer_participation)
             dgp.recent_slots_filled = uint64_t(-1);
          else
             dgp.recent_slots_filled = 0;
@@ -1254,7 +1266,8 @@ void chain_controller::update_last_irreversible_block()
    vector<const producer_object*> producer_objs;
    producer_objs.reserve(gpo.active_producers.producers.size());
 
-   std::transform(gpo.active_producers.producers.begin(), gpo.active_producers.producers.end(), std::back_inserter(producer_objs),
+   std::transform(gpo.active_producers.producers.begin(), 
+                  gpo.active_producers.producers.end(), std::back_inserter(producer_objs),
                   [this](const producer_key& pk) { return &get_producer(pk.producer_name); });
 
    static_assert(config::irreversible_threshold_percent > 0, "irreversible threshold must be nonzero");
@@ -1265,7 +1278,8 @@ void chain_controller::update_last_irreversible_block()
          return a->last_confirmed_block_num < b->last_confirmed_block_num;
       });
 
-   uint32_t new_last_irreversible_block_num = producer_objs[offset]->last_confirmed_block_num;
+   uint32_t new_last_irreversible_block_num = producer_objs[offset]->last_confirmed_block_num - 1;
+
 
    if (new_last_irreversible_block_num > dpo.last_irreversible_block_num) {
       _db.modify(dpo, [&](dynamic_global_property_object& _dpo) {
@@ -1285,7 +1299,7 @@ void chain_controller::update_last_irreversible_block()
            block_to_write <= new_last_irreversible_block_num;
            ++block_to_write) {
          auto block = fetch_block_by_number(block_to_write);
-         assert(block);
+         FC_ASSERT( block, "unable to find last irreversible block to write" );
          _block_log.append(*block);
          applied_irreversible_block(*block);
       }
@@ -1309,7 +1323,6 @@ void chain_controller::update_last_irreversible_block()
          });
       }
    }
-
 
    // Trim fork_database and undo histories
    _fork_db.set_max_size(head_block_num() - new_last_irreversible_block_num + 1);
@@ -1342,9 +1355,11 @@ account_name chain_controller::get_scheduled_producer(uint32_t slot_num)const
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
    uint64_t current_aslot = dpo.current_absolute_slot + slot_num;
    const auto& gpo = _db.get<global_property_object>();
-   //auto number_of_active_producers = gpo.active_producers.size();
-   auto index = current_aslot % (config::blocks_per_round); //TODO configure number of repetitions by producer
+   auto number_of_active_producers = gpo.active_producers.producers.size();
+   auto index = current_aslot % (number_of_active_producers);
    index /= config::producer_repititions;
+
+   FC_ASSERT( gpo.active_producers.producers.size() > 0, "no producers defined" );
 
    return gpo.active_producers.producers[index].producer_name;
 }
@@ -1549,38 +1564,33 @@ void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_us
 
    auto head_time = head_block_time();
    for( const auto& authaccnt : authorizing_accounts ) {
+
       const auto& buo = _db.get<bandwidth_usage_object,by_owner>( authaccnt.first );
       _db.modify( buo, [&]( auto& bu ){
           bu.bytes.add_usage( trx_size, head_time );
           bu.acts.add_usage( act_usage, head_time );
       });
-      const auto& sbo = _db.get<contracts::staked_balance_object, contracts::by_owner_name>(authaccnt.first);
-      // TODO enable this after fixing divide by 0 with virtual_net_bandwidth and total_staked_tokens
-      /// note: buo.bytes.value is in ubytes and virtual_net_bandwidth is in bytes, so
-      //  we convert to fixed int uin128_t with 60 bits of precision, divide by rate limiting precision
-      //  then divide by virtual max_block_size which gives us % of virtual max block size in fixed width
 
       uint128_t  used_ubytes        = buo.bytes.value;
       uint128_t  used_uacts         = buo.acts.value;
       uint128_t  virtual_max_ubytes = dgpo.virtual_net_bandwidth * config::rate_limiting_precision;
       uint128_t  virtual_max_uacts  = dgpo.virtual_act_bandwidth * config::rate_limiting_precision;
-      uint64_t   user_stake         = sbo.staked_balance;
       
       if( !(_skip_flags & genesis_setup) ) {
-         FC_ASSERT( (used_ubytes * dgpo.total_staked_tokens) <=  (user_stake * virtual_max_ubytes), "authorizing account '${n}' has insufficient net bandwidth for this transaction",
+         FC_ASSERT( (used_ubytes * dgpo.total_net_weight) <=  (buo.net_weight * virtual_max_ubytes), "authorizing account '${n}' has insufficient net bandwidth for this transaction",
                     ("n",name(authaccnt.first))
                     ("used_bytes",double(used_ubytes)/1000000.)
-                    ("user_stake",user_stake)
+                    ("user_net_weight",buo.net_weight)
                     ("virtual_max_bytes", double(virtual_max_ubytes)/1000000. )
-                    ("total_staked_tokens", dgpo.total_staked_tokens)
+                    ("total_net_weight", dgpo.total_net_weight)
                     );
-         FC_ASSERT( (used_uacts * dgpo.total_staked_tokens)  <=  (user_stake * virtual_max_uacts),  "authorizing account '${n}' has insufficient compute bandwidth for this transaction",
+         FC_ASSERT( (used_uacts * dgpo.total_cpu_weight)  <=  (buo.cpu_weight* virtual_max_uacts),  "authorizing account '${n}' has insufficient compute bandwidth for this transaction",
                     ("n",name(authaccnt.first))
                     ("used_acts",double(used_uacts)/1000000.)
-                    ("user_stake",user_stake)
+                    ("user_cpu_weight",buo.cpu_weight)
                     ("virtual_max_uacts", double(virtual_max_uacts)/1000000. )
-                    ("total_staked_tokens", dgpo.total_staked_tokens)
-                    );
+                    ("total_cpu_tokens", dgpo.total_cpu_weight)
+                  );
       }
 
       // for any transaction not sent by code, update the affirmative last time a given permission was used

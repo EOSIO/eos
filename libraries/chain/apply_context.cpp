@@ -17,6 +17,7 @@ void apply_context::exec_one()
          (*native)(*this);
       } else {
          const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
+         privileged = a.privileged;
 
          if (a.code.size() > 0) {
             // get code from cache
