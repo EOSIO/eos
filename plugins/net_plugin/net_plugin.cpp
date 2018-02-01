@@ -202,6 +202,8 @@ namespace eosio {
 
       size_t cache_txn( const transaction_id_type, const signed_transaction &txn);
 
+      bool is_valid( const handshake_message &msg);
+
       void handle_message( connection_ptr c, const handshake_message &msg);
       void handle_message( connection_ptr c, const go_away_message &msg );
       /** \name Peer Timestamps
@@ -362,11 +364,9 @@ namespace eosio {
 
    class connection : public std::enable_shared_from_this<connection> {
    public:
-      connection( string endpoint,
-                  size_t send_buf_size = def_send_buffer_size );
+      explicit connection( string endpoint );
 
-      connection( socket_ptr s,
-                  size_t send_buf_size = def_send_buffer_size );
+      explicit connection( socket_ptr s );
       ~connection();
       void initialize();
 
@@ -377,7 +377,6 @@ namespace eosio {
       socket_ptr              socket;
 
       message_buffer<1024*1024>    pending_message_buffer;
-      vector<char>            send_buffer;
       vector<char>            blk_buffer;
 
       deque< transaction_id_type > txn_queue;
@@ -548,14 +547,12 @@ namespace eosio {
 
    //---------------------------------------------------------------------------
 
-   connection::connection( string endpoint,
-                           size_t send_buf_size )
+   connection::connection( string endpoint )
       : block_state(),
         trx_state(),
         sync_receiving(),
         sync_requested(),
         socket( std::make_shared<tcp::socket>( std::ref( app().get_io_service() ))),
-        send_buffer(send_buf_size),
         node_id(),
         last_handshake_recv(),
         last_handshake_sent(),
@@ -573,14 +570,12 @@ namespace eosio {
       initialize();
    }
 
-   connection::connection( socket_ptr s,
-                           size_t send_buf_size )
+   connection::connection( socket_ptr s )
       : block_state(),
         trx_state(),
         sync_receiving(),
         sync_requested(),
         socket( s ),
-        send_buffer(send_buf_size),
         node_id(),
         last_handshake_recv(),
         last_handshake_sent(),
@@ -947,12 +942,13 @@ namespace eosio {
 
       size_t buffer_size = header_size + payload_size;
 
-      fc::datastream<char*> ds( send_buffer.data(), buffer_size);
+      auto send_buffer = std::make_shared<vector<char>>(buffer_size);
+      fc::datastream<char*> ds( send_buffer->data(), buffer_size);
       ds.write( header, header_size );
       fc::raw::pack( ds, m );
 
       write_depth++;
-      queue_write(std::make_shared<vector<char>>(send_buffer.begin(), send_buffer.begin()+buffer_size),
+      queue_write(send_buffer,
                   [this](boost::system::error_code ec, std::size_t ) {
                      write_depth--;
                      if(out_queue.size()) {
@@ -1472,8 +1468,38 @@ namespace eosio {
       }
    }
 
+   bool net_plugin_impl::is_valid( const handshake_message &msg) {
+      // Do some basic validation of an incoming handshake_message, so things
+      // that really aren't handshake messages can be quickly discarded without
+      // affecting state.
+      bool valid = true;
+      if (msg.last_irreversible_block_num > msg.head_num) {
+         wlog("Handshake message validation: last irreversible block (${i}) is greater than head block (${h})",
+              ("i", msg.last_irreversible_block_num)("h", msg.head_num));
+         valid = false;
+      }
+      if (msg.p2p_address.empty()) {
+         wlog("Handshake message validation: p2p_address is null string");
+         valid = false;
+      }
+      if (msg.os.empty()) {
+         wlog("Handshake message validation: os field is null string");
+         valid = false;
+      }
+      if ((msg.sig != chain::signature_type() || msg.token != sha256()) && (msg.token != fc::sha256::hash(msg.time))) {
+         wlog("Handshake message validation: token field invalid");
+         valid = false;
+      }
+      return valid;
+   }
+
    void net_plugin_impl::handle_message( connection_ptr c, const handshake_message &msg) {
       ilog("got a handshake_message from ${p} ${h}", ("p",c->peer_addr)("h",msg.p2p_address));
+      if (!is_valid(msg)) {
+         elog( "Invalid handshake message received from ${p} ${h}", ("p",c->peer_addr)("h",msg.p2p_address));
+         c->enqueue( go_away_message( fatal_other ));
+         return;
+      }
       chain_controller& cc = chain_plug->chain();
       uint32_t lib_num = cc.last_irreversible_block_num( );
       uint32_t peer_lib = msg.last_irreversible_block_num;
