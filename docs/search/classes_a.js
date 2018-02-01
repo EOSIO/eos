@@ -1,8 +1,5 @@
 var searchData=
 [
-  ['remove_5freference',['remove_reference',['../structeos_1_1remove__reference.html',1,'eos']]],
-  ['remove_5freference_3c_20const_20t_20_26_20_3e',['remove_reference&lt; const T &amp; &gt;',['../structeos_1_1remove__reference_3_01const_01_t_01_6_01_4.html',1,'eos']]],
-  ['remove_5freference_3c_20t_20_26_20_3e',['remove_reference&lt; T &amp; &gt;',['../structeos_1_1remove__reference_3_01_t_01_6_01_4.html',1,'eos']]],
-  ['restart',['Restart',['../structtic__tac__toe_1_1_restart.html',1,'tic_tac_toe']]],
-  ['reveal',['Reveal',['../structdice_1_1_reveal.html',1,'dice']]]
+  ['name',['name',['../structeosio_1_1name.html',1,'eosio']]],
+  ['native_5fcurrency',['native_currency',['../structeosio_1_1native__currency.html',1,'eosio']]]
 ];

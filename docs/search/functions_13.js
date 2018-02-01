@@ -1,6 +1,4 @@
 var searchData=
 [
-  ['_7emessage',['~Message',['../classeos_1_1_message.html#abce53f1a044eb929297efa1b566de74f',1,'eosio::Message']]],
-  ['_7estring',['~string',['../classeos_1_1string.html#a1150d62d136d78124cf713c1a484f505',1,'eosio::string']]],
-  ['_7etransaction',['~Transaction',['../classeos_1_1_transaction.html#accc58f2a09d0e6acb9010f257821b46e',1,'eosio::Transaction']]]
+  ['write',['write',['../classeosio_1_1datastream.html#a1e42133f6f57a8c89e1db04abe44b342',1,'eosio::datastream::write()'],['../classeosio_1_1datastream_3_01size__t_01_4.html#a3c2ca245c9f33549505ea7886a1d3ecf',1,'eosio::datastream&lt; size_t &gt;::write()']]]
 ];

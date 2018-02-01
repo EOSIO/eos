@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eoslib/eos.hpp>
-#include <eoslib/db.hpp>
+#include <eosiolib/eosio.hpp>
+#include <eosiolib/db.hpp>
 
 namespace proxy {
    
