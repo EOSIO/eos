@@ -614,7 +614,56 @@ BOOST_FIXTURE_TEST_CASE( owner_certification_becomes_trusted, identity_tester ) 
    //but effectively bob's certification should became trusted
    BOOST_REQUIRE_EQUAL(N(alice), get_owner_for_identity(identity_val));
 
- } FC_LOG_AND_RETHROW() //owner_certification_becomes_trusted
+} FC_LOG_AND_RETHROW() //owner_certification_becomes_trusted
+
+BOOST_FIXTURE_TEST_CASE( ownership_contradiction, identity_tester ) try {
+   BOOST_REQUIRE_EQUAL(success(), create_identity("alice", identity_val));
+
+   //alice claims identity
+   BOOST_REQUIRE_EQUAL(success(), certify("alice", identity_val, vector<fc::variant>{ mutable_variant_object()
+               ("property", "owner")
+               ("type", "account")
+               ("data", to_uint8_vector(N(alice)))
+               ("memo", "claiming onwership")
+               ("confidence", 100)
+               }));
+
+   // block producer certifies alice's ownership
+   BOOST_REQUIRE_EQUAL(success(), certify("inita", identity_val, vector<fc::variant>{ mutable_variant_object()
+               ("property", "owner")
+               ("type", "account")
+               ("data", to_uint8_vector(N(alice)))
+               ("memo", "")
+               ("confidence", 100)
+               }));
+   BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 1, "inita").is_object() );
+
+   //now alice is the official owner of the identity
+   BOOST_REQUIRE_EQUAL(N(alice), get_owner_for_identity(identity_val));
+
+   //bob claims identity
+   BOOST_REQUIRE_EQUAL(success(), certify("bob", identity_val, vector<fc::variant>{ mutable_variant_object()
+               ("property", "owner")
+               ("type", "account")
+               ("data", to_uint8_vector(N(bob)))
+               ("memo", "claiming onwership")
+               ("confidence", 100)
+               }));
+
+   //another block producer certifies bob's identity (to the identity already certified to alice)
+   BOOST_REQUIRE_EQUAL(success(), certify("initb", identity_val, vector<fc::variant>{ mutable_variant_object()
+               ("property", "owner")
+               ("type", "account")
+               ("data", to_uint8_vector(N(bob)))
+               ("memo", "")
+               ("confidence", 100)
+               }));
+   BOOST_REQUIRE_EQUAL( true, get_certrow(identity_val, "owner", 1, "initb").is_object() );
+
+   //now neither alice or bob are official owners, because we have 2 trusted certifications in contradiction to each other
+   BOOST_REQUIRE_EQUAL(0, get_owner_for_identity(identity_val));
+
+} FC_LOG_AND_RETHROW() //ownership_contradiction
 
 BOOST_AUTO_TEST_SUITE_END()
 #endif

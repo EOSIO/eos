@@ -211,13 +211,19 @@ namespace identity {
             certs_table certs( ident );
             certrow row;
             bool ok = certs.primary_lower_bound(row, N(owner), 1, 0);
+            account_name owner = 0;
             while (ok && row.property == N(owner) && row.trusted) {
                if (sizeof(account_name) == row.data.size()) {
                   account_name account = *reinterpret_cast<account_name*>(row.data.data());
                   if (ident == get_claimed_identity(account)) {
                      if (is_trusted(row.certifier) ) {
                         // the certifier is still trusted
-                        return account;
+                        if (!owner || owner == account) {
+                           owner = account;
+                        } else {
+                           //contradiction found: different owners certified for the same identity
+                           return 0;
+                        }
                      } else if (DeployToAccount == current_receiver()){
                         //the certifier is no longer trusted, need to unset the flag
                         row.trusted = 0;
@@ -230,6 +236,11 @@ namespace identity {
                   // bad row - skip it
                }
                ok = certs.primary_upper_bound(row, row.property, row.trusted, row.certifier);
+               //ok = certs.next_primary(row, row);
+            }
+            if (owner) {
+               //owner found, no contradictions among certifications flaged as trusted
+               return owner;
             }
             // trusted certification not found
             // let's see if some of untrusted certifications became trusted
@@ -243,7 +254,12 @@ namespace identity {
                         row.trusted = 1;
                         certs.store( row, 0 ); //assuming 0 means bill to the same account
                      }
-                     return account;
+                     if (!owner || owner == account) {
+                        owner = account;
+                     } else {
+                        //contradiction found: different owners certified for the same identity
+                        return 0;
+                     }
                   }
                } else {
                   // bad row - skip it
@@ -251,8 +267,7 @@ namespace identity {
                ok = certs.primary_upper_bound(row, row.property, row.trusted, row.certifier);
                //ok = certs.next_primary(row, row);
             }
-
-            return 0;
+            return owner;
          }
 
          static identity_name get_identity_for_account( account_name acnt ) {
