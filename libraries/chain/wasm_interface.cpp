@@ -543,36 +543,35 @@ class db_api : public context_aware_api {
    using KeyType = typename ObjectType::key_type;
    static constexpr int KeyCount = ObjectType::number_of_keys;
    using KeyArrayType = KeyType[KeyCount];
-   using ContextMethodType = int(apply_context::*)(const table_id_object&, const KeyType*, const char*, size_t);
+   using ContextMethodType = int(apply_context::*)(const table_id_object&, const account_name&, const KeyType*, const char*, size_t);
 
    private:
-      int call(ContextMethodType method, const scope_name& scope, const name& table, array_ptr<const char> data, size_t data_len) {
-         const auto& t_id = context.find_or_create_table(scope, context.receiver, table);
+      int call(ContextMethodType method, const scope_name& scope, const name& table, account_name bta, array_ptr<const char> data, size_t data_len) {
+         const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
          FC_ASSERT(data_len >= KeyCount * sizeof(KeyType), "Data is not long enough to contain keys");
          const KeyType* keys = reinterpret_cast<const KeyType *>((const char *)data);
 
          const char* record_data =  ((const char*)data) + sizeof(KeyArrayType);
          size_t record_len = data_len - sizeof(KeyArrayType);
-         return (context.*(method))(t_id, keys, record_data, record_len) + sizeof(KeyArrayType);
+         return (context.*(method))(t_id, bta, keys, record_data, record_len) + sizeof(KeyArrayType);
       }
 
    public:
       using context_aware_api::context_aware_api;
 
-      int store(const scope_name& scope, const name& table, const scope_name& bta, array_ptr<const char> data, size_t data_len) {
-         auto res = call(&apply_context::store_record<ObjectType>, scope, table, data, data_len);
+      int store(const scope_name& scope, const name& table, const account_name& bta, array_ptr<const char> data, size_t data_len) {
+         auto res = call(&apply_context::store_record<ObjectType>, scope, table, bta, data, data_len);
          //ilog("STORE [${scope},${code},${table}] => ${res} :: ${HEX}", ("scope",scope)("code",context.receiver)("table",table)("res",res)("HEX", fc::to_hex(data, data_len)));
          return res;
-
       }
 
-      int update(const scope_name& scope, const name& table, const scope_name& bta, array_ptr<const char> data, size_t data_len) {
-         return call(&apply_context::update_record<ObjectType>, scope, table, data, data_len);
+      int update(const scope_name& scope, const name& table, const account_name& bta, array_ptr<const char> data, size_t data_len) {
+         return call(&apply_context::update_record<ObjectType>, scope, table, bta, data, data_len);
       }
 
-      int remove(const scope_name& scope, const name& table, const scope_name& bta, const KeyArrayType &keys) {
-         const auto& t_id = context.find_or_create_table(scope, context.receiver, table);
-         return context.remove_record<ObjectType>(t_id, keys);
+      int remove(const scope_name& scope, const name& table, const account_name& bta, const KeyArrayType &keys) {
+         const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
+         return context.remove_record<ObjectType>(t_id, bta, keys);
       }
 };
 
@@ -584,8 +583,8 @@ class db_index_api : public context_aware_api {
    using ContextMethodType = int(apply_context::*)(const table_id_object&, KeyType*, char*, size_t);
 
 
-   int call(ContextMethodType method, const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-      auto maybe_t_id = context.find_table(scope, context.receiver, table);
+   int call(ContextMethodType method, const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+      auto maybe_t_id = context.find_table(context.receiver, scope, table);
       if (maybe_t_id == nullptr) {
          return -1;
       }
@@ -607,34 +606,34 @@ class db_index_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      int load(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         auto res = call(&apply_context::load_record<IndexType, Scope>, scope, code, table, data, data_len);
+      int load(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::load_record<IndexType, Scope>, code, scope, table, data, data_len);
          //ilog("LOAD [${scope},${code},${table}] => ${res} :: ${HEX}", ("scope",scope)("code",code)("table",table)("res",res)("HEX", fc::to_hex(data, data_len)));
          return res;
       }
 
-      int front(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::front_record<IndexType, Scope>, scope, code, table, data, data_len);
+      int front(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::front_record<IndexType, Scope>, code, scope, table, data, data_len);
       }
 
-      int back(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::back_record<IndexType, Scope>, scope, code, table, data, data_len);
+      int back(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::back_record<IndexType, Scope>, code, scope, table, data, data_len);
       }
 
-      int next(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::next_record<IndexType, Scope>, scope, code, table, data, data_len);
+      int next(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::next_record<IndexType, Scope>, code, scope, table, data, data_len);
       }
 
-      int previous(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::previous_record<IndexType, Scope>, scope, code, table, data, data_len);
+      int previous(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::previous_record<IndexType, Scope>, code, scope, table, data, data_len);
       }
 
-      int lower_bound(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::lower_bound_record<IndexType, Scope>, scope, code, table, data, data_len);
+      int lower_bound(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::lower_bound_record<IndexType, Scope>, code, scope, table, data, data_len);
       }
 
-      int upper_bound(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::upper_bound_record<IndexType, Scope>, scope, code, table, data, data_len);
+      int upper_bound(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::upper_bound_record<IndexType, Scope>, code, scope, table, data, data_len);
       }
 
 };

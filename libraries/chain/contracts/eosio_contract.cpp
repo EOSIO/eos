@@ -42,18 +42,18 @@ void intialize_eosio_tokens(chainbase::database& db, const account_name& system_
 }
 
 static void modify_eosio_balance( apply_context& context, const account_name& account, share_type amt) {
-   const auto& t_id = context.find_or_create_table(account, config::system_account_name, N(currency));
+   const auto& t_id = context.find_or_create_table(config::system_account_name, account, N(currency));
    uint64_t key = N(account);
    share_type balance = 0;
    context.front_record<key_value_index, by_scope_primary>(t_id, &key, (char *)&balance, sizeof(balance));
 
    balance += amt;
 
-   context.store_record<key_value_object>(t_id, &key, (const char *)&balance, sizeof(balance));
+   context.store_record<key_value_object>(t_id, config::system_account_name, &key, (const char *)&balance, sizeof(balance));
 }
 
 share_type get_eosio_balance( const chainbase::database& db, const account_name &account ) {
-   const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(account, config::system_account_name, N(currency)));
+   const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(config::system_account_name, account, N(currency)));
    if (!t_id) {
       return share_type(0);
    }
@@ -568,7 +568,7 @@ static const abi_serializer& get_abi_serializer() {
 }
 
 static optional<variant> get_pending_recovery(apply_context& context, account_name account ) {
-   const auto* t_id = context.find_table(account, config::system_account_name, N(recovery));
+   const auto* t_id = context.find_table(config::system_account_name, account, N(recovery));
    if (t_id) {
       uint64_t key = account;
       int32_t record_size = context.front_record<key_value_index, by_scope_primary>(*t_id, &key, nullptr, 0);
@@ -589,13 +589,13 @@ static optional<variant> get_pending_recovery(apply_context& context, account_na
 
 static uint32_t get_next_sender_id(apply_context& context) {
    context.require_write_lock( config::eosio_auth_scope );
-   const auto& t_id = context.find_or_create_table(config::eosio_auth_scope, config::system_account_name, N(deferred.seq));
+   const auto& t_id = context.find_or_create_table(config::system_account_name, config::eosio_auth_scope, N(deferred.seq));
    uint64_t key = N(config::eosio_auth_scope);
    uint32_t next_serial = 0;
    context.front_record<key_value_index, by_scope_primary>(t_id, &key, (char *)&next_serial, sizeof(uint32_t));
 
    uint32_t result = next_serial++;
-   context.store_record<key_value_object>(t_id, &key, (char *)&next_serial, sizeof(uint32_t));
+   context.store_record<key_value_object>(t_id, config::system_account_name, &key, (char *)&next_serial, sizeof(uint32_t));
    return result;
 }
 
@@ -682,16 +682,16 @@ void apply_eosio_postrecovery(apply_context& context) {
    context.execute_deferred(std::move(dtrx));
 
 
-   const auto& t_id = context.find_or_create_table(account, config::system_account_name, N(recovery));
+   const auto& t_id = context.find_or_create_table(config::system_account_name, account, N(recovery));
    auto data = get_abi_serializer().variant_to_binary("pending_recovery", record_data);
-   context.store_record<key_value_object>(t_id,&account.value, data.data() + sizeof(uint64_t), data.size() - sizeof(uint64_t));
+   context.store_record<key_value_object>(t_id, 0, &account.value, data.data() + sizeof(uint64_t), data.size() - sizeof(uint64_t));
 
    context.console_append_formatted("Recovery Started for account ${account} : ${memo}\n", mutable_variant_object()("account", account)("memo", recover_act.memo));
 }
 
 static void remove_pending_recovery(apply_context& context, const account_name& account) {
-   const auto& t_id = context.find_or_create_table(account, config::system_account_name, N(recovery));
-   context.remove_record<key_value_object>(t_id, &account.value);
+   const auto& t_id = context.find_or_create_table(config::system_account_name, account, N(recovery));
+   context.remove_record<key_value_object>(t_id, config::system_account_name, &account.value);
 }
 
 void apply_eosio_passrecovery(apply_context& context) {

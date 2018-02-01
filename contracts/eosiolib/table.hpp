@@ -12,14 +12,14 @@ namespace eosio {
    {
       public:
          static bool exists( uint64_t key, scope_name scope = DefaultScope) {
-            auto read = load_i64( scope, DefaultScope, TableName, (char*)&key, sizeof(key) );
+            auto read = load_i64( DefaultScope, scope, TableName, (char*)&key, sizeof(key) );
             return read > 0;
          }
 
          static T get( uint64_t key, scope_name scope = DefaultScope ) {
             char temp[1024];
             *reinterpret_cast<uint64_t *>(temp) = key;
-            auto read = load_i64( scope, DefaultScope , TableName, temp, sizeof(temp) );
+            auto read = load_i64( DefaultScope, scope , TableName, temp, sizeof(temp) );
             assert( read > 0, "key does not exist" );
 
             datastream<const char*> ds(temp, read);
@@ -32,7 +32,7 @@ namespace eosio {
             char temp[1024];
             *reinterpret_cast<uint64_t *>(temp) = key;
 
-            auto read = load_i64( scope, DefaultScope, TableName, temp, sizeof(temp) );
+            auto read = load_i64( DefaultScope, scope, TableName, temp, sizeof(temp) );
             if( read < 0 ) {
                set( def, scope );
                return def;

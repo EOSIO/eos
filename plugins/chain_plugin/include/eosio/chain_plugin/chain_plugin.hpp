@@ -164,8 +164,8 @@ public:
 
    struct get_table_rows_params {
       bool        json = false;
-      name        scope;
       name        code;
+      name        scope;
       name        table;
 //      string      table_type;
       string      table_key;
@@ -230,10 +230,10 @@ public:
    }
 
    template<typename IndexType, typename Scope, typename Function>
-   void walk_table(const name& scope, const name& code, const name& table, Function f) const
+   void walk_table(const name& code, const name& scope, const name& table, Function f) const
    {
       const auto& d = db.get_database();
-      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));
+      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<IndexType, Scope>();
          decltype(t_id->id) next_tid(t_id->id._id + 1);
@@ -255,7 +255,7 @@ public:
 
       abi_serializer abis;
       abis.set_abi(abi);
-      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_scope_code_table>(boost::make_tuple(p.scope, p.code, p.table));
+      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_code_scope_table>(boost::make_tuple(p.code, p.scope, p.table));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<IndexType, Scope>();
          decltype(t_id->id) next_tid(t_id->id._id + 1);
@@ -376,7 +376,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
 FC_REFLECT_DERIVED( eosio::chain_apis::read_only::get_block_results, (eosio::chain::signed_block), (id)(block_num)(ref_block_prefix) );
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
   
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(scope)(code)(table)(table_key)(lower_bound)(upper_bound)(limit) )
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));

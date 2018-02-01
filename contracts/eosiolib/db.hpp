@@ -27,60 +27,60 @@ struct table_impl{};
 template<>
 struct table_impl<sizeof(uint128_t),sizeof(uint128_t)> {
 
-    static int32_t front_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return front_primary_i128i128( scope, code, table_n, data, len );
+    static int32_t front_primary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return front_primary_i128i128( code, scope, table_n, data, len );
     }
 
-    static int32_t back_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return back_primary_i128i128( scope, code, table_n, data, len );
+    static int32_t back_primary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return back_primary_i128i128( code, scope, table_n, data, len );
     }
 
-    static int32_t load_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return load_primary_i128i128( scope, code, table_n, data, len );
+    static int32_t load_primary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return load_primary_i128i128( code, scope, table_n, data, len );
     }
 
-    static int32_t next_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return next_primary_i128i128( scope, code, table_n, data, len );
+    static int32_t next_primary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return next_primary_i128i128( code, scope, table_n, data, len );
     }
 
-    static int32_t previous_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return previous_primary_i128i128( scope, code, table_n, data, len );
+    static int32_t previous_primary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return previous_primary_i128i128( code, scope, table_n, data, len );
     }
 
-    static int32_t upper_bound_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return upper_bound_primary_i128i128( scope, code, table_n, data, len );
+    static int32_t upper_bound_primary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return upper_bound_primary_i128i128( code, scope, table_n, data, len );
     }
 
-    static int32_t lower_bound_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return lower_bound_primary_i128i128( scope, code, table_n, data, len );
+    static int32_t lower_bound_primary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return lower_bound_primary_i128i128( code, scope, table_n, data, len );
     }
 
-    static int32_t front_secondary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return front_secondary_i128i128( scope, code, table_n, data, len );
+    static int32_t front_secondary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return front_secondary_i128i128( code, scope, table_n, data, len );
     }
 
-    static int32_t back_secondary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return back_secondary_i128i128( scope, code, table_n, data, len );
+    static int32_t back_secondary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return back_secondary_i128i128( code, scope, table_n, data, len );
     }
 
-    static int32_t load_secondary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return load_secondary_i128i128( scope, code, table_n, data, len );
+    static int32_t load_secondary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return load_secondary_i128i128( code, scope, table_n, data, len );
     }
 
-    static int32_t next_secondary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return next_secondary_i128i128( scope, code, table_n, data, len );
+    static int32_t next_secondary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return next_secondary_i128i128( code, scope, table_n, data, len );
     }
 
-    static int32_t previous_secondary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return previous_secondary_i128i128( scope, code, table_n, data, len );
+    static int32_t previous_secondary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return previous_secondary_i128i128( code, scope, table_n, data, len );
     }
 
-    static int32_t upper_bound_secondary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return upper_bound_secondary_i128i128( scope, code, table_n, data, len );
+    static int32_t upper_bound_secondary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return upper_bound_secondary_i128i128( code, scope, table_n, data, len );
     }
 
-    static int32_t lower_bound_secondary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return lower_bound_secondary_i128i128( scope, code, table_n, data, len );
+    static int32_t lower_bound_secondary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return lower_bound_secondary_i128i128( code, scope, table_n, data, len );
     }
 
     static int32_t remove( uint64_t scope, uint64_t table_n, account_name bta, const void* data ) {
@@ -175,7 +175,7 @@ struct table_impl<sizeof(uint128_t),sizeof(uint128_t)> {
  *  @ingroup databaseCpp
   * @{
  */
-template<uint64_t scope, uint64_t code, uint64_t table_n, uint64_t bta, typename Record, typename PrimaryType, typename SecondaryType = void>
+template<uint64_t code, uint64_t scope, uint64_t table_n, uint64_t bta, typename Record, typename PrimaryType, typename SecondaryType = void>
 struct table {
    private:
    typedef table_impl<sizeof( PrimaryType ), sizeof( SecondaryType )> impl;
@@ -196,7 +196,7 @@ struct table {
       *  @return true if successful read.
       */
       static bool front( Record& r, uint64_t s = scope ) {
-         return impl::front_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+         return impl::front_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
       /**
@@ -206,7 +206,7 @@ struct table {
       *  @return true if successful read.
       */
       static bool back( Record& r, uint64_t s = scope ) {
-         return impl::back_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+         return impl::back_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
       /**
@@ -216,7 +216,7 @@ struct table {
       *  @return true if successful read.
       */
       static bool next( Record& r, uint64_t s = scope ) {
-         return impl::next_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+         return impl::next_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
       /**
@@ -226,7 +226,7 @@ struct table {
       *  @return true if successful read.
       */
       static bool previous( Record& r, uint64_t s = scope ) {
-         return impl::previous_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+         return impl::previous_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
       /**
@@ -238,7 +238,7 @@ struct table {
       */
       static bool get( const PrimaryType& p, Record& r, uint64_t s = scope ) {
          *reinterpret_cast<PrimaryType*>(&r) = p;
-         return impl::load_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+         return impl::load_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
@@ -249,7 +249,7 @@ struct table {
        *  @return true if successful read.
        */
       static bool lower_bound( const PrimaryType& p, Record& r ) {
-         return impl::lower_bound_primary( scope, code, table_n, &p &r, sizeof(Record) ) == sizeof(Record);
+         return impl::lower_bound_primary( code, scope, table_n, &p &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
@@ -260,7 +260,7 @@ struct table {
        *  @return true if successful read.
        */
       static bool upper_bound( const PrimaryType& p, Record& r ) {
-         return impl::upper_bound_primary( scope, code, table_n, &p &r, sizeof(Record) ) == sizeof(Record);
+         return impl::upper_bound_primary( code, scope, table_n, &p &r, sizeof(Record) ) == sizeof(Record);
       }
 
       /**
@@ -286,7 +286,7 @@ struct table {
        *  @return true if successful read.
        */
        static bool front( Record& r, uint64_t s = scope ) {
-          return impl::front_secondary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+          return impl::front_secondary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
        }
 
        /**
@@ -296,7 +296,7 @@ struct table {
        *  @return true if successful read.
        */
        static bool back( Record& r, uint64_t s = scope ) {
-          return impl::back_secondary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+          return impl::back_secondary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
        }
 
        /**
@@ -306,7 +306,7 @@ struct table {
        *  @return true if successful read.
        */
        static bool next( Record& r, uint64_t s = scope ) {
-          return impl::next_secondary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+          return impl::next_secondary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
        }
 
        /**
@@ -316,7 +316,7 @@ struct table {
        *  @return true if successful read.
        */
        static bool previous( Record& r, uint64_t s = scope ) {
-          return impl::previous_secondary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+          return impl::previous_secondary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
        }
 
        /**
@@ -327,7 +327,7 @@ struct table {
        *  @return true if successful read.
        */
        static bool get( const SecondaryType& p, Record& r, uint64_t s = scope ) {
-          return impl::load_secondary( s, code, table_n, &p &r, sizeof(Record) ) == sizeof(Record);
+          return impl::load_secondary( code, s, table_n, &p &r, sizeof(Record) ) == sizeof(Record);
        }
 
        /**
@@ -339,7 +339,7 @@ struct table {
        */
 
        static bool lower_bound( const SecondaryType& p, Record& r, uint64_t s = scope ) {
-          return impl::lower_bound_secondary( s, code, table_n, &p &r, sizeof(Record) ) == sizeof(Record);
+          return impl::lower_bound_secondary( code, s, table_n, &p &r, sizeof(Record) ) == sizeof(Record);
        }
 
        /**
@@ -350,7 +350,7 @@ struct table {
         *  @return true if successful read.
         */
        static bool upper_bound( const SecondaryType& p, Record& r, uint64_t s = scope ) {
-          return impl::upper_bound_secondary( s, code, table_n, &p &r, sizeof(Record) ) == sizeof(Record);
+          return impl::upper_bound_secondary( code, s, table_n, &p &r, sizeof(Record) ) == sizeof(Record);
        }
 
        /**
@@ -376,7 +376,7 @@ struct table {
 
     static bool get( const PrimaryType& p, Record& r, uint64_t s = scope ) {
        *reinterpret_cast<PrimaryType*>(&r) = p;
-       return impl::load_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+       return impl::load_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
     }
 
      /**
@@ -422,32 +422,32 @@ struct table {
 template<>
 struct table_impl<sizeof(uint64_t),0> {
  
-    static int32_t front_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return front_i64( scope, code, table_n, data, len );
+    static int32_t front_primary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return front_i64( code, scope, table_n, data, len );
     }
 
-    static int32_t back_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return back_i64( scope, code, table_n, data, len );
+    static int32_t back_primary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return back_i64( code, scope, table_n, data, len );
     }
 
-    static int32_t load_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return load_i64( scope, code, table_n, data, len );
+    static int32_t load_primary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return load_i64( code, scope, table_n, data, len );
     }
 
-    static int32_t next_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return next_i64( scope, code, table_n, data, len );
+    static int32_t next_primary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return next_i64( code, scope, table_n, data, len );
     }
 
-    static int32_t previous_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return previous_i64( scope, code, table_n, data, len );
+    static int32_t previous_primary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return previous_i64( code, scope, table_n, data, len );
     }
 
-    static int32_t lower_bound_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-       return lower_bound_i64( scope, code, table_n, data, len );
+    static int32_t lower_bound_primary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return lower_bound_i64( code, scope, table_n, data, len );
     }
 
-    static int32_t upper_bound_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
-        return upper_bound_i64(scope, code, table_n, data, len);
+    static int32_t upper_bound_primary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
+       return upper_bound_i64( code, scope, table_n, data, len );
     }
 
     static int32_t remove( uint64_t scope, uint64_t table_n, account_name bta, const void* data ) {
@@ -531,8 +531,8 @@ struct table_impl<sizeof(uint64_t),0> {
   *  @ingroup databaseCpp
   *  @{
   */
-template<uint64_t scope, uint64_t code, uint64_t table_n, uint64_t bta, typename Record, typename PrimaryType>
-struct table<scope,code,table_n,bta,Record,PrimaryType,void> {
+template<uint64_t code, uint64_t scope, uint64_t table_n, uint64_t bta, typename Record, typename PrimaryType>
+struct table<code,scope,table_n,bta,Record,PrimaryType,void> {
    private:
    typedef table_impl<sizeof( PrimaryType ),0> impl;
    static_assert( sizeof(PrimaryType) <= sizeof(Record), "invalid template parameters" );
@@ -549,7 +549,7 @@ struct table<scope,code,table_n,bta,Record,PrimaryType,void> {
        *  @return true if successfully retrieved the front of the table.
        */
       static bool front( Record& r ) {
-         return impl::front_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+         return impl::front_primary( code, scope, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
@@ -558,7 +558,7 @@ struct table<scope,code,table_n,bta,Record,PrimaryType,void> {
        *  @return true if successfully retrieved the back of the table.
        */
       static bool back( Record& r ) {
-         return impl::back_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+         return impl::back_primary( code, scope, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
@@ -567,7 +567,7 @@ struct table<scope,code,table_n,bta,Record,PrimaryType,void> {
        *  @return true if successfully retrieved the next record.
        */
       static bool next( Record& r ) {
-         return impl::next_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+         return impl::next_primary( code, scope, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
@@ -576,7 +576,7 @@ struct table<scope,code,table_n,bta,Record,PrimaryType,void> {
        *  @return true if successfully retrieved the previous record.
        */
       static bool previous( Record& r ) {
-         return impl::previous_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+         return impl::previous_primary( code, scope, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
@@ -587,7 +587,7 @@ struct table<scope,code,table_n,bta,Record,PrimaryType,void> {
        */
       static bool get( const PrimaryType& p, Record& r, uint64_t s = scope ) {
          *reinterpret_cast<PrimaryType*>(&r) = p;
-         return impl::load_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+         return impl::load_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
@@ -597,7 +597,7 @@ struct table<scope,code,table_n,bta,Record,PrimaryType,void> {
        */
       static bool lower_bound( const PrimaryType& p, Record& r ) {
          *reinterpret_cast<PrimaryType*>(&r) = p;
-         return impl::lower_bound_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+         return impl::lower_bound_primary( code, scope, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
@@ -607,7 +607,7 @@ struct table<scope,code,table_n,bta,Record,PrimaryType,void> {
        */
        static bool upper_bound( const PrimaryType& p, Record& r ) {
          *reinterpret_cast<PrimaryType*>(&r) = p;
-         return impl::upper_bound_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+         return impl::upper_bound_primary( code, scope, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
@@ -646,7 +646,7 @@ struct table<scope,code,table_n,bta,Record,PrimaryType,void> {
      */
    static bool get( const PrimaryType& p, Record& r, uint64_t s = scope ) {
       *reinterpret_cast<PrimaryType*>(&r) = p;
-      return impl::load_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+      return impl::load_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
    }
 
    /**
@@ -657,7 +657,7 @@ struct table<scope,code,table_n,bta,Record,PrimaryType,void> {
     * @return true if get succeeds.
     */
    static bool get( Record& r, uint64_t s = scope ) {
-      return impl::load_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+      return impl::load_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
    }
 
     /**
@@ -705,32 +705,32 @@ struct table_impl_obj<char*> {
        return update_str( scope, table_n, bta, key, keylen, data, datalen );
     }
 
-    static int32_t front( account_name scope, account_name code, table_name table_n, char* data, uint32_t len ) {
-        return front_str( scope, code, table_n, data, len );
+    static int32_t front( account_name code, account_name scope, table_name table_n, char* data, uint32_t len ) {
+       return front_str( code, scope, table_n, data, len );
     }
 
-    static int32_t back( account_name scope, account_name code, table_name table_n, char* data, uint32_t len ) {
-        return back_str( scope, code, table_n, data, len );
+    static int32_t back( account_name code, account_name scope, table_name table_n, char* data, uint32_t len ) {
+       return back_str( code, scope, table_n, data, len );
     }
 
-    static int32_t load( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
-        return load_str( scope, code, table_n, key, keylen, data, datalen );
+    static int32_t load( account_name code, account_name scope, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+       return load_str( code, scope, table_n, key, keylen, data, datalen );
     }
 
-    static int32_t next( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
-        return next_str( scope, code, table_n, key, keylen, data, datalen );
+    static int32_t next( account_name code, account_name scope, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+       return next_str( code, scope, table_n, key, keylen, data, datalen );
     }
 
-    static int32_t previous( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
-        return previous_str( scope, code, table_n, key, keylen, data, datalen );
+    static int32_t previous( account_name code, account_name scope, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+       return previous_str( code, scope, table_n, key, keylen, data, datalen );
     }
 
-    static int32_t lower_bound( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
-        return lower_bound_str( scope, code, table_n, key, keylen, data, datalen );
+    static int32_t lower_bound( account_name code, account_name scope, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+       return lower_bound_str( code, scope, table_n, key, keylen, data, datalen );
     }
 
-    static int32_t upper_bound( account_name scope, account_name code, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
-        return upper_bound_str( scope, code, table_n, key, keylen, data, datalen );
+    static int32_t upper_bound( account_name code, account_name scope, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
+       return upper_bound_str( code, scope, table_n, key, keylen, data, datalen );
     }
 
     static int32_t remove( account_name scope, table_name table_n, account_name bta, char* key, uint32_t keylen ) {
@@ -751,7 +751,7 @@ struct table_impl_obj<char*> {
   *  @{
   */
 
-template<account_name scope, account_name code, table_name table_n, account_name bta, typename PrimaryType>
+template<account_name code, account_name scope, table_name table_n, account_name bta, typename PrimaryType>
 struct var_table {
     private:
     typedef table_impl_obj<PrimaryType> impl;
@@ -795,7 +795,7 @@ struct var_table {
      * @return the number of bytes read or -1 if key was not found
      */
     int32_t front( char* record, uint32_t len ) {
-        return impl::front( scope, code, table_n, record, len );
+       return impl::front( code, scope, table_n, record, len );
     }
 
      /**
@@ -808,7 +808,7 @@ struct var_table {
      * @return the number of bytes read or -1 if key was not found
      */
     int32_t back( char* record, uint32_t len ) {
-        return impl::back( scope, code, table_n, record, len );
+       return impl::back( code, scope, table_n, record, len );
     }
 
     /**
@@ -821,7 +821,7 @@ struct var_table {
      * @return the number of bytes read or -1 if key was not found
      */
     int32_t load( primary key, uint32_t keylen, char* record, uint32_t len ) {
-       return impl::load( scope, code, table_n, key, keylen, record, len );
+       return impl::load( code, scope, table_n, key, keylen, record, len );
     } 
 
     /**
@@ -834,7 +834,7 @@ struct var_table {
      * @return the number of bytes read or -1 if key was not found
      */
     int32_t next( primary key, uint32_t keylen, char* record, uint32_t len ) {
-       return impl::next( scope, code, table_n, key, keylen, record, len );
+       return impl::next( code, scope, table_n, key, keylen, record, len );
     }
     
     /**
@@ -847,7 +847,7 @@ struct var_table {
      * @return the number of bytes read or -1 if key was not found
      */
     int32_t previous( primary key, uint32_t keylen, char* record, uint32_t len ) {
-       return impl::previous( scope, code, table_n, key, keylen, record, len );
+       return impl::previous( code, scope, table_n, key, keylen, record, len );
     }
 
     /**
@@ -860,7 +860,7 @@ struct var_table {
      * @return the number of bytes read or -1 if key was not found
      */
     int32_t lower_bound( primary key, uint32_t keylen, char* record, uint32_t len ) {
-       return impl::lower_bound( scope, code, table_n, key, keylen, record, len );
+       return impl::lower_bound( code, scope, table_n, key, keylen, record, len );
     }
 
     /**
@@ -873,7 +873,7 @@ struct var_table {
      * @return the number of bytes read or -1 if key was not found
      */
     int32_t upper_bound( primary key, uint32_t keylen, char* record, uint32_t len ) {
-       return impl::upper_bound( scope, code, table_n, key, keylen, record, len );
+       return impl::upper_bound( code, scope, table_n, key, keylen, record, len );
     }
 
     /**
@@ -895,7 +895,7 @@ struct var_table {
 
 } // namespace eosio
 
-#define TABLE2(NAME, SCOPE, CODE, TABLE, TYPE, PRIMARY_NAME, PRIMARY_TYPE, SECONDARY_NAME, SECONDARY_TYPE) \
-   using NAME = eosio::table<N(SCOPE),N(CODE),N(TABLE),TYPE,PRIMARY_TYPE,SECONDARY_TYPE>; \
+#define TABLE2(NAME, CODE, SCOPE, TABLE, TYPE, PRIMARY_NAME, PRIMARY_TYPE, SECONDARY_NAME, SECONDARY_TYPE) \
+   using NAME = eosio::table<N(CODE),N(SCOPE),N(TABLE),TYPE,PRIMARY_TYPE,SECONDARY_TYPE>; \
    typedef NAME::primary_index PRIMARY_NAME; \
    typedef NAME::secondary_index SECONDARY_NAME;

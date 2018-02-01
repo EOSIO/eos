@@ -204,22 +204,22 @@ void apply_context::cancel_deferred( uint32_t sender_id ) {
    results.canceled_deferred.emplace_back(receiver, sender_id);
 }
 
-const contracts::table_id_object* apply_context::find_table( name scope, name code, name table ) {
+const contracts::table_id_object* apply_context::find_table( name code, name scope, name table ) {
    require_read_lock(code, scope);
-   return db.find<table_id_object, contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));
+   return db.find<table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));
 }
 
-const contracts::table_id_object& apply_context::find_or_create_table( name scope, name code, name table ) {
+const contracts::table_id_object& apply_context::find_or_create_table( name code, name scope, name table ) {
    require_read_lock(code, scope);
-   const auto* existing_tid =  db.find<contracts::table_id_object, contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));
+   const auto* existing_tid =  db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));
    if (existing_tid != nullptr) {
       return *existing_tid;
    }
 
    require_write_lock(scope);
    return mutable_db.create<contracts::table_id_object>([&](contracts::table_id_object &t_id){
-      t_id.scope = scope;
       t_id.code = code;
+      t_id.scope = scope;
       t_id.table = table;
    });
 }
