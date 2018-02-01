@@ -4,7 +4,7 @@
  */
 
 #include <eosiolib/account.hpp>
-#include <eosiolib/eos.hpp>
+#include <eosiolib/eosio.hpp>
 #include <eosiolib/system.h>
 
 #include "test_api.hpp"

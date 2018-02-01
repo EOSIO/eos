@@ -1,5 +1,5 @@
 #include <eosiolib/real.hpp>
-#include <eosiolib/eos.hpp>
+#include <eosiolib/eosio.hpp>
 
 #include "test_api.hpp"
 using namespace eosio;

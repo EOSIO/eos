@@ -2,9 +2,9 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eoslib/eos.hpp>
-#include <eoslib/crypto.h>
-#include <eoslib/print.hpp>
+#include <eosiolib/eosio.hpp>
+#include <eosiolib/crypto.h>
+#include <eosiolib/print.hpp>
 
 #include "test_api.hpp"
 #define WASM_TEST_FAIL 1

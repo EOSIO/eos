@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 //#include <eoslib/message.h>
-#include <eoslib/memory.hpp>
+#include <eosiolib/memory.hpp>
 
 using namespace eosio;
 

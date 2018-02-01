@@ -7,6 +7,7 @@
 #pragma once
 #include <eosiolib/account.h>
 #include <eosiolib/print.hpp>
+#include <eosiolib/asset.hpp>
 
 
 namespace eosio { namespace account {

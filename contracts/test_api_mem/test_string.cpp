@@ -1,5 +1,5 @@
-#include <eoslib/string.hpp>
-#include <eoslib/eos.hpp>
+#include <eosiolib/string.hpp>
+#include <eosiolib/eosio.hpp>
 
 #include "../test_api/test_api.hpp"
 

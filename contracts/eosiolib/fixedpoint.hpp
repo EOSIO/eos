@@ -1,5 +1,6 @@
 #pragma once
 #include <eosiolib/types.h>
+#include <eosiolib/print.hpp>
 
 namespace eosio
 {
@@ -148,8 +149,15 @@ ope        * fixed_point128<3> b(a);
             if(!Q) return 0;
             return val << (32-Q);
         }
-
-        
+         
+        void print() const {
+           uint128_t ip(int_part());
+           uint128_t fp(frac_part());
+           printi128(&ip);
+           prints(".");
+           printi128(&fp);
+        }
+         
         // Various assignment operators
         template <uint8_t qr> fixed_point128 &operator=(const fixed_point32<qr> &r);
         template <uint8_t qr> fixed_point128 &operator=(const fixed_point64<qr> &r);
@@ -225,6 +233,12 @@ ope        * fixed_point128<3> b(a);
             return val << (32-Q);
         }
 
+        void print() const {
+           printi(int_part());
+           prints(".");
+           printi128(frac_part());
+        }
+ 
         // Various assignment operators
         template <uint8_t QR> fixed_point64 &operator=(const fixed_point32<QR> &r);
         template <uint8_t QR> fixed_point64 &operator=(const fixed_point64<QR> &r);
@@ -293,6 +307,12 @@ ope        * fixed_point128<3> b(a);
         uint32_t frac_part() const {
             if(!Q) return 0;
             return val << (32-Q);
+        }
+
+        void print() const {
+           printi(int_part());
+           prints(".");
+           printi128(frac_part());
         }
 
         // Various assignment operators

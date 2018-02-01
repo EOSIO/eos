@@ -19,18 +19,19 @@ struct test_action_action {
    }
 
    vector<char> data;
-   
+
    template <typename DataStream>
    friend DataStream& operator << ( DataStream& ds, const test_action_action& a ) {
-      raw::pack(ds, a.data);
+      for ( auto c : a.data ) 
+         ds << c;
       return ds;
    }
-   
+  /* 
    template <typename DataStream>
    friend DataStream& operator >> ( DataStream& ds, test_action_action& a ) {
-      raw::unpack(ds. a.data);
       return ds;
    }
+   */
 };
 
 template <uint64_t ACCOUNT, uint64_t NAME>
