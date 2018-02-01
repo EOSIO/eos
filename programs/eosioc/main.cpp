@@ -112,8 +112,8 @@ string program = "eosc";
 
 eosio::client::eosioc_helper helper;
 
-auto tx_expiration = fc::seconds(30);
 bool tx_force_unique = false;
+
 void add_standard_transaction_options(CLI::App* cmd) {
    CLI::callback_t parse_exipration = [](CLI::results_t res) -> bool {
       double value_s;
@@ -121,7 +121,7 @@ void add_standard_transaction_options(CLI::App* cmd) {
          return false;
       }
 
-      tx_expiration = fc::seconds(static_cast<uint64_t>(value_s));
+      helper.set_tx_expiration(fc::seconds(static_cast<uint64_t>(value_s)));
       return true;
    };
 

@@ -33,8 +33,6 @@ FC_DECLARE_EXCEPTION( explained_exception, 9000000, "explained exception, see er
 namespace eosio {
 namespace client {
 
-const auto tx_expiration = fc::seconds(30);
-
 std::string eosioc_helper::host_wallet() const
 {
     return m_wallet.host();
@@ -73,6 +71,16 @@ uint32_t eosioc_helper::port_peer() const
 void eosioc_helper::set_port_peer(uint32_t port)
 {
     m_peer.set_port(port);
+}
+
+fc::microseconds eosioc_helper::tc_expiration()
+{
+    return m_tx_expiration;
+}
+
+void eosioc_helper::set_tx_expiration(fc::microseconds time)
+{
+    m_tx_expiration = time;
 }
 
 void eosioc_helper::get_block(const std::string &id)
@@ -269,7 +277,7 @@ void eosioc_helper::send_transaction(const std::vector<chain::action>& actions, 
     }
 
     auto info = get_info();
-    trx.expiration = info.head_block_time + tx_expiration;
+    trx.expiration = info.head_block_time + m_tx_expiration;
     trx.set_reference_block(info.head_block_id);
     if (!skip_sign) {
         sign_transaction(trx);
@@ -281,7 +289,7 @@ void eosioc_helper::send_transaction(const std::vector<chain::action>& actions, 
 fc::variant eosioc_helper::push_transaction(eosio::chain::signed_transaction& trx, bool sign )
 {
     auto info = get_info();
-    trx.expiration = info.head_block_time + tx_expiration;
+    trx.expiration = info.head_block_time + m_tx_expiration;
     trx.set_reference_block(info.head_block_id);
 
     if (sign) {
@@ -381,7 +389,7 @@ void eosioc_helper::execute_random_transactions(uint64_t number_of_accounts, uin
        chain::signed_transaction trx;
        trx.actions.emplace_back( std::vector<chain::permission_level>{{sender,"active"}},
                                  chain::contracts::transfer{ .from = sender, .to = recipient, .amount = amount, .memo = memo});
-       trx.expiration = info.head_block_time + tx_expiration;
+       trx.expiration = info.head_block_time + m_tx_expiration;
        trx.set_reference_block(info.head_block_id);
 
        batch.emplace_back(trx);
@@ -416,7 +424,7 @@ void eosioc_helper::execute_random_transactions(uint64_t number_of_accounts, uin
           auto memo = fc::variant(fc::time_point::now()).as_string() + " " + fc::variant(fc::time_point::now().time_since_epoch()).as_string();
           trx.actions.emplace_back(  vector<chain::permission_level>{{sender,"active"}},
                                      chain::contracts::transfer{ .from = sender, .to = recipient, .amount = amount, .memo = memo});
-          trx.expiration = info.head_block_time + tx_expiration;
+          trx.expiration = info.head_block_time + m_tx_expiration;
           trx.set_reference_block( info.head_block_id);
 
           batch.emplace_back(trx);
@@ -478,7 +486,7 @@ void eosioc_helper::configure_benchmarks(uint64_t number_of_accounts, const std:
       trx.actions.emplace_back( std::vector<chain::permission_level>{{creator,"active"}},
                                 chain::contracts::newaccount{creator, newaccount, owner_auth, active_auth, recovery_auth, deposit});
 
-      trx.expiration = info.head_block_time + tx_expiration;
+      trx.expiration = info.head_block_time + m_tx_expiration;
       trx.set_reference_block(info.head_block_id);
       batch.emplace_back(trx);
   info = get_info();
@@ -701,7 +709,7 @@ void eosioc_helper::transfer(const std::string& sender,
 
 
     auto info = get_info();
-    trx.expiration = info.head_block_time + tx_expiration;
+    trx.expiration = info.head_block_time + m_tx_expiration;
     trx.set_reference_block( info.head_block_id);
     if (!skip_sign) {
         sign_transaction(trx);

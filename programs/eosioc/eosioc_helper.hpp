@@ -26,6 +26,9 @@ public:
     uint32_t port_peer() const;
     void set_port_peer(uint32_t port);
 
+    fc::microseconds tc_expiration();
+    void set_tx_expiration(fc::microseconds time);
+
     void get_block(const std::string& id);
     void get_account(const std::string& account);
     void get_key_accounts(const std::string& public_key);
@@ -144,6 +147,7 @@ private:
 
     wallet m_wallet;
     peer m_peer;
+    fc::microseconds m_tx_expiration = fc::seconds(30);
 };
 
 } // namespace client
