@@ -517,7 +517,7 @@ You can find up to date information about EOS Docker in the [Docker Readme](http
 
 If you prefer to manually build dependencies, follow the steps below.
 
-This project is written primarily in C++14 and uses CMake as its build system. An up-to-date Clang and the latest version of CMake is recommended.
+This project is written primarily in C++14 and uses CMake as its build system. An up-to-date Clang and the latest version of CMake is recommended, and do make sure you have CMake installed for Command Line Use.
 
 Dependencies:
 
