@@ -29,33 +29,35 @@ public:
     fc::microseconds tc_expiration();
     void set_tx_expiration(fc::microseconds time);
 
-    void print_info() const;
+    void print_info();
+    void print_block(const std::string& id);
+    void print_account(const std::string& account);
+    void print_key_accounts(const std::string& public_key);
+    void print_controlled_accounts(const std::string& controllingAccount);
+    void print_currency_stats(const std::string& code, const std::string& symbol);
+    void print_table(const std::string& scope, const std::string& code, const std::string& table);
+    void print_open_wallets();
+    void print_private_keys_of_open_wallets();
+    void print_transaction(const std::string& id);
+    void print_transactions(const std::string& account,
+                            const std::string& skip_seq,
+                            const std::string& num_seq);
+    void print_connection_status(const std::string& peer);
+    void print_status(const std::string& peer);
+    void print_balance(const std::string& account_name,
+                       const std::string& code,
+                       const std::string& symbol);
 
-    void get_block(const std::string& id);
-    void get_account(const std::string& account);
-    void get_key_accounts(const std::string& public_key);
-    void get_controlled_accounts(const std::string& controllingAccount);
-    void get_transaction(const std::string& id);
-    void get_transactions(const std::string& account,
-                          const std::string& skip_seq,
-                          const std::string& num_seq);
-    void start_new_connection_to_peer(const std::string& host);
-    void close_connection_to_peer(const std::string& host);
-    void status_of_connection_to_peer(const std::string& host);
-    void status_of_all_existing_peers(const std::string& host);
+    void start_connection(const std::string& peer);
+    void close_connection(const std::string& peer);
 
     void create_wallet(const std::string& name);
-    void open_existing_wallet(const std::string& name);
+    void open_wallet(const std::string& name);
     void lock_wallet(const std::string& name);
-    void lock_all();
+    void lock_all_wallets();
     void unlock_wallet(const std::string& name, std::string passwd);
     void import_private_key(const std::string& name, std::string wallet_key);
-    void list_opened_wallet();
-    void list_private_keys_from_opened_wallets();
     void push_JSON_transaction(const std::string& trx);
-
-    void get_currency_stats(const std::string& code,
-                            const std::string& symbol);
 
     void create_account(chain::name creator,
                         chain::name newaccount,
@@ -90,19 +92,19 @@ public:
                   bool tx_force_unique);
 
     void save_code(const std::string& account,
-                  const std::string& code_filename,
-                  const std::string& abi_filename);
+                   const std::string& code_filename,
+                   const std::string& abi_filename);
 
-    void print_table(const std::string& scope, const std::string& code, const std::string& table);
+
     void execute_random_transactions(uint64_t number_account,
                                      uint64_t number_of_transfers,
                                      bool loop,
                                      const std::string &memo);
 
     void configure_benchmarks(uint64_t number_of_accounts,
-                                          const std::string& c_account,
-                                          const std::string& owner_key,
-                                          const std::string& active_key);
+                              const std::string& c_account,
+                              const std::string& owner_key,
+                              const std::string& active_key);
 
     void push_transaction_with_single_action(const std::string& contract,
                                              const std::string& action,
@@ -121,10 +123,6 @@ public:
                                     std::vector<std::string> permissions,
                                     bool approve,
                                     bool skip_sign);
-
-    void get_balance(const std::string& account_name,
-                     const std::string& code,
-                     const std::string& symbol);
 
     void create_and_update_contract(const std::string& account,
                                     const std::string& wast_path,
