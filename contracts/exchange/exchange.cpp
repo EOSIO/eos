@@ -35,7 +35,7 @@
  *  contract.  Users can only deposit or withdraw to their own currency account.
  */
 #include <exchange/exchange.hpp> /// defines transfer struct
-#include <eoslib/print.hpp>
+#include <eosiolib/print.hpp>
 
 using namespace exchange;
 using namespace eosio;
@@ -285,14 +285,6 @@ void apply_exchange_cancel_sell( order_id order ) {
 } // namespace exchange
 
 extern "C" {
-   void init() {
-      /*
-      setAuthority( "currencya", "transfer", "anyone" );
-      setAuthority( "currencyb", "transfer", "anyone" );
-      registerHandler( "apply", "currencya", "transfer" );
-      registerHandler( "apply", "currencyb", "transfer" );
-      */
-   }
 
 //   void validate( uint64_t code, uint64_t action ) { }
 //   void precondition( uint64_t code, uint64_t action ) { }

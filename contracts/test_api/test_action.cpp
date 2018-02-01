@@ -2,6 +2,7 @@
  * @file action_test.cpp
  * @copyright defined in eos/LICENSE.txt
  */
+#include <eosiolib/action.hpp>
 
 #include <eoslib/eos.hpp>
 #include <eoslib/print.hpp>

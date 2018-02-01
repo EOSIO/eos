@@ -30,7 +30,7 @@ add_library( eosio_chain
 
 
              ${HEADERS}
-        )
+        transaction_metadata.cpp)
 
 target_link_libraries( eosio_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime )
 target_include_directories( eosio_chain

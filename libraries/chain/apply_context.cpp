@@ -64,9 +64,9 @@ void apply_context::exec_one()
                ss.sequence = 1;
             });
          } FC_CAPTURE_AND_RETHROW((scope)(receiver));
-         data_access.emplace_back(data_access_info{data_access_info::write, scope, 0});
+         data_access.emplace_back(data_access_info{data_access_info::write, receiver, scope, 0});
       } else {
-         data_access.emplace_back(data_access_info{data_access_info::write, scope, scope_sequence->sequence});
+         data_access.emplace_back(data_access_info{data_access_info::write, receiver, scope, scope_sequence->sequence});
          try {
             mutable_controller.get_mutable_database().modify(*scope_sequence, [&](scope_sequence_object& ss) {
                ss.sequence += 1;
@@ -79,9 +79,9 @@ void apply_context::exec_one()
       auto key = boost::make_tuple(lock.scope, lock.account);
       const auto& scope_sequence = mutable_controller.get_database().find<scope_sequence_object, by_scope_receiver>(key);
       if (scope_sequence == nullptr) {
-         data_access.emplace_back(data_access_info{data_access_info::read, lock.scope, 0});
+         data_access.emplace_back(data_access_info{data_access_info::read, lock.account, lock.scope, 0});
       } else {
-         data_access.emplace_back(data_access_info{data_access_info::read, lock.scope, scope_sequence->sequence});
+         data_access.emplace_back(data_access_info{data_access_info::read, lock.account, lock.scope, scope_sequence->sequence});
       }
    }
 
@@ -231,6 +231,23 @@ vector<account_name> apply_context::get_active_producers() const {
       accounts.push_back(producer.producer_name);
 
    return accounts;
+}
+
+
+const bytes& apply_context::get_packed_transaction() {
+   if( !trx_meta.packed_trx.size() ) {
+      if (_cached_trx.empty()) {
+         auto size = fc::raw::pack_size(trx_meta.trx);
+         _cached_trx.resize(size);
+         fc::datastream<char *> ds(_cached_trx.data(), size);
+         fc::raw::pack(ds, trx_meta.trx);
+      }
+
+      return _cached_trx;
+   }
+
+   return trx_meta.packed_trx;
+
 }
 
 } } /// eosio::chain

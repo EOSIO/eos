@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['welcome_20to_20the_20eos_2eio_20documentation',['Welcome to the EOS.IO Documentation',['../index.html',1,'']]]
+  ['eosio_2esystem',['eosio.system',['../md_contracts_bancor__r_e_a_d_m_e.html',1,'']]],
+  ['eosio_2esystem',['eosio.system',['../md_contracts_eosio_8system__r_e_a_d_m_e.html',1,'']]]
 ];

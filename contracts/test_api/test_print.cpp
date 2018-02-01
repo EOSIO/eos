@@ -2,9 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eoslib/eos.hpp>
-#include <eoslib/fixedpoint.hpp>
-#include <eoslib/print.hpp>
+#include <eosiolib/eosio.hpp>
 
 #include "test_api.hpp"
 using namespace eosio;

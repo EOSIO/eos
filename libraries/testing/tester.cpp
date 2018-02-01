@@ -113,14 +113,18 @@ namespace eosio { namespace testing {
                                    .deposit  = initial_balance
                                 });
 
-      trx.sign( get_private_key( creator, "active" ), chain_id_type()  ); 
+      set_tapos(trx);
+      trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+      push_transaction( trx );
+   }
 
-      control->push_transaction( trx );
+   transaction_trace tester::push_transaction( packed_transaction& trx ) {
+      return control->push_transaction( trx );
    }
 
    transaction_trace tester::push_transaction( signed_transaction& trx ) {
-      set_tapos(trx);
-      return control->push_transaction( trx );
+      auto ptrx = packed_transaction(trx);
+      return push_transaction( ptrx );
    }
 
    void tester::create_account( account_name a, string initial_balance, account_name creator, bool multisig  ) {
@@ -141,8 +145,9 @@ namespace eosio { namespace testing {
                                    .memo   = memo
                                 } );
 
-      trx.sign( get_private_key( from, "active" ), chain_id_type()  ); 
-      return control->push_transaction( trx );
+      set_tapos(trx);
+      trx.sign( get_private_key( from, "active" ), chain_id_type()  );
+      return push_transaction( trx );
    }
 
    void tester::set_authority( account_name account,
@@ -160,7 +165,7 @@ namespace eosio { namespace testing {
 
       set_tapos( trx );
       trx.sign( get_private_key( account, "active" ), chain_id_type()  ); 
-      control->push_transaction( trx );
+      push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account)(perm)(auth)(parent) ) }
 
    void tester::set_code( account_name account, const char* wast ) try {
@@ -219,7 +224,7 @@ namespace eosio { namespace testing {
 
       set_tapos( trx );
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
-      control->push_transaction( trx );
+      push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account)(wast) )
 
    void tester::set_abi( account_name account, const char* abi_json) {
@@ -233,7 +238,7 @@ namespace eosio { namespace testing {
 
       set_tapos( trx );
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
-      control->push_transaction( trx );
+      push_transaction( trx );
    }
 
    bool tester::chain_has_transaction( const transaction_id_type& txid ) const {
@@ -253,21 +258,21 @@ namespace eosio { namespace testing {
     *  Reads balance as stored by generic_currency contract
     */
    asset tester::get_currency_balance( const account_name& code,
-                                            const asset_symbol& symbol,
-                                            const account_name& account ) const {
+                                       const symbol&       asset_symbol,
+                                       const account_name& account ) const {
       const auto& db  = control->get_database();
       const auto* tbl = db.find<contracts::table_id_object, contracts::by_scope_code_table>(boost::make_tuple(account, code, N(account)));
       share_type result = 0;
 
       // the balance is implied to be 0 if either the table or row does not exist
       if (tbl) {
-         const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, symbol));
+         const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, asset_symbol.value()));
          if (obj) {
             fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
             fc::raw::unpack(ds, result);
          }
       }
-      return asset(result, symbol);
+      return asset(result, asset_symbol);
    }
 
 

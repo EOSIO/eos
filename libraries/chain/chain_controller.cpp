@@ -22,7 +22,7 @@
 
 #include <eosio/chain/wasm_interface.hpp>
 
-#include <eos/utilities/rand.hpp>
+#include <eosio/utilities/rand.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -123,16 +123,6 @@ optional<signed_block> chain_controller::fetch_block_by_number(uint32_t num)cons
 
    return optional<signed_block>();
 }
-
-/*
-const signed_transaction& chain_controller::get_recent_transaction(const transaction_id_type& trx_id) const
-{
-   auto& index = _db.get_index<transaction_multi_index, by_trx_id>();
-   auto itr = index.find(trx_id);
-   FC_ASSERT(itr != index.end());
-   return itr->trx;
-}
-*/
 
 std::vector<block_id_type> chain_controller::get_block_ids_on_fork(block_id_type head_of_fork) const
 {
@@ -250,7 +240,7 @@ bool chain_controller::_push_block(const signed_block& new_block)
  * queues full as well, it will be kept in the queue to be propagated later when a new block flushes out the pending
  * queues.
  */
-transaction_trace chain_controller::push_transaction(const signed_transaction& trx, uint32_t skip)
+transaction_trace chain_controller::push_transaction(const packed_transaction& trx, uint32_t skip)
 { try {
    return with_skip_flags(skip, [&]() {
       return _db.with_write_lock([&]() {
@@ -259,16 +249,16 @@ transaction_trace chain_controller::push_transaction(const signed_transaction& t
    });
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
-transaction_trace chain_controller::_push_transaction(const signed_transaction& trx) {
-   check_transaction_authorization(trx);
+transaction_trace chain_controller::_push_transaction(const packed_transaction& trx) {
    transaction_metadata   mtrx( trx, get_chain_id(), head_block_time());
+   check_transaction_authorization(mtrx.trx, trx.signatures);
 
-   auto result = _push_transaction(mtrx);
-
-   _pending_block->input_transactions.push_back(trx);
+   auto result = _push_transaction(std::move(mtrx));
 
    // notify anyone listening to pending transactions
    on_pending_transaction(trx);
+
+   _pending_block->input_transactions.emplace_back(trx);
 
    return result;
 
@@ -278,15 +268,15 @@ static void record_locks_for_data_access(const vector<action_trace>& action_trac
    for (const auto& at: action_traces) {
       for (const auto& access: at.data_access) {
          if (access.type == data_access_info::read) {
-            read_locks.emplace_back(shard_lock{at.receiver, access.scope});
+            read_locks.emplace_back(shard_lock{access.code, access.scope});
          } else {
-            write_locks.emplace_back(shard_lock{at.receiver, access.scope});
+            write_locks.emplace_back(shard_lock{access.code, access.scope});
          }
       }
    }
 }
 
-transaction_trace chain_controller::_push_transaction( transaction_metadata& data )
+transaction_trace chain_controller::_push_transaction( transaction_metadata&& data )
 {
    const transaction& trx = data.trx;
    // If this is the first transaction pushed after applying a block, start a new undo session.
@@ -325,6 +315,8 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata& dat
 
    // The transaction applied successfully. Merge its changes into the pending block session.
    temp_session.squash();
+
+   _pending_transaction_metas.emplace_back(std::forward<transaction_metadata>(data));
 
    return result;
 }
@@ -483,7 +475,7 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
       _pending_block->producer    = producer_obj.owner;
       _pending_block->previous    = head_block_id();
       _pending_block->block_mroot = get_dynamic_global_properties().block_merkle_root.get_root();
-      _pending_block->transaction_mroot = _pending_block->calculate_transaction_merkle_root();
+      _pending_block->transaction_mroot = transaction_metadata::calculate_transaction_merkle_root( _pending_transaction_metas );
       _pending_block->action_mroot = _pending_block_trace->calculate_action_merkle_root();
 
 
@@ -588,9 +580,11 @@ void chain_controller::__apply_block(const signed_block& next_block)
 
    /// cache the input tranasction ids so that they can be looked up when executing the
    /// summary
-   map<transaction_id_type,const signed_transaction*> trx_index;
+   vector<transaction_metadata> input_metas;
+   map<transaction_id_type,transaction_metadata*> trx_index;
    for( const auto& t : next_block.input_transactions ) {
-      trx_index[t.id()] = &t;
+      input_metas.emplace_back(t, chain_id_type(), next_block.timestamp);
+      trx_index[input_metas.back().id] =  &input_metas.back();
    }
 
    block_trace next_block_trace(next_block);
@@ -639,25 +633,27 @@ void chain_controller::__apply_block(const signed_block& next_block)
 
             shard_trace s_trace;
             for (const auto& receipt : shard.transactions) {
-                auto make_metadata = [&](){
+                optional<transaction_metadata> _temp;
+                auto make_metadata = [&]() -> transaction_metadata* {
                   auto itr = trx_index.find(receipt.id);
                   if( itr != trx_index.end() ) {
-                     return transaction_metadata( *itr->second, get_chain_id(), next_block.timestamp );
+                     return itr->second;
                   } else {
                      const auto& gtrx = _db.get<generated_transaction_object,by_trx_id>(receipt.id);
                      auto trx = fc::raw::unpack<deferred_transaction>(gtrx.packed_trx.data(), gtrx.packed_trx.size());
-                     return transaction_metadata(trx, gtrx.published, trx.sender, trx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() );
+                     _temp.emplace(trx, gtrx.published, trx.sender, trx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() );
+                     return &*_temp;
                   }
                };
 
-               auto mtrx = make_metadata();
-               mtrx.region_id = r.region;
-               mtrx.cycle_index = cycle_index;
-               mtrx.shard_index = shard_index;
-               mtrx.allowed_read_locks.emplace(&shard.read_locks);
-               mtrx.allowed_write_locks.emplace(&shard.write_locks);
+               auto *mtrx = make_metadata();
+               mtrx->region_id = r.region;
+               mtrx->cycle_index = cycle_index;
+               mtrx->shard_index = shard_index;
+               mtrx->allowed_read_locks.emplace(&shard.read_locks);
+               mtrx->allowed_write_locks.emplace(&shard.write_locks);
 
-               s_trace.transaction_traces.emplace_back(_apply_transaction(mtrx));
+               s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
                record_locks_for_data_access(s_trace.transaction_traces.back().action_traces, used_read_locks, used_write_locks);
 
                FC_ASSERT(receipt.status == s_trace.transaction_traces.back().status);
@@ -690,12 +686,13 @@ void chain_controller::__apply_block(const signed_block& next_block)
    } /// for each region
 
    FC_ASSERT(next_block.action_mroot == next_block_trace.calculate_action_merkle_root());
+   FC_ASSERT( transaction_metadata::calculate_transaction_merkle_root(input_metas) == next_block.transaction_mroot, "merkle root does not match" );
 
-   _finalize_block( next_block_trace );
+      _finalize_block( next_block_trace );
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 
-flat_set<public_key_type> chain_controller::get_required_keys(const signed_transaction& trx,
-                                                              const flat_set<public_key_type>& candidate_keys)const 
+flat_set<public_key_type> chain_controller::get_required_keys(const transaction& trx,
+                                                              const flat_set<public_key_type>& candidate_keys)const
 {
    auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
                                      get_global_properties().configuration.max_authority_depth,
@@ -755,10 +752,11 @@ void chain_controller::check_authorization( const vector<action>& actions,
                  ("keys", checker.unused_keys()));
 }
 
-void chain_controller::check_transaction_authorization(const signed_transaction& trx, 
+void chain_controller::check_transaction_authorization(const transaction& trx,
+                                                       const vector<signature_type>& signatures,
                                                        bool allow_unused_signatures)const 
 {
-   check_authorization( trx.actions, trx.get_signature_keys( chain_id_type{} ), allow_unused_signatures );
+   check_authorization( trx.actions, trx.get_signature_keys( signatures, chain_id_type{} ), allow_unused_signatures );
 }
 
 optional<permission_name> chain_controller::lookup_minimum_permission(account_name authorizer_account,
@@ -788,7 +786,7 @@ optional<permission_name> chain_controller::lookup_minimum_permission(account_na
    } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
 }
 
-void chain_controller::validate_uniqueness( const signed_transaction& trx )const {
+void chain_controller::validate_uniqueness( const transaction& trx )const {
    if( !should_check_for_duplicate_transactions() ) return;
 
    auto transaction = _db.find<transaction_object, by_trx_id>(trx.id());
@@ -883,8 +881,6 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
    }
 
    
-   FC_ASSERT( next_block.calculate_transaction_merkle_root() == next_block.transaction_mroot, "merkle root does not match" );
-
    return producer;
 }
 
@@ -1087,7 +1083,7 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          ilog( "applying genesis transaction" );
          with_skip_flags(skip_scope_check | skip_transaction_signatures | skip_authority_check | received_block | genesis_setup, 
          [&](){ 
-            transaction_metadata tmeta( genesis_setup_transaction );
+            transaction_metadata tmeta( packed_transaction(genesis_setup_transaction), chain_id_type(),  initial_timestamp );
             transaction_trace ttrace = __apply_transaction( tmeta );
             strace.append(ttrace);
          });
@@ -1450,7 +1446,7 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
 
    transaction etrx;
    etrx.actions.emplace_back(vector<permission_level>{{meta.sender_id,config::active_name}},
-                             contracts::onerror(meta.generated_data, meta.generated_data + meta.generated_size) );
+                             contracts::onerror(meta.raw_data, meta.raw_data + meta.raw_size) );
 
    try {
       auto temp_session = _db.start_undo_session(true);
@@ -1522,7 +1518,7 @@ void chain_controller::push_deferred_transactions( bool flush )
          try {
             auto trx = fc::raw::unpack<deferred_transaction>(trx_p->packed_trx.data(), trx_p->packed_trx.size());
             transaction_metadata mtrx (trx, trx_p->published, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size());
-            _push_transaction(mtrx);
+            _push_transaction(std::move(mtrx));
             generated_transaction_idx.remove(*trx_p);
          } FC_CAPTURE_AND_LOG((trx_p->trx_id)(trx_p->sender));
       } else {

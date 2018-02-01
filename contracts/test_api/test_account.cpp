@@ -3,9 +3,9 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
-#include <eoslib/eos.hpp>
-#include <eoslib/account.hpp>
-#include <eoslib/system.h>
+#include <eosiolib/account.hpp>
+#include <eosiolib/eos.hpp>
+#include <eosiolib/system.h>
 
 #include "test_api.hpp"
 

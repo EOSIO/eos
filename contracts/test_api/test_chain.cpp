@@ -5,7 +5,6 @@
 #include <eoslib/action.h>
 #include <eoslib/chain.h>
 #include <eoslib/eos.hpp>
-
 #include "test_api.hpp"
 
 #pragma pack(push, 1)

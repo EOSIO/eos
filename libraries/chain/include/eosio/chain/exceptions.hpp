@@ -6,7 +6,7 @@
 
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/protocol.hpp>
-#include <eos/utilities/exception_macros.hpp>
+#include <eosio/utilities/exception_macros.hpp>
 
 namespace eosio { namespace chain {
 
@@ -44,6 +44,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( tx_msgs_auth_exceeded,             eosio::chain::transaction_exception, 3030018, "Number of transaction messages per authorized account has been exceeded" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_msgs_code_exceeded,             eosio::chain::transaction_exception, 3030019, "Number of transaction messages per code account has been exceeded" )
    FC_DECLARE_DERIVED_EXCEPTION( wasm_execution_error,              eosio::chain::transaction_exception, 3030020, "Runtime Error Processing WASM" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_decompression_error,            eosio::chain::transaction_exception, 3030020, "Error decompressing transaction" )
 
    FC_DECLARE_DERIVED_EXCEPTION( account_name_exists_exception,     eosio::chain::action_validate_exception, 3040001, "account name already exists" )
    FC_DECLARE_DERIVED_EXCEPTION( invalid_pts_address,               eosio::chain::utility_exception, 3060001, "invalid pts address" )

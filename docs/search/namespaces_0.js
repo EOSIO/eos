@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['dice',['dice',['../namespacedice.html',1,'']]]
+  ['asserter',['asserter',['../namespaceasserter.html',1,'']]]
 ];

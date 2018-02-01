@@ -13,8 +13,8 @@ INCLUDE( SetupTargetMacros )
 set( BLOCKCHAIN_NAME "Eos" )
 set( CMAKE_CXX_STANDARD 14 )
 
-set(VERSION_MAJOR 2)
-set(VERSION_MINOR 1)
+set(VERSION_MAJOR 3)
+set(VERSION_MINOR 0)
 set(VERSION_PATCH 1)
 
 set( CLI_CLIENT_EXECUTABLE_NAME eos_client )
@@ -76,7 +76,8 @@ FIND_PACKAGE(Boost 1.64 REQUIRED COMPONENTS
     chrono
     unit_test_framework
     context
-    locale)
+    locale
+    iostreams)
 
 if( WIN32 )
 
@@ -158,7 +159,9 @@ endif( WIN32 )
 set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build Eos for code coverage analysis")
 
 if(ENABLE_COVERAGE_TESTING)
-    SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
+  SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
+  find_program( LCOV_PATH  lcov )
+  find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
 include(wasm)
@@ -173,6 +176,8 @@ else()
   message(STATUS "--------------------------------------------------------------------")
 endif()
 
+include(installer)
+
 add_subdirectory( libraries )
 add_subdirectory( plugins )
 add_subdirectory( programs )
@@ -182,5 +187,5 @@ add_subdirectory( tools )
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis.json ${CMAKE_CURRENT_BINARY_DIR}/genesis.json COPYONLY)
 
-include(installer)
+
 include(doxygen)

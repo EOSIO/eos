@@ -2,9 +2,9 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eoslib/transaction.hpp>
-#include <eoslib/action.hpp>
-#include <eoslib/eos.hpp>
+#include <eosiolib/transaction.hpp>
+#include <eosiolib/action.hpp>
+
 #include "test_api.hpp"
 
 #pragma pack(push, 1)
