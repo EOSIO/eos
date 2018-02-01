@@ -390,13 +390,9 @@ namespace eosio { namespace chain {
    }
 
    void wasm_interface::apply( wasm_cache::entry& code, apply_context& context ) {
-      if (context.act.account == config::system_account_name && context.act.name == N(setcode)) {
-         my->call("init", {}, code, context);
-      } else {
-         vector<Value> args = {Value(uint64_t(context.act.account)),
-                               Value(uint64_t(context.act.name))};
-         my->call("apply", args, code, context);
-      }
+      vector<Value> args = {Value(uint64_t(context.act.account)),
+                            Value(uint64_t(context.act.name))};
+      my->call("apply", args, code, context);
    }
 
    void wasm_interface::error( wasm_cache::entry& code, apply_context& context ) {
@@ -786,6 +782,29 @@ class transaction_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
+      int read_transaction( array_ptr<char> data, size_t data_len ) {
+         bytes trx = context.get_packed_transaction();
+         if (data_len >= trx.size()) {
+            memcpy(data, trx.data(), trx.size());
+         }
+         return trx.size();
+      }
+
+      int transaction_size() {
+         return context.get_packed_transaction().size();
+      }
+
+      int expiration() {
+        return context.trx_meta.trx.expiration.sec_since_epoch();
+      }
+
+      int tapos_block_num() {
+        return context.trx_meta.trx.ref_block_num;
+      }
+      int tapos_block_prefix() {
+        return context.trx_meta.trx.ref_block_prefix;
+      }
+
       void send_inline( array_ptr<char> data, size_t data_len ) {
          // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
          FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
@@ -867,7 +886,12 @@ REGISTER_INTRINSICS(console_api,
 );
 
 REGISTER_INTRINSICS(transaction_api,
-   (send_inline,           void(int, int)  )
+   (read_transaction,       int(int, int)            )
+   (transaction_size,       int()                    )
+   (expiration,             int()                    )
+   (tapos_block_prefix,     int()                    )
+   (tapos_block_num,        int()                    )
+   (send_inline,           void(int, int)            )
    (send_deferred,         void(int, int, int, int)  )
 );
 

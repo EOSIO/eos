@@ -67,12 +67,6 @@ const char* my_abi = R"=====(
       },{
          "name": "asset_arr",
          "type": "asset[]"
-      },{
-         "name": "price",
-         "type": "price"
-      },{
-         "name": "price_arr",
-         "type": "price[]"
       }]
     },{
       "name": "NativeTypes",
@@ -388,10 +382,10 @@ BOOST_AUTO_TEST_CASE(generator)
 
   auto generate_abi = [this](const char* source, const char* abi, bool opt_sfs=false) -> bool {
 
-    const char* eoslib_path = std::getenv("EOSLIB");
-    FC_ASSERT(eoslib_path != NULL);
+    const char* eosiolib_path = std::getenv("EOSLIB");
+    FC_ASSERT(eosiolib_path != NULL);
 
-    std::string include_param = std::string("-I") + eoslib_path;
+    std::string include_param = std::string("-I") + eosiolib_path;
 
     abi_def output;
     bool res = runToolOnCodeWithArgs(new generate_abi_action(false, opt_sfs, "", output), source,
@@ -413,7 +407,7 @@ BOOST_AUTO_TEST_CASE(generator)
   };
 
    const char* unknown_type = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
    //@abi action
    struct transfer {
       uint64_t param1;
@@ -424,8 +418,8 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_CHECK_EXCEPTION( generate_abi(unknown_type, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* all_types = R"=====(
-    #include <eoslib/types.hpp>
-    #include <eoslib/string.hpp>
+    #include <eosiolib/types.hpp>
+    #include <eosiolib/string.hpp>
 
     typedef int field;
     typedef int struct_def;
@@ -488,7 +482,6 @@ BOOST_AUTO_TEST_CASE(generator)
       nonce                   field40;
       public_key              field41;
       asset                   field42;
-      price                   field43;
    };
    )=====";
 
@@ -624,9 +617,6 @@ BOOST_AUTO_TEST_CASE(generator)
           },{
              "name": "field42",
              "type": "asset"
-          },{
-             "name": "field43",
-             "type": "price"
           }]
            }],
            "actions": [{
@@ -639,7 +629,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_TEST( generate_abi(all_types, all_types_abi) == true);
 
    const char* double_base = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    struct A {
       uint64_t param3;
@@ -657,7 +647,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_CHECK_EXCEPTION( generate_abi(double_base, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* double_action = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    struct A {
       uint64_t param3;
@@ -712,8 +702,8 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_TEST( generate_abi(double_action, double_action_abi) == true );
 
    const char* all_indexes = R"=====(
-   #include <eoslib/types.hpp>
-   #include <eoslib/string.hpp>
+   #include <eosiolib/types.hpp>
+   #include <eosiolib/string.hpp>
 
    using namespace eosio;
 
@@ -859,7 +849,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_TEST( generate_abi(all_indexes, all_indexes_abi) == true );
 
    const char* unable_to_determine_index = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    //@abi table
    struct PACKED(table1) {
@@ -875,7 +865,7 @@ BOOST_AUTO_TEST_CASE(generator)
 
   // typedef fixed_string16 FieldName;
    const char* long_field_name = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    //@abi table
    struct PACKED(table1) {
@@ -887,7 +877,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_CHECK_EXCEPTION( generate_abi(long_field_name, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* long_type_name = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    struct this_is_a_very_very_very_very_long_type_name {
       uint64_t field;
@@ -904,7 +894,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_CHECK_EXCEPTION( generate_abi(long_type_name, "{}"), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* same_type_different_namespace = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    namespace A {
      //@abi table
@@ -925,7 +915,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_CHECK_EXCEPTION( generate_abi(same_type_different_namespace, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* bad_index_type = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    //@abi table i64
    struct table1 {
@@ -939,7 +929,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_CHECK_EXCEPTION( generate_abi(bad_index_type, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* full_table_decl = R"=====(
-   #include <eoslib/types.hpp>
+   #include <eosiolib/types.hpp>
 
    //@abi table i64
    class table1 {
@@ -987,8 +977,8 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_TEST( generate_abi(full_table_decl, full_table_decl_abi) == true );
 
    const char* str_table_decl = R"=====(
-   #include <eoslib/types.hpp>
-   #include <eoslib/string.hpp>
+   #include <eosiolib/types.hpp>
+   #include <eosiolib/string.hpp>
 
    //@abi table
    class table1 {
@@ -1033,7 +1023,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_TEST( generate_abi(str_table_decl, str_table_decl_abi) == true );
 
    const char* union_table = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    //@abi table
    union table1 {
@@ -1046,7 +1036,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_CHECK_EXCEPTION( generate_abi(union_table, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* same_action_different_type = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    //@abi action action1
    struct table1 {
@@ -1063,7 +1053,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_CHECK_EXCEPTION( generate_abi(same_action_different_type, ""), eosio::abi_generation_exception, is_abi_generation_exception );
 
    const char* template_base = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
    template<typename T>
    class base {
@@ -1117,7 +1107,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_TEST( generate_abi(template_base, template_base_abi) == true );
 
    const char* action_and_table = R"=====(
-   #include <eoslib/types.h>
+   #include <eosiolib/types.h>
 
   /* @abi table
    * @abi action
@@ -1162,7 +1152,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_TEST( generate_abi(action_and_table, action_and_table_abi) == true );
 
    const char* simple_typedef = R"=====(
-   #include <eoslib/types.hpp>
+   #include <eosiolib/types.hpp>
 
    using namespace eosio;
 
@@ -1219,7 +1209,7 @@ BOOST_AUTO_TEST_CASE(generator)
    BOOST_TEST( generate_abi(simple_typedef, simple_typedef_abi) == true );
 
    const char* field_typedef = R"=====(
-   #include <eoslib/types.hpp>
+   #include <eosiolib/types.hpp>
 
    using namespace eosio;
 
@@ -1308,8 +1298,6 @@ BOOST_AUTO_TEST_CASE(general)
       "publickey_arr" :  ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"],
       "asset"         : "100.00 EOS",
       "asset_arr"     : ["100.00 EOS","100.00 EOS"],
-      "price"         : { "base" : "100.00 EOS", "quote" : "200.00 BTC" },
-      "price_arr"     : [{ "base" : "100.00 EOS", "quote" : "200.00 BTC" },{ "base" : "100.00 EOS", "quote" : "200.00 BTC" }],
 
       "string"            : "ola ke ase",
       "string_arr"        : ["ola ke ase","ola ke desi"],
@@ -2067,7 +2055,7 @@ BOOST_AUTO_TEST_CASE(newaccount)
    BOOST_TEST(53405u == newaccount.recovery.accounts[1].weight);
 
    BOOST_TEST(-900000000000 == newaccount.deposit.amount);
-   BOOST_TEST(EOS_SYMBOL == newaccount.deposit.symbol);
+   BOOST_TEST(symbol(EOS_SYMBOL) == newaccount.deposit.symbol());
 
    auto var2 = verify_round_trip_conversion( abis, "newaccount", var );
    auto newaccount2 = var2.as<contracts::newaccount>();
@@ -2123,7 +2111,7 @@ BOOST_AUTO_TEST_CASE(newaccount)
    BOOST_TEST(newaccount.recovery.accounts[1].weight == newaccount2.recovery.accounts[1].weight);
 
    BOOST_TEST(newaccount.deposit.amount == newaccount2.deposit.amount);
-   BOOST_TEST(newaccount.deposit.symbol == newaccount2.deposit.symbol);
+   BOOST_TEST(newaccount.deposit.symbol() == newaccount2.deposit.symbol());
 
 } FC_LOG_AND_RETHROW() }
 

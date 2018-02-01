@@ -63,6 +63,7 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
   # NOTE: Setting SOURCE_FILE and looping over it to avoid cmake issue with compilation ${target}.bc's rule colliding with
   # linking ${target}.bc's rule 
   set(SOURCE_FILE ${target}.cpp)
+  set(outfiles "")
   foreach(srcfile ${SOURCE_FILE})
     
     get_filename_component(outfile ${srcfile} NAME)

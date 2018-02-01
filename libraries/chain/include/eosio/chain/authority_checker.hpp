@@ -7,7 +7,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/authority.hpp>
 
-#include <eos/utilities/parallel_markers.hpp>
+#include <eosio/utilities/parallel_markers.hpp>
 
 #include <fc/scoped_exit.hpp>
 

@@ -51,7 +51,7 @@ BOOST_FIXTURE_TEST_CASE( test_generic_currency, tester ) try {
          std::cerr << act.console << "\n";
       produce_block();
 
-      auto actual = get_currency_balance(N(currency), expected.symbol, N(usera));
+      auto actual = get_currency_balance(N(currency), expected.symbol(), N(usera));
       BOOST_REQUIRE_EQUAL(expected, actual);
    }
 
@@ -89,11 +89,11 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(currency), "active"), chain_id_type());
-      control->push_transaction(trx);
+      push_transaction(trx);
       produce_block();
 
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol, N(currency)), asset::from_string( "1000000.0000 CUR" ));
+      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol(), N(currency)), asset::from_string( "1000000.0000 CUR" ));
    }
 
    // make a transfer from the contract to a user
@@ -113,11 +113,11 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(currency), "active"), chain_id_type());
-      control->push_transaction(trx);
+      push_transaction(trx);
       produce_block();
 
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol, N(alice)), asset::from_string( "100.0000 CUR" ));
+      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol(), N(alice)), asset::from_string( "100.0000 CUR" ));
    }
 
    // Overspend!
@@ -137,12 +137,12 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(alice), "active"), chain_id_type());
-      BOOST_CHECK_EXCEPTION(control->push_transaction(trx), fc::assert_exception, assert_message_is("integer underflow subtracting token balance"));
+      BOOST_CHECK_EXCEPTION(push_transaction(trx), fc::assert_exception, assert_message_is("integer underflow subtracting token balance"));
       produce_block();
 
       BOOST_REQUIRE_EQUAL(false, chain_has_transaction(trx.id()));
-      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol, N(alice)), asset::from_string( "100.0000 CUR" ));
-      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol, N(bob)), asset::from_string( "0.0000 CUR" ));
+      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol(), N(alice)), asset::from_string( "100.0000 CUR" ));
+      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol(), N(bob)), asset::from_string( "0.0000 CUR" ));
    }
 
    // Full spend
@@ -162,14 +162,88 @@ BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(alice), "active"), chain_id_type());
-      control->push_transaction(trx);
+      push_transaction(trx);
       produce_block();
 
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol, N(alice)), asset::from_string( "0.0000 CUR" ));
-      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol, N(bob)), asset::from_string( "100.0000 CUR" ));
+      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol(), N(alice)), asset::from_string( "0.0000 CUR" ));
+      BOOST_REQUIRE_EQUAL(get_currency_balance(N(currency), token_supply.symbol(), N(bob)), asset::from_string( "100.0000 CUR" ));
    }
 
 } FC_LOG_AND_RETHROW() /// test_currency
+
+BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
+
+   {
+      symbol dollar(2, "DLLR");
+      BOOST_REQUIRE_EQUAL(SY(2, DLLR), dollar.value());
+      BOOST_REQUIRE_EQUAL(2, dollar.decimals());
+      BOOST_REQUIRE_EQUAL(100, dollar.precision());
+      BOOST_REQUIRE_EQUAL("DLLR", dollar.name());
+      BOOST_REQUIRE_EQUAL(true, dollar.valid());
+   }
+
+   {
+      symbol eos(4, "EOS");
+      BOOST_REQUIRE_EQUAL(EOS_SYMBOL_VALUE, eos.value());
+      BOOST_REQUIRE_EQUAL("4,EOS", eos.to_string());
+      BOOST_REQUIRE_EQUAL("EOS", eos.name());
+      BOOST_REQUIRE_EQUAL(4, eos.decimals());
+   }
+
+   // default is "4,EOS"
+   {
+      symbol def;
+      BOOST_REQUIRE_EQUAL(4, def.decimals());
+      BOOST_REQUIRE_EQUAL("EOS", def.name());
+   }
+   // from string
+   {
+      symbol y = symbol::from_string("3,YEN");
+      BOOST_REQUIRE_EQUAL(3, y.decimals());
+      BOOST_REQUIRE_EQUAL("YEN", y.name());
+   }
+
+   // from empty string
+   {
+      BOOST_CHECK_EXCEPTION(symbol::from_string(""),
+                            fc::assert_exception, assert_message_is("creating symbol from empty string"));
+   }
+
+   
+   // precision part missing
+   {
+      BOOST_CHECK_EXCEPTION(symbol::from_string("RND"),
+                            fc::assert_exception, assert_message_is("missing comma in symbol"));
+   }
+
+
+   // precision part missing
+   {
+      BOOST_CHECK_EXCEPTION(symbol::from_string("0,EURO"),
+                            fc::assert_exception, assert_message_is("zero decimals in symbol"));
+   }
+
+   // invalid - contains lower case characters, no validation
+   {
+      symbol malformed(SY(6,EoS));
+      BOOST_REQUIRE_EQUAL(false, malformed.valid());
+      BOOST_REQUIRE_EQUAL("EoS", malformed.name());
+      BOOST_REQUIRE_EQUAL(6, malformed.decimals());
+   }
+
+   // invalid - contains lower case characters, exception thrown 
+   {
+      BOOST_CHECK_EXCEPTION(symbol(5,"EoS"),
+                            fc::assert_exception, assert_message_is("invalid character in symbol name"));
+   }
+
+   // invalid - missing decimal point
+   {
+      BOOST_CHECK_EXCEPTION(asset::from_string("10 CUR"),
+                            fc::assert_exception, assert_message_is("dot missing in asset from string"));
+   }
+
+} FC_LOG_AND_RETHROW() /// test_symbol
 
 BOOST_AUTO_TEST_SUITE_END()

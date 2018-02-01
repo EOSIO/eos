@@ -98,7 +98,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, tester ) try {
 
       set_tapos( trx );
       trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
-      auto result = control->push_transaction( trx );
+      auto result = push_transaction( trx );
       BOOST_CHECK_EQUAL(result.status, transaction_receipt::executed);
       BOOST_CHECK_EQUAL(result.action_traces.size(), 1);
       BOOST_CHECK_EQUAL(result.action_traces.at(0).receiver.to_string(),  name(N(asserter)).to_string() );
@@ -126,7 +126,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, tester ) try {
       trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
       yes_assert_id = trx.id();
 
-      BOOST_CHECK_THROW(control->push_transaction( trx ), fc::assert_exception);
+      BOOST_CHECK_THROW(push_transaction( trx ), fc::assert_exception);
    }
 
    produce_blocks(1);
@@ -158,7 +158,7 @@ BOOST_FIXTURE_TEST_CASE( prove_mem_reset, tester ) try {
 
       set_tapos( trx );
       trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
-      control->push_transaction( trx );
+      push_transaction( trx );
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
       const auto& receipt = get_transaction_receipt(trx.id());
@@ -213,7 +213,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
    abi_serializer::from_variant(pretty_trx, trx, resolver);
    set_tapos( trx );
    trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
-   control->push_transaction( trx );
+   push_transaction( trx );
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    const auto& receipt = get_transaction_receipt(trx.id());
@@ -239,7 +239,7 @@ BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      BOOST_CHECK_EXCEPTION(control->push_transaction(trx), fc::assert_exception, assert_message_is("test_action::assert_false"));
+      BOOST_CHECK_EXCEPTION(push_transaction(trx), fc::assert_exception, assert_message_is("test_action::assert_false"));
       produce_block();
 
       BOOST_REQUIRE_EQUAL(false, chain_has_transaction(trx.id()));
@@ -252,7 +252,7 @@ BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      control->push_transaction(trx);
+      push_transaction(trx);
       produce_block();
 
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -294,7 +294,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(proxy), "active"), chain_id_type());
-      control->push_transaction(trx);
+      push_transaction(trx);
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    }
@@ -351,7 +351,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(proxy), "active"), chain_id_type());
-      control->push_transaction(trx);
+      push_transaction(trx);
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    }
@@ -392,7 +392,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(bob), "active"), chain_id_type());
-      control->push_transaction(trx);
+      push_transaction(trx);
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    }
@@ -440,7 +440,7 @@ BOOST_FIXTURE_TEST_CASE( check_entry_behavior, tester ) try {
 
    set_tapos(trx);
    trx.sign(get_private_key( N(entrycheck), "active" ), chain_id_type());
-   control->push_transaction(trx);
+   push_transaction(trx);
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    const auto& receipt = get_transaction_receipt(trx.id());
@@ -469,7 +469,7 @@ BOOST_FIXTURE_TEST_CASE( simple_no_memory_check, tester ) try {
    trx.actions.push_back(act);
 
    trx.sign(get_private_key( N(nomem), "active" ), chain_id_type());
-   BOOST_CHECK_THROW(control->push_transaction( trx ), wasm_execution_error);
+   BOOST_CHECK_THROW(push_transaction( trx ), wasm_execution_error);
 } FC_LOG_AND_RETHROW()
 
 //Make sure globals are all reset to their inital values
@@ -484,15 +484,24 @@ BOOST_FIXTURE_TEST_CASE( check_global_reset, tester ) try {
    produce_blocks(1);
 
    signed_transaction trx;
+   {
    action act;
    act.account = N(globalreset);
-   act.name = N();
+   act.name = 0ULL;
    act.authorization = vector<permission_level>{{N(globalreset),config::active_name}};
    trx.actions.push_back(act);
+   }
+   {
+   action act;
+   act.account = N(globalreset);
+   act.name = 1ULL;
+   act.authorization = vector<permission_level>{{N(globalreset),config::active_name}};
+   trx.actions.push_back(act);
+   }
 
    set_tapos(trx);
    trx.sign(get_private_key( N(globalreset), "active" ), chain_id_type());
-   control->push_transaction(trx);
+   push_transaction(trx);
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    const auto& receipt = get_transaction_receipt(trx.id());
@@ -507,10 +516,35 @@ BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
    transfer( N(inita), N(current_memory), "10.0000 EOS", "memo" );
    produce_block();
 
-   BOOST_CHECK_THROW(set_code(N(current_memory), current_memory_wast), fc::unhandled_exception);
+   set_code(N(current_memory), current_memory_wast);
    produce_blocks(1);
+   {
+      signed_transaction trx;
+      action act;
+      act.account = N(current_memory);
+      act.authorization = vector<permission_level>{{N(current_memory),config::active_name}};
+      trx.actions.push_back(act);
+      set_tapos(trx);
+      trx.sign(get_private_key( N(current_memory), "active" ), chain_id_type());
 
-   BOOST_CHECK_THROW(set_code(N(current_memory), grow_memory_wast), fc::unhandled_exception);
+      BOOST_CHECK_THROW(push_transaction(trx), fc::unhandled_exception);
+   }
+
+   produce_blocks(1);
+   set_code(N(current_memory), grow_memory_wast);
+   produce_blocks(1);
+   {
+      signed_transaction trx;
+      action act;
+      act.account = N(current_memory);
+      act.authorization = vector<permission_level>{{N(current_memory),config::active_name}};
+      trx.actions.push_back(act);
+      set_tapos(trx);
+      trx.sign(get_private_key( N(current_memory), "active" ), chain_id_type());
+
+      BOOST_CHECK_THROW(push_transaction(trx), fc::unhandled_exception);
+      produce_blocks(1);
+   }
 
 } FC_LOG_AND_RETHROW()
 

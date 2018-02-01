@@ -1,4 +1,5 @@
 add_subdirectory(eosio.system)
+add_subdirectory(identity)
 add_subdirectory(currency)
 #add_subdirectory(bancor)
 #add_subdirectory(eosio.system)
@@ -11,5 +12,5 @@ add_subdirectory(test_api)
 #add_subdirectory(storage)
 #add_subdirectory(social)
 
-install( DIRECTORY eoslib DESTINATION include/ )
+install( DIRECTORY eosiolib DESTINATION include/ )
 install( DIRECTORY skeleton DESTINATION share/ )

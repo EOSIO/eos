@@ -182,12 +182,6 @@ namespace tic_tac_toe {
 */
 extern "C" {
 
-  /**
-  *  This method is called once when the contract is published or updated.
-  */
-  void init()  {
-  }
-
   /// The apply method implements the dispatch of events to this contract
   void apply( uint64_t code, uint64_t action ) {
     if (code == N(tic.tac.toe)) {

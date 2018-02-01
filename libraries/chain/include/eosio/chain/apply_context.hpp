@@ -96,6 +96,8 @@ class apply_context {
 
       vector<account_name> get_active_producers() const;
 
+      const bytes&         get_packed_transaction();
+
       const chain_controller&       controller;
       const chainbase::database&    db;  ///< database where state is stored
       const action&                 act; ///< message being applied
@@ -195,6 +197,7 @@ class apply_context {
 
       vector<shard_lock>                  _read_locks;
       vector<scope_name>                  _write_scopes;
+      bytes                               _cached_trx;
 };
 
 using apply_handler = std::function<void(apply_context&)>;
@@ -246,7 +249,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
          template<typename ObjectType>
          static auto& get(ObjectType& o) {
-            return o.primary_key;
+            return o.secondary_key;
          }
       };
 
@@ -259,7 +262,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
          template<typename ObjectType>
          static auto& get( ObjectType& o) {
-            return o.primary_key;
+            return o.tertiary_key;
          }
       };
 
@@ -656,4 +659,4 @@ using apply_handler = std::function<void(apply_context&)>;
 
 } } // namespace eosio::chain
 
-FC_REFLECT(eosio::chain::apply_context::apply_results, (applied_actions)(generated_transactions));
+FC_REFLECT(eosio::chain::apply_context::apply_results, (applied_actions)(generated_transactions))
