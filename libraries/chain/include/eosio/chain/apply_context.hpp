@@ -344,38 +344,21 @@ using apply_handler = std::function<void(apply_context&)>;
       using exact_tuple = exact_tuple_impl<typename ObjectType::key_type, ObjectType::number_of_keys - 1>;
 
       template< typename KeyType, int NullKeyCount, typename Scope, typename ... Args >
-      struct lower_bound_tuple_impl {
+      struct partial_tuple_impl {
          static auto get(const contracts::table_id_object& tid, const KeyType* keys, Args... args) {
-            return lower_bound_tuple_impl<KeyType, NullKeyCount - 1, Scope, KeyType, Args...>::get(tid, keys, raw_key_value(keys, scope_to_key_index_v<Scope> + NullKeyCount), args...);
+            return partial_tuple_impl<KeyType, NullKeyCount - 1, Scope, KeyType, Args...>::get(tid, keys, raw_key_value(keys, scope_to_key_index_v<Scope> + NullKeyCount), args...);
          }
       };
 
       template< typename KeyType, typename Scope, typename ... Args >
-      struct lower_bound_tuple_impl<KeyType, 0, Scope, Args...> {
+      struct partial_tuple_impl<KeyType, 0, Scope, Args...> {
          static auto get(const contracts::table_id_object& tid, const KeyType* keys, Args... args) {
             return boost::make_tuple( tid.id, raw_key_value(keys, scope_to_key_index_v<Scope>), args...);
          }
       };
 
       template< typename IndexType, typename Scope >
-      using lower_bound_tuple = lower_bound_tuple_impl<typename IndexType::value_type::key_type, IndexType::value_type::number_of_keys - scope_to_key_index_v<Scope> - 1, Scope>;
-
-      template< typename KeyType, int NullKeyCount, typename Scope, typename ... Args >
-      struct upper_bound_tuple_impl {
-         static auto get(const contracts::table_id_object& tid, const KeyType* keys, Args... args) {
-            return upper_bound_tuple_impl<KeyType, NullKeyCount - 1, Scope, KeyType, Args...>::get(tid, keys, raw_key_value(keys, scope_to_key_index_v<Scope> + NullKeyCount), args...);
-         }
-      };
-
-      template< typename KeyType, typename Scope, typename ... Args >
-      struct upper_bound_tuple_impl<KeyType, 0, Scope, Args...> {
-         static auto get(const contracts::table_id_object& tid, const KeyType* keys, Args... args) {
-            return boost::make_tuple( tid.id, raw_key_value(keys, scope_to_key_index_v<Scope>), args...);
-         }
-      };
-
-      template< typename IndexType, typename Scope >
-      using upper_bound_tuple = upper_bound_tuple_impl<typename IndexType::value_type::key_type, IndexType::value_type::number_of_keys - scope_to_key_index_v<Scope> - 1, Scope>;
+      using partial_tuple = partial_tuple_impl<typename IndexType::value_type::key_type, IndexType::value_type::number_of_keys - scope_to_key_index_v<Scope> - 1, Scope>;
 
       template <typename IndexType, typename Scope>
       struct record_scope_compare {
@@ -460,7 +443,7 @@ using apply_handler = std::function<void(apply_context&)>;
       require_read_lock( t_id.code, t_id.scope );
 
       const auto& idx = db.get_index<IndexType, Scope>();
-      auto tuple = impl::lower_bound_tuple<IndexType, Scope>::get(t_id, keys);
+      auto tuple = impl::partial_tuple<IndexType, Scope>::get(t_id, keys);
       auto itr = idx.lower_bound(tuple);
 
       if( itr == idx.end() ||
@@ -619,7 +602,7 @@ using apply_handler = std::function<void(apply_context&)>;
       require_read_lock( t_id.code, t_id.scope );
 
       const auto& idx = db.get_index<IndexType, Scope>();
-      auto tuple = impl::lower_bound_tuple<IndexType, Scope>::get(t_id, keys);
+      auto tuple = impl::partial_tuple<IndexType, Scope>::get(t_id, keys);
       auto itr = idx.lower_bound(tuple);
 
       if( itr == idx.end() ||
@@ -643,7 +626,7 @@ using apply_handler = std::function<void(apply_context&)>;
       require_read_lock( t_id.code, t_id.scope );
 
       const auto& idx = db.get_index<IndexType, Scope>();
-      auto tuple = impl::upper_bound_tuple<IndexType, Scope>::get(t_id, keys);
+      auto tuple = impl::partial_tuple<IndexType, Scope>::get(t_id, keys);
       auto itr = idx.upper_bound(tuple);
 
       if( itr == idx.end() ||

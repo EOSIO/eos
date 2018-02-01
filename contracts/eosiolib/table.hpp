@@ -104,6 +104,26 @@ namespace eosio {
             return true;
          }
 
+         bool primary_upper_bound( T& result,
+                                   uint64_t primary = 0,
+                                   uint64_t secondary = 0,
+                                   uint64_t tertiary = 0 ) {
+
+            uint64_t temp[1024/8];
+            temp[0] = primary;
+            temp[1] = secondary;
+            temp[2] = tertiary;
+
+            auto read = upper_bound_primary_i64i64i64( _scope, Code, TableName,
+                                                (char*)temp, sizeof(temp) );
+            if( read <= 0 ) {
+               return false;
+            }
+
+            result = unpack<T>( (char*)temp, sizeof(temp) );
+            return true;
+         }
+
          bool next_primary( T& result, const T& current ) {
             uint64_t temp[1024/8];
             memcpy( temp, (const char*)&current, 3*sizeof(uint64_t) );

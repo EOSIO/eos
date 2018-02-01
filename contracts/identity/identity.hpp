@@ -229,7 +229,7 @@ namespace identity {
                } else {
                   // bad row - skip it
                }
-               ok = certs.next_primary(row, row);
+               ok = certs.primary_upper_bound(row, row.property, row.trusted, row.certifier);
             }
             // trusted certification not found
             // let's see if some of untrusted certifications became trusted
@@ -239,16 +239,17 @@ namespace identity {
                   account_name account = *reinterpret_cast<account_name*>(row.data.data());
                   if (ident == get_claimed_identity(account) && is_trusted(row.certifier)) {
                      if (DeployToAccount == current_receiver()) {
-                        // the certifier became trusted and we have permission to update the flag
+                        // the certifier became trusted and we have permissions to update the flag
                         row.trusted = 1;
                         certs.store( row, 0 ); //assuming 0 means bill to the same account
                      }
-                     return *reinterpret_cast<account_name*>(row.data.data());
+                     return account;
                   }
                } else {
                   // bad row - skip it
                }
-               ok = certs.next_primary(row, row);
+               ok = certs.primary_upper_bound(row, row.property, row.trusted, row.certifier);
+               //ok = certs.next_primary(row, row);
             }
 
             return 0;
