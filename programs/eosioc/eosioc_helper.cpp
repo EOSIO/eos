@@ -73,7 +73,7 @@ void eosioc_helper::set_port_peer(uint32_t port)
     m_peer.set_port(port);
 }
 
-fc::microseconds eosioc_helper::tc_expiration()
+fc::microseconds eosioc_helper::tc_expiration() const
 {
     return m_tx_expiration;
 }
@@ -83,37 +83,37 @@ void eosioc_helper::set_tx_expiration(fc::microseconds time)
     m_tx_expiration = time;
 }
 
-void eosioc_helper::print_info()
+void eosioc_helper::print_info() const
 {
     std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
 }
 
-void eosioc_helper::print_block(const std::string &id)
+void eosioc_helper::print_block(const std::string &id) const
 {
     std::cout << fc::json::to_pretty_string(m_peer.get_block(id)) << std::endl;
 }
 
-void eosioc_helper::print_account(const std::string &account)
+void eosioc_helper::print_account(const std::string &account) const
 {
     std::cout << fc::json::to_pretty_string(m_peer.get_account(account)) << std::endl;
 }
 
-void eosioc_helper::print_key_accounts(const std::string &public_key)
+void eosioc_helper::print_key_accounts(const std::string &public_key) const
 {
     std::cout << fc::json::to_pretty_string(m_peer.get_key_accounts(public_key)) << std::endl;
 }
 
-void eosioc_helper::print_controlled_accounts(const std::string &controllingAccount)
+void eosioc_helper::print_controlled_accounts(const std::string &controllingAccount) const
 {
     std::cout << fc::json::to_pretty_string(m_peer.get_controlled_accounts(controllingAccount)) << std::endl;
 }
 
-void eosioc_helper::print_transaction(const std::string &id)
+void eosioc_helper::print_transaction(const std::string &id) const
 {
     std::cout << fc::json::to_pretty_string(m_peer.get_transaction(id)) << std::endl;
 }
 
-void eosioc_helper::print_transactions(const std::string &account, const std::string &skip_seq, const std::string &num_seq)
+void eosioc_helper::print_transactions(const std::string &account, const std::string &skip_seq, const std::string &num_seq) const
 {
     auto result = m_peer.get_transactions(account, skip_seq, num_seq);
     std::cout << fc::json::to_pretty_string(result) << std::endl;
@@ -130,31 +130,31 @@ void eosioc_helper::print_transactions(const std::string &account, const std::st
     }
 }
 
-void eosioc_helper::start_connection(const std::string &peer)
+void eosioc_helper::start_connection(const std::string &peer) const
 {
     const auto& v = m_peer.connect_to(peer);
     std::cout << fc::json::to_pretty_string(v) << std::endl;
 }
 
-void eosioc_helper::close_connection(const std::string &peer)
+void eosioc_helper::close_connection(const std::string &peer) const
 {
     const auto& v = m_peer.disconnect_from(peer);
     std::cout << fc::json::to_pretty_string(v) << std::endl;
 }
 
-void eosioc_helper::print_connection_status(const std::string &peer)
+void eosioc_helper::print_connection_status(const std::string &peer) const
 {
     const auto& v = m_peer.status(peer);
     std::cout << fc::json::to_pretty_string(v) << std::endl;
 }
 
-void eosioc_helper::print_status(const std::string &peer)
+void eosioc_helper::print_status(const std::string &peer) const
 {
     const auto& v = m_peer.connections(peer);
     std::cout << fc::json::to_pretty_string(v) << std::endl;
 }
 
-void eosioc_helper::create_wallet(const std::string &name)
+void eosioc_helper::create_wallet(const std::string &name) const
 {
     const auto& v = m_wallet.create(name);
     std::cout << localized("Creating wallet: ${wallet_name}", ("wallet_name", name)) << std::endl;
@@ -163,28 +163,28 @@ void eosioc_helper::create_wallet(const std::string &name)
     std::cout << fc::json::to_pretty_string(v) << std::endl;
 }
 
-void eosioc_helper::open_wallet(const std::string &name)
+void eosioc_helper::open_wallet(const std::string &name) const
 {
     /*const auto& v = */m_wallet.open(name);
     //std::cout << fc::json::to_pretty_string(v) << std::endl;
     std::cout << localized("Opened: ${wallet_name}", ("wallet_name", name)) << std::endl;
 }
 
-void eosioc_helper::lock_wallet(const std::string &name)
+void eosioc_helper::lock_wallet(const std::string &name) const
 {
     /*const auto& v = */m_wallet.lock(name);
     std::cout << localized("Locked: ${wallet_name}", ("wallet_name", name)) << std::endl;
     //std::cout << fc::json::to_pretty_string(v) << std::endl;
 }
 
-void eosioc_helper::lock_all_wallets()
+void eosioc_helper::lock_all_wallets() const
 {
     /*const auto& v = */m_wallet.lock_all();
     //std::cout << fc::json::to_pretty_string(v) << std::endl;
     std::cout << localized("Locked All Wallets") << std::endl;
 }
 
-void eosioc_helper::unlock_wallet(const std::string &name, std::string passwd)
+void eosioc_helper::unlock_wallet(const std::string &name, std::string passwd) const
 {
     if( passwd.size() == 0 ) {
        std::cout << localized("password: ");
@@ -197,7 +197,7 @@ void eosioc_helper::unlock_wallet(const std::string &name, std::string passwd)
     //std::cout << fc::json::to_pretty_string(v) << std::endl;
 }
 
-void eosioc_helper::import_private_key(const std::string &name, std::string wallet_key)
+void eosioc_helper::import_private_key(const std::string &name, std::string wallet_key) const
 {
     chain::private_key_type key( wallet_key );
     chain::public_key_type pubkey = key.get_public_key();
@@ -206,26 +206,26 @@ void eosioc_helper::import_private_key(const std::string &name, std::string wall
     //std::cout << fc::json::to_pretty_string(v) << std::endl;
 }
 
-void eosioc_helper::print_open_wallets()
+void eosioc_helper::print_open_wallets() const
 {
     std::cout << localized("Wallets:") << std::endl;
     const auto& v = m_wallet.list();
     std::cout << fc::json::to_pretty_string(v) << std::endl;
 }
 
-void eosioc_helper::print_private_keys_of_open_wallets()
+void eosioc_helper::print_private_keys_of_open_wallets() const
 {
     const auto& v = m_wallet.list_keys();
     std::cout << fc::json::to_pretty_string(v) << std::endl;
 }
 
-void eosioc_helper::push_JSON_transaction(const std::string &trx)
+void eosioc_helper::push_JSON_transaction(const std::string &trx) const
 {
     auto trxs_result = m_peer.push_JSON_transaction( fc::json::from_string(trx));
     std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
 }
 
-void eosioc_helper::print_currency_stats(const std::string &code, const std::string &symbol)
+void eosioc_helper::print_currency_stats(const std::string &code, const std::string &symbol) const
 {
     auto result = m_peer.get_currency_stats(code, symbol);
 
@@ -244,7 +244,7 @@ void eosioc_helper::create_account(chain::name creator,
                                  chain::public_key_type owner,
                                  chain::public_key_type active,
                                  bool sign,
-                                 uint64_t staked_deposit)
+                                 uint64_t staked_deposit) const
 {
     auto owner_auth   = eosio::chain::authority{1, {{owner, 1}}, {}};
     auto active_auth  = eosio::chain::authority{1, {{active, 1}}, {}};
@@ -259,7 +259,7 @@ void eosioc_helper::create_account(chain::name creator,
     std::cout << fc::json::to_pretty_string(push_transaction(trx, sign)) << std::endl;
 }
 
-void eosioc_helper::create_producer(const std::string &account_name, const std::string &owner_key, std::vector<std::string> permissions, bool skip_sign)
+void eosioc_helper::create_producer(const std::string &account_name, const std::string &owner_key, std::vector<std::string> permissions, bool skip_sign) const
 {
     if (permissions.empty()) {
        permissions.push_back(account_name + "@active");
@@ -275,7 +275,8 @@ void eosioc_helper::create_producer(const std::string &account_name, const std::
     std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
 }
 
-void eosioc_helper::send_transaction(const std::vector<chain::action>& actions, bool skip_sign) {
+void eosioc_helper::send_transaction(const std::vector<chain::action>& actions, bool skip_sign) const
+{
     eosio::chain::signed_transaction trx;
     for (const auto& m: actions) {
         trx.actions.emplace_back( m );
@@ -291,7 +292,7 @@ void eosioc_helper::send_transaction(const std::vector<chain::action>& actions, 
     std::cout << fc::json::to_pretty_string(m_peer.push_transaction( trx )) << std::endl;
 }
 
-fc::variant eosioc_helper::push_transaction(eosio::chain::signed_transaction& trx, bool sign )
+fc::variant eosioc_helper::push_transaction(eosio::chain::signed_transaction& trx, bool sign ) const
 {
     auto info = get_info();
     trx.expiration = info.head_block_time + m_tx_expiration;
@@ -304,7 +305,8 @@ fc::variant eosioc_helper::push_transaction(eosio::chain::signed_transaction& tr
     return m_peer.push_transaction( trx );
 }
 
-std::vector<uint8_t> eosioc_helper::assemble_wast( const std::string& wast ) {
+std::vector<uint8_t> eosioc_helper::assemble_wast( const std::string& wast ) const
+{
    IR::Module module;
    std::vector<WAST::Error> parseErrors;
    WAST::parseModule(wast.c_str(),wast.size(),module,parseErrors);
@@ -336,7 +338,7 @@ std::vector<uint8_t> eosioc_helper::assemble_wast( const std::string& wast ) {
    }
 }
 
-void eosioc_helper::sign_transaction(eosio::chain::signed_transaction& trx)
+void eosioc_helper::sign_transaction(eosio::chain::signed_transaction& trx) const
 {
     // TODO better error checking
     const auto& public_keys = m_wallet.public_keys();
@@ -346,11 +348,12 @@ void eosioc_helper::sign_transaction(eosio::chain::signed_transaction& trx)
     trx = signed_trx.as<eosio::chain::signed_transaction>();
 }
 
-eosio::chain_apis::read_only::get_info_results eosioc_helper::get_info() {
+eosio::chain_apis::read_only::get_info_results eosioc_helper::get_info() const
+{
     return m_peer.get_info().as<eosio::chain_apis::read_only::get_info_results>();
 }
 
-void eosioc_helper::save_code(const std::string& account, const std::string& code_filename, const std::string& abi_filename)
+void eosioc_helper::save_code(const std::string& account, const std::string& code_filename, const std::string& abi_filename) const
 {
     auto result = m_peer.get_code(account);
 
@@ -370,7 +373,7 @@ void eosioc_helper::save_code(const std::string& account, const std::string& cod
     }
 }
 
-void eosioc_helper::print_table(const std::string &scope, const std::string &code, const std::string &table)
+void eosioc_helper::print_table(const std::string &scope, const std::string &code, const std::string &table) const
 {
     auto result = m_peer.get_table(scope, code, table);
 
@@ -378,7 +381,7 @@ void eosioc_helper::print_table(const std::string &scope, const std::string &cod
               << std::endl;
 }
 
-void eosioc_helper::execute_random_transactions(uint64_t number_of_accounts, uint64_t number_of_transfers, bool loop, const std::string& memo)
+void eosioc_helper::execute_random_transactions(uint64_t number_of_accounts, uint64_t number_of_transfers, bool loop, const std::string& memo) const
 {
     EOSC_ASSERT( number_of_accounts >= 2, "must create at least 2 accounts" );
 
@@ -451,7 +454,7 @@ void eosioc_helper::execute_random_transactions(uint64_t number_of_accounts, uin
     }
 }
 
-void eosioc_helper::configure_benchmarks(uint64_t number_of_accounts, const std::string &c_account, const std::string &owner_key, const std::string &active_key)
+void eosioc_helper::configure_benchmarks(uint64_t number_of_accounts, const std::string &c_account, const std::string &owner_key, const std::string &active_key) const
 {
     auto response_servants = m_peer.get_controlled_accounts(c_account);
     fc::variant_object response_var;
@@ -505,7 +508,7 @@ void eosioc_helper::push_transaction_with_single_action(const std::string& contr
                                                       const std::string& data,
                                                       const std::vector<std::string>& permissions,
                                                       bool skip_sign,
-                                                      bool tx_force_unique)
+                                                      bool tx_force_unique) const
 {
     ilog("Converting argument to binary...");
     auto result = m_peer.json_to_bin(contract, action, data);
@@ -521,7 +524,7 @@ void eosioc_helper::push_transaction_with_single_action(const std::string& contr
     std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign )) << std::endl;
 }
 
-void eosioc_helper::set_proxy_account_for_voting(const std::string &account_name, std::string proxy, std::vector<std::string> permissions, bool skip_sign)
+void eosioc_helper::set_proxy_account_for_voting(const std::string &account_name, std::string proxy, std::vector<std::string> permissions, bool skip_sign) const
 {
     if (permissions.empty()) {
        permissions.push_back(account_name + "@active");
@@ -538,7 +541,7 @@ void eosioc_helper::set_proxy_account_for_voting(const std::string &account_name
     std::cout << localized("Set proxy for ${name} to ${proxy}", ("name", account_name)("proxy", proxy)) << std::endl;
 }
 
-void eosioc_helper::approve_unapprove_producer(const std::string &account_name, const std::string &producer, std::vector<std::string> permissions, bool approve, bool skip_sign)
+void eosioc_helper::approve_unapprove_producer(const std::string &account_name, const std::string &producer, std::vector<std::string> permissions, bool approve, bool skip_sign) const
 {
     // don't need to check unapproveCommand because one of approve or unapprove is required
     if (permissions.empty()) {
@@ -554,7 +557,7 @@ void eosioc_helper::approve_unapprove_producer(const std::string &account_name, 
                            ("name", account_name)("producer", producer)("value", approve ? "approve" : "unapprove")) << std::endl;
 }
 
-void eosioc_helper::print_balance(const std::string &account_name, const std::string &code, const std::string &symbol)
+void eosioc_helper::print_balance(const std::string &account_name, const std::string &code, const std::string &symbol) const
 {
     auto result = m_peer.get_currency_balance(account_name, code, symbol);
 
@@ -568,7 +571,7 @@ void eosioc_helper::print_balance(const std::string &account_name, const std::st
     }
 }
 
-void eosioc_helper::create_and_update_contract(const std::string &account, const std::string &wast_path, const std::string &abi_path, bool skip_sign)
+void eosioc_helper::create_and_update_contract(const std::string &account, const std::string &wast_path, const std::string &abi_path, bool skip_sign) const
 {
     std::string wast;
     std::cout << localized("Reading WAST...") << std::endl;
@@ -603,7 +606,7 @@ void eosioc_helper::create_and_update_contract(const std::string &account, const
     std::cout << fc::json::to_pretty_string(push_transaction(trx, !skip_sign)) << std::endl;
 }
 
-std::vector<chain::permission_level> eosioc_helper::get_account_permissions(const std::vector<std::string>& permissions)
+std::vector<chain::permission_level> eosioc_helper::get_account_permissions(const std::vector<std::string>& permissions) const
 {
    auto fixedPermissions = permissions | boost::adaptors::transformed([](const std::string& p) {
       std::vector<std::string> pieces;
@@ -621,7 +624,7 @@ void eosioc_helper::set_account_permission(const std::string& accountStr,
                                          const std::string& authorityJsonOrFile,
                                          const std::string& parentStr,
                                          const std::string& permissionAuth,
-                                         bool skip_sign)
+                                         bool skip_sign) const
 {
     chain::name account = chain::name(accountStr);
     chain::name permission = chain::name(permissionStr);
@@ -675,7 +678,7 @@ void eosioc_helper::set_action_permission(const std::string& accountStr,
                                         const std::string& codeStr,
                                         const std::string& typeStr,
                                         const std::string& requirementStr,
-                                        bool skip_sign)
+                                        bool skip_sign) const
 {
     chain::name account = chain::name(accountStr);
     chain::name code = chain::name(codeStr);
@@ -695,7 +698,7 @@ void eosioc_helper::transfer(const std::string& sender,
                            uint64_t amount,
                            std::string memo,
                            bool skip_sign,
-                           bool tx_force_unique)
+                           bool tx_force_unique) const
 {
     chain::signed_transaction trx;
 
@@ -726,7 +729,7 @@ void eosioc_helper::transfer(const std::string& sender,
 
 chain::action eosioc_helper::create_deleteauth(const chain::name& account,
                                              const chain::name& permission,
-                                             const chain::name& permissionAuth)
+                                             const chain::name& permissionAuth) const
 {
     return chain::action { std::vector<chain::permission_level>{{account,permissionAuth}},
         chain::contracts::deleteauth{account, permission}};
@@ -736,7 +739,7 @@ chain::action eosioc_helper::create_updateauth(const chain::name& account,
                                              const chain::name& permission,
                                              const chain::name& parent,
                                              const chain::authority& auth,
-                                             const chain::name& permissionAuth)
+                                             const chain::name& permissionAuth) const
 {
     return chain::action { std::vector<chain::permission_level>{{account,permissionAuth}},
         chain::contracts::updateauth{account, permission, parent, auth}};
@@ -745,7 +748,7 @@ chain::action eosioc_helper::create_updateauth(const chain::name& account,
 chain::action eosioc_helper::create_linkauth(const chain::name& account,
                                            const chain::name& code,
                                            const chain::name& type,
-                                           const chain::name& requirement)
+                                           const chain::name& requirement) const
 {
     return chain::action { std::vector<chain::permission_level>{{account,"active"}},
         chain::contracts::linkauth{account, code, type, requirement}};
@@ -753,17 +756,19 @@ chain::action eosioc_helper::create_linkauth(const chain::name& account,
 
 chain::action eosioc_helper::create_unlinkauth(const chain::name& account,
                                              const chain::name& code,
-                                             const chain::name& type)
+                                             const chain::name& type) const
 {
     return chain::action { std::vector<chain::permission_level>{{account,"active"}},
         chain::contracts::unlinkauth{account, code, type}};
 }
 
-uint64_t eosioc_helper::generate_nonce_value() {
+uint64_t eosioc_helper::generate_nonce_value() const
+{
    return fc::time_point::now().time_since_epoch().count();
 }
 
-chain::action eosioc_helper::generate_nonce() {
+chain::action eosioc_helper::generate_nonce() const
+{
    return chain::action( {}, chain::contracts::nonce{.value = generate_nonce_value()} );
 }
 
