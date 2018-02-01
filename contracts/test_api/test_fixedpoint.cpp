@@ -1,5 +1,5 @@
-#include <eoslib/fixedpoint.hpp>
-#include <eoslib/eos.hpp>
+#include <eosiolib/fixedpoint.hpp>
+#include <eosiolib/eos.hpp>
 
 #include "test_api.hpp"
 using namespace eosio;

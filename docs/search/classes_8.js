@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['offerbet',['OfferBet',['../structdice_1_1_offer_bet.html',1,'dice']]],
-  ['offerprimarykey',['OfferPrimaryKey',['../structdice_1_1_offer_primary_key.html',1,'dice']]],
-  ['orderid',['OrderID',['../structexchange_1_1_order_i_d.html',1,'exchange']]]
+  ['key_5fvalue1',['key_value1',['../structkey__value1.html',1,'']]],
+  ['key_5fvalue2',['key_value2',['../structkey__value2.html',1,'']]]
 ];

@@ -312,7 +312,7 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
 
       messages_to_process.emplace_back(move(message));
 
-      if (acct.liquid_balance > 0) {
+      if (acct.liquid_balance > asset(0)) {
          message = action( {{config::system_account_name, config::active_name}},
                            transfer{ .from = config::system_account_name, .to = acct.name,
                                      .amount = acct.liquid_balance.amount, .memo = "Genesis Allocation"});
