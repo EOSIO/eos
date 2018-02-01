@@ -292,7 +292,8 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
    auto blk_doc = block_doc << "transactions" << stream::open_array;
 
    int32_t trx_num = -1;
-   for (const auto& trx : block.input_transactions) {
+   for (const auto& packed_trx : block.input_transactions) {
+      const signed_transaction& trx = packed_trx.get_signed_transaction();
       ++trx_num;
 
       auto txn_oid = bsoncxx::oid{};
@@ -410,8 +411,8 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
 
       asset from_balance = asset::from_string(from_account.view()["eos_balance"].get_utf8().value.to_string());
       asset to_balance = asset::from_string(to_account.view()["eos_balance"].get_utf8().value.to_string());
-      from_balance -= chain::share_type(transfer.amount);
-      to_balance += chain::share_type(transfer.amount);
+      from_balance -= asset(chain::share_type(transfer.amount));
+      to_balance += asset(chain::share_type(transfer.amount));
 
       document update_from{};
       update_from << "$set" << open_document << "eos_balance" << from_balance.to_string()
@@ -468,8 +469,8 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
 
       asset from_balance = asset::from_string(from_account.view()["eos_balance"].get_utf8().value.to_string());
       asset to_balance = asset::from_string(to_account.view()["stacked_balance"].get_utf8().value.to_string());
-      from_balance -= lock.amount;
-      to_balance += lock.amount;
+      from_balance -= asset(lock.amount);
+      to_balance += asset(lock.amount);
 
       document update_from{};
       update_from << "$set" << open_document << "eos_balance" << from_balance.to_string()
@@ -491,9 +492,9 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
 
       asset unstack_balance = asset::from_string(from_account.view()["unstacking_balance"].get_utf8().value.to_string());
       asset stack_balance = asset::from_string(from_account.view()["stacked_balance"].get_utf8().value.to_string());
-      auto deltaStake = unstack_balance - unlock.amount;
+      auto deltaStake = unstack_balance - asset(unlock.amount);
       stack_balance += deltaStake;
-      unstack_balance = unlock.amount;
+      unstack_balance = asset(unlock.amount);
       // TODO: proxies and last_unstaking_time
 
       document update_from{};
@@ -513,8 +514,8 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
 
       asset balance = asset::from_string(from_account.view()["eos_balance"].get_utf8().value.to_string());
       asset unstack_balance = asset::from_string(from_account.view()["unstacking_balance"].get_utf8().value.to_string());
-      unstack_balance -= claim.amount;
-      balance += claim.amount;
+      unstack_balance -= asset(claim.amount);
+      balance += asset(claim.amount);
 
       document update_from{};
       update_from << "$set" << open_document
