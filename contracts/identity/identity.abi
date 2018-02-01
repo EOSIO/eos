@@ -73,7 +73,8 @@
       "name": "accountrow",
       "base": "",
       "fields": [
-        {"name":"account", "type":"account_name"}
+        {"name":"singleton_name", "type":"uint64"},
+        {"name":"identity", "type":"uint64"}
       ]
     }
   ],

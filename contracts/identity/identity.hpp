@@ -2,6 +2,7 @@
 
 #include <eoslib/chain.h>
 #include <eoslib/dispatcher.hpp>
+#include <eoslib/singleton.hpp>
 #include <eoslib/table.hpp>
 #include <eoslib/vector.hpp>
 
@@ -9,6 +10,7 @@ namespace identity {
    using eosio::action_meta;
    using eosio::table_i64i64i64;
    using eosio::table64;
+   using eosio::singleton;
    using eosio::string;
    using eosio::vector;
 
@@ -194,7 +196,7 @@ namespace identity {
 
          typedef table_i64i64i64<code, N(certs), certrow>  certs_table;
          typedef table64<code, N(ident), identrow>         idents_table;
-         typedef table64<code, N(account), identity_name>  accounts_table;
+         typedef singleton<code, N(account), identity_name>  accounts_table;
          typedef table64<code, N(trust), trustrow>         trust_table;
 
          static identity_name get_claimed_identity( account_name acnt ) {
@@ -329,7 +331,7 @@ namespace identity {
                   if (value.property == N(owner)) {
                      assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
                      account_name acnt = *reinterpret_cast<const account_name*>(value.data.data());
-                     accounts_table::set( acnt, cert.identity );
+                     accounts_table::set( cert.identity, acnt );
                   }
                } else {
                   //remove both tursted and untrusted because we cannot now if it was trusted back at creation time
@@ -339,7 +341,7 @@ namespace identity {
                   if (value.property == N(owner)) {
                      assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
                      account_name acnt = *reinterpret_cast<const account_name*>(value.data.data());
-                     accounts_table::remove( acnt, cert.identity );
+                     accounts_table::remove( acnt );
                   }
                }
             }
