@@ -27,7 +27,7 @@ class Utils:
     EosServerName="eosiod"
     EosServerPath="programs/eosiod/%s" % (EosServerName)
 
-    EosLauncherPath="programs/launcher/eosio-launcher"
+    EosLauncherPath="programs/eosio-launcher/eosio-launcher"
     MongoPath="mongo"
     
     @staticmethod
