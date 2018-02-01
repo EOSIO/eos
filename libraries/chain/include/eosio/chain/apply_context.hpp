@@ -325,40 +325,25 @@ using apply_handler = std::function<void(apply_context&)>;
       template< typename ObjectType >
       using key_helper = key_helper_impl<ObjectType, ObjectType::number_of_keys - 1>;
 
-      /// find_tuple helper
-      template <typename KeyType, int KeyIndex, typename ...Args>
-      struct exact_tuple_impl {
-         static auto get(const contracts::table_id_object& tid, const KeyType* keys, Args... args ) {
-            return exact_tuple_impl<KeyType, KeyIndex - 1,  const KeyType &, Args...>::get(tid, keys, raw_key_value(keys, KeyIndex), args...);
-         }
-      };
-
-      template <typename KeyType, typename ...Args>
-      struct exact_tuple_impl<KeyType, -1, Args...> {
-         static auto get(const contracts::table_id_object& tid, const KeyType*, Args... args) {
-            return boost::make_tuple(tid.id, args...);
-         }
-      };
-
-      template <typename ObjectType>
-      using exact_tuple = exact_tuple_impl<typename ObjectType::key_type, ObjectType::number_of_keys - 1>;
-
-      template< typename KeyType, int NullKeyCount, typename Scope, typename ... Args >
+      template< typename KeyType, int KeyIndex, size_t Offset, typename ... Args >
       struct partial_tuple_impl {
          static auto get(const contracts::table_id_object& tid, const KeyType* keys, Args... args) {
-            return partial_tuple_impl<KeyType, NullKeyCount - 1, Scope, KeyType, Args...>::get(tid, keys, raw_key_value(keys, scope_to_key_index_v<Scope> + NullKeyCount), args...);
+            return partial_tuple_impl<KeyType, KeyIndex - 1, Offset, KeyType, Args...>::get(tid, keys, raw_key_value(keys, Offset + KeyIndex), args...);
          }
       };
 
-      template< typename KeyType, typename Scope, typename ... Args >
-      struct partial_tuple_impl<KeyType, 0, Scope, Args...> {
+      template< typename KeyType, size_t Offset, typename ... Args >
+      struct partial_tuple_impl<KeyType, 0, Offset, Args...> {
          static auto get(const contracts::table_id_object& tid, const KeyType* keys, Args... args) {
-            return boost::make_tuple( tid.id, raw_key_value(keys, scope_to_key_index_v<Scope>), args...);
+            return boost::make_tuple( tid.id, raw_key_value(keys, Offset), args...);
          }
       };
 
       template< typename IndexType, typename Scope >
-      using partial_tuple = partial_tuple_impl<typename IndexType::value_type::key_type, IndexType::value_type::number_of_keys - scope_to_key_index_v<Scope> - 1, Scope>;
+      using partial_tuple = partial_tuple_impl<typename IndexType::value_type::key_type, IndexType::value_type::number_of_keys - impl::scope_to_key_index_v<Scope> - 1, impl::scope_to_key_index_v<Scope>>;
+
+      template <typename ObjectType>
+      using exact_tuple = partial_tuple_impl<typename ObjectType::key_type, ObjectType::number_of_keys - 1, 0>;
 
       template <typename IndexType, typename Scope>
       struct record_scope_compare {
