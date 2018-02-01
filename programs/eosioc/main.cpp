@@ -296,9 +296,7 @@ int main( int argc, char** argv ) {
    get->require_subcommand();
 
    // get info
-   get->add_subcommand("info", localized("Get current blockchain information"))->set_callback([] {
-      std::cout << fc::json::to_pretty_string(helper.get_info()) << std::endl;
-   });
+   get->add_subcommand("info", localized("Get current blockchain information"))->set_callback([] { helper.print_info(); });
 
    // get block
    string blockArg;

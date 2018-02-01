@@ -29,6 +29,8 @@ public:
     fc::microseconds tc_expiration();
     void set_tx_expiration(fc::microseconds time);
 
+    void print_info() const;
+
     void get_block(const std::string& id);
     void get_account(const std::string& account);
     void get_key_accounts(const std::string& public_key);
@@ -87,10 +89,6 @@ public:
                   bool skip_sign,
                   bool tx_force_unique);
 
-    std::vector<chain::permission_level> get_account_permissions(const std::vector<std::string>& permissions);
-
-    eosio::chain_apis::read_only::get_info_results get_info();
-
     void save_code(const std::string& account,
                   const std::string& code_filename,
                   const std::string& abi_filename);
@@ -144,6 +142,8 @@ private:
     chain::action generate_nonce();
     fc::variant push_transaction(eosio::chain::signed_transaction& trx, bool sign);
     std::vector<uint8_t> assemble_wast(const std::string &wast);
+    std::vector<chain::permission_level> get_account_permissions(const std::vector<std::string>& permissions);
+    eosio::chain_apis::read_only::get_info_results get_info();
 
     wallet m_wallet;
     peer m_peer;

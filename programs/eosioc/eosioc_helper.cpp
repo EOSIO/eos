@@ -83,6 +83,11 @@ void eosioc_helper::set_tx_expiration(fc::microseconds time)
     m_tx_expiration = time;
 }
 
+void eosioc_helper::print_info() const
+{
+    std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
+}
+
 void eosioc_helper::get_block(const std::string &id)
 {
     std::cout << fc::json::to_pretty_string(m_peer.get_block(id)) << std::endl;
