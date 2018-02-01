@@ -42,6 +42,8 @@ struct transaction_metadata {
    const char*                           generated_data = nullptr;
    size_t                                generated_size = 0;
 
+   vector<char>                          packed_trx;
+
    // scopes available to this transaction if we are applying a block
    optional<const vector<shard_lock>*>   allowed_read_locks;
    optional<const vector<shard_lock>*>   allowed_write_locks;
