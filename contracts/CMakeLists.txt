@@ -1,4 +1,5 @@
 add_subdirectory(eosio.system)
+add_subdirectory(identity)
 add_subdirectory(currency)
 #add_subdirectory(bancor)
 #add_subdirectory(eosio.system)
