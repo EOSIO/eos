@@ -210,8 +210,6 @@ void sign_transaction(signed_transaction& trx) {
    auto get_arg = fc::mutable_variant_object
          ("transaction", (transaction)trx)
          ("available_keys", public_keys);
-   wlog("voy a preguntar con:");
-   wdump((get_arg));
    const auto& required_keys = call(host, port, get_required_keys, get_arg);
    // TODO determine chain id
    fc::variants sign_args = {fc::variant(trx), required_keys["required_keys"], fc::variant(chain_id_type{})};
@@ -269,7 +267,7 @@ chain::action create_setproducer(const name& account, const public_key_type& key
    };
 }
 
-chain::action create_newaccount(const name& creator, const name& newaccount, public_key_type owner, public_key_type active, uint64_t deposit) {
+chain::action create_newaccount(const name& creator, const name& newaccount, public_key_type owner, public_key_type active, asset deposit) {
    return action {
       vector<chain::permission_level>{{creator,config::active_name}},
       contracts::newaccount{
@@ -308,7 +306,6 @@ struct set_account_permission_subcommand {
    string permissionStr;
    string authorityJsonOrFile;
    string parentStr;
-   //string permissionAuth = config::active_name;
    bool skip_sign;
 
    set_account_permission_subcommand(CLI::App* accountCmd) {
@@ -361,7 +358,7 @@ struct set_account_permission_subcommand {
                if (itr != existing_permissions.end()) {
                   parent = name((*itr).get_object()["parent"].get_string());
                } else {
-                  // if this is a new permission and there is no parent we default to config::active_name
+                  // if this is a new permission and there is no parent we default to "active"
                   parent = name(config::active_name);
 
                }
@@ -530,6 +527,7 @@ int main( int argc, char** argv ) {
    string table;
    string lower;
    string upper;
+   string table_key;
    bool binary = false;
    uint32_t limit = 10;
    auto getTable = get->add_subcommand( "table", localized("Retrieve the contents of a database table"), false);
@@ -538,7 +536,7 @@ int main( int argc, char** argv ) {
    getTable->add_option( "table", table, localized("The name of the table as specified by the contract abi") )->required();
    getTable->add_option( "-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON") );
    getTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
-   getTable->add_option( "-k,--key", limit, localized("The name of the key to index by as defined by the abi, defaults to primary key") );
+   getTable->add_option( "-k,--key", table_key, localized("The name of the key to index by as defined by the abi, defaults to primary key") );
    getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
 
@@ -547,6 +545,10 @@ int main( int argc, char** argv ) {
                          ("scope",scope)
                          ("code",code)
                          ("table",table)
+                         ("table_key",table_key)
+                         ("lower_bound",lower)
+                         ("upper_bound",upper)
+                         ("limit",limit)
                          );
 
       std::cout << fc::json::to_pretty_string(result)
