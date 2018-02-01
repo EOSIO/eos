@@ -125,18 +125,8 @@ namespace eosio {
          }
 
          bool next_primary( T& result, const T& current ) {
-            uint64_t temp[1024/8];
-            memcpy( temp, (const char*)&current, 3*sizeof(uint64_t) );
-            
-            auto read = next_primary_i64i64i64( Code, _scope, TableName, 
-                                                (char*)temp, sizeof(temp) );
-            if( read <= 0 ) {
-               return false;
-            }
-
-            datastream<const char*> ds( (char*)temp, sizeof(temp) );
-            ds >> result;
-            return true;
+            const uint64_t* keys = reinterpret_cast<const uint64_t*>(&current);
+            return primary_upper_bound(result, keys[0], keys[1], keys[2]);
          }
 
          void store( const T& value, account_name bill_to ) {

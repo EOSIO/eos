@@ -501,49 +501,6 @@ using apply_handler = std::function<void(apply_context&)>;
    }
 
    template <typename IndexType, typename Scope>
-   int32_t apply_context::next_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
-      require_read_lock( t_id.code, t_id.scope );
-
-      const auto& pidx = db.get_index<IndexType, contracts::by_scope_primary>();
-      
-      auto tuple = impl::exact_tuple<typename IndexType::value_type>::get(t_id, keys);
-      auto pitr = pidx.find(tuple);
-
-      if(pitr == pidx.end())
-        return -1;
-
-      const auto& fidx = db.get_index<IndexType>();
-      auto itr = fidx.indicies().template project<Scope>(pitr);
-
-      const auto& idx = db.get_index<IndexType, Scope>();
-
-      if( itr == idx.end() ||
-          itr->t_id != t_id.id ||
-          !impl::key_helper<typename IndexType::value_type>::compare(*itr, keys) ) {
-        return -1;
-      }
-
-      ++itr;
-
-      if( itr == idx.end() ||
-          itr->t_id != t_id.id ) {
-        return -1;
-      }
-
-      impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
-
-      if (valuelen) {
-         auto copylen = std::min<size_t>(itr->value.size(), valuelen);
-         if (copylen) {
-            itr->value.copy(value, copylen);
-         }
-         return copylen;
-      } else {
-         return itr->value.size();
-      }
-   }
-
-   template <typename IndexType, typename Scope>
    int32_t apply_context::previous_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
       require_read_lock( t_id.code, t_id.scope );
 
