@@ -10,8 +10,16 @@
       "fields": [
         {"name":"from", "type":"account_name"},
         {"name":"to", "type":"account_name"},
-        {"name":"quantity", "type":"uint64"}
+        {"name":"quantity", "type":"asset"},
+        {"name":"memo", "type":"string"}
       ]
+    },{
+     "name": "issue",
+     "base": "",
+     "fields": [
+        {"name":"to", "type":"account_name"},
+        {"name":"quantity", "type":"asset"}
+     ]
     },{
       "name": "account",
       "base": "",
@@ -24,6 +32,9 @@
   "actions": [{
       "name": "transfer",
       "type": "transfer"
+    },{
+      "name": "issue",
+      "type": "issue"
     }
   ],
   "tables": [{

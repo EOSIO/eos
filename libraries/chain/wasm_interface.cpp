@@ -5,6 +5,7 @@
 #include <boost/core/ignore_unused.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/io/raw.hpp>
 #include <fc/utf8.hpp>
 
 #include <Runtime/Runtime.h>
@@ -218,7 +219,7 @@ namespace eosio { namespace chain {
                try {
                   Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
                   #warning TODO: restore checktime injection?
-                  WASM::serialize(stream, *module);
+                  WASM::serializeWithInjection(stream, *module);
 
                   root_resolver resolver;
                   LinkResult link_result = linkModule(*module, resolver);
@@ -367,6 +368,7 @@ namespace eosio { namespace chain {
       FC_ASSERT( getFunctionType(call)->parameters.size() == args.size() );
 
       auto context_guard = scoped_context(current_context, code, context);
+      context.checktime_start();
       runInstanceStartFunc(code.instance);
       Runtime::invokeFunction(call,args);
    } catch( const Runtime::Exception& e ) {
@@ -389,13 +391,9 @@ namespace eosio { namespace chain {
    }
 
    void wasm_interface::apply( wasm_cache::entry& code, apply_context& context ) {
-      if (context.act.account == config::system_account_name && context.act.name == N(setcode)) {
-         my->call("init", {}, code, context);
-      } else {
-         vector<Value> args = {Value(uint64_t(context.act.account)),
-                               Value(uint64_t(context.act.name))};
-         my->call("apply", args, code, context);
-      }
+      vector<Value> args = {Value(uint64_t(context.act.account)),
+                            Value(uint64_t(context.act.name))};
+      my->call("apply", args, code, context);
    }
 
    void wasm_interface::error( wasm_cache::entry& code, apply_context& context ) {
@@ -418,6 +416,106 @@ class context_aware_api {
       uint32_t&          sbrk_bytes;
       wasm_cache::entry& code;
       apply_context&     context;
+};
+
+class privileged_api : public context_aware_api {
+   public:
+      privileged_api( wasm_interface& wasm )
+      :context_aware_api(wasm)
+      {
+         FC_ASSERT( context.privileged, "${code} does not have permission to call this API", ("code",context.receiver) );
+      }
+
+      /**
+       *  This should schedule the feature to be activated once the
+       *  block that includes this call is irreversible. It should
+       *  fail if the feature is already pending.
+       *
+       *  Feature name should be base32 encoded name. 
+       */
+      void activate_feature( int64_t feature_name ) {
+         FC_ASSERT( !"Unsupported Harfork Detected" );
+      }
+
+      /**
+       * This should return true if a feature is active and irreversible, false if not.
+       *
+       * Irreversiblity by fork-database is not consensus safe, therefore, this defines
+       * irreversiblity only by block headers not by BFT short-cut.
+       */
+      int is_feature_active( int64_t feature_name ) {
+         return false;
+      }
+
+      void set_resource_limits( account_name account, 
+                                int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight,
+                                int64_t cpu_usec_per_period ) {
+         auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
+         FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free to much space" );
+
+         auto& gdp = context.controller.get_dynamic_global_properties();
+         context.mutable_db.modify( gdp, [&]( auto& p ) {
+           p.total_net_weight -= buo.net_weight;
+           p.total_net_weight += net_weight;
+           p.total_cpu_weight -= buo.cpu_weight;
+           p.total_cpu_weight += cpu_weight;
+           p.total_db_reserved -= buo.db_reserved_capacity;
+           p.total_db_reserved += ram_bytes;
+         });
+
+         context.mutable_db.modify( buo, [&]( auto& o ){
+            o.net_weight = net_weight;
+            o.cpu_weight = cpu_weight;
+            o.db_reserved_capacity = ram_bytes;
+         });
+      }
+
+
+      void get_resource_limits( account_name account, 
+                                uint64_t& ram_bytes, uint64_t& net_weight, uint64_t cpu_weight ) {
+      }
+                                               
+      void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
+         datastream<const char*> ds( packed_producer_schedule, datalen );
+         producer_schedule_type psch;
+         fc::raw::unpack(ds, psch);
+
+         context.mutable_db.modify( context.controller.get_global_properties(), 
+            [&]( auto& gprops ) {
+                 gprops.new_active_producers = psch;
+         });
+      }
+
+      bool is_privileged( account_name n )const {
+         return context.db.get<account_object, by_name>( n ).privileged;
+      }
+      bool is_frozen( account_name n )const {
+         return context.db.get<account_object, by_name>( n ).frozen;
+      }
+      void set_privileged( account_name n, bool is_priv ) {
+         const auto& a = context.db.get<account_object, by_name>( n );
+         context.mutable_db.modify( a, [&]( auto& ma ){
+            ma.privileged = is_priv;
+         });
+      }
+
+      void freeze_account( account_name n , bool should_freeze ) {
+         const auto& a = context.db.get<account_object, by_name>( n );
+         context.mutable_db.modify( a, [&]( auto& ma ){
+            ma.frozen = should_freeze;
+         });
+      }
+
+      /// TODO: add inline/deferred with support for arbitrary permissions rather than code/current auth
+};
+
+class checktime_api : public context_aware_api {
+public:
+   using context_aware_api::context_aware_api;
+
+   void checktime() {
+      context.checktime();
+   }
 };
 
 class producer_api : public context_aware_api {
@@ -694,6 +792,29 @@ class transaction_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
+      int read_transaction( array_ptr<char> data, size_t data_len ) {
+         bytes trx = context.get_packed_transaction();
+         if (data_len >= trx.size()) {
+            memcpy(data, trx.data(), trx.size());
+         }
+         return trx.size();
+      }
+
+      int transaction_size() {
+         return context.get_packed_transaction().size();
+      }
+
+      int expiration() {
+        return context.trx_meta.trx.expiration.sec_since_epoch();
+      }
+
+      int tapos_block_num() {
+        return context.trx_meta.trx.ref_block_num;
+      }
+      int tapos_block_prefix() {
+        return context.trx_meta.trx.ref_block_prefix;
+      }
+
       void send_inline( array_ptr<char> data, size_t data_len ) {
          // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
          FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
@@ -719,6 +840,22 @@ class transaction_api : public context_aware_api {
       }
 
 };
+
+
+REGISTER_INTRINSICS(privileged_api,
+   (activate_feature,          void(int64_t))
+   (is_feature_active,         int(int64_t))
+   (set_resource_limits,       void(int64_t,int64_t,int64_t,int64_t,int64_t))
+   (set_active_producers,      void(int,int))
+   (is_privileged,             int(int64_t))
+   (set_privileged,            void(int64_t, int))
+   (freeze_account,            void(int64_t, int))
+   (is_frozen,                 int(int64_t))
+);
+
+REGISTER_INTRINSICS(checktime_api,
+   (checktime,      void())
+);
 
 REGISTER_INTRINSICS(producer_api,
    (get_active_producers,      int(int, int))
@@ -764,7 +901,12 @@ REGISTER_INTRINSICS(console_api,
 );
 
 REGISTER_INTRINSICS(transaction_api,
-   (send_inline,           void(int, int)  )
+   (read_transaction,       int(int, int)            )
+   (transaction_size,       int()                    )
+   (expiration,             int()                    )
+   (tapos_block_prefix,     int()                    )
+   (tapos_block_num,        int()                    )
+   (send_inline,           void(int, int)            )
    (send_deferred,         void(int, int, int, int)  )
 );
 

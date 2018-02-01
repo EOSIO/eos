@@ -22,6 +22,7 @@ namespace eosio { namespace testing {
          signed_block      produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) );
          void              produce_blocks( uint32_t n = 1 );
 
+         transaction_trace push_transaction( packed_transaction& trx );
          transaction_trace push_transaction( signed_transaction& trx );
          void              set_tapos( signed_transaction& trx ) const;
 
@@ -36,8 +37,8 @@ namespace eosio { namespace testing {
          void              create_account( account_name name, asset initial_balance = asset(), account_name creator = N(inita), bool multisig = false );
          void              create_account( account_name name, string balance = "0.0000 EOS", account_name creator = N(inita), bool multisig = false );
 
-         transaction_trace transfer( account_name from, account_name to, asset amount, string memo = "" );
-         transaction_trace transfer( account_name from, account_name to, string amount, string memo = "" );
+         transaction_trace transfer( account_name from, account_name to, asset amount, string memo = "", account_name currency = config::eosio_system_acount_name );
+         transaction_trace transfer( account_name from, account_name to, string amount, string memo = "", account_name currency = config::eosio_system_acount_name );
 
          template<typename ObjectType, typename IndexBy, typename... Args>
          const auto& get( Args&&... args ) {
@@ -59,7 +60,7 @@ namespace eosio { namespace testing {
          share_type                    get_balance( const account_name& account ) const;
 
          asset                         get_currency_balance( const account_name& contract,
-                                                             const asset_symbol& symbol,
+                                                             const symbol&       asset_symbol,
                                                              const account_name& account ) const;
 
       private:

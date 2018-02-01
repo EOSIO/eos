@@ -40,9 +40,6 @@ namespace infinite {
 using namespace infinite;
 
 extern "C" {
-    void init()  {
-       store_account( N(currency), account( currency_tokens(1000ll*1000ll*1000ll) ) );
-    }
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {
