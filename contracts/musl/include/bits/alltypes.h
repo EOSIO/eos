@@ -23,3 +23,10 @@ typedef struct _IO_FILE FILE;
 typedef int64_t off_t;
 
 typedef unsigned long wctype_t;
+
+typedef long time_t;
+typedef long suseconds_t;
+
+struct timeval { time_t tv_sec; suseconds_t tv_usec; };
+struct timespec { time_t tv_sec; long tv_nsec; };
+

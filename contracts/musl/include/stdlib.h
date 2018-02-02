@@ -21,11 +21,11 @@ extern "C" {
 int atoi (const char *);
 long atol (const char *);
 long long atoll (const char *);
-double atof (const char *);
+//double atof (const char *);
 
-float strtof (const char *__restrict, char **__restrict);
-double strtod (const char *__restrict, char **__restrict);
-long double strtold (const char *__restrict, char **__restrict);
+//float strtof (const char *__restrict, char **__restrict);
+//double strtod (const char *__restrict, char **__restrict);
+//long double strtold (const char *__restrict, char **__restrict);
 
 long strtol (const char *__restrict, char **__restrict, int);
 unsigned long strtoul (const char *__restrict, char **__restrict, int);
@@ -153,9 +153,9 @@ char *ecvt(double, int, int *, int *);
 char *fcvt(double, int, int *, int *);
 char *gcvt(double, int, char *);
 struct __locale_struct;
-float strtof_l(const char *__restrict, char **__restrict, struct __locale_struct *);
-double strtod_l(const char *__restrict, char **__restrict, struct __locale_struct *);
-long double strtold_l(const char *__restrict, char **__restrict, struct __locale_struct *);
+//float strtof_l(const char *__restrict, char **__restrict, struct __locale_struct *);
+//double strtod_l(const char *__restrict, char **__restrict, struct __locale_struct *);
+//long double strtold_l(const char *__restrict, char **__restrict, struct __locale_struct *);
 #endif
 
 #if defined(_LARGEFILE64_SOURCE) || defined(_GNU_SOURCE)

@@ -48,9 +48,10 @@ struct tm {
 	long __tm_gmtoff;
 	const char *__tm_zone;
 };
-
+   /*
 clock_t clock (void);
 time_t time (time_t *);
+   */
 double difftime (time_t, time_t);
 time_t mktime (struct tm *);
 size_t strftime (char *__restrict, size_t, const char *__restrict, const struct tm *__restrict);
@@ -74,9 +75,9 @@ struct tm *gmtime_r (const time_t *__restrict, struct tm *__restrict);
 struct tm *localtime_r (const time_t *__restrict, struct tm *__restrict);
 char *asctime_r (const struct tm *__restrict, char *__restrict);
 char *ctime_r (const time_t *, char *);
-
+   /*
 void tzset (void);
-
+   */
 struct itimerspec {
 	struct timespec it_interval;
 	struct timespec it_value;
@@ -96,7 +97,7 @@ struct itimerspec {
 #define CLOCK_TAI               11
 
 #define TIMER_ABSTIME 1
-
+   /*
 int nanosleep (const struct timespec *, struct timespec *);
 int clock_getres (clockid_t, struct timespec *);
 int clock_gettime (clockid_t, struct timespec *);
@@ -112,22 +113,27 @@ int timer_gettime (timer_t, struct itimerspec *);
 int timer_getoverrun (timer_t);
 
 extern char *tzname[2];
-
+   */
 #endif
 
 
 #if defined(_XOPEN_SOURCE) || defined(_BSD_SOURCE) || defined(_GNU_SOURCE)
+
 char *strptime (const char *__restrict, const char *__restrict, struct tm *__restrict);
+   /*
 extern int daylight;
 extern long timezone;
 extern int getdate_err;
 struct tm *getdate (const char *);
+   */
 #endif
 
 
 #if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
+   /*
 int stime(const time_t *);
 time_t timegm(struct tm *);
+   */
 #endif
 
 #ifdef __cplusplus
