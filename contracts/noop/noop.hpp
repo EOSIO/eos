@@ -4,10 +4,10 @@
  */
 #pragma once
 
-#include <eoslib/eos.hpp>
-#include <eoslib/dispatcher.hpp>
-#include <eoslib/types.hpp>
-#include <eoslib/string.hpp>
+#include <eosiolib/eos.hpp>
+#include <eosiolib/dispatcher.hpp>
+#include <eosiolib/types.hpp>
+#include <eosiolib/string.hpp>
 
 using namespace eosio;
 
