@@ -4,6 +4,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
+#include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/utf8.hpp>
@@ -220,6 +221,7 @@ namespace eosio { namespace chain {
                   Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
                   #warning TODO: restore checktime injection?
                   WASM::serializeWithInjection(stream, *module);
+                  validate_eosio_wasm_constraints(*module);
 
                   root_resolver resolver;
                   LinkResult link_result = linkModule(*module, resolver);
