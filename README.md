@@ -72,8 +72,12 @@ The second optional input can be `full` or `build` where `full` implies that it 
 ```
 Choose whether you will be building for a local testnet or for the public testnet and jump to the appropriate section below.  Clone the EOS repository recursively as described and run build.sh located in the root `eos` folder.
 
+:warning: **As of February 2018, `master` is under heavy development and is not suitable for experimentation.** :warning:
+
+We strongly recommend following the instructions for building the public testnet version. `master` is in pieces on the garage floor while we rebuild this hotrod. This notice will be removed when `master` is usable again. Your patience is appreciated.
+
 <a name="autoubuntulocal"></a>
-#### Clean install Ubuntu 16.10 for a local testnet
+#### :no_entry: Clean install Ubuntu 16.10 for a local testnet :no_entry:
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
@@ -98,7 +102,7 @@ git checkout dawn-2.x
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
 
 <a name="automaclocal"></a>
-#### MacOS Sierra for a local testnet
+#### :no_entry: MacOS Sierra for a local testnet :no_entry:
 
 Before running the script make sure you have updated XCode and brew:
 
@@ -107,7 +111,7 @@ xcode-select --install
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 ```
 
-Then clone the EOS repository recursively and run build.sh in the root `eos` folder.
+Then clone the EOS.IO repository recursively and run build.sh in the root `eos` folder.
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
