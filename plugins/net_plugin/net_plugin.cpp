@@ -224,7 +224,7 @@ namespace eosio {
       void handle_message( connection_ptr c, const notice_message &msg);
       void handle_message( connection_ptr c, const request_message &msg);
       void handle_message( connection_ptr c, const sync_request_message &msg);
-      void handle_message( connection_ptr c, const block_summary_message &msg);
+      void handle_message( connection_ptr c, const signed_block_summary &msg);
       void handle_message( connection_ptr c, const signed_transaction &msg);
       void handle_message( connection_ptr c, const signed_block &msg);
 
@@ -467,6 +467,7 @@ namespace eosio {
 
       void blk_send_branch( const vector<block_id_type> &ids);
       void blk_send(const vector<block_id_type> &txn_lis);
+      void send_block_summary_prereqs(const signed_block& sb);
       void stop_send();
 
       void enqueue( const net_message &msg );
@@ -780,6 +781,29 @@ namespace eosio {
          catch (...) {
             elog( "failed to retrieve block for id");
          }
+      }
+   }
+
+   void connection::send_block_summary_prereqs(const signed_block& sb) {
+      //make sure that the connection is aware of all txns in this block, for any that
+      //it is not aware of, send them immediately before the block summary
+      for(const packed_transaction& pt : sb.input_transactions) {
+         signed_transaction st = pt.get_signed_transaction();
+         transaction_id_type txn_id = st.id();
+         transaction_state_index::index<by_id>::type::iterator it = trx_state.find(txn_id);
+
+         if(it != trx_state.end() && it->is_known_by_peer) {
+            ilog("nope! already knows");
+            continue;
+         }
+
+         wlog("guess we need to send a txn before summary");
+         enqueue(st);
+         if(it == trx_state.end())
+            it = trx_state.emplace(transaction_state{txn_id,true,true,sb.block_num(),fc::time_point(),fc::time_point()}).first;
+         trx_state.modify(it,[](transaction_state& state) {
+            state.is_known_by_peer = true;
+         });
       }
    }
 
@@ -1896,9 +1920,31 @@ namespace eosio {
       }
    }
 
-   void net_plugin_impl::handle_message( connection_ptr , const block_summary_message &) {
-#if 0 // function is obsolete
-#endif
+   void net_plugin_impl::handle_message( connection_ptr c, const signed_block_summary& sbs) {
+      elog("idk!");
+      signed_block sb(sbs);
+
+      //recreate the input_transactions from our cache. The order of those transactions doesn't matter.
+      for(const region_summary& rs : sb.regions) {
+         for(const cycle& cs : rs.cycles_summary) {
+            for(const shard_summary& ss: cs) {
+               for(const transaction_receipt& tr : ss.transactions) {
+                  ilog("start...");
+                  net_message msg;
+                  node_transaction_index::index<by_id>::type::iterator it = local_txns.find(tr.id);
+                  if(it == local_txns.end())
+                     elog("CRAPPPPPP");
+                  const vector<char>& pack_txn = it->packed_transaction;
+                  fc::datastream<const char*> ds(pack_txn.data()+4, pack_txn.size()-4);
+                  fc::raw::unpack(ds, msg);
+                  sb.input_transactions.emplace_back(std::move(msg.get<signed_transaction>()));
+               }
+            }
+         }
+      }
+
+      wlog("forwarding signed block up stack");
+      handle_message(c, sb);
    }
 
 
@@ -2041,9 +2087,9 @@ namespace eosio {
             }
          }
          else {
-            if(age < fc::seconds(3) && fc::raw::pack_size(msg) < just_send_it_max && !c->syncing ) {
+            if(age < fc::seconds(3) && !c->syncing ) {
                fc_dlog(logger, "forwarding the signed block");
-               send_all( msg, [c, blk_id, num](connection_ptr conn) -> bool {
+               send_all( msg, [c, blk_id, num, msg](connection_ptr conn) -> bool {
                      bool sendit = false;
                      if( c != conn && !conn->syncing ) {
                         auto b = conn->block_state.get<by_id>().find(blk_id);
@@ -2056,6 +2102,8 @@ namespace eosio {
                         }
                      }
                      fc_dlog(logger, "${action} block ${num} to ${c}",("action", sendit ? "sending " : "skipping ")("num",num)("c", conn->peer_name() ));
+                     if(sendit)
+                        c->send_block_summary_prereqs(msg);
                      return sendit;
                   });
             }
@@ -2233,29 +2281,11 @@ namespace eosio {
    }
 
    void net_plugin_impl::broadcast_block_impl( const chain::signed_block &sb) {
-      net_message msg(sb);
-      uint32_t packsiz = fc::raw::pack_size(msg);
-      uint32_t msgsiz = packsiz + sizeof(packsiz);
-
-      if (msgsiz <= just_send_it_max) {
-         send_all( sb,[](connection_ptr c) -> bool { return true; });
-      }
-      else {
-         notice_message pending_notify;
-         block_id_type bid = sb.id();
-         pending_notify.known_blocks.mode = normal;
-         pending_notify.known_blocks.ids.push_back( bid );
-         pending_notify.known_trx.mode = none;
-         send_all(pending_notify, [bid](connection_ptr c) -> bool {
-               const auto& bs = c->block_state.find(bid);
-               bool unknown = bs == c->block_state.end();
-               if( unknown) {
-                  fc_dlog(logger, "sending block notice to ${n}", ("n",c->peer_name() ) );
-                  c->block_state.insert(block_state({bid,false,true,fc::time_point() }));
-               }
-               return unknown;
-            });
-      }
+      send_all(static_cast<chain::signed_block_summary>(sb), [&sb](connection_ptr c) -> bool {
+         c->send_block_summary_prereqs(sb);
+         return true;
+      });
+      wlog("sent ${p}", ("p", static_cast<chain::signed_block_summary>(sb).block_num()));
    }
 
    bool net_plugin_impl::authenticate_peer(const handshake_message& msg) const {
