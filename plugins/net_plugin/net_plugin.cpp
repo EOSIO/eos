@@ -393,6 +393,7 @@ namespace eosio {
       optional<request_message> pending_fetch;
       go_away_reason         no_retry;
       block_id_type          fork_head;
+      uint32_t               fork_head_num;
 
       connection_status get_status()const {
          connection_status stat;
@@ -532,6 +533,7 @@ namespace eosio {
       void start_sync(connection_ptr c, uint32_t target);
       void send_handshakes();
       void reassign_fetch(connection_ptr c, go_away_reason reason);
+      void verify_catchup(connection_ptr c, uint32_t num, block_id_type id);
       void recv_block(connection_ptr c, const signed_block &blk, bool accepted);
       void recv_handshake(connection_ptr c, const handshake_message& msg);
       void recv_notice(connection_ptr c, const notice_message& msg);
@@ -587,7 +589,8 @@ namespace eosio {
         response_expected(),
         pending_fetch(),
         no_retry(go_away_reason::no_reason),
-        fork_head()
+        fork_head(),
+        fork_head_num(0)
 
    {
       wlog( "created connection to ${n}", ("n", endpoint) );
@@ -611,7 +614,8 @@ namespace eosio {
         response_expected(),
         pending_fetch(),
         no_retry(go_away_reason::no_reason),
-        fork_head()
+        fork_head(),
+        fork_head_num(0)
    {
       wlog( "accepted network connection" );
       initialize();
@@ -820,7 +824,8 @@ namespace eosio {
    void connection::send_handshake( ) {
       handshake_initializer::populate(last_handshake_sent);
       last_handshake_sent.generation = ++sent_handshake_count;
-      fc_dlog(logger, "Sending handshake to ${ep}", ("ep", peer_addr));
+      ilog("Sending handshake generation ${g} to ${ep}",
+              ("g",last_handshake_sent.generation)("ep", peer_addr));
       enqueue(last_handshake_sent);
    }
 
@@ -1171,7 +1176,7 @@ namespace eosio {
       uint32_t head_block = chain_plug->chain().head_block_num();
 
       if (head_block < sync_last_requested_num) {
-         fc_dlog (logger, "ignoring request, head is ${h} last req = ${r}",("h",head_block)("r",sync_last_requested_num));
+         ilog ("ignoring request, head is ${h} last req = ${r}",("h",head_block)("r",sync_last_requested_num));
          return;
       }
 
@@ -1314,10 +1319,10 @@ namespace eosio {
          // for generation 1, we wlso sent a handshake so they will treat this as state 1
          if ( msg.generation > 1 ) {
             notice_message note;
-            note.known_trx.pending = head;
+            note.known_trx.pending = lib_num;
             note.known_trx.mode = last_irr_catch_up;
             note.known_blocks.mode = last_irr_catch_up;
-            note.known_blocks.pending = lib_num;
+            note.known_blocks.pending = head;
             c->enqueue( note );
          }
          c->syncing = true;
@@ -1327,12 +1332,7 @@ namespace eosio {
       if (head <= msg.head_num ) {
          fc_dlog(logger, "sync check state 3 (skipped = ${s}",("s", is_active(c)));
          if (state == in_sync ) {
-            state = head_catchup;
-            c->fork_head = msg.head_id;
-            request_message req;
-            req.req_trx.mode = none;
-            req.req_blocks.mode = catch_up;
-            c->enqueue( req );
+            verify_catchup (c, msg.head_num, msg.head_id);
          }
          return;
       }
@@ -1342,6 +1342,7 @@ namespace eosio {
             notice_message note;
             note.known_trx.mode = none;
             note.known_blocks.mode = catch_up;
+            note.known_blocks.pending = head;
             note.known_blocks.ids.push_back(head_id);
             c->enqueue( note );
          }
@@ -1351,25 +1352,36 @@ namespace eosio {
       elog ("sync check failed to resolve status");
    }
 
+   void sync_manager::verify_catchup(connection_ptr c, uint32_t num, block_id_type id) {
+      bool ignore = false;
+      for (auto cc : my_impl->connections) {
+         if (cc->fork_head == id ||
+             cc->fork_head_num > num)
+            ignore = true;
+         break;
+      }
+      if( !ignore ) {
+         c->fork_head = id;
+         c->fork_head_num = num;
+         if (state != lib_catchup) {
+            state = head_catchup;
+            request_message req;
+            req.req_trx.mode = none;
+            req.req_blocks.mode = catch_up;
+            c->enqueue( req );
+         }
+      }
+   }
+
    void sync_manager::recv_notice (connection_ptr c, const notice_message &msg) {
       ilog ("sync_manager got ${m} block notice",("m",modes_str(msg.known_blocks.mode)));
       if (msg.known_blocks.mode == catch_up) {
-         c->fork_head = msg.known_blocks.ids[0];
-         ilog ("sync_manager got catch_up notice, fork_head = ${fh}",
-               ("fh",c->fork_head));
-         state = head_catchup;
-         request_message req;
-         req.req_trx.mode = none;
-         req.req_blocks.mode = catch_up;
-
-         c->enqueue (req);
+         verify_catchup(c,  msg.known_blocks.pending, msg.known_blocks.ids[0]);
       }
       else {
          c->last_handshake_recv.last_irreversible_block_num = msg.known_trx.pending;
          reset_lib_num ();
-         if (state != lib_catchup) {
-            start_sync(c, msg.known_blocks.pending);
-         }
+         start_sync(c, msg.known_blocks.pending);
       }
    }
 
@@ -1393,18 +1405,18 @@ namespace eosio {
 
       if (state == head_catchup) {
          ilog ("sync_manager in head_catchup state");
-         if (c->fork_head != block_id_type() ) {
-            ilog ("sync_manager connection fork head set");
-            if (c->fork_head == blk.id() ) {
-               ilog ("sync_manager connection fork head matches received id");
+         state = in_sync;
+         for (auto cp : my_impl->connections) {
+            if (cp->fork_head == block_id_type()) {
+               continue;
+            }
+            if (cp->fork_head == blk.id() ||
+                cp->fork_head_num < blk.block_num()) {
                c->fork_head = block_id_type();
-               state = in_sync;
-               for (auto cp : my_impl->connections) {
-                  if (cp->fork_head != block_id_type()) {
-                     state = head_catchup;
-                     break;
-                  }
-               }
+               c->fork_head_num = 0;
+            }
+            else {
+               state = head_catchup;
             }
          }
       }
@@ -1444,7 +1456,7 @@ namespace eosio {
       pending_notify.known_trx.mode = none;
       if (msgsiz > just_send_it_max) {
          my_impl->send_all(pending_notify, [skip, bid](connection_ptr c) -> bool {
-               if (c == skip || c->syncing)
+               if (c == skip || !c->current())
                   return false;
                const auto& bs = c->blk_state.find(bid);
                bool unknown = bs == c->blk_state.end();
@@ -1460,7 +1472,7 @@ namespace eosio {
       else {
          block_id_type prev = sb.previous;
          for (auto cp : my_impl->connections) {
-            if (cp == skip || cp->syncing) {
+            if (cp == skip || !cp->current()) {
                continue;
             }
             const auto& bs = cp->blk_state.find (prev);
@@ -1576,7 +1588,7 @@ namespace eosio {
                return unknown;
             });
       }
-      else {
+      else if(!my_impl->sync_master->is_active(c)) {
          net_message nmsg(msg);
          if(fc::raw::pack_size(nmsg) < just_send_it_max ) {
             fc_dlog(logger, "forwarding the signed block");
@@ -1938,8 +1950,8 @@ namespace eosio {
                   if (msg.time + c->last_handshake_sent.time <= check->last_handshake_sent.time + check->last_handshake_recv.time)
                      continue;
 
-                  fc_dlog(logger, "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
-                  go_away_message gam(go_away_reason::duplicate);
+                  ilog("sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
+                  go_away_message gam(duplicate);
                   gam.node_id = node_id;
                   c->enqueue(gam);
                   c->no_retry = duplicate;
@@ -2008,9 +2020,10 @@ namespace eosio {
 
    void net_plugin_impl::handle_message( connection_ptr c, const go_away_message &msg ) {
       string rsn = reason_str( msg.reason );
-      ilog( "received a go away message, reason = ${r}",("r",rsn));
+      ilog( "received a go away message from ${p}, reason = ${r}",
+            ("p", c->peer_name())("r",rsn));
       c->no_retry = msg.reason;
-      if(msg.reason == go_away_reason::duplicate ) {
+      if(msg.reason == duplicate ) {
          c->node_id = msg.node_id;
       }
       c->flush_queues();
@@ -2242,11 +2255,10 @@ namespace eosio {
          elog( "handle sync block caught something else from ${p}",("num",blk_num)("p",c->peer_name()));
       }
 
-      sync_master->recv_block (c, msg, reason == no_reason);
       if( reason == no_reason ) {
          bm_master->recv_block (c, msg);
       }
-
+      sync_master->recv_block (c, msg, reason == no_reason);
    }
 
    void net_plugin_impl::start_conn_timer( ) {
