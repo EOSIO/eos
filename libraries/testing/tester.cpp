@@ -122,7 +122,7 @@ namespace eosio { namespace testing {
          trx.sign(get_private_key(authorizer, "active"), chain_id_type());
       }
       try {
-         control->push_transaction(trx);
+         push_transaction(trx);
       } catch (const fc::exception& ex) {
          return error(ex.top_message());
       }
