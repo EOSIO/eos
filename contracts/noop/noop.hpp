@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <eosiolib/eos.hpp>
+#include <eosiolib/eosio.hpp>
 #include <eosiolib/dispatcher.hpp>
 #include <eosiolib/types.hpp>
 #include <eosiolib/string.hpp>
