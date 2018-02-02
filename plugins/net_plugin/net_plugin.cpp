@@ -529,7 +529,7 @@ namespace eosio {
       bool is_active(connection_ptr conn);
       void reset_lib_num();
       bool sync_required();
-      void request_next_chunk(connection_ptr conn);
+      void request_next_chunk(connection_ptr conn = connection_ptr() );
       void start_sync(connection_ptr c, uint32_t target);
       void send_handshakes();
       void reassign_fetch(connection_ptr c, go_away_reason reason);
@@ -799,7 +799,7 @@ namespace eosio {
                enqueue(*b);
             }
             else {
-               ilog ("fetch block by id returned null, id ${id} on block ${c} of ${s} for ${p}",
+               ilog("fetch block by id returned null, id ${id} on block ${c} of ${s} for ${p}",
                      ("id",blkid)("c",count)("s",ids.size())("p",peer_name()));
                break;
             }
@@ -824,7 +824,7 @@ namespace eosio {
    void connection::send_handshake( ) {
       handshake_initializer::populate(last_handshake_sent);
       last_handshake_sent.generation = ++sent_handshake_count;
-      ilog("Sending handshake generation ${g} to ${ep}",
+      fc_dlog(logger, "Sending handshake generation ${g} to ${ep}",
               ("g",last_handshake_sent.generation)("ep", peer_addr));
       enqueue(last_handshake_sent);
    }
@@ -1172,7 +1172,7 @@ namespace eosio {
               chain_plug->chain( ).head_block_num( ) < sync_last_requested_num );
    }
 
-   void sync_manager::request_next_chunk( connection_ptr conn = connection_ptr() ) {
+   void sync_manager::request_next_chunk( connection_ptr conn ) {
       uint32_t head_block = chain_plug->chain().head_block_num();
 
       if (head_block < sync_last_requested_num) {
@@ -1195,11 +1195,12 @@ namespace eosio {
          auto cptr = my_impl->connections.find(source);
          if (cptr == my_impl->connections.end()) {
             elog ("unable to find previous source connection in connections list");
+            source.reset();
             cptr = my_impl->connections.begin();
          } else {
             ++cptr;
          }
-         while (true) {
+         while (my_impl->connections.size() > 1) {
             if (cptr == my_impl->connections.end()) {
                cptr = my_impl->connections.begin();
                if (!source) {
@@ -1267,7 +1268,8 @@ namespace eosio {
 
       state = lib_catchup;
 
-      ilog( "Catching up with chain, our last req is ${cc}, theirs is ${t} peer ${p}", ( "cc",sync_last_requested_num)("t",target)("p",c->peer_name()));
+      fc_dlog(logger, "Catching up with chain, our last req is ${cc}, theirs is ${t} peer ${p}",
+              ( "cc",sync_last_requested_num)("t",target)("p",c->peer_name()));
 
       request_next_chunk(c);
    }
@@ -1374,7 +1376,7 @@ namespace eosio {
    }
 
    void sync_manager::recv_notice (connection_ptr c, const notice_message &msg) {
-      ilog ("sync_manager got ${m} block notice",("m",modes_str(msg.known_blocks.mode)));
+      fc_dlog (logger, "sync_manager got ${m} block notice",("m",modes_str(msg.known_blocks.mode)));
       if (msg.known_blocks.mode == catch_up) {
          verify_catchup(c,  msg.known_blocks.pending, msg.known_blocks.ids[0]);
       }
@@ -1404,7 +1406,7 @@ namespace eosio {
       last_repeated = 0;
 
       if (state == head_catchup) {
-         ilog ("sync_manager in head_catchup state");
+         fc_dlog (logger, "sync_manager in head_catchup state");
          state = in_sync;
          for (auto cp : my_impl->connections) {
             if (cp->fork_head == block_id_type()) {
@@ -1423,7 +1425,7 @@ namespace eosio {
       else if (state == lib_catchup) {
          uint32_t num = blk.block_num();
          if( num == sync_known_lib_num ) {
-            ilog("All caught up with last known last irreversible block resending handshake");
+            fc_dlog( logger, "All caught up with last known last irreversible block resending handshake");
             c->cancel_wait();
             state = in_sync;
             send_handshakes();
@@ -1686,7 +1688,7 @@ namespace eosio {
          elog ("passed a notice_message with something other than a normal on none known_blocks");
          return;
       }
-      ilog("send req = ${sr}", ("sr",send_req));
+      fc_dlog( logger, "send req = ${sr}", ("sr",send_req));
       if( send_req) {
          c->enqueue(req);
       }
@@ -1918,7 +1920,7 @@ namespace eosio {
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const handshake_message &msg) {
-      ilog("got a handshake_message from ${p} ${h}", ("p",c->peer_addr)("h",msg.p2p_address));
+      fc_dlog( logger, "got a handshake_message from ${p} ${h}", ("p",c->peer_addr)("h",msg.p2p_address));
       if (!is_valid(msg)) {
          elog( "Invalid handshake message received from ${p} ${h}", ("p",c->peer_addr)("h",msg.p2p_address));
          c->enqueue( go_away_message( fatal_other ));
@@ -1950,7 +1952,7 @@ namespace eosio {
                   if (msg.time + c->last_handshake_sent.time <= check->last_handshake_sent.time + check->last_handshake_recv.time)
                      continue;
 
-                  ilog("sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
+                  fc_dlog( logger, "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
                   go_away_message gam(duplicate);
                   gam.node_id = node_id;
                   c->enqueue(gam);
@@ -1997,6 +1999,10 @@ namespace eosio {
             try {
                block_id_type peer_lib_id =  cc.get_block_id_for_num( peer_lib);
                on_fork =( msg.last_irreversible_block_id != peer_lib_id);
+            }
+            catch( const unknown_block_exception &ex) {
+               wlog( "peer last irreversible block ${pl} is unknown", ("pl", peer_lib));
+               on_fork = true;
             }
             catch( ...) {
                wlog( "caught an exception getting block id for ${pl}",("pl",peer_lib));
@@ -2127,11 +2133,11 @@ namespace eosio {
    void net_plugin_impl::handle_message( connection_ptr c, const request_message &msg) {
       switch (msg.req_blocks.mode) {
       case catch_up :
-         ilog( "got a catch_up request_message from ${p}", ("p",c->peer_name()));
+         fc_dlog( logger,  "got a catch_up request_message from ${p}", ("p",c->peer_name()));
          c->blk_send_branch( );
          break;
       case normal :
-         fc_ilog(logger, "got a normal request_message from ${p}", ("p",c->peer_name()));
+         fc_dlog(logger, "got a normal request_message from ${p}", ("p",c->peer_name()));
          c->blk_send(msg.req_blocks.ids);
          break;
       default:;
