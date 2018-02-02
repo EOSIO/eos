@@ -39,34 +39,34 @@ struct asset
    uint8_t     decimals()const;
    string      symbol_name()const;
    int64_t     precision()const;
-   const symbol& symbol() const { return sym; }
+   const symbol& get_symbol() const { return sym; }
 
    static asset from_string(const string& from);
    string       to_string()const;
 
    asset& operator += (const asset& o)
    {
-      FC_ASSERT(symbol() == o.symbol());
+      FC_ASSERT(get_symbol() == o.get_symbol());
       amount += o.amount;
       return *this;
    }
 
    asset& operator -= (const asset& o)
    {
-      FC_ASSERT(symbol() == o.symbol());
+      FC_ASSERT(get_symbol() == o.get_symbol());
       amount -= o.amount;
       return *this;
    }
-   asset operator -()const { return asset(-amount, symbol()); }
+   asset operator -()const { return asset(-amount, get_symbol()); }
 
    friend bool operator == (const asset& a, const asset& b)
    {
-      return std::tie(a.symbol(), a.amount) == std::tie(b.symbol(), b.amount);
+      return std::tie(a.get_symbol(), a.amount) == std::tie(b.get_symbol(), b.amount);
    }
    friend bool operator < (const asset& a, const asset& b)
    {
-      FC_ASSERT(a.symbol() == b.symbol());
-      return std::tie(a.amount,a.symbol()) < std::tie(b.amount,b.symbol());
+      FC_ASSERT(a.get_symbol() == b.get_symbol());
+      return std::tie(a.amount,a.get_symbol()) < std::tie(b.amount,b.get_symbol());
    }
    friend bool operator <= (const asset& a, const asset& b) { return (a == b) || (a < b); }
    friend bool operator != (const asset& a, const asset& b) { return !(a == b); }
@@ -74,13 +74,13 @@ struct asset
    friend bool operator >= (const asset& a, const asset& b) { return !(a < b);  }
 
    friend asset operator - (const asset& a, const asset& b) {
-      FC_ASSERT(a.symbol() == b.symbol());
-      return asset(a.amount - b.amount, a.symbol());
+      FC_ASSERT(a.get_symbol() == b.get_symbol());
+      return asset(a.amount - b.amount, a.get_symbol());
    }
 
    friend asset operator + (const asset& a, const asset& b) {
-      FC_ASSERT(a.symbol() == b.symbol());
-      return asset(a.amount + b.amount, a.symbol());
+      FC_ASSERT(a.get_symbol() == b.get_symbol());
+      return asset(a.amount + b.amount, a.get_symbol());
    }
 
    friend std::ostream& operator << (std::ostream& out, const asset& a) { return out << a.to_string(); }
