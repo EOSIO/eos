@@ -62,6 +62,7 @@ struct genesis_state_type {
 
    time_point                               initial_timestamp;
    public_key_type                          initial_key;
+   public_key_type                          eosio_system_key;
 
    vector<initial_account_type>             initial_accounts;
    vector<initial_producer_type>            initial_producers;

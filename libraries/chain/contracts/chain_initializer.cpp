@@ -240,7 +240,7 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
    create_native_account(config::system_account_name);
 
    // Queue up messages which will run contracts to create the initial accounts
-   auto init_eosio_sytem = genesis_state_type::initial_account_type(name(config::eosio_system_acount_name).to_string(), 0, 0, genesis.initial_key, genesis.initial_key);
+   auto init_eosio_sytem = genesis_state_type::initial_account_type(name(config::eosio_system_acount_name).to_string(), 0, 0, genesis.eosio_system_key, genesis.eosio_system_key);
    genesis.initial_accounts.emplace_back(move(init_eosio_sytem));
 
    for (const auto& acct : genesis.initial_accounts) {
