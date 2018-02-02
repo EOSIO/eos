@@ -37,20 +37,20 @@ producer_schedule_type  chain_initializer::get_chain_start_producers() {
 
 void chain_initializer::register_types(chain_controller& chain, chainbase::database& db) {
 
-#define SET_APP_HANDLER( contract, scope, action, nspace ) \
+#define SET_APP_HANDLER( contract, scope, action ) \
    chain._set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(contracts::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
-   SET_APP_HANDLER( eosio, eosio, newaccount, eosio );
-   SET_APP_HANDLER( eosio, eosio, setcode, eosio );
-   SET_APP_HANDLER( eosio, eosio, setabi, eosio );
-   SET_APP_HANDLER( eosio, eosio, updateauth, eosio );
-   SET_APP_HANDLER( eosio, eosio, deleteauth, eosio );
-   SET_APP_HANDLER( eosio, eosio, linkauth, eosio );
-   SET_APP_HANDLER( eosio, eosio, unlinkauth, eosio );
-   SET_APP_HANDLER( eosio, eosio, onerror, eosio );
-   SET_APP_HANDLER( eosio, eosio, postrecovery, eosio );
-   SET_APP_HANDLER( eosio, eosio, passrecovery, eosio );
-   SET_APP_HANDLER( eosio, eosio, vetorecovery, eosio );
+   SET_APP_HANDLER( eosio, eosio, newaccount );
+   SET_APP_HANDLER( eosio, eosio, setcode );
+   SET_APP_HANDLER( eosio, eosio, setabi );
+   SET_APP_HANDLER( eosio, eosio, updateauth );
+   SET_APP_HANDLER( eosio, eosio, deleteauth );
+   SET_APP_HANDLER( eosio, eosio, linkauth );
+   SET_APP_HANDLER( eosio, eosio, unlinkauth );
+   SET_APP_HANDLER( eosio, eosio, onerror );
+   SET_APP_HANDLER( eosio, eosio, postrecovery );
+   SET_APP_HANDLER( eosio, eosio, passrecovery );
+   SET_APP_HANDLER( eosio, eosio, vetorecovery );
 }
 
 
@@ -194,7 +194,7 @@ abi_def chain_initializer::eos_contract_abi()
 }
 
 // forward declared method from eosio contract
-void intialize_eosio_tokens(chainbase::database& db, const account_name& system_account, share_type initial_tokens);
+void initialize_eosio_tokens(chainbase::database& db, const account_name& system_account, share_type initial_tokens);
 
 
 std::vector<action> chain_initializer::prepare_database( chain_controller& chain,
