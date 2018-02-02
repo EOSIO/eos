@@ -487,7 +487,8 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
       _finalize_pending_cycle();
 
       if( !(skip & skip_producer_signature) )
-         FC_ASSERT( producer_obj.signing_key == block_signing_key.get_public_key() );
+         FC_ASSERT( producer_obj.signing_key == block_signing_key.get_public_key(),
+                    "producer key ${pk}, block key ${bk}", ("pk", producer_obj.signing_key)("bk", block_signing_key.get_public_key()) );
 
          _pending_block->timestamp   = when;
          _pending_block->producer    = producer_obj.owner;
@@ -1586,6 +1587,8 @@ void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_us
       uint128_t  virtual_max_uacts  = dgpo.virtual_act_bandwidth * config::rate_limiting_precision;
       
       if( !(_skip_flags & genesis_setup) ) {
+         #warning TODO: restore bandwidth checks
+         /* setting of bandwidth currently not implemented
          FC_ASSERT( (used_ubytes * dgpo.total_net_weight) <=  (buo.net_weight * virtual_max_ubytes), "authorizing account '${n}' has insufficient net bandwidth for this transaction",
                     ("n",name(authaccnt.first))
                     ("used_bytes",double(used_ubytes)/1000000.)
@@ -1600,6 +1603,7 @@ void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_us
                     ("virtual_max_uacts", double(virtual_max_uacts)/1000000. )
                     ("total_cpu_tokens", dgpo.total_cpu_weight)
                   );
+         */
       }
 
       // for any transaction not sent by code, update the affirmative last time a given permission was used
