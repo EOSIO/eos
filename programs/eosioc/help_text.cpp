@@ -96,87 +96,99 @@ auto smatch_to_variant(const std::smatch& smatch) {
    return result;
 };
 
+const char* error_advice_3120001 = R"=====(Name should be less than 13 characters and only contains the following symbol .12345abcdefghijklmnopqrstuvwxyz)=====";
+
+const char* error_advice_3120002 = R"=====(Public key should be encoded in base58 and starts with EOS prefix)=====";
+
+const char* error_advice_3120003 = R"=====(Ensure that your authority JSON follows the following format!
+{
+  "threshold":"uint32_t",
+  "keys":[{ "key":"public_key", "weight":"uint16_t" }],
+  "accounts":[{
+    "permission":{ "actor":"account_name", "permission":"permission_name" },
+    "weight":"uint16_t"
+  }]
+}
+e.g.
+{
+  "threshold":"1",
+  "keys":[{ "key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"1" }],
+  "accounts":[{
+    "permission":{ "actor":"initb", "permission":"social" },
+    "weight":"1
+  }]
+})=====";
+
+const char* error_advice_3120004 = R"=====(Ensure that your action JSON follows the contract's abi!)=====";
+
+const char* error_advice_3120005 = R"=====(Ensure that your transaction JSON follows the following format!\n"
+{
+  "ref_block_num":"uint16_t",
+  "ref_block_prefix":"uint32_t",
+  "expiration":"YYYY-MM-DDThh:mm",
+  "region": "uint16_t",
+  "read_scope":[ "account_name" ],
+  "write_scope":[ "account_name" ],
+  "actions":[{ 
+    "account":"account_name",
+    "name":"action_name",
+    "authorization":[{ "actor":"account_name","permission":"permission_name" }],
+    "data":"bytes"
+  }]
+}"
+e.g.
+{
+  "ref_block_num":"1000",
+  "ref_block_prefix":"3463702842",
+  "expiration":"2018-01-23T01:51:05",
+  "region": "0",
+  "read_scope":[ "initb", "initc" ],
+  "write_scope":[ "initb", "initc" ],
+  "actions":[{ 
+    "account":"eosio",
+    "name":"transfer",
+    "authorization":[{ "actor":"initb","permission":"active" }],
+    "data":"000000008093dd74000000000094dd74e80300000000000000"
+  }]
+})=====";
+
+const char* error_advice_3120006 =  R"=====(Ensure that your abi JSON follows the following format!
+{
+  "types" : [{ "new_type_name":"type_name", "type":"type_name" }],
+  "structs" : [{ "name":"type_name", "base":"type_name", "fields": [{ "name":"field_name", "type": "type_name" }] }],
+  "actions" : [{ "name":"action_name","type":"type_name"}],
+  "tables" : [{
+    "name":"table_name",
+    "index_type":"type_name",
+    "key_names":[ "field_name" ],
+    "key_types":[ "type_name" ],
+    "type":"type_name" "
+  }]
+}
+e.g.
+{
+  "types" : [{ "new_type_name":"account_name", "type":"name" }],
+  "structs" : [
+    { "name":"foo", "base":"", "fields": [{ "name":"by", "type": "account_name" }] },\n "
+    { "name":"foobar", "base":"", "fields": [{ "name":"by", "type": "account_name" }] }
+  ],
+  "actions" : [{ "name":"foo","type":"foo"}],
+  "tables" : [{
+    "name":"foobar_table",
+    "index_type":"i64",
+    "key_names":[ "by" ],
+    "key_types":[ "account_name" ],
+    "type":"foobar" "
+  }]
+})=====";
+
 const std::map<int64_t, std::string> error_advice = {
-        { 3120001, "Name should be less than 13 characters and only contains the following symbol .12345abcdefghijklmnopqrstuvwxyz"},
-        { 3120002, "Public key should be encoded in base58 and starts with EOS prefix"},
-        { 3120003, "Ensure that your authority JSON follows the following format!\n"
-                   "{\n"
-                   "  \"threshold\":\"uint32_t\",\n"
-                   "  \"keys\":[{ \"key\":\"public_key\", \"weight\":\"uint16_t\" }],\n"
-                   "  \"accounts\":[{\n"
-                   "    \"permission\":{ \"actor\":\"account_name\", \"permission\":\"permission_name\" },\n"
-                   "    \"weight\":\"uint16_t\n"
-                   "  }]\n"
-                   "}\n"
-                   "e.g.\n"
-                   "{\n"
-                   "  \"threshold\":\"1\",\n"
-                   "  \"keys\":[{ \"key\":\"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV\", \"weight\":\"1\" }],\n"
-                   "  \"accounts\":[{\n"
-                   "    \"permission\":{ \"actor\":\"initb\", \"permission\":\"social\" },\n"
-                   "    \"weight\":\"1\n"
-                   "  }]\n"
-                  "}"},
-        { 3120004, "Ensure that your action JSON follows the contract's abi!" },
-        { 3120005, "Ensure that your transaction JSON follows the following format!\n"
-                   "{\n"
-                   "  \"ref_block_num\":\"uint16_t\",\n"
-                   "  \"ref_block_prefix\":\"uint32_t\",\n"
-                   "  \"expiration\":\"YYYY-MM-DDThh:mm\",\n"
-                   "  \"region\": \"uint16_t\",\n"
-                   "  \"read_scope\":[ \"account_name\" ],\n"
-                   "  \"write_scope\":[ \"account_name\" ],\n"
-                   "  \"actions\":[{ \n"
-                   "    \"account\":\"account_name\",\n"
-                   "    \"name\":\"action_name\",\n"
-                   "    \"authorization\":[{ \"actor\":\"account_name\",\"permission\":\"permission_name\" }],\n"
-                   "    \"data\":\"bytes\"\n"
-                   "  }]\n"
-                   "}"
-                   "e.g.\n"
-                   "{\n"
-                   "  \"ref_block_num\":\"1000\",\n"
-                   "  \"ref_block_prefix\":\"3463702842\",\n"
-                   "  \"expiration\":\"2018-01-23T01:51:05\",\n"
-                   "  \"region\": \"0\",\n"
-                   "  \"read_scope\":[ \"initb\", \"initc\" ],\n"
-                   "  \"write_scope\":[ \"initb\", \"initc\" ],\n"
-                   "  \"actions\":[{ \n"
-                   "    \"account\":\"eosio\",\n"
-                   "    \"name\":\"transfer\",\n"
-                   "    \"authorization\":[{ \"actor\":\"initb\",\"permission\":\"active\" }],\n"
-                   "    \"data\":\"000000008093dd74000000000094dd74e80300000000000000\"\n"
-                   "  }]\n"
-                   "}"},
-        { 3120006, "Ensure that your abi JSON follows the following format!\n"
-                   "{\n"
-                   "  \"types\" : [{ \"new_type_name\":\"type_name\", \"type\":\"type_name\" }],\n"
-                   "  \"structs\" : [{ \"name\":\"type_name\", \"base\":\"type_name\", \"fields\": [{ \"name\":\"field_name\", \"type\": \"type_name\" }] }],\n"
-                   "  \"actions\" : [{ \"name\":\"action_name\",\"type\":\"type_name\"}],\n"
-                   "  \"tables\" : [{\n"
-                   "    \"name\":\"table_name\",\n"
-                   "    \"index_type\":\"type_name\",\n"
-                   "    \"key_names\":[ \"field_name\" ],\n"
-                   "    \"key_types\":[ \"type_name\" ],\n"
-                   "    \"type\":\"type_name\" "
-                   "  }]\n"
-                   "}\n"
-                   "e.g.\n"
-                   "{\n"
-                   "  \"types\" : [{ \"new_type_name\":\"account_name\", \"type\":\"name\" }],\n"
-                   "  \"structs\" : [\n"
-                   "    { \"name\":\"foo\", \"base\":\"\", \"fields\": [{ \"name\":\"by\", \"type\": \"account_name\" }] },\n "
-                   "    { \"name\":\"foobar\", \"base\":\"\", \"fields\": [{ \"name\":\"by\", \"type\": \"account_name\" }] }\n"
-                   "  ],\n"
-                   "  \"actions\" : [{ \"name\":\"foo\",\"type\":\"foo\"}],\n"
-                   "  \"tables\" : [{\n"
-                   "    \"name\":\"foobar_table\",\n"
-                   "    \"index_type\":\"i64\",\n"
-                   "    \"key_names\":[ \"by\" ],\n"
-                   "    \"key_types\":[ \"account_name\" ],\n"
-                   "    \"type\":\"foobar\" "
-                   "  }]\n"
-                   "}"}
+   { 3120001, error_advice_3120001 },
+   { 3120002, error_advice_3120002 },
+   { 3120003, error_advice_3120003 },
+   { 3120004, error_advice_3120004 },
+   { 3120005, error_advice_3120005 },
+   { 3120006, error_advice_3120006 }
 };
 
 
