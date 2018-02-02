@@ -5,6 +5,8 @@
 #include <eosio/chain/contracts/contract_table_objects.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 
+#include <eosio.system/eosio.system.abi.hpp>
+
 #include <fc/utility.hpp>
 #include <fc/io/json.hpp>
 
@@ -24,6 +26,48 @@ namespace eosio { namespace testing {
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
 
       open();
+      create_init_accounts();
+   }
+
+   void tester::create_init_accounts() {
+
+      contracts::abi_def eosio_system_abi_def = fc::json::from_string(eosio_system_abi).as<contracts::abi_def>();
+      chain::contracts::abi_serializer eosio_system_serializer(eosio_system_abi_def);
+
+      signed_transaction trx;
+      set_tapos(trx);
+
+      action act;
+      act.account = config::eosio_system_acount_name;
+      act.name = N(issue);
+      act.authorization = vector<permission_level>{{config::eosio_system_acount_name,config::active_name}};
+      act.data = eosio_system_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"eosio.system\",\"quantity\":\"1000000000.0000 EOS\"}"));
+      trx.actions.push_back(act);
+      set_tapos(trx);
+      trx.sign( get_private_key( config::eosio_system_acount_name, "active" ), chain_id_type()  );
+      push_transaction(trx);
+
+      create_account(N(inita), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(initb), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(initc), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(initd), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(inite), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(initf), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(initg), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(inith), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(initi), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(initj), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(initk), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(initl), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(initm), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(initn), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(inito), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(initp), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(initq), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(initr), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(inits), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(initt), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(initu), "1000000.0000 EOS", config::eosio_system_acount_name);
    }
 
    public_key_type  tester::get_public_key( name keyname, string role ) const {
@@ -59,7 +103,7 @@ namespace eosio { namespace testing {
       auto next_time = head_time + skip_time;
       uint32_t slot  = control->get_slot_at_time( next_time );
       auto sch_pro   = control->get_scheduled_producer(slot);
-      auto priv_key  = get_private_key( sch_pro, "producer" );
+      auto priv_key  = get_private_key( sch_pro, "active" );
 
       return control->generate_block( next_time, sch_pro, priv_key, skip_missed_block_penalty );
    }
@@ -99,6 +143,7 @@ namespace eosio { namespace testing {
       set_tapos(trx);
       trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
       push_transaction( trx );
+      transfer(creator, a, initial_balance);
    }
 
    transaction_trace tester::push_transaction( packed_transaction& trx ) {
@@ -145,7 +190,7 @@ namespace eosio { namespace testing {
                ("data", fc::mutable_variant_object()
                   ("from", from)
                   ("to", to)
-                  ("amount", amount)
+                  ("quantity", amount)
                   ("memo", memo)
                )
             })

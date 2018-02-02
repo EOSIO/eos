@@ -18,6 +18,7 @@ namespace eosio { namespace testing {
 
          void              close();
          void              open();
+         void              create_init_accounts();
 
          signed_block      produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) );
          void              produce_blocks( uint32_t n = 1 );
