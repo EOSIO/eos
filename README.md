@@ -74,7 +74,7 @@ Choose whether you will be building for a local testnet or for the public testne
 
 :warning: **As of February 2018, `master` is under heavy development and is not suitable for experimentation.** :warning:
 
-We strongly recommend following the instructions for building the public testnet version. `master` is in pieces on the garage floor while we rebuild this hotrod. This notice will be removed when `master` is usable again. Your patience is appreciated.
+We strongly recommend following the instructions for building the public testnet version for [Ubuntu](#autoubuntupublic) or [Mac OS X](#automacpublic). `master` is in pieces on the garage floor while we rebuild this hotrod. This notice will be removed when `master` is usable again. Your patience is appreciated.
 
 <a name="autoubuntulocal"></a>
 #### :no_entry: Clean install Ubuntu 16.10 for a local testnet :no_entry:
