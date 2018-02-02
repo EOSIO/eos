@@ -17,6 +17,9 @@ TEMP_DIR=/tmp
 ARCH=$1
 TARGET_ARCHS="ubuntu darwin"
 
+# Stop script on error
+set -e
+
 # Check ARCH
 if [[ $# > 2 ]]; then
   echo ""
