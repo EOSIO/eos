@@ -1,3 +1,5 @@
+include_directories(eosiolib)
+
 add_subdirectory(eosio.system)
 add_subdirectory(identity)
 add_subdirectory(currency)
