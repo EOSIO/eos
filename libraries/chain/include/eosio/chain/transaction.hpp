@@ -166,18 +166,18 @@ namespace eosio { namespace chain {
 
       packed_transaction() = default;
 
-      packed_transaction(const transaction& t, compression_type _compression = none)
+      explicit packed_transaction(const transaction& t, compression_type _compression = none)
       {
          set_transaction(t, _compression);
       }
 
-      packed_transaction(const signed_transaction& t, compression_type _compression = none)
+      explicit packed_transaction(const signed_transaction& t, compression_type _compression = none)
       :signatures(t.signatures)
       {
          set_transaction(t, _compression);
       }
 
-      packed_transaction(signed_transaction&& t, compression_type _compression = none)
+      explicit packed_transaction(signed_transaction&& t, compression_type _compression = none)
       :signatures(std::move(t.signatures))
       {
          set_transaction(t, _compression);
