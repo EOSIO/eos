@@ -14,7 +14,7 @@ namespace eosio { namespace testing {
     */
    class tester {
       public:
-         tester();
+         tester(bool process_genesis = true);
 
          void              close();
          void              open();

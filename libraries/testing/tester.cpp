@@ -17,7 +17,7 @@
 
 namespace eosio { namespace testing {
 
-   tester::tester() {
+   tester::tester(bool process_genesis) {
       cfg.block_log_dir      = tempdir.path() / "blocklog";
       cfg.shared_memory_dir  = tempdir.path() / "shared";
       cfg.shared_memory_size = 1024*1024*8;
@@ -27,7 +27,8 @@ namespace eosio { namespace testing {
       cfg.genesis.eosio_system_key = get_public_key( config::eosio_system_acount_name, "active");
 
       open();
-      create_init_accounts();
+      if (process_genesis)
+         create_init_accounts();
    }
 
    void tester::create_init_accounts() {
