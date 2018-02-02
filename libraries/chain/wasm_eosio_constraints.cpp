@@ -25,7 +25,7 @@ struct eosio_constraints_visitor : public nop_opcode_visitor {
    ///Make this some sort of visitor enum to reduce chance of copy pasta errors (but
    // the override declaration makes it somewhat safe)
 
-   //While it's possible to access beyond 1MiB by giving an offset that's 1KiB-1 and
+   //While it's possible to access beyond 1MiB by giving an offset that's 1MiB-1 and
    // an 8 byte data type, that's fine. There will be enough of a guard on the end
    // of 1MiB where it's not a problem
    void fail_large_offset(U32 offset) {
