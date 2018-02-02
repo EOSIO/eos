@@ -51,7 +51,7 @@ typedef union _G_fpos64_t {
 	char __opaque[16];
 	double __align;
 } fpos_t;
-   /*
+
 extern FILE *const stdin;
 extern FILE *const stdout;
 extern FILE *const stderr;
@@ -60,8 +60,8 @@ extern FILE *const stderr;
 #define stdout (stdout)
 #define stderr (stderr)
 
-FILE *fopen(const char *__restrict, const char *__restrict);
-FILE *freopen(const char *__restrict, const char *__restrict, FILE *__restrict);
+//FILE *fopen(const char *__restrict, const char *__restrict);
+//FILE *freopen(const char *__restrict, const char *__restrict, FILE *__restrict);
 int fclose(FILE *);
 
 int remove(const char *);
@@ -98,32 +98,24 @@ char *gets(char *);
 
 int fputs(const char *__restrict, FILE *__restrict);
 int puts(const char *);
-   */
+
 int printf(const char *__restrict, ...);
-   /*
 int fprintf(FILE *__restrict, const char *__restrict, ...);
-   */
 int sprintf(char *__restrict, const char *__restrict, ...);
 int snprintf(char *__restrict, size_t, const char *__restrict, ...);
 
 int vprintf(const char *__restrict, __isoc_va_list);
-   /*
 int vfprintf(FILE *__restrict, const char *__restrict, __isoc_va_list);
-   */
 int vsprintf(char *__restrict, const char *__restrict, __isoc_va_list);
 int vsnprintf(char *__restrict, size_t, const char *__restrict, __isoc_va_list);
 
 int scanf(const char *__restrict, ...);
-   /*
 int fscanf(FILE *__restrict, const char *__restrict, ...);
-   */
 int sscanf(const char *__restrict, const char *__restrict, ...);
 int vscanf(const char *__restrict, __isoc_va_list);
-   /*
 int vfscanf(FILE *__restrict, const char *__restrict, __isoc_va_list);
-   */
 int vsscanf(const char *__restrict, const char *__restrict, __isoc_va_list);
-   /*
+
 void perror(const char *);
 
 int setvbuf(FILE *__restrict, char *__restrict, int, size_t);
@@ -138,8 +130,8 @@ FILE *tmpfile(void);
 FILE *fmemopen(void *__restrict, size_t, const char *__restrict);
 FILE *open_memstream(char **, size_t *);
 FILE *fdopen(int, const char *);
-FILE *popen(const char *, const char *);
-int pclose(FILE *);
+//FILE *popen(const char *, const char *);
+//int pclose(FILE *);
 int fileno(FILE *);
 int fseeko(FILE *, off_t, int);
 off_t ftello(FILE *);
@@ -217,7 +209,7 @@ FILE *fopencookie(void *, const char *, cookie_io_functions_t);
 #define fpos64_t fpos_t
 #define off64_t off_t
 #endif
-   */
+
 #ifdef __cplusplus
 }
 #endif

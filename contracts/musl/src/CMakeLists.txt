@@ -3,6 +3,7 @@ file(GLOB CTYPE_SOURCES  "ctype/*.c")
 file(GLOB ERRNO_SOURCES  "errno/*.c")
 file(GLOB MBYTE_SOURCES  "multibyte/*.c")
 file(GLOB SEARCH_SOURCES "search/*.c")
+file(GLOB STDLIB_SOURCES "stdio/*.c")
 file(GLOB STDLIB_SOURCES "stdlib/*.c")
 file(GLOB STRING_SOURCES "string/*.c")
 

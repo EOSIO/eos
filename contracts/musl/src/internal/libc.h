@@ -49,10 +49,10 @@ extern char *__progname, *__progname_full;
 /* Designed to avoid any overhead in non-threaded processes */
 void __lock(volatile int *) ATTR_LIBC_VISIBILITY;
 void __unlock(volatile int *) ATTR_LIBC_VISIBILITY;
-/*
+
 int __lockfile(FILE *) ATTR_LIBC_VISIBILITY;
 void __unlockfile(FILE *) ATTR_LIBC_VISIBILITY;
-*/
+
 #define LOCK(x) __lock(x)
 #define UNLOCK(x) __unlock(x)
 

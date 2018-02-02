@@ -97,9 +97,8 @@ unsigned long wcstoul (const wchar_t *__restrict, wchar_t **__restrict, int);
 long long wcstoll (const wchar_t *__restrict, wchar_t **__restrict, int);
 unsigned long long wcstoull (const wchar_t *__restrict, wchar_t **__restrict, int);
 
-   /*
-int fwide (FILE *, int);
 
+int fwide (FILE *, int);
 
 int wprintf (const wchar_t *__restrict, ...);
 int fwprintf (FILE *__restrict, const wchar_t *__restrict, ...);
@@ -115,6 +114,7 @@ int swscanf (const wchar_t *__restrict, const wchar_t *__restrict, ...);
 
 int vwscanf (const wchar_t *__restrict, __isoc_va_list);
 int vfwscanf (FILE *__restrict, const wchar_t *__restrict, __isoc_va_list);
+
 int vswscanf (const wchar_t *__restrict, const wchar_t *__restrict, __isoc_va_list);
 
 wint_t fgetwc (FILE *);
@@ -136,6 +136,7 @@ size_t wcsftime (wchar_t *__restrict, size_t, const wchar_t *__restrict, const s
 #undef iswdigit
 
 #if defined(_GNU_SOURCE)
+
 wint_t fgetwc_unlocked (FILE *);
 wint_t getwc_unlocked (FILE *);
 wint_t getwchar_unlocked (void);
@@ -144,12 +145,12 @@ wint_t putwc_unlocked (wchar_t, FILE *);
 wint_t putwchar_unlocked (wchar_t);
 wchar_t *fgetws_unlocked (wchar_t *__restrict, int, FILE *__restrict);
 int fputws_unlocked (const wchar_t *__restrict, FILE *__restrict);
+
 #endif
 
 #if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
 size_t wcsftime_l (wchar_t *__restrict, size_t, const wchar_t *__restrict, const struct tm *__restrict, locale_t);
 #endif
-   */
 
 #if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
  || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE)  || defined(_BSD_SOURCE)
