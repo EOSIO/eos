@@ -80,8 +80,11 @@ CMAKE_BUILD_TYPE=RelWithDebugInfo
 if [ ${INSTALL_DEPS} == "1" ]; then
 
   echo ">> Install dependencies"
-  . ${WORK_DIR}/scripts/install_dependencies.sh
-
+  if [ $ARCH == "ubuntu" ]; then
+    . ${WORK_DIR}/scripts/install_dependencies_ubuntu.sh
+  elif [ $ARCH == "darwin" ]; then
+    . ${WORK_DIR}/scripts/install_dependencies_macos.sh
+  fi
 fi
 
 # Create the build dir
