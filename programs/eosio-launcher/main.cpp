@@ -1273,7 +1273,7 @@ launcher_def::bounce (const string& node_numbers) {
       string cmd = "cd " + host.eos_root_dir + "; "
                  + "export EOSIO_HOME=" + host.eos_root_dir + string("; ")
                  + "export EOSIO_TN_NODE=" + node_num + "; "
-                 + "./scripts/tn_bounce.sh";
+                 + "./scripts/eosio-tn_bounce.sh";
       cout << "Bouncing " << node.name << endl;
       if (!do_ssh(cmd, host.host_name)) {
          cerr << "Unable to bounce " << node.name << endl;
@@ -1293,7 +1293,7 @@ launcher_def::down (const string& node_numbers) {
                  + "export EOSIO_HOME=" + host.eos_root_dir + "; "
                  + "export EOSIO_TN_NODE=" + node_num + "; "
                  + "export EOSIO_TN_RESTART_DATA_DIR=" + node.data_dir + "; "
-                 + "./scripts/tn_down.sh";
+                 + "./scripts/eosio-tn_down.sh";
       cout << "Taking down " << node.name << endl;
       if (!do_ssh(cmd, host.host_name)) {
          cerr << "Unable to down " << node.name << endl;
@@ -1311,7 +1311,7 @@ launcher_def::roll (const string& host_names) {
       auto host = find_host_by_name_or_address(host_name);
       string cmd = "cd " + host->eos_root_dir + "; "
                  + "export EOSIO_HOME=" + host->eos_root_dir + "; "
-                 + "./scripts/tn_roll.sh";
+                 + "./scripts/eosio-tn_roll.sh";
       if (!do_ssh(cmd, host_name)) {
          cerr << "Unable to roll " << host << endl;
          exit (-1);
@@ -1393,9 +1393,9 @@ int main (int argc, char *argv[]) {
     ("timestamp,i",bpo::value<string>(&gts),"set the timestamp for the first block. Use \"now\" to indicate the current time")
     ("launch,l",bpo::value<string>(), "select a subset of nodes to launch. Currently may be \"all\", \"none\", or \"local\". If not set, the default is to launch all unless an output file is named, in which case it starts none.")
     ("kill,k", bpo::value<string>(&kill_arg),"The launcher retrieves the previously started process ids and issues a kill to each.")
-    ("down", bpo::value<string>(&down_nodes),"comma-separated list of node numbers that will be taken down using the tn_down.sh script")
-    ("bounce", bpo::value<string>(&bounce_nodes),"comma-separated list of node numbers that will be restarted using the tn_bounce.sh script")
-    ("roll", bpo::value<string>(&roll_nodes),"comma-separated list of host names where the nodes should be rolled to a new version using the tn_roll.sh script")
+    ("down", bpo::value<string>(&down_nodes),"comma-separated list of node numbers that will be taken down using the eosio-tn_down.sh script")
+    ("bounce", bpo::value<string>(&bounce_nodes),"comma-separated list of node numbers that will be restarted using the eosio-tn_bounce.sh script")
+    ("roll", bpo::value<string>(&roll_nodes),"comma-separated list of host names where the nodes should be rolled to a new version using the eosio-tn_roll.sh script")
     ("version,v", "print version information")
     ("help,h","print this list");
 

@@ -1,4 +1,4 @@
-add_executable( launcher main.cpp )
+add_executable( eosio-launcher main.cpp )
 if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
@@ -26,13 +26,13 @@ endif()
 
 configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 
-target_include_directories(launcher PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(eosio-launcher PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
-target_link_libraries(launcher
+target_link_libraries(eosio-launcher
                       PRIVATE fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 install( TARGETS
-   launcher
+   eosio-launcher
 
    RUNTIME DESTINATION bin
    LIBRARY DESTINATION lib

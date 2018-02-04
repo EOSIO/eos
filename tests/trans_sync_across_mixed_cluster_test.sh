@@ -66,7 +66,7 @@ verifyErrorCode()
 
 killAll()
 {
-  programs/launcher/launcher -k 15
+  programs/eosio-launcher/eosio-launcher -k 15
 }
 
 cleanup()
@@ -113,7 +113,7 @@ cleanup
 # stand up eosiod cluster
 launcherOpts="-p $pnodes -n $total_nodes -s $topo -d $delay"
 echo Launcher options: --eosiod \"--plugin eosio::wallet_api_plugin\" $launcherOpts
-programs/launcher/launcher --eosiod "--plugin eosio::wallet_api_plugin" $launcherOpts
+programs/eosio-launcher/eosio-launcher --eosiod "--plugin eosio::wallet_api_plugin" $launcherOpts
 sleep 7
 
 startPort=8888

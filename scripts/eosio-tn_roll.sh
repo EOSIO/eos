@@ -1,16 +1,16 @@
 #!/bin/bash
 #
-# tn_roll is used to have all of the instances of the EOS daemon on a host brought down
-# so that the underlying executable image file (the "text file") caan be replaced. Then
+# eosio-tn_roll is used to have all of the instances of the EOS daemon on a host brought down
+# so that the underlying executable image file (the "text file") can be replaced. Then
 # all instances are restarted.
-# usage: tn_roll.sh [arglist]
+# usage: eosio-tn_roll.sh [arglist]
 # arglist will be passed to the node's command line. First with no modifiers
 # then with --replay and then a third time with --resync
 #
-# the data directory and log file are set by this script. Do not pass them on
+# The data directory and log file are set by this script. Do not pass them on
 # the command line.
 #
-# in most cases, simply running ./tn_roll.sh is sufficient.
+# In most cases, simply running ./eosio-tn_roll.sh is sufficient.
 #
 
 if [ -z "$EOSIO_HOME" ]; then
@@ -75,16 +75,16 @@ fi
 echo DD = $DD
 
 export EOSIO_TN_RESTART_DATA_DIR=$DD
-bash $EOSIO_HOME/scripts/tn_down.sh
+bash $EOSIO_HOME/scripts/eosio-tn_down.sh
 
 cp $SDIR/$RD/$prog $RD/$prog
 
 if [ $DD = "all" ]; then
     for EOSIO_TN_RESTART_DATA_DIR in `ls -d tn_data_??`; do
-        bash $EOSIO_HOME/scripts/tn_up.sh $*
+        bash $EOSIO_HOME/scripts/eosio-tn_up.sh $*
     done
 else
-    bash $EOSIO_HOME/scripts/tn_up.sh $*
+    bash $EOSIO_HOME/scripts/eosio-tn_up.sh $*
 fi
 unset EOSIO_TN_RESTART_DATA_DIR
 
