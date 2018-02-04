@@ -38,6 +38,7 @@ namespace eosio { namespace testing {
          void              create_account( account_name name, asset initial_balance = asset(), account_name creator = N(inita), bool multisig = false );
          void              create_account( account_name name, string balance = "0.0000 EOS", account_name creator = N(inita), bool multisig = false );
 
+         transaction_trace push_nonce( account_name from, const string& role, const string& v = "blah" );
          transaction_trace transfer( account_name from, account_name to, asset amount, string memo = "", account_name currency = config::eosio_system_acount_name );
          transaction_trace transfer( account_name from, account_name to, string amount, string memo = "", account_name currency = config::eosio_system_acount_name );
 

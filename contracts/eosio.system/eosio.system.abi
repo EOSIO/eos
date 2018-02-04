@@ -27,6 +27,12 @@
         {"name":"key", "type":"name"},
         {"name":"balance", "type":"uint64"}
       ]
+    },{
+      "name": "nonce",
+      "base": "",
+      "fields": [
+        {"name":"value", "type":"string"}
+      ]
     }
   ],
   "actions": [{
@@ -35,6 +41,9 @@
     },{
       "name": "issue",
       "type": "issue"
+    },{
+      "name": "nonce",
+      "type": "nonce"
     }
   ],
   "tables": [{

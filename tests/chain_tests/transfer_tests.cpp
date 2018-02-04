@@ -20,26 +20,26 @@ BOOST_AUTO_TEST_CASE( transfer_test ) { try {
 
   {
      const asset dans_balance( test.get_balance( N(dan) ) );
-     FC_ASSERT( dans_balance == asset::from_string("10.0000 EOS") );
+     FC_ASSERT( dans_balance == asset::from_string("110.0000 EOS") );
   }
 
   test.produce_block();
 
   {
      const asset dans_balance( test.get_balance( N(dan) ) );
-     FC_ASSERT( dans_balance == asset::from_string("10.0000 EOS") );
+     FC_ASSERT( dans_balance == asset::from_string("110.0000 EOS") );
   }
 
   /// insufficient funds
-  BOOST_REQUIRE_THROW(test.transfer(N(dan),N(bart), "11.0000 EOS", "memo"), action_validate_exception);
+  BOOST_REQUIRE_THROW(test.transfer(N(dan),N(bart), "111.0000 EOS", "memo"), assert_exception);
 
   /// this should succeed because dan has sufficient balance
-  test.transfer(N(dan),N(bart), "10.0000 EOS", "memo");
+  test.transfer(N(dan),N(bart), "110.0000 EOS", "memo");
 
 
-  /// verify that bart now has 10.000
+  /// verify that bart now has 110.000 + 100.000
   const asset barts_balance( test.get_balance( N(bart) ) );
-  FC_ASSERT( barts_balance == asset::from_string("10.0000 EOS") );
+  FC_ASSERT( barts_balance == asset::from_string("210.0000 EOS") );
 
   {
      /// verify that dan now has 0.000
@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE( transfer_test ) { try {
 
 
   /// should throw because -1 becomes uint64 max which is greater than balance
-  BOOST_REQUIRE_THROW(test.transfer(N(bart),N(dan), asset(-1), "memo"), action_validate_exception);
+  BOOST_REQUIRE_THROW(test.transfer(N(bart),N(dan), asset(-1), "memo"), assert_exception);
 
   auto resolver = [&]( const account_name& name ) -> optional<abi_serializer> {
      try {
