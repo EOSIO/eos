@@ -40,7 +40,7 @@ auto push_nonce(tester &t, const string& role) {
    signed_transaction trx;
    auto v = t.control->head_block_num();
    trx.actions.emplace_back( vector<permission_level>{{N(alice),config::owner_name}},
-                             config::eosio_system_acount_name, N(nonce),
+                             config::eosio_system_account_name, N(nonce),
                              fc::raw::pack(v) );
    t.set_tapos(trx);
    trx.sign(t.get_private_key(N(alice), role), chain_id_type());

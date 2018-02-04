@@ -249,7 +249,7 @@ struct txn_test_gen_plugin_impl {
       {
       signed_transaction trx;
       trx.actions.push_back(act_a_to_b);
-      trx.actions.emplace_back(action({}, config::eosio_system_acount_name, "nonce", fc::raw::pack(nonce)));
+      trx.actions.emplace_back(action({}, config::eosio_system_account_name, "nonce", fc::raw::pack(nonce)));
       trx.set_reference_block(cc.head_block_id());
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.sign(a_priv_key, chainid);
@@ -259,7 +259,7 @@ struct txn_test_gen_plugin_impl {
       {
       signed_transaction trx;
       trx.actions.push_back(act_b_to_a);
-      trx.actions.emplace_back(action({}, config::eosio_system_acount_name, "nonce", fc::raw::pack(nonce)));
+      trx.actions.emplace_back(action({}, config::eosio_system_account_name, "nonce", fc::raw::pack(nonce)));
       trx.set_reference_block(cc.head_block_id());
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.sign(b_priv_key, chainid);

@@ -37,20 +37,20 @@ producer_schedule_type  chain_initializer::get_chain_start_producers() {
 
 void chain_initializer::register_types(chain_controller& chain, chainbase::database& db) {
 
-#define SET_APP_HANDLER( contract, scope, action, nspace ) \
+#define SET_APP_HANDLER( contract, scope, action ) \
    chain._set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(contracts::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
-   SET_APP_HANDLER( eosio, eosio, newaccount, eosio );
-   SET_APP_HANDLER( eosio, eosio, setcode, eosio );
-   SET_APP_HANDLER( eosio, eosio, setabi, eosio );
-   SET_APP_HANDLER( eosio, eosio, updateauth, eosio );
-   SET_APP_HANDLER( eosio, eosio, deleteauth, eosio );
-   SET_APP_HANDLER( eosio, eosio, linkauth, eosio );
-   SET_APP_HANDLER( eosio, eosio, unlinkauth, eosio );
-   SET_APP_HANDLER( eosio, eosio, onerror, eosio );
-   SET_APP_HANDLER( eosio, eosio, postrecovery, eosio );
-   SET_APP_HANDLER( eosio, eosio, passrecovery, eosio );
-   SET_APP_HANDLER( eosio, eosio, vetorecovery, eosio );
+   SET_APP_HANDLER( eosio, eosio, newaccount );
+   SET_APP_HANDLER( eosio, eosio, setcode );
+   SET_APP_HANDLER( eosio, eosio, setabi );
+   SET_APP_HANDLER( eosio, eosio, updateauth );
+   SET_APP_HANDLER( eosio, eosio, deleteauth );
+   SET_APP_HANDLER( eosio, eosio, linkauth );
+   SET_APP_HANDLER( eosio, eosio, unlinkauth );
+   SET_APP_HANDLER( eosio, eosio, onerror );
+   SET_APP_HANDLER( eosio, eosio, postrecovery );
+   SET_APP_HANDLER( eosio, eosio, passrecovery );
+   SET_APP_HANDLER( eosio, eosio, vetorecovery );
 }
 
 
@@ -194,7 +194,7 @@ abi_def chain_initializer::eos_contract_abi()
 }
 
 // forward declared method from eosio contract
-void intialize_eosio_tokens(chainbase::database& db, const account_name& system_account, share_type initial_tokens);
+void initialize_eosio_tokens(chainbase::database& db, const account_name& system_account, share_type initial_tokens);
 
 
 std::vector<action> chain_initializer::prepare_database( chain_controller& chain,
@@ -240,7 +240,7 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
    create_native_account(config::system_account_name);
 
    // Queue up messages which will run contracts to create the initial accounts
-   auto init_eosio_sytem = genesis_state_type::initial_account_type(name(config::eosio_system_acount_name).to_string(), 0, 0, genesis.initial_key, genesis.initial_key);
+   auto init_eosio_sytem = genesis_state_type::initial_account_type(name(config::eosio_system_account_name).to_string(), 0, 0, genesis.initial_key, genesis.initial_key);
    genesis.initial_accounts.emplace_back(move(init_eosio_sytem));
 
    for (const auto& acct : genesis.initial_accounts) {
@@ -256,17 +256,17 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
 
    // Create initial contracts eosio.system
    auto wasm = wast_to_wasm(eosio_system_wast);
-   action eosio_system_setcode({{config::eosio_system_acount_name, config::active_name}},
+   action eosio_system_setcode({{config::eosio_system_account_name, config::active_name}},
                                contracts::setcode{
-                                     .account    = config::eosio_system_acount_name,
+                                     .account    = config::eosio_system_account_name,
                                      .vmtype     = 0,
                                      .vmversion  = 0,
                                      .code       = bytes(wasm.begin(), wasm.end())
                                });
    auto abi = fc::json::from_string(eosio_system_abi).template as<contracts::abi_def>();
-   action eosio_system_setabi({{config::eosio_system_acount_name, config::active_name}},
+   action eosio_system_setabi({{config::eosio_system_account_name, config::active_name}},
                               contracts::setabi{
-                                    .account    = config::eosio_system_acount_name,
+                                    .account    = config::eosio_system_account_name,
                                     .abi        = abi
                               });
    messages_to_process.emplace_back(move(eosio_system_setcode));

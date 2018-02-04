@@ -228,7 +228,7 @@ uint64_t generate_nonce_value() {
 
 chain::action generate_nonce() {
    auto v = generate_nonce_value();
-   return chain::action( {}, config::eosio_system_acount_name, "nonce", fc::raw::pack(v));
+   return chain::action( {}, config::eosio_system_account_name, "nonce", fc::raw::pack(v));
 }
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
@@ -378,10 +378,10 @@ struct set_account_permission_subcommand {
                // see if we can auto-determine the proper parent
                const auto account_result = call(get_account_func, fc::mutable_variant_object("account_name", accountStr));
                const auto& existing_permissions = account_result.get_object()["permissions"].get_array();
-               auto permissionPredicate = [this](const auto& perm) { 
-                  return perm.is_object() && 
+               auto permissionPredicate = [this](const auto& perm) {
+                  return perm.is_object() &&
                         perm.get_object().contains("permission") &&
-                        boost::equals(perm.get_object()["permission"].get_string(), permissionStr); 
+                        boost::equals(perm.get_object()["permission"].get_string(), permissionStr);
                };
 
                auto itr = boost::find_if(existing_permissions, permissionPredicate);
@@ -759,7 +759,7 @@ int main( int argc, char** argv ) {
             ("quantity", asset(amount))
             ("memo", memo);
       auto args = fc::mutable_variant_object
-            ("code", name(config::eosio_system_acount_name))
+            ("code", name(config::eosio_system_account_name))
             ("action", "transfer")
             ("args", transfer);
 
@@ -767,7 +767,7 @@ int main( int argc, char** argv ) {
 
       std::vector<chain::action> actions;
       actions.emplace_back(vector<chain::permission_level>{{sender,"active"}},
-                               config::eosio_system_acount_name, "transfer", result.get_object()["binargs"].as<bytes>());
+                               config::eosio_system_account_name, "transfer", result.get_object()["binargs"].as<bytes>());
 
       if (tx_force_unique) {
          actions.emplace_back( generate_nonce() );

@@ -25,7 +25,7 @@
 
 namespace eosio { namespace chain { namespace contracts {
 
-void intialize_eosio_tokens(chainbase::database& db, const account_name& system_account, share_type initial_tokens) {
+void initialize_eosio_tokens(chainbase::database& db, const account_name& system_account, share_type initial_tokens) {
    const auto& t_id = db.create<contracts::table_id_object>([&](contracts::table_id_object &t_id){
       t_id.scope = system_account;
       t_id.code = config::system_account_name;
@@ -61,7 +61,7 @@ void validate_authority_precondition( const apply_context& context, const author
 /**
  *  This method is called assuming precondition_system_newaccount succeeds a
  */
-void apply_eosio_newaccount(apply_context& context) { 
+void apply_eosio_newaccount(apply_context& context) {
    auto create = context.act.as<newaccount>();
    try {
    context.require_authorization(create.creator);
