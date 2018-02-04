@@ -24,7 +24,7 @@ namespace eosio { namespace testing {
 
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
-      cfg.genesis.eosio_system_key = get_public_key( config::eosio_system_acount_name, "active");
+      cfg.genesis.eosio_system_key = get_public_key( config::eosio_system_account_name, "active");
 
       open();
       if (process_genesis)
@@ -40,36 +40,36 @@ namespace eosio { namespace testing {
       set_tapos(trx);
 
       action act;
-      act.account = config::eosio_system_acount_name;
+      act.account = config::eosio_system_account_name;
       act.name = N(issue);
-      act.authorization = vector<permission_level>{{config::eosio_system_acount_name,config::active_name}};
+      act.authorization = vector<permission_level>{{config::eosio_system_account_name,config::active_name}};
       act.data = eosio_system_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"eosio.system\",\"quantity\":\"1000000000.0000 EOS\"}"));
       trx.actions.push_back(act);
       set_tapos(trx);
-      trx.sign( get_private_key( config::eosio_system_acount_name, "active" ), chain_id_type()  );
+      trx.sign( get_private_key( config::eosio_system_account_name, "active" ), chain_id_type()  );
       push_transaction(trx);
 
-      create_account(N(inita), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(initb), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(initc), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(initd), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(inite), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(initf), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(initg), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(inith), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(initi), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(initj), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(initk), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(initl), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(initm), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(initn), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(inito), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(initp), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(initq), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(initr), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(inits), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(initt), "1000000.0000 EOS", config::eosio_system_acount_name);
-      create_account(N(initu), "1000000.0000 EOS", config::eosio_system_acount_name);
+      create_account(N(inita), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initb), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initc), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initd), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(inite), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initf), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initg), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(inith), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initi), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initj), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initk), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initl), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initm), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initn), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(inito), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initp), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initq), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initr), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(inits), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initt), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initu), "1000000.0000 EOS", config::eosio_system_account_name);
    }
 
    public_key_type  tester::get_public_key( name keyname, string role ) const {
@@ -176,7 +176,7 @@ namespace eosio { namespace testing {
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
-               ("account", name(config::eosio_system_acount_name))
+               ("account", name(config::eosio_system_account_name))
                ("name", "nonce")
                ("authorization", fc::variants({
                   fc::mutable_variant_object()
@@ -334,7 +334,7 @@ namespace eosio { namespace testing {
    }
 
    share_type tester::get_balance( const account_name& account ) const {
-      return get_currency_balance( config::eosio_system_acount_name, EOS_SYMBOL, account ).amount;
+      return get_currency_balance( config::eosio_system_account_name, EOS_SYMBOL, account ).amount;
    }
    /**
     *  Reads balance as stored by generic_currency contract

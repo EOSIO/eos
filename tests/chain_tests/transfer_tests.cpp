@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE( transfer_test ) { try {
       variant pretty_trx = mutable_variant_object()
          ("actions", variants({
             mutable_variant_object()
-               ("account", name(config::eosio_system_acount_name))
+               ("account", name(config::eosio_system_account_name))
                ("name", "transfer")
                ("authorization", variants({
                   mutable_variant_object()
@@ -101,7 +101,7 @@ BOOST_AUTO_TEST_CASE( transfer_test ) { try {
       variant pretty_trx = mutable_variant_object()
          ("actions", variants({
             mutable_variant_object()
-               ("account", name(config::eosio_system_acount_name))
+               ("account", name(config::eosio_system_account_name))
                ("name", "transfer")
                ("authorization", variants({
                   mutable_variant_object()
@@ -174,7 +174,7 @@ BOOST_AUTO_TEST_CASE( transfer_delegation ) { try {
       variant pretty_trx = mutable_variant_object()
          ("actions", variants({
             mutable_variant_object()
-               ("account", name(config::eosio_system_acount_name))
+               ("account", name(config::eosio_system_account_name))
                ("name", "transfer")
                ("authorization", variants({
                   mutable_variant_object()
