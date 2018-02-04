@@ -77,7 +77,8 @@ FIND_PACKAGE(Boost 1.64 REQUIRED COMPONENTS
     chrono
     unit_test_framework
     context
-    locale)
+    locale
+    iostreams)
 
 if( WIN32 )
 
@@ -171,9 +172,7 @@ if(WASM_TOOLCHAIN)
   message(STATUS "Using WASM llvm-link => " ${WASM_LLVM_LINK})
   add_subdirectory(contracts)
 else()
-  message(STATUS "--------------------------------------------------------------------")
-  message(STATUS "No WASM compiler could be found ... (skipping building of contracts)")
-  message(STATUS "--------------------------------------------------------------------")
+  message( FATAL_ERROR "No WASM compiler cound be found" )
 endif()
 
 include(installer)

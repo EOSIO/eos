@@ -3,6 +3,7 @@
 #include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/contracts/eos_contract.hpp>
 #include <eosio/chain/contracts/contract_table_objects.hpp>
+#include <eosio/chain/contracts/abi_serializer.hpp>
 
 #include <fc/utility.hpp>
 #include <fc/io/json.hpp>
@@ -20,24 +21,7 @@ namespace eosio { namespace testing {
       cfg.shared_memory_size = 1024*1024*8;
 
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-      cfg.genesis.initial_accounts.resize( config::producer_count );
-      cfg.genesis.initial_producers.resize( config::producer_count );
-
-
-     // uint64_t init_name = N(inita);
-      string init_name = "inita";
-      for( uint32_t i = 0; i < config::producer_count; ++i ) {
-         auto pubkey = get_public_key(init_name);
-         cfg.genesis.initial_accounts[i].name               = string(account_name(init_name));
-         cfg.genesis.initial_accounts[i].owner_key          = get_public_key(init_name,"owner");
-         cfg.genesis.initial_accounts[i].active_key         = get_public_key(init_name,"active");
-         cfg.genesis.initial_accounts[i].liquid_balance     = asset::from_string( "1000000.0000 EOS" );
-         cfg.genesis.initial_accounts[i].staking_balance    = asset::from_string( "1000000.0000 EOS" );
-         cfg.genesis.initial_producers[i].owner_name        = string(account_name(init_name));
-         cfg.genesis.initial_producers[i].block_signing_key = get_public_key( init_name, "producer" );
-
-         init_name[4]++;
-      }
+      cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
 
       open();
    }
@@ -110,17 +94,20 @@ namespace eosio { namespace testing {
                                    .owner    = owner_auth,
                                    .active   = authority( get_public_key( a, "active" ) ),
                                    .recovery = authority( get_public_key( a, "recovery" ) ),
-                                   .deposit  = initial_balance
                                 });
 
-      trx.sign( get_private_key( creator, "active" ), chain_id_type()  ); 
+      set_tapos(trx);
+      trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
+      push_transaction( trx );
+   }
 
-      control->push_transaction( trx );
+   transaction_trace tester::push_transaction( packed_transaction& trx ) {
+      return control->push_transaction( trx );
    }
 
    transaction_trace tester::push_transaction( signed_transaction& trx ) {
-      set_tapos(trx);
-      return control->push_transaction( trx );
+      auto ptrx = packed_transaction(trx);
+      return push_transaction( ptrx );
    }
 
    void tester::create_account( account_name a, string initial_balance, account_name creator, bool multisig  ) {
@@ -128,21 +115,48 @@ namespace eosio { namespace testing {
    }
    
 
-   transaction_trace tester::transfer( account_name from, account_name to, string amount, string memo ) {
+
+   transaction_trace tester::transfer( account_name from, account_name to, string amount, string memo, account_name currency ) {
       return transfer( from, to, asset::from_string(amount), memo );
    }
-   transaction_trace tester::transfer( account_name from, account_name to, asset amount, string memo ) {
-      signed_transaction trx;
-      trx.actions.emplace_back( vector<permission_level>{{from,config::active_name}},
-                                contracts::transfer{
-                                   .from   = from,
-                                   .to     = to,
-                                   .amount = amount.amount,
-                                   .memo   = memo
-                                } );
 
-      trx.sign( get_private_key( from, "active" ), chain_id_type()  ); 
-      return control->push_transaction( trx );
+   transaction_trace tester::transfer( account_name from, account_name to, asset amount, string memo, account_name currency ) {
+      auto resolver = [this]( const account_name& name ) -> optional<contracts::abi_serializer> {
+         try {
+            const auto& accnt  = control->get_database().get<account_object,by_name>( name );
+            contracts::abi_def abi;
+            if (contracts::abi_serializer::to_abi(accnt.abi, abi)) {
+               return contracts::abi_serializer(abi);
+            }
+            return optional<contracts::abi_serializer>();
+         } FC_RETHROW_EXCEPTIONS(error, "Failed to find or parse ABI for ${name}", ("name", name))
+      };
+
+      variant pretty_trx = fc::mutable_variant_object()
+         ("actions", fc::variants({
+            fc::mutable_variant_object()
+               ("account", currency)
+               ("name", "transfer")
+               ("authorization", fc::variants({
+                  fc::mutable_variant_object()
+                     ("actor", from)
+                     ("permission", name(config::active_name))
+               }))
+               ("data", fc::mutable_variant_object()
+                  ("from", from)
+                  ("to", to)
+                  ("amount", amount)
+                  ("memo", memo)
+               )
+            })
+         );
+
+      signed_transaction trx;
+      contracts::abi_serializer::from_variant(pretty_trx, trx, resolver);
+      set_tapos( trx );
+
+      trx.sign( get_private_key( from, name(config::active_name).to_string() ), chain_id_type()  );
+      return push_transaction( trx );
    }
 
    void tester::set_authority( account_name account,
@@ -160,7 +174,7 @@ namespace eosio { namespace testing {
 
       set_tapos( trx );
       trx.sign( get_private_key( account, "active" ), chain_id_type()  ); 
-      control->push_transaction( trx );
+      push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account)(perm)(auth)(parent) ) }
 
    void tester::set_code( account_name account, const char* wast ) try {
@@ -218,7 +232,7 @@ namespace eosio { namespace testing {
 
       set_tapos( trx );
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
-      control->push_transaction( trx );
+      push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account)(wast) )
 
    void tester::set_abi( account_name account, const char* abi_json) {
@@ -232,7 +246,7 @@ namespace eosio { namespace testing {
 
       set_tapos( trx );
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
-      control->push_transaction( trx );
+      push_transaction( trx );
    }
 
    bool tester::chain_has_transaction( const transaction_id_type& txid ) const {
@@ -244,29 +258,27 @@ namespace eosio { namespace testing {
    }
 
    share_type tester::get_balance( const account_name& account ) const {
-      const auto& db = control->get_database();
-      return contracts::get_eosio_balance(db, account);
+      return get_currency_balance( config::system_account_name, EOS_SYMBOL, account ).amount;
    }
-
    /**
     *  Reads balance as stored by generic_currency contract
     */
    asset tester::get_currency_balance( const account_name& code,
-                                            const asset_symbol& symbol,
-                                            const account_name& account ) const {
+                                       const symbol&       asset_symbol,
+                                       const account_name& account ) const {
       const auto& db  = control->get_database();
       const auto* tbl = db.find<contracts::table_id_object, contracts::by_scope_code_table>(boost::make_tuple(account, code, N(account)));
       share_type result = 0;
 
       // the balance is implied to be 0 if either the table or row does not exist
       if (tbl) {
-         const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, symbol));
+         const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, asset_symbol.value()));
          if (obj) {
             fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
             fc::raw::unpack(ds, result);
          }
       }
-      return asset(result, symbol);
+      return asset(result, asset_symbol);
    }
 
 

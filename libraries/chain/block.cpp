@@ -52,7 +52,7 @@ namespace eosio { namespace chain {
       ids.reserve(input_transactions.size());
 
       for( const auto& t : input_transactions ) 
-         ids.emplace_back( t.id() );
+         ids.emplace_back( t.get_transaction().id() );
 
       return merkle( std::move(ids) );
    }

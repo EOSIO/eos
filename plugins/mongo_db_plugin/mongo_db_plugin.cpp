@@ -292,7 +292,8 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
    auto blk_doc = block_doc << "transactions" << stream::open_array;
 
    int32_t trx_num = -1;
-   for (const auto& trx : block.input_transactions) {
+   for (const auto& packed_trx : block.input_transactions) {
+      const signed_transaction& trx = packed_trx.get_signed_transaction();
       ++trx_num;
 
       auto txn_oid = bsoncxx::oid{};
@@ -402,6 +403,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
    if (msg.name == transfer) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
+      /* todo need to follow eosio.system transfer
       auto transfer = msg.as<chain::contracts::transfer>();
       auto from_name = transfer.from.to_string();
       auto to_name = transfer.to.to_string();
@@ -410,8 +412,8 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
 
       asset from_balance = asset::from_string(from_account.view()["eos_balance"].get_utf8().value.to_string());
       asset to_balance = asset::from_string(to_account.view()["eos_balance"].get_utf8().value.to_string());
-      from_balance -= chain::share_type(transfer.amount);
-      to_balance += chain::share_type(transfer.amount);
+      from_balance -= asset(chain::share_type(transfer.amount));
+      to_balance += asset(chain::share_type(transfer.amount));
 
       document update_from{};
       update_from << "$set" << open_document << "eos_balance" << from_balance.to_string()
@@ -424,106 +426,23 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
 
       accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
       accounts.update_one(document{} << "_id" << to_account.view()["_id"].get_oid() << finalize, update_to.view());
-
+*/
    } else if (msg.name == newaccount) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
       auto newaccount = msg.as<chain::contracts::newaccount>();
 
-      // find creator to update its balance
-      auto from_name = newaccount.creator.to_string();
-      document find_from{};
-      find_from << "name" << from_name;
-      auto from_account = accounts.find_one(find_from.view());
-      if (!from_account) {
-         elog("Unable to find account ${n}", ("n", from_name));
-         return;
-      }
-      // decrease creator by deposit amount
-      auto from_view = from_account->view();
-      asset from_balance = asset::from_string(from_view["eos_balance"].get_utf8().value.to_string());
-      from_balance -= newaccount.deposit;
-      document update_from{};
-      update_from << "$set" << open_document << "eos_balance" << from_balance.to_string() << close_document;
-      accounts.update_one(find_from.view(), update_from.view());
-
-      // create new account with staked deposit amount
+      // create new account
       bsoncxx::builder::stream::document doc{};
       doc << "name" << newaccount.name.to_string()
           << "eos_balance" << asset().to_string()
-          << "staked_balance" << newaccount.deposit.to_string()
+          << "staked_balance" << asset().to_string()
           << "unstaking_balance" << asset().to_string()
           << "createdAt" << b_date{now}
           << "updatedAt" << b_date{now};
       if (!accounts.insert_one(doc.view())) {
          elog("Failed to insert account ${n}", ("n", newaccount.name));
       }
-
-   } else if (msg.name == lock) {
-      auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      auto lock = msg.as<chain::contracts::lock>();
-      auto from_account = find_account(accounts, lock.from);
-      auto to_account = find_account(accounts, lock.to);
-
-      asset from_balance = asset::from_string(from_account.view()["eos_balance"].get_utf8().value.to_string());
-      asset to_balance = asset::from_string(to_account.view()["stacked_balance"].get_utf8().value.to_string());
-      from_balance -= lock.amount;
-      to_balance += lock.amount;
-
-      document update_from{};
-      update_from << "$set" << open_document << "eos_balance" << from_balance.to_string()
-                  << "updatedAt" << b_date{now}
-                  << close_document;
-      document update_to{};
-      update_to << "$set" << open_document << "stacked_balance" << to_balance.to_string()
-                << "updatedAt" << b_date{now}
-                << close_document;
-
-      accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
-      accounts.update_one(document{} << "_id" << to_account.view()["_id"].get_oid() << finalize, update_to.view());
-
-   } else if (msg.name == unlock) {
-      auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      auto unlock = msg.as<chain::contracts::unlock>();
-      auto from_account = find_account(accounts, unlock.account);
-
-      asset unstack_balance = asset::from_string(from_account.view()["unstacking_balance"].get_utf8().value.to_string());
-      asset stack_balance = asset::from_string(from_account.view()["stacked_balance"].get_utf8().value.to_string());
-      auto deltaStake = unstack_balance - unlock.amount;
-      stack_balance += deltaStake;
-      unstack_balance = unlock.amount;
-      // TODO: proxies and last_unstaking_time
-
-      document update_from{};
-      update_from << "$set" << open_document
-                  << "staked_balance" << stack_balance.to_string()
-                  << "unstacking_balance" << unstack_balance.to_string()
-                  << "updatedAt" << b_date{now}
-                  << close_document;
-
-      accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
-
-   } else if (msg.name == claim) {
-      auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      auto claim = msg.as<chain::contracts::claim>();
-      auto from_account = find_account(accounts, claim.account);
-
-      asset balance = asset::from_string(from_account.view()["eos_balance"].get_utf8().value.to_string());
-      asset unstack_balance = asset::from_string(from_account.view()["unstacking_balance"].get_utf8().value.to_string());
-      unstack_balance -= claim.amount;
-      balance += claim.amount;
-
-      document update_from{};
-      update_from << "$set" << open_document
-                  << "eos_balance" << balance.to_string()
-                  << "unstacking_balance" << unstack_balance.to_string()
-                  << "updatedAt" << b_date{now}
-                  << close_document;
-
-      accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
 
    } else if (msg.name == setabi) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
