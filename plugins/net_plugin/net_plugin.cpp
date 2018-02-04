@@ -457,7 +457,6 @@ namespace eosio {
 
       void txn_send_pending(const vector<transaction_id_type> &ids);
       void txn_send(const vector<transaction_id_type> &txn_lis);
-      uint32_t send_branch(chain_controller &cc, block_id_type bid, uint32_t lib_num, block_id_type lib_id);
 
       void blk_send_branch();
       void blk_send(const vector<block_id_type> &txn_lis);
@@ -711,53 +710,6 @@ namespace eosio {
       }
    }
 
-   uint32_t connection::send_branch(chain_controller &cc, block_id_type bid, uint32_t lib_num, block_id_type lib_id) {
-      static uint32_t dbg_depth = 0;
-      uint32_t count = 0;
-      try {
-         optional<signed_block> b = cc.fetch_block_by_id(bid);
-         if( b ) {
-            block_id_type prev = b->previous;
-            if( prev == lib_id) {
-               enqueue( *b );
-               count = 1;
-            }
-            else {
-               uint32_t pnum = block_header::num_from_id( prev );
-               if( pnum < lib_num ) {
-                  uint32_t irr = cc.last_irreversible_block_num();
-                  elog( "Whoa! branch regression passed last irreversible block! depth = ${d}", ("d",dbg_depth ));
-                  optional<signed_block> pb = cc.fetch_block_by_id (prev);
-                  block_id_type pprev;
-                  if (!pb ) {
-                     fc_dlog(logger, "no block for prev");
-                  } else {
-                     pprev = pb->previous;
-                  }
-                  fc_dlog(logger, "irr = ${irr} lib_nim = ${ln} pnum = ${pn}", ("irr",irr)("ln",lib_num)("pn",pnum));
-                  fc_dlog(logger, "prev = ${p}", ("p",prev));
-                  fc_dlog(logger, "lib  = ${p}", ("p",lib_id));
-                  fc_dlog(logger, "bid  = ${p}", ("p",bid));
-                  fc_dlog(logger, "ppre = ${p}", ("p",pprev));
-               }
-               else {
-                  ++dbg_depth;
-                  count = send_branch (cc, prev, lib_num, lib_id );
-                  --dbg_depth;
-                  if (count > 0) {
-                     enqueue( *b );
-                     ++count;
-                  }
-               }
-            }
-         }
-      } catch (...) {
-         elog( "Send Branch failed, caught unidentified exception");
-      }
-      return count;
-   }
-
-
    void connection::blk_send_branch() {
       chain_controller &cc = my_impl->chain_plug->chain();
       uint32_t head_num = cc.head_block_num ();
@@ -783,8 +735,37 @@ namespace eosio {
          enqueue(note);
          return;
       }
-      uint32_t count = send_branch(cc, head_id, lib_num, lib_id);
-      fc_dlog(logger, "Sent ${n} blocks on my fork",("n",count));
+      catch (const fc::exception &ex) {
+      }
+      catch (...) {
+      }
+
+      vector<optional<signed_block> > bstack;
+      block_id_type null_id;
+      for (auto bid = head_id; bid != null_id && bid != lib_id; ) {
+         try {
+            optional<signed_block> b = cc.fetch_block_by_id(bid);
+            if ( b ) {
+               bid = b->previous;
+               bstack.push_back(b);
+            }
+            else {
+               break;
+            }
+         } catch (...) {
+            break;
+         }
+      }
+      size_t count = 0;
+      if (bstack.back()->previous == lib_id) {
+         count = bstack.size();
+         while (bstack.size()) {
+            enqueue (*bstack.back());
+            bstack.pop_back();
+         }
+      }
+
+      fc_ilog(logger, "Sent ${n} blocks on my fork",("n",count));
       syncing = false;
    }
 
@@ -818,6 +799,7 @@ namespace eosio {
    }
 
    void connection::stop_send() {
+      syncing = false;
       txn_queue.clear();
    }
 
@@ -1150,9 +1132,13 @@ namespace eosio {
    }
 
    bool sync_manager::is_active(connection_ptr c) {
-      if (state == head_catchup && c)
-         return c->fork_head != block_id_type();
-      return state == in_sync;
+      if (state == head_catchup && c) {
+         bool fhset = c->fork_head != block_id_type();
+         fc_dlog(logger, "fork_head_num = ${fn} fork_head set = ${s}",
+                 ("fn", c->fork_head_num)("s", fhset));
+            return c->fork_head != block_id_type() && c->fork_head_num < chain_plug->chain().head_block_num();
+      }
+      return state != in_sync;
    }
 
    void sync_manager::reset_lib_num() {
@@ -1235,7 +1221,7 @@ namespace eosio {
          if( end > sync_known_lib_num )
             end = sync_known_lib_num;
          if( end > 0 && end >= start ) {
-            fc_dlog(logger, "conn ${n} requesting range ${s} to ${e}",
+            fc_ilog(logger, "conn ${n} requesting range ${s} to ${e}",
                     ("n",source->peer_name())("s",start)("e",end));
             sync_request_message srm = {start,end};
             source->enqueue( net_message(srm));
@@ -1268,7 +1254,7 @@ namespace eosio {
 
       state = lib_catchup;
 
-      fc_dlog(logger, "Catching up with chain, our last req is ${cc}, theirs is ${t} peer ${p}",
+      fc_ilog(logger, "Catching up with chain, our last req is ${cc}, theirs is ${t} peer ${p}",
               ( "cc",sync_last_requested_num)("t",target)("p",c->peer_name()));
 
       request_next_chunk(c);
@@ -1286,6 +1272,7 @@ namespace eosio {
       uint32_t peer_lib = msg.last_irreversible_block_num;
       reset_lib_num();
       c->syncing = false;
+      state = in_sync;
 
       //--------------------------------
       // sync need checkz; (lib == last irreversible block)
@@ -1332,10 +1319,10 @@ namespace eosio {
       }
 
       if (head <= msg.head_num ) {
-         fc_dlog(logger, "sync check state 3 (skipped = ${s}",("s", is_active(c)));
-         if (state == in_sync ) {
+         fc_dlog(logger, "sync check state 3");
+         //         if (state == in_sync ) {
             verify_catchup (c, msg.head_num, msg.head_id);
-         }
+            //         }
          return;
       }
       else {
@@ -1355,30 +1342,36 @@ namespace eosio {
    }
 
    void sync_manager::verify_catchup(connection_ptr c, uint32_t num, block_id_type id) {
-      bool ignore = false;
+      request_message req;
+      req.req_blocks.mode = catch_up;
       for (auto cc : my_impl->connections) {
          if (cc->fork_head == id ||
              cc->fork_head_num > num)
-            ignore = true;
+            req.req_blocks.mode = none;
          break;
       }
-      if( !ignore ) {
+      if( req.req_blocks.mode == catch_up ) {
          c->fork_head = id;
          c->fork_head_num = num;
-         if (state != lib_catchup) {
-            state = head_catchup;
-            request_message req;
-            req.req_trx.mode = none;
-            req.req_blocks.mode = catch_up;
-            c->enqueue( req );
-         }
+         state = head_catchup;
       }
+      else {
+         c->fork_head = block_id_type();
+         c->fork_head_num = 0;
+      }
+      req.req_trx.mode = none;
+      c->enqueue( req );
    }
 
    void sync_manager::recv_notice (connection_ptr c, const notice_message &msg) {
-      fc_dlog (logger, "sync_manager got ${m} block notice",("m",modes_str(msg.known_blocks.mode)));
+      fc_ilog (logger, "sync_manager got ${m} block notice",("m",modes_str(msg.known_blocks.mode)));
       if (msg.known_blocks.mode == catch_up) {
-         verify_catchup(c,  msg.known_blocks.pending, msg.known_blocks.ids[0]);
+         if (msg.known_blocks.ids.size() == 0) {
+            elog ("got a catch up with ids size = 0");
+         }
+         else {
+            verify_catchup(c,  msg.known_blocks.pending, msg.known_blocks.ids.back());
+         }
       }
       else {
          c->last_handshake_recv.last_irreversible_block_num = msg.known_trx.pending;
@@ -1611,6 +1604,9 @@ namespace eosio {
                });
          }
       }
+      else {
+         fc_dlog(logger, "not forwarding from active syncing connection ${p}",("p",c->peer_name()));
+      }
    }
 
    void big_msg_manager::recv_transaction (connection_ptr c, const signed_transaction& msg) {
@@ -1804,69 +1800,69 @@ namespace eosio {
          if(!conn->socket) {
             return;
          }
-         conn->socket->async_read_some(
-                                       conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(),
-                                       [this,conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
-                                          try {
-                                             if( !ec ) {
-                                                if (bytes_transferred > conn->pending_message_buffer.bytes_to_write()) {
-                                                   elog("async_read_some callback: bytes_transfered = ${bt}, buffer.bytes_to_write = ${btw}",("bt",bytes_transferred)("btw",conn->pending_message_buffer.bytes_to_write()));
-                                                }
-                                                FC_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write());
-                                                conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
-                                                while (conn->pending_message_buffer.bytes_to_read() > 0) {
-                                                   uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
+         conn->socket->async_read_some
+            (conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(),
+             [this,conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
+               try {
+                  if( !ec ) {
+                     if (bytes_transferred > conn->pending_message_buffer.bytes_to_write()) {
+                        elog("async_read_some callback: bytes_transfered = ${bt}, buffer.bytes_to_write = ${btw}",
+                             ("bt",bytes_transferred)("btw",conn->pending_message_buffer.bytes_to_write()));
+                     }
+                     FC_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write());
+                     conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
+                     while (conn->pending_message_buffer.bytes_to_read() > 0) {
+                        uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
 
-                                                   if (bytes_in_buffer < message_header_size) {
-                                                      break;
-                                                   } else {
-                                                      uint32_t message_length;
-                                                      auto index = conn->pending_message_buffer.read_index();
-                                                      conn->pending_message_buffer.peek(&message_length, sizeof(message_length), index);
-                                                      if(message_length > def_send_buffer_size*2) {
-                                                         elog("incoming message length unexpected (${i})", ("i", message_length));
-                                                         close(conn);
-                                                         return;
-                                                      }
-                                                      if (bytes_in_buffer >= message_length + message_header_size) {
-                                                         conn->pending_message_buffer.advance_read_ptr(message_header_size);
-                                                         if (!conn->process_next_message(*this, message_length)) {
-                                                            return;
-                                                         }
-                                                      } else {
-                                                         conn->pending_message_buffer.add_space(message_length + message_header_size - bytes_in_buffer);
-                                                         break;
-                                                      }
-                                                   }
-                                                }
-                                                start_read_message(conn);
-                                             } else {
-                                                auto pname = conn->peer_name();
-                                                if (ec.value() != boost::asio::error::eof) {
-                                                   elog( "Error reading message from ${p}: ${m}",("p",pname)( "m", ec.message() ) );
-                                                } else {
-                                                   ilog( "Peer ${p} closed connection",("p",pname) );
-                                                }
-                                                close( conn );
-                                             }
-                                          }
-                                          catch(const std::exception &ex) {
-                                             string pname = conn ? conn->peer_name() : "no connection name";
-                                             elog("Exception in handling read data from ${p} ${s}",("p",pname)("s",ex.what()));
-                                             close( conn );
-                                          }
-                                          catch(const fc::exception &ex) {
-                                             string pname = conn ? conn->peer_name() : "no connection name";
-                                             elog("Exception in handling read data ${s}", ("p",pname)("s",ex.to_string()));
-                                             close( conn );
-                                          }
-                                          catch (...) {
-                                             string pname = conn ? conn->peer_name() : "no connection name";
-                                             elog( "Undefined exception hanlding the read data from connection ${p}",( "p",pname));
-                                             close( conn );
-                                          }
-                                       }
-                                       );
+                        if (bytes_in_buffer < message_header_size) {
+                           break;
+                        } else {
+                           uint32_t message_length;
+                           auto index = conn->pending_message_buffer.read_index();
+                           conn->pending_message_buffer.peek(&message_length, sizeof(message_length), index);
+                           if(message_length > def_send_buffer_size*2) {
+                              elog("incoming message length unexpected (${i})", ("i", message_length));
+                              close(conn);
+                              return;
+                           }
+                           if (bytes_in_buffer >= message_length + message_header_size) {
+                              conn->pending_message_buffer.advance_read_ptr(message_header_size);
+                              if (!conn->process_next_message(*this, message_length)) {
+                                 return;
+                              }
+                           } else {
+                              conn->pending_message_buffer.add_space(message_length + message_header_size - bytes_in_buffer);
+                              break;
+                           }
+                        }
+                     }
+                     start_read_message(conn);
+                  } else {
+                     auto pname = conn->peer_name();
+                     if (ec.value() != boost::asio::error::eof) {
+                        elog( "Error reading message from ${p}: ${m}",("p",pname)( "m", ec.message() ) );
+                     } else {
+                        ilog( "Peer ${p} closed connection",("p",pname) );
+                     }
+                     close( conn );
+                  }
+               }
+               catch(const std::exception &ex) {
+                  string pname = conn ? conn->peer_name() : "no connection name";
+                  elog("Exception in handling read data from ${p} ${s}",("p",pname)("s",ex.what()));
+                  close( conn );
+               }
+               catch(const fc::exception &ex) {
+                  string pname = conn ? conn->peer_name() : "no connection name";
+                  elog("Exception in handling read data ${s}", ("p",pname)("s",ex.to_string()));
+                  close( conn );
+               }
+               catch (...) {
+                  string pname = conn ? conn->peer_name() : "no connection name";
+                  elog( "Undefined exception hanlding the read data from connection ${p}",( "p",pname));
+                  close( conn );
+               }
+            } );
       } catch (...) {
          string pname = conn ? conn->peer_name() : "no connection name";
          elog( "Undefined exception handling reading ${p}",("p",pname) );
