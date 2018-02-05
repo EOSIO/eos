@@ -113,7 +113,7 @@ namespace eosio { namespace chain {
     */
    struct signed_block : public signed_block_summary {
       digest_type                  calculate_transaction_merkle_root()const;
-      vector<signed_transaction>   input_transactions; /// this is loaded and indexed into map<id,trx> that is referenced by summary
+      vector<packed_transaction>   input_transactions; /// this is loaded and indexed into map<id,trx> that is referenced by summary
    };
 
    struct shard_trace {

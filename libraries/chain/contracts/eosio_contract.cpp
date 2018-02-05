@@ -15,8 +15,6 @@
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/contracts/staked_balance_objects.hpp>
-#include <eosio/chain/contracts/producer_objects.hpp>
 #include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/producer_object.hpp>
 
@@ -52,21 +50,6 @@ static void modify_eosio_balance( apply_context& context, const account_name& ac
    context.store_record<key_value_object>(t_id, config::system_account_name, &key, (const char *)&balance, sizeof(balance));
 }
 
-share_type get_eosio_balance( const chainbase::database& db, const account_name &account ) {
-   const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(config::system_account_name, account, N(currency)));
-   if (!t_id) {
-      return share_type(0);
-   }
-
-   const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-   auto itr = idx.lower_bound(boost::make_tuple(t_id->id));
-   if ( itr == idx.end() || itr->t_id != t_id->id ) {
-      return share_type(0);
-   }
-
-   FC_ASSERT(itr->value.size() == sizeof(share_type), "Invalid data in EOSIO balance table");
-   return *reinterpret_cast<const share_type *>(itr->value.data());
-}
 
 void validate_authority_precondition( const apply_context& context, const authority& auth ) {
    for(const auto& a : auth.accounts) {
@@ -76,9 +59,7 @@ void validate_authority_precondition( const apply_context& context, const author
 }
 
 /**
- *  This method is called assuming precondition_system_newaccount succeeds and proceeds to
- *  deduct the balance of the account creator by deposit, this deposit is supposed to be
- *  credited to the staked balance the new account in the @staked contract.
+ *  This method is called assuming precondition_system_newaccount succeeds a
  */
 void apply_eosio_newaccount(apply_context& context) { 
    auto create = context.act.as<newaccount>();
@@ -118,103 +99,9 @@ void apply_eosio_newaccount(apply_context& context) {
    const auto& owner_permission = create_permission("owner", 0, std::move(create.owner));
    create_permission("active", owner_permission.id, std::move(create.active));
 
-   share_type creator_balance = get_eosio_balance(context.db, create.creator);
-
-   EOS_ASSERT(creator_balance >= create.deposit.amount, action_validate_exception,
-              "Creator '${c}' has insufficient funds to make account creation deposit of ${a}",
-              ("c", create.creator)("a", create.deposit));
-
-   modify_eosio_balance(context, create.creator, -create.deposit.amount);
-
-   const auto& sbo = context.mutable_db.create<staked_balance_object>([&]( staked_balance_object& sbo) {
-      sbo.owner_name = create.name;
-      sbo.staked_balance = 0;
-   });
-   sbo.stake_tokens( create.deposit.amount, context.mutable_db );
-
    db.create<bandwidth_usage_object>([&]( auto& bu ) { bu.owner = create.name; });
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
-
-/**
- *
- * @ingroup native_eos
- * @defgroup eos_eosio_transfer eosio::eos_transfer
- */
-///@{
-
-
-void apply_eosio_transfer(apply_context& context) {
-   auto transfer = context.act.as<contracts::transfer>();
-
-   try {
-      EOS_ASSERT(transfer.amount > 0, action_validate_exception, "Must transfer a positive amount");
-      context.require_write_lock(transfer.to);
-      context.require_write_lock(transfer.from);
-
-      context.require_authorization(transfer.from);
-
-      context.require_recipient(transfer.to);
-      context.require_recipient(transfer.from);
-   } FC_CAPTURE_AND_RETHROW((transfer))
-
-
-   try {
-      auto& db = context.mutable_db;
-      share_type from_balance = get_eosio_balance(db, transfer.from);
-
-      EOS_ASSERT(from_balance >= transfer.amount, action_validate_exception, "Insufficient Funds",
-                 ("from_balance", from_balance)("transfer.amount",transfer.amount));
-
-      modify_eosio_balance(context, transfer.from, - share_type(transfer.amount) );
-      modify_eosio_balance(context, transfer.to,     share_type(transfer.amount) );
-
-   } FC_CAPTURE_AND_RETHROW( (transfer) ) 
-}
-///@}
-
-/**
- *  Deduct the balance from the from account.
- */
-void apply_eosio_lock(apply_context& context) {
-   auto lock = context.act.as<contracts::lock>();
-
-   EOS_ASSERT(lock.amount > 0, action_validate_exception, "Locked amount must be positive");
-
-   context.require_write_lock(lock.to);
-   context.require_write_lock(lock.from);
-   context.require_write_lock(config::system_account_name);
-
-   context.require_authorization(lock.from);
-
-   context.require_recipient(lock.to);
-   context.require_recipient(lock.from);
-
-   share_type locker_balance = get_eosio_balance(context.db, lock.from);
-
-   EOS_ASSERT( locker_balance >= lock.amount, action_validate_exception,
-              "Account ${a} lacks sufficient funds to lock ${amt} EOS", ("a", lock.from)("amt", lock.amount)("available",locker_balance) );
-
-   modify_eosio_balance(context, lock.from, -share_type(lock.amount));
-
-   const auto& balance = context.db.get<staked_balance_object, by_owner_name>(lock.to);
-   balance.stake_tokens(lock.amount, context.mutable_db);
-}
-
-void apply_eosio_unlock(apply_context& context) {
-   auto unlock = context.act.as<contracts::unlock>();
-
-   context.require_authorization(unlock.account);
-
-   EOS_ASSERT(unlock.amount >= 0, action_validate_exception, "Unlock amount cannot be negative");
-
-   const auto& balance = context.db.get<staked_balance_object, by_owner_name>(unlock.account);
-
-   EOS_ASSERT(balance.staked_balance  >= unlock.amount, action_validate_exception,
-              "Insufficient locked funds to unlock ${a}", ("a", unlock.amount));
-
-   balance.begin_unstaking_tokens(unlock.amount, context.mutable_db);
-}
 
 
 void apply_eosio_setcode(apply_context& context) {
@@ -238,12 +125,11 @@ void apply_eosio_setcode(apply_context& context) {
       // Added resize(0) here to avoid bug in boost vector container
       a.code.resize( 0 );
       a.code.resize( act.code.size() );
+      a.last_code_update = context.controller.head_block_time();
       memcpy( a.code.data(), act.code.data(), act.code.size() );
 
    });
 
-   // make sure the code gets a chance to initialize itself
-   context.require_recipient(act.account);
 }
 
 void apply_eosio_setabi(apply_context& context) {
@@ -261,148 +147,6 @@ void apply_eosio_setabi(apply_context& context) {
    db.modify( account, [&]( auto& a ) {
       a.set_abi( act.abi );
    });
-}
-
-void apply_eosio_claim(apply_context& context) {
-   auto claim = context.act.as<contracts::claim>();
-
-   EOS_ASSERT(claim.amount > 0, action_validate_exception, "Claim amount must be positive");
-
-   context.require_authorization(claim.account);
-
-   auto balance = context.db.find<staked_balance_object, by_owner_name>(claim.account);
-
-   EOS_ASSERT(balance != nullptr, action_validate_exception,
-              "Could not find staked balance for ${name}", ("name", claim.account));
-
-   auto balance_release_time = balance->last_unstaking_time + fc::seconds(config::staked_balance_cooldown_sec);
-   auto now = context.controller.head_block_time();
-
-   EOS_ASSERT(now >= balance_release_time, action_validate_exception,
-              "Cannot claim balance until ${releaseDate}", ("releaseDate", balance_release_time));
-   EOS_ASSERT(balance->unstaking_balance >= claim.amount, action_validate_exception,
-              "Cannot claim ${claimAmount} as only ${available} is available for claim",
-              ("claimAmount", claim.amount)("available", balance->unstaking_balance));
-
-   const auto& staked_balance = context.db.get<staked_balance_object, by_owner_name>(claim.account);
-   staked_balance.finish_unstaking_tokens(claim.amount, context.mutable_db);
-
-   modify_eosio_balance(context, claim.account, share_type(claim.amount));
-}
-
-
-void apply_eosio_setproducer(apply_context& context) {
-   auto update = context.act.as<setproducer>();
-   context.require_authorization(update.name);
-   EOS_ASSERT(update.name.good(), action_validate_exception, "Producer owner name cannot be empty");
-
-   auto& db = context.mutable_db;
-   auto producer = db.find<producer_object, by_owner>(update.name);
-
-   if (producer) {
-      EOS_ASSERT(producer->signing_key != update.key || producer->configuration != update.configuration,
-                 action_validate_exception, "Producer's new settings may not be identical to old settings");
-
-      db.modify(*producer, [&](producer_object& p) {
-         p.signing_key = update.key;
-         p.configuration = update.configuration;
-      });
-   } else {
-      db.create<producer_object>([&](producer_object& p) {
-         p.owner = update.name;
-         p.signing_key = update.key;
-         p.configuration = update.configuration;
-      });
-      db.create<producer_votes_object>([&](producer_votes_object& pvo) {
-         pvo.owner_name = update.name;
-      });
-   }
-}
-
-
-void apply_eosio_okproducer(apply_context& context) {
-   auto approve = context.act.as<okproducer>();
-   EOS_ASSERT(approve.approve == 0 || approve.approve == 1, action_validate_exception,
-              "Unknown approval value: ${val}; must be either 0 or 1", ("val", approve.approve));
-   context.require_recipient(approve.voter);
-   context.require_recipient(approve.producer);
-
-   context.require_write_lock(config::system_account_name);
-   context.require_write_lock(approve.voter);
-   context.require_authorization(approve.voter);
-
-
-   auto& db = context.mutable_db;
-   const auto& producer = db.get<producer_votes_object, by_owner_name>(approve.producer);
-   const auto& voter = db.get<staked_balance_object, by_owner_name>(approve.voter);
-
-
-   EOS_ASSERT(voter.producer_votes.contains<producer_slate>(), action_validate_exception,
-              "Cannot approve producer; approving account '${name}' proxies its votes to '${proxy}'",
-              ("name", voter.owner_name)("proxy", voter.producer_votes.get<account_name>()));
-
-
-   const auto& slate = voter.producer_votes.get<producer_slate>();
-
-   EOS_ASSERT(slate.size < config::max_producer_votes, action_validate_exception,
-              "Cannot approve producer; approved producer count is already at maximum");
-   if (approve.approve)
-      EOS_ASSERT(!slate.contains(producer.owner_name), action_validate_exception,
-                 "Cannot add approval to producer '${name}'; producer is already approved",
-                 ("name", producer.owner_name));
-   else
-      EOS_ASSERT(slate.contains(producer.owner_name), action_validate_exception,
-                 "Cannot remove approval from producer '${name}'; producer is not approved",
-                 ("name", producer.owner_name));
-
-
-   auto total_voting_stake = voter.staked_balance;
-
-   // Add/remove votes from producer
-   db.modify(producer, [approve = approve.approve, total_voting_stake](producer_votes_object& pvo) {
-      if (approve)
-         pvo.update_votes(total_voting_stake);
-      else
-         pvo.update_votes(-total_voting_stake);
-   });
-   // Add/remove producer from voter's approved producer list
-   db.modify(voter, [&approve, producer = producer.owner_name](staked_balance_object& sbo) {
-      auto& slate = sbo.producer_votes.get<producer_slate>();
-      if (approve.approve)
-         slate.add(producer);
-      else
-         slate.remove(producer);
-   });
-}
-
-void apply_eosio_setproxy(apply_context& context) {
-   auto svp = context.act.as<setproxy>();
-   FC_ASSERT( !"Not Implemented Yet" );
-
-   /*
-   context.require_authorization( spv.stakeholder );
-
-   context.require_recipient(svp.stakeholder);
-   context.require_recipient(svp.proxy);
-
-   auto& db = context.mutable_db;
-   const auto& proxy = db.get<proxy_vote_object, by_target_name>(context.act.recipient(svp.proxy));
-   const auto& balance = db.get<staked_balance_object, by_owner_name>(context.act.recipient(svp.stakeholder));
-
-
-   auto proxy = db.find<proxy_vote_object, by_target_name>(context.act.recipient(svp.proxy));
-
-
-   if (svp.proxy != svp.stakeholder) {
-      // We are enabling proxying to svp.proxy
-      proxy.add_proxy_source(context.act.recipient(svp.stakeholder), balance.staked_balance, db);
-      db.modify(balance, [target = proxy.proxy_target](staked_balance_object& sbo) { sbo.producer_votes = target; });
-   } else {
-      // We are disabling proxying to balance.producer_votes.get<account_name>()
-      proxy.remove_proxy_source(context.act.recipient(svp.stakeholder), balance.staked_balance, db);
-      db.modify(balance, [](staked_balance_object& sbo) { sbo.producer_votes = producer_slate{}; });
-   }
-   */
 }
 
 void apply_eosio_updateauth(apply_context& context) {
@@ -549,9 +293,6 @@ void apply_eosio_unlinkauth(apply_context& context) {
       db.remove(*link);
 }
 
-void apply_eosio_nonce(apply_context&) {
-   /// do nothing
-}
 
 void apply_eosio_onerror(apply_context& context) {
    assert(context.trx_meta.sender);

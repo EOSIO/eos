@@ -3,7 +3,7 @@ find_package(LLVM 4.0 REQUIRED CONFIG)
 
 link_directories(${LLVM_LIBRARY_DIR})
 
-add_executable(abi_gen ${SOURCES})
+add_executable(eosio-abigen ${SOURCES})
 
 set( CMAKE_CXX_STANDARD 14 )
 
@@ -17,11 +17,11 @@ if( GPERFTOOLS_FOUND )
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
-target_link_libraries(abi_gen abi_generator)
+target_link_libraries(eosio-abigen abi_generator)
 
 
 install( TARGETS
-   abi_gen
+   eosio-abigen
    RUNTIME DESTINATION bin
    LIBRARY DESTINATION lib
    ARCHIVE DESTINATION lib

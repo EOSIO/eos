@@ -63,6 +63,7 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
   # NOTE: Setting SOURCE_FILE and looping over it to avoid cmake issue with compilation ${target}.bc's rule colliding with
   # linking ${target}.bc's rule 
   set(SOURCE_FILE ${target}.cpp)
+  set(outfiles "")
   foreach(srcfile ${SOURCE_FILE})
     
     get_filename_component(outfile ${srcfile} NAME)
@@ -137,10 +138,11 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
     VERBATIM
   )
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${target}.wast)
-  
+  STRING (REPLACE "." "_" TARGET_VARIABLE "${target}")
+
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wast.hpp
     DEPENDS ${DESTINATION_FOLDER}/${target}.wast
-    COMMAND echo "const char* ${target}_wast = R\"=====("  > ${DESTINATION_FOLDER}/${target}.wast.hpp
+    COMMAND echo "const char* const ${TARGET_VARIABLE}_wast = R\"=====("  > ${DESTINATION_FOLDER}/${target}.wast.hpp
     COMMAND cat ${DESTINATION_FOLDER}/${target}.wast >> ${DESTINATION_FOLDER}/${target}.wast.hpp
     COMMAND echo ")=====\";"  >> ${DESTINATION_FOLDER}/${target}.wast.hpp
     COMMENT "Generating ${target}.wast.hpp"
@@ -150,7 +152,7 @@ macro(add_wast_target target INCLUDE_FOLDERS DESTINATION_FOLDER)
   if (EXISTS ${DESTINATION_FOLDER}/${target}.abi )
     add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.abi.hpp
       DEPENDS ${DESTINATION_FOLDER}/${target}.abi
-      COMMAND echo "const char* ${target}_abi = R\"=====("  > ${DESTINATION_FOLDER}/${target}.abi.hpp
+      COMMAND echo "const char* const ${TARGET_VARIABLE}_abi = R\"=====("  > ${DESTINATION_FOLDER}/${target}.abi.hpp
       COMMAND cat ${DESTINATION_FOLDER}/${target}.abi >> ${DESTINATION_FOLDER}/${target}.abi.hpp
       COMMAND echo ")=====\";"  >> ${DESTINATION_FOLDER}/${target}.abi.hpp
       COMMENT "Generating ${target}.abi.hpp"

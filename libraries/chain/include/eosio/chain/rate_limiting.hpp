@@ -55,6 +55,10 @@ namespace eosio { namespace chain {
       id_type          id;
       account_name     owner; 
 
+      uint64_t net_weight  = 0;
+      uint64_t cpu_weight  = 0; 
+      uint64_t db_reserved_capacity = 0; /// bytes
+
       average_accumulator<config::bandwidth_average_window_ms> bytes;
       average_accumulator<config::compute_average_window_ms>   acts; ///< tracks a logical number of actions processed
 

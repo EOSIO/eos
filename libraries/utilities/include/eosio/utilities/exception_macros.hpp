@@ -8,6 +8,15 @@
       FC_THROW_EXCEPTION( exc_type, FORMAT, __VA_ARGS__ );            \
    FC_MULTILINE_MACRO_END
 
+#define EOS_CAPTURE_AND_RETHROW(exc_type, FORMAT, ... ) \
+   catch (fc::exception& e) { \
+      exc_type new_exception(FC_LOG_MESSAGE( error, FORMAT, __VA_ARGS__ )); \
+      for (const auto& log: e.get_log()) { \
+         new_exception.append_log(log); \
+      } \
+      throw new_exception; \
+   } 
+
 
 #define EOS_DECLARE_OP_BASE_EXCEPTIONS( op_name )                \
    FC_DECLARE_DERIVED_EXCEPTION(                                      \

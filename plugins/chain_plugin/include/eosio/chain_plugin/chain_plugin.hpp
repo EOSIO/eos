@@ -77,13 +77,9 @@ public:
 
    struct get_account_results {
       name                       account_name;
-      asset                      eos_balance = asset(0,EOS_SYMBOL);
-      asset                      staked_balance;
-      asset                      unstaking_balance;
-      fc::time_point_sec         last_unstaking_time;
       vector<permission>         permissions;
-      optional<producer_info>    producer;
    };
+
    struct get_account_params {
       name account_name;
    };
@@ -340,7 +336,7 @@ public:
    chain_apis::read_write get_read_write_api();
 
    bool accept_block(const chain::signed_block& block, bool currently_syncing);
-   void accept_transaction(const chain::signed_transaction& trx);
+   void accept_transaction(const chain::packed_transaction& trx);
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 
@@ -355,10 +351,6 @@ public:
    const chain_controller& chain() const;
 
   void get_chain_id (chain::chain_id_type &cid) const;
-
-  static const uint32_t            default_received_block_transaction_execution_time;
-  static const uint32_t            default_transaction_execution_time;
-  static const uint32_t            default_create_block_transaction_execution_time;
 
 private:
    unique_ptr<class chain_plugin_impl> my;
@@ -383,7 +375,7 @@ FC_REFLECT( eosio::chain_apis::read_only::get_currency_balance_params, (code)(ac
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_result, (supply));
 
-FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(permissions)(producer) )
+FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(permissions) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(abi) )
 FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (account_name) )
