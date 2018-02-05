@@ -77,7 +77,7 @@ namespace eosio {
    };
 
 
-   template<uint64_t Code, uint64_t TableName, typename T>
+   template<uint64_t Code, uint64_t TableName, uint64_t BillToAccount, typename T>
    class table_i64i64i64 {
       public:
          table_i64i64i64( uint64_t scope = Code  )
@@ -119,12 +119,12 @@ namespace eosio {
             return true;
          }
 
-         void store( const T& value, account_name bill_to ) {
+         void store( const T& value, account_name bill_to = BillToAccount ) {
             char temp[1024];
             datastream<char*> ds(temp, sizeof(temp) );
             ds << value;
 
-            store_i64i64i64( _scope, TableName, temp, ds.tellp() );
+            store_i64i64i64( _scope, TableName, bill_to, temp, ds.tellp() );
          }
 
          void remove(uint64_t primary_key, uint64_t seconday_key, uint64_t tertiary_key) {

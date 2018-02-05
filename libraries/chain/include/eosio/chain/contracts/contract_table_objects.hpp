@@ -183,6 +183,7 @@ namespace eosio { namespace chain { namespace contracts {
       table_id              t_id;
       uint64_t              primary_key;
       uint64_t              secondary_key;
+      account_name          bta;
       shared_string         value;
    };
 
@@ -205,7 +206,8 @@ namespace eosio { namespace chain { namespace contracts {
                member<key64x64_value_object, typename key64x64_value_object::id_type, &key64x64_value_object::id>
             >,
             composite_key_compare< std::less<table_id>,std::less<uint64_t>,std::less<typename key64x64_value_object::id_type> >
-         >
+         >,
+         bta_index<key64x64_value_object>
       >
    >;
 
@@ -269,8 +271,8 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key64x64_value_object, eosio::
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key64x64x64_value_object, eosio::chain::contracts::key64x64x64_value_index)
 
 FC_REFLECT(eosio::chain::contracts::table_id_object, (id)(code)(scope)(table) )
-FC_REFLECT(eosio::chain::contracts::key_value_object, (id)(t_id)(primary_key)(value) )
-FC_REFLECT(eosio::chain::contracts::keystr_value_object, (id)(t_id)(primary_key)(value) )
-FC_REFLECT(eosio::chain::contracts::key128x128_value_object, (id)(t_id)(primary_key)(secondary_key)(value) )
-FC_REFLECT(eosio::chain::contracts::key64x64_value_object, (id)(t_id)(primary_key)(secondary_key)(value) )
-FC_REFLECT(eosio::chain::contracts::key64x64x64_value_object, (id)(t_id)(primary_key)(secondary_key)(tertiary_key)(value) )
+FC_REFLECT(eosio::chain::contracts::key_value_object, (id)(t_id)(primary_key)(bta)(value) )
+FC_REFLECT(eosio::chain::contracts::keystr_value_object, (id)(t_id)(primary_key)(bta)(value) )
+FC_REFLECT(eosio::chain::contracts::key128x128_value_object, (id)(t_id)(primary_key)(secondary_key)(bta)(value) )
+FC_REFLECT(eosio::chain::contracts::key64x64_value_object, (id)(t_id)(primary_key)(secondary_key)(bta)(value) )
+FC_REFLECT(eosio::chain::contracts::key64x64x64_value_object, (id)(t_id)(primary_key)(secondary_key)(tertiary_key)(bta)(value) )
