@@ -21,7 +21,6 @@ using namespace eosio::chain_apis;
 using namespace eosio::testing;
 using namespace fc;
 
-#if 0
 class identity_tester : public tester {
 public:
 
@@ -87,7 +86,7 @@ public:
       return get_result_uint64();
    }
 
-   string create_identity(const string& account_name, uint64_t identity, bool auth = true) {
+   ActionResult create_identity(const string& account_name, uint64_t identity, bool auth = true) {
       action create_act;
       create_act.account = N(identity);
       create_act.name = N(create);
@@ -114,7 +113,7 @@ public:
       return abi_ser.binary_to_variant("identrow", data);
    }
 
-   string certify(const string& certifier, uint64_t identity, const vector<fc::variant>& fields, bool auth = true) {
+   ActionResult certify(const string& certifier, uint64_t identity, const vector<fc::variant>& fields, bool auth = true) {
       action cert_act;
       cert_act.account = N(identity);
       cert_act.name = N(certprop);
@@ -164,7 +163,7 @@ public:
       }
    }
 
-   string settrust(const string& trustor, const string& trusting, uint64_t trust, bool auth = true)
+   ActionResult settrust(const string& trustor, const string& trusting, uint64_t trust, bool auth = true)
    {
       signed_transaction trx;
       action settrust_act;
@@ -649,4 +648,3 @@ BOOST_FIXTURE_TEST_CASE( ownership_contradiction, identity_tester ) try {
 } FC_LOG_AND_RETHROW() //ownership_contradiction
 
 BOOST_AUTO_TEST_SUITE_END()
-#endif

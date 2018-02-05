@@ -111,7 +111,7 @@ namespace eosio { namespace testing {
       return push_transaction( ptrx );
    }
 
-   string tester::push_action(action&& cert_act, uint64_t authorizer) {
+   tester::ActionResult tester::push_action(action&& cert_act, uint64_t authorizer) {
       signed_transaction trx;
       if (authorizer) {
          cert_act.authorization = vector<permission_level>{{authorizer, config::active_name}};
@@ -302,5 +302,31 @@ namespace eosio { namespace testing {
       return asset(result, asset_symbol);
    }
 
+   vector<uint8_t> tester::to_uint8_vector(const string& s) {
+      vector<uint8_t> v(s.size());
+      copy(s.begin(), s.end(), v.begin());
+      return v;
+   };
+
+   vector<uint8_t> tester::to_uint8_vector(uint64_t x) {
+      vector<uint8_t> v(sizeof(x));
+      *reinterpret_cast<uint64_t*>(v.data()) = x;
+      return v;
+   };
+
+   uint64_t tester::to_uint64(fc::variant x) {
+      vector<uint8_t> blob;
+      fc::from_variant<uint8_t>(x, blob);
+      FC_ASSERT(8 == blob.size());
+      return *reinterpret_cast<uint64_t*>(blob.data());
+   }
+
+   string tester::to_string(fc::variant x) {
+      vector<uint8_t> v;
+      fc::from_variant<uint8_t>(x, v);
+      string s(v.size(), 0);
+      copy(v.begin(), v.end(), s.begin());
+      return s;
+   }
 
 } }  /// eosio::test
