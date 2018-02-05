@@ -115,7 +115,7 @@ namespace eosio {
 
 
          static void apply( account_name c, action_name act) {
-            eosio::dispatch<generic_currency, transfer_memo, issue>(c,act);
+            eosio::dispatch<generic_currency, transfer, issue>(c,act);
          }
    };
 

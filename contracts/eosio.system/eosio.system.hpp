@@ -102,7 +102,7 @@ namespace eosiosystem {
 
          static void apply( account_name code, action_name act ) {
             if( !eosio::dispatch<contract, regproducer, regproxy, nonce>( code, act) ) {
-               if ( !eosio::dispatch<currency, typename currency::transfer_memo, typename currency::issue>( code, act ) ) {
+               if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                   eosio::print("Unexpected action: ", act, "\n");
                   assert( false, "received unexpected action");
                }
