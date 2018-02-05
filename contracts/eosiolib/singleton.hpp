@@ -11,7 +11,7 @@ namespace  eosio {
     *  @tparam SingletonName - the name of this singlton variable
     *  @tparam T - the type of the singleton 
     */
-   template<account_name Code, uint64_t SingletonName, typename T>
+   template<account_name Code, uint64_t SingletonName, account_name BillToAccount, typename T>
    class singleton
    {
       public:
@@ -52,7 +52,7 @@ namespace  eosio {
             return result;
          }
 
-         static void set( const T& value = T(), scope_name scope = Code ) {
+         static void set( const T& value = T(), scope_name scope = Code, account_name b = BillToAccount ) {
             auto size = pack_size( value );
             char buf[size+ sizeof(SingletonName)];
 
@@ -62,7 +62,7 @@ namespace  eosio {
             ds << SingletonName;
             ds << value;
             
-            store_i64( scope, SingletonName, buf, sizeof(buf) );
+            store_i64( scope, SingletonName, b, buf, sizeof(buf) );
          }
    };
 

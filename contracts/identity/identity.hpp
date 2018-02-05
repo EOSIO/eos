@@ -193,10 +193,10 @@ namespace identity {
             }
          };
 
-         typedef table_i64i64i64<code, N(certs), certrow>  certs_table;
-         typedef table64<code, N(ident), identrow>         idents_table;
-         typedef table64<code, N(account), identity_name>  accounts_table;
-         typedef table64<code, N(trust), trustrow>         trust_table;
+         typedef table_i64i64i64<code, N(certs), code, certrow>  certs_table;
+         typedef table64<code, N(ident), code, identrow>         idents_table;
+         typedef table64<code, N(account), code, identity_name>  accounts_table;
+         typedef table64<code, N(trust), code, trustrow>         trust_table;
 
          static identity_name get_claimed_identity( account_name acnt ) {
             return accounts_table::get_or_default(acnt, 0);
