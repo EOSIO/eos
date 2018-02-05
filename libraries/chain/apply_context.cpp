@@ -270,6 +270,8 @@ const char* to_string(contracts::table_key_type key_type) {
       return "str";
    case contracts::type_i128i128:
       return "i128i128";
+   case contracts::type_i64i64:
+      return "i64i64";
    case contracts::type_i64i64i64:
       return "i64i64i64";
    default:
@@ -279,8 +281,8 @@ const char* to_string(contracts::table_key_type key_type) {
 
 void apply_context::validate_table_key( const table_id_object& t_id, contracts::table_key_type key_type ) {
    FC_ASSERT( t_id.key_type == contracts::table_key_type::type_unassigned || key_type == t_id.key_type,
-              "Table entry for ${scope}-${code}-${table} uses key type ${act_type} should have had type of ${exp_type}",
-              ("scope",t_id.scope)("code",t_id.code)("table",t_id.table)("act_type",to_string(t_id.key_type))("exp_type", to_string(key_type)) );
+              "Table entry for ${code}-${scope}-${table} uses key type ${act_type} should have had type of ${exp_type}",
+              ("code",t_id.code)("scope",t_id.scope)("table",t_id.table)("act_type",to_string(t_id.key_type))("exp_type", to_string(key_type)) );
 }
 
 void apply_context::validate_or_add_table_key( const table_id_object& t_id, contracts::table_key_type key_type ) {
@@ -290,8 +292,8 @@ void apply_context::validate_or_add_table_key( const table_id_object& t_id, cont
       });
    else
       FC_ASSERT( key_type == t_id.key_type,
-                 "Table entry for ${scope}-${code}-${table} uses key type ${act_type} should have had type of ${exp_type}",
-                 ("scope",t_id.scope)("code",t_id.code)("table",t_id.table)("act_type",to_string(t_id.key_type))("exp_type", to_string(key_type)) );
+                 "Table entry for ${code}-${scope}-${table} uses key type ${act_type} should have had type of ${exp_type}",
+                 ("code",t_id.code)("scope",t_id.scope)("table",t_id.table)("act_type",to_string(t_id.key_type))("exp_type", to_string(key_type)) );
 }
 
 template<>
@@ -307,6 +309,11 @@ contracts::table_key_type apply_context::get_key_type<contracts::keystr_value_ob
 template<>
 contracts::table_key_type apply_context::get_key_type<contracts::key128x128_value_object>() {
    return contracts::table_key_type::type_i128i128;
+}
+
+template<>
+contracts::table_key_type apply_context::get_key_type<contracts::key64x64_value_object>() {
+   return contracts::table_key_type::type_i64i64;
 }
 
 template<>
