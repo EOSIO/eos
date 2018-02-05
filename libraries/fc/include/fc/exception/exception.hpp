@@ -103,6 +103,11 @@ namespace fc
          std::string to_string( log_level ll = log_level::info  )const;
 
          /**
+          *   Generates a user-friendly error report.
+          */
+         std::string top_message( )const;
+
+         /**
           *  Throw this exception as its most derived type.
           *
           *  @note does not return.
