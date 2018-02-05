@@ -1221,7 +1221,7 @@ namespace eosio {
          if( end > sync_known_lib_num )
             end = sync_known_lib_num;
          if( end > 0 && end >= start ) {
-            fc_ilog(logger, "conn ${n} requesting range ${s} to ${e}",
+            fc_dlog(logger, "conn ${n} requesting range ${s} to ${e}",
                     ("n",source->peer_name())("s",start)("e",end));
             sync_request_message srm = {start,end};
             source->enqueue( net_message(srm));
