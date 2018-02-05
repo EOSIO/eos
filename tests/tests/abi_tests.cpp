@@ -304,12 +304,6 @@ const char* my_abi = R"=====(
       },{
          "name": "abidef_arr",
          "type": "abi_def[]"
-      },{
-         "name": "nonce",
-         "type": "nonce"
-      },{
-         "name": "nonce_arr",
-         "type": "nonce[]"
       }]
     }
   ],
@@ -1296,8 +1290,8 @@ BOOST_AUTO_TEST_CASE(general)
     {
       "publickey"     :  "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "publickey_arr" :  ["EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV","EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"],
-      "asset"         : "100.00 EOS",
-      "asset_arr"     : ["100.00 EOS","100.00 EOS"],
+      "asset"         : "100.0000 EOS",
+      "asset_arr"     : ["100.0000 EOS","100.0000 EOS"],
 
       "string"            : "ola ke ase",
       "string_arr"        : ["ola ke ase","ola ke desi"],
@@ -1364,8 +1358,6 @@ BOOST_AUTO_TEST_CASE(general)
         "ref_block_prefix":"2",
         "expiration":"2021-12-20T15:30",
         "region": "1",
-        "read_scope":["acc1"],
-        "write_scope":["acc1"],
         "actions":[{"scope":"scopename1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}]
       },
       "transaction_arr": [{
@@ -1373,16 +1365,12 @@ BOOST_AUTO_TEST_CASE(general)
         "ref_block_prefix":"2",
         "expiration":"2021-12-20T15:30",
         "region": "1",
-        "read_scope":["acc1"],
-        "write_scope":["acc1"],
         "actions":[{"scope":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}]
       },{
         "ref_block_num":"2",
         "ref_block_prefix":"3",
         "expiration":"2021-12-20T15:40",
         "region": "1",
-        "read_scope":["acc2"],
-        "write_scope":["acc2"],
         "actions":[{"scope":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}]
       }],
       "strx": {
@@ -1390,8 +1378,6 @@ BOOST_AUTO_TEST_CASE(general)
         "ref_block_prefix":"2",
         "expiration":"2021-12-20T15:30",
         "region": "1",
-        "read_scope":["acc1"],
-        "write_scope":["acc1"],
         "signatures" : ["EOSJzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwT77X1U"],
         "actions":[{"scope":"scopename1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}]
       },
@@ -1400,8 +1386,6 @@ BOOST_AUTO_TEST_CASE(general)
         "ref_block_prefix":"2",
         "expiration":"2021-12-20T15:30",
         "region": "1",
-        "read_scope":["acc1"],
-        "write_scope":["acc1"],
         "signatures" : ["EOSJzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwT77X1U"],
         "actions":[{"scope":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}]
       },{
@@ -1409,8 +1393,6 @@ BOOST_AUTO_TEST_CASE(general)
         "ref_block_prefix":"3",
         "expiration":"2021-12-20T15:40",
         "region": "1",
-        "read_scope":["acc2"],
-        "write_scope":["acc2"],
         "signatures" : ["EOSJzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwT77X1U"],
         "actions":[{"scope":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}]
       }],
@@ -1505,14 +1487,6 @@ BOOST_AUTO_TEST_CASE(general)
         "structs" : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type": "type1"}, {"name":"name2", "type": "type2"}] }],
         "actions" : [{"name":"action1","type":"type1"}],
         "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}]
-      }],
-      "nonce": {
-         "value": "nonce1"
-      },
-      "nonce_arr": [{
-         "value": "nonce1"
-      },{
-         "value": "nonce2"
       }]
     }
    )=====";

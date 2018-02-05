@@ -268,8 +268,8 @@ BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
 BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
    produce_blocks(2);
 
-   create_account( N(proxy), asset::from_string("10000.0000 EOS") );
-   create_accounts( {N(alice), N(bob)}, asset::from_string("1000.0000 EOS") );
+   create_account( N(proxy), asset::from_string("0.0000 EOS") );
+   create_accounts( {N(alice), N(bob)}, asset::from_string("0.0000 EOS") );
    transfer( N(inita), N(alice), "10.0000 EOS", "memo" );
    produce_block();
 
@@ -324,8 +324,8 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
 BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(proxy), N(bob)}, asset::from_string("10000.0000 EOS") );
-   create_account( N(alice), asset::from_string("1000.0000 EOS") );
+   create_accounts( {N(proxy), N(bob)}, asset::from_string("0.0000 EOS") );
+   create_account( N(alice), asset::from_string("0.0000 EOS") );
    transfer( N(inita), N(alice), "10.0000 EOS", "memo" );
    produce_block();
 
