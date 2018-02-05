@@ -14,6 +14,8 @@ namespace chainbase { class database; }
 
 namespace eosio { namespace chain {
 
+using contracts::key_value_object;
+
 class chain_controller;
 
 class apply_context {
@@ -185,7 +187,196 @@ class apply_context {
 
       void checktime() const;
 
+      void update_db_usage( const account_name& payer, int64_t delta ) {
+         require_write_lock( payer );
+         if( (delta > 0) && payer != account_name(receiver) ) {
+            require_authorization( payer );
+         }
+      }
+
+
+      int db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
+         require_write_lock( scope );
+         const auto& tab = find_or_create_table( scope, receiver, table );
+         auto tableid = tab.id;
+
+         const auto& obj = mutable_db.create<key_value_object>( [&]( auto& o ) {
+            o.t_id        = tableid;
+            o.primary_key = id;
+            o.value.resize( buffer_size );
+            o.payer       = payer;
+            memcpy( o.value.data(), buffer, buffer_size );
+         });
+
+         mutable_db.modify( tab, [&]( auto& t ) {
+           ++t.count;
+         });
+
+         update_db_usage( payer, buffer_size + 200 );
+
+         keyval_cache.cache_table( tab );
+         return keyval_cache.add( obj );
+      }
+
+      void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size ) {
+         const key_value_object& obj = keyval_cache.get( iterator );
+
+         require_write_lock( keyval_cache.get_table( obj.t_id ).scope );
+
+         int64_t old_size = obj.value.size();
+
+         if( payer == account_name() ) payer = obj.payer;
+
+         if( account_name(obj.payer) == payer ) {
+            update_db_usage( obj.payer, buffer_size + 200 - old_size );
+         } else  {
+            update_db_usage( obj.payer,  -(old_size+200) );
+            update_db_usage( payer,  (buffer_size+200) );
+         }
+
+         mutable_db.modify( obj, [&]( auto& o ) {
+           o.value.resize( buffer_size );
+           memcpy( o.value.data(), buffer, buffer_size );
+           o.payer = payer;
+         });
+      }
+
+      void db_remove_i64( int iterator ) {
+         const key_value_object& obj = keyval_cache.get( iterator );
+         update_db_usage( obj.payer,  -(obj.value.size()+200) );
+
+         const auto& table_obj = keyval_cache.get_table( obj.t_id );
+         require_write_lock( table_obj.scope );
+
+         mutable_db.modify( table_obj, [&]( auto& t ) {
+            --t.count;
+         });
+         mutable_db.remove( obj );
+
+         keyval_cache.remove( iterator, obj );
+      }
+
+      int db_get_i64( int iterator, uint64_t& id, char* buffer, size_t buffer_size ) {
+         const key_value_object& obj = keyval_cache.get( iterator );
+         if( buffer_size >= obj.value.size() ) {
+            memcpy( buffer, obj.value.data(), obj.value.size() );
+         }
+         id = obj.primary_key;
+         return obj.value.size();
+      }
+
+      int db_next_i64( int iterator ) {
+         const auto& obj = keyval_cache.get( iterator );
+         const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
+
+         auto itr = idx.iterator_to( obj );
+         ++itr;
+
+         if( itr == idx.end() ) return -1;
+         if( itr->t_id != obj.t_id ) return -1;
+
+         return keyval_cache.add( *itr );
+      }
+
+      int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+         require_read_lock( code, scope );
+
+         const auto* tab = find_table( scope, code, table );
+         if( !tab ) return -1;
+
+
+         const key_value_object* obj = db.find<key_value_object, contracts::by_scope_primary>( boost::make_tuple( tab->id, id ) );
+         if( !obj ) return -1;
+
+         keyval_cache.cache_table( *tab );
+         return keyval_cache.add( *obj );
+      }
+
+      int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+         require_read_lock( code, scope );
+
+         const auto* tab = find_table( scope, code, table );
+         if( !tab ) return -1;
+
+
+         const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
+         auto itr = idx.lower_bound( boost::make_tuple( tab->id, id ) );
+         if( itr == idx.end() ) return -1;
+         if( itr->t_id != tab->id ) return -1;
+
+         keyval_cache.cache_table( *tab );
+         return keyval_cache.add( *itr );
+      }
+
+      int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+         require_read_lock( code, scope );
+
+         const auto* tab = find_table( scope, code, table );
+         if( !tab ) return -1;
+
+
+         const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
+         auto itr = idx.upper_bound( boost::make_tuple( tab->id, id ) );
+         if( itr == idx.end() ) return -1;
+         if( itr->t_id != tab->id ) return -1;
+
+         keyval_cache.cache_table( *tab );
+         return keyval_cache.add( *itr );
+      }
+
    private:
+      template<typename T>
+      class iterator_cache {
+         public:
+            iterator_cache(){
+               _iterator_to_object.reserve(32);
+            }
+
+            void cache_table( const table_id_object& tobj ) {
+               _table_cache[tobj.id] = &tobj;
+            }
+
+            const table_id_object& get_table( table_id_object::id_type i ) {
+               auto itr = _table_cache.find(i);
+               FC_ASSERT( itr != _table_cache.end(), "an invariant was broken, table should be in cache" );
+               return *_table_cache[i];
+            }
+
+            const T& get( int iterator ) {
+               FC_ASSERT( iterator >= 0, "invalid iterator" );
+               FC_ASSERT( iterator < _iterator_to_object.size(), "iterator out of range" );
+               auto result = _iterator_to_object[iterator];
+               FC_ASSERT( result, "reference of deleted object" );
+               return *result;
+            }
+
+            void remove( int iterator, const T& obj ) {
+               _iterator_to_object[iterator] = nullptr;
+               _object_to_iterator.erase( &obj );
+            }
+
+            int add( const T& obj ) {
+               auto itr = _object_to_iterator.find( &obj );
+               if( itr != _object_to_iterator.end() ) 
+                    return itr->second;
+
+               _iterator_to_object.push_back( &obj );
+               _object_to_iterator[&obj] = _iterator_to_object.size() - 1;
+
+               return _iterator_to_object.size() - 1;
+            }
+
+         private:
+            map<table_id_object::id_type, const table_id_object*> _table_cache;
+            vector<const T*>                                _iterator_to_object;
+            map<const T*,int>                               _object_to_iterator;
+      };
+
+      iterator_cache<key_value_object> keyval_cache;
+
+
+
+
       void append_results(apply_results &&other) {
          fc::move_append(results.applied_actions, move(other.applied_actions));
          fc::move_append(results.generated_transactions, move(other.generated_transactions));

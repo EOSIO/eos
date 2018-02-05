@@ -1040,8 +1040,14 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<permission_usage_index>();
    _db.add_index<permission_link_index>();
    _db.add_index<action_permission_index>();
+
+
+
    _db.add_index<contracts::table_id_multi_index>();
    _db.add_index<contracts::key_value_index>();
+   _db.add_index<contracts::index64_index>();
+
+
    _db.add_index<contracts::keystr_value_index>();
    _db.add_index<contracts::key128x128_value_index>();
    _db.add_index<contracts::key64x64_value_index>();

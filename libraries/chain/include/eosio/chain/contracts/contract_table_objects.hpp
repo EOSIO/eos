@@ -21,6 +21,7 @@ namespace eosio { namespace chain { namespace contracts {
       scope_name     scope;
       account_name   code;
       table_name     table;
+      uint32_t       count = 0; /// the number of elements in the table
    };
 
    struct by_scope_code_table;
@@ -57,6 +58,7 @@ namespace eosio { namespace chain { namespace contracts {
       table_id              t_id;
       uint64_t              primary_key;
       shared_string         value;
+      uint64_t              payer = 0;
    };
 
    using key_value_index = chainbase::shared_multi_index_container<
@@ -72,6 +74,44 @@ namespace eosio { namespace chain { namespace contracts {
          >
       >
    >;
+
+   struct index64_object : public chainbase::object<index64_object_type, index64_object> {
+      OBJECT_CTOR(index64_object)
+
+      typedef uint64_t key_type;
+      static const int number_of_keys = 1;
+
+      id_type               id;
+      table_id              t_id;
+      uint64_t              primary_key;
+      uint64_t              secondary_key;
+   };
+
+   struct by_primary;
+   struct by_secondary;
+   using index64_index = chainbase::shared_multi_index_container<
+      index64_object,
+      indexed_by<
+         ordered_unique<tag<by_id>, member<index64_object, index64_object::id_type, &index64_object::id>>,
+         ordered_unique<tag<by_primary>,
+            composite_key< index64_object,
+               member<index64_object, table_id, &index64_object::t_id>,
+               member<index64_object, uint64_t, &index64_object::primary_key>
+            >,
+            composite_key_compare< std::less<table_id>, std::less<uint64_t> >
+         >,
+         ordered_unique<tag<by_secondary>,
+            composite_key< index64_object,
+               member<index64_object, uint64_t, &index64_object::secondary_key>,
+               member<index64_object, uint64_t, &index64_object::primary_key>
+            >
+         >
+      >
+   >;
+
+
+
+
 
    struct shared_string_less {
       bool operator()( const char* a, const char* b )const {
@@ -249,8 +289,12 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key128x128_value_object, eosio
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key64x64_value_object, eosio::chain::contracts::key64x64_value_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key64x64x64_value_object, eosio::chain::contracts::key64x64x64_value_index)
 
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index64_object, eosio::chain::contracts::index64_index)
+
 FC_REFLECT(eosio::chain::contracts::table_id_object, (id)(scope)(code)(table) )
 FC_REFLECT(eosio::chain::contracts::key_value_object, (id)(t_id)(primary_key)(value) )
+FC_REFLECT(eosio::chain::contracts::index64_object, (id)(t_id)(primary_key)(secondary_key) )
+
 FC_REFLECT(eosio::chain::contracts::keystr_value_object, (id)(t_id)(primary_key)(value) )
 FC_REFLECT(eosio::chain::contracts::key128x128_value_object, (id)(t_id)(primary_key)(secondary_key)(value) )
 FC_REFLECT(eosio::chain::contracts::key64x64_value_object, (id)(t_id)(primary_key)(secondary_key)(value) )
