@@ -5,6 +5,7 @@
 #include <boost/core/ignore_unused.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/crypto/sha1.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/utf8.hpp>
 
@@ -534,13 +535,56 @@ class crypto_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
+      /**
+       * This method can be optimized out during replay as it has
+       * no possible side effects other than "passing". 
+       */
+      void assert_recover_key( fc::sha256& digest, 
+                        array_ptr<char> sig, size_t siglen,
+                        array_ptr<char> pub, size_t publen ) {
+         fc::crypto::signature s;
+         fc::crypto::public_key p;
+         datastream<const char*> ds( sig, siglen );
+         datastream<const char*> pubds( pub, publen );
+
+         fc::raw::unpack(ds, s);
+         fc::raw::unpack(ds, p);
+
+         auto check = fc::crypto::public_key( s, digest, false );
+         FC_ASSERT( check == p, "Error expected key different than recovered key" );
+      }
+
+      int recover_key( fc::sha256& digest, 
+                        array_ptr<char> sig, size_t siglen,
+                        array_ptr<char> pub, size_t publen ) {
+         fc::crypto::signature s;
+         datastream<const char*> ds( sig, siglen );
+         datastream<char*> pubds( pub, publen );
+
+         fc::raw::unpack(ds, s);
+         fc::raw::pack( pubds, fc::crypto::public_key( s, digest, false ) );
+         return pubds.tellp();
+      }
+
       void assert_sha256(array_ptr<char> data, size_t datalen, const fc::sha256& hash_val) {
          auto result = fc::sha256::hash( data, datalen );
          FC_ASSERT( result == hash_val, "hash miss match" );
       }
 
+      void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
+         hash_val = fc::sha1::hash( data, datalen );
+      }
+
       void sha256(array_ptr<char> data, size_t datalen, fc::sha256& hash_val) {
          hash_val = fc::sha256::hash( data, datalen );
+      }
+
+      void sha512(array_ptr<char> data, size_t datalen, fc::sha512& hash_val) {
+         hash_val = fc::sha512::hash( data, datalen );
+      }
+
+      void ripemd160(array_ptr<char> data, size_t datalen, fc::ripemd160& hash_val) {
+         hash_val = fc::ripemd160::hash( data, datalen );
       }
 };
 
@@ -858,8 +902,13 @@ REGISTER_INTRINSICS(producer_api,
 );
 
 REGISTER_INTRINSICS(crypto_api,
+   (assert_recover_key,  void(int, int, int, int, int))
+   (recover_key,    int(int, int, int, int, int))
    (assert_sha256,  void(int, int, int))
+   (sha1,           void(int, int, int))
    (sha256,         void(int, int, int))
+   (sha512,         void(int, int, int))
+   (ripemd160,      void(int, int, int))
 );
 
 REGISTER_INTRINSICS(string_api,
@@ -930,11 +979,14 @@ REGISTER_INTRINSICS(memory_api,
 using db_api_key_value_object                                 = db_api<key_value_object>;
 using db_api_keystr_value_object                              = db_api<keystr_value_object>;
 using db_api_key128x128_value_object                          = db_api<key128x128_value_object>;
+using db_api_key64x64_value_object                            = db_api<key64x64_value_object>;
 using db_api_key64x64x64_value_object                         = db_api<key64x64x64_value_object>;
 using db_index_api_key_value_index_by_scope_primary           = db_index_api<key_value_index,by_scope_primary>;
 using db_index_api_keystr_value_index_by_scope_primary        = db_index_api<keystr_value_index,by_scope_primary>;
 using db_index_api_key128x128_value_index_by_scope_primary    = db_index_api<key128x128_value_index,by_scope_primary>;
 using db_index_api_key128x128_value_index_by_scope_secondary  = db_index_api<key128x128_value_index,by_scope_secondary>;
+using db_index_api_key64x64_value_index_by_scope_primary      = db_index_api<key64x64_value_index,by_scope_primary>;
+using db_index_api_key64x64_value_index_by_scope_secondary    = db_index_api<key64x64_value_index,by_scope_secondary>;
 using db_index_api_key64x64x64_value_index_by_scope_primary   = db_index_api<key64x64x64_value_index,by_scope_primary>;
 using db_index_api_key64x64x64_value_index_by_scope_secondary = db_index_api<key64x64x64_value_index,by_scope_secondary>;
 using db_index_api_key64x64x64_value_index_by_scope_tertiary  = db_index_api<key64x64x64_value_index,by_scope_tertiary>;
@@ -942,12 +994,15 @@ using db_index_api_key64x64x64_value_index_by_scope_tertiary  = db_index_api<key
 REGISTER_INTRINSICS(db_api_key_value_object,         DB_METHOD_SEQ(i64));
 REGISTER_INTRINSICS(db_api_keystr_value_object,      DB_METHOD_SEQ(str));
 REGISTER_INTRINSICS(db_api_key128x128_value_object,  DB_METHOD_SEQ(i128i128));
+REGISTER_INTRINSICS(db_api_key64x64_value_object,    DB_METHOD_SEQ(i64i64));
 REGISTER_INTRINSICS(db_api_key64x64x64_value_object, DB_METHOD_SEQ(i64i64i64));
 
 REGISTER_INTRINSICS(db_index_api_key_value_index_by_scope_primary,           DB_INDEX_METHOD_SEQ(i64));
 REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,        DB_INDEX_METHOD_SEQ(str));
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_primary,    DB_INDEX_METHOD_SEQ(primary_i128i128));
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_secondary,  DB_INDEX_METHOD_SEQ(secondary_i128i128));
+REGISTER_INTRINSICS(db_index_api_key64x64_value_index_by_scope_primary,      DB_INDEX_METHOD_SEQ(primary_i64i64));
+REGISTER_INTRINSICS(db_index_api_key64x64_value_index_by_scope_secondary,    DB_INDEX_METHOD_SEQ(secondary_i64i64));
 REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_primary,   DB_INDEX_METHOD_SEQ(primary_i64i64i64));
 REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_secondary, DB_INDEX_METHOD_SEQ(secondary_i64i64i64));
 REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_tertiary,  DB_INDEX_METHOD_SEQ(tertiary_i64i64i64));

@@ -1,4 +1,4 @@
-add_executable( codegen main.cpp )
+add_executable( eosio-codegen main.cpp )
 if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
@@ -9,11 +9,11 @@ if( GPERFTOOLS_FOUND )
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
-target_link_libraries( codegen
+target_link_libraries( eosio-codegen
                        PRIVATE fc eosio_chain ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 install( TARGETS
-   codegen
+   eosio-codegen
 
    RUNTIME DESTINATION bin
    LIBRARY DESTINATION lib

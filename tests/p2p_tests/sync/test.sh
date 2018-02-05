@@ -53,7 +53,7 @@ else
 fi
 
 total_nodes="${total_nodes:-`echo $pnodes`}"
-launcherPath="programs/launcher/launcher"
+launcherPath="programs/eosio-launcher/eosio-launcher"
 clientPath="programs/eosioc/eosioc"
 
 rm -rf tn_data_*

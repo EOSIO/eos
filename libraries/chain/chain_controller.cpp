@@ -604,10 +604,11 @@ void chain_controller::__apply_block(const signed_block& next_block)
    /// cache the input tranasction ids so that they can be looked up when executing the
    /// summary
    vector<transaction_metadata> input_metas;
-   map<transaction_id_type,transaction_metadata*> trx_index;
+   input_metas.reserve(next_block.input_transactions.size());
+   map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
       input_metas.emplace_back(t, chain_id_type(), next_block.timestamp);
-      trx_index[input_metas.back().id] =  &input_metas.back();
+      trx_index[input_metas.back().id] =  input_metas.size() - 1;
    }
 
    block_trace next_block_trace(next_block);
@@ -660,7 +661,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                 auto make_metadata = [&]() -> transaction_metadata* {
                   auto itr = trx_index.find(receipt.id);
                   if( itr != trx_index.end() ) {
-                     return itr->second;
+                     return &input_metas.at(itr->second);
                   } else {
                      const auto& gtrx = _db.get<generated_transaction_object,by_trx_id>(receipt.id);
                      auto trx = fc::raw::unpack<deferred_transaction>(gtrx.packed_trx.data(), gtrx.packed_trx.size());
@@ -1043,6 +1044,7 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<contracts::key_value_index>();
    _db.add_index<contracts::keystr_value_index>();
    _db.add_index<contracts::key128x128_value_index>();
+   _db.add_index<contracts::key64x64_value_index>();
    _db.add_index<contracts::key64x64x64_value_index>();
 
    _db.add_index<global_property_multi_index>();
