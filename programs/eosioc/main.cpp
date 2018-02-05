@@ -34,7 +34,6 @@ Subcommands:
   set                         Set or update blockchain state
   transfer                    Transfer EOS from account to account
   wallet                      Interact with local wallet
-  benchmark                   Configure and execute benchmarks
   push                        Push arbitrary transactions to the blockchain
 
 ```
@@ -228,7 +227,7 @@ uint64_t generate_nonce_value() {
 
 chain::action generate_nonce() {
    auto v = generate_nonce_value();
-   return chain::action( {}, config::eosio_system_acount_name, "nonce", fc::raw::pack(v));
+   return chain::action( {}, config::eosio_system_account_name, "nonce", fc::raw::pack(v));
 }
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
@@ -361,16 +360,20 @@ struct set_account_permission_subcommand {
          } else {
             authority auth;
             if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
-               auth = authority(public_key_type(authorityJsonOrFile));
+               try {
+                  auth = authority(public_key_type(authorityJsonOrFile));
+               } EOS_CAPTURE_AND_RETHROW(public_key_type_exception, "")
             } else {
                fc::variant parsedAuthority;
-               if (boost::istarts_with(authorityJsonOrFile, "{")) {
-                  parsedAuthority = fc::json::from_string(authorityJsonOrFile);
-               } else {
-                  parsedAuthority = fc::json::from_file(authorityJsonOrFile);
-               }
-
-               auth = parsedAuthority.as<authority>();
+               try {
+                  if (boost::istarts_with(authorityJsonOrFile, "{")) {
+                     parsedAuthority = fc::json::from_string(authorityJsonOrFile);
+                  } else {
+                     parsedAuthority = fc::json::from_file(authorityJsonOrFile);
+                  }
+                  auth = parsedAuthority.as<authority>();
+               } EOS_CAPTURE_AND_RETHROW(authority_type_exception, "Fail to parse Authority JSON")
+                 
             }
 
             name parent;
@@ -478,18 +481,23 @@ int main( int argc, char** argv ) {
    // create account
    string creator;
    string account_name;
-   string ownerKey;
-   string activeKey;
+   string owner_key_str;
+   string active_key_str;
    bool skip_sign = false;
    auto createAccount = create->add_subcommand("account", localized("Create a new account on the blockchain"), false);
    createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
    createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
-   createAccount->add_option("OwnerKey", ownerKey, localized("The owner public key for the account"))->required();
-   createAccount->add_option("ActiveKey", activeKey, localized("The active public key for the account"))->required();
+   createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the account"))->required();
+   createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the account"))->required();
    createAccount->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(createAccount);
    createAccount->set_callback([&] {
-                   create_account(creator, account_name, public_key_type(ownerKey), public_key_type(activeKey), skip_sign);
+      public_key_type owner_key, active_key;
+      try {
+         owner_key = public_key_type(owner_key_str);
+         active_key = public_key_type(active_key_str);
+      } EOS_CAPTURE_AND_RETHROW(public_key_type_exception, "Invalid Public Key")
+      create_account(creator, account_name, owner_key, active_key, skip_sign);
    });
 
    // Get subcommand
@@ -720,7 +728,9 @@ int main( int argc, char** argv ) {
       if (abi->count()) {
          contracts::setabi handler;
          handler.account = account;
-         handler.abi = fc::json::from_file(abiPath).as<contracts::abi_def>();
+         try {
+            handler.abi = fc::json::from_file(abiPath).as<contracts::abi_def>();
+         } EOS_CAPTURE_AND_RETHROW(abi_type_exception,  "Fail to parse ABI JSON")
          actions.emplace_back( vector<chain::permission_level>{{account,"active"}}, handler);
       }
 
@@ -759,7 +769,7 @@ int main( int argc, char** argv ) {
             ("quantity", asset(amount))
             ("memo", memo);
       auto args = fc::mutable_variant_object
-            ("code", name(config::eosio_system_acount_name))
+            ("code", name(config::eosio_system_account_name))
             ("action", "transfer")
             ("args", transfer);
 
@@ -767,7 +777,7 @@ int main( int argc, char** argv ) {
 
       std::vector<chain::action> actions;
       actions.emplace_back(vector<chain::permission_level>{{sender,"active"}},
-                               config::eosio_system_acount_name, "transfer", result.get_object()["binargs"].as<bytes>());
+                               config::eosio_system_account_name, "transfer", result.get_object()["binargs"].as<bytes>());
 
       if (tx_force_unique) {
          actions.emplace_back( generate_nonce() );
@@ -923,10 +933,15 @@ int main( int argc, char** argv ) {
    add_standard_transaction_options(actionsSubcommand);
    actionsSubcommand->set_callback([&] {
       ilog("Converting argument to binary...");
+      fc::variant action_args_var;
+      try {
+         action_args_var = fc::json::from_string(data);
+      } EOS_CAPTURE_AND_RETHROW(action_type_exception, "Fail to parse action JSON")
+
       auto arg= fc::mutable_variant_object
                 ("code", contract)
                 ("action", action)
-                ("args", fc::json::from_string(data));
+                ("args", action_args_var);
       auto result = call(json_to_bin_func, arg);
 
       auto accountPermissions = get_account_permissions(permissions);
@@ -946,7 +961,11 @@ int main( int argc, char** argv ) {
    auto trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
    trxSubcommand->add_option("transaction", trxJson, localized("The JSON of the transaction to push"))->required();
    trxSubcommand->set_callback([&] {
-      auto trx_result = call(push_txn_func, fc::json::from_string(trxJson));
+      fc::variant trx_var;
+      try {
+         trx_var = fc::json::from_string(trxJson);
+      } EOS_CAPTURE_AND_RETHROW(transaction_type_exception, "Fail to parse transaction JSON")
+      auto trx_result = call(push_txn_func, trx_var);
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
    });
 
@@ -955,7 +974,11 @@ int main( int argc, char** argv ) {
    auto trxsSubcommand = push->add_subcommand("transactions", localized("Push an array of arbitrary JSON transactions"));
    trxsSubcommand->add_option("transactions", trxsJson, localized("The JSON array of the transactions to push"))->required();
    trxsSubcommand->set_callback([&] {
-      auto trxs_result = call(push_txn_func, fc::json::from_string(trxsJson));
+      fc::variant trx_var;
+      try {
+         trx_var = fc::json::from_string(trxJson);
+      } EOS_CAPTURE_AND_RETHROW(transaction_type_exception, "Fail to parse transaction JSON")
+      auto trxs_result = call(push_txn_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
 

@@ -17,10 +17,11 @@ namespace eosio { namespace testing {
       public:
          typedef string ActionResult;
 
-         tester();
+         tester(bool process_genesis = true);
 
          void              close();
          void              open();
+         void              create_init_accounts();
 
          signed_block      produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) );
          void              produce_blocks( uint32_t n = 1 );
@@ -41,8 +42,9 @@ namespace eosio { namespace testing {
          void              create_account( account_name name, asset initial_balance = asset(), account_name creator = N(inita), bool multisig = false );
          void              create_account( account_name name, string balance = "0.0000 EOS", account_name creator = N(inita), bool multisig = false );
 
-         transaction_trace transfer( account_name from, account_name to, asset amount, string memo = "", account_name currency = config::eosio_system_acount_name );
-         transaction_trace transfer( account_name from, account_name to, string amount, string memo = "", account_name currency = config::eosio_system_acount_name );
+         transaction_trace push_nonce( account_name from, const string& role, const string& v = "blah" );
+         transaction_trace transfer( account_name from, account_name to, asset amount, string memo = "", account_name currency = config::eosio_system_account_name );
+         transaction_trace transfer( account_name from, account_name to, string amount, string memo = "", account_name currency = config::eosio_system_account_name );
 
          template<typename ObjectType, typename IndexBy, typename... Args>
          const auto& get( Args&&... args ) {

@@ -49,7 +49,7 @@ namespace identity_test {
             }
          };
 
-         typedef singleton<code, N(result), uint64_t> result_table;
+         typedef singleton<code, N(result), code, uint64_t> result_table;
 
          static void on( const get_owner_for_identity& c ) {
             account_name owner = identity_contract::get_owner_for_identity(c.identity);

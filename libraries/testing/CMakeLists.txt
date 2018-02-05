@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eosio/tester/*.hpp")
+file(GLOB HEADERS "include/eosio/testing/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
 add_library( eosio_testing

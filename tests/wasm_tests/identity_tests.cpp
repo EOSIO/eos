@@ -49,7 +49,7 @@ public:
 
    uint64_t get_result_uint64() {
       const auto& db = control->get_database();
-      const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(0, N(identitytest), N(result)));
+      const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identitytest), 0, N(result)));
       FC_ASSERT(t_id != 0, "Table id not found");
 
       const auto& idx = db.get_index<key_value_index, by_scope_primary>();
@@ -99,7 +99,7 @@ public:
 
    fc::variant get_identity(uint64_t idnt) {
       const auto& db = control->get_database();
-      const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(N(identity), N(identity), N(ident)));
+      const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), N(identity), N(ident)));
       FC_ASSERT(t_id != 0, "object not found");
 
       const auto& idx = db.get_index<key_value_index, by_scope_primary>();
@@ -128,7 +128,7 @@ public:
 
    fc::variant get_certrow(uint64_t identity, const string& property, uint64_t trusted, const string& certifier) {
       const auto& db = control->get_database();
-      const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(identity, N(identity), N(certs)));
+      const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), identity, N(certs)));
       FC_ASSERT(t_id != 0, "certrow not found");
 
       uint64_t prop = string_to_name(property.c_str());
@@ -148,7 +148,7 @@ public:
    fc::variant get_accountrow(const string& account) {
       const auto& db = control->get_database();
       uint64_t acnt = string_to_name(account.c_str());
-      const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(acnt, N(identity), N(account)));
+      const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), acnt, N(account)));
       if (!t_id) {
          return fc::variant(nullptr);
       }
@@ -180,7 +180,7 @@ public:
 
    bool get_trust(const string& trustor, const string& trusting) {
       const auto& db = control->get_database();
-      const auto* t_id = db.find<table_id_object, by_scope_code_table>(boost::make_tuple(string_to_name(trustor.c_str()), N(identity), N(trust)));
+      const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), string_to_name(trustor.c_str()), N(trust)));
       if (!t_id) {
          return false;
       }

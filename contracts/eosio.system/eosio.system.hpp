@@ -6,6 +6,7 @@
 #include <eosiolib/token.hpp>
 #include <eosiolib/db.hpp>
 #include <eosiolib/reflect.hpp>
+#include <eosiolib/print.hpp>
 
 #include <eosiolib/generic_currency.hpp>
 #include <eosiolib/datastream.hpp>
@@ -25,7 +26,7 @@ namespace eosiosystem {
             typename currency::token_type total_cpu_weight; 
          };
 
-         typedef eosio::table64<SystemAccount, N(totalband), total_bandwidth>      total_bandwidth;
+         typedef eosio::table64<SystemAccount, N(totalband), SystemAccount, total_bandwidth>      total_bandwidth;
 
          struct delegated_bandwidth {
             account_name from;
@@ -75,7 +76,13 @@ namespace eosiosystem {
             EOSLIB_SERIALIZE( delnetbw, (delegator)(receiver)(stake_quantity) )
          };
 
-         static void on( const delnetbw& del ) {
+         ACTION( SystemAccount, nonce ) {
+            eosio::string                   value;
+
+            EOSLIB_SERIALIZE( nonce, (value) );
+         };
+
+      static void on( const delnetbw& del ) {
             require_auth( del.from );
           //  require_account( receiver );
 
@@ -90,11 +97,14 @@ namespace eosiosystem {
             require_auth( reg.proxy_to_register );
          }
 
+         static void on( const nonce& ) {
+         }
 
          static void apply( account_name code, action_name act ) {
-            if( !eosio::dispatch<contract, regproducer, regproxy>( code, act) ) {
-               if ( !eosio::dispatch<currency, typename currency::transfer_memo, typename currency::issue>( code, act ) ) {
-                  assert( false, "received unexpected action" );
+            if( !eosio::dispatch<contract, regproducer, regproxy, nonce>( code, act) ) {
+               if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
+                  eosio::print("Unexpected action: ", act, "\n");
+                  assert( false, "received unexpected action");
                }
             }
          } /// apply 

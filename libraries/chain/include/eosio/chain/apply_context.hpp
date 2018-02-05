@@ -32,14 +32,14 @@ class apply_context {
       void cancel_deferred( uint32_t sender_id );
 
       using table_id_object = contracts::table_id_object;
-      const table_id_object* find_table( name scope, name code, name table );
-      const table_id_object& find_or_create_table( name scope, name code, name table );
+      const table_id_object* find_table( name code, name scope, name table );
+      const table_id_object& find_or_create_table( name code, name scope, name table );
 
       template <typename ObjectType>
-      int32_t store_record( const table_id_object& t_id, const typename ObjectType::key_type* keys, const char* value, size_t valuelen );
+      int32_t store_record( const table_id_object& t_id, const account_name& bta, const typename ObjectType::key_type* keys, const char* value, size_t valuelen );
 
       template <typename ObjectType>
-      int32_t update_record( const table_id_object& t_id, const typename ObjectType::key_type* keys, const char* value, size_t valuelen );
+      int32_t update_record( const table_id_object& t_id, const account_name& bta, const typename ObjectType::key_type* keys, const char* value, size_t valuelen );
 
       template <typename ObjectType>
       int32_t remove_record( const table_id_object& t_id, const typename ObjectType::key_type* keys );
@@ -368,7 +368,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
 
    template <typename ObjectType>
-   int32_t apply_context::store_record( const table_id_object& t_id, const typename ObjectType::key_type* keys, const char* value, size_t valuelen ) {
+   int32_t apply_context::store_record( const table_id_object& t_id, const account_name& bta, const typename ObjectType::key_type* keys, const char* value, size_t valuelen ) {
       require_write_lock( t_id.scope );
 
       auto tuple = impl::exact_tuple<ObjectType>::get(t_id, keys);
@@ -390,7 +390,7 @@ using apply_handler = std::function<void(apply_context&)>;
    }
 
    template <typename ObjectType>
-   int32_t apply_context::update_record( const table_id_object& t_id, const typename ObjectType::key_type* keys, const char* value, size_t valuelen ) {
+   int32_t apply_context::update_record( const table_id_object& t_id, const account_name& bta, const typename ObjectType::key_type* keys, const char* value, size_t valuelen ) {
       require_write_lock( t_id.scope );
       
       auto tuple = impl::exact_tuple<ObjectType>::get(t_id, keys);

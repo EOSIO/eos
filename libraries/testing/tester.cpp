@@ -6,6 +6,8 @@
 #include <eosio/chain/contracts/contract_table_objects.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 
+#include <eosio.system/eosio.system.abi.hpp>
+
 #include <fc/utility.hpp>
 #include <fc/io/json.hpp>
 
@@ -16,15 +18,59 @@
 
 namespace eosio { namespace testing {
 
-   tester::tester() {
+   tester::tester(bool process_genesis) {
       cfg.block_log_dir      = tempdir.path() / "blocklog";
       cfg.shared_memory_dir  = tempdir.path() / "shared";
       cfg.shared_memory_size = 1024*1024*8;
 
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
+      cfg.genesis.eosio_system_key = get_public_key( config::eosio_system_account_name, "active");
 
       open();
+      if (process_genesis)
+         create_init_accounts();
+   }
+
+   void tester::create_init_accounts() {
+
+      contracts::abi_def eosio_system_abi_def = fc::json::from_string(eosio_system_abi).as<contracts::abi_def>();
+      chain::contracts::abi_serializer eosio_system_serializer(eosio_system_abi_def);
+
+      signed_transaction trx;
+      set_tapos(trx);
+
+      action act;
+      act.account = config::eosio_system_account_name;
+      act.name = N(issue);
+      act.authorization = vector<permission_level>{{config::eosio_system_account_name,config::active_name}};
+      act.data = eosio_system_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"eosio.system\",\"quantity\":\"1000000000.0000 EOS\"}"));
+      trx.actions.push_back(act);
+      set_tapos(trx);
+      trx.sign( get_private_key( config::eosio_system_account_name, "active" ), chain_id_type()  );
+      push_transaction(trx);
+
+      create_account(N(inita), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initb), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initc), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initd), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(inite), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initf), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initg), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(inith), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initi), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initj), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initk), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initl), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initm), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initn), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(inito), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initp), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initq), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initr), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(inits), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initt), "1000000.0000 EOS", config::eosio_system_account_name);
+      create_account(N(initu), "1000000.0000 EOS", config::eosio_system_account_name);
    }
 
    public_key_type  tester::get_public_key( name keyname, string role ) const {
@@ -60,7 +106,7 @@ namespace eosio { namespace testing {
       auto next_time = head_time + skip_time;
       uint32_t slot  = control->get_slot_at_time( next_time );
       auto sch_pro   = control->get_scheduled_producer(slot);
-      auto priv_key  = get_private_key( sch_pro, "producer" );
+      auto priv_key  = get_private_key( sch_pro, "active" );
 
       return control->generate_block( next_time, sch_pro, priv_key, skip_missed_block_penalty );
    }
@@ -100,6 +146,7 @@ namespace eosio { namespace testing {
       set_tapos(trx);
       trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
       push_transaction( trx );
+      transfer(creator, a, initial_balance);
    }
 
    transaction_trace tester::push_transaction( packed_transaction& trx ) {
@@ -134,25 +181,51 @@ namespace eosio { namespace testing {
    void tester::create_account( account_name a, string initial_balance, account_name creator, bool multisig  ) {
       create_account( a, asset::from_string(initial_balance), creator, multisig );
    }
-   
 
+   auto resolver = []( tester& t, const account_name& name ) -> optional<contracts::abi_serializer> {
+      try {
+         const auto& accnt = t.control->get_database().get<account_object, by_name>(name);
+         contracts::abi_def abi;
+         if (contracts::abi_serializer::to_abi(accnt.abi, abi)) {
+            return contracts::abi_serializer(abi);
+         }
+         return optional<contracts::abi_serializer>();
+      } FC_RETHROW_EXCEPTIONS(error, "Failed to find or parse ABI for ${name}", ("name", name))
+   };
+
+   transaction_trace tester::push_nonce(account_name from, const string& role, const string& v) {
+      variant pretty_trx = fc::mutable_variant_object()
+         ("actions", fc::variants({
+            fc::mutable_variant_object()
+               ("account", name(config::eosio_system_account_name))
+               ("name", "nonce")
+               ("authorization", fc::variants({
+                  fc::mutable_variant_object()
+                     ("actor", from)
+                     ("permission", name(config::owner_name))
+               }))
+               ("data", fc::mutable_variant_object()
+                  ("value", v)
+               )
+            })
+         );
+
+      signed_transaction trx;
+      auto resolve = [this](const account_name& name) -> optional<contracts::abi_serializer> {
+         return resolver(*this, name);
+      };
+      contracts::abi_serializer::from_variant(pretty_trx, trx, resolve);
+      set_tapos( trx );
+
+      trx.sign( get_private_key( from, role ), chain_id_type() );
+      return push_transaction( trx );
+   }
 
    transaction_trace tester::transfer( account_name from, account_name to, string amount, string memo, account_name currency ) {
       return transfer( from, to, asset::from_string(amount), memo );
    }
 
    transaction_trace tester::transfer( account_name from, account_name to, asset amount, string memo, account_name currency ) {
-      auto resolver = [this]( const account_name& name ) -> optional<contracts::abi_serializer> {
-         try {
-            const auto& accnt  = control->get_database().get<account_object,by_name>( name );
-            contracts::abi_def abi;
-            if (contracts::abi_serializer::to_abi(accnt.abi, abi)) {
-               return contracts::abi_serializer(abi);
-            }
-            return optional<contracts::abi_serializer>();
-         } FC_RETHROW_EXCEPTIONS(error, "Failed to find or parse ABI for ${name}", ("name", name))
-      };
-
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
@@ -166,14 +239,17 @@ namespace eosio { namespace testing {
                ("data", fc::mutable_variant_object()
                   ("from", from)
                   ("to", to)
-                  ("amount", amount)
+                  ("quantity", amount)
                   ("memo", memo)
                )
             })
          );
 
       signed_transaction trx;
-      contracts::abi_serializer::from_variant(pretty_trx, trx, resolver);
+      auto resolve = [this](const account_name& name) -> optional<contracts::abi_serializer> {
+         return resolver(*this, name);
+      };
+      contracts::abi_serializer::from_variant(pretty_trx, trx, resolve);
       set_tapos( trx );
 
       trx.sign( get_private_key( from, name(config::active_name).to_string() ), chain_id_type()  );
@@ -279,7 +355,7 @@ namespace eosio { namespace testing {
    }
 
    share_type tester::get_balance( const account_name& account ) const {
-      return get_currency_balance( config::system_account_name, EOS_SYMBOL, account ).amount;
+      return get_currency_balance( config::eosio_system_account_name, EOS_SYMBOL, account ).amount;
    }
    /**
     *  Reads balance as stored by generic_currency contract
@@ -288,7 +364,7 @@ namespace eosio { namespace testing {
                                        const symbol&       asset_symbol,
                                        const account_name& account ) const {
       const auto& db  = control->get_database();
-      const auto* tbl = db.find<contracts::table_id_object, contracts::by_scope_code_table>(boost::make_tuple(account, code, N(account)));
+      const auto* tbl = db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, account, N(account)));
       share_type result = 0;
 
       // the balance is implied to be 0 if either the table or row does not exist
