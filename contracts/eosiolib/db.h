@@ -229,7 +229,7 @@ int32_t upper_bound_i64( account_name code, account_name scope, table_name table
  *
  *  @return 1 if a record was removed, and 0 if no record with key was found
  */
-int32_t remove_i64( account_name scope, table_name table, account_name bta, void* data );
+int32_t remove_i64( account_name scope, table_name table, void* data );
 
 ///@} db_i64
 
@@ -378,7 +378,7 @@ int32_t update_str( account_name scope, table_name table, account_name bta, char
   *
   *  @return 1 if a record was removed, and 0 if no record with key was found
   */
- int32_t remove_str( account_name scope, table_name table, account_name bta, char* key, uint32_t keylen );
+ int32_t remove_str( account_name scope, table_name table, char* key, uint32_t keylen );
  
  ///@} dbstr
 
@@ -651,7 +651,7 @@ int32_t lower_bound_secondary_i128i128( account_name code, account_name scope, t
  *
  * @return 1 if a record was removed, and 0 if no record with key was found
  */
-int32_t remove_i128i128( account_name scope, table_name table, account_name bta, const void* data );
+int32_t remove_i128i128( account_name scope, table_name table, const void* data );
 /**
  * @param scope - the account scope that will be read, must exist in the transaction scopes list
  * @param table - the ID/name of the table within the scope/code context to query
@@ -1009,7 +1009,7 @@ int32_t lower_bound_tertiary_i64i64i64( account_name code, account_name scope, t
  *
  * @return 1 if a record was removed, and 0 if no record with key was found
  */
-int32_t remove_i64i64i64( account_name scope, table_name table, account_name bta, const void* data );
+int32_t remove_i64i64i64( account_name scope, table_name table, const void* data );
 /**
  * @param scope - the account scope that will be read, must exist in the transaction scopes list
  * @param table - the name of table where record is stored

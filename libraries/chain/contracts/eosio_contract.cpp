@@ -691,7 +691,7 @@ void apply_eosio_postrecovery(apply_context& context) {
 
 static void remove_pending_recovery(apply_context& context, const account_name& account) {
    const auto& t_id = context.find_or_create_table(config::system_account_name, account, N(recovery));
-   context.remove_record<key_value_object>(t_id, config::system_account_name, &account.value);
+   context.remove_record<key_value_object>(t_id, &account.value);
 }
 
 void apply_eosio_passrecovery(apply_context& context) {

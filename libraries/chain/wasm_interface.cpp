@@ -569,9 +569,9 @@ class db_api : public context_aware_api {
          return call(&apply_context::update_record<ObjectType>, scope, table, bta, data, data_len);
       }
 
-      int remove(const scope_name& scope, const name& table, const account_name& bta, const KeyArrayType &keys) {
+      int remove(const scope_name& scope, const name& table, const KeyArrayType &keys) {
          const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
-         return context.remove_record<ObjectType>(t_id, bta, keys);
+         return context.remove_record<ObjectType>(t_id, keys);
       }
 };
 
@@ -778,7 +778,7 @@ REGISTER_INTRINSICS(memory_api,
 #define DB_METHOD_SEQ(SUFFIX) \
    (store,        int32_t(int64_t, int64_t, int64_t, int, int),   "store_"#SUFFIX ) \
    (update,       int32_t(int64_t, int64_t, int64_t, int, int),   "update_"#SUFFIX ) \
-   (remove,       int32_t(int64_t, int64_t, int64_t, int),        "remove_"#SUFFIX )
+   (remove,       int32_t(int64_t, int64_t, int),                 "remove_"#SUFFIX )
 
 #define DB_INDEX_METHOD_SEQ(SUFFIX)\
    (load,         int32_t(int64_t, int64_t, int64_t, int, int),   "load_"#SUFFIX )\

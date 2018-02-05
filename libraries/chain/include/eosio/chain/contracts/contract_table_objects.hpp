@@ -51,11 +51,11 @@ namespace eosio { namespace chain { namespace contracts {
    template <typename ObjectType>
    using bta_index = ordered_unique<tag<by_bta>,
       composite_key<ObjectType,
-                    member<ObjectType, typename ObjectType::id_type, &ObjectType::id>,
                     member<ObjectType, table_id, &ObjectType::t_id>,
-                    member<ObjectType, account_name, &ObjectType::bta>
+                    member<ObjectType, account_name, &ObjectType::bta>,
+                    member<ObjectType, typename ObjectType::id_type, &ObjectType::id>
                     >,
-      composite_key_compare<std::less<typename ObjectType::id_type>, std::less<table_id>, std::less<account_name> >
+      composite_key_compare<std::less<table_id>, std::less<account_name>, std::less<typename ObjectType::id_type> >
    >;
    
    struct key_value_object : public chainbase::object<key_value_object_type, key_value_object> {

@@ -83,8 +83,8 @@ struct table_impl<sizeof(uint128_t),sizeof(uint128_t)> {
        return lower_bound_secondary_i128i128( code, scope, table_n, data, len );
     }
 
-    static int32_t remove( uint64_t scope, uint64_t table_n, account_name bta, const void* data ) {
-       return remove_i128i128( scope, table_n, bta, data );
+    static int32_t remove( uint64_t scope, uint64_t table_n, const void* data ) {
+       return remove_i128i128( scope, table_n, data );
     }
 
     static int32_t store( account_name scope, table_name table_n, account_name bta, const void* data, uint32_t len ) {
@@ -413,8 +413,8 @@ struct table {
     *
     *  @return true if successful remove.
     */
-    static bool remove( const Record& r, uint64_t s = scope, uint64_t b = bta ) {
-       return impl::remove( s, table_n, b, &r ) != 0;
+    static bool remove( const Record& r, uint64_t s = scope ) {
+       return impl::remove( s, table_n, &r ) != 0;
     }
  };
 /// @}
@@ -450,8 +450,8 @@ struct table_impl<sizeof(uint64_t),0> {
        return upper_bound_i64( code, scope, table_n, data, len );
     }
 
-    static int32_t remove( uint64_t scope, uint64_t table_n, account_name bta, const void* data ) {
-       return remove_i64( scope, table_n, bta, (uint64_t*)data);
+    static int32_t remove( uint64_t scope, uint64_t table_n, const void* data ) {
+       return remove_i64( scope, table_n, (uint64_t*)data);
     }
 
     static int32_t store( account_name scope, table_name table_n, account_name bta, const void* data, uint32_t len ) {
@@ -689,8 +689,8 @@ struct table<code,scope,table_n,bta,Record,PrimaryType,void> {
      * @param s - scope; defaults to scope of the class.
      * @return true if remove succeeds.
      */
-   static bool remove( const Record& r, uint64_t s = scope, uint64_t b = bta ) {
-      return impl::remove( s, table_n, b, &r ) != 0;
+   static bool remove( const Record& r, uint64_t s = scope ) {
+      return impl::remove( s, table_n, &r ) != 0;
    }
 }; /// @} singleindextable
 
@@ -733,8 +733,8 @@ struct table_impl_obj<char*> {
        return upper_bound_str( code, scope, table_n, key, keylen, data, datalen );
     }
 
-    static int32_t remove( account_name scope, table_name table_n, account_name bta, char* key, uint32_t keylen ) {
-       return remove_str( scope, table_n, bta, key, keylen );
+    static int32_t remove( account_name scope, table_name table_n, char* key, uint32_t keylen ) {
+       return remove_str( scope, table_n, key, keylen );
     }
 };
 
@@ -886,7 +886,7 @@ struct var_table {
      * @return 1 if a record was removed, and 0 if no record with key was found
      */
     int32_t remove( primary key, uint32_t keylen ) {
-       return impl::remove( scope, table_n, bta, key, keylen );
+       return impl::remove( scope, table_n, key, keylen );
     }
 };
 
