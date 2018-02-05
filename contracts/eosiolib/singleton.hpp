@@ -27,7 +27,7 @@ namespace  eosio {
             char temp[1024+8];
             *reinterpret_cast<uint64_t *>(temp) = SingletonName;
             auto read = load_i64( scope, Code, SingletonName, temp, sizeof(temp) );
-            assert( read < 0, "singleton does not exist" );
+            assert( read > 0, "singleton does not exist" );
             return unpack<T>( temp + sizeof(SingletonName), read );
          }
 
