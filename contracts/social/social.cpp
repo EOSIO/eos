@@ -59,7 +59,7 @@ struct account {
  * any other contexts are notified 
  */
 void apply_social_post() {
-   const auto& post   = current_message<post_action>();
+   const auto& post   = current_action<post_action>();
    require_auth( post.author );
 
    assert( current_context() == post.author, "cannot call from any other context" );
@@ -75,8 +75,8 @@ void apply_social_post() {
  * updates the vote total.  When executed 
  */
 void apply_social_vote() {
-   const auto& vote  = current_message<vote_action>();
-   require_notice( vote.voter, vote.author );
+   const auto& vote  = current_action<vote_action>();
+   require_recipient( vote.voter, vote.author );
    disable_context_code( vote.author() ); /// prevent the author's code from rejecting the potentially negative vote
 
    auto context = current_context();

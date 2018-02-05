@@ -25,7 +25,7 @@ namespace LLVMJIT
 		llvm::Constant* defaultTablePointer;
 		llvm::Constant* defaultTableEndOffset;
 		llvm::Constant* defaultMemoryBase;
-		llvm::Constant* defaultMemoryAddressMask;
+		llvm::Constant* defaultMemoryEndOffset;
 		
 		llvm::DIBuilder diBuilder;
 		llvm::DICompileUnit* diCompileUnit;
@@ -217,23 +217,56 @@ namespace LLVMJIT
 		// Bounds checks and converts a memory operation I32 address operand to a LLVM pointer.
 		llvm::Value* coerceByteIndexToPointer(llvm::Value* byteIndex,U32 offset,llvm::Type* memoryType)
 		{
-			// On a 64 bit runtime, if the address is 32-bits, zext it to 64-bits.
-			// This is crucial for security, as LLVM will otherwise implicitly sign extend it to 64-bits in the GEP below,
-			// interpreting it as a signed offset and allowing access to memory outside the sandboxed memory range.
-			// There are no 'far addresses' in a 32 bit runtime.
-			llvm::Value* nativeByteIndex = sizeof(Uptr) == 4 ? byteIndex : irBuilder.CreateZExt(byteIndex,llvmI64Type);
-			llvm::Value* offsetByteIndex = nativeByteIndex;
-			if(offset)
+			if(HAS_64BIT_ADDRESS_SPACE)
 			{
-				auto nativeOffset = sizeof(Uptr) == 4 ? emitLiteral((U32)offset) : irBuilder.CreateZExt(emitLiteral((U32)offset),llvmI64Type);
-				offsetByteIndex = irBuilder.CreateAdd(nativeByteIndex,nativeOffset);
+				// On a 64 bit runtime, if the address is 32-bits, zext it to 64-bits.
+				// This is crucial for security, as LLVM will otherwise implicitly sign extend it to 64-bits in the GEP below,
+				// interpreting it as a signed offset and allowing access to memory outside the sandboxed memory range.
+				// There are no 'far addresses' in a 32 bit runtime.
+				if(sizeof(Uptr) != 4) { byteIndex = irBuilder.CreateZExt(byteIndex,llvmI64Type); }
+
+				// Add the offset to the byte index.
+				if(offset)
+				{
+					byteIndex = irBuilder.CreateAdd(byteIndex,irBuilder.CreateZExt(emitLiteral(offset),llvmI64Type));
+				}
+
+				// If HAS_64BIT_ADDRESS_SPACE, the memory has enough virtual address space allocated to
+				// ensure that any 32-bit byte index + 32-bit offset will fall within the virtual address sandbox,
+				// so no explicit bounds check is necessary.
+			}
+			else
+			{
+				// Add the offset to the byte index using a LLVM intrinsic that returns a carry bit if the add overflowed.
+				llvm::Value* overflowed = emitLiteral(false);
+				if(offset)
+				{
+					auto offsetByteIndexWithOverflow = irBuilder.CreateCall(
+						getLLVMIntrinsic({llvmI32Type},llvm::Intrinsic::uadd_with_overflow),
+						{byteIndex,emitLiteral(U32(offset))}
+						);
+					byteIndex = irBuilder.CreateExtractValue(offsetByteIndexWithOverflow,{0});
+					overflowed = irBuilder.CreateExtractValue(offsetByteIndexWithOverflow,{1});
+				}
+
+				// Check that the offset didn't overflow, and that the final byte index is within the virtual address space
+				// allocated for the memory.
+				emitConditionalTrapIntrinsic(
+					irBuilder.CreateOr(
+						overflowed,
+						irBuilder.CreateICmpUGT(
+							byteIndex,
+							irBuilder.CreateSub(
+								moduleContext.defaultMemoryEndOffset,
+								emitLiteral(Uptr(memoryType->getPrimitiveSizeInBits() / 8) - 1)
+								)
+							)
+						),
+					"wavmIntrinsics.accessViolationTrap",FunctionType::get(),{});
 			}
 
-			// Mask the index to the address-space size.
-			auto maskedByteIndex = irBuilder.CreateAnd(offsetByteIndex,moduleContext.defaultMemoryAddressMask);
-
 			// Cast the pointer to the appropriate type.
-			auto bytePointer = irBuilder.CreateInBoundsGEP(moduleContext.defaultMemoryBase,maskedByteIndex);
+			auto bytePointer = irBuilder.CreateInBoundsGEP(moduleContext.defaultMemoryBase,byteIndex);
 			return irBuilder.CreatePointerCast(bytePointer,memoryType->getPointerTo());
 		}
 
@@ -242,7 +275,21 @@ namespace LLVMJIT
 		{
 			emitConditionalTrapIntrinsic(
 				irBuilder.CreateICmpEQ(divisor,typedZeroConstants[(Uptr)type]),
-				"wavmIntrinsics.divideByZeroTrap",FunctionType::get(),{});
+				"wavmIntrinsics.divideByZeroOrIntegerOverflowTrap",FunctionType::get(),{});
+		}
+
+		// Traps on (x / 0) or (INT_MIN / -1).
+		void trapDivideByZeroOrIntegerOverflow(ValueType type,llvm::Value* left,llvm::Value* right)
+		{
+			emitConditionalTrapIntrinsic(
+				irBuilder.CreateOr(
+					irBuilder.CreateAnd(
+						irBuilder.CreateICmpEQ(left,type == ValueType::i32 ? emitLiteral((U32)INT32_MIN) : emitLiteral((U64)INT64_MIN)),
+						irBuilder.CreateICmpEQ(right,type == ValueType::i32 ? emitLiteral((U32)-1) : emitLiteral((U64)-1))
+						),
+					irBuilder.CreateICmpEQ(right,typedZeroConstants[(Uptr)type])
+					),
+				"wavmIntrinsics.divideByZeroOrIntegerOverflowTrap",FunctionType::get(),{});
 		}
 
 		llvm::Value* getLLVMIntrinsic(const std::initializer_list<llvm::Type*>& argTypes,llvm::Intrinsic::ID id)
@@ -867,10 +914,10 @@ namespace LLVMJIT
 		EMIT_INT_BINARY_OP(rotl,emitRotl(type,left,right))
 			
 		// Divides use trapDivideByZero to avoid the undefined behavior in LLVM's division instructions.
-		EMIT_INT_BINARY_OP(div_s, (trapDivideByZero(type,right), irBuilder.CreateSDiv(left,right)) )
+		EMIT_INT_BINARY_OP(div_s, (trapDivideByZeroOrIntegerOverflow(type,left,right), irBuilder.CreateSDiv(left,right)) )
+		EMIT_INT_BINARY_OP(rem_s, emitSRem(type,left,right) )
 		EMIT_INT_BINARY_OP(div_u, (trapDivideByZero(type,right), irBuilder.CreateUDiv(left,right)) )
 		EMIT_INT_BINARY_OP(rem_u, (trapDivideByZero(type,right), irBuilder.CreateURem(left,right)) )
-		EMIT_INT_BINARY_OP(rem_s,emitSRem(type,left,right))
 
 		// Explicitly mask the shift amount operand to the word size to avoid LLVM's undefined behavior.
 		EMIT_INT_BINARY_OP(shl,irBuilder.CreateShl(left,emitShiftCountMask(type,right)))
@@ -983,10 +1030,6 @@ namespace LLVMJIT
 		EMIT_SIMD_SPLAT(i64x2,scalar,2)
 		EMIT_SIMD_SPLAT(f32x4,scalar,4)
 		EMIT_SIMD_SPLAT(f64x2,scalar,2)
-		EMIT_SIMD_SPLAT(b8x16,coerceI32ToBool(scalar),16)
-		EMIT_SIMD_SPLAT(b16x8,coerceI32ToBool(scalar),8)
-		EMIT_SIMD_SPLAT(b32x4,coerceI32ToBool(scalar),4)
-		EMIT_SIMD_SPLAT(b64x2,coerceI32ToBool(scalar),2)
 
 		EMIT_STORE_OP(v128,store,value->getType(),4,identityConversion)
 		EMIT_LOAD_OP(v128,load,llvmI64x2Type,4,identityConversion)
@@ -1130,11 +1173,6 @@ namespace LLVMJIT
 
 		EMIT_SIMD_EXTRACT_LANE_OP(f32x4_extract_lane,llvmF32x4Type,4,scalar)
 		EMIT_SIMD_EXTRACT_LANE_OP(f64x2_extract_lane,llvmF64x2Type,2,scalar)
-
-		EMIT_SIMD_EXTRACT_LANE_OP(b8x16_extract_lane,llvmB8x16Type,16,coerceBoolToI32(scalar))
-		EMIT_SIMD_EXTRACT_LANE_OP(b16x8_extract_lane,llvmB16x8Type,8,coerceBoolToI32(scalar))
-		EMIT_SIMD_EXTRACT_LANE_OP(b32x4_extract_lane,llvmB32x4Type,4,coerceBoolToI32(scalar))
-		EMIT_SIMD_EXTRACT_LANE_OP(b64x2_extract_lane,llvmB64x2Type,2,coerceBoolToI32(scalar))
 		
 		#define EMIT_SIMD_REPLACE_LANE_OP(typePrefix,llvmType,numLanes,coerceScalar) \
 			void typePrefix##_replace_lane(LaneIndexImm<numLanes> imm) \
@@ -1151,11 +1189,6 @@ namespace LLVMJIT
 
 		EMIT_SIMD_REPLACE_LANE_OP(f32x4,llvmF32x4Type,4,scalar)
 		EMIT_SIMD_REPLACE_LANE_OP(f64x2,llvmF64x2Type,2,scalar)
-
-		EMIT_SIMD_REPLACE_LANE_OP(b8x16,llvmB8x16Type,16,coerceI32ToBool(scalar))
-		EMIT_SIMD_REPLACE_LANE_OP(b16x8,llvmB16x8Type,8,coerceI32ToBool(scalar))
-		EMIT_SIMD_REPLACE_LANE_OP(b32x4,llvmB32x4Type,4,coerceI32ToBool(scalar))
-		EMIT_SIMD_REPLACE_LANE_OP(b64x2,llvmB64x2Type,2,coerceI32ToBool(scalar))
 
 		void v8x16_shuffle(ShuffleImm<16> imm)
 		{
@@ -1327,7 +1360,8 @@ namespace LLVMJIT
 					llvm::AtomicOrdering::SequentiallyConsistent, \
 					llvm::AtomicOrdering::SequentiallyConsistent); \
 				atomicCmpXchg->setVolatile(true); \
-				push(memoryToValueConversion(atomicCmpXchg,asLLVMType(ValueType::valueTypeId))); \
+				auto previousValue = irBuilder.CreateExtractValue(atomicCmpXchg,{0}); \
+				push(memoryToValueConversion(previousValue,asLLVMType(ValueType::valueTypeId))); \
 			}
 
 		EMIT_ATOMIC_CMPXCHG(i32,atomic_rmw8_u_cmpxchg,llvmI8Type,0,irBuilder.CreateZExt,irBuilder.CreateTrunc)
@@ -1361,7 +1395,7 @@ namespace LLVMJIT
 
 		EMIT_ATOMIC_RMW(i64,atomic_rmw8_u_xchg,Xchg,llvmI8Type,0,irBuilder.CreateZExt,irBuilder.CreateTrunc)
 		EMIT_ATOMIC_RMW(i64,atomic_rmw16_u_xchg,Xchg,llvmI16Type,1,irBuilder.CreateZExt,irBuilder.CreateTrunc)
-		EMIT_ATOMIC_RMW(i64,atomic_rmw32_u_xchg,Xchg,llvmI16Type,2,irBuilder.CreateZExt,irBuilder.CreateTrunc)
+		EMIT_ATOMIC_RMW(i64,atomic_rmw32_u_xchg,Xchg,llvmI32Type,2,irBuilder.CreateZExt,irBuilder.CreateTrunc)
 		EMIT_ATOMIC_RMW(i64,atomic_rmw_xchg,Xchg,llvmI64Type,3,identityConversion,identityConversion)
 
 		EMIT_ATOMIC_RMW(i32,atomic_rmw8_u_add,Add,llvmI8Type,0,irBuilder.CreateZExt,irBuilder.CreateTrunc)
@@ -1545,10 +1579,10 @@ namespace LLVMJIT
 		if(moduleInstance->defaultMemory)
 		{
 			defaultMemoryBase = emitLiteralPointer(moduleInstance->defaultMemory->baseAddress,llvmI8PtrType);
-			const Uptr defaultMemoryAddressMaskValue = Uptr(moduleInstance->defaultMemory->endOffset) - 1;
-			defaultMemoryAddressMask = emitLiteral(defaultMemoryAddressMaskValue);
+			const Uptr defaultMemoryEndOffsetValue = Uptr(moduleInstance->defaultMemory->endOffset);
+			defaultMemoryEndOffset = emitLiteral(defaultMemoryEndOffsetValue);
 		}
-		else { defaultMemoryBase = defaultMemoryAddressMask = nullptr; }
+		else { defaultMemoryBase = defaultMemoryEndOffset = nullptr; }
 
 		// Set up the LLVM values used to access the global table.
 		if(moduleInstance->defaultTable)

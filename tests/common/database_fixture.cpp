@@ -92,17 +92,10 @@ flat_set<public_key_type> testing_fixture::available_keys() const {
 testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& fork_db, block_log& blocklog,
                                        chain_initializer_interface& initializer, testing_fixture& fixture)
    : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator(),
-                      config::default_block_interval_seconds,
                       ::eosio::chain_plugin::default_transaction_execution_time * 1000,
                       ::eosio::chain_plugin::default_received_block_transaction_execution_time * 1000,
                       ::eosio::chain_plugin::default_create_block_transaction_execution_time * 1000,
-                      chain_controller::txn_msg_limits{ fc::time_point_sec(30),
-                                                        100000,
-                                                        fc::time_point_sec(30),
-                                                        100000,
-                                                        config::default_pending_txn_depth_limit,
-                                                        config::default_gen_block_time_limit
-                                                      }),
+                       chain_controller::txn_msg_limits{}),
      db(db),
      fixture(fixture) {}
 
@@ -113,7 +106,6 @@ testing_blockchain::testing_blockchain(chainbase::database& db, fork_database& f
                                        uint32_t create_block_execution_time_msec,
                                        const chain_controller::txn_msg_limits& rate_limits)
    : chain_controller(db, fork_db, blocklog, initializer, native_contract::make_administrator(),
-                      config::default_block_interval_seconds,
                       transaction_execution_time_msec * 1000,
                       received_block_execution_time_msec * 1000,
                       create_block_execution_time_msec * 1000,

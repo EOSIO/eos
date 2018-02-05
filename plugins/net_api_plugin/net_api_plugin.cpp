@@ -2,9 +2,9 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/net_api_plugin/net_api_plugin.hpp>
-#include <eos/chain/exceptions.hpp>
-#include <eos/chain/transaction.hpp>
+#include <eosio/net_api_plugin/net_api_plugin.hpp>
+#include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/transaction.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
@@ -19,6 +19,7 @@ FC_REFLECT(eosio::detail::net_api_plugin_empty, );
 
 namespace eosio {
 
+static appbase::abstract_plugin& _net_api_plugin = app().register_plugin<net_api_plugin>();
 
 using namespace eosio;
 

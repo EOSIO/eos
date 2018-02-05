@@ -2,16 +2,17 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/account_history_plugin/account_history_plugin.hpp>
-#include <eos/account_history_plugin/account_control_history_object.hpp>
-#include <eos/account_history_plugin/account_transaction_history_object.hpp>
-#include <eos/account_history_plugin/public_key_history_object.hpp>
-#include <eos/account_history_plugin/transaction_history_object.hpp>
-#include <eos/chain/chain_controller.hpp>
-#include <eos/chain/config.hpp>
-#include <eos/chain/exceptions.hpp>
-#include <eos/chain/transaction.hpp>
-#include <eos/chain/types.hpp>
+#include <eosio/account_history_plugin/account_history_plugin.hpp>
+#include <eosio/account_history_plugin/account_control_history_object.hpp>
+#include <eosio/account_history_plugin/account_transaction_history_object.hpp>
+#include <eosio/account_history_plugin/public_key_history_object.hpp>
+#include <eosio/account_history_plugin/transaction_history_object.hpp>
+#include <eosio/chain/account_object.hpp>
+#include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/config.hpp>
+#include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/transaction.hpp>
+#include <eosio/chain/types.hpp>
 
 #include <fc/crypto/sha256.hpp>
 #include <fc/io/json.hpp>
@@ -19,7 +20,7 @@
 
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
-#include <eos/chain/multi_index_includes.hpp>
+#include <eosio/chain/multi_index_includes.hpp>
 #include <boost/range/adaptors.hpp>
 #include <boost/range/algorithm.hpp>
 #include <boost/range/algorithm_ext.hpp>
@@ -30,8 +31,10 @@ namespace eosio {
 
 using chain::account_name;
 using chain::block_id_type;
+using chain::key_weight;
+using chain::permission_level_weight;
 using chain::permission_name;
-using chain::processed_transaction;
+using chain::packed_transaction;
 using chain::signed_block;
 using boost::multi_index_container;
 using chain::transaction_id_type;
@@ -41,11 +44,12 @@ using get_transactions_results = account_history_apis::read_only::get_transactio
 
 class account_history_plugin_impl {
 public:
-   processed_transaction get_transaction(const chain::transaction_id_type&  transaction_id) const;
+   packed_transaction get_transaction(const chain::transaction_id_type&  transaction_id) const;
    get_transactions_results get_transactions(const account_name&  account_name, const optional<uint32_t>& skip_seq, const optional<uint32_t>& num_seq) const;
    vector<account_name> get_key_accounts(const public_key_type& public_key) const;
    vector<account_name> get_controlled_accounts(const account_name& controlling_account) const;
-   void applied_block(const signed_block&);
+   void applied_block(const chain::block_trace&);
+   fc::variant transaction_to_variant(const packed_transaction& pretty_input) const;
 
    chain_plugin* chain_plug;
    static const int64_t DEFAULT_TRANSACTION_TIME_LIMIT;
@@ -63,25 +67,26 @@ private:
    typedef std::multimap<block_id_type, transaction_id_type, block_comp> block_transaction_id_map;
 
    optional<block_id_type> find_block_id(const chainbase::database& db, const transaction_id_type& transaction_id) const;
-   processed_transaction find_transaction(const chain::transaction_id_type&  transaction_id, const signed_block& block) const;
-   bool is_scope_relevant(const eosio::types::vector<account_name>& scope);
+   packed_transaction find_transaction(const chain::transaction_id_type&  transaction_id, const signed_block& block) const;
+   bool is_scope_relevant(const vector<account_name>& scope);
    get_transactions_results ordered_transactions(const block_transaction_id_map& block_transaction_ids, const fc::time_point& start_time, const uint32_t begin, const uint32_t end) const;
-   static void add(chainbase::database& db, const vector<types::key_permission_weight>& keys, const account_name& account_name, const permission_name& permission);
+   static void add(chainbase::database& db, const vector<key_weight>& keys, const account_name& account_name, const permission_name& permission);
    template<typename MultiIndex, typename LookupType>
    static void remove(chainbase::database& db, const account_name& account_name, const permission_name& permission)
    {
       const auto& idx = db.get_index<MultiIndex, LookupType>();
       auto& mutatable_idx = db.get_mutable_index<MultiIndex>();
-      auto range = idx.equal_range( boost::make_tuple( account_name, permission ) );
+      auto obj = idx.find( boost::make_tuple( account_name, permission ) );
 
-      for (auto acct_perm = range.first; acct_perm != range.second; ++acct_perm)
+      if (obj != idx.end())
       {
-         mutatable_idx.remove(*acct_perm);
+         mutatable_idx.remove(*obj);
       }
    }
 
-   static void add(chainbase::database& db, const vector<types::account_permission_weight>& controlling_accounts, const account_name& account_name, const permission_name& permission);
+   static void add(chainbase::database& db, const vector<permission_level_weight>& controlling_accounts, const account_name& account_name, const permission_name& permission);
    bool time_exceeded(const fc::time_point& start_time) const;
+
    static const account_name NEW_ACCOUNT;
    static const account_name UPDATE_AUTH;
    static const account_name DELETE_AUTH;
@@ -108,19 +113,17 @@ optional<block_id_type> account_history_plugin_impl::find_block_id(const chainba
    return block_id;
 }
 
-processed_transaction account_history_plugin_impl::find_transaction(const chain::transaction_id_type&  transaction_id, const chain::signed_block& block) const
+packed_transaction account_history_plugin_impl::find_transaction(const chain::transaction_id_type&  transaction_id, const chain::signed_block& block) const
 {
-   for (const auto& cycle : block.cycles)
-      for (const auto& thread : cycle)
-         for (const auto& trx : thread.user_input)
-            if (trx.id() == transaction_id)
-               return trx;
+   for (const packed_transaction& trx : block.input_transactions)
+      if (trx.get_transaction().id() == transaction_id)
+         return trx;
 
    // ERROR in indexing logic
    FC_THROW("Transaction with ID ${tid} was indexed as being in block ID ${bid}, but was not found in that block", ("tid", transaction_id)("bid", block.id()));
 }
 
-processed_transaction account_history_plugin_impl::get_transaction(const chain::transaction_id_type&  transaction_id) const
+packed_transaction account_history_plugin_impl::get_transaction(const chain::transaction_id_type&  transaction_id) const
 {
    const auto& db = chain_plug->chain().get_database();
    optional<block_id_type> block_id;
@@ -134,7 +137,6 @@ processed_transaction account_history_plugin_impl::get_transaction(const chain::
       return find_transaction(transaction_id, *block);
    }
 
-#warning TODO: lookup of recent transactions
    FC_THROW_EXCEPTION(chain::unknown_transaction_exception,
                       "Could not find transaction for: ${id}", ("id", transaction_id.str()));
 }
@@ -211,32 +213,27 @@ get_transactions_results account_history_plugin_impl::ordered_transactions(const
          current = trx_after_block;
          continue;
       }
-      for (auto cycle = block->cycles.crbegin(); cycle != block->cycles.crend() && current < trx_after_block; ++cycle)
+      for (auto trx = block->input_transactions.crbegin(); trx != block->input_transactions.crend() && current < trx_after_block; ++trx)
       {
-         for (auto thread = cycle->crbegin(); thread != cycle->crend() && current < trx_after_block; ++thread)
+         transaction_id_type trx_id = trx->get_transaction().id();
+         if(trans_ids_for_block.count(trx_id))
          {
-            for (auto trx = thread->user_input.crbegin(); trx != thread->user_input.crend() && current < trx_after_block; ++trx)
+            if(++current > begin)
             {
-               if(trans_ids_for_block.count(trx->id()))
+               const auto pretty_trx = transaction_to_variant(*trx);
+               results.transactions.emplace_back(ordered_transaction_results{(current - 1), trx_id, pretty_trx});
+
+               if(current >= end)
                {
-                  if(++current > begin)
-                  {
-                     const auto pretty_trx = chain_plug->chain().transaction_to_variant(*trx);
-                     results.transactions.emplace_back(ordered_transaction_results{(current - 1), trx->id(), pretty_trx});
-
-                     if(current >= end)
-                     {
-                        return results;
-                     }
-                  }
-
-                  // just check after finding transaction or transitioning to next block to avoid spending all our time checking
-                  if (time_exceeded(start_time))
-                  {
-                     results.time_limit_exceeded_error = true;
-                     return results;
-                  }
+                  return results;
                }
+            }
+
+            // just check after finding transaction or transitioning to next block to avoid spending all our time checking
+            if (time_exceeded(start_time))
+            {
+               results.time_limit_exceeded_error = true;
+               return results;
             }
          }
       }
@@ -287,76 +284,96 @@ vector<account_name> account_history_plugin_impl::get_controlled_accounts(const 
    return vector<account_name>(accounts.begin(), accounts.end());
 }
 
-void account_history_plugin_impl::applied_block(const signed_block& block)
+static vector<account_name> generated_affected_accounts(const chain::transaction_trace& trx_trace) {
+   vector<account_name> result;
+   for (const auto& at: trx_trace.action_traces) {
+      for (const auto& auth: at.act.authorization) {
+         result.emplace_back(auth.actor);
+      }
+
+      result.emplace_back(at.receiver);
+   }
+
+   fc::deduplicate(result);
+   return result;
+}
+
+void account_history_plugin_impl::applied_block(const chain::block_trace& trace)
 {
+   const auto& block = trace.block;
    const auto block_id = block.id();
    auto& db = chain_plug->chain().get_mutable_database();
    const bool check_relevance = filter_on.size();
-   for (const auto& cycle : block.cycles)
+   auto process_one = [&](const chain::transaction_trace& trx_trace )
    {
-      for (const auto& thread : cycle)
+      auto affected_accounts = generated_affected_accounts(trx_trace);
+      if (check_relevance && !is_scope_relevant(affected_accounts))
+         return;
+
+      auto trx_obj_ptr = db.find<transaction_history_object, by_trx_id>(trx_trace.id);
+      if (trx_obj_ptr != nullptr)
+         return; // on restart may already have block
+
+      db.create<transaction_history_object>([&block_id,&trx_trace](transaction_history_object& transaction_history) {
+         transaction_history.block_id = block_id;
+         transaction_history.transaction_id = trx_trace.id;
+         transaction_history.transaction_status = trx_trace.status;
+      });
+
+      auto create_ath_object = [&trx_trace,&db](const account_name& name) {
+         db.create<account_transaction_history_object>([&trx_trace,&name](account_transaction_history_object& account_transaction_history) {
+            account_transaction_history.name = name;
+            account_transaction_history.transaction_id = trx_trace.id;
+         });
+      };
+
+      for (const auto& account_name : affected_accounts)
+         create_ath_object(account_name);
+
+      for (const auto& act_trace : trx_trace.action_traces)
       {
-         for (const auto& trx : thread.user_input)
+         if (act_trace.receiver == chain::config::system_account_name)
          {
-            if (check_relevance && !is_scope_relevant(trx.scope))
-               continue;
-
-            auto trx_obj_ptr = db.find<transaction_history_object, by_trx_id>(trx.id());
-            if (trx_obj_ptr != nullptr)
-               continue; // on restart may already have block
-
-            db.create<transaction_history_object>([&block_id,&trx](transaction_history_object& transaction_history) {
-               transaction_history.block_id = block_id;
-               transaction_history.transaction_id = trx.id();
-            });
-
-            for (const auto& account_name : trx.scope)
+            if (act_trace.act.name == NEW_ACCOUNT)
             {
-              db.create<account_transaction_history_object>([&trx,&account_name](account_transaction_history_object& account_transaction_history) {
-                account_transaction_history.name = account_name;
-                account_transaction_history.transaction_id = trx.id();
-              });
+               const auto create = act_trace.act.as<chain::contracts::newaccount>();
+               add(db, create.owner.keys, create.name, OWNER);
+               add(db, create.active.keys, create.name, ACTIVE);
+               add(db, create.recovery.keys, create.name, RECOVERY);
+
+               add(db, create.owner.accounts, create.name, OWNER);
+               add(db, create.active.accounts, create.name, ACTIVE);
+               add(db, create.recovery.accounts, create.name, RECOVERY);
             }
-
-            for (const chain::message& msg : trx.messages)
+            else if (act_trace.act.name == UPDATE_AUTH)
             {
-               if (msg.code == config::eos_contract_name)
-               {
-                  if (msg.type == NEW_ACCOUNT)
-                  {
-                     const auto create = msg.as<types::newaccount>();
-                     add(db, create.owner.keys, create.name, OWNER);
-                     add(db, create.active.keys, create.name, ACTIVE);
-                     add(db, create.recovery.keys, create.name, RECOVERY);
+               const auto update = act_trace.act.as<chain::contracts::updateauth>();
+               remove<public_key_history_multi_index, by_account_permission>(db, update.account, update.permission);
+               add(db, update.data.keys, update.account, update.permission);
 
-                     add(db, create.owner.accounts, create.name, OWNER);
-                     add(db, create.active.accounts, create.name, ACTIVE);
-                     add(db, create.recovery.accounts, create.name, RECOVERY);
-                  }
-                  else if (msg.type == UPDATE_AUTH)
-                  {
-                     const auto update = msg.as<types::updateauth>();
-                     remove<public_key_history_multi_index, by_account_permission>(db, update.account, update.permission);
-                     add(db, update.new_authority.keys, update.account, update.permission);
+               remove<account_control_history_multi_index, by_controlled_authority>(db, update.account, update.permission);
+               add(db, update.data.accounts, update.account, update.permission);
+            }
+            else if (act_trace.act.name == DELETE_AUTH)
+            {
+               const auto del = act_trace.act.as<chain::contracts::deleteauth>();
+               remove<public_key_history_multi_index, by_account_permission>(db, del.account, del.permission);
 
-                     remove<account_control_history_multi_index, by_controlled_authority>(db, update.account, update.permission);
-                     add(db, update.new_authority.accounts, update.account, update.permission);
-                  }
-                  else if (msg.type == DELETE_AUTH)
-                  {
-                     const auto del = msg.as<types::deleteauth>();
-                     remove<public_key_history_multi_index, by_account_permission>(db, del.account, del.permission);
-
-                     remove<account_control_history_multi_index, by_controlled_authority>(db, del.account, del.permission);
-}
-               }
+               remove<account_control_history_multi_index, by_controlled_authority>(db, del.account, del.permission);
             }
          }
       }
-   }
+   };
+
+   // go through all the transaction traces
+   for (const auto& rt: trace.region_traces)
+      for(const auto& ct: rt.cycle_traces)
+         for(const auto& st: ct.shard_traces)
+            for(const auto& trx_trace: st.transaction_traces)
+               process_one(trx_trace);
 }
 
-void account_history_plugin_impl::add(chainbase::database& db, const vector<types::key_permission_weight>& keys, const account_name& name, const permission_name& permission)
+void account_history_plugin_impl::add(chainbase::database& db, const vector<key_weight>& keys, const account_name& name, const permission_name& permission)
 {
    for (auto pub_key_weight : keys )
    {
@@ -368,25 +385,45 @@ void account_history_plugin_impl::add(chainbase::database& db, const vector<type
    }
 }
 
-void account_history_plugin_impl::add(chainbase::database& db, const vector<types::account_permission_weight>& controlling_accounts, const account_name& account_name, const permission_name& permission)
+void account_history_plugin_impl::add(chainbase::database& db, const vector<permission_level_weight>& controlling_accounts, const account_name& account_name, const permission_name& permission)
 {
    for (auto controlling_account : controlling_accounts )
    {
       db.create<account_control_history_object>([&](account_control_history_object& obj) {
          obj.controlled_account = account_name;
          obj.controlled_permission = permission;
-         obj.controlling_account = controlling_account.permission.account;
+         obj.controlling_account = controlling_account.permission.actor;
       });
    }
 }
 
-bool account_history_plugin_impl::is_scope_relevant(const eosio::types::vector<account_name>& scope)
+bool account_history_plugin_impl::is_scope_relevant(const vector<account_name>& scope)
 {
    for (const account_name& account_name : scope)
       if (filter_on.count(account_name))
          return true;
 
    return false;
+}
+
+fc::variant account_history_plugin_impl::transaction_to_variant(const packed_transaction& ptrx) const
+{
+   const chainbase::database& database = chain_plug->chain().get_database();
+   auto resolver = [&database]( const account_name& name ) -> optional<abi_serializer> {
+      const auto* accnt = database.find<chain::account_object,chain::by_name>( name );
+      if (accnt != nullptr) {
+         abi_def abi;
+         if (abi_serializer::to_abi(accnt->abi, abi)) {
+            return abi_serializer(abi);
+         }
+      }
+
+      return optional<abi_serializer>();
+   };
+
+   fc::variant pretty_output;
+   abi_serializer::to_variant(ptrx, pretty_output, resolver);
+   return pretty_output;
 }
 
 
@@ -430,8 +467,8 @@ void account_history_plugin::plugin_startup()
    db.add_index<public_key_history_multi_index>();
    db.add_index<transaction_history_multi_index>();
 
-   my->chain_plug->chain().applied_block.connect ([&impl = my](const signed_block& block) {
-      impl->applied_block(block);
+   my->chain_plug->chain().applied_block.connect ([&impl = my](const chain::block_trace& trace) {
+      impl->applied_block(trace);
    });
 }
 
@@ -444,7 +481,7 @@ namespace account_history_apis {
 read_only::get_transaction_results read_only::get_transaction(const read_only::get_transaction_params& params) const
 {
    auto trx = account_history->get_transaction(params.transaction_id);
-   return { params.transaction_id, account_history->chain_plug->chain().transaction_to_variant(trx) };
+   return { params.transaction_id, account_history->transaction_to_variant(trx) };
 }
 
 read_only::get_transactions_results read_only::get_transactions(const read_only::get_transactions_params& params) const

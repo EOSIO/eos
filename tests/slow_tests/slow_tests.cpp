@@ -201,7 +201,7 @@ BOOST_FIXTURE_TEST_CASE(stake, testing_fixture)
 
    // Fast forward to when we can liquidate
    wlog("Hang on, this will take a minute...");
-   chain.produce_blocks(config::staked_balance_cooldown_seconds / config::default_block_interval_seconds + 1);
+   chain.produce_blocks(config::staked_balance_cooldown_seconds / config::block_interval_seconds + 1);
 
    BOOST_CHECK_THROW(Finish_Unstake_Asset(chain, sam, asset(21).amount), chain::message_precondition_exception);
    BOOST_CHECK_EQUAL(chain.get_staked_balance("sam"), asset(135).amount);
@@ -316,12 +316,7 @@ void WithdrawCurrency( testing_blockchain& chain, account_name from, account_nam
 //Test account script processing
 BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 { try {
-
-      chain_controller::txn_msg_limits rate_limit = {
-            .per_auth_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(10),
-            .per_auth_account_txn_msg_rate = 100000,
-            .per_code_account_txn_msg_rate_time_frame_sec = fc::time_point_sec(10),
-            .per_code_account_txn_msg_rate = 100000 };
+      chain_controller::txn_msg_limits rate_limit = { fc::time_point_sec(10), 100000, fc::time_point_sec(10), 100000 };
       Make_Blockchain(chain, ::eosio::chain_plugin::default_transaction_execution_time,
             ::eosio::chain_plugin::default_received_block_transaction_execution_time,
             ::eosio::chain_plugin::default_create_block_transaction_execution_time, rate_limit);
@@ -352,7 +347,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
 
 
       auto start = fc::time_point::now();
-      for (uint32_t i = 0; i < 500; ++i)
+      for (uint32_t i = 0; i < 10000; ++i)
       {
          eosio::chain::signed_transaction trx;
          trx.scope = sort_names({"currency","inita"});
@@ -365,7 +360,7 @@ BOOST_FIXTURE_TEST_CASE(create_script, testing_fixture)
          chain.push_transaction(trx);
       }
       auto end = fc::time_point::now();
-      idump((500*1000000.0 / (end-start).count()));
+      idump((10000*1000000.0 / (end-start).count()));
 
       chain.produce_blocks(10);
 

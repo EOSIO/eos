@@ -10,7 +10,7 @@
 ###############################################################
 
 pnodes=1
-topo=star
+topo=mesh
 delay=1
 
 args=`getopt p:n:s:d: $*`
@@ -66,7 +66,7 @@ verifyErrorCode()
 
 killAll()
 {
-  programs/launcher/launcher -k 15
+  programs/eosio-launcher/eosio-launcher -k 15
 }
 
 cleanup()
@@ -78,8 +78,8 @@ cleanup()
 # result stored in HEAD_BLOCK_NUM
 getHeadBlockNum()
 {
-  INFO="$(programs/eosc/eosc get info)"
-  verifyErrorCode "eosc get info"
+  INFO="$(programs/eosioc/eosioc get info)"
+  verifyErrorCode "eosioc get info"
   HEAD_BLOCK_NUM="$(echo "$INFO" | awk '/head_block_num/ {print $2}')"
   # remove trailing coma
   HEAD_BLOCK_NUM=${HEAD_BLOCK_NUM%,}
@@ -110,10 +110,10 @@ INITA_PRV_KEY="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"
 # cleanup from last run
 cleanup
 
-# stand up eosd cluster
+# stand up eosiod cluster
 launcherOpts="-p $pnodes -n $total_nodes -s $topo -d $delay"
-echo Launcher options: --eosd \"--plugin eosio::wallet_api_plugin\" $launcherOpts
-programs/launcher/launcher --eosd "--plugin eosio::wallet_api_plugin" $launcherOpts
+echo Launcher options: --eosiod \"--plugin eosio::wallet_api_plugin\" $launcherOpts
+programs/eosio-launcher/eosio-launcher --eosiod "--plugin eosio::wallet_api_plugin" $launcherOpts
 sleep 7
 
 startPort=8888
@@ -125,22 +125,22 @@ echo endPort: $endPort
 port2=$startPort
 while [ $port2  -ne $endport ]; do
     echo Request block 1 from node on port $port2
-    TRANS_INFO="$(programs/eosc/eosc --port $port2 get block 1)"
-    verifyErrorCode "eosc get block"
+    TRANS_INFO="$(programs/eosioc/eosioc --port $port2 get block 1)"
+    verifyErrorCode "eosioc get block"
     port2=`expr $port2 + 1`
 done
 
 # create 3 keys
-KEYS="$(programs/eosc/eosc create key)"
-verifyErrorCode "eosc create key"
+KEYS="$(programs/eosioc/eosioc create key)"
+verifyErrorCode "eosioc create key"
 PRV_KEY1="$(echo "$KEYS" | awk '/Private/ {print $3}')"
 PUB_KEY1="$(echo "$KEYS" | awk '/Public/ {print $3}')"
-KEYS="$(programs/eosc/eosc create key)"
-verifyErrorCode "eosc create key"
+KEYS="$(programs/eosioc/eosioc create key)"
+verifyErrorCode "eosioc create key"
 PRV_KEY2="$(echo "$KEYS" | awk '/Private/ {print $3}')"
 PUB_KEY2="$(echo "$KEYS" | awk '/Public/ {print $3}')"
-KEYS="$(programs/eosc/eosc create key)"
-verifyErrorCode "eosc create key"
+KEYS="$(programs/eosioc/eosioc create key)"
+verifyErrorCode "eosioc create key"
 PRV_KEY3="$(echo "$KEYS" | awk '/Private/ {print $3}')"
 PUB_KEY3="$(echo "$KEYS" | awk '/Public/ {print $3}')"
 if [ -z "$PRV_KEY1" ] || [ -z "$PRV_KEY2" ] || [ -z "$PRV_KEY3" ] || [ -z "$PUB_KEY1" ] || [ -z "$PUB_KEY2" ] || [ -z "$PUB_KEY3" ]; then
@@ -149,21 +149,21 @@ fi
 
 
 # create wallet for inita
-PASSWORD_INITA="$(programs/eosc/eosc wallet create --name inita)"
-verifyErrorCode "eosc wallet create"
+PASSWORD_INITA="$(programs/eosioc/eosioc wallet create --name inita)"
+verifyErrorCode "eosioc wallet create"
 # strip out password from output
 PASSWORD_INITA="$(echo "$PASSWORD_INITA" | awk '/PW/ {print $1}')"
 # remove leading/trailing quotes
 PASSWORD_INITA=${PASSWORD_INITA#\"}
 PASSWORD_INITA=${PASSWORD_INITA%\"}
-programs/eosc/eosc wallet import --name inita $INITA_PRV_KEY
-verifyErrorCode "eosc wallet import"
-programs/eosc/eosc wallet import --name inita $PRV_KEY1
-verifyErrorCode "eosc wallet import"
-programs/eosc/eosc wallet import --name inita $PRV_KEY2
-verifyErrorCode "eosc wallet import"
-programs/eosc/eosc wallet import --name inita $PRV_KEY3
-verifyErrorCode "eosc wallet import"
+programs/eosioc/eosioc wallet import --name inita $INITA_PRV_KEY
+verifyErrorCode "eosioc wallet import"
+programs/eosioc/eosioc wallet import --name inita $PRV_KEY1
+verifyErrorCode "eosioc wallet import"
+programs/eosioc/eosioc wallet import --name inita $PRV_KEY2
+verifyErrorCode "eosioc wallet import"
+programs/eosioc/eosioc wallet import --name inita $PRV_KEY3
+verifyErrorCode "eosioc wallet import"
 
 #
 # Account and Transfer Tests
@@ -171,12 +171,12 @@ verifyErrorCode "eosc wallet import"
 
 # create new account
 echo Creating account testera
-ACCOUNT_INFO="$(programs/eosc/eosc create account inita testera $PUB_KEY1 $PUB_KEY3)"
-verifyErrorCode "eosc create account"
+ACCOUNT_INFO="$(programs/eosioc/eosioc create account inita testera $PUB_KEY1 $PUB_KEY3)"
+verifyErrorCode "eosioc create account"
 waitForNextBlock
 # verify account created
-ACCOUNT_INFO="$(programs/eosc/eosc get account testera)"
-verifyErrorCode "eosc get account"
+ACCOUNT_INFO="$(programs/eosioc/eosioc get account testera)"
+verifyErrorCode "eosioc get account"
 count=`echo $ACCOUNT_INFO | grep -c "staked_balance"`
 if [ $count == 0 ]; then
   error "FAILURE - account creation failed: $ACCOUNT_INFO"
@@ -188,8 +188,8 @@ echo Producing node port: $pPort
 while [ $port  -ne $endport ]; do
 
     echo Sending transfer request to node on port $port.
-    TRANSFER_INFO="$(programs/eosc/eosc transfer inita testera 975321 "test transfer")"
-    verifyErrorCode "eosc transfer"
+    TRANSFER_INFO="$(programs/eosioc/eosioc transfer inita testera 975321 "test transfer")"
+    verifyErrorCode "eosioc transfer"
     getTransactionId "$TRANSFER_INFO"
     echo Transaction id: $TRANS_ID
 
@@ -199,8 +199,8 @@ while [ $port  -ne $endport ]; do
     port2=$startPort
     while [ $port2  -ne $endport ]; do
 	echo Verifying transaction exists on node on port $port2
-	TRANS_INFO="$(programs/eosc/eosc --port $port2 get transaction $TRANS_ID)"
-	verifyErrorCode "eosc get transaction trans_id of <$TRANS_INFO> from node on port $port2"
+	TRANS_INFO="$(programs/eosioc/eosioc --port $port2 get transaction $TRANS_ID)"
+	verifyErrorCode "eosioc get transaction trans_id of <$TRANS_INFO> from node on port $port2"
 	port2=`expr $port2 + 1`
     done
 

@@ -2,20 +2,20 @@
 project( EOS )
 cmake_minimum_required( VERSION 2.8.12 )
 
-set(VERSION_MAJOR 2)
-set(VERSION_MINOR 0)
-set(VERSION_PATCH 1)
-
 enable_testing()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
 INCLUDE( VersionMacros )
 INCLUDE( SetupTargetMacros )
 
 set( BLOCKCHAIN_NAME "Eos" )
 set( CMAKE_CXX_STANDARD 14 )
+
+set(VERSION_MAJOR 3)
+set(VERSION_MINOR 0)
+set(VERSION_PATCH 1)
 
 set( CLI_CLIENT_EXECUTABLE_NAME eos_client )
 set( GUI_CLIENT_EXECUTABLE_NAME eos )
@@ -33,16 +33,32 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     endif()
 endif()
 
+
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
-set(BUILD_DOXYGEN TRUE CACHE BOOL "Build doxygen documentation on every make")
+set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
+set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
 set(EOS_EGENESIS_JSON "${CMAKE_CURRENT_SOURCE_DIR}/genesis.json" )
 
-#set (ENABLE_INSTALLER 1)
 #set (USE_PCH 1)
 
 if (USE_PCH)
   include (cotire)
 endif(USE_PCH)
+
+
+if(UNIX)
+  if(APPLE)
+    set(whole_archive_flag "-force_load")
+    set(no_whole_archive_flag "")
+  else()
+    set(whole_archive_flag "--whole-archive")
+    set(no_whole_archive_flag "--no-whole-archive")
+  endif()
+else()
+  set(whole_archive_flag "--whole-archive")
+  set(no_whole_archive_flag "--no-whole-archive")
+endif()
 
 SET( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
 IF( WIN32 )
@@ -61,7 +77,8 @@ FIND_PACKAGE(Boost 1.64 REQUIRED COMPONENTS
     chrono
     unit_test_framework
     context
-    locale)
+    locale
+    iostreams)
 
 if( WIN32 )
 
@@ -113,13 +130,6 @@ else( WIN32 ) # Apple AND Linux
         # Linux Specific Options Here
         message( STATUS "Configuring Eos on Linux" )
         set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall" )
-        set( rt_library rt )
-        set( pthread_library pthread)
-        if ( NOT DEFINED crypto_library )
-          # I'm not sure why this is here, I guess someone has openssl and can't detect it with find_package()?
-          # if you have a normal install, you can define crypto_library to the empty string to avoid a build error
-          set( crypto_library crypto)
-        endif ()
         if ( FULL_STATIC_BUILD )
           set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
         endif ( FULL_STATIC_BUILD )
@@ -150,31 +160,31 @@ endif( WIN32 )
 set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build Eos for code coverage analysis")
 
 if(ENABLE_COVERAGE_TESTING)
-    SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
+  SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
+  find_program( LCOV_PATH  lcov )
+  find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
 include(wasm)
 if(WASM_TOOLCHAIN)
-  message(STATUS "Using WASM clang: " ${WASM_CLANG})
-  message(STATUS "Using WASM llc: " ${WASM_LLC})
-  message(STATUS "Using WASM llvm-link: " ${WASM_LLVM_LINK})
+  message(STATUS "Using WASM clang => " ${WASM_CLANG})
+  message(STATUS "Using WASM llc => " ${WASM_LLC})
+  message(STATUS "Using WASM llvm-link => " ${WASM_LLVM_LINK})
   add_subdirectory(contracts)
 else()
-  message(STATUS "--------------------------------------------------------------------")
-  message(STATUS "No WASM compiler could be found ... (skipping building of contracts)")
-  message(STATUS "--------------------------------------------------------------------")
+  message( FATAL_ERROR "No WASM compiler cound be found" )
 endif()
 
+include(installer)
+
 add_subdirectory( libraries )
-add_subdirectory( programs )
 add_subdirectory( plugins )
+add_subdirectory( programs )
 add_subdirectory( scripts )
 add_subdirectory( tests )
 add_subdirectory( tools )
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis.json ${CMAKE_CURRENT_BINARY_DIR}/genesis.json COPYONLY)
 
-include(installer)
+
 include(doxygen)
-
-

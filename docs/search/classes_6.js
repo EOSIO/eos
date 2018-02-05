@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['iostream',['iostream',['../classeosio_1_1iostream.html',1,'eosio']]]
+  ['generic_5fcurrency',['generic_currency',['../classeosio_1_1generic__currency.html',1,'eosio']]]
 ];

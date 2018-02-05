@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/chain/block_log.hpp>
+#include <eosio/chain/block_log.hpp>
 #include <fstream>
 #include <fc/io/raw.hpp>
 

@@ -2,7 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/chain/block.hpp>
+#include <eosio/chain/block.hpp>
+#include <eosio/chain/merkle.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/bitutil.hpp>
 #include <algorithm>
@@ -26,70 +27,70 @@ namespace eosio { namespace chain {
       return result;
    }
 
-   fc::ecc::public_key signed_block_header::signee()const
+   public_key_type signed_block_header::signee()const
    {
-      return fc::ecc::public_key(producer_signature, digest(), true/*enforce canonical*/);
+      return fc::crypto::public_key(producer_signature, digest(), true/*enforce canonical*/);
    }
 
-   void signed_block_header::sign(const fc::ecc::private_key& signer)
+   void signed_block_header::sign(const private_key_type& signer)
    {
-      producer_signature = signer.sign_compact(digest());
+      producer_signature = signer.sign(digest());
    }
 
-   bool signed_block_header::validate_signee(const fc::ecc::public_key& expected_signee)const
+   bool signed_block_header::validate_signee(const public_key_type& expected_signee)const
    {
       return signee() == expected_signee;
    }
 
-   digest_type merkle(vector<digest_type> ids) {
-      while (ids.size() > 1) {
-         if (ids.size() % 2)
-            ids.push_back(ids.back());
-         for (int i = 0; i < ids.size() / 2; ++i)
-            ids[i/2] = digest_type::hash(std::make_pair(ids[i], ids[i+1]));
-         ids.resize(ids.size() / 2);
-      }
-
-      return ids.front();
-   }
-
-   checksum_type signed_block::calculate_merkle_root()const
+   checksum_type signed_block_summary::calculate_transaction_mroot()const
    {
-      if(cycles.empty())
-         return checksum_type();
-
-      vector<digest_type> ids;
-      for (const auto& cycle : cycles)
-         for (const auto& thread : cycle)
-            ids.emplace_back(thread.merkle_digest());
-
-/**
- *  Suggest moving thread::merkle_digest code to return vector of ids which get added to ids above and then calculating root over all
- */
-#warning TODO  The merkle root needs to be over all transactions, but this is currently hashing all threads merkle roots which will make proofs O(N) rather than O( LOG(N) )
-
-      /**
-       *  This may require passing 
-       */
-#warning TODO  Add global incremental block header merkle   https://github.com/EOSIO/eos/issues/8
-
-      return checksum_type::hash(merkle(ids));
+      return checksum_type();// TODO ::hash(merkle(ids));
    }
 
-   digest_type thread::merkle_digest() const {
-      vector<digest_type> ids;// = generated_input;
-      /*
-      ids.reserve( ids.size() + user_input.size() + output_transactions.size() );
-      */
+   digest_type   signed_block::calculate_transaction_merkle_root()const {
+      vector<digest_type> ids; 
+      ids.reserve(input_transactions.size());
 
-      for( const auto& trx : user_input )
-         ids.push_back( transaction_digest(trx) );
+      for( const auto& t : input_transactions ) 
+         ids.emplace_back( t.get_transaction().id() );
 
-      for( const auto& trx : generated_input )
-         ids.push_back( trx.id );
+      return merkle( std::move(ids) );
+   }
 
+   void shard_trace::calculate_root() {
+      static const size_t GUESS_ACTS_PER_TX = 10;
 
-      return merkle(ids);
+      vector<digest_type> action_roots;
+      action_roots.reserve(transaction_traces.size() * GUESS_ACTS_PER_TX);
+      for (const auto& tx :transaction_traces) {
+         for (const auto& at: tx.action_traces) {
+            digest_type::encoder enc;
+
+            fc::raw::pack(enc, at.receiver);
+            fc::raw::pack(enc, at.act.account);
+            fc::raw::pack(enc, at.act.name);
+            fc::raw::pack(enc, at.act.data);
+            fc::raw::pack(enc, at.region_id);
+            fc::raw::pack(enc, at.cycle_index);
+            fc::raw::pack(enc, at.data_access);
+
+            action_roots.emplace_back(enc.result());
+         }
+      }
+      shard_root = merkle(action_roots);
+   }
+
+   digest_type block_trace::calculate_action_merkle_root()const {
+      vector<digest_type> shard_roots;
+      shard_roots.reserve(1024);
+      for(const auto& rt: region_traces ) {
+         for(const auto& ct: rt.cycle_traces ) {
+            for(const auto& st: ct.shard_traces) {
+               shard_roots.emplace_back(st.shard_root);
+            }
+         }
+      }
+      return merkle(shard_roots);
    }
 
 } }

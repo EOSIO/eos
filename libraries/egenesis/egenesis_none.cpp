@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
-#include <eos/egenesis/egenesis.hpp>
+#include <eosio/egenesis/egenesis.hpp>
 
 namespace eosio { namespace egenesis {
 

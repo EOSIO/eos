@@ -45,12 +45,22 @@ namespace fc {
 
   time_point::operator fc::string()const
   {
-      return fc::string( time_point_sec( *this ) );
+      const auto ptime = boost::posix_time::from_time_t( time_t( sec_since_epoch() ) );
+      auto msec = (elapsed.count() % 1000000) / 1000 + 1000;
+      return boost::posix_time::to_iso_extended_string( ptime ) + "."+to_string(msec).substr(1);
   }
 
   time_point time_point::from_iso_string( const fc::string& s )
   { try {
-      return time_point( time_point_sec::from_iso_string( s ) );
+      auto dot = s.find( '.' );
+      if( dot == std::string::npos )
+         return time_point( time_point_sec::from_iso_string( s ) );
+      else {
+         auto ms = s.substr( dot );
+         ms[0] = '1';
+         while( ms.size() < 4 ) ms.push_back('0');
+         return time_point( time_point_sec::from_iso_string( s ) ) + milliseconds( to_int64(ms) - 1000 );
+      }
   } FC_RETHROW_EXCEPTIONS( warn, "unable to convert ISO-formatted string to fc::time_point" ) }
 
   void to_variant( const fc::time_point& t, variant& v ) {

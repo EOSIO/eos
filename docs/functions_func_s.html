@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN2.0.1</span>
+   &#160;<span id="projectnumber">DAWN3.0.1</span>
    </div>
   </td>
  </tr>
@@ -68,8 +68,8 @@ $(function() {
 , <a class="el" href="classeosio_1_1datastream_3_01size__t_01_4.html#ac4720cb82d256a41f27bbf389b37790b">eosio::datastream&lt; size_t &gt;</a>
 </li>
 <li>send()
-: <a class="el" href="classeosio_1_1message.html#ad72772ef7e65404d0e8eea7b597b2d98">eosio::message</a>
-, <a class="el" href="classeosio_1_1transaction.html#a1868460ece96e9e1e23c3c7e8dd88031">eosio::transaction</a>
+: <a class="el" href="structeosio_1_1action.html#a447f36a63208c2d138b7109b3e13e55f">eosio::action</a>
+, <a class="el" href="classeosio_1_1transaction.html#a08e8d96caedcdf09a360c2e229d624ea">eosio::transaction</a>
 </li>
 <li>send_message()
 : <a class="el" href="structtest__transaction.html#aea517a1c8103ed6a4b538661424ecb88">test_transaction</a>
@@ -101,6 +101,13 @@ $(function() {
 <li>send_transaction_max()
 : <a class="el" href="structtest__transaction.html#ae7eb9f349f953c5d0fc3726114a27dfa">test_transaction</a>
 </li>
+<li>set()
+: <a class="el" href="classeosio_1_1singleton.html#a897f32b63fe7330d130d3702cae66cc8">eosio::singleton&lt; Code, SingletonName, T &gt;</a>
+, <a class="el" href="classeosio_1_1table64.html#a44d08e191f96bc50597aee3a085d2938">eosio::table64&lt; DefaultScope, TableName, T &gt;</a>
+</li>
+<li>set_balance()
+: <a class="el" href="classeosio_1_1generic__currency.html#a51b194cc27d13d9050b0d1514c921118">eosio::generic_currency&lt; Token &gt;</a>
+</li>
 <li>setauth()
 : <a class="el" href="structnative_1_1contract.html#a74eb5f9ef72cb07a653e0c0e0c409c82">native::contract</a>
 </li>
@@ -116,9 +123,16 @@ $(function() {
 <li>signed_int()
 : <a class="el" href="structsigned__int.html#aeb8e4505fb74ac10c901ef905ff82d2e">signed_int</a>
 </li>
+<li>size()
+: <a class="el" href="classeosio_1_1vector.html#a857bf0bac13794f1df2f5d25b5b5d5a8">eosio::vector&lt; T &gt;</a>
+, <a class="el" href="classstd_1_1initializer__list.html#aee0702b77d3afc3964b6dff4bf09dc05">std::initializer_list&lt; E &gt;</a>
+</li>
 <li>skip()
 : <a class="el" href="classeosio_1_1datastream.html#a928fbd3301caee3c64ea620442fb0e64">eosio::datastream&lt; T &gt;</a>
 , <a class="el" href="classeosio_1_1datastream_3_01size__t_01_4.html#ad9d7da49e77a5db9c80c256845b26894">eosio::datastream&lt; size_t &gt;</a>
+</li>
+<li>start_convert()
+: <a class="el" href="classbancor_1_1converter__contract.html#ab04abf8e1d02393ddbc9b09b5b5a5be1">bancor::converter_contract&lt; ConverterCurrency, FirstCurrency, SecondCurrency &gt;</a>
 </li>
 <li>store()
 : <a class="el" href="structeosio_1_1table.html#ac2e0a113e71ced0ef76d264896d121fe">eosio::table&lt; scope, code, table_n, Record, PrimaryType, SecondaryType &gt;</a>
@@ -129,7 +143,7 @@ $(function() {
 , <a class="el" href="structeosio_1_1var__table.html#a00817fbd0007392ed4efe9ea999a8237">eosio::var_table&lt; scope, code, table_n, PrimaryType &gt;</a>
 </li>
 <li>string()
-: <a class="el" href="classeosio_1_1string.html#a32d0a50d44d2548303037d1eecedd077">eosio::string</a>
+: <a class="el" href="classeosio_1_1string.html#aade33fbfd95a6faebea6da1f1486cba7">eosio::string</a>
 </li>
 <li>string_literal()
 : <a class="el" href="structtest__string.html#abd2290fd5547e8e525fbd2ea7f50f9e5">test_string</a>

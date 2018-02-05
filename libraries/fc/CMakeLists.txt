@@ -96,7 +96,11 @@ set( fc_sources
      src/crypto/elliptic_common.cpp
      ${ECC_REST}
      src/crypto/elliptic_${ECC_IMPL}.cpp
+     src/crypto/elliptic_r1.cpp
      src/crypto/rand.cpp
+     src/crypto/public_key.cpp
+     src/crypto/private_key.cpp
+     src/crypto/signature.cpp
      src/network/ip.cpp
      src/network/resolve.cpp
      src/network/udp_socket.cpp
@@ -161,10 +165,6 @@ target_include_directories(fc
     ${OPENSSL_INCLUDE_DIR}
     ${Secp256k1_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/websocketpp
-
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/boost_1.51/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/cyoencode-1.0.2/src
   )
 
 IF(NOT WIN32)
@@ -179,3 +179,5 @@ IF(DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
 ELSE()
   SET (OPENSSL_CONF_TARGET ${CMAKE_CURRENT_BINARY_DIR})
 ENDIF()
+
+add_subdirectory( test )

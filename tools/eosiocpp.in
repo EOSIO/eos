@@ -1,0 +1,152 @@
+#!/bin/bash
+
+EOSIO_INSTALL_DIR=@CMAKE_INSTALL_PREFIX@
+ABIGEN=${EOSIO_INSTALL_DIR}/bin/abi_gen
+CODEGEN=${EOSIO_INSTALL_DIR}/bin/codegen
+
+function copy_skeleton {
+    set -e
+    cp -r ${EOSIO_INSTALL_DIR}/share/skeleton/. $newname
+
+    for file in $(find ./$newname -name 'skeleton.*')
+    do
+        newfile=`echo $file | sed 's/skeleton\./'"$newname"'./'`
+#        echo mv "${file}" "${newfile}"
+        mv "${file}" "${newfile}"
+        exp=s/skeleton/${newname}/g
+#        echo sed -i ${exp}  ${newfile}
+        sed ${exp}  ${newfile} > ${newfile}1
+        mv ${newfile}1 ${newfile}
+    done
+    echo "created $newname from skeleton"
+    set +e
+}
+
+function build_contract {
+    set -e
+    workdir=`mktemp -d`
+#    echo mkdir $workdir/built
+    mkdir $workdir/built
+
+    for file in $@; do
+        name=`basename $file`
+        filePath=`dirname $file`
+
+        echo @WASM_CLANG@ -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions -I ${EOSIO_INSTALL_DIR}/include -I $filePath -c $file -o $workdir/built/$name
+        @WASM_CLANG@ -emit-llvm -O3 --std=c++14 --target=wasm32 -ffreestanding -nostdlib -fno-threadsafe-statics -fno-rtti -fno-exceptions -I ${EOSIO_INSTALL_DIR}/include -I $filePath -c $file -o $workdir/built/$name
+    done
+
+#    echo @WASM_LLVM_LINK@ -o $workdir/linked.bc $workdir/built/*
+    @WASM_LLVM_LINK@ -o $workdir/linked.bc $workdir/built/*
+#    echo @WASM_LLC@ --asm-verbose=false -o $workdir/assembly.s $workdir/linked.bc
+    @WASM_LLC@ --asm-verbose=false -o $workdir/assembly.s $workdir/linked.bc
+#  echo @BINARYEN_BIN@/s2wasm -o $outname -s 16384 $workdir/assembly.s
+    @BINARYEN_BIN@/s2wasm -o $outname -s 16384 $workdir/assembly.s
+
+#    echo rm -rf $workdir
+    rm -rf $workdir
+    set +e
+}
+
+function generate_abi {
+
+    if [[ ! -e "$1" ]]; then
+        echo "You must specify a file"
+        exit 1
+    fi
+    
+    context_folder=$(realpath $(dirname $1))
+
+    ${ABIGEN} -extra-arg=-c -extra-arg=--std=c++14 -extra-arg=--target=wasm32 \
+        -extra-arg=-I${EOSIO_INSTALL_DIR}/include  -extra-arg=-I$context_folder \
+        -extra-arg=-fparse-all-comments -destination-file=${outname} -verbose=0 \
+        -context=$context_folder $1 --
+
+    if [ "$?" -ne 0 ]; then
+        exit 1
+    fi    
+
+    echo "Generated ${outname} ..."
+    
+    if [[ "$genserialfunctions" == "yes" ]]; then
+        tmp=$(basename $(realpath $1))
+        gen_name=${tmp%.*}.gen.hpp
+        ${CODEGEN} ${outname} > $context_folder/${gen_name}
+
+        if [ "$?" -ne 0 ]; then
+            exit 1
+        fi
+
+        echo "Generated ${gen_name} ..."
+    fi
+}
+
+function print_help {
+    echo "Usage: $0 -o output.wast contract.cpp [other.cpp ...]"
+    echo "       OR"
+    echo "       $0 -n mycontract"
+    echo "       OR"
+    echo "       $0 -g contract.abi types.hpp"
+    echo
+    echo "Options:"
+    echo "   -n | --newcontract [name]"
+    echo "      Create a new contract in the [name] folder, based on the example contract"
+    echo "   OR"
+    echo "   -o | --outname [output.wast] [input.cpp ...]"
+    echo "      Generate the wast output file based on input cpp files"
+    echo "   OR"
+    echo "   -g | --genabi contract.abi [ -gs ] types.hpp"
+    echo "      Generate the ABI specification file [EXPERIMENTAL]"
+}
+
+command=""
+genserialfunctions="no"
+
+while [[ $# -gt 1 ]]
+do
+key="$1"
+
+case $key in
+    -h|--help)
+        print_help
+        break;
+        ;;
+    -n|--newcontract)
+        newname="$2"
+        command="newcontract"
+        shift 2
+        break
+        ;;
+    -o|--outname)
+        outname="$2"
+        command="outname"
+        shift 2
+        break
+        ;;
+    -gs)
+        genserialfunctions="yes"
+        shift 1
+        break
+        ;;
+    -g|--genabi)
+        outname="$2"
+        command="genabi"
+        shift 2
+        ;;
+    *)
+        echo "Unrecognized option: $1"
+        exit 1
+        ;;
+esac
+done
+
+if [[ "outname" == "$command" ]]; then
+    build_contract $@
+elif [[ "newcontract" == "$command" ]]; then
+    copy_skeleton
+elif [[ "genabi" == "$command" ]]; then
+    generate_abi $@
+else
+    print_help
+    exit 1
+fi

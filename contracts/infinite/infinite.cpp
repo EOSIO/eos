@@ -19,7 +19,7 @@ namespace infinite {
    }
 
    void apply_currency_transfer( const infinite::transfer& transfer ) {
-      require_notice( transfer.to, transfer.from );
+      require_recipient( transfer.to, transfer.from );
       require_auth( transfer.from );
 
       auto from = get_account( transfer.from );
@@ -40,19 +40,12 @@ namespace infinite {
 using namespace infinite;
 
 extern "C" {
-    void init()  {
-       account owned_account;
-       //Initialize currency account only if it does not exist
-       if ( !accounts::get( owned_account, N(currency) )) {
-          store_account( N(currency), account( currency_tokens(1000ull*1000ull*1000ull) ) );
-       }
-    }
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {
        if( code == N(currency) ) {
           if( action == N(transfer) )
-             infinite::apply_currency_transfer( current_message< infinite::transfer >() );
+             infinite::apply_currency_transfer( current_action< infinite::transfer >() );
        }
     }
 }

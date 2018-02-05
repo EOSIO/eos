@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN2.0.1</span>
+   &#160;<span id="projectnumber">DAWN3.0.1</span>
    </div>
   </td>
  </tr>
@@ -114,16 +114,16 @@ $(function() {
 , <a class="el" href="structtest__real.html#a230c29a1d08a9392e89096742d98cfaa">test_real</a>
 </li>
 <li>test_printi()
-: <a class="el" href="structtest__print.html#aa14d348af4d4f562a98b92f693c963dd">test_print</a>
+: <a class="el" href="structtest__print.html#a9e304b05c2dbc4df68602804e54a773a">test_print</a>
 </li>
 <li>test_printi128()
-: <a class="el" href="structtest__print.html#abeb45b435d9084b243e18e8919c84834">test_print</a>
+: <a class="el" href="structtest__print.html#abcb55d27afec916e1432284eb6323205">test_print</a>
 </li>
 <li>test_printn()
-: <a class="el" href="structtest__print.html#a58dfb81ffc767754a6ffc6280e68933c">test_print</a>
+: <a class="el" href="structtest__print.html#ab8e13806e7f706d7d08edf69504a71be">test_print</a>
 </li>
 <li>test_prints()
-: <a class="el" href="structtest__print.html#a9adec6052a3d4ed89fd85e9d83dad38b">test_print</a>
+: <a class="el" href="structtest__print.html#aa69968f94a66e14264afaa33d10fbd0e">test_print</a>
 </li>
 <li>test_sha256()
 : <a class="el" href="structtest__crypto.html#aaf02d8ff97aa6bd8d22eaabbb0d7961f">test_crypto</a>
@@ -132,21 +132,38 @@ $(function() {
 : <a class="el" href="structtest__fixedpoint.html#a0917ba17a36741bafd0855b2b48a615c">test_fixedpoint</a>
 </li>
 <li>to
-: <a class="el" href="structinfinite_1_1transfer.html#a9a61c1d9e877eb8602ee2cd05409ef86">infinite::transfer</a>
-, <a class="el" href="group__currencyapi.html#ga2465adec996f6c6bf45f450043b45c95">TOKEN_NAME::transfer</a>
+: <a class="el" href="structeosio_1_1generic__currency_1_1issue.html#ad7a382e1cf0662bec97b221280afbff4">eosio::generic_currency&lt; Token &gt;::issue</a>
+, <a class="el" href="structeosio_1_1generic__currency_1_1transfer.html#a0c9d02a236a387f2cf1e1385f2f1ba11">eosio::generic_currency&lt; Token &gt;::transfer</a>
+, <a class="el" href="structeosio_1_1native__currency_1_1transfer.html#a1b24775f879304de541824a3aa0e0b6a">eosio::native_currency::transfer</a>
+, <a class="el" href="structeosiosystem_1_1stakevote.html#ab88778a73d2edfa28e0866b7062759f7">eosiosystem::stakevote</a>
+, <a class="el" href="structeosiosystem_1_1transfer.html#aaf07c9a88d2605c584a28480c2e0b3f3">eosiosystem::transfer</a>
+, <a class="el" href="structinfinite_1_1transfer.html#a9a61c1d9e877eb8602ee2cd05409ef86">infinite::transfer</a>
+, <a class="el" href="group__storageapi.html#ga2465adec996f6c6bf45f450043b45c95">TOKEN_NAME::transfer</a>
+</li>
+<li>to_currency_account
+: <a class="el" href="structbancor_1_1converter__contract_1_1converter__args.html#a6d6dc6af1f019b55e958fc1113729bf3">bancor::converter_contract&lt; ConverterCurrency, FirstCurrency, SecondCurrency &gt;::converter_args</a>
+</li>
+<li>to_currency_symbol
+: <a class="el" href="structbancor_1_1converter__contract_1_1converter__args.html#a6a6d46c420ac72b22a2545a5a7e6f7e2">bancor::converter_contract&lt; ConverterCurrency, FirstCurrency, SecondCurrency &gt;::converter_args</a>
 </li>
 <li>token()
-: <a class="el" href="structeosio_1_1token.html#a1c797c390e5acdbcb072990a7190a1a3">eosio::token&lt; NumberType, currency &gt;</a>
+: <a class="el" href="structeosio_1_1token.html#a204f5095a16b4ff9ef4d6c993111407c">eosio::token&lt; Code, Symbol, NumberType &gt;</a>
+</li>
+<li>token_type
+: <a class="el" href="classeosio_1_1generic__currency.html#a10520caf18cda7f18adb03ccf7357db9">eosio::generic_currency&lt; Token &gt;</a>
 </li>
 <li>total_votes
 : <a class="el" href="structpost__record.html#a580585c2172c68521e806129bef13814">post_record</a>
 </li>
-<li>transaction
-: <a class="el" href="classeosio_1_1message.html#afcb110e61ed60a3170c870fc944fb3bf">eosio::message</a>
-, <a class="el" href="classeosio_1_1transaction.html#a8a5b1418e49f6a0099c0ce483f28c713">eosio::transaction</a>
+<li>transaction()
+: <a class="el" href="classeosio_1_1transaction.html#affd08e13c0344d037cacecd970365baa">eosio::transaction</a>
 </li>
 <li>transfer()
-: <a class="el" href="structnative_1_1eos.html#a431e5dbd7faeb5dee21978d48126f197">native::eos</a>
+: <a class="el" href="structeosio_1_1generic__currency_1_1transfer.html#ac093aeedb8df49abe7f5f5929a101636">eosio::generic_currency&lt; Token &gt;::transfer</a>
+, <a class="el" href="structnative_1_1eos.html#a431e5dbd7faeb5dee21978d48126f197">native::eos</a>
+</li>
+<li>transfer_memo()
+: <a class="el" href="structeosio_1_1generic__currency_1_1transfer__memo.html#af3cea2050d53d3955d4d50e4e3750331">eosio::generic_currency&lt; Token &gt;::transfer_memo</a>
 </li>
 <li>type
 : <a class="el" href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">eosio::remove_reference&lt; T &gt;</a>

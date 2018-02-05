@@ -1,6 +1,8 @@
 var searchData=
 [
+  ['data',['data',['../classeosio_1_1vector.html#a507aa9b38f52df26d8b740cc30379a08',1,'eosio::vector::data() const'],['../classeosio_1_1vector.html#a6f0acffffdc0a8291404a46175422919',1,'eosio::vector::data()']]],
   ['datastream',['datastream',['../classeosio_1_1datastream.html#a72befc5c1f51a601ad07e7c8e61856f4',1,'eosio::datastream::datastream()'],['../classeosio_1_1datastream_3_01size__t_01_4.html#abf5e113ace4a6bfa309fcecf3fc49f63',1,'eosio::datastream&lt; size_t &gt;::datastream()']]],
+  ['dispatch',['dispatch',['../namespaceeosio.html#a78b2709044b48bb39105d37d787fefea',1,'eosio::dispatch(uint64_t code, uint64_t act)'],['../namespaceeosio.html#a289285490058d17de4a6a052b52dd680',1,'eosio::dispatch(uint64_t code, uint64_t act)']]],
   ['diveq',['diveq',['../group__mathcppapi.html#ga4ef8c3f00b1ced637f145883f942b8ff',1,'eosio']]],
   ['diveq_5fi128',['diveq_i128',['../group__mathcapi.html#gad70a23703654281749410aef05c85c74',1,'math.h']]],
   ['double_5fadd',['double_add',['../group__mathcapi.html#ga7372b74e4cb87455342d39bdf3724811',1,'math.h']]],

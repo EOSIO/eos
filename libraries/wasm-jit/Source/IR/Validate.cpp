@@ -45,7 +45,7 @@ namespace IR
 
 	void validate(SizeConstraints size,Uptr maxMax)
 	{
-		Uptr max = size.max == UINT64_MAX ? maxMax : size.max;
+		U64 max = size.max == UINT64_MAX ? maxMax : size.max;
 		VALIDATE_UNLESS("disjoint size bounds: ",size.min>max);
 		VALIDATE_UNLESS("maximum size exceeds limit: ",max>maxMax);
 	}

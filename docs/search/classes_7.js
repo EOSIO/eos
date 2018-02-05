@@ -1,5 +1,6 @@
 var searchData=
 [
-  ['key_5fvalue1',['key_value1',['../structkey__value1.html',1,'']]],
-  ['key_5fvalue2',['key_value2',['../structkey__value2.html',1,'']]]
+  ['initializer_5flist',['initializer_list',['../classstd_1_1initializer__list.html',1,'std']]],
+  ['iostream',['iostream',['../classeosio_1_1iostream.html',1,'eosio']]],
+  ['issue',['issue',['../structeosio_1_1generic__currency_1_1issue.html',1,'eosio::generic_currency']]]
 ];

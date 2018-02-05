@@ -1,7 +1,7 @@
 #pragma once
-#include <eoslib/types.hpp>
-#include <eoslib/datastream.hpp>
-#include <eoslib/raw_fwd.hpp>
+#include <eosiolib/types.hpp>
+#include <eosiolib/datastream.hpp>
+#include <eosiolib/raw_fwd.hpp>
 
 namespace eosio { namespace raw {
    template<typename Stream> inline void pack( Stream& s, const record1& value ) {
@@ -76,14 +76,14 @@ namespace eosio { namespace raw {
    }
 } }
 
-#include <eoslib/raw.hpp>
+#include <eosiolib/raw.hpp>
 namespace eosio {
    void print_ident(int n){while(n-->0){print("  ");}};
    template<typename Type>
    Type current_message_ex() {
-      uint32_t size = message_size();
+      uint32_t size = action_size();
       char* data = (char *)eosio::malloc(size);
-      assert(data && read_message(data, size) == size, "error reading message");
+      assert(data && read_action(data, size) == size, "error reading message");
       Type value;
       eosio::raw::unpack(data, size, value);
       eosio::free(data);
@@ -104,7 +104,7 @@ namespace eosio {
       print_ident(tab);print("price:[");print("]\n");
    }
    template<>
-   record1 current_message<record1>() {
+   record1 current_action<record1>() {
       return current_message_ex<record1>();
    }
    void dump(const record2& value, int tab=0) {
@@ -112,7 +112,7 @@ namespace eosio {
       print_ident(tab);print("key2:[");printi128(&value.key2);print("]\n");
    }
    template<>
-   record2 current_message<record2>() {
+   record2 current_action<record2>() {
       return current_message_ex<record2>();
    }
    void dump(const record3& value, int tab=0) {
@@ -121,7 +121,7 @@ namespace eosio {
       print_ident(tab);print("key3:[");printi(uint64_t(value.key3));print("]\n");
    }
    template<>
-   record3 current_message<record3>() {
+   record3 current_action<record3>() {
       return current_message_ex<record3>();
    }
    void dump(const key_value1& value, int tab=0) {
@@ -129,7 +129,7 @@ namespace eosio {
       print_ident(tab);print("value:[");print("]\n");
    }
    template<>
-   key_value1 current_message<key_value1>() {
+   key_value1 current_action<key_value1>() {
       return current_message_ex<key_value1>();
    }
    void dump(const complex_type& value, int tab=0) {
@@ -137,7 +137,7 @@ namespace eosio {
       print_ident(tab);print("age:[");printi(uint64_t(value.age));print("]\n");
    }
    template<>
-   complex_type current_message<complex_type>() {
+   complex_type current_action<complex_type>() {
       return current_message_ex<complex_type>();
    }
    void dump(const key_value2& value, int tab=0) {
@@ -145,7 +145,7 @@ namespace eosio {
       print_ident(tab);print("value:[");print("\n"); eosio::dump(value.value, tab+1);print_ident(tab);print("]\n");
    }
    template<>
-   key_value2 current_message<key_value2>() {
+   key_value2 current_action<key_value2>() {
       return current_message_ex<key_value2>();
    }
 } //eosio

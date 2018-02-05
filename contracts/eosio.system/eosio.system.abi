@@ -1,0 +1,57 @@
+{
+  "types": [{
+      "new_type_name": "account_name",
+      "type": "name"
+    }
+  ],
+  "structs": [{
+      "name": "transfer",
+      "base": "",
+      "fields": [
+        {"name":"from", "type":"account_name"},
+        {"name":"to", "type":"account_name"},
+        {"name":"quantity", "type":"asset"},
+        {"name":"memo", "type":"string"}
+      ]
+    },{
+     "name": "issue",
+     "base": "",
+     "fields": [
+        {"name":"to", "type":"account_name"},
+        {"name":"quantity", "type":"asset"}
+     ]
+    },{
+      "name": "account",
+      "base": "",
+      "fields": [
+        {"name":"key", "type":"name"},
+        {"name":"balance", "type":"uint64"}
+      ]
+    },{
+      "name": "nonce",
+      "base": "",
+      "fields": [
+        {"name":"value", "type":"string"}
+      ]
+    }
+  ],
+  "actions": [{
+      "name": "transfer",
+      "type": "transfer"
+    },{
+      "name": "issue",
+      "type": "issue"
+    },{
+      "name": "nonce",
+      "type": "nonce"
+    }
+  ],
+  "tables": [{
+      "name": "account",
+      "type": "account",
+      "index_type": "i64",
+      "key_names" : ["key"],
+      "key_types" : ["name"]
+    }
+  ]
+}

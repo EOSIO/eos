@@ -64,14 +64,7 @@ BOOST_FIXTURE_TEST_CASE(opaque_proxy, testing_fixture)
       Set_Proxy_Owner(chain, "proxy", "newguy");
       chain.produce_blocks(7);
       
-      try {
-        Transfer_Asset(chain, inita, proxy, asset(100));
-      } catch (eosio::chain::api_not_supported) {
-        // transfer_send is not functional in STAT, exception expected.
-        return;
-      }
-      BOOST_FAIL("transfer_send is not functional in STAT, exception expected.");
-
+      Transfer_Asset(chain, inita, proxy, asset(100));
       chain.produce_blocks(1);
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("newguy"), asset(0));
       BOOST_CHECK_EQUAL(chain.get_liquid_balance("inita"), asset(100000-300));

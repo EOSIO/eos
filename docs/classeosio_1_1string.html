@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN2.0.1</span>
+   &#160;<span id="projectnumber">DAWN3.0.1</span>
    </div>
   </td>
  </tr>
@@ -90,10 +90,14 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a826441441ab6ad0d7b68240714658534"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab18d966a1121e47005d02eb54c980144"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1string.html#ab18d966a1121e47005d02eb54c980144">~string</a> ()</td></tr>
 <tr class="separator:ab18d966a1121e47005d02eb54c980144"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8d395e277ce5848b5a642b0d40babe9b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1string.html#a8d395e277ce5848b5a642b0d40babe9b">resize</a> (<a class="el" href="group__types.html#ga7c94ea6f8948649f8d181ae55911eeaf">size_t</a> newsize)</td></tr>
+<tr class="separator:a8d395e277ce5848b5a642b0d40babe9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7bc7a677ca79b2b3be0091e2d035f355"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="group__types.html#ga7c94ea6f8948649f8d181ae55911eeaf">size_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1string.html#a7bc7a677ca79b2b3be0091e2d035f355">get_size</a> () const</td></tr>
 <tr class="separator:a7bc7a677ca79b2b3be0091e2d035f355"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab969d69b5af645bc30e2d4a602cb016e"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1string.html#ab969d69b5af645bc30e2d4a602cb016e">get_data</a> () const</td></tr>
 <tr class="separator:ab969d69b5af645bc30e2d4a602cb016e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa5268fb5a75d39cb43a853f40d20925c"><td class="memItemLeft" align="right" valign="top">char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1string.html#aa5268fb5a75d39cb43a853f40d20925c">get_data</a> ()</td></tr>
+<tr class="separator:aa5268fb5a75d39cb43a853f40d20925c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a813bb1e0b11250761b63d48e3bf387b5"><td class="memItemLeft" align="right" valign="top">const bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1string.html#a813bb1e0b11250761b63d48e3bf387b5">is_own_memory</a> () const</td></tr>
 <tr class="separator:a813bb1e0b11250761b63d48e3bf387b5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a808f9f108bfcd8acd062483e40f46080"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1string.html#a808f9f108bfcd8acd062483e40f46080">get_refcount</a> () const</td></tr>
@@ -130,6 +134,12 @@ Friends</h2></td></tr>
 <tr class="separator:ab8b27a889dc5ffef4a9cc7a1d1905b9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a68ca7a7a35654ab6f2a2683b7d329442"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classeosio_1_1string.html">string</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1string.html#a68ca7a7a35654ab6f2a2683b7d329442">operator+</a> (<a class="el" href="classeosio_1_1string.html">string</a> lhs, const <a class="el" href="classeosio_1_1string.html">string</a> &amp;rhs)</td></tr>
 <tr class="separator:a68ca7a7a35654ab6f2a2683b7d329442"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae9ee512fb742469af935b1f30d2dad4d"><td class="memTemplParams" colspan="2">template&lt;typename DataStream &gt; </td></tr>
+<tr class="memitem:ae9ee512fb742469af935b1f30d2dad4d"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classeosio_1_1string.html#ae9ee512fb742469af935b1f30d2dad4d">operator&lt;&lt;</a> (DataStream &amp;ds, const <a class="el" href="classeosio_1_1string.html">string</a> &amp;t)</td></tr>
+<tr class="separator:ae9ee512fb742469af935b1f30d2dad4d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1376fac480768d6115b389fd18de769f"><td class="memTemplParams" colspan="2">template&lt;typename DataStream &gt; </td></tr>
+<tr class="memitem:a1376fac480768d6115b389fd18de769f"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classeosio_1_1string.html#a1376fac480768d6115b389fd18de769f">operator&gt;&gt;</a> (DataStream &amp;ds, <a class="el" href="classeosio_1_1string.html">string</a> &amp;t)</td></tr>
+<tr class="separator:a1376fac480768d6115b389fd18de769f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="aade33fbfd95a6faebea6da1f1486cba7"></a>
@@ -428,7 +438,7 @@ Friends</h2></td></tr>
 </div>
 </div>
 <a id="ab969d69b5af645bc30e2d4a602cb016e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab969d69b5af645bc30e2d4a602cb016e">&#9670;&nbsp;</a></span>get_data()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ab969d69b5af645bc30e2d4a602cb016e">&#9670;&nbsp;</a></span>get_data() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -441,6 +451,31 @@ Friends</h2></td></tr>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aa5268fb5a75d39cb43a853f40d20925c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa5268fb5a75d39cb43a853f40d20925c">&#9670;&nbsp;</a></span>get_data() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">char* eosio::string::get_data </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
         </tr>
       </table>
   </td>
@@ -662,6 +697,32 @@ Friends</h2></td></tr>
 
 </div>
 </div>
+<a id="a8d395e277ce5848b5a642b0d40babe9b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8d395e277ce5848b5a642b0d40babe9b">&#9670;&nbsp;</a></span>resize()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void eosio::string::resize </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga7c94ea6f8948649f8d181ae55911eeaf">size_t</a>&#160;</td>
+          <td class="paramname"><em>newsize</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="acc5a44fa32bd5c717cba547333461d39"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#acc5a44fa32bd5c717cba547333461d39">&#9670;&nbsp;</a></span>substr()</h2>
 
@@ -822,6 +883,44 @@ Friends</h2></td></tr>
 
 </div>
 </div>
+<a id="ae9ee512fb742469af935b1f30d2dad4d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae9ee512fb742469af935b1f30d2dad4d">&#9670;&nbsp;</a></span>operator<<</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename DataStream &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">DataStream&amp; operator&lt;&lt; </td>
+          <td>(</td>
+          <td class="paramtype">DataStream &amp;&#160;</td>
+          <td class="paramname"><em>ds</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="classeosio_1_1string.html">string</a> &amp;&#160;</td>
+          <td class="paramname"><em>t</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">friend</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a747feeacef8c26d89dafe7a9e32e2439"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a747feeacef8c26d89dafe7a9e32e2439">&#9670;&nbsp;</a></span>operator==</h2>
 
@@ -878,6 +977,44 @@ Friends</h2></td></tr>
           <td></td>
           <td class="paramtype">const <a class="el" href="classeosio_1_1string.html">string</a> &amp;&#160;</td>
           <td class="paramname"><em>rhs</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">friend</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a1376fac480768d6115b389fd18de769f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1376fac480768d6115b389fd18de769f">&#9670;&nbsp;</a></span>operator>></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename DataStream &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">DataStream&amp; operator&gt;&gt; </td>
+          <td>(</td>
+          <td class="paramtype">DataStream &amp;&#160;</td>
+          <td class="paramname"><em>ds</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classeosio_1_1string.html">string</a> &amp;&#160;</td>
+          <td class="paramname"><em>t</em>&#160;</td>
         </tr>
         <tr>
           <td></td>

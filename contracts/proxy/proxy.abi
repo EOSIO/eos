@@ -7,25 +7,27 @@
   "structs": [{
       "name": "config",
       "base": "",
-      "fields": {
-        "key": "name",
-        "owner": "name"
-      }
+      "fields": [
+        { "name": "key", "type": "name" },
+        { "name": "owner", "type": "name" },
+        { "name": "next_id", "type": "uint32" }
+      ]
     },{
       "name": "setowner",
       "base": "",
-      "fields": {
-        "owner": "name"
-      }
+      "fields": [
+        { "name": "owner", "type": "name" },
+        { "name": "delay", "type": "uint32" }
+      ]
     }
   ],
   "actions": [{
-      "action_name": "setowner",
+      "name": "setowner",
       "type": "setowner"
     }
   ],
   "tables": [{
-      "table_name": "configs",
+      "name": "configs",
       "type": "config",
       "index_type": "i64",
       "key_names" : ["key"],

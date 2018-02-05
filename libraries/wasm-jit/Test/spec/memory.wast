@@ -129,7 +129,7 @@
 
 (assert_invalid
   (module (memory 1 0))
-  "memory size minimum must not be greater than maximum"
+  "size minimum must not be greater than maximum"
 )
 (assert_invalid
   (module (memory 65537))

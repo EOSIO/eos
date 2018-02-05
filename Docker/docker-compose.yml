@@ -1,27 +1,27 @@
 version: "2"
 
 services:
-  eosd:
+  eosiod:
     build:
       context: .
     image: eosio/eos
-    command: /opt/eos/bin/start_eosd.sh
+    command: /opt/eosio/bin/start_eosiod.sh
     ports:
       - 8888:8888
       - 9876:9876
     expose:
       - "8888"
     volumes:
-      - eosd-data-volume:/opt/eos/bin/data-dir
+      - eosiod-data-volume:/opt/eosio/bin/data-dir
 
   walletd:
     image: eosio/eos
-    command: /opt/eos/bin/eos-walletd
+    command: /opt/eosio/bin/eosio-walletd
     links:
-      - eosd
+      - eosiod
     volumes:
-      - walletd-data-volume:/opt/eos/bin/data-dir
+      - walletd-data-volume:/opt/eosio/bin/data-dir
 
 volumes:
-  eosd-data-volume:
+  eosiod-data-volume:
   walletd-data-volume:

@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eoslib/message.h>
-#include <eoslib/chain.h>
+#include <eosiolib/action.h>
+#include <eosiolib/chain.h>
 
 #include "test_api.hpp"
 
@@ -16,7 +16,7 @@ struct producers {
 
 unsigned int test_chain::test_activeprods() {
   producers msg_prods;
-  read_message(&msg_prods, sizeof(producers));
+  read_action(&msg_prods, sizeof(producers));
 
   WASM_ASSERT(msg_prods.len == 21, "producers.len != 21");
 

@@ -74,30 +74,30 @@ namespace IR
 		serialize(stream,tableType.elementType);
 		
 		Uptr flags = 0;
-		if(!Stream::isInput && tableType.size.max != UINT64_MAX) { flags |= 1; }
+		if(!Stream::isInput && tableType.size.max != UINT64_MAX) { flags |= 0x01; }
 		#if ENABLE_THREADING_PROTOTYPE
-		if(!Stream::isInput && tableType.isShared) { flags |= 2; }
+		if(!Stream::isInput && tableType.isShared) { flags |= 0x10; }
 		serializeVarUInt32(stream,flags);
-		if(Stream::isInput) { tableType.isShared = (flags & 2) != 0; }
+		if(Stream::isInput) { tableType.isShared = (flags & 0x10) != 0; }
 		#else
 		serializeVarUInt32(stream,flags);
 		#endif
-		serialize(stream,tableType.size,flags & 1);
+		serialize(stream,tableType.size,flags & 0x01);
 	}
 
 	template<typename Stream>
 	void serialize(Stream& stream,MemoryType& memoryType)
 	{
 		Uptr flags = 0;
-		if(!Stream::isInput && memoryType.size.max != UINT64_MAX) { flags |= 1; }
+		if(!Stream::isInput && memoryType.size.max != UINT64_MAX) { flags |= 0x01; }
 		#if ENABLE_THREADING_PROTOTYPE
-		if(!Stream::isInput && memoryType.isShared) { flags |= 2; }
+		if(!Stream::isInput && memoryType.isShared) { flags |= 0x10; }
 		serializeVarUInt32(stream,flags);
-		if(Stream::isInput) { memoryType.isShared = (flags & 2) != 0; }
+		if(Stream::isInput) { memoryType.isShared = (flags & 0x10) != 0; }
 		#else
 		serializeVarUInt32(stream,flags);
 		#endif
-		serialize(stream,memoryType.size,flags & 1);
+		serialize(stream,memoryType.size,flags & 0x01);
 	}
 
 	template<typename Stream>
@@ -238,13 +238,18 @@ public:
    {
    }
 
+   void adjustIfFunctionIndex(Uptr& index, ObjectKind kind)
+   {
+      if (kind == ObjectKind::function)
+         ++index;
+   }
+
    void adjustExportIndex(Module& module)
    {
       // all function exports need to have their index increased to account for inserted definition
       for (auto& exportDef : module.exports)
       {
-         if (exportDef.kind == ObjectKind::function)
-            ++exportDef.index;
+         adjustIfFunctionIndex(exportDef.index, exportDef.kind);
       }
    }
 
@@ -271,6 +276,7 @@ struct NoOpInjection
    void addImport(Module& ) {}
    template<typename Imm>
    void conditionallyAddCall(Opcode , const Imm& , const Module& , Serialization::OutputStream& ) {}
+   void adjustIfFunctionIndex(Uptr& , ObjectKind ) {}
    void adjustExportIndex(Module& ) {}
    template<typename Imm>
    void adjustCallIndex(const Module& , Imm& ) {}
@@ -613,6 +619,7 @@ namespace WASM
          {
             Opcode opcode;
             serialize(bodyStream,opcode);
+
             switch(opcode)
             {
             #define VISIT_OPCODE(_,name,nameString,Imm,...) \
@@ -628,11 +635,14 @@ namespace WASM
                }
             ENUM_NONFLOAT_OPERATORS(VISIT_OPCODE)
             #undef VISIT_OPCODE
+
+            /////disallow float operations
             #define VISIT_OPCODE(_,name,nameString,...) \
                case Opcode::name: \
                   throw FatalSerializationException("float instructions not allowed");
             ENUM_FLOAT_NONCONTROL_NONPARAMETRIC_OPERATORS(VISIT_OPCODE)
             #undef VISIT_OPCODE
+
             default: throw FatalSerializationException("unknown opcode");
             };
          };
@@ -848,6 +858,7 @@ namespace WASM
          {
             serializeVarUInt32(sectionStream,module.startFunctionIndex);
          });
+         injection.adjustIfFunctionIndex(module.startFunctionIndex, ObjectKind::function);
       }
 
       template<typename Stream>

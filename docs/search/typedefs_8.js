@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['offers',['offers',['../namespacedice.html#a34385e2eead0de37a8d80374ce2532cd',1,'dice']]]
+  ['native_5ftokens',['native_tokens',['../namespaceeosiosystem.html#a9fcdd76a36dbf12231c8435676e52e19',1,'eosiosystem']]]
 ];

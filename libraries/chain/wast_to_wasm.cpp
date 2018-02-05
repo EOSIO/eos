@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/chain/wast_to_wasm.hpp>
+#include <eosio/chain/wast_to_wasm.hpp>
 #include <Inline/BasicTypes.h>
 #include <IR/Module.h>
 #include <IR/Validate.h>
@@ -21,13 +21,13 @@ namespace eosio { namespace chain {
       
       try {
       IR::Module module;
-      std::vector<WAST::Error> parseErrors;
-      WAST::parseModule(wast.c_str(),wast.size(),module,parseErrors);
-      if(parseErrors.size())
+      std::vector<WAST::Error> parse_errors;
+      WAST::parseModule(wast.c_str(),wast.size(),module,parse_errors);
+      if(parse_errors.size())
       {
          // Print any parse errors;
          ss << "Error parsing WebAssembly text file:" << std::endl;
-         for(auto& error : parseErrors)
+         for(auto& error : parse_errors)
          {
             ss << ":" << error.locus.describe() << ": " << error.message.c_str() << std::endl;
             ss << error.locus.sourceLine << std::endl;

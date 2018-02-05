@@ -1,16 +1,18 @@
 var searchData=
 [
-  ['name',['name',['../structeosio_1_1name.html#a407dbab408dac23b5acd5d65cffbf6e5',1,'eosio::name']]],
-  ['name_5fclass',['name_class',['../structtest__types.html#a2e521d716b6ba6d100ab782bebc8e1af',1,'test_types']]],
-  ['next',['next',['../structeosio_1_1table_1_1primary__index.html#a09d324b41f6bc408685510358a2656a5',1,'eosio::table::primary_index::next()'],['../structeosio_1_1table_1_1secondary__index.html#a6565502bb9fb2c7361e935dc35cf90da',1,'eosio::table::secondary_index::next()'],['../structeosio_1_1table_3_01scope_00_01code_00_01table__n_00_01_record_00_01_primary_type_00_01void_01_4_1_1primary__index.html#ada2fd80e8f0841bda9d1170ed025e94e',1,'eosio::table&lt; scope, code, table_n, Record, PrimaryType, void &gt;::primary_index::next()'],['../structeosio_1_1table__impl__obj_3_01char_01_5_01_4.html#acee0363e3072ce02a0b092ebc41adb87',1,'eosio::table_impl_obj&lt; char * &gt;::next()'],['../structeosio_1_1var__table.html#a7b8230908088ffcaa59adc099244a281',1,'eosio::var_table::next()']]],
-  ['next_5fi64',['next_i64',['../group__dbi64.html#gab092362b1095ea7712a8cd3c5e23432d',1,'db.h']]],
-  ['next_5fprimary',['next_primary',['../structeosio_1_1table__impl_3_01sizeof_07uint128__t_08_00_01sizeof_07uint128__t_08_4.html#a8bcd9578802cc603df4456b7b2358f3a',1,'eosio::table_impl&lt; sizeof(uint128_t), sizeof(uint128_t)&gt;::next_primary()'],['../structeosio_1_1table__impl_3_01sizeof_07uint64__t_08_00_010_01_4.html#a9e5243a08cf118aaf53ddee8881f4c68',1,'eosio::table_impl&lt; sizeof(uint64_t), 0 &gt;::next_primary()']]],
-  ['next_5fprimary_5fi128i128',['next_primary_i128i128',['../group__dbi128i128.html#ga0244e6b697281bc05d94764af17a936b',1,'db.h']]],
-  ['next_5fprimary_5fi64i64i64',['next_primary_i64i64i64',['../group__dbi64i64i64.html#gab03215ccaa5a76aca298266ce7dfb0d6',1,'db.h']]],
-  ['next_5fsecondary',['next_secondary',['../structeosio_1_1table__impl_3_01sizeof_07uint128__t_08_00_01sizeof_07uint128__t_08_4.html#ae298b92bf93d7123b2d3c6bbeadeb7b8',1,'eosio::table_impl&lt; sizeof(uint128_t), sizeof(uint128_t)&gt;']]],
-  ['next_5fsecondary_5fi128i128',['next_secondary_i128i128',['../group__dbi128i128.html#gac421e93fee948b316e6d60d634600bfb',1,'db.h']]],
-  ['next_5fsecondary_5fi64i64i64',['next_secondary_i64i64i64',['../group__dbi64i64i64.html#ga5b49dbf56515e8b9882e16487933f285',1,'db.h']]],
-  ['next_5fstr',['next_str',['../group__dbstr.html#ga29fb2e3e8b45b5fe07ef3c4049b1ee79',1,'db.h']]],
-  ['next_5ftertiary_5fi64i64i64',['next_tertiary_i64i64i64',['../group__dbi64i64i64.html#ga6262b58cb6d3ee96844c4c25ed2241bf',1,'db.h']]],
-  ['now',['now',['../structtest__message.html#a94d80657ef677aaf9ffb0e025fae6f59',1,'test_message::now()'],['../group__systemcapi.html#ga5eef43c9589d6ef54a0ece1dda5e0ffe',1,'now():&#160;system.h']]]
+  ['malloc',['malloc',['../group__memorycppapi.html#gac4387e5dad9585f885c0c0bf8d353739',1,'eosio']]],
+  ['match',['match',['../namespaceexchange.html#a15c24418c4ed503becae07191757dee2',1,'exchange']]],
+  ['max',['max',['../group__mathcppapi.html#ga29bcc1fa0b9eaa7667a68a2e135dd8bd',1,'eosio']]],
+  ['memcmp',['memcmp',['../group__memorycapi.html#ga174f86fdde222a278e5524a8aea63da9',1,'memory.h']]],
+  ['memcpy',['memcpy',['../group__memorycapi.html#ga59ed1449718a3c27f7622cb3efb845af',1,'memory.h']]],
+  ['memory_5fmanager',['memory_manager',['../classeosio_1_1memory__manager.html#a1263e25250550298ba8408cce464a87c',1,'eosio::memory_manager']]],
+  ['memset',['memset',['../group__memorycapi.html#gad8eef9133e11fe77cd34792771f81761',1,'memory.h']]],
+  ['min',['min',['../group__mathcppapi.html#gac459e1d6c24d9178441fed9163accc79',1,'eosio']]],
+  ['modify_5faccount',['modify_account',['../namespaceexchange.html#a13d8f4e165215611a7879766e215b855',1,'exchange']]],
+  ['move',['move',['../namespaceeosio.html#af29f4c3b46ef396883a8ba57c534a808',1,'eosio']]],
+  ['multeq',['multeq',['../group__mathcppapi.html#ga51c4c1656f6c55e261e6ab5fd7397443',1,'eosio']]],
+  ['multeq_5fi128',['multeq_i128',['../group__mathcapi.html#ga61d571f58c24fb4663cc3729f3d5613e',1,'math.h']]],
+  ['my_5fmemcmp',['my_memcmp',['../test__crypto_8cpp.html#ab7d8481ae8a9f7185f73c4454c3dae57',1,'my_memcmp(void *s1, void *s2, uint32_t n):&#160;test_crypto.cpp'],['../test__db_8cpp.html#ab7d8481ae8a9f7185f73c4454c3dae57',1,'my_memcmp(void *s1, void *s2, uint32_t n):&#160;test_crypto.cpp']]],
+  ['my_5fmemset',['my_memset',['../test__db_8cpp.html#ae6b47dcb272f3e27634412e42c4e3107',1,'test_db.cpp']]],
+  ['my_5fstrlen',['my_strlen',['../test__crypto_8cpp.html#ab21a7927a82571cd1ecffebcd7d255ac',1,'my_strlen(const char *str):&#160;test_crypto.cpp'],['../test__db_8cpp.html#ab21a7927a82571cd1ecffebcd7d255ac',1,'my_strlen(const char *str):&#160;test_crypto.cpp']]]
 ];

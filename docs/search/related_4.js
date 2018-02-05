@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['transaction',['transaction',['../classeosio_1_1message.html#afcb110e61ed60a3170c870fc944fb3bf',1,'eosio::message']]]
+  ['realloc',['realloc',['../classeosio_1_1memory__manager.html#a8499edb5f09d8455c15c667c36abaac6',1,'eosio::memory_manager']]]
 ];

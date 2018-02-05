@@ -1,8 +1,6 @@
 FROM ubuntu:16.04 as builder
 
-LABEL author="Xiaobo Tian <peterwillcn@gmail.com>" \
-  maintainer="Huang-Ming Huang <huangh@objectcomputing.com>" \
-  version="0.2.1" \
+LABEL maintainer="Huang-Ming Huang <huangh@objectcomputing.com>" version="0.1.1" \
   description="This is a base image for building eosio/eos"
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
@@ -33,7 +31,7 @@ RUN wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.
     && ./bootstrap.sh --prefix=/usr/local \
     && echo 'using clang : 4.0 : clang++-4.0 ;' >> project-config.jam \
     && ./b2 -d0 -j4 --with-thread --with-date_time --with-system --with-filesystem --with-program_options \
-       --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine toolset=clang link=static install \
+       --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine --with-iostreams toolset=clang link=static install \
     && cd .. && rm -rf boost_1_64_0
 
 RUN wget https://github.com/mongodb/mongo-c-driver/releases/download/1.8.0/mongo-c-driver-1.8.0.tar.gz -O - | tar -xz \
@@ -69,7 +67,7 @@ RUN git clone --depth 1 -b releases/stable git://github.com/mongodb/mongo-cxx-dr
     && cmake --build build --target install
 
 
-### If you don't want to change the depedencies, you can commet out above lines and uncoment the following line to get faster build time.
+### If you don't want to change the depedencies, you can comment out above lines and uncomnent the following line to get faster build time.
 # FROM huangminghuang/eos_builder as builder
 
 RUN git clone -b master --depth 1 https://github.com/EOSIO/eos.git --recursive \
@@ -81,17 +79,13 @@ RUN git clone -b master --depth 1 https://github.com/EOSIO/eos.git --recursive \
 
 
 FROM ubuntu:16.04
-LABEL author="Xiaobo Tian <peterwillcn@gmail.com>" \
-  maintainer="Huang-Ming Huang <huangh@objectcomputing.com>" \
-  version="0.2.1" \
-  description="This is an eosio/eos image"
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /usr/local/lib/* /usr/local/lib/
-COPY --from=builder /opt/eos/bin /opt/eos/bin
+COPY --from=builder /opt/eosio/bin /opt/eosio/bin
 COPY --from=builder /tmp/build/contracts /contracts
 COPY --from=builder /eos/Docker/config.ini /eos/genesis.json /
-COPY start_eosd.sh /opt/eos/bin/start_eosd.sh
-RUN chmod +x /opt/eos/bin/start_eosd.sh
+COPY start_eosiod.sh /opt/eosio/bin/start_eosiod.sh
+RUN chmod +x /opt/eosio/bin/start_eosiod.sh
 ENV LD_LIBRARY_PATH /usr/local/lib
-VOLUME /opt/eos/bin/data-dir
-ENV PATH /opt/eos/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+VOLUME /opt/eosio/bin/data-dir
+ENV PATH /opt/eosio/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

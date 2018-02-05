@@ -1,53 +1,40 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
-#include <boost/function.hpp>
-#include <boost/multiprecision/cpp_bin_float.hpp>
-#include <eos/chain/wasm_interface.hpp>
-#include <eos/chain/chain_controller.hpp>
-#include <eos/chain/rate_limiting_object.hpp>
+#include <eosio/chain/wasm_interface.hpp>
+#include <eosio/chain/apply_context.hpp>
+#include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/exceptions.hpp>
+#include <boost/core/ignore_unused.hpp>
+#include <eosio/chain/wasm_interface_private.hpp>
+#include <eosio/chain/wasm_eosio_constraints.hpp>
+#include <fc/exception/exception.hpp>
+#include <fc/crypto/sha1.hpp>
+#include <fc/io/raw.hpp>
+#include <fc/utf8.hpp>
+
+#include <Runtime/Runtime.h>
+#include "IR/Module.h"
 #include "Platform/Platform.h"
 #include "WAST/WAST.h"
+#include "IR/Operators.h"
+#include "IR/Validate.h"
+#include "IR/Types.h"
 #include "Runtime/Runtime.h"
 #include "Runtime/Linker.h"
 #include "Runtime/Intrinsics.h"
-#include "IR/Module.h"
-#include "IR/Operators.h"
-#include "IR/Validate.h"
-#include <eos/chain/key_value_object.hpp>
-#include <eos/chain/account_object.hpp>
-#include <eos/chain/balance_object.hpp>
-#include <eos/chain/staked_balance_objects.hpp>
-#include <eos/types/abi_serializer.hpp>
-#include <chrono>
-#include <boost/lexical_cast.hpp>
-#include <fc/utf8.hpp>
 
-namespace eosio { namespace chain {
-   using namespace IR;
-   using namespace Runtime;
-   typedef boost::multiprecision::cpp_bin_float_50 DOUBLE;
-   const uint32_t bytes_per_mbyte = 1024 * 1024;
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
 
-   class wasm_memory
-   {
-   public:
-      explicit wasm_memory(wasm_interface& interface);
-      wasm_memory(const wasm_memory&) = delete;
-      wasm_memory(wasm_memory&&) = delete;
-      ~wasm_memory();
-      U32 sbrk(I32 num_bytes);
-   private:
-      static U32 limit_32bit_address(Uptr address);
+#include <mutex>
+#include <thread>
+#include <condition_variable>
 
-      static const U32 _max_memory = 1024 * 1024;
-      wasm_interface& _wasm_interface;
-      Uptr _num_pages;
-      const U32 _min_bytes;
-      U32 _num_bytes;
-   };
 
+
+using namespace IR;
+using namespace Runtime;
+using boost::asio::io_service;
+
+#if 0
    // account.h/hpp expected account API balance interchange format
    // must match account.hpp account_balance definition
    PACKED_STRUCT(
@@ -78,1024 +65,953 @@ namespace eosio { namespace chain {
       */
       time last_unstaking_time;
    })
-
-   wasm_interface::wasm_interface() {
-   }
-
-   wasm_interface::key_type wasm_interface::to_key_type(const types::type_name& type_name)
-   {
-      if ("str" == type_name)
-         return str;
-      if ("i64" == type_name)
-         return i64;
-      if ("i128i128" == type_name)
-         return i128i128;
-      if ("i64i64i64" == type_name)
-         return i64i64i64;
-
-      return invalid_key_type;
-   }
-
-   std::string wasm_interface::to_type_name(key_type key_type)
-   {
-      switch (key_type)
-      {
-      case str:
-         return "str";
-      case i64:
-         return "i64";
-      case i128i128:
-         return "i128i128";
-      case i64i64i64:
-         return "i64i64i64";
-      default:
-         return std::string("<invalid key type - ") + boost::lexical_cast<std::string>(int(key_type)) + ">";
-      }
-   }
-
-#ifdef NDEBUG
-   const int CHECKTIME_LIMIT = 3000;
-#else
-   const int CHECKTIME_LIMIT = 18000;
 #endif
 
-   void checktime(int64_t duration, uint32_t checktime_limit)
+namespace eosio { namespace chain {
+   using namespace contracts;
+
+   /**
+    * Integration with the WASM Linker to resolve our intrinsics
+    */
+   struct root_resolver : Runtime::Resolver
    {
-      if (duration > checktime_limit) {
-         wlog("checktime called ${d}", ("d", duration));
-         throw checktime_exceeded();
-      }
-   }
-
-DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
-   checktime(wasm_interface::get().current_execution_time(), wasm_interface::get().checktime_limit);
-}
-
-   template <typename Function, typename KeyType, int numberOfKeys>
-   int32_t validate(int32_t valueptr, int32_t valuelen, Function func) {
-
-      static const uint32_t keylen = numberOfKeys*sizeof(KeyType);
-
-      FC_ASSERT( valuelen >= keylen, "insufficient data passed" );
-
-      auto& wasm  = wasm_interface::get();
-      FC_ASSERT( wasm.current_apply_context, "no apply context found" );
-
-      char* value = memoryArrayPtr<char>( wasm.current_memory, valueptr, valuelen );
-      KeyType*  keys = reinterpret_cast<KeyType*>(value);
-
-      valuelen -= keylen;
-      value    += keylen;
-
-      return func(wasm.current_apply_context, keys, value, valuelen);
-   }
-
-   template <typename Function>
-   int32_t validate_str(int32_t keyptr, int32_t keylen, int32_t valueptr, int32_t valuelen, Function func) {
-
-      auto& wasm  = wasm_interface::get();
-      FC_ASSERT( wasm.current_apply_context, "no apply context found" );
-
-      char* key   = memoryArrayPtr<char>( wasm.current_memory, keyptr, keylen );
-      char* value = memoryArrayPtr<char>( wasm.current_memory, valueptr, valuelen );
-
-      std::string keys(key, keylen);
-
-      return func(wasm.current_apply_context, &keys, value, valuelen);
-   }
-
-   int64_t round_to_byte_boundary(int64_t bytes)
-   {
-      const unsigned int byte_boundary = sizeof(uint64_t);
-      int64_t remainder = bytes % byte_boundary;
-      if (remainder > 0)
-         bytes += byte_boundary - remainder;
-      return bytes;
-   }
-
-#define VERIFY_TABLE(TYPE) \
-   const auto table_name = name(table); \
-   auto& wasm  = wasm_interface::get(); \
-   if (wasm.table_key_types) \
-   { \
-      auto table_key = wasm.table_key_types->find(table_name); \
-      if (table_key == wasm.table_key_types->end()) \
-      { \
-         FC_ASSERT(!wasm.tables_fixed, "abi did not define table ${t}", ("t", table_name)); \
-         wasm.table_key_types->emplace(std::make_pair(table_name,wasm_interface::TYPE)); \
-      } \
-      else \
-      { \
-         FC_ASSERT(wasm_interface::TYPE == table_key->second, "abi definition for ${table} expects \"${type}\", but code is requesting \"" #TYPE "\"", ("table",table_name)("type",wasm_interface::to_type_name(table_key->second))); \
-      } \
-   }
-
-#define READ_RECORD(READFUNC, INDEX, SCOPE) \
-   auto lambda = [&](apply_context* ctx, INDEX::value_type::key_type* keys, char *data, uint32_t datalen) -> int32_t { \
-      auto res = ctx->READFUNC<INDEX, SCOPE>( name(scope), name(code), table_name, keys, data, datalen); \
-      if (res >= 0) res += INDEX::value_type::number_of_keys*sizeof(INDEX::value_type::key_type); \
-      return res; \
-   }; \
-   return validate<decltype(lambda), INDEX::value_type::key_type, INDEX::value_type::number_of_keys>(valueptr, valuelen, lambda);
-
-#define UPDATE_RECORD(UPDATEFUNC, INDEX, DATASIZE) \
-   auto lambda = [&](apply_context* ctx, INDEX::value_type::key_type* keys, char *data, uint32_t datalen) -> int32_t { \
-      return ctx->UPDATEFUNC<INDEX::value_type>( name(scope), name(ctx->code.value), table_name, keys, data, datalen); \
-   }; \
-   const int32_t ret = validate<decltype(lambda), INDEX::value_type::key_type, INDEX::value_type::number_of_keys>(valueptr, DATASIZE, lambda);
-
-#define DEFINE_RECORD_UPDATE_FUNCTIONS(OBJTYPE, INDEX, KEY_SIZE) \
-   DEFINE_INTRINSIC_FUNCTION4(env,store_##OBJTYPE,store_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) { \
-      VERIFY_TABLE(OBJTYPE) \
-      UPDATE_RECORD(store_record, INDEX, valuelen); \
-      /* ret is -1 if record created, or else it is the length of the data portion of the originally stored */ \
-      /* structure (it does not include the key portion */ \
-      const bool created = (ret == -1); \
-      int64_t& storage = wasm_interface::get().table_storage; \
-      if (created) \
-         storage += round_to_byte_boundary(valuelen) + wasm_interface::get().row_overhead_db_limit_bytes; \
-      else \
-         /* need to calculate the difference between the original rounded byte size and the new rounded byte size */ \
-         storage += round_to_byte_boundary(valuelen) - round_to_byte_boundary(KEY_SIZE + ret); \
-\
-      EOS_ASSERT(storage <= (wasm_interface::get().per_code_account_max_db_limit_mbytes * bytes_per_mbyte), \
-                 tx_code_db_limit_exceeded, \
-                 "Database limit exceeded for account=${name}",("name", name(wasm_interface::get().current_apply_context->code.value))); \
-      return created ? 1 : 0; \
-   } \
-   DEFINE_INTRINSIC_FUNCTION4(env,update_##OBJTYPE,update_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) { \
-      VERIFY_TABLE(OBJTYPE) \
-      UPDATE_RECORD(update_record, INDEX, valuelen); \
-      /* ret is -1 if record created, or else it is the length of the data portion of the originally stored */ \
-      /* structure (it does not include the key portion */ \
-      if (ret == -1) return 0; \
-      int64_t& storage = wasm_interface::get().table_storage; \
-      /* need to calculate the difference between the original rounded byte size and the new rounded byte size */ \
-      storage += round_to_byte_boundary(valuelen) - round_to_byte_boundary(KEY_SIZE + ret); \
-      \
-      EOS_ASSERT(storage <= (wasm_interface::get().per_code_account_max_db_limit_mbytes * bytes_per_mbyte), \
-                 tx_code_db_limit_exceeded, \
-                 "Database limit exceeded for account=${name}",("name", name(wasm_interface::get().current_apply_context->code.value))); \
-      return 1; \
-   } \
-   DEFINE_INTRINSIC_FUNCTION3(env,remove_##OBJTYPE,remove_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr) { \
-      VERIFY_TABLE(OBJTYPE) \
-      UPDATE_RECORD(remove_record, INDEX, sizeof(typename INDEX::value_type::key_type)*INDEX::value_type::number_of_keys); \
-      /* ret is -1 if record created, or else it is the length of the data portion of the originally stored */ \
-      /* structure (it does not include the key portion */ \
-      if (ret == -1) return 0; \
-      int64_t& storage = wasm_interface::get().table_storage; \
-      storage -= round_to_byte_boundary(KEY_SIZE + ret) + wasm_interface::get().row_overhead_db_limit_bytes; \
-      \
-      EOS_ASSERT(storage <= (wasm_interface::get().per_code_account_max_db_limit_mbytes * bytes_per_mbyte), \
-                 tx_code_db_limit_exceeded, \
-                 "Database limit exceeded for account=${name}",("name", name(wasm_interface::get().current_apply_context->code.value))); \
-      return 1; \
-   }
-
-#define DEFINE_RECORD_READ_FUNCTION(OBJTYPE, ACTION, FUNCPREFIX, INDEX, SCOPE) \
-   DEFINE_INTRINSIC_FUNCTION5(env,ACTION##_##FUNCPREFIX##OBJTYPE,ACTION##_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      VERIFY_TABLE(OBJTYPE) \
-      READ_RECORD(ACTION##_record, INDEX, SCOPE); \
-   }
-
-#define DEFINE_RECORD_READ_FUNCTIONS(OBJTYPE, FUNCPREFIX, INDEX, SCOPE) \
-   DEFINE_RECORD_READ_FUNCTION(OBJTYPE, load, FUNCPREFIX, INDEX, SCOPE) \
-   DEFINE_RECORD_READ_FUNCTION(OBJTYPE, front, FUNCPREFIX, INDEX, SCOPE) \
-   DEFINE_RECORD_READ_FUNCTION(OBJTYPE, back, FUNCPREFIX, INDEX, SCOPE) \
-   DEFINE_RECORD_READ_FUNCTION(OBJTYPE, next, FUNCPREFIX, INDEX, SCOPE) \
-   DEFINE_RECORD_READ_FUNCTION(OBJTYPE, previous, FUNCPREFIX, INDEX, SCOPE) \
-   DEFINE_RECORD_READ_FUNCTION(OBJTYPE, lower_bound, FUNCPREFIX, INDEX, SCOPE) \
-   DEFINE_RECORD_READ_FUNCTION(OBJTYPE, upper_bound, FUNCPREFIX, INDEX, SCOPE)
-
-DEFINE_RECORD_UPDATE_FUNCTIONS(i64, key_value_index, 8);
-DEFINE_RECORD_READ_FUNCTIONS(i64,,key_value_index, by_scope_primary);
-
-DEFINE_RECORD_UPDATE_FUNCTIONS(i128i128, key128x128_value_index, 32);
-DEFINE_RECORD_READ_FUNCTIONS(i128i128, primary_,   key128x128_value_index, by_scope_primary);
-DEFINE_RECORD_READ_FUNCTIONS(i128i128, secondary_, key128x128_value_index, by_scope_secondary);
-
-DEFINE_RECORD_UPDATE_FUNCTIONS(i64i64i64, key64x64x64_value_index, 24);
-DEFINE_RECORD_READ_FUNCTIONS(i64i64i64, primary_,   key64x64x64_value_index, by_scope_primary);
-DEFINE_RECORD_READ_FUNCTIONS(i64i64i64, secondary_, key64x64x64_value_index, by_scope_secondary);
-DEFINE_RECORD_READ_FUNCTIONS(i64i64i64, tertiary_,  key64x64x64_value_index, by_scope_tertiary);
-
-
-#define UPDATE_RECORD_STR(FUNCTION) \
-  VERIFY_TABLE(str) \
-  auto lambda = [&](apply_context* ctx, std::string* keys, char *data, uint32_t datalen) -> int32_t { \
-    return ctx->FUNCTION<keystr_value_object>( name(scope), name(ctx->code.value), table_name, keys, data, datalen); \
-  }; \
-  const int32_t ret = validate_str<decltype(lambda)>(keyptr, keylen, valueptr, valuelen, lambda);
-
-#define READ_RECORD_STR(FUNCTION) \
-  VERIFY_TABLE(str) \
-  auto lambda = [&](apply_context* ctx, std::string* keys, char *data, uint32_t datalen) -> int32_t { \
-    auto res = ctx->FUNCTION<keystr_value_index, by_scope_primary>( name(scope), name(code), table_name, keys, data, datalen); \
-    return res; \
-  }; \
-  return validate_str<decltype(lambda)>(keyptr, keylen, valueptr, valuelen, lambda);
-
-DEFINE_INTRINSIC_FUNCTION6(env,store_str,store_str,i32,i64,scope,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
-   UPDATE_RECORD_STR(store_record)
-   const bool created = (ret == -1);
-   auto& storage = wasm_interface::get().table_storage;
-   if (created)
-   {
-      storage += round_to_byte_boundary(keylen + valuelen) + wasm_interface::get().row_overhead_db_limit_bytes;
-   }
-   else
-      // need to calculate the difference between the original rounded byte size and the new rounded byte size
-      storage += round_to_byte_boundary(keylen + valuelen) - round_to_byte_boundary(keylen + ret);
-
-   EOS_ASSERT(storage <= (wasm_interface::get().per_code_account_max_db_limit_mbytes * bytes_per_mbyte),
-              tx_code_db_limit_exceeded,
-              "Database limit exceeded for account=${name}",("name", name(wasm_interface::get().current_apply_context->code.value)));
-
-   return created ? 1 : 0;
-}
-DEFINE_INTRINSIC_FUNCTION6(env,update_str,update_str,i32,i64,scope,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
-   UPDATE_RECORD_STR(update_record)
-   if (ret == -1) return 0;
-   auto& storage = wasm_interface::get().table_storage;
-   // need to calculate the difference between the original rounded byte size and the new rounded byte size
-   storage += round_to_byte_boundary(keylen + valuelen) - round_to_byte_boundary(keylen + ret);
-
-   EOS_ASSERT(storage <= (wasm_interface::get().per_code_account_max_db_limit_mbytes * bytes_per_mbyte),
-              tx_code_db_limit_exceeded,
-              "Database limit exceeded for account=${name}",("name", name(wasm_interface::get().current_apply_context->code.value)));
-   return 1;
-}
-DEFINE_INTRINSIC_FUNCTION4(env,remove_str,remove_str,i32,i64,scope,i64,table,i32,keyptr,i32,keylen) {
-   int32_t valueptr=0, valuelen=0;
-   UPDATE_RECORD_STR(remove_record)
-   if (ret == -1) return 0;
-   auto& storage = wasm_interface::get().table_storage;
-   storage -= round_to_byte_boundary(keylen + ret) + wasm_interface::get().row_overhead_db_limit_bytes;
-
-   EOS_ASSERT(storage <= (wasm_interface::get().per_code_account_max_db_limit_mbytes * bytes_per_mbyte),
-              tx_code_db_limit_exceeded,
-              "Database limit exceeded for account=${name}",("name", name(wasm_interface::get().current_apply_context->code.value)));
-   return 1;
-}
-
-DEFINE_INTRINSIC_FUNCTION7(env,load_str,load_str,i32,i64,scope,i64,code,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
-  READ_RECORD_STR(load_record)
-}
-DEFINE_INTRINSIC_FUNCTION5(env,front_str,front_str,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-  int32_t keyptr=0, keylen=0;
-  READ_RECORD_STR(front_record)
-}
-DEFINE_INTRINSIC_FUNCTION5(env,back_str,back_str,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) {
-  int32_t keyptr=0, keylen=0;
-  READ_RECORD_STR(back_record)
-}
-DEFINE_INTRINSIC_FUNCTION7(env,next_str,next_str,i32,i64,scope,i64,code,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
-  READ_RECORD_STR(next_record)
-}
-DEFINE_INTRINSIC_FUNCTION7(env,previous_str,previous_str,i32,i64,scope,i64,code,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
-  READ_RECORD_STR(previous_record)
-}
-DEFINE_INTRINSIC_FUNCTION7(env,lower_bound_str,lower_bound_str,i32,i64,scope,i64,code,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
-  READ_RECORD_STR(lower_bound_record)
-}
-DEFINE_INTRINSIC_FUNCTION7(env,upper_bound_str,upper_bound_str,i32,i64,scope,i64,code,i64,table,i32,keyptr,i32,keylen,i32,valueptr,i32,valuelen) {
-  READ_RECORD_STR(upper_bound_record)
-}
-
-DEFINE_INTRINSIC_FUNCTION3(env, assert_is_utf8,assert_is_utf8,none,i32,dataptr,i32,datalen,i32,msg) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  const char* str = &memoryRef<const char>( mem, dataptr );
-  const bool test = fc::is_utf8(std::string( str, datalen ));
-
-  FC_ASSERT( test, "assertion failed: ${s}", ("s",msg) );
-}
-
-DEFINE_INTRINSIC_FUNCTION3(env, assert_sha256,assert_sha256,none,i32,dataptr,i32,datalen,i32,hash) {
-   FC_ASSERT( datalen > 0 );
-
-   auto& wasm  = wasm_interface::get();
-   auto  mem          = wasm.current_memory;
-
-   char* data = memoryArrayPtr<char>( mem, dataptr, datalen );
-   const auto& v = memoryRef<fc::sha256>( mem, hash );
-
-   auto result = fc::sha256::hash( data, datalen );
-   FC_ASSERT( result == v, "hash miss match" );
-}
-
-DEFINE_INTRINSIC_FUNCTION3(env,sha256,sha256,none,i32,dataptr,i32,datalen,i32,hash) {
-   FC_ASSERT( datalen > 0 );
-
-   auto& wasm  = wasm_interface::get();
-   auto  mem          = wasm.current_memory;
-
-   char* data = memoryArrayPtr<char>( mem, dataptr, datalen );
-   auto& v = memoryRef<fc::sha256>( mem, hash );
-   v  = fc::sha256::hash( data, datalen );
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,multeq_i128,multeq_i128,none,i32,self,i32,other) {
-   auto& wasm  = wasm_interface::get();
-   auto  mem   = wasm.current_memory;
-   auto& v = memoryRef<unsigned __int128>( mem, self );
-   const auto& o = memoryRef<const unsigned __int128>( mem, other );
-   v *= o;
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,diveq_i128,diveq_i128,none,i32,self,i32,other) {
-   auto& wasm  = wasm_interface::get();
-   auto  mem          = wasm.current_memory;
-   auto& v = memoryRef<unsigned __int128>( mem, self );
-   const auto& o = memoryRef<const unsigned __int128>( mem, other );
-   FC_ASSERT( o != 0, "divide by zero" );
-   v /= o;
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,double_add,double_add,i64,i64,a,i64,b) {
-   DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
-            + DOUBLE(*reinterpret_cast<double *>(&b));
-   double res = c.convert_to<double>();
-   return *reinterpret_cast<uint64_t *>(&res);
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,double_mult,double_mult,i64,i64,a,i64,b) {
-   DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
-            * DOUBLE(*reinterpret_cast<double *>(&b));
-   double res = c.convert_to<double>();
-   return *reinterpret_cast<uint64_t *>(&res);
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,double_div,double_div,i64,i64,a,i64,b) {
-   auto divisor = DOUBLE(*reinterpret_cast<double *>(&b));
-   FC_ASSERT( divisor != 0, "divide by zero" );
-
-   DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a)) / divisor;
-   double res = c.convert_to<double>();
-   return *reinterpret_cast<uint64_t *>(&res);
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,double_lt,double_lt,i32,i64,a,i64,b) {
-   return DOUBLE(*reinterpret_cast<double *>(&a))
-        < DOUBLE(*reinterpret_cast<double *>(&b));
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,double_eq,double_eq,i32,i64,a,i64,b) {
-   return DOUBLE(*reinterpret_cast<double *>(&a))
-       == DOUBLE(*reinterpret_cast<double *>(&b));
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,double_gt,double_gt,i32,i64,a,i64,b) {
-   return DOUBLE(*reinterpret_cast<double *>(&a))
-        > DOUBLE(*reinterpret_cast<double *>(&b));
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,double_to_i64,double_to_i64,i64,i64,a) {
-   return DOUBLE(*reinterpret_cast<double *>(&a))
-          .convert_to<uint64_t>();
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,i64_to_double,i64_to_double,i64,i64,a) {
-   double res = DOUBLE(a).convert_to<double>();
-   return *reinterpret_cast<uint64_t *>(&res);
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,get_active_producers,get_active_producers,none,i32,producers,i32,datalen) {
-   auto& wasm    = wasm_interface::get();
-   auto  mem     = wasm.current_memory;
-   types::account_name* dst = memoryArrayPtr<types::account_name>( mem, producers, datalen );
-   return wasm_interface::get().current_validate_context->get_active_producers(dst, datalen);
-}
-
-DEFINE_INTRINSIC_FUNCTION0(env,now,now,i32) {
-   return wasm_interface::get().current_validate_context->controller.head_block_time().sec_since_epoch();
-}
-
-DEFINE_INTRINSIC_FUNCTION0(env,current_code,current_code,i64) {
-   auto& wasm  = wasm_interface::get();
-   return wasm.current_validate_context->code.value;
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,require_auth,require_auth,none,i64,account) {
-   wasm_interface::get().current_validate_context->require_authorization( name(account) );
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,require_notice,require_notice,none,i64,account) {
-   wasm_interface::get().current_apply_context->require_recipient( account );
-}
-
-DEFINE_INTRINSIC_FUNCTION3(env,memcpy,memcpy,i32,i32,dstp,i32,srcp,i32,len) {
-   auto& wasm          = wasm_interface::get();
-   auto  mem           = wasm.current_memory;
-   char* dst           = memoryArrayPtr<char>( mem, dstp, len);
-   const char* src     = memoryArrayPtr<const char>( mem, srcp, len );
-   FC_ASSERT( len > 0 );
-
-   if( dst > src )
-      FC_ASSERT( dst >= (src + len), "overlap of memory range is undefined", ("d",dstp)("s",srcp)("l",len) );
-   else
-      FC_ASSERT( src >= (dst + len), "overlap of memory range is undefined", ("d",dstp)("s",srcp)("l",len) );
-
-   memcpy( dst, src, uint32_t(len) );
-   return dstp;
-}
-
-DEFINE_INTRINSIC_FUNCTION3(env,memcmp,memcmp,i32,i32,dstp,i32,srcp,i32,len) {
-   auto& wasm          = wasm_interface::get();
-   auto  mem           = wasm.current_memory;
-   char* dst           = memoryArrayPtr<char>( mem, dstp, len);
-   const char* src     = memoryArrayPtr<const char>( mem, srcp, len );
-   FC_ASSERT( len > 0 );
-
-   return memcmp( dst, src, uint32_t(len) );
-}
-
-
-DEFINE_INTRINSIC_FUNCTION3(env,memset,memset,i32,i32,rel_ptr,i32,value,i32,len) {
-   auto& wasm          = wasm_interface::get();
-   auto  mem           = wasm.current_memory;
-   char* ptr           = memoryArrayPtr<char>( mem, rel_ptr, len);
-   FC_ASSERT( len > 0 );
-
-   memset( ptr, value, len );
-   return rel_ptr;
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,sbrk,sbrk,i32,i32,num_bytes) {
-   auto& wasm          = wasm_interface::get();
-
-   FC_ASSERT( num_bytes >= 0, "sbrk can only allocate memory, not reduce" );
-   FC_ASSERT( wasm.current_memory_management != nullptr, "sbrk can only be called during the scope of wasm_interface::vm_call" );
-   U32 previous_bytes_allocated = wasm.current_memory_management->sbrk(num_bytes);
-   checktime(wasm.current_execution_time(), wasm_interface::get().checktime_limit);
-   return previous_bytes_allocated;
-}
-
-
-/**
- * transaction C API implementation
- * @{
- */
-
-DEFINE_INTRINSIC_FUNCTION0(env,transaction_create,transaction_create,i32) {
-   auto& ptrx = wasm_interface::get().current_apply_context->create_pending_transaction();
-   return ptrx.handle;
-}
-
-static void emplace_scope(const name& scope, std::vector<name>& scopes) {
-   auto i = std::upper_bound( scopes.begin(), scopes.end(), scope);
-   if (i == scopes.begin() || *(i - 1) != scope ) {
-     scopes.insert(i, scope);
-   }
-}
-
-DEFINE_INTRINSIC_FUNCTION3(env,transaction_require_scope,transaction_require_scope,none,i32,handle,i64,scope,i32,readOnly) {
-   auto& ptrx = wasm_interface::get().current_apply_context->get_pending_transaction(handle);
-   if(readOnly == 0) {
-      emplace_scope(scope, ptrx.scope);
-   } else {
-      emplace_scope(scope, ptrx.read_scope);
-   }
-
-   ptrx.check_size();
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,transaction_add_message,transaction_add_message,none,i32,handle,i32,msg_handle) {
-   auto apply_context  = wasm_interface::get().current_apply_context;
-   auto& ptrx = apply_context->get_pending_transaction(handle);
-   auto& pmsg = apply_context->get_pending_message(msg_handle);
-   ptrx.messages.emplace_back(pmsg);
-   ptrx.check_size();
-   apply_context->release_pending_message(msg_handle);
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,transaction_send,transaction_send,none,i32,handle) {
-   auto apply_context  = wasm_interface::get().current_apply_context;
-   auto& ptrx = apply_context->get_pending_transaction(handle);
-
-   EOS_ASSERT(ptrx.messages.size() > 0, tx_unknown_argument,
-      "Attempting to send a transaction with no messages");
-
-   EOS_ASSERT(false, api_not_supported,
-      "transaction_send is unsupported in this release");
-
-   apply_context->deferred_transactions.emplace_back(ptrx);
-   apply_context->release_pending_transaction(handle);
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,transaction_drop,transaction_drop,none,i32,handle) {
-   wasm_interface::get().current_apply_context->release_pending_transaction(handle);
-}
-
-DEFINE_INTRINSIC_FUNCTION4(env,message_create,message_create,i32,i64,code,i64,type,i32,data,i32,length) {
-   auto& wasm  = wasm_interface::get();
-   auto  mem   = wasm.current_memory;
-
-   EOS_ASSERT( length >= 0, tx_unknown_argument,
-      "Pushing a message with a negative length" );
-
-   bytes payload;
-   if (length > 0) {
-      try {
-         // memoryArrayPtr checks that the entire array of bytes is valid and
-         // within the bounds of the memory segment so that transactions cannot pass
-         // bad values in attempts to read improper memory
-         const char* buffer = memoryArrayPtr<const char>( mem, uint32_t(data), uint32_t(length) );
-         payload.insert(payload.end(), buffer, buffer + length);
-      } catch( const Runtime::Exception& e ) {
-         FC_THROW_EXCEPTION(tx_unknown_argument, "Message data is not a valid memory range");
-      }
-   }
-
-   auto& pmsg = wasm.current_apply_context->create_pending_message(name(code), name(type), payload);
-   return pmsg.handle;
-}
-
-DEFINE_INTRINSIC_FUNCTION3(env,message_require_permission,message_require_permission,none,i32,handle,i64,account,i64,permission) {
-   auto apply_context  = wasm_interface::get().current_apply_context;
-   // if this is not sent from the code account with the permission of "code" then we must
-   // presently have the permission to add it, otherwise its a failure
-   if (!(account == apply_context->code.value && name(permission) == name("code"))) {
-      apply_context->require_authorization(name(account), name(permission));
-   }
-   auto& pmsg = apply_context->get_pending_message(handle);
-   pmsg.authorization.emplace_back(name(account), name(permission));
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,message_send,message_send,none,i32,handle) {
-   auto apply_context  = wasm_interface::get().current_apply_context;
-   auto& pmsg = apply_context->get_pending_message(handle);
-
-   apply_context->inline_messages.emplace_back(pmsg);
-   apply_context->release_pending_message(handle);
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,message_drop,message_drop,none,i32,handle) {
-   wasm_interface::get().current_apply_context->release_pending_message(handle);
-}
-
-/**
- * @} transaction C API implementation
- */
-
-
-
-DEFINE_INTRINSIC_FUNCTION2(env,read_message,read_message,i32,i32,destptr,i32,destsize) {
-   FC_ASSERT( destsize > 0 );
-
-   wasm_interface& wasm = wasm_interface::get();
-   auto  mem   = wasm.current_memory;
-   char* begin = memoryArrayPtr<char>( mem, destptr, uint32_t(destsize) );
-
-   int minlen = std::min<int>(wasm.current_validate_context->msg.data.size(), destsize);
-
-//   wdump((destsize)(wasm.current_validate_context->msg.data.size()));
-   memcpy( begin, wasm.current_validate_context->msg.data.data(), minlen );
-   return minlen;
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,assert,assert,none,i32,test,i32,msg) {
-   const char* m = &Runtime::memoryRef<char>( wasm_interface::get().current_memory, msg );
-  std::string message( m );
-  if( !test ) edump((message));
-  FC_ASSERT( test, "assertion failed: ${s}", ("s",message)("ptr",msg) );
-}
-
-DEFINE_INTRINSIC_FUNCTION0(env,message_size,message_size,i32) {
-   return wasm_interface::get().current_validate_context->msg.data.size();
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,malloc,malloc,i32,i32,size) {
-   FC_ASSERT( size > 0 );
-   int32_t& end = Runtime::memoryRef<int32_t>( Runtime::getDefaultMemory(wasm_interface::get().current_module), 0);
-   int32_t old_end = end;
-   end += 8*((size+7)/8);
-   FC_ASSERT( end > old_end );
-   return old_end;
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,printi,printi,none,i64,val) {
-  std::cerr << uint64_t(val);
-}
-DEFINE_INTRINSIC_FUNCTION1(env,printd,printd,none,i64,val) {
-  std::cerr << DOUBLE(*reinterpret_cast<double *>(&val));
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,printi128,printi128,none,i32,val) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-  auto& value = memoryRef<unsigned __int128>( mem, val );
-  fc::uint128_t v(value>>64, uint64_t(value) );
-  std::cerr << fc::variant(v).get_string();
-}
-DEFINE_INTRINSIC_FUNCTION1(env,printn,printn,none,i64,val) {
-  std::cerr << name(val).to_string();
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,prints,prints,none,i32,charptr) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  const char* str = &memoryRef<const char>( mem, charptr );
-
-  std::cerr << std::string( str, strnlen(str, wasm.current_state->mem_end-charptr) );
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,prints_l,prints_l,none,i32,charptr,i32,len) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  const char* str = &memoryRef<const char>( mem, charptr );
-
-  std::cerr << std::string( str, len );
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,printhex,printhex,none,i32,data,i32,datalen) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  char* buff = memoryArrayPtr<char>(mem, data, datalen);
-  std::cerr << fc::to_hex(buff, datalen);
-}
-
-
-DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,account_balance_get,account_balance_get,i32,i32,charptr,i32,len) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  const uint32_t account_balance_size = sizeof(account_balance);
-  FC_ASSERT( len == account_balance_size, "passed in len ${len} is not equal to the size of an account_balance struct == ${real_len}", ("len",len)("real_len",account_balance_size) );
-
-  account_balance& total_balance = memoryRef<account_balance>( mem, charptr );
-
-  wasm.current_apply_context->require_scope(total_balance.account);
-
-  auto& db = wasm.current_apply_context->db;
-  auto* balance        = db.find< balance_object,by_owner_name >( total_balance.account );
-  auto* staked_balance = db.find<staked_balance_object,by_owner_name>( total_balance.account );
-
-  if (balance == nullptr || staked_balance == nullptr)
-     return false;
-
-  total_balance.eos_balance          = asset(balance->balance, EOS_SYMBOL);
-  total_balance.staked_balance       = asset(staked_balance->staked_balance);
-  total_balance.unstaking_balance    = asset(staked_balance->unstaking_balance);
-  total_balance.last_unstaking_time  = staked_balance->last_unstaking_time;
-
-  return true;
-}
-
-   wasm_interface& wasm_interface::get() {
-      static wasm_interface*  wasm = nullptr;
-      if( !wasm )
+      bool resolve(const string& mod_name,
+                   const string& export_name,
+                   ObjectType type,
+                   ObjectInstance*& out) override
       {
-         wlog( "Runtime::init" );
-         Runtime::init();
-         wasm = new wasm_interface();
-      }
-      return *wasm;
-   }
-
-
-
-   struct RootResolver : Runtime::Resolver
-   {
-      std::map<std::string,Resolver*> moduleNameToResolverMap;
-
-     bool resolve(const std::string& moduleName,const std::string& exportName,ObjectType type,ObjectInstance*& outObject) override
-     {
          // Try to resolve an intrinsic first.
-         if(IntrinsicResolver::singleton.resolve(moduleName,exportName,type,outObject)) { return true; }
-         FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",moduleName)("export",exportName) );
+         if(IntrinsicResolver::singleton.resolve(mod_name,export_name,type, out)) {
+            return true;
+         }
+
+         FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",mod_name)("export",export_name) );
          return false;
-     }
+      }
    };
 
-   int64_t wasm_interface::current_execution_time()
-   {
-      return (fc::time_point::now() - checktimeStart).count();
-   }
-
-
-   char* wasm_interface::vm_allocate( int bytes ) {
-      FunctionInstance* alloc_function = asFunctionNullable(getInstanceExport(current_module,"alloc"));
-      const FunctionType* functionType = getFunctionType(alloc_function);
-      FC_ASSERT( functionType->parameters.size() == 1 );
-      std::vector<Value> invokeArgs(1);
-      invokeArgs[0] = U32(bytes);
-
-      checktimeStart = fc::time_point::now();
-
-      auto result = Runtime::invokeFunction(alloc_function,invokeArgs);
-
-      return &memoryRef<char>( current_memory, result.i32 );
-   }
-
-   U32 wasm_interface::vm_pointer_to_offset( char* ptr ) {
-      return U32(ptr - &memoryRef<char>(current_memory,0));
-   }
-
-   void  wasm_interface::vm_call( const char* name ) {
-   try {
-      std::unique_ptr<wasm_memory> wasm_memory_mgmt;
-      try {
-         /*
-         name += "_" + std::string( current_validate_context->msg.code ) + "_";
-         name += std::string( current_validate_context->msg.type );
-         */
-         /// TODO: cache this somehow
-         FunctionInstance* call = asFunctionNullable(getInstanceExport(current_module,name) );
-         if( !call ) {
-            //wlog( "unable to find call ${name}", ("name",name));
-            return;
-         }
-         //FC_ASSERT( apply, "no entry point found for ${call}", ("call", std::string(name))  );
-
-         FC_ASSERT( getFunctionType(call)->parameters.size() == 2 );
-
-  //       idump((current_validate_context->msg.code)(current_validate_context->msg.type)(current_validate_context->code));
-         std::vector<Value> args = { Value(uint64_t(current_validate_context->msg.code)),
-                                     Value(uint64_t(current_validate_context->msg.type)) };
-
-         auto& state = *current_state;
-         char* memstart = &memoryRef<char>( current_memory, 0 );
-         memset( memstart + state.mem_end, 0, ((1<<16) - state.mem_end) );
-         memcpy( memstart, state.init_memory.data(), state.mem_end);
-
-         checktimeStart = fc::time_point::now();
-         wasm_memory_mgmt.reset(new wasm_memory(*this));
-
-         Runtime::invokeFunction(call,args);
-         wasm_memory_mgmt.reset();
-         checktime(current_execution_time(), checktime_limit);
-      } catch( const Runtime::Exception& e ) {
-          edump((std::string(describeExceptionCause(e.cause))));
-          edump((e.callStack));
-          throw;
-      }
-   } FC_CAPTURE_AND_RETHROW( (name)(current_validate_context->msg.type) ) }
-
-   void  wasm_interface::vm_apply()        { vm_call("apply" );          }
-
-   void  wasm_interface::vm_onInit()
-   { try {
-      try {
-         FunctionInstance* apply = asFunctionNullable(getInstanceExport(current_module,"init"));
-         if( !apply ) {
-            elog( "no onInit method found" );
-            return; /// if not found then it is a no-op
-         }
-
-         checktimeStart = fc::time_point::now();
-
-         const FunctionType* functionType = getFunctionType(apply);
-         FC_ASSERT( functionType->parameters.size() == 0 );
-
-         std::vector<Value> args(0);
-
-         Runtime::invokeFunction(apply,args);
-      } catch( const Runtime::Exception& e ) {
-         edump((std::string(describeExceptionCause(e.cause))));
-         edump((e.callStack));
-         throw;
-      }
-   } FC_CAPTURE_AND_RETHROW() }
-
-   void wasm_interface::validate( apply_context& c ) {
-      /*
-      current_validate_context       = &c;
-      current_precondition_context   = nullptr;
-      current_apply_context          = nullptr;
-
-      load( c.code, c.db );
-      vm_validate();
-      */
-   }
-   void wasm_interface::precondition( apply_context& c ) {
-   try {
-
-      /*
-      current_validate_context       = &c;
-      current_precondition_context   = &c;
-
-      load( c.code, c.db );
-      vm_precondition();
-      */
-
-   } FC_CAPTURE_AND_RETHROW() }
-
-
-   void wasm_interface::apply( apply_context& c, uint32_t execution_time, bool received_block ) {
-    try {
-      current_validate_context       = &c;
-      current_precondition_context   = &c;
-      current_apply_context          = &c;
-      checktime_limit                = execution_time;
-
-      load( c.code, c.db );
-      // if this is a received_block, then ignore the table_key_types
-      if (received_block)
-         table_key_types = nullptr;
-
-      auto rate_limiting = c.db.find<rate_limiting_object, by_name>(c.code);
-      if (rate_limiting == nullptr)
+   /**
+    *  Implementation class for the wasm cache
+    *  it is responsible for compiling and storing instances of wasm code for use
+    *
+    */
+   struct wasm_cache_impl {
+      wasm_cache_impl()
       {
-         c.mutable_db.create<rate_limiting_object>([code=c.code](rate_limiting_object& rlo) {
-            rlo.name = code;
-            rlo.per_code_account_db_bytes = 0;
+         Runtime::init();
+      }
+
+      /**
+       * this must wait for all work to be done otherwise it may destroy memory
+       * referenced by other threads
+       *
+       * Expectations on wasm_cache dictate that all available code has been
+       * returned before this can be destroyed
+       */
+      ~wasm_cache_impl() {
+         freeUnreferencedObjects({});
+      }
+
+      /**
+       * internal tracking structure which deduplicates memory images
+       * and tracks available vs in-use entries.
+       *
+       * The instances array has two sections, "available" instances
+       * are in the front of the vector and anything at an index of
+       * available_instances or greater is considered "in use"
+       *
+       * instances are stored as pointers so that their positions
+       * in the array can be moved without invaliding references to
+       * the instance handed out to other threads
+       */
+      struct code_info {
+         code_info( size_t mem_end, vector<char>&& mem_image )
+         :mem_end(mem_end),mem_image(std::forward<vector<char>>(mem_image))
+         {}
+
+         // a clean image of the memory used to sanitize things on checkin
+         size_t mem_start           = 0;
+         size_t mem_end             = 1<<16;
+         vector<char> mem_image;
+
+         // all existing instances of this code
+         vector<unique_ptr<wasm_cache::entry>> instances;
+         size_t available_instances = 0;
+      };
+
+      using optional_info_ref = optional<std::reference_wrapper<code_info>>;
+      using optional_entry_ref = optional<std::reference_wrapper<wasm_cache::entry>>;
+
+      /**
+       * Convenience method for running code with the _cache_lock and releaseint that lock
+       * when the code completes
+       *
+       * @param f - lambda to execute
+       * @return - varies depending on the signature of the lambda
+       */
+      template<typename F>
+      auto with_lock(std::mutex &l, F f) {
+         std::lock_guard<std::mutex> lock(l);
+         return f();
+      };
+
+      /**
+       * Fetch the tracking struct given a code_id if it exists
+       *
+       * @param code_id
+       * @return
+       */
+      optional_info_ref fetch_info(const digest_type& code_id) {
+         return with_lock(_cache_lock, [&,this](){
+            auto iter = _cache.find(code_id);
+            if (iter != _cache.end()) {
+               return optional_info_ref(iter->second);
+            }
+
+            return optional_info_ref();
          });
       }
-      else
-         table_storage = rate_limiting->per_code_account_db_bytes;
 
-      vm_apply();
+      /**
+       * Opportunistically fetch an available instance of the code;
+       * @param code_id - the id of the code to fetch
+       * @return - reference to the entry when one is available
+       */
+      optional_entry_ref try_fetch_entry(const digest_type& code_id) {
+         return with_lock(_cache_lock, [&,this](){
+            auto iter = _cache.find(code_id);
+            if (iter != _cache.end() && iter->second.available_instances > 0) {
+               auto &ptr = iter->second.instances.at(--(iter->second.available_instances));
+               return optional_entry_ref(*ptr);
+            }
 
-      EOS_ASSERT(table_storage <= (per_code_account_max_db_limit_mbytes * bytes_per_mbyte), tx_code_db_limit_exceeded, "Database limit exceeded for account=${name}",("name", c.code));
-
-      rate_limiting = c.db.find<rate_limiting_object, by_name>(c.code);
-      c.mutable_db.modify(*rate_limiting, [storage=this->table_storage] (rate_limiting_object& rlo) {
-         rlo.per_code_account_db_bytes = storage;
-      });
-   } FC_CAPTURE_AND_RETHROW() }
-
-   void wasm_interface::init( apply_context& c ) {
-    try {
-      current_validate_context       = &c;
-      current_precondition_context   = &c;
-      current_apply_context          = &c;
-      checktime_limit                = CHECKTIME_LIMIT;
-
-      load( c.code, c.db );
-
-      auto rate_limiting = c.db.find<rate_limiting_object, by_name>(c.code);
-      if (rate_limiting == nullptr)
-      {
-         c.mutable_db.create<rate_limiting_object>([code=c.code](rate_limiting_object& rlo) {
-            rlo.name = code;
-            rlo.per_code_account_db_bytes = 0;
+            return optional_entry_ref();
          });
       }
-      else
-         table_storage = rate_limiting->per_code_account_db_bytes;
 
-      vm_onInit();
+      /**
+       * Fetch a copy of the code, this is guaranteed to return an entry IF the code is compilable.
+       * In order to do that in safe way this code may cause the calling thread to sleep while a new
+       * version of the code is compiled and inserted into the cache
+       *
+       * @param code_id - the id of the code to fetch
+       * @param wasm_binary - the binary for the wasm
+       * @param wasm_binary_size - the size of the binary
+       * @return reference to a usable cache entry
+       */
+      wasm_cache::entry& fetch_entry(const digest_type& code_id, const char* wasm_binary, size_t wasm_binary_size) {
+         std::condition_variable condition;
+         optional_entry_ref result;
+         std::exception_ptr error;
 
-      EOS_ASSERT(table_storage <= (per_code_account_max_db_limit_mbytes * bytes_per_mbyte), tx_code_db_limit_exceeded, "Database limit exceeded for account=${name}",("name", c.code));
+         // compilation is not thread safe, so we dispatch it to a io_service running on a single thread to
+         // queue up and synchronize compilations
+         with_lock(_compile_lock, [&,this](){
+            // check to see if someone returned what we need before making a new one
+            auto pending_result = try_fetch_entry(code_id);
+            std::exception_ptr pending_error;
 
-      rate_limiting = c.db.find<rate_limiting_object, by_name>(c.code);
-      c.mutable_db.modify(*rate_limiting, [storage=this->table_storage] (rate_limiting_object& rlo) {
-         rlo.per_code_account_db_bytes = storage;
-      });
-   } FC_CAPTURE_AND_RETHROW() }
+            if (!pending_result) {
+               // time to compile a brand new (maybe first) copy of this code
+               Module* module = new Module();
+               ModuleInstance* instance = nullptr;
+               size_t mem_end = 0;
+               vector<char> mem_image;
+
+               try {
+                  Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
+                  #warning TODO: restore checktime injection?
+                  WASM::serializeWithInjection(stream, *module);
+                  validate_eosio_wasm_constraints(*module);
+
+                  root_resolver resolver;
+                  LinkResult link_result = linkModule(*module, resolver);
+                  instance = instantiateModule(*module, std::move(link_result.resolvedImports));
+                  FC_ASSERT(instance != nullptr);
+
+                  MemoryInstance* current_memory = Runtime::getDefaultMemory(instance);
+
+                  if(current_memory) {
+                     char *mem_ptr = &memoryRef<char>(current_memory, 0);
+                     const auto allocated_memory = Runtime::getDefaultMemorySize(instance);
+                     for (uint64_t i = 0; i < allocated_memory; ++i) {
+                        if (mem_ptr[i])
+                           mem_end = i + 1;
+                     }
+                     mem_image.resize(mem_end);
+                     memcpy(mem_image.data(), mem_ptr, mem_end);
+                  }
+                  
+               } catch (...) {
+                  pending_error = std::current_exception();
+               }
+
+               if (pending_error == nullptr) {
+                  // grab the lock and put this in the cache as unavailble
+                  with_lock(_cache_lock, [&,this]() {
+                     // find or create a new entry
+                     auto iter = _cache.emplace(code_id, code_info(mem_end, std::move(mem_image))).first;
+
+                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(instance, module));
+                     pending_result = optional_entry_ref(*iter->second.instances.back().get());
+                  });
+               }
+            }
+
+           if (pending_error != nullptr) {
+              error = pending_error;
+           } else {
+              result = pending_result;
+           }
+
+         });
 
 
-
-   void wasm_interface::load( const account_name& name, const chainbase::database& db ) {
-      const auto& recipient = db.get<account_object,by_name>( name );
-  //    idump(("recipient")(name(name))(recipient.code_version));
-
-      auto& state = instances[name];
-      if( state.code_version != recipient.code_version ) {
-        if( state.instance ) {
-           /// TODO: free existing instance and module
-#warning TODO: free existing module if the code has been updated, currently leak memory
-           state.instance     = nullptr;
-           state.module       = nullptr;
-           state.code_version = fc::sha256();
-        }
-        state.module = new IR::Module();
-        state.table_key_types.clear();
-
-        try
-        {
-//          wlog( "LOADING CODE" );
-          const auto start = fc::time_point::now();
-          Serialization::MemoryInputStream stream((const U8*)recipient.code.data(),recipient.code.size());
-          WASM::serializeWithInjection(stream,*state.module);
-
-          RootResolver rootResolver;
-          LinkResult linkResult = linkModule(*state.module,rootResolver);
-          state.instance = instantiateModule( *state.module, std::move(linkResult.resolvedImports) );
-          FC_ASSERT( state.instance );
-          const auto llvm_time = fc::time_point::now();
-
-          current_memory = Runtime::getDefaultMemory(state.instance);
-
-          char* memstart = &memoryRef<char>( current_memory, 0 );
-         // state.init_memory.resize(1<<16); /// TODO: actually get memory size
-          const auto allocated_memory = Runtime::getDefaultMemorySize(state.instance);
-          for( uint64_t i = 0; i < allocated_memory; ++i )
-          {
-             if( memstart[i] )
-             {
-                state.mem_end = i+1;
-             }
-          }
-          //ilog( "INIT MEMORY: ${size}", ("size", state.mem_end) );
-
-          state.init_memory.resize(state.mem_end);
-          memcpy( state.init_memory.data(), memstart, state.mem_end ); //state.init_memory.size() );
-          //std::cerr <<"\n";
-          state.code_version = recipient.code_version;
-//          idump((state.code_version));
-          const auto init_time = fc::time_point::now();
-
-          types::abi abi;
-          if( types::abi_serializer::to_abi(recipient.abi, abi) )
-          {
-             state.tables_fixed = true;
-             for(auto& table : abi.tables)
-             {
-                const auto key_type = to_key_type(table.index_type);
-                if (key_type == invalid_key_type)
-                   throw Serialization::FatalSerializationException("For code \"" + (std::string)name + "\" index_type of \"" +
-                                                                    table.index_type + "\" referenced but not supported");
-
-                state.table_key_types.emplace(std::make_pair(table.table_name, key_type));
-             }
-          }
-          ilog("wasm_interface::load name = ${n} times llvm:${llvm} ms, init:${init} ms, abi:${abi} ms",
-               ("n",name)("llvm",(llvm_time-start).count()/1000)("init",(init_time-llvm_time).count()/1000)("abi",(fc::time_point::now()-init_time).count()/1000));
-        }
-        catch(Serialization::FatalSerializationException exception)
-        {
-          std::cerr << "Error deserializing WebAssembly binary file:" << std::endl;
-          std::cerr << exception.message << std::endl;
-          throw;
-        }
-        catch(IR::ValidationException exception)
-        {
-          std::cerr << "Error validating WebAssembly binary file:" << std::endl;
-          std::cerr << exception.message << std::endl;
-          throw;
-        }
-        catch(std::bad_alloc)
-        {
-          std::cerr << "Memory allocation failed: input is likely malformed" << std::endl;
-          throw;
-        }
+         try {
+            if (error != nullptr) {
+               std::rethrow_exception(error);
+            } else {
+               return (*result).get();
+            }
+         } FC_RETHROW_EXCEPTIONS(error, "error compiling WASM for code with hash: ${code_id}", ("code_id", code_id));
       }
-      current_module      = state.instance;
-      current_memory      = getDefaultMemory( current_module );
-      current_state       = &state;
-      table_key_types     = &state.table_key_types;
-      tables_fixed        = state.tables_fixed;
-      table_storage       = 0;
+
+      /**
+       * return an entry to the cache.  The entry is presumed to come back in a "dirty" state and must be
+       * sanitized before returning to the "available" state.  This sanitization is done asynchronously so
+       * as not to delay the current executing thread.
+       *
+       * @param code_id - the code Id associated with the instance
+       * @param entry - the entry to return
+       */
+      void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
+        // sanitize by reseting the memory that may now be dirty
+        auto& info = (*fetch_info(code_id)).get();
+        if(getDefaultMemory(entry.instance)) {
+           char* memstart = &memoryRef<char>( getDefaultMemory(entry.instance), 0 );
+           memset( memstart + info.mem_end, 0, ((1<<16) - info.mem_end) );
+           memcpy( memstart, info.mem_image.data(), info.mem_end);
+        }
+        resetGlobalInstances(entry.instance);
+
+        // under a lock, put this entry back in the available instances side of the instances vector
+        with_lock(_cache_lock, [&,this](){
+           // walk the vector and find this entry
+           auto iter = info.instances.begin();
+           while (iter->get() != &entry) {
+              ++iter;
+           }
+
+           FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
+
+           auto first_unavailable = (info.instances.begin() + info.available_instances);
+           if (iter != first_unavailable) {
+              std::swap(iter, first_unavailable);
+           }
+           info.available_instances++;
+        });
+      }
+
+      // mapping of digest to an entry for the code
+      map<digest_type, code_info> _cache;
+      std::mutex _cache_lock;
+
+      // compilation lock
+      std::mutex _compile_lock;
+   };
+
+   wasm_cache::wasm_cache()
+      :_my( new wasm_cache_impl() ) {
    }
 
-   wasm_memory::wasm_memory(wasm_interface& interface)
-   : _wasm_interface(interface)
-   , _num_pages(Runtime::getMemoryNumPages(interface.current_memory))
-   , _min_bytes(limit_32bit_address(_num_pages << numBytesPerPageLog2))
-   {
-      _wasm_interface.current_memory_management = this;
-      _num_bytes = _min_bytes;
+   wasm_cache::~wasm_cache() = default;
+
+   wasm_cache::entry &wasm_cache::checkout( const digest_type& code_id, const char* wasm_binary, size_t wasm_binary_size ) {
+      // see if there is an available entry in the cache
+      auto result = _my->try_fetch_entry(code_id);
+      if (result) {
+         return (*result).get();
+      }
+      return _my->fetch_entry(code_id, wasm_binary, wasm_binary_size);
    }
 
-   wasm_memory::~wasm_memory()
-   {
-      if (_num_bytes > _min_bytes)
-         sbrk((I32)_min_bytes - (I32)_num_bytes);
 
-      _wasm_interface.current_memory_management = nullptr;
+   void wasm_cache::checkin(const digest_type& code_id, entry& code ) {
+      MemoryInstance* default_mem = Runtime::getDefaultMemory(code.instance);
+      if(default_mem)
+         Runtime::shrinkMemory(default_mem, Runtime::getMemoryNumPages(default_mem) - 1);
+      _my->return_entry(code_id, code);
    }
 
-   U32 wasm_memory::sbrk(I32 num_bytes)
-   {
-      const U32 previous_num_bytes = _num_bytes;
-      if(Runtime::getMemoryNumPages(_wasm_interface.current_memory) != _num_pages)
-         throw eosio::chain::page_memory_error();
+   /**
+    * RAII wrapper to make sure that the context is cleaned up on exception
+    */
+   struct scoped_context {
+      template<typename ...Args>
+      scoped_context(optional<wasm_context> &context, Args&... args)
+      :context(context)
+      {
+         context = wasm_context{ args... };
+      }
 
-      // Round the absolute value of num_bytes to an alignment boundary, and ensure it won't allocate too much or too little memory.
-      num_bytes = (num_bytes + 7) & ~7;
-      if(num_bytes > 0 && previous_num_bytes > _max_memory - num_bytes)
-         throw eosio::chain::page_memory_error();
-      else if(num_bytes < 0 && previous_num_bytes < _min_bytes - num_bytes)
-         throw eosio::chain::page_memory_error();
+      ~scoped_context() {
+         context.reset();
+      }
 
-      // Update the number of bytes allocated, and compute the number of pages needed for it.
-      _num_bytes += num_bytes;
-      const Uptr num_desired_pages = (_num_bytes + IR::numBytesPerPage - 1) >> IR::numBytesPerPageLog2;
+      optional<wasm_context>& context;
+   };
 
-      // Grow or shrink the memory object to the desired number of pages.
-      if(num_desired_pages > _num_pages)
-         Runtime::growMemory(_wasm_interface.current_memory, num_desired_pages - _num_pages);
-      else if(num_desired_pages < _num_pages)
-         Runtime::shrinkMemory(_wasm_interface.current_memory, _num_pages - num_desired_pages);
+   void wasm_interface_impl::call(const string& entry_point, const vector<Value>& args, wasm_cache::entry& code, apply_context& context)
+   try {
+      FunctionInstance* call = asFunctionNullable(getInstanceExport(code.instance,entry_point) );
+      if( !call ) {
+         return;
+      }
 
-      _num_pages = num_desired_pages;
+      FC_ASSERT( getFunctionType(call)->parameters.size() == args.size() );
 
-      return previous_num_bytes;
+      auto context_guard = scoped_context(current_context, code, context);
+      context.checktime_start();
+      runInstanceStartFunc(code.instance);
+      Runtime::invokeFunction(call,args);
+   } catch( const Runtime::Exception& e ) {
+      FC_THROW_EXCEPTION(wasm_execution_error,
+                         "cause: ${cause}\n${callstack}",
+                         ("cause", string(describeExceptionCause(e.cause)))
+                         ("callstack", e.callStack));
+   } FC_CAPTURE_AND_RETHROW()
+
+   wasm_interface::wasm_interface()
+      :my( new wasm_interface_impl() ) {
    }
 
-   U32 wasm_memory::limit_32bit_address(Uptr address)
-   {
-      return (U32)(address > UINT32_MAX ? UINT32_MAX : address);
+   wasm_interface& wasm_interface::get() {
+      thread_local wasm_interface* single = nullptr;
+      if( !single ) {
+         single = new wasm_interface();
+      }
+      return *single;
    }
 
-} }
+   void wasm_interface::apply( wasm_cache::entry& code, apply_context& context ) {
+      vector<Value> args = {Value(uint64_t(context.act.account)),
+                            Value(uint64_t(context.act.name))};
+      my->call("apply", args, code, context);
+   }
+
+   void wasm_interface::error( wasm_cache::entry& code, apply_context& context ) {
+      vector<Value> args = { /* */ };
+      my->call("error", args, code, context);
+   }
+
+#if defined(assert)
+   #undef assert
+#endif
+
+class context_aware_api {
+   public:
+      context_aware_api(wasm_interface& wasm)
+      :context(intrinsics_accessor::get_context(wasm).context), code(intrinsics_accessor::get_context(wasm).code),
+       sbrk_bytes(intrinsics_accessor::get_context(wasm).sbrk_bytes)
+      {}
+
+   protected:
+      uint32_t&          sbrk_bytes;
+      wasm_cache::entry& code;
+      apply_context&     context;
+};
+
+class privileged_api : public context_aware_api {
+   public:
+      privileged_api( wasm_interface& wasm )
+      :context_aware_api(wasm)
+      {
+         FC_ASSERT( context.privileged, "${code} does not have permission to call this API", ("code",context.receiver) );
+      }
+
+      /**
+       *  This should schedule the feature to be activated once the
+       *  block that includes this call is irreversible. It should
+       *  fail if the feature is already pending.
+       *
+       *  Feature name should be base32 encoded name. 
+       */
+      void activate_feature( int64_t feature_name ) {
+         FC_ASSERT( !"Unsupported Harfork Detected" );
+      }
+
+      /**
+       * This should return true if a feature is active and irreversible, false if not.
+       *
+       * Irreversiblity by fork-database is not consensus safe, therefore, this defines
+       * irreversiblity only by block headers not by BFT short-cut.
+       */
+      int is_feature_active( int64_t feature_name ) {
+         return false;
+      }
+
+      void set_resource_limits( account_name account, 
+                                int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight,
+                                int64_t cpu_usec_per_period ) {
+         auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
+         FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free to much space" );
+
+         auto& gdp = context.controller.get_dynamic_global_properties();
+         context.mutable_db.modify( gdp, [&]( auto& p ) {
+           p.total_net_weight -= buo.net_weight;
+           p.total_net_weight += net_weight;
+           p.total_cpu_weight -= buo.cpu_weight;
+           p.total_cpu_weight += cpu_weight;
+           p.total_db_reserved -= buo.db_reserved_capacity;
+           p.total_db_reserved += ram_bytes;
+         });
+
+         context.mutable_db.modify( buo, [&]( auto& o ){
+            o.net_weight = net_weight;
+            o.cpu_weight = cpu_weight;
+            o.db_reserved_capacity = ram_bytes;
+         });
+      }
+
+
+      void get_resource_limits( account_name account, 
+                                uint64_t& ram_bytes, uint64_t& net_weight, uint64_t cpu_weight ) {
+      }
+                                               
+      void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
+         datastream<const char*> ds( packed_producer_schedule, datalen );
+         producer_schedule_type psch;
+         fc::raw::unpack(ds, psch);
+
+         context.mutable_db.modify( context.controller.get_global_properties(), 
+            [&]( auto& gprops ) {
+                 gprops.new_active_producers = psch;
+         });
+      }
+
+      bool is_privileged( account_name n )const {
+         return context.db.get<account_object, by_name>( n ).privileged;
+      }
+      bool is_frozen( account_name n )const {
+         return context.db.get<account_object, by_name>( n ).frozen;
+      }
+      void set_privileged( account_name n, bool is_priv ) {
+         const auto& a = context.db.get<account_object, by_name>( n );
+         context.mutable_db.modify( a, [&]( auto& ma ){
+            ma.privileged = is_priv;
+         });
+      }
+
+      void freeze_account( account_name n , bool should_freeze ) {
+         const auto& a = context.db.get<account_object, by_name>( n );
+         context.mutable_db.modify( a, [&]( auto& ma ){
+            ma.frozen = should_freeze;
+         });
+      }
+
+      /// TODO: add inline/deferred with support for arbitrary permissions rather than code/current auth
+};
+
+class checktime_api : public context_aware_api {
+public:
+   using context_aware_api::context_aware_api;
+
+   void checktime() {
+      context.checktime();
+   }
+};
+
+class producer_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      int get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
+         auto active_producers = context.get_active_producers();
+         size_t len = std::min(datalen / sizeof(chain::account_name), active_producers.size());
+         memcpy(producers, active_producers.data(), len);
+         return active_producers.size() * sizeof(chain::account_name);
+      }
+};
+
+class crypto_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      /**
+       * This method can be optimized out during replay as it has
+       * no possible side effects other than "passing". 
+       */
+      void assert_recover_key( fc::sha256& digest, 
+                        array_ptr<char> sig, size_t siglen,
+                        array_ptr<char> pub, size_t publen ) {
+         fc::crypto::signature s;
+         fc::crypto::public_key p;
+         datastream<const char*> ds( sig, siglen );
+         datastream<const char*> pubds( pub, publen );
+
+         fc::raw::unpack(ds, s);
+         fc::raw::unpack(ds, p);
+
+         auto check = fc::crypto::public_key( s, digest, false );
+         FC_ASSERT( check == p, "Error expected key different than recovered key" );
+      }
+
+      int recover_key( fc::sha256& digest, 
+                        array_ptr<char> sig, size_t siglen,
+                        array_ptr<char> pub, size_t publen ) {
+         fc::crypto::signature s;
+         datastream<const char*> ds( sig, siglen );
+         datastream<char*> pubds( pub, publen );
+
+         fc::raw::unpack(ds, s);
+         fc::raw::pack( pubds, fc::crypto::public_key( s, digest, false ) );
+         return pubds.tellp();
+      }
+
+      void assert_sha256(array_ptr<char> data, size_t datalen, const fc::sha256& hash_val) {
+         auto result = fc::sha256::hash( data, datalen );
+         FC_ASSERT( result == hash_val, "hash miss match" );
+      }
+
+      void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
+         hash_val = fc::sha1::hash( data, datalen );
+      }
+
+      void sha256(array_ptr<char> data, size_t datalen, fc::sha256& hash_val) {
+         hash_val = fc::sha256::hash( data, datalen );
+      }
+
+      void sha512(array_ptr<char> data, size_t datalen, fc::sha512& hash_val) {
+         hash_val = fc::sha512::hash( data, datalen );
+      }
+
+      void ripemd160(array_ptr<char> data, size_t datalen, fc::ripemd160& hash_val) {
+         hash_val = fc::ripemd160::hash( data, datalen );
+      }
+};
+
+class string_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void assert_is_utf8(array_ptr<const char> str, size_t datalen, null_terminated_ptr msg) {
+         const bool test = fc::is_utf8(std::string( str, datalen ));
+
+         FC_ASSERT( test, "assertion failed: ${s}", ("s",msg.value) );
+      }
+};
+
+class system_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void assert(bool condition, null_terminated_ptr str) {
+         std::string message( str );
+         if( !condition ) edump((message));
+         FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
+      }
+
+      fc::time_point_sec now() {
+         return context.controller.head_block_time();
+      }
+};
+
+class action_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      int read_action(array_ptr<char> memory, size_t size) {
+         FC_ASSERT(size > 0);
+         int minlen = std::min<size_t>(context.act.data.size(), size);
+         memcpy((void *)memory, context.act.data.data(), minlen);
+         return minlen;
+      }
+
+      int action_size() {
+         return context.act.data.size();
+      }
+
+      const name& current_receiver() {
+         return context.receiver;
+      }
+
+      fc::time_point_sec publication_time() {
+         return context.trx_meta.published;
+      }
+
+      name current_sender() {
+         if (context.trx_meta.sender) {
+            return *context.trx_meta.sender;
+         } else {
+            return name();
+         }
+      }
+};
+
+class console_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void prints(null_terminated_ptr str) {
+         context.console_append<const char*>(str);
+      }
+
+      void prints_l(array_ptr<const char> str, size_t str_len ) {
+         context.console_append(string(str, str_len));
+      }
+
+      void printi(uint64_t val) {
+         context.console_append(val);
+      }
+
+      void printi128(const unsigned __int128& val) {
+         fc::uint128_t v(val>>64, uint64_t(val) );
+         context.console_append(fc::variant(v).get_string());
+      }
+
+      void printd( wasm_double val ) {
+         context.console_append(val.str());
+      }
+
+      void printn(const name& value) {
+         context.console_append(value.to_string());
+      }
+
+      void printhex(array_ptr<const char> data, size_t data_len ) {
+         context.console_append(fc::to_hex(data, data_len));
+      }
+};
+
+template<typename ObjectType>
+class db_api : public context_aware_api {
+   using KeyType = typename ObjectType::key_type;
+   static constexpr int KeyCount = ObjectType::number_of_keys;
+   using KeyArrayType = KeyType[KeyCount];
+   using ContextMethodType = int(apply_context::*)(const table_id_object&, const account_name&, const KeyType*, const char*, size_t);
+
+   private:
+      int call(ContextMethodType method, const scope_name& scope, const name& table, account_name bta, array_ptr<const char> data, size_t data_len) {
+         const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
+         FC_ASSERT(data_len >= KeyCount * sizeof(KeyType), "Data is not long enough to contain keys");
+         const KeyType* keys = reinterpret_cast<const KeyType *>((const char *)data);
+
+         const char* record_data =  ((const char*)data) + sizeof(KeyArrayType);
+         size_t record_len = data_len - sizeof(KeyArrayType);
+         return (context.*(method))(t_id, bta, keys, record_data, record_len) + sizeof(KeyArrayType);
+      }
+
+   public:
+      using context_aware_api::context_aware_api;
+
+      int store(const scope_name& scope, const name& table, const account_name& bta, array_ptr<const char> data, size_t data_len) {
+         auto res = call(&apply_context::store_record<ObjectType>, scope, table, bta, data, data_len);
+         //ilog("STORE [${scope},${code},${table}] => ${res} :: ${HEX}", ("scope",scope)("code",context.receiver)("table",table)("res",res)("HEX", fc::to_hex(data, data_len)));
+         return res;
+      }
+
+      int update(const scope_name& scope, const name& table, const account_name& bta, array_ptr<const char> data, size_t data_len) {
+         return call(&apply_context::update_record<ObjectType>, scope, table, bta, data, data_len);
+      }
+
+      int remove(const scope_name& scope, const name& table, const KeyArrayType &keys) {
+         const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
+         return context.remove_record<ObjectType>(t_id, keys);
+      }
+};
+
+template<typename IndexType, typename Scope>
+class db_index_api : public context_aware_api {
+   using KeyType = typename IndexType::value_type::key_type;
+   static constexpr int KeyCount = IndexType::value_type::number_of_keys;
+   using KeyArrayType = KeyType[KeyCount];
+   using ContextMethodType = int(apply_context::*)(const table_id_object&, KeyType*, char*, size_t);
+
+
+   int call(ContextMethodType method, const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+      auto maybe_t_id = context.find_table(context.receiver, scope, table);
+      if (maybe_t_id == nullptr) {
+         return -1;
+      }
+
+      const auto& t_id = *maybe_t_id;
+      FC_ASSERT(data_len >= KeyCount * sizeof(KeyType), "Data is not long enough to contain keys");
+      KeyType* keys = reinterpret_cast<KeyType *>((char *)data);
+
+      char* record_data =  ((char*)data) + sizeof(KeyArrayType);
+      size_t record_len = data_len - sizeof(KeyArrayType);
+
+      auto res = (context.*(method))(t_id, keys, record_data, record_len);
+      if (res != -1) {
+         res += sizeof(KeyArrayType);
+      }
+      return res;
+   }
+
+   public:
+      using context_aware_api::context_aware_api;
+
+      int load(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::load_record<IndexType, Scope>, code, scope, table, data, data_len);
+         //ilog("LOAD [${scope},${code},${table}] => ${res} :: ${HEX}", ("scope",scope)("code",code)("table",table)("res",res)("HEX", fc::to_hex(data, data_len)));
+         return res;
+      }
+
+      int front(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::front_record<IndexType, Scope>, code, scope, table, data, data_len);
+      }
+
+      int back(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::back_record<IndexType, Scope>, code, scope, table, data, data_len);
+      }
+
+      int next(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::next_record<IndexType, Scope>, code, scope, table, data, data_len);
+      }
+
+      int previous(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::previous_record<IndexType, Scope>, code, scope, table, data, data_len);
+      }
+
+      int lower_bound(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::lower_bound_record<IndexType, Scope>, code, scope, table, data, data_len);
+      }
+
+      int upper_bound(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::upper_bound_record<IndexType, Scope>, code, scope, table, data, data_len);
+      }
+
+};
+
+class memory_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+     
+      char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
+         return (char *)::memcpy(dest, src, length);
+      }
+
+      int memcmp( array_ptr<const char> dest, array_ptr<const char> src, size_t length) {
+         return ::memcmp(dest, src, length);
+      }
+
+      char* memset( array_ptr<char> dest, int value, size_t length ) {
+         return (char *)::memset( dest, value, length );
+      }
+
+      uint32_t sbrk(int num_bytes) {
+         // TODO: omitted checktime function from previous version of sbrk, may need to be put back in at some point
+         constexpr uint32_t NBPPL2  = IR::numBytesPerPageLog2;
+         constexpr uint32_t MAX_MEM = 1024 * 1024;
+
+         MemoryInstance*  default_mem    = Runtime::getDefaultMemory(code.instance);
+         if(!default_mem)
+            throw eosio::chain::page_memory_error();
+
+         const uint32_t         num_pages      = Runtime::getMemoryNumPages(default_mem);
+         const uint32_t         min_bytes      = (num_pages << NBPPL2) > UINT32_MAX ? UINT32_MAX : num_pages << NBPPL2;
+         const uint32_t         prev_num_bytes = sbrk_bytes; //_num_bytes;
+         
+         // round the absolute value of num_bytes to an alignment boundary
+         num_bytes = (num_bytes + 7) & ~7;
+
+         if ((num_bytes > 0) && (prev_num_bytes > (MAX_MEM - num_bytes)))  // test if allocating too much memory (overflowed)
+            throw eosio::chain::page_memory_error();
+         else if ((num_bytes < 0) && (prev_num_bytes < (min_bytes - num_bytes))) // test for underflow
+            throw eosio::chain::page_memory_error(); 
+
+         // update the number of bytes allocated, and compute the number of pages needed
+         sbrk_bytes += num_bytes;
+         const uint32_t num_desired_pages = (sbrk_bytes + IR::numBytesPerPage - 1) >> NBPPL2;
+
+         // grow or shrink the memory to the desired number of pages
+         if (num_desired_pages > num_pages)
+            Runtime::growMemory(default_mem, num_desired_pages - num_pages);
+         else if (num_desired_pages < num_pages)
+            Runtime::shrinkMemory(default_mem, num_pages - num_desired_pages);
+
+         return prev_num_bytes;
+      }
+};
+
+class transaction_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      int read_transaction( array_ptr<char> data, size_t data_len ) {
+         bytes trx = context.get_packed_transaction();
+         if (data_len >= trx.size()) {
+            memcpy(data, trx.data(), trx.size());
+         }
+         return trx.size();
+      }
+
+      int transaction_size() {
+         return context.get_packed_transaction().size();
+      }
+
+      int expiration() {
+        return context.trx_meta.trx().expiration.sec_since_epoch();
+      }
+
+      int tapos_block_num() {
+        return context.trx_meta.trx().ref_block_num;
+      }
+      int tapos_block_prefix() {
+        return context.trx_meta.trx().ref_block_prefix;
+      }
+
+      void send_inline( array_ptr<char> data, size_t data_len ) {
+         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
+         FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
+
+         action act;
+         fc::raw::unpack<action>(data, data_len, act);
+         context.execute_inline(std::move(act));
+      }
+
+
+      void send_deferred( uint32_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
+         try {
+            // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
+            FC_ASSERT(data_len < config::default_max_gen_trx_size, "generated transaction too big");
+
+            deferred_transaction dtrx;
+            fc::raw::unpack<transaction>(data, data_len, dtrx);
+            dtrx.sender = context.receiver;
+            dtrx.sender_id = sender_id;
+            dtrx.execute_after = execute_after;
+            context.execute_deferred(std::move(dtrx));
+         } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
+      }
+
+};
+
+
+REGISTER_INTRINSICS(privileged_api,
+   (activate_feature,          void(int64_t))
+   (is_feature_active,         int(int64_t))
+   (set_resource_limits,       void(int64_t,int64_t,int64_t,int64_t,int64_t))
+   (set_active_producers,      void(int,int))
+   (is_privileged,             int(int64_t))
+   (set_privileged,            void(int64_t, int))
+   (freeze_account,            void(int64_t, int))
+   (is_frozen,                 int(int64_t))
+);
+
+REGISTER_INTRINSICS(checktime_api,
+   (checktime,      void())
+);
+
+REGISTER_INTRINSICS(producer_api,
+   (get_active_producers,      int(int, int))
+);
+
+REGISTER_INTRINSICS(crypto_api,
+   (assert_recover_key,  void(int, int, int, int, int))
+   (recover_key,    int(int, int, int, int, int))
+   (assert_sha256,  void(int, int, int))
+   (sha1,           void(int, int, int))
+   (sha256,         void(int, int, int))
+   (sha512,         void(int, int, int))
+   (ripemd160,      void(int, int, int))
+);
+
+REGISTER_INTRINSICS(string_api,
+   (assert_is_utf8,  void(int, int, int))
+);
+
+REGISTER_INTRINSICS(system_api,
+   (assert,      void(int, int))
+   (now,          int())
+);
+
+REGISTER_INTRINSICS(action_api,
+   (read_action,            int(int, int)  )
+   (action_size,            int()          )
+   (current_receiver,   int64_t()          )
+   (publication_time,   int32_t()          )
+   (current_sender,     int64_t()          )
+);
+
+REGISTER_INTRINSICS(apply_context,
+   (require_write_lock,    void(int64_t)   )
+   (require_read_lock,     void(int64_t, int64_t)   )
+   (require_recipient,     void(int64_t)   )
+   (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&)const)
+);
+
+REGISTER_INTRINSICS(console_api,
+   (prints,                void(int)       )
+   (prints_l,              void(int, int)  )
+   (printi,                void(int64_t)   )
+   (printi128,             void(int)       )
+   (printd,                void(int64_t)   )
+   (printn,                void(int64_t)   )
+   (printhex,              void(int, int)  )
+);
+
+REGISTER_INTRINSICS(transaction_api,
+   (read_transaction,       int(int, int)            )
+   (transaction_size,       int()                    )
+   (expiration,             int()                    )
+   (tapos_block_prefix,     int()                    )
+   (tapos_block_num,        int()                    )
+   (send_inline,           void(int, int)            )
+   (send_deferred,         void(int, int, int, int)  )
+);
+
+REGISTER_INTRINSICS(memory_api,
+   (memcpy,                 int(int, int, int)   )
+   (memcmp,                 int(int, int, int)   )
+   (memset,                 int(int, int, int)   )
+   (sbrk,                   int(int)             )
+);
+
+
+#define DB_METHOD_SEQ(SUFFIX) \
+   (store,        int32_t(int64_t, int64_t, int64_t, int, int),   "store_"#SUFFIX ) \
+   (update,       int32_t(int64_t, int64_t, int64_t, int, int),   "update_"#SUFFIX ) \
+   (remove,       int32_t(int64_t, int64_t, int),                 "remove_"#SUFFIX )
+
+#define DB_INDEX_METHOD_SEQ(SUFFIX)\
+   (load,         int32_t(int64_t, int64_t, int64_t, int, int),   "load_"#SUFFIX )\
+   (front,        int32_t(int64_t, int64_t, int64_t, int, int),   "front_"#SUFFIX )\
+   (back,         int32_t(int64_t, int64_t, int64_t, int, int),   "back_"#SUFFIX )\
+   (next,         int32_t(int64_t, int64_t, int64_t, int, int),   "next_"#SUFFIX )\
+   (previous,     int32_t(int64_t, int64_t, int64_t, int, int),   "previous_"#SUFFIX )\
+   (lower_bound,  int32_t(int64_t, int64_t, int64_t, int, int),   "lower_bound_"#SUFFIX )\
+   (upper_bound,  int32_t(int64_t, int64_t, int64_t, int, int),   "upper_bound_"#SUFFIX )\
+
+using db_api_key_value_object                                 = db_api<key_value_object>;
+using db_api_keystr_value_object                              = db_api<keystr_value_object>;
+using db_api_key128x128_value_object                          = db_api<key128x128_value_object>;
+using db_api_key64x64_value_object                            = db_api<key64x64_value_object>;
+using db_api_key64x64x64_value_object                         = db_api<key64x64x64_value_object>;
+using db_index_api_key_value_index_by_scope_primary           = db_index_api<key_value_index,by_scope_primary>;
+using db_index_api_keystr_value_index_by_scope_primary        = db_index_api<keystr_value_index,by_scope_primary>;
+using db_index_api_key128x128_value_index_by_scope_primary    = db_index_api<key128x128_value_index,by_scope_primary>;
+using db_index_api_key128x128_value_index_by_scope_secondary  = db_index_api<key128x128_value_index,by_scope_secondary>;
+using db_index_api_key64x64_value_index_by_scope_primary      = db_index_api<key64x64_value_index,by_scope_primary>;
+using db_index_api_key64x64_value_index_by_scope_secondary    = db_index_api<key64x64_value_index,by_scope_secondary>;
+using db_index_api_key64x64x64_value_index_by_scope_primary   = db_index_api<key64x64x64_value_index,by_scope_primary>;
+using db_index_api_key64x64x64_value_index_by_scope_secondary = db_index_api<key64x64x64_value_index,by_scope_secondary>;
+using db_index_api_key64x64x64_value_index_by_scope_tertiary  = db_index_api<key64x64x64_value_index,by_scope_tertiary>;
+
+REGISTER_INTRINSICS(db_api_key_value_object,         DB_METHOD_SEQ(i64));
+REGISTER_INTRINSICS(db_api_keystr_value_object,      DB_METHOD_SEQ(str));
+REGISTER_INTRINSICS(db_api_key128x128_value_object,  DB_METHOD_SEQ(i128i128));
+REGISTER_INTRINSICS(db_api_key64x64_value_object,    DB_METHOD_SEQ(i64i64));
+REGISTER_INTRINSICS(db_api_key64x64x64_value_object, DB_METHOD_SEQ(i64i64i64));
+
+REGISTER_INTRINSICS(db_index_api_key_value_index_by_scope_primary,           DB_INDEX_METHOD_SEQ(i64));
+REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,        DB_INDEX_METHOD_SEQ(str));
+REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_primary,    DB_INDEX_METHOD_SEQ(primary_i128i128));
+REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_secondary,  DB_INDEX_METHOD_SEQ(secondary_i128i128));
+REGISTER_INTRINSICS(db_index_api_key64x64_value_index_by_scope_primary,      DB_INDEX_METHOD_SEQ(primary_i64i64));
+REGISTER_INTRINSICS(db_index_api_key64x64_value_index_by_scope_secondary,    DB_INDEX_METHOD_SEQ(secondary_i64i64));
+REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_primary,   DB_INDEX_METHOD_SEQ(primary_i64i64i64));
+REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_secondary, DB_INDEX_METHOD_SEQ(secondary_i64i64i64));
+REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_tertiary,  DB_INDEX_METHOD_SEQ(tertiary_i64i64i64));
+
+
+} } /// eosio::chain

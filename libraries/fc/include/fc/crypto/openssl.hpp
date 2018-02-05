@@ -9,6 +9,11 @@
 #include <openssl/sha.h>
 #include <openssl/obj_mac.h>
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+void ECDSA_SIG_get0(const ECDSA_SIG *sig, const BIGNUM **pr, const BIGNUM **ps);
+int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s);
+#endif
+
 /** 
  * @file openssl.hpp
  * Provides common utility calls for wrapping openssl c api.

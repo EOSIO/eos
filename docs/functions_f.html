@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN2.0.1</span>
+   &#160;<span id="projectnumber">DAWN3.0.1</span>
    </div>
   </td>
  </tr>
@@ -67,11 +67,14 @@ $(function() {
 : <a class="el" href="structexchange_1_1buy__order.html#ae99f6cfe5ae0b384b205ebdd0d045f49">exchange::buy_order</a>
 , <a class="el" href="structexchange_1_1sell__order.html#a7ba636e60237d2b5dedb4cb8a5bd6cb8">exchange::sell_order</a>
 </li>
+<li>first_currency
+: <a class="el" href="classbancor_1_1converter__contract.html#a7a46709d66c95ad9c7e4e515e959763f">bancor::converter_contract&lt; ConverterCurrency, FirstCurrency, SecondCurrency &gt;</a>
+</li>
 <li>fixed_point128()
-: <a class="el" href="group__fixedpoint.html#ga9a6e26a69471e1d42ca0f6b41b673734">eosio::fixed_point128&lt; Q &gt;</a>
+: <a class="el" href="structeosio_1_1fixed__point128.html#a35bb5e4ffc953d845551dadf79455ab8">eosio::fixed_point128&lt; Q &gt;</a>
 </li>
 <li>fixed_point32()
-: <a class="el" href="group__fixedpoint.html#ga7ad1f82c49b206575fccf8b736815d7c">eosio::fixed_point32&lt; Q &gt;</a>
+: <a class="el" href="group__fixedpoint.html#ga81c6f339a55c8327935ef972ebdb278d">eosio::fixed_point32&lt; Q &gt;</a>
 </li>
 <li>fixed_point64()
 : <a class="el" href="structeosio_1_1fixed__point64.html#ab9f53ce12bd0a23708ec0b67ec7848cb">eosio::fixed_point64&lt; Q &gt;</a>
@@ -85,8 +88,15 @@ $(function() {
 : <a class="el" href="classeosio_1_1memory__manager.html#afbedc913aa4651b3c3b4b3aecd9b4711">eosio::memory_manager</a>
 </li>
 <li>from
-: <a class="el" href="structinfinite_1_1transfer.html#a3f0c0b9180f6628d8954b390818b9a9e">infinite::transfer</a>
-, <a class="el" href="group__currencyapi.html#gae2c79dd22a28b60c9800efa35c515e22">TOKEN_NAME::transfer</a>
+: <a class="el" href="structeosio_1_1generic__currency_1_1transfer.html#abf091a9eedd3b678e95d0425bf765126">eosio::generic_currency&lt; Token &gt;::transfer</a>
+, <a class="el" href="structeosio_1_1native__currency_1_1transfer.html#ab4a85625a03ba3a08e82da248788b0f3">eosio::native_currency::transfer</a>
+, <a class="el" href="structeosiosystem_1_1stakevote.html#a0d70e5942967e71bc2bfa7c97772a8aa">eosiosystem::stakevote</a>
+, <a class="el" href="structeosiosystem_1_1transfer.html#a6204bef96101826b10092e46b5dcb7af">eosiosystem::transfer</a>
+, <a class="el" href="structinfinite_1_1transfer.html#a3f0c0b9180f6628d8954b390818b9a9e">infinite::transfer</a>
+, <a class="el" href="group__storageapi.html#gae2c79dd22a28b60c9800efa35c515e22">TOKEN_NAME::transfer</a>
+</li>
+<li>from_current_action()
+: <a class="el" href="classeosio_1_1deferred__transaction.html#a3099d9918066013fa1beb6a491abbb34">eosio::deferred_transaction</a>
 </li>
 <li>front()
 : <a class="el" href="structeosio_1_1table_1_1primary__index.html#abce65bbe7e4357ec9773ed260911b6e3">eosio::table&lt; scope, code, table_n, Record, PrimaryType, SecondaryType &gt;::primary_index</a>

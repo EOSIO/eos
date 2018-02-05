@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN2.0.1</span>
+   &#160;<span id="projectnumber">DAWN3.0.1</span>
    </div>
   </td>
  </tr>
@@ -72,7 +72,8 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><code>#include &lt;<a class="el" href="proxy_8hpp_source.html">proxy/proxy.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="currency_8hpp_source.html">currency/currency.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="native__currency_8hpp_source.html">eoslib/native_currency.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="transaction_8hpp_source.html">eoslib/transaction.hpp</a>&gt;</code><br />
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="namespaces"></a>
 Namespaces</h2></td></tr>
@@ -82,13 +83,16 @@ Namespaces</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:a2e4642a4d99e1ae7670f2a706ec697f9"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
-<tr class="memitem:a2e4642a4d99e1ae7670f2a706ec697f9"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceproxy.html#a2e4642a4d99e1ae7670f2a706ec697f9">proxy::apply_transfer</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, const T &amp;<a class="el" href="structeosio_1_1transfer.html">transfer</a>)</td></tr>
+<tr class="memitem:a2e4642a4d99e1ae7670f2a706ec697f9"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceproxy.html#a2e4642a4d99e1ae7670f2a706ec697f9">proxy::apply_transfer</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, const T &amp;transfer)</td></tr>
 <tr class="separator:a2e4642a4d99e1ae7670f2a706ec697f9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a939fd28f04ea7aefbd189421df9fd2fb"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceproxy.html#a939fd28f04ea7aefbd189421df9fd2fb">proxy::apply_setowner</a> (set_owner params)</td></tr>
 <tr class="separator:a939fd28f04ea7aefbd189421df9fd2fb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8d869c917a23d2439e2d689b6b14e349"><td class="memTemplParams" colspan="2">template&lt;size_t ... Args&gt; </td></tr>
+<tr class="memitem:a8d869c917a23d2439e2d689b6b14e349"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceproxy.html#a8d869c917a23d2439e2d689b6b14e349">proxy::apply_onerror</a> (const <a class="el" href="classeosio_1_1deferred__transaction.html">deferred_transaction</a> &amp;failed_dtrx)</td></tr>
+<tr class="separator:a8d869c917a23d2439e2d689b6b14e349"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a02fd73d861ef2e4aabb38c0c9ff82947"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="proxy_8cpp.html#a02fd73d861ef2e4aabb38c0c9ff82947">init</a> ()</td></tr>
 <tr class="separator:a02fd73d861ef2e4aabb38c0c9ff82947"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3c01edc4ed313916967237c16feb1446"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="proxy_8cpp.html#a3c01edc4ed313916967237c16feb1446">apply</a> (<a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> code, <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> action)</td></tr>
+<tr class="memitem:a3c01edc4ed313916967237c16feb1446"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="proxy_8cpp.html#a3c01edc4ed313916967237c16feb1446">apply</a> (<a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> code, <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="structeosio_1_1action.html">action</a>)</td></tr>
 <tr class="memdesc:a3c01edc4ed313916967237c16feb1446"><td class="mdescLeft">&#160;</td><td class="mdescRight">The apply method implements the dispatch of events to this contract.  <a href="#a3c01edc4ed313916967237c16feb1446">More...</a><br /></td></tr>
 <tr class="separator:a3c01edc4ed313916967237c16feb1446"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>

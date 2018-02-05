@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN2.0.1</span>
+   &#160;<span id="projectnumber">DAWN3.0.1</span>
    </div>
   </td>
  </tr>
@@ -95,6 +95,12 @@ Public Attributes</h2></td></tr>
 Friends</h2></td></tr>
 <tr class="memitem:ab35bfaf393e498e39ffe3e280c4c90bf"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeosio_1_1name.html#ab35bfaf393e498e39ffe3e280c4c90bf">operator==</a> (const <a class="el" href="structeosio_1_1name.html">name</a> &amp;a, const <a class="el" href="structeosio_1_1name.html">name</a> &amp;b)</td></tr>
 <tr class="separator:ab35bfaf393e498e39ffe3e280c4c90bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7982b21b16679c1a0edfc4fc210d540b"><td class="memTemplParams" colspan="2">template&lt;typename DataStream &gt; </td></tr>
+<tr class="memitem:a7982b21b16679c1a0edfc4fc210d540b"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structeosio_1_1name.html#a7982b21b16679c1a0edfc4fc210d540b">operator&lt;&lt;</a> (DataStream &amp;ds, const <a class="el" href="structeosio_1_1name.html">name</a> &amp;v)</td></tr>
+<tr class="separator:a7982b21b16679c1a0edfc4fc210d540b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac13fec38b7bd560448322aa0495b4183"><td class="memTemplParams" colspan="2">template&lt;typename DataStream &gt; </td></tr>
+<tr class="memitem:ac13fec38b7bd560448322aa0495b4183"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="structeosio_1_1name.html#ac13fec38b7bd560448322aa0495b4183">operator&gt;&gt;</a> (DataStream &amp;ds, <a class="el" href="structeosio_1_1name.html">name</a> &amp;v)</td></tr>
+<tr class="separator:ac13fec38b7bd560448322aa0495b4183"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>wraps a uint64_t to ensure it is only passed to methods that expect a Name and that no mathematical operations occur. It also enables specialization of print so that it is printed as a base32 string. </p>
@@ -152,6 +158,44 @@ Friends</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Friends And Related Function Documentation</h2>
+<a id="a7982b21b16679c1a0edfc4fc210d540b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7982b21b16679c1a0edfc4fc210d540b">&#9670;&nbsp;</a></span>operator<<</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename DataStream &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">DataStream&amp; operator&lt;&lt; </td>
+          <td>(</td>
+          <td class="paramtype">DataStream &amp;&#160;</td>
+          <td class="paramname"><em>ds</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structeosio_1_1name.html">name</a> &amp;&#160;</td>
+          <td class="paramname"><em>v</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">friend</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="ab35bfaf393e498e39ffe3e280c4c90bf"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ab35bfaf393e498e39ffe3e280c4c90bf">&#9670;&nbsp;</a></span>operator==</h2>
 
@@ -172,6 +216,44 @@ Friends</h2></td></tr>
           <td></td>
           <td class="paramtype">const <a class="el" href="structeosio_1_1name.html">name</a> &amp;&#160;</td>
           <td class="paramname"><em>b</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">friend</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ac13fec38b7bd560448322aa0495b4183"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac13fec38b7bd560448322aa0495b4183">&#9670;&nbsp;</a></span>operator>></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename DataStream &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">DataStream&amp; operator&gt;&gt; </td>
+          <td>(</td>
+          <td class="paramtype">DataStream &amp;&#160;</td>
+          <td class="paramname"><em>ds</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structeosio_1_1name.html">name</a> &amp;&#160;</td>
+          <td class="paramname"><em>v</em>&#160;</td>
         </tr>
         <tr>
           <td></td>

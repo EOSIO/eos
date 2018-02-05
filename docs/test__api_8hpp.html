@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN2.0.1</span>
+   &#160;<span id="projectnumber">DAWN3.0.1</span>
    </div>
   </td>
  </tr>
@@ -77,7 +77,7 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structdummy__message.html">dummy_message</a></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structdummy__action.html">dummy_action</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structu128__msg.html">u128_msg</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -85,7 +85,7 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__print.html">test_print</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__message.html">test_message</a></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__action.html">test_action</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__math.html">test_math</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -108,16 +108,6 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="define-members"></a>
 Macros</h2></td></tr>
-<tr class="memitem:a983cc68cb9433ae18c8f4989483fabba"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8hpp.html#a983cc68cb9433ae18c8f4989483fabba">WASM_TEST_ERROR_CODE</a>&#160;&#160;&#160;*((unsigned int *)((1&lt;&lt;16) - 2*sizeof(unsigned int)))</td></tr>
-<tr class="separator:a983cc68cb9433ae18c8f4989483fabba"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af339529156efa6e07c2dabf284a8287f"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8hpp.html#af339529156efa6e07c2dabf284a8287f">WASM_TEST_ERROR_MESSAGE</a>&#160;&#160;&#160;*((unsigned int *)((1&lt;&lt;16) - 1*sizeof(unsigned int)))</td></tr>
-<tr class="separator:af339529156efa6e07c2dabf284a8287f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae1bd429404fdcba8cecd5d63cf71d590"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8hpp.html#ae1bd429404fdcba8cecd5d63cf71d590">WASM_TEST_FAIL</a>&#160;&#160;&#160;0xDEADBEEF</td></tr>
-<tr class="separator:ae1bd429404fdcba8cecd5d63cf71d590"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0ef7aa5de5b842c4a4f166cfd825495d"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8hpp.html#a0ef7aa5de5b842c4a4f166cfd825495d">WASM_TEST_PASS</a>&#160;&#160;&#160;0xB0CABACA</td></tr>
-<tr class="separator:a0ef7aa5de5b842c4a4f166cfd825495d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae81ef2e949de0dcfdccf6a7df7e3114d"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8hpp.html#ae81ef2e949de0dcfdccf6a7df7e3114d">WASM_ASSERT</a>(m,  message)&#160;&#160;&#160;if(!(m)) { <a class="el" href="test__api_8hpp.html#af339529156efa6e07c2dabf284a8287f">WASM_TEST_ERROR_MESSAGE</a>=(unsigned int)message; return <a class="el" href="test__api_8hpp.html#ae1bd429404fdcba8cecd5d63cf71d590">WASM_TEST_FAIL</a>; }</td></tr>
-<tr class="separator:ae81ef2e949de0dcfdccf6a7df7e3114d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac8741fa467f356e73d52f63521612abe"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8hpp.html#ac8741fa467f356e73d52f63521612abe">WASM_TEST_HANDLER</a>(CLASS,  METHOD)</td></tr>
 <tr class="separator:ac8741fa467f356e73d52f63521612abe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5e433756dd4c8a2f61db21799a2f64a4"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8hpp.html#a5e433756dd4c8a2f61db21799a2f64a4">DUMMY_MESSAGE_DEFAULT_A</a>&#160;&#160;&#160;0x45</td></tr>
@@ -179,76 +169,6 @@ Typedefs</h2></td></tr>
 
 </div>
 </div>
-<a id="ae81ef2e949de0dcfdccf6a7df7e3114d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae81ef2e949de0dcfdccf6a7df7e3114d">&#9670;&nbsp;</a></span>WASM_ASSERT</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define WASM_ASSERT</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">m, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">message&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td>&#160;&#160;&#160;if(!(m)) { <a class="el" href="test__api_8hpp.html#af339529156efa6e07c2dabf284a8287f">WASM_TEST_ERROR_MESSAGE</a>=(unsigned int)message; return <a class="el" href="test__api_8hpp.html#ae1bd429404fdcba8cecd5d63cf71d590">WASM_TEST_FAIL</a>; }</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a983cc68cb9433ae18c8f4989483fabba"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a983cc68cb9433ae18c8f4989483fabba">&#9670;&nbsp;</a></span>WASM_TEST_ERROR_CODE</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define WASM_TEST_ERROR_CODE&#160;&#160;&#160;*((unsigned int *)((1&lt;&lt;16) - 2*sizeof(unsigned int)))</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="af339529156efa6e07c2dabf284a8287f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af339529156efa6e07c2dabf284a8287f">&#9670;&nbsp;</a></span>WASM_TEST_ERROR_MESSAGE</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define WASM_TEST_ERROR_MESSAGE&#160;&#160;&#160;*((unsigned int *)((1&lt;&lt;16) - 1*sizeof(unsigned int)))</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ae1bd429404fdcba8cecd5d63cf71d590"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae1bd429404fdcba8cecd5d63cf71d590">&#9670;&nbsp;</a></span>WASM_TEST_FAIL</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define WASM_TEST_FAIL&#160;&#160;&#160;0xDEADBEEF</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="ac8741fa467f356e73d52f63521612abe"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ac8741fa467f356e73d52f63521612abe">&#9670;&nbsp;</a></span>WASM_TEST_HANDLER</h2>
 
@@ -274,21 +194,7 @@ Typedefs</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line"><span class="keywordflow">if</span>( action == WASM_TEST_ACTION(#CLASS, #METHOD) ) { \</div><div class="line">     WASM_TEST_ERROR_CODE = CLASS::METHOD(); \</div><div class="line">     return; \</div><div class="line">  }</div></div><!-- fragment -->
-</div>
-</div>
-<a id="a0ef7aa5de5b842c4a4f166cfd825495d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0ef7aa5de5b842c4a4f166cfd825495d">&#9670;&nbsp;</a></span>WASM_TEST_PASS</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define WASM_TEST_PASS&#160;&#160;&#160;0xB0CABACA</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
+<b>Value:</b><div class="fragment"><div class="line"><span class="keywordflow">if</span>( action == WASM_TEST_ACTION(#CLASS, #METHOD) ) { \</div><div class="line">     CLASS::METHOD(); \</div><div class="line">     return; \</div><div class="line">  }</div></div><!-- fragment -->
 </div>
 </div>
 <h2 class="groupheader">Typedef Documentation</h2>

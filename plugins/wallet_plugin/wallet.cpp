@@ -2,8 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/wallet_plugin/wallet.hpp>
-#include <eos/utilities/key_conversion.hpp>
+#include <eosio/wallet_plugin/wallet.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -27,19 +26,16 @@
 # include <sys/stat.h>
 #endif
 
-using namespace eosio::utilities;
-
 namespace eosio { namespace wallet {
 
 namespace detail {
 
-fc::ecc::private_key derive_private_key( const std::string& prefix_string,
+private_key_type derive_private_key( const std::string& prefix_string,
                                          int sequence_number )
 {
    std::string sequence_string = std::to_string(sequence_number);
    fc::sha512 h = fc::sha512::hash(prefix_string + " " + sequence_string);
-   fc::ecc::private_key derived_key = fc::ecc::private_key::regenerate(fc::sha256::hash(h));
-   return derived_key;
+   return private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(h));
 }
 
 class wallet_api_impl
@@ -119,15 +115,15 @@ public:
 
    string get_wallet_filename() const { return _wallet_filename; }
 
-   optional<fc::ecc::private_key>  try_get_private_key(const public_key_type& id)const
+   optional<private_key_type>  try_get_private_key(const public_key_type& id)const
    {
       auto it = _keys.find(id);
       if( it != _keys.end() )
-         return wif_to_key( it->second );
-      return optional<fc::ecc::private_key>();
+         return  it->second;
+      return optional<private_key_type>();
    }
 
-   fc::ecc::private_key              get_private_key(const public_key_type& id)const
+   private_key_type get_private_key(const public_key_type& id)const
    {
       auto has_key = try_get_private_key( id );
       FC_ASSERT( has_key );
@@ -141,14 +137,12 @@ public:
    //          account, false otherwise (but it is stored either way)
    bool import_key(string wif_key)
    {
-      fc::optional<fc::ecc::private_key> optional_private_key = wif_to_key(wif_key);
-      if (!optional_private_key)
-         FC_THROW("Invalid private key");
-      eosio::chain::public_key_type wif_pub_key = optional_private_key->get_public_key();
+      private_key_type priv(wif_key);
+      eosio::chain::public_key_type wif_pub_key = priv.get_public_key();
 
       auto itr = _keys.find(wif_pub_key);
       if( itr == _keys.end() ) {
-         _keys[wif_pub_key] = wif_key;
+         _keys[wif_pub_key] = priv;
          return true;
       }
       FC_ASSERT( !"Key already in wallet" );
@@ -215,7 +209,7 @@ public:
    string                                  _wallet_filename;
    wallet_data                             _wallet;
 
-   map<public_key_type,string>             _keys;
+   map<public_key_type,private_key_type>   _keys;
    fc::sha512                              _checksum;
 
 #ifdef __unix__
@@ -247,10 +241,6 @@ string wallet_api::get_wallet_filename() const
 bool wallet_api::import_key(string wif_key)
 {
    FC_ASSERT(!is_locked());
-   // backup wallet
-   fc::optional<fc::ecc::private_key> optional_private_key = wif_to_key(wif_key);
-   if (!optional_private_key)
-      FC_THROW("Invalid private key");
 
    if( my->import_key(wif_key) )
    {
@@ -290,7 +280,8 @@ void wallet_api::lock()
    FC_ASSERT( !is_locked() );
    encrypt_keys();
    for( auto key : my->_keys )
-      key.second = key_to_wif(fc::ecc::private_key());
+      key.second = private_key_type();
+
    my->_keys.clear();
    my->_checksum = fc::sha512();
 } FC_CAPTURE_AND_RETHROW() }
@@ -314,29 +305,29 @@ void wallet_api::set_password( string password )
    lock();
 }
 
-map<public_key_type, string> wallet_api::list_keys()
+map<public_key_type, private_key_type> wallet_api::list_keys()
 {
    FC_ASSERT(!is_locked());
    return my->_keys;
 }
 
-string wallet_api::get_private_key( public_key_type pubkey )const
+private_key_type wallet_api::get_private_key( public_key_type pubkey )const
 {
-   return key_to_wif( my->get_private_key( pubkey ) );
+   return my->get_private_key( pubkey );
 }
 
-optional<fc::ecc::private_key> wallet_api::try_get_private_key(const public_key_type& id)const
+optional<private_key_type> wallet_api::try_get_private_key(const public_key_type& id)const
 {
    return my->try_get_private_key(id);
 }
 
 
-pair<public_key_type,string> wallet_api::get_private_key_from_password( string account, string role, string password )const {
+pair<public_key_type,private_key_type> wallet_api::get_private_key_from_password( string account, string role, string password )const {
    auto seed = account + role + password;
    FC_ASSERT( seed.size() );
    auto secret = fc::sha256::hash( seed.c_str(), seed.size() );
-   auto priv = fc::ecc::private_key::regenerate( secret );
-   return std::make_pair( public_key_type( priv.get_public_key() ), key_to_wif( priv ) );
+   auto priv = private_key_type::regenerate<fc::ecc::private_key_shim>( secret );
+   return std::make_pair(  priv.get_public_key(), priv );
 }
 
 void wallet_api::set_wallet_filename(string wallet_filename)

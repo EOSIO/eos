@@ -1,5 +1,5 @@
-#include <eoslib/eos.hpp>
-#include <eoslib/db.hpp>
+#include <eosiolib/eos.hpp>
+#include <eosiolib/db.hpp>
 
 struct PACKED(table1) {
    uint64_t  key;

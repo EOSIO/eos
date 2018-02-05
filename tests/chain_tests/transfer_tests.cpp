@@ -1,0 +1,208 @@
+#include <boost/test/unit_test.hpp>
+#include <eosio/testing/tester.hpp>
+#include <eosio/chain/contracts/abi_serializer.hpp>
+
+using namespace eosio;
+using namespace eosio::chain;
+using namespace eosio::chain::contracts;
+using namespace eosio::testing;
+
+BOOST_AUTO_TEST_SUITE(transfer_tests)
+
+
+
+BOOST_AUTO_TEST_CASE( transfer_test ) { try {
+  tester test;
+  test.produce_blocks(1000);
+
+  test.create_accounts( {N(dan), N(bart)}, asset::from_string("100.0000 EOS") );
+  test.transfer( N(inita), N(dan), "10.0000 EOS", "memo" );
+
+  {
+     const asset dans_balance( test.get_balance( N(dan) ) );
+     FC_ASSERT( dans_balance == asset::from_string("110.0000 EOS") );
+  }
+
+  test.produce_block();
+
+  {
+     const asset dans_balance( test.get_balance( N(dan) ) );
+     FC_ASSERT( dans_balance == asset::from_string("110.0000 EOS") );
+  }
+
+  /// insufficient funds
+  BOOST_REQUIRE_THROW(test.transfer(N(dan),N(bart), "111.0000 EOS", "memo"), assert_exception);
+
+  /// this should succeed because dan has sufficient balance
+  test.transfer(N(dan),N(bart), "110.0000 EOS", "memo");
+
+
+  /// verify that bart now has 110.000 + 100.000
+  const asset barts_balance( test.get_balance( N(bart) ) );
+  FC_ASSERT( barts_balance == asset::from_string("210.0000 EOS") );
+
+  {
+     /// verify that dan now has 0.000
+     const asset dans_balance( test.get_balance( N(dan) ) );
+     FC_ASSERT( dans_balance == asset::from_string("0.0000 EOS") );
+  }
+
+
+  /// should throw because -1 becomes uint64 max which is greater than balance
+  BOOST_REQUIRE_THROW(test.transfer(N(bart),N(dan), asset(-1), "memo"), assert_exception);
+
+  auto resolver = [&]( const account_name& name ) -> optional<abi_serializer> {
+     try {
+        const auto& accnt  = test.control->get_database().get<account_object,by_name>( name );
+        abi_def abi;
+        if (abi_serializer::to_abi(accnt.abi, abi)) {
+           return abi_serializer(abi);
+        }
+        return optional<abi_serializer>();
+     } FC_RETHROW_EXCEPTIONS(error, "Failed to find or parse ABI for ${name}", ("name", name))
+  };
+
+   {
+      auto from = N(bart);
+      auto to   = N(dan);
+      asset amount(1);
+      variant pretty_trx = mutable_variant_object()
+         ("actions", variants({
+            mutable_variant_object()
+               ("account", name(config::eosio_system_account_name))
+               ("name", "transfer")
+               ("authorization", variants({
+                  mutable_variant_object()
+                     ("actor", "bart")
+                     ("permission", name(config::active_name).to_string())
+               }))
+               ("data", mutable_variant_object()
+                  ("from", "bart")
+                  ("to", "dan")
+                  ("quantity", amount)
+                  ("memo", "memo")
+               )
+            })
+         );
+
+      signed_transaction trx;
+      abi_serializer::from_variant(pretty_trx, trx, resolver);
+      test.set_tapos( trx );
+
+      BOOST_REQUIRE_THROW( test.push_transaction( trx ), tx_missing_sigs );
+      trx.sign( test.get_private_key( from, "active" ), chain_id_type()  ); 
+      test.push_transaction( trx );
+   }
+
+   {
+      auto from = N(bart);
+      auto to   = N(dan);
+      asset amount(1);
+      variant pretty_trx = mutable_variant_object()
+         ("actions", variants({
+            mutable_variant_object()
+               ("account", name(config::eosio_system_account_name))
+               ("name", "transfer")
+               ("authorization", variants({
+                  mutable_variant_object()
+                     ("actor", "dan")
+                     ("permission", name(config::active_name).to_string())
+               }))
+               ("data", mutable_variant_object()
+                  ("from", "bart")
+                  ("to", "dan")
+                  ("quantity", amount)
+                  ("memo", "memo")
+               )
+            })
+         );
+
+      signed_transaction trx;
+      abi_serializer::from_variant(pretty_trx, trx, resolver);
+      test.set_tapos( trx );
+
+      trx.sign( test.get_private_key( to, "active" ), chain_id_type()  );
+      /// action not provided from authority
+      BOOST_REQUIRE_THROW( test.push_transaction( trx ), tx_missing_auth);
+   }
+
+} FC_LOG_AND_RETHROW() } /// transfer_test
+
+
+/**
+ *  This test case will attempt to allow one account to transfer on behalf
+ *  of another account by updating the active authority.
+ */
+BOOST_AUTO_TEST_CASE( transfer_delegation ) { try {
+   tester test;
+   test.produce_blocks(1000);
+   test.create_accounts( {N(dan),N(bart),N(trust)}, asset::from_string("100.0000 EOS") );
+   test.transfer( N(inita), N(dan), "10.0000 EOS" );
+   test.transfer( N(inita), N(trust), "10.0000 EOS" );
+   test.transfer( N(trust), N(dan), "1.0000 EOS" );
+
+   test.produce_block();
+
+   auto dans_active_auth = authority( 1, {}, 
+                          {
+                            { .permission = {N(trust),config::active_name}, .weight = 1}
+                          });
+
+   test.set_authority( N(dan), config::active_name,  dans_active_auth );
+
+   const auto& danauth = test.control->get_permission( permission_level{N(dan),config::active_name} );
+   const auto& trustauth = test.control->get_permission( permission_level{N(trust),config::active_name} );
+
+
+   test.produce_block( fc::hours(2) ); ///< skip 2 hours 
+   auto resolver = [&]( const account_name& name ) -> optional<abi_serializer> {
+     try {
+        const auto& accnt  = test.control->get_database().get<account_object,by_name>( name );
+        abi_def abi;
+        if (abi_serializer::to_abi(accnt.abi, abi)) {
+           return abi_serializer(abi);
+        }
+        return optional<abi_serializer>();
+     } FC_RETHROW_EXCEPTIONS(error, "Failed to find or parse ABI for ${name}", ("name", name))
+   };
+
+   /// execute a transfer from dan to bart signed by trust
+   {
+      auto from = N(bart);
+      auto to   = N(dan);
+      asset amount(1);
+      variant pretty_trx = mutable_variant_object()
+         ("actions", variants({
+            mutable_variant_object()
+               ("account", name(config::eosio_system_account_name))
+               ("name", "transfer")
+               ("authorization", variants({
+                  mutable_variant_object()
+                     ("actor", "bart")
+                     ("permission", name(config::active_name).to_string())
+               }))
+               ("data", mutable_variant_object()
+                  ("from", "bart")
+                  ("to", "dan")
+                  ("quantity", amount)
+                  ("memo", "memo")
+               )
+            })
+         );
+
+      signed_transaction trx;
+      abi_serializer::from_variant(pretty_trx, trx, resolver);
+      test.set_tapos( trx );
+
+      trx.sign( test.get_private_key( N(trust), "active" ), chain_id_type()  ); 
+      wdump((fc::raw::pack_size(trx)));
+
+      /// action not provided from authority
+      test.push_transaction( trx );
+   }
+
+} FC_LOG_AND_RETHROW() }
+
+
+
+BOOST_AUTO_TEST_SUITE_END()

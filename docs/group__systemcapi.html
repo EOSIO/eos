@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN2.0.1</span>
+   &#160;<span id="projectnumber">DAWN3.0.1</span>
    </div>
   </td>
  </tr>
@@ -73,7 +73,7 @@ $(function() {
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:gae2a6ebaf48fe7c69f847ae18f109d09a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__systemcapi.html#gae2a6ebaf48fe7c69f847ae18f109d09a">assert</a> (<a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> test, const char *cstr)</td></tr>
-<tr class="memdesc:gae2a6ebaf48fe7c69f847ae18f109d09a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Aborts processing of this message and unwinds all pending changes.  <a href="#gae2a6ebaf48fe7c69f847ae18f109d09a">More...</a><br /></td></tr>
+<tr class="memdesc:gae2a6ebaf48fe7c69f847ae18f109d09a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Aborts processing of this action and unwinds all pending changes.  <a href="#gae2a6ebaf48fe7c69f847ae18f109d09a">More...</a><br /></td></tr>
 <tr class="separator:gae2a6ebaf48fe7c69f847ae18f109d09a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga5eef43c9589d6ef54a0ece1dda5e0ffe"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga44479e2657d126b44ca53d30c3e670d8">time</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__systemcapi.html#ga5eef43c9589d6ef54a0ece1dda5e0ffe">now</a> ()</td></tr>
 <tr class="memdesc:ga5eef43c9589d6ef54a0ece1dda5e0ffe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get time of the last accepted block.  <a href="#ga5eef43c9589d6ef54a0ece1dda5e0ffe">More...</a><br /></td></tr>
@@ -106,10 +106,10 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Aborts processing of this message and unwinds all pending changes if the test condition is true </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Aborts processing of this action and unwinds all pending changes if the test condition is true </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">test</td><td>- 0 to abort, 1 to ignore </td></tr>
-    <tr><td class="paramname">cstr</td><td>- a null terminated message to explain the reason for failure </td></tr>
+    <tr><td class="paramname">cstr</td><td>- a null terminated action to explain the reason for failure </td></tr>
   </table>
   </dd>
 </dl>
@@ -130,7 +130,7 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Returns the time in seconds from 1970 of the last accepted block (not the block including this message) </p><dl class="section return"><dt>Returns</dt><dd>time in seconds from 1970 of the last accepted block </dd></dl>
+<p>Returns the time in seconds from 1970 of the last accepted block (not the block including this action) </p><dl class="section return"><dt>Returns</dt><dd>time in seconds from 1970 of the last accepted block </dd></dl>
 
 </div>
 </div>

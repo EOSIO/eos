@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN2.0.1</span>
+   &#160;<span id="projectnumber">DAWN3.0.1</span>
    </div>
   </td>
  </tr>
@@ -80,7 +80,7 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
 Typedefs</h2></td></tr>
-<tr class="memitem:aba2864a28e50db2eb847731636ae9132"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#aba2864a28e50db2eb847731636ae9132">eos_tokens</a> = <a class="el" href="group__tokens.html#ga82e00c544558c53136ec43178a0ca5a0">eosio::tokens</a></td></tr>
+<tr class="memitem:aba2864a28e50db2eb847731636ae9132"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#aba2864a28e50db2eb847731636ae9132">eos_tokens</a> = eosio::tokens</td></tr>
 <tr class="separator:aba2864a28e50db2eb847731636ae9132"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a88a7bba4166424f9bf3e8cfd9b352730"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="structeosio_1_1price.html">eosio::price</a>&lt; <a class="el" href="namespaceexchange.html#aba2864a28e50db2eb847731636ae9132">eos_tokens</a>, currency_tokens &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#a88a7bba4166424f9bf3e8cfd9b352730">price</a></td></tr>
 <tr class="separator:a88a7bba4166424f9bf3e8cfd9b352730"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -94,9 +94,9 @@ Functions</h2></td></tr>
 <tr class="memitem:a13d8f4e165215611a7879766e215b855"><td class="memTemplParams" colspan="2">template&lt;typename Lambda &gt; </td></tr>
 <tr class="memitem:a13d8f4e165215611a7879766e215b855"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#a13d8f4e165215611a7879766e215b855">modify_account</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> a, Lambda &amp;&amp;modify)</td></tr>
 <tr class="separator:a13d8f4e165215611a7879766e215b855"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a32b7d74a91010152d37cace85418e6f7"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#a32b7d74a91010152d37cace85418e6f7">apply_currency_transfer</a> (const currency::transfer &amp;<a class="el" href="structeosio_1_1transfer.html">transfer</a>)</td></tr>
+<tr class="memitem:a32b7d74a91010152d37cace85418e6f7"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#a32b7d74a91010152d37cace85418e6f7">apply_currency_transfer</a> (const currency::transfer &amp;transfer)</td></tr>
 <tr class="separator:a32b7d74a91010152d37cace85418e6f7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7b4f0fec8b7a1d9c97dc3f5127872297"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#a7b4f0fec8b7a1d9c97dc3f5127872297">apply_eos_transfer</a> (const <a class="el" href="structeosio_1_1transfer.html">eosio::transfer</a> &amp;<a class="el" href="structeosio_1_1transfer.html">transfer</a>)</td></tr>
+<tr class="memitem:a7b4f0fec8b7a1d9c97dc3f5127872297"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#a7b4f0fec8b7a1d9c97dc3f5127872297">apply_eos_transfer</a> (const eosio::transfer &amp;transfer)</td></tr>
 <tr class="separator:a7b4f0fec8b7a1d9c97dc3f5127872297"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a15c24418c4ed503becae07191757dee2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceexchange.html#a15c24418c4ed503becae07191757dee2">match</a> (bid &amp;bid_to_match, <a class="el" href="structaccount.html">account</a> &amp;buyer, ask &amp;ask_to_match, <a class="el" href="structaccount.html">account</a> &amp;seller)</td></tr>
 <tr class="separator:a15c24418c4ed503becae07191757dee2"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -143,7 +143,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">using <a class="el" href="namespaceexchange.html#aba2864a28e50db2eb847731636ae9132">exchange::eos_tokens</a> = typedef <a class="el" href="group__tokens.html#ga82e00c544558c53136ec43178a0ca5a0">eosio::tokens</a></td>
+          <td class="memname">using <a class="el" href="namespaceexchange.html#aba2864a28e50db2eb847731636ae9132">exchange::eos_tokens</a> = typedef eosio::tokens</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -194,7 +194,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void exchange::apply_eos_transfer </td>
           <td>(</td>
-          <td class="paramtype">const <a class="el" href="structeosio_1_1transfer.html">eosio::transfer</a> &amp;&#160;</td>
+          <td class="paramtype">const eosio::transfer &amp;&#160;</td>
           <td class="paramname"><em>transfer</em></td><td>)</td>
           <td></td>
         </tr>

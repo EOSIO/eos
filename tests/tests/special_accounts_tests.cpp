@@ -142,13 +142,7 @@ BOOST_FIXTURE_TEST_CASE(producers_authority, testing_fixture)
       BOOST_CHECK_EQUAL(producers_owner_authority.auth.accounts.size(), 0);
       BOOST_CHECK_EQUAL(producers_owner_authority.auth.keys.size(), 0);
 
-#warning TODO: Approving producers currently not supported
-      BOOST_FAIL("voting was disabled, now it is working, remove this catch to not miss it being turned off again");
-   } catch (const fc::assert_exception& ex) {
-      BOOST_CHECK(ex.to_detail_string().find("voting") != std::string::npos);
-      BOOST_CHECK(ex.to_detail_string().find("disabled") != std::string::npos);
-   } FC_LOG_AND_RETHROW()
-}
+} FC_LOG_AND_RETHROW() }
 
 
 BOOST_AUTO_TEST_SUITE_END()

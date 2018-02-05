@@ -15,7 +15,7 @@ import signal
 # -d <delay between nodes startup>
 # -v <verbose logging>
 # --killSig <kill signal [term|kill]>
-# --killCount <Eosd instances to kill>
+# --killCount <Eosiod instances to kill>
 # --dontKill <Leave cluster running after test finishes>
 # --dumpErrorDetails <Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout>
 # --keepLogs <Don't delete tn_data_* folders upon test completion>
@@ -38,7 +38,7 @@ parser.add_argument("-c", type=str, help="chain strategy[%s|%s|%s]" %
                     default=testUtils.Utils.SyncResyncTag)
 parser.add_argument("--killSig", type=str, help="kill signal[%s|%s]" %
                     (testUtils.Utils.SigKillTag, testUtils.Utils.SigTermTag), default=testUtils.Utils.SigKillTag)
-parser.add_argument("--killCount", type=int, help="eosd instances to kill", default=-1)
+parser.add_argument("--killCount", type=int, help="eosiod instances to kill", default=-1)
 parser.add_argument("-v", help="verbose logging", action='store_true')
 parser.add_argument("--dontKill", help="Leave cluster running after test finishes", action='store_true')
 parser.add_argument("--dumpErrorDetails",
@@ -65,7 +65,6 @@ testUtils.Utils.Debug=debug
 Print ("producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d, chain sync strategy: %s" % (
     pnodes, topo, delay, chainSyncStrategyStr))
 
-testUtils.Utils.iAmNotNoon()
 cluster=testUtils.Cluster()
 walletMgr=testUtils.WalletMgr(False)
 cluster.killall()
@@ -116,7 +115,7 @@ try:
     Print("Kill %d cluster node instances." % (killCount))
     if cluster.killSomeEosInstances(killCount, killSignal) is False:
         errorExit("Failed to kill Eos instances")
-    Print("Eosd instances killed.")
+    Print("Eosiod instances killed.")
 
     Print("Spread funds and validate")
     if not cluster.spreadFundsAndValidate(10):
@@ -129,7 +128,7 @@ try:
     Print ("Relaunch dead cluster nodes instances.")
     if cluster.relaunchEosInstances() is False:
         errorExit("Failed to relaunch Eos instances")
-    Print("Eosd instances relaunched.")
+    Print("Eosiod instances relaunched.")
 
     Print ("Resyncing cluster nodes.")
     if not cluster.waitOnClusterSync():

@@ -2,12 +2,14 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/chain_api_plugin/chain_api_plugin.hpp>
-#include <eos/chain/exceptions.hpp>
+#include <eosio/chain_api_plugin/chain_api_plugin.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 #include <fc/io/json.hpp>
 
 namespace eosio {
+
+static appbase::abstract_plugin& _chain_api_plugin = app().register_plugin<chain_api_plugin>();
 
 using namespace eosio;
 
@@ -68,6 +70,8 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RO_CALL(get_account, 200),
       CHAIN_RO_CALL(get_code, 200),
       CHAIN_RO_CALL(get_table_rows, 200),
+      CHAIN_RO_CALL(get_currency_balance, 200),
+      CHAIN_RO_CALL(get_currency_stats, 200),
       CHAIN_RO_CALL(abi_json_to_bin, 200),
       CHAIN_RO_CALL(abi_bin_to_json, 200),
       CHAIN_RO_CALL(get_required_keys, 200),

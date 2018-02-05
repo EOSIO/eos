@@ -1,4 +1,5 @@
 {
+  "types": [],
   "structs": [{
       "name": "game",
       "base": "",
@@ -50,21 +51,21 @@
     }
   ],
   "actions": [{
-      "action_name": "create",
+      "name": "create",
       "type": "create"
     },{
-      "action_name": "restart",
+      "name": "restart",
       "type": "restart"
     },{
-      "action_name": "close",
+      "name": "close",
       "type": "close"
     },{
-      "action_name": "move",
+      "name": "move",
       "type": "move"
     }
   ],
   "tables": [{
-        "table_name": "games",
+        "name": "games",
         "type": "game",
         "index_type": "i64",
         "key_names" : ["challenger"],

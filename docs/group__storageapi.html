@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN2.0.1</span>
+   &#160;<span id="projectnumber">DAWN3.0.1</span>
    </div>
   </td>
  </tr>
@@ -66,7 +66,7 @@ $(function() {
 <a href="#func-members">Functions</a> &#124;
 <a href="#var-members">Variables</a>  </div>
   <div class="headertitle">
-<div class="title">Storage Contract<div class="ingroups"><a class="el" href="group__examplecontract.html">Example Contract</a></div></div>  </div>
+<div class="title">Storage Contract<div class="ingroups"><a class="el" href="group__examplecontract.html">Example Storage</a></div></div>  </div>
 </div><!--header-->
 <div class="contents">
 
@@ -82,12 +82,16 @@ Classes</h2></td></tr>
 Typedefs</h2></td></tr>
 <tr class="memitem:ga86efb13cee9fb81541e1b4d92617b68f"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="structeosio_1_1token.html">eosio::token</a>&lt; <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>, <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(storage)&gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__storageapi.html#ga86efb13cee9fb81541e1b4d92617b68f">TOKEN_NAME::storage_tokens</a></td></tr>
 <tr class="separator:ga86efb13cee9fb81541e1b4d92617b68f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gadb8b8fed67974b71f01e447297223754"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__storageapi.html#gadb8b8fed67974b71f01e447297223754">TOKEN_NAME::accounts</a> = <a class="el" href="structeosio_1_1table.html">eosio::table</a>&lt; <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(storage), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(storage), <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(<a class="el" href="structaccount.html">account</a>), <a class="el" href="structaccount.html">account</a>, <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> &gt;</td></tr>
+<tr class="separator:gadb8b8fed67974b71f01e447297223754"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:ga91c727f2c7563c091d098f5e97d4d071"><td class="memItemLeft" align="right" valign="top">struct&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__storageapi.html#ga91c727f2c7563c091d098f5e97d4d071">TOKEN_NAME::PACKED</a> (<a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1account.html">account</a>)</td></tr>
+<tr class="memitem:ga91c727f2c7563c091d098f5e97d4d071"><td class="memItemLeft" align="right" valign="top">struct&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__storageapi.html#ga91c727f2c7563c091d098f5e97d4d071">TOKEN_NAME::PACKED</a> (<a class="el" href="structaccount.html">account</a>)</td></tr>
 <tr class="memdesc:ga91c727f2c7563c091d098f5e97d4d071"><td class="mdescLeft">&#160;</td><td class="mdescRight">row in account table stored within each scope  <a href="group__storageapi.html#ga91c727f2c7563c091d098f5e97d4d071">More...</a><br /></td></tr>
 <tr class="separator:ga91c727f2c7563c091d098f5e97d4d071"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga0f5c38cd82e9e2d628b89620695ee1f6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structaccount.html">account</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__storageapi.html#ga0f5c38cd82e9e2d628b89620695ee1f6">TOKEN_NAME::get_account</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> owner)</td></tr>
+<tr class="separator:ga0f5c38cd82e9e2d628b89620695ee1f6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga1b41f02233d1ea7de04e16fdeedd987d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__storageapi.html#ga1b41f02233d1ea7de04e16fdeedd987d">TOKEN_NAME::get_quota_used</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> owner)</td></tr>
 <tr class="separator:ga1b41f02233d1ea7de04e16fdeedd987d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga6fd7e68a6bf71a5a78dc2ff7047e8f62"><td class="memItemLeft" align="right" valign="top">struct&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__storageapi.html#ga6fd7e68a6bf71a5a78dc2ff7047e8f62">TOKEN_NAME::PACKED</a> (link)</td></tr>
@@ -95,11 +99,30 @@ Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
 Variables</h2></td></tr>
+<tr class="memitem:gae2c79dd22a28b60c9800efa35c515e22"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__storageapi.html#gae2c79dd22a28b60c9800efa35c515e22">TOKEN_NAME::transfer::from</a></td></tr>
+<tr class="separator:gae2c79dd22a28b60c9800efa35c515e22"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga2465adec996f6c6bf45f450043b45c95"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__storageapi.html#ga2465adec996f6c6bf45f450043b45c95">TOKEN_NAME::transfer::to</a></td></tr>
+<tr class="separator:ga2465adec996f6c6bf45f450043b45c95"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gaa19dbd7b8beace25c91d274519166a37"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__storageapi.html#ga86efb13cee9fb81541e1b4d92617b68f">storage_tokens</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__storageapi.html#gaa19dbd7b8beace25c91d274519166a37">TOKEN_NAME::transfer::quantity</a></td></tr>
 <tr class="separator:gaa19dbd7b8beace25c91d274519166a37"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <h2 class="groupheader">Typedef Documentation</h2>
+<a id="gadb8b8fed67974b71f01e447297223754"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#gadb8b8fed67974b71f01e447297223754">&#9670;&nbsp;</a></span>accounts</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">using <a class="el" href="group__storageapi.html#gadb8b8fed67974b71f01e447297223754">TOKEN_NAME::accounts</a> = typedef <a class="el" href="structeosio_1_1table.html">eosio::table</a>&lt;<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(storage),<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(storage),<a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(<a class="el" href="structaccount.html">account</a>),<a class="el" href="structaccount.html">account</a>,<a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&gt;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Assert statement to verify structure packing for account Defines the database table for account information </p>
+
+</div>
+</div>
 <a id="ga86efb13cee9fb81541e1b4d92617b68f"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ga86efb13cee9fb81541e1b4d92617b68f">&#9670;&nbsp;</a></span>storage_tokens</h2>
 
@@ -116,6 +139,41 @@ Variables</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Function Documentation</h2>
+<a id="ga0f5c38cd82e9e2d628b89620695ee1f6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ga0f5c38cd82e9e2d628b89620695ee1f6">&#9670;&nbsp;</a></span>get_account()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structaccount.html">account</a> TOKEN_NAME::get_account </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>owner</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>accounts information for owner is stored:</p>
+<p>owner/TOKEN_NAME/account/account -&gt; account</p>
+<p>This API is made available for 3rd parties wanting read access to the users balance. If the account doesn't exist a default constructed account will be returned. </p><dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">owner</td><td>The account owner </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>account instance </dd></dl>
+
+</div>
+</div>
 <a id="ga1b41f02233d1ea7de04e16fdeedd987d"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ga1b41f02233d1ea7de04e16fdeedd987d">&#9670;&nbsp;</a></span>get_quota_used()</h2>
 
@@ -158,7 +216,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname">struct TOKEN_NAME::PACKED </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="struct_t_o_k_e_n___n_a_m_e_1_1account.html">account</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="structaccount.html">account</a>&#160;</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
         </tr>
@@ -200,6 +258,21 @@ Variables</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Variable Documentation</h2>
+<a id="gae2c79dd22a28b60c9800efa35c515e22"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#gae2c79dd22a28b60c9800efa35c515e22">&#9670;&nbsp;</a></span>from</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> TOKEN_NAME::transfer::from</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>account to transfer from </p>
+
+</div>
+</div>
 <a id="gaa19dbd7b8beace25c91d274519166a37"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#gaa19dbd7b8beace25c91d274519166a37">&#9670;&nbsp;</a></span>quantity</h2>
 
@@ -212,6 +285,21 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>quantity to transfer </p>
+
+</div>
+</div>
+<a id="ga2465adec996f6c6bf45f450043b45c95"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ga2465adec996f6c6bf45f450043b45c95">&#9670;&nbsp;</a></span>to</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> TOKEN_NAME::transfer::to</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>account to transfer to </p>
 
 </div>
 </div>

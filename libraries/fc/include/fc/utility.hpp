@@ -1,6 +1,8 @@
 #pragma once
 #include <stdint.h>
+#include <algorithm>
 #include <new>
+#include <vector>
 
 #ifdef _MSC_VER
 #pragma warning(disable: 4482) // nonstandard extension used enum Name::Val, standard in C++11
@@ -51,7 +53,45 @@ namespace fc {
   template<typename T>
   const T& min( const T& a, const T& b ) { return a < b ? a: b; }
 
+  constexpr size_t const_strlen(const char* str) {
+    if (*str == '\0') {
+      return 0;
+    }
+
+    return 1 + const_strlen(str+1);
+  }
+
+
+  template<typename T>
+  void move_append(std::vector<T> &dest, std::vector<T>&& src ) {
+    if (src.empty()) {
+      return;
+    } else if (dest.empty()) {
+      dest = std::move(src);
+    } else {
+      dest.insert(std::end(dest), std::make_move_iterator(std::begin(src)), std::make_move_iterator(std::end(src)));
+    }
+  }
+
+  template<typename T>
+  void copy_append(std::vector<T> &dest, const std::vector<T>& src ) {
+    if (src.empty()) {
+      return;
+    } else {
+      dest.insert(std::end(dest), std::begin(src), std::end(src));
+    }
+  }
+
+  template<typename T>
+  void deduplicate( std::vector<T>& entries ) {
+    if (entries.size() > 1) {
+      std::sort( entries.begin(), entries.end() );
+      auto itr = std::unique( entries.begin(), entries.end() );
+      entries.erase( itr, entries.end() );
+    }
+  }
 }
+
   // outside of namespace fc becuase of VC++ conflict with std::swap
   template<typename T>
   void fc_swap( T& a, T& b ) {     

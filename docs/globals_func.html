@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN2.0.1</span>
+   &#160;<span id="projectnumber">DAWN3.0.1</span>
    </div>
   </td>
  </tr>
@@ -66,16 +66,21 @@ $(function() {
 <li>account_balance_get()
 : <a class="el" href="group__accountcapi.html#gabc0d83c30cea31ccd9c5155f5292eab7">account.h</a>
 </li>
+<li>action_size()
+: <a class="el" href="group__actioncapi.html#gadd0552a97de236e0c7af3ef2dd909c2a">action.h</a>
+</li>
 <li>apply()
-: <a class="el" href="currency_8cpp.html#a3c01edc4ed313916967237c16feb1446">currency.cpp</a>
-, <a class="el" href="exchange_8cpp.html#a3c01edc4ed313916967237c16feb1446">exchange.cpp</a>
-, <a class="el" href="infinite_8cpp.html#a3c01edc4ed313916967237c16feb1446">infinite.cpp</a>
+: <a class="el" href="simpledb_8cpp.html#a3c01edc4ed313916967237c16feb1446">simpledb.cpp</a>
+, <a class="el" href="skeleton_8cpp.html#a3c01edc4ed313916967237c16feb1446">skeleton.cpp</a>
 , <a class="el" href="proxy_8cpp.html#a3c01edc4ed313916967237c16feb1446">proxy.cpp</a>
-, <a class="el" href="simpledb_8cpp.html#a3c01edc4ed313916967237c16feb1446">simpledb.cpp</a>
-, <a class="el" href="tic__tac__toe_8cpp.html#a157009047002facceadb7be80976858b">tic_tac_toe.cpp</a>
+, <a class="el" href="currency_8cpp.html#a3c01edc4ed313916967237c16feb1446">currency.cpp</a>
+, <a class="el" href="tic__tac__toe_8cpp.html#a3c01edc4ed313916967237c16feb1446">tic_tac_toe.cpp</a>
 , <a class="el" href="storage_8cpp.html#a3c01edc4ed313916967237c16feb1446">storage.cpp</a>
 , <a class="el" href="test__api_8cpp.html#ae515545cb26793406ab2ae133bb5be3f">test_api.cpp</a>
-, <a class="el" href="skeleton_8cpp.html#a3c01edc4ed313916967237c16feb1446">skeleton.cpp</a>
+, <a class="el" href="exchange_8cpp.html#a3c01edc4ed313916967237c16feb1446">exchange.cpp</a>
+, <a class="el" href="eosio_8system_8cpp.html#a3c01edc4ed313916967237c16feb1446">eosio.system.cpp</a>
+, <a class="el" href="asserter_8cpp.html#a3c01edc4ed313916967237c16feb1446">asserter.cpp</a>
+, <a class="el" href="infinite_8cpp.html#a3c01edc4ed313916967237c16feb1446">infinite.cpp</a>
 </li>
 <li>apply_social_post()
 : <a class="el" href="social_8cpp.html#a2f4b1a700aef8a99b9d4c12d252d231a">social.cpp</a>
@@ -121,8 +126,11 @@ $(function() {
 
 
 <h3><a id="index_c"></a>- c -</h3><ul>
-<li>current_code()
-: <a class="el" href="group__messagecapi.html#ga56515ccd3d1f5724f2e96fa50c349a14">message.h</a>
+<li>current_receiver()
+: <a class="el" href="group__actioncapi.html#ga5fcca014b53b0f15b9f9636325bae976">action.h</a>
+</li>
+<li>current_sender()
+: <a class="el" href="group__actioncapi.html#gaf531fda07a825ca8b0d90f21446e6a64">action.h</a>
 </li>
 </ul>
 
@@ -182,7 +190,7 @@ $(function() {
 
 <h3><a id="index_g"></a>- g -</h3><ul>
 <li>get_active_producers()
-: <a class="el" href="group__chaincapi.html#ga10bb3c6519d305d56f2e0eceaf1db6f3">chain.h</a>
+: <a class="el" href="group__chaincapi.html#gad24c6348e365fca793e903acdfbb776c">chain.h</a>
 </li>
 </ul>
 
@@ -200,7 +208,6 @@ $(function() {
 , <a class="el" href="proxy_8cpp.html#a02fd73d861ef2e4aabb38c0c9ff82947">proxy.cpp</a>
 , <a class="el" href="infinite_8cpp.html#a02fd73d861ef2e4aabb38c0c9ff82947">infinite.cpp</a>
 , <a class="el" href="exchange_8cpp.html#a02fd73d861ef2e4aabb38c0c9ff82947">exchange.cpp</a>
-, <a class="el" href="currency_8cpp.html#a02fd73d861ef2e4aabb38c0c9ff82947">currency.cpp</a>
 </li>
 </ul>
 
@@ -261,21 +268,6 @@ $(function() {
 <li>memset()
 : <a class="el" href="group__memorycapi.html#gad8eef9133e11fe77cd34792771f81761">memory.h</a>
 </li>
-<li>message_create()
-: <a class="el" href="group__transactioncapi.html#gae696792c71d0ceb0de606cf09712e202">transaction.h</a>
-</li>
-<li>message_drop()
-: <a class="el" href="group__transactioncapi.html#gac180a15e86f5de5dbb9aa50ec7569499">transaction.h</a>
-</li>
-<li>message_require_permission()
-: <a class="el" href="group__transactioncapi.html#ga991711ff7c3569a3d3c6cd73dfe61420">transaction.h</a>
-</li>
-<li>message_send()
-: <a class="el" href="group__transactioncapi.html#gad76e0f13f4df1c6687f0eaea6379bd00">transaction.h</a>
-</li>
-<li>message_size()
-: <a class="el" href="group__messagecapi.html#ga4ebf6b7927fc900ae1fa8e06ceb5a16b">message.h</a>
-</li>
 <li>multeq_i128()
 : <a class="el" href="group__mathcapi.html#ga61d571f58c24fb4663cc3729f3d5613e">math.h</a>
 </li>
@@ -317,6 +309,16 @@ $(function() {
 </li>
 <li>now()
 : <a class="el" href="group__systemcapi.html#ga5eef43c9589d6ef54a0ece1dda5e0ffe">system.h</a>
+</li>
+</ul>
+
+
+<h3><a id="index_o"></a>- o -</h3><ul>
+<li>operator new()
+: <a class="el" href="stdlib_8hpp.html#a8b8a5b77612e74d607419f697801f78c">stdlib.hpp</a>
+</li>
+<li>operator new[]()
+: <a class="el" href="stdlib_8hpp.html#a712ceeb8f0cad22b42d82c702b750eac">stdlib.hpp</a>
 </li>
 </ul>
 
@@ -364,12 +366,15 @@ $(function() {
 <li>prints_l()
 : <a class="el" href="group__consolecapi.html#ga63ff8a7c0b046968ab2864df7284c910">print.h</a>
 </li>
+<li>publication_time()
+: <a class="el" href="group__actioncapi.html#ga761ba259bec8bbdab79b31b716a5d4d6">action.h</a>
+</li>
 </ul>
 
 
 <h3><a id="index_r"></a>- r -</h3><ul>
-<li>read_message()
-: <a class="el" href="group__messagecapi.html#gadf80b51a90a52fd7bfe6208119a96c24">message.h</a>
+<li>read_action()
+: <a class="el" href="group__actioncapi.html#gaaa8e07b94cea97bd0b6bef4c7cf64422">action.h</a>
 </li>
 <li>remove_i128i128()
 : <a class="el" href="group__dbi128i128.html#ga31cc0c52eccc34d97d28cfd373a2a356">db.h</a>
@@ -384,10 +389,16 @@ $(function() {
 : <a class="el" href="group__dbstr.html#gaa468d0143c8e74dfad42915214cd2218">db.h</a>
 </li>
 <li>require_auth()
-: <a class="el" href="group__messagecapi.html#gab1e668e93ac1f94421743ed79edffb26">message.h</a>
+: <a class="el" href="group__actioncapi.html#gab1e668e93ac1f94421743ed79edffb26">action.h</a>
 </li>
-<li>require_notice()
-: <a class="el" href="group__messagecapi.html#gae901e9bfdcc04bb37bbbe43455e5ff9a">message.h</a>
+<li>require_read_lock()
+: <a class="el" href="group__actioncapi.html#ga4b02a9d9adf71ae49e77e19fefc0cbf4">action.h</a>
+</li>
+<li>require_recipient()
+: <a class="el" href="group__actioncapi.html#gae232893c733f02b94dbb70fae39d19f7">action.h</a>
+</li>
+<li>require_write_lock()
+: <a class="el" href="group__actioncapi.html#ga9893f539cf6d56989eb6e0d4ce51a813">action.h</a>
 </li>
 </ul>
 
@@ -395,6 +406,12 @@ $(function() {
 <h3><a id="index_s"></a>- s -</h3><ul>
 <li>sbrk()
 : <a class="el" href="group__memorycapi.html#ga87ed00a8f774a9d36d650b80a36ad932">memory.h</a>
+</li>
+<li>send_deferred()
+: <a class="el" href="group__transactioncapi.html#gaed51837a54b9c5461d1eec7de020e4e1">transaction.h</a>
+</li>
+<li>send_inline()
+: <a class="el" href="group__actioncapi.html#gada68da99a95a5b25e9f5d43af255c63e">action.h</a>
 </li>
 <li>set_key_str()
 : <a class="el" href="test__db_8cpp.html#a2213ff438043625b5690b8b97cf67e3b">test_db.cpp</a>
@@ -412,29 +429,10 @@ $(function() {
 : <a class="el" href="group__dbi64i64i64.html#ga712c96b9076bbdcec2b9a0d9aac8f46a">db.h</a>
 </li>
 <li>store_set_in_table()
-: <a class="el" href="test__db_8cpp.html#a7356d0aa824386b3f5f7d83e22072cd5">test_db.cpp</a>
+: <a class="el" href="test__db_8cpp.html#a140b0e67dccb10714dd5dd9ef97ebe21">test_db.cpp</a>
 </li>
 <li>store_str()
 : <a class="el" href="group__dbstr.html#ga1094b9ec775a7ee73e1ef1d14710dc5c">db.h</a>
-</li>
-</ul>
-
-
-<h3><a id="index_t"></a>- t -</h3><ul>
-<li>transaction_add_message()
-: <a class="el" href="group__transactioncapi.html#ga1db20b1963e3913990487bbf23ac17fd">transaction.h</a>
-</li>
-<li>transaction_create()
-: <a class="el" href="group__transactioncapi.html#gae6234ea821df563193b77ef8ac6a3ced">transaction.h</a>
-</li>
-<li>transaction_drop()
-: <a class="el" href="group__transactioncapi.html#gac7b01b3c1ec14e2e21f4294e5331e2a1">transaction.h</a>
-</li>
-<li>transaction_require_scope()
-: <a class="el" href="group__transactioncapi.html#gadbeefdb977e06363af03ada627ca18b4">transaction.h</a>
-</li>
-<li>transaction_send()
-: <a class="el" href="group__transactioncapi.html#ga91eadf9af6a7bceae96e7c798776f9b9">transaction.h</a>
 </li>
 </ul>
 

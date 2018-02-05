@@ -1,12 +1,14 @@
 var searchData=
 [
-  ['real',['real',['../classeosio_1_1real.html',1,'eosio']]],
-  ['record1',['record1',['../structrecord1.html',1,'']]],
-  ['record2',['record2',['../structrecord2.html',1,'']]],
-  ['record3',['record3',['../structrecord3.html',1,'']]],
-  ['remove_5freference',['remove_reference',['../structeosio_1_1remove__reference.html',1,'eosio']]],
-  ['remove_5freference_3c_20const_20t_20_26_20_3e',['remove_reference&lt; const T &amp; &gt;',['../structeosio_1_1remove__reference_3_01const_01_t_01_6_01_4.html',1,'eosio']]],
-  ['remove_5freference_3c_20t_20_26_20_3e',['remove_reference&lt; T &amp; &gt;',['../structeosio_1_1remove__reference_3_01_t_01_6_01_4.html',1,'eosio']]],
-  ['restart',['restart',['../structtic__tac__toe_1_1restart.html',1,'tic_tac_toe']]],
-  ['reveal',['reveal',['../structdice_1_1reveal.html',1,'dice']]]
+  ['permission_5flevel',['permission_level',['../structeosio_1_1permission__level.html',1,'eosio']]],
+  ['player',['player',['../structdice_1_1player.html',1,'dice']]],
+  ['post_5faction',['post_action',['../structpost__action.html',1,'']]],
+  ['post_5frecord',['post_record',['../structpost__record.html',1,'']]],
+  ['price',['price',['../structeosio_1_1price.html',1,'eosio']]],
+  ['price_5fratio',['price_ratio',['../structeosio_1_1price__ratio.html',1,'eosio']]],
+  ['primary_5findex',['primary_index',['../structeosio_1_1table_3_01scope_00_01code_00_01table__n_00_01_record_00_01_primary_type_00_01void_01_4_1_1primary__index.html',1,'eosio::table&lt; scope, code, table_n, Record, PrimaryType, void &gt;::primary_index'],['../structeosio_1_1table_1_1primary__index.html',1,'eosio::table&lt; scope, code, table_n, Record, PrimaryType, SecondaryType &gt;::primary_index']]],
+  ['producer',['producer',['../structeosiosystem_1_1producer.html',1,'eosiosystem']]],
+  ['producer_5fvote',['producer_vote',['../structeosiosystem_1_1producer__vote.html',1,'eosiosystem']]],
+  ['producers',['producers',['../structproducers.html',1,'']]],
+  ['public_5fkey',['public_key',['../structpublic__key.html',1,'']]]
 ];

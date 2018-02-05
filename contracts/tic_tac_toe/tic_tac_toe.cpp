@@ -112,7 +112,7 @@ namespace tic_tac_toe {
     bool game_exists = Games::get(r.challenger, game_to_restart, r.host);
     assert(game_exists == true, "game doesn't exist!");
 
-    // Check if this game belongs to the message sender
+    // Check if this game belongs to the action sender
     assert(r.by == game_to_restart.host || r.by == game_to_restart.challenger, "this is not your game!");
 
     // Reset game
@@ -150,9 +150,9 @@ namespace tic_tac_toe {
 
     // Check if this game hasn't ended yet
     assert(game_to_move.winner == N(none), "the game has ended!");
-    // Check if this game belongs to the message sender
+    // Check if this game belongs to the action sender
     assert(m.by == game_to_move.host || m.by == game_to_move.challenger, "this is not your game!");
-    // Check if this is the  message sender's turn
+    // Check if this is the  action sender's turn
     assert(m.by == game_to_move.turn, "it's not your turn yet!");
 
 
@@ -182,23 +182,17 @@ namespace tic_tac_toe {
 */
 extern "C" {
 
-  /**
-  *  This method is called once when the contract is published or updated.
-  */
-  void init()  {
-  }
-
   /// The apply method implements the dispatch of events to this contract
-  void apply( uint64_t code, uint64_t action_name ) {
+  void apply( uint64_t code, uint64_t action ) {
     if (code == N(tic.tac.toe)) {
-      if (action_name == N(create)) {
-        tic_tac_toe::apply_create(current_message<tic_tac_toe::create>());
-      } else if (action_name == N(restart)) {
-        tic_tac_toe::apply_restart(current_message<tic_tac_toe::restart>());
-      } else if (action_name == N(close)) {
-        tic_tac_toe::apply_close(current_message<tic_tac_toe::close>());
-      } else if (action_name == N(move)) {
-        tic_tac_toe::apply_move(current_message<tic_tac_toe::move>());
+      if (action == N(create)) {
+        tic_tac_toe::apply_create(current_action<tic_tac_toe::create>());
+      } else if (action == N(restart)) {
+        tic_tac_toe::apply_restart(current_action<tic_tac_toe::restart>());
+      } else if (action == N(close)) {
+        tic_tac_toe::apply_close(current_action<tic_tac_toe::close>());
+      } else if (action == N(move)) {
+        tic_tac_toe::apply_move(current_action<tic_tac_toe::move>());
       }
     }
   }

@@ -12,9 +12,11 @@
 #include <boost/lexical_cast.hpp>
 #include <iomanip>
 #include <iostream>
+#include <mutex>
 #include <queue>
 #include <sstream>
 #include <iostream>
+#include <boost/thread/mutex.hpp>
 
 namespace fc 
 {
@@ -98,6 +100,10 @@ namespace fc
   gelf_appender::~gelf_appender()
   {}
 
+  boost::mutex& gelf_log_mutex() {
+     static boost::mutex m; return m;
+  }
+
   void gelf_appender::log(const log_message& message)
   {
     if (!my->gelf_endpoint)
@@ -155,6 +161,8 @@ namespace fc
         gelf_message_as_string[1] == (char)0xda)
       gelf_message_as_string[1] = (char)0x9c;
     assert(gelf_message_as_string[1] == (char)0x9c);
+
+    std::unique_lock<boost::mutex> lock(gelf_log_mutex());
 
     // packets are sent by UDP, and they tend to disappear if they
     // get too large.  It's hard to find any solid numbers on how

@@ -14,8 +14,6 @@ using namespace IR;
 
 namespace
 {
-	struct Local {};
-	
 	// State associated with parsing a function.
 	struct FunctionParseState : ParseState
 	{
@@ -546,90 +544,79 @@ namespace WAST
 		std::vector<std::string>* localDisassemblyNames = new std::vector<std::string>;
 		NameToIndexMap* localNameToIndexMap = new NameToIndexMap();
 
-		// Parse an optional function type reference.
-		const Token* typeReferenceToken = state.nextToken;
-		IndexedFunctionType referencedFunctionType = {UINT32_MAX};
-		if(state.nextToken[0].type == t_leftParenthesis
-		&& state.nextToken[1].type == t_type)
-		{
-			referencedFunctionType = parseFunctionTypeRef(state,*localNameToIndexMap,*localDisassemblyNames);
-		}
-
-		// Parse the explicit function parameters and result type.
-		const FunctionType* directFunctionType = parseFunctionType(state,*localNameToIndexMap,*localDisassemblyNames);
-		const bool hasNoDirectType = directFunctionType == FunctionType::get();
-
-		// Validate that if the function definition has both a type reference, and explicit parameter/result type declarations, that they match.
-		IndexedFunctionType functionType;
-		if(referencedFunctionType.index != UINT32_MAX && hasNoDirectType)
-		{
-			functionType = referencedFunctionType;
-		}
-		else
-		{
-			functionType = getUniqueFunctionTypeIndex(state,directFunctionType);
-			if(referencedFunctionType.index != UINT32_MAX && state.module.types[referencedFunctionType.index] != directFunctionType)
-			{
-				parseErrorf(state,typeReferenceToken,"referenced function type (%s) does not match declared parameters and results (%s)",
-					asString(state.module.types[referencedFunctionType.index]).c_str(),
-					asString(directFunctionType).c_str()
-					);
-			}
-		}
-
-		// Parse the function's local variables.
-		std::vector<ValueType> nonParameterLocalTypes;
-		while(tryParseParenthesizedTagged(state,t_local,[&]
-		{
-			Name localName;
-			if(tryParseName(state,localName))
-			{
-				bindName(state,*localNameToIndexMap,localName,directFunctionType->parameters.size() + nonParameterLocalTypes.size());
-				localDisassemblyNames->push_back(localName.getString());
-				nonParameterLocalTypes.push_back(parseValueType(state));
-			}
-			else
-			{
-				while(state.nextToken->type != t_rightParenthesis)
-				{
-					localDisassemblyNames->push_back(std::string());
-					nonParameterLocalTypes.push_back(parseValueType(state));
-				};
-			}
-		}));
-
-		// Defer parsing the body of the function until after all declarations have been parsed.
+		// Parse the function type, as a reference or explicit declaration.
+		const UnresolvedFunctionType unresolvedFunctionType = parseFunctionTypeRefAndOrDecl(state,*localNameToIndexMap,*localDisassemblyNames);
+		
+		// Defer resolving the function type until all type declarations have been parsed.
 		const Uptr functionIndex = state.module.functions.size();
 		const Uptr functionDefIndex = state.module.functions.defs.size();
 		const Token* firstBodyToken = state.nextToken;
-		state.postDeclarationCallbacks.push_back([functionIndex,functionDefIndex,firstBodyToken,localNameToIndexMap,localDisassemblyNames](ModuleParseState& state)
+		state.postTypeCallbacks.push_back(
+		[functionIndex,functionDefIndex,firstBodyToken,localNameToIndexMap,localDisassemblyNames,unresolvedFunctionType]
+		(ModuleParseState& state)
 		{
-			FunctionParseState functionState(state,localNameToIndexMap,firstBodyToken,state.module.functions.defs[functionDefIndex]);
-			try
+			// Resolve the function type and set it on the FunctionDef.
+			const IndexedFunctionType functionTypeIndex = resolveFunctionType(state,unresolvedFunctionType);
+			state.module.functions.defs[functionDefIndex].type = functionTypeIndex;
+			
+			// Defer parsing the body of the function until all function types have been resolved.
+			state.postDeclarationCallbacks.push_back(
+			[functionIndex,functionDefIndex,firstBodyToken,localNameToIndexMap,localDisassemblyNames,functionTypeIndex]
+			(ModuleParseState& state)
 			{
-				parseInstrSequence(functionState);
-				if(!functionState.errors.size())
-				{
-					functionState.validatingCodeStream.end();
-					functionState.validatingCodeStream.finishValidation();
-				}
-			}
-			catch(ValidationException exception)
-			{
-				parseErrorf(state,firstBodyToken,"%s",exception.message.c_str());
-			}
-			catch(RecoverParseException) {}
-			catch(FatalParseException) {}
+				FunctionDef& functionDef = state.module.functions.defs[functionDefIndex];
+				const FunctionType* functionType = functionTypeIndex.index == UINT32_MAX
+					? FunctionType::get()
+					: state.module.types[functionTypeIndex.index];
 
-			state.module.functions.defs[functionDefIndex].code = std::move(functionState.codeByteStream.getBytes());
-			state.disassemblyNames.functions[functionIndex].locals = std::move(*localDisassemblyNames);
-			delete localDisassemblyNames;
+				// Parse the function's local variables.
+				ParseState localParseState(state.string,state.lineInfo,state.errors,firstBodyToken);
+				while(tryParseParenthesizedTagged(localParseState,t_local,[&]
+				{
+					Name localName;
+					if(tryParseName(localParseState,localName))
+					{
+						bindName(localParseState,*localNameToIndexMap,localName,functionType->parameters.size() + functionDef.nonParameterLocalTypes.size());
+						localDisassemblyNames->push_back(localName.getString());
+						functionDef.nonParameterLocalTypes.push_back(parseValueType(localParseState));
+					}
+					else
+					{
+						while(localParseState.nextToken->type != t_rightParenthesis)
+						{
+							localDisassemblyNames->push_back(std::string());
+							functionDef.nonParameterLocalTypes.push_back(parseValueType(localParseState));
+						};
+					}
+				}));
+				state.disassemblyNames.functions[functionIndex].locals = std::move(*localDisassemblyNames);
+				delete localDisassemblyNames;
+
+				// Parse the function's code.
+				FunctionParseState functionState(state,localNameToIndexMap,localParseState.nextToken,functionDef);
+				try
+				{
+					parseInstrSequence(functionState);
+					if(!functionState.errors.size())
+					{
+						functionState.validatingCodeStream.end();
+						functionState.validatingCodeStream.finishValidation();
+					}
+				}
+				catch(ValidationException exception)
+				{
+					parseErrorf(state,firstBodyToken,"%s",exception.message.c_str());
+				}
+				catch(RecoverParseException) {}
+				catch(FatalParseException) {}
+				functionDef.code = std::move(functionState.codeByteStream.getBytes());
+			});
 		});
 
 		// Continue parsing after the closing parenthesis.
 		findClosingParenthesis(state,funcToken-1);
 		--state.nextToken;
 	
-		return {functionType,std::move(nonParameterLocalTypes),{}};
+		return {{UINT32_MAX},{},{}};
 	}
 }

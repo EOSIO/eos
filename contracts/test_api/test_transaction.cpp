@@ -2,20 +2,20 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eoslib/transaction.hpp>
-#include <eoslib/message.hpp>
+#include <eosiolib/transaction.hpp>
+#include <eosiolib/action.hpp>
 
 #include "test_api.hpp"
 
 unsigned int test_transaction::send_message() {
-   dummy_message payload = {DUMMY_MESSAGE_DEFAULT_A, DUMMY_MESSAGE_DEFAULT_B, DUMMY_MESSAGE_DEFAULT_C};
-   auto msg = message_create(N(testapi), WASM_TEST_ACTION("test_message", "read_message_normal"), &payload, sizeof(dummy_message));
+   dummy_action payload = {DUMMY_MESSAGE_DEFAULT_A, DUMMY_MESSAGE_DEFAULT_B, DUMMY_MESSAGE_DEFAULT_C};
+   auto msg = message_create(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), &payload, sizeof(dummy_action));
    message_send(msg);
    return WASM_TEST_PASS;
 }
 
 unsigned int test_transaction::send_message_empty() {
-   auto msg = message_create(N(testapi), WASM_TEST_ACTION("test_message", "assert_true"), nullptr, 0);
+   auto msg = message_create(N(testapi), WASM_TEST_ACTION("test_action", "assert_true"), nullptr, 0);
    message_send(msg);
    return WASM_TEST_PASS;
 }
@@ -24,9 +24,9 @@ unsigned int test_transaction::send_message_empty() {
  * cause failure due to too many pending inline messages
  */
 unsigned int test_transaction::send_message_max() {
-   dummy_message payload = {DUMMY_MESSAGE_DEFAULT_A, DUMMY_MESSAGE_DEFAULT_B, DUMMY_MESSAGE_DEFAULT_C};
+   dummy_action payload = {DUMMY_MESSAGE_DEFAULT_A, DUMMY_MESSAGE_DEFAULT_B, DUMMY_MESSAGE_DEFAULT_C};
    for (int i = 0; i < 10; i++) {
-      message_create(N(testapi), WASM_TEST_ACTION("test_message", "read_message_normal"), &payload, sizeof(dummy_message));
+      message_create(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), &payload, sizeof(dummy_action));
    }
 
    return WASM_TEST_FAIL;
@@ -37,7 +37,7 @@ unsigned int test_transaction::send_message_max() {
  */
 unsigned int test_transaction::send_message_large() {
    char large_message[8 * 1024];
-   message_create(N(testapi), WASM_TEST_ACTION("test_message", "read_message_normal"), large_message, sizeof(large_message));
+   message_create(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), large_message, sizeof(large_message));
    return WASM_TEST_FAIL;
 }
 
@@ -46,7 +46,7 @@ unsigned int test_transaction::send_message_large() {
  */
 unsigned int test_transaction::send_message_recurse() {
    char buffer[1024];
-   uint32_t size = read_message(buffer, 1024);
+   uint32_t size = read_action(buffer, 1024);
    auto msg = message_create(N(testapi), WASM_TEST_ACTION("test_transaction", "send_message_recurse"), buffer, size);
    message_send(msg);
    return WASM_TEST_PASS;
@@ -56,14 +56,14 @@ unsigned int test_transaction::send_message_recurse() {
  * cause failure due to inline TX failure
  */
 unsigned int test_transaction::send_message_inline_fail() {
-   auto msg = message_create(N(testapi), WASM_TEST_ACTION("test_message", "assert_false"), nullptr, 0);
+   auto msg = message_create(N(testapi), WASM_TEST_ACTION("test_action", "assert_false"), nullptr, 0);
    message_send(msg);
    return WASM_TEST_PASS;
 }
 
 unsigned int test_transaction::send_transaction() {
-   dummy_message payload = {DUMMY_MESSAGE_DEFAULT_A, DUMMY_MESSAGE_DEFAULT_B, DUMMY_MESSAGE_DEFAULT_C};
-   auto msg = message_create(N(testapi), WASM_TEST_ACTION("test_message", "read_message_normal"), &payload, sizeof(dummy_message));
+   dummy_action payload = {DUMMY_MESSAGE_DEFAULT_A, DUMMY_MESSAGE_DEFAULT_B, DUMMY_MESSAGE_DEFAULT_C};
+   auto msg = message_create(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), &payload, sizeof(dummy_action));
    
 
    auto trx = transaction_create();
@@ -99,7 +99,7 @@ unsigned int test_transaction::send_transaction_large() {
    transaction_require_scope(trx, N(testapi));
    for (int i = 0; i < 32; i ++) {
       char large_message[4 * 1024];
-      auto msg = message_create(N(testapi), WASM_TEST_ACTION("test_message", "read_message_normal"), large_message, sizeof(large_message));
+      auto msg = message_create(N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal"), large_message, sizeof(large_message));
       transaction_add_message(trx, msg);
    }
 

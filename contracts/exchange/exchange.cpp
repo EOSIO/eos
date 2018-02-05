@@ -35,7 +35,7 @@
  *  contract.  Users can only deposit or withdraw to their own currency account.
  */
 #include <exchange/exchange.hpp> /// defines transfer struct
-#include <eoslib/print.hpp>
+#include <eosiolib/print.hpp>
 
 using namespace exchange;
 using namespace eosio;
@@ -132,7 +132,7 @@ void apply_exchange_buy( buy_order order ) {
    bid& exchange_bid = order;
    require_auth( exchange_bid.buyer.name );
 
-   assert( exchange_bid.quantity > eosio::tokens(0u), "invalid quantity" );
+   assert( exchange_bid.quantity > eosio::tokens(0), "invalid quantity" );
    assert( exchange_bid.expiration > now(), "order expired" );
 
    print( name(exchange_bid.buyer.name), " created bid for ", order.quantity, " currency at price: ", order.at_price, "\n" );
@@ -163,7 +163,7 @@ void apply_exchange_buy( buy_order order ) {
       print( "lowest ask <= exchange_bid.at_price\n" );
       match( exchange_bid, buyer_account, lowest_ask, seller_account );
 
-      if( lowest_ask.quantity == currency_tokens(0u) ) {
+      if( lowest_ask.quantity == currency_tokens(0) ) {
          seller_account.open_orders--;
          save( seller_account );
          save( buyer_account );
@@ -173,8 +173,6 @@ void apply_exchange_buy( buy_order order ) {
          }
          seller_account = get_account( lowest_ask.seller.name );
       } else {
-         asks::update( lowest_ask );
-         save( seller_account );
          break; // buyer's bid should be filled
       }
    }
@@ -197,7 +195,7 @@ void apply_exchange_sell( sell_order order ) {
    ask& exchange_ask = order;
    require_auth( exchange_ask.seller.name );
 
-   assert( exchange_ask.quantity > currency_tokens(0u), "invalid quantity" );
+   assert( exchange_ask.quantity > currency_tokens(0), "invalid quantity" );
    assert( exchange_ask.expiration > now(), "order expired" );
 
    print( "\n\n", name(exchange_ask.seller.name), " created sell for ", order.quantity,
@@ -226,7 +224,7 @@ void apply_exchange_sell( sell_order order ) {
    while( highest_bid.at_price >= exchange_ask.at_price ) {
       match( highest_bid, buyer_account, exchange_ask, seller_account );
 
-      if( highest_bid.quantity == eos_tokens(0u) ) {
+      if( highest_bid.quantity == eos_tokens(0) ) {
          buyer_account.open_orders--;
          save( seller_account );
          save( buyer_account );
@@ -236,8 +234,6 @@ void apply_exchange_sell( sell_order order ) {
          }
          buyer_account = get_account( highest_bid.buyer.name );
       } else {
-         bids::update( highest_bid );
-         save( buyer_account );
          break; // buyer's bid should be filled
       }
    }
@@ -289,14 +285,6 @@ void apply_exchange_cancel_sell( order_id order ) {
 } // namespace exchange
 
 extern "C" {
-   void init() {
-      /*
-      setAuthority( "currencya", "transfer", "anyone" );
-      setAuthority( "currencyb", "transfer", "anyone" );
-      registerHandler( "apply", "currencya", "transfer" );
-      registerHandler( "apply", "currencyb", "transfer" );
-      */
-   }
 
 //   void validate( uint64_t code, uint64_t action ) { }
 //   void precondition( uint64_t code, uint64_t action ) { }
@@ -307,16 +295,16 @@ extern "C" {
       if( code == N(exchange) ) {
          switch( action ) {
             case N(buy):
-               apply_exchange_buy( current_message<exchange::buy_order>() );
+               apply_exchange_buy( current_action<exchange::buy_order>() );
                break;
             case N(sell):
-               apply_exchange_sell( current_message<exchange::sell_order>() );
+               apply_exchange_sell( current_action<exchange::sell_order>() );
                break;
             case N(cancelbuy):
-               apply_exchange_cancel_buy( current_message<exchange::order_id>() );
+               apply_exchange_cancel_buy( current_action<exchange::order_id>() );
                break;
             case N(cancelsell):
-               apply_exchange_cancel_sell( current_message<exchange::order_id>() );
+               apply_exchange_cancel_sell( current_action<exchange::order_id>() );
                break;
             default:
                assert( false, "unknown action" );
@@ -324,11 +312,11 @@ extern "C" {
       } 
       else if( code == N(currency) ) {
         if( action == N(transfer) ) 
-           apply_currency_transfer( current_message<currency::transfer>() );
+           apply_currency_transfer( current_action<currency::transfer>() );
       } 
       else if( code == N(eos) ) {
         if( action == N(transfer) ) 
-           apply_eos_transfer( current_message<eosio::transfer>() );
+           apply_eos_transfer( current_action<eosio::transfer>() );
       } 
       else {
       }

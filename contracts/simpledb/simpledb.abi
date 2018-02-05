@@ -56,24 +56,24 @@
     }
   ],
   "actions": [{
-      "action_name": "insert1",
+      "name": "insert1",
       "type": "record1"
     },{
-      "action_name": "insert2",
+      "name": "insert2",
       "type": "record2"
     },{
-      "action_name": "insert3",
+      "name": "insert3",
       "type": "record3"
     },{
-      "action_name": "insertkv1",
+      "name": "insertkv1",
       "type": "key_value1"
     },{
-      "action_name": "insertkv2",
+      "name": "insertkv2",
       "type": "key_value2"
     }
   ],
   "tables": [{
-      "table_name": "record1",
+      "name": "record1",
       "index_type": "i64",
       "key_names": [
         "key"
@@ -83,7 +83,7 @@
       ],
       "type": "record1"
     },{
-      "table_name": "record2",
+      "name": "record2",
       "index_type": "i128i128",
       "key_names": [
         "key1",
@@ -95,7 +95,7 @@
       ],
       "type": "record2"
     },{
-      "table_name": "record3",
+      "name": "record3",
       "index_type": "i64i64i64",
       "key_names": [
         "key1",
@@ -109,7 +109,7 @@
       ],
       "type": "record3"
     },{
-      "table_name": "keyvalue1",
+      "name": "keyvalue1",
       "index_type": "str",
       "key_names": [
         "key"
@@ -119,7 +119,7 @@
       ],
       "type": "key_value1"
     },{
-      "table_name": "keyvalue2",
+      "name": "keyvalue2",
       "index_type": "str",
       "key_names": [
         "key"

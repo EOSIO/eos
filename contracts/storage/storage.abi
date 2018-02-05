@@ -36,30 +36,30 @@
     }
   ],
     "actions": [{
-         "action_name": "transfer",
+         "name": "transfer",
          "type": "transfer"
     },{
-         "action_name": "setlink",
+         "name": "setlink",
          "type": "link"
     },{
-         "action_name": "removelink",
+         "name": "removelink",
          "type": "string"
     },{
-         "action_name": "acceptstore",
+         "name": "acceptstore",
          "type": "string"
     },{
-         "action_name": "rejectstore",
+         "name": "rejectstore",
          "type": "string"
     }
   ],
     "tables": [{
-         "table_name": "account",
+         "name": "account",
          "type": "account",
          "index_type": "i64",
          "key_names" : ["account"],
          "key_types" : ["account_name"]
     },{
-         "table_name": "links",
+         "name": "links",
          "type" : "link",
          "index_type": "str",
          "key_names" : ["eospath"]

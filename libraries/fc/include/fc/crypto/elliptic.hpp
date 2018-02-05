@@ -1,5 +1,6 @@
 #pragma once
 #include <fc/crypto/bigint.hpp>
+#include <fc/crypto/common.hpp>
 #include <fc/crypto/openssl.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha512.hpp>
@@ -148,73 +149,7 @@ namespace fc {
            static fc::sha256 get_secret( const EC_KEY * const k );
            fc::fwd<detail::private_key_impl,32> my;
     };
-
-    class extended_public_key : public public_key
-    {
-        public:
-            extended_public_key( const public_key& k, const sha256& c,
-                                 int child = 0, int parent_fp = 0, uint8_t depth = 0 );
-
-            extended_public_key derive_child( int i ) const;
-            extended_public_key derive_normal_child( int i ) const;
-
-            extended_key_data serialize_extended() const;
-            static extended_public_key deserialize( const extended_key_data& data );
-            fc::string str() const;
-            fc::string to_base58() const { return str(); }
-            static extended_public_key from_base58( const fc::string& base58 );
-
-            public_key generate_p( int i ) const;
-            public_key generate_q( int i ) const;
-        private:
-            sha256 c;
-            int child_num, parent_fp;
-            uint8_t depth;
-    };
-
-    class extended_private_key : public private_key
-    {
-        public:
-            extended_private_key( const private_key& k, const sha256& c,
-                                  int child = 0, int parent_fp = 0, uint8_t depth = 0 );
-
-            extended_public_key get_extended_public_key()const;
-
-            extended_private_key derive_child( int i ) const;
-            extended_private_key derive_normal_child( int i ) const;
-            extended_private_key derive_hardened_child( int i ) const;
-
-            extended_key_data serialize_extended() const;
-            static extended_private_key deserialize( const extended_key_data& data );
-            fc::string str() const;
-            fc::string to_base58() const { return str(); }
-            static extended_private_key from_base58( const fc::string& base58 );
-            static extended_private_key generate_master( const fc::string& seed );
-            static extended_private_key generate_master( const char* seed, uint32_t seed_len );
-
-            // Oleg Andreev's blind signature scheme,
-            // see http://blog.oleganza.com/post/77474860538/blind-signatures
-            public_key blind_public_key( const extended_public_key& bob, int i ) const;
-            blinded_hash blind_hash( const fc::sha256& hash, int i ) const;
-            blind_signature blind_sign( const blinded_hash& hash, int i ) const;
-            // WARNING! This may produce non-canonical signatures!
-            compact_signature unblind_signature( const extended_public_key& bob,
-                                                 const blind_signature& sig,
-                                                 const fc::sha256& hash, int i ) const;
-
-        private:
-            extended_private_key private_derive_rest( const fc::sha512& hash,
-                                                      int num ) const;
-            private_key generate_a( int i ) const;
-            private_key generate_b( int i ) const;
-            private_key generate_c( int i ) const;
-            private_key generate_d( int i ) const;
-            private_key_secret compute_p( int i ) const;
-            private_key_secret compute_q( int i, const private_key_secret& p ) const;
-            sha256 c;
-            int child_num, parent_fp;
-            uint8_t depth;
-    };
+    ;
 
      struct range_proof_info
      {
@@ -249,7 +184,48 @@ namespace fc {
                                           const range_proof_type& proof );
      range_proof_info range_get_info( const range_proof_type& proof );
 
+      /**
+       * Shims
+       */
+      struct public_key_shim : public crypto::shim<public_key_data> {
+         using crypto::shim<public_key_data>::shim;
+      };
 
+      struct signature_shim : public crypto::shim<compact_signature> {
+         using public_key_type = public_key_shim;
+         using crypto::shim<compact_signature>::shim;
+
+         public_key_type recover(const sha256& digest, bool check_canonical) const {
+            return public_key_type(public_key(_data, digest, check_canonical).serialize());
+         }
+      };
+
+      struct private_key_shim : public crypto::shim<private_key_secret> {
+         using crypto::shim<private_key_secret>::shim;
+         using signature_type = signature_shim;
+         using public_key_type = public_key_shim;
+
+         signature_type sign( const sha256& digest, bool require_canonical = true ) const
+         {
+           return signature_type(private_key::regenerate(_data).sign_compact(digest, require_canonical));
+         }
+
+         public_key_type get_public_key( ) const
+         {
+           return public_key_type(private_key::regenerate(_data).get_public_key().serialize());
+         }
+
+         sha512 generate_shared_secret( const public_key_type &pub_key ) const
+         {
+           return private_key::regenerate(_data).get_shared_secret(public_key(pub_key.serialize()));
+         }
+
+         static private_key_shim generate()
+         {
+            return private_key_shim(private_key::generate().get_secret());
+         }
+
+      };
 
   } // namespace ecc
   void to_variant( const ecc::private_key& var,  variant& vo );
@@ -295,3 +271,6 @@ namespace fc {
 FC_REFLECT_TYPENAME( fc::ecc::private_key )
 FC_REFLECT_TYPENAME( fc::ecc::public_key )
 FC_REFLECT( fc::ecc::range_proof_info, (exp)(mantissa)(min_value)(max_value) )
+FC_REFLECT_DERIVED( fc::ecc::public_key_shim, (fc::crypto::shim<fc::ecc::public_key_data>), BOOST_PP_SEQ_NIL )
+FC_REFLECT_DERIVED( fc::ecc::signature_shim, (fc::crypto::shim<fc::ecc::compact_signature>), BOOST_PP_SEQ_NIL )
+FC_REFLECT_DERIVED( fc::ecc::private_key_shim, (fc::crypto::shim<fc::ecc::private_key_secret>), BOOST_PP_SEQ_NIL )

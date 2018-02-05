@@ -2,8 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eos/wallet_plugin/wallet_manager.hpp>
-#include <eos/utilities/key_conversion.hpp>
+#include <eosio/wallet_plugin/wallet_manager.hpp>
 
 namespace eosio {
 namespace wallet {
@@ -12,8 +11,8 @@ constexpr auto file_ext = ".wallet";
 constexpr auto password_prefix = "PW";
 
 std::string gen_password() {
-   auto key = fc::ecc::private_key::generate();
-   return password_prefix + utilities::key_to_wif(key);
+   auto key = private_key_type::generate();
+   return password_prefix + string(key);
 
 }
 
@@ -94,9 +93,9 @@ std::vector<std::string> wallet_manager::list_wallets() {
    return result;
 }
 
-map<public_key_type,string> wallet_manager::list_keys() {
+map<public_key_type,private_key_type> wallet_manager::list_keys() {
    check_timeout();
-   map<public_key_type,string> result;
+   map<public_key_type,private_key_type> result;
    for (const auto& i : wallets) {
       if (!i.second->is_locked()) {
          const auto& keys = i.second->list_keys();
