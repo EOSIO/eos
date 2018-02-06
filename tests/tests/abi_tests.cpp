@@ -475,8 +475,8 @@ BOOST_AUTO_TEST_CASE(generator)
       action_def              field37;
       table_def               field38;
       abi_def                 field39;
-      public_key              field41;
-      eosio::asset            field42;
+      public_key              field40;
+      eosio::asset            field41;
    };
    )=====";
 
@@ -604,10 +604,10 @@ BOOST_AUTO_TEST_CASE(generator)
              "name": "field39",
              "type": "abi_def"
           },{
-             "name": "field41",
+             "name": "field40",
              "type": "public_key"
           },{
-             "name": "field42",
+             "name": "field41",
              "type": "asset"
           }]
            }],
