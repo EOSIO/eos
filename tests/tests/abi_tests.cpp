@@ -414,6 +414,8 @@ BOOST_AUTO_TEST_CASE(generator)
    const char* all_types = R"=====(
     #include <eosiolib/types.hpp>
     #include <eosiolib/string.hpp>
+    #include <eosiolib/asset.hpp>
+    #include <eosiolib/vector.hpp>
 
     typedef int field;
     typedef int struct_def;
@@ -442,7 +444,7 @@ BOOST_AUTO_TEST_CASE(generator)
       fixed_string32          field6;
       fixed_string16          field7;
       type_name               field8;
-      bytes                   field9;
+      eosio::bytes            field9;
       uint8_t                 field10;
       uint16_t                field11;
       uint32_t                field12;
@@ -473,9 +475,8 @@ BOOST_AUTO_TEST_CASE(generator)
       action_def              field37;
       table_def               field38;
       abi_def                 field39;
-      nonce                   field40;
       public_key              field41;
-      asset                   field42;
+      eosio::asset            field42;
    };
    )=====";
 
@@ -602,9 +603,6 @@ BOOST_AUTO_TEST_CASE(generator)
           },{
              "name": "field39",
              "type": "abi_def"
-          },{
-             "name": "field40",
-             "type": "nonce"
           },{
              "name": "field41",
              "type": "public_key"
