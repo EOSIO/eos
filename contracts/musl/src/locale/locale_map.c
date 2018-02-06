@@ -11,8 +11,8 @@ const char *__lctrans_impl(const char *msg, const struct __locale_map *lm)
 	return trans ? trans : msg;
 }
 
-const unsigned char *__map_file(const char *, size_t *);
-int __munmap(void *, size_t);
+//const unsigned char *__map_file(const char *, size_t *);
+//int __munmap(void *, size_t);
 char *__strchrnul(const char *, int);
 
 static const char envvars[][12] = {
@@ -67,7 +67,7 @@ const struct __locale_map *__get_locale(int cat, const char *val)
 
 	if (!libc.secure) path = getenv("MUSL_LOCPATH");
 	/* FIXME: add a default path? */
-
+        /*
 	if (path) for (; *path; path=z+!!*z) {
 		z = __strchrnul(path, ':');
 		l = z - path - !!*z;
@@ -93,7 +93,7 @@ const struct __locale_map *__get_locale(int cat, const char *val)
 			break;
 		}
 	}
-
+        */
 	/* If no locale definition was found, make a locale map
 	 * object anyway to store the name, which is kept for the
 	 * sake of being able to do message translations at the
