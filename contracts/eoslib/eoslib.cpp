@@ -16,6 +16,7 @@ namespace eosio {
    class memory_manager  // NOTE: Should never allocate another instance of memory_manager
    {
    friend void* ::malloc(size_t size);
+   friend void* ::calloc(size_t count, size_t size);
    friend void* ::realloc(void* ptr, size_t size);
    friend void ::free(void* ptr);
    public:
@@ -482,6 +483,11 @@ extern "C" {
 void* malloc(size_t size)
 {
    return eosio::memory_heap.malloc(size);
+}
+
+void* calloc(size_t count, size_t size)
+{
+   return eosio::memory_heap.malloc(count*size);
 }
 
 void* realloc(void* ptr, size_t size)
