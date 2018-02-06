@@ -517,7 +517,7 @@ BOOST_FIXTURE_TEST_CASE( check_global_reset, tester ) try {
 BOOST_FIXTURE_TEST_CASE( stl_test, tester ) try {
     produce_blocks(2000);
 
-    create_accounts( {N(stltest), N(alice), N(bob)}, asset::from_string("1000.0000 MYCUR") );
+    create_accounts( {N(stltest), N(alice), N(bob)}, asset::from_string("1000.0000 EOS") );
     produce_block();
 
     set_code(N(stltest), stltest_wast);

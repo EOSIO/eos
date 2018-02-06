@@ -216,6 +216,7 @@ namespace stltest {
            prints("STD string: "); prints(s.c_str());
            prints("\nEOS string: "); prints_l(s2.get_data(), s2.get_size());
            */
+           prints("STL test start\n");
            void* ptr = malloc(10);
            free(ptr);
 
@@ -258,6 +259,7 @@ namespace stltest {
 
            sort(dq.begin(), dq.end());
            auto lit = find_if(l.begin(), l.end(), [](uint32_t f) { return f < 10; });
+           prints("STL test done.\n");
            //std::cout << "STL test done." << std::endl;
         }
 
