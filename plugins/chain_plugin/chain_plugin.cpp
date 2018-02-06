@@ -13,11 +13,10 @@
 
 
 #include <eosio/chain/contracts/chain_initializer.hpp>
-#include <eosio/chain/contracts/staked_balance_objects.hpp>
 #include <eosio/chain/contracts/genesis_state.hpp>
 #include <eosio/chain/contracts/eos_contract.hpp>
 
-#include <eos/utilities/key_conversion.hpp>
+#include <eosio/utilities/key_conversion.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 
 #include <fc/io/json.hpp>
@@ -30,7 +29,6 @@ using namespace eosio::chain;
 using namespace eosio::chain::config;
 using fc::flat_map;
 
-#warning TODO: rate limiting
 //using txn_msg_rate_limits = chain_controller::txn_msg_rate_limits;
 
 
@@ -54,17 +52,6 @@ public:
    //txn_msg_rate_limits              rate_limits;
 };
 
-#ifdef NDEBUG
-const uint32_t chain_plugin::default_received_block_transaction_execution_time = 12;
-const uint32_t chain_plugin::default_transaction_execution_time = 3;
-const uint32_t chain_plugin::default_create_block_transaction_execution_time = 3;
-#else
-const uint32_t chain_plugin::default_received_block_transaction_execution_time = 72;
-const uint32_t chain_plugin::default_transaction_execution_time = 18;
-const uint32_t chain_plugin::default_create_block_transaction_execution_time = 18;
-#endif
-
-
 chain_plugin::chain_plugin()
 :my(new chain_plugin_impl()) {
 }
@@ -79,11 +66,11 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the block log (absolute path or relative to application data dir)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("rcvd-block-trans-execution-time", bpo::value<uint32_t>()->default_value(default_received_block_transaction_execution_time),
+         ("rcvd-block-trans-execution-time", bpo::value<uint32_t>()->default_value(chain_controller::default_received_block_transaction_execution_time_ms),
           "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute from a received block.")
-         ("trans-execution-time", bpo::value<uint32_t>()->default_value(default_transaction_execution_time),
+         ("trans-execution-time", bpo::value<uint32_t>()->default_value(chain_controller::default_transaction_execution_time_ms),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute.")
-         ("create-block-trans-execution-time", bpo::value<uint32_t>()->default_value(default_create_block_transaction_execution_time),
+         ("create-block-trans-execution-time", bpo::value<uint32_t>()->default_value(chain_controller::default_create_block_transaction_execution_time_ms),
           "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute while creating a block.")
 #warning TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
@@ -230,7 +217,7 @@ bool chain_plugin::accept_block(const signed_block& block, bool currently_syncin
    return true;
 }
 
-void chain_plugin::accept_transaction(const signed_transaction& trx) {
+void chain_plugin::accept_transaction(const packed_transaction& trx) {
    chain().push_transaction(trx, my->skip_flags);
 }
 
@@ -331,6 +318,42 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
    FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("key",table_key)("abi",abi));
 }
 
+vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
+   vector<asset> results;
+   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.account, N(account), [&](const contracts::key_value_object& obj){
+      share_type balance;
+      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+      fc::raw::unpack(ds, balance);
+      auto cursor = asset(balance, symbol(obj.primary_key));
+
+      if (p.symbol || cursor.symbol_name().compare(*p.symbol) == 0) {
+         results.emplace_back(balance, symbol(obj.primary_key));
+      }
+
+      // return false if we are looking for one and found it, true otherwise
+      return p.symbol || cursor.symbol_name().compare(*p.symbol) != 0;
+   });
+
+   return results;
+}
+
+fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_params& p )const {
+   fc::mutable_variant_object results;
+   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.code, N(stat), [&](const contracts::key_value_object& obj){
+      share_type balance;
+      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+      fc::raw::unpack(ds, balance);
+      auto cursor = asset(balance, symbol(obj.primary_key));
+
+      read_only::get_currency_stats_result result;
+      result.supply = cursor;
+      results[cursor.symbol_name()] = result;
+      return true;
+   });
+
+   return results;
+}
+
 read_only::get_block_results read_only::get_block(const read_only::get_block_params& params) const {
    try {
       if (auto block = db.fetch_block_by_id(fc::json::from_string(params.block_num_or_id).as<block_id_type>()))
@@ -351,7 +374,7 @@ read_write::push_block_results read_write::push_block(const read_write::push_blo
 }
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
-   signed_transaction pretty_input;
+   packed_transaction pretty_input;
    auto resolver = [&,this]( const account_name& name ) -> optional<abi_serializer> {
       const auto* accnt  = db.get_database().find<account_object,by_name>( name );
       if (accnt != nullptr) {
@@ -369,7 +392,7 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
 #warning TODO: get transaction results asynchronously
    fc::variant pretty_output;
    abi_serializer::to_variant(result, pretty_output, resolver);
-   return read_write::push_transaction_results{ pretty_input.id(), pretty_output };
+   return read_write::push_transaction_results{ result.id, pretty_output };
 }
 
 read_write::push_transactions_results read_write::push_transactions(const read_write::push_transactions_params& params) {
@@ -414,13 +437,6 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.account_name = params.account_name;
 
    const auto& d = db.get_database();
-   share_type  balance        = contracts::get_eosio_balance(d, params.account_name );
-   const auto& staked_balance = d.get<staked_balance_object,by_owner_name>( params.account_name );
-
-   result.eos_balance          = asset(balance, EOS_SYMBOL);
-   result.staked_balance       = asset(staked_balance.staked_balance);
-   result.unstaking_balance    = asset(staked_balance.unstaking_balance);
-   result.last_unstaking_time  = staked_balance.last_unstaking_time;
 
    const auto& permissions = d.get_index<permission_index,by_owner>();
    auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );
@@ -468,7 +484,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
 }
 
 read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params )const {
-   signed_transaction pretty_input;
+   transaction pretty_input;
    from_variant(params.transaction, pretty_input);
    auto required_keys_set = db.get_required_keys(pretty_input, params.available_keys);
    get_required_keys_result result;

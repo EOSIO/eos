@@ -61,6 +61,9 @@ struct genesis_state_type {
    };
 
    time_point                               initial_timestamp;
+   public_key_type                          initial_key;
+   public_key_type                          eosio_system_key;
+
    vector<initial_account_type>             initial_accounts;
    vector<initial_producer_type>            initial_producers;
 
@@ -85,5 +88,5 @@ FC_REFLECT(eosio::chain::contracts::genesis_state_type::initial_account_type,
 FC_REFLECT(eosio::chain::contracts::genesis_state_type::initial_producer_type, (owner_name)(block_signing_key))
 
 FC_REFLECT(eosio::chain::contracts::genesis_state_type,
-           (initial_timestamp)(initial_configuration)(initial_accounts)
+           (initial_timestamp)(initial_key)(initial_configuration)(initial_accounts)
            (initial_producers)(initial_chain_id))

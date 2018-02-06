@@ -2,144 +2,113 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
+#include <eosiolib/eosio.hpp>
+#include <eosiolib/token.hpp>
+#include <eosiolib/db.hpp>
+#include <eosiolib/reflect.hpp>
+#include <eosiolib/print.hpp>
 
-#include <eoslib/eos.hpp>
-#include <eoslib/token.hpp>
-#include <eoslib/db.hpp>
-#include <eoslib/reflect.hpp>
+#include <eosiolib/generic_currency.hpp>
+#include <eosiolib/datastream.hpp>
+#include <eosiolib/serialize.hpp>
 
 namespace eosiosystem {
 
-  /**
-   *  @defgroup eosio.system EOSIO System Contract
-   *  @brief Defines the wasm components of the system contract
-   *
-   */
+   template<account_name SystemAccount>
+   class contract {
+      public:
+         static const account_name system_account = N(eosio.system);
+         typedef eosio::generic_currency< eosio::token<system_account,S(4,EOS)> > currency;
 
-   /**
-   * We create the native EOSIO token type
-   */
-   typedef eosio::token<uint64_t,N(eosio)> native_tokens;
-   const account_name system_code   = N(eosio.system);
-   const table_name   account_table = N(account);
+         struct total_bandwidth {
+            account_name owner;
+            typename currency::token_type total_net_weight; 
+            typename currency::token_type total_cpu_weight; 
+         };
 
-   /**
-    *  transfer requires that the sender and receiver be the first two
-    *  accounts notified and that the sender has provided authorization.
-    *  @abi action
-    */
-   struct transfer {
-      /**
-      * account to transfer from
-      */
-      account_name       from;
-      /**
-      * account to transfer to
-      */
-      account_name       to;
-      /**
-      *  quantity to transfer
-      */
-      native_tokens    quantity;
+         typedef eosio::table64<SystemAccount, N(totalband), SystemAccount, total_bandwidth>      total_bandwidth;
+
+         struct delegated_bandwidth {
+            account_name from;
+            account_name to;
+            typename currency::token_type net_weight; 
+            typename currency::token_type cpu_weight; 
+
+            uint32_t start_pending_net_withdraw = 0;
+            typename currency::token_type pending_net_withdraw;
+            uint64_t deferred_net_withdraw_handler = 0;
+
+            uint32_t start_pending_cpu_withdraw = 0;
+            typename currency::token_type pending_cpu_withdraw;
+            uint64_t deferred_cpu_withdraw_handler = 0;
+         };
+
+         ACTION( SystemAccount, finshundel ) {
+            account_name from;
+            account_name to;
+         };
+
+         ACTION( SystemAccount, regproducer ) {
+            account_name producer_to_register;
+
+            EOSLIB_SERIALIZE( regproducer, (producer_to_register) );
+         };
+
+         ACTION( SystemAccount, regproxy ) {
+            account_name proxy_to_register;
+
+            EOSLIB_SERIALIZE( regproxy, (proxy_to_register) );
+         };
+
+         ACTION( SystemAccount, delnetbw ) {
+            account_name                    from;
+            account_name                    receiver;
+            typename currency::token_type   stake_quantity;
+
+            EOSLIB_SERIALIZE( delnetbw, (delegator)(receiver)(stake_quantity) )
+         };
+
+         ACTION( SystemAccount, undelnetbw ) {
+            account_name                    from;
+            account_name                    receiver;
+            typename currency::token_type   stake_quantity;
+
+            EOSLIB_SERIALIZE( delnetbw, (delegator)(receiver)(stake_quantity) )
+         };
+
+         ACTION( SystemAccount, nonce ) {
+            eosio::string                   value;
+
+            EOSLIB_SERIALIZE( nonce, (value) );
+         };
+
+      static void on( const delnetbw& del ) {
+            require_auth( del.from );
+          //  require_account( receiver );
+
+            currency::inline_transfer( del.from, SystemAccount, del.stake_quantity, "stake bandwidth" );
+         }
+
+         static void on( const regproducer& reg ) {
+            require_auth( reg.producer_to_register );
+         }
+
+         static void on( const regproxy& reg ) {
+            require_auth( reg.proxy_to_register );
+         }
+
+         static void on( const nonce& ) {
+         }
+
+         static void apply( account_name code, action_name act ) {
+            if( !eosio::dispatch<contract, regproducer, regproxy, nonce>( code, act) ) {
+               if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
+                  eosio::print("Unexpected action: ", act, "\n");
+                  eos_assert( false, "received unexpected action");
+               }
+            }
+         } /// apply 
    };
-
-   struct transfer_memo : public transfer {
-      string memo;
-   };
-
-
-   /**
-    * This will transfer tokens from from.balance to to.vote_stake 
-    */
-   struct stakevote {
-      account_name     from;
-      account_name     to;
-      native_tokens    quantity;
-   };
-
-
-
-   /**
-    *   This table is used to track an individual user's token balance and vote stake. 
-    *
-    *
-    *   Location:
-    *
-    *   { 
-    *     code: system_code
-    *     scope: ${owner_account_name}
-    *     table: N(singlton)
-    *     key: N(account)
-    *   }
-    */
-   struct account {
-      /**
-      Constructor with default zero quantity (balance).
-      */
-      account( native_tokens b = native_tokens() ):balance(b){}
-
-      /**
-       *  The key is constant because there is only one record per scope/currency/accounts
-       */
-      const uint64_t     key = N(account);
-
-      /**
-      * Balance number of tokens in account
-      **/
-      native_tokens     balance;
-      native_tokens     vote_stake;
-      native_tokens     proxied_vote_stake;
-      uint64_t          last_vote_weight = 0;
-      //time_point        last_stake_withdraw;
-      account_name      proxy;
-
-
-      /**
-      Method to check if accoutn is empty.
-      @return true if account balance is zero.
-      **/
-      bool  is_empty()const  { return balance.quantity == 0; }
-   };
-
-
-
-   struct producer {
-      account_name key; /// producer name
-      uint64_t     votes; /// total votes received by producer
-      /// producer config... 
-   };
-
-   struct producer_vote {
-      account_name voter;
-      account_name producer;
-      uint64_t     voteweight = 0;
-   };
-
-   /**
-   Defines the database table for account information
-   **/
-   using accounts = eosio::table<N(unused),system_code,account_table,account,uint64_t>;
-
-   /**
-    *  accounts information for owner is stored:
-    *
-    *  owner/TOKEN_NAME/account/account -> account
-    *
-    *  This API is made available for 3rd parties wanting read access to
-    *  the users balance. If the account doesn't exist a default constructed
-    *  account will be returned.
-    *  @param owner The account owner
-    *  @return account instance
-    */
-   inline account get_account( account_name owner ) {
-      account owned_account;
-      ///      scope, record
-      accounts::get( owned_account, owner );
-      return owned_account;
-   }
 
 } /// eosiosystem 
 
-EOSLIB_REFLECT( eosiosystem::account, (balance)(vote_stake)(proxied_vote_stake)(last_vote_weight)(proxy) )
-EOSLIB_REFLECT( eosiosystem::transfer, (from)(to)(quantity) )
-EOSLIB_REFLECT( eosiosystem::stakevote, (from)(to)(quantity) )

@@ -34,7 +34,7 @@ using chain::block_id_type;
 using chain::key_weight;
 using chain::permission_level_weight;
 using chain::permission_name;
-using chain::signed_transaction;
+using chain::packed_transaction;
 using chain::signed_block;
 using boost::multi_index_container;
 using chain::transaction_id_type;
@@ -44,12 +44,12 @@ using get_transactions_results = account_history_apis::read_only::get_transactio
 
 class account_history_plugin_impl {
 public:
-   signed_transaction get_transaction(const chain::transaction_id_type&  transaction_id) const;
+   packed_transaction get_transaction(const chain::transaction_id_type&  transaction_id) const;
    get_transactions_results get_transactions(const account_name&  account_name, const optional<uint32_t>& skip_seq, const optional<uint32_t>& num_seq) const;
    vector<account_name> get_key_accounts(const public_key_type& public_key) const;
    vector<account_name> get_controlled_accounts(const account_name& controlling_account) const;
    void applied_block(const chain::block_trace&);
-   fc::variant transaction_to_variant(const signed_transaction& pretty_input) const;
+   fc::variant transaction_to_variant(const packed_transaction& pretty_input) const;
 
    chain_plugin* chain_plug;
    static const int64_t DEFAULT_TRANSACTION_TIME_LIMIT;
@@ -67,7 +67,7 @@ private:
    typedef std::multimap<block_id_type, transaction_id_type, block_comp> block_transaction_id_map;
 
    optional<block_id_type> find_block_id(const chainbase::database& db, const transaction_id_type& transaction_id) const;
-   signed_transaction find_transaction(const chain::transaction_id_type&  transaction_id, const signed_block& block) const;
+   packed_transaction find_transaction(const chain::transaction_id_type&  transaction_id, const signed_block& block) const;
    bool is_scope_relevant(const vector<account_name>& scope);
    get_transactions_results ordered_transactions(const block_transaction_id_map& block_transaction_ids, const fc::time_point& start_time, const uint32_t begin, const uint32_t end) const;
    static void add(chainbase::database& db, const vector<key_weight>& keys, const account_name& account_name, const permission_name& permission);
@@ -113,17 +113,17 @@ optional<block_id_type> account_history_plugin_impl::find_block_id(const chainba
    return block_id;
 }
 
-signed_transaction account_history_plugin_impl::find_transaction(const chain::transaction_id_type&  transaction_id, const chain::signed_block& block) const
+packed_transaction account_history_plugin_impl::find_transaction(const chain::transaction_id_type&  transaction_id, const chain::signed_block& block) const
 {
-   for (const signed_transaction& trx : block.input_transactions)
-      if (trx.id() == transaction_id)
+   for (const packed_transaction& trx : block.input_transactions)
+      if (trx.get_transaction().id() == transaction_id)
          return trx;
 
    // ERROR in indexing logic
    FC_THROW("Transaction with ID ${tid} was indexed as being in block ID ${bid}, but was not found in that block", ("tid", transaction_id)("bid", block.id()));
 }
 
-signed_transaction account_history_plugin_impl::get_transaction(const chain::transaction_id_type&  transaction_id) const
+packed_transaction account_history_plugin_impl::get_transaction(const chain::transaction_id_type&  transaction_id) const
 {
    const auto& db = chain_plug->chain().get_database();
    optional<block_id_type> block_id;
@@ -215,12 +215,13 @@ get_transactions_results account_history_plugin_impl::ordered_transactions(const
       }
       for (auto trx = block->input_transactions.crbegin(); trx != block->input_transactions.crend() && current < trx_after_block; ++trx)
       {
-         if(trans_ids_for_block.count(trx->id()))
+         transaction_id_type trx_id = trx->get_transaction().id();
+         if(trans_ids_for_block.count(trx_id))
          {
             if(++current > begin)
             {
                const auto pretty_trx = transaction_to_variant(*trx);
-               results.transactions.emplace_back(ordered_transaction_results{(current - 1), trx->id(), pretty_trx});
+               results.transactions.emplace_back(ordered_transaction_results{(current - 1), trx_id, pretty_trx});
 
                if(current >= end)
                {
@@ -405,7 +406,7 @@ bool account_history_plugin_impl::is_scope_relevant(const vector<account_name>& 
    return false;
 }
 
-fc::variant account_history_plugin_impl::transaction_to_variant(const signed_transaction& txn) const
+fc::variant account_history_plugin_impl::transaction_to_variant(const packed_transaction& ptrx) const
 {
    const chainbase::database& database = chain_plug->chain().get_database();
    auto resolver = [&database]( const account_name& name ) -> optional<abi_serializer> {
@@ -421,7 +422,7 @@ fc::variant account_history_plugin_impl::transaction_to_variant(const signed_tra
    };
 
    fc::variant pretty_output;
-   abi_serializer::to_variant(txn, pretty_output, resolver);
+   abi_serializer::to_variant(ptrx, pretty_output, resolver);
    return pretty_output;
 }
 

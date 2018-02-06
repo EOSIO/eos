@@ -1,20 +1,19 @@
 #include <boost/test/unit_test.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/exceptions.hpp>
 #include <asserter/asserter.wast.hpp>
 #include <asserter/asserter.abi.hpp>
 
 #include <test_api/test_api.wast.hpp>
-
-#include <currency/currency.wast.hpp>
-#include <currency/currency.abi.hpp>
 
 #include <proxy/proxy.wast.hpp>
 #include <proxy/proxy.abi.hpp>
 
 #include <stltest/stltest.wast.hpp>
 #include <stltest/stltest.abi.hpp>
+#include <noop/noop.wast.hpp>
+#include <noop/noop.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -27,15 +26,6 @@ using namespace eosio::chain;
 using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 using namespace fc;
-
-struct issue {
-   static uint64_t get_account(){ return N(currency); }
-   static uint64_t get_name(){ return N(issue); }
-
-   account_name to;
-   asset        quantity;
-};
-FC_REFLECT( issue, (to)(quantity) )
 
 
 struct assertdef {
@@ -114,7 +104,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, tester ) try {
 
       set_tapos( trx );
       trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
-      auto result = control->push_transaction( trx );
+      auto result = push_transaction( trx );
       BOOST_CHECK_EQUAL(result.status, transaction_receipt::executed);
       BOOST_CHECK_EQUAL(result.action_traces.size(), 1);
       BOOST_CHECK_EQUAL(result.action_traces.at(0).receiver.to_string(),  name(N(asserter)).to_string() );
@@ -142,7 +132,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, tester ) try {
       trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
       yes_assert_id = trx.id();
 
-      BOOST_CHECK_THROW(control->push_transaction( trx ), fc::assert_exception);
+      BOOST_CHECK_THROW(push_transaction( trx ), fc::assert_exception);
    }
 
    produce_blocks(1);
@@ -174,7 +164,7 @@ BOOST_FIXTURE_TEST_CASE( prove_mem_reset, tester ) try {
 
       set_tapos( trx );
       trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
-      control->push_transaction( trx );
+      push_transaction( trx );
       produce_blocks(1);
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
       const auto& receipt = get_transaction_receipt(trx.id());
@@ -229,51 +219,13 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
    abi_serializer::from_variant(pretty_trx, trx, resolver);
    set_tapos( trx );
    trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
-   control->push_transaction( trx );
+   push_transaction( trx );
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    const auto& receipt = get_transaction_receipt(trx.id());
    BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
 
 } FC_LOG_AND_RETHROW() /// prove_mem_reset
-
-struct assert_message_is {
-   assert_message_is(string expected)
-   :expected(expected)
-   {}
-
-   bool operator()( const fc::assert_exception& ex ) {
-      auto message = ex.get_log().at(0).get_message();
-      return boost::algorithm::ends_with(message, expected);
-   }
-
-   string expected;
-};
-
-
-BOOST_FIXTURE_TEST_CASE( test_generic_currency, tester ) try {
-   produce_blocks(2000);
-   create_accounts( {N(currency), N(usera), N(userb)}, asset::from_string("1000.0000 EOS") );
-   produce_blocks(2);
-   set_code( N(currency), currency_wast );
-   produce_blocks(2);
-
-
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(currency), config::active_name}},
-                               issue{ .to = N(usera), 
-                                      .quantity = asset::from_string( "10.0000 CUR" )
-                                    });
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(currency), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-   }
-
-} FC_LOG_AND_RETHROW() /// test_api_bootstrap
-
 
 BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
    produce_blocks(2);
@@ -293,7 +245,7 @@ BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      BOOST_CHECK_EXCEPTION(control->push_transaction(trx), fc::assert_exception, assert_message_is("test_action::assert_false"));
+      BOOST_CHECK_EXCEPTION(push_transaction(trx), fc::assert_exception, assert_message_is("test_action::assert_false"));
       produce_block();
 
       BOOST_REQUIRE_EQUAL(false, chain_has_transaction(trx.id()));
@@ -306,7 +258,7 @@ BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      control->push_transaction(trx);
+      push_transaction(trx);
       produce_block();
 
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -316,120 +268,11 @@ BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
 } FC_LOG_AND_RETHROW() /// test_api_bootstrap
 
 
-BOOST_FIXTURE_TEST_CASE( test_currency, tester ) try {
-   produce_blocks(2000);
-
-   create_accounts( {N(currency), N(alice), N(bob)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(currency), "10.0000 EOS", "memo" );
-   produce_block();
-
-   set_code(N(currency), currency_wast);
-   set_abi(N(currency), currency_abi);
-   produce_blocks(1);
-
-   const auto& accnt  = control->get_database().get<account_object,by_name>( N(currency) );
-   abi_def abi;
-   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-   abi_serializer abi_ser(abi);
-
-   // issue tokens
-   {
-      signed_transaction trx;
-      action issue_act;
-      issue_act.account = N(currency);
-      issue_act.name = N(issue);
-      issue_act.authorization = vector<permission_level>{{N(currency), config::active_name}};
-      issue_act.data = abi_ser.variant_to_binary("issue", mutable_variant_object()
-         ("to",       "currency")
-         ("quantity", "1000000.0000 CUR")
-      );
-      trx.actions.emplace_back(std::move(issue_act));
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(currency), "active"), chain_id_type());
-      control->push_transaction(trx);
-      produce_block();
-
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   // make a transfer from the contract to a user
-   {
-      signed_transaction trx;
-      action transfer_act;
-      transfer_act.account = N(currency);
-      transfer_act.name = N(transfer);
-      transfer_act.authorization = vector<permission_level>{{N(currency), config::active_name}};
-      transfer_act.data = abi_ser.variant_to_binary("transfer", mutable_variant_object()
-         ("from", "currency")
-         ("to",   "alice")
-         ("quantity", "100.0000 CUR")
-         ("memo", "fund Alice")
-      );
-      trx.actions.emplace_back(std::move(transfer_act));
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(currency), "active"), chain_id_type());
-      control->push_transaction(trx);
-      produce_block();
-
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   // Overspend!
-   {
-      signed_transaction trx;
-      action transfer_act;
-      transfer_act.account = N(currency);
-      transfer_act.name = N(transfer);
-      transfer_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
-      transfer_act.data = abi_ser.variant_to_binary("transfer", mutable_variant_object()
-         ("from", "alice")
-         ("to",   "bob")
-         ("quantity", "101.0000 CUR")
-         ("memo", "overspend! Alice")
-      );
-      trx.actions.emplace_back(std::move(transfer_act));
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(alice), "active"), chain_id_type());
-      BOOST_CHECK_EXCEPTION(control->push_transaction(trx), fc::assert_exception, assert_message_is("integer underflow subtracting token balance"));
-      produce_block();
-
-      BOOST_REQUIRE_EQUAL(false, chain_has_transaction(trx.id()));
-   }
-
-   // Full spend
-   {
-      signed_transaction trx;
-      action transfer_act;
-      transfer_act.account = N(currency);
-      transfer_act.name = N(transfer);
-      transfer_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
-      transfer_act.data = abi_ser.variant_to_binary("transfer", mutable_variant_object()
-         ("from", "alice")
-         ("to",   "bob")
-         ("quantity", "100.0000 CUR")
-         ("memo", "all in! Alice")
-      );
-      trx.actions.emplace_back(std::move(transfer_act));
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(alice), "active"), chain_id_type());
-      control->push_transaction(trx);
-      produce_block();
-
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-} FC_LOG_AND_RETHROW() /// test_currency
-
-
 BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
    produce_blocks(2);
 
-   create_account( N(proxy), asset::from_string("10000.0000 EOS") );
-   create_accounts( {N(alice), N(bob)}, asset::from_string("1000.0000 EOS") );
+   create_account( N(proxy), asset::from_string("0.0000 EOS") );
+   create_accounts( {N(alice), N(bob)}, asset::from_string("0.0000 EOS") );
    transfer( N(inita), N(alice), "10.0000 EOS", "memo" );
    produce_block();
 
@@ -457,7 +300,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(proxy), "active"), chain_id_type());
-      control->push_transaction(trx);
+      push_transaction(trx);
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    }
@@ -484,8 +327,8 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
 BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(proxy), N(bob)}, asset::from_string("10000.0000 EOS") );
-   create_account( N(alice), asset::from_string("1000.0000 EOS") );
+   create_accounts( {N(proxy), N(bob)}, asset::from_string("0.0000 EOS") );
+   create_account( N(alice), asset::from_string("0.0000 EOS") );
    transfer( N(inita), N(alice), "10.0000 EOS", "memo" );
    produce_block();
 
@@ -514,7 +357,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(proxy), "active"), chain_id_type());
-      control->push_transaction(trx);
+      push_transaction(trx);
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    }
@@ -555,7 +398,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
 
       set_tapos(trx);
       trx.sign(get_private_key(N(bob), "active"), chain_id_type());
-      control->push_transaction(trx);
+      push_transaction(trx);
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    }
@@ -603,7 +446,7 @@ BOOST_FIXTURE_TEST_CASE( check_entry_behavior, tester ) try {
 
    set_tapos(trx);
    trx.sign(get_private_key( N(entrycheck), "active" ), chain_id_type());
-   control->push_transaction(trx);
+   push_transaction(trx);
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    const auto& receipt = get_transaction_receipt(trx.id());
@@ -632,7 +475,7 @@ BOOST_FIXTURE_TEST_CASE( simple_no_memory_check, tester ) try {
    trx.actions.push_back(act);
 
    trx.sign(get_private_key( N(nomem), "active" ), chain_id_type());
-   BOOST_CHECK_THROW(control->push_transaction( trx ), wasm_execution_error);
+   BOOST_CHECK_THROW(push_transaction( trx ), wasm_execution_error);
 } FC_LOG_AND_RETHROW()
 
 //Make sure globals are all reset to their inital values
@@ -647,15 +490,24 @@ BOOST_FIXTURE_TEST_CASE( check_global_reset, tester ) try {
    produce_blocks(1);
 
    signed_transaction trx;
+   {
    action act;
    act.account = N(globalreset);
-   act.name = N();
+   act.name = name(0ULL);
    act.authorization = vector<permission_level>{{N(globalreset),config::active_name}};
    trx.actions.push_back(act);
+   }
+   {
+   action act;
+   act.account = N(globalreset);
+   act.name = 1ULL;
+   act.authorization = vector<permission_level>{{N(globalreset),config::active_name}};
+   trx.actions.push_back(act);
+   }
 
    set_tapos(trx);
    trx.sign(get_private_key( N(globalreset), "active" ), chain_id_type());
-   control->push_transaction(trx);
+   push_transaction(trx);
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    const auto& receipt = get_transaction_receipt(trx.id());
@@ -693,11 +545,256 @@ BOOST_FIXTURE_TEST_CASE( stl_test, tester ) try {
 
         set_tapos(trx);
         trx.sign(get_private_key(N(bob), "active"), chain_id_type());
-        control->push_transaction(trx);
+        push_transaction(trx);
         produce_block();
 
         BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
     }
 } FC_LOG_AND_RETHROW() /// stltest
+
+//Make sure current_memory/grow_memory is not allowed
+BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(current_memory)}, asset::from_string("1000.0000 EOS") );
+   transfer( N(inita), N(current_memory), "10.0000 EOS", "memo" );
+   produce_block();
+
+   BOOST_CHECK_THROW(set_code(N(current_memory), current_memory_wast), eosio::chain::wasm_execution_error);
+   produce_blocks(1);
+
+   BOOST_CHECK_THROW(set_code(N(current_memory), grow_memory_wast), eosio::chain::wasm_execution_error);
+   produce_blocks(1);
+
+} FC_LOG_AND_RETHROW()
+
+//Make sure we can create a wasm with 16 pages, but not grow it any
+BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(bigmem)}, asset::from_string("1000.0000 EOS") );
+   transfer( N(inita), N(bigmem), "10.0000 EOS", "memo" );
+   produce_block();
+
+   set_code(N(bigmem), biggest_memory_wast);  //should pass, 16 pages is fine
+   produce_blocks(1);
+
+   signed_transaction trx;
+   action act;
+   act.account = N(bigmem);
+   act.name = N();
+   act.authorization = vector<permission_level>{{N(bigmem),config::active_name}};
+   trx.actions.push_back(act);
+
+   set_tapos(trx);
+   trx.sign(get_private_key( N(bigmem), "active" ), chain_id_type());
+   //but should not be able to grow beyond 16th page
+   BOOST_CHECK_THROW(push_transaction(trx), fc::exception);
+
+   produce_blocks(1);
+
+   //should fail, 17 blocks is no no
+   BOOST_CHECK_THROW(set_code(N(bigmem), too_big_memory_wast), eosio::chain::wasm_execution_error);
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( table_init_tests, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(tableinit)}, asset::from_string("1000.0000 EOS") );
+   transfer( N(inita), N(tableinit), "10.0000 EOS", "memo" );
+   produce_block();
+
+   set_code(N(tableinit), valid_sparse_table);
+   produce_blocks(1);
+
+   BOOST_CHECK_THROW(set_code(N(tableinit), too_big_table), eosio::chain::wasm_execution_error);
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( memory_init_border, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(memoryborder)}, asset::from_string("1000.0000 EOS") );
+   transfer( N(inita), N(memoryborder), "10.0000 EOS", "memo" );
+   produce_block();
+
+   set_code(N(memoryborder), memory_init_borderline);
+   produce_blocks(1);
+
+   BOOST_CHECK_THROW(set_code(N(memoryborder), memory_init_toolong), eosio::chain::wasm_execution_error);
+   BOOST_CHECK_THROW(set_code(N(memoryborder), memory_init_negative), eosio::chain::wasm_execution_error);
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( imports, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(imports)}, asset::from_string("1000.0000 EOS") );
+   transfer( N(inita), N(imports), "10.0000 EOS", "memo" );
+   produce_block();
+
+   //this will fail to link but that's okay; mainly looking to make sure that the constraint
+   // system doesn't choke when memories and tables exist only as imports
+   BOOST_CHECK_THROW(set_code(N(imports), memory_table_import), fc::exception);
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( lotso_globals, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(globals)}, asset::from_string("1000.0000 EOS") );
+   transfer( N(inita), N(globals), "10.0000 EOS", "memo" );
+   produce_block();
+
+   std::stringstream ss;
+   ss << "(module ";
+   for(unsigned int i = 0; i < 85; ++i)
+      ss << "(global $g" << i << " (mut i32) (i32.const 0))" << "(global $g" << i+100 << " (mut i64) (i64.const 0))";
+   //that gives us 1020 bytes of mutable globals
+   //add a few immutable ones for good measure
+   for(unsigned int i = 0; i < 10; ++i)
+      ss << "(global $g" << i+200 << " i32 (i32.const 0))";
+   
+   set_code(N(globals),
+      string(ss.str() + ")")
+   .c_str());
+   //1024 should pass
+   set_code(N(globals),
+      string(ss.str() + "(global $z (mut i32) (i32.const -12)))")
+   .c_str());
+   //1028 should fail
+   BOOST_CHECK_THROW(set_code(N(globals),
+      string(ss.str() + "(global $z (mut i64) (i64.const -12)))")
+   .c_str()), eosio::chain::wasm_execution_error);;
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(offsets)}, asset::from_string("1000.0000 EOS") );
+   transfer( N(inita), N(offsets), "10.0000 EOS", "memo" );
+   produce_block();
+
+   //floats not tested since they are blocked in the serializer before eosio_constraints
+   vector<string> loadops = {
+      "i32.load", "i64.load", /* "f32.load", "f64.load",*/ "i32.load8_s", "i32.load8_u",
+      "i32.load16_s", "i32.load16_u", "i64.load8_s", "i64.load8_u", "i64.load16_s",
+      "i64.load16_u", "i64.load32_s", "i64.load32_u"
+   };
+   vector<vector<string>> storeops = {
+      {"i32.store",   "i32"},
+      {"i64.store",   "i64"},
+    /*{"f32.store",   "f32"},
+      {"f64.store",   "f64"},*/
+      {"i32.store8",  "i32"},
+      {"i32.store16", "i32"},
+      {"i64.store8",  "i64"},
+      {"i64.store16", "i64"},
+      {"i64.store32", "i64"},
+   };
+
+   for(const string& s : loadops) {
+      std::stringstream ss;
+      ss << "(module (memory $0 16) (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(drop (" << s << " offset=1048574 (i32.const 0)))";
+      ss << "))";
+
+      set_code(N(offsets), ss.str().c_str());
+      produce_block();
+   }
+   for(const vector<string>& o : storeops) {
+      std::stringstream ss;
+      ss << "(module (memory $0 16) (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(" << o[0] << " offset=1048574 (i32.const 0) (" << o[1] << ".const 0))";
+      ss << "))";
+
+      set_code(N(offsets), ss.str().c_str());
+      produce_block();
+   }
+
+   for(const string& s : loadops) {
+      std::stringstream ss;
+      ss << "(module (memory $0 16) (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(drop (" << s << " offset=1048580 (i32.const 0)))";
+      ss << "))";
+
+      BOOST_CHECK_THROW(set_code(N(offsets), ss.str().c_str()), eosio::chain::wasm_execution_error);
+      produce_block();
+   }
+   for(const vector<string>& o : storeops) {
+      std::stringstream ss;
+      ss << "(module (memory $0 16) (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(" << o[0] << " offset=1048580 (i32.const 0) (" << o[1] << ".const 0))";
+      ss << "))";
+
+      BOOST_CHECK_THROW(set_code(N(offsets), ss.str().c_str()), eosio::chain::wasm_execution_error);
+      produce_block();
+   }
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(noop, tester) try {
+   produce_blocks(2);
+   create_accounts( {N(noop), N(alice)}, asset::from_string("1000.0000 EOS") );
+   produce_block();
+
+   set_code(N(noop), noop_wast);
+   set_abi(N(noop), noop_abi);
+   const auto& accnt  = control->get_database().get<account_object,by_name>(N(noop));
+   abi_def abi;
+   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+   abi_serializer abi_ser(abi);
+
+   {
+      produce_blocks(5);
+      signed_transaction trx;
+      action act;
+      act.account = N(noop);
+      act.name = N(anyaction);
+      act.authorization = vector<permission_level>{{N(noop), config::active_name}};
+
+      act.data = abi_ser.variant_to_binary("anyaction", mutable_variant_object()
+                                           ("from", "noop")
+                                           ("type", "some type")
+                                           ("data", "some data goes here")
+                                           );
+
+      trx.actions.emplace_back(std::move(act));
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(noop), "active"), chain_id_type());
+      push_transaction(trx);
+      produce_block();
+
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+   {
+      produce_blocks(5);
+      signed_transaction trx;
+      action act;
+      act.account = N(noop);
+      act.name = N(anyaction);
+      act.authorization = vector<permission_level>{{N(alice), config::active_name}};
+
+      act.data = abi_ser.variant_to_binary("anyaction", mutable_variant_object()
+                                           ("from", "alice")
+                                           ("type", "some type")
+                                           ("data", "some data goes here")
+                                           );
+
+      trx.actions.emplace_back(std::move(act));
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(alice), "active"), chain_id_type());
+      push_transaction(trx);
+      produce_block();
+
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+ } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -18,12 +18,13 @@ namespace eosio { namespace chain { namespace contracts {
       OBJECT_CTOR(table_id_object)
 
       id_type        id;
-      scope_name     scope;
       account_name   code;
+      scope_name     scope;
       table_name     table;
+      uint32_t       count = 0; /// the number of elements in the table
    };
 
-   struct by_scope_code_table;
+   struct by_code_scope_table;
 
    using table_id_multi_index = chainbase::shared_multi_index_container<
       table_id_object,
@@ -31,10 +32,10 @@ namespace eosio { namespace chain { namespace contracts {
          ordered_unique<tag<by_id>,
             member<table_id_object, table_id_object::id_type, &table_id_object::id>
          >,
-         ordered_unique<tag<by_scope_code_table>,
+         ordered_unique<tag<by_code_scope_table>,
             composite_key< table_id_object,
-               member<table_id_object, scope_name,   &table_id_object::scope>,
                member<table_id_object, account_name, &table_id_object::code>,
+               member<table_id_object, scope_name,   &table_id_object::scope>,
                member<table_id_object, table_name,   &table_id_object::table>
             >
          >
@@ -47,6 +48,7 @@ namespace eosio { namespace chain { namespace contracts {
    struct by_scope_secondary;
    struct by_scope_tertiary;
 
+   
    struct key_value_object : public chainbase::object<key_value_object_type, key_value_object> {
       OBJECT_CTOR(key_value_object, (value))
 
@@ -57,6 +59,7 @@ namespace eosio { namespace chain { namespace contracts {
       table_id              t_id;
       uint64_t              primary_key;
       shared_string         value;
+      account_name          payer = 0;
    };
 
    using key_value_index = chainbase::shared_multi_index_container<
@@ -72,6 +75,90 @@ namespace eosio { namespace chain { namespace contracts {
          >
       >
    >;
+
+   struct by_primary;
+   struct by_secondary;
+
+   template<typename SecondaryKey, uint64_t ObjectTypeId>
+   struct secondary_index
+   {
+      struct index_object : public chainbase::object<ObjectTypeId,index_object> {
+         OBJECT_CTOR(index_object)
+         typedef SecondaryKey secondary_key_type;
+
+         typename chainbase::object<ObjectTypeId,index_object>::id_type       id;
+         table_id      t_id;
+         uint64_t      primary_key;
+         SecondaryKey  secondary_key;
+         account_name  payer;
+      };
+
+
+      typedef chainbase::shared_multi_index_container<
+         index_object,
+         indexed_by<
+            ordered_unique<tag<by_id>, member<index_object, typename index_object::id_type, &index_object::id>>,
+            ordered_unique<tag<by_primary>,
+               composite_key< index_object,
+                  member<index_object, table_id, &index_object::t_id>,
+                  member<index_object, uint64_t, &index_object::primary_key>
+               >,
+               composite_key_compare< std::less<table_id>, std::less<uint64_t> >
+            >,
+            ordered_unique<tag<by_secondary>,
+               composite_key< index_object,
+                  member<index_object, SecondaryKey, &index_object::secondary_key>,
+                  member<index_object, uint64_t, &index_object::primary_key>
+               >
+            >
+         >
+      > index_index;
+   };
+
+   typedef secondary_index<uint64_t,index64_object_type>::index_object   index64_object;
+   typedef secondary_index<uint64_t,index64_object_type>::index_index    index64_index;
+
+   typedef secondary_index<uint128_t,index128_object_type>::index_object index128_object;
+   typedef secondary_index<uint128_t,index128_object_type>::index_index  index128_index;
+
+   /*
+   struct index64_object : public chainbase::object<index64_object_type, index64_object> {
+      OBJECT_CTOR(index64_object)
+
+      typedef uint64_t key_type;
+      static const int number_of_keys = 1;
+
+      id_type               id;
+      table_id              t_id;
+      uint64_t              primary_key;
+      uint64_t              secondary_key;
+      account_name          payer;
+   };
+
+   using index64_index = chainbase::shared_multi_index_container<
+      index64_object,
+      indexed_by<
+         ordered_unique<tag<by_id>, member<index64_object, index64_object::id_type, &index64_object::id>>,
+         ordered_unique<tag<by_primary>,
+            composite_key< index64_object,
+               member<index64_object, table_id, &index64_object::t_id>,
+               member<index64_object, uint64_t, &index64_object::primary_key>
+            >,
+            composite_key_compare< std::less<table_id>, std::less<uint64_t> >
+         >,
+         ordered_unique<tag<by_secondary>,
+            composite_key< index64_object,
+               member<index64_object, uint64_t, &index64_object::secondary_key>,
+               member<index64_object, uint64_t, &index64_object::primary_key>
+            >
+         >
+      >
+   >;
+   */
+
+
+
+
 
    struct shared_string_less {
       bool operator()( const char* a, const char* b )const {
@@ -103,6 +190,7 @@ namespace eosio { namespace chain { namespace contracts {
       table_id              t_id;
       shared_string         primary_key;
       shared_string         value;
+      account_name          payer;
    };
 
    using keystr_value_index = chainbase::shared_multi_index_container<
@@ -130,6 +218,7 @@ namespace eosio { namespace chain { namespace contracts {
       uint128_t             primary_key;
       uint128_t             secondary_key;
       shared_string         value;
+      account_name          payer;
    };
 
    using key128x128_value_index = chainbase::shared_multi_index_container<
@@ -155,6 +244,45 @@ namespace eosio { namespace chain { namespace contracts {
       >
    >;
 
+
+   struct key64x64_value_object : public chainbase::object<key64x64_value_object_type, key64x64_value_object> {
+      OBJECT_CTOR(key64x64_value_object, (value))
+
+      typedef uint64_t key_type;
+      static const int number_of_keys = 2;
+
+      id_type               id;
+      table_id              t_id;
+      uint64_t              primary_key;
+      uint64_t              secondary_key;
+      shared_string         value;
+      account_name          payer;
+   };
+
+   using key64x64_value_index = chainbase::shared_multi_index_container<
+      key64x64_value_object,
+      indexed_by<
+         ordered_unique<tag<by_id>, member<key64x64_value_object, key64x64_value_object::id_type, &key64x64_value_object::id>>,
+         ordered_unique<tag<by_scope_primary>,
+            composite_key< key64x64_value_object,
+               member<key64x64_value_object, table_id, &key64x64_value_object::t_id>,
+               member<key64x64_value_object, uint64_t, &key64x64_value_object::primary_key>,
+               member<key64x64_value_object, uint64_t, &key64x64_value_object::secondary_key>
+            >,
+            composite_key_compare< std::less<table_id>,std::less<uint64_t>,std::less<uint64_t> >
+         >,
+         ordered_unique<tag<by_scope_secondary>,
+            composite_key< key64x64_value_object,
+               member<key64x64_value_object, table_id, &key64x64_value_object::t_id>,
+               member<key64x64_value_object, uint64_t, &key64x64_value_object::secondary_key>,
+               member<key64x64_value_object, typename key64x64_value_object::id_type, &key64x64_value_object::id>
+            >,
+            composite_key_compare< std::less<table_id>,std::less<uint64_t>,std::less<typename key64x64_value_object::id_type> >
+         >
+      >
+   >;
+
+
    struct key64x64x64_value_object : public chainbase::object<key64x64x64_value_object_type, key64x64x64_value_object> {
       OBJECT_CTOR(key64x64x64_value_object, (value))
 
@@ -167,6 +295,7 @@ namespace eosio { namespace chain { namespace contracts {
       uint64_t              secondary_key;
       uint64_t              tertiary_key;
       shared_string         value;
+      account_name          payer;
    };
 
    using key64x64x64_value_index = chainbase::shared_multi_index_container<
@@ -208,10 +337,15 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::table_id_object, eosio::chain:
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key_value_object, eosio::chain::contracts::key_value_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::keystr_value_object, eosio::chain::contracts::keystr_value_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key128x128_value_object, eosio::chain::contracts::key128x128_value_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key64x64_value_object, eosio::chain::contracts::key64x64_value_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key64x64x64_value_object, eosio::chain::contracts::key64x64x64_value_index)
 
-FC_REFLECT(eosio::chain::contracts::table_id_object, (id)(scope)(code)(table) )
-FC_REFLECT(eosio::chain::contracts::key_value_object, (id)(t_id)(primary_key)(value) )
-FC_REFLECT(eosio::chain::contracts::keystr_value_object, (id)(t_id)(primary_key)(value) )
-FC_REFLECT(eosio::chain::contracts::key128x128_value_object, (id)(t_id)(primary_key)(secondary_key)(value) )
-FC_REFLECT(eosio::chain::contracts::key64x64x64_value_object, (id)(t_id)(primary_key)(secondary_key)(tertiary_key)(value) )
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index64_object, eosio::chain::contracts::index64_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index128_object, eosio::chain::contracts::index128_index)
+
+FC_REFLECT(eosio::chain::contracts::table_id_object, (id)(code)(scope)(table) )
+FC_REFLECT(eosio::chain::contracts::key_value_object, (id)(t_id)(primary_key)(value)(payer) )
+FC_REFLECT(eosio::chain::contracts::keystr_value_object, (id)(t_id)(primary_key)(value)(payer) )
+FC_REFLECT(eosio::chain::contracts::key128x128_value_object, (id)(t_id)(primary_key)(secondary_key)(value)(payer) )
+FC_REFLECT(eosio::chain::contracts::key64x64_value_object, (id)(t_id)(primary_key)(secondary_key)(value)(payer) )
+FC_REFLECT(eosio::chain::contracts::key64x64x64_value_object, (id)(t_id)(primary_key)(secondary_key)(tertiary_key)(value)(payer) )

@@ -50,7 +50,7 @@ namespace eosio { namespace chain {
       skip_output_check           = 1 << 13, ///< used to skip checks for outputs in block exactly matching those created from apply
       pushed_transaction          = 1 << 14, ///< used to indicate that the origination of the call was from a push_transaction, to determine time allotment
       created_block               = 1 << 15, ///< used to indicate that the origination of the call was for creating a block, to determine time allotment
-      received_block              = 1 << 16,  ///< used to indicate that the origination of the call was for a received block, to determine time allotment
+      received_block              = 1 << 16, ///< used to indicate that the origination of the call was for a received block, to determine time allotment
       genesis_setup               = 1 << 17, ///< used to indicate that the origination of the call was for a genesis transaction
       skip_missed_block_penalty   = 1 << 18, ///< used to indicate that missed blocks shouldn't count against producers (used in long unit tests)
    };
@@ -76,7 +76,7 @@ namespace eosio { namespace chain {
 
 
          void push_block( const signed_block& b, uint32_t skip = skip_nothing );
-         transaction_trace push_transaction( const signed_transaction& trx, uint32_t skip = skip_nothing );
+         transaction_trace push_transaction( const packed_transaction& trx, uint32_t skip = skip_nothing );
          void push_deferred_transactions( bool flush = false );
 
 
@@ -104,7 +104,7 @@ namespace eosio { namespace chain {
           * This signal is emitted any time a new transaction is added to the pending
           * block state.
           */
-         signal<void(const signed_transaction&)> on_pending_transaction;
+         signal<void(const packed_transaction&)> on_pending_transaction;
 
 
 
@@ -121,6 +121,8 @@ namespace eosio { namespace chain {
           * @return True if the controller is now applying a block; false otherwise
           */
          bool is_applying_block()const { return _currently_applying_block; }
+         bool is_start_of_round( block_num_type n )const;
+         uint32_t blocks_per_round()const; 
 
 
          chain_id_type get_chain_id()const { return chain_id_type(); } /// TODO: make this hash of constitution
@@ -164,7 +166,7 @@ namespace eosio { namespace chain {
           * @return Subset of candidate_keys whose private keys should be used to sign transaction
           * @throws fc::exception if candidate_keys does not contain all required keys
           */
-         flat_set<public_key_type> get_required_keys(const signed_transaction& trx, const flat_set<public_key_type>& candidate_keys)const;
+         flat_set<public_key_type> get_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys)const;
 
 
          bool _push_block( const signed_block& b );
@@ -199,19 +201,19 @@ namespace eosio { namespace chain {
          template<typename Function>
          auto without_pending_transactions( Function&& f )
          {
-            vector<signed_transaction> old_input;
+            vector<transaction_metadata> old_input;
 
             if( _pending_block )
-               old_input = move(_pending_block->input_transactions);
+               old_input = move(_pending_transaction_metas);
 
             clear_pending();
 
             /** after applying f() push previously input transactions on top */
             auto on_exit = fc::make_scoped_exit( [&](){ 
-               for( const auto& t : old_input ) {
+               for( auto& t : old_input ) {
                   try {
-                     if (!is_known_transaction(t.id()))
-                        push_transaction( t );
+                     if (!is_known_transaction(t.id))
+                        _push_transaction( std::move(t) );
                   } catch ( ... ){}
                }
             });
@@ -292,9 +294,16 @@ namespace eosio { namespace chain {
                                    )const;
 
 
+         void set_txn_execution_times(uint32_t create_block_txn_execution_time, uint32_t rcvd_block_txn_execution_time, uint32_t txn_execution_time);
+
+         static const uint32_t default_received_block_transaction_execution_time_ms;
+         static const uint32_t default_transaction_execution_time_ms;
+         static const uint32_t default_create_block_transaction_execution_time_ms;
 
       private:
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
+
+         uint32_t txn_execution_time() const;
 
 
          friend class contracts::chain_initializer;
@@ -310,8 +319,8 @@ namespace eosio { namespace chain {
          //@}
 
 
-         transaction_trace _push_transaction( const signed_transaction& trx );
-         transaction_trace _push_transaction( transaction_metadata& data );
+         transaction_trace _push_transaction( const packed_transaction& trx );
+         transaction_trace _push_transaction( transaction_metadata&& data );
          transaction_trace _apply_transaction( transaction_metadata& data );
          transaction_trace __apply_transaction( transaction_metadata& data );
          transaction_trace _apply_error( transaction_metadata& data );
@@ -321,7 +330,7 @@ namespace eosio { namespace chain {
          void _initialize_chain(contracts::chain_initializer& starter);
 
          producer_schedule_type _calculate_producer_schedule()const;
-         const producer_schedule_type& _head_producer_schedule()const;
+         const shared_producer_schedule_type& _head_producer_schedule()const;
 
 
          void replay();
@@ -338,7 +347,8 @@ namespace eosio { namespace chain {
             return f();
          }
 
-         void check_transaction_authorization(const signed_transaction& trx, 
+         void check_transaction_authorization(const transaction& trx,
+                                              const vector<signature_type>& signatures,
                                               bool allow_unused_signatures = false)const;
 
 
@@ -361,7 +371,7 @@ namespace eosio { namespace chain {
          } FC_CAPTURE_AND_RETHROW( (trx) ) }
          
          /// Validate transaction helpers @{
-         void validate_uniqueness(const signed_transaction& trx)const;
+         void validate_uniqueness(const transaction& trx)const;
          void validate_tapos(const transaction& trx)const;
          void validate_referenced_accounts(const transaction& trx)const;
          void validate_expiration(const transaction& trx) const;
@@ -418,7 +428,7 @@ namespace eosio { namespace chain {
          optional<database::session>      _pending_block_session;
          optional<signed_block>           _pending_block;
          optional<block_trace>            _pending_block_trace;
-         uint32_t                         _pending_transaction_count = 0; 
+         vector<transaction_metadata>     _pending_transaction_metas;
          optional<cycle_trace>            _pending_cycle_trace;
 
          bool                             _currently_applying_block = false;
@@ -431,6 +441,10 @@ namespace eosio { namespace chain {
          map< account_name, map<handler_key, apply_handler> >   _apply_handlers;
 
          wasm_cache                       _wasm_cache;
+
+         uint32_t                         _create_block_txn_execution_time;
+         uint32_t                         _rcvd_block_txn_execution_time;
+         uint32_t                         _txn_execution_time;
    };
 
 } }

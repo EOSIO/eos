@@ -24,8 +24,15 @@
       "name": "account",
       "base": "",
       "fields": [
-        {"name":"key", "type":"name"},
+        {"name":"currency", "type":"uint64"},
         {"name":"balance", "type":"uint64"}
+      ]
+    },{
+      "name": "currency_stats",
+      "base": "",
+      "fields": [
+        {"name":"currency", "type":"uint64"},
+        {"name":"supply", "type":"uint64"}
       ]
     }
   ],
@@ -41,8 +48,14 @@
       "name": "account",
       "type": "account",
       "index_type": "i64",
-      "key_names" : ["key"],
-      "key_types" : ["name"]
+      "key_names" : ["currency"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "stat",
+      "type": "currency_stats",
+      "index_type": "i64",
+      "key_names" : ["currency"],
+      "key_types" : ["uint64"]
     }
   ]
 }

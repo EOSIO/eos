@@ -4,7 +4,11 @@
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
+#include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/crypto/sha1.hpp>
+#include <fc/io/raw.hpp>
+#include <fc/utf8.hpp>
 
 #include <Runtime/Runtime.h>
 #include "IR/Module.h"
@@ -93,14 +97,8 @@ namespace eosio { namespace chain {
     */
    struct wasm_cache_impl {
       wasm_cache_impl()
-      :_ios()
-      ,_work(_ios)
       {
          Runtime::init();
-
-         _utility_thread = std::thread([](io_service* ios){
-            ios->run();
-         }, &_ios);
       }
 
       /**
@@ -111,9 +109,6 @@ namespace eosio { namespace chain {
        * returned before this can be destroyed
        */
       ~wasm_cache_impl() {
-         _work.reset();
-         _ios.stop();
-         _utility_thread.join();
          freeUnreferencedObjects({});
       }
 
@@ -155,8 +150,8 @@ namespace eosio { namespace chain {
        * @return - varies depending on the signature of the lambda
        */
       template<typename F>
-      auto with_lock(F f) {
-         std::lock_guard<std::mutex> lock(_cache_lock);
+      auto with_lock(std::mutex &l, F f) {
+         std::lock_guard<std::mutex> lock(l);
          return f();
       };
 
@@ -167,7 +162,7 @@ namespace eosio { namespace chain {
        * @return
        */
       optional_info_ref fetch_info(const digest_type& code_id) {
-         return with_lock([&,this](){
+         return with_lock(_cache_lock, [&,this](){
             auto iter = _cache.find(code_id);
             if (iter != _cache.end()) {
                return optional_info_ref(iter->second);
@@ -183,7 +178,7 @@ namespace eosio { namespace chain {
        * @return - reference to the entry when one is available
        */
       optional_entry_ref try_fetch_entry(const digest_type& code_id) {
-         return with_lock([&,this](){
+         return with_lock(_cache_lock, [&,this](){
             auto iter = _cache.find(code_id);
             if (iter != _cache.end() && iter->second.available_instances > 0) {
                auto &ptr = iter->second.instances.at(--(iter->second.available_instances));
@@ -211,7 +206,7 @@ namespace eosio { namespace chain {
 
          // compilation is not thread safe, so we dispatch it to a io_service running on a single thread to
          // queue up and synchronize compilations
-         _ios.post([&,this](){
+         with_lock(_compile_lock, [&,this](){
             // check to see if someone returned what we need before making a new one
             auto pending_result = try_fetch_entry(code_id);
             std::exception_ptr pending_error;
@@ -226,7 +221,8 @@ namespace eosio { namespace chain {
                try {
                   Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
                   #warning TODO: restore checktime injection?
-                  WASM::serialize(stream, *module);
+                  WASM::serializeWithInjection(stream, *module);
+                  validate_eosio_wasm_constraints(*module);
 
                   root_resolver resolver;
                   LinkResult link_result = linkModule(*module, resolver);
@@ -252,7 +248,7 @@ namespace eosio { namespace chain {
 
                if (pending_error == nullptr) {
                   // grab the lock and put this in the cache as unavailble
-                  with_lock([&,this]() {
+                  with_lock(_cache_lock, [&,this]() {
                      // find or create a new entry
                      auto iter = _cache.emplace(code_id, code_info(mem_end, std::move(mem_image))).first;
 
@@ -262,25 +258,14 @@ namespace eosio { namespace chain {
                }
             }
 
-            // publish result under lock
-            with_lock([&](){
-               if (pending_error != nullptr) {
-                  error = pending_error;
-               } else {
-                  result = pending_result;
-               }
-            });
+           if (pending_error != nullptr) {
+              error = pending_error;
+           } else {
+              result = pending_result;
+           }
 
-            condition.notify_all();
          });
 
-         // wait for the other thread to compile a copy for us
-         {
-            std::unique_lock<std::mutex> lock(_cache_lock);
-            condition.wait(lock, [&]{
-               return error != nullptr || result.valid();
-            });
-         }
 
          try {
             if (error != nullptr) {
@@ -300,43 +285,39 @@ namespace eosio { namespace chain {
        * @param entry - the entry to return
        */
       void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
-         _ios.post([&,code_id,this](){
-            // sanitize by reseting the memory that may now be dirty
-            auto& info = (*fetch_info(code_id)).get();
-            if(getDefaultMemory(entry.instance)) {
-               char* memstart = &memoryRef<char>( getDefaultMemory(entry.instance), 0 );
-               memset( memstart + info.mem_end, 0, ((1<<16) - info.mem_end) );
-               memcpy( memstart, info.mem_image.data(), info.mem_end);
-            }
-            resetGlobalInstances(entry.instance);
+        // sanitize by reseting the memory that may now be dirty
+        auto& info = (*fetch_info(code_id)).get();
+        if(getDefaultMemory(entry.instance)) {
+           char* memstart = &memoryRef<char>( getDefaultMemory(entry.instance), 0 );
+           memset( memstart + info.mem_end, 0, ((1<<16) - info.mem_end) );
+           memcpy( memstart, info.mem_image.data(), info.mem_end);
+        }
+        resetGlobalInstances(entry.instance);
 
-            // under a lock, put this entry back in the available instances side of the instances vector
-            with_lock([&,this](){
-               // walk the vector and find this entry
-               auto iter = info.instances.begin();
-               while (iter->get() != &entry) {
-                  ++iter;
-               }
+        // under a lock, put this entry back in the available instances side of the instances vector
+        with_lock(_cache_lock, [&,this](){
+           // walk the vector and find this entry
+           auto iter = info.instances.begin();
+           while (iter->get() != &entry) {
+              ++iter;
+           }
 
-               FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
+           FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
 
-               auto first_unavailable = (info.instances.begin() + info.available_instances);
-               if (iter != first_unavailable) {
-                  std::swap(iter, first_unavailable);
-               }
-               info.available_instances++;
-            });
-         });
+           auto first_unavailable = (info.instances.begin() + info.available_instances);
+           if (iter != first_unavailable) {
+              std::swap(iter, first_unavailable);
+           }
+           info.available_instances++;
+        });
       }
 
       // mapping of digest to an entry for the code
       map<digest_type, code_info> _cache;
       std::mutex _cache_lock;
 
-      // compilation and cleanup thread
-      std::thread _utility_thread;
-      io_service _ios;
-      optional<io_service::work> _work;
+      // compilation lock
+      std::mutex _compile_lock;
    };
 
    wasm_cache::wasm_cache()
@@ -390,6 +371,7 @@ namespace eosio { namespace chain {
       FC_ASSERT( getFunctionType(call)->parameters.size() == args.size() );
 
       auto context_guard = scoped_context(current_context, code, context);
+      context.checktime_start();
       runInstanceStartFunc(code.instance);
       Runtime::invokeFunction(call,args);
    } catch( const Runtime::Exception& e ) {
@@ -412,214 +394,15 @@ namespace eosio { namespace chain {
    }
 
    void wasm_interface::apply( wasm_cache::entry& code, apply_context& context ) {
-      if (context.act.account == config::system_account_name && context.act.name == N(setcode)) {
-         my->call("init", {}, code, context);
-      } else {
-         vector<Value> args = {Value(uint64_t(context.act.account)),
-                               Value(uint64_t(context.act.name))};
-         my->call("apply", args, code, context);
-      }
+      vector<Value> args = {Value(uint64_t(context.act.account)),
+                            Value(uint64_t(context.act.name))};
+      my->call("apply", args, code, context);
    }
 
    void wasm_interface::error( wasm_cache::entry& code, apply_context& context ) {
       vector<Value> args = { /* */ };
       my->call("error", args, code, context);
    }
-
-#if 0
-  DEFINE_INTRINSIC_FUNCTION2(env,assert,assert,none,i32,test,i32,msg) {
-      elog( "assert" );
-      /*
-      const char* m = &Runtime::memoryRef<char>( wasm_interface::get().current_memory, msg );
-     std::string message( m );
-     if( !test ) edump((message));
-     FC_ASSERT( test, "assertion failed: ${s}", ("s",message)("ptr",msg) );
-     */
-   }
-
-   DEFINE_INTRINSIC_FUNCTION1(env,printi,printi,none,i64,val) {
-     std::cerr << uint64_t(val);
-   }
-   DEFINE_INTRINSIC_FUNCTION1(env,printd,printd,none,i64,val) {
-     //std::cerr << DOUBLE(*reinterpret_cast<double *>(&val));
-   }
-
-   DEFINE_INTRINSIC_FUNCTION1(env,printi128,printi128,none,i32,val) {
-      /*
-      auto& wasm  = wasm_interface::get();
-      auto  mem   = wasm.memory();
-      auto& value = memoryRef<unsigned __int128>( mem, val );
-      fc::uint128_t v(value>>64, uint64_t(value) );
-      std::cerr << fc::variant(v).get_string();
-      */
-
-   }
-   DEFINE_INTRINSIC_FUNCTION1(env,printn,printn,none,i64,val) {
-     std::cerr << name(val).to_string();
-   }
-
-
-
-
-
-   DEFINE_INTRINSIC_FUNCTION1(env,prints,prints,none,i32,charptr) {
-     auto& wasm  = wasm_interface::get();
-     auto  mem   = wasm.memory();
-
-     const char* str = &memoryRef<const char>( mem, charptr );
-     const auto allocated_memory = wasm.memory_size(); //Runtime::getDefaultMemorySize(state.instance);
-
-     std::cerr << std::string( str, strnlen(str, allocated_memory-charptr) );
-   }
-
-DEFINE_INTRINSIC_FUNCTION2(env,readMessage,readMessage,i32,i32,destptr,i32,destsize) {
-   FC_ASSERT( destsize > 0 );
-
-   /*
-   wasm_interface& wasm = wasm_interface::get();
-   auto  mem   = wasm.current_memory;
-   char* begin = memoryArrayPtr<char>( mem, destptr, uint32_t(destsize) );
-
-   int minlen = std::min<int>(wasm.current_validate_context->msg.data.size(), destsize);
-
-//   wdump((destsize)(wasm.current_validate_context->msg.data.size()));
-   memcpy( begin, wasm.current_validate_context->msg.data.data(), minlen );
-   */
-   return 0;//minlen;
-}
-
-
-
-DEFINE_INTRINSIC_FUNCTION1(env,printi128,printi128,none,i32,val) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-  auto& value = memoryRef<unsigned __int128>( mem, val );
-  fc::uint128_t v(value>>64, uint64_t(value) );
-  std::cerr << fc::variant(v).get_string();
-}
-DEFINE_INTRINSIC_FUNCTION1(env,printn,printn,none,i64,val) {
-  std::cerr << name(val).to_string();
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,prints,prints,none,i32,charptr) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  const char* str = &memoryRef<const char>( mem, charptr );
-
-  std::cerr << std::string( str, strnlen(str, wasm.current_state->mem_end-charptr) );
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,prints_l,prints_l,none,i32,charptr,i32,len) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  const char* str = &memoryRef<const char>( mem, charptr );
-
-  std::cerr << std::string( str, len );
-}
-
-DEFINE_INTRINSIC_FUNCTION2(env,printhex,printhex,none,i32,data,i32,datalen) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  char* buff = memoryArrayPtr<char>(mem, data, datalen);
-  std::cerr << fc::to_hex(buff, datalen);
-}
-
-
-DEFINE_INTRINSIC_FUNCTION1(env,free,free,none,i32,ptr) {
-}
-
-#define DEFINE_RECORD_READ_FUNCTIONS(OBJTYPE, FUNCPREFIX, INDEX, SCOPE) \
-   DEFINE_INTRINSIC_FUNCTION5(env,load_##FUNCPREFIX##OBJTYPE,load_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(load_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,front_##FUNCPREFIX##OBJTYPE,front_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(front_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,back_##FUNCPREFIX##OBJTYPE,back_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(back_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,next_##FUNCPREFIX##OBJTYPE,next_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(next_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,previous_##FUNCPREFIX##OBJTYPE,previous_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(previous_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,lower_bound_##FUNCPREFIX##OBJTYPE,lower_bound_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(lower_bound_record, INDEX, SCOPE); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION5(env,upper_bound_##FUNCPREFIX##OBJTYPE,upper_bound_##FUNCPREFIX##OBJTYPE,i32,i64,scope,i64,code,i64,table,i32,valueptr,i32,valuelen) { \
-      READ_RECORD(upper_bound_record, INDEX, SCOPE); \
-   }
-DEFINE_INTRINSIC_FUNCTION2(env,account_balance_get,account_balance_get,i32,i32,charptr,i32,len) {
-  auto& wasm  = wasm_interface::get();
-  auto  mem   = wasm.current_memory;
-
-  const uint32_t account_balance_size = sizeof(account_balance);
-  FC_ASSERT( len == account_balance_size, "passed in len ${len} is not equal to the size of an account_balance struct == ${real_len}", ("len",len)("real_len",account_balance_size) );
-
-  account_balance& total_balance = memoryRef<account_balance>( mem, charptr );
-
-  wasm.current_apply_context->require_scope(total_balance.account);
-
-  auto& db = wasm.current_apply_context->db;
-  auto* balance        = db.find< balance_object,by_owner_name >( total_balance.account );
-  auto* staked_balance = db.find<staked_balance_object,by_owner_name>( total_balance.account );
-
-  if (balance == nullptr || staked_balance == nullptr)
-     return false;
-
-  total_balance.eos_balance          = asset(balance->balance, EOS_SYMBOL);
-  total_balance.staked_balance       = asset(staked_balance->staked_balance);
-  total_balance.unstaking_balance    = asset(staked_balance->unstaking_balance);
-  total_balance.last_unstaking_time  = staked_balance->last_unstaking_time;
-
-  return true;
-}
-
-#define UPDATE_RECORD(UPDATEFUNC, INDEX, DATASIZE) \
-   return 0;
-
-   /*
-   auto lambda = [&](apply_context* ctx, INDEX::value_type::key_type* keys, char *data, uint32_t datalen) -> int32_t { \
-      return ctx->UPDATEFUNC<INDEX::value_type>( Name(scope), Name(ctx->code.value), Name(table), keys, data, datalen); \
-   }; \
-   return validate<decltype(lambda), INDEX::value_type::key_type, INDEX::value_type::number_of_keys>(valueptr, DATASIZE, lambda);
-   */
-
-#define DEFINE_RECORD_UPDATE_FUNCTIONS(OBJTYPE, INDEX) \
-   DEFINE_INTRINSIC_FUNCTION4(env,store_##OBJTYPE,store_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) { \
-      UPDATE_RECORD(store_record, INDEX, valuelen); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION4(env,update_##OBJTYPE,update_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr,i32,valuelen) { \
-      UPDATE_RECORD(update_record, INDEX, valuelen); \
-   } \
-   DEFINE_INTRINSIC_FUNCTION3(env,remove_##OBJTYPE,remove_##OBJTYPE,i32,i64,scope,i64,table,i32,valueptr) { \
-      UPDATE_RECORD(remove_record, INDEX, sizeof(typename INDEX::value_type::key_type)*INDEX::value_type::number_of_keys); \
-   }
-
-DEFINE_RECORD_READ_FUNCTIONS(i64,,key_value_index, by_scope_primary);
-DEFINE_RECORD_UPDATE_FUNCTIONS(i64, key_value_index);
-
-DEFINE_INTRINSIC_FUNCTION1(env,requireAuth,requireAuth,none,i64,account) {
-   //wasm_interface::get().current_validate_context->require_authorization( Name(account) );
-}
-
-DEFINE_INTRINSIC_FUNCTION1(env,requireNotice,requireNotice,none,i64,account) {
-   //wasm_interface::get().current_validate_context->require_authorization( Name(account) );
-}
-DEFINE_INTRINSIC_FUNCTION0(env,checktime,checktime,none) {
-   /*
-   auto dur = wasm_interface::get().current_execution_time();
-   if (dur > CHECKTIME_LIMIT) {
-      wlog("checktime called ${d}", ("d", dur));
-      throw checktime_exceeded();
-   }
-   */
-}
-#endif
 
 #if defined(assert)
    #undef assert
@@ -638,6 +421,186 @@ class context_aware_api {
       apply_context&     context;
 };
 
+class privileged_api : public context_aware_api {
+   public:
+      privileged_api( wasm_interface& wasm )
+      :context_aware_api(wasm)
+      {
+         FC_ASSERT( context.privileged, "${code} does not have permission to call this API", ("code",context.receiver) );
+      }
+
+      /**
+       *  This should schedule the feature to be activated once the
+       *  block that includes this call is irreversible. It should
+       *  fail if the feature is already pending.
+       *
+       *  Feature name should be base32 encoded name. 
+       */
+      void activate_feature( int64_t feature_name ) {
+         FC_ASSERT( !"Unsupported Harfork Detected" );
+      }
+
+      /**
+       * This should return true if a feature is active and irreversible, false if not.
+       *
+       * Irreversiblity by fork-database is not consensus safe, therefore, this defines
+       * irreversiblity only by block headers not by BFT short-cut.
+       */
+      int is_feature_active( int64_t feature_name ) {
+         return false;
+      }
+
+      void set_resource_limits( account_name account, 
+                                int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight,
+                                int64_t cpu_usec_per_period ) {
+         auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
+         FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free to much space" );
+
+         auto& gdp = context.controller.get_dynamic_global_properties();
+         context.mutable_db.modify( gdp, [&]( auto& p ) {
+           p.total_net_weight -= buo.net_weight;
+           p.total_net_weight += net_weight;
+           p.total_cpu_weight -= buo.cpu_weight;
+           p.total_cpu_weight += cpu_weight;
+           p.total_db_reserved -= buo.db_reserved_capacity;
+           p.total_db_reserved += ram_bytes;
+         });
+
+         context.mutable_db.modify( buo, [&]( auto& o ){
+            o.net_weight = net_weight;
+            o.cpu_weight = cpu_weight;
+            o.db_reserved_capacity = ram_bytes;
+         });
+      }
+
+
+      void get_resource_limits( account_name account, 
+                                uint64_t& ram_bytes, uint64_t& net_weight, uint64_t cpu_weight ) {
+      }
+                                               
+      void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
+         datastream<const char*> ds( packed_producer_schedule, datalen );
+         producer_schedule_type psch;
+         fc::raw::unpack(ds, psch);
+
+         context.mutable_db.modify( context.controller.get_global_properties(), 
+            [&]( auto& gprops ) {
+                 gprops.new_active_producers = psch;
+         });
+      }
+
+      bool is_privileged( account_name n )const {
+         return context.db.get<account_object, by_name>( n ).privileged;
+      }
+      bool is_frozen( account_name n )const {
+         return context.db.get<account_object, by_name>( n ).frozen;
+      }
+      void set_privileged( account_name n, bool is_priv ) {
+         const auto& a = context.db.get<account_object, by_name>( n );
+         context.mutable_db.modify( a, [&]( auto& ma ){
+            ma.privileged = is_priv;
+         });
+      }
+
+      void freeze_account( account_name n , bool should_freeze ) {
+         const auto& a = context.db.get<account_object, by_name>( n );
+         context.mutable_db.modify( a, [&]( auto& ma ){
+            ma.frozen = should_freeze;
+         });
+      }
+
+      /// TODO: add inline/deferred with support for arbitrary permissions rather than code/current auth
+};
+
+class checktime_api : public context_aware_api {
+public:
+   using context_aware_api::context_aware_api;
+
+   void checktime() {
+      context.checktime();
+   }
+};
+
+class producer_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      int get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
+         auto active_producers = context.get_active_producers();
+         size_t len = std::min(datalen / sizeof(chain::account_name), active_producers.size());
+         memcpy(producers, active_producers.data(), len);
+         return active_producers.size() * sizeof(chain::account_name);
+      }
+};
+
+class crypto_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      /**
+       * This method can be optimized out during replay as it has
+       * no possible side effects other than "passing". 
+       */
+      void assert_recover_key( fc::sha256& digest, 
+                        array_ptr<char> sig, size_t siglen,
+                        array_ptr<char> pub, size_t publen ) {
+         fc::crypto::signature s;
+         fc::crypto::public_key p;
+         datastream<const char*> ds( sig, siglen );
+         datastream<const char*> pubds( pub, publen );
+
+         fc::raw::unpack(ds, s);
+         fc::raw::unpack(ds, p);
+
+         auto check = fc::crypto::public_key( s, digest, false );
+         FC_ASSERT( check == p, "Error expected key different than recovered key" );
+      }
+
+      int recover_key( fc::sha256& digest, 
+                        array_ptr<char> sig, size_t siglen,
+                        array_ptr<char> pub, size_t publen ) {
+         fc::crypto::signature s;
+         datastream<const char*> ds( sig, siglen );
+         datastream<char*> pubds( pub, publen );
+
+         fc::raw::unpack(ds, s);
+         fc::raw::pack( pubds, fc::crypto::public_key( s, digest, false ) );
+         return pubds.tellp();
+      }
+
+      void assert_sha256(array_ptr<char> data, size_t datalen, const fc::sha256& hash_val) {
+         auto result = fc::sha256::hash( data, datalen );
+         FC_ASSERT( result == hash_val, "hash miss match" );
+      }
+
+      void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
+         hash_val = fc::sha1::hash( data, datalen );
+      }
+
+      void sha256(array_ptr<char> data, size_t datalen, fc::sha256& hash_val) {
+         hash_val = fc::sha256::hash( data, datalen );
+      }
+
+      void sha512(array_ptr<char> data, size_t datalen, fc::sha512& hash_val) {
+         hash_val = fc::sha512::hash( data, datalen );
+      }
+
+      void ripemd160(array_ptr<char> data, size_t datalen, fc::ripemd160& hash_val) {
+         hash_val = fc::ripemd160::hash( data, datalen );
+      }
+};
+
+class string_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      void assert_is_utf8(array_ptr<const char> str, size_t datalen, null_terminated_ptr msg) {
+         const bool test = fc::is_utf8(std::string( str, datalen ));
+
+         FC_ASSERT( test, "assertion failed: ${s}", ("s",msg.value) );
+      }
+};
+
 class system_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
@@ -647,7 +610,7 @@ class system_api : public context_aware_api {
          FC_ASSERT( false, "abort() called");
       }
 
-      void eos_assert(bool condition, const char* str) {
+      void eos_assert(bool condition, null_terminated_ptr str) {
          std::string message( str );
          if( !condition ) edump((message));
          FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
@@ -694,8 +657,8 @@ class console_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      void prints(const char *str) {
-         context.console_append(str);
+      void prints(null_terminated_ptr str) {
+         context.console_append<const char*>(str);
       }
 
       void prints_l(array_ptr<const char> str, size_t str_len ) {
@@ -724,40 +687,90 @@ class console_api : public context_aware_api {
       }
 };
 
+class database_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      int db_store_i64( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, array_ptr<const char> buffer, size_t buffer_size ) {
+         return context.db_store_i64( scope, table, payer, id, buffer, buffer_size );
+      }
+      void db_update_i64( int itr, uint64_t payer, array_ptr<const char> buffer, size_t buffer_size ) {
+         context.db_update_i64( itr, payer, buffer, buffer_size );
+      }
+      void db_remove_i64( int itr ) {
+         context.db_remove_i64( itr );
+      }
+      int db_get_i64( int itr, uint64_t& id, array_ptr<char> buffer, size_t buffer_size ) {
+         return context.db_get_i64( itr, id, buffer, buffer_size );
+      }
+      int db_next_i64( int itr ) { return context.db_next_i64(itr); }
+      int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
+         return context.db_find_i64( code, scope, table, id ); 
+      }
+      int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
+         return context.db_lowerbound_i64( code, scope, table, id ); 
+      }
+      int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
+         return context.db_lowerbound_i64( code, scope, table, id ); 
+      }
+
+      int db_idx64_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const uint64_t& secondary ) {
+         return context.idx64.store( scope, table, payer, id, secondary );
+      }
+      void db_idx64_update( int iterator, uint64_t payer, const uint64_t& secondary ) {
+         return context.idx64.update( iterator, payer, secondary );
+      }
+      void db_idx64_remove( int iterator ) {
+         return context.idx64.remove( iterator );
+      }
+
+
+      int db_idx128_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const uint128_t& secondary ) {
+         return context.idx128.store( scope, table, payer, id, secondary );
+      }
+      void db_idx128_update( int iterator, uint64_t payer, const uint128_t& secondary ) {
+         return context.idx128.update( iterator, payer, secondary );
+      }
+      void db_idx128_remove( int iterator ) {
+         return context.idx128.remove( iterator );
+      }
+};
+
+
+
 template<typename ObjectType>
 class db_api : public context_aware_api {
    using KeyType = typename ObjectType::key_type;
    static constexpr int KeyCount = ObjectType::number_of_keys;
    using KeyArrayType = KeyType[KeyCount];
-   using ContextMethodType = int(apply_context::*)(const table_id_object&, const KeyType*, const char*, size_t);
+   using ContextMethodType = int(apply_context::*)(const table_id_object&, const account_name&, const KeyType*, const char*, size_t);
 
    private:
-      int call(ContextMethodType method, const scope_name& scope, const name& table, array_ptr<const char> data, size_t data_len) {
-         const auto& t_id = context.find_or_create_table(scope, context.receiver, table);
+      int call(ContextMethodType method, const scope_name& scope, const name& table, account_name bta, array_ptr<const char> data, size_t data_len) {
+         const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
          FC_ASSERT(data_len >= KeyCount * sizeof(KeyType), "Data is not long enough to contain keys");
          const KeyType* keys = reinterpret_cast<const KeyType *>((const char *)data);
 
          const char* record_data =  ((const char*)data) + sizeof(KeyArrayType);
          size_t record_len = data_len - sizeof(KeyArrayType);
-         return (context.*(method))(t_id, keys, record_data, record_len) + sizeof(KeyArrayType);
+         return (context.*(method))(t_id, bta, keys, record_data, record_len) + sizeof(KeyArrayType);
       }
 
    public:
       using context_aware_api::context_aware_api;
 
-      int store(const scope_name& scope, const name& table, array_ptr<const char> data, size_t data_len) {
-         auto res = call(&apply_context::store_record<ObjectType>, scope, table, data, data_len);
+      int store(const scope_name& scope, const name& table, const account_name& bta, array_ptr<const char> data, size_t data_len) {
+         auto res = call(&apply_context::store_record<ObjectType>, scope, table, bta, data, data_len);
          //ilog("STORE [${scope},${code},${table}] => ${res} :: ${HEX}", ("scope",scope)("code",context.receiver)("table",table)("res",res)("HEX", fc::to_hex(data, data_len)));
          return res;
-
       }
 
-      int update(const scope_name& scope, const name& table, array_ptr<const char> data, size_t data_len) {
-         return call(&apply_context::update_record<ObjectType>, scope, table, data, data_len);
+      int update(const scope_name& scope, const name& table, const account_name& bta, array_ptr<const char> data, size_t data_len) {
+         return call(&apply_context::update_record<ObjectType>, scope, table, bta, data, data_len);
       }
 
       int remove(const scope_name& scope, const name& table, const KeyArrayType &keys) {
-         const auto& t_id = context.find_or_create_table(scope, context.receiver, table);
+         const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
          return context.remove_record<ObjectType>(t_id, keys);
       }
 };
@@ -770,8 +783,8 @@ class db_index_api : public context_aware_api {
    using ContextMethodType = int(apply_context::*)(const table_id_object&, KeyType*, char*, size_t);
 
 
-   int call(ContextMethodType method, const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-      auto maybe_t_id = context.find_table(scope, context.receiver, table);
+   int call(ContextMethodType method, const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+      auto maybe_t_id = context.find_table(context.receiver, scope, table);
       if (maybe_t_id == nullptr) {
          return -1;
       }
@@ -793,34 +806,34 @@ class db_index_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      int load(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         auto res = call(&apply_context::load_record<IndexType, Scope>, scope, code, table, data, data_len);
+      int load(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::load_record<IndexType, Scope>, code, scope, table, data, data_len);
          //ilog("LOAD [${scope},${code},${table}] => ${res} :: ${HEX}", ("scope",scope)("code",code)("table",table)("res",res)("HEX", fc::to_hex(data, data_len)));
          return res;
       }
 
-      int front(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::front_record<IndexType, Scope>, scope, code, table, data, data_len);
+      int front(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::front_record<IndexType, Scope>, code, scope, table, data, data_len);
       }
 
-      int back(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::back_record<IndexType, Scope>, scope, code, table, data, data_len);
+      int back(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::back_record<IndexType, Scope>, code, scope, table, data, data_len);
       }
 
-      int next(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::next_record<IndexType, Scope>, scope, code, table, data, data_len);
+      int next(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::next_record<IndexType, Scope>, code, scope, table, data, data_len);
       }
 
-      int previous(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::previous_record<IndexType, Scope>, scope, code, table, data, data_len);
+      int previous(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::previous_record<IndexType, Scope>, code, scope, table, data, data_len);
       }
 
-      int lower_bound(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::lower_bound_record<IndexType, Scope>, scope, code, table, data, data_len);
+      int lower_bound(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::lower_bound_record<IndexType, Scope>, code, scope, table, data, data_len);
       }
 
-      int upper_bound(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::upper_bound_record<IndexType, Scope>, scope, code, table, data, data_len);
+      int upper_bound(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::upper_bound_record<IndexType, Scope>, code, scope, table, data, data_len);
       }
 
 };
@@ -884,6 +897,29 @@ class transaction_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
+      int read_transaction( array_ptr<char> data, size_t data_len ) {
+         bytes trx = context.get_packed_transaction();
+         if (data_len >= trx.size()) {
+            memcpy(data, trx.data(), trx.size());
+         }
+         return trx.size();
+      }
+
+      int transaction_size() {
+         return context.get_packed_transaction().size();
+      }
+
+      int expiration() {
+        return context.trx_meta.trx().expiration.sec_since_epoch();
+      }
+
+      int tapos_block_num() {
+        return context.trx_meta.trx().ref_block_num;
+      }
+      int tapos_block_prefix() {
+        return context.trx_meta.trx().ref_block_prefix;
+      }
+
       void send_inline( array_ptr<char> data, size_t data_len ) {
          // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
          FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
@@ -909,6 +945,59 @@ class transaction_api : public context_aware_api {
       }
 
 };
+
+
+REGISTER_INTRINSICS(privileged_api,
+   (activate_feature,          void(int64_t))
+   (is_feature_active,         int(int64_t))
+   (set_resource_limits,       void(int64_t,int64_t,int64_t,int64_t,int64_t))
+   (set_active_producers,      void(int,int))
+   (is_privileged,             int(int64_t))
+   (set_privileged,            void(int64_t, int))
+   (freeze_account,            void(int64_t, int))
+   (is_frozen,                 int(int64_t))
+);
+
+REGISTER_INTRINSICS(checktime_api,
+   (checktime,      void())
+);
+
+REGISTER_INTRINSICS(producer_api,
+   (get_active_producers,      int(int, int))
+);
+
+REGISTER_INTRINSICS( database_api,
+   (db_store_i64,        int(int64_t,int64_t,int64_t,int64_t,int,int))
+   (db_update_i64,       void(int,int64_t,int,int))
+   (db_remove_i64,       void(int))
+   (db_get_i64,          int(int, int, int, int))
+   (db_next_i64,         int(int))
+   (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t))
+   (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
+
+   (db_idx64_store,      int(int64_t,int64_t,int64_t,int64_t,int))
+   (db_idx64_remove,     void(int))
+   (db_idx64_update,     void(int,int64_t,int))
+
+
+   (db_idx128_store,      int(int64_t,int64_t,int64_t,int64_t,int))
+   (db_idx128_remove,     void(int))
+   (db_idx128_update,     void(int,int64_t,int))
+)
+
+REGISTER_INTRINSICS(crypto_api,
+   (assert_recover_key,  void(int, int, int, int, int))
+   (recover_key,    int(int, int, int, int, int))
+   (assert_sha256,  void(int, int, int))
+   (sha1,           void(int, int, int))
+   (sha256,         void(int, int, int))
+   (sha512,         void(int, int, int))
+   (ripemd160,      void(int, int, int))
+);
+
+REGISTER_INTRINSICS(string_api,
+   (assert_is_utf8,  void(int, int, int))
+);
 
 REGISTER_INTRINSICS(system_api,
    (abort,      void())
@@ -942,7 +1031,12 @@ REGISTER_INTRINSICS(console_api,
 );
 
 REGISTER_INTRINSICS(transaction_api,
-   (send_inline,           void(int, int)  )
+   (read_transaction,       int(int, int)            )
+   (transaction_size,       int()                    )
+   (expiration,             int()                    )
+   (tapos_block_prefix,     int()                    )
+   (tapos_block_num,        int()                    )
+   (send_inline,           void(int, int)            )
    (send_deferred,         void(int, int, int, int)  )
 );
 
@@ -956,8 +1050,8 @@ REGISTER_INTRINSICS(memory_api,
 
 
 #define DB_METHOD_SEQ(SUFFIX) \
-   (store,        int32_t(int64_t, int64_t, int, int),            "store_"#SUFFIX )\
-   (update,       int32_t(int64_t, int64_t, int, int),            "update_"#SUFFIX )\
+   (store,        int32_t(int64_t, int64_t, int64_t, int, int),   "store_"#SUFFIX ) \
+   (update,       int32_t(int64_t, int64_t, int64_t, int, int),   "update_"#SUFFIX ) \
    (remove,       int32_t(int64_t, int64_t, int),                 "remove_"#SUFFIX )
 
 #define DB_INDEX_METHOD_SEQ(SUFFIX)\
@@ -972,11 +1066,14 @@ REGISTER_INTRINSICS(memory_api,
 using db_api_key_value_object                                 = db_api<key_value_object>;
 using db_api_keystr_value_object                              = db_api<keystr_value_object>;
 using db_api_key128x128_value_object                          = db_api<key128x128_value_object>;
+using db_api_key64x64_value_object                            = db_api<key64x64_value_object>;
 using db_api_key64x64x64_value_object                         = db_api<key64x64x64_value_object>;
 using db_index_api_key_value_index_by_scope_primary           = db_index_api<key_value_index,by_scope_primary>;
 using db_index_api_keystr_value_index_by_scope_primary        = db_index_api<keystr_value_index,by_scope_primary>;
 using db_index_api_key128x128_value_index_by_scope_primary    = db_index_api<key128x128_value_index,by_scope_primary>;
 using db_index_api_key128x128_value_index_by_scope_secondary  = db_index_api<key128x128_value_index,by_scope_secondary>;
+using db_index_api_key64x64_value_index_by_scope_primary      = db_index_api<key64x64_value_index,by_scope_primary>;
+using db_index_api_key64x64_value_index_by_scope_secondary    = db_index_api<key64x64_value_index,by_scope_secondary>;
 using db_index_api_key64x64x64_value_index_by_scope_primary   = db_index_api<key64x64x64_value_index,by_scope_primary>;
 using db_index_api_key64x64x64_value_index_by_scope_secondary = db_index_api<key64x64x64_value_index,by_scope_secondary>;
 using db_index_api_key64x64x64_value_index_by_scope_tertiary  = db_index_api<key64x64x64_value_index,by_scope_tertiary>;
@@ -984,12 +1081,15 @@ using db_index_api_key64x64x64_value_index_by_scope_tertiary  = db_index_api<key
 REGISTER_INTRINSICS(db_api_key_value_object,         DB_METHOD_SEQ(i64));
 REGISTER_INTRINSICS(db_api_keystr_value_object,      DB_METHOD_SEQ(str));
 REGISTER_INTRINSICS(db_api_key128x128_value_object,  DB_METHOD_SEQ(i128i128));
+REGISTER_INTRINSICS(db_api_key64x64_value_object,    DB_METHOD_SEQ(i64i64));
 REGISTER_INTRINSICS(db_api_key64x64x64_value_object, DB_METHOD_SEQ(i64i64i64));
 
 REGISTER_INTRINSICS(db_index_api_key_value_index_by_scope_primary,           DB_INDEX_METHOD_SEQ(i64));
 REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,        DB_INDEX_METHOD_SEQ(str));
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_primary,    DB_INDEX_METHOD_SEQ(primary_i128i128));
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_secondary,  DB_INDEX_METHOD_SEQ(secondary_i128i128));
+REGISTER_INTRINSICS(db_index_api_key64x64_value_index_by_scope_primary,      DB_INDEX_METHOD_SEQ(primary_i64i64));
+REGISTER_INTRINSICS(db_index_api_key64x64_value_index_by_scope_secondary,    DB_INDEX_METHOD_SEQ(secondary_i64i64));
 REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_primary,   DB_INDEX_METHOD_SEQ(primary_i64i64i64));
 REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_secondary, DB_INDEX_METHOD_SEQ(secondary_i64i64i64));
 REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_tertiary,  DB_INDEX_METHOD_SEQ(tertiary_i64i64i64));

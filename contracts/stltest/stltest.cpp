@@ -147,10 +147,10 @@
 #include <string>
 #include <stdexcept>
 */
-#include <eoslib/eos.hpp>
-#include <eoslib/token.hpp>
-#include <eoslib/string.hpp>
-#include <eoslib/dispatcher.hpp>
+//include <eosiolib/eos.hpp>
+#include <eosiolib/token.hpp>
+#include <eosiolib/string.hpp>
+#include <eosiolib/dispatcher.hpp>
 
 using namespace eosio;
 /*

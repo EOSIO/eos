@@ -37,7 +37,7 @@ namespace eosio { namespace chain {
       account_name               account;
       action_name                name;
       vector<permission_level>   authorization;
-      vector<char>               data;
+      bytes                      data;
 
       action(){}
 
@@ -55,6 +55,10 @@ namespace eosio { namespace chain {
          name        = T::get_name();
          authorization = move(auth);
          data        = fc::raw::pack(value);
+      }
+
+      action( vector<permission_level> auth, account_name account, action_name name, const bytes& data )
+            : account(account), name(name), authorization(move(auth)), data(data) {
       }
 
       template<typename T>
@@ -130,16 +134,64 @@ namespace eosio { namespace chain {
    struct transaction : public transaction_header {
       vector<action>         actions;
 
-      transaction_id_type id()const;
-      digest_type         sig_digest( const chain_id_type& chain_id )const;
+      transaction_id_type        id()const;
+      digest_type                sig_digest( const chain_id_type& chain_id )const;
+      flat_set<public_key_type>  get_signature_keys( const vector<signature_type>& signatures, const chain_id_type& chain_id )const;
+
    };
 
-   struct signed_transaction : public transaction {
-      vector<signature_type> signatures;
+   struct signed_transaction : public transaction
+   {
+      signed_transaction() = default;
+//      signed_transaction( const signed_transaction& ) = default;
+//      signed_transaction( signed_transaction&& ) = default;
+      signed_transaction( transaction&& trx, const vector<signature_type>& signatures)
+      : transaction(std::forward<transaction>(trx))
+      , signatures(signatures)
+      {
+      }
+
+      vector<signature_type>    signatures;
 
       const signature_type&     sign(const private_key_type& key, const chain_id_type& chain_id);
       signature_type            sign(const private_key_type& key, const chain_id_type& chain_id)const;
       flat_set<public_key_type> get_signature_keys( const chain_id_type& chain_id )const;
+   };
+
+   struct packed_transaction {
+      enum compression_type {
+         none,
+         zlib,
+      };
+
+      packed_transaction() = default;
+
+      explicit packed_transaction(const transaction& t, compression_type _compression = none)
+      {
+         set_transaction(t, _compression);
+      }
+
+      explicit packed_transaction(const signed_transaction& t, compression_type _compression = none)
+      :signatures(t.signatures)
+      {
+         set_transaction(t, _compression);
+      }
+
+      explicit packed_transaction(signed_transaction&& t, compression_type _compression = none)
+      :signatures(std::move(t.signatures))
+      {
+         set_transaction(t, _compression);
+      }
+
+      vector<signature_type>    signatures;
+      compression_type          compression;
+      bytes                     data;
+
+      bytes                     get_raw_transaction()const;
+      transaction               get_transaction()const;
+      signed_transaction        get_signed_transaction()const;
+      void                      set_transaction(const transaction& t, compression_type _compression = none);
+
    };
 
 
@@ -174,7 +226,9 @@ namespace eosio { namespace chain {
       };
 
       access_type                type;
+      account_name               code;
       scope_name                 scope;
+
       uint64_t                   sequence;
    };
 
@@ -201,9 +255,11 @@ FC_REFLECT( eosio::chain::action, (account)(name)(authorization)(data) )
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (actions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures) )
+FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
+FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(data) )
 FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(execute_after) )
 FC_REFLECT_ENUM( eosio::chain::data_access_info::access_type, (read)(write))
-FC_REFLECT( eosio::chain::data_access_info, (type)(scope)(sequence))
+FC_REFLECT( eosio::chain::data_access_info, (type)(code)(scope)(sequence))
 FC_REFLECT( eosio::chain::action_trace, (receiver)(act)(console)(region_id)(cycle_index)(data_access) )
 FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
 FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail))

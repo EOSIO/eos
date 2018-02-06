@@ -1,2 +1,0 @@
-add_wast_library(TARGET eoslib INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}")
-

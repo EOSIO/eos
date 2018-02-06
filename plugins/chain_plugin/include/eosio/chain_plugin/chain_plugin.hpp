@@ -77,13 +77,9 @@ public:
 
    struct get_account_results {
       name                       account_name;
-      asset                      eos_balance = asset(0,EOS_SYMBOL);
-      asset                      staked_balance;
-      asset                      unstaking_balance;
-      fc::time_point_sec         last_unstaking_time;
       vector<permission>         permissions;
-      optional<producer_info>    producer;
    };
+
    struct get_account_params {
       name account_name;
    };
@@ -164,8 +160,8 @@ public:
 
    struct get_table_rows_params {
       bool        json = false;
-      name        scope;
       name        code;
+      name        scope;
       name        table;
 //      string      table_type;
       string      table_key;
@@ -176,10 +172,29 @@ public:
 
    struct get_table_rows_result {
       vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object 
-      bool                more; ///< true if last element in data is not the end and sizeof data() < limit
+      bool                more = false; ///< true if last element in data is not the end and sizeof data() < limit
    };
 
    get_table_rows_result get_table_rows( const get_table_rows_params& params )const;
+
+   struct get_currency_balance_params {
+      name             code;
+      name             account;
+      optional<string> symbol;
+   };
+
+   vector<asset> get_currency_balance( const get_currency_balance_params& params )const;
+
+   struct get_currency_stats_params {
+      name             code;
+      optional<string> symbol;
+   };
+
+   struct get_currency_stats_result {
+      asset        supply;
+   };
+
+   fc::variant get_currency_stats( const get_currency_stats_params& params )const;
 
    void copy_row(const chain::contracts::key_value_object& obj, vector<char>& data)const {
       data.resize( sizeof(uint64_t) + obj.value.size() );
@@ -209,6 +224,25 @@ public:
       memcpy( data.data()+2*sizeof(uint64_t), &obj.tertiary_key, sizeof(uint64_t) );
       memcpy( data.data()+3*sizeof(uint64_t), obj.value.data(), obj.value.size() );
    }
+
+   template<typename IndexType, typename Scope, typename Function>
+   void walk_table(const name& code, const name& scope, const name& table, Function f) const
+   {
+      const auto& d = db.get_database();
+      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));
+      if (t_id != nullptr) {
+         const auto &idx = d.get_index<IndexType, Scope>();
+         decltype(t_id->id) next_tid(t_id->id._id + 1);
+         auto lower = idx.lower_bound(boost::make_tuple(t_id->id));
+         auto upper = idx.lower_bound(boost::make_tuple(next_tid));
+
+         for (auto itr = lower; itr != upper; ++itr) {
+            if (!f(*itr)) {
+               break;
+            }
+         }
+      }
+   }
  
    template <typename IndexType, typename Scope>
    read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p, const abi_def& abi )const {
@@ -217,7 +251,7 @@ public:
 
       abi_serializer abis;
       abis.set_abi(abi);
-      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_scope_code_table>(boost::make_tuple(p.scope, p.code, p.table));
+      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_code_scope_table>(boost::make_tuple(p.code, p.scope, p.table));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<IndexType, Scope>();
          decltype(t_id->id) next_tid(t_id->id._id + 1);
@@ -302,7 +336,7 @@ public:
    chain_apis::read_write get_read_write_api();
 
    bool accept_block(const chain::signed_block& block, bool currently_syncing);
-   void accept_transaction(const chain::signed_transaction& trx);
+   void accept_transaction(const chain::packed_transaction& trx);
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 
@@ -317,10 +351,6 @@ public:
    const chain_controller& chain() const;
 
   void get_chain_id (chain::chain_id_type &cid) const;
-
-  static const uint32_t            default_received_block_transaction_execution_time;
-  static const uint32_t            default_transaction_execution_time;
-  static const uint32_t            default_create_block_transaction_execution_time;
 
 private:
    unique_ptr<class chain_plugin_impl> my;
@@ -338,10 +368,14 @@ FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
 FC_REFLECT_DERIVED( eosio::chain_apis::read_only::get_block_results, (eosio::chain::signed_block), (id)(block_num)(ref_block_prefix) );
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
   
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(table_key)(scope)(code)(table)(lower_bound)(upper_bound)(limit) )
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
-FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(permissions)(producer) )
+FC_REFLECT( eosio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
+FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
+FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_result, (supply));
+
+FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(permissions) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(abi) )
 FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (account_name) )

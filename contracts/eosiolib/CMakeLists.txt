@@ -1,0 +1,2 @@
+add_wast_library(TARGET eosiolib INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}")
+

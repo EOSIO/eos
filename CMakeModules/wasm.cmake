@@ -69,6 +69,7 @@ macro(compile_wast)
   else()
     set(SOURCE_FILES ${ARG_SOURCE_FILES})
   endif()
+  set(outfiles "")
   foreach(srcfile ${SOURCE_FILES})
     
     get_filename_component(outfile ${srcfile} NAME)
@@ -108,7 +109,6 @@ macro(compile_wast)
     foreach(folder ${ARG_INCLUDE_FOLDERS})
        list(APPEND WASM_COMMAND -I ${folder})
     endforeach()
-    #string(REPLACE ";" " -I " INCLUDE_FOLDERS_STR "${INCLUDE_FOLDERS}")
   
     add_custom_command(OUTPUT ${outfile}.bc
       DEPENDS ${infile}
@@ -183,10 +183,11 @@ macro(add_wast_executable)
     VERBATIM
   )
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${target}.wast)
-  
+  STRING (REPLACE "." "_" TARGET_VARIABLE "${target}")
+
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wast.hpp
     DEPENDS ${DESTINATION_FOLDER}/${target}.wast
-    COMMAND echo "const char* ${target}_wast = R\"=====("  > ${DESTINATION_FOLDER}/${target}.wast.hpp
+    COMMAND echo "const char* const ${TARGET_VARIABLE}_wast = R\"=====("  > ${DESTINATION_FOLDER}/${target}.wast.hpp
     COMMAND cat ${DESTINATION_FOLDER}/${target}.wast >> ${DESTINATION_FOLDER}/${target}.wast.hpp
     COMMAND echo ")=====\";"  >> ${DESTINATION_FOLDER}/${target}.wast.hpp
     COMMENT "Generating ${target}.wast.hpp"
@@ -196,7 +197,7 @@ macro(add_wast_executable)
   if (EXISTS ${DESTINATION_FOLDER}/${target}.abi )
     add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.abi.hpp
       DEPENDS ${DESTINATION_FOLDER}/${target}.abi
-      COMMAND echo "const char* ${target}_abi = R\"=====("  > ${DESTINATION_FOLDER}/${target}.abi.hpp
+      COMMAND echo "const char* const ${TARGET_VARIABLE}_abi = R\"=====("  > ${DESTINATION_FOLDER}/${target}.abi.hpp
       COMMAND cat ${DESTINATION_FOLDER}/${target}.abi >> ${DESTINATION_FOLDER}/${target}.abi.hpp
       COMMAND echo ")=====\";"  >> ${DESTINATION_FOLDER}/${target}.abi.hpp
       COMMENT "Generating ${target}.abi.hpp"

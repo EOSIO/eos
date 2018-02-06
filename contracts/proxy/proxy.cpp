@@ -3,8 +3,8 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <proxy/proxy.hpp>
-#include <eoslib/native_currency.hpp>
-#include <eoslib/transaction.hpp>
+#include <eosio.system/eosio.system.hpp>
+#include <eosiolib/transaction.hpp>
 
 namespace proxy {
    using namespace eosio;
@@ -44,9 +44,10 @@ namespace proxy {
 
    template<size_t ...Args>
    void apply_onerror( const deferred_transaction& failed_dtrx ) {
+      eosio::print("starting onerror\n");
       const auto self = current_receiver();
       config code_config;
-      eos_assert(configs::get(code_config, self), "Attempting to use unconfigured proxy");
+      eos_assert(configs::get(code_config, self), "Attempting use of unconfigured proxy");
 
       auto id = code_config.next_id++;
       configs::store(code_config, self);
@@ -60,16 +61,16 @@ using namespace proxy;
 using namespace eosio;
 
 extern "C" {
-    void init()  {
-    }
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {
-       if ( code == N(eosio) ) {
-          if( action == N(transfer) ) {
-             apply_transfer(code, unpack_action<native_currency::transfer>());
-          } else if ( action == N(onerror)) {
+       if ( code == N(eosio)) {
+          if (action == N(onerror)) {
              apply_onerror(deferred_transaction::from_current_action());
+          }
+       } else if ( code == N(eosio.system) ) {
+          if( action == N(transfer) ) {
+             apply_transfer(code, unpack_action<eosiosystem::contract<N(eosio.system)>::currency::transfer_memo>());
           }
        } else if (code == current_receiver() ) {
           if ( action == N(setowner)) {

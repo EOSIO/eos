@@ -35,7 +35,7 @@
  *  contract.  Users can only deposit or withdraw to their own currency account.
  */
 #include <exchange/exchange.hpp> /// defines transfer struct
-#include <eoslib/print.hpp>
+#include <eosiolib/print.hpp>
 
 using namespace exchange;
 using namespace eosio;
@@ -75,7 +75,7 @@ void apply_currency_transfer( const currency::transfer& transfer ) {
          mod_account.currency_balance -= transfer.quantity;
       });
    } else {
-      assert( false, "notified on transfer that is not relevant to this exchange" );
+      eos_assert( false, "notified on transfer that is not relevant to this exchange" );
    }
 }
 
@@ -95,7 +95,7 @@ void apply_eos_transfer( const eosio::transfer& transfer ) {
          mod_account.eos_balance -= transfer.quantity;
       });
    } else {
-      assert( false, "notified on transfer that is not relevant to this exchange" );
+      eos_assert( false, "notified on transfer that is not relevant to this exchange" );
    }
 }
 
@@ -132,13 +132,13 @@ void apply_exchange_buy( buy_order order ) {
    bid& exchange_bid = order;
    require_auth( exchange_bid.buyer.name );
 
-   assert( exchange_bid.quantity > eosio::tokens(0), "invalid quantity" );
-   assert( exchange_bid.expiration > now(), "order expired" );
+   eos_assert( exchange_bid.quantity > eosio::tokens(0), "invalid quantity" );
+   eos_assert( exchange_bid.expiration > now(), "order expired" );
 
    print( name(exchange_bid.buyer.name), " created bid for ", order.quantity, " currency at price: ", order.at_price, "\n" );
 
    bid existing_bid;
-   assert( !bids_by_id::get( exchange_bid.buyer, existing_bid ), "order with this id already exists" );
+   eos_assert( !bids_by_id::get( exchange_bid.buyer, existing_bid ), "order with this id already exists" );
    print( __FILE__, __LINE__, "\n" );
 
    auto buyer_account = get_account( exchange_bid.buyer.name );
@@ -147,7 +147,7 @@ void apply_exchange_buy( buy_order order ) {
    ask lowest_ask;
    if( !asks_by_price::front( lowest_ask ) ) {
       print( "\n No asks found, saving buyer account and storing bid\n" );
-      assert( !order.fill_or_kill, "order not completely filled" );
+      eos_assert( !order.fill_or_kill, "order not completely filled" );
       bids::store( exchange_bid );
       buyer_account.open_orders++;
       save( buyer_account );
@@ -183,7 +183,7 @@ void apply_exchange_buy( buy_order order ) {
    print( "saving buyer's account\n" );
    if( exchange_bid.quantity ) {
       print( exchange_bid.quantity, " eos left over" );
-      assert( !order.fill_or_kill, "order not completely filled" );
+      eos_assert( !order.fill_or_kill, "order not completely filled" );
       bids::store( exchange_bid );
       return;
    }
@@ -195,14 +195,14 @@ void apply_exchange_sell( sell_order order ) {
    ask& exchange_ask = order;
    require_auth( exchange_ask.seller.name );
 
-   assert( exchange_ask.quantity > currency_tokens(0), "invalid quantity" );
-   assert( exchange_ask.expiration > now(), "order expired" );
+   eos_assert( exchange_ask.quantity > currency_tokens(0), "invalid quantity" );
+   eos_assert( exchange_ask.expiration > now(), "order expired" );
 
    print( "\n\n", name(exchange_ask.seller.name), " created sell for ", order.quantity,
           " currency at price: ", order.at_price, "\n");
 
    ask existing_ask;
-   assert( !asks_by_id::get( exchange_ask.seller, existing_ask ), "order with this id already exists" );
+   eos_assert( !asks_by_id::get( exchange_ask.seller, existing_ask ), "order with this id already exists" );
 
    auto seller_account = get_account( exchange_ask.seller.name );
    seller_account.currency_balance -= exchange_ask.quantity;
@@ -210,7 +210,7 @@ void apply_exchange_sell( sell_order order ) {
 
    bid highest_bid;
    if( !bids_by_price::back( highest_bid ) ) {
-      assert( !order.fill_or_kill, "order not completely filled" );
+      eos_assert( !order.fill_or_kill, "order not completely filled" );
       print( "\n No bids found, saving seller account and storing ask\n" );
       asks::store( exchange_ask );
       seller_account.open_orders++;
@@ -241,7 +241,7 @@ void apply_exchange_sell( sell_order order ) {
    if( exchange_ask.quantity && !order.fill_or_kill ) seller_account.open_orders++;
    save( seller_account );
    if( exchange_ask.quantity ) {
-      assert( !order.fill_or_kill, "order not completely filled" );
+      eos_assert( !order.fill_or_kill, "order not completely filled" );
       print( "saving ask\n" );
       asks::store( exchange_ask );
       return;
@@ -254,7 +254,7 @@ void apply_exchange_cancel_buy( order_id order ) {
    require_auth( order.name );
 
    bid bid_to_cancel;
-   assert( bids_by_id::get( order, bid_to_cancel ), "bid with this id does not exists" );
+   eos_assert( bids_by_id::get( order, bid_to_cancel ), "bid with this id does not exists" );
    
    auto buyer_account = get_account( order.name );
    buyer_account.eos_balance += bid_to_cancel.quantity;
@@ -270,7 +270,7 @@ void apply_exchange_cancel_sell( order_id order ) {
    require_auth( order.name );
 
    ask ask_to_cancel;
-   assert( asks_by_id::get( order, ask_to_cancel ), "ask with this id does not exists" );
+   eos_assert( asks_by_id::get( order, ask_to_cancel ), "ask with this id does not exists" );
 
    auto seller_account = get_account( order.name );
    seller_account.currency_balance += ask_to_cancel.quantity;
@@ -285,14 +285,6 @@ void apply_exchange_cancel_sell( order_id order ) {
 } // namespace exchange
 
 extern "C" {
-   void init() {
-      /*
-      setAuthority( "currencya", "transfer", "anyone" );
-      setAuthority( "currencyb", "transfer", "anyone" );
-      registerHandler( "apply", "currencya", "transfer" );
-      registerHandler( "apply", "currencyb", "transfer" );
-      */
-   }
 
 //   void validate( uint64_t code, uint64_t action ) { }
 //   void precondition( uint64_t code, uint64_t action ) { }
@@ -315,7 +307,7 @@ extern "C" {
                apply_exchange_cancel_sell( current_action<exchange::order_id>() );
                break;
             default:
-               assert( false, "unknown action" );
+               eos_assert( false, "unknown action" );
          }
       } 
       else if( code == N(currency) ) {

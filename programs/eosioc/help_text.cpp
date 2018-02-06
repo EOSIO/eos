@@ -49,7 +49,7 @@ Please check the account names and try again!)text");
 const char* missing_abi_help_text = _(R"text(The ABI for action "${2}" on code account "${1}" is unknown.
 The payload cannot be automatically serialized.
 
-You can push an arbitrary transaction using the 'push transaction' subcommand)text");
+You can push an arbitrary transaction using the 'push action' subcommand)text");
 
 const char* unknown_wallet_help_text = _("Unable to find a wallet named \"${1}\", are you sure you typed the name correctly?");
 
@@ -62,7 +62,7 @@ const char* duplicate_key_import_help_text = _("This key is already imported int
 const char* unknown_abi_table_help_text = _(R"text(The ABI for the code on account "${1}" does not specify table "${2}".
 
 Please check the account and table name, and verify that the account has the expected code using:
-  eosc get code ${1})text");
+  eosioc get code ${1})text");
 
 const char* help_regex_error = _("Error locating help text: ${code} ${what}");
 
@@ -96,9 +96,134 @@ auto smatch_to_variant(const std::smatch& smatch) {
    return result;
 };
 
+const char* error_advice_3120001 = R"=====(Name should be less than 13 characters and only contains the following symbol .12345abcdefghijklmnopqrstuvwxyz)=====";
+
+const char* error_advice_3120002 = R"=====(Public key should be encoded in base58 and starts with EOS prefix)=====";
+
+const char* error_advice_3120003 = R"=====(Ensure that your authority JSON follows the following format!
+{
+  "threshold":"uint32_t",
+  "keys":[{ "key":"public_key", "weight":"uint16_t" }],
+  "accounts":[{
+    "permission":{ "actor":"account_name", "permission":"permission_name" },
+    "weight":"uint16_t"
+  }]
+}
+e.g.
+{
+  "threshold":"1",
+  "keys":[{ "key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"1" }],
+  "accounts":[{
+    "permission":{ "actor":"initb", "permission":"social" },
+    "weight":"1
+  }]
+})=====";
+
+const char* error_advice_3120004 = R"=====(Ensure that your action JSON follows the contract's abi!)=====";
+
+const char* error_advice_3120005 = R"=====(Ensure that your transaction JSON follows the following format!\n"
+{
+  "ref_block_num":"uint16_t",
+  "ref_block_prefix":"uint32_t",
+  "expiration":"YYYY-MM-DDThh:mm",
+  "region": "uint16_t",
+  "read_scope":[ "account_name" ],
+  "write_scope":[ "account_name" ],
+  "actions":[{ 
+    "account":"account_name",
+    "name":"action_name",
+    "authorization":[{ "actor":"account_name","permission":"permission_name" }],
+    "data":"bytes"
+  }]
+}"
+e.g.
+{
+  "ref_block_num":"1000",
+  "ref_block_prefix":"3463702842",
+  "expiration":"2018-01-23T01:51:05",
+  "region": "0",
+  "read_scope":[ "initb", "initc" ],
+  "write_scope":[ "initb", "initc" ],
+  "actions":[{ 
+    "account":"eosio",
+    "name":"transfer",
+    "authorization":[{ "actor":"initb","permission":"active" }],
+    "data":"000000008093dd74000000000094dd74e80300000000000000"
+  }]
+})=====";
+
+const char* error_advice_3120006 =  R"=====(Ensure that your abi JSON follows the following format!
+{
+  "types" : [{ "new_type_name":"type_name", "type":"type_name" }],
+  "structs" : [{ "name":"type_name", "base":"type_name", "fields": [{ "name":"field_name", "type": "type_name" }] }],
+  "actions" : [{ "name":"action_name","type":"type_name"}],
+  "tables" : [{
+    "name":"table_name",
+    "index_type":"type_name",
+    "key_names":[ "field_name" ],
+    "key_types":[ "type_name" ],
+    "type":"type_name" "
+  }]
+}
+e.g.
+{
+  "types" : [{ "new_type_name":"account_name", "type":"name" }],
+  "structs" : [
+    { "name":"foo", "base":"", "fields": [{ "name":"by", "type": "account_name" }] },\n "
+    { "name":"foobar", "base":"", "fields": [{ "name":"by", "type": "account_name" }] }
+  ],
+  "actions" : [{ "name":"foo","type":"foo"}],
+  "tables" : [{
+    "name":"foobar_table",
+    "index_type":"i64",
+    "key_names":[ "by" ],
+    "key_types":[ "account_name" ],
+    "type":"foobar" "
+  }]
+})=====";
+
+const std::map<int64_t, std::string> error_advice = {
+   { 3120001, error_advice_3120001 },
+   { 3120002, error_advice_3120002 },
+   { 3120003, error_advice_3120003 },
+   { 3120004, error_advice_3120004 },
+   { 3120005, error_advice_3120005 },
+   { 3120006, error_advice_3120006 }
+};
+
+
 namespace eosio { namespace client { namespace help {
+bool print_recognized_error_code(const fc::exception& e) {
+   // eos recognized error code is from 3000000 to 3999999
+   // refer to libraries/chain/include/eosio/chain/exceptions.hpp
+   if (e.code() >= 3000000 && e.code() <= 3999999) {
+      std::string advice, explanation;
+
+      // Get advice, if any
+      const auto advice_itr = error_advice.find(e.code());
+      if (advice_itr != error_advice.end()) advice = advice_itr->second;
+
+      // Get explanation from log, if any
+      for (auto &log : e.get_log()) {
+         // Check if there's a log to display
+         if (!log.get_format().empty()) {
+            // Localize the message as needed
+            explanation += "\n  " + localized_with_variant(log.get_format().data(), log.get_data());
+         }
+      }
+      if (!explanation.empty()) explanation = std::string("Error Details:") + explanation;
+
+      std::cerr << "\033[31m" << "Error " << e.code() << ": " << e.what() << "\033[0m";
+      if (!advice.empty()) std::cerr << "\n" << "\033[32m" << advice << "\033[0m";
+      if (!explanation.empty()) std::cerr  << "\n" << "\033[33m" << explanation << "\033[0m" << std::endl;
+      return true;
+   }
+   return false;
+}
 
 bool print_help_text(const fc::exception& e) {
+   // Check if the exception has recognized error code
+   if (print_recognized_error_code(e)) return true;
    bool result = false;
    // Large input strings to std::regex can cause SIGSEGV, this is a known bug in libstdc++.
    // See https://stackoverflow.com/questions/36304204/%D0%A1-regex-segfault-on-long-sequences
