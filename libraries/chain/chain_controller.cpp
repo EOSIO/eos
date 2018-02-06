@@ -1290,7 +1290,12 @@ void chain_controller::update_last_irreversible_block()
          return a->last_confirmed_block_num < b->last_confirmed_block_num;
       });
 
-   uint32_t new_last_irreversible_block_num = producer_objs[offset]->last_confirmed_block_num - 1;
+   uint32_t new_last_irreversible_block_num = producer_objs[offset]->last_confirmed_block_num;
+   // TODO: right now the code cannot handle the head block being irreversible for reasons that are purely
+   // implementation details.  We can and should remove this special case once the rest of the logic is fixed.
+   if (producer_objs.size() == 1) {
+      new_last_irreversible_block_num -= 1;
+   }
 
 
    if (new_last_irreversible_block_num > dpo.last_irreversible_block_num) {
