@@ -19,14 +19,14 @@ namespace  eosio {
 
          static bool exists( scope_name scope = Code ) {
             uint64_t key = SingletonName;
-            auto read = load_i64( scope, Code, key, (char*)&key, sizeof(key) );
+            auto read = load_i64( Code, scope, key, (char*)&key, sizeof(key) );
             return read > 0;
          }
 
          static T get( scope_name scope = Code ) {
             char temp[1024+8];
             *reinterpret_cast<uint64_t *>(temp) = SingletonName;
-            auto read = load_i64( scope, Code, SingletonName, temp, sizeof(temp) );
+            auto read = load_i64( Code, scope, SingletonName, temp, sizeof(temp) );
             assert( read > 0, "singleton does not exist" );
             return unpack<T>( temp + sizeof(SingletonName), read );
          }
@@ -34,7 +34,7 @@ namespace  eosio {
          static T get_or_default( scope_name scope = Code, const T& def = T() ) {
             char temp[1024+8];
             *reinterpret_cast<uint64_t *>(temp) = SingletonName;
-            auto read = load_i64( scope, Code, SingletonName, temp, sizeof(temp) );
+            auto read = load_i64( Code, scope, SingletonName, temp, sizeof(temp) );
             if ( read < 0 ) {
                return def;
             }
@@ -46,7 +46,7 @@ namespace  eosio {
             *reinterpret_cast<uint64_t *>(temp) = SingletonName;
 
 
-            auto read = load_i64( scope, Code, SingletonName, temp, sizeof(temp) );
+            auto read = load_i64( Code, scope, SingletonName, temp, sizeof(temp) );
             if( read < 0 ) {
                set( def, scope );
                return def;
