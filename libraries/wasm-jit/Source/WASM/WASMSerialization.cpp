@@ -186,8 +186,10 @@ public:
    {}
 
 
-   void addCall(const Module& module, Serialization::OutputStream& inByteStream)
+   void addCall(Module& module, Serialization::OutputStream& inByteStream)
    {
+		// make sure the import is added
+		addImport(module);
       OpcodeAndImm<CallImm>* encodedOperator = (OpcodeAndImm<CallImm>*)inByteStream.advance(sizeof(OpcodeAndImm<CallImm>));
       encodedOperator->opcode = Opcode::call;
       // checktime will be the last defined import
@@ -217,11 +219,17 @@ public:
 
    void addImport(Module& module)
    {
-      const U32 functionTypeIndex = typeSlot;
-      module.functions.imports.push_back({{functionTypeIndex},std::move(u8"env"),std::move(u8"checktime")});
+		if (module.functions.imports.size() == 0 || module.functions.imports.back().exportName.compare(u8"checktime") != 0) {
+			if (typeSlot < 0) {
+				addTypeSlot(module);
+			}
+
+			const U32 functionTypeIndex = typeSlot;
+			module.functions.imports.push_back({{functionTypeIndex}, std::move(u8"env"), std::move(u8"checktime")});
+		}
    }
 
-   void conditionallyAddCall(Opcode opcode, const ControlStructureImm& imm, const Module& module, Serialization::OutputStream& inByteStream)
+   void conditionallyAddCall(Opcode opcode, const ControlStructureImm& imm, Module& module, Serialization::OutputStream& inByteStream)
    {
       switch(opcode)
       {
@@ -234,7 +242,7 @@ public:
    }
 
    template<typename Imm>
-   void conditionallyAddCall(Opcode , const Imm& , const Module& , Serialization::OutputStream& )
+   void conditionallyAddCall(Opcode , const Imm& , Module& , Serialization::OutputStream& )
    {
    }
 
@@ -270,12 +278,12 @@ private:
 
 struct NoOpInjection
 {
-   void addCall(const Module& , Serialization::OutputStream& ) {}
+   void addCall(Module& , Serialization::OutputStream& ) {}
    void setTypeSlot(const Module& , ResultType , const std::vector<ValueType>& ) {}
    void addTypeSlot(Module& ) {}
    void addImport(Module& ) {}
    template<typename Imm>
-   void conditionallyAddCall(Opcode , const Imm& , const Module& , Serialization::OutputStream& ) {}
+   void conditionallyAddCall(Opcode , const Imm& , Module& , Serialization::OutputStream& ) {}
    void adjustIfFunctionIndex(Uptr& , ObjectKind ) {}
    void adjustExportIndex(Module& ) {}
    template<typename Imm>
