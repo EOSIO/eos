@@ -9,5 +9,6 @@ weak_alias(dummy, __aio_close);
 
 int __stdio_close(FILE *f)
 {
+   return 0;
    //return syscall(SYS_close, __aio_close(f->fd));
 }

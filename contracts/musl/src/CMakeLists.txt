@@ -15,5 +15,5 @@ file(GLOB INTERNAL_SOURCES internal/intscan.c internal/shgetc.c internal/libc.c)
 add_wast_library(TARGET libc
   SOURCE_FILES ${CRYPT_SOURCES} ${CTYPE_SOURCES} ${ENV_SOURCES} ${ERRNO_SOURCES} ${INTERNAL_SOURCES} ${LOCALE_SOURCES} ${MBYTE_SOURCES}
   ${SEARCH_SOURCES} ${STDIO_SOURCES} ${STDLIB_SOURCES} ${STRING_SOURCES} ${TIME_SOURCES} ${THREAD_SOURCES}
-  INCLUDE_FOLDERS ${CMAKE_SOURCE_DIR}/contracts/musl/include ${CMAKE_SOURCE_DIR}/contracts/musl/src/internal ${CMAKE_SOURCE_DIR}/contracts/musl/arch/eos
+  INCLUDE_FOLDERS ${CMAKE_SOURCE_DIR}/contracts/musl/include ${CMAKE_SOURCE_DIR}/contracts/musl/src/internal ${CMAKE_SOURCE_DIR}/contracts/musl/arch/eos ${CMAKE_SOURCE_DIR}/contracts/
 )
