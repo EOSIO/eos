@@ -480,6 +480,8 @@ namespace eosio {
 
 extern "C" {
 
+void* __dso_handle = 0;
+
 void* malloc(size_t size)
 {
    return eosio::memory_heap.malloc(size);

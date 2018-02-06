@@ -9,7 +9,7 @@ file(GLOB SEARCH_SOURCES "search/*.c")
 file(GLOB STDIO_SOURCES "stdio/*.c")
 file(GLOB STDLIB_SOURCES "stdlib/*.c")
 file(GLOB STRING_SOURCES "string/*.c")
-#file(GLOB TIME_SOURCES "time/*.c")
+file(GLOB TIME_SOURCES "time/*.c")
 file(GLOB THREAD_SOURCES "thread/*.c") #only for __lock __unlock
 file(GLOB INTERNAL_SOURCES internal/intscan.c internal/shgetc.c internal/libc.c)
 
