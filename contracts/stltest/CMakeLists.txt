@@ -2,8 +2,7 @@
 set(ABI_FILES "stltest.abi")
 add_wast_executable(TARGET stltest
   INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}"
-  LIBRARIES libc eoslib
-  EXTERNAL_LIBRARIES /Users/antonperkov/final/src/stl.bc
+  LIBRARIES libc++ libc eoslib
   DESTINATION_FOLDER ${CMAKE_CURRENT_BINARY_DIR}
 )
 

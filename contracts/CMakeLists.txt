@@ -1,6 +1,8 @@
-set(STANDARD_INCLUDE_FOLDERS ${CMAKE_SOURCE_DIR}/contracts ${CMAKE_SOURCE_DIR}/contracts/stl ${CMAKE_SOURCE_DIR}/contracts/musl/include)
+set(STANDARD_INCLUDE_FOLDERS ${CMAKE_SOURCE_DIR}/contracts ${CMAKE_SOURCE_DIR}/contracts/libc++/include ${CMAKE_SOURCE_DIR}/contracts/musl/include)
 
 add_subdirectory(eoslib)
+add_subdirectory(musl/src)
+add_subdirectory(libc++/src)
 
 add_subdirectory(currency)
 add_subdirectory(stltest)
@@ -14,7 +16,6 @@ add_subdirectory(test_api)
 #add_subdirectory(simpledb)
 #add_subdirectory(storage)
 #add_subdirectory(social)
-add_subdirectory(musl/src)
 
 install( DIRECTORY eoslib DESTINATION include/ )
 install( DIRECTORY skeleton DESTINATION share/ )
