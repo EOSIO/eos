@@ -1041,8 +1041,15 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<permission_usage_index>();
    _db.add_index<permission_link_index>();
    _db.add_index<action_permission_index>();
+
+
+
    _db.add_index<contracts::table_id_multi_index>();
    _db.add_index<contracts::key_value_index>();
+   _db.add_index<contracts::index64_index>();
+   _db.add_index<contracts::index128_index>();
+
+
    _db.add_index<contracts::keystr_value_index>();
    _db.add_index<contracts::key128x128_value_index>();
    _db.add_index<contracts::key64x64_value_index>();
@@ -1290,7 +1297,12 @@ void chain_controller::update_last_irreversible_block()
          return a->last_confirmed_block_num < b->last_confirmed_block_num;
       });
 
-   uint32_t new_last_irreversible_block_num = producer_objs[offset]->last_confirmed_block_num - 1;
+   uint32_t new_last_irreversible_block_num = producer_objs[offset]->last_confirmed_block_num;
+   // TODO: right now the code cannot handle the head block being irreversible for reasons that are purely
+   // implementation details.  We can and should remove this special case once the rest of the logic is fixed.
+   if (producer_objs.size() == 1) {
+      new_last_irreversible_block_num -= 1;
+   }
 
 
    if (new_last_irreversible_block_num > dpo.last_irreversible_block_num) {

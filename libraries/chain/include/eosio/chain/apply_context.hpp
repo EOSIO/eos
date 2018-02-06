@@ -14,16 +14,201 @@ namespace chainbase { class database; }
 
 namespace eosio { namespace chain {
 
+using contracts::key_value_object;
+
 class chain_controller;
 
 class apply_context {
+   private:
+      template<typename T>
+      class iterator_cache {
+         public:
+            typedef contracts::table_id_object table_id_object;
+
+            iterator_cache(){
+               _iterator_to_object.reserve(32);
+            }
+
+            void cache_table( const table_id_object& tobj ) {
+               _table_cache[tobj.id] = &tobj;
+            }
+
+            const table_id_object& get_table( table_id_object::id_type i ) {
+               auto itr = _table_cache.find(i);
+               FC_ASSERT( itr != _table_cache.end(), "an invariant was broken, table should be in cache" );
+               return *_table_cache[i];
+            }
+
+            const T& get( int iterator ) {
+               FC_ASSERT( iterator >= 0, "invalid iterator" );
+               FC_ASSERT( iterator < _iterator_to_object.size(), "iterator out of range" );
+               auto result = _iterator_to_object[iterator];
+               FC_ASSERT( result, "reference of deleted object" );
+               return *result;
+            }
+
+            void remove( int iterator, const T& obj ) {
+               _iterator_to_object[iterator] = nullptr;
+               _object_to_iterator.erase( &obj );
+            }
+
+            int add( const T& obj ) {
+               auto itr = _object_to_iterator.find( &obj );
+               if( itr != _object_to_iterator.end() ) 
+                    return itr->second;
+
+               _iterator_to_object.push_back( &obj );
+               _object_to_iterator[&obj] = _iterator_to_object.size() - 1;
+
+               return _iterator_to_object.size() - 1;
+            }
+
+         private:
+            map<table_id_object::id_type, const table_id_object*> _table_cache;
+            vector<const T*>                                _iterator_to_object;
+            map<const T*,int>                               _object_to_iterator;
+      };
 
    public:
+      template<typename ObjectType>
+      class generic_index
+      {
+         public:
+            typedef typename ObjectType::secondary_key_type secondary_key_type;
+            generic_index( apply_context& c ):context(c){}
+
+            int store( uint64_t scope, uint64_t table, const account_name& payer,
+                       uint64_t id, const secondary_key_type& value )
+            {
+               FC_ASSERT( payer != account_name(), "must specify a valid account to pay for new record" );
+
+               context.require_write_lock( scope );
+
+               const auto& tab = context.find_or_create_table( scope, context.receiver, table );
+
+               const auto& obj = context.mutable_db.create<ObjectType>( [&]( auto& o ){
+                  o.t_id          = tab.id;
+                  o.primary_key   = id;                      
+                  o.secondary_key = value;
+                  o.payer         = payer;
+               });
+
+               context.mutable_db.modify( tab, [&]( auto& t ) {
+                 ++t.count;
+               });
+
+               context.update_db_usage( payer, sizeof(secondary_key_type)+200 );
+
+               itr_cache.cache_table( tab );
+               return itr_cache.add( obj );
+            }
+
+            void remove( int iterator ) {
+               const auto& obj = itr_cache.get( iterator );
+               context.update_db_usage( obj.payer, -( sizeof(secondary_key_type)+200 ) );
+
+               const auto& table_obj = itr_cache.get_table( obj.t_id );
+               context.require_write_lock( table_obj.scope );
+
+               context.mutable_db.modify( table_obj, [&]( auto& t ) {
+                  --t.count;
+               });
+               context.mutable_db.remove( obj );
+
+               itr_cache.remove( iterator, obj );
+            }
+
+            void update( int iterator, account_name payer, const secondary_key_type& secondary ) {
+               const auto& obj = itr_cache.get( iterator );
+
+               if( payer == account_name() ) payer = obj.payer;
+
+               if( obj.payer != payer ) {
+                  context.update_db_usage( obj.payer, -(sizeof(secondary_key_type)+200) );
+                  context.update_db_usage( payer, +(sizeof(secondary_key_type)+200) );
+               }
+
+               context.mutable_db.modify( obj, [&]( auto& o ) {
+                 o.secondary_key = secondary;
+                 o.payer = payer;
+               });
+            }
+
+            int find_secondary( uint64_t code, uint64_t scope, uint64_t table, const secondary_key_type& secondary ) {
+               auto tab = context.find_table( scope, context.receiver, table );
+               if( !tab ) return -1;
+
+               const auto* obj = context.db.find<ObjectType, contracts::by_secondary>( boost::make_tuple( tab->id, secondary ) );
+               if( !obj ) return -1;
+
+               itr_cache.cache_table( *tab );
+               return itr_cache.add( *obj );
+            }
+
+            int lowerbound_secondary( uint64_t code, uint64_t scope, uint64_t table, const secondary_key_type& secondary ) {
+               auto tab = context.find_table( scope, context.receiver, table );
+               if( !tab ) return -1;
+
+               const auto& idx = context.db.get_index< chainbase::get_index_type<ObjectType>::type, contracts::by_secondary >();
+               auto itr = idx.lower_bound( boost::make_tuple( tab->id, secondary ) );
+               if( itr == idx.end() ) return -1;
+               if( itr->t_id != tab.id ) return -1;
+
+               itr_cache.cache_table( *tab );
+               return itr_cache.add( *itr );
+            }
+
+            int upperbound_secondary( uint64_t code, uint64_t scope, uint64_t table, const secondary_key_type& secondary ) {
+               auto tab = context.find_table( scope, context.receiver, table );
+               if( !tab ) return -1;
+
+               const auto& idx = context.db.get_index< chainbase::get_index_type<ObjectType>::type, contracts::by_secondary >();
+               auto itr = idx.upper_bound( boost::make_tuple( tab->id, secondary ) );
+               if( itr == idx.end() ) return -1;
+               if( itr->t_id != tab.id ) return -1;
+
+               itr_cache.cache_table( *tab );
+               return itr_cache.add( *itr );
+            }
+
+            int find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary ) {
+               auto tab = context.find_table( scope, context.receiver, table );
+               if( !tab ) return -1;
+
+               const auto* obj = context.db.find<ObjectType, contracts::by_primary>( boost::make_tuple( tab->id, primary ) );
+               if( !obj ) return -1;
+
+               itr_cache.cache_table( *tab );
+               return itr_cache.add( *obj );
+            }
+
+            void get( int iterator, uint64_t& primary, secondary_key_type& secondary ) {
+               const auto& obj = itr_cache.get( iterator );
+               primary   = obj.primary_key;
+               secondary = obj.secondary_key;
+            }
+
+         private:
+            apply_context&              context;
+            iterator_cache<ObjectType>  itr_cache;
+      };
+
+
+
+
       apply_context(chain_controller& con, chainbase::database& db, const action& a, const transaction_metadata& trx_meta, uint32_t checktime_limit)
 
-      :controller(con), db(db), act(a), mutable_controller(con),
-       mutable_db(db), used_authorizations(act.authorization.size(), false),
-       trx_meta(trx_meta), _checktime_limit(checktime_limit) {}
+      :controller(con), 
+       db(db), 
+       act(a), 
+       mutable_controller(con),
+       mutable_db(db), 
+       used_authorizations(act.authorization.size(), false),
+       trx_meta(trx_meta), 
+       idx64(*this), 
+       idx128(*this),
+       _checktime_limit(checktime_limit)
+       {}
 
       void exec();
 
@@ -185,7 +370,152 @@ class apply_context {
 
       void checktime() const;
 
+      void update_db_usage( const account_name& payer, int64_t delta ) {
+         require_write_lock( payer );
+         if( (delta > 0) && payer != account_name(receiver) ) {
+            require_authorization( payer );
+         }
+      }
+
+
+      int db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
+         require_write_lock( scope );
+         const auto& tab = find_or_create_table( scope, receiver, table );
+         auto tableid = tab.id;
+
+         FC_ASSERT( payer != account_name(), "must specify a valid account to pay for new record" );
+
+         const auto& obj = mutable_db.create<key_value_object>( [&]( auto& o ) {
+            o.t_id        = tableid;
+            o.primary_key = id;
+            o.value.resize( buffer_size );
+            o.payer       = payer;
+            memcpy( o.value.data(), buffer, buffer_size );
+         });
+
+         mutable_db.modify( tab, [&]( auto& t ) {
+           ++t.count;
+         });
+
+         update_db_usage( payer, buffer_size + 200 );
+
+         keyval_cache.cache_table( tab );
+         return keyval_cache.add( obj );
+      }
+
+      void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size ) {
+         const key_value_object& obj = keyval_cache.get( iterator );
+
+         require_write_lock( keyval_cache.get_table( obj.t_id ).scope );
+
+         int64_t old_size = obj.value.size();
+
+         if( payer == account_name() ) payer = obj.payer;
+
+         if( account_name(obj.payer) == payer ) {
+            update_db_usage( obj.payer, buffer_size + 200 - old_size );
+         } else  {
+            update_db_usage( obj.payer,  -(old_size+200) );
+            update_db_usage( payer,  (buffer_size+200) );
+         }
+
+         mutable_db.modify( obj, [&]( auto& o ) {
+           o.value.resize( buffer_size );
+           memcpy( o.value.data(), buffer, buffer_size );
+           o.payer = payer;
+         });
+      }
+
+      void db_remove_i64( int iterator ) {
+         const key_value_object& obj = keyval_cache.get( iterator );
+         update_db_usage( obj.payer,  -(obj.value.size()+200) );
+
+         const auto& table_obj = keyval_cache.get_table( obj.t_id );
+         require_write_lock( table_obj.scope );
+
+         mutable_db.modify( table_obj, [&]( auto& t ) {
+            --t.count;
+         });
+         mutable_db.remove( obj );
+
+         keyval_cache.remove( iterator, obj );
+      }
+
+      int db_get_i64( int iterator, uint64_t& id, char* buffer, size_t buffer_size ) {
+         const key_value_object& obj = keyval_cache.get( iterator );
+         if( buffer_size >= obj.value.size() ) {
+            memcpy( buffer, obj.value.data(), obj.value.size() );
+         }
+         id = obj.primary_key;
+         return obj.value.size();
+      }
+
+      int db_next_i64( int iterator ) {
+         const auto& obj = keyval_cache.get( iterator );
+         const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
+
+         auto itr = idx.iterator_to( obj );
+         ++itr;
+
+         if( itr == idx.end() ) return -1;
+         if( itr->t_id != obj.t_id ) return -1;
+
+         return keyval_cache.add( *itr );
+      }
+
+      int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+         require_read_lock( code, scope );
+
+         const auto* tab = find_table( scope, code, table );
+         if( !tab ) return -1;
+
+
+         const key_value_object* obj = db.find<key_value_object, contracts::by_scope_primary>( boost::make_tuple( tab->id, id ) );
+         if( !obj ) return -1;
+
+         keyval_cache.cache_table( *tab );
+         return keyval_cache.add( *obj );
+      }
+
+      int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+         require_read_lock( code, scope );
+
+         const auto* tab = find_table( scope, code, table );
+         if( !tab ) return -1;
+
+
+         const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
+         auto itr = idx.lower_bound( boost::make_tuple( tab->id, id ) );
+         if( itr == idx.end() ) return -1;
+         if( itr->t_id != tab->id ) return -1;
+
+         keyval_cache.cache_table( *tab );
+         return keyval_cache.add( *itr );
+      }
+
+      int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+         require_read_lock( code, scope );
+
+         const auto* tab = find_table( scope, code, table );
+         if( !tab ) return -1;
+
+
+         const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
+         auto itr = idx.upper_bound( boost::make_tuple( tab->id, id ) );
+         if( itr == idx.end() ) return -1;
+         if( itr->t_id != tab->id ) return -1;
+
+         keyval_cache.cache_table( *tab );
+         return keyval_cache.add( *itr );
+      }
+
+
+      generic_index<contracts::index64_object>    idx64;
+      generic_index<contracts::index128_object>   idx128;
+
    private:
+      iterator_cache<key_value_object> keyval_cache;
+
       void append_results(apply_results &&other) {
          fc::move_append(results.applied_actions, move(other.applied_actions));
          fc::move_append(results.generated_transactions, move(other.generated_transactions));

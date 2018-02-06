@@ -682,6 +682,57 @@ class console_api : public context_aware_api {
       }
 };
 
+class database_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      int db_store_i64( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, array_ptr<const char> buffer, size_t buffer_size ) {
+         return context.db_store_i64( scope, table, payer, id, buffer, buffer_size );
+      }
+      void db_update_i64( int itr, uint64_t payer, array_ptr<const char> buffer, size_t buffer_size ) {
+         context.db_update_i64( itr, payer, buffer, buffer_size );
+      }
+      void db_remove_i64( int itr ) {
+         context.db_remove_i64( itr );
+      }
+      int db_get_i64( int itr, uint64_t& id, array_ptr<char> buffer, size_t buffer_size ) {
+         return context.db_get_i64( itr, id, buffer, buffer_size );
+      }
+      int db_next_i64( int itr ) { return context.db_next_i64(itr); }
+      int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
+         return context.db_find_i64( code, scope, table, id ); 
+      }
+      int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
+         return context.db_lowerbound_i64( code, scope, table, id ); 
+      }
+      int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
+         return context.db_lowerbound_i64( code, scope, table, id ); 
+      }
+
+      int db_idx64_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const uint64_t& secondary ) {
+         return context.idx64.store( scope, table, payer, id, secondary );
+      }
+      void db_idx64_update( int iterator, uint64_t payer, const uint64_t& secondary ) {
+         return context.idx64.update( iterator, payer, secondary );
+      }
+      void db_idx64_remove( int iterator ) {
+         return context.idx64.remove( iterator );
+      }
+
+
+      int db_idx128_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const uint128_t& secondary ) {
+         return context.idx128.store( scope, table, payer, id, secondary );
+      }
+      void db_idx128_update( int iterator, uint64_t payer, const uint128_t& secondary ) {
+         return context.idx128.update( iterator, payer, secondary );
+      }
+      void db_idx128_remove( int iterator ) {
+         return context.idx128.remove( iterator );
+      }
+};
+
+
+
 template<typename ObjectType>
 class db_api : public context_aware_api {
    using KeyType = typename ObjectType::key_type;
@@ -905,6 +956,25 @@ REGISTER_INTRINSICS(checktime_api,
 REGISTER_INTRINSICS(producer_api,
    (get_active_producers,      int(int, int))
 );
+
+REGISTER_INTRINSICS( database_api,
+   (db_store_i64,        int(int64_t,int64_t,int64_t,int64_t,int,int))
+   (db_update_i64,       void(int,int64_t,int,int))
+   (db_remove_i64,       void(int))
+   (db_get_i64,          int(int, int, int, int))
+   (db_next_i64,         int(int))
+   (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t))
+   (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
+
+   (db_idx64_store,      int(int64_t,int64_t,int64_t,int64_t,int))
+   (db_idx64_remove,     void(int))
+   (db_idx64_update,     void(int,int64_t,int))
+
+
+   (db_idx128_store,      int(int64_t,int64_t,int64_t,int64_t,int))
+   (db_idx128_remove,     void(int))
+   (db_idx128_update,     void(int,int64_t,int))
+)
 
 REGISTER_INTRINSICS(crypto_api,
    (assert_recover_key,  void(int, int, int, int, int))
