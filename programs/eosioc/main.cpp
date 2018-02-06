@@ -560,6 +560,7 @@ int main( int argc, char** argv ) {
    string table;
    string lower;
    string upper;
+   string key;
    bool binary = false;
    uint32_t limit = 10;
    auto getTable = get->add_subcommand( "table", localized("Retrieve the contents of a database table"), false);
@@ -568,7 +569,7 @@ int main( int argc, char** argv ) {
    getTable->add_option( "table", table, localized("The name of the table as specified by the contract abi") )->required();
    getTable->add_option( "-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON") );
    getTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
-   getTable->add_option( "-k,--key", limit, localized("The name of the key to index by as defined by the abi, defaults to primary key") );
+   getTable->add_option( "-k,--key", key, localized("The name of the key to index by as defined by the abi, defaults to primary key") );
    getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
 
@@ -577,6 +578,7 @@ int main( int argc, char** argv ) {
                          ("scope",scope)
                          ("code",code)
                          ("table",table)
+                         ("limit",limit)
                          );
 
       std::cout << fc::json::to_pretty_string(result)
