@@ -22,6 +22,6 @@ namespace proxy {
       uint32_t            next_id = 0;
    };
 
-   using configs = eosio::table<N(proxy),N(proxy),N(configs),config,uint64_t>;
+   using configs = eosio::table<N(proxy),N(proxy),N(configs),N(proxy),config,uint64_t>;
 
 } /// namespace proxy

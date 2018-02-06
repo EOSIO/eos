@@ -620,13 +620,6 @@ namespace WASM
             Opcode opcode;
             serialize(bodyStream,opcode);
 
-            ////disallow memory operations
-            #define VISIT_OPCODE(_,name,...) \
-               if(opcode == Opcode::name) \
-                  throw FatalSerializationException("memory instructions not allowed");
-            ENUM_MEMORY_OPERATORS(VISIT_OPCODE)
-            #undef VISIT_OPCODE
-
             switch(opcode)
             {
             #define VISIT_OPCODE(_,name,nameString,Imm,...) \
