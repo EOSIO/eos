@@ -121,6 +121,8 @@ namespace eosio { namespace chain {
       key_value_object_type,
       key128x128_value_object_type,
       key64x64_value_object_type,
+      index64_object_type,
+      index128_object_type,
       action_permission_object_type,
       global_property_object_type,
       dynamic_global_property_object_type,
@@ -174,6 +176,8 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (key_value_object_type)
                 (key128x128_value_object_type)
                 (key64x64_value_object_type)
+                (index64_object_type)
+                (index128_object_type)
                 (action_permission_object_type)
                 (global_property_object_type)
                 (dynamic_global_property_object_type)
