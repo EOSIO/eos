@@ -58,12 +58,17 @@ BOOST_AUTO_TEST_SUITE(database_tests)
          }
 
          // Utility function to check expected irreversible block
-         auto calc_exp_last_irr_block_num = [&](uint32_t head_block_num) {
+         auto calc_exp_last_irr_block_num = [&](uint32_t head_block_num) -> uint32_t {
             const global_property_object &gpo = test.control->get_global_properties();
             const auto producers_size = gpo.active_producers.producers.size();
-            const auto min_producers = EOS_PERCENT(producers_size, config::irreversible_threshold_percent);
-            return head_block_num - (((min_producers - 1) * config::producer_repititions) + 1 +
-                   (head_block_num % config::producer_repititions));
+            const auto max_reversible_rounds = EOS_PERCENT(producers_size, config::percent_100 - config::irreversible_threshold_percent);
+            if( max_reversible_rounds == 0) {
+               return head_block_num - 1;
+            } else {
+               const auto current_round = head_block_num / config::producer_repititions;
+               const auto irreversible_round = current_round - max_reversible_rounds;
+               return (irreversible_round + 1) * config::producer_repititions - 1;
+            }
          };
 
          // Check the last irreversible block number is set correctly
