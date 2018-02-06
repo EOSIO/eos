@@ -158,7 +158,7 @@ namespace eosio { namespace testing {
       return push_transaction( ptrx );
    }
 
-   tester::ActionResult tester::push_action(action&& cert_act, uint64_t authorizer) {
+   tester::action_result tester::push_action(action&& cert_act, uint64_t authorizer) {
       signed_transaction trx;
       if (authorizer) {
          cert_act.authorization = vector<permission_level>{{authorizer, config::active_name}};

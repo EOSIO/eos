@@ -86,7 +86,7 @@ public:
       return get_result_uint64();
    }
 
-   ActionResult create_identity(const string& account_name, uint64_t identity, bool auth = true) {
+   action_result create_identity(const string& account_name, uint64_t identity, bool auth = true) {
       action create_act;
       create_act.account = N(identity);
       create_act.name = N(create);
@@ -113,7 +113,7 @@ public:
       return abi_ser.binary_to_variant("identrow", data);
    }
 
-   ActionResult certify(const string& certifier, uint64_t identity, const vector<fc::variant>& fields, bool auth = true) {
+   action_result certify(const string& certifier, uint64_t identity, const vector<fc::variant>& fields, bool auth = true) {
       action cert_act;
       cert_act.account = N(identity);
       cert_act.name = N(certprop);
@@ -163,7 +163,7 @@ public:
       }
    }
 
-   ActionResult settrust(const string& trustor, const string& trusting, uint64_t trust, bool auth = true)
+   action_result settrust(const string& trustor, const string& trusting, uint64_t trust, bool auth = true)
    {
       signed_transaction trx;
       action settrust_act;

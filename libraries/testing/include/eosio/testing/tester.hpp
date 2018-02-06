@@ -15,7 +15,7 @@ namespace eosio { namespace testing {
     */
    class tester {
       public:
-         typedef string ActionResult;
+         typedef string action_result;
 
          tester(bool process_genesis = true);
 
@@ -28,7 +28,7 @@ namespace eosio { namespace testing {
 
          transaction_trace push_transaction( packed_transaction& trx );
          transaction_trace push_transaction( signed_transaction& trx );
-         ActionResult      push_action(action&& cert_act, uint64_t authorizer);
+         action_result      push_action(action&& cert_act, uint64_t authorizer);
          void              set_tapos( signed_transaction& trx ) const;
 
          void              create_accounts( vector<account_name> names, asset init_bal, bool multisig = false ) {
@@ -77,9 +77,9 @@ namespace eosio { namespace testing {
 
         static string to_string(fc::variant x);
 
-        static ActionResult success() { return string(); }
+        static action_result success() { return string(); }
 
-        static ActionResult error(const string& msg) { return msg; }
+        static action_result error(const string& msg) { return msg; }
 
       private:
          fc::temp_directory                            tempdir;
