@@ -26,7 +26,7 @@ namespace eosiosystem {
             typename currency::token_type total_cpu_weight; 
          };
 
-         typedef eosio::table64<SystemAccount, N(totalband), total_bandwidth>      total_bandwidth;
+         typedef eosio::table64<SystemAccount, N(totalband), SystemAccount, total_bandwidth>      total_bandwidth;
 
          struct delegated_bandwidth {
             account_name from;

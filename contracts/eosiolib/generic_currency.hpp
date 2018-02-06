@@ -74,8 +74,8 @@ namespace eosio {
            *  Each user stores their balance in the singleton table under the
            *  scope of their account name.
            */
-          typedef table64<code, accounts_table_name, account>      accounts;
-          typedef table64<code, stats_table_name, currency_stats>  stats;
+          typedef table64<code, accounts_table_name, code, account>      accounts;
+          typedef table64<code, stats_table_name, code, currency_stats>  stats;
 
           static token_type get_balance( account_name owner ) {
              return accounts::get_or_create( token_type::symbol, owner ).balance;
