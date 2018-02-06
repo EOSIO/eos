@@ -133,8 +133,7 @@
 #include<vector>
 
 
-//
-
+/*
 #include <array>
 #include <vector>
 #include <stack>
@@ -146,17 +145,36 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
-
 #include <stdexcept>
-
+*/
 #include <eoslib/eos.hpp>
-
 #include <eoslib/token.hpp>
+#include <eoslib/string.hpp>
 #include <eoslib/dispatcher.hpp>
 
 using namespace eosio;
-
+/*
+namespace std {
+   extern ios_base __start_std_streams;
+}
+*/
 namespace stltest {
+
+   struct MSTR {
+      MSTR() : x(7891) {
+         prints("ATTENTION! S::S() called\n");
+      }
+      int x;
+      ~MSTR() {
+         prints("~MSTR");
+      }
+   };
+
+   /*
+   std::string s = "abcdef";
+   eosio::string s2 = "abcdef";;
+   MSTR global;
+   */
 
     class contract {
     public:
@@ -185,7 +203,19 @@ namespace stltest {
         };
 
         static void on(const message& msg) {
-           print("STL test start.\n");
+           /* manual initialization of global variable
+           new(&std::__start_std_streams)std::ios_base::Init;
+           */
+           /*
+           std::ostringstream osm;
+           osm << "abcdef";
+           std::string s = osm.str();
+           prints_l(s.data(), s.size());
+           */
+           /*
+           prints("STD string: "); prints(s.c_str());
+           prints("\nEOS string: "); prints_l(s2.get_data(), s2.get_size());
+           */
            void* ptr = malloc(10);
            free(ptr);
 
@@ -228,8 +258,7 @@ namespace stltest {
 
            sort(dq.begin(), dq.end());
            auto lit = find_if(l.begin(), l.end(), [](uint32_t f) { return f < 10; });
-
-           print("STL test done.\n");
+           //std::cout << "STL test done." << std::endl;
         }
 
         static void apply( account_name c, action_name act) {
