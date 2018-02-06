@@ -101,7 +101,7 @@
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
 
-	  . ${FILE}/scripts/eosio_build_darwin.sh
+	  . scripts/eosio_build_darwin.sh
 	fi
 
 	printf "\n\n>>>>>>>> ALL dependencies sucessfully found or installed . Installing EOS.IO\n\n"
@@ -123,10 +123,16 @@
 	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_LLVM_CONFIG=${WASM_LLVM_CONFIG} \
 	-DBINARYEN_BIN=${BINARYEN_BIN} -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} \
 	-DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} ..
-	make -j$(nproc)
-
 	if [ $? -ne 0 ]; then
 		printf "\n\t>>>>>>>>>>>>>>>>>>>> CMAKE building EOSIO has exited with the above error.\n\n"
-	else
-		printf "\n\t>>>>>>>>>>>>>>>>>>>> EOSIO has been successfully installed.\n\n"
+		exit -1
 	fi
+
+	make -j$(nproc) VERBOSE=1
+
+	if [ $? -ne 0 ]; then
+		printf "\n\t>>>>>>>>>>>>>>>>>>>> MAKE building EOSIO has exited with the above error.\n\n"
+		exit -1
+	fi
+
+	printf "\n\t>>>>>>>>>>>>>>>>>>>> EOSIO has been successfully installed.\n\n"
