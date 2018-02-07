@@ -27,7 +27,7 @@ public:
    identity_tester() {
       produce_blocks(2);
 
-      create_accounts( {N(identity), N(identitytest), N(alice), N(bob), N(carol)}, asset::from_string("100000.0000 EOS") );
+      create_accounts( {N(identity), N(identitytest), N(alice), N(bob), N(carol)} );
       produce_blocks(1000);
 
       set_code(N(identity), identity_wast);

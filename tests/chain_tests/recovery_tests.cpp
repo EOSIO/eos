@@ -35,13 +35,37 @@ auto make_vetorecovery(const tester &t, account_name account, permission_name ve
    return trx;
 }
 
+struct recov_tester : public tester {
+   transaction_trace push_nonce(account_name from, string role) {
+      variant pretty_trx = fc::mutable_variant_object()
+      ("actions", fc::variants({
+         fc::mutable_variant_object()
+            ("account", name(config::system_account_name))
+            ("name", "nonce")
+            ("authorization", vector<permission_level>{{ from, config::owner_name }})
+            ("data", fc::mutable_variant_object()
+               ("from", from)
+               ("value", fc::time_point::now())
+            )
+         })
+     );
+
+      signed_transaction trx;
+      contracts::abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+      set_tapos( trx );
+      trx.sign( get_private_key(from, role), chain_id_type() );
+      return push_transaction( trx );
+   }
+};
+
+
 
 BOOST_AUTO_TEST_SUITE(recovery_tests)
 
 
-BOOST_FIXTURE_TEST_CASE( test_recovery_owner, tester ) try {
+BOOST_FIXTURE_TEST_CASE( test_recovery_owner, recov_tester ) try {
    produce_blocks(1000);
-   create_account(N(alice), asset::from_string("1000.0000 EOS"));
+   create_account(N(alice));
    produce_block();
 
    fc::time_point expected_recovery(fc::seconds(control->head_block_time().sec_since_epoch()) +fc::days(30));
@@ -72,9 +96,9 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_owner, tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( test_recovery_owner_veto, tester ) try {
+BOOST_FIXTURE_TEST_CASE( test_recovery_owner_veto, recov_tester ) try {
    produce_blocks(1000);
-   create_account(N(alice), asset::from_string("1000.0000 EOS"));
+   create_account(N(alice));
    produce_block();
 
    fc::time_point expected_recovery(fc::seconds(control->head_block_time().sec_since_epoch()) +fc::days(30));
@@ -114,9 +138,9 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_owner_veto, tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( test_recovery_bad_creator, tester ) try {
+BOOST_FIXTURE_TEST_CASE( test_recovery_bad_creator, recov_tester ) try {
    produce_blocks(1000);
-   create_account(N(alice), asset::from_string("1000.0000 EOS"), N(inita), true);
+   create_account(N(alice), config::system_account_name, true);
    produce_block();
 
    fc::time_point expected_recovery(fc::seconds(control->head_block_time().sec_since_epoch()) +fc::days(30));

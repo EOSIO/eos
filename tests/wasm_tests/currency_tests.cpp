@@ -6,6 +6,9 @@
 #include <currency/currency.wast.hpp>
 #include <currency/currency.abi.hpp>
 
+#include <proxy/proxy.wast.hpp>
+#include <proxy/proxy.abi.hpp>
+
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
@@ -17,23 +20,8 @@ using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 using namespace fc;
 
-class currency_tester : tester {
+class currency_tester : public tester {
    public:
-      currency_tester()
-      :tester()
-      ,abi_ser(json::from_string(currency_abi).as<abi_def>())
-      {
-         const auto token_supply = asset::from_string("1000000.0000 CUR");
-
-         create_account( N(currency));
-         set_code( N(currency), currency_wast );
-
-         push_action(N(currency), N(transfer), {{N(currency), config::active_name}}, mutable_variant_object()
-            ("to",       "currency")
-            ("quantity", "1000000.0000 CUR")
-         );
-         produce_block();
-      }
 
       auto push_action(const account_name& signer, const action_name &name, const variant_object &data ) {
          string action_type_name = abi_ser.get_action_type(name);
@@ -51,11 +39,26 @@ class currency_tester : tester {
          return push_transaction(trx);
       }
 
-      auto get_balance(const account_name& account) const {
-         return get_currency_balance(N(currency), SY(4,CUR), account);
+      asset get_balance(const account_name& account) const {
+         return get_currency_balance(N(currency), symbol(SY(4,CUR)), account);
       }
 
-      abi_serializer abi_ser;
+
+      currency_tester()
+      :tester(),abi_ser(json::from_string(currency_abi).as<abi_def>())
+      {
+         create_account( N(currency));
+         set_code( N(currency), currency_wast );
+
+         push_action(N(currency), N(issue), mutable_variant_object()
+                 ("to",       "currency")
+                 ("quantity", "1000000.0000 CUR")
+         );
+         produce_block();
+      }
+
+
+   abi_serializer abi_ser;
 };
 
 BOOST_AUTO_TEST_SUITE(currency_tests)
@@ -82,7 +85,7 @@ BOOST_FIXTURE_TEST_CASE( test_transfer, currency_tester ) try {
       produce_block();
 
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace.id));
-      BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ));
+      BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ) );
    }
 } FC_LOG_AND_RETHROW() /// test_transfer
 
@@ -181,7 +184,7 @@ BOOST_FIXTURE_TEST_CASE( test_fullspend, currency_tester ) try {
          ("quantity", "100.0000 CUR")
          ("memo", "all in! Alice");
 
-      auto trace = push_action(push_action(N(alice), N(transfer), data);
+      auto trace = push_action(N(alice), N(transfer), data);
       produce_block();
 
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace.id));
@@ -266,5 +269,161 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
    }
 
 } FC_LOG_AND_RETHROW() /// test_symbol
+
+BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(alice), N(proxy)} );
+   produce_block();
+
+   set_code(N(proxy), proxy_wast);
+   produce_blocks(1);
+
+   abi_serializer proxy_abi_ser(json::from_string(proxy_abi).as<abi_def>());
+
+   // set up proxy owner
+   {
+      signed_transaction trx;
+      action setowner_act;
+      setowner_act.account = N(proxy);
+      setowner_act.name = N(setowner);
+      setowner_act.authorization = vector<permission_level>{{N(proxy), config::active_name}};
+      setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
+         ("owner", "alice")
+         ("delay", 10)
+      );
+      trx.actions.emplace_back(std::move(setowner_act));
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(proxy), "active"), chain_id_type());
+      push_transaction(trx);
+      produce_block();
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+   // for now wasm "time" is in seconds, so we have to truncate off any parts of a second that may have applied
+   fc::time_point expected_delivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
+   {
+      auto trace = push_action(N(currency), N(transfer), mutable_variant_object()
+         ("from", "currency")
+         ("to",   "proxy")
+         ("quantity", "5.0000 CUR")
+         ("memo", "fund Proxy")
+      );
+   }
+
+   while(control->head_block_time() < expected_delivery) {
+      control->push_deferred_transactions(true);
+      produce_block();
+      BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 CUR"));
+      BOOST_REQUIRE_EQUAL(get_balance( N(alice)),   asset::from_string("0.0000 CUR"));
+   }
+
+   control->push_deferred_transactions(true);
+   BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 CUR"));
+   BOOST_REQUIRE_EQUAL(get_balance( N(alice)),   asset::from_string("5.0000 CUR"));
+
+} FC_LOG_AND_RETHROW() /// test_currency
+
+BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(alice), N(bob), N(proxy)} );
+   produce_block();
+
+   set_code(N(proxy), proxy_wast);
+   set_code(N(bob), proxy_wast);
+   produce_blocks(1);
+
+   abi_serializer proxy_abi_ser(json::from_string(proxy_abi).as<abi_def>());
+
+   // set up proxy owner
+   {
+      signed_transaction trx;
+      action setowner_act;
+      setowner_act.account = N(proxy);
+      setowner_act.name = N(setowner);
+      setowner_act.authorization = vector<permission_level>{{N(proxy), config::active_name}};
+      setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
+         ("owner", "bob")
+         ("delay", 10)
+      );
+      trx.actions.emplace_back(std::move(setowner_act));
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(proxy), "active"), chain_id_type());
+      push_transaction(trx);
+      produce_block();
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+   // for now wasm "time" is in seconds, so we have to truncate off any parts of a second that may have applied
+   fc::time_point expected_delivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
+   auto trace = push_action(N(currency), N(transfer), mutable_variant_object()
+      ("from", "currency")
+      ("to",   "proxy")
+      ("quantity", "5.0000 CUR")
+      ("memo", "fund Proxy")
+   );
+
+   BOOST_REQUIRE_EQUAL(trace.deferred_transactions.size(), 1);
+   auto deferred_id = trace.deferred_transactions.back().id();
+
+   while(control->head_block_time() < expected_delivery) {
+      control->push_deferred_transactions(true);
+      produce_block();
+      BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 CUR"));
+      BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
+      BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
+      BOOST_REQUIRE_EQUAL(chain_has_transaction(deferred_id), false);
+   }
+
+   fc::time_point expected_redelivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
+   control->push_deferred_transactions(true);
+   produce_block();
+   BOOST_REQUIRE_EQUAL(chain_has_transaction(deferred_id), true);
+   BOOST_REQUIRE_EQUAL(get_transaction_receipt(deferred_id).status, transaction_receipt::soft_fail);
+
+   // set up alice owner
+   {
+      signed_transaction trx;
+      action setowner_act;
+      setowner_act.account = N(bob);
+      setowner_act.name = N(setowner);
+      setowner_act.authorization = vector<permission_level>{{N(bob), config::active_name}};
+      setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
+         ("owner", "alice")
+         ("delay", 0)
+      );
+      trx.actions.emplace_back(std::move(setowner_act));
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(bob), "active"), chain_id_type());
+      push_transaction(trx);
+      produce_block();
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+   while(control->head_block_time() < expected_redelivery) {
+      control->push_deferred_transactions(true);
+      produce_block();
+      BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 CUR"));
+      BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
+      BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
+   }
+
+   control->push_deferred_transactions(true);
+   BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 CUR"));
+   BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("0.0000 CUR"));
+   BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("5.0000 CUR"));
+
+   control->push_deferred_transactions(true);
+
+   BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 CUR"));
+   BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 CUR"));
+   BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
+
+} FC_LOG_AND_RETHROW() /// test_currency
+
 
 BOOST_AUTO_TEST_SUITE_END()

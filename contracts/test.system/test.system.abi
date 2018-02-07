@@ -33,6 +33,27 @@
         {"name":"version",    "type":"uint32"},
         {"name":"producer",   "type":"producer_key[]"}
       ]
+    },{
+      "name": "nonce",
+      "base": "",
+      "fields": [
+        {"name":"from", "type":"account_name"},
+        {"name":"value", "type":"string"}
+      ]
     }],
+  "actions": [{
+      "name": "setalimits",
+      "type": "set_account_limits"
+    },{
+      "name": "setglimits",
+      "type": "set_global_limits"
+    },{
+      "name": "setprods",
+      "type": "set_producers"
+    },{
+      "name": "nonce",
+      "type": "nonce"
+    }
+  ],
   "tables": []
 }

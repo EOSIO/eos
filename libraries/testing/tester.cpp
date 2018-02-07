@@ -4,7 +4,6 @@
 #include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/contracts/eos_contract.hpp>
 #include <eosio/chain/contracts/contract_table_objects.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
 
 #include <test.system/test.system.wast.hpp>
 #include <test.system/test.system.abi.hpp>
@@ -33,8 +32,8 @@ namespace eosio { namespace testing {
    }
 
    void tester::push_genesis_block() {
-      set_code(config::eosio_system_account_name, test_system_wast);
-      set_abi(config::eosio_system_account_name, test_system_abi);
+      set_code(config::system_account_name, test_system_wast);
+      set_abi(config::system_account_name, test_system_abi);
    }
 
    public_key_type  tester::get_public_key( name keyname, string role ) const {
@@ -86,7 +85,7 @@ namespace eosio { namespace testing {
   }
 
 
-   void tester::create_account( account_name a, asset initial_balance, account_name creator, bool multisig ) {
+   void tester::create_account( account_name a, account_name creator, bool multisig ) {
       signed_transaction trx;
       set_tapos( trx );
 
@@ -110,7 +109,6 @@ namespace eosio { namespace testing {
       set_tapos(trx);
       trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
       push_transaction( trx );
-      transfer(creator, a, initial_balance);
    }
 
    transaction_trace tester::push_transaction( packed_transaction& trx ) {
@@ -142,51 +140,34 @@ namespace eosio { namespace testing {
       return success();
    }
 
-   void tester::create_account( account_name a, string initial_balance, account_name creator, bool multisig  ) {
-      create_account( a, asset::from_string(initial_balance), creator, multisig );
-   }
-
-   auto resolver = []( tester& t, const account_name& name ) -> optional<contracts::abi_serializer> {
-      try {
-         const auto& accnt = t.control->get_database().get<account_object, by_name>(name);
-         contracts::abi_def abi;
-         if (contracts::abi_serializer::to_abi(accnt.abi, abi)) {
-            return contracts::abi_serializer(abi);
-         }
-         return optional<contracts::abi_serializer>();
-      } FC_RETHROW_EXCEPTIONS(error, "Failed to find or parse ABI for ${name}", ("name", name))
-   };
-
-   transaction_trace tester::push_nonce(account_name from, const string& role, const string& v) {
+   transaction_trace tester::push_nonce(account_name from, const string& v) {
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
-               ("account", name(config::eosio_system_account_name))
+               ("account", name(config::system_account_name))
                ("name", "nonce")
                ("authorization", fc::variants({
                   fc::mutable_variant_object()
                      ("actor", from)
-                     ("permission", name(config::owner_name))
+                     ("permission", name(config::active_name))
                }))
                ("data", fc::mutable_variant_object()
+                  ("from", from)
                   ("value", v)
                )
             })
          );
 
       signed_transaction trx;
-      auto resolve = [this](const account_name& name) -> optional<contracts::abi_serializer> {
-         return resolver(*this, name);
-      };
-      contracts::abi_serializer::from_variant(pretty_trx, trx, resolve);
+      contracts::abi_serializer::from_variant(pretty_trx, trx, get_resolver());
       set_tapos( trx );
 
-      trx.sign( get_private_key( from, role ), chain_id_type() );
+      trx.sign( get_private_key( from, "active" ), chain_id_type() );
       return push_transaction( trx );
    }
 
    transaction_trace tester::transfer( account_name from, account_name to, string amount, string memo, account_name currency ) {
-      return transfer( from, to, asset::from_string(amount), memo );
+      return transfer( from, to, asset::from_string(amount), memo, currency );
    }
 
    transaction_trace tester::transfer( account_name from, account_name to, asset amount, string memo, account_name currency ) {
@@ -210,10 +191,7 @@ namespace eosio { namespace testing {
          );
 
       signed_transaction trx;
-      auto resolve = [this](const account_name& name) -> optional<contracts::abi_serializer> {
-         return resolver(*this, name);
-      };
-      contracts::abi_serializer::from_variant(pretty_trx, trx, resolve);
+      contracts::abi_serializer::from_variant(pretty_trx, trx, get_resolver());
       set_tapos( trx );
 
       trx.sign( get_private_key( from, name(config::active_name).to_string() ), chain_id_type()  );
@@ -318,9 +296,6 @@ namespace eosio { namespace testing {
       return chain_transactions.at(txid);
    }
 
-   share_type tester::get_balance( const account_name& account ) const {
-      return get_currency_balance( config::eosio_system_account_name, EOS_SYMBOL, account ).amount;
-   }
    /**
     *  Reads balance as stored by generic_currency contract
     */

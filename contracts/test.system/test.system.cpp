@@ -47,7 +47,7 @@ namespace testsystem {
       EOSLIB_SERIALIZE( producer_key, (account)(public_key) );
    };
 
-   struct set_producers : dispatchable<N(setproducers)> {
+   struct set_producers : dispatchable<N(setprods)> {
       uint32_t              version;
       vector<producer_key>  producers;
 
@@ -60,18 +60,37 @@ namespace testsystem {
       EOSLIB_SERIALIZE( set_producers, (version)(producers) );
    };
 
-   template<typename T, typename ...Rem>
-   struct dispatcher_impl {
-      static void dispatch(uint64_t action) {
-         if (action == T::action_name) {
-            T::process(current_action<T>());
-         } else {
-            dispatcher_impl<Rem...>::dispatch(action);
-         }
+   struct nonce : dispatchable<N(nonce)> {
+      account_name from;
+
+      static void process(const nonce& n) {
+         require_auth(n.from);
       }
    };
 
-   using dispatcher = dispatcher_impl<set_account_limits, set_global_limits, set_producers>;
+   template<typename ...Ts>
+   struct dispatcher_impl;
+
+   template<typename T>
+   struct dispatcher_impl<T> {
+      static bool dispatch(uint64_t action) {
+         if (action == T::action_name) {
+            T::process(current_action<T>());
+            return true;
+         }
+
+         return false;
+      }
+   };
+
+   template<typename T, typename ...Rem>
+   struct dispatcher_impl<T, Rem...> {
+      static bool dispatch(uint64_t action) {
+         return dispatcher_impl<T>::dispatch(action) || dispatcher_impl<Rem...>::dispatch(action);
+      }
+   };
+
+   using dispatcher = dispatcher_impl<set_account_limits, set_global_limits, set_producers, nonce>;
 };
 
 
