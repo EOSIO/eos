@@ -787,7 +787,7 @@ class db_api : public context_aware_api {
          return context.remove_record<ObjectType>(t_id, keys);
       }
 };
-
+/*
 template<>
 class db_api<keystr_value_object> : public context_aware_api {
    using KeyType = std::string;
@@ -828,7 +828,7 @@ class db_api<keystr_value_object> : public context_aware_api {
          return context.remove_record<keystr_value_object>(t_id, k);
       }
 };
-
+*/
 template<typename IndexType, typename Scope>
 class db_index_api : public context_aware_api {
    using KeyType = typename IndexType::value_type::key_type;
@@ -860,7 +860,6 @@ class db_index_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-<<<<<<< HEAD
       int load(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
          auto res = call(&apply_context::load_record<IndexType, Scope>, scope, code, table, data, data_len);
          return res;
@@ -1291,6 +1290,7 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__modti3,      void(int, int64_t, int64_t, int64_t, int64_t) )
    (__umodti3,      void(int, int64_t, int64_t, int64_t, int64_t) )
    (__multi3,      void(int, int64_t, int64_t, int64_t, int64_t) )
+);
 
 REGISTER_INTRINSICS(privileged_api,
    (activate_feature,          void(int64_t))
@@ -1338,7 +1338,6 @@ REGISTER_INTRINSICS(crypto_api,
    (sha256,         void(int, int, int))
    (sha512,         void(int, int, int))
    (ripemd160,      void(int, int, int))
->>>>>>> master
 );
 
 REGISTER_INTRINSICS(string_api,
@@ -1437,12 +1436,14 @@ REGISTER_INTRINSICS(db_api_key_value_object,         DB_METHOD_SEQ(i64));
 REGISTER_INTRINSICS(db_api_key128x128_value_object,  DB_METHOD_SEQ(i128i128));
 REGISTER_INTRINSICS(db_api_key64x64_value_object,    DB_METHOD_SEQ(i64i64));
 REGISTER_INTRINSICS(db_api_key64x64x64_value_object, DB_METHOD_SEQ(i64i64i64));
+/*
 REGISTER_INTRINSICS(db_api_keystr_value_object,
    (store_str,                int32_t(int64_t, int64_t, int, int, int, int)  )
    (update_str,               int32_t(int64_t, int64_t, int, int, int, int)  )
    (remove_str,               int32_t(int64_t, int64_t, int, int)  ));
-
+*/
 REGISTER_INTRINSICS(db_index_api_key_value_index_by_scope_primary,           DB_INDEX_METHOD_SEQ(i64));
+/*
 REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,
    (load_str,            int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
    (front_str,           int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
@@ -1451,6 +1452,7 @@ REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,
    (previous_str,        int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
    (lower_bound_str,     int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
    (upper_bound_str,     int32_t(int64_t, int64_t, int64_t, int, int, int, int)  ));
+*/
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_primary,    DB_INDEX_METHOD_SEQ(primary_i128i128));
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_secondary,  DB_INDEX_METHOD_SEQ(secondary_i128i128));
 REGISTER_INTRINSICS(db_index_api_key64x64_value_index_by_scope_primary,      DB_INDEX_METHOD_SEQ(primary_i64i64));
