@@ -117,7 +117,8 @@ Then clone the EOS repository recursively and run eosio-build.sh in the root `eo
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
-./eosio-build.sh darwin
+
+
 ```
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
@@ -139,7 +140,7 @@ git clone https://github.com/eosio/eos --recursive
 
 cd eos
 git checkout dawn-2.x
-./eosio-build.sh darwin
+./build.sh darwin
 ```
 
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
