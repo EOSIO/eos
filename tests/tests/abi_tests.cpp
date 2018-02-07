@@ -380,10 +380,12 @@ BOOST_AUTO_TEST_CASE(generator)
     FC_ASSERT(eosiolib_path != NULL);
 
     std::string include_param = std::string("-I") + eosiolib_path;
+    std::string stdcpp_include_param = std::string("-I") + eosiolib_path + "/libc++/include";
+    std::string stdc_include_param = std::string("-I") + eosiolib_path +  "/musl/include";
 
-    abi_def output;
+     abi_def output;
     bool res = runToolOnCodeWithArgs(new generate_abi_action(false, opt_sfs, "", output), source,
-      {"-fparse-all-comments", "--std=c++14", "--target=wasm32", include_param});
+      {"-fparse-all-comments", "--std=c++14", "--target=wasm32", "-ffreestanding", "-nostdlib", "-nostdlibinc", "-fno-threadsafe-statics", "-fno-rtti",  "-fno-exceptions", include_param, stdcpp_include_param, stdc_include_param });
 
     FC_ASSERT(res == true);
     abi_serializer(output).validate();
