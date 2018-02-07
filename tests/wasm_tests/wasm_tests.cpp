@@ -1,6 +1,7 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <asserter/asserter.wast.hpp>
 #include <asserter/asserter.abi.hpp>
@@ -756,5 +757,127 @@ BOOST_FIXTURE_TEST_CASE(noop, tester) try {
    }
 
  } FC_LOG_AND_RETHROW()
+
+//busted because of checktime, disable for now
+#if 0
+BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(tbl)}, asset::from_string("1000.0000 EOS") );
+   transfer( N(inita), N(tbl), "10.0000 EOS", "memo" );
+   produce_block();
+
+   set_code(N(tbl), table_checker_wast);
+   produce_blocks(1);
+
+   {
+   signed_transaction trx;
+   action act;
+   act.name = 555ULL<<32 | 0ULL;       //top 32 is what we assert against, bottom 32 is indirect call index
+   act.account = N(tbl);
+   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
+   trx.actions.push_back(act);
+   set_tapos(trx);
+   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   push_transaction(trx);
+   }
+
+   produce_blocks(1);
+
+   {
+   signed_transaction trx;
+   action act;
+   act.name = 555ULL<<32 | 1022ULL;       //top 32 is what we assert against, bottom 32 is indirect call index
+   act.account = N(tbl);
+   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
+   trx.actions.push_back(act);
+   set_tapos(trx);
+   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   push_transaction(trx);
+   }
+
+   produce_blocks(1);
+
+   {
+   signed_transaction trx;
+   action act;
+   act.name = 7777ULL<<32 | 1023ULL;       //top 32 is what we assert against, bottom 32 is indirect call index
+   act.account = N(tbl);
+   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
+   trx.actions.push_back(act);
+   set_tapos(trx);
+   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   push_transaction(trx);
+   }
+
+   produce_blocks(1);
+
+   {
+   signed_transaction trx;
+   action act;
+   act.name = 7778ULL<<32 | 1023ULL;       //top 32 is what we assert against, bottom 32 is indirect call index
+   act.account = N(tbl);
+   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
+   trx.actions.push_back(act);
+   set_tapos(trx);
+   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+
+   //should fail, a check to make sure assert() in wasm is being evaluated correctly
+   BOOST_CHECK_THROW(push_transaction(trx), fc::assert_exception);
+   }
+
+   produce_blocks(1);
+
+   {
+   signed_transaction trx;
+   action act;
+   act.name = 133ULL<<32 | 5ULL;       //top 32 is what we assert against, bottom 32 is indirect call index
+   act.account = N(tbl);
+   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
+   trx.actions.push_back(act);
+   set_tapos(trx);
+   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+
+   //should fail, this element index (5) does not exist
+   BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_execution_error);
+   }
+
+   produce_blocks(1);
+
+   {
+   signed_transaction trx;
+   action act;
+   act.name = eosio::chain::wasm_constraints::maximum_table_elements+54334;
+   act.account = N(tbl);
+   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
+   trx.actions.push_back(act);
+   set_tapos(trx);
+   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+
+   //should fail, this element index is out of range
+   BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_execution_error);
+   }
+
+   produce_blocks(1);
+
+   set_code(N(tbl), table_checker_small_wast);
+   produce_blocks(1);
+
+   {
+   signed_transaction trx;
+   action act;
+   act.name = 888ULL;
+   act.account = N(tbl);
+   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
+   trx.actions.push_back(act);
+   set_tapos(trx);
+   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+
+   //an element that is out of range and has no mmap access permission either (should be a trapped segv)
+   BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_execution_error);
+   }
+
+} FC_LOG_AND_RETHROW()
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
