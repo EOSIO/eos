@@ -32,7 +32,7 @@ namespace detail {
       bool operator()(const meta_permission& a, const meta_permission& b) const {
          get_weight_visitor scale;
          if (a.visit(scale) > b.visit(scale)) return true;
-         return a.contains<key_weight>() && !b.contains<permission_level_weight>();
+         return a.contains<key_weight>() && b.contains<permission_level_weight>();
       }
    };
 
