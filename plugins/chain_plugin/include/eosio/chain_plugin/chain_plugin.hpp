@@ -77,13 +77,9 @@ public:
 
    struct get_account_results {
       name                       account_name;
-      asset                      eos_balance = asset(0,EOS_SYMBOL);
-      asset                      staked_balance;
-      asset                      unstaking_balance;
-      fc::time_point_sec         last_unstaking_time;
       vector<permission>         permissions;
-      optional<producer_info>    producer;
    };
+
    struct get_account_params {
       name account_name;
    };
@@ -164,8 +160,8 @@ public:
 
    struct get_table_rows_params {
       bool        json = false;
-      name        scope;
       name        code;
+      name        scope;
       name        table;
 //      string      table_type;
       string      table_key;
@@ -200,13 +196,13 @@ public:
 
    fc::variant get_currency_stats( const get_currency_stats_params& params )const;
 
-   void copy_row(const chain::contracts::key_value_object& obj, vector<char>& data)const {
+   static void copy_row(const chain::contracts::key_value_object& obj, vector<char>& data) {
       data.resize( sizeof(uint64_t) + obj.value.size() );
       memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
       memcpy( data.data()+sizeof(uint64_t), obj.value.data(), obj.value.size() );
    }
 
-   void copy_row(const chain::contracts::keystr_value_object& obj, vector<char>& data)const {
+   static void copy_row(const chain::contracts::keystr_value_object& obj, vector<char>& data) {
       data.resize( obj.primary_key.size() + obj.value.size() + 8 );
       fc::datastream<char*> ds(data.data(), data.size());
       fc::raw::pack(ds, obj.primary_key);
@@ -214,14 +210,14 @@ public:
       data.resize(ds.tellp());
    }
 
-   void copy_row(const chain::contracts::key128x128_value_object& obj, vector<char>& data)const {
+   static void copy_row(const chain::contracts::key128x128_value_object& obj, vector<char>& data) {
       data.resize( 2*sizeof(uint128_t) + obj.value.size() );
       memcpy( data.data(), &obj.primary_key, sizeof(uint128_t) );
       memcpy( data.data()+sizeof(uint128_t), &obj.secondary_key, sizeof(uint128_t) );
       memcpy( data.data()+2*sizeof(uint128_t), obj.value.data(), obj.value.size() );
    }
 
-   void copy_row(const chain::contracts::key64x64x64_value_object& obj, vector<char>& data)const {
+   static void copy_row(const chain::contracts::key64x64x64_value_object& obj, vector<char>& data) {
       data.resize( 3*sizeof(uint64_t) + obj.value.size() );
       memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
       memcpy( data.data()+sizeof(uint64_t), &obj.secondary_key, sizeof(uint64_t) );
@@ -230,10 +226,10 @@ public:
    }
 
    template<typename IndexType, typename Scope, typename Function>
-   void walk_table(const name& scope, const name& code, const name& table, Function f) const
+   void walk_table(const name& code, const name& scope, const name& table, Function f) const
    {
       const auto& d = db.get_database();
-      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));
+      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<IndexType, Scope>();
          decltype(t_id->id) next_tid(t_id->id._id + 1);
@@ -255,7 +251,7 @@ public:
 
       abi_serializer abis;
       abis.set_abi(abi);
-      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_scope_code_table>(boost::make_tuple(p.scope, p.code, p.table));
+      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_code_scope_table>(boost::make_tuple(p.code, p.scope, p.table));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<IndexType, Scope>();
          decltype(t_id->id) next_tid(t_id->id._id + 1);
@@ -356,10 +352,6 @@ public:
 
   void get_chain_id (chain::chain_id_type &cid) const;
 
-  static const uint32_t            default_received_block_transaction_execution_time;
-  static const uint32_t            default_transaction_execution_time;
-  static const uint32_t            default_create_block_transaction_execution_time;
-
 private:
    unique_ptr<class chain_plugin_impl> my;
 };
@@ -376,14 +368,14 @@ FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
 FC_REFLECT_DERIVED( eosio::chain_apis::read_only::get_block_results, (eosio::chain::signed_block), (id)(block_num)(ref_block_prefix) );
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
   
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(scope)(code)(table)(table_key)(lower_bound)(upper_bound)(limit) )
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
 FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_result, (supply));
 
-FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(eos_balance)(staked_balance)(unstaking_balance)(last_unstaking_time)(permissions)(producer) )
+FC_REFLECT( eosio::chain_apis::read_only::get_account_results, (account_name)(permissions) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(abi) )
 FC_REFLECT( eosio::chain_apis::read_only::get_account_params, (account_name) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_params, (account_name) )

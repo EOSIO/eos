@@ -8,7 +8,7 @@ if [ $ARCH == "ubuntu" ]; then
                          libbz2-dev libssl-dev libgmp3-dev \
                          autotools-dev build-essential \
                          libbz2-dev libicu-dev python-dev \
-                         autoconf libtool git curl
+                         autoconf libtool git curl automake
     OPENSSL_ROOT_DIR=/usr/local/opt/openssl
     OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
 

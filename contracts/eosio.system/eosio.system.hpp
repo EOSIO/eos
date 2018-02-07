@@ -6,6 +6,7 @@
 #include <eosiolib/token.hpp>
 #include <eosiolib/db.hpp>
 #include <eosiolib/reflect.hpp>
+#include <eosiolib/print.hpp>
 
 #include <eosiolib/generic_currency.hpp>
 #include <eosiolib/datastream.hpp>
@@ -19,6 +20,34 @@ namespace eosiosystem {
          static const account_name system_account = N(eosio.system);
          typedef eosio::generic_currency< eosio::token<system_account,S(4,EOS)> > currency;
 
+         struct total_bandwidth {
+            account_name owner;
+            typename currency::token_type total_net_weight; 
+            typename currency::token_type total_cpu_weight; 
+         };
+
+         typedef eosio::table64<SystemAccount, N(totalband), SystemAccount, total_bandwidth>      total_bandwidth;
+
+         struct delegated_bandwidth {
+            account_name from;
+            account_name to;
+            typename currency::token_type net_weight; 
+            typename currency::token_type cpu_weight; 
+
+            uint32_t start_pending_net_withdraw = 0;
+            typename currency::token_type pending_net_withdraw;
+            uint64_t deferred_net_withdraw_handler = 0;
+
+            uint32_t start_pending_cpu_withdraw = 0;
+            typename currency::token_type pending_cpu_withdraw;
+            uint64_t deferred_cpu_withdraw_handler = 0;
+         };
+
+         ACTION( SystemAccount, finshundel ) {
+            account_name from;
+            account_name to;
+         };
+
          ACTION( SystemAccount, regproducer ) {
             account_name producer_to_register;
 
@@ -31,6 +60,35 @@ namespace eosiosystem {
             EOSLIB_SERIALIZE( regproxy, (proxy_to_register) );
          };
 
+         ACTION( SystemAccount, delnetbw ) {
+            account_name                    from;
+            account_name                    receiver;
+            typename currency::token_type   stake_quantity;
+
+            EOSLIB_SERIALIZE( delnetbw, (delegator)(receiver)(stake_quantity) )
+         };
+
+         ACTION( SystemAccount, undelnetbw ) {
+            account_name                    from;
+            account_name                    receiver;
+            typename currency::token_type   stake_quantity;
+
+            EOSLIB_SERIALIZE( delnetbw, (delegator)(receiver)(stake_quantity) )
+         };
+
+         ACTION( SystemAccount, nonce ) {
+            eosio::string                   value;
+
+            EOSLIB_SERIALIZE( nonce, (value) );
+         };
+
+      static void on( const delnetbw& del ) {
+            require_auth( del.from );
+          //  require_account( receiver );
+
+            currency::inline_transfer( del.from, SystemAccount, del.stake_quantity, "stake bandwidth" );
+         }
+
          static void on( const regproducer& reg ) {
             require_auth( reg.producer_to_register );
          }
@@ -39,16 +97,15 @@ namespace eosiosystem {
             require_auth( reg.proxy_to_register );
          }
 
+         static void on( const nonce& ) {
+         }
 
          static void apply( account_name code, action_name act ) {
-            if( !eosio::dispatch<contract, 
-//                   typename currency::transfer_memo, 
- //                  typename currency::issue,
-                   regproducer,
-                   regproxy
-                   >( code, act) ) 
-            {
-               assert( false, "received unexpected action" );
+            if( !eosio::dispatch<contract, regproducer, regproxy, nonce>( code, act) ) {
+               if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
+                  eosio::print("Unexpected action: ", act, "\n");
+                  assert( false, "received unexpected action");
+               }
             }
          } /// apply 
    };

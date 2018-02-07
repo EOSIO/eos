@@ -17,6 +17,7 @@ void apply_context::exec_one()
          (*native)(*this);
       } else {
          const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
+         privileged = a.privileged;
 
          if (a.code.size() > 0) {
             // get code from cache
@@ -101,7 +102,7 @@ void apply_context::exec()
    }
 
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
-      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta);
+      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta, _checktime_limit);
       ncontext.exec();
       append_results(move(ncontext.results));
    }
@@ -204,22 +205,22 @@ void apply_context::cancel_deferred( uint32_t sender_id ) {
    results.canceled_deferred.emplace_back(receiver, sender_id);
 }
 
-const contracts::table_id_object* apply_context::find_table( name scope, name code, name table ) {
+const contracts::table_id_object* apply_context::find_table( name code, name scope, name table ) {
    require_read_lock(code, scope);
-   return db.find<table_id_object, contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));
+   return db.find<table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));
 }
 
-const contracts::table_id_object& apply_context::find_or_create_table( name scope, name code, name table ) {
+const contracts::table_id_object& apply_context::find_or_create_table( name code, name scope, name table ) {
    require_read_lock(code, scope);
-   const auto* existing_tid =  db.find<contracts::table_id_object, contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));
+   const auto* existing_tid =  db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));
    if (existing_tid != nullptr) {
       return *existing_tid;
    }
 
    require_write_lock(scope);
    return mutable_db.create<contracts::table_id_object>([&](contracts::table_id_object &t_id){
-      t_id.scope = scope;
       t_id.code = code;
+      t_id.scope = scope;
       t_id.table = table;
    });
 }
@@ -233,21 +234,29 @@ vector<account_name> apply_context::get_active_producers() const {
    return accounts;
 }
 
+void apply_context::checktime_start() {
+   _checktime_start = fc::time_point::now();
+}
+
+void apply_context::checktime() const {
+   if ((fc::time_point::now() - _checktime_start).count() > _checktime_limit) {
+      throw checktime_exceeded();
+   }
+}
+
 
 const bytes& apply_context::get_packed_transaction() {
    if( !trx_meta.packed_trx.size() ) {
       if (_cached_trx.empty()) {
-         auto size = fc::raw::pack_size(trx_meta.trx);
+         auto size = fc::raw::pack_size(trx_meta.trx());
          _cached_trx.resize(size);
          fc::datastream<char *> ds(_cached_trx.data(), size);
-         fc::raw::pack(ds, trx_meta.trx);
+         fc::raw::pack(ds, trx_meta.trx());
       }
 
       return _cached_trx;
    }
 
    return trx_meta.packed_trx;
-
 }
-
 } } /// eosio::chain

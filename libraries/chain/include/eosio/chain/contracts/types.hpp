@@ -103,83 +103,12 @@ struct abi_def {
    vector<table_def>    tables;
 };
 
-struct transfer {
-   account_name   from;
-   account_name   to;
-   uint64         amount;
-   string         memo;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static name get_name() {
-      return N(transfer);
-   }
-};
-
-struct lock {
-   lock() = default;
-   lock(const account_name& from, const account_name& to, const share_type& amount)
-   :from(from), to(to), amount(amount)
-   {}
-
-   account_name                      from;
-   account_name                      to;
-   share_type                        amount;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(lock);
-   }
-};
-
-struct unlock {
-   unlock() = default;
-   unlock(const account_name& account, const share_type& amount)
-   :account(account), amount(amount)
-   {}
-
-   account_name                      account;
-   share_type                        amount;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(unlock);
-   }
-};
-
-struct claim {
-   claim() = default;
-   claim(const account_name& account, const share_type& amount)
-   :account(account), amount(amount)
-   {}
-
-   account_name                      account;
-   share_type                        amount;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(claim);
-   }
-};
-
 struct newaccount {
    account_name                     creator;
    account_name                     name;
    authority                        owner;
    authority                        active;
    authority                        recovery;
-   asset                            deposit;
 
    static account_name get_account() {
       return config::system_account_name;
@@ -218,61 +147,6 @@ struct setabi {
    }
 };
 
-struct setproducer {
-   setproducer() = default;
-   setproducer(const account_name& name, const public_key_type& key, const chain_config& configuration)
-   :name(name), key(key), configuration(configuration)
-   {}
-
-   account_name            name;
-   public_key_type         key;
-   chain_config            configuration;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(setproducer);
-   }
-};
-
-struct okproducer {
-   okproducer() = default;
-   okproducer(const account_name& voter, const account_name& producer, const int8_t& approve)
-   :voter(voter), producer(producer), approve(approve)
-   {}
-
-   account_name                      voter;
-   account_name                      producer;
-   int8_t                            approve;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(okproducer);
-   }
-};
-
-struct setproxy {
-   setproxy() = default;
-   setproxy(const account_name& stakeholder, const account_name& proxy)
-   :stakeholder(stakeholder), proxy(proxy)
-   {}
-
-   account_name                      stakeholder;
-   account_name                      proxy;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(setproxy);
-   }
-};
 
 struct updateauth {
    account_name                      account;
@@ -397,18 +271,6 @@ struct vetorecovery {
    }
 };
 
-using nonce_type = name;
-struct nonce {
-   nonce_type value;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(nonce);
-   }
-};
 
 } } } /// namespace eosio::chain::contracts
 
@@ -418,16 +280,10 @@ FC_REFLECT( eosio::chain::contracts::struct_def                       , (name)(b
 FC_REFLECT( eosio::chain::contracts::action_def                       , (name)(type) )
 FC_REFLECT( eosio::chain::contracts::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
 FC_REFLECT( eosio::chain::contracts::abi_def                          , (types)(structs)(actions)(tables) )
-FC_REFLECT( eosio::chain::contracts::transfer                         , (from)(to)(amount)(memo) )
-FC_REFLECT( eosio::chain::contracts::lock                             , (from)(to)(amount) )
-FC_REFLECT( eosio::chain::contracts::unlock                           , (account)(amount) )
-FC_REFLECT( eosio::chain::contracts::claim                            , (account)(amount) )
-FC_REFLECT( eosio::chain::contracts::newaccount                       , (creator)(name)(owner)(active)(recovery)(deposit) )
+
+FC_REFLECT( eosio::chain::contracts::newaccount                       , (creator)(name)(owner)(active)(recovery) )
 FC_REFLECT( eosio::chain::contracts::setcode                          , (account)(vmtype)(vmversion)(code) ) //abi
 FC_REFLECT( eosio::chain::contracts::setabi                           , (account)(abi) )
-FC_REFLECT( eosio::chain::contracts::setproducer                      , (name)(key)(configuration) )
-FC_REFLECT( eosio::chain::contracts::okproducer                       , (voter)(producer)(approve) )
-FC_REFLECT( eosio::chain::contracts::setproxy                         , (stakeholder)(proxy) )
 FC_REFLECT( eosio::chain::contracts::updateauth                       , (account)(permission)(parent)(data) )
 FC_REFLECT( eosio::chain::contracts::deleteauth                       , (account)(permission) )
 FC_REFLECT( eosio::chain::contracts::linkauth                         , (account)(code)(type)(requirement) )
@@ -435,5 +291,4 @@ FC_REFLECT( eosio::chain::contracts::unlinkauth                       , (account
 FC_REFLECT( eosio::chain::contracts::postrecovery                     , (account)(data)(memo) )
 FC_REFLECT( eosio::chain::contracts::passrecovery                     , (account) )
 FC_REFLECT( eosio::chain::contracts::vetorecovery                     , (account) )
-FC_REFLECT( eosio::chain::contracts::nonce                            , (value) )
 

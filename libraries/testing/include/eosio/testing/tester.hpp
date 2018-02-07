@@ -2,6 +2,7 @@
 #include <eosio/chain/chain_controller.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
+#include <iostream>
 
 namespace eosio { namespace testing {
 
@@ -14,16 +15,20 @@ namespace eosio { namespace testing {
     */
    class tester {
       public:
-         tester();
+         typedef string action_result;
+
+         tester(bool process_genesis = true);
 
          void              close();
          void              open();
+         void              create_init_accounts();
 
          signed_block      produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) );
          void              produce_blocks( uint32_t n = 1 );
 
          transaction_trace push_transaction( packed_transaction& trx );
          transaction_trace push_transaction( signed_transaction& trx );
+         action_result      push_action(action&& cert_act, uint64_t authorizer);
          void              set_tapos( signed_transaction& trx ) const;
 
          void              create_accounts( vector<account_name> names, asset init_bal, bool multisig = false ) {
@@ -37,8 +42,9 @@ namespace eosio { namespace testing {
          void              create_account( account_name name, asset initial_balance = asset(), account_name creator = N(inita), bool multisig = false );
          void              create_account( account_name name, string balance = "0.0000 EOS", account_name creator = N(inita), bool multisig = false );
 
-         transaction_trace transfer( account_name from, account_name to, asset amount, string memo = "" );
-         transaction_trace transfer( account_name from, account_name to, string amount, string memo = "" );
+         transaction_trace push_nonce( account_name from, const string& role, const string& v = "blah" );
+         transaction_trace transfer( account_name from, account_name to, asset amount, string memo = "", account_name currency = config::eosio_system_account_name );
+         transaction_trace transfer( account_name from, account_name to, string amount, string memo = "", account_name currency = config::eosio_system_account_name );
 
          template<typename ObjectType, typename IndexBy, typename... Args>
          const auto& get( Args&&... args ) {
@@ -63,6 +69,18 @@ namespace eosio { namespace testing {
                                                              const symbol&       asset_symbol,
                                                              const account_name& account ) const;
 
+        static vector<uint8_t> to_uint8_vector(const string& s);
+
+        static vector<uint8_t> to_uint8_vector(uint64_t x);
+
+        static uint64_t to_uint64(fc::variant x);
+
+        static string to_string(fc::variant x);
+
+        static action_result success() { return string(); }
+
+        static action_result error(const string& msg) { return msg; }
+
       private:
          fc::temp_directory                            tempdir;
          chain_controller::controller_config           cfg;
@@ -85,5 +103,6 @@ namespace eosio { namespace testing {
 
       string expected;
    };
+
 
 } } /// eosio::testing
