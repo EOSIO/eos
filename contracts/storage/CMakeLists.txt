@@ -1,3 +1,9 @@
 file(GLOB ABI_FILES "*.abi")
-add_wast_target(storage "${CMAKE_SOURCE_DIR}/contracts" ${CMAKE_CURRENT_BINARY_DIR})
 configure_file("${ABI_FILES}" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
+
+add_wast_executable(TARGET storage
+  INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}"
+  LIBRARIES eosiolib
+  DESTINATION_FOLDER ${CMAKE_CURRENT_BINARY_DIR}
+)
+
