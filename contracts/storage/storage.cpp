@@ -121,10 +121,10 @@ extern "C" {
                auto len = read_action( tmp, 1025 );
                TOKEN_NAME::apply_storage_rejectstore( tmp, len );
           } else {
-               assert(0, "unknown message");
+               eos_assert(0, "unknown message");
           }
        } else {
-           assert(0, "unknown code");
+           eos_assert(0, "unknown code");
        }
     }
 }

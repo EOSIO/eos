@@ -1,1 +1,5 @@
-add_wast_target(infinite "${CMAKE_SOURCE_DIR}/contracts" ${CMAKE_CURRENT_BINARY_DIR})
+add_wast_executable(TARGET infinite
+  INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}"
+  LIBRARIES eosiolib
+  DESTINATION_FOLDER ${CMAKE_CURRENT_BINARY_DIR}
+)

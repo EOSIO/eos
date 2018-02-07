@@ -29,9 +29,9 @@ extern "C" {
              }
 
              // maybe assert?
-             assert(def->condition, def->message);
+             eos_assert(def->condition, def->message);
           } else if( action == N(provereset) ) {
-             assert(global_variable == 45, "Global Variable Initialized poorly");
+             eos_assert(global_variable == 45, "Global Variable Initialized poorly");
              global_variable = 100;
           }
        }

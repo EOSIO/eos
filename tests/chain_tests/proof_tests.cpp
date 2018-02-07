@@ -190,7 +190,7 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, tester ) { try {
    block_header last_block_header;
    block_id_type last_block_id;
 
-      // register a callback on new blocks to record block information
+   // register a callback on new blocks to record block information
    control->applied_block.connect([&](const block_trace& bt){
       nodes.emplace_back(merkle_node{bt.block.id()});
       size_t block_leaf = nodes.size() - 1;
@@ -242,13 +242,15 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, tester ) { try {
       block_action_mroots[bt.block.id()] = bt.block.action_mroot;
    });
 
+   create_accounts( { N(alice), N(bob), N(carol), N(david), N(elvis) });
+
    produce_blocks(50);
 
-   transfer( N(inita), N(initb), "1.0000 EOS", "memo" );
-   transfer( N(initb), N(initc), "1.0000 EOS", "memo" );
-   transfer( N(initc), N(initd), "1.0000 EOS", "memo" );
-   transfer( N(initd), N(inite), "1.0000 EOS", "memo" );
-   transfer( N(inite), N(inita), "1.0000 EOS", "memo" );
+   push_nonce( N(alice), "AB" );
+   push_nonce( N(bob),   "BC" );
+   push_nonce( N(carol), "CD" );
+   push_nonce( N(david), "DE" );
+   push_nonce( N(elvis), "EF" );
 
    produce_blocks(50);
    digest_type block_mroot = process_merkle(nodes, move(block_leaves));

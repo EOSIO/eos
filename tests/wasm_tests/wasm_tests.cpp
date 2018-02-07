@@ -1,14 +1,15 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <asserter/asserter.wast.hpp>
 #include <asserter/asserter.abi.hpp>
 
 //#include <test_api/test_api.wast.hpp>
 
-#include <proxy/proxy.wast.hpp>
-#include <proxy/proxy.abi.hpp>
+#include <stltest/stltest.wast.hpp>
+#include <stltest/stltest.abi.hpp>
 
 #include <noop/noop.wast.hpp>
 #include <noop/noop.abi.hpp>
@@ -89,8 +90,7 @@ BOOST_AUTO_TEST_SUITE(wasm_tests)
 BOOST_FIXTURE_TEST_CASE( basic_test, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(asserter)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(asserter), "10.0000 EOS", "memo" );
+   create_accounts( {N(asserter)} );
    produce_block();
 
    set_code(N(asserter), asserter_wast);
@@ -148,8 +148,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, tester ) try {
 BOOST_FIXTURE_TEST_CASE( prove_mem_reset, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(asserter)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(asserter), "10.0000 EOS", "memo" );
+   create_accounts( {N(asserter)} );
    produce_block();
 
    set_code(N(asserter), asserter_wast);
@@ -179,8 +178,7 @@ BOOST_FIXTURE_TEST_CASE( prove_mem_reset, tester ) try {
 BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(asserter)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(asserter), "10.0000 EOS", "memo" );
+   create_accounts( {N(asserter)} );
    produce_block();
 
    set_code(N(asserter), asserter_wast);
@@ -231,8 +229,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
 BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(tester)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(tester), "10.0000 EOS", "memo" );
+   create_accounts( {N(tester)} );
    produce_block();
 
    set_code(N(tester), test_api_wast);
@@ -431,8 +428,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
 BOOST_FIXTURE_TEST_CASE( check_entry_behavior, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(entrycheck)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(entrycheck), "10.0000 EOS", "memo" );
+   create_accounts( {N(entrycheck)} );
    produce_block();
 
    set_code(N(entrycheck), entry_wast);
@@ -460,8 +456,7 @@ BOOST_FIXTURE_TEST_CASE( check_entry_behavior, tester ) try {
 BOOST_FIXTURE_TEST_CASE( simple_no_memory_check, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(nomem)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(nomem), "10.0000 EOS", "memo" );
+   create_accounts( {N(nomem)} );
    produce_block();
 
    set_code(N(nomem), simple_no_memory_wast);
@@ -483,8 +478,7 @@ BOOST_FIXTURE_TEST_CASE( simple_no_memory_check, tester ) try {
 BOOST_FIXTURE_TEST_CASE( check_global_reset, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(globalreset)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(globalreset), "10.0000 EOS", "memo" );
+   create_accounts( {N(globalreset)} );
    produce_block();
 
    set_code(N(globalreset), mutable_global_wast);
@@ -515,12 +509,49 @@ BOOST_FIXTURE_TEST_CASE( check_global_reset, tester ) try {
    BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( stl_test, tester ) try {
+    produce_blocks(2);
+
+    create_accounts( {N(stltest), N(alice), N(bob)} );
+    produce_block();
+
+    set_code(N(stltest), stltest_wast);
+    set_abi(N(stltest), stltest_abi);
+    produce_blocks(1);
+
+    const auto& accnt  = control->get_database().get<account_object,by_name>( N(stltest) );
+    abi_def abi;
+    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+    abi_serializer abi_ser(abi);
+
+    //send message
+    {
+        signed_transaction trx;
+        action msg_act;
+        msg_act.account = N(stltest);
+        msg_act.name = N(message);
+        msg_act.authorization = vector<permission_level>{{N(bob), config::active_name}};
+        msg_act.data = abi_ser.variant_to_binary("message", mutable_variant_object()
+                                             ("from", "bob")
+                                             ("to", "alice")
+                                             ("message","Hi Alice!")
+                                             );
+        trx.actions.push_back(std::move(msg_act));
+
+        set_tapos(trx);
+        trx.sign(get_private_key(N(bob), "active"), chain_id_type());
+        push_transaction(trx);
+        produce_block();
+
+        BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+    }
+} FC_LOG_AND_RETHROW() /// stltest
+
 //Make sure current_memory/grow_memory is not allowed
 BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(current_memory)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(current_memory), "10.0000 EOS", "memo" );
+   create_accounts( {N(current_memory)} );
    produce_block();
 
    BOOST_CHECK_THROW(set_code(N(current_memory), current_memory_wast), eosio::chain::wasm_execution_error);
@@ -535,8 +566,7 @@ BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
 BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(bigmem)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(bigmem), "10.0000 EOS", "memo" );
+   create_accounts( {N(bigmem)} );
    produce_block();
 
    set_code(N(bigmem), biggest_memory_wast);  //should pass, 16 pages is fine
@@ -564,8 +594,7 @@ BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
 BOOST_FIXTURE_TEST_CASE( table_init_tests, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(tableinit)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(tableinit), "10.0000 EOS", "memo" );
+   create_accounts( {N(tableinit)} );
    produce_block();
 
    set_code(N(tableinit), valid_sparse_table);
@@ -578,8 +607,7 @@ BOOST_FIXTURE_TEST_CASE( table_init_tests, tester ) try {
 BOOST_FIXTURE_TEST_CASE( memory_init_border, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(memoryborder)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(memoryborder), "10.0000 EOS", "memo" );
+   create_accounts( {N(memoryborder)} );
    produce_block();
 
    set_code(N(memoryborder), memory_init_borderline);
@@ -593,8 +621,7 @@ BOOST_FIXTURE_TEST_CASE( memory_init_border, tester ) try {
 BOOST_FIXTURE_TEST_CASE( imports, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(imports)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(imports), "10.0000 EOS", "memo" );
+   create_accounts( {N(imports)} );
    produce_block();
 
    //this will fail to link but that's okay; mainly looking to make sure that the constraint
@@ -606,8 +633,7 @@ BOOST_FIXTURE_TEST_CASE( imports, tester ) try {
 BOOST_FIXTURE_TEST_CASE( lotso_globals, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(globals)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(globals), "10.0000 EOS", "memo" );
+   create_accounts( {N(globals)} );
    produce_block();
 
    std::stringstream ss;
@@ -636,8 +662,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_globals, tester ) try {
 BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(offsets)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(offsets), "10.0000 EOS", "memo" );
+   create_accounts( {N(offsets)} );
    produce_block();
 
    //floats not tested since they are blocked in the serializer before eosio_constraints
@@ -700,7 +725,7 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
 
 BOOST_FIXTURE_TEST_CASE(noop, tester) try {
    produce_blocks(2);
-   create_accounts( {N(noop), N(alice)}, asset::from_string("1000.0000 EOS") );
+   create_accounts( {N(noop), N(alice)} );
    produce_block();
 
    set_code(N(noop), noop_wast);
@@ -759,5 +784,127 @@ BOOST_FIXTURE_TEST_CASE(noop, tester) try {
    }
 
  } FC_LOG_AND_RETHROW()
+
+//busted because of checktime, disable for now
+#if 0
+BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(tbl)}, asset::from_string("1000.0000 EOS") );
+   transfer( N(inita), N(tbl), "10.0000 EOS", "memo" );
+   produce_block();
+
+   set_code(N(tbl), table_checker_wast);
+   produce_blocks(1);
+
+   {
+   signed_transaction trx;
+   action act;
+   act.name = 555ULL<<32 | 0ULL;       //top 32 is what we assert against, bottom 32 is indirect call index
+   act.account = N(tbl);
+   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
+   trx.actions.push_back(act);
+   set_tapos(trx);
+   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   push_transaction(trx);
+   }
+
+   produce_blocks(1);
+
+   {
+   signed_transaction trx;
+   action act;
+   act.name = 555ULL<<32 | 1022ULL;       //top 32 is what we assert against, bottom 32 is indirect call index
+   act.account = N(tbl);
+   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
+   trx.actions.push_back(act);
+   set_tapos(trx);
+   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   push_transaction(trx);
+   }
+
+   produce_blocks(1);
+
+   {
+   signed_transaction trx;
+   action act;
+   act.name = 7777ULL<<32 | 1023ULL;       //top 32 is what we assert against, bottom 32 is indirect call index
+   act.account = N(tbl);
+   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
+   trx.actions.push_back(act);
+   set_tapos(trx);
+   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   push_transaction(trx);
+   }
+
+   produce_blocks(1);
+
+   {
+   signed_transaction trx;
+   action act;
+   act.name = 7778ULL<<32 | 1023ULL;       //top 32 is what we assert against, bottom 32 is indirect call index
+   act.account = N(tbl);
+   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
+   trx.actions.push_back(act);
+   set_tapos(trx);
+   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+
+   //should fail, a check to make sure assert() in wasm is being evaluated correctly
+   BOOST_CHECK_THROW(push_transaction(trx), fc::assert_exception);
+   }
+
+   produce_blocks(1);
+
+   {
+   signed_transaction trx;
+   action act;
+   act.name = 133ULL<<32 | 5ULL;       //top 32 is what we assert against, bottom 32 is indirect call index
+   act.account = N(tbl);
+   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
+   trx.actions.push_back(act);
+   set_tapos(trx);
+   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+
+   //should fail, this element index (5) does not exist
+   BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_execution_error);
+   }
+
+   produce_blocks(1);
+
+   {
+   signed_transaction trx;
+   action act;
+   act.name = eosio::chain::wasm_constraints::maximum_table_elements+54334;
+   act.account = N(tbl);
+   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
+   trx.actions.push_back(act);
+   set_tapos(trx);
+   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+
+   //should fail, this element index is out of range
+   BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_execution_error);
+   }
+
+   produce_blocks(1);
+
+   set_code(N(tbl), table_checker_small_wast);
+   produce_blocks(1);
+
+   {
+   signed_transaction trx;
+   action act;
+   act.name = 888ULL;
+   act.account = N(tbl);
+   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
+   trx.actions.push_back(act);
+   set_tapos(trx);
+   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+
+   //an element that is out of range and has no mmap access permission either (should be a trapped segv)
+   BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_execution_error);
+   }
+
+} FC_LOG_AND_RETHROW()
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()

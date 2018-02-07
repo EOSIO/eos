@@ -5,6 +5,7 @@
 #include <proxy/proxy.hpp>
 #include <eosio.system/eosio.system.hpp>
 #include <eosiolib/transaction.hpp>
+#include <currency/currency.hpp>
 
 namespace proxy {
    using namespace eosio;
@@ -28,11 +29,11 @@ namespace proxy {
       config code_config;
       const auto self = current_receiver();
       auto get_res = configs::get(code_config, self);
-      assert(get_res, "Attempting to use unconfigured proxy");
+      eos_assert(get_res, "Attempting to use unconfigured proxy");
       if (transfer.from == self) {
-         assert(transfer.to == code_config.owner,  "proxy may only pay its owner" );
+         eos_assert(transfer.to == code_config.owner,  "proxy may only pay its owner" );
       } else {
-         assert(transfer.to == self, "proxy is not involved in this transfer");
+         eos_assert(transfer.to == self, "proxy is not involved in this transfer");
          T new_transfer = T(transfer);
          new_transfer.from = self;
          new_transfer.to = code_config.owner;
@@ -61,7 +62,7 @@ namespace proxy {
       eosio::print("starting onerror\n");
       const auto self = current_receiver();
       config code_config;
-      assert(configs::get(code_config, self), "Attempting use of unconfigured proxy");
+      eos_assert(configs::get(code_config, self), "Attempting use of unconfigured proxy");
 
       auto id = code_config.next_id++;
       configs::store(code_config, self);
@@ -81,10 +82,12 @@ extern "C" {
        if ( code == N(eosio)) {
           if (action == N(onerror)) {
              apply_onerror(deferred_transaction::from_current_action());
-          }
-       } else if ( code == N(eosio.system) ) {
-          if( action == N(transfer) ) {
+          } if( action == N(transfer) ) {
              apply_transfer(code, unpack_action<eosiosystem::contract<N(eosio.system)>::currency::transfer_memo>());
+          }
+       } else if ( code == N(currency) ) {
+          if( action == N(transfer) ) {
+             apply_transfer(code, unpack_action<currency::contract::transfer_memo>());
           }
        } else if (code == current_receiver() ) {
           if ( action == N(setowner)) {
