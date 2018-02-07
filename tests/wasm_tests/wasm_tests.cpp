@@ -8,9 +8,6 @@
 
 #include <test_api/test_api.wast.hpp>
 
-#include <proxy/proxy.wast.hpp>
-#include <proxy/proxy.abi.hpp>
-
 #include <noop/noop.wast.hpp>
 #include <noop/noop.abi.hpp>
 
@@ -88,8 +85,7 @@ BOOST_AUTO_TEST_SUITE(wasm_tests)
 BOOST_FIXTURE_TEST_CASE( basic_test, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(asserter)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(asserter), "10.0000 EOS", "memo" );
+   create_accounts( {N(asserter)} );
    produce_block();
 
    set_code(N(asserter), asserter_wast);
@@ -147,8 +143,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, tester ) try {
 BOOST_FIXTURE_TEST_CASE( prove_mem_reset, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(asserter)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(asserter), "10.0000 EOS", "memo" );
+   create_accounts( {N(asserter)} );
    produce_block();
 
    set_code(N(asserter), asserter_wast);
@@ -178,8 +173,7 @@ BOOST_FIXTURE_TEST_CASE( prove_mem_reset, tester ) try {
 BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(asserter)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(asserter), "10.0000 EOS", "memo" );
+   create_accounts( {N(asserter)} );
    produce_block();
 
    set_code(N(asserter), asserter_wast);
@@ -229,8 +223,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
 BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(tester)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(tester), "10.0000 EOS", "memo" );
+   create_accounts( {N(tester)} );
    produce_block();
 
    set_code(N(tester), test_api_wast);
@@ -266,171 +259,13 @@ BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
    }
 } FC_LOG_AND_RETHROW() /// test_api_bootstrap
 
-
-BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
-   produce_blocks(2);
-
-   create_account( N(proxy), asset::from_string("0.0000 EOS") );
-   create_accounts( {N(alice), N(bob)}, asset::from_string("0.0000 EOS") );
-   transfer( N(inita), N(alice), "10.0000 EOS", "memo" );
-   produce_block();
-
-   set_code(N(proxy), proxy_wast);
-   set_abi(N(proxy), proxy_abi);
-   produce_blocks(1);
-
-   const auto& accnt  = control->get_database().get<account_object,by_name>( N(proxy) );
-   abi_def abi;
-   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-   abi_serializer abi_ser(abi);
-
-   // set up proxy owner
-   {
-      signed_transaction trx;
-      action setowner_act;
-      setowner_act.account = N(proxy);
-      setowner_act.name = N(setowner);
-      setowner_act.authorization = vector<permission_level>{{N(proxy), config::active_name}};
-      setowner_act.data = abi_ser.variant_to_binary("setowner", mutable_variant_object()
-         ("owner", "bob")
-         ("delay", 10)
-      );
-      trx.actions.emplace_back(std::move(setowner_act));
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(proxy), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   // for now wasm "time" is in seconds, so we have to truncate off any parts of a second that may have applied
-   fc::time_point expected_delivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
-   transfer(N(alice), N(proxy), "5.0000 EOS");
-
-   while(control->head_block_time() < expected_delivery) {
-      control->push_deferred_transactions(true);
-      produce_block();
-      BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 EOS").amount);
-      BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 EOS").amount);
-      BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 EOS").amount);
-   }
-
-   control->push_deferred_transactions(true);
-   BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 EOS").amount);
-   BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 EOS").amount);
-   BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("5.0000 EOS").amount);
-
-} FC_LOG_AND_RETHROW() /// test_currency
-
-BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
-   produce_blocks(2);
-
-   create_accounts( {N(proxy), N(bob)}, asset::from_string("0.0000 EOS") );
-   create_account( N(alice), asset::from_string("0.0000 EOS") );
-   transfer( N(inita), N(alice), "10.0000 EOS", "memo" );
-   produce_block();
-
-   set_code(N(proxy), proxy_wast);
-   set_abi(N(proxy), proxy_abi);
-   set_code(N(bob), proxy_wast);
-   produce_blocks(1);
-
-   const auto& accnt  = control->get_database().get<account_object,by_name>( N(proxy) );
-   abi_def abi;
-   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-   abi_serializer abi_ser(abi);
-
-   // set up proxy owner
-   {
-      signed_transaction trx;
-      action setowner_act;
-      setowner_act.account = N(proxy);
-      setowner_act.name = N(setowner);
-      setowner_act.authorization = vector<permission_level>{{N(proxy), config::active_name}};
-      setowner_act.data = abi_ser.variant_to_binary("setowner", mutable_variant_object()
-         ("owner", "bob")
-         ("delay", 10)
-      );
-      trx.actions.emplace_back(std::move(setowner_act));
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(proxy), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   // for now wasm "time" is in seconds, so we have to truncate off any parts of a second that may have applied
-   fc::time_point expected_delivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
-   auto trace = transfer(N(alice), N(proxy), "5.0000 EOS");
-   BOOST_REQUIRE_EQUAL(trace.deferred_transactions.size(), 1);
-   auto deferred_id = trace.deferred_transactions.back().id();
-
-   while(control->head_block_time() < expected_delivery) {
-      control->push_deferred_transactions(true);
-      produce_block();
-      BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 EOS").amount);
-      BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 EOS").amount);
-      BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 EOS").amount);
-      BOOST_REQUIRE_EQUAL(chain_has_transaction(deferred_id), false);
-   }
-
-   fc::time_point expected_redelivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
-   control->push_deferred_transactions(true);
-   produce_block();
-   BOOST_REQUIRE_EQUAL(chain_has_transaction(deferred_id), true);
-   BOOST_REQUIRE_EQUAL(get_transaction_receipt(deferred_id).status, transaction_receipt::soft_fail);
-
-   // set up bob owner
-   {
-      signed_transaction trx;
-      action setowner_act;
-      setowner_act.account = N(bob);
-      setowner_act.name = N(setowner);
-      setowner_act.authorization = vector<permission_level>{{N(bob), config::active_name}};
-      setowner_act.data = abi_ser.variant_to_binary("setowner", mutable_variant_object()
-         ("owner", "alice")
-         ("delay", 0)
-      );
-      trx.actions.emplace_back(std::move(setowner_act));
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(bob), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   while(control->head_block_time() < expected_redelivery) {
-      control->push_deferred_transactions(true);
-      produce_block();
-      BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 EOS").amount);
-      BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 EOS").amount);
-      BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 EOS").amount);
-   }
-
-   control->push_deferred_transactions(true);
-   BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 EOS").amount);
-   BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 EOS").amount);
-   BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("5.0000 EOS").amount);
-
-   control->push_deferred_transactions(true);
-
-   BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("10.0000 EOS").amount);
-   BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 EOS").amount);
-   BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 EOS").amount);
-
-} FC_LOG_AND_RETHROW() /// test_currency
-
 /**
  * Make sure WASM "start" method is used correctly
  */
 BOOST_FIXTURE_TEST_CASE( check_entry_behavior, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(entrycheck)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(entrycheck), "10.0000 EOS", "memo" );
+   create_accounts( {N(entrycheck)} );
    produce_block();
 
    set_code(N(entrycheck), entry_wast);
@@ -458,8 +293,7 @@ BOOST_FIXTURE_TEST_CASE( check_entry_behavior, tester ) try {
 BOOST_FIXTURE_TEST_CASE( simple_no_memory_check, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(nomem)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(nomem), "10.0000 EOS", "memo" );
+   create_accounts( {N(nomem)} );
    produce_block();
 
    set_code(N(nomem), simple_no_memory_wast);
@@ -481,8 +315,7 @@ BOOST_FIXTURE_TEST_CASE( simple_no_memory_check, tester ) try {
 BOOST_FIXTURE_TEST_CASE( check_global_reset, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(globalreset)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(globalreset), "10.0000 EOS", "memo" );
+   create_accounts( {N(globalreset)} );
    produce_block();
 
    set_code(N(globalreset), mutable_global_wast);
@@ -517,8 +350,7 @@ BOOST_FIXTURE_TEST_CASE( check_global_reset, tester ) try {
 BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(current_memory)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(current_memory), "10.0000 EOS", "memo" );
+   create_accounts( {N(current_memory)} );
    produce_block();
 
    BOOST_CHECK_THROW(set_code(N(current_memory), current_memory_wast), eosio::chain::wasm_execution_error);
@@ -533,8 +365,7 @@ BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
 BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(bigmem)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(bigmem), "10.0000 EOS", "memo" );
+   create_accounts( {N(bigmem)} );
    produce_block();
 
    set_code(N(bigmem), biggest_memory_wast);  //should pass, 16 pages is fine
@@ -562,8 +393,7 @@ BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
 BOOST_FIXTURE_TEST_CASE( table_init_tests, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(tableinit)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(tableinit), "10.0000 EOS", "memo" );
+   create_accounts( {N(tableinit)} );
    produce_block();
 
    set_code(N(tableinit), valid_sparse_table);
@@ -576,8 +406,7 @@ BOOST_FIXTURE_TEST_CASE( table_init_tests, tester ) try {
 BOOST_FIXTURE_TEST_CASE( memory_init_border, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(memoryborder)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(memoryborder), "10.0000 EOS", "memo" );
+   create_accounts( {N(memoryborder)} );
    produce_block();
 
    set_code(N(memoryborder), memory_init_borderline);
@@ -591,8 +420,7 @@ BOOST_FIXTURE_TEST_CASE( memory_init_border, tester ) try {
 BOOST_FIXTURE_TEST_CASE( imports, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(imports)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(imports), "10.0000 EOS", "memo" );
+   create_accounts( {N(imports)} );
    produce_block();
 
    //this will fail to link but that's okay; mainly looking to make sure that the constraint
@@ -604,8 +432,7 @@ BOOST_FIXTURE_TEST_CASE( imports, tester ) try {
 BOOST_FIXTURE_TEST_CASE( lotso_globals, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(globals)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(globals), "10.0000 EOS", "memo" );
+   create_accounts( {N(globals)} );
    produce_block();
 
    std::stringstream ss;
@@ -634,8 +461,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_globals, tester ) try {
 BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(offsets)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(offsets), "10.0000 EOS", "memo" );
+   create_accounts( {N(offsets)} );
    produce_block();
 
    //floats not tested since they are blocked in the serializer before eosio_constraints
@@ -698,7 +524,7 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
 
 BOOST_FIXTURE_TEST_CASE(noop, tester) try {
    produce_blocks(2);
-   create_accounts( {N(noop), N(alice)}, asset::from_string("1000.0000 EOS") );
+   create_accounts( {N(noop), N(alice)} );
    produce_block();
 
    set_code(N(noop), noop_wast);

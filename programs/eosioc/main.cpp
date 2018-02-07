@@ -227,7 +227,7 @@ uint64_t generate_nonce_value() {
 
 chain::action generate_nonce() {
    auto v = generate_nonce_value();
-   return chain::action( {}, config::eosio_system_account_name, "nonce", fc::raw::pack(v));
+   return chain::action( {}, config::system_account_name, "nonce", fc::raw::pack(v));
 }
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
@@ -769,7 +769,7 @@ int main( int argc, char** argv ) {
             ("quantity", asset(amount))
             ("memo", memo);
       auto args = fc::mutable_variant_object
-            ("code", name(config::eosio_system_account_name))
+            ("code", name(config::system_account_name))
             ("action", "transfer")
             ("args", transfer);
 
@@ -777,7 +777,7 @@ int main( int argc, char** argv ) {
 
       std::vector<chain::action> actions;
       actions.emplace_back(vector<chain::permission_level>{{sender,"active"}},
-                               config::eosio_system_account_name, "transfer", result.get_object()["binargs"].as<bytes>());
+                               config::system_account_name, "transfer", result.get_object()["binargs"].as<bytes>());
 
       if (tx_force_unique) {
          actions.emplace_back( generate_nonce() );

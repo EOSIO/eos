@@ -11,6 +11,7 @@ add_subdirectory(test_api)
 #add_subdirectory(simpledb)
 #add_subdirectory(storage)
 #add_subdirectory(social)
+add_subdirectory(test.system)
 add_subdirectory(noop)
 
 install( DIRECTORY eosiolib DESTINATION include/ )

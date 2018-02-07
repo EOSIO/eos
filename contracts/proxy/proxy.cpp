@@ -5,6 +5,7 @@
 #include <proxy/proxy.hpp>
 #include <eosio.system/eosio.system.hpp>
 #include <eosiolib/transaction.hpp>
+#include <currency/currency.hpp>
 
 namespace proxy {
    using namespace eosio;
@@ -81,10 +82,12 @@ extern "C" {
        if ( code == N(eosio)) {
           if (action == N(onerror)) {
              apply_onerror(deferred_transaction::from_current_action());
-          }
-       } else if ( code == N(eosio.system) ) {
-          if( action == N(transfer) ) {
+          } if( action == N(transfer) ) {
              apply_transfer(code, unpack_action<eosiosystem::contract<N(eosio.system)>::currency::transfer_memo>());
+          }
+       } else if ( code == N(currency) ) {
+          if( action == N(transfer) ) {
+             apply_transfer(code, unpack_action<currency::contract::transfer_memo>());
           }
        } else if (code == current_receiver() ) {
           if ( action == N(setowner)) {
