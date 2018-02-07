@@ -13,3 +13,7 @@
 	path = contracts/musl/upstream
 	url = git@github.com:EOSIO/musl.git
 	branch = eosio
+[submodule "contracts/libc++/upstream"]
+	path = contracts/libc++/upstream
+	url = git@github.com:EOSIO/libcxx.git
+	branch = eosio

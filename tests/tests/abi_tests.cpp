@@ -380,7 +380,7 @@ BOOST_AUTO_TEST_CASE(generator)
     FC_ASSERT(eosiolib_path != NULL);
 
     std::string include_param = std::string("-I") + eosiolib_path;
-    std::string stdcpp_include_param = std::string("-I") + eosiolib_path + "/libc++/include";
+    std::string stdcpp_include_param = std::string("-I") + eosiolib_path + "/libc++/upstream/include";
     std::string stdc_include_param = std::string("-I") + eosiolib_path +  "/musl/upstream/include";
 
      abi_def output;
