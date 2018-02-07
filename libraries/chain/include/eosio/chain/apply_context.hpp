@@ -152,7 +152,7 @@ class apply_context {
                const auto& idx = context.db.get_index< chainbase::get_index_type<ObjectType>::type, contracts::by_secondary >();
                auto itr = idx.lower_bound( boost::make_tuple( tab->id, secondary ) );
                if( itr == idx.end() ) return -1;
-               if( itr->t_id != tab.id ) return -1;
+               if( itr->t_id != tab->id ) return -1;
 
                itr_cache.cache_table( *tab );
                return itr_cache.add( *itr );
@@ -165,7 +165,7 @@ class apply_context {
                const auto& idx = context.db.get_index< chainbase::get_index_type<ObjectType>::type, contracts::by_secondary >();
                auto itr = idx.upper_bound( boost::make_tuple( tab->id, secondary ) );
                if( itr == idx.end() ) return -1;
-               if( itr->t_id != tab.id ) return -1;
+               if( itr->t_id != tab->id ) return -1;
 
                itr_cache.cache_table( *tab );
                return itr_cache.add( *itr );
