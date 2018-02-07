@@ -6,7 +6,7 @@ const char* simplecoin_wast = R"====((module
   (type $FUNCSIG$viiii (func (param i32 i32 i32 i32)))
   (type $FUNCSIG$iii (func (param i32 i32) (result i32)))
   (type $FUNCSIG$iiiii (func (param i32 i32 i32 i32) (result i32)))
-  (import "env" "assert" (func $assert (param i32 i32)))
+  (import "env" "eos_assert" (func $eos_assert (param i32 i32)))
   (import "env" "load" (func $load (param i32 i32 i32 i32) (result i32)))
   (import "env" "name_to_int64" (func $name_to_int64 (param i32) (result i64)))
   (import "env" "print" (func $print (param i32)))
@@ -78,7 +78,7 @@ const char* simplecoin_wast = R"====((module
         (i32.const 8)
       )
     )
-    (call $assert
+    (call $eos_assert
       (i64.ge_s
         (i64.load offset=112
           (i32.const 0)

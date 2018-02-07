@@ -1,0 +1,43 @@
+{
+  "types": [{
+      "new_type_name": "my_account_name",
+      "type": "name"
+    }
+  ],
+  "structs": [{
+      "name": "message",
+      "base": "",
+      "fields": [
+        {"name":"from", "type":"my_account_name"},
+        {"name":"to", "type":"my_account_name"},
+        {"name": "message", "type":"string" }
+      ]
+   },{
+      "name": "messages_count",
+      "base": "",
+      "fields": [
+        {"name": "user", "type": "my_account_name"},
+        {"name": "count", "type": "uint32"}
+      ]
+    }
+  ],
+  "actions": [{
+      "name": "message",
+      "type": "message"
+    }
+  ],
+  "tables": [{
+      "name": "msgsent",
+      "type": "messages_count",
+      "index_type": "i64",
+      "key_names" : ["user"],
+      "key_types" : ["my_account_name"]
+    },{
+      "name": "msgreceived",
+      "type": "messages_count",
+      "index_type": "i64",
+      "key_names" : ["user"],
+      "key_types" : ["my_account_name"]
+    }
+  ]
+}

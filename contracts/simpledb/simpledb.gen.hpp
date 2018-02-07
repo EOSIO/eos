@@ -83,7 +83,7 @@ namespace eosio {
    Type current_message_ex() {
       uint32_t size = action_size();
       char* data = (char *)eosio::malloc(size);
-      assert(data && read_action(data, size) == size, "error reading message");
+      eos_assert(data && read_action(data, size) == size, "error reading message");
       Type value;
       eosio::raw::unpack(data, size, value);
       eosio::free(data);

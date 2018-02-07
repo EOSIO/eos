@@ -4,6 +4,9 @@
  */
 #pragma once
 
+#include <stdint.h>
+#include <wchar.h>
+
 extern "C" {
 
 /**
@@ -14,23 +17,9 @@ extern "C" {
  *  @{
  */
 
-typedef unsigned __int128    uint128_t;
-typedef unsigned long long   uint64_t;
-typedef unsigned long        uint32_t;
-typedef unsigned short       uint16_t; 
-typedef unsigned char        uint8_t;
-
-typedef __int128             int128_t;
-typedef long long            int64_t;
-typedef long                 int32_t;
-typedef short                int16_t;
-typedef char                 int8_t;
-
 struct uint256 {
    uint64_t words[4];
 };
-
-typedef unsigned int size_t;
 
 typedef uint64_t account_name;
 typedef uint64_t permission_name;

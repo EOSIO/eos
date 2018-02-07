@@ -104,7 +104,7 @@ namespace eosiosystem {
             if( !eosio::dispatch<contract, regproducer, regproxy, nonce>( code, act) ) {
                if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                   eosio::print("Unexpected action: ", act, "\n");
-                  assert( false, "received unexpected action");
+                  eos_assert( false, "received unexpected action");
                }
             }
          } /// apply 

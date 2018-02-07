@@ -308,8 +308,8 @@ namespace identity {
 
          static void on( const create& c ) {
             require_auth( c.creator );
-            assert( !idents_table::exists( c.identity ), "identity already exists" );
-            assert( c.identity != 0, "identity=0 is not allowed" );
+            eos_assert( !idents_table::exists( c.identity ), "identity already exists" );
+            eos_assert( c.identity != 0, "identity=0 is not allowed" );
             idents_table::set( identrow{ .identity = c.identity,
                                          .creator  = c.creator } );
          }
@@ -319,7 +319,7 @@ namespace identity {
             if( cert.bill_storage_to != cert.certifier )
                require_auth( cert.bill_storage_to );
 
-            assert( idents_table::exists( cert.identity ), "identity does not exist" );
+            eos_assert( idents_table::exists( cert.identity ), "identity does not exist" );
 
             /// the table exists in the scope of the identity 
             certs_table certs( cert.identity );
@@ -331,7 +331,7 @@ namespace identity {
                   row.trusted    = is_trusted( cert.certifier );
                   row.certifier  = cert.certifier;
                   row.confidence = value.confidence;
-                  assert(value.type.get_size() <= 32, "certrow::type should be not longer than 32 bytes");
+                  eos_assert(value.type.get_size() <= 32, "certrow::type should be not longer than 32 bytes");
                   row.type       = value.type;
                   row.data       = value.data;
 
@@ -341,7 +341,7 @@ namespace identity {
 
                   //special handling for owner
                   if (value.property == N(owner)) {
-                     assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
+                     eos_assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
                      account_name acnt = *reinterpret_cast<const account_name*>(value.data.data());
                      if (cert.certifier == acnt) { //only self-certitication affects accounts_table
                         accounts_table::set( cert.identity, acnt );
@@ -353,7 +353,7 @@ namespace identity {
                   certs.remove(value.property, 1, cert.certifier);
                   //special handling for owner
                   if (value.property == N(owner)) {
-                     assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
+                     eos_assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
                      account_name acnt = *reinterpret_cast<const account_name*>(value.data.data());
                      if (cert.certifier == acnt) { //only self-certitication affects accounts_table
                         accounts_table::remove( acnt );
