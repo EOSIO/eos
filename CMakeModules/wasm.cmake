@@ -128,13 +128,12 @@ macro(compile_wast)
 endmacro(compile_wast)
 
 macro(add_wast_library)
-  cmake_parse_arguments(ARG "" "TARGET" "SOURCE_FILES;INCLUDE_FOLDERS" ${ARGN})
+  cmake_parse_arguments(ARG "" "TARGET;DESTINATION_FOLDER" "SOURCE_FILES;INCLUDE_FOLDERS" ${ARGN})
   set(target ${ARG_TARGET})
   compile_wast(TARGET ${ARG_TARGET} SOURCE_FILES ${ARG_SOURCE_FILES} INCLUDE_FOLDERS ${ARG_INCLUDE_FOLDERS})
 
-  add_custom_target(${target} ALL DEPENDS ${ARG_TARGET}.bc)
-  get_filename_component("${ARG_TARGET}_BC_FILENAME" "${CMAKE_CURRENT_SOURCE_DIR}/${ARG_TARGET}.bc" ABSOLUTE CACHE)
-  #set("${ARG_TARGET}_BC_FILENAME" CACHE INTERNAL "${target} .bc file")
+  get_filename_component("${ARG_TARGET}_BC_FILENAME" "${ARG_DESTINATION_FOLDER}/${ARG_TARGET}.bc" ABSOLUTE CACHE)
+  add_custom_target(${target} ALL DEPENDS ${${ARG_TARGET}_BC_FILENAME})
 
   add_custom_command(OUTPUT ${${ARG_TARGET}_BC_FILENAME}
     DEPENDS ${outfiles}
@@ -157,7 +156,7 @@ macro(add_wast_executable)
      list(APPEND LIBRARIES ${${lib}_BC_FILENAME})
   endforeach()
   add_custom_command(OUTPUT ${target}.bc
-    DEPENDS ${outfiles} ${LIBRARIES}
+    DEPENDS ${outfiles} ${ARG_LIBRARIES}
     COMMAND ${WASM_LLVM_LINK} -only-needed -o ${target}.bc ${outfiles} ${LIBRARIES}
     COMMENT "Linking LLVM bitcode executable ${target}.bc"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
@@ -194,7 +193,7 @@ macro(add_wast_executable)
     VERBATIM
   )
   
-  if (EXISTS ${DESTINATION_FOLDER}/${target}.abi )
+  if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${target}.abi )
     add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.abi.hpp
       DEPENDS ${DESTINATION_FOLDER}/${target}.abi
       COMMAND echo "const char* const ${TARGET_VARIABLE}_abi = R\"=====("  > ${DESTINATION_FOLDER}/${target}.abi.hpp
