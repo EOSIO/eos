@@ -2,6 +2,7 @@
 #include <eosio/chain/chain_controller.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
+#include <iostream>
 
 namespace eosio { namespace testing {
 
@@ -14,6 +15,8 @@ namespace eosio { namespace testing {
     */
    class tester {
       public:
+         typedef string action_result;
+
          tester(bool process_genesis = true);
 
          void              close();
@@ -25,6 +28,7 @@ namespace eosio { namespace testing {
 
          transaction_trace push_transaction( packed_transaction& trx );
          transaction_trace push_transaction( signed_transaction& trx );
+         action_result      push_action(action&& cert_act, uint64_t authorizer);
          void              set_tapos( signed_transaction& trx ) const;
 
          void              create_accounts( vector<account_name> names, asset init_bal, bool multisig = false ) {
@@ -65,6 +69,18 @@ namespace eosio { namespace testing {
                                                              const symbol&       asset_symbol,
                                                              const account_name& account ) const;
 
+        static vector<uint8_t> to_uint8_vector(const string& s);
+
+        static vector<uint8_t> to_uint8_vector(uint64_t x);
+
+        static uint64_t to_uint64(fc::variant x);
+
+        static string to_string(fc::variant x);
+
+        static action_result success() { return string(); }
+
+        static action_result error(const string& msg) { return msg; }
+
       private:
          fc::temp_directory                            tempdir;
          chain_controller::controller_config           cfg;
@@ -87,5 +103,6 @@ namespace eosio { namespace testing {
 
       string expected;
    };
+
 
 } } /// eosio::testing
