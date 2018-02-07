@@ -138,7 +138,7 @@ macro(add_wast_library)
 
   add_custom_command(OUTPUT ${target}.bc
     DEPENDS ${outfiles}
-    COMMAND ${WASM_LLVM_LINK} -o ${CMAKE_CURRENT_BINARY_DIR}/${target}.bc ${outfiles}
+    COMMAND ${WASM_LLVM_LINK} -o ${${ARG_TARGET}_BC_FILENAME} ${outfiles}
     COMMENT "Linking LLVM bitcode library ${target}.bc"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM
@@ -157,7 +157,7 @@ macro(add_wast_executable)
      list(APPEND LIBRARIES ${${lib}_BC_FILENAME})
   endforeach()
   add_custom_command(OUTPUT ${target}.bc
-    DEPENDS ${outfiles} "${ARG_LIBRARIES}" ${LIBRARIES}
+    DEPENDS ${outfiles} ${ARG_LIBRARIES} ${LIBRARIES}
     COMMAND ${WASM_LLVM_LINK} -only-needed -o ${target}.bc ${outfiles} ${LIBRARIES}
     COMMENT "Linking LLVM bitcode executable ${target}.bc"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
