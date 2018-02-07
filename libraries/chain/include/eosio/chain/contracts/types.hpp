@@ -103,22 +103,6 @@ struct abi_def {
    vector<table_def>    tables;
 };
 
-struct transfer {
-   account_name   from;
-   account_name   to;
-   uint64         amount;
-   string         memo;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static name get_name() {
-      return N(transfer);
-   }
-};
-
-
 struct newaccount {
    account_name                     creator;
    account_name                     name;
