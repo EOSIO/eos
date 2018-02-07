@@ -262,13 +262,13 @@ BOOST_FIXTURE_TEST_CASE(account_tests, tester) { try {
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
 	produce_blocks(2);
-	create_account( N(testapi), asset::from_string("100000.0000 EOS") );
-   create_account( N(acc1), asset::from_string("100000.0000 EOS") );
-   create_account( N(acc2), asset::from_string("100000.0000 EOS") );
-   create_account( N(acc3), asset::from_string("100000.0000 EOS") );
-   create_account( N(acc4), asset::from_string("100000.0000 EOS") );
+	create_account( N(testapi) ); //, asset::from_string("100000.0000 EOS") );
+   create_account( N(acc1) ); //, asset::from_string("100000.0000 EOS") );
+   create_account( N(acc2) ); //, asset::from_string("100000.0000 EOS") );
+   create_account( N(acc3) ); //, asset::from_string("100000.0000 EOS") );
+   create_account( N(acc4) ); //, asset::from_string("100000.0000 EOS") );
 	produce_blocks(1000);
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
+	transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
 	set_code( N(acc1), test_api_wast );
@@ -389,19 +389,17 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
  * compiler_builtins_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, tester) { try {
-   return;
 	produce_blocks(2);
-	create_account( N(testapi), asset::from_string("100000.0000 EOS") );
-   create_account( N(acc1), asset::from_string("1.0000 EOS") );
-   create_account( N(acc2), asset::from_string("1.0000 EOS") );
-   create_account( N(acc3), asset::from_string("1.0000 EOS") );
-   create_account( N(acc4), asset::from_string("1.0000 EOS") );
+	create_account( N(testapi) ); //, asset::from_string("100000.0000 EOS") );
+   create_account( N(acc1) ); //, asset::from_string("1.0000 EOS") );
+   create_account( N(acc2) ); //, asset::from_string("1.0000 EOS") );
+   create_account( N(acc3) ); //, asset::from_string("1.0000 EOS") );
+   create_account( N(acc4)); //, asset::from_string("1.0000 EOS") );
 	produce_blocks(1000);
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
-   
+return;   
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_multi3", {});
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_divti3", {});
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_divti3_by_0", {}), fc::assert_exception,
@@ -437,13 +435,13 @@ BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, tester) { try {
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
 	produce_blocks(2);
-	create_account( N(testapi), asset::from_string("100000.0000 EOS") );
-   create_account( N(acc1), asset::from_string("1.0000 EOS") );
-   create_account( N(acc2), asset::from_string("1.0000 EOS") );
-   create_account( N(acc3), asset::from_string("1.0000 EOS") );
-   create_account( N(acc4), asset::from_string("1.0000 EOS") );
+	create_account( N(testapi) ); //, asset::from_string("100000.0000 EOS") );
+   create_account( N(acc1) ); //, asset::from_string("1.0000 EOS") );
+   create_account( N(acc2) ); //, asset::from_string("1.0000 EOS") );
+   create_account( N(acc3) ); //, asset::from_string("1.0000 EOS") );
+   create_account( N(acc4) ); //, asset::from_string("1.0000 EOS") );
 	produce_blocks(1000);
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
+	transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
@@ -488,10 +486,10 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(chain_tests, tester) { try {
 	produce_blocks(2);
-	create_account( N(testapi), asset::from_string("100000.0000 EOS") );
-	create_account( N(acc1), asset::from_string("0.0000 EOS") );
+	create_account( N(testapi) ); //, asset::from_string("100000.0000 EOS") );
+	create_account( N(acc1) ); //, asset::from_string("0.0000 EOS") );
 	produce_blocks(1000);
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
+	transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
 
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
@@ -551,9 +549,9 @@ return;
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(fixedpoint_tests, tester) { try {
 	produce_blocks(2);
-	create_account( N(testapi), asset::from_string("100000.0000 EOS") );
+	create_account( N(testapi) ); //, asset::from_string("100000.0000 EOS") );
 	produce_blocks(1000);
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
+	transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1000);
@@ -577,9 +575,9 @@ BOOST_FIXTURE_TEST_CASE(fixedpoint_tests, tester) { try {
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(real_tests, tester) { try {
    produce_blocks(1000);
-   create_account(N(testapi), asset::from_string("1000.0000 EOS"));
+   create_account(N(testapi) ); //, asset::from_string("1000.0000 EOS"));
    produce_blocks(1000);
-   transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
+   transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
    produce_blocks(1000);
    set_code(N(testapi), test_api_wast);
    produce_blocks(1000);
@@ -603,9 +601,9 @@ BOOST_FIXTURE_TEST_CASE(real_tests, tester) { try {
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(crypto_tests, tester) { try {
    produce_blocks(1000);
-   create_account(N(testapi), asset::from_string("100000.0000 EOS"));
+   create_account(N(testapi) ); //, asset::from_string("100000.0000 EOS"));
    produce_blocks(1000);
-   transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
+   transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
    produce_blocks(1000);
    set_code(N(testapi), test_api_wast);
    produce_blocks(1000);
@@ -638,9 +636,9 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, tester) { try {
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(memory_tests, tester) { try {
    produce_blocks(1000);
-   create_account(N(testapi), asset::from_string("1000.0000 EOS"));
+   create_account(N(testapi) ); //, asset::from_string("1000.0000 EOS"));
    produce_blocks(1000);
-   transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
+   transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
    produce_blocks(1000);
    set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
@@ -668,9 +666,9 @@ BOOST_FIXTURE_TEST_CASE(memory_tests, tester) { try {
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(extended_memory_test_initial_memory, tester) { try {
    produce_blocks(1000);
-   create_account(N(testapi), asset::from_string("1000.0000 EOS"));
+   create_account(N(testapi) ); //, asset::from_string("1000.0000 EOS"));
    produce_blocks(1000);
-   transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
+   transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
    produce_blocks(1000);
    set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
@@ -679,9 +677,9 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_initial_memory, tester) { try {
 
 BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory, tester) { try {
    produce_blocks(1000);
-   create_account(N(testapi), asset::from_string("1000.0000 EOS"));
+   create_account(N(testapi) ); //, asset::from_string("1000.0000 EOS"));
    produce_blocks(1000);
-   transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
+   transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
    produce_blocks(1000);
    set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
@@ -690,9 +688,9 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory, tester) { try {
 
 BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_exceeded, tester) { try {
    produce_blocks(1000);
-   create_account(N(testapi), asset::from_string("1000.0000 EOS"));
+   create_account(N(testapi) ); //, asset::from_string("1000.0000 EOS"));
    produce_blocks(1000);
-   transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
+   transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
    produce_blocks(1000);
    set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
@@ -703,9 +701,9 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_exceeded, tester) { try
 
 BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_negative_bytes, tester) { try {
    produce_blocks(1000);
-   create_account(N(testapi), asset::from_string("1000.0000 EOS"));
+   create_account(N(testapi) ); //, asset::from_string("1000.0000 EOS"));
    produce_blocks(1000);
-   transfer(N(inita), N(testapi), "100.0000 EOS", "memo");
+   transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
    produce_blocks(1000);
    set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
@@ -720,11 +718,11 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_negative_bytes, tester)
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(string_tests, tester) { try {
 	produce_blocks(1000);
-	create_account( N(testapi), asset::from_string("1000.0000 EOS") );
-	create_account( N(testextmem), asset::from_string("100.0000 EOS") );
+	create_account( N(testapi) ); //, asset::from_string("1000.0000 EOS") );
+	create_account( N(testextmem) ); //, asset::from_string("100.0000 EOS") );
 	produce_blocks(1000);
 
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
+	transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_mem_wast );
 	produce_blocks(1000);
@@ -772,16 +770,16 @@ BOOST_FIXTURE_TEST_CASE(string_tests, tester) { try {
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
 	produce_blocks(2);
-	create_account(N(testapi), asset::from_string("100000.0000 EOS"));
-	create_account(N(another), asset::from_string("1.0000 EOS"));
-	create_account(N(acc1), asset::from_string("1.0000 EOS"));
-	create_account(N(acc2), asset::from_string("1.0000 EOS"));
-	create_account(N(acc3), asset::from_string("1.0000 EOS"));
-	create_account(N(acc4), asset::from_string("1.0000 EOS"));
+	create_account(N(testapi) ); //, asset::from_string("100000.0000 EOS"));
+	create_account(N(another) ); //, asset::from_string("1.0000 EOS"));
+	create_account(N(acc1) ); //, asset::from_string("1.0000 EOS"));
+	create_account(N(acc2) ); //, asset::from_string("1.0000 EOS"));
+	create_account(N(acc3) ); //, asset::from_string("1.0000 EOS"));
+	create_account(N(acc4) ); //, asset::from_string("1.0000 EOS"));
 	produce_blocks(1000);
 
 	//Set test code
-	transfer(N(inita), N(testapi), "10.0000 EOS", "memo");
+	transfer(N(inita), N(testapi), "10.0000 EOS", "memo", N(eosio) );
 	set_code(N(testapi), test_api_wast); 
 	produce_blocks(1000);
 	string captured = "";
@@ -821,10 +819,10 @@ BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(math_tests, tester) { try {
 	produce_blocks(1000);
-	create_account( N(testapi), asset::from_string("1000.0000 EOS") );
+	create_account( N(testapi) ); //, asset::from_string("1000.0000 EOS") );
 	produce_blocks(1000);
 
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
+	transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1000);
@@ -884,10 +882,10 @@ BOOST_FIXTURE_TEST_CASE(math_tests, tester) { try {
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(types_tests, tester) { try {
 	produce_blocks(1000);
-	create_account( N(testapi), asset::from_string("1000.0000 EOS") );
+	create_account( N(testapi) ); //, asset::from_string("1000.0000 EOS") );
 	produce_blocks(1000);
 
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
+	transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1000);

@@ -58,7 +58,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_string, string_literal);
 
       //unhandled test call
-      assert(false, "Unknown Test");
+      eos_assert(false, "Unknown Test");
    }
 
 }

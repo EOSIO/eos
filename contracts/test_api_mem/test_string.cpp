@@ -8,15 +8,15 @@ void test_string::construct_with_size() {
    size_t size1 = 100;
    eosio::string str1(size1);
 
-   assert( str1.get_size() == size1,  "str1.get_size() == size1" );
-   //assert( str1.is_own_memory() == true,  "str1.is_own_memory() == true" );
+   eos_assert( str1.get_size() == size1,  "str1.get_size() == size1" );
+   //eos_assert( str1.is_own_memory() == true,  "str1.is_own_memory() == true" );
 /*
    size_t size2 = 0;
    eosio::string str2(size2);
 
-   assert( str2.get_size() == size2,  "str2.get_size() == size2" );
-   assert( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
-   assert( str2.is_own_memory() == false,  "str2.is_own_memory() == false" );
+   eos_assert( str2.get_size() == size2,  "str2.get_size() == size2" );
+   eos_assert( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
+   eos_assert( str2.is_own_memory() == false,  "str2.is_own_memory() == false" );
 */
 }
 
@@ -26,15 +26,15 @@ void test_string::construct_with_data() {
 
   eosio::string str1(data, size, false);
 
-  assert( str1.get_size() == size,  "str1.get_size() == size" );
-  assert( str1.get_data() == data,  "str1.get_data() == data" );
-  assert( str1.is_own_memory() == false,  "str1.is_own_memory() == false" );
+  eos_assert( str1.get_size() == size,  "str1.get_size() == size" );
+  eos_assert( str1.get_data() == data,  "str1.get_data() == data" );
+  eos_assert( str1.is_own_memory() == false,  "str1.is_own_memory() == false" );
 
   eosio::string str2(data, 0, false);
 
-  assert( str2.get_size() == 0,  "str2.get_size() == 0" );
-  assert( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
-  assert( str2.is_own_memory() == false,  "str2.is_own_memory() == false" );
+  eos_assert( str2.get_size() == 0,  "str2.get_size() == 0" );
+  eos_assert( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
+  eos_assert( str2.is_own_memory() == false,  "str2.is_own_memory() == false" );
 }
 
 void test_string::construct_with_data_partially() {
@@ -44,12 +44,12 @@ void test_string::construct_with_data_partially() {
 
   eosio::string str(data + offset, substr_size, false);
 
-  assert( str.get_size() == substr_size,  "str.get_size() == substr_size" );
-  assert( str.get_data() == data + offset,  "str.get_data() == data + offset" );
+  eos_assert( str.get_size() == substr_size,  "str.get_size() == substr_size" );
+  eos_assert( str.get_data() == data + offset,  "str.get_data() == data + offset" );
   for (uint8_t i = offset; i < substr_size; i++) {
-    assert( str[i] == data[offset + i],  "str[i] == data[offset + i]" );
+    eos_assert( str[i] == data[offset + i],  "str[i] == data[offset + i]" );
   }
-  assert( str.is_own_memory() == false,  "str.is_own_memory() == false" );
+  eos_assert( str.is_own_memory() == false,  "str.is_own_memory() == false" );
 }
 
 void test_string::construct_with_data_copied() {
@@ -58,18 +58,18 @@ void test_string::construct_with_data_copied() {
 
   eosio::string str1(data, size, true);
 
-  assert( str1.get_size() == size,  "str1.get_size() == size" );
-  assert( str1.get_data() != data,  "str1.get_data() != data" );
+  eos_assert( str1.get_size() == size,  "str1.get_size() == size" );
+  eos_assert( str1.get_data() != data,  "str1.get_data() != data" );
   for (uint8_t i = 0; i < size; i++) {
-    assert( str1[i] == data[i],  "str1[i] == data[i]" );
+    eos_assert( str1[i] == data[i],  "str1[i] == data[i]" );
   }
-  assert( str1.is_own_memory() == true,  "str.is_own_memory() == true" );
+  eos_assert( str1.is_own_memory() == true,  "str.is_own_memory() == true" );
 
   eosio::string str2(data, 0, true);
   
-  assert( str2.get_size() == 0,  "str2.get_size() == 0" );
-  assert( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
-  assert( str2.is_own_memory() == false,  "str2.is_own_memory() == false" );
+  eos_assert( str2.get_size() == 0,  "str2.get_size() == 0" );
+  eos_assert( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
+  eos_assert( str2.is_own_memory() == false,  "str2.is_own_memory() == false" );
 }
 
 void test_string::copy_constructor() {
@@ -80,11 +80,11 @@ void test_string::copy_constructor() {
 
   eosio::string str2 = str1;
 
-  assert( str1.get_size() == str2.get_size(),  "str1.get_size() == str2.get_size()" );
-  assert( str1.get_data() == str2.get_data(),  "str1.get_data() == str2.getget_data_size()" );
-  assert( str1.is_own_memory() == str2.is_own_memory(),  "str1.is_own_memory() == str2.is_own_memory()" );
-  assert( str1.get_refcount() == str2.get_refcount(),  "str1.get_refcount() == str2.get_refcount()" );
-  assert( str1.get_refcount() == 2,  "str1.refcount() == 2" );
+  eos_assert( str1.get_size() == str2.get_size(),  "str1.get_size() == str2.get_size()" );
+  eos_assert( str1.get_data() == str2.get_data(),  "str1.get_data() == str2.getget_data_size()" );
+  eos_assert( str1.is_own_memory() == str2.is_own_memory(),  "str1.is_own_memory() == str2.is_own_memory()" );
+  eos_assert( str1.get_refcount() == str2.get_refcount(),  "str1.get_refcount() == str2.get_refcount()" );
+  eos_assert( str1.get_refcount() == 2,  "str1.refcount() == 2" );
 }
 
 void test_string::assignment_operator() {
@@ -96,11 +96,11 @@ void test_string::assignment_operator() {
   eosio::string str2;
   str2 = str1;
 
-  assert( str1.get_size() == str2.get_size(),  "str1.get_size() == str2.get_size()" );
-  assert( str1.get_data() == str2.get_data(),  "str1.get_data() == str2.getget_data_size()" );
-  assert( str1.is_own_memory() == str2.is_own_memory(),  "str1.is_own_memory() == str2.is_own_memory()" );
-  assert( str1.get_refcount() == str2.get_refcount(),  "str1.get_refcount() == str2.get_refcount()" );
-  assert( str1.get_refcount() == 2,  "str1.refcount() == 2" );
+  eos_assert( str1.get_size() == str2.get_size(),  "str1.get_size() == str2.get_size()" );
+  eos_assert( str1.get_data() == str2.get_data(),  "str1.get_data() == str2.getget_data_size()" );
+  eos_assert( str1.is_own_memory() == str2.is_own_memory(),  "str1.is_own_memory() == str2.is_own_memory()" );
+  eos_assert( str1.get_refcount() == str2.get_refcount(),  "str1.get_refcount() == str2.get_refcount()" );
+  eos_assert( str1.get_refcount() == 2,  "str1.refcount() == 2" );
 }
 
 void test_string::index_operator() {
@@ -110,7 +110,7 @@ void test_string::index_operator() {
   eosio::string str(data, size, false);
 
   for (uint8_t i = 0; i < size; i++) {
-    assert( str[i] == data[i],  "str[i] == data[i]" );
+    eos_assert( str[i] == data[i],  "str[i] == data[i]" );
   }
 }
 
@@ -135,12 +135,12 @@ void test_string::substring() {
   size_t substr_size = 5;
   size_t offset = 2;
   eosio::string substr = str.substr(offset, substr_size, false);
-  assert( substr.get_size() == substr_size,  "str.get_size() == substr_size" );
-  assert( substr.get_data() == str.get_data() + offset,  "substr.get_data() == str.get_data() + offset" );
+  eos_assert( substr.get_size() == substr_size,  "str.get_size() == substr_size" );
+  eos_assert( substr.get_data() == str.get_data() + offset,  "substr.get_data() == str.get_data() + offset" );
   for (uint8_t i = offset; i < substr_size; i++) {
-    assert( substr[i] == str[offset + i],  "substr[i] == str[offset + i]" );
+    eos_assert( substr[i] == str[offset + i],  "substr[i] == str[offset + i]" );
   }
-  assert( substr.is_own_memory() == false,  "substr.is_own_memory() == false" );
+  eos_assert( substr.is_own_memory() == false,  "substr.is_own_memory() == false" );
 }
 
 void test_string::substring_out_of_bound() {
@@ -166,13 +166,13 @@ void test_string::concatenation_null_terminated() {
 
   str1 += str2;
 
-  assert( str1.get_data() != data1,  "str1.get_data() != data1" );
-  assert( str1.get_size() == size1 + size2 - 1,  "str1.get_size == size1 + size2 - 1" );
+  eos_assert( str1.get_data() != data1,  "str1.get_data() != data1" );
+  eos_assert( str1.get_size() == size1 + size2 - 1,  "str1.get_size == size1 + size2 - 1" );
   for (uint8_t i = 0; i < size1 - 1; i++) {
-    assert( str1[i] == data1[i],  "str1[i] == data1[i]" );
+    eos_assert( str1[i] == data1[i],  "str1[i] == data1[i]" );
   }
   for (uint8_t i = 0; i < size2; i++) {
-    assert( str1[size1 - 1 + i] == data2[i],  "str1[i] == data2[i]" );
+    eos_assert( str1[size1 - 1 + i] == data2[i],  "str1[i] == data2[i]" );
   }
 
 }
@@ -189,13 +189,13 @@ void test_string::concatenation_non_null_terminated() {
 
   str1 += str2;
 
-  assert( str1.get_data() != data1,  "str1.get_data() != data1" );
-  assert( str1.get_size() == size1 + size2,  "str1.get_size == size1 + size2" );
+  eos_assert( str1.get_data() != data1,  "str1.get_data() != data1" );
+  eos_assert( str1.get_size() == size1 + size2,  "str1.get_size == size1 + size2" );
   for (uint8_t i = 0; i < size1; i++) {
-    assert( str1[i] == data1[i],  "str1[i] == data1[i]" );
+    eos_assert( str1[i] == data1[i],  "str1[i] == data1[i]" );
   }
   for (uint8_t i = 0; i < size2; i++) {
-    assert( str1[size1 + i] == data2[i],  "str1[i] == data2[i]" );
+    eos_assert( str1[size1 + i] == data2[i],  "str1[i] == data2[i]" );
   }
 }
 
@@ -206,18 +206,18 @@ void test_string::assign() {
   eosio::string str(100);
   str.assign(data, size, true);
 
-  assert( str.get_size() == size,  "str.get_size() == size" );
-  assert( str.get_data() != data,  "str.get_data() != data" );
+  eos_assert( str.get_size() == size,  "str.get_size() == size" );
+  eos_assert( str.get_data() != data,  "str.get_data() != data" );
   for (uint8_t i = 0; i < size; i++) {
-    assert( str[i] == data[i],  "str[i] == data[i]" );
+    eos_assert( str[i] == data[i],  "str[i] == data[i]" );
   }
-  assert( str.is_own_memory() == true,  "str.is_own_memory() == true" );
+  eos_assert( str.is_own_memory() == true,  "str.is_own_memory() == true" );
 
   str.assign(data, 0, true);
 
-  assert( str.get_size() == 0,  "str.get_size() == 0" );
-  assert( str.get_data() == nullptr,  "str.get_data() == nullptr" );
-  assert( str.is_own_memory() == false,  "str.is_own_memory() == false" );
+  eos_assert( str.get_size() == 0,  "str.get_size() == 0" );
+  eos_assert( str.get_data() == nullptr,  "str.get_data() == nullptr" );
+  eos_assert( str.is_own_memory() == false,  "str.is_own_memory() == false" );
 }
 
 
@@ -254,15 +254,15 @@ void test_string::comparison_operator() {
   size_t size8 = sizeof(data8)/sizeof(char);
   eosio::string str8(data8, size8, false);
 
-  assert( str1 == str2,  "str1 == str2" );
-  assert( str1 != str3,  "str1 != str3" );
-  assert( str1 < str3,  "str1 < str3" );
-  assert( str2 > str4,  "str2 > str4" );
-  assert( str1.compare(str2) == 0,  "str1.compare(str2) == 0" );
-  assert( str1.compare(str3) < 0,  "str1.compare(str3) < 0" );
-  assert( str1.compare(str4) > 0,  "str1.compare(str4) > 0" );
-  assert( str5.compare(str6) < 0,  "st5.compare(str6) < 0" );
-  assert( str7.compare(str8) > 0,  "str7.compare(str8) > 0" );
+  eos_assert( str1 == str2,  "str1 == str2" );
+  eos_assert( str1 != str3,  "str1 != str3" );
+  eos_assert( str1 < str3,  "str1 < str3" );
+  eos_assert( str2 > str4,  "str2 > str4" );
+  eos_assert( str1.compare(str2) == 0,  "str1.compare(str2) == 0" );
+  eos_assert( str1.compare(str3) < 0,  "str1.compare(str3) < 0" );
+  eos_assert( str1.compare(str4) > 0,  "str1.compare(str4) > 0" );
+  eos_assert( str5.compare(str6) < 0,  "st5.compare(str6) < 0" );
+  eos_assert( str7.compare(str8) > 0,  "str7.compare(str8) > 0" );
 }
 
 void test_string::print_null_terminated() {
@@ -334,18 +334,18 @@ void test_string::string_literal() {
 
   eosio::string str = "abcdefghij";
 
-  assert( str.get_size() == 11,  "data1 str.get_size() == 11" );
+  eos_assert( str.get_size() == 11,  "data1 str.get_size() == 11" );
   for (uint8_t i = 0; i < 11; i++) {
-    assert( str[i] == data1[i],  "data1 str[i] == data1[i]" );
+    eos_assert( str[i] == data1[i],  "data1 str[i] == data1[i]" );
   }
-  assert( str.is_own_memory() == true,  "data1 str.is_own_memory() == true" );
+  eos_assert( str.is_own_memory() == true,  "data1 str.is_own_memory() == true" );
 
   str = "klmnopqrstuvwxyz";
   
-  assert( str.get_size() == 17,  "data2 str.get_size() == 17" );
+  eos_assert( str.get_size() == 17,  "data2 str.get_size() == 17" );
   for (uint8_t i = 0; i < 17; i++) {
-    assert( str[i] == data2[i],  "data2 str[i] == data2[i]" );
+    eos_assert( str[i] == data2[i],  "data2 str[i] == data2[i]" );
   }
-  assert( str.is_own_memory() == true,  "data2 str.is_own_memory() == true" );
+  eos_assert( str.is_own_memory() == true,  "data2 str.is_own_memory() == true" );
 }
 

@@ -75,16 +75,16 @@ void test_crypto::test_sha256() {
   checksum tmp;
 
   sha256( (char *)test1, my_strlen(test1), &tmp );
-  assert( my_memcmp((void *)test1_ok, &tmp, sizeof(checksum)), "sha256 test1" );
+  eos_assert( my_memcmp((void *)test1_ok, &tmp, sizeof(checksum)), "sha256 test1" );
 
   sha256( (char *)test3, my_strlen(test3), &tmp );
-  assert( my_memcmp((void *)test3_ok, &tmp, sizeof(checksum)), "sha256 test3" );
+  eos_assert( my_memcmp((void *)test3_ok, &tmp, sizeof(checksum)), "sha256 test3" );
 
   sha256( (char *)test4, my_strlen(test4), &tmp );
-  assert( my_memcmp((void *)test4_ok, &tmp, sizeof(checksum)), "sha256 test4" );
+  eos_assert( my_memcmp((void *)test4_ok, &tmp, sizeof(checksum)), "sha256 test4" );
 
   sha256( (char *)test5, my_strlen(test5), &tmp );
-  assert( my_memcmp((void *)test5_ok, &tmp, sizeof(checksum)), "sha256 test5" );
+  eos_assert( my_memcmp((void *)test5_ok, &tmp, sizeof(checksum)), "sha256 test5" );
 }
 
 void test_crypto::sha256_null() {
@@ -92,7 +92,7 @@ void test_crypto::sha256_null() {
    int a = 3;
    int* b = &a;
    sha256(nullptr, 100, &tmp);
-   //assert(false, "should've thrown an error");
+   //eos_assert(false, "should've thrown an error");
 }
 
 void test_crypto::sha256_no_data() {
@@ -100,7 +100,7 @@ void test_crypto::sha256_no_data() {
   checksum tmp;
 
   sha256( (char *)test2, my_strlen(test2), &tmp );
-  assert( my_memcmp((void *)test2_ok, &tmp, sizeof(checksum)), "sha256 test2" );
+  eos_assert( my_memcmp((void *)test2_ok, &tmp, sizeof(checksum)), "sha256 test2" );
 }
 
 void test_crypto::assert_sha256_false() {
@@ -109,9 +109,9 @@ void test_crypto::assert_sha256_false() {
 
   sha256( (char *)test1, my_strlen(test1), &tmp );
   tmp.hash[0] ^= (uint64_t)(-1);
-  assert_sha256( (char *)test1, my_strlen(test1), &tmp);
+  eos_assert_sha256( (char *)test1, my_strlen(test1), &tmp);
    
-  assert(false, "should have failed");
+  eos_assert(false, "should have failed");
 }
 
 void test_crypto::assert_sha256_true() {
@@ -119,14 +119,14 @@ void test_crypto::assert_sha256_true() {
   checksum tmp;
 
   sha256( (char *)test1, my_strlen(test1), &tmp );
-  assert_sha256( (char *)test1, my_strlen(test1), &tmp);
+  eos_assert_sha256( (char *)test1, my_strlen(test1), &tmp);
 
   sha256( (char *)test3, my_strlen(test3), &tmp );
-  assert_sha256( (char *)test3, my_strlen(test3), &tmp);
+  eos_assert_sha256( (char *)test3, my_strlen(test3), &tmp);
 
   sha256( (char *)test4, my_strlen(test4), &tmp );
-  assert_sha256( (char *)test4, my_strlen(test4), &tmp);
+  eos_assert_sha256( (char *)test4, my_strlen(test4), &tmp);
 
   sha256( (char *)test5, my_strlen(test5), &tmp );
-  assert_sha256( (char *)test5, my_strlen(test5), &tmp);
+  eos_assert_sha256( (char *)test5, my_strlen(test5), &tmp);
 }

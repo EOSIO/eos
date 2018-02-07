@@ -29,9 +29,9 @@ void test_action::read_action_normal() {
    eos_assert(total == sizeof(dummy_action), "read_action(sizeof(dummy_action))" );
 
    dummy_action *dummy13 = reinterpret_cast<dummy_action *>(buffer);
-   eos_assert(dummy13->a == DUMMY_MESSAGE_DEFAULT_A, "dummy13->a == DUMMY_MESSAGE_DEFAULT_A");
-   eos_assert(dummy13->b == DUMMY_MESSAGE_DEFAULT_B, "dummy13->b == DUMMY_MESSAGE_DEFAULT_B");
-   eos_assert(dummy13->c == DUMMY_MESSAGE_DEFAULT_C, "dummy13->c == DUMMY_MESSAGE_DEFAULT_C");
+   eos_assert(dummy13->a == DUMMY_ACTION_DEFAULT_A, "dummy13->a == DUMMY_ACTION_DEFAULT_A");
+   eos_assert(dummy13->b == DUMMY_ACTION_DEFAULT_B, "dummy13->b == DUMMY_ACTION_DEFAULT_B");
+   eos_assert(dummy13->c == DUMMY_ACTION_DEFAULT_C, "dummy13->c == DUMMY_ACTION_DEFAULT_C");
 
 }
 
@@ -48,11 +48,11 @@ void test_action::require_notice() {
       eosio::require_recipient( N(acc1) );
       eosio::require_recipient( N(acc2) );
       eosio::require_recipient( N(acc1), N(acc2) );
-      assert(false, "Should've failed");
+      eos_assert(false, "Should've failed");
    } else if ( current_receiver() == N(acc1) || current_receiver() == N(acc2) ) {
       return;
    }
-   assert(false, "Should've failed");
+   eos_assert(false, "Should've failed");
 }
 
 void test_action::require_auth() {
@@ -72,6 +72,6 @@ void test_action::assert_true() {
 void test_action::now() {
    uint32_t tmp = 0;
    uint32_t total = read_action(&tmp, sizeof(uint32_t));
-   assert( total == sizeof(uint32_t), "total == sizeof(uint32_t)");
-   assert( tmp == ::now(), "tmp == now()" );
+   eos_assert( total == sizeof(uint32_t), "total == sizeof(uint32_t)");
+   eos_assert( tmp == ::now(), "tmp == now()" );
 }

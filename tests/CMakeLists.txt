@@ -17,9 +17,10 @@ include_directories("${CMAKE_BINARY_DIR}/contracts")
 include_directories("${CMAKE_SOURCE_DIR}/contracts")
 
 file(GLOB UNIT_TESTS "chain_tests/*.cpp" "api_tests/*.cpp" "tests/abi_tests.cpp" "tests/database_tests.cpp")
-if(WASM_TOOLCHAIN)
-    file(GLOB WASM_UNIT_TESTS "wasm_tests/*.cpp")
-endif()
+
+#if(WASM_TOOLCHAIN)
+#    file(GLOB WASM_UNIT_TESTS "wasm_tests/*.cpp")
+#endif()
 
 add_executable( chain_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} common/main.cpp )
 target_link_libraries( chain_test eosio_testing eosio_chain chainbase eos_utilities eos_egenesis_none chain_plugin abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )

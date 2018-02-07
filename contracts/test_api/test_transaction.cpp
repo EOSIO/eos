@@ -77,7 +77,7 @@ void test_transaction::send_action() {
 }
 
 void test_transaction::send_action_empty() {
-   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "assert_true")> test_action;
+   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "eos_assert_true")> test_action;
 
    action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
 
@@ -93,7 +93,7 @@ void test_transaction::send_action_large() {
    copy_data(large_message, 8*1024, test_action.data); 
    action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
    act.send();
-   assert(false, "send_message_large() should've thrown an error");
+   eos_assert(false, "send_message_large() should've thrown an error");
 }
 
 /**
@@ -114,7 +114,7 @@ void test_transaction::send_action_recurse() {
  * cause failure due to inline TX failure
  */
 void test_transaction::send_action_inline_fail() {
-   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "assert_false")> test_action;
+   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "eos_assert_false")> test_action;
 
    action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
 
@@ -136,7 +136,7 @@ void test_transaction::send_transaction_empty() {
    auto trx = transaction();
    trx.send(0);
 
-   assert(false, "send_transaction_empty() should've thrown an error");
+   eos_assert(false, "send_transaction_empty() should've thrown an error");
 }
 
 /**
@@ -153,5 +153,5 @@ void test_transaction::send_transaction_large() {
 
    trx.send(0);
 
-   assert(false, "send_transaction_large() should've thrown an error");
+   eos_assert(false, "send_transaction_large() should've thrown an error");
 }
