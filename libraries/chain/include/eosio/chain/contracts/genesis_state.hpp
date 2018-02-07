@@ -43,7 +43,6 @@ struct genesis_state_type {
    };
 
    chain_config   initial_configuration = {
-      .producer_pay                   = config::default_elected_pay,
       .target_block_size              = config::default_target_block_size,
       .max_block_size                 = config::default_max_block_size,
       .target_block_acts_per_scope    = config::default_target_block_acts_per_scope,
@@ -62,10 +61,6 @@ struct genesis_state_type {
 
    time_point                               initial_timestamp;
    public_key_type                          initial_key;
-   public_key_type                          eosio_system_key;
-
-   vector<initial_account_type>             initial_accounts;
-   vector<initial_producer_type>            initial_producers;
 
    /**
     * Temporary, will be moved elsewhere.

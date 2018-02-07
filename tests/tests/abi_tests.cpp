@@ -1411,7 +1411,6 @@ BOOST_AUTO_TEST_CASE(general)
          "accounts":[{"permission":{"actor":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"actor":"acc2","permission":"permname2"},"weight":"2"}]
        }],
       "chainconfig": {
-         "producer_pay": "100",
          "target_block_size": "200",
          "max_block_size": "300",
          "target_block_acts_per_scope": "400",
@@ -1428,7 +1427,6 @@ BOOST_AUTO_TEST_CASE(general)
          "max_generated_transaction_size": "1500"
       },
       "chainconfig_arr": [{
-         "producer_pay": "100",
          "target_block_size": "200",
          "max_block_size": "300",
          "target_block_acts_per_scope": "400",
@@ -1444,7 +1442,6 @@ BOOST_AUTO_TEST_CASE(general)
          "max_inline_action_size": "1400",
          "max_generated_transaction_size": "1500"
       },{
-         "producer_pay": "100",
          "target_block_size": "200",
          "max_block_size": "300",
          "target_block_acts_per_scope": "400",

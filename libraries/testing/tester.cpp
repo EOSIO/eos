@@ -6,7 +6,8 @@
 #include <eosio/chain/contracts/contract_table_objects.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 
-#include <eosio.system/eosio.system.abi.hpp>
+#include <test.system/test.system.wast.hpp>
+#include <test.system/test.system.abi.hpp>
 
 #include <fc/utility.hpp>
 #include <fc/io/json.hpp>
@@ -25,52 +26,15 @@ namespace eosio { namespace testing {
 
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
-      cfg.genesis.eosio_system_key = get_public_key( config::eosio_system_account_name, "active");
 
       open();
       if (process_genesis)
-         create_init_accounts();
+         push_genesis_block();
    }
 
-   void tester::create_init_accounts() {
-
-      contracts::abi_def eosio_system_abi_def = fc::json::from_string(eosio_system_abi).as<contracts::abi_def>();
-      chain::contracts::abi_serializer eosio_system_serializer(eosio_system_abi_def);
-
-      signed_transaction trx;
-      set_tapos(trx);
-
-      action act;
-      act.account = config::eosio_system_account_name;
-      act.name = N(issue);
-      act.authorization = vector<permission_level>{{config::eosio_system_account_name,config::active_name}};
-      act.data = eosio_system_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"eosio.system\",\"quantity\":\"1000000000.0000 EOS\"}"));
-      trx.actions.push_back(act);
-      set_tapos(trx);
-      trx.sign( get_private_key( config::eosio_system_account_name, "active" ), chain_id_type()  );
-      push_transaction(trx);
-
-      create_account(N(inita), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(initb), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(initc), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(initd), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(inite), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(initf), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(initg), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(inith), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(initi), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(initj), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(initk), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(initl), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(initm), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(initn), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(inito), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(initp), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(initq), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(initr), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(inits), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(initt), "1000000.0000 EOS", config::eosio_system_account_name);
-      create_account(N(initu), "1000000.0000 EOS", config::eosio_system_account_name);
+   void tester::push_genesis_block() {
+      set_code(config::eosio_system_account_name, test_system_wast);
+      set_abi(config::eosio_system_account_name, test_system_abi);
    }
 
    public_key_type  tester::get_public_key( name keyname, string role ) const {
