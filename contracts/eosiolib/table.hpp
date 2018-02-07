@@ -21,7 +21,7 @@ namespace eosio {
             char temp[1024];
             *reinterpret_cast<uint64_t *>(temp) = key;
             auto read = load_i64( DefaultScope, scope , TableName, temp, sizeof(temp) );
-            assert( read > 0, "key does not exist" );
+            eos_assert( read > 0, "key does not exist" );
 
             datastream<const char*> ds(temp, read);
             T result;
@@ -63,7 +63,7 @@ namespace eosio {
          static void set( const T& value = T(), scope_name scope = DefaultScope, uint64_t bta = BillToAccount ) {
             auto size = pack_size( value );
             char buf[size];
-            assert( size <= 1024, "singleton too big to store" );
+            eos_assert( size <= 1024, "singleton too big to store" );
 
             datastream<char*> ds( buf, size );
             ds << value;

@@ -6,8 +6,8 @@
 namespace dice {
 
 void apply_offer( const offer_bet& offer ) {
-   assert( offer.amount > 0, "insufficient bet" );
-   assert( !hasOffer( offer.commitment ), "offer with this commitment already exist" );
+   eos_assert( offer.amount > 0, "insufficient bet" );
+   eos_assert( !hasOffer( offer.commitment ), "offer with this commitment already exist" );
    require_auth( offer.player );
 
    auto acnt = get_account( offer.player );

@@ -54,11 +54,12 @@ namespace fc {
   const T& min( const T& a, const T& b ) { return a < b ? a: b; }
 
   constexpr size_t const_strlen(const char* str) {
-    if (*str == '\0') {
-      return 0;
+    size_t res = 0;
+    while (*str != '\0') {
+       ++res;
+       ++str;
     }
-
-    return 1 + const_strlen(str+1);
+    return res;
   }
 
 
