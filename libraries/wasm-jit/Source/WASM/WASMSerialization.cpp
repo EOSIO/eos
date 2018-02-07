@@ -186,8 +186,10 @@ public:
    {}
 
 
-   void addCall(const Module& module, OperatorEncoderStream& operatorEncoderStream, CodeValidationStream& codeValidationStream)
+   void addCall(Module& module, OperatorEncoderStream& operatorEncoderStream, CodeValidationStream& codeValidationStream)
    {
+      // make sure the import is added
+      addImport(module);
       LiteralImm<I32> param_imm { 11 };
       codeValidationStream.i32_const(param_imm);
       operatorEncoderStream.i32_const(param_imm);
@@ -229,7 +231,7 @@ public:
       }
    }
 
-   void conditionallyAddCall(Opcode opcode, const ControlStructureImm& imm, const Module& module, OperatorEncoderStream& operatorEncoderStream, CodeValidationStream& codeValidationStream)
+   void conditionallyAddCall(Opcode opcode, const ControlStructureImm& imm, Module& module, OperatorEncoderStream& operatorEncoderStream, CodeValidationStream& codeValidationStream)
    {
       switch(opcode)
       {
@@ -242,7 +244,7 @@ public:
    }
 
    template<typename Imm>
-   void conditionallyAddCall(Opcode , const Imm& , const Module& , OperatorEncoderStream& , CodeValidationStream& )
+   void conditionallyAddCall(Opcode , const Imm& , Module& , OperatorEncoderStream& , CodeValidationStream& )
    {
    }
 
@@ -278,12 +280,12 @@ private:
 
 struct NoOpInjection
 {
-   void addCall(const Module& , OperatorEncoderStream& , CodeValidationStream& ) {}
+   void addCall(Module& , OperatorEncoderStream& , CodeValidationStream& ) {}
    void setTypeSlot(const Module& , ResultType , const std::vector<ValueType>& ) {}
    void addTypeSlot(Module& ) {}
    void addImport(Module& ) {}
    template<typename Imm>
-   void conditionallyAddCall(Opcode , const Imm& , const Module& , OperatorEncoderStream& , CodeValidationStream& ) {}
+   void conditionallyAddCall(Opcode , const Imm& , Module& , OperatorEncoderStream& , CodeValidationStream& ) {}
    void adjustIfFunctionIndex(Uptr& , ObjectKind ) {}
    void adjustExportIndex(Module& ) {}
    template<typename Imm>
