@@ -186,14 +186,14 @@ public:
    {}
 
 
-   void addCall(Module& module, Serialization::OutputStream& inByteStream)
+   void addCall(const Module& module, OperatorEncoderStream& operatorEncoderStream, CodeValidationStream& codeValidationStream)
    {
-      // make sure the import is added
-      addImport(module);
-      OpcodeAndImm<CallImm>* encodedOperator = (OpcodeAndImm<CallImm>*)inByteStream.advance(sizeof(OpcodeAndImm<CallImm>));
-      encodedOperator->opcode = Opcode::call;
-      // checktime will be the last defined import
-      encodedOperator->imm.functionIndex = checktimeIndex(module);
+      LiteralImm<I32> param_imm { 11 };
+      codeValidationStream.i32_const(param_imm);
+      operatorEncoderStream.i32_const(param_imm);
+      CallImm checktime_imm { checktimeIndex(module) };
+      codeValidationStream.call(checktime_imm);
+      operatorEncoderStream.call(checktime_imm);
    }
 
    static U32 checktimeIndex(const Module& module)
@@ -203,7 +203,7 @@ public:
 
    void setTypeSlot(const Module& module, ResultType returnType, const std::vector<ValueType>& parameterTypes)
    {
-      if (returnType == ResultType::none && !parameterTypes.size() )
+      if (returnType == ResultType::none && parameterTypes.size() == 1 && parameterTypes[0] == ValueType::i32 )
         typeSlot = module.types.size() - 1;
    }
 
@@ -213,7 +213,7 @@ public:
       {
          // add a type for void func(void)
          typeSlot = module.types.size();
-         module.types.push_back(FunctionType::get(ResultType::none));
+         module.types.push_back(FunctionType::get(ResultType::none, std::vector<ValueType>(1, ValueType::i32)));
       }
    }
 
@@ -229,20 +229,20 @@ public:
       }
    }
 
-   void conditionallyAddCall(Opcode opcode, const ControlStructureImm& imm, Module& module, Serialization::OutputStream& inByteStream)
+   void conditionallyAddCall(Opcode opcode, const ControlStructureImm& imm, const Module& module, OperatorEncoderStream& operatorEncoderStream, CodeValidationStream& codeValidationStream)
    {
       switch(opcode)
       {
       case Opcode::loop:
       case Opcode::block:
-         addCall(module, inByteStream);
+         addCall(module, operatorEncoderStream, codeValidationStream);
       default:
          break;
       };
    }
 
    template<typename Imm>
-   void conditionallyAddCall(Opcode , const Imm& , Module& , Serialization::OutputStream& )
+   void conditionallyAddCall(Opcode , const Imm& , const Module& , OperatorEncoderStream& , CodeValidationStream& )
    {
    }
 
@@ -278,12 +278,12 @@ private:
 
 struct NoOpInjection
 {
-   void addCall(Module& , Serialization::OutputStream& ) {}
+   void addCall(const Module& , OperatorEncoderStream& , CodeValidationStream& ) {}
    void setTypeSlot(const Module& , ResultType , const std::vector<ValueType>& ) {}
    void addTypeSlot(Module& ) {}
    void addImport(Module& ) {}
    template<typename Imm>
-   void conditionallyAddCall(Opcode , const Imm& , Module& , Serialization::OutputStream& ) {}
+   void conditionallyAddCall(Opcode , const Imm& , const Module& , OperatorEncoderStream& , CodeValidationStream& ) {}
    void adjustIfFunctionIndex(Uptr& , ObjectKind ) {}
    void adjustExportIndex(Module& ) {}
    template<typename Imm>
@@ -619,10 +619,10 @@ namespace WASM
          // Deserialize the function code, validate it, and re-encode it in the IR format.
          ArrayOutputStream irCodeByteStream;
 
-         injection.addCall(module, irCodeByteStream);
+         CodeValidationStream codeValidationStream(module,functionDef);
 
          OperatorEncoderStream irEncoderStream(irCodeByteStream);
-         CodeValidationStream codeValidationStream(module,functionDef);
+         injection.addCall(module, irEncoderStream, codeValidationStream);
          while(bodyStream.capacity())
          {
             Opcode opcode;
@@ -638,7 +638,7 @@ namespace WASM
                   injection.adjustCallIndex(module, imm); \
                   codeValidationStream.name(imm); \
                   irEncoderStream.name(imm); \
-                  injection.conditionallyAddCall(opcode, imm, module, irCodeByteStream); \
+                  injection.conditionallyAddCall(opcode, imm, module, irEncoderStream, codeValidationStream); \
                   break; \
                }
             ENUM_NONFLOAT_OPERATORS(VISIT_OPCODE)

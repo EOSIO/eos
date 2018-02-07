@@ -238,7 +238,7 @@ void apply_context::checktime_start() {
    _checktime_start = fc::time_point::now();
 }
 
-void apply_context::checktime() const {
+void apply_context::checktime(uint32_t instruction_count) const {
    if ((fc::time_point::now() - _checktime_start).count() > _checktime_limit) {
       throw checktime_exceeded();
    }
