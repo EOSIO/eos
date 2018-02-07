@@ -382,6 +382,7 @@ class apply_context {
          require_write_lock( scope );
          const auto& tab = find_or_create_table( scope, receiver, table );
          auto tableid = tab.id;
+         validate_or_add_table_key(tab, contracts::table_key_type::type_i64);
 
          FC_ASSERT( payer != account_name(), "must specify a valid account to pay for new record" );
 
@@ -468,6 +469,7 @@ class apply_context {
 
          const auto* tab = find_table( scope, code, table );
          if( !tab ) return -1;
+         validate_table_key(*tab, contracts::table_key_type::type_i64);
 
 
          const key_value_object* obj = db.find<key_value_object, contracts::by_scope_primary>( boost::make_tuple( tab->id, id ) );
@@ -482,6 +484,7 @@ class apply_context {
 
          const auto* tab = find_table( scope, code, table );
          if( !tab ) return -1;
+         validate_table_key(*tab, contracts::table_key_type::type_i64);
 
 
          const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
@@ -498,6 +501,7 @@ class apply_context {
 
          const auto* tab = find_table( scope, code, table );
          if( !tab ) return -1;
+         validate_table_key(*tab, contracts::table_key_type::type_i64);
 
 
          const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
