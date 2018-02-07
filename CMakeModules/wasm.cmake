@@ -136,7 +136,7 @@ macro(add_wast_library)
   get_filename_component("${ARG_TARGET}_BC_FILENAME" "${CMAKE_CURRENT_SOURCE_DIR}/${ARG_TARGET}.bc" ABSOLUTE CACHE)
   #set("${ARG_TARGET}_BC_FILENAME" CACHE INTERNAL "${target} .bc file")
 
-  add_custom_command(OUTPUT ${target}.bc
+  add_custom_command(OUTPUT ${${ARG_TARGET}_BC_FILENAME}
     DEPENDS ${outfiles}
     COMMAND ${WASM_LLVM_LINK} -o ${${ARG_TARGET}_BC_FILENAME} ${outfiles}
     COMMENT "Linking LLVM bitcode library ${target}.bc"
@@ -157,7 +157,7 @@ macro(add_wast_executable)
      list(APPEND LIBRARIES ${${lib}_BC_FILENAME})
   endforeach()
   add_custom_command(OUTPUT ${target}.bc
-    DEPENDS ${outfiles} ${ARG_LIBRARIES} ${LIBRARIES}
+    DEPENDS ${outfiles} ${LIBRARIES}
     COMMAND ${WASM_LLVM_LINK} -only-needed -o ${target}.bc ${outfiles} ${LIBRARIES}
     COMMENT "Linking LLVM bitcode executable ${target}.bc"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
