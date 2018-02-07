@@ -3,7 +3,6 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosiolib/eosio.hpp>
-#include <eosiolib/db.hpp>
 
 namespace proxy {
    
@@ -21,7 +20,5 @@ namespace proxy {
       uint32_t            delay = 0;
       uint32_t            next_id = 0;
    };
-
-   using configs = eosio::table<N(proxy),N(proxy),N(configs),N(proxy),config,uint64_t>;
 
 } /// namespace proxy
