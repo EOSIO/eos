@@ -366,7 +366,7 @@ struct table {
 
     /**
     *  @brief Fetches a record from the table.
-    *  @details Fetches a record from the table. 
+    *  @details Fetches a record from the table.
     *  @param p - reference to primary key to retrieve
     *  @param r - reference to a record to load the value to.
     *  @param s - account scope. default is current scope of the class
@@ -381,7 +381,7 @@ struct table {
 
      /**
      *  @brief Store a record in the table.
-     *  @details Store a record in the table. 
+     *  @details Store a record in the table.
      *  @param r - reference to a record to store.
      *  @param s - account scope. default is current scope of the class
      *
@@ -394,7 +394,7 @@ struct table {
 
     /**
     *  @brief Update a record in the table.
-    *  @details Update a record in the table. 
+    *  @details Update a record in the table.
     *  @param r - reference to a record to update.
     *  @param s - account scope. default is current scope of the class
     *
@@ -407,7 +407,7 @@ struct table {
 
     /**
     *  @brief Remove a record from the table.
-    *  @details Remove a record from the table. 
+    *  @details Remove a record from the table.
     *  @param r - reference to a record to remove.
     *  @param s - account scope. default is current scope of the class
     *
@@ -421,7 +421,7 @@ struct table {
 
 template<>
 struct table_impl<sizeof(uint64_t),0> {
- 
+
     static int32_t front_primary( uint64_t scope, uint64_t code, uint64_t table_n, void* data, uint32_t len ) {
        return front_i64( scope, code, table_n, data, len );
     }
@@ -543,40 +543,44 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
      * @brief Primary Index of the Table
      */
    struct primary_index {
-       /**
-       *  @param r - reference to a record to store the front.
+      /**
+       * @param r - reference to a record to store the front.
+       * @param s - scope; defaults to scope of the class.
        *
        *  @return true if successfully retrieved the front of the table.
        */
-      static bool front( Record& r ) {
-         return impl::front_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+      static bool front( Record& r, uint64_t s = scope ) {
+         return impl::front_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
-       /**
+      /**
        *  @param r - reference to a record to store the back.
+       *  @param s - scope; defaults to scope of the class.
        *
        *  @return true if successfully retrieved the back of the table.
        */
-      static bool back( Record& r ) {
-         return impl::back_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+      static bool back( Record& r, uint64_t s = scope ) {
+         return impl::back_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
-       /**
+      /**
        *  @param r - reference to store the next record. Must be initialized with a key.
+       *  @param s - scope; defaults to scope of the class.
        *
        *  @return true if successfully retrieved the next record.
        */
-      static bool next( Record& r ) {
-         return impl::next_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+      static bool next( Record& r, uint64_t s = scope ) {
+         return impl::next_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
-       /**
+      /**
        *  @param r - reference to store previous record. Must be initialized with a key.
+       *  @param s - scope; defaults to scope of the class.
        *
        *  @return true if successfully retrieved the previous record.
        */
-      static bool previous( Record& r ) {
-         return impl::previous_primary( scope, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
+      static bool previous( Record& r, uint64_t s = scope ) {
+         return impl::previous_primary( s, code, table_n, &r, sizeof(Record) ) == sizeof(Record);
       }
 
        /**
@@ -614,27 +618,29 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
        *  @param r - reference to record to be removed.
        *  @return true if successfully removed.
        */
-       static bool remove( const Record& r ) {
-         return impl::remove( scope, table_n, &r ) != 0;
+       static bool remove( const Record& r, uint64_t s = scope ) {
+         return impl::remove( s, table_n, &r ) != 0;
       }
    };
 
 
     /**
-    * @brief Fetches the front of the table
-    * @details Fetches the front of the table
-    * @param  r - reference to hold the value
-    * @return true if successfully retrieved the front
-    */
-    static bool front( Record& r ) { return primary_index::front(r); }
+     * @brief Fetches the front of the table
+     * @details Fetches the front of the table
+     * @param r - reference to hold the value
+     * @param s - scope; defaults to scope of the class.
+     * @return true if successfully retrieved the front
+     */
+    static bool front( Record& r, uint64_t s = scope ) { return primary_index::front(r, s); }
 
     /**
-    * @brief Fetches the back of the table
-    * @details Fetches the back of the table
-    * @param  r - reference to hold the value
-    * @return true if successfully retrieved the back
-    */
-    static bool back( Record& r )  { return primary_index::back(r);  }
+     * @brief Fetches the back of the table
+     * @details Fetches the back of the table
+     * @param r - reference to hold the value
+     * @param s - scope; defaults to scope of the class.
+     * @return true if successfully retrieved the back
+     */
+    static bool back( Record& r, uint64_t s = scope )  { return primary_index::back(r, s);  }
 
     /**
      * @brief Retrieves the record for the specified primary key
@@ -696,7 +702,7 @@ struct table<scope,code,table_n,Record,PrimaryType,void> {
 
 template<>
 struct table_impl_obj<char*> {
-    
+
     static int32_t store( account_name scope, table_name table_n, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
         return store_str( scope, table_n, key, keylen, data, datalen );
     }
@@ -784,7 +790,7 @@ struct var_table {
     int32_t update( primary key, uint32_t keylen, char* record, uint32_t len ) {
         return impl::update( scope, table_n, key, keylen, record, len );
     }
-    
+
     /**
      * @brief Fetches the front of the table
      * @details Fetches the front of the table
@@ -822,7 +828,7 @@ struct var_table {
      */
     int32_t load( primary key, uint32_t keylen, char* record, uint32_t len ) {
        return impl::load( scope, code, table_n, key, keylen, record, len );
-    } 
+    }
 
     /**
      * @brief Fetches a record which key is next of the given key
@@ -836,7 +842,7 @@ struct var_table {
     int32_t next( primary key, uint32_t keylen, char* record, uint32_t len ) {
        return impl::next( scope, code, table_n, key, keylen, record, len );
     }
-    
+
     /**
      * @brief Fetches a record which key is previous of the given key
      * @details Fetches a record which key is previous of the given key
