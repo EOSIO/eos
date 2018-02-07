@@ -1,7 +1,7 @@
-set(STANDARD_INCLUDE_FOLDERS ${CMAKE_SOURCE_DIR}/contracts ${CMAKE_SOURCE_DIR}/contracts/libc++/include ${CMAKE_SOURCE_DIR}/contracts/musl/include)
+set(STANDARD_INCLUDE_FOLDERS ${CMAKE_SOURCE_DIR}/contracts ${CMAKE_SOURCE_DIR}/contracts/libc++/include ${CMAKE_SOURCE_DIR}/contracts/musl/upstream/include)
 
 add_subdirectory(eosiolib)
-add_subdirectory(musl/src)
+add_subdirectory(musl)
 add_subdirectory(libc++/src)
 
 add_subdirectory(eosio.system)
