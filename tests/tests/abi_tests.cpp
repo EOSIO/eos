@@ -381,7 +381,7 @@ BOOST_AUTO_TEST_CASE(generator)
 
     std::string include_param = std::string("-I") + eosiolib_path;
     std::string stdcpp_include_param = std::string("-I") + eosiolib_path + "/libc++/include";
-    std::string stdc_include_param = std::string("-I") + eosiolib_path +  "/musl/include";
+    std::string stdc_include_param = std::string("-I") + eosiolib_path +  "/musl/upstream/include";
 
      abi_def output;
     bool res = runToolOnCodeWithArgs(new generate_abi_action(false, opt_sfs, "", output), source,
