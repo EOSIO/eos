@@ -69,10 +69,10 @@ namespace eosio {
    };
 
    struct update_block_num {
-      uint16 new_bnum;
-      update_block_num(uint16 bnum) : new_bnum(bnum) {}
+      uint32_t new_bnum;
+      update_block_num(uint32_t bnum) : new_bnum(bnum) {}
       void operator() (node_transaction_state& nts) {
-         nts.block_num = static_cast<uint32_t>(new_bnum);
+         nts.block_num = new_bnum;
       }
    };
 
@@ -155,7 +155,7 @@ namespace eosio {
       std::set< connection_ptr >       connections;
       bool                             done = false;
       unique_ptr< sync_manager >       sync_master;
-      unique_ptr< big_msg_manager >    bm_master;
+      unique_ptr< big_msg_manager >    big_msg_master;
 
       unique_ptr<boost::asio::steady_timer> connector_check;
       unique_ptr<boost::asio::steady_timer> transaction_check;
@@ -371,9 +371,6 @@ namespace eosio {
       message_buffer<1024*1024>    pending_message_buffer;
       vector<char>            blk_buffer;
 
-      deque< transaction_id_type > txn_queue;
-      bool                    halt_txn_send;
-
       struct queued_write {
          std::shared_ptr<vector<char>> buff;
          std::function<void(boost::system::error_code, std::size_t)> cb;
@@ -384,7 +381,6 @@ namespace eosio {
       handshake_message       last_handshake_recv;
       handshake_message       last_handshake_sent;
       int16_t                 sent_handshake_count;
-      deque<net_message>      out_queue;
       bool                    connecting;
       bool                    syncing;
       int                     write_depth;
@@ -462,13 +458,12 @@ namespace eosio {
       void blk_send(const vector<block_id_type> &txn_lis);
       void stop_send();
 
+      void enqueue( transaction_id_type id );
       void enqueue( const net_message &msg );
       void cancel_sync(go_away_reason);
       void cancel_fetch();
       void flush_queues();
       bool enqueue_sync_block();
-      void send_next_message();
-      void send_next_txn();
 
       void cancel_wait();
       void sync_wait();
@@ -550,8 +545,8 @@ namespace eosio {
       bool requested_blk (block_id_type bid);
       bool requested_txn (transaction_id_type tid);
       void bcast_summary (const block_summary_message& msg);
-      void bcast_block (connection_ptr skip, const signed_block& msg);
-      void bcast_transaction (connection_ptr skip, const signed_transaction& msg);
+      void bcast_block (const signed_block& msg, connection_ptr skip = connection_ptr());
+      void bcast_transaction (const signed_transaction& msg, connection_ptr skip = connection_ptr());
       void recv_block (connection_ptr conn, const signed_block& msg);
       void recv_transaction (connection_ptr conn, const signed_transaction& msg);
       void recv_notice (connection_ptr conn, const notice_message& msg);
@@ -580,14 +575,13 @@ namespace eosio {
         last_handshake_recv(),
         last_handshake_sent(),
         sent_handshake_count(0),
-        out_queue(),
         connecting(false),
         syncing(false),
         write_depth(0),
         peer_addr(endpoint),
         response_expected(),
         pending_fetch(),
-        no_retry(go_away_reason::no_reason),
+        no_retry(no_reason),
         fork_head(),
         fork_head_num(0)
 
@@ -605,14 +599,13 @@ namespace eosio {
         last_handshake_recv(),
         last_handshake_sent(),
         sent_handshake_count(0),
-        out_queue(),
         connecting(true),
         syncing(false),
         write_depth(0),
         peer_addr(),
         response_expected(),
         pending_fetch(),
-        no_retry(go_away_reason::no_reason),
+        no_retry(no_reason),
         fork_head(),
         fork_head_num(0)
    {
@@ -648,13 +641,6 @@ namespace eosio {
    }
 
    void connection::flush_queues() {
-      if (write_depth > 1) {
-         while (out_queue.size() > 1) {
-            out_queue.pop_back();
-         }
-      } else {
-         out_queue.clear();
-      }
       if (write_depth > 0) {
          while (write_queue.size() > 1) {
             write_queue.pop_back();
@@ -684,17 +670,21 @@ namespace eosio {
    }
 
    void connection::txn_send_pending(const vector<transaction_id_type> &ids) {
-      for(auto t : my_impl->local_txns){
-         if(t.packed_transaction.size()) {
+      for(auto tx = my_impl->local_txns.begin(); tx != my_impl->local_txns.end(); ++tx ){
+         if(tx->packed_transaction.size()) {
             bool found = false;
             for(auto l : ids) {
-               if( l == t.id) {
+               if( l == tx->id) {
                   found = true;
                   break;
                }
             }
             if(!found) {
-               txn_queue.push_back( t.id );
+               my_impl->local_txns.modify(tx,update_in_flight(1));
+               queue_write(std::make_shared<vector<char>>(tx->packed_transaction),
+                           [this, tx](boost::system::error_code ec, std::size_t ) {
+                              my_impl->local_txns.modify(tx, update_in_flight(-1));
+                           });
             }
          }
       }
@@ -702,10 +692,13 @@ namespace eosio {
 
    void connection::txn_send(const vector<transaction_id_type> &ids) {
       for(auto t : ids) {
-         auto n = my_impl->local_txns.get<by_id>().find(t);
-         if(n != my_impl->local_txns.end() &&
-            n->packed_transaction.size()) {
-            txn_queue.push_back( t );
+         auto tx = my_impl->local_txns.get<by_id>().find(t);
+         if( tx != my_impl->local_txns.end() && tx->packed_transaction.size()) {
+            my_impl->local_txns.modify( tx,update_in_flight(1));
+            queue_write(std::make_shared<vector<char>>(tx->packed_transaction),
+                        [this, tx](boost::system::error_code ec, std::size_t ) {
+                           my_impl->local_txns.modify(tx, update_in_flight(-1));
+                        });
          }
       }
    }
@@ -777,6 +770,7 @@ namespace eosio {
          try {
             optional<signed_block> b = cc.fetch_block_by_id(blkid);
             if(b) {
+               fc_dlog(logger,"found block for id at num ${n}",("n",b->block_num()));
                enqueue(*b);
             }
             else {
@@ -796,11 +790,11 @@ namespace eosio {
             break;
          }
       }
+
    }
 
    void connection::stop_send() {
       syncing = false;
-      txn_queue.clear();
    }
 
    void connection::send_handshake( ) {
@@ -835,13 +829,6 @@ namespace eosio {
       xpkt.rec = msg.dst;
       xpkt.xmt = get_time();
       enqueue(xpkt);
-   }
-
-   void connection::enqueue( const net_message &m ) {
-      out_queue.push_back( m );
-      if( out_queue.size() == 1 ) {
-         send_next_message();
-      }
    }
 
    void connection::queue_write(std::shared_ptr<vector<char>> buff, std::function<void(boost::system::error_code, std::size_t)> cb) {
@@ -899,8 +886,8 @@ namespace eosio {
    }
 
    void connection::cancel_sync(go_away_reason reason) {
-      fc_dlog(logger,"cancel sync reason = ${m}, out queue size ${o} peer ${p}",
-              ("m",reason_str(reason)) ("o", out_queue.size())("p", peer_name()));
+      fc_dlog(logger,"cancel sync reason = ${m}, write queue size ${o} peer ${p}",
+              ("m",reason_str(reason)) ("o", write_queue.size())("p", peer_name()));
       cancel_wait();
       flush_queues();
       switch (reason) {
@@ -938,20 +925,17 @@ namespace eosio {
       return false;
    }
 
-   void connection::send_next_message() {
-      if( !out_queue.size() ) {
-         if( !sync_requested || !enqueue_sync_block( ) ) {
-            send_next_txn();
-         }
-         return;
-      }
-
-      auto& m = out_queue.front();
+   void connection::enqueue( const net_message &m ) {
+      bool close_after_send = false;
       if(m.contains<sync_request_message>()) {
          sync_wait( );
-      } else if(m.contains<request_message>()) {
+      }
+      else if(m.contains<request_message>()) {
          pending_fetch = m.get<request_message>();
          fetch_wait( );
+      }
+      else {
+         close_after_send = m.contains<go_away_message>();
       }
 
       uint32_t payload_size = fc::raw::pack_size( m );
@@ -964,55 +948,16 @@ namespace eosio {
       fc::datastream<char*> ds( send_buffer->data(), buffer_size);
       ds.write( header, header_size );
       fc::raw::pack( ds, m );
-
       write_depth++;
       queue_write(send_buffer,
-                  [this](boost::system::error_code ec, std::size_t ) {
+                  [this, close_after_send](boost::system::error_code ec, std::size_t ) {
                      write_depth--;
-                     if(out_queue.size()) {
-                        if(out_queue.front().contains<go_away_message>()) {
-                           elog ("sent a go away message, closing connection to ${p}",("p",peer_name()));
-                           my_impl->close(shared_from_this());
-                           return;
-                        }
-                        out_queue.pop_front();
+                     if(close_after_send) {
+                        elog ("sent a go away message, closing connection to ${p}",("p",peer_name()));
+                        my_impl->close(shared_from_this());
+                        return;
                      }
-                     send_next_message();
                   });
-   }
-
-   void connection::send_next_txn() {
-      if( !txn_queue.size() || halt_txn_send) {
-         return;
-      }
-
-      size_t limit = min(txn_queue.size(),size_t(1000));
-      // we'll make this fc_dlog later
-      elog("sending up to ${limit} pending transactions to ${p}",("limit",limit)("p",peer_name()));
-
-      size_t count = 0;
-      connection_wptr c(shared_from_this());
-      for(size_t i = 0; i < limit; i++) {
-         transaction_id_type id = txn_queue.front();
-         const auto &tx = my_impl->local_txns.get<by_id>( ).find( id );
-         if( tx == my_impl->local_txns.end() ||
-             tx->true_expires <= time_point::now() ||
-             tx->packed_transaction.size() == 0 ) {
-            txn_queue.pop_front();
-            continue;
-         }
-         my_impl->local_txns.modify( tx,update_in_flight(1));
-         count++;
-         txn_queue.pop_front();
-
-         queue_write(std::make_shared<vector<char>>(tx->packed_transaction),
-                     [this, tx](boost::system::error_code ec, std::size_t ) {
-                        my_impl->local_txns.modify(tx, update_in_flight(-1));
-                        send_next_message();
-                     });
-      }
-      // we'll make this fc_dlog later
-      elog("actually sent ${limit} pending transactions to ${p}",("limit",limit)("p",peer_name()));
    }
 
    void connection::cancel_wait() {
@@ -1440,7 +1385,7 @@ namespace eosio {
       my_impl->send_all( bsm,[](connection_ptr c) -> bool { return true; });
    }
 
-   void big_msg_manager::bcast_block (connection_ptr skip, const signed_block& sb) {
+   void big_msg_manager::bcast_block (const signed_block& sb, connection_ptr skip) {
       net_message msg(sb);
       uint32_t packsiz = fc::raw::pack_size(msg);
       uint32_t msgsiz = packsiz + sizeof(packsiz);
@@ -1450,6 +1395,7 @@ namespace eosio {
       pending_notify.known_blocks.ids.push_back( bid );
       pending_notify.known_trx.mode = none;
       if (msgsiz > just_send_it_max) {
+         fc_ilog(logger, "block size is ${ms}, sending notify",("ms", msgsiz));
          my_impl->send_all(pending_notify, [skip, bid](connection_ptr c) -> bool {
                if (c == skip || !c->current())
                   return false;
@@ -1482,7 +1428,7 @@ namespace eosio {
       }
    }
 
-   void big_msg_manager::bcast_transaction (connection_ptr skip, const signed_transaction& txn) {
+   void big_msg_manager::bcast_transaction (const signed_transaction& txn, connection_ptr skip) {
       transaction_id_type txnid = txn.id();
       if( my_impl->local_txns.get<by_id>().find( txnid ) != my_impl->local_txns.end( ) ) { //found
          fc_dlog(logger, "found txnid in local_txns" );
@@ -1496,14 +1442,14 @@ namespace eosio {
       ds.write( reinterpret_cast<char*>(&packsiz), sizeof(packsiz) );
       fc::raw::pack( ds, msg );
 
-      uint16_t bn = static_cast<uint16_t>(txn.ref_block_num);
+      uint32_t bn = static_cast<uint32_t>(txn.ref_block_num);
       node_transaction_state nts = {txnid,time_point::now(),
                                     txn.expiration,
                                     txn.expiration,
                                     buff,
                                     bn, true};
       my_impl->local_txns.insert(nts);
-      fc_dlog(logger, "bufsiz = ${bs} max = ${max}",("bs", bufsiz)("max", just_send_it_max));
+      fc_ilog(logger, "bufsiz = ${bs} max = ${max}",("bs", bufsiz)("max", just_send_it_max));
 
       if( bufsiz <= just_send_it_max) {
          my_impl->send_all( txn, [skip, txnid](connection_ptr c) -> bool {
@@ -1532,7 +1478,7 @@ namespace eosio {
                const auto& bs = c->trx_state.find(txnid);
                bool unknown = bs == c->trx_state.end();
                if( unknown) {
-                  fc_dlog(logger, "sending notice to ${n}", ("n",c->peer_name() ) );
+                  fc_ilog(logger, "sending notice to ${n}", ("n",c->peer_name() ) );
 
                   c->trx_state.insert(transaction_state({txnid,false,true,(uint32_t)-1,
                               fc::time_point(),fc::time_point() }));
@@ -1565,8 +1511,9 @@ namespace eosio {
 
    void big_msg_manager::recv_block (connection_ptr c, const signed_block& msg) {
       block_id_type blk_id = msg.id();
-      uint16_t num = msg.block_num();
+      uint32_t num = msg.block_num();
       if( requested_blk(blk_id) ) {
+         fc_dlog(logger, "received a requested block");
          notice_message note;
          note.known_blocks.mode = normal;
          note.known_blocks.ids.push_back( blk_id );
@@ -1584,6 +1531,7 @@ namespace eosio {
             });
       }
       else if(!my_impl->sync_master->is_active(c)) {
+         fc_dlog(logger,"got a block to forward");
          net_message nmsg(msg);
          if(fc::raw::pack_size(nmsg) < just_send_it_max ) {
             fc_dlog(logger, "forwarding the signed block");
@@ -1599,8 +1547,25 @@ namespace eosio {
                         sendit = true;
                      }
                   }
-                  fc_dlog(logger, "${action} block ${num} to ${c}",("action", sendit ? "sending " : "skipping ")("num",num)("c", conn->peer_name() ));
+                  fc_dlog(logger, "${action} block ${num} to ${c}",("action", sendit ? "sending" : "skipping")("num",num)("c", conn->peer_name() ));
                   return sendit;
+               });
+         }
+         else {
+            notice_message note;
+            note.known_blocks.mode = normal;
+            note.known_blocks.ids.push_back( blk_id );
+            note.known_trx.mode = none;
+            my_impl->send_all(note, [blk_id](connection_ptr conn) -> bool {
+                  const auto& bs = conn->blk_state.find(blk_id);
+                  bool unknown = bs == conn->blk_state.end();
+                  if (unknown) {
+                     conn->blk_state.insert(block_state({blk_id,false,true,fc::time_point() }));
+                  }
+                  else {
+
+                  }
+                  return unknown;
                });
          }
       }
@@ -1628,9 +1593,9 @@ namespace eosio {
                return unknown;
             });
       }
-      else {
-         bcast_transaction (c, msg);
-      }
+      // else {
+      //    bcast_transaction (msg, c);
+      // }
    }
 
 
@@ -1674,6 +1639,7 @@ namespace eosio {
                bool known=true;
                bool noticed=true;
                c->blk_state.insert((block_state){blkid,known,noticed,fc::time_point::now()});
+            } else {
                send_req = true;
                req.req_blocks.ids.push_back( blkid );
                req_blks.push_back( blkid );
@@ -2094,7 +2060,7 @@ namespace eosio {
          break;
       }
       case normal: {
-         bm_master->recv_notice (c, msg);
+         big_msg_master->recv_notice (c, msg);
       }
       }
 
@@ -2113,7 +2079,7 @@ namespace eosio {
          break;
       }
       case normal : {
-         bm_master->recv_notice (c, msg);
+         big_msg_master->recv_notice (c, msg);
          break;
       }
       default: {
@@ -2133,7 +2099,7 @@ namespace eosio {
          c->blk_send_branch( );
          break;
       case normal :
-         fc_dlog(logger, "got a normal request_message from ${p}", ("p",c->peer_name()));
+         fc_dlog(logger, "got a normal block request_message from ${p}", ("p",c->peer_name()));
          c->blk_send(msg.req_blocks.ids);
          break;
       default:;
@@ -2187,6 +2153,8 @@ namespace eosio {
          return;
       }
 
+      big_msg_master->recv_transaction(c,msg);
+
       if(entry != local_txns.end( ) ) {
          local_txns.modify( entry, update_entry( msg ) );
       }
@@ -2197,14 +2165,14 @@ namespace eosio {
                   fc::time_point(),fc::time_point()});
       } else {
          struct trx_mod {
-            uint16 block;
-            trx_mod( uint16 bn) : block(bn) {}
+            uint32 block;
+            trx_mod( uint32 bn) : block(bn) {}
             void operator( )( transaction_state &t) {
                t.is_known_by_peer = true;
                t.block_num = static_cast<uint32_t>(block);
             }
          };
-         c->trx_state.modify(tx,trx_mod(msg.ref_block_num));
+         c->trx_state.modify(tx,trx_mod(static_cast<uint32>(msg.ref_block_num)));
       }
 
       try {
@@ -2258,7 +2226,7 @@ namespace eosio {
       }
 
       if( reason == no_reason ) {
-         bm_master->recv_block (c, msg);
+         big_msg_master->recv_block (c, msg);
       }
       sync_master->recv_block (c, msg, reason == no_reason);
    }
@@ -2362,11 +2330,12 @@ namespace eosio {
     * This one is necessary to hook into the boost notifier api
     **/
    void net_plugin_impl::transaction_ready( const signed_transaction& txn) {
-      my_impl->bm_master->bcast_transaction (connection_ptr(), txn );
+      fc_ilog (logger, "broadcasting txn id ${t}", ("t",txn.id()));
+      my_impl->big_msg_master->bcast_transaction (txn );
    }
 
    void net_plugin_impl::broadcast_block_impl( const chain::signed_block &sb) {
-      bm_master->bcast_block (connection_ptr(), sb);
+      big_msg_master->bcast_block (sb);
    }
 
    bool net_plugin_impl::authenticate_peer(const handshake_message& msg) const {
@@ -2567,12 +2536,12 @@ namespace eosio {
       my->send_whole_blocks = def_send_whole_blocks;
 
       my->sync_master.reset( new sync_manager(options.at("sync-fetch-span").as<uint32_t>() ) );
-      my->bm_master.reset( new big_msg_manager );
+      my->big_msg_master.reset( new big_msg_manager );
 
       my->connector_period = std::chrono::seconds(options.at("connection-cleanup-period").as<int>());
       my->txn_exp_period = def_txn_expire_wait;
       my->resp_expected_period = def_resp_expected_wait;
-      my->bm_master->just_send_it_max = def_max_just_send;
+      my->big_msg_master->just_send_it_max = def_max_just_send;
       my->max_client_count = options.at("max-clients").as<int>();
 
       my->num_clients = 0;
