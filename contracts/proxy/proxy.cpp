@@ -9,6 +9,20 @@
 namespace proxy {
    using namespace eosio;
 
+   namespace configs {
+      bool get(config &out, const account_name &self) {
+         auto read = load_i64(self, self, N(config), (char*)&out, sizeof(config));
+         if (read < 0) {
+            return false;
+         }
+         return true;
+      }
+
+      void store(const config &in, const account_name &self) {
+         store_i64(self, N(config), self, (const char *)&in, sizeof(config));
+      }
+   };
+
    template<typename T>
    void apply_transfer(account_name code, const T& transfer) {
       config code_config;
