@@ -42,6 +42,7 @@ namespace eosio { namespace testing {
 
          void              create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
 
+         transaction_trace push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys );
          transaction_trace push_nonce( account_name from, const string& v = "blah" );
          transaction_trace transfer( account_name from, account_name to, asset amount, string memo, account_name currency );
          transaction_trace transfer( account_name from, account_name to, string amount, string memo, account_name currency );

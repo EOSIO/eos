@@ -140,6 +140,28 @@ namespace eosio { namespace testing {
       return success();
    }
 
+   transaction_trace tester::push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys ) {
+      variant pretty_trx = fc::mutable_variant_object()
+         ("actions", fc::variants({
+            fc::mutable_variant_object()
+               ("account", name(config::system_account_name))
+               ("name", "reqauth")
+               ("authorization", auths)
+               ("data", fc::mutable_variant_object()
+                  ("from", from)
+               )
+            })
+        );
+
+      signed_transaction trx;
+      contracts::abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+      set_tapos( trx );
+      for(auto iter = keys.begin(); iter != keys.end(); iter++)
+         trx.sign( *iter, chain_id_type() );
+      return push_transaction( trx );
+   }
+
+
    transaction_trace tester::push_nonce(account_name from, const string& v) {
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({

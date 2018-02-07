@@ -36,25 +36,8 @@ auto make_vetorecovery(const tester &t, account_name account, permission_name ve
 }
 
 struct recov_tester : public tester {
-   transaction_trace push_nonce(account_name from, string role) {
-      variant pretty_trx = fc::mutable_variant_object()
-      ("actions", fc::variants({
-         fc::mutable_variant_object()
-            ("account", name(config::system_account_name))
-            ("name", "nonce")
-            ("authorization", vector<permission_level>{{ from, config::owner_name }})
-            ("data", fc::mutable_variant_object()
-               ("from", from)
-               ("value", fc::time_point::now())
-            )
-         })
-     );
-
-      signed_transaction trx;
-      contracts::abi_serializer::from_variant(pretty_trx, trx, get_resolver());
-      set_tapos( trx );
-      trx.sign( get_private_key(from, role), chain_id_type() );
-      return push_transaction( trx );
+   transaction_trace push_reqauth(account_name from, string role) {
+      return tester::push_reqauth(from, vector<permission_level>{{from, config::owner_name}}, {get_private_key(from, role)} );
    }
 };
 
@@ -84,13 +67,13 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_owner, recov_tester ) try {
    auto skip_time = expected_recovery - control->head_block_time() - fc::milliseconds(config::block_interval_ms);
    produce_block(skip_time);
    control->push_deferred_transactions(true);
-   auto last_old_nonce_id = push_nonce(N(alice), "owner").id;
+   auto last_old_nonce_id = push_reqauth(N(alice), "owner").id;
    produce_block();
    control->push_deferred_transactions(true);
 
    BOOST_REQUIRE_EQUAL(chain_has_transaction(last_old_nonce_id), true);
-   BOOST_REQUIRE_THROW(push_nonce(N(alice), "owner"), tx_missing_sigs);
-   auto first_new_nonce_id = push_nonce(N(alice), "owner.recov").id;
+   BOOST_REQUIRE_THROW(push_reqauth(N(alice), "owner"), tx_missing_sigs);
+   auto first_new_nonce_id = push_reqauth(N(alice), "owner.recov").id;
    produce_block();
    BOOST_REQUIRE_EQUAL(chain_has_transaction(first_new_nonce_id), true);
 
@@ -116,7 +99,7 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_owner_veto, recov_tester ) try {
    auto skip_time = expected_recovery - control->head_block_time() - fc::milliseconds(config::block_interval_ms);
    produce_block(skip_time);
    control->push_deferred_transactions(true);
-   auto last_old_nonce_id = push_nonce(N(alice), "owner").id;
+   auto last_old_nonce_id = push_reqauth(N(alice), "owner").id;
 
    // post the veto at the last possible time
    {
@@ -131,8 +114,8 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_owner_veto, recov_tester ) try {
 
    // make sure the old owner is still in control
 
-   BOOST_REQUIRE_THROW(push_nonce(N(alice), "owner.recov"), tx_missing_sigs);
-   auto first_new_nonce_id = push_nonce(N(alice), "owner").id;
+   BOOST_REQUIRE_THROW(push_reqauth(N(alice), "owner.recov"), tx_missing_sigs);
+   auto first_new_nonce_id = push_reqauth(N(alice), "owner").id;
    produce_block();
    BOOST_REQUIRE_EQUAL(chain_has_transaction(first_new_nonce_id), true);
 
@@ -184,7 +167,7 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_bad_creator, recov_tester ) try {
    control->push_deferred_transactions(true);
 
    // make sure the recovery goes through
-   auto first_new_nonce_id = push_nonce(N(alice), "owner").id;
+   auto first_new_nonce_id = push_reqauth(N(alice), "owner").id;
    produce_block();
    BOOST_REQUIRE_EQUAL(chain_has_transaction(first_new_nonce_id), true);
 

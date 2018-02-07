@@ -34,10 +34,15 @@
         {"name":"producer",   "type":"producer_key[]"}
       ]
     },{
-      "name": "nonce",
+      "name": "require_auth",
       "base": "",
       "fields": [
         {"name":"from", "type":"account_name"},
+      ]
+    },{
+      "name": "nonce",
+      "base": "",
+      "fields": [
         {"name":"value", "type":"string"}
       ]
     }],
@@ -50,6 +55,9 @@
     },{
       "name": "setprods",
       "type": "set_producers"
+    },{
+      "name": "reqauth",
+      "type": "require_auth"
     },{
       "name": "nonce",
       "type": "nonce"

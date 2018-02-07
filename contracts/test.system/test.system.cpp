@@ -60,11 +60,11 @@ namespace testsystem {
       EOSLIB_SERIALIZE( set_producers, (version)(producers) );
    };
 
-   struct nonce : dispatchable<N(nonce)> {
+   struct require_auth : dispatchable<N(reqauth)> {
       account_name from;
 
-      static void process(const nonce& n) {
-         require_auth(n.from);
+      static void process(const require_auth& r) {
+         ::require_auth(r.from);
       }
    };
 
@@ -90,7 +90,7 @@ namespace testsystem {
       }
    };
 
-   using dispatcher = dispatcher_impl<set_account_limits, set_global_limits, set_producers, nonce>;
+   using dispatcher = dispatcher_impl<set_account_limits, set_global_limits, set_producers, require_auth>;
 };
 
 
