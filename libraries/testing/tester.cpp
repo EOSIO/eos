@@ -1,3 +1,4 @@
+#include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/asset.hpp>
 #include <eosio/chain/contracts/types.hpp>
@@ -155,6 +156,26 @@ namespace eosio { namespace testing {
    transaction_trace tester::push_transaction( signed_transaction& trx ) {
       auto ptrx = packed_transaction(trx);
       return push_transaction( ptrx );
+   }
+
+   tester::action_result tester::push_action(action&& cert_act, uint64_t authorizer) {
+      signed_transaction trx;
+      if (authorizer) {
+         cert_act.authorization = vector<permission_level>{{authorizer, config::active_name}};
+      }
+      trx.actions.emplace_back(std::move(cert_act));
+      set_tapos(trx);
+      if (authorizer) {
+         trx.sign(get_private_key(authorizer, "active"), chain_id_type());
+      }
+      try {
+         push_transaction(trx);
+      } catch (const fc::exception& ex) {
+         return error(ex.top_message());
+      }
+      produce_block();
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+      return success();
    }
 
    void tester::create_account( account_name a, string initial_balance, account_name creator, bool multisig  ) {
@@ -357,5 +378,31 @@ namespace eosio { namespace testing {
       return asset(result, asset_symbol);
    }
 
+   vector<uint8_t> tester::to_uint8_vector(const string& s) {
+      vector<uint8_t> v(s.size());
+      copy(s.begin(), s.end(), v.begin());
+      return v;
+   };
+
+   vector<uint8_t> tester::to_uint8_vector(uint64_t x) {
+      vector<uint8_t> v(sizeof(x));
+      *reinterpret_cast<uint64_t*>(v.data()) = x;
+      return v;
+   };
+
+   uint64_t tester::to_uint64(fc::variant x) {
+      vector<uint8_t> blob;
+      fc::from_variant<uint8_t>(x, blob);
+      FC_ASSERT(8 == blob.size());
+      return *reinterpret_cast<uint64_t*>(blob.data());
+   }
+
+   string tester::to_string(fc::variant x) {
+      vector<uint8_t> v;
+      fc::from_variant<uint8_t>(x, v);
+      string s(v.size(), 0);
+      copy(v.begin(), v.end(), s.begin());
+      return s;
+   }
 
 } }  /// eosio::test

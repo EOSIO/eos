@@ -2,6 +2,7 @@
 
 #include <eosiolib/chain.h>
 #include <eosiolib/dispatcher.hpp>
+#include <eosiolib/singleton.hpp>
 #include <eosiolib/table.hpp>
 #include <eosiolib/vector.hpp>
 #include <eosiolib/string.hpp>
@@ -10,6 +11,7 @@ namespace identity {
    using eosio::action_meta;
    using eosio::table_i64i64i64;
    using eosio::table64;
+   using eosio::singleton;
    using eosio::string;
    using eosio::vector;
 
@@ -195,8 +197,8 @@ namespace identity {
 
          typedef table_i64i64i64<code, N(certs), code, certrow>  certs_table;
          typedef table64<code, N(ident), code, identrow>         idents_table;
-         typedef table64<code, N(account), code, identity_name>  accounts_table;
-         typedef table64<code, N(trust), code, trustrow>         trust_table;
+         typedef singleton<code, N(account), code, identity_name>  accounts_table;
+         typedef table64<code, N(trust), code, account_name>     trust_table;
 
          static identity_name get_claimed_identity( account_name acnt ) {
             return accounts_table::get_or_default(acnt, 0);
@@ -209,13 +211,19 @@ namespace identity {
             certs_table certs( ident );
             certrow row;
             bool ok = certs.primary_lower_bound(row, N(owner), 1, 0);
+            account_name owner = 0;
             while (ok && row.property == N(owner) && row.trusted) {
                if (sizeof(account_name) == row.data.size()) {
                   account_name account = *reinterpret_cast<account_name*>(row.data.data());
                   if (ident == get_claimed_identity(account)) {
                      if (is_trusted(row.certifier) ) {
                         // the certifier is still trusted
-                        return account;
+                        if (!owner || owner == account) {
+                           owner = account;
+                        } else {
+                           //contradiction found: different owners certified for the same identity
+                           return 0;
+                        }
                      } else if (DeployToAccount == current_receiver()){
                         //the certifier is no longer trusted, need to unset the flag
                         row.trusted = 0;
@@ -227,7 +235,12 @@ namespace identity {
                } else {
                   // bad row - skip it
                }
+               //ok = certs.primary_upper_bound(row, row.property, row.trusted, row.certifier);
                ok = certs.next_primary(row, row);
+            }
+            if (owner) {
+               //owner found, no contradictions among certifications flaged as trusted
+               return owner;
             }
             // trusted certification not found
             // let's see if some of untrusted certifications became trusted
@@ -236,18 +249,25 @@ namespace identity {
                if (sizeof(account_name) == row.data.size()) {
                   account_name account = *reinterpret_cast<account_name*>(row.data.data());
                   if (ident == get_claimed_identity(account) && is_trusted(row.certifier)) {
-                     // the certifier became trusted, need to set the flag
-                     row.trusted = 1;
-                     certs.store( row, 0 ); //assuming 0 means bill to the same account
-                     return *reinterpret_cast<account_name*>(row.data.data());
+                     if (DeployToAccount == current_receiver()) {
+                        // the certifier became trusted and we have permissions to update the flag
+                        row.trusted = 1;
+                        certs.store( row, 0 ); //assuming 0 means bill to the same account
+                     }
+                     if (!owner || owner == account) {
+                        owner = account;
+                     } else {
+                        //contradiction found: different owners certified for the same identity
+                        return 0;
+                     }
                   }
                } else {
                   // bad row - skip it
                }
+               //ok = certs.primary_upper_bound(row, row.property, row.trusted, row.certifier);
                ok = certs.next_primary(row, row);
             }
-
-            return 0;
+            return owner;
          }
 
          static identity_name get_identity_for_account( account_name acnt ) {
@@ -258,10 +278,7 @@ namespace identity {
          }
 
          static bool is_trusted_by( account_name trusted, account_name by ) {
-            trustrow def;
-            def.trusted = 0;
-            trustrow row = trust_table::get_or_default( trusted, by, def );
-            return def.trusted;
+            return trust_table::exists(trusted, by);
          }
 
          static bool is_trusted( account_name acnt ) {
@@ -283,13 +300,9 @@ namespace identity {
             require_recipient( t.trusting );
 
             if( t.trust != 0 ) {
-               trustrow  row{ .account = t.trusting,
-                              .trusted = t.trust };
-               trust_table::set( row, t.trustor );
+               trust_table::set( t.trusting, t.trustor );
             } else {
-               trustrow  row{ .account = t.trusting,
-                              .trusted = t.trust };
-               trust_table::remove( row.account, t.trustor );
+               trust_table::remove( t.trusting, t.trustor );
             }
          }
 
@@ -318,7 +331,7 @@ namespace identity {
                   row.trusted    = is_trusted( cert.certifier );
                   row.certifier  = cert.certifier;
                   row.confidence = value.confidence;
-                  eos_assert(value.type.get_size() <= 32, "certrow::type shouldn't be longer than 32 bytes");
+                  eos_assert(value.type.get_size() <= 32, "certrow::type should be not longer than 32 bytes");
                   row.type       = value.type;
                   row.data       = value.data;
 
@@ -330,17 +343,21 @@ namespace identity {
                   if (value.property == N(owner)) {
                      eos_assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
                      account_name acnt = *reinterpret_cast<const account_name*>(value.data.data());
-                     accounts_table::set( acnt, cert.identity );
+                     if (cert.certifier == acnt) { //only self-certitication affects accounts_table
+                        accounts_table::set( cert.identity, acnt );
+                     }
                   }
                } else {
-                  //remove both tursted and untrusted because we cannot now if it was trusted back at creation time
+                  //remove both tursted and untrusted because we cannot know if it was trusted back at creation time
                   certs.remove(value.property, 0, cert.certifier);
                   certs.remove(value.property, 1, cert.certifier);
                   //special handling for owner
                   if (value.property == N(owner)) {
                      eos_assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");
                      account_name acnt = *reinterpret_cast<const account_name*>(value.data.data());
-                     accounts_table::remove( acnt, cert.identity );
+                     if (cert.certifier == acnt) { //only self-certitication affects accounts_table
+                        accounts_table::remove( acnt );
+                     }
                   }
                }
             }

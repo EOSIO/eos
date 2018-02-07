@@ -527,9 +527,10 @@ class producer_api : public context_aware_api {
 
       int get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
          auto active_producers = context.get_active_producers();
-         size_t len = std::min(datalen / sizeof(chain::account_name), active_producers.size());
-         memcpy(producers, active_producers.data(), len);
-         return active_producers.size() * sizeof(chain::account_name);
+         size_t len = active_producers.size() * sizeof(chain::account_name);
+         size_t cpy_len = std::min(datalen, len);
+         memcpy(producers, active_producers.data(), cpy_len);
+         return len;
       }
 };
 
@@ -784,7 +785,7 @@ class db_index_api : public context_aware_api {
 
 
    int call(ContextMethodType method, const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
-      auto maybe_t_id = context.find_table(context.receiver, scope, table);
+      auto maybe_t_id = context.find_table(code, scope, table);
       if (maybe_t_id == nullptr) {
          return -1;
       }
@@ -1058,7 +1059,6 @@ REGISTER_INTRINSICS(memory_api,
    (load,         int32_t(int64_t, int64_t, int64_t, int, int),   "load_"#SUFFIX )\
    (front,        int32_t(int64_t, int64_t, int64_t, int, int),   "front_"#SUFFIX )\
    (back,         int32_t(int64_t, int64_t, int64_t, int, int),   "back_"#SUFFIX )\
-   (next,         int32_t(int64_t, int64_t, int64_t, int, int),   "next_"#SUFFIX )\
    (previous,     int32_t(int64_t, int64_t, int64_t, int, int),   "previous_"#SUFFIX )\
    (lower_bound,  int32_t(int64_t, int64_t, int64_t, int, int),   "lower_bound_"#SUFFIX )\
    (upper_bound,  int32_t(int64_t, int64_t, int64_t, int, int),   "upper_bound_"#SUFFIX )\
