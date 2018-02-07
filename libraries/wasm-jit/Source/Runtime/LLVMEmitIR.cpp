@@ -23,7 +23,7 @@ namespace LLVMJIT
 		std::vector<llvm::Constant*> importedFunctionPointers;
 		std::vector<llvm::Constant*> globalPointers;
 		llvm::Constant* defaultTablePointer;
-		llvm::Constant* defaultTableEndOffset;
+		llvm::Constant* defaultTableMaxElementIndex;
 		llvm::Constant* defaultMemoryBase;
 		llvm::Constant* defaultMemoryEndOffset;
 		
@@ -679,7 +679,7 @@ namespace LLVMJIT
 			
 			// If the function index is larger than the function table size, trap.
 			emitConditionalTrapIntrinsic(
-				irBuilder.CreateICmpUGE(functionIndexZExt,moduleContext.defaultTableEndOffset),
+				irBuilder.CreateICmpUGE(functionIndexZExt,moduleContext.defaultTableMaxElementIndex),
 				"wavmIntrinsics.indirectCallIndexOutOfBounds",FunctionType::get(),{});
 
 			// Load the type for this table entry.
@@ -1592,11 +1592,11 @@ namespace LLVMJIT
 				llvmI8PtrType
 				});
 			defaultTablePointer = emitLiteralPointer(moduleInstance->defaultTable->baseAddress,tableElementType->getPointerTo());
-			defaultTableEndOffset = emitLiteral((Uptr)moduleInstance->defaultTable->endOffset);
+			defaultTableMaxElementIndex = emitLiteral(((Uptr)moduleInstance->defaultTable->endOffset)/sizeof(TableInstance::FunctionElement));
 		}
 		else
 		{
-			defaultTablePointer = defaultTableEndOffset = nullptr;
+			defaultTablePointer = defaultTableMaxElementIndex = nullptr;
 		}
 
 		// Create LLVM pointer constants for the module's imported functions.

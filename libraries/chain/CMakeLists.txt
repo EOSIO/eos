@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eosio/chain/*.hpp" "include/eosio/chain/contracts/*.hpp")
+file(GLOB HEADERS "include/eosio/chain/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
 add_library( eosio_chain
@@ -29,13 +29,12 @@ add_library( eosio_chain
 
 
              ${HEADERS}
-        transaction_metadata.cpp)
+             transaction_metadata.cpp)
 
 target_link_libraries( eosio_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime )
 target_include_directories( eosio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
-                                    "${CMAKE_BINARY_DIR}/contracts"
                             )
 
 if(MSVC)

@@ -18,7 +18,6 @@ const static uint64_t system_account_name    = N(eosio);
 const static uint64_t nobody_account_name    = N(nobody);
 const static uint64_t anybody_account_name   = N(anybody);
 const static uint64_t producers_account_name = N(producers);
-const static uint64_t eosio_system_account_name = N(eosio.system);
 const static uint64_t eosio_auth_scope       = N(eosio.auth);
 const static uint64_t eosio_all_scope        = N(eosio.all);
 
@@ -63,9 +62,6 @@ const static uint32_t   default_max_gen_trx_count      = 16; ///< the number of 
 const static uint32_t   producers_authority_threshold  = 14;
 const static uint32_t   rate_limiting_precision        = 1000*1000;
 
-const static share_type default_elected_pay            = asset(100).amount;
-const static share_type default_min_eos_balance        = asset(100).amount;
-
 const static uint16_t   max_recursion_depth = 6;
 
 /**
@@ -80,9 +76,7 @@ const static int producer_repititions = 12;
 //const static int blocks_per_round = producer_count * producer_repititions;
 
 const static int irreversible_threshold_percent= 70 * percent_1;
-const static int max_producer_votes = 30;
 
-const static auto staked_balance_cooldown_sec  = fc::days(3).to_seconds();
 } } } // namespace eosio::chain::config
 
 template<typename Number>
