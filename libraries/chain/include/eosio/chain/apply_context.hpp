@@ -171,7 +171,7 @@ class apply_context {
                return itr_cache.add( *itr );
             }
 
-            int next_secondary( int iterator ) {
+            int next_secondary( int iterator, uint64_t& primary ) {
                const auto& obj = itr_cache.get(iterator);
                const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_secondary>();
 
@@ -182,10 +182,11 @@ class apply_context {
                
                if (itr == idx.end() || itr->t_id != obj.t_id) return -1;
 
+               primary = itr->primary_key;
                return itr_cache.add(*itr);
             }
             
-            int previous_secondary( int iterator ) {
+            int previous_secondary( int iterator, uint64_t& primary ) {
                const auto& obj = itr_cache.get(iterator);
                const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_secondary>();
 
@@ -196,6 +197,7 @@ class apply_context {
 
                if (itr->t_id != obj.t_id) return -1;
 
+               primary = itr->primary_key;
                return itr_cache.add(*itr);
             }
 
@@ -238,7 +240,7 @@ class apply_context {
                return itr_cache(*itr);
             }
 
-            int next_primary( int iterator ) {
+            int next_primary( int iterator, uint64_t& primary ) {
                const auto& obj = itr_cache.get(iterator);
                const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_primary>();
 
@@ -249,10 +251,11 @@ class apply_context {
 
                if (itr == idx.end() || itr->t_id != obj.t_id) return -1;
 
+               primary = itr->primary_key;
                return itr_cache.add(*itr);
             }
 
-            int previous_primary( int iterator ) {
+            int previous_primary( int iterator, uint64_t& primary ) {
                const auto& obj = itr_cache.get(iterator);
                const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_primary>();
 
@@ -263,6 +266,7 @@ class apply_context {
 
                if (itr->t_id != obj.t_id) return -1;
 
+               primary = itr->primary_key;
                return itr_cache.add(*itr);
             }
 
@@ -533,7 +537,7 @@ class apply_context {
          return obj.value.size();
       }
 
-      int db_next_i64( int iterator ) {
+      int db_next_i64( int iterator, uint64_t& primary ) {
          const auto& obj = keyval_cache.get( iterator );
          const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
 
@@ -543,10 +547,11 @@ class apply_context {
          if( itr == idx.end() ) return -1;
          if( itr->t_id != obj.t_id ) return -1;
 
+         primary = itr->primary_key;
          return keyval_cache.add( *itr );
       }
 
-      int db_previous_i64( int iterator ) {
+      int db_previous_i64( int iterator, uint64_t& primary ) {
          const auto& obj = keyval_cache.get(iterator);
          const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
          
@@ -557,6 +562,7 @@ class apply_context {
 
          if (itr->t_id != obj.t_id) return -1;
          
+         primary = itr->primary_key;
          return keyval_cache.add(*itr);
       }
 
