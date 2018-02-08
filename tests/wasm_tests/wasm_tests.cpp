@@ -625,6 +625,9 @@ BOOST_FIXTURE_TEST_CASE(noop, tester) try {
 
  } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( test_table_key_validation, tester ) try {
+} FC_LOG_AND_RETHROW()
+
 //busted because of checktime, disable for now
 #if 0
 BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
@@ -746,5 +749,6 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
 
 } FC_LOG_AND_RETHROW()
 #endif
+
 
 BOOST_AUTO_TEST_SUITE_END()
