@@ -269,31 +269,6 @@ void test_compiler_builtins::test_ashlti3() {
 
 
 void test_compiler_builtins::test_lshrti3() {
-   auto atoi128 = [](const char* in) {
-      __int128 ret = 0;
-      size_t   i = 0;
-      bool     sign = false;
-
-      if (in[i] == '-') {
-         ++i;
-         sign = true;
-      }
-
-      if (in[i] == '+')
-         ++i;
-
-      for (; in[i] != '\0' ; ++i) {
-         const char c = in[i];
-         ret *= 10;
-         ret += c - '0';
-      }
-
-      if (sign)
-         ret *= -1;
-
-      return ret;
-   };
-
    __int128 res      = 0;
    __int128 val      = 0x8000000000000000;
    __int128 test_res = 0x8000000000000000;
@@ -314,49 +289,24 @@ void test_compiler_builtins::test_lshrti3() {
    eos_assert( res == 9223372036854775808_ULLL, "__lshrti3 result should be 2^63" );
 
    __lshrti3( res, val, (val >> 64), 96 );
-   eos_assert( res == 2147483649_ULLL, "__lshrti3 result should be 2^31" );
+   eos_assert( res == 2147483648_ULLL, "__lshrti3 result should be 2^31" );
 
    __lshrti3( res, val, (val >> 64), 127 );
    eos_assert( res == 0x1, "__lshrti3 result should be 2^0" );
 }
 
 void test_compiler_builtins::test_ashrti3() {
-   auto atoi128 = [](const char* in) {
-      __int128 ret = 0;
-      size_t   i = 0;
-      bool     sign = false;
-
-      if (in[i] == '-') {
-         ++i;
-         sign = true;
-      }
-
-      if (in[i] == '+')
-         ++i;
-
-      for (; in[i] != '\0' ; ++i) {
-         const char c = in[i];
-         ret *= 10;
-         ret += c - '0';
-      }
-
-      if (sign)
-         ret *= -1;
-
-      return ret;
-   };
-   
    __int128 res      = 0;
    __int128 test     = 1;
-   __int128 val      = atoi128("-170141183460469231731687303715884105728");
+   __int128 val      = -170141183460469231731687303715884105728_LLL;
 
    test <<= 127; 
 
    __ashrti3( res, val, (val >> 64), 0 );
-   eos_assert( res == atoi128("-170141183460469231731687303715884105728"), "__ashrti3 result should be -2^127" );
+   eos_assert( res == -170141183460469231731687303715884105728_LLL, "__ashrti3 result should be -2^127" );
 
    __ashrti3(res, val, (val >> 64), 1 );
-   eos_assert( res == atoi128("-85070591730234615865843651857942052864"), "__ashrti3 result should be -2^126" );
+   eos_assert( res == -85070591730234615865843651857942052864_LLL, "__ashrti3 result should be -2^126" );
 
    __ashrti3(res, val, (val >> 64), 2 );
    eos_assert( res == test >> 2, "__ashrti3 result should be -2^125" );

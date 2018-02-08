@@ -87,6 +87,23 @@ namespace eosio {
       prints(val?"true":"false");
    }
 
+   inline void print_f( const char* s ) {
+      prints(s);
+   }
+   
+   template <typename Arg, typename... Args>
+   inline void print_f( const char* s, Arg val, Args... rest ) {
+      while ( *s != '\0' ) {
+         if ( *s == '%' ) {
+            print( val );
+            print_f( s+1, rest... );
+            return;
+         }
+         prints_l( s, 1 );
+         s++;
+      }
+   }
+
    template<typename T>
    inline void print( T&& t ) {
       t.print();

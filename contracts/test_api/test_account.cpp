@@ -14,7 +14,7 @@
 
 void test_account::test_balance_acc1() {
    eosio::print("test_balance_acc1\n");
-   eosio::account::account_balance b;
+   //eosio::account::account_balance b;
    
 /*
    b.account = N(acc1);

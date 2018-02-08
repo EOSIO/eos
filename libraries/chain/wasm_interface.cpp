@@ -586,7 +586,7 @@ class crypto_api : public context_aware_api {
          return pubds.tellp();
       }
 
-      void assert_sha256(array_ptr<char> data, size_t datalen, const fc::sha256& hash_val) {
+      void eos_assert_sha256(array_ptr<char> data, size_t datalen, const fc::sha256& hash_val) {
          auto result = fc::sha256::hash( data, datalen );
          FC_ASSERT( result == hash_val, "hash miss match" );
       }
@@ -1341,12 +1341,12 @@ REGISTER_INTRINSICS( database_api,
 
 REGISTER_INTRINSICS(crypto_api,
    (assert_recover_key,  void(int, int, int, int, int))
-   (recover_key,    int(int, int, int, int, int))
-   (assert_sha256,  void(int, int, int))
-   (sha1,           void(int, int, int))
-   (sha256,         void(int, int, int))
-   (sha512,         void(int, int, int))
-   (ripemd160,      void(int, int, int))
+   (recover_key,         int(int, int, int, int, int))
+   (eos_assert_sha256,   void(int, int, int))
+   (sha1,                void(int, int, int))
+   (sha256,              void(int, int, int))
+   (sha512,              void(int, int, int))
+   (ripemd160,           void(int, int, int))
 );
 
 REGISTER_INTRINSICS(string_api,
@@ -1388,11 +1388,6 @@ REGISTER_INTRINSICS(console_api,
    (printd,                void(int64_t)   )
    (printn,                void(int64_t)   )
    (printhex,              void(int, int)  )
-);
-
-REGISTER_INTRINSICS(crypto_api,
-   (assert_sha256,       void(int, int32_t, int)  )
-   (sha256,              void(int, int32_t, int)  )
 );
 
 REGISTER_INTRINSICS(transaction_api,

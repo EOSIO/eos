@@ -4,6 +4,7 @@
  */
 #include <eosiolib/transaction.hpp>
 #include <eosiolib/action.hpp>
+#include <eosiolib/crypto.h>
 
 #include "test_api.hpp"
 
@@ -77,7 +78,7 @@ void test_transaction::send_action() {
 }
 
 void test_transaction::send_action_empty() {
-   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "eos_assert_true")> test_action;
+   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "assert_true")> test_action;
 
    action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
 
@@ -114,19 +115,70 @@ void test_transaction::send_action_recurse() {
  * cause failure due to inline TX failure
  */
 void test_transaction::send_action_inline_fail() {
-   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "eos_assert_false")> test_action;
+   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "assert_false")> test_action;
 
    action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
 
    act.send();
 }
 
+void test_transaction::test_tapos_block_prefix() {
+   int tbp;
+   read_action( (char*)&tbp, sizeof(int) );
+   eos_assert( tbp == tapos_block_prefix(), "tapos_block_prefix does not match" );
+}
+
+void test_transaction::test_tapos_block_num() {
+   int tbn;
+   read_action( (char*)&tbn, sizeof(int) );
+   eos_assert( tbn == tapos_block_num(), "tapos_block_num does not match" );
+}
+
+
+void test_transaction::test_read_transaction() {
+   checksum h;
+   transaction t;
+   char* p = (char*)&t;
+   uint64_t read = read_transaction( (char*)&t, sizeof(t) );
+   sha256(p, read, &h);
+   eosio::print_f( "%%%%", h.hash[0], h.hash[1], h.hash[2], h.hash[3] );
+}
+
+void test_transaction::test_transaction_size() {
+   uint32_t trans_size = 0;
+   read_action( (char*)&trans_size, sizeof(uint32_t) );
+   
+   eos_assert( trans_size == transaction_size(), "transaction size does not match" );
+}
+/*
+void test_transaction::read_transaction() {
+   dummy_action payload = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
+
+   test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "read_transaction_helper")> test_action;
+   copy_data((char*)&payload, sizeof(dummy_action), test_action.data); 
+  
+   auto trx = transaction();
+   trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
+   trx.send(0);
+}
+*/
 void test_transaction::send_transaction() {
    dummy_action payload = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
 
    test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal")> test_action;
    copy_data((char*)&payload, sizeof(dummy_action), test_action.data); 
   
+   auto trx = transaction();
+   trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
+   trx.send(0);
+}
+
+void test_transaction::send_action_sender() {
+   account_name cur_send;
+   read_action( &cur_send, sizeof(account_name) );
+   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "test_current_sender")> test_action;
+   copy_data((char*)&cur_send, sizeof(account_name), test_action.data);
+
    auto trx = transaction();
    trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
    trx.send(0);

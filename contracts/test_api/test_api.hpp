@@ -68,7 +68,10 @@ struct test_action {
   static void assert_false();
   static void assert_true();
   static void now();
-
+  static void test_abort();
+  static void test_current_receiver();
+  static void test_current_sender();
+  static void test_publication_time();
 };
 
 struct test_math {
@@ -122,6 +125,7 @@ struct test_db {
 };
 
 struct test_crypto {
+   static void test_recover_key();
    static void test_sha256();
    static void sha256_no_data();
    static void sha256_null();
@@ -130,17 +134,21 @@ struct test_crypto {
 };
 
 struct test_transaction {
-
+  static void test_tapos_block_num();
+  static void test_tapos_block_prefix();
   static void send_action();
   static void send_action_empty();
   static void send_action_max();
   static void send_action_large();
   static void send_action_recurse();
   static void send_action_inline_fail();
+  static void test_read_transaction();
+  static void test_transaction_size();
   static void send_transaction();
   static void send_transaction_empty();
   static void send_transaction_max();
   static void send_transaction_large();
+  static void send_action_sender();
 };
 
 struct test_chain {

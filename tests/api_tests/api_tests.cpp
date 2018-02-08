@@ -268,7 +268,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
    create_account( N(acc3) ); //, asset::from_string("100000.0000 EOS") );
    create_account( N(acc4) ); //, asset::from_string("100000.0000 EOS") );
 	produce_blocks(1000);
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
+	//transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
 	set_code( N(acc1), test_api_wast );
@@ -381,7 +381,19 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
          }
       );
 
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_action", "test_abort", {} ), fc::assert_exception,
+         [](const fc::assert_exception& e) {
+            return expect_assert_message(e, "abort() called");
+         }
+      );
+   
+   CALL_TEST_FUNCTION( *this, "test_action", "test_current_receiver", fc::raw::pack(N(testapi)));
 
+   CALL_TEST_FUNCTION( *this, "test_transaction", "send_action_sender", fc::raw::pack(N(testapi)));
+   control->push_deferred_transactions( true );
+
+   uint32_t pub_time = control->head_block_time().sec_since_epoch();
+   CALL_TEST_FUNCTION( *this, "test_action", "test_publication_time", fc::raw::pack(pub_time) );
 } FC_LOG_AND_RETHROW() }
 
 
@@ -399,7 +411,7 @@ BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, tester) { try {
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
-return;   
+
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_multi3", {});
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_divti3", {});
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_divti3_by_0", {}), fc::assert_exception,
@@ -441,13 +453,15 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
    create_account( N(acc3) ); //, asset::from_string("1.0000 EOS") );
    create_account( N(acc4) ); //, asset::from_string("1.0000 EOS") );
 	produce_blocks(1000);
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
+	//transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
    
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_action", {});
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_empty", {});
+
+/* checktime exceeds before this can cause an overflow
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), fc::assert_exception,
          [](const fc::assert_exception& e) {
             return expect_assert_message(e, "inline action too big");
@@ -459,25 +473,36 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
             return expect_assert_message(e, "stack overflow");
          }
       );
+*/
+
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_inline_fail", {}), fc::assert_exception,
          [](const fc::assert_exception& e) {
             return expect_assert_message(e, "test_action::assert_false");
          }
       );
+   control->push_deferred_transactions( true );
+   
 
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction", {});
+   control->push_deferred_transactions( true );
+
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_empty", {}), fc::assert_exception,
          [](const fc::assert_exception& e) {
             return expect_assert_message(e, "transaction must have at least one action");
          }
       );
-#if 0
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_large", {}), fc::assert_exception,
-         [](const fc::assert_exception& e) {
-            return !expect_assert_message(e, "send_transaction_large() should've thrown an error");
-         }
-      );
-#endif
+   control->push_deferred_transactions( true );
+   
+   CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(51) );
+   control->push_deferred_transactions( true );
+   
+   // this is a bit rough, but I couldn't figure out a better way to compare the hashes
+   CAPTURE( cerr, CALL_TEST_FUNCTION( *this, "test_transaction", "test_read_transaction", {} ) );
+   BOOST_CHECK_EQUAL( capture.size(), 7 );
+	BOOST_CHECK_EQUAL(capture[3] == string("397038167369840490149603063590195796751189838240299566290311734324271874205372"), true);
+
+   CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_num", fc::raw::pack(control->head_block_num()) ); 
+   CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_prefix", fc::raw::pack(control->head_block_id()._hash[1]) ); 
 } FC_LOG_AND_RETHROW() }
 
 
@@ -489,7 +514,7 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, tester) { try {
 	create_account( N(testapi) ); //, asset::from_string("100000.0000 EOS") );
 	create_account( N(acc1) ); //, asset::from_string("0.0000 EOS") );
 	produce_blocks(1000);
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
+	//transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
 
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
@@ -549,9 +574,7 @@ return;
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(fixedpoint_tests, tester) { try {
 	produce_blocks(2);
-	create_account( N(testapi) ); //, asset::from_string("100000.0000 EOS") );
-	produce_blocks(1000);
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
+	create_account( N(testapi) ); 
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1000);
@@ -575,9 +598,7 @@ BOOST_FIXTURE_TEST_CASE(fixedpoint_tests, tester) { try {
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(real_tests, tester) { try {
    produce_blocks(1000);
-   create_account(N(testapi) ); //, asset::from_string("1000.0000 EOS"));
-   produce_blocks(1000);
-   transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
+   create_account(N(testapi) ); 
    produce_blocks(1000);
    set_code(N(testapi), test_api_wast);
    produce_blocks(1000);
@@ -601,18 +622,17 @@ BOOST_FIXTURE_TEST_CASE(real_tests, tester) { try {
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(crypto_tests, tester) { try {
    produce_blocks(1000);
-   create_account(N(testapi) ); //, asset::from_string("100000.0000 EOS"));
-   produce_blocks(1000);
-   transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
+   create_account(N(testapi) ); 
    produce_blocks(1000);
    set_code(N(testapi), test_api_wast);
    produce_blocks(1000);
 
    CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha256", {} );
    CALL_TEST_FUNCTION( *this, "test_crypto", "sha256_no_data", {} );
+   CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key", {} );
 
    // TODO need a way to represent nullptr 
-#if 1
+#if 0
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_crypto", "sha256_null", {} ), fc::assert_exception,
          [](const fc::assert_exception& e) {
             return expect_assert_message(e, "should've thrown an error");
@@ -638,7 +658,7 @@ BOOST_FIXTURE_TEST_CASE(memory_tests, tester) { try {
    produce_blocks(1000);
    create_account(N(testapi) ); //, asset::from_string("1000.0000 EOS"));
    produce_blocks(1000);
-   transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
+   //transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
    produce_blocks(1000);
    set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
@@ -668,7 +688,7 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_initial_memory, tester) { try {
    produce_blocks(1000);
    create_account(N(testapi) ); //, asset::from_string("1000.0000 EOS"));
    produce_blocks(1000);
-   transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
+   //transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
    produce_blocks(1000);
    set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
@@ -679,7 +699,7 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory, tester) { try {
    produce_blocks(1000);
    create_account(N(testapi) ); //, asset::from_string("1000.0000 EOS"));
    produce_blocks(1000);
-   transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
+   //transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
    produce_blocks(1000);
    set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
@@ -690,7 +710,7 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_exceeded, tester) { try
    produce_blocks(1000);
    create_account(N(testapi) ); //, asset::from_string("1000.0000 EOS"));
    produce_blocks(1000);
-   transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
+   //transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
    produce_blocks(1000);
    set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
@@ -703,7 +723,7 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_negative_bytes, tester)
    produce_blocks(1000);
    create_account(N(testapi) ); //, asset::from_string("1000.0000 EOS"));
    produce_blocks(1000);
-   transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
+   //transfer(N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
    produce_blocks(1000);
    set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
@@ -722,7 +742,7 @@ BOOST_FIXTURE_TEST_CASE(string_tests, tester) { try {
 	create_account( N(testextmem) ); //, asset::from_string("100.0000 EOS") );
 	produce_blocks(1000);
 
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
+	//transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_mem_wast );
 	produce_blocks(1000);
@@ -779,7 +799,7 @@ BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
 	produce_blocks(1000);
 
 	//Set test code
-	transfer(N(inita), N(testapi), "10.0000 EOS", "memo", N(eosio) );
+	//transfer(N(inita), N(testapi), "10.0000 EOS", "memo", N(eosio) );
 	set_code(N(testapi), test_api_wast); 
 	produce_blocks(1000);
 	string captured = "";
@@ -822,7 +842,7 @@ BOOST_FIXTURE_TEST_CASE(math_tests, tester) { try {
 	create_account( N(testapi) ); //, asset::from_string("1000.0000 EOS") );
 	produce_blocks(1000);
 
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
+	//transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1000);
@@ -885,7 +905,7 @@ BOOST_FIXTURE_TEST_CASE(types_tests, tester) { try {
 	create_account( N(testapi) ); //, asset::from_string("1000.0000 EOS") );
 	produce_blocks(1000);
 
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
+	//transfer( N(inita), N(testapi), "100.0000 EOS", "memo", N(eosio) );
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1000);

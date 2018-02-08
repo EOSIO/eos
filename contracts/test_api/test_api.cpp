@@ -57,6 +57,10 @@ extern "C" {
       WASM_TEST_HANDLER(test_action, assert_false);
       WASM_TEST_HANDLER(test_action, assert_true);
       WASM_TEST_HANDLER(test_action, now);
+      WASM_TEST_HANDLER(test_action, test_abort);
+      WASM_TEST_HANDLER(test_action, test_current_receiver);
+      WASM_TEST_HANDLER(test_action, test_current_sender);
+      WASM_TEST_HANDLER(test_action, test_publication_time);
 
       //test_print
       WASM_TEST_HANDLER(test_print, test_prints);
@@ -74,6 +78,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_math, test_double_api_div_0);
 
       //test crypto
+      WASM_TEST_HANDLER(test_crypto, test_recover_key);
       WASM_TEST_HANDLER(test_crypto, test_sha256);
       WASM_TEST_HANDLER(test_crypto, sha256_no_data);
       WASM_TEST_HANDLER(test_crypto, sha256_null);
@@ -81,14 +86,19 @@ extern "C" {
       WASM_TEST_HANDLER(test_crypto, assert_sha256_true);
 
       //test transaction
+      WASM_TEST_HANDLER(test_transaction, test_tapos_block_num);
+      WASM_TEST_HANDLER(test_transaction, test_tapos_block_prefix);
       WASM_TEST_HANDLER(test_transaction, send_action);
+      WASM_TEST_HANDLER(test_transaction, send_action_inline_fail);
       WASM_TEST_HANDLER(test_transaction, send_action_empty);
       WASM_TEST_HANDLER(test_transaction, send_action_large);
       WASM_TEST_HANDLER(test_transaction, send_action_recurse);
-      WASM_TEST_HANDLER(test_transaction, send_action_inline_fail);
+      WASM_TEST_HANDLER(test_transaction, test_read_transaction);
+      WASM_TEST_HANDLER(test_transaction, test_transaction_size);
       WASM_TEST_HANDLER(test_transaction, send_transaction);
       WASM_TEST_HANDLER(test_transaction, send_transaction_empty);
       WASM_TEST_HANDLER(test_transaction, send_transaction_large);
+      WASM_TEST_HANDLER(test_transaction, send_action_sender);
 
       //test chain
       WASM_TEST_HANDLER(test_chain, test_activeprods);
@@ -108,7 +118,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_real, test_division);
       WASM_TEST_HANDLER(test_real, test_division_by_0);
 
-#if 1
+#if 0
       // test account
       WASM_TEST_HANDLER(test_account, test_balance_acc1);
 #endif

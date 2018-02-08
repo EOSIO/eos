@@ -70,6 +70,9 @@ extern "C" {
 
 }
 
+void test_crypto::test_recover_key() {
+}
+
 void test_crypto::test_sha256() {
 
   checksum tmp;

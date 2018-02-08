@@ -69,6 +69,30 @@ void test_action::assert_true() {
    eos_assert(true, "test_action::assert_true");
 }
 
+void test_action::test_abort() {
+   abort();
+   eos_assert( false, "should've aborted" );
+}
+
+void test_action::test_publication_time() {
+   uint32_t pub_time = 0;
+   read_action(&pub_time, sizeof(uint32_t));
+   eos_assert( pub_time == publication_time(), "pub_time == publication_time()" );
+}
+
+void test_action::test_current_receiver() {
+   account_name cur_rec;
+   read_action(&cur_rec, sizeof(account_name));
+   
+   eos_assert( current_receiver() == cur_rec, "the current receiver does not match" );
+}
+
+void test_action::test_current_sender() {
+   account_name cur_send;
+   read_action(&cur_send, sizeof(account_name));
+   eos_assert( current_sender() == cur_send, "the current sender does not match" );
+}
+
 void test_action::now() {
    uint32_t tmp = 0;
    uint32_t total = read_action(&tmp, sizeof(uint32_t));
