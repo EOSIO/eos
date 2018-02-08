@@ -695,10 +695,15 @@ class database_api : public context_aware_api {
       void db_remove_i64( int itr ) {
          context.db_remove_i64( itr );
       }
-      int db_get_i64( int itr, uint64_t& id, array_ptr<char> buffer, size_t buffer_size ) {
-         return context.db_get_i64( itr, id, buffer, buffer_size );
+      int db_get_i64( int itr, array_ptr<char> buffer, size_t buffer_size ) {
+         return context.db_get_i64( itr, buffer, buffer_size );
       }
-      int db_next_i64( int itr ) { return context.db_next_i64(itr); }
+      int db_next_i64( int itr ) {
+         return context.db_next_i64(itr);
+      }
+      int db_previous_i64( int itr ) {
+         return context.db_previous_i64(itr);
+      }
       int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
          return context.db_find_i64( code, scope, table, id ); 
       }
@@ -718,7 +723,21 @@ class database_api : public context_aware_api {
       void db_idx64_remove( int iterator ) {
          return context.idx64.remove( iterator );
       }
-
+      int db_idx64_find( uint64_t code, uint64_t scope, uint64_t table, const uint64_t& secondary ) {
+         return context.idx64.find_secondary(code, scope, table, secondary);
+      }
+      int db_idx64_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  const uint64_t& secondary ) {
+         return context.idx64.lowerbound_secondary(code, scope, table, secondary);
+      }
+      int db_idx64_upperbound( uint64_t code, uint64_t scope, uint64_t table,  const uint64_t& secondary ) {
+         return context.idx64.upperbound_secondary(code, scope, table, secondary);
+      }
+      int db_idx64_next( int iterator ) {
+         return context.idx64.next_secondary(iterator);
+      }
+      int db_idx64_previous( int iterator ) {
+         return context.idx128.previous_secondary(iterator);
+      }
 
       int db_idx128_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const uint128_t& secondary ) {
          return context.idx128.store( scope, table, payer, id, secondary );
@@ -728,6 +747,21 @@ class database_api : public context_aware_api {
       }
       void db_idx128_remove( int iterator ) {
          return context.idx128.remove( iterator );
+      }
+      int db_idx128_find( uint64_t code, uint64_t scope, uint64_t table, const uint64_t& secondary ) {
+         return context.idx64.find_secondary(code, scope, table, secondary);
+      }
+      int db_idx128_lowerbound( uint64_t code, uint64_t scope, uint64_t table, const uint64_t& secondary ) {
+         return context.idx64.lowerbound_secondary(code, scope, table, secondary);
+      }
+      int db_idx128_upperbound( uint64_t code, uint64_t scope, uint64_t table, const uint128_t& secondary ) {
+         return context.idx128.upperbound_secondary(code, scope, table, secondary);
+      }
+      int db_idx128_next( int iterator ) {
+         return context.idx128.next_secondary(iterator);
+      }
+      int db_idx128_previous( int iterator ) {
+         return context.idx128.previous_secondary(iterator);
       }
 };
 
@@ -961,19 +995,30 @@ REGISTER_INTRINSICS( database_api,
    (db_store_i64,        int(int64_t,int64_t,int64_t,int64_t,int,int))
    (db_update_i64,       void(int,int64_t,int,int))
    (db_remove_i64,       void(int))
-   (db_get_i64,          int(int, int, int, int))
+   (db_get_i64,          int(int, int, int))
    (db_next_i64,         int(int))
+   (db_previous_i64,     int(int))
    (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t))
    (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
+   (db_upperbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
 
    (db_idx64_store,      int(int64_t,int64_t,int64_t,int64_t,int))
    (db_idx64_remove,     void(int))
    (db_idx64_update,     void(int,int64_t,int))
-
+   (db_idx64_find,       int(int64_t,int64_t,int64_t,int))
+   (db_idx64_lowerbound, int(int64_t,int64_t,int64_t,int))
+   (db_idx64_upperbound, int(int64_t,int64_t,int64_t,int))
+   (db_idx64_next,       int(int))
+   (db_idx64_previous,   int(int))
 
    (db_idx128_store,      int(int64_t,int64_t,int64_t,int64_t,int))
    (db_idx128_remove,     void(int))
    (db_idx128_update,     void(int,int64_t,int))
+   (db_idx128_find,       int(int64_t,int64_t,int64_t,int))
+   (db_idx128_lowerbound, int(int64_t,int64_t,int64_t,int))
+   (db_idx128_upperbound, int(int64_t,int64_t,int64_t,int))
+   (db_idx128_next,       int(int))
+   (db_idx128_previous,   int(int))
 )
 
 REGISTER_INTRINSICS(crypto_api,
