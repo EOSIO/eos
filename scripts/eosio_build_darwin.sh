@@ -25,8 +25,8 @@
 		exit 1
 	fi
 
-	if [ $OS_MIN -lt 10 ]; then
-		printf "\tYou must be running Mac OS 10.10.x or higher to install EOSIO.\n"
+	if [ $OS_MIN -lt 12 ]; then
+		printf "\tYou must be running Mac OS 10.12.x or higher to install EOSIO.\n"
 		printf "\tExiting now.\n"
 		exit 1
 	fi

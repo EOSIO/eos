@@ -199,7 +199,7 @@
 	fi
 	
 	printf "\n\tChecking for LLVM with RTTI support.\n"
-	if [ ! ${HOME}/opt/llvm/bin ]; then
+	if [ ! -d ${HOME}/opt/llvm/bin ]; then
 		if [ ! -d ${TEMP_DIR}/llvm-compiler/llvm ]; then
 			cd ${TEMP_DIR}
 			mkdir llvm-compiler  2>/dev/null
@@ -227,3 +227,4 @@
 	fi
 
 	rm -rf ${TEMP_DIR}/llvm-compiler 2>/dev/null
+	printf "\n\tLLVM with RTTI support found.\n"

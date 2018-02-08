@@ -231,7 +231,7 @@
 		cd llvm/tools
 		git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
 		cd ..
-		mkdir build
+		mkdir build 2>/dev/null
 		cd build
 		cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
 		make -j $(nproc) install

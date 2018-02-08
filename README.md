@@ -26,10 +26,10 @@ The public testnet described in the [wiki](https://github.com/EOSIO/eos/wiki/Tes
 1. [Getting Started](#gettingstarted)
 2. [Setting up a build/development environment](#setup)
 	1. [Automated build script](#autobuild)
-      1. [Clean install Ubuntu 16.10 for a local testnet](#autoubuntulocal)
-      2. [Clean install Ubuntu 16.10 for the public testnet](#autoubuntupublic)
-      3. [MacOS Sierra 10.12.6 for a local testnet](#automaclocal)
-      4. [MacOS Sierra 10.12.6 for the public testnet](#automacpublic)
+      1. [Clean install Linux (Ubuntu & Fedora) for a local testnet](#autoubuntulocal)
+      2. [Clean install Linux (Ubuntu & Fedora) for the public testnet](#autoubuntupublic)
+      3. [MacOS for a local testnet](#automaclocal)
+      4. [MacOS for the public testnet](#automacpublic)
 3. [Building EOS and running a node](#runanode)
 	1. [Getting the code](#getcode)
 	2. [Building from source code](#build)
@@ -59,78 +59,72 @@ The following instructions detail the process of getting the software, building 
 <a name="autobuild"></a>
 ### Automated build script
 
-For Ubuntu 16.10 and MacOS Sierra, there is an automated build script that can install all dependencies and builds EOS.
+Supported Operating Systems:
+Ubuntu 16.04 and higher
+MacOS Darwin 10.12 and higher
+Fedora 25 and higher
 
-It is called eosio-build.sh with the following inputs.
-- architecture [ubuntu|darwin]
-- optional mode [full|build]
+For Ubuntu, MacOS and Fedora there is an automated build script that can install all dependencies and builds EOS.
+We are working on supporting Centos, Amazon Linux & Red Hat in future releases.
 
-The second optional input can be `full` or `build` where `full` implies that it installs dependencies and builds eos. If you omit this input then the build script installs dependencies and then builds eos.
+It is called eosio_build.sh
 
 ```bash
-./eosio-build.sh <architecture> <optional mode>
+./eosio-build.sh
 ```
-Choose whether you will be building for a local testnet or for the public testnet and jump to the appropriate section below.  Clone the EOS repository recursively as described and run eosio-build.sh located in the root `eos` folder.
+Choose whether you will be building for a local testnet or for the public testnet and jump to the appropriate section below.  Clone the EOS repository recursively as described and run eosio_build.sh located in the root `eos` folder.
 
 :warning: **As of February 2018, `master` is under heavy development and is not suitable for experimentation.** :warning:
 
 We strongly recommend following the instructions for building the public testnet version for [Ubuntu](#autoubuntupublic) or [Mac OS X](#automacpublic). `master` is in pieces on the garage floor while we rebuild this hotrod. This notice will be removed when `master` is usable again. Your patience is appreciated.
 
 <a name="autoubuntulocal"></a>
-#### :no_entry: Clean install Ubuntu 16.10 for a local testnet :no_entry:
+#### :no_entry: Clean install Linux (Ubuntu & Fedora) for a local testnet :no_entry:
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
-./eosio-build.sh ubuntu
+./eosio-build.sh
 ```
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
 
 <a name="autoubuntupublic"></a>
-#### Clean install Ubuntu 16.10 for the public testnet
+#### Clean install Linux (Ubuntu & Fedora) for the public testnet
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
 git checkout dawn-2.x
-./eosio-build.sh ubuntu
+./eosio-build.sh
 ```
 
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
 
 <a name="automaclocal"></a>
-#### :no_entry: MacOS Sierra for a local testnet :no_entry:
+#### :no_entry: MacOS for a local testnet :no_entry:
 
-Before running the script make sure you have updated XCode and brew:
+Before running the script make sure you have installed/updated XCode. Note: The build script
+will install homebrew if it is not already installed on you system. [Homebrew Website](https://brew.sh)
 
-```bash
-xcode-select --install
-ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-```
-
-Then clone the EOS repository recursively and run eosio-build.sh in the root `eos` folder.
+Then clone the EOS repository recursively and run eosio_build.sh in the root `eos` folder.
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
-./eosio-build.sh darwin
+./eosio-build.sh
 ```
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
 
 <a name="automacpublic"></a>
-#### MacOS Sierra for the public testnet
+#### MacOS for the public testnet
 
-Before running the script make sure you have updated XCode and brew:
-
-```bash
-xcode-select --install
-ruby -e "$(curl -fsSl https://raw.githubusercontent.com/Homebrew/install/master/install)"
-```
+Before running the script make sure you have installed/updated XCode. Note: The build script
+will install homebrew if it is not already installed on you system. [Homebrew Website](https://brew.sh)
 
 Then clone the EOS repository recursively, checkout the branch that is compatible with the public testnet, and run eosio-build.sh in the root `eos` folder.
 
@@ -139,7 +133,7 @@ git clone https://github.com/eosio/eos --recursive
 
 cd eos
 git checkout dawn-2.x
-./eosio-build.sh darwin
+./eosio-build.sh
 ```
 
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
