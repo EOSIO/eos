@@ -18,7 +18,7 @@ namespace eosio { namespace testing {
       public:
          typedef string action_result;
 
-         tester(bool process_genesis = true);
+         tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits(), bool process_genesis = true);
 
          void              close();
          void              open();

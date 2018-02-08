@@ -39,16 +39,6 @@
 
 namespace eosio { namespace chain {
 
-#ifdef NDEBUG
-const uint32_t chain_controller::default_received_block_transaction_execution_time_ms = 12;
-const uint32_t chain_controller::default_transaction_execution_time_ms = 3;
-const uint32_t chain_controller::default_create_block_transaction_execution_time_ms = 3;
-#else
-const uint32_t chain_controller::default_received_block_transaction_execution_time_ms = 72;
-const uint32_t chain_controller::default_transaction_execution_time_ms = 18;
-const uint32_t chain_controller::default_create_block_transaction_execution_time_ms = 18;
-#endif
-
 bool chain_controller::is_start_of_round( block_num_type block_num )const  {
   return 0 == (block_num % blocks_per_round());
 }
@@ -62,9 +52,7 @@ chain_controller::chain_controller( const chain_controller::controller_config& c
       (cfg.read_only ? database::read_only : database::read_write), 
       cfg.shared_memory_size), 
  _block_log(cfg.block_log_dir),
- _create_block_txn_execution_time(default_create_block_transaction_execution_time_ms * 1000),
- _rcvd_block_txn_execution_time(default_received_block_transaction_execution_time_ms * 1000),
- _txn_execution_time(default_transaction_execution_time_ms * 1000)
+ _limits(cfg.limits)
 {
    _initialize_indexes();
 
@@ -293,6 +281,10 @@ static void record_locks_for_data_access(const vector<action_trace>& action_trac
 
 transaction_trace chain_controller::_push_transaction( transaction_metadata&& data )
 {
+   if (_limits.max_push_transaction_us.count() > 0) {
+      data.processing_deadline = fc::time_point::now() + _limits.max_push_transaction_us;
+   }
+
    const transaction& trx = data.trx();
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
@@ -586,6 +578,11 @@ static void validate_shard_locks(const vector<shard_lock>& locks, const string& 
 
 void chain_controller::__apply_block(const signed_block& next_block)
 { try {
+   optional<fc::time_point> processing_deadline;
+   if (!_currently_replaying_blocks && _limits.max_push_block_us.count() > 0) {
+      processing_deadline = fc::time_point::now() + _limits.max_push_transaction_us;
+   }
+
    uint32_t skip = _skip_flags;
 
    /*
@@ -677,6 +674,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                mtrx->shard_index = shard_index;
                mtrx->allowed_read_locks.emplace(&shard.read_locks);
                mtrx->allowed_write_locks.emplace(&shard.write_locks);
+               mtrx->processing_deadline = processing_deadline;
 
                s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
                record_locks_for_data_access(s_trace.transaction_traces.back().action_traces, used_read_locks, used_write_locks);
@@ -713,7 +711,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
    FC_ASSERT(next_block.action_mroot == next_block_trace.calculate_action_merkle_root());
    FC_ASSERT( transaction_metadata::calculate_transaction_merkle_root(input_metas) == next_block.transaction_mroot, "merkle root does not match" );
 
-      _finalize_block( next_block_trace );
+   _finalize_block( next_block_trace );
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 
 flat_set<public_key_type> chain_controller::get_required_keys(const transaction& trx,
@@ -1409,7 +1407,7 @@ static void log_handled_exceptions(const transaction& trx) {
 transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta ) {
    transaction_trace result(meta.id);
    for (const auto &act : meta.trx().actions) {
-      apply_context context(*this, _db, act, meta, txn_execution_time());
+      apply_context context(*this, _db, act, meta);
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
@@ -1462,7 +1460,7 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    try {
       auto temp_session = _db.start_undo_session(true);
 
-      apply_context context(*this, _db, etrx.actions.front(), meta, txn_execution_time());
+      apply_context context(*this, _db, etrx.actions.front(), meta);
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
@@ -1624,22 +1622,6 @@ const apply_handler* chain_controller::find_apply_handler( account_name receiver
          return &handler->second;
    }
    return nullptr;
-}
-
-void chain_controller::set_txn_execution_times(uint32_t create_block_txn_execution_time, uint32_t rcvd_block_txn_execution_time, uint32_t txn_execution_time)
-{
-   _create_block_txn_execution_time = create_block_txn_execution_time;
-   _rcvd_block_txn_execution_time   = rcvd_block_txn_execution_time;
-   _txn_execution_time              = txn_execution_time;
-}
-
-uint32_t chain_controller::txn_execution_time() const
-{
-   return _skip_flags & received_block
-         ?  _rcvd_block_txn_execution_time
-         : (_skip_flags && created_block
-            ? _create_block_txn_execution_time
-            : _txn_execution_time);
 }
 
 } } /// eosio::chain

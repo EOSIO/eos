@@ -102,7 +102,7 @@ void apply_context::exec()
    }
 
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
-      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta, _checktime_limit);
+      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta);
       ncontext.exec();
       append_results(move(ncontext.results));
    }
@@ -234,12 +234,8 @@ vector<account_name> apply_context::get_active_producers() const {
    return accounts;
 }
 
-void apply_context::checktime_start() {
-   _checktime_start = fc::time_point::now();
-}
-
 void apply_context::checktime() const {
-   if ((fc::time_point::now() - _checktime_start).count() > _checktime_limit) {
+   if (trx_meta.processing_deadline && fc::time_point::now() > (*trx_meta.processing_deadline)) {
       throw checktime_exceeded();
    }
 }
