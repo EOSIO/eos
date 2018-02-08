@@ -234,7 +234,7 @@ vector<account_name> apply_context::get_active_producers() const {
    return accounts;
 }
 
-void apply_context::checktime() const {
+void apply_context::checktime(uint32_t instruction_count) const {
    if (trx_meta.processing_deadline && fc::time_point::now() > (*trx_meta.processing_deadline)) {
       throw checktime_exceeded();
    }

@@ -365,7 +365,7 @@ class apply_context {
          console_append(fc::format_string(fmt, vo));
       }
 
-      void checktime() const;
+      void checktime(uint32_t instruction_count) const;
 
       void update_db_usage( const account_name& payer, int64_t delta ) {
          require_write_lock( payer );
