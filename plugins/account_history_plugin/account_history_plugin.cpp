@@ -413,7 +413,7 @@ fc::variant account_history_plugin_impl::transaction_to_variant(const packed_tra
       const auto* accnt = database.find<chain::account_object,chain::by_name>( name );
       if (accnt != nullptr) {
          abi_def abi;
-         if (abi_serializer::to_abi(accnt->abi, abi)) {
+         if (abi_serializer::to_abi(accnt->name, accnt->abi, abi)) {
             return abi_serializer(abi);
          }
       }

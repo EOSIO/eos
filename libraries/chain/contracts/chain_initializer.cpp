@@ -151,12 +151,6 @@ abi_def chain_initializer::eos_contract_abi()
    });
 
    // DATABASE RECORDS
-   eos_abi.structs.emplace_back( struct_def {
-      "account", "", {
-         {"key",     "name"},
-         {"balance", "uint64"},
-      }
-   });
 
    eos_abi.structs.emplace_back( struct_def {
       "pending_recovery", "", {

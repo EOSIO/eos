@@ -17,7 +17,7 @@ namespace eosiosystem {
    template<account_name SystemAccount>
    class contract {
       public:
-         static const account_name system_account = N(eosio.system);
+         static const account_name system_account = N(eosio);
          typedef eosio::generic_currency< eosio::token<system_account,S(4,EOS)> > currency;
 
          struct total_bandwidth {
