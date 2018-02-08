@@ -134,18 +134,20 @@ class apply_context {
                });
             }
 
-            int find_secondary( uint64_t code, uint64_t scope, uint64_t table, const secondary_key_type& secondary ) {
+            int find_secondary( uint64_t code, uint64_t scope, uint64_t table, const secondary_key_type& secondary, uint64_t& primary ) {
                auto tab = context.find_table( context.receiver, scope, table );
                if( !tab ) return -1;
 
                const auto* obj = context.db.find<ObjectType, contracts::by_secondary>( boost::make_tuple( tab->id, secondary ) );
                if( !obj ) return -1;
 
+               primary = obj->primary_key;
+
                itr_cache.cache_table( *tab );
                return itr_cache.add( *obj );
             }
 
-            int lowerbound_secondary( uint64_t code, uint64_t scope, uint64_t table, const secondary_key_type& secondary ) {
+            int lowerbound_secondary( uint64_t code, uint64_t scope, uint64_t table, const secondary_key_type& secondary, uint64_t& primary ) {
                auto tab = context.find_table( context.receiver, scope, table );
                if( !tab ) return -1;
 
@@ -154,11 +156,13 @@ class apply_context {
                if( itr == idx.end() ) return -1;
                if( itr->t_id != tab->id ) return -1;
 
+               primary = itr->primary_key;
+
                itr_cache.cache_table( *tab );
                return itr_cache.add( *itr );
             }
 
-            int upperbound_secondary( uint64_t code, uint64_t scope, uint64_t table, const secondary_key_type& secondary ) {
+            int upperbound_secondary( uint64_t code, uint64_t scope, uint64_t table, const secondary_key_type& secondary, uint64_t& primary ) {
                auto tab = context.find_table( context.receiver, scope, table );
                if( !tab ) return -1;
 
@@ -166,6 +170,8 @@ class apply_context {
                auto itr = idx.upper_bound( boost::make_tuple( tab->id, secondary ) );
                if( itr == idx.end() ) return -1;
                if( itr->t_id != tab->id ) return -1;
+
+               primary = itr->primary_key;
 
                itr_cache.cache_table( *tab );
                return itr_cache.add( *itr );
