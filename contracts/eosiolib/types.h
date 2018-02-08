@@ -7,7 +7,9 @@
 #include <stdint.h>
 #include <wchar.h>
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 /**
  *  @defgroup types Builtin Types
@@ -49,22 +51,24 @@ struct checksum {
 
 struct fixed_string16 {
    uint8_t len;
-   char    str[16];
+   char str[16];
 };
 
-typedef fixed_string16 field_name;
+typedef struct fixed_string16 field_name;
 
 struct fixed_string32 {
    uint8_t len;
-   char    str[32];
+   char str[32];
 };
 
-typedef fixed_string32 type_name;
+typedef struct fixed_string32 type_name;
 
 struct account_permission {
    account_name account;
    permission_name permission;
 };
 
+#ifdef __cplusplus
 } /// extern "C"
+#endif
 /// @}
