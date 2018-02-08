@@ -580,7 +580,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
 { try {
    optional<fc::time_point> processing_deadline;
    if (!_currently_replaying_blocks && _limits.max_push_block_us.count() > 0) {
-      processing_deadline = fc::time_point::now() + _limits.max_push_transaction_us;
+      processing_deadline = fc::time_point::now() + _limits.max_push_block_us;
    }
 
    uint32_t skip = _skip_flags;
