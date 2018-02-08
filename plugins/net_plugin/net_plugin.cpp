@@ -459,7 +459,7 @@ namespace eosio {
       void stop_send();
 
       void enqueue( transaction_id_type id );
-      void enqueue( const net_message &msg );
+      void enqueue( const net_message &msg, bool trigger_send = true );
       void cancel_sync(go_away_reason);
       void cancel_fetch();
       void flush_queues();
@@ -471,7 +471,9 @@ namespace eosio {
       void sync_timeout(boost::system::error_code ec);
       void fetch_timeout(boost::system::error_code ec);
 
-      void queue_write(std::shared_ptr<vector<char>> buff, std::function<void(boost::system::error_code, std::size_t)> cb);
+      void queue_write(std::shared_ptr<vector<char>> buff,
+                       bool trigger_send,
+                       std::function<void(boost::system::error_code, std::size_t)> cb);
       void do_queue_write();
 
       /** \brief Process the next message from the pending message buffer
@@ -682,6 +684,7 @@ namespace eosio {
             if(!found) {
                my_impl->local_txns.modify(tx,update_in_flight(1));
                queue_write(std::make_shared<vector<char>>(tx->packed_transaction),
+                           true,
                            [this, tx](boost::system::error_code ec, std::size_t ) {
                               my_impl->local_txns.modify(tx, update_in_flight(-1));
                            });
@@ -696,6 +699,7 @@ namespace eosio {
          if( tx != my_impl->local_txns.end() && tx->packed_transaction.size()) {
             my_impl->local_txns.modify( tx,update_in_flight(1));
             queue_write(std::make_shared<vector<char>>(tx->packed_transaction),
+                        true,
                         [this, tx](boost::system::error_code ec, std::size_t ) {
                            my_impl->local_txns.modify(tx, update_in_flight(-1));
                         });
@@ -831,9 +835,11 @@ namespace eosio {
       enqueue(xpkt);
    }
 
-   void connection::queue_write(std::shared_ptr<vector<char>> buff, std::function<void(boost::system::error_code, std::size_t)> cb) {
+   void connection::queue_write(std::shared_ptr<vector<char>> buff,
+                                bool trigger_send,
+                                std::function<void(boost::system::error_code, std::size_t)> cb) {
       write_queue.push_back({buff, cb});
-      if(write_queue.size() == 1)
+      if(write_queue.size() == 1 && trigger_send)
          do_queue_write();
    }
 
@@ -865,6 +871,7 @@ namespace eosio {
                   return;
                }
                conn->write_queue.pop_front();
+               conn->enqueue_sync_block();
                conn->do_queue_write();
             }
             catch(const std::exception &ex) {
@@ -908,15 +915,17 @@ namespace eosio {
 
    bool connection::enqueue_sync_block() {
       chain_controller& cc = app().find_plugin<chain_plugin>()->chain();
+      if (!sync_requested)
+         return false;
       uint32_t num = ++sync_requested->last;
-
+      bool trigger_send = num == sync_requested->start_block;
       if(num == sync_requested->end_block) {
          sync_requested.reset();
       }
       try {
          fc::optional<signed_block> sb = cc.fetch_block_by_number(num);
          if(sb) {
-            enqueue( *sb );
+            enqueue( *sb, trigger_send);
             return true;
          }
       } catch ( ... ) {
@@ -925,7 +934,7 @@ namespace eosio {
       return false;
    }
 
-   void connection::enqueue( const net_message &m ) {
+   void connection::enqueue( const net_message &m, bool trigger_send ) {
       bool close_after_send = false;
       if(m.contains<sync_request_message>()) {
          sync_wait( );
@@ -949,7 +958,7 @@ namespace eosio {
       ds.write( header, header_size );
       fc::raw::pack( ds, m );
       write_depth++;
-      queue_write(send_buffer,
+      queue_write(send_buffer,trigger_send,
                   [this, close_after_send](boost::system::error_code ec, std::size_t ) {
                      write_depth--;
                      if(close_after_send) {
@@ -1593,9 +1602,6 @@ namespace eosio {
                return unknown;
             });
       }
-      // else {
-      //    bcast_transaction (msg, c);
-      // }
    }
 
 
