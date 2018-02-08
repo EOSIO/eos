@@ -59,10 +59,10 @@ The following instructions detail the process of getting the software, building 
 <a name="autobuild"></a>
 ### Automated build script
 
-Supported Operating Systems:
-Ubuntu 16.04 and higher
-MacOS Darwin 10.12 and higher
-Fedora 25 and higher
+Supported Operating Systems:  
+Ubuntu 16.04 and higher. 
+MacOS Darwin 10.12 and higher. 
+Fedora 25 and higher. 
 
 For Ubuntu, MacOS and Fedora there is an automated build script that can install all dependencies and builds EOS.
 We are working on supporting Centos, Amazon Linux & Red Hat in future releases.
