@@ -36,7 +36,7 @@ BOOST_AUTO_TEST_CASE( schedule_test ) { try {
 } FC_LOG_AND_RETHROW() }/// schedule_test
 
 BOOST_AUTO_TEST_CASE( push_block ) { try {
-   tester test1, test2(false);
+   tester test1, test2(chain_controller::runtime_limits(), false);
 
    for (uint32 i = 0; i < 1000; ++i) {
       test2.control->push_block(test1.produce_block());
