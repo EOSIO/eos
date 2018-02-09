@@ -78,7 +78,7 @@ It is called eosio_build.sh
 
 ```bash
 cd ~/eos
-./eosio-build.sh
+./eosio_build.sh
 ```
 Choose whether you will be building for a local testnet or for the public testnet and jump to the appropriate section below.  Clone the EOS repository recursively as described and run eosio_build.sh located in the root `eos` folder.
 
@@ -93,7 +93,7 @@ We strongly recommend following the instructions for building the public testnet
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
-./eosio-build.sh
+./eosio_build.sh
 ```
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
@@ -106,7 +106,7 @@ git clone https://github.com/eosio/eos --recursive
 
 cd eos
 git checkout dawn-2.x
-./eosio-build.sh
+./eosio_build.sh
 ```
 
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
@@ -123,7 +123,7 @@ Then clone the EOS repository recursively and run eosio_build.sh in the root `eo
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
-./eosio-build.sh
+./eosio_build.sh
 ```
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
@@ -134,14 +134,14 @@ Now you can proceed to the next step - [Creating and launching a single-node tes
 Before running the script make sure you have installed/updated XCode. Note: The build script
 will install homebrew if it is not already installed on you system. [Homebrew Website](https://brew.sh)
 
-Then clone the EOS repository recursively, checkout the branch that is compatible with the public testnet, and run eosio-build.sh in the root `eos` folder.
+Then clone the EOS repository recursively, checkout the branch that is compatible with the public testnet, and run eosio_build.sh in the root `eos` folder.
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
 git checkout dawn-2.x
-./eosio-build.sh
+./eosio_build.sh
 ```
 
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)

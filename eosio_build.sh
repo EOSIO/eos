@@ -45,9 +45,6 @@
 	printf "\n\tARCHITECTURE ${ARCH}\n"
 
 	if [ $ARCH == "Linux" ]; then
-
-		declare -a DIST=(Ubuntu "Red Hat Enterprise Linux Server" Fedora Centos Amazon)
-		FILE=""
 		
 		if [ ! -e /etc/os-release ]; then
 			printf "EOSIO currently supports Ubuntu, Red Hat & Fedora Linux only.\n"
@@ -75,8 +72,8 @@
 			;;
 			"Fedora")
 				FILE=${WORK_DIR}/scripts/eosio_build_fedora.sh
-				CXX_COMPILER=${HOME}/opt/llvm/bin/clang++
-				C_COMPILER=${HOME}/opt/llvm/bin/clang
+				CXX_COMPILER=g++
+				C_COMPILER=gcc
 			;;
 			*)
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
