@@ -175,7 +175,7 @@ cd ~
 git clone https://github.com/eosio/eos --recursive
 mkdir -p ~/eos/build && cd ~/eos/build
 cmake -DBINARYEN_BIN=~/binaryen/bin -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DOPENSSL_LIBRARIES=/usr/local/opt/openssl/lib ..
-make -j4
+make -j$( nproc )
 ```
 
 Out-of-source builds are also supported. To override clang's default choice in compiler, add these flags to the CMake command:
@@ -557,7 +557,7 @@ cd ~
 wget -c 'https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_64_0.tar.bz2/download' -O boost_1.64.0.tar.bz2
 tar xjf boost_1.64.0.tar.bz2
 cd boost_1_64_0/
-echo "export BOOST_ROOT=$HOME/opt/boost_1_64_0" >> ~/.bash_profile
+echo "export BOOST_ROOT=$HOME/boost_1_64_0" >> ~/.bash_profile
 source ~/.bash_profile
 ./bootstrap.sh "--prefix=$BOOST_ROOT"
 ./b2 install
@@ -607,6 +607,13 @@ mkdir build
 cd build
 cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
 make -j4 install
+```
+Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
+
+```bash
+echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
+echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
+source ~/.bash_profile
 ```
 
 Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
@@ -667,7 +674,6 @@ Add `BINARYEN_ROOT` to your .bash_profile:
 echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
 source ~/.bash_profile
 ```
-
 
 Build LLVM and clang for WASM:
 
@@ -770,5 +776,5 @@ Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
 echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
 echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
 source ~/.bash_profile
-
+```
 Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
