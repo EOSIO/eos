@@ -19,13 +19,13 @@ namespace bmi = boost::multi_index;
 
 extern "C" {
    int db_store_i64( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, char* buffer, size_t buffer_size );
-   int db_update_i64( int iterator, uint64_t payer, char* buffer, size_t buffer_size );
+   void db_update_i64( int iterator, uint64_t payer, char* buffer, size_t buffer_size );
    int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
    int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
    int db_get_i64( int iterator, char* buffer, size_t buffer_size );
-   int db_remove_i64( int iterator );
-   int db_next_i64( int iterator );
-   int db_prev_i64( int iterator );
+   void db_remove_i64( int iterator );
+   int db_next_i64( int iterator, uint64_t* pk );
+   int db_previous_i64( int iterator, uint64_t* pk );
 
    int db_idx64_next( int iterator, uint64_t* primary );
    int db_idx64_prev( int iterator, uint64_t* primary );
@@ -33,8 +33,8 @@ extern "C" {
    int db_idx64_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint64_t* secondary, uint64_t* primary );
    int db_idx64_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint64_t* secondary, uint64_t* primary );
    int db_idx64_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint64_t* secondary, uint64_t* primary );
-   int db_idx64_remove( int iterator );
-   int db_idx64_update( int iterator, uint64_t payer, const uint64_t* secondary );
+   void db_idx64_remove( int iterator );
+   void db_idx64_update( int iterator, uint64_t payer, const uint64_t* secondary );
 
    int db_idx128_next( int iterator, uint64_t* primary );
    int db_idx128_prev( int iterator, uint64_t* primary );
@@ -42,8 +42,8 @@ extern "C" {
    int db_idx128_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint128_t* secondary, uint64_t* primary );
    int db_idx128_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t* secondary, uint64_t* primary );
    int db_idx128_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t* secondary, uint64_t* primary );
-   int db_idx128_remove( int iterator );
-   int db_idx128_update( int iterator, uint64_t payer, const uint128_t* secondary );
+   void db_idx128_remove( int iterator );
+   void db_idx128_update( int iterator, uint64_t payer, const uint128_t* secondary );
 }
 
 template<typename T>
@@ -53,14 +53,14 @@ template<>
 struct secondary_iterator<uint64_t> {
    static int db_idx_next( int iterator, uint64_t* primary ) { return db_idx64_next( iterator, primary ); }
    static int db_idx_prev( int iterator, uint64_t* primary ) { return db_idx64_prev( iterator, primary ); }
-   static int db_idx_remove( int iterator  )                 { return db_idx64_remove( iterator ); }
+   static void db_idx_remove( int iterator  )                 { db_idx64_remove( iterator ); }
 };
 
 template<>
 struct secondary_iterator<uint128_t> {
    static int db_idx_next( int iterator, uint64_t* primary ) { return db_idx128_next( iterator, primary ); }
    static int db_idx_prev( int iterator, uint64_t* primary ) { return db_idx128_prev( iterator, primary ); }
-   static int db_idx_remove( int iterator  )                 { return db_idx128_remove( iterator ); }
+   static void db_idx_remove( int iterator  )                 { db_idx128_remove( iterator ); }
 };
 
 void db_idx_update( int iterator, uint64_t payer, const uint64_t& secondary ) {
@@ -346,13 +346,15 @@ class multi_index
 
          const_iterator& operator++() {
             //eosio_assert( _item, "null ptr" );
-            auto next_itr = db_next_i64( _item->__primary_itr );
+            uint64_t pk;
+            auto next_itr = db_next_i64( _item->__primary_itr, &pk );
             _item = &_multidx.load_object_by_primary_iterator( next_itr );
             return *this;
          }
          const_iterator& operator--() {
             //eosio_assert( _item, "null ptr" );
-            auto next_itr = db_prev_i64( _item->__primary_itr );
+            uint64_t pk;
+            auto next_itr = db_previous_i64( _item->__primary_itr, &pk );
             _item = &_multidx.load_object_by_primary_iterator( next_itr );
             return *this;
          }

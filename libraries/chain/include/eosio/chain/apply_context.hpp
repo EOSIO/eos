@@ -212,12 +212,13 @@ class apply_context {
 
             
 
-            int find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary ) {
+            int find_primary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_type& secondary, uint64_t primary ) {
                auto tab = context.find_table( context.receiver, scope, table );
                if( !tab ) return -1;
 
                const auto* obj = context.db.find<ObjectType, contracts::by_primary>( boost::make_tuple( tab->id, primary ) );
                if( !obj ) return -1;
+               secondary = obj->secondary_key;
 
                itr_cache.cache_table( *tab );
                return itr_cache.add( *obj );
