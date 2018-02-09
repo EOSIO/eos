@@ -77,10 +77,9 @@ namespace eosiosystem {
          };
 
          ACTION( SystemAccount, nonce ) {
-            account_name                    from;
             eosio::string                   value;
 
-            EOSLIB_SERIALIZE( nonce, (from)(value) );
+            EOSLIB_SERIALIZE( nonce, (value) );
          };
 
       static void on( const delnetbw& del ) {

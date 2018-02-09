@@ -225,10 +225,9 @@ string generate_nonce_value() {
    return fc::to_string(fc::time_point::now().time_since_epoch().count());
 }
 
-chain::action generate_nonce(account_name from) {
+chain::action generate_nonce() {
    auto v = generate_nonce_value();
    variant nonce = fc::mutable_variant_object()
-         ("from", from)
          ("value", v);
    return chain::action( {}, config::system_account_name, "nonce", fc::raw::pack(nonce));
 }
@@ -783,7 +782,7 @@ int main( int argc, char** argv ) {
                                config::system_account_name, "transfer", result.get_object()["binargs"].as<bytes>());
 
       if (tx_force_unique) {
-         actions.emplace_back( generate_nonce(name(sender)) );
+         actions.emplace_back( generate_nonce() );
       }
 
       send_actions(std::move(actions), skip_sign);
@@ -953,7 +952,7 @@ int main( int argc, char** argv ) {
       actions.emplace_back(accountPermissions, contract, action, result.get_object()["binargs"].as<bytes>());
 
       if (tx_force_unique) {
-         actions.emplace_back( generate_nonce(name(contract)) );
+         actions.emplace_back( generate_nonce() );
       }                                                      
 
       send_actions(std::move(actions), skip_sign);

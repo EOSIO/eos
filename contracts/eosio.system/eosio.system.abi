@@ -27,7 +27,6 @@
       "name": "nonce",
       "base": "",
       "fields": [
-        {"name":"from", "type":"account_name"},
         {"name":"value", "type":"string"}
       ]
     }

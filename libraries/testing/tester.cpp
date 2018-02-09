@@ -174,7 +174,6 @@ namespace eosio { namespace testing {
                      ("permission", name(config::active_name))
                }))
                ("data", fc::mutable_variant_object()
-                  ("from", from)
                   ("value", v)
                )
             })
