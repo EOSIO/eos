@@ -29,15 +29,21 @@ extern "C" {
 
    int db_idx64_next( int iterator, uint64_t* primary );
    int db_idx64_prev( int iterator, uint64_t* primary );
-   int db_idx64_find( uint64_t code, uint64_t scope, uint64_t table, const uint64_t* secondary, uint64_t* primary );
-   int db_idx64_lowerbound( uint64_t code, uint64_t scope, uint64_t table, const uint64_t* secondary, uint64_t* primary );
-   int db_idx64_upperbound( uint64_t code, uint64_t scope, uint64_t table, const uint64_t* secondary, uint64_t* primary );
+   int db_idx64_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t* secondary, uint64_t primary );
+   int db_idx64_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint64_t* secondary, uint64_t* primary );
+   int db_idx64_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint64_t* secondary, uint64_t* primary );
+   int db_idx64_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint64_t* secondary, uint64_t* primary );
+   int db_idx64_remove( int iterator );
+   int db_idx64_update( int iterator, uint64_t payer, const uint64_t* secondary );
 
    int db_idx128_next( int iterator, uint64_t* primary );
    int db_idx128_prev( int iterator, uint64_t* primary );
-   int db_idx128_find( uint64_t code, uint64_t scope, uint64_t table, const uint128_t* secondary, uint64_t* primary );
-   int db_idx128_lowerbound( uint64_t code, uint64_t scope, uint64_t table, const uint128_t* secondary, uint64_t* primary );
-   int db_idx128_upperbound( uint64_t code, uint64_t scope, uint64_t table, const uint128_t* secondary, uint64_t* primary );
+   int db_idx128_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint128_t* secondary, uint64_t primary );
+   int db_idx128_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint128_t* secondary, uint64_t* primary );
+   int db_idx128_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t* secondary, uint64_t* primary );
+   int db_idx128_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t* secondary, uint64_t* primary );
+   int db_idx128_remove( int iterator );
+   int db_idx128_update( int iterator, uint64_t payer, const uint128_t* secondary );
 }
 
 template<typename T>
@@ -47,34 +53,50 @@ template<>
 struct secondary_iterator<uint64_t> {
    static int db_idx_next( int iterator, uint64_t* primary ) { return db_idx64_next( iterator, primary ); }
    static int db_idx_prev( int iterator, uint64_t* primary ) { return db_idx64_prev( iterator, primary ); }
+   static int db_idx_remove( int iterator  )                 { return db_idx64_remove( iterator ); }
 };
 
 template<>
 struct secondary_iterator<uint128_t> {
    static int db_idx_next( int iterator, uint64_t* primary ) { return db_idx128_next( iterator, primary ); }
    static int db_idx_prev( int iterator, uint64_t* primary ) { return db_idx128_prev( iterator, primary ); }
+   static int db_idx_remove( int iterator  )                 { return db_idx128_remove( iterator ); }
 };
 
-int db_idx_find( uint64_t code, uint64_t scope, uint64_t table, uint64_t secondary, uint64_t& primary ) { 
+void db_idx_update( int iterator, uint64_t payer, const uint64_t& secondary ) {
+   db_idx64_update( iterator, payer, &secondary );
+}
+void db_idx_update( int iterator, uint64_t payer, const uint128_t& secondary ) {
+   db_idx128_update( iterator, payer, &secondary );
+}
+
+int db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t primary ) { 
+   return db_idx64_find_primary( code, scope, table, &secondary, primary );
+}
+int db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t& primary ) { 
+   return db_idx64_find_secondary( code, scope, table, &secondary, &primary );
+}
+int db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t& primary ) { 
    return db_idx64_lowerbound( code, scope, table, &secondary, &primary );
 }
-int db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint64_t secondary, uint64_t& primary ) { 
-   return db_idx64_lowerbound( code, scope, table, &secondary, &primary );
-}
-int db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint64_t secondary, uint64_t& primary ) { 
+int db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t& primary ) { 
    return db_idx64_lowerbound( code, scope, table, &secondary, &primary );
 }
 
 
-int db_idx_find( uint64_t code, uint64_t scope, uint64_t table, uint128_t secondary, uint64_t& primary ) { 
+int db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t primary ) { 
+   return db_idx128_find_primary( code, scope, table, &secondary, primary );
+}
+int db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) { 
+   return db_idx128_find_secondary( code, scope, table, &secondary, &primary );
+}
+int db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) { 
    return db_idx128_lowerbound( code, scope, table, &secondary, &primary );
 }
-int db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t secondary, uint64_t& primary ) { 
+int db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) { 
    return db_idx128_lowerbound( code, scope, table, &secondary, &primary );
 }
-int db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t secondary, uint64_t& primary ) { 
-   return db_idx128_lowerbound( code, scope, table, &secondary, &primary );
-}
+
 
 
 template<uint64_t TableName, typename T, typename... Indicies>
@@ -103,23 +125,27 @@ struct index_by {
          // fetch primary key and secondary key here..
          return -1;
       }
-      template<typename Secondary>
-      void update( int iterator, uint64_t payer, const Secondary& secondary ) {
-         // fetch primary key and secondary key here..
+      void update( int iterator, uint64_t payer, const secondary_type& secondary ) {
+         db_idx_update( iterator, payer, secondary );
       }
 
-      int find_primary( uint64_t primarykey )const {
-         return 0;
+      int find_primary( uint64_t code, uint64_t scope, uint64_t primary, secondary_type& secondary )const {
+         return db_idx_find_primary( code, scope, IndexName,  secondary, primary );
       }
 
       void remove( int itr ) {
+         secondary_iterator<secondary_type>::db_idx_remove( itr );
       }
 
-      int lower_bound( const secondary_type& second, uint64_t& primary )const {
-         return 0;
+      int find_secondary( uint64_t code, uint64_t scope, secondary_type& secondary, uint64_t& primary )const {
+         return db_idx_find_secondary( code, scope, IndexName, secondary, primary );
       }
-      int upper_bound( const secondary_type& second, uint64_t& primary )const {
-         return 0;
+
+      int lower_bound( uint64_t code, uint64_t scope, secondary_type& secondary, uint64_t& primary )const {
+         return db_idx_lowerbound( code, scope, IndexName, secondary, primary );
+      }
+      int upper_bound( uint64_t code, uint64_t scope, secondary_type& secondary, uint64_t& primary )const {
+         return db_idx_upperbound( code, scope, IndexName, secondary, primary );
       }
 };
 
@@ -275,9 +301,12 @@ class multi_index
 
             const_iterator end()const { return const_iterator( *this ); }
             const_iterator begin()const { return const_iterator( *this, nullptr ); }
-            const_iterator lower_bound( const typename IndexType::secondary_type& secondary ) {
+            const_iterator lower_bound( typename IndexType::secondary_type&& secondary ) {
+               return lower_bound( secondary );
+            }
+            const_iterator lower_bound( typename IndexType::secondary_type& secondary ) {
                uint64_t primary = 0;
-               auto itr = _idx.lower_bound( secondary, primary );
+               auto itr = _idx.lower_bound( _multidx._code, _multidx._scope, secondary, primary );
                if( itr == -1 ) return end();
 
                const T& obj = *_multidx.find( primary );
@@ -409,7 +438,7 @@ class multi_index
                auto indexitr = mutableitem.__iters[idx.index_number];
 
                if( indexitr == -1 )
-                  indexitr = mutableitem.__iters[idx.index_number] = idx.find_primary( pk );
+                  indexitr = mutableitem.__iters[idx.index_number] = idx.find_primary( _code, _scope, pk, secondary );
 
                idx.update( indexitr, payer, secondary );
             }
@@ -439,7 +468,8 @@ class multi_index
          boost::hana::for_each( _indicies, [&]( auto& idx ) {
             auto i = objitem.__iters[idx.index_number];
             if( i == -1 ) {
-              i = idx.find_primary( objitem.primary_key() );
+              typename std::decay<decltype(idx)>::type::secondary_type second;
+              i = idx.find_primary( _code, _scope, objitem.primary_key(), second );
             }
             if( i != -1 )
               idx.remove( i );

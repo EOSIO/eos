@@ -134,7 +134,7 @@ class apply_context {
                });
             }
 
-            int find_secondary( uint64_t code, uint64_t scope, uint64_t table, const secondary_key_type& secondary, uint64_t& primary ) {
+            int find_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_type& secondary, uint64_t& primary ) {
                auto tab = context.find_table( context.receiver, scope, table );
                if( !tab ) return -1;
 
@@ -142,12 +142,13 @@ class apply_context {
                if( !obj ) return -1;
 
                primary = obj->primary_key;
+               secondary = obj->secondary_key;
 
                itr_cache.cache_table( *tab );
                return itr_cache.add( *obj );
             }
 
-            int lowerbound_secondary( uint64_t code, uint64_t scope, uint64_t table, const secondary_key_type& secondary, uint64_t& primary ) {
+            int lowerbound_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_type& secondary, uint64_t& primary ) {
                auto tab = context.find_table( context.receiver, scope, table );
                if( !tab ) return -1;
 
@@ -157,12 +158,13 @@ class apply_context {
                if( itr->t_id != tab->id ) return -1;
 
                primary = itr->primary_key;
+               secondary = itr->secondary_key;
 
                itr_cache.cache_table( *tab );
                return itr_cache.add( *itr );
             }
 
-            int upperbound_secondary( uint64_t code, uint64_t scope, uint64_t table, const secondary_key_type& secondary, uint64_t& primary ) {
+            int upperbound_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_type& secondary, uint64_t& primary ) {
                auto tab = context.find_table( context.receiver, scope, table );
                if( !tab ) return -1;
 
@@ -172,6 +174,7 @@ class apply_context {
                if( itr->t_id != tab->id ) return -1;
 
                primary = itr->primary_key;
+               secondary = itr->secondary_key;
 
                itr_cache.cache_table( *tab );
                return itr_cache.add( *itr );
