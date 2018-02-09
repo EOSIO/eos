@@ -6,17 +6,13 @@
 
 // include entire libc
 #include <alloca.h>
-#include <ar.h>
 #include <assert.h>
 #include <byteswap.h>
-#include <cpio.h>
 #include <crypt.h>
 #include <ctype.h>
-#include <elf.h>
 #include <endian.h>
 #include <errno.h>
 #include <features.h>
-#include <fnmatch.h>
 #include <inttypes.h>
 #include <iso646.h>
 #include <limits.h>
@@ -25,8 +21,6 @@
 #include <math.h>
 #include <memory.h>
 #include <monetary.h>
-#include <mqueue.h>
-#include <regex.h>
 #include <search.h>
 #include <stdalign.h>
 #include <stdarg.h>
@@ -39,9 +33,6 @@
 #include <stdnoreturn.h>
 #include <string.h>
 #include <strings.h>
-#include <stropts.h>
-#include <sysexits.h>
-#include <tar.h>
 #include <uchar.h>
 #include <unistd.h>
 #include <values.h>
