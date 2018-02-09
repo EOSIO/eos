@@ -75,6 +75,12 @@
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 			;;
+			"Amazon Linux AMI")
+				FILE=${WORK_DIR}/scripts/eosio_build_amazon.sh
+				CMAKE=${HOME}/opt/cmake/bin/cmake
+				CXX_COMPILER=g++
+				C_COMPILER=gcc
+			;;
 			*)
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
 				exit 1
