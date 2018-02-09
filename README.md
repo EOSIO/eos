@@ -12,6 +12,12 @@ developing applications (smart contracts).
 
 The public testnet described in the [wiki](https://github.com/EOSIO/eos/wiki/Testnet%3A%20Public) is running the `dawn-2.x` branch.  The `master` branch is no longer compatible with the public testnet.  Instructions are provided below for building either option.
 
+### Supported Operating Systems
+EOS.IO currently supports the following operating systems:  
+1. Ubuntu 16.04 and higher (Ubuntu 16.10 recommended).  
+2. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
+3. Fedora 25 and higher (Fedora 27 recommended).  
+
 # Resources
 1. [EOS.IO Website](https://eos.io)
 2. [Documentation](https://eosio.github.io/eos/)
@@ -81,7 +87,7 @@ Choose whether you will be building for a local testnet or for the public testne
 We strongly recommend following the instructions for building the public testnet version for [Ubuntu](#autoubuntupublic) or [Mac OS X](#automacpublic). `master` is in pieces on the garage floor while we rebuild this hotrod. This notice will be removed when `master` is usable again. Your patience is appreciated.
 
 <a name="autoubuntulocal"></a>
-#### Clean install Linux (Ubuntu & Fedora) for a local testnet :no_entry:
+#### Clean install Linux (Ubuntu & Fedora) for a local testnet
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
@@ -106,7 +112,7 @@ git checkout dawn-2.x
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
 
 <a name="automaclocal"></a>
-#### MacOS for a local testnet :no_entry:
+#### MacOS for a local testnet
 
 Before running the script make sure you have installed/updated XCode. Note: The build script
 will install homebrew if it is not already installed on you system. [Homebrew Website](https://brew.sh)
@@ -758,11 +764,11 @@ cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DL
 make -j$( nproc ) install
 ```
 
-Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
-
 Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
 
 ```bash
 echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
 echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
 source ~/.bash_profile
+
+Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
