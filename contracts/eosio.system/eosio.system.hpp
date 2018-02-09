@@ -17,7 +17,7 @@ namespace eosiosystem {
    template<account_name SystemAccount>
    class contract {
       public:
-         static const account_name system_account = N(eosio);
+         static const account_name system_account = SystemAccount;
          typedef eosio::generic_currency< eosio::token<system_account,S(4,EOS)> > currency;
 
          struct total_bandwidth {
@@ -77,9 +77,10 @@ namespace eosiosystem {
          };
 
          ACTION( SystemAccount, nonce ) {
+            account_name                    from;
             eosio::string                   value;
 
-            EOSLIB_SERIALIZE( nonce, (value) );
+            EOSLIB_SERIALIZE( nonce, (from)(value) );
          };
 
       static void on( const delnetbw& del ) {
@@ -103,7 +104,7 @@ namespace eosiosystem {
          static void apply( account_name code, action_name act ) {
             if( !eosio::dispatch<contract, regproducer, regproxy, nonce>( code, act) ) {
                if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
-                  eosio::print("Unexpected action: ", act, "\n");
+                  eosio::print("Unexpected action: ", eosio::name(act), "\n");
                   eos_assert( false, "received unexpected action");
                }
             }
