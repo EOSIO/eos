@@ -11,6 +11,15 @@
 
 namespace eosio { namespace chain { namespace contracts {
 
+   enum table_key_type {
+     type_unassigned,
+     type_i64,
+     type_str,
+     type_i128i128,
+     type_i64i64,
+     type_i64i64i64
+   };
+
    /**
     * @brief The table_id_object class tracks the mapping of (scope, code, table) to an opaque identifier
     */
@@ -22,6 +31,7 @@ namespace eosio { namespace chain { namespace contracts {
       scope_name     scope;
       table_name     table;
       uint32_t       count = 0; /// the number of elements in the table
+      table_key_type key_type = type_unassigned;
    };
 
    struct by_code_scope_table;
@@ -344,7 +354,7 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key64x64x64_value_object, eosi
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index64_object, eosio::chain::contracts::index64_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index128_object, eosio::chain::contracts::index128_index)
 
-FC_REFLECT(eosio::chain::contracts::table_id_object, (id)(code)(scope)(table) )
+FC_REFLECT(eosio::chain::contracts::table_id_object, (id)(code)(scope)(table)(key_type) )
 FC_REFLECT(eosio::chain::contracts::key_value_object, (id)(t_id)(primary_key)(value)(payer) )
 FC_REFLECT(eosio::chain::contracts::keystr_value_object, (id)(t_id)(primary_key)(value)(payer) )
 FC_REFLECT(eosio::chain::contracts::key128x128_value_object, (id)(t_id)(primary_key)(secondary_key)(value)(payer) )

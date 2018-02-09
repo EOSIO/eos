@@ -220,7 +220,6 @@ namespace eosio { namespace chain {
 
                try {
                   Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
-                  #warning TODO: restore checktime injection?
                   WASM::serializeWithInjection(stream, *module);
                   validate_eosio_wasm_constraints(*module);
 
@@ -371,7 +370,6 @@ namespace eosio { namespace chain {
       FC_ASSERT( getFunctionType(call)->parameters.size() == args.size() );
 
       auto context_guard = scoped_context(current_context, code, context);
-      context.checktime_start();
       runInstanceStartFunc(code.instance);
       Runtime::invokeFunction(call,args);
    } catch( const Runtime::Exception& e ) {
@@ -516,8 +514,8 @@ class checktime_api : public context_aware_api {
 public:
    using context_aware_api::context_aware_api;
 
-   void checktime() {
-      context.checktime();
+   void checktime(uint32_t instruction_count) {
+      context.checktime(instruction_count);
    }
 };
 
@@ -994,7 +992,7 @@ REGISTER_INTRINSICS(privileged_api,
 );
 
 REGISTER_INTRINSICS(checktime_api,
-   (checktime,      void())
+   (checktime,      void(int))
 );
 
 REGISTER_INTRINSICS(producer_api,

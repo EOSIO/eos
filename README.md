@@ -96,7 +96,7 @@ git clone https://github.com/eosio/eos --recursive
 
 cd eos
 git checkout dawn-2.x
-./eosio-build.sh ubuntu
+./build.sh ubuntu
 ```
 
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
@@ -139,7 +139,7 @@ git clone https://github.com/eosio/eos --recursive
 
 cd eos
 git checkout dawn-2.x
-./eosio-build.sh darwin
+./build.sh darwin
 ```
 
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)

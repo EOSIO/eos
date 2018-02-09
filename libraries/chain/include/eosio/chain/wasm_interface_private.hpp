@@ -89,7 +89,7 @@ struct array_ptr {
 
    static T* validated_ptr (wasm_interface& wasm, U32 ptr, size_t length) {
       auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
-      if(!mem || ptr + length >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
+      if(!mem || ptr + length > IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
          Runtime::causeException(Exception::Cause::accessViolation);
 
       return (T*)(getMemoryBaseAddress(mem) + ptr);

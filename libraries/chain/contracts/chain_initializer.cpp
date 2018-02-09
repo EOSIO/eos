@@ -8,10 +8,6 @@
 
 #include <eosio/chain/producer_object.hpp>
 #include <eosio/chain/permission_object.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
-
-#include <eosio.system/eosio.system.wast.hpp>
-#include <eosio.system/eosio.system.abi.hpp>
 
 #include <fc/io/json.hpp>
 
@@ -155,12 +151,6 @@ abi_def chain_initializer::eos_contract_abi()
    });
 
    // DATABASE RECORDS
-   eos_abi.structs.emplace_back( struct_def {
-      "account", "", {
-         {"key",     "name"},
-         {"balance", "uint64"},
-      }
-   });
 
    eos_abi.structs.emplace_back( struct_def {
       "pending_recovery", "", {
@@ -169,15 +159,6 @@ abi_def chain_initializer::eos_contract_abi()
          {"update",     "updateauth"},
          {"memo",       "string"}
       }
-   });
-
-   eos_abi.tables.emplace_back( table_def {
-      "currency", "i64", {
-         "key"
-      }, {
-         "name"
-      },
-      "account"
    });
 
    eos_abi.tables.emplace_back( table_def {
@@ -193,14 +174,8 @@ abi_def chain_initializer::eos_contract_abi()
    return eos_abi;
 }
 
-// forward declared method from eosio contract
-void intialize_eosio_tokens(chainbase::database& db, const account_name& system_account, share_type initial_tokens);
-
-
-std::vector<action> chain_initializer::prepare_database( chain_controller& chain,
+void chain_initializer::prepare_database( chain_controller& chain,
                                                          chainbase::database& db) {
-   std::vector<action> messages_to_process;
-
    /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    auto create_native_account = [this, &db](account_name name) {
       db.create<account_object>([this, &name](account_object& a) {
@@ -239,40 +214,6 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
    };
    create_native_account(config::system_account_name);
 
-   // Queue up messages which will run contracts to create the initial accounts
-   auto init_eosio_sytem = genesis_state_type::initial_account_type(name(config::eosio_system_account_name).to_string(), 0, 0, genesis.eosio_system_key, genesis.eosio_system_key);
-   genesis.initial_accounts.emplace_back(move(init_eosio_sytem));
-
-   for (const auto& acct : genesis.initial_accounts) {
-      action message( {{config::system_account_name, config::active_name}},
-                      newaccount{ config::system_account_name, acct.name,
-                                                             authority(acct.owner_key),
-                                                             authority(acct.active_key),
-                                                             authority(acct.owner_key)
-                                                             });
-
-      messages_to_process.emplace_back(move(message));
-   }
-
-   // Create initial contracts eosio.system
-   auto wasm = wast_to_wasm(eosio_system_wast);
-   action eosio_system_setcode({{config::eosio_system_account_name, config::active_name}},
-                               contracts::setcode{
-                                     .account    = config::eosio_system_account_name,
-                                     .vmtype     = 0,
-                                     .vmversion  = 0,
-                                     .code       = bytes(wasm.begin(), wasm.end())
-                               });
-   auto abi = fc::json::from_string(eosio_system_abi).template as<contracts::abi_def>();
-   action eosio_system_setabi({{config::eosio_system_account_name, config::active_name}},
-                              contracts::setabi{
-                                    .account    = config::eosio_system_account_name,
-                                    .abi        = abi
-                              });
-   messages_to_process.emplace_back(move(eosio_system_setcode));
-   messages_to_process.emplace_back(move(eosio_system_setabi));
-
-
    // Create special accounts
    auto create_special_account = [this, &db](account_name name, const auto& owner, const auto& active) {
       db.create<account_object>([this, &name](account_object& a) {
@@ -299,8 +240,6 @@ std::vector<action> chain_initializer::prepare_database( chain_controller& chain
 
    create_special_account(config::nobody_account_name, empty_authority, empty_authority);
    create_special_account(config::producers_account_name, empty_authority, active_producers_authority);
-
-   return messages_to_process;
 }
 
 } } } // namespace eosio::chain::contracts

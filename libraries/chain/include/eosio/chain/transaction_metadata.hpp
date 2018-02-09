@@ -61,6 +61,9 @@ class transaction_metadata {
          }
       }
 
+      // limits
+      optional<time_point>                  processing_deadline;
+
       static digest_type calculate_transaction_merkle_root( const vector<transaction_metadata>& metas );
    private:
       const transaction* _trx;

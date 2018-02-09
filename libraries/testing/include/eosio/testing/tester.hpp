@@ -1,6 +1,7 @@
 #pragma once
 #include <eosio/chain/chain_controller.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <eosio/chain/contracts/abi_serializer.hpp>
 
 #include <iostream>
 
@@ -17,11 +18,11 @@ namespace eosio { namespace testing {
       public:
          typedef string action_result;
 
-         tester(bool process_genesis = true);
+         tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits(), bool process_genesis = true);
 
          void              close();
          void              open();
-         void              create_init_accounts();
+         void              push_genesis_block();
 
          signed_block      produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) );
          void              produce_blocks( uint32_t n = 1 );
@@ -31,20 +32,20 @@ namespace eosio { namespace testing {
          action_result      push_action(action&& cert_act, uint64_t authorizer);
          void              set_tapos( signed_transaction& trx ) const;
 
-         void              create_accounts( vector<account_name> names, asset init_bal, bool multisig = false ) {
-            for( auto n : names ) create_account(n, init_bal, N(inita), multisig );
+         void              create_accounts( vector<account_name> names, bool multisig = false ) {
+            for( auto n : names ) create_account(n, config::system_account_name, multisig );
          }
 
 
          void set_authority( account_name account, permission_name perm, authority auth,
                                      permission_name parent = config::owner_name );
 
-         void              create_account( account_name name, asset initial_balance = asset(), account_name creator = N(inita), bool multisig = false );
-         void              create_account( account_name name, string balance = "0.0000 EOS", account_name creator = N(inita), bool multisig = false );
+         void              create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
 
-         transaction_trace push_nonce( account_name from, const string& role, const string& v = "blah" );
-         transaction_trace transfer( account_name from, account_name to, asset amount, string memo = "", account_name currency = config::eosio_system_account_name );
-         transaction_trace transfer( account_name from, account_name to, string amount, string memo = "", account_name currency = config::eosio_system_account_name );
+         transaction_trace push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys );
+         transaction_trace push_nonce( account_name from, const string& v = "blah" );
+         transaction_trace transfer( account_name from, account_name to, asset amount, string memo, account_name currency );
+         transaction_trace transfer( account_name from, account_name to, string amount, string memo, account_name currency );
 
          template<typename ObjectType, typename IndexBy, typename... Args>
          const auto& get( Args&&... args ) {
@@ -63,8 +64,6 @@ namespace eosio { namespace testing {
          bool                          chain_has_transaction( const transaction_id_type& txid ) const;
          const transaction_receipt&    get_transaction_receipt( const transaction_id_type& txid ) const;
 
-         share_type                    get_balance( const account_name& account ) const;
-
          asset                         get_currency_balance( const account_name& contract,
                                                              const symbol&       asset_symbol,
                                                              const account_name& account ) const;
@@ -81,7 +80,21 @@ namespace eosio { namespace testing {
 
         static action_result error(const string& msg) { return msg; }
 
-      private:
+        auto get_resolver() {
+           return [this](const account_name &name) -> optional<contracts::abi_serializer> {
+              try {
+                 const auto &accnt = control->get_database().get<account_object, by_name>(name);
+                 contracts::abi_def abi;
+                 if (contracts::abi_serializer::to_abi(accnt.name, accnt.abi, abi)) {
+                    return contracts::abi_serializer(abi);
+                 }
+                 return optional<contracts::abi_serializer>();
+              } FC_RETHROW_EXCEPTIONS(error, "Failed to find or parse ABI for ${name}", ("name", name))
+           };
+        }
+
+
+   private:
          fc::temp_directory                            tempdir;
          chain_controller::controller_config           cfg;
 

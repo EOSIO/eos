@@ -46,9 +46,8 @@ public:
    fc::optional<chain_controller::controller_config> chain_config = chain_controller::controller_config();
    fc::optional<chain_controller>   chain;
    chain_id_type                    chain_id;
-   uint32_t                         rcvd_block_txn_execution_time;
-   uint32_t                         txn_execution_time;
-   uint32_t                         create_block_txn_execution_time;
+   uint32_t                         max_reversible_block_time_ms;
+   uint32_t                         max_pending_transaction_time_ms;
    //txn_msg_rate_limits              rate_limits;
 };
 
@@ -66,12 +65,10 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the block log (absolute path or relative to application data dir)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("rcvd-block-trans-execution-time", bpo::value<uint32_t>()->default_value(chain_controller::default_received_block_transaction_execution_time_ms),
-          "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute from a received block.")
-         ("trans-execution-time", bpo::value<uint32_t>()->default_value(chain_controller::default_transaction_execution_time_ms),
-          "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute.")
-         ("create-block-trans-execution-time", bpo::value<uint32_t>()->default_value(chain_controller::default_create_block_transaction_execution_time_ms),
-          "Limits the maximum time (in milliseconds) that is allowed a transaction's code to execute while creating a block.")
+         ("max-reversible-block-time", bpo::value<int32_t>()->default_value(-1),
+          "Limits the maximum time (in milliseconds) that a reversible block is allowed to run before being considered invalid")
+         ("max-pending-transaction-time", bpo::value<int32_t>()->default_value(-1),
+          "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
 #warning TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
           "The time frame, in seconds, that the per-authorized-account-transaction-msg-rate-limit is imposed over.")
@@ -157,9 +154,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
    }
 
-   my->rcvd_block_txn_execution_time = options.at("rcvd-block-trans-execution-time").as<uint32_t>() * 1000;
-   my->txn_execution_time = options.at("trans-execution-time").as<uint32_t>() * 1000;
-   my->create_block_txn_execution_time = options.at("create-block-trans-execution-time").as<uint32_t>() * 1000;
+   my->max_reversible_block_time_ms = options.at("max-reversible-block-time").as<int32_t>();
+   my->max_pending_transaction_time_ms = options.at("max-pending-transaction-time").as<int32_t>();
 
 #warning TODO: Rate Limits
    /*my->rate_limits.per_auth_account_time_frame_sec = fc::time_point_sec(options.at("per-authorized-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
@@ -180,6 +176,14 @@ void chain_plugin::plugin_startup()
    my->chain_config->genesis = fc::json::from_file(my->genesis_file).as<contracts::genesis_state_type>();
    if (my->genesis_timestamp.sec_since_epoch() > 0) {
       my->chain_config->genesis.initial_timestamp = my->genesis_timestamp;
+   }
+
+   if (my->max_reversible_block_time_ms > 0) {
+      my->chain_config->limits.max_push_block_us = fc::milliseconds(my->max_reversible_block_time_ms);
+   }
+
+   if (my->max_pending_transaction_time_ms > 0) {
+      my->chain_config->limits.max_push_transaction_us = fc::milliseconds(my->max_pending_transaction_time_ms);
    }
 
    my->chain.emplace(*my->chain_config);
@@ -280,7 +284,7 @@ abi_def get_abi( const chain_controller& db, const name& account ) {
    const auto& code_accnt  = d.get<account_object,by_name>( account );
 
    abi_def abi;
-   abi_serializer::to_abi(code_accnt.abi, abi);
+   abi_serializer::to_abi(code_accnt.name, code_accnt.abi, abi);
    return abi;
 }
 
@@ -379,7 +383,7 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
       const auto* accnt  = db.get_database().find<account_object,by_name>( name );
       if (accnt != nullptr) {
          abi_def abi;
-         if (abi_serializer::to_abi(accnt->abi, abi)) {
+         if (abi_serializer::to_abi(accnt->name, accnt->abi, abi)) {
             return abi_serializer(abi);
          }
       }
@@ -423,7 +427,7 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    }
 
    abi_def abi;
-   if( abi_serializer::to_abi(accnt.abi, abi) ) {
+   if( abi_serializer::to_abi(accnt.name, accnt.abi, abi) ) {
       result.abi = std::move(abi);
    }
 
@@ -465,7 +469,7 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
    abi_json_to_bin_result result;
    const auto& code_account = db.get_database().get<account_object,by_name>( params.code );
    abi_def abi;
-   if( abi_serializer::to_abi(code_account.abi, abi) ) {
+   if( abi_serializer::to_abi(code_account.name, code_account.abi, abi) ) {
       abi_serializer abis( abi );
       result.binargs = abis.variant_to_binary( abis.get_action_type( params.action ), params.args );
    }
@@ -476,7 +480,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
    abi_bin_to_json_result result;
    const auto& code_account = db.get_database().get<account_object,by_name>( params.code );
    abi_def abi;
-   if( abi_serializer::to_abi(code_account.abi, abi) ) {
+   if( abi_serializer::to_abi(code_account.name, code_account.abi, abi) ) {
       abi_serializer abis( abi );
       result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs );
    }
