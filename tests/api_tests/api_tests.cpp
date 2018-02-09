@@ -27,6 +27,7 @@
 //#include <eos/utilities/tempdir.hpp>
 
 #include <fc/crypto/digest.hpp>
+#include <fc/crypto/sha256.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
 
@@ -63,6 +64,8 @@ struct test_api_action {
 		return action_name(NAME);
 	}
 };
+
+public_key_type CALL_TEST_FUNC_PUB_KEY;
 
 FC_REFLECT_TEMPLATE((uint64_t T), test_api_action<T>, BOOST_PP_SEQ_NIL);
 
@@ -128,7 +131,9 @@ void CallFunction(tester& test, T ac, const vector<char>& data, const vector<acc
       trx.actions.push_back(act);
 
 		test.set_tapos(trx);
-		trx.sign(test.get_private_key(scope[0], "active"), chain_id_type());
+		auto sigs = trx.sign(test.get_private_key(scope[0], "active"), chain_id_type());
+      fc::flat_set<public_key_type> keys = trx.get_signature_keys(chain_id_type() );
+      CALL_TEST_FUNC_PUB_KEY = *(keys.begin());
 		auto res = test.push_transaction(trx);
 		BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
 		test.produce_block();
@@ -499,7 +504,8 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
    // this is a bit rough, but I couldn't figure out a better way to compare the hashes
    CAPTURE( cerr, CALL_TEST_FUNCTION( *this, "test_transaction", "test_read_transaction", {} ) );
    BOOST_CHECK_EQUAL( capture.size(), 7 );
-	BOOST_CHECK_EQUAL(capture[3] == string("397038167369840490149603063590195796751189838240299566290311734324271874205372"), true);
+   string sha_expect = "6af759101c9082051b2961d45eaf9dcf37b05054c18b1fa5bc664e10c1b1d8a200";
+	BOOST_CHECK_EQUAL(capture[3] == sha_expect, true);
 
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_num", fc::raw::pack(control->head_block_num()) ); 
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_prefix", fc::raw::pack(control->head_block_id()._hash[1]) ); 
@@ -626,10 +632,35 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, tester) { try {
    produce_blocks(1000);
    set_code(N(testapi), test_api_wast);
    produce_blocks(1000);
+	{
+		signed_transaction trx;
 
+      auto pl = vector<permission_level>{{N(testapi), config::active_name}};
+
+      action act(pl, test_api_action<TEST_METHOD("test_crypto", "test_recovery_key")>{});
+		auto signatures = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
+
+		produce_block();
+
+      std::vector<char> payload = fc::raw::pack( signatures );
+      auto act_hash = fc::sha256::hash( (char*)&act, sizeof(act));
+      auto pk = get_public_key(N(testapi), "active");
+
+      auto pk_ = fc::crypto::public_key(signatures, act_hash, false);
+      BOOST_TEST_MESSAGE( "PUB " << fc::to_hex((char*)&pk, sizeof(pk)) << "\n");
+      BOOST_TEST_MESSAGE( "PUB " << fc::to_hex((char*)&pk_, sizeof(pk_)) << "\n");
+      CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key", payload);
+	}
+
+
+   CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha1", {} );
    CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha256", {} );
+   CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha512", {} );
+   CALL_TEST_FUNCTION( *this, "test_crypto", "test_ripemd160", {} );
+   CALL_TEST_FUNCTION( *this, "test_crypto", "sha1_no_data", {} );
    CALL_TEST_FUNCTION( *this, "test_crypto", "sha256_no_data", {} );
-   CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key", {} );
+   CALL_TEST_FUNCTION( *this, "test_crypto", "sha512_no_data", {} );
+   CALL_TEST_FUNCTION( *this, "test_crypto", "ripemd160_no_data", {} );
 
    // TODO need a way to represent nullptr 
 #if 0
@@ -647,6 +678,38 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, tester) { try {
       );
 
    CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha256_true", {} );
+
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha1_false", {} ), fc::assert_exception,
+         [](const fc::assert_exception& e) {
+            return expect_assert_message(e, "hash miss match");
+         }
+      );
+
+   CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha1_true", {} );
+
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha1_false", {} ), fc::assert_exception,
+         [](const fc::assert_exception& e) {
+            return expect_assert_message(e, "hash miss match");
+         }
+      );
+
+   CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha1_true", {} );
+
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha512_false", {} ), fc::assert_exception,
+         [](const fc::assert_exception& e) {
+            return expect_assert_message(e, "hash miss match");
+         }
+      );
+
+   CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha512_true", {} );
+
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_crypto", "assert_ripemd160_false", {} ), fc::assert_exception,
+         [](const fc::assert_exception& e) {
+            return expect_assert_message(e, "hash miss match");
+         }
+      );
+
+   CALL_TEST_FUNCTION( *this, "test_crypto", "assert_ripemd160_true", {} );
 
 } FC_LOG_AND_RETHROW() }
 

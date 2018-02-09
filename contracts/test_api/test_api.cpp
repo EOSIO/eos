@@ -79,11 +79,23 @@ extern "C" {
 
       //test crypto
       WASM_TEST_HANDLER(test_crypto, test_recover_key);
+      WASM_TEST_HANDLER(test_crypto, test_sha1);
       WASM_TEST_HANDLER(test_crypto, test_sha256);
+      WASM_TEST_HANDLER(test_crypto, test_sha512);
+      WASM_TEST_HANDLER(test_crypto, test_ripemd160);
+      WASM_TEST_HANDLER(test_crypto, sha1_no_data);
       WASM_TEST_HANDLER(test_crypto, sha256_no_data);
+      WASM_TEST_HANDLER(test_crypto, sha512_no_data);
+      WASM_TEST_HANDLER(test_crypto, ripemd160_no_data);
       WASM_TEST_HANDLER(test_crypto, sha256_null);
       WASM_TEST_HANDLER(test_crypto, assert_sha256_false);
       WASM_TEST_HANDLER(test_crypto, assert_sha256_true);
+      WASM_TEST_HANDLER(test_crypto, assert_sha1_false);
+      WASM_TEST_HANDLER(test_crypto, assert_sha1_true);
+      WASM_TEST_HANDLER(test_crypto, assert_sha512_false);
+      WASM_TEST_HANDLER(test_crypto, assert_sha512_true);
+      WASM_TEST_HANDLER(test_crypto, assert_ripemd160_false);
+      WASM_TEST_HANDLER(test_crypto, assert_ripemd160_true);
 
       //test transaction
       WASM_TEST_HANDLER(test_transaction, test_tapos_block_num);

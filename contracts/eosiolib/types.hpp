@@ -104,4 +104,10 @@ namespace  eosio {
    struct true_type  { enum _value { value = 1 }; };
    struct false_type { enum _value { value = 0 }; };
 
+   template < uint16_t digest_size >
+   struct checksum : checksum_base {
+      static_assert( digest_size % 8 == 0, "checksum template argument must be divisible by 8" );
+      uint8_t hash[(digest_size/8)-1];
+   };
+
 } // namespace eos

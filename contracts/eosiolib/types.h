@@ -6,6 +6,10 @@
 
 #include <stdint.h>
 #include <wchar.h>
+/*
+struct checksum_base {
+};
+*/
 
 extern "C" {
 
@@ -43,8 +47,8 @@ struct signature {
    uint8_t data[65];
 };
 
-struct checksum {
-   uint64_t hash[4];
+struct checksum_base {
+   uint8_t hash[1];
 };
 
 struct fixed_string16 {

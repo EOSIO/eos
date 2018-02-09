@@ -591,6 +591,22 @@ class crypto_api : public context_aware_api {
          FC_ASSERT( result == hash_val, "hash miss match" );
       }
 
+      void eos_assert_sha1(array_ptr<char> data, size_t datalen, const fc::sha1& hash_val) {
+         auto result = fc::sha1::hash( data, datalen );
+         FC_ASSERT( result == hash_val, "hash miss match" );
+      }
+
+      void eos_assert_sha512(array_ptr<char> data, size_t datalen, const fc::sha512& hash_val) {
+         auto result = fc::sha512::hash( data, datalen );
+         FC_ASSERT( result == hash_val, "hash miss match" );
+      }
+
+      void eos_assert_ripemd160(array_ptr<char> data, size_t datalen, const fc::ripemd160& hash_val) {
+         auto result = fc::ripemd160::hash( data, datalen );
+         FC_ASSERT( result == hash_val, "hash miss match" );
+      }
+
+
       void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
          hash_val = fc::sha1::hash( data, datalen );
       }
@@ -1343,6 +1359,9 @@ REGISTER_INTRINSICS(crypto_api,
    (assert_recover_key,  void(int, int, int, int, int))
    (recover_key,         int(int, int, int, int, int))
    (eos_assert_sha256,   void(int, int, int))
+   (eos_assert_sha1,   void(int, int, int))
+   (eos_assert_sha512,   void(int, int, int))
+   (eos_assert_ripemd160,   void(int, int, int))
    (sha1,                void(int, int, int))
    (sha256,              void(int, int, int))
    (sha512,              void(int, int, int))

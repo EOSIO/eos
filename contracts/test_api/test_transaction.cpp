@@ -136,12 +136,12 @@ void test_transaction::test_tapos_block_num() {
 
 
 void test_transaction::test_read_transaction() {
-   checksum h;
+   checksum<256> h;
    transaction t;
    char* p = (char*)&t;
    uint64_t read = read_transaction( (char*)&t, sizeof(t) );
    sha256(p, read, &h);
-   eosio::print_f( "%%%%", h.hash[0], h.hash[1], h.hash[2], h.hash[3] );
+   printhex( &h, sizeof(h) );
 }
 
 void test_transaction::test_transaction_size() {

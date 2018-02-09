@@ -126,11 +126,23 @@ struct test_db {
 
 struct test_crypto {
    static void test_recover_key();
+   static void test_sha1();
    static void test_sha256();
+   static void test_sha512();
+   static void test_ripemd160();
+   static void sha1_no_data();
    static void sha256_no_data();
+   static void sha512_no_data();
+   static void ripemd160_no_data();
    static void sha256_null();
    static void assert_sha256_false();
+   static void assert_sha1_false();
+   static void assert_sha512_false();
+   static void assert_ripemd160_false();
    static void assert_sha256_true();
+   static void assert_sha1_true();
+   static void assert_sha512_true();
+   static void assert_ripemd160_true();
 };
 
 struct test_transaction {
