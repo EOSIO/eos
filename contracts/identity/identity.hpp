@@ -5,15 +5,14 @@
 #include <eosiolib/singleton.hpp>
 #include <eosiolib/table.hpp>
 #include <eosiolib/vector.hpp>
-#include <eosiolib/string.hpp>
 
 namespace identity {
    using eosio::action_meta;
    using eosio::table_i64i64i64;
    using eosio::table64;
    using eosio::singleton;
-   using eosio::string;
-   using eosio::vector;
+   using std::string;
+   using std::vector;
 
    /**
     *  This contract maintains a graph database of certified statements about an
@@ -331,7 +330,7 @@ namespace identity {
                   row.trusted    = is_trusted( cert.certifier );
                   row.certifier  = cert.certifier;
                   row.confidence = value.confidence;
-                  eos_assert(value.type.get_size() <= 32, "certrow::type should be not longer than 32 bytes");
+                  eos_assert(value.type.size() <= 32, "certrow::type should be not longer than 32 bytes");
                   row.type       = value.type;
                   row.data       = value.data;
 

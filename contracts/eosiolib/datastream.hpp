@@ -7,6 +7,7 @@
 #include <eosiolib/memory.h>
 #include <eosiolib/vector.hpp>
 #include <eosiolib/varint.hpp>
+#include <string>
 
 
 namespace eosio {
@@ -381,6 +382,24 @@ template<typename Stream>
 inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint8_t& d) {
   ds.read((char*)&d, sizeof(d) );
   return ds;
+}
+
+template<typename DataStream>
+DataStream& operator << ( DataStream& ds, const std::string& v ) {
+   ds << unsigned_int( v.size() );
+   for( const auto& i : v )
+      ds << i;
+   return ds;
+}
+
+template<typename DataStream>
+DataStream& operator >> ( DataStream& ds, std::string& v ) {
+   unsigned_int s;
+   ds >> s;
+   v.resize(s.value);
+   for( auto& i : v )
+      ds >> i;
+   return ds;
 }
 
 template<typename DataStream, typename T>

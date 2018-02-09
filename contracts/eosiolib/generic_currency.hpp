@@ -5,9 +5,10 @@
 #include <eosiolib/dispatcher.hpp>
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/action.hpp>
-#include <eosiolib/string.hpp>
+#include <string>
 
 namespace eosio {
+   using std::string;
 
    template<typename Token>
    class generic_currency {
@@ -49,7 +50,7 @@ namespace eosio {
           struct transfer_memo : public transfer {
              transfer_memo(){}
              transfer_memo( account_name f, account_name t, token_type q, string m )
-             :transfer( f, t, q ), memo( move(m) ){}
+             :transfer( f, t, q ), memo( std::move(m) ){}
 
              string       memo;
 

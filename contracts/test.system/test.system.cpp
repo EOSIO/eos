@@ -6,7 +6,6 @@
 #include <eosiolib/action.hpp>
 #include <eosiolib/types.hpp>
 #include <eosiolib/serialize.hpp>
-#include <eosiolib/string.hpp>
 #include <eosiolib/system.h>
 
 using namespace eosio;
@@ -42,7 +41,7 @@ namespace testsystem {
 
    struct producer_key {
       account_name          account;
-      string                public_key;
+      std::string           public_key;
 
       EOSLIB_SERIALIZE( producer_key, (account)(public_key) );
    };

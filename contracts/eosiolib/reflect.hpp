@@ -1,5 +1,4 @@
 #pragma once
-#include <eosiolib/utility.hpp>
 #include <eosiolib/preprocessor/seq/for_each.hpp>
 #include <eosiolib/preprocessor/seq/enum.hpp>
 #include <eosiolib/preprocessor/seq/size.hpp>

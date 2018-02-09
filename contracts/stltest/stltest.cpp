@@ -149,7 +149,6 @@
 */
 //include <eosiolib/eos.hpp>
 #include <eosiolib/token.hpp>
-#include <eosiolib/string.hpp>
 #include <eosiolib/dispatcher.hpp>
 
 using namespace eosio;
