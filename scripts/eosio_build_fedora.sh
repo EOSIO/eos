@@ -54,7 +54,6 @@
 	fi
 	
 	printf "\t${UPDATE}\n"
-# 	DEP_ARRAY=(clang-4.0 lldb-4.0 libclang-4.0-dev cmake make libbz2-dev libssl-dev libgmp3-dev autotools-dev build-essential libicu-dev python-dev autoconf libtool)
 	DEP_ARRAY=( git gcc.x86_64 gcc-c++.x86_64 autoconf automake libtool make cmake.x86_64 bzip2 bzip2-devel.x86_64 openssl-devel.x86_64 gmp.x86_64 gmp-devel.x86_64 libstdc++-devel.x86_64 python3-devel.x86_64 libedit.x86_64 ncurses-devel.x86_64 swig.x86_64 )
 	DCOUNT=0
 	COUNT=1
@@ -193,38 +192,7 @@
 			exit;
 		fi
 		make install
-		rm -rf build
+		rm -rf ${TEMP_DIR}/llvm-compiler 2>/dev/null
 	else
 		printf "\tWASM found at ${HOME}/opt/wasm\n"
 	fi
-	
-	printf "\n\tChecking for LLVM with RTTI support.\n"
-	if [ ! -d ${HOME}/opt/llvm/bin ]; then
-		if [ ! -d ${TEMP_DIR}/llvm-compiler/llvm ]; then
-			cd ${TEMP_DIR}
-			mkdir llvm-compiler  2>/dev/null
-			cd llvm-compiler
-			git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
-			cd llvm/tools
-			git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
-		fi
-		cd ${TEMP_DIR}/llvm-compiler/llvm
-		mkdir build
-		cd build
-		cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/llvm -DCMAKE_BUILD_TYPE=release -DLLVM_ENABLE_RTTI=1 ../
-		if [ $? -ne 0 ]; then
-			printf "\tError compiling LLVM and clang with RTTI support.\n"
-			printf "\tExiting now.\n\n"
-			exit;
-		fi
-		make -j$(nproc)
-		if [ $? -ne 0 ]; then
-			printf "\tError compiling LLVM and clang with RTTI support.\n"
-			printf "\tExiting now.\n\n"
-			exit;
-		fi
-		make install
-	fi
-
-	rm -rf ${TEMP_DIR}/llvm-compiler 2>/dev/null
-	printf "\n\tLLVM with RTTI support found.\n"
