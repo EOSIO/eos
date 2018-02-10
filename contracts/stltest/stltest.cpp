@@ -38,7 +38,6 @@
 #include <values.h>
 #include <wchar.h>
 #include <wctype.h>
-#include <wordexp.h>
 
 //include entire libstdc++
 #include<algorithm>
@@ -193,6 +192,10 @@ namespace stltest {
             }
         };
 
+       static void f(const char* __restrict, ...) {
+          prints("f() called\n");
+       }
+
         static void on(const message& msg) {
            /* manual initialization of global variable
            new(&std::__start_std_streams)std::ios_base::Init;
@@ -208,8 +211,15 @@ namespace stltest {
            prints("\nEOS string: "); prints_l(s2.get_data(), s2.get_size());
            */
            prints("STL test start\n");
+           const char* text = "wrap_write text\n";
+           //vdprintf(stdout, text, strlen(text));
+           printf("Integer\n", 0);
            void* ptr = malloc(10);
            free(ptr);
+           f("abc", 10, 20);
+
+           //auto mptr = new MSTR();
+           //delete mptr;
 
            std::array<uint32_t, 10> arr;
            arr.fill(3);
