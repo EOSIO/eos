@@ -21,11 +21,13 @@ class Utils:
     Debug=False
     FNull = open(os.devnull, 'w')
 
-    EosServerName="eosiod"
     EosClientPath="programs/eosioc/eosioc"
-    EosWalletPath="programs/eosio-walletd/eosio-walletd"
+
+    EosWalletName="eosio-walletd"
+    EosWalletPath="programs/eosio-walletd/"+ EosWalletName
+
     EosServerName="eosiod"
-    EosServerPath="programs/eosiod/%s" % (EosServerName)
+    EosServerPath="programs/eosiod/"+ EosServerName
 
     EosLauncherPath="programs/launcher/launcher"
     MongoPath="mongo"
@@ -55,10 +57,14 @@ class Utils:
     @staticmethod
     def iAmNotNoon():
         Utils.amINoon=False
-        Utils.EosServerName="eosd"
+
         Utils.EosClientPath="programs/eosc/eosc"
-        Utils.EosWalletPath="programs/eos-walletd/eos-walletd"
-        Utils.EosServerPath="programs/eosd/%s" % (Utils.EosServerName)
+
+        Utils.EosWalletName="eos-walletd"
+        Utils.EosWalletPath="programs/eos-walletd/"+ Utils.EosWalletName
+
+        Utils.EosServerName="eosd"
+        Utils.EosServerPath="programs/eosd/"+ Utils.EosServerName
 
     @staticmethod
     def setMongoSyncTime(syncTime):
@@ -79,6 +85,13 @@ class Utils:
 
         return chainSyncStrategies
 
+    @staticmethod
+    def checkOutput(cmd):
+        assert(isinstance(cmd, list))
+        retStr=subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode("utf-8")
+        return retStr
+
+    
 ###########################################################################################
 class Table(object):
     def __init__(self, name):
@@ -128,11 +141,12 @@ class Node(object):
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
 
     def __str__(self):
-        return "Port:%d, Pid:%d, Alive:%s, Cmd:\"%s\"" % (self.port, self.pid, self.alive, self.cmd)
+        #return "Host: %s, Port:%d, Pid:%s, Alive:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.alive, self.cmd)
+        return "Host: %s, Port:%d" % (self.host, self.port)
 
     @staticmethod
     def runCmdReturnJson(cmd, trace=False):
-        retStr=Node.__checkOutput(cmd.split())
+        retStr=Utils.checkOutput(cmd.split())
         jStr=Node.filterJsonObject(retStr)
         trace and Utils.Print ("RAW > %s"% retStr)
         trace and Utils.Print ("JSON> %s"% jStr)
@@ -141,7 +155,7 @@ class Node(object):
 
     @staticmethod
     def __runCmdArrReturnJson(cmdArr, trace=False):
-        retStr=Node.__checkOutput(cmdArr)
+        retStr=Utils.checkOutput(cmdArr)
         jStr=Node.filterJsonObject(retStr)
         trace and Utils.Print ("RAW > %s"% retStr)
         trace and Utils.Print ("JSON> %s"% jStr)
@@ -153,12 +167,6 @@ class Node(object):
         firstIdx=data.find('{')
         lastIdx=data.rfind('}')
         retStr=data[firstIdx:lastIdx+1]
-        return retStr
-
-    @staticmethod
-    def __checkOutput(cmd):
-        retStr=subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode("utf-8")
-        #retStr=subprocess.check_output(cmd).decode("utf-8")
         return retStr
 
 
@@ -272,11 +280,11 @@ class Node(object):
     
  
     def doesNodeHaveBlockNum(self, blockNum):
-        if self.alive is False:
-            return False
+        assert isinstance(blockNum, int)
 
-        block=self.getBlock(blockNum, silentErrors=True)
-        if block is None:
+        info=self.getInfo(silentErrors=True)
+        last_irreversible_block_num=int(info["last_irreversible_block_num"])
+        if blockNum > last_irreversible_block_num:
             return False
         else:
             return True
@@ -378,13 +386,14 @@ class Node(object):
                 
         return None
 
-        
     def doesNodeHaveTransId(self, transId):
         trans=self.getTransaction(transId, silentErrors=True)
-        if trans is not None:
-            return True
-        else:
+        if trans is None:
             return False
+
+        blockNum=int(trans["transaction"]["ref_block_num"])
+        blockNum += 1
+        return self.doesNodeHaveBlockNum(blockNum)
 
     # Create account and return creation transactions. Return transaction json object
     # waitForTransBlock: wait on creation transaction id to appear in a block
@@ -488,11 +497,11 @@ class Node(object):
     def waitForNextBlock(self, timeout=60):
         startTime=time.time()
         remainingTime=timeout
-        num=self.getHeadBlockNum()
+        num=self.getIrreversibleBlockNum()
         Utils.Debug and Utils.Print("Current block number: %s" % (num))
         
         while time.time()-startTime < timeout:
-            nextNum=self.getHeadBlockNum()
+            nextNum=self.getIrreversibleBlockNum()
             if nextNum > num:
                 Utils.Debug and Utils.Print("Next block number: %s" % (nextNum))
                 return True
@@ -624,7 +633,7 @@ class Node(object):
         cmd="%s %s get code %s" % (Utils.EosClientPath, self.endpointArgs, account)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         try:
-            retStr=Node.__checkOutput(cmd.split())
+            retStr=Utils.checkOutput(cmd.split())
             #Utils.Print ("get code> %s"% retStr)
             p=re.compile('code\shash: (\w+)\n', re.MULTILINE)
             m=p.search(retStr)
@@ -726,7 +735,7 @@ class Node(object):
     def pushMessage(self, contract, action, data, opts):
         cmd=None
         if Utils.amINoon:
-            cmd="%s %s push actions %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, action)
+            cmd="%s %s push action %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, action)
         else:
             cmd="%s %s push message %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, action)
         cmdArr=cmd.split()
@@ -805,6 +814,19 @@ class Node(object):
                 blockNum=block["block_num"]
                 return blockNum
         return None
+
+    def getIrreversibleBlockNum(self):
+        if not self.enableMongo:
+            info=self.getInfo()
+            if info is not None:
+                return info["last_irreversible_block_num"]
+        else:
+            block=self.getBlockFromDb(-1)
+            if block is not None:
+                blockNum=block["block_num"]
+                return blockNum
+        return None
+
     
 ###########################################################################################
 
@@ -967,8 +989,9 @@ class WalletMgr(object):
                 shutil.copyfileobj(f, sys.stdout)
     
     def killall(self):
-        if self.__walletPid is not None:
-            os.kill(self.__walletPid, signal.SIGKILL)
+        cmd="pkill %s" % (Utils.EosWalletName)
+        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        subprocess.run(cmd.split())
             
     def cleanup(self):
         dataDir=WalletMgr.__walletDataDir
@@ -991,7 +1014,7 @@ class Cluster(object):
     initbAccount.ownerPrivateKey="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3";
 
     # walletd [True|False] Is walletd running. If not load the wallet plugin
-    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest"):
+    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", initaPrvtKey=initaAccount.ownerPrivateKey, initbPrvtKey=initbAccount.ownerPrivateKey, staging=False):
         self.accounts={}
         self.nodes={}
         self.localCluster=localCluster
@@ -1014,7 +1037,9 @@ class Cluster(object):
         if self.enableMongo:
             self.mongoUri="mongodb://%s:%d/%s" % (mongoHost, mongoPort, mongoDb)
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
-        #self.endpointArgs=""
+        Cluster.initaAccount.ownerPrivateKey=initaPrvtKey
+        Cluster.initbAccount.ownerPrivateKey=initbPrvtKey
+        self.staging=staging
 
     def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
         self.__chainSyncStrategy=self.__chainSyncStrategies.get(chainSyncStrategy)
@@ -1036,6 +1061,8 @@ class Cluster(object):
         cmd="%s -p %s -n %s -s %s -d %s" % (
             Utils.EosLauncherPath, pnodes, total_nodes, topo, delay)
         cmdArr=cmd.split()
+        if self.staging:
+            cmdArr.append("--nogen")
         if not self.walletd or self.enableMongo:
             if Utils.amINoon:
                 cmdArr.append("--eosiod")
@@ -1064,10 +1091,47 @@ class Cluster(object):
         self.nodes=nodes
         return True
 
+    # Initialize the default nodes (at present just the root node)
     def initializeNodes(self):
         node=Node(self.host, self.port, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
+        node.setWalletEndpointArgs(self.walletEndpointArgs)
+        Utils.Debug and Utils.Print("Node:", node)
+
         node.checkPulse()
-        self.node={node}
+        self.nodes=[node]
+        return True
+
+    # Initialize nodes from the Json nodes string
+    def initializeNodesFromJson(self, nodesJsonStr):
+        nodesObj= json.loads(nodesJsonStr)
+        if nodesObj is None:
+            Utils.Print("ERROR: Invalid Json string.")
+            return False
+
+        if "keys" in nodesObj:
+            keysMap=nodesObj["keys"]
+
+            if "initaPrivateKey" in keysMap:
+                initaPrivateKey=keysMap["initaPrivateKey"]
+                Cluster.initaAccount.ownerPrivateKey=initaPrivateKey
+
+            if "initbPrivateKey" in keysMap:
+                initbPrivateKey=keysMap["initbPrivateKey"]
+                Cluster.initbAccount.ownerPrivateKey=initbPrivateKey
+
+        nArr=nodesObj["nodes"]
+        nodes=[]
+        for n in nArr:
+            port=n["port"]
+            host=n["host"]
+            node=Node(host, port)
+            node.setWalletEndpointArgs(self.walletEndpointArgs)
+            Utils.Debug and Utils.Print("Node:", node)
+
+            node.checkPulse()
+            nodes.append(node)
+
+        self.nodes=nodes
         return True
     
     # manually set nodes, alternative to explicit launch
@@ -1198,6 +1262,9 @@ class Cluster(object):
 
     def getNode(self, id=0):
         return self.nodes[0]
+
+    def getNodes(self):
+        return self.nodes
     
     # Spread funds across accounts with transactions spread through cluster nodes.
     #  Validate transactions are synchronized on root node
