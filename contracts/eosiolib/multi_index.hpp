@@ -385,6 +385,18 @@ class multi_index
          return const_iterator( *this, &obj );
       }
 
+      void new_id( uint64_t payer )const {
+        uint64_t val = 1;
+        auto itr = db_find_i64( _code, _scope, TableName+1, 0 );
+        if( itr != -1 ) {
+           auto s = db_get_i64( itr, (char*)&val, sizeof(val) );
+           ++val;
+           db_update_i64( itr, 0, (const char*)&val, sizeof(val) );
+        }
+        else {
+           db_store_i64( _scope, TableName+1, payer, 0, (char*)&val, sizeof(val) );
+        }
+      }
       template<uint64_t IndexName>
       auto get_index()const  {
         const auto& idx = boost::hana::find_if( _indicies, []( auto x ){ 

@@ -8,8 +8,8 @@
 namespace eosio {
   template<typename T>
   struct reflector {
-     typedef false_type is_reflected;
-     typedef false_type is_enum;
+     typedef std::false_type is_reflected;
+     typedef std::false_type is_enum;
   };
 
 } /// eosio
