@@ -185,6 +185,21 @@ namespace fc
       return ss.str();
    }
 
+   /**
+    *   Generates a user-friendly error report.
+    */
+   string exception::top_message( )const
+   {
+      for( auto itr = my->_elog.begin(); itr != my->_elog.end(); ++itr )
+      {
+         auto s = fc::format_string( itr->get_format(), itr->get_data() );
+         if (!s.empty()) {
+            return s;
+         }
+      }
+      return string();
+   }
+
    void NO_RETURN exception_factory::rethrow( const exception& e )const
    {
       auto itr = _registered_exceptions.find( e.code() );

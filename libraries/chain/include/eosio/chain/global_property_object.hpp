@@ -18,6 +18,14 @@
 
 namespace eosio { namespace chain {
 
+   struct blocknum_producer_schedule {
+      blocknum_producer_schedule( allocator<char> a )
+      :second(a){}
+
+      block_num_type                first;
+      shared_producer_schedule_type second;
+   };
+
    /**
     * @class global_property_object
     * @brief Maintains global state information (committee_member list, current fees)
@@ -28,18 +36,19 @@ namespace eosio { namespace chain {
     */
    class global_property_object : public chainbase::object<global_property_object_type, global_property_object>
    {
-      OBJECT_CTOR(global_property_object, (pending_active_producers) )
+      OBJECT_CTOR(global_property_object, (active_producers)(new_active_producers)(pending_active_producers) )
 
       id_type                                                  id;
       chain_config                                             configuration;
-      producer_schedule_type                                   active_producers;
+      shared_producer_schedule_type                            active_producers;
+      shared_producer_schedule_type                            new_active_producers;
 
       /** every block that has change in producer schedule gets inserted into this list, this includes
        * all blocks that see a change in producer signing keys or vote order.
        *
        * TODO: consider moving this to a more effeicent datatype
        */
-      shared_vector< pair<block_num_type, producer_schedule_type> > pending_active_producers;
+      shared_vector< blocknum_producer_schedule > pending_active_producers;
    };
 
 
@@ -63,7 +72,10 @@ namespace eosio { namespace chain {
         time_point           time;
         account_name         current_producer;
 
-        share_type           total_staked_tokens;
+        uint64_t total_net_weight  = 1;
+        uint64_t total_cpu_weight  = 1;
+        uint64_t total_db_capacity = 1024*1024*1024ull*1024ull;
+        uint64_t total_db_reserved = 0;
         
         /**
          * The current absolute slot number.  Equal to the total

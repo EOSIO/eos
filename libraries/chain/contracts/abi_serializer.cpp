@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/contracts/chain_initializer.hpp>
 #include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/authority.hpp>
 #include <eosio/chain/chain_config.hpp>
@@ -52,9 +53,11 @@ namespace eosio { namespace chain { namespace contracts {
       //public_key.hpp
       built_in_types.emplace("public_key",                pack_unpack<public_key_type>());
 
+      //symbol.hpp
+      built_in_types.emplace("symbol",                    pack_unpack<symbol>());
+
       //asset.hpp
       built_in_types.emplace("asset",                     pack_unpack<asset>());
-      built_in_types.emplace("price",                     pack_unpack<price>());
 
       //native.hpp
       built_in_types.emplace("string",                    pack_unpack<string>());
@@ -96,7 +99,6 @@ namespace eosio { namespace chain { namespace contracts {
       built_in_types.emplace("action_def",                pack_unpack<action_def>());
       built_in_types.emplace("table_def",                 pack_unpack<table_def>());
       built_in_types.emplace("abi_def",                   pack_unpack<abi_def>());
-      built_in_types.emplace("nonce",                     pack_unpack<nonce>());
    }
 
    void abi_serializer::set_abi(const abi_def& abi) {
@@ -128,6 +130,17 @@ namespace eosio { namespace chain { namespace contracts {
       FC_ASSERT( actions.size() == abi.actions.size() );
       FC_ASSERT( tables.size() == abi.tables.size() );
    }
+
+   void abi_serializer::append_system_abi(account_name account, abi_def& abi) {
+      if ( account == eosio::chain::config::system_account_name ) {
+         abi_def eos_abi = chain_initializer::eos_contract_abi();
+         abi.actions.insert(abi.actions.end(), eos_abi.actions.cbegin(), eos_abi.actions.cend());
+         abi.structs.insert(abi.structs.end(), eos_abi.structs.cbegin(), eos_abi.structs.cend());
+         abi.tables.insert(abi.tables.end(), eos_abi.tables.cbegin(), eos_abi.tables.cend());
+         abi.types.insert(abi.types.end(), eos_abi.types.cbegin(), eos_abi.types.cend());
+      }
+   }
+
    
    bool abi_serializer::is_builtin_type(const type_name& type)const {
       return built_in_types.find(type) != built_in_types.end();

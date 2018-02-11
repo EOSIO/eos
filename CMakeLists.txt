@@ -77,7 +77,8 @@ FIND_PACKAGE(Boost 1.64 REQUIRED COMPONENTS
     chrono
     unit_test_framework
     context
-    locale)
+    locale
+    iostreams)
 
 if( WIN32 )
 
@@ -159,7 +160,9 @@ endif( WIN32 )
 set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build Eos for code coverage analysis")
 
 if(ENABLE_COVERAGE_TESTING)
-    SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
+  SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
+  find_program( LCOV_PATH  lcov )
+  find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
 include(wasm)
@@ -169,10 +172,10 @@ if(WASM_TOOLCHAIN)
   message(STATUS "Using WASM llvm-link => " ${WASM_LLVM_LINK})
   add_subdirectory(contracts)
 else()
-  message(STATUS "--------------------------------------------------------------------")
-  message(STATUS "No WASM compiler could be found ... (skipping building of contracts)")
-  message(STATUS "--------------------------------------------------------------------")
+  message( FATAL_ERROR "No WASM compiler cound be found" )
 endif()
+
+include(installer)
 
 add_subdirectory( libraries )
 add_subdirectory( plugins )
@@ -183,5 +186,5 @@ add_subdirectory( tools )
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis.json ${CMAKE_CURRENT_BINARY_DIR}/genesis.json COPYONLY)
 
-include(installer)
+
 include(doxygen)

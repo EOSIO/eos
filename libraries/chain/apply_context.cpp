@@ -17,6 +17,7 @@ void apply_context::exec_one()
          (*native)(*this);
       } else {
          const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
+         privileged = a.privileged;
 
          if (a.code.size() > 0) {
             // get code from cache
@@ -64,9 +65,9 @@ void apply_context::exec_one()
                ss.sequence = 1;
             });
          } FC_CAPTURE_AND_RETHROW((scope)(receiver));
-         data_access.emplace_back(data_access_info{data_access_info::write, scope, 0});
+         data_access.emplace_back(data_access_info{data_access_info::write, receiver, scope, 0});
       } else {
-         data_access.emplace_back(data_access_info{data_access_info::write, scope, scope_sequence->sequence});
+         data_access.emplace_back(data_access_info{data_access_info::write, receiver, scope, scope_sequence->sequence});
          try {
             mutable_controller.get_mutable_database().modify(*scope_sequence, [&](scope_sequence_object& ss) {
                ss.sequence += 1;
@@ -79,9 +80,9 @@ void apply_context::exec_one()
       auto key = boost::make_tuple(lock.scope, lock.account);
       const auto& scope_sequence = mutable_controller.get_database().find<scope_sequence_object, by_scope_receiver>(key);
       if (scope_sequence == nullptr) {
-         data_access.emplace_back(data_access_info{data_access_info::read, lock.scope, 0});
+         data_access.emplace_back(data_access_info{data_access_info::read, lock.account, lock.scope, 0});
       } else {
-         data_access.emplace_back(data_access_info{data_access_info::read, lock.scope, scope_sequence->sequence});
+         data_access.emplace_back(data_access_info{data_access_info::read, lock.account, lock.scope, scope_sequence->sequence});
       }
    }
 
@@ -204,22 +205,22 @@ void apply_context::cancel_deferred( uint32_t sender_id ) {
    results.canceled_deferred.emplace_back(receiver, sender_id);
 }
 
-const contracts::table_id_object* apply_context::find_table( name scope, name code, name table ) {
+const contracts::table_id_object* apply_context::find_table( name code, name scope, name table ) {
    require_read_lock(code, scope);
-   return db.find<table_id_object, contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));
+   return db.find<table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));
 }
 
-const contracts::table_id_object& apply_context::find_or_create_table( name scope, name code, name table ) {
+const contracts::table_id_object& apply_context::find_or_create_table( name code, name scope, name table ) {
    require_read_lock(code, scope);
-   const auto* existing_tid =  db.find<contracts::table_id_object, contracts::by_scope_code_table>(boost::make_tuple(scope, code, table));
+   const auto* existing_tid =  db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));
    if (existing_tid != nullptr) {
       return *existing_tid;
    }
 
    require_write_lock(scope);
    return mutable_db.create<contracts::table_id_object>([&](contracts::table_id_object &t_id){
-      t_id.scope = scope;
       t_id.code = code;
+      t_id.scope = scope;
       t_id.table = table;
    });
 }
@@ -233,4 +234,86 @@ vector<account_name> apply_context::get_active_producers() const {
    return accounts;
 }
 
+void apply_context::checktime(uint32_t instruction_count) const {
+   if (trx_meta.processing_deadline && fc::time_point::now() > (*trx_meta.processing_deadline)) {
+      throw checktime_exceeded();
+   }
+}
+
+
+const bytes& apply_context::get_packed_transaction() {
+   if( !trx_meta.packed_trx.size() ) {
+      if (_cached_trx.empty()) {
+         auto size = fc::raw::pack_size(trx_meta.trx());
+         _cached_trx.resize(size);
+         fc::datastream<char *> ds(_cached_trx.data(), size);
+         fc::raw::pack(ds, trx_meta.trx());
+      }
+
+      return _cached_trx;
+   }
+
+   return trx_meta.packed_trx;
+}
+
+const char* to_string(contracts::table_key_type key_type) {
+   switch(key_type) {
+   case contracts::type_unassigned:
+      return "unassigned";
+   case contracts::type_i64:
+      return "i64";
+   case contracts::type_str:
+      return "str";
+   case contracts::type_i128i128:
+      return "i128i128";
+   case contracts::type_i64i64:
+      return "i64i64";
+   case contracts::type_i64i64i64:
+      return "i64i64i64";
+   default:
+      return "<unkown table_key_type>";
+   }
+}
+
+void apply_context::validate_table_key( const table_id_object& t_id, contracts::table_key_type key_type ) {
+   FC_ASSERT( t_id.key_type == contracts::table_key_type::type_unassigned || key_type == t_id.key_type,
+              "Table entry for ${code}-${scope}-${table} uses key type ${act_type} should have had type of ${exp_type}",
+              ("code",t_id.code)("scope",t_id.scope)("table",t_id.table)("act_type",to_string(t_id.key_type))("exp_type", to_string(key_type)) );
+}
+
+void apply_context::validate_or_add_table_key( const table_id_object& t_id, contracts::table_key_type key_type ) {
+   if (t_id.key_type == contracts::table_key_type::type_unassigned)
+      mutable_db.modify( t_id, [&key_type]( auto& o) {
+         o.key_type = key_type;
+      });
+   else
+      FC_ASSERT( key_type == t_id.key_type,
+                 "Table entry for ${code}-${scope}-${table} uses key type ${act_type} should have had type of ${exp_type}",
+                 ("code",t_id.code)("scope",t_id.scope)("table",t_id.table)("act_type",to_string(t_id.key_type))("exp_type", to_string(key_type)) );
+}
+
+template<>
+contracts::table_key_type apply_context::get_key_type<contracts::key_value_object>() {
+   return contracts::table_key_type::type_i64;
+}
+
+template<>
+contracts::table_key_type apply_context::get_key_type<contracts::keystr_value_object>() {
+   return contracts::table_key_type::type_str;
+}
+
+template<>
+contracts::table_key_type apply_context::get_key_type<contracts::key128x128_value_object>() {
+   return contracts::table_key_type::type_i128i128;
+}
+
+template<>
+contracts::table_key_type apply_context::get_key_type<contracts::key64x64_value_object>() {
+   return contracts::table_key_type::type_i64i64;
+}
+
+template<>
+contracts::table_key_type apply_context::get_key_type<contracts::key64x64x64_value_object>() {
+   return contracts::table_key_type::type_i64i64i64;
+}
 } } /// eosio::chain

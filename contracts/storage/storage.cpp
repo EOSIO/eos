@@ -100,10 +100,6 @@ namespace TOKEN_NAME {
 using namespace TOKEN_NAME;
 
 extern "C" {
-    void init()  {
-       // How do we initialize the storage capacity? By how much here?
-       accounts::store( account( storage_tokens(1000ll*1000ll*1000ll) ), N(storage) );
-    }
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action ) {
@@ -125,10 +121,10 @@ extern "C" {
                auto len = read_action( tmp, 1025 );
                TOKEN_NAME::apply_storage_rejectstore( tmp, len );
           } else {
-               assert(0, "unknown message");
+               eos_assert(0, "unknown message");
           }
        } else {
-           assert(0, "unknown code");
+           eos_assert(0, "unknown code");
        }
     }
 }

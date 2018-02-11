@@ -28,8 +28,8 @@ struct wasm_cache::entry {
 struct wasm_context {
    wasm_context(wasm_cache::entry &code, apply_context& ctx) : code(code), context(ctx)
    {
-      //initialize to minimum bytes and limit this to 32 bit space
-      sbrk_bytes = (1 << IR::numBytesPerPageLog2) > UINT32_MAX ? UINT32_MAX : 1 << IR::numBytesPerPageLog2;
+      MemoryInstance* default_mem = Runtime::getDefaultMemory(code.instance);
+      sbrk_bytes = default_mem ? Runtime::getMemoryNumPages(default_mem) << IR::numBytesPerPageLog2 : 0;
    }
    wasm_cache::entry& code;
    apply_context& context;
@@ -89,7 +89,7 @@ struct array_ptr {
 
    static T* validated_ptr (wasm_interface& wasm, U32 ptr, size_t length) {
       auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
-      if(!mem || ptr + length >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
+      if(!mem || ptr + length > IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
          Runtime::causeException(Exception::Cause::accessViolation);
 
       return (T*)(getMemoryBaseAddress(mem) + ptr);

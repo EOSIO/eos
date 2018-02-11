@@ -1,7 +1,7 @@
 #pragma once
-#include <eoslib/types.hpp>
-#include <eoslib/datastream.hpp>
-#include <eoslib/raw_fwd.hpp>
+#include <eosiolib/types.hpp>
+#include <eosiolib/datastream.hpp>
+#include <eosiolib/raw_fwd.hpp>
 
 namespace eosio { namespace raw {
    template<typename Stream> inline void pack( Stream& s, const record1& value ) {
@@ -76,14 +76,14 @@ namespace eosio { namespace raw {
    }
 } }
 
-#include <eoslib/raw.hpp>
+#include <eosiolib/raw.hpp>
 namespace eosio {
    void print_ident(int n){while(n-->0){print("  ");}};
    template<typename Type>
    Type current_message_ex() {
       uint32_t size = action_size();
       char* data = (char *)eosio::malloc(size);
-      assert(data && read_action(data, size) == size, "error reading message");
+      eos_assert(data && read_action(data, size) == size, "error reading message");
       Type value;
       eosio::raw::unpack(data, size, value);
       eosio::free(data);

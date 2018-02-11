@@ -9,3 +9,11 @@
 [submodule "programs/snapshot"]
 	path = programs/snapshot
 	url = https://github.com/EOSIO/genesis.git
+[submodule "contracts/musl/upstream"]
+	path = contracts/musl/upstream
+	url = https://github.com/EOSIO/musl.git
+	branch = eosio
+[submodule "contracts/libc++/upstream"]
+	path = contracts/libc++/upstream
+	url = https://github.com/EOSIO/libcxx.git
+	branch = eosio

@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eoslib/eos.hpp>
+#include <eosiolib/eosio.hpp>
 #include "test_api.hpp"
 
 //#include "test_account.cpp"
@@ -154,7 +154,7 @@ extern "C" {
 //      WASM_TEST_HANDLER(test_account, test_balance_acc1);
 //
       //unhandled test call
-      assert(false, "Unknown Test");
+      eos_assert(false, "Unknown Test");
    }
 
 }

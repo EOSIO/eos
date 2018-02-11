@@ -1,0 +1,113 @@
+{
+  "types": [{
+      "new_type_name": "account_name",
+      "type": "name"
+    },{
+      "new_type_name": "identity_name",
+      "type": "name"
+    },{
+      "new_type_name": "property_name",
+      "type": "name"
+    }
+  ],
+  "structs": [{
+      "name": "create",
+      "base": "",
+      "fields": [
+        {"name":"creator", "type":"account_name"},
+        {"name":"identity", "type":"uint64"}
+      ]
+    },{
+     "name": "certvalue",
+     "base": "",
+     "fields": [
+        {"name":"property", "type":"name"},
+        {"name":"type", "type":"string"},
+        {"name":"data", "type":"uint8[]"},
+        {"name":"memo", "type":"string"},
+        {"name":"confidence", "type":"uint8"},
+     ]
+    },{
+     "name": "certprop",
+     "base": "",
+     "fields": [
+        {"name":"bill_storage_to", "type":"account_name"},
+        {"name":"certifier", "type":"account_name"},
+        {"name":"identity", "type":"uint64"},
+        {"name":"value", "type":"certvalue[]"}
+     ]
+    },{
+      "name": "settrust",
+      "base": "",
+      "fields": [
+        {"name":"trustor", "type":"account_name"},
+        {"name":"trusting", "type":"account_name"},
+        {"name":"trust", "type":"uint8"}
+      ]
+    },{
+      "name": "certrow",
+      "base": "",
+      "fields": [
+        {"name":"property", "type":"property_name"},
+        {"name":"trusted", "type":"uint64"},
+        {"name":"certifier", "type":"account_name"},
+        {"name":"confidence", "type":"uint8"},
+        {"name":"type", "type":"string"},
+        {"name":"data", "type":"uint8[]"}
+      ]
+    },{
+      "name": "identrow",
+      "base": "",
+      "fields": [
+        {"name":"identity", "type":"uint64"},
+        {"name":"creator", "type":"account_name"}
+      ]
+    },{
+      "name": "accountrow",
+      "base": "",
+      "fields": [
+        {"name":"singleton_name", "type":"uint64"},
+        {"name":"identity", "type":"uint64"}
+      ]
+    }
+  ],
+  "actions": [{
+      "name": "create",
+      "type": "create"
+    },{
+      "name": "certprop",
+      "type": "certprop"
+    },{
+      "name": "settrust",
+      "type": "settrust"
+    }
+  ],
+  "tables": [{
+      "name": "certs",
+      "type": "certrow",
+      "index_type": "i64i64i64",
+      "key_names" : [
+        "property",
+        "trusted",
+        "certifier"
+      ],
+      " key_types": [
+        "uint64",
+        "uint64",
+        "uint64"
+      ]
+    },{
+      "name": "idents",
+      "type": "identrow",
+      "index_type": "i64",
+      "key_names" : [ "identity" ],
+      "key_types": [ "uint64" ]
+    },{
+      "name": "trust",
+      "type": "account_name",
+      "index_type": "i64",
+      "key_names" : [ "account" ],
+      "key_types": [ "account_name" ]
+    }
+  ]
+}

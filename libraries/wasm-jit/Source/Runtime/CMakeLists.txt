@@ -31,6 +31,8 @@ add_definitions(${LLVM_DEFINITIONS})
 
 add_definitions(-DRUNTIME_API=DLL_EXPORT)
 
+target_include_directories( Runtime PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../chain/include )
+
 # Link against the LLVM libraries
 llvm_map_components_to_libnames(LLVM_LIBS support core passes mcjit native DebugInfoDWARF)
 target_link_libraries(Runtime Platform Logging IR ${LLVM_LIBS})

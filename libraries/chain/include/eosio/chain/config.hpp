@@ -13,7 +13,6 @@ typedef __uint128_t uint128_t;
 const static auto default_block_log_dir     = "block_log";
 const static auto default_shared_memory_dir = "shared_mem";
 const static auto default_shared_memory_size = 1024*1024*1024ll;
-const static int producer_count = 21;
 
 const static uint64_t system_account_name    = N(eosio);
 const static uint64_t nobody_account_name    = N(nobody);
@@ -63,26 +62,21 @@ const static uint32_t   default_max_gen_trx_count      = 16; ///< the number of 
 const static uint32_t   producers_authority_threshold  = 14;
 const static uint32_t   rate_limiting_precision        = 1000*1000;
 
-const static share_type default_elected_pay            = asset(100).amount;
-const static share_type default_min_eos_balance        = asset(100).amount;
-
 const static uint16_t   max_recursion_depth = 6;
 
 /**
  *  The number of sequential blocks produced by a single producer
  */
-const static int producer_repititions = 6;
+const static int producer_repititions = 12;
 
 /**
  * The number of blocks produced per round is based upon all producers having a chance
  * to produce all of their consecutive blocks.
  */
-const static int blocks_per_round = producer_count * producer_repititions;
+//const static int blocks_per_round = producer_count * producer_repititions;
 
 const static int irreversible_threshold_percent= 70 * percent_1;
-const static int max_producer_votes = 30;
 
-const static auto staked_balance_cooldown_sec  = fc::days(3).to_seconds();
 } } } // namespace eosio::chain::config
 
 template<typename Number>

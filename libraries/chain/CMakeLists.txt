@@ -9,6 +9,7 @@ add_library( eosio_chain
              block.cpp
              wast_to_wasm.cpp
              wasm_interface.cpp
+             wasm_eosio_constraints.cpp
              apply_context.cpp
              rate_limiting.cpp
 
@@ -22,15 +23,13 @@ add_library( eosio_chain
              chain_controller.cpp
 
              contracts/eosio_contract.cpp
-             contracts/producer_objects.cpp
-             contracts/staked_balance_objects.cpp
              contracts/chain_initializer.cpp
              contracts/genesis_state.cpp
              contracts/abi_serializer.cpp
 
 
              ${HEADERS}
-        )
+             transaction_metadata.cpp)
 
 target_link_libraries( eosio_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime )
 target_include_directories( eosio_chain

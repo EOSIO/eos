@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/producer_plugin/producer_plugin.hpp>
-#include <eos/net_plugin/net_plugin.hpp>
+#include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/chain/producer_object.hpp>
 
 #include <fc/io/json.hpp>
@@ -224,7 +224,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
          ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");
          break;
       case block_production_condition::not_my_turn:
-         ilog("Not producing block because it isn't my turn");
+         ilog("Not producing block because it isn't my turn, its ${scheduled_producer}", (capture) );
          break;
       case block_production_condition::not_time_yet:
          ilog("Not producing block because slot has not yet arrived");
