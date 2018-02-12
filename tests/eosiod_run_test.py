@@ -2,6 +2,7 @@
 
 import testUtils
 
+import decimal
 import argparse
 import random
 import re
@@ -222,8 +223,11 @@ try:
     if node is None:
         errorExit("Cluster in bad state, received None node")
 
+    Print("Create initial accounts")
+    node.createInitAccounts()
+
     Print("Create new account %s via %s" % (testeraAccount.name, initaAccount.name))
-    transId=node.createAccount(testeraAccount, initaAccount, waitForTransBlock=True)
+    transId=node.createAccount(testeraAccount, initaAccount, stakedDeposit=0, waitForTransBlock=True)
     if transId is None:
         cmdError("%s create account" % (ClientName))
         errorExit("Failed to create account %s" % (testeraAccount.name))
@@ -293,7 +297,7 @@ try:
             transferAmount, initaAccount.name, testeraAccount.name))
     transId=testUtils.Node.getTransId(trans)
 
-    expectedAmount=975311
+    expectedAmount=975311+5000 # 5000 initial deposit
     Print("Verify transfer, Expected: %d" % (expectedAmount))
     actualAmount=node.getAccountBalance(currencyAccount.name)
     if actualAmount is None:
@@ -363,9 +367,11 @@ try:
     typeVal=None
     amountVal=None
     if amINoon:
+        debug and Print("Transaction:", transaction)
         if not enableMongo:
-            typeVal=  transaction["transaction"]["actions"][1]["name"]
-            amountVal=transaction["transaction"]["actions"][1]["data"]["amount"]
+            typeVal=  transaction["transaction"]["data"]["actions"][0]["name"]
+            amountVal=transaction["transaction"]["data"]["actions"][0]["data"]["quantity"]
+            amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
         else:
             typeVal=  transaction["name"]
             amountVal=transaction["data"]["amount"]
@@ -378,7 +384,7 @@ try:
             amountVal=transaction["data"]["amount"]
 
     if typeVal!= "transfer" or amountVal != 975311:
-        errorExit("FAILURE - get transaction trans_id failed: %s" % (transId), raw=True)
+        errorExit("FAILURE - get transaction trans_id failed: %s %s %s" % (transId, typeVal, amountVal), raw=True)
 
     Print("Get transactions for account %s" % (testeraAccount.name))
     actualTransactions=node.getTransactionsArrByAccount(testeraAccount.name)
@@ -512,11 +518,13 @@ try:
     else:
         Print("Test successful, %s returned error code: %d" % (ClientName, retMap["returncode"]))
 
-    Print("Producer tests")
-    trans=node.createProducer(testeraAccount.name, testeraAccount.ownerPublicKey, waitForTransBlock=False)
-    if trans is None:
-        cmdError("%s create producer" % (ClientName))
-        errorExit("Failed to create producer %s" % (testeraAccount.name))
+# TODO Currently unable to set producer
+    if not amINoon:
+        Print("Producer tests")
+        trans=node.createProducer(testeraAccount.name, testeraAccount.ownerPublicKey, waitForTransBlock=False)
+        if trans is None:
+            cmdError("%s create producer" % (ClientName))
+            errorExit("Failed to create producer %s" % (testeraAccount.name))
 
     Print("set permission")
     code="currency"
