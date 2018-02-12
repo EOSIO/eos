@@ -358,18 +358,52 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
    return results;
 }
 
-read_only::get_block_results read_only::get_block(const read_only::get_block_params& params) const {
+template<typename Api>
+struct resolver_factory {
+   static auto make(const Api *api) {
+      return [api](const account_name &name) -> optional<abi_serializer> {
+         const auto *accnt = api->db.get_database().template find<account_object, by_name>(name);
+         if (accnt != nullptr) {
+            abi_def abi;
+            if (abi_serializer::to_abi(accnt->name, accnt->abi, abi)) {
+               return abi_serializer(abi);
+            }
+         }
+
+         return optional<abi_serializer>();
+      };
+   }
+};
+
+template<typename Api>
+auto make_resolver(const Api *api) {
+   return resolver_factory<Api>::make(api);
+}
+
+fc::variant read_only::get_block(const read_only::get_block_params& params) const {
+   optional<signed_block> block;
    try {
-      if (auto block = db.fetch_block_by_id(fc::json::from_string(params.block_num_or_id).as<block_id_type>()))
-         return *block;
-   } catch (fc::bad_cast_exception) {/* do nothing */}
-   try {
-      if (auto block = db.fetch_block_by_number(fc::to_uint64(params.block_num_or_id)))
-         return *block;
+      block = db.fetch_block_by_id(fc::json::from_string(params.block_num_or_id).as<block_id_type>());
+      if (!block) {
+         block = db.fetch_block_by_number(fc::to_uint64(params.block_num_or_id));
+      }
+
    } catch (fc::bad_cast_exception) {/* do nothing */}
 
-   FC_THROW_EXCEPTION(unknown_block_exception,
+   if (!block)
+      FC_THROW_EXCEPTION(unknown_block_exception,
                       "Could not find block: ${block}", ("block", params.block_num_or_id));
+
+   fc::variant pretty_output;
+   abi_serializer::to_variant(*block, pretty_output, make_resolver(this));
+
+
+
+
+   return fc::mutable_variant_object(pretty_output.get_object())
+           ("id", block->id())
+           ("block_num",block->block_num())
+           ("ref_block_prefix", block->id()._hash[1]);
 }
 
 read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {
@@ -379,18 +413,7 @@ read_write::push_block_results read_write::push_block(const read_write::push_blo
 
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
    packed_transaction pretty_input;
-   auto resolver = [&,this]( const account_name& name ) -> optional<abi_serializer> {
-      const auto* accnt  = db.get_database().find<account_object,by_name>( name );
-      if (accnt != nullptr) {
-         abi_def abi;
-         if (abi_serializer::to_abi(accnt->name, accnt->abi, abi)) {
-            return abi_serializer(abi);
-         }
-      }
-
-      return optional<abi_serializer>();
-   };
-
+   auto resolver = make_resolver(this);
    abi_serializer::from_variant(params, pretty_input, resolver);
    auto result = db.push_transaction(pretty_input, skip_flags);
 #warning TODO: get transaction results asynchronously
