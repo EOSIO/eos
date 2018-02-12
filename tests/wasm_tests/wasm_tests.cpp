@@ -677,8 +677,7 @@ BOOST_FIXTURE_TEST_CASE( test_table_key_validation, tester ) try {
 BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(tbl)}, asset::from_string("1000.0000 EOS") );
-   transfer( N(inita), N(tbl), "10.0000 EOS", "memo" );
+   create_accounts( {N(tbl)} );
    produce_block();
 
    set_code(N(tbl), table_checker_wast);
@@ -773,6 +772,36 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
    }
 
    produce_blocks(1);
+
+   //run a few tests with new, proper syntax, call_indirect
+   set_code(N(tbl), table_checker_proper_syntax_wast);
+   produce_blocks(1);
+
+   {
+   signed_transaction trx;
+   action act;
+   act.name = 555ULL<<32 | 1022ULL;       //top 32 is what we assert against, bottom 32 is indirect call index
+   act.account = N(tbl);
+   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
+   trx.actions.push_back(act);
+   set_tapos(trx);
+   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   push_transaction(trx);
+   }
+
+   produce_blocks(1);
+
+   {
+   signed_transaction trx;
+   action act;
+   act.name = 7777ULL<<32 | 1023ULL;       //top 32 is what we assert against, bottom 32 is indirect call index
+   act.account = N(tbl);
+   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
+   trx.actions.push_back(act);
+   set_tapos(trx);
+   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
+   push_transaction(trx);
+   }
 
    set_code(N(tbl), table_checker_small_wast);
    produce_blocks(1);
