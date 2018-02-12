@@ -21,20 +21,20 @@ namespace eosiosystem {
          static const account_name system_account = SystemAccount;
          typedef eosio::generic_currency< eosio::token<system_account,S(4,EOS)> > currency;
 
-         /*
          struct total_bandwidth {
             account_name owner;
             typename currency::token_type total_net_weight; 
             typename currency::token_type total_cpu_weight; 
+
+            uint64_t primary_key()const { return owner; }
          };
-         */
 
-//         typedef eosio::table64<SystemAccount, N(totalband), SystemAccount, total_bandwidth>      total_bandwidth;
 
-         //eosio::multi_index< N(totalband), total_bandwidth > bandwidth_index;
 
+         /**
+          *  Every user 'from' has a scope/table that uses every receipient 'to' as the primary key.
+          */
          struct delegated_bandwidth {
-            uint64_t     primary;
             account_name from;
             account_name to;
             typename currency::token_type net_weight; 
@@ -49,15 +49,12 @@ namespace eosiosystem {
             uint64_t deferred_cpu_withdraw_handler = 0;
 
             
-            uint64_t  primary_key()const { return primary; }
-            uint128_t by_from_to()const  { return (uint128_t(from)<<64) | to; }
+            uint64_t  primary_key()const { return to; }
          };
 
 
-         static eosio::multi_index< N(delband), delegated_bandwidth,
-              eosio::index_by<0, N(byfromto), delegated_bandwidth, 
-                             eosio::const_mem_fun<delegated_bandwidth, uint128_t, &delegated_bandwidth::by_from_to> >
-         > del_bandwidth_index;
+         typedef eosio::multi_index< N(totalband), total_bandwidth >  total_bandwidth_index_type;
+         typedef eosio::multi_index< N(delband), delegated_bandwidth> del_bandwidth_index_type;
 
 
          ACTION( SystemAccount, finshundel ) {
@@ -106,25 +103,39 @@ namespace eosiosystem {
 
          void on( const delnetbw& del ) {
             require_auth( del.from );
+
+            del_bandwidth_index_type     del_index( SystemAccount, del.from );
+            total_bandwidth_index_type   total_index( SystemAccount, del.to );
           //  require_account( receiver );
 
-            auto idx = del_bandwidth_index.template get_index<N(byfromto)>();
-            auto itr = idx.find( (uint128_t(del.from) << 64) | del.to  );
-            if( itr == idx.end() ) {
-               del_bandwidth_index.emplace( del.from, [&]( auto& dbo ){
-                  dbo.id         = del_bandwidth_index.new_id( del.from );
+            auto itr = del_index.find( del.to  );
+            if( itr == del_index.end() ) {
+               del_index.emplace( del.from, [&]( auto& dbo ){
                   dbo.from       = del.from;      
                   dbo.to         = del.to;      
                   dbo.net_weight = del.stake_quantity;
                });
             }
             else {
-               del_bandwidth_index.update( *itr, del.from, [&]( auto& dbo ){
+               del_index.update( *itr, del.from, [&]( auto& dbo ){
                   dbo.net_weight = del.stake_quantity;
                });
             }
+
+            auto tot_itr = total_index.find( del.to );
+            if( tot_itr == total_index.end() ) {
+               total_index.emplace( del.from, [&]( auto& tot ) {
+                  tot.owner = del.to;
+                  tot.total_net_weight += del.stake_quantity;
+               });
+            } else {
+               total_index.update( *tot_itr, 0, [&]( auto& tot ) {
+                  tot.total_net_weight += del.stake_quantity;
+               });
+            }
+
             currency::inline_transfer( del.from, SystemAccount, del.stake_quantity, "stake bandwidth" );
-         }
+         } // delnetbw
 
          void on( const regproducer& reg ) {
             require_auth( reg.producer_to_register );
