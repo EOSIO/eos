@@ -12,6 +12,7 @@ using namespace eosio::chain::webassembly::common;
 
 namespace eosio { namespace chain { namespace webassembly { namespace jit {
 
+struct info;
 struct entry {
    entry(ModuleInstance *instance, Module *module)
       : instance(instance), module(module) 
@@ -20,9 +21,38 @@ struct entry {
 
    ModuleInstance* instance;
    Module* module;
-   
+
+   void reset(const info& );
+
    static const entry& get(wasm_interface& wasm);
+
+   static entry build(const char* wasm_binary, size_t wasm_binary_size);
 };
+
+struct info {
+   info( const entry &jit )
+   {
+      MemoryInstance* current_memory = Runtime::getDefaultMemory(jit.instance);
+
+      if(current_memory) {
+         char *mem_ptr = &memoryRef<char>(current_memory, 0);
+         const auto allocated_memory = Runtime::getDefaultMemorySize(jit.instance);
+         for (uint64_t i = 0; i < allocated_memory; ++i) {
+            if (mem_ptr[i])
+               mem_end = i + 1;
+         }
+         mem_image.resize(mem_end);
+         memcpy(mem_image.data(), mem_ptr, mem_end);
+      }
+   }
+
+   // a clean image of the memory used to sanitize things on checkin
+   size_t mem_start           = 0;
+   size_t mem_end             = 1<<16;
+   vector<char> mem_image;
+};
+
+
 
 /**
  * class to represent an in-wasm-memory array
@@ -32,7 +62,7 @@ struct entry {
  * @tparam T
  */
 template<typename T>
-array_ptr<T> array_ptr_impl (wasm_interface& wasm, U32 ptr, size_t length) 
+inline array_ptr<T> array_ptr_impl (wasm_interface& wasm, U32 ptr, size_t length)
 {
    auto mem = getDefaultMemory(entry::get(wasm).instance);
    if(!mem || ptr + length > IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
@@ -44,7 +74,7 @@ array_ptr<T> array_ptr_impl (wasm_interface& wasm, U32 ptr, size_t length)
 /**
  * class to represent an in-wasm-memory char array that must be null terminated
  */
-null_terminated_ptr null_terminated_ptr_impl(wasm_interface& wasm, U32 ptr)
+inline null_terminated_ptr null_terminated_ptr_impl(wasm_interface& wasm, U32 ptr)
 {
    auto mem = getDefaultMemory(entry::get(wasm).instance);
    if(!mem)
@@ -128,19 +158,19 @@ template<typename T>
 using native_to_wasm_t = typename native_to_wasm<T>::type;
 
 template<typename T>
-auto convert_native_to_wasm(const wasm_interface &wasm, T val) {
+inline auto convert_native_to_wasm(const wasm_interface &wasm, T val) {
    return native_to_wasm_t<T>(val);
 }
 
-auto convert_native_to_wasm(const wasm_interface &wasm, const name &val) {
+inline auto convert_native_to_wasm(const wasm_interface &wasm, const name &val) {
    return native_to_wasm_t<const name &>(val.value);
 }
 
-auto convert_native_to_wasm(const wasm_interface &wasm, const fc::time_point_sec &val) {
+inline auto convert_native_to_wasm(const wasm_interface &wasm, const fc::time_point_sec &val) {
    return native_to_wasm_t<const fc::time_point_sec &>(val.sec_since_epoch());
 }
 
-auto convert_native_to_wasm(wasm_interface &wasm, char* ptr) {
+inline auto convert_native_to_wasm(wasm_interface &wasm, char* ptr) {
    auto mem = getDefaultMemory(entry::get(wasm).instance);
    if(!mem)
       Runtime::causeException(Exception::Cause::accessViolation);
@@ -152,12 +182,12 @@ auto convert_native_to_wasm(wasm_interface &wasm, char* ptr) {
 }
 
 template<typename T>
-auto convert_wasm_to_native(native_to_wasm_t<T> val) {
+inline auto convert_wasm_to_native(native_to_wasm_t<T> val) {
    return T(val);
 }
 
 template<>
-auto convert_wasm_to_native<wasm_double>(I64 val) {
+inline auto convert_wasm_to_native<wasm_double>(I64 val) {
    return wasm_double(*reinterpret_cast<wasm_double *>(&val));
 }
 

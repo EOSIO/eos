@@ -4,7 +4,6 @@
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
-#include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha1.hpp>
 #include <fc/io/raw.hpp>
@@ -73,26 +72,6 @@ namespace eosio { namespace chain {
    using namespace webassembly::common;
 
    /**
-    * Integration with the WASM Linker to resolve our intrinsics
-    */
-   struct root_resolver : Runtime::Resolver
-   {
-      bool resolve(const string& mod_name,
-                   const string& export_name,
-                   ObjectType type,
-                   ObjectInstance*& out) override
-      { try {
-         // Try to resolve an intrinsic first.
-         if(IntrinsicResolver::singleton.resolve(mod_name,export_name,type, out)) {
-            return true;
-         }
-
-         FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",mod_name)("export",export_name) );
-         return false;
-      } FC_CAPTURE_AND_RETHROW( (mod_name)(export_name) ) }
-   };
-
-   /**
     *  Implementation class for the wasm cache
     *  it is responsible for compiling and storing instances of wasm code for use
     *
@@ -127,14 +106,8 @@ namespace eosio { namespace chain {
        * the instance handed out to other threads
        */
       struct code_info {
-         code_info( size_t mem_end, vector<char>&& mem_image )
-         :mem_end(mem_end),mem_image(std::forward<vector<char>>(mem_image))
-         {}
-
-         // a clean image of the memory used to sanitize things on checkin
-         size_t mem_start           = 0;
-         size_t mem_end             = 1<<16;
-         vector<char> mem_image;
+         explicit code_info(jit::info&& jit_info) :jit_info(jit_info) {}
+         jit::info   jit_info;
 
          // all existing instances of this code
          vector<unique_ptr<wasm_cache::entry>> instances;
@@ -215,33 +188,14 @@ namespace eosio { namespace chain {
 
             if (!pending_result) {
                // time to compile a brand new (maybe first) copy of this code
-               Module* module = new Module();
-               ModuleInstance* instance = nullptr;
-               size_t mem_end = 0;
-               vector<char> mem_image;
+
+               fc::optional<jit::entry> jit;
+               fc::optional<jit::info> jit_info;
 
                try {
-                  Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
-                  WASM::serializeWithInjection(stream, *module);
-                  validate_eosio_wasm_constraints(*module);
-
-                  root_resolver resolver;
-                  LinkResult link_result = linkModule(*module, resolver);
-                  instance = instantiateModule(*module, std::move(link_result.resolvedImports));
-                  FC_ASSERT(instance != nullptr);
-
-                  MemoryInstance* current_memory = Runtime::getDefaultMemory(instance);
-
-                  if(current_memory) {
-                     char *mem_ptr = &memoryRef<char>(current_memory, 0);
-                     const auto allocated_memory = Runtime::getDefaultMemorySize(instance);
-                     for (uint64_t i = 0; i < allocated_memory; ++i) {
-                        if (mem_ptr[i])
-                           mem_end = i + 1;
-                     }
-                     mem_image.resize(mem_end);
-                     memcpy(mem_image.data(), mem_ptr, mem_end);
-                  }
+                  /// TODO: make validation generic
+                  jit = jit::entry::build(wasm_binary, wasm_binary_size);
+                  jit_info.emplace(*jit);
                   
                } catch (...) {
                   pending_error = std::current_exception();
@@ -251,12 +205,13 @@ namespace eosio { namespace chain {
                   // grab the lock and put this in the cache as unavailble
                   with_lock(_cache_lock, [&,this]() {
                      // find or create a new entry
-                     auto iter = _cache.emplace(code_id, code_info(mem_end, std::move(mem_image))).first;
+                     auto iter = _cache.emplace(code_id, code_info(std::move(*jit_info))).first;
 
-                     MemoryInstance* default_mem = Runtime::getDefaultMemory(instance);
+                     /// TODO: make sbrk bytes generic
+                     MemoryInstance* default_mem = Runtime::getDefaultMemory(jit->instance);
                      uint32_t default_sbrk_bytes = default_mem ? Runtime::getMemoryNumPages(default_mem) << IR::numBytesPerPageLog2 : 0;
 
-                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(jit::entry{instance, module}, default_sbrk_bytes));
+                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(std::move(*jit), default_sbrk_bytes));
                      pending_result = optional_entry_ref(*iter->second.instances.back().get());
                   });
                }
@@ -291,12 +246,7 @@ namespace eosio { namespace chain {
       void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
         // sanitize by reseting the memory that may now be dirty
         auto& info = (*fetch_info(code_id)).get();
-        if(getDefaultMemory(entry.jit.instance)) {
-           char* memstart = &memoryRef<char>( getDefaultMemory(entry.jit.instance), 0 );
-           memset( memstart + info.mem_end, 0, ((1<<16) - info.mem_end) );
-           memcpy( memstart, info.mem_image.data(), info.mem_end);
-        }
-        resetGlobalInstances(entry.jit.instance);
+        entry.jit.reset(info.jit_info);
 
         // under a lock, put this entry back in the available instances side of the instances vector
         with_lock(_cache_lock, [&,this](){
