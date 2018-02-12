@@ -211,9 +211,10 @@ namespace stltest {
            prints("\nEOS string: "); prints_l(s2.get_data(), s2.get_size());
            */
            prints("STL test start\n");
-           const char* text = "wrap_write text\n";
-           //vdprintf(stdout, text, strlen(text));
-           printf("Integer\n", 0);
+           /* doesn't work with WASM::serializeWithInjection
+           printf("stdout output\n", 0);
+           fprintf(stderr, "stderr output\n", 0);
+           */
            void* ptr = malloc(10);
            free(ptr);
            f("abc", 10, 20);
