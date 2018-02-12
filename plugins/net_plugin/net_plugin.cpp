@@ -299,18 +299,7 @@ namespace eosio {
       bool                is_known_by_peer = false; ///< true if we sent or received this trx to this peer or received notice from peer
       bool                is_noticed_to_peer = false; ///< have we sent peer notice we know it (true if we receive from this peer)
       uint32_t            block_num = 0; ///< the block number the transaction was included in
-      time_point          validated_time; ///< infinity for unvalidated
       time_point          requested_time; /// in case we fetch large trx
-#if 0
-      transaction_state(transaction_id_type &tid)
-         :id(tid)
-         ,is_known_by_peer(false)
-         ,is_moticed_to_peer(false)
-         ,block_num(0)
-         ,validated_time()
-         ,requested_time()
-         {}
-#endif
    };
 
    struct update_block_num {
@@ -318,7 +307,7 @@ namespace eosio {
       update_block_num(uint32_t bnum) : new_bnum(bnum) {}
       void operator() (node_transaction_state& nts) {
          if (nts.requests ) {
-            nts.true_block = num;
+            nts.true_block = new_bnum;
          }
          else {
             nts.block_num = new_bnum;
@@ -581,7 +570,7 @@ namespace eosio {
       struct txn_request {
          transaction_id_type id;
          connection_ptr      source;
-      }
+      };
       vector<block_id_type> req_blks;
       vector<txn_request> req_txn;
 
@@ -589,6 +578,7 @@ namespace eosio {
       void bcast_block (const signed_block& msg, connection_ptr skip = connection_ptr());
       void bcast_transaction (const signed_transaction& msg);
       void recv_block (connection_ptr conn, const signed_block& msg);
+      void recv_transaction(connection_ptr c, const signed_transaction &msg);
       void recv_notice (connection_ptr conn, const notice_message& msg);
 
       static const fc::string logger_name;
@@ -1478,9 +1468,9 @@ namespace eosio {
    void big_msg_manager::bcast_transaction (const signed_transaction& txn) {
       connection_ptr skip;
       for (auto ref = req_txn.begin(); ref != req_txn.end(); ++ref) {
-         if (ref->id == txn_id) {
+         if (ref->id == txn.id()) {
             skip = ref->source;
-            req_txm.erase(ref);
+            req_txn.erase(ref);
             break;
          }
       }
@@ -1497,11 +1487,10 @@ namespace eosio {
       fc::datastream<char*> ds( buff.data(), bufsiz);
       ds.write( reinterpret_cast<char*>(&packsiz), sizeof(packsiz) );
       fc::raw::pack( ds, msg );
-      node_transaction_state nts = {txnid,time_point::now(),
-                                    txn.expiration,
+      node_transaction_state nts = {txnid,
                                     txn.expiration,
                                     buff,
-                                    0, true};
+                                    0, 0, 0};
       my_impl->local_txns.insert(nts);
       fc_dlog(logger, "bufsiz = ${bs} max = ${max}",("bs", bufsiz)("max", just_send_it_max));
 
@@ -1514,7 +1503,7 @@ namespace eosio {
                bool unknown = bs == c->trx_state.end();
                if( unknown) {
                   c->trx_state.insert(transaction_state({txnid,true,true,0,
-                              fc::time_point(),fc::time_point() }));
+                              fc::time_point() }));
                   fc_dlog(logger, "sending whole txn to ${n}", ("n",c->peer_name() ) );
                }
                return unknown;
@@ -1535,7 +1524,7 @@ namespace eosio {
                   fc_ilog(logger, "sending notice to ${n}", ("n",c->peer_name() ) );
 
                   c->trx_state.insert(transaction_state({txnid,false,true,0,
-                              fc::time_point(),fc::time_point() }));
+                              time_point() }));
                }
                return unknown;
             });
@@ -1613,7 +1602,7 @@ namespace eosio {
    void big_msg_manager::recv_transaction (connection_ptr c, const signed_transaction& msg) {
       transaction_id_type txn_id = msg.id();
       for (auto ref = req_txn.begin(); ref != req_txn.end(); ++ref) {
-         if (*ref == txn_id) {
+         if (ref->id == txn_id) {
             if (c != ref->source) {
                fc_ilog(logger, "requested big txn from ${s} but received it from ${c}",
                        ("s",ref->source->peer_name())("c",c->peer_name()));
@@ -1635,9 +1624,8 @@ namespace eosio {
             const auto &tx = my_impl->local_txns.get<by_id>( ).find( t );
 
             if( tx == my_impl->local_txns.end( ) ) {
-               c->trx_state.insert( ( transaction_state ){ t,true,true,0,
-                        time_point(),time_point(
-) } );
+               c->trx_state.insert( (transaction_state){t,true,true,0,
+                        time_point()} );
 
                req.req_trx.ids.push_back( t );
                req_txn.push_back( (txn_request){t,c});
