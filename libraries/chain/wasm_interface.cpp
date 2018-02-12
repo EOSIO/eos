@@ -609,7 +609,7 @@ class system_api : public context_aware_api {
          FC_ASSERT( false, "abort() called");
       }
 
-      void eos_assert(bool condition, null_terminated_ptr str) {
+      void eosio_assert(bool condition, null_terminated_ptr str) {
          std::string message( str );
          if( !condition ) edump((message));
          FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
@@ -1082,8 +1082,8 @@ REGISTER_INTRINSICS(string_api,
 );
 
 REGISTER_INTRINSICS(system_api,
-   (abort,      void())
-   (eos_assert,      void(int, int))
+   (abort,        void())
+   (eosio_assert, void(int, int))
    (now,          int())
 );
 
@@ -1096,10 +1096,11 @@ REGISTER_INTRINSICS(action_api,
 );
 
 REGISTER_INTRINSICS(apply_context,
-   (require_write_lock,    void(int64_t)   )
+   (require_write_lock,    void(int64_t)            )
    (require_read_lock,     void(int64_t, int64_t)   )
-   (require_recipient,     void(int64_t)   )
+   (require_recipient,     void(int64_t)            )
    (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&)const)
+   (is_account,            int(int64_t)             )
 );
 
 REGISTER_INTRINSICS(console_api,

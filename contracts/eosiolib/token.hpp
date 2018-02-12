@@ -41,7 +41,7 @@ namespace eosio {
     operator asset()const { return asset( quantity, Symbol ); }
 
     token( const asset& a ):quantity(a.amount) {
-       eos_assert( a.symbol == Symbol, "attempt to construct token from asset with different symbol" );
+       eosio_assert( a.symbol == Symbol, "attempt to construct token from asset with different symbol" );
     }
 
     /**
@@ -65,7 +65,7 @@ namespace eosio {
     * @return this token after subtraction
     */
     token& operator-=( const token& a ) {
-      eos_assert( quantity >= a.quantity, "integer underflow subtracting token balance" );
+      eosio_assert( quantity >= a.quantity, "integer underflow subtracting token balance" );
       quantity -= a.quantity;
       return *this;
     }
@@ -78,7 +78,7 @@ namespace eosio {
     * @return this token after addition
     */
     token& operator+=( const token& a ) {
-      eos_assert( quantity + a.quantity >= a.quantity, "integer overflow adding token balance" );
+      eosio_assert( quantity + a.quantity >= a.quantity, "integer overflow adding token balance" );
       quantity += a.quantity;
       return *this;
     }
@@ -258,8 +258,8 @@ namespace eosio {
     * @param quote - quote token
     */
     price( BaseToken base, QuoteToken quote ) {
-      eos_assert( base  >= BaseToken(1ul), "invalid price" );
-      eos_assert( quote >= QuoteToken(1ul), "invalid price" );
+      eosio_assert( base  >= BaseToken(1ul), "invalid price" );
+      eosio_assert( quote >= QuoteToken(1ul), "invalid price" );
 
       base_per_quote = base.quantity;
       base_per_quote *= precision;
