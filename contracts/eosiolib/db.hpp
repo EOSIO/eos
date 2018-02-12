@@ -388,7 +388,7 @@ struct table {
      *  @return true if successful store.
      */
     static bool store( const Record& r, uint64_t s = scope, uint64_t b = bta ) {
-       eos_assert( impl::store( s, table_n, b, &r, sizeof(r) ), "error storing record" );
+       eosio_assert( impl::store( s, table_n, b, &r, sizeof(r) ), "error storing record" );
        return true;
     }
 
@@ -401,7 +401,7 @@ struct table {
     *  @return true if successful update.
     */
     static bool update( const Record& r, uint64_t s = scope, uint64_t b = bta ) {
-       eos_assert( impl::update( s, table_n, b, &r, sizeof(r) ), "error updating record" );
+       eosio_assert( impl::update( s, table_n, b, &r, sizeof(r) ), "error updating record" );
        return true;
     }
 
