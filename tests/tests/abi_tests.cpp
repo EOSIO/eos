@@ -380,10 +380,12 @@ BOOST_AUTO_TEST_CASE(generator)
     FC_ASSERT(eosiolib_path != NULL);
 
     std::string include_param = std::string("-I") + eosiolib_path;
+    std::string stdcpp_include_param = std::string("-I") + eosiolib_path + "/libc++/upstream/include";
+    std::string stdc_include_param = std::string("-I") + eosiolib_path +  "/musl/upstream/include";
 
-    abi_def output;
+     abi_def output;
     bool res = runToolOnCodeWithArgs(new generate_abi_action(false, opt_sfs, "", output), source,
-      {"-fparse-all-comments", "--std=c++14", "--target=wasm32", include_param});
+      {"-fparse-all-comments", "--std=c++14", "--target=wasm32", "-ffreestanding", "-nostdlib", "-nostdlibinc", "-fno-threadsafe-statics", "-fno-rtti",  "-fno-exceptions", include_param, stdcpp_include_param, stdc_include_param });
 
     FC_ASSERT(res == true);
     abi_serializer(output).validate();
@@ -414,6 +416,8 @@ BOOST_AUTO_TEST_CASE(generator)
    const char* all_types = R"=====(
     #include <eosiolib/types.hpp>
     #include <eosiolib/string.hpp>
+    #include <eosiolib/asset.hpp>
+    #include <eosiolib/vector.hpp>
 
     typedef int field;
     typedef int struct_def;
@@ -442,7 +446,7 @@ BOOST_AUTO_TEST_CASE(generator)
       fixed_string32          field6;
       fixed_string16          field7;
       type_name               field8;
-      bytes                   field9;
+      eosio::bytes            field9;
       uint8_t                 field10;
       uint16_t                field11;
       uint32_t                field12;
@@ -473,9 +477,8 @@ BOOST_AUTO_TEST_CASE(generator)
       action_def              field37;
       table_def               field38;
       abi_def                 field39;
-      nonce                   field40;
-      public_key              field41;
-      asset                   field42;
+      public_key              field40;
+      eosio::asset            field41;
    };
    )=====";
 
@@ -604,12 +607,9 @@ BOOST_AUTO_TEST_CASE(generator)
              "type": "abi_def"
           },{
              "name": "field40",
-             "type": "nonce"
-          },{
-             "name": "field41",
              "type": "public_key"
           },{
-             "name": "field42",
+             "name": "field41",
              "type": "asset"
           }]
            }],
@@ -1413,7 +1413,6 @@ BOOST_AUTO_TEST_CASE(general)
          "accounts":[{"permission":{"actor":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"actor":"acc2","permission":"permname2"},"weight":"2"}]
        }],
       "chainconfig": {
-         "producer_pay": "100",
          "target_block_size": "200",
          "max_block_size": "300",
          "target_block_acts_per_scope": "400",
@@ -1430,7 +1429,6 @@ BOOST_AUTO_TEST_CASE(general)
          "max_generated_transaction_size": "1500"
       },
       "chainconfig_arr": [{
-         "producer_pay": "100",
          "target_block_size": "200",
          "max_block_size": "300",
          "target_block_acts_per_scope": "400",
@@ -1446,7 +1444,6 @@ BOOST_AUTO_TEST_CASE(general)
          "max_inline_action_size": "1400",
          "max_generated_transaction_size": "1500"
       },{
-         "producer_pay": "100",
          "target_block_size": "200",
          "max_block_size": "300",
          "target_block_acts_per_scope": "400",

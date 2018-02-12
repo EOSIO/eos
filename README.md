@@ -105,6 +105,7 @@ Now you can proceed to the next step - [Creating and launching a single-node tes
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
+
 git checkout DAWN-2018-01-25
 ./eosio_build.sh
 ```
@@ -140,6 +141,7 @@ Then clone the EOS repository recursively, checkout the branch that is compatibl
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
+
 git checkout DAWN-2018-01-25
 ./eosio_build.sh
 ```

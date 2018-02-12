@@ -4,6 +4,7 @@
 #include <eosiolib/system.h>
 #include <eosiolib/memory.hpp>
 #include <eosiolib/print.hpp>
+#include <eosiolib/varint.hpp>
 
 namespace eosio {
   /**
@@ -197,12 +198,12 @@ namespace eosio {
         * @return             substring of the current string
         */
        string substr(size_t offset, size_t substr_size, bool copy) {
-         assert((offset < size) && (offset + substr_size < size), "out of bound");
+         eos_assert((offset < size) && (offset + substr_size < size), "out of bound");
          return string(data + offset, substr_size, copy);
        }
 
        char operator [] (const size_t index) {
-         assert(index < size, "index out of bound");
+         eos_assert(index < size, "index out of bound");
          return *(data + index);
        }
 
@@ -237,7 +238,7 @@ namespace eosio {
        }
 
        string& operator += (const string& str){
-         assert((size + str.size > size) && (size + str.size > str.size), "overflow");
+         eos_assert((size + str.size > size) && (size + str.size > str.size), "overflow");
 
          char* new_data;
          size_t new_size;

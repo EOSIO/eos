@@ -16,34 +16,7 @@
 namespace eosio { namespace chain { namespace contracts {
 
 struct genesis_state_type {
-   struct initial_account_type {
-      initial_account_type(const string& name = string(),
-                           uint64_t staking_bal = 0,
-                           uint64_t liquid_bal = 0,
-                           const public_key_type& owner_key = public_key_type(),
-                           const public_key_type& active_key = public_key_type())
-         : name(name), staking_balance(staking_bal), liquid_balance(liquid_bal),
-           owner_key(owner_key),
-           active_key(active_key == public_key_type()? owner_key : active_key)
-      {}
-      string          name;
-      asset           staking_balance;
-      asset           liquid_balance;
-      public_key_type owner_key;
-      public_key_type active_key;
-   };
-   struct initial_producer_type {
-      initial_producer_type(const string& name = string(),
-                            const public_key_type& signing_key = public_key_type())
-         : owner_name(name), block_signing_key(signing_key)
-      {}
-      /// Must correspond to one of the initial accounts
-      string              owner_name;
-      public_key_type     block_signing_key;
-   };
-
    chain_config   initial_configuration = {
-      .producer_pay                   = config::default_elected_pay,
       .target_block_size              = config::default_target_block_size,
       .max_block_size                 = config::default_max_block_size,
       .target_block_acts_per_scope    = config::default_target_block_acts_per_scope,
@@ -62,10 +35,6 @@ struct genesis_state_type {
 
    time_point                               initial_timestamp;
    public_key_type                          initial_key;
-   public_key_type                          eosio_system_key;
-
-   vector<initial_account_type>             initial_accounts;
-   vector<initial_producer_type>            initial_producers;
 
    /**
     * Temporary, will be moved elsewhere.
@@ -82,11 +51,6 @@ struct genesis_state_type {
 
 } } } // namespace eosio::contracts
 
-FC_REFLECT(eosio::chain::contracts::genesis_state_type::initial_account_type,
-           (name)(staking_balance)(liquid_balance)(owner_key)(active_key))
-
-FC_REFLECT(eosio::chain::contracts::genesis_state_type::initial_producer_type, (owner_name)(block_signing_key))
 
 FC_REFLECT(eosio::chain::contracts::genesis_state_type,
-           (initial_timestamp)(initial_key)(initial_configuration)(initial_accounts)
-           (initial_producers)(initial_chain_id))
+           (initial_timestamp)(initial_key)(initial_configuration)(initial_chain_id))

@@ -295,7 +295,23 @@ namespace WAST
 	U32 parseAndResolveNameOrIndexRef(ParseState& state,const NameToIndexMap& nameToIndexMap,Uptr maxIndex,const char* context)
 	{
 		Reference ref;
-		if(!tryParseNameOrIndexRef(state,ref))
+
+		if(strcmp(context, "type") == 0     //limits this block strictly to call_indirect
+		&& state.nextToken[0].type == t_leftParenthesis
+		&& state.nextToken[1].type == t_type)
+		{
+			parseParenthesized(state,[&]
+			{
+				require(state,t_type);
+				if(!tryParseNameOrIndexRef(state,ref))
+				{
+					parseErrorf(state,state.nextToken,"expected type name or index");
+					throw RecoverParseException();
+				}
+			});
+		}
+
+		if(ref.type == Reference::Type::invalid && !tryParseNameOrIndexRef(state,ref))
 		{
 			parseErrorf(state,state.nextToken,"expected %s name or index",context);
 			throw RecoverParseException();

@@ -21,7 +21,7 @@ namespace eosio {
             char temp[1024];
             *reinterpret_cast<uint64_t *>(temp) = key;
             auto read = load_i64( DefaultScope, scope , TableName, temp, sizeof(temp) );
-            assert( read > 0, "key does not exist" );
+            eos_assert( read > 0, "key does not exist" );
 
             datastream<const char*> ds(temp, read);
             T result;
@@ -63,7 +63,7 @@ namespace eosio {
          static void set( const T& value = T(), scope_name scope = DefaultScope, uint64_t bta = BillToAccount ) {
             auto size = pack_size( value );
             char buf[size];
-            assert( size <= 1024, "singleton too big to store" );
+            eos_assert( size <= 1024, "singleton too big to store" );
 
             datastream<char*> ds( buf, size );
             ds << value;
@@ -93,7 +93,7 @@ namespace eosio {
             temp[1] = secondary;
             temp[2] = tertiary;
             
-            auto read = lower_bound_primary_i64i64i64( Code, _scope, TableName, 
+            auto read = lower_bound_primary_i64i64i64(    Code, _scope, TableName,
                                                 (char*)temp, sizeof(temp) );
             if( read <= 0 ) {
                return false;
@@ -104,19 +104,29 @@ namespace eosio {
             return true;
          }
 
-         bool next_primary( T& result, const T& current ) {
+         bool primary_upper_bound( T& result,
+                                   uint64_t primary = 0,
+                                   uint64_t secondary = 0,
+                                   uint64_t tertiary = 0 ) {
+
             uint64_t temp[1024/8];
-            memcpy( temp, (const char*)&current, 3*sizeof(uint64_t) );
-            
-            auto read = next_primary_i64i64i64( Code, _scope, TableName, 
+            temp[0] = primary;
+            temp[1] = secondary;
+            temp[2] = tertiary;
+
+            auto read = upper_bound_primary_i64i64i64(    Code, _scope, TableName,
                                                 (char*)temp, sizeof(temp) );
             if( read <= 0 ) {
                return false;
             }
 
-            datastream<const char*> ds( (char*)temp, sizeof(temp) );
-            ds >> result;
+            result = unpack<T>( (char*)temp, sizeof(temp) );
             return true;
+         }
+
+         bool next_primary( T& result, const T& current ) {
+            const uint64_t* keys = reinterpret_cast<const uint64_t*>(&current);
+            return primary_upper_bound(result, keys[0], keys[1], keys[2]);
          }
 
          void store( const T& value, account_name bill_to = BillToAccount ) {
