@@ -63,13 +63,6 @@
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
 			;;
-			"Red Hat Enterprise Linux Server")
-				printf "\n\tRed Hat Linux is Unsupported at this time.\nCheck back soon. Exiting now.\n\n"
-				exit 1
-				FILE=${WORK_DIR}/scripts/eosio_build_rhel.sh
-				CXX_COMPILER=clang++
-				C_COMPILER=clang
-			;;
 			"Fedora")
 				FILE=${WORK_DIR}/scripts/eosio_build_fedora.sh
 				CXX_COMPILER=g++
