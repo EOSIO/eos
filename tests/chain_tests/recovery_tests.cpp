@@ -35,13 +35,20 @@ auto make_vetorecovery(const tester &t, account_name account, permission_name ve
    return trx;
 }
 
+struct recov_tester : public tester {
+   transaction_trace push_reqauth(account_name from, string role) {
+      return tester::push_reqauth(from, vector<permission_level>{{from, config::owner_name}}, {get_private_key(from, role)} );
+   }
+};
+
+
 
 BOOST_AUTO_TEST_SUITE(recovery_tests)
 
 
-BOOST_FIXTURE_TEST_CASE( test_recovery_owner, tester ) try {
+BOOST_FIXTURE_TEST_CASE( test_recovery_owner, recov_tester ) try {
    produce_blocks(1000);
-   create_account(N(alice), asset::from_string("1000.0000 EOS"));
+   create_account(N(alice));
    produce_block();
 
    fc::time_point expected_recovery(fc::seconds(control->head_block_time().sec_since_epoch()) +fc::days(30));
@@ -60,21 +67,21 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_owner, tester ) try {
    auto skip_time = expected_recovery - control->head_block_time() - fc::milliseconds(config::block_interval_ms);
    produce_block(skip_time);
    control->push_deferred_transactions(true);
-   auto last_old_nonce_id = push_nonce(N(alice), "owner").id;
+   auto last_old_nonce_id = push_reqauth(N(alice), "owner").id;
    produce_block();
    control->push_deferred_transactions(true);
 
    BOOST_REQUIRE_EQUAL(chain_has_transaction(last_old_nonce_id), true);
-   BOOST_REQUIRE_THROW(push_nonce(N(alice), "owner"), tx_missing_sigs);
-   auto first_new_nonce_id = push_nonce(N(alice), "owner.recov").id;
+   BOOST_REQUIRE_THROW(push_reqauth(N(alice), "owner"), tx_missing_sigs);
+   auto first_new_nonce_id = push_reqauth(N(alice), "owner.recov").id;
    produce_block();
    BOOST_REQUIRE_EQUAL(chain_has_transaction(first_new_nonce_id), true);
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( test_recovery_owner_veto, tester ) try {
+BOOST_FIXTURE_TEST_CASE( test_recovery_owner_veto, recov_tester ) try {
    produce_blocks(1000);
-   create_account(N(alice), asset::from_string("1000.0000 EOS"));
+   create_account(N(alice));
    produce_block();
 
    fc::time_point expected_recovery(fc::seconds(control->head_block_time().sec_since_epoch()) +fc::days(30));
@@ -92,7 +99,7 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_owner_veto, tester ) try {
    auto skip_time = expected_recovery - control->head_block_time() - fc::milliseconds(config::block_interval_ms);
    produce_block(skip_time);
    control->push_deferred_transactions(true);
-   auto last_old_nonce_id = push_nonce(N(alice), "owner").id;
+   auto last_old_nonce_id = push_reqauth(N(alice), "owner").id;
 
    // post the veto at the last possible time
    {
@@ -107,16 +114,16 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_owner_veto, tester ) try {
 
    // make sure the old owner is still in control
 
-   BOOST_REQUIRE_THROW(push_nonce(N(alice), "owner.recov"), tx_missing_sigs);
-   auto first_new_nonce_id = push_nonce(N(alice), "owner").id;
+   BOOST_REQUIRE_THROW(push_reqauth(N(alice), "owner.recov"), tx_missing_sigs);
+   auto first_new_nonce_id = push_reqauth(N(alice), "owner").id;
    produce_block();
    BOOST_REQUIRE_EQUAL(chain_has_transaction(first_new_nonce_id), true);
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( test_recovery_bad_creator, tester ) try {
+BOOST_FIXTURE_TEST_CASE( test_recovery_bad_creator, recov_tester ) try {
    produce_blocks(1000);
-   create_account(N(alice), asset::from_string("1000.0000 EOS"), N(inita), true);
+   create_account(N(alice), config::system_account_name, true);
    produce_block();
 
    fc::time_point expected_recovery(fc::seconds(control->head_block_time().sec_since_epoch()) +fc::days(30));
@@ -160,7 +167,7 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_bad_creator, tester ) try {
    control->push_deferred_transactions(true);
 
    // make sure the recovery goes through
-   auto first_new_nonce_id = push_nonce(N(alice), "owner").id;
+   auto first_new_nonce_id = push_reqauth(N(alice), "owner").id;
    produce_block();
    BOOST_REQUIRE_EQUAL(chain_has_transaction(first_new_nonce_id), true);
 

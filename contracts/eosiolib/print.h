@@ -4,7 +4,11 @@
  */
 #pragma once
 
+#include <eosiolib/types.h>
+
+#ifdef __cplusplus
 extern "C" {
+#endif
    /**
     *  @defgroup consoleapi Console API
     *  @brief Enables applications to log/print text messages
@@ -98,4 +102,6 @@ extern "C" {
     */
    void printhex( void* data, uint32_t datalen );
    /// @}
+#ifdef __cplusplus
 }
+#endif

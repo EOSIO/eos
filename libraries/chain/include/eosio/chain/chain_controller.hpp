@@ -62,6 +62,11 @@ namespace eosio { namespace chain {
     */
    class chain_controller : public boost::noncopyable {
       public:
+         struct runtime_limits {
+            fc::microseconds               max_push_block_us = fc::microseconds(-1);
+            fc::microseconds               max_push_transaction_us = fc::microseconds(-1);
+         };
+
          struct controller_config {
             path                           block_log_dir       =  config::default_block_log_dir;
             path                           shared_memory_dir   =  config::default_shared_memory_dir;
@@ -69,6 +74,7 @@ namespace eosio { namespace chain {
             bool                           read_only           =  false;
             std::vector<signal<void(const signed_block&)>::slot_type> applied_irreversible_block_callbacks;
             contracts::genesis_state_type  genesis;
+            runtime_limits                 limits;
          };
 
          chain_controller( const controller_config& cfg );
@@ -294,17 +300,8 @@ namespace eosio { namespace chain {
                                    )const;
 
 
-         void set_txn_execution_times(uint32_t create_block_txn_execution_time, uint32_t rcvd_block_txn_execution_time, uint32_t txn_execution_time);
-
-         static const uint32_t default_received_block_transaction_execution_time_ms;
-         static const uint32_t default_transaction_execution_time_ms;
-         static const uint32_t default_create_block_transaction_execution_time_ms;
-
       private:
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
-
-         uint32_t txn_execution_time() const;
-
 
          friend class contracts::chain_initializer;
          friend class apply_context;
@@ -442,9 +439,7 @@ namespace eosio { namespace chain {
 
          wasm_cache                       _wasm_cache;
 
-         uint32_t                         _create_block_txn_execution_time;
-         uint32_t                         _rcvd_block_txn_execution_time;
-         uint32_t                         _txn_execution_time;
+         runtime_limits                   _limits;
    };
 
 } }

@@ -220,7 +220,6 @@ namespace eosio { namespace chain {
 
                try {
                   Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
-                  #warning TODO: restore checktime injection?
                   WASM::serializeWithInjection(stream, *module);
                   validate_eosio_wasm_constraints(*module);
 
@@ -371,7 +370,6 @@ namespace eosio { namespace chain {
       FC_ASSERT( getFunctionType(call)->parameters.size() == args.size() );
 
       auto context_guard = scoped_context(current_context, code, context);
-      context.checktime_start();
       runInstanceStartFunc(code.instance);
       Runtime::invokeFunction(call,args);
    } catch( const Runtime::Exception& e ) {
@@ -516,8 +514,8 @@ class checktime_api : public context_aware_api {
 public:
    using context_aware_api::context_aware_api;
 
-   void checktime() {
-      context.checktime();
+   void checktime(uint32_t instruction_count) {
+      context.checktime(instruction_count);
    }
 };
 
@@ -527,9 +525,10 @@ class producer_api : public context_aware_api {
 
       int get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
          auto active_producers = context.get_active_producers();
-         size_t len = std::min(datalen / sizeof(chain::account_name), active_producers.size());
-         memcpy(producers, active_producers.data(), len);
-         return active_producers.size() * sizeof(chain::account_name);
+         size_t len = active_producers.size() * sizeof(chain::account_name);
+         size_t cpy_len = std::min(datalen, len);
+         memcpy(producers, active_producers.data(), cpy_len);
+         return len;
       }
 };
 
@@ -605,7 +604,12 @@ class system_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      void assert(bool condition, null_terminated_ptr str) {
+      void abort() {
+         edump(("abort() called"));
+         FC_ASSERT( false, "abort() called");
+      }
+
+      void eos_assert(bool condition, null_terminated_ptr str) {
          std::string message( str );
          if( !condition ) edump((message));
          FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
@@ -682,6 +686,57 @@ class console_api : public context_aware_api {
       }
 };
 
+class database_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      int db_store_i64( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, array_ptr<const char> buffer, size_t buffer_size ) {
+         return context.db_store_i64( scope, table, payer, id, buffer, buffer_size );
+      }
+      void db_update_i64( int itr, uint64_t payer, array_ptr<const char> buffer, size_t buffer_size ) {
+         context.db_update_i64( itr, payer, buffer, buffer_size );
+      }
+      void db_remove_i64( int itr ) {
+         context.db_remove_i64( itr );
+      }
+      int db_get_i64( int itr, uint64_t& id, array_ptr<char> buffer, size_t buffer_size ) {
+         return context.db_get_i64( itr, id, buffer, buffer_size );
+      }
+      int db_next_i64( int itr ) { return context.db_next_i64(itr); }
+      int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
+         return context.db_find_i64( code, scope, table, id ); 
+      }
+      int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
+         return context.db_lowerbound_i64( code, scope, table, id ); 
+      }
+      int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
+         return context.db_lowerbound_i64( code, scope, table, id ); 
+      }
+
+      int db_idx64_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const uint64_t& secondary ) {
+         return context.idx64.store( scope, table, payer, id, secondary );
+      }
+      void db_idx64_update( int iterator, uint64_t payer, const uint64_t& secondary ) {
+         return context.idx64.update( iterator, payer, secondary );
+      }
+      void db_idx64_remove( int iterator ) {
+         return context.idx64.remove( iterator );
+      }
+
+
+      int db_idx128_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const uint128_t& secondary ) {
+         return context.idx128.store( scope, table, payer, id, secondary );
+      }
+      void db_idx128_update( int iterator, uint64_t payer, const uint128_t& secondary ) {
+         return context.idx128.update( iterator, payer, secondary );
+      }
+      void db_idx128_remove( int iterator ) {
+         return context.idx128.remove( iterator );
+      }
+};
+
+
+
 template<typename ObjectType>
 class db_api : public context_aware_api {
    using KeyType = typename ObjectType::key_type;
@@ -728,7 +783,7 @@ class db_index_api : public context_aware_api {
 
 
    int call(ContextMethodType method, const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
-      auto maybe_t_id = context.find_table(context.receiver, scope, table);
+      auto maybe_t_id = context.find_table(code, scope, table);
       if (maybe_t_id == nullptr) {
          return -1;
       }
@@ -788,6 +843,10 @@ class memory_api : public context_aware_api {
      
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
          return (char *)::memcpy(dest, src, length);
+      }
+
+      char* memmove( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
+         return (char *)::memmove(dest, src, length);
       }
 
       int memcmp( array_ptr<const char> dest, array_ptr<const char> src, size_t length) {
@@ -899,12 +958,31 @@ REGISTER_INTRINSICS(privileged_api,
 );
 
 REGISTER_INTRINSICS(checktime_api,
-   (checktime,      void())
+   (checktime,      void(int))
 );
 
 REGISTER_INTRINSICS(producer_api,
    (get_active_producers,      int(int, int))
 );
+
+REGISTER_INTRINSICS( database_api,
+   (db_store_i64,        int(int64_t,int64_t,int64_t,int64_t,int,int))
+   (db_update_i64,       void(int,int64_t,int,int))
+   (db_remove_i64,       void(int))
+   (db_get_i64,          int(int, int, int, int))
+   (db_next_i64,         int(int))
+   (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t))
+   (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
+
+   (db_idx64_store,      int(int64_t,int64_t,int64_t,int64_t,int))
+   (db_idx64_remove,     void(int))
+   (db_idx64_update,     void(int,int64_t,int))
+
+
+   (db_idx128_store,      int(int64_t,int64_t,int64_t,int64_t,int))
+   (db_idx128_remove,     void(int))
+   (db_idx128_update,     void(int,int64_t,int))
+)
 
 REGISTER_INTRINSICS(crypto_api,
    (assert_recover_key,  void(int, int, int, int, int))
@@ -921,7 +999,8 @@ REGISTER_INTRINSICS(string_api,
 );
 
 REGISTER_INTRINSICS(system_api,
-   (assert,      void(int, int))
+   (abort,      void())
+   (eos_assert,      void(int, int))
    (now,          int())
 );
 
@@ -962,6 +1041,7 @@ REGISTER_INTRINSICS(transaction_api,
 
 REGISTER_INTRINSICS(memory_api,
    (memcpy,                 int(int, int, int)   )
+   (memmove,                int(int, int, int)   )
    (memcmp,                 int(int, int, int)   )
    (memset,                 int(int, int, int)   )
    (sbrk,                   int(int)             )
@@ -977,7 +1057,6 @@ REGISTER_INTRINSICS(memory_api,
    (load,         int32_t(int64_t, int64_t, int64_t, int, int),   "load_"#SUFFIX )\
    (front,        int32_t(int64_t, int64_t, int64_t, int, int),   "front_"#SUFFIX )\
    (back,         int32_t(int64_t, int64_t, int64_t, int, int),   "back_"#SUFFIX )\
-   (next,         int32_t(int64_t, int64_t, int64_t, int, int),   "next_"#SUFFIX )\
    (previous,     int32_t(int64_t, int64_t, int64_t, int, int),   "previous_"#SUFFIX )\
    (lower_bound,  int32_t(int64_t, int64_t, int64_t, int, int),   "lower_bound_"#SUFFIX )\
    (upper_bound,  int32_t(int64_t, int64_t, int64_t, int, int),   "upper_bound_"#SUFFIX )\

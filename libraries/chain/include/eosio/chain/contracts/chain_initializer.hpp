@@ -22,8 +22,7 @@ namespace eosio { namespace chain {  namespace contracts {
 
          void register_types(chain::chain_controller& chain, chainbase::database& db);
 
-
-         std::vector<action> prepare_database(chain::chain_controller& chain, chainbase::database& db);
+         void prepare_database(chain::chain_controller& chain, chainbase::database& db);
 
          static abi_def eos_contract_abi();
 

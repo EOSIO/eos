@@ -221,13 +221,15 @@ void add_standard_transaction_options(CLI::App* cmd) {
    cmd->add_flag("-f,--force-unique", tx_force_unique, localized("force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"));
 }
 
-uint64_t generate_nonce_value() {
-   return fc::time_point::now().time_since_epoch().count();
+string generate_nonce_value() {
+   return fc::to_string(fc::time_point::now().time_since_epoch().count());
 }
 
 chain::action generate_nonce() {
    auto v = generate_nonce_value();
-   return chain::action( {}, config::eosio_system_account_name, "nonce", fc::raw::pack(v));
+   variant nonce = fc::mutable_variant_object()
+         ("value", v);
+   return chain::action( {}, config::system_account_name, "nonce", fc::raw::pack(nonce));
 }
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
@@ -769,7 +771,7 @@ int main( int argc, char** argv ) {
             ("quantity", asset(amount))
             ("memo", memo);
       auto args = fc::mutable_variant_object
-            ("code", name(config::eosio_system_account_name))
+            ("code", name(config::system_account_name))
             ("action", "transfer")
             ("args", transfer);
 
@@ -777,7 +779,7 @@ int main( int argc, char** argv ) {
 
       std::vector<chain::action> actions;
       actions.emplace_back(vector<chain::permission_level>{{sender,"active"}},
-                               config::eosio_system_account_name, "transfer", result.get_object()["binargs"].as<bytes>());
+                               config::system_account_name, "transfer", result.get_object()["binargs"].as<bytes>());
 
       if (tx_force_unique) {
          actions.emplace_back( generate_nonce() );
