@@ -77,7 +77,7 @@ We are working on supporting Centos, Amazon Linux & Red Hat in future releases.
 It is called eosio_build.sh
 
 ```bash
-cd ~/eos
+cd eos
 ./eosio_build.sh
 ```
 Choose whether you will be building for a local testnet or for the public testnet and jump to the appropriate section below.  Clone the EOS repository recursively as described and run eosio_build.sh located in the root `eos` folder.
@@ -105,7 +105,7 @@ Now you can proceed to the next step - [Creating and launching a single-node tes
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
-git checkout dawn-2.x
+git checkout DAWN-2018-01-25
 ./eosio_build.sh
 ```
 
@@ -140,7 +140,7 @@ Then clone the EOS repository recursively, checkout the branch that is compatibl
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
-git checkout dawn-2.x
+git checkout DAWN-2018-01-25
 ./eosio_build.sh
 ```
 
