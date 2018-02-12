@@ -454,7 +454,7 @@ class privileged_api : public context_aware_api {
        *  Feature name should be base32 encoded name. 
        */
       void activate_feature( int64_t feature_name ) {
-         FC_ASSERT( !"Unsupported Harfork Detected" );
+         FC_ASSERT( !"Unsupported Hardfork Detected" );
       }
 
       /**
@@ -471,7 +471,7 @@ class privileged_api : public context_aware_api {
                                 int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight,
                                 int64_t cpu_usec_per_period ) {
          auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
-         FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free to much space" );
+         FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free too much space" );
 
          auto& gdp = context.controller.get_dynamic_global_properties();
          context.mutable_db.modify( gdp, [&]( auto& p ) {
@@ -568,7 +568,7 @@ class crypto_api : public context_aware_api {
          datastream<const char*> pubds( pub, publen );
 
          fc::raw::unpack(ds, s);
-         fc::raw::unpack(ds, p);
+         fc::raw::unpack(pubds, p);
 
          auto check = fc::crypto::public_key( s, digest, false );
          FC_ASSERT( check == p, "Error expected key different than recovered key" );
@@ -1299,83 +1299,79 @@ REGISTER_INTRINSICS(math_api,
    (double_to_i64, int64_t(int64_t)          )
    (i64_to_double, int64_t(int64_t)          )
 );
-/*
-REGISTER_INTRINSICS(chain_api,
-   (get_active_producers,     int(int, int)  )
-);
-*/
+
 REGISTER_INTRINSICS(compiler_builtins,
-   (__break_point, void()                            )
-   (__ashlti3,     void(int, int64_t, int64_t, int)  )
-   (__ashrti3,     void(int, int64_t, int64_t, int)  )
-   (__lshlti3,     void(int, int64_t, int64_t, int)  )
-   (__lshrti3,     void(int, int64_t, int64_t, int)  )
-   (__divti3,      void(int, int64_t, int64_t, int64_t, int64_t) )
-   (__udivti3,      void(int, int64_t, int64_t, int64_t, int64_t) )
-   (__modti3,      void(int, int64_t, int64_t, int64_t, int64_t) )
-   (__umodti3,      void(int, int64_t, int64_t, int64_t, int64_t) )
-   (__multi3,      void(int, int64_t, int64_t, int64_t, int64_t) )
+   (__break_point, void()                                         )
+   (__ashlti3,     void(int, int64_t, int64_t, int)               )
+   (__ashrti3,     void(int, int64_t, int64_t, int)               )
+   (__lshlti3,     void(int, int64_t, int64_t, int)               )
+   (__lshrti3,     void(int, int64_t, int64_t, int)               )
+   (__divti3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__udivti3,     void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__modti3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__umodti3,     void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__multi3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
 );
 
 REGISTER_INTRINSICS(privileged_api,
-   (activate_feature,          void(int64_t))
-   (is_feature_active,         int(int64_t))
-   (set_resource_limits,       void(int64_t,int64_t,int64_t,int64_t,int64_t))
-   (set_active_producers,      void(int,int))
-   (is_privileged,             int(int64_t))
-   (set_privileged,            void(int64_t, int))
-   (freeze_account,            void(int64_t, int))
-   (is_frozen,                 int(int64_t))
+   (activate_feature,          void(int64_t)                                 )
+   (is_feature_active,         int(int64_t)                                  )
+   (set_resource_limits,       void(int64_t,int64_t,int64_t,int64_t,int64_t) )
+   (set_active_producers,      void(int,int)                                 )
+   (is_privileged,             int(int64_t)                                  )
+   (set_privileged,            void(int64_t, int)                            )
+   (freeze_account,            void(int64_t, int)                            )
+   (is_frozen,                 int(int64_t)                                  )
 );
 
 REGISTER_INTRINSICS(checktime_api,
-   (checktime,      void())
+   (checktime,      void() )
 );
 
 REGISTER_INTRINSICS(producer_api,
-   (get_active_producers,      int(int, int))
+   (get_active_producers,      int(int, int) )
 );
 
 REGISTER_INTRINSICS( database_api,
-   (db_store_i64,        int(int64_t,int64_t,int64_t,int64_t,int,int))
-   (db_update_i64,       void(int,int64_t,int,int))
-   (db_remove_i64,       void(int))
-   (db_get_i64,          int(int, int, int, int))
-   (db_next_i64,         int(int))
-   (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t))
-   (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
+   (db_store_i64,        int(int64_t,int64_t,int64_t,int64_t,int,int) )
+   (db_update_i64,       void(int,int64_t,int,int)                    )
+   (db_remove_i64,       void(int)                                    )
+   (db_get_i64,          int(int, int, int, int)                      )
+   (db_next_i64,         int(int)                                     )
+   (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t)         )
+   (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t)         )
 
-   (db_idx64_store,      int(int64_t,int64_t,int64_t,int64_t,int))
-   (db_idx64_remove,     void(int))
-   (db_idx64_update,     void(int,int64_t,int))
+   (db_idx64_store,      int(int64_t,int64_t,int64_t,int64_t,int)     )
+   (db_idx64_remove,     void(int)                                    )
+   (db_idx64_update,     void(int,int64_t,int)                        )
 
 
-   (db_idx128_store,      int(int64_t,int64_t,int64_t,int64_t,int))
-   (db_idx128_remove,     void(int))
-   (db_idx128_update,     void(int,int64_t,int))
+   (db_idx128_store,      int(int64_t,int64_t,int64_t,int64_t,int)    )
+   (db_idx128_remove,     void(int)                                   )
+   (db_idx128_update,     void(int,int64_t,int)                       )
 )
 
 REGISTER_INTRINSICS(crypto_api,
-   (assert_recover_key,  void(int, int, int, int, int))
-   (recover_key,         int(int, int, int, int, int))
-   (eos_assert_sha256,   void(int, int, int))
-   (eos_assert_sha1,   void(int, int, int))
-   (eos_assert_sha512,   void(int, int, int))
-   (eos_assert_ripemd160,   void(int, int, int))
-   (sha1,                void(int, int, int))
-   (sha256,              void(int, int, int))
-   (sha512,              void(int, int, int))
-   (ripemd160,           void(int, int, int))
+   (assert_recover_key,     void(int, int, int, int, int) )
+   (recover_key,            int(int, int, int, int, int)  )
+   (eos_assert_sha256,      void(int, int, int)           )
+   (eos_assert_sha1,        void(int, int, int)           )
+   (eos_assert_sha512,      void(int, int, int)           )
+   (eos_assert_ripemd160,   void(int, int, int)           )
+   (sha1,                   void(int, int, int)           )
+   (sha256,                 void(int, int, int)           )
+   (sha512,                 void(int, int, int)           )
+   (ripemd160,              void(int, int, int)           )
 );
 
 REGISTER_INTRINSICS(string_api,
-   (assert_is_utf8,  void(int, int, int))
+   (assert_is_utf8,  void(int, int, int) )
 );
 
 REGISTER_INTRINSICS(system_api,
-   (abort,        void())
-   (eos_assert,   void(int, int))
-   (now,          int())
+   (abort,        void()         )
+   (eos_assert,   void(int, int) )
+   (now,          int()          )
 );
 
 /*
@@ -1393,9 +1389,9 @@ REGISTER_INTRINSICS(action_api,
 );
 
 REGISTER_INTRINSICS(apply_context,
-   (require_write_lock,    void(int64_t)   )
-   (require_read_lock,     void(int64_t, int64_t)   )
-   (require_recipient,     void(int64_t)   )
+   (require_write_lock,    void(int64_t)          )
+   (require_read_lock,     void(int64_t, int64_t) )
+   (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&)const)
 );
 
@@ -1420,11 +1416,11 @@ REGISTER_INTRINSICS(transaction_api,
 );
 
 REGISTER_INTRINSICS(memory_api,
-   (memcpy,                 int(int, int, int)   )
-   (memmove,                int(int, int, int)   )
-   (memcmp,                 int(int, int, int)   )
-   (memset,                 int(int, int, int)   )
-   (sbrk,                   int(int)             )
+   (memcpy,                 int(int, int, int)  )
+   (memmove,                int(int, int, int)  )
+   (memcmp,                 int(int, int, int)  )
+   (memset,                 int(int, int, int)  )
+   (sbrk,                   int(int)            )
 );
 
 

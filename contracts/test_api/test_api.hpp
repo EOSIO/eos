@@ -49,6 +49,7 @@ struct test_types {
 
 struct test_print {
   static void test_prints();
+  static void test_prints_l();
   static void test_printi();
   static void test_printi128();
   static void test_printn();
@@ -126,6 +127,8 @@ struct test_db {
 
 struct test_crypto {
    static void test_recover_key();
+   static void test_recover_key_assert_true();
+   static void test_recover_key_assert_false();
    static void test_sha1();
    static void test_sha256();
    static void test_sha512();
@@ -243,4 +246,9 @@ struct test_memory {
    static void test_memcpy_overlap_start();
    static void test_memcpy_overlap_end();
    static void test_memcmp();
+};
+
+struct test_checktime {
+   static void checktime_pass();
+   static void checktime_failure();
 };

@@ -185,26 +185,34 @@ extern "C" {
 
 }
 
-struct sig_hash {
-   char sig[72];
+struct sig_hash_key {
    checksum<256> hash;
+   public_key_type pk;
+   signature_type sig;
 };
 
+void test_crypto::test_recover_key_assert_true() {
+   sig_hash_key sh;
+   int read = read_action( (char*)&sh, sizeof(sh) );
+   public_key_type public_key;
+   assert_recover_key( &sh.hash, (const char*)&sh.sig, sizeof(sh.sig), (const char*)&sh.pk, sizeof(sh.pk) );
+}
+
+void test_crypto::test_recover_key_assert_false() {
+   sig_hash_key sh;
+   int read = read_action( (char*)&sh, sizeof(sh) );
+   assert_recover_key( &sh.hash, (const char*)&sh.sig, sizeof(sh.sig), (const char*)&sh.pk, sizeof(sh.pk) );
+   eos_assert( false, "should have thrown an error" );
+}
+
 void test_crypto::test_recover_key() {
-   sig_hash sh;
-   read_action( (char*)&sh, sizeof(sh) );
-   char a[40];
-   int recovered = recover_key( &sh.hash, (const char*)&sh.sig, sizeof(sh.sig), a, 40 );
-   prints("S ");
-   printi(recovered);
-   prints("\n");
-   checksum<256> tmp;
-   sha256( (char*)&sh, sizeof(sh), &tmp);
-   prints("SSS ");
-   printhex((char*)&tmp, sizeof(tmp));
-   prints("\nPK "); 
-   printhex(a, 40);
-   prints("\n");
+   sig_hash_key sh;
+   int read = read_action( (char*)&sh, sizeof(sh) );
+   public_key_type pk;
+   int recovered = recover_key( &sh.hash, (const char*)&sh.sig, sizeof(sh.sig), pk.data, sizeof(pk) );
+   for ( int i=0; i < sizeof(pk); i++ )
+      if ( pk.data[i] != sh.pk.data[i] )
+         eos_assert( false, "public key does not match" );
 }
 
 void test_crypto::test_sha1() {

@@ -74,9 +74,16 @@ void sha512( char* data, uint32_t length, checksum_base* hash );
 void ripemd160( char* data, uint32_t length, checksum_base* hash );
 
 /**
- * Calculates the public key used for a given signature and hash used to create a message
+ * Calculates the public key used for a given signature and hash used to create a message and places it in `pub`
+ * returns the number of bytes read into pub
  * `digest` should be checksum<256>
  */
 int recover_key( checksum_base* digest, const char* sig, size_t siglen, char* pub, size_t publen );
+
+/**
+ * Tests a given public key with the generated key from digest and the signature
+ * `digest` should be checksum<256>
+ */
+void assert_recover_key( checksum_base* digest, const char* sig, size_t siglen, const char* pub, size_t publen );
 
 }

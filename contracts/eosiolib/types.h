@@ -39,12 +39,12 @@ typedef int64_t share_type;
 
 #define PACKED(X) __attribute((packed)) X
 
-struct public_key {
-   uint8_t data[33];
+struct public_key_type {
+   char data[34];
 };
 
-struct signature {
-   uint8_t data[65];
+struct signature_type {
+   uint8_t data[66];
 };
 
 struct checksum_base {

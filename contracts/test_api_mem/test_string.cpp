@@ -9,15 +9,13 @@ void test_string::construct_with_size() {
    eosio::string str1(size1);
 
    eos_assert( str1.get_size() == size1,  "str1.get_size() == size1" );
-   //eos_assert( str1.is_own_memory() == true,  "str1.is_own_memory() == true" );
-/*
+   eos_assert( str1.is_own_memory() == true,  "str1.is_own_memory() == true" );
    size_t size2 = 0;
    eosio::string str2(size2);
 
    eos_assert( str2.get_size() == size2,  "str2.get_size() == size2" );
    eos_assert( str2.get_data() == nullptr,  "str2.get_data() == nullptr" );
    eos_assert( str2.is_own_memory() == false,  "str2.is_own_memory() == false" );
-*/
 }
 
 void test_string::construct_with_data() {
@@ -127,11 +125,6 @@ void test_string::substring() {
   size_t size = sizeof(data)/sizeof(char);
 
   eosio::string str(data, size, false);
-  //Matt comment out this line
-  prints("address : ");
-
-  printi((uint64_t)&str);
-  prints("\n");
   size_t substr_size = 5;
   size_t offset = 2;
   eosio::string substr = str.substr(offset, substr_size, false);

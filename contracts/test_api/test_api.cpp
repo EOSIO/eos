@@ -16,6 +16,8 @@
 #include "test_crypto.cpp"
 #include "test_chain.cpp"
 #include "test_transaction.cpp"
+//#include "test_priviledged.cpp"
+#include "test_checktime.cpp"
 
 extern "C" {
 
@@ -64,6 +66,7 @@ extern "C" {
 
       //test_print
       WASM_TEST_HANDLER(test_print, test_prints);
+      WASM_TEST_HANDLER(test_print, test_prints_l);
       WASM_TEST_HANDLER(test_print, test_printi);
       WASM_TEST_HANDLER(test_print, test_printi128);
       WASM_TEST_HANDLER(test_print, test_printn);
@@ -79,6 +82,8 @@ extern "C" {
 
       //test crypto
       WASM_TEST_HANDLER(test_crypto, test_recover_key);
+      WASM_TEST_HANDLER(test_crypto, test_recover_key_assert_true);
+      WASM_TEST_HANDLER(test_crypto, test_recover_key_assert_false);
       WASM_TEST_HANDLER(test_crypto, test_sha1);
       WASM_TEST_HANDLER(test_crypto, test_sha256);
       WASM_TEST_HANDLER(test_crypto, test_sha512);
@@ -130,6 +135,9 @@ extern "C" {
       WASM_TEST_HANDLER(test_real, test_division);
       WASM_TEST_HANDLER(test_real, test_division_by_0);
 
+      // test checktime
+      WASM_TEST_HANDLER(test_checktime, checktime_pass);
+      WASM_TEST_HANDLER(test_checktime, checktime_failure);
 #if 0
       // test account
       WASM_TEST_HANDLER(test_account, test_balance_acc1);

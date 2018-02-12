@@ -7,6 +7,15 @@
 #include "test_api.hpp"
 using namespace eosio;
 
+void test_print::test_prints_l() {
+  char ab[] = { 'a', 'b' };
+  const char test[] = "test";
+  prints_l(ab, 2);
+  prints_l(ab, 1);
+  prints_l(ab, 0);
+  prints_l(test, sizeof(test)-1);
+}
+
 void test_print::test_prints() {
   prints("ab");
   prints(nullptr);
