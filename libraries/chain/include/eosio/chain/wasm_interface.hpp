@@ -2,14 +2,13 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/types.hpp>
 
-namespace Runtime {
-   struct MemoryInstance;
-}
-
 namespace eosio { namespace chain {
 
    class apply_context;
-   class intrinsics_accessor;
+
+   namespace webassembly { namespace common {
+      class intrinsics_accessor;
+   } }
 
    /**
     * @class wasm_cache
@@ -115,7 +114,7 @@ namespace eosio { namespace chain {
       private:
          wasm_interface();
          unique_ptr<struct wasm_interface_impl> my;
-         friend class eosio::chain::intrinsics_accessor;
+         friend class eosio::chain::webassembly::common::intrinsics_accessor;
    };
 
 } } // eosio::chain

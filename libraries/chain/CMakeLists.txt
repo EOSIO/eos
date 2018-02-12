@@ -31,10 +31,19 @@ add_library( eosio_chain
              ${HEADERS}
              transaction_metadata.cpp)
 
-target_link_libraries( eosio_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime )
+target_link_libraries( eosio_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime
+        "/usr/local/share/binaryen/lib/libwasm.a"
+        "/usr/local/share/binaryen/lib/libasmjs.a"
+        "/usr/local/share/binaryen/lib/libpasses.a"
+        "/usr/local/share/binaryen/lib/libcfg.a"
+        "/usr/local/share/binaryen/lib/libast.a"
+        "/usr/local/share/binaryen/lib/libemscripten-optimizer.a"
+        "/usr/local/share/binaryen/lib/libsupport.a"
+        )
 target_include_directories( eosio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
-                                   "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
+                                   "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include" "/usr/local/share/binaryen/src"
+
                             )
 
 if(MSVC)

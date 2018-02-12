@@ -69,6 +69,8 @@ using boost::asio::io_service;
 
 namespace eosio { namespace chain {
    using namespace contracts;
+   using namespace webassembly;
+   using namespace webassembly::common;
 
    /**
     * Integration with the WASM Linker to resolve our intrinsics
@@ -251,7 +253,10 @@ namespace eosio { namespace chain {
                      // find or create a new entry
                      auto iter = _cache.emplace(code_id, code_info(mem_end, std::move(mem_image))).first;
 
-                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(instance, module));
+                     MemoryInstance* default_mem = Runtime::getDefaultMemory(instance);
+                     uint32_t default_sbrk_bytes = default_mem ? Runtime::getMemoryNumPages(default_mem) << IR::numBytesPerPageLog2 : 0;
+
+                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(jit::entry{instance, module}, default_sbrk_bytes));
                      pending_result = optional_entry_ref(*iter->second.instances.back().get());
                   });
                }
@@ -286,12 +291,12 @@ namespace eosio { namespace chain {
       void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
         // sanitize by reseting the memory that may now be dirty
         auto& info = (*fetch_info(code_id)).get();
-        if(getDefaultMemory(entry.instance)) {
-           char* memstart = &memoryRef<char>( getDefaultMemory(entry.instance), 0 );
+        if(getDefaultMemory(entry.jit.instance)) {
+           char* memstart = &memoryRef<char>( getDefaultMemory(entry.jit.instance), 0 );
            memset( memstart + info.mem_end, 0, ((1<<16) - info.mem_end) );
            memcpy( memstart, info.mem_image.data(), info.mem_end);
         }
-        resetGlobalInstances(entry.instance);
+        resetGlobalInstances(entry.jit.instance);
 
         // under a lock, put this entry back in the available instances side of the instances vector
         with_lock(_cache_lock, [&,this](){
@@ -336,7 +341,7 @@ namespace eosio { namespace chain {
 
 
    void wasm_cache::checkin(const digest_type& code_id, entry& code ) {
-      MemoryInstance* default_mem = Runtime::getDefaultMemory(code.instance);
+      MemoryInstance* default_mem = Runtime::getDefaultMemory(code.jit.instance);
       if(default_mem)
          Runtime::shrinkMemory(default_mem, Runtime::getMemoryNumPages(default_mem) - 1);
       _my->return_entry(code_id, code);
@@ -362,15 +367,15 @@ namespace eosio { namespace chain {
 
    void wasm_interface_impl::call(const string& entry_point, const vector<Value>& args, wasm_cache::entry& code, apply_context& context)
    try {
-      FunctionInstance* call = asFunctionNullable(getInstanceExport(code.instance,entry_point) );
+      FunctionInstance* call = asFunctionNullable(getInstanceExport(code.jit.instance,entry_point) );
       if( !call ) {
          return;
       }
 
       FC_ASSERT( getFunctionType(call)->parameters.size() == args.size() );
 
-      auto context_guard = scoped_context(current_context, code, context);
-      runInstanceStartFunc(code.instance);
+      auto context_guard = scoped_context(current_context, code, context, code.default_sbrk_bytes);
+      runInstanceStartFunc(code.jit.instance);
       Runtime::invokeFunction(call,args);
    } catch( const Runtime::Exception& e ) {
       FC_THROW_EXCEPTION(wasm_execution_error,
@@ -400,6 +405,15 @@ namespace eosio { namespace chain {
    void wasm_interface::error( wasm_cache::entry& code, apply_context& context ) {
       vector<Value> args = { /* */ };
       my->call("error", args, code, context);
+   }
+
+   wasm_context& common::intrinsics_accessor::get_context(wasm_interface &wasm) {
+      FC_ASSERT(wasm.my->current_context.valid());
+      return *wasm.my->current_context;
+   }
+
+   const jit::entry& jit::entry::get(wasm_interface& wasm) {
+      return common::intrinsics_accessor::get_context(wasm).code.jit;
    }
 
 #if defined(assert)
@@ -932,7 +946,7 @@ class memory_api : public context_aware_api {
          constexpr uint32_t NBPPL2  = IR::numBytesPerPageLog2;
          constexpr uint32_t MAX_MEM = 1024 * 1024;
 
-         MemoryInstance*  default_mem    = Runtime::getDefaultMemory(code.instance);
+         MemoryInstance*  default_mem    = Runtime::getDefaultMemory(code.jit.instance);
          if(!default_mem)
             throw eosio::chain::page_memory_error();
 
