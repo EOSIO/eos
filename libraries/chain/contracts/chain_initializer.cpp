@@ -151,12 +151,6 @@ abi_def chain_initializer::eos_contract_abi()
    });
 
    // DATABASE RECORDS
-   eos_abi.structs.emplace_back( struct_def {
-      "account", "", {
-         {"key",     "name"},
-         {"balance", "uint64"},
-      }
-   });
 
    eos_abi.structs.emplace_back( struct_def {
       "pending_recovery", "", {
@@ -190,7 +184,7 @@ void chain_initializer::prepare_database( chain_controller& chain,
          a.privileged = true;
 
          if( name == config::system_account_name ) {
-            a.set_abi(eos_contract_abi());
+            a.set_abi(abi_def());
          }
       });
       const auto& owner = db.create<permission_object>([&](permission_object& p) {

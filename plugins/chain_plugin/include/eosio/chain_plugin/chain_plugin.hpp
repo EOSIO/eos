@@ -41,6 +41,9 @@ struct permission {
    authority         required_auth;
 };
 
+template<typename>
+struct resolver_factory;
+
 class read_only {
    const chain_controller& db;
 
@@ -143,20 +146,7 @@ public:
       string block_num_or_id;
    };
 
-   struct get_block_results : public chain::signed_block {
-      get_block_results( const chain::signed_block& b )
-      :signed_block(b),
-      id(b.id()),
-      block_num(b.block_num()),
-      ref_block_prefix( id._hash[1] )
-      {}
-
-      chain::block_id_type id;
-      uint32_t             block_num = 0;
-      uint32_t             ref_block_prefix = 0;
-   };
-
-   get_block_results get_block(const get_block_params& params) const;
+   fc::variant get_block(const get_block_params& params) const;
 
    struct get_table_rows_params {
       bool        json = false;
@@ -292,7 +282,8 @@ public:
       }
       return result;
    }
-      
+
+   friend struct resolver_factory<read_only>;
 };
 
 class read_write {
@@ -316,6 +307,8 @@ public:
    using push_transactions_params  = vector<push_transaction_params>;
    using push_transactions_results = vector<push_transaction_results>;
    push_transactions_results push_transactions(const push_transactions_params& params);
+
+   friend resolver_factory<read_write>;
 };
 } // namespace chain_apis
 
@@ -365,7 +358,6 @@ FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
   (recent_slots)(participation_rate))
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
   
-FC_REFLECT_DERIVED( eosio::chain_apis::read_only::get_block_results, (eosio::chain::signed_block), (id)(block_num)(ref_block_prefix) );
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
   
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit) )

@@ -11,7 +11,9 @@ struct checksum_base {
 };
 */
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 /**
  *  @defgroup types Builtin Types
@@ -53,23 +55,25 @@ struct checksum_base {
 
 struct fixed_string16 {
    uint8_t len;
-   char    str[16];
+   char str[16];
 };
 
-typedef fixed_string16 field_name;
+typedef struct fixed_string16 field_name;
 
 struct fixed_string32 {
    uint8_t len;
-   char    str[32];
+   char str[32];
 };
 
-typedef fixed_string32 type_name;
+typedef struct fixed_string32 type_name;
 
 struct account_permission {
    account_name account;
    permission_name permission;
 };
 
-/// extern "C"
+#ifdef __cplusplus
+} /// extern "C"
+#endif
 /// @}
 }

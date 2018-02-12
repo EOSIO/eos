@@ -1,3 +1,5 @@
+import copy
+import decimal
 import subprocess
 import time
 import glob
@@ -148,6 +150,12 @@ class Node(object):
         trace and Utils.Print ("JSON> %s"% jStr)
         jsonData=json.loads(jStr)
         return jsonData
+
+    @staticmethod
+    def runCmdReturnStr(cmd, trace=False):
+        retStr=Node.__checkOutput(cmd.split())
+        trace and Utils.Print ("RAW > %s"% retStr)
+        return retStr
 
     @staticmethod
     def filterJsonObject(data):
@@ -387,13 +395,46 @@ class Node(object):
         else:
             return False
 
+    def createInitAccounts(self):
+        eosio = copy.copy(Cluster.initaAccount)
+        eosio.name = "eosio"
+
+        # publish system contract
+        wastFile="contracts/eosio.system/eosio.system.wast"
+        abiFile="contracts/eosio.system/eosio.system.abi"
+        Utils.Print("Publish eosio.system contract")
+        trans=self.publishContract(eosio.name, wastFile, abiFile, waitForTransBlock=True)
+        if trans is None:
+           errorExit("Failed to publish oesio.system.")
+
+        Utils.Print("push issue action to eosio contract")
+        contract=eosio.name
+        action="issue"
+        data="{\"to\":\"eosio\",\"quantity\":\"1000000000.0000 EOS\"}"
+        opts="--permission eosio@active"
+        trans=self.pushMessage(contract, action, data, opts)
+        transId=Node.getTransId(trans)
+        self.waitForTransIdOnNode(transId)
+
+        initx = copy.copy(Cluster.initaAccount)
+        self.createAccount(Cluster.initaAccount, eosio, 0)
+        for i in range(2, 21):
+            initx.name = "init" + chr(ord('a')+i)
+            self.createAccount(initx, eosio, 0)
+        self.createAccount(Cluster.initbAccount, eosio, 0, True)
+        for i in range(0, 21):
+            initx.name = "init" + chr(ord('a')+i)
+            trans = self.transferFunds(eosio, initx, 10000000000, "init")
+        transId=Node.getTransId(trans)
+        self.waitForTransIdOnNode(transId)
+
     # Create account and return creation transactions. Return transaction json object
     # waitForTransBlock: wait on creation transaction id to appear in a block
     def createAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
         cmd=None
         if Utils.amINoon:
-            cmd="%s %s create account --staked-deposit %d %s %s %s %s" % (
-                Utils.EosClientPath, self.endpointArgs, stakedDeposit, creatorAccount.name, account.name,
+            cmd="%s %s create account %s %s %s %s" % (
+                Utils.EosClientPath, self.endpointArgs, creatorAccount.name, account.name,
                 account.ownerPublicKey, account.activePublicKey)
         else:
             cmd="%s %s create account %s %s %s %s" % (Utils.EosClientPath, self.endpointArgs,
@@ -409,6 +450,13 @@ class Node(object):
             msg=ex.output.decode("utf-8")
             Utils.Print("ERROR: Exception during account creation. %s" % (msg))
             return None
+
+        if waitForTransBlock and not self.waitForTransIdOnNode(transId):
+            return None
+
+        if stakedDeposit > 0:
+            trans = self.transferFunds(creatorAccount, account, stakedDeposit, "init")
+            transId=Node.getTransId(trans)
 
         if waitForTransBlock and not self.waitForTransIdOnNode(transId):
             return None
@@ -438,13 +486,24 @@ class Node(object):
             return None
 
 
+    def getEosCurrencyBalance(self, name):
+        cmd="%s %s get currency balance eosio %s EOS" % (Utils.EosClientPath, self.endpointArgs, name)
+        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        try:
+            trans=Node.runCmdReturnStr(cmd)
+            return trans
+        except subprocess.CalledProcessError as ex:
+            msg=ex.output.decode("utf-8")
+            Utils.Print("ERROR: Exception during get currency balance. %s" % (msg))
+            return None
+
     # Verifies account. Returns "get account" json return object
     def verifyAccount(self, account):
         if not self.enableMongo:
             ret=self.getEosAccount(account.name)
             if ret is not None:
-                stakedBalance=ret["staked_balance"]
-                if stakedBalance is None:
+                account_name=ret["account_name"]
+                if account_name is None:
                     Utils.Print("ERROR: Failed to verify account creation.", account.name)
                     return None
                 return ret
@@ -452,8 +511,8 @@ class Node(object):
             for i in range(2):
                 ret=self.getEosAccountFromDb(account.name)
                 if ret is not None:
-                    stakedBalance=ret["staked_balance"]
-                    if stakedBalance is None:
+                    account_name=ret["account_name"]
+                    if account_name is None:
                         Utils.Print("ERROR: Failed to verify account creation.", account.name)
                         return None
                     return ret
@@ -506,7 +565,7 @@ class Node(object):
 
     # Trasfer funds. Returns "transfer" json return object
     def transferFunds(self, source, destination, amount, memo="memo", force=False):
-        cmd="%s %s transfer %s %s %d" % (
+        cmd="%s %s -v transfer %s %s %d" % (
             Utils.EosClientPath, self.endpointArgs, source.name, destination.name, amount)
         cmdArr=cmd.split()
         cmdArr.append(memo)
@@ -581,10 +640,10 @@ class Node(object):
 
     def getAccountBalance(self, name):
         if not self.enableMongo:
-            account=self.getEosAccount(name)
-            field=account["eos_balance"]
-            balanceStr=field.split()[0]
-            balance=int(float(balanceStr)*10000)
+            amount=self.getEosCurrencyBalance(name)
+            Utils.Debug and Utils.Print("getEosCurrencyBalance", name, amount)
+            balanceStr=amount.split()[0]
+            balance=int(decimal.Decimal(balanceStr[1:])*10000)
             return balance
         else:
             if self.mongoSyncTime is not None:
@@ -644,7 +703,7 @@ class Node(object):
 
     # publish contract and return transaction as json object
     def publishContract(self, account, wastFile, abiFile, waitForTransBlock=False, shouldFail=False):
-        cmd="%s %s set contract %s %s %s" % (Utils.EosClientPath, self.endpointArgs, account, wastFile, abiFile)
+        cmd="%s %s -v set contract %s %s %s" % (Utils.EosClientPath, self.endpointArgs, account, wastFile, abiFile)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
@@ -673,7 +732,7 @@ class Node(object):
             return None
         return trans
 
-    # create producer and retrun transaction as json object
+    # create producer and return transaction as json object
     def createProducer(self, account, ownerPublicKey, waitForTransBlock=False):
         cmd="%s %s create producer %s %s" % (Utils.EosClientPath, self.endpointArgs, account, ownerPublicKey)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
@@ -988,8 +1047,14 @@ class Cluster(object):
     # init accounts
     initaAccount=Account("inita")
     initaAccount.ownerPrivateKey="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3";
+    initaAccount.ownerPublicKey="EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV";
+    initaAccount.activePrivateKey="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3";
+    initaAccount.activePublicKey="EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV";
     initbAccount=Account("initb")
     initbAccount.ownerPrivateKey="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3";
+    initbAccount.ownerPublicKey="EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV";
+    initbAccount.activePrivateKey="5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3";
+    initbAccount.activePublicKey="EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV";
 
     # walletd [True|False] Is walletd running. If not load the wallet plugin
     def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", initaPrvtKey=initaAccount.ownerPrivateKey, initbPrvtKey=initbAccount.ownerPrivateKey):
