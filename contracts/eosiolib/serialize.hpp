@@ -1,8 +1,8 @@
-#include <eosiolib/preprocessor/seq/for_each.hpp>
-#include <eosiolib/preprocessor/seq/enum.hpp>
-#include <eosiolib/preprocessor/seq/size.hpp>
-#include <eosiolib/preprocessor/seq/seq.hpp>
-#include <eosiolib/preprocessor/stringize.hpp>
+#include <boost/preprocessor/seq/for_each.hpp>
+#include <boost/preprocessor/seq/enum.hpp>
+#include <boost/preprocessor/seq/size.hpp>
+#include <boost/preprocessor/seq/seq.hpp>
+#include <boost/preprocessor/stringize.hpp>
 
 #define EOSLIB_REFLECT_MEMBER_OP( r, OP, elem ) \
   OP t.elem 
