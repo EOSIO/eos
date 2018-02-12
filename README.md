@@ -20,6 +20,7 @@ The public testnet described in the [wiki](https://github.com/EOSIO/eos/wiki/Tes
 5. [Developer Telegram Group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ)
 6. [White Paper](https://github.com/EOSIO/Documentation/blob/master/TechnicalWhitePaper.md)
 7. [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md)
+8. [Wiki](https://github.com/EOSIO/eos/wiki)
 
 # Table of contents
 
@@ -34,6 +35,7 @@ The public testnet described in the [wiki](https://github.com/EOSIO/eos/wiki/Tes
 	1. [Getting the code](#getcode)
 	2. [Building from source code](#build)
 	3. [Creating and launching a single-node testnet](#singlenode)
+  4. [Next steps](#nextsteps)
 4. [Example Currency Contract Walkthrough](#smartcontracts)
 	1. [Example Contracts](#smartcontractexample)
 	2. [Setting up a wallet and importing account key](#walletimport)
@@ -86,6 +88,12 @@ cd eos
 ./eosio-build.sh ubuntu
 ```
 
+For ease of contract development, one further step is required:
+
+```bash
+sudo make install
+```
+
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
 
 <a name="autoubuntupublic"></a>
@@ -97,6 +105,12 @@ git clone https://github.com/eosio/eos --recursive
 cd eos
 git checkout dawn-2.x
 ./build.sh ubuntu
+```
+
+For ease of contract development, one further step is required:
+
+```bash
+sudo make install
 ```
 
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
@@ -120,6 +134,12 @@ cd eos
 ./eosio-build.sh darwin
 ```
 
+For ease of contract development, one further step is required:
+
+```bash
+make install
+```
+
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
 
 <a name="automacpublic"></a>
@@ -140,6 +160,12 @@ git clone https://github.com/eosio/eos --recursive
 cd eos
 git checkout dawn-2.x
 ./build.sh darwin
+```
+
+For ease of contract development, one further step is required:
+
+```bash
+make install
 ```
 
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
@@ -245,6 +271,10 @@ When running `eosiod` you should get log messages similar to below. It means the
 1578001ms thread-0   producer_plugin.cpp:207       block_production_loo ] initc generated block #2 @ 2017-09-04T04:26:18 with 0 trxs  0 pending
 ...
 ```
+<a name="nextsteps"></a>
+### Next Steps
+
+Further documentation is available in the [wiki](https://github.com/EOSIO/eos/wiki). Wiki pages include detailed reference documentation for all programs and tools and the database schema and API. The wiki also includes a section describing smart contract development. A simple walkthrough of the "currency" contract follows.
 
 <a name="smartcontracts"></a>
 ## Example "Currency" Contract Walkthrough
@@ -686,6 +716,6 @@ Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
 
 ```bash
 echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
-echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
+echo "export LLVM_DIR=/usr/local/Cellar/llvm\@4/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
 source ~/.bash_profile
 ```
