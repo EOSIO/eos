@@ -38,12 +38,12 @@ public:
 
       const auto& accnt = control->get_database().get<account_object,by_name>( N(identity) );
       abi_def abi;
-      BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
+      BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.name, accnt.abi, abi), true);
       abi_ser.set_abi(abi);
 
       const auto& acnt_test = control->get_database().get<account_object,by_name>( N(identitytest) );
       abi_def abi_test;
-      BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(acnt_test.abi, abi_test), true);
+      BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.name, acnt_test.abi, abi_test), true);
       abi_ser_test.set_abi(abi_test);
 
       const global_property_object &gpo = control->get_global_properties();

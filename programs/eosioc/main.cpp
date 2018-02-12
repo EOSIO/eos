@@ -221,13 +221,15 @@ void add_standard_transaction_options(CLI::App* cmd) {
    cmd->add_flag("-f,--force-unique", tx_force_unique, localized("force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"));
 }
 
-uint64_t generate_nonce_value() {
-   return fc::time_point::now().time_since_epoch().count();
+string generate_nonce_value() {
+   return fc::to_string(fc::time_point::now().time_since_epoch().count());
 }
 
 chain::action generate_nonce() {
    auto v = generate_nonce_value();
-   return chain::action( {}, config::system_account_name, "nonce", fc::raw::pack(v));
+   variant nonce = fc::mutable_variant_object()
+         ("value", v);
+   return chain::action( {}, config::system_account_name, "nonce", fc::raw::pack(nonce));
 }
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {

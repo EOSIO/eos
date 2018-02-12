@@ -466,7 +466,7 @@ launcher_def::initialize (const variables_map &vmap) {
     }
   }
 
-  producers = 21;
+  producers = 1; // TODO: for now we are restricted to the one eosio producer
   data_dir_base = "tn_data_";
   next_node = 0;
 
@@ -703,7 +703,8 @@ launcher_def::bind_nodes () {
           char ext = 'a' + i;
           string pname = "init";
           while (count--) {
-            node.producers.push_back(pname + ext);
+            // TODO: for now we are restricted to the one eosio producer
+            node.producers.push_back("eosio");//pname + ext);
             ext += prod_nodes;
           }
         }
