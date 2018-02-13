@@ -16,7 +16,10 @@ void test_checktime::checktime_pass() {
 
 void test_checktime::checktime_failure() {
    int p = 0;
-   checktime_failure();
-   p++;
+   for ( unsigned long long i = 0; i < 10000000000000000000ULL; i++ )
+      for ( unsigned long long j = 0; i < 10000000000000000000ULL; i++ )
+         p += i+j;
+
+
    eosio::print(p);
 }

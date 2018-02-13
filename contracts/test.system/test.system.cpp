@@ -92,7 +92,6 @@ namespace testsystem {
    using dispatcher = dispatcher_impl<set_account_limits, set_global_limits, set_producers, require_auth>;
 };
 
-
 extern "C" {
 
 /// The apply method implements the dispatch of events to this contract

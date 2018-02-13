@@ -37,6 +37,7 @@
 
 #include <test_api/test_api.wast.hpp>
 #include <test_api_mem/test_api_mem.wast.hpp>
+#include <test_api_db/test_api_db.wast.hpp>
 #include <test_api/test_api.hpp>
 
 FC_REFLECT( dummy_action, (a)(b)(c) );
@@ -62,6 +63,20 @@ struct test_api_action {
 };
 
 FC_REFLECT_TEMPLATE((uint64_t T), test_api_action<T>, BOOST_PP_SEQ_NIL);
+
+template<uint64_t NAME>
+struct test_chain_action {
+	static account_name get_account() {
+		return account_name(config::system_account_name);
+	}
+
+	static action_name get_name() {
+		return action_name(NAME);
+	}
+};
+
+FC_REFLECT_TEMPLATE((uint64_t T), test_chain_action<T>, BOOST_PP_SEQ_NIL);
+
 
 
 bool expect_assert_message(const fc::exception& ex, string expected) {
@@ -388,7 +403,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
 /*************************************************************************************
  * checktime_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(checktime_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(checktime_pass_tests, tester) { try {
 	produce_blocks(2);
 	create_account( N(testapi) );
 	produce_blocks(1000);
@@ -398,11 +413,35 @@ BOOST_FIXTURE_TEST_CASE(checktime_tests, tester) { try {
    // test checktime_pass
    CALL_TEST_FUNCTION( *this, "test_checktime", "checktime_pass", {});
 
-   // test checktime_fail
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_checktime", "checktime_failure", {}), checktime_exceeded, is_checktime_exceeded);
-
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(checktime_fail_tests) {
+   try {
+      tester t( {fc::milliseconds(1), fc::milliseconds(1)} );
+      t.produce_blocks(2);
+
+      t.create_account( N(testapi) );
+      t.set_code( N(testapi), test_api_wast );
+      
+   auto call_test = [](tester& test, auto ac) {
+		signed_transaction trx;
+
+      auto pl = vector<permission_level>{{N(testapi), config::active_name}};
+      action act(pl, ac);
+
+      trx.actions.push_back(act);
+		test.set_tapos(trx);
+		auto sigs = trx.sign(test.get_private_key(N(testapi), "active"), chain_id_type());
+      trx.get_signature_keys(chain_id_type() );
+		auto res = test.push_transaction(trx);
+		BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
+		test.produce_block();
+	};
+
+   BOOST_CHECK_EXCEPTION(call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{}), checktime_exceeded, is_checktime_exceeded);
+
+   } FC_LOG_AND_RETHROW();
+}
 /*************************************************************************************
  * compiler_builtins_tests test case
  *************************************************************************************/
@@ -476,7 +515,6 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
    // test send_action_empty
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_empty", {});
 
-/* checktime exceeds before this can cause an overflow
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), fc::assert_exception,
          [](const fc::assert_exception& e) {
             return expect_assert_message(e, "inline action too big");
@@ -488,7 +526,6 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
             return expect_assert_message(e, "stack overflow");
          }
       );
-*/
 
    // test send_action_inline_fail
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_inline_fail", {}), fc::assert_exception,
@@ -529,12 +566,27 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_prefix", fc::raw::pack(control->head_block_id()._hash[1]) ); 
 } FC_LOG_AND_RETHROW() }
 
+template <uint64_t NAME>
+struct setprod_act {
+   static account_name get_account() {
+      return N(config::system_account_name);
+   }
 
+   static action_name get_name() {
+      return action_name(NAME);
+   }
+};
+
+// Fixing this to create active producers
+#if 0 
 /*************************************************************************************
  * chain_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(chain_tests, tester) { try {
 	produce_blocks(2);
+   create_account( N(inita) );
+   create_account( N(initb) );
+   create_account( N(initc) );
 	create_account( N(testapi) ); //, asset::from_string("100000.0000 EOS") );
 	create_account( N(acc1) ); //, asset::from_string("0.0000 EOS") );
 	produce_blocks(1000);
@@ -546,27 +598,27 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, tester) { try {
    
    auto& gpo = control->get_global_properties();   
    std::vector<account_name> prods(gpo.active_producers.producers.size());
-   for ( int i=0; i < gpo.active_producers.producers.size(); i++ )
+   for ( int i=0; i < gpo.active_producers.producers.size(); i++ ) {
       prods[i] = gpo.active_producers.producers[i].producer_name;
+      std::cout << "prods " << prods[i] << "\n";
+   }
 
 	CALL_TEST_FUNCTION( *this, "test_chain", "test_activeprods", fc::raw::pack(prods));
 } FC_LOG_AND_RETHROW() }
+#endif
 
-
-// (Bucky) TODO got to fix macros in test_db.cpp
-#if 0
 /*************************************************************************************
  * db_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(db_tests, tester) { try {
 	produce_blocks(2);
-	create_account( N(testapi), asset::from_string("100000.0000 EOS") );
-	produce_blocks(1000);
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
+	create_account( N(testapi) );
 	produce_blocks(1000);
 	set_code( N(testapi), test_api_db_wast );
 	produce_blocks(1);
 
+	CALL_TEST_FUNCTION( *this, "test_db", "key_str_general", {});
+   /*
 	CALL_TEST_FUNCTION( *this, "test_db", "key_i64_general", {});
 	CALL_TEST_FUNCTION( *this, "test_db", "key_i64_remove_all", {});
 	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_db", "key_i64_small_load", {}), fc::assert_exception,
@@ -587,11 +639,8 @@ BOOST_FIXTURE_TEST_CASE(db_tests, tester) { try {
 	CALL_TEST_FUNCTION( *this, "test_db", "key_i64_front_back", {});
 	//CALL_TEST_FUNCTION( *this, "test_db", "key_i64i64i64_general", {});
 	CALL_TEST_FUNCTION( *this, "test_db", "key_i128i128_general", {});
-   return;
-return;
+   */
 } FC_LOG_AND_RETHROW() }
-#endif
-
 
 /*************************************************************************************
  * fixedpoint_tests test case

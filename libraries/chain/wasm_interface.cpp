@@ -875,7 +875,7 @@ class db_api : public context_aware_api {
          return context.remove_record<ObjectType>(t_id, keys);
       }
 };
-/*
+
 template<>
 class db_api<keystr_value_object> : public context_aware_api {
    using KeyType = std::string;
@@ -883,31 +883,40 @@ class db_api<keystr_value_object> : public context_aware_api {
    using KeyArrayType = KeyType[KeyCount];
    using ContextMethodType = int(apply_context::*)(const table_id_object&, const KeyType*, const char*, size_t);
 
+/* TODO something weird is going on here, will maybe fix before DB changes or this might get 
+ * totally changed anyway
    private:
-      int call(ContextMethodType method, const scope_name& scope, const name& table, 
-            array_ptr<const char> key, size_t key_len, array_ptr<const char> data, size_t data_len) {
-         const auto& t_id = context.find_or_create_table(scope, context.receiver, table);
-         //FC_ASSERT(data_len >= KeyCount * sizeof(KeyType), "Data is not long enough to contain keys");
-         const KeyType keys((const char*)key, key_len); // = std::string(reinterpret_cast<const KeyType *>((const char *)data);
+      int call(ContextMethodType method, const scope_name& scope, const name& table, account_name bta,
+            null_terminated_ptr key, size_t key_len, array_ptr<const char> data, size_t data_len) {
+         const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
+         const KeyType keys((const char*)key.value, key_len); 
 
-         const char* record_data =  ((const char*)data); // + sizeof(KeyArrayType);
-         size_t record_len = data_len; // - sizeof(KeyArrayType);
-         return (context.*(method))(t_id, &keys, record_data, record_len);
+         const char* record_data =  ((const char*)data); 
+         size_t record_len = data_len; 
+         return (context.*(method))(t_id, bta, &keys, record_data, record_len);
       }
-
+*/
    public:
       using context_aware_api::context_aware_api;
 
-      int store_str(const scope_name& scope, const name& table, 
-            array_ptr<const char> &key, uint32_t key_len, array_ptr<const char> data, size_t data_len) {
-         auto res = call(&apply_context::store_record<keystr_value_object>, scope, table, key, key_len, data, data_len);
-         return res;
-
+      int store_str(const scope_name& scope, const name& table, const account_name& bta,
+            null_terminated_ptr key, uint32_t key_len, array_ptr<const char> data, size_t data_len) {
+         const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
+         const KeyType keys(key.value, key_len); 
+         const char* record_data =  ((const char*)data); 
+         size_t record_len = data_len; 
+         return context.store_record<keystr_value_object>(t_id, bta, &keys, record_data, record_len);
+         //return call(&apply_context::store_record<keystr_value_object>, scope, table, bta, key, key_len, data, data_len);
       }
 
-      int update_str(const scope_name& scope, const name& table, 
-            array_ptr<const char> &key, uint32_t key_len, array_ptr<const char> data, size_t data_len) {
-         return call(&apply_context::update_record<keystr_value_object>, scope, table, key, key_len, data, data_len);
+      int update_str(const scope_name& scope,  const name& table, const account_name& bta, 
+            null_terminated_ptr key, uint32_t key_len, array_ptr<const char> data, size_t data_len) {
+         const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
+         const KeyType keys((const char*)key, key_len); 
+         const char* record_data =  ((const char*)data); 
+         size_t record_len = data_len; 
+         return context.update_record<keystr_value_object>(t_id, bta, &keys, record_data, record_len);
+         //return call(&apply_context::update_record<keystr_value_object>, scope, table, bta, key, key_len, data, data_len);
       }
       
       int remove_str(const scope_name& scope, const name& table, array_ptr<const char> &key, uint32_t key_len) {
@@ -916,7 +925,7 @@ class db_api<keystr_value_object> : public context_aware_api {
          return context.remove_record<keystr_value_object>(t_id, k);
       }
 };
-*/
+
 template<typename IndexType, typename Scope>
 class db_index_api : public context_aware_api {
    using KeyType = typename IndexType::value_type::key_type;
@@ -1538,14 +1547,12 @@ REGISTER_INTRINSICS(db_api_key_value_object,         DB_METHOD_SEQ(i64));
 REGISTER_INTRINSICS(db_api_key128x128_value_object,  DB_METHOD_SEQ(i128i128));
 REGISTER_INTRINSICS(db_api_key64x64_value_object,    DB_METHOD_SEQ(i64i64));
 REGISTER_INTRINSICS(db_api_key64x64x64_value_object, DB_METHOD_SEQ(i64i64i64));
-/*
 REGISTER_INTRINSICS(db_api_keystr_value_object,
-   (store_str,                int32_t(int64_t, int64_t, int, int, int, int)  )
-   (update_str,               int32_t(int64_t, int64_t, int, int, int, int)  )
+   (store_str,                int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
+   (update_str,               int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
    (remove_str,               int32_t(int64_t, int64_t, int, int)  ));
-*/
+
 REGISTER_INTRINSICS(db_index_api_key_value_index_by_scope_primary,           DB_INDEX_METHOD_SEQ(i64));
-/*
 REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,
    (load_str,            int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
    (front_str,           int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
@@ -1554,7 +1561,7 @@ REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,
    (previous_str,        int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
    (lower_bound_str,     int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
    (upper_bound_str,     int32_t(int64_t, int64_t, int64_t, int, int, int, int)  ));
-*/
+
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_primary,    DB_INDEX_METHOD_SEQ(primary_i128i128));
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_secondary,  DB_INDEX_METHOD_SEQ(secondary_i128i128));
 REGISTER_INTRINSICS(db_index_api_key64x64_value_index_by_scope_primary,      DB_INDEX_METHOD_SEQ(primary_i64i64));

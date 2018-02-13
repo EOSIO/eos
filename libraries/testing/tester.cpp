@@ -29,8 +29,6 @@ namespace eosio { namespace testing {
       open();
       if (process_genesis)
          push_genesis_block();
-      
-      return;
    }
 
    void tester::push_genesis_block() {

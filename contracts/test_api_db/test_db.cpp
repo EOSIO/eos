@@ -81,6 +81,7 @@ extern "C" {
   }
 }
 
+#if 0
 void test_db::key_str_table() {
 
     const char* keys[] = { "alice", "bob", "carol", "dave" };
@@ -98,84 +99,85 @@ void test_db::key_str_table() {
     // fill some data in contiguous tables
     for( int ii = 0; ii < 4; ++ii ) {
         res = StringTableAtr.store( (char*)keys[ii], STRLEN(keys[ii]), (char*)atr[ii], STRLEN(atr[ii]) );
-        assert( res != 0, "atr" );
+        eosio_assert( res != 0, "atr" );
     
         res = StringTableZtr.store( (char*)keys[ii], STRLEN(keys[ii]), (char*)ztr[ii], STRLEN(ztr[ii]) );
-        assert(res != 0, "ztr" );
+        eosio_assert(res != 0, "ztr" );
     }
 
     char tmp[64];
     
     res = StringTableStr.store ((char *)keys[0], STRLEN(keys[0]), (char *)vals[0], STRLEN(vals[0]));
-    assert(res != 0, "store alice" );
+    eosio_assert(res != 0, "store alice" );
 
     res = StringTableStr.store((char *)keys[1], STRLEN(keys[1]), (char *)vals[1], STRLEN(vals[1]) );
-    assert(res != 0, "store bob" );
+    eosio_assert(res != 0, "store bob" );
 
     res = StringTableStr.store((char *)keys[2], STRLEN(keys[2]), (char *)vals[2], STRLEN(vals[2]) );
-    assert(res != 0, "store carol" );
+    eosio_assert(res != 0, "store carol" );
 
     res = StringTableStr.store((char *)keys[3], STRLEN(keys[3]), (char *)vals[3], STRLEN(vals[3]) );
-    assert(res != 0, "store dave" );
+    eosio_assert(res != 0, "store dave" );
 
     res = StringTableStr.load((char *)keys[0], STRLEN(keys[0]), tmp, 64);
-    assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "load alice");
+    eosio_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "load alice");
 
     res = StringTableStr.load((char *)keys[1], STRLEN(keys[1]), tmp, 64);
-    assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "load bob");
+    eosio_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "load bob");
 
     res = StringTableStr.load((char *)keys[2], STRLEN(keys[2]), tmp, 64);
-    assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "load carol");
+    eosio_assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "load carol");
 
     res = StringTableStr.load((char *)keys[3], STRLEN(keys[3]), tmp, 64);
-    assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "load dave");
+    eosio_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "load dave");
 
     res = StringTableStr.previous((char *)keys[3], STRLEN(keys[3]), tmp, 64);
-    assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "back carol");
+    eosio_assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "back carol");
 
     res = StringTableStr.previous((char *)keys[2], STRLEN(keys[2]), tmp, 64);
-    assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "back dave");
+    eosio_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "back dave");
 
     res = StringTableStr.previous((char *)keys[1], STRLEN(keys[1]), tmp, 64);
-    assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "back alice");
+    eosio_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "back alice");
 
     res = StringTableStr.previous((char *)keys[0], STRLEN(keys[0]), tmp, 64);
-    assert(res == -1, "no prev");
+    eosio_assert(res == -1, "no prev");
 
     res = StringTableStr.next((char *)keys[0], STRLEN(keys[0]), tmp, 64);
-    assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "next bob");
+    eosio_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "next bob");
 
     res = StringTableStr.next((char *)keys[1], STRLEN(keys[1]), tmp, 64);
-    assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "next carol");
+    eosio_assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "next carol");
 
     res = StringTableStr.next((char *)keys[2], STRLEN(keys[2]), tmp, 64);
-    assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "next dave");
+    eosio_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "next dave");
 
     res = StringTableStr.next((char *)keys[3], STRLEN(keys[3]), tmp, 64);
-    assert(res == -1, "no next");
+    eosio_assert(res == -1, "no next");
 
     res = StringTableStr.next((char *)keys[0], STRLEN(keys[0]), tmp, 0);
-    assert(res == 0, "next 0");
+    eosio_assert(res == 0, "next 0");
 
     res = StringTableStr.front((char*)keys[0], STRLEN(keys[0]), tmp, 64);
-    assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "front alice");
+    eosio_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "front alice");
 
     res = StringTableStr.back((char*)keys[0], STRLEN(keys[0]), tmp, 64);
-    assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "back dave");
+    eosio_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "back dave");
 
     res = StringTableStr.lower_bound((char *)keys[0], STRLEN(keys[0]), tmp, 64);
-    assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "lowerbound alice");
+    eosio_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "lowerbound alice");
 
     res = StringTableStr.upper_bound((char *)keys[0], STRLEN(keys[0]), tmp, 64);
-    assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "upperbound bob");
+    eosio_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "upperbound bob");
 
     res = StringTableStr.lower_bound((char *)keys[3], STRLEN(keys[3]), tmp, 64);
-    assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "upperbound dave");
+    eosio_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "upperbound dave");
 
     res = StringTableStr.upper_bound((char *)keys[3], STRLEN(keys[3]), tmp, 64);
-    assert(res == -1, "no upper_bound");
+    eosio_assert(res == -1, "no upper_bound");
 
 }
+#endif
 
 void test_db::key_str_general() {
 
@@ -189,87 +191,81 @@ void test_db::key_str_general() {
 
   //fill some data in contiguous tables
   for(int i=0; i < 4; ++i) {
-    res = store_str(current_receiver(),  N(atr), (char *)keys[i], STRLEN(keys[i]), (char *)atr[i], STRLEN(atr[i]) );
-    assert(res != 0, "atr" );
+    res = store_str(current_receiver(),  N(atr), N(testapi), (char *)keys[i], STRLEN(keys[i]), (char *)atr[i], STRLEN(atr[i]) );
+    eosio_assert(res != 0, "atr" );
 
-    res = store_str(current_receiver(),  N(ztr), (char *)keys[i], STRLEN(keys[i]), (char *)ztr[i], STRLEN(ztr[i]) );
-    assert(res != 0, "ztr" );
+    res = store_str(current_receiver(),  N(ztr), N(testapi), (char *)keys[i], STRLEN(keys[i]), (char *)ztr[i], STRLEN(ztr[i]) );
+    eosio_assert(res != 0, "ztr" );
   }
 
   char tmp[64];
 
-  res = store_str(current_receiver(),  N(str), (char *)keys[0], STRLEN(keys[0]), (char *)vals[0], STRLEN(vals[0]) );
-  assert(res != 0, "store alice" );
+  res = store_str(current_receiver(),  N(str), N(testapi), (char *)keys[0], STRLEN(keys[0]), (char *)vals[0], STRLEN(vals[0]) );
+  eosio_assert(res != 0, "store alice" );
 
-  res = store_str(current_receiver(),  N(str), (char *)keys[1], STRLEN(keys[1]), (char *)vals[1], STRLEN(vals[1]) );
-  assert(res != 0, "store bob" );
+  res = store_str(current_receiver(),  N(str), N(testapi), (char *)keys[1], STRLEN(keys[1]), (char *)vals[1], STRLEN(vals[1]) );
+  eosio_assert(res != 0, "store bob" );
 
-  res = store_str(current_receiver(),  N(str), (char *)keys[2], STRLEN(keys[2]), (char *)vals[2], STRLEN(vals[2]) );
-  assert(res != 0, "store carol" );
+  res = store_str(current_receiver(),  N(str), N(testapi), (char *)keys[2], STRLEN(keys[2]), (char *)vals[2], STRLEN(vals[2]) );
+  eosio_assert(res != 0, "store carol" );
 
-  res = store_str(current_receiver(),  N(str), (char *)keys[3], STRLEN(keys[3]), (char *)vals[3], STRLEN(vals[3]) );
-  assert(res != 0, "store dave" );
+  res = store_str(current_receiver(),  N(str), N(testapi), (char *)keys[3], STRLEN(keys[3]), (char *)vals[3], STRLEN(vals[3]) );
+  eosio_assert(res != 0, "store dave" );
 
-  res = load_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "load alice");
 
-  res = load_str(current_receiver(), current_receiver(), N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
-  assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "load bob");
+  res = load_str(current_receiver(), current_receiver(),  N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
+  eosio_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "load alice");
 
-  res = load_str(current_receiver(), current_receiver(), N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
-  assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "load carol");
+  res = load_str(current_receiver(), current_receiver(),  N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
+  eosio_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "load bob");
 
-  res = load_str(current_receiver(), current_receiver(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "load dave");
+  res = load_str(current_receiver(), current_receiver(),  N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
+  eosio_assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "load carol");
+
+  res = load_str(current_receiver(), current_receiver(),  N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
+  eosio_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "load dave");
 
   res = previous_str(current_receiver(), current_receiver(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "back carol");
+  eosio_assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "back carol");
 
   res = previous_str(current_receiver(), current_receiver(), N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
-  assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "back dave");
+  eosio_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "back dave");
 
   res = previous_str(current_receiver(), current_receiver(), N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
-  assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "back alice");
+  eosio_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "back alice");
 
   res = previous_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  assert(res == -1, "no prev");
+  eosio_assert(res == 0, "no prev");
 
-  res = next_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "next bob");
+  res = next_str(current_receiver(), current_receiver(),  N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
+  eosio_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "next bob");
 
-  res = next_str(current_receiver(), current_receiver(), N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
-  assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "next carol");
+  res = next_str(current_receiver(), current_receiver(),  N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
+  eosio_assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "next carol");
 
-  res = next_str(current_receiver(), current_receiver(), N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
-  assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "next dave");
+  res = next_str(current_receiver(), current_receiver(),  N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
+  eosio_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "next dave");
 
-  res = next_str(current_receiver(), current_receiver(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  assert(res == -1, "no next");
-
-  res = next_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 0);
-  assert(res == 0, "next 0");
-
-/*
-  res = front_str(current_receiver(), current_receiver(), N(str), tmp, 64);
-  assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "front alice");
-
-  res = back_str(current_receiver(), current_receiver(), N(str), tmp, 64);
-  assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "back dave");
-*/
   res = lower_bound_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "lowerbound alice");
+  eosio_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "lowerbound alice");
 
-  res = upper_bound_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "upperbound bob");
+  res = upper_bound_str(current_receiver(), current_receiver(),  N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
+  eosio_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "upperbound bob");
 
-  res = lower_bound_str(current_receiver(), current_receiver(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "upperbound dave");
+  res = lower_bound_str(current_receiver(), current_receiver(),  N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
+  eosio_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "upperbound dave");
 
-  res = upper_bound_str(current_receiver(), current_receiver(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  assert(res == -1, "no upper_bound");
+  res = upper_bound_str(current_receiver(), current_receiver(),  N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
+  eosio_assert(res == 0, "no upper_bound");
 
+  res = update_str(current_receiver(),  N(str), N(testapi), (char *)keys[3], STRLEN(keys[3]), (char *)vals[2], STRLEN(vals[2]) );
+  eosio_assert(res != 0, "store dave" );
+
+  res = load_str(current_receiver(),  current_receiver(), N(str), (char*)keys[3], STRLEN(keys[3]), tmp, 64 );
+  eosio_assert(res == STRLEN(vals[2]) && my_memcmp((void*)vals[2], (void*)tmp, res), "load updated carol" );
 }
 
+#if 0
 void test_db::key_i64_general() {
 
   uint32_t res = 0;
@@ -279,16 +275,16 @@ void test_db::key_i64_general() {
   test_model dave { N(dave),  46, 6535354};
 
   res = store_i64(current_receiver(),  N(test_table), &dave,  sizeof(test_model));
-  assert(res != 0, "store dave" );
+  eosio_assert(res != 0, "store dave" );
 
   res = store_i64(current_receiver(), N(test_table), &carol, sizeof(test_model));
-  assert(res != 0, "store carol" );
+  eosio_assert(res != 0, "store carol" );
 
   res = store_i64(current_receiver(),   N(test_table), &bob,   sizeof(test_model));
-  assert(res != 0, "store bob" );
+  eosio_assert(res != 0, "store bob" );
 
   res = store_i64(current_receiver(), N(test_table), &alice, sizeof(test_model));
-  assert(res != 0, "store alice" );
+  eosio_assert(res != 0, "store alice" );
 
   //fill with different ages in adjacent tables
   dave.age=123;  store_i64(current_receiver(), N(test_tabld), &dave,  sizeof(test_model));
@@ -303,56 +299,56 @@ void test_db::key_i64_general() {
   test_model tmp;
 
   res = front_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "front_i64 1");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "front_i64 1");
   my_memset(&tmp, 0, sizeof(test_model));
 
   res = back_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "front_i64 2");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "front_i64 2");
 
   res = previous_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol previous");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol previous");
   
   res = previous_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "bob previous");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "bob previous");
 
   res = previous_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "alice previous");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "alice previous");
 
   res = previous_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == 0, "previous null");
+  eosio_assert(res == 0, "previous null");
 
   res = next_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "bob next");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "bob next");
 
   res = next_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol next");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol next");
 
   res = next_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "dave next");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "dave next");
 
   res = next_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == 0, "next null");
+  eosio_assert(res == 0, "next null");
 
   my_memset(&alice, 0, sizeof(test_model));
 
-  assert(alice.name == 0 && alice.age == 0 && alice.phone == 0, "my_memset");
+  eosio_assert(alice.name == 0 && alice.age == 0 && alice.phone == 0, "my_memset");
 
   alice.name = N(alice);
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &alice, sizeof(test_model));
-  assert(res == sizeof(test_model) && alice.age == 20 && alice.phone == 4234622, "alice error 1");
+  eosio_assert(res == sizeof(test_model) && alice.age == 20 && alice.phone == 4234622, "alice error 1");
 
   alice.age = 21;
   alice.phone = 1234;
   
   res = store_i64(current_receiver(), N(test_table), &alice, sizeof(test_model));
-  assert(res == 0, "store alice 2" );
+  eosio_assert(res == 0, "store alice 2" );
 
   my_memset(&alice, 0, sizeof(test_model));
   alice.name = N(alice);
   
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &alice, sizeof(test_model));
-  assert(res == sizeof(test_model) && alice.age == 21 && alice.phone == 1234, "alice error 2");
+  eosio_assert(res == sizeof(test_model) && alice.age == 21 && alice.phone == 1234, "alice error 2");
 
   my_memset(&bob, 0, sizeof(test_model));
   bob.name = N(bob);
@@ -364,72 +360,72 @@ void test_db::key_i64_general() {
   dave.name = N(dave);
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &bob, sizeof(test_model));
-  assert(res == sizeof(test_model) && bob.age == 15 && bob.phone == 11932435, "bob error 1");
+  eosio_assert(res == sizeof(test_model) && bob.age == 15 && bob.phone == 11932435, "bob error 1");
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &carol, sizeof(test_model));
-  assert(res == sizeof(test_model) && carol.age == 30 && carol.phone == 545342453, "carol error 1");
+  eosio_assert(res == sizeof(test_model) && carol.age == 30 && carol.phone == 545342453, "carol error 1");
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &dave, sizeof(test_model));
-  assert(res == sizeof(test_model) && dave.age == 46 && dave.phone == 6535354, "dave error 1");
+  eosio_assert(res == sizeof(test_model) && dave.age == 46 && dave.phone == 6535354, "dave error 1");
 
   res = load_i64(current_receiver(), N(other_code), N(test_table), &alice, sizeof(test_model));
-  assert(res == sizeof(test_model), "other_code");
+  eosio_assert(res == sizeof(test_model), "other_code");
 
   res = load_i64(current_receiver(), current_receiver(), N(other_table), &alice, sizeof(test_model));
-  assert(res == 0, "other_table");
+  eosio_assert(res == 0, "other_table");
 
 
   test_model_v2 alicev2;
   alicev2.name = N(alice);
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &alicev2, sizeof(test_model_v2));
-  assert(res == sizeof(test_model) && alicev2.age == 21 && alicev2.phone == 1234, "alicev2 load");
+  eosio_assert(res == sizeof(test_model) && alicev2.age == 21 && alicev2.phone == 1234, "alicev2 load");
 
   alicev2.new_field = 66655444;
   res = store_i64(current_receiver(), N(test_table), &alicev2, sizeof(test_model_v2));
-  assert(res == 0, "store alice 3" );
+  eosio_assert(res == 0, "store alice 3" );
 
   my_memset(&alicev2, 0, sizeof(test_model_v2));
   alicev2.name = N(alice);
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &alicev2, sizeof(test_model_v2));
-  assert(res == sizeof(test_model_v2) && alicev2.age == 21 && alicev2.phone == 1234 && alicev2.new_field == 66655444, "alice model v2");
+  eosio_assert(res == sizeof(test_model_v2) && alicev2.age == 21 && alicev2.phone == 1234 && alicev2.new_field == 66655444, "alice model v2");
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(bob);
   res = lower_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(bob), "lower_bound_i64 bob" );
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(bob), "lower_bound_i64 bob" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(boc);
   res = lower_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(carol), "lower_bound_i64 carol" );
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(carol), "lower_bound_i64 carol" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(dave);
   // data packet only big enough for name
   res = lower_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp,  sizeof(uint64_t) );
-  assert(res == sizeof(test_model) && tmp.name == N(dave), "lower_bound_i64 dave" );
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(dave), "lower_bound_i64 dave" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(davf);
   res = lower_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(uint64_t) );
-  assert(res == 0, "lower_bound_i64 fail" );
+  eosio_assert(res == 0, "lower_bound_i64 fail" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(alice);
   res = upper_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.age == 15 && tmp.name == N(bob), "upper_bound_i64 bob" );
+  eosio_assert(res == sizeof(test_model) && tmp.age == 15 && tmp.name == N(bob), "upper_bound_i64 bob" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(dave);
   res = upper_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == 0, "upper_bound_i64 dave" );
+  eosio_assert(res == 0, "upper_bound_i64 dave" );
   test_model_v3 tmp2;
   tmp2.name = N(alice);
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &tmp2, sizeof(test_model_v3));
-  assert(res == sizeof(test_model_v2) &&
+  eosio_assert(res == sizeof(test_model_v2) &&
               tmp2.age == 21 && 
               tmp2.phone == 1234 &&
               tmp2.new_field == 66655444,
@@ -437,10 +433,10 @@ void test_db::key_i64_general() {
 
   tmp2.another_field = 221122;
   res = update_i64(current_receiver(), N(test_table), &tmp2, sizeof(test_model_v3));
-  assert(res == 1, "update_i64");
+  eosio_assert(res == 1, "update_i64");
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &tmp2, sizeof(test_model_v3));
-  assert(res == sizeof(test_model_v3) &&
+  eosio_assert(res == sizeof(test_model_v3) &&
               tmp2.age == 21 && 
               tmp2.phone == 1234 &&
               tmp2.new_field == 66655444 &&
@@ -449,10 +445,10 @@ void test_db::key_i64_general() {
 
   tmp2.age = 11;
   res = update_i64(current_receiver(), N(test_table), &tmp2,  sizeof(uint64_t)+1 );
-  assert(res == 1, "update_i64 small");
+  eosio_assert(res == 1, "update_i64 small");
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &tmp2, sizeof(test_model_v3));
-  assert(res == sizeof(test_model_v3) &&
+  eosio_assert(res == sizeof(test_model_v3) &&
               tmp2.age == 11 && 
               tmp2.phone == 1234 &&
               tmp2.new_field == 66655444 &&
@@ -476,42 +472,42 @@ void test_db::key_i64_remove_all() {
 
   key = N(alice);
   res = remove_i64(current_receiver(), N(test_table), &key);
-  assert(res == 1, "remove alice");
+  eosio_assert(res == 1, "remove alice");
   
   key = N(bob);
   res = remove_i64(current_receiver(),   N(test_table), &key);
-  assert(res == 1, "remove bob");
+  eosio_assert(res == 1, "remove bob");
   
   key = N(carol);
   res = remove_i64(current_receiver(), N(test_table), &key);
-  assert(res == 1, "remove carol");
+  eosio_assert(res == 1, "remove carol");
   
   key = N(dave);
   res = remove_i64(current_receiver(),  N(test_table), &key);
-  assert(res == 1, "remove dave");
+  eosio_assert(res == 1, "remove dave");
 
   test_model tmp;
   res = front_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == 0, "front_i64 remove");
+  eosio_assert(res == 0, "front_i64 remove");
 
   res = back_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  assert(res == 0, "back_i64_i64 remove");
+  eosio_assert(res == 0, "back_i64_i64 remove");
   
   key = N(alice);
   res = remove_i64(current_receiver(), N(test_table), &key);
-  assert(res == 0, "remove alice 1");
+  eosio_assert(res == 0, "remove alice 1");
   
   key = N(bob);
   res = remove_i64(current_receiver(),   N(test_table), &key);
-  assert(res == 0, "remove bob 1");
+  eosio_assert(res == 0, "remove bob 1");
   
   key = N(carol);
   res = remove_i64(current_receiver(), N(test_table), &key);
-  assert(res == 0, "remove carol 1");
+  eosio_assert(res == 0, "remove carol 1");
   
   key = N(dave);
   res = remove_i64(current_receiver(),  N(test_table), &key);
-  assert(res == 0, "remove dave 1");
+  eosio_assert(res == 0, "remove dave 1");
 }
 
 void test_db::key_i64_small_load() {
@@ -519,7 +515,7 @@ void test_db::key_i64_small_load() {
   test_model alice{ N(alice), 20, 4234622};
   // shouldn't throw an error, short circuits out because no table id is found
   auto res = load_i64(current_receiver(), current_receiver(), N(just_uint64), &dummy, sizeof(uint64_t)-1);
-  assert(res == 0, "should have returned 0 on failure");
+  eosio_assert(res == 0, "should have returned 0 on failure");
   store_i64(current_receiver(),  N(test_table), &alice,  sizeof(test_model));
   load_i64(current_receiver(), current_receiver(), N(test_table), &alice, sizeof(uint64_t)-1);
 }
@@ -543,10 +539,10 @@ void test_db::key_i64_not_found() {
   uint64_t dummy = 1000;
 
   auto res = load_i64(current_receiver(), current_receiver(), N(just_uint64), &dummy, sizeof(uint64_t));
-  assert(res == 0, "i64_not_found load");
+  eosio_assert(res == 0, "i64_not_found load");
 
   res = remove_i64(current_receiver(),  N(just_uint64), &dummy);
-  assert(res == 0, "i64_not_found remove");
+  eosio_assert(res == 0, "i64_not_found remove");
 }
 
 void test_db::key_i64_front_back() {
@@ -567,65 +563,65 @@ void test_db::key_i64_front_back() {
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = front_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 1");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 1");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = back_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "key_i64_front 2");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "key_i64_front 2");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = front_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "key_i64_front 3");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "key_i64_front 3");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = back_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 4");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 4");
 
   uint64_t key = N(carol);
   remove_i64(current_receiver(), N(b), &key);
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = front_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 5");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 5");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = back_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 6");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 6");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = front_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 7");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 7");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = back_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "key_i64_front 8");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "key_i64_front 8");
 
   key = N(dave);
   remove_i64(current_receiver(), N(b), &key);
   
   res = front_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  assert(res == 0, "key_i64_front 9");
+  eosio_assert(res == 0, "key_i64_front 9");
   res = back_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  assert(res == 0, "key_i64_front 10");
+  eosio_assert(res == 0, "key_i64_front 10");
 
   key = N(bob);
   remove_i64(current_receiver(), N(a), &key);
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = front_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 11");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 11");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = back_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 12");
+  eosio_assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 12");
 
   key = N(alice);
   remove_i64(current_receiver(), N(a), &key);
 
   res = front_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  assert(res == 0, "key_i64_front 13");
+  eosio_assert(res == 0, "key_i64_front 13");
   res = back_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  assert(res == 0, "key_i64_front 14");
+  eosio_assert(res == 0, "key_i64_front 14");
 }
 
 uint32_t store_set_in_table(uint64_t table_name)
@@ -639,16 +635,16 @@ uint32_t store_set_in_table(uint64_t table_name)
   TestModel128x2 alice22{2, 200, N(alice33), table_name};
 
   res = store_i128i128(current_receiver(),  table_name, &alice0,  sizeof(TestModel128x2));
-  assert(res == 1, "store alice0" );
+  eosio_assert(res == 1, "store alice0" );
 
   res = store_i128i128(current_receiver(),  table_name, &alice1,  sizeof(TestModel128x2));
-  assert(res == 1, "store alice1" );
+  eosio_assert(res == 1, "store alice1" );
 
   res = store_i128i128(current_receiver(),  table_name, &alice2,  sizeof(TestModel128x2));
-  assert(res == 1, "store alice2" );
+  eosio_assert(res == 1, "store alice2" );
 
   res = store_i128i128(current_receiver(),  table_name, &alice22,  sizeof(TestModel128x2));
-  assert(res == 1, "store alice22" );
+  eosio_assert(res == 1, "store alice22" );
 
   return res;
   TestModel128x2 bob0{10, 1, N(bob0), table_name};
@@ -657,16 +653,16 @@ uint32_t store_set_in_table(uint64_t table_name)
   TestModel128x2 bob3{13, 4, N(bob3), table_name};
 
   res = store_i128i128(current_receiver(),  table_name, &bob0,  sizeof(TestModel128x2));
-  assert(res == 1, "store bob0" );
+  eosio_assert(res == 1, "store bob0" );
 
   res = store_i128i128(current_receiver(),  table_name, &bob1,  sizeof(TestModel128x2));
-  assert(res == 1, "store bob1" );
+  eosio_assert(res == 1, "store bob1" );
 
   res = store_i128i128(current_receiver(),  table_name, &bob2,  sizeof(TestModel128x2));
-  assert(res == 1, "store bob2" );
+  eosio_assert(res == 1, "store bob2" );
 
   res = store_i128i128(current_receiver(),  table_name, &bob3,  sizeof(TestModel128x2));
-  assert(res == 1, "store bob3" );
+  eosio_assert(res == 1, "store bob3" );
 
   TestModel128x2 carol0{20, 900, N(carol0), table_name};
   TestModel128x2 carol1{21, 800, N(carol1), table_name};
@@ -674,16 +670,16 @@ uint32_t store_set_in_table(uint64_t table_name)
   TestModel128x2 carol3{23, 600, N(carol3), table_name};
 
   res = store_i128i128(current_receiver(),  table_name, &carol0,  sizeof(TestModel128x2));
-  assert(res == 1, "store carol0" );
+  eosio_assert(res == 1, "store carol0" );
 
   res = store_i128i128(current_receiver(),  table_name, &carol1,  sizeof(TestModel128x2));
-  assert(res == 1, "store carol1" );
+  eosio_assert(res == 1, "store carol1" );
 
   res = store_i128i128(current_receiver(),  table_name, &carol2,  sizeof(TestModel128x2));
-  assert(res == 1, "store carol2" );
+  eosio_assert(res == 1, "store carol2" );
 
   res = store_i128i128(current_receiver(),  table_name, &carol3,  sizeof(TestModel128x2));
-  assert(res == 1, "store carol3" );
+  eosio_assert(res == 1, "store carol3" );
 
   TestModel128x2 dave0{30, 8, N(dave0), table_name};
   TestModel128x2 dave1{31, 7, N(dave1), table_name};
@@ -691,16 +687,16 @@ uint32_t store_set_in_table(uint64_t table_name)
   TestModel128x2 dave3{33, 4, N(dave3), table_name};
 
   res = store_i128i128(current_receiver(),  table_name, &dave0,  sizeof(TestModel128x2));
-  assert(res == 1, "store dave0" );
+  eosio_assert(res == 1, "store dave0" );
 
   res = store_i128i128(current_receiver(),  table_name, &dave1,  sizeof(TestModel128x2));
-  assert(res == 1, "store dave1" );
+  eosio_assert(res == 1, "store dave1" );
 
   res = store_i128i128(current_receiver(),  table_name, &dave2,  sizeof(TestModel128x2));
-  assert(res == 1, "store dave2" );
+  eosio_assert(res == 1, "store dave2" );
 
   res = store_i128i128(current_receiver(),  table_name, &dave3,  sizeof(TestModel128x2));
-  assert(res == 1, "store dave3" );
+  eosio_assert(res == 1, "store dave3" );
   return res;
 }
 
@@ -710,7 +706,7 @@ void store_set_in_table(TestModel3xi64* records, int len, uint64_t table_name) {
     TestModel3xi64 *tmp = records+i;
     tmp->table = table_name;
     res = store_i64i64i64(current_receiver(),  table_name, tmp,  sizeof(TestModel3xi64));
-    assert(res == 1, "store_set_in_table" );
+    eosio_assert(res == 1, "store_set_in_table" );
   }
 }
 
@@ -756,7 +752,7 @@ void test_db::key_i64i64i64_general() {
       eosio::print(msg, " : ", res, " a:", V.a, " b:", V.b, " c:", V.c, " t:", V.table, "inx:", uint64_t(I), " ("); \
       eosio::print(BS(res == sizeof(V)), " ", BS(records[I].a == V.a), " ", BS(records[I].b == V.b), " ", BS(records[I].c == V.c), " => ", N(table2), ")\n"); \
     } \
-    assert( res == sizeof(V) && records[I].a == V.a && records[I].b == V.b && \
+    eosio_assert( res == sizeof(V) && records[I].a == V.a && records[I].b == V.b && \
      records[I].c == V.c /*&& records[I].table == uint64_t(N(table2))*/, msg);
 
   #define LOAD_OK(I, O, T, INX, MSG) \
@@ -767,7 +763,7 @@ void test_db::key_i64i64i64_general() {
   #define LOAD_ER(I, O, T, MSG) \
     {eosio::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
     res = LOAD(I, O, T, tmp); \
-    assert(res == -1, MSG)}
+    eosio_assert(res == -1, MSG)}
 
   #define FRONT_OK(I, O, T, INX, MSG) \
     {eosio::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
@@ -818,7 +814,7 @@ void test_db::key_i64i64i64_general() {
       eosio::remove_reference<decltype(records[0])>::type tmp = records[I[j]]; \
       res = NEXT(I, i64i64i64, N(table2), tmp);\
       if(j+1<n){ TABLE1_ASSERT(I[j+1], tmp, "i64x3 NEXT " #I " ok "); } \
-      else { assert(res == -1, "i64x3 NEXT " #I " fail "); }\
+      else { eosio_assert(res == -1, "i64x3 NEXT " #I " fail "); }\
     } while(++j<n); \
   }
 
@@ -830,7 +826,7 @@ void test_db::key_i64i64i64_general() {
       eosio::remove_reference<decltype(records[0])>::type tmp = records[I[j]]; \
       res = PREV(I, i64i64i64, N(table2), tmp);\
       if(j>0){ TABLE1_ASSERT(I[j-1], tmp, "i64x3 PREV " #I " ok "); } \
-      else { assert(res == -1, "i64x3 PREV " #I " fail "); }\
+      else { eosio_assert(res == -1, "i64x3 PREV " #I " fail "); }\
     } while(--j>0); \
   }
 
@@ -872,7 +868,7 @@ void test_db::key_i64i64i64_general() {
     do { \
       eosio::remove_reference<decltype(records[0])>::type tmp = records[j]; \
       res = UPPER(I, i64i64i64, N(table2), tmp);\
-      if(res == -1) { assert(I##_ub[j]==-1,"i64x3 UPPER " #I " fail ") } \
+      if(res == -1) { eosio_assert(I##_ub[j]==-1,"i64x3 UPPER " #I " fail ") } \
       else { TABLE1_ASSERT(I##_ub[j], tmp, "i64x3 UPPER " #I " ok "); } \
     } while(++j<n); \
   }
@@ -885,21 +881,21 @@ void test_db::key_i64i64i64_general() {
   v2.a = records[6].a;
 
   res = LOAD(primary, i64i64i64, N(table2), v2);
-  assert(res == sizeof(TestModel3xi64), "load v2");
+  eosio_assert(res == sizeof(TestModel3xi64), "load v2");
 
   v2.new_field = 555;
 
   res = update_i64i64i64(current_receiver(),  N(table2), &v2, sizeof(TestModel3xi64_V2));
-  assert(res == 1, "store v2");  
+  eosio_assert(res == 1, "store v2");  
 
   res = LOAD(primary, i64i64i64, N(table2), v2);
-  assert(res == sizeof(TestModel3xi64_V2), "load v2 updated");
+  eosio_assert(res == sizeof(TestModel3xi64_V2), "load v2 updated");
 
   res = remove_i64i64i64(current_receiver(),  N(table2), &v2);
-  assert(res == 1, "load v2 updated");
+  eosio_assert(res == 1, "load v2 updated");
 
   res = LOAD(primary, i64i64i64, N(table2), v2);
-  assert(res == -1, "load not found");
+  eosio_assert(res == -1, "load not found");
 
   return 0;
 }
@@ -909,22 +905,22 @@ void test_db::key_i128i128_general() {
   uint32_t res = 0;
   /*
   if(store_set_in_table(N(table4)) != 0)
-     assert(false, "store_set_in_table(N(table4)) != 0 (test_db::key_i128i128_general)");
+     eosio_assert(false, "store_set_in_table(N(table4)) != 0 (test_db::key_i128i128_general)");
      */
 store_set_in_table(N(table4));
 return;
   if(store_set_in_table(N(table5)) != 0)
-     assert(false, "store_set_in_table(N(table5)) != 0 (test_db::key_i128i128_general)");
+     eosio_assert(false, "store_set_in_table(N(table5)) != 0 (test_db::key_i128i128_general)");
 
   if(store_set_in_table(N(table6)) != 0)
-     assert(false, "store_set_in_table(N(table6)) != 0 (test_db::key_i128i128_general)");
+     eosio_assert(false, "store_set_in_table(N(table6)) != 0 (test_db::key_i128i128_general)");
 
   TestModel128x2 tmp;
   my_memset(&tmp, 0, sizeof(TestModel128x2));
   tmp.number = 21;
 
   res = load_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  assert( res == sizeof(TestModel128x2) &&
+  eosio_assert( res == sizeof(TestModel128x2) &&
                tmp.price == 800 &&
                tmp.extra == N(carol1) &&
                tmp.table_name == N(table5),
@@ -934,7 +930,7 @@ return;
   tmp.price = 4;
   
   res = load_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  assert( res == sizeof(TestModel128x2) &&
+  eosio_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 13 &&
                tmp.price == 4 &&
                tmp.extra == N(bob3) &&
@@ -942,7 +938,7 @@ return;
               "bob3 secondary load");
 
   res = front_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  assert( res == sizeof(TestModel128x2) &&
+  eosio_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 0 &&
                tmp.price == 500 &&
                tmp.extra == N(alice0) &&
@@ -950,10 +946,10 @@ return;
               "front primary load");
   
   res = previous_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  assert(res == -1, "previous primary fail");
+  eosio_assert(res == -1, "previous primary fail");
 
   res = next_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  assert( res == sizeof(TestModel128x2) &&
+  eosio_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 1 &&
                tmp.price == 400 &&
                tmp.extra == N(alice1) &&
@@ -961,7 +957,7 @@ return;
               "next primary ok");
 
   res = front_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  assert( res == sizeof(TestModel128x2) &&
+  eosio_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 10 &&
                tmp.price == 1 &&
                tmp.extra == N(bob0) &&
@@ -969,10 +965,10 @@ return;
               "front secondary ok");
   
   res = previous_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  assert(res == -1, "previous secondary fail");
+  eosio_assert(res == -1, "previous secondary fail");
 
   res = next_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  assert( res == sizeof(TestModel128x2) &&
+  eosio_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 11 &&
                tmp.price == 2 &&
                tmp.extra == N(bob1) &&
@@ -980,7 +976,7 @@ return;
               "next secondary ok");
 
   res = back_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  assert( res == sizeof(TestModel128x2) &&
+  eosio_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 33 &&
                tmp.price == 4 &&
                tmp.extra == N(dave3) &&
@@ -988,10 +984,10 @@ return;
               "back primary ok");
   
   res = next_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  assert(res == -1, "next primary fail");
+  eosio_assert(res == -1, "next primary fail");
 
   res = previous_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  assert( res == sizeof(TestModel128x2) &&
+  eosio_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 32 &&
                tmp.price == 5 &&
                tmp.extra == N(dave2) &&
@@ -999,7 +995,7 @@ return;
               "previous primary ok");
 
   res = back_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  assert( res == sizeof(TestModel128x2) &&
+  eosio_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 20 &&
                tmp.price == 900 &&
                tmp.extra == N(carol0) &&
@@ -1007,11 +1003,11 @@ return;
               "back secondary ok");
   
   res = next_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  assert(res == -1, "next secondary fail");
+  eosio_assert(res == -1, "next secondary fail");
 
   res = previous_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
   
-  assert( res == sizeof(TestModel128x2) &&
+  eosio_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 21 &&
                tmp.price == 800 &&
                tmp.extra == N(carol1) &&
@@ -1021,7 +1017,7 @@ return;
   tmp.number = 1;
 
   res = lower_bound_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  assert( res == sizeof(TestModel128x2) &&
+  eosio_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 1 &&
                tmp.price == 400 &&
                tmp.extra == N(alice1) &&
@@ -1029,7 +1025,7 @@ return;
               "lb primary ok");
 
   res = upper_bound_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  assert( res == sizeof(TestModel128x2) &&
+  eosio_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 2 &&
                tmp.price == 200 &&
                tmp.extra == N(alice22) &&
@@ -1039,7 +1035,7 @@ return;
   tmp.price = 800;
 
   res = lower_bound_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  assert( res == sizeof(TestModel128x2) &&
+  eosio_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 21 &&
                tmp.price == 800 &&
                tmp.extra == N(carol1) &&
@@ -1050,7 +1046,7 @@ return;
   tmp2.price = 800;
 
   res = upper_bound_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp2, sizeof(TestModel128x2_V2) );
-  assert( res == sizeof(TestModel128x2) &&
+  eosio_assert( res == sizeof(TestModel128x2) &&
                tmp2.number == 20 &&
                tmp2.price == 900 &&
                tmp2.extra == N(carol0) &&
@@ -1059,13 +1055,13 @@ return;
   
   tmp2.new_field = 123456;
   res = update_i128i128(current_receiver(), N(table5), &tmp2, sizeof(TestModel128x2_V2));
-  assert( res == 1, "update_i128i128 ok");
+  eosio_assert( res == 1, "update_i128i128 ok");
 
   my_memset(&tmp2, 0, sizeof(TestModel128x2_V2));
   tmp2.number = 20;
 
   res = load_primary_i128i128(current_receiver(), current_receiver(), N(table5), &tmp2, sizeof(TestModel128x2_V2));
-  assert( res == sizeof(TestModel128x2_V2) &&
+  eosio_assert( res == sizeof(TestModel128x2_V2) &&
                tmp2.number == 20 &&
                tmp2.price == 900 &&
                tmp2.extra == N(carol0) &&
@@ -1075,10 +1071,10 @@ return;
 
   tmp2.extra = N(xxxxx);
   res = update_i128i128(current_receiver(), N(table5), &tmp2, sizeof(uint128_t)*2+sizeof(uint64_t));
-  assert( res == 1, "update_i128i128 small ok");
+  eosio_assert( res == 1, "update_i128i128 small ok");
 
   res = load_primary_i128i128(current_receiver(), current_receiver(), N(table5), &tmp2, sizeof(TestModel128x2_V2));
-  assert( res == sizeof(TestModel128x2_V2) &&
+  eosio_assert( res == sizeof(TestModel128x2_V2) &&
                tmp2.number == 20 &&
                tmp2.price == 900 &&
                tmp2.extra == N(xxxxx) &&
@@ -1501,3 +1497,4 @@ void test_db::key_i64i64i64_another_under_limit()
    eosio::free(value);
 
 }
+#endif

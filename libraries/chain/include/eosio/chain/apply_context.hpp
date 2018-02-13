@@ -699,7 +699,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
       if( itr == idx.end() ||
           itr->t_id != t_id.id ||
-          !impl::record_scope_compare<IndexType, Scope>::compare(*itr, keys)) return 0;
+          !impl::record_scope_compare<IndexType, Scope>::compare(*itr, keys)) return -1;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
       if (valuelen) {
@@ -723,7 +723,7 @@ using apply_handler = std::function<void(apply_context&)>;
 
       auto itr = idx.lower_bound( tuple );
       if( itr == idx.end() ||
-         itr->t_id != t_id.id ) return 0;
+         itr->t_id != t_id.id ) return -1;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
 

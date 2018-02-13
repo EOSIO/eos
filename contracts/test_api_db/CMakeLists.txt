@@ -1,1 +1,5 @@
-add_wast_target(test_api_db "${CMAKE_SOURCE_DIR}/contracts" ${CMAKE_CURRENT_BINARY_DIR})
+add_wast_executable(TARGET test_api_db
+  INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}"
+  LIBRARIES libc++ libc eosiolib
+  DESTINATION_FOLDER ${CMAKE_CURRENT_BINARY_DIR}
+)

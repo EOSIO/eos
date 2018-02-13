@@ -15,6 +15,8 @@ extern "C" {
 
    void apply( unsigned long long code, unsigned long long action ) {
 
+      WASM_TEST_HANDLER(test_db, key_str_general);
+#if 0
       //test db
       WASM_TEST_HANDLER(test_db, key_i64_general);
       WASM_TEST_HANDLER(test_db, key_i64_remove_all);
@@ -25,7 +27,6 @@ extern "C" {
       WASM_TEST_HANDLER(test_db, key_i64_not_found);
       WASM_TEST_HANDLER(test_db, key_i64_front_back);
       WASM_TEST_HANDLER(test_db, key_i128i128_general);
-#if 0
       WASM_TEST_HANDLER(test_db, key_str_general);
       WASM_TEST_HANDLER(test_db, key_str_table);
       WASM_TEST_HANDLER(test_db, key_str_setup_limit);
@@ -52,7 +53,7 @@ extern "C" {
 #endif
 
       //unhandled test call
-      assert(false, "Unknown Test");
+      eosio_assert(false, "Unknown Test");
    }
 
 }
