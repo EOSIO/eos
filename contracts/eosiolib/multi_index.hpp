@@ -460,6 +460,11 @@ class multi_index
          });
       }
 
+      const T& get( uint64_t primary )const {
+         auto result = find( primary );
+         eosio_assert( result != nullptr, "unable to find key" );
+         return *result;
+      }
       const T* find( uint64_t primary )const {
          auto cacheitr = _items_index.find(primary);
          if( cacheitr != _items_index.end() ) 
