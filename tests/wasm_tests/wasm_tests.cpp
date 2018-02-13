@@ -622,14 +622,20 @@ BOOST_FIXTURE_TEST_CASE( memory_init_border, tester ) try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( imports, tester ) try {
-   produce_blocks(2);
+   try {
+      produce_blocks(2);
 
-   create_accounts( {N(imports)} );
-   produce_block();
+      create_accounts( {N(imports)} );
+      produce_block();
 
-   //this will fail to link but that's okay; mainly looking to make sure that the constraint
-   // system doesn't choke when memories and tables exist only as imports
-   BOOST_CHECK_THROW(set_code(N(imports), memory_table_import), fc::exception);
+      //this will fail to link but that's okay; mainly looking to make sure that the constraint
+      // system doesn't choke when memories and tables exist only as imports
+      BOOST_CHECK_THROW(set_code(N(imports), memory_table_import), fc::exception);
+   } catch ( const fc::exception& e ) {
+
+        edump((e.to_detail_string()));
+        throw;
+   }
 
 } FC_LOG_AND_RETHROW()
 
@@ -732,6 +738,7 @@ BOOST_FIXTURE_TEST_CASE(noop, tester) try {
    produce_block();
 
    set_code(N(noop), noop_wast);
+
    set_abi(N(noop), noop_abi);
    const auto& accnt  = control->get_database().get<account_object,by_name>(N(noop));
    abi_def abi;

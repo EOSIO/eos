@@ -144,6 +144,6 @@ extern "C" {
 #endif
 
       //unhandled test call
-      eos_assert(false, "Unknown Test");
+      eosio_assert(false, "Unknown Test");
    }
 }

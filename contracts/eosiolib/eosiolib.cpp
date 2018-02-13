@@ -240,7 +240,7 @@ namespace eosio {
 
          char* malloc_from_freed(uint32_t size)
          {
-            eos_assert(_offset == _heap_size, "malloc_from_freed was designed to only be called after _heap was completely allocated");
+            eosio_assert(_offset == _heap_size, "malloc_from_freed was designed to only be called after _heap was completely allocated");
 
             char* current = _heap + _size_marker;
             while (current != nullptr)
@@ -489,7 +489,9 @@ void* malloc(size_t size)
 
 void* calloc(size_t count, size_t size)
 {
-   return eosio::memory_heap.malloc(count*size);
+   void* ptr = eosio::memory_heap.malloc(count*size);
+   memset(ptr, 0, count*size);
+   return ptr;
 }
 
 void* realloc(void* ptr, size_t size)

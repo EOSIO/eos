@@ -77,6 +77,7 @@ namespace  eosio {
       friend bool operator==( const name& a, const name& b ) { return a.value == b.value; }
       account_name value = 0;
 
+
       template<typename DataStream>
       friend DataStream& operator << ( DataStream& ds, const name& v ){
          return ds << v.value;
@@ -89,20 +90,6 @@ namespace  eosio {
 
    /// @}
 
-   /**
-    * @ingroup types
-    *
-    * @{
-    */
-   template<typename T> struct remove_reference           { typedef T type; };
-   template<typename T> struct remove_reference<T&>       { typedef T type; };
-   template<typename T> struct remove_reference<const T&> { typedef T type; };
-   ///@}
-
-   typedef decltype(nullptr) nullptr_t;
-
-   struct true_type  { enum _value { value = 1 }; };
-   struct false_type { enum _value { value = 0 }; };
 
    template < uint16_t digest_size >
    struct checksum : checksum_base {

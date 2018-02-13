@@ -6,7 +6,6 @@
 #include <eosiolib/transaction.h>
 #include <eosiolib/action.hpp>
 #include <eosiolib/print.hpp>
-#include <eosiolib/string.hpp>
 #include <eosiolib/types.hpp>
 #include <eosiolib/serialize.hpp>
 

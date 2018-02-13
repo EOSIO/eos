@@ -81,7 +81,7 @@ namespace eosio { namespace chain {
                    const string& export_name,
                    ObjectType type,
                    ObjectInstance*& out) override
-      {
+      { try {
          // Try to resolve an intrinsic first.
          if(IntrinsicResolver::singleton.resolve(mod_name,export_name,type, out)) {
             return true;
@@ -89,7 +89,7 @@ namespace eosio { namespace chain {
 
          FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",mod_name)("export",export_name) );
          return false;
-      }
+      } FC_CAPTURE_AND_RETHROW( (mod_name)(export_name) ) }
    };
 
    /**
@@ -731,10 +731,15 @@ class database_api : public context_aware_api {
       void db_remove_i64( int itr ) {
          context.db_remove_i64( itr );
       }
-      int db_get_i64( int itr, uint64_t& id, array_ptr<char> buffer, size_t buffer_size ) {
-         return context.db_get_i64( itr, id, buffer, buffer_size );
+      int db_get_i64( int itr, array_ptr<char> buffer, size_t buffer_size ) {
+         return context.db_get_i64( itr, buffer, buffer_size );
       }
-      int db_next_i64( int itr ) { return context.db_next_i64(itr); }
+      int db_next_i64( int itr, uint64_t& primary ) {
+         return context.db_next_i64(itr, primary);
+      }
+      int db_previous_i64( int itr, uint64_t& primary ) {
+         return context.db_previous_i64(itr, primary);
+      }
       int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
          return context.db_find_i64( code, scope, table, id ); 
       }
@@ -754,6 +759,40 @@ class database_api : public context_aware_api {
       void db_idx64_remove( int iterator ) {
          return context.idx64.remove( iterator );
       }
+      int db_idx64_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t& primary ) {
+         return context.idx64.find_secondary(code, scope, table, secondary, primary);
+      }
+      int db_idx64_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t primary ) {
+         return context.idx64.find_secondary(code, scope, table, secondary, primary);
+      }
+
+      int db_idx64_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  uint64_t& secondary, uint64_t& primary ) {
+         return context.idx64.lowerbound_secondary(code, scope, table, secondary, primary);
+      }
+      int db_idx64_upperbound( uint64_t code, uint64_t scope, uint64_t table,  uint64_t& secondary, uint64_t& primary ) {
+         return context.idx64.upperbound_secondary(code, scope, table, secondary, primary);
+      }
+      int db_idx64_next( int iterator, uint64_t& primary  ) {
+         return context.idx64.next_secondary(iterator, primary);
+      }
+      int db_idx64_previous( int iterator, uint64_t& primary ) {
+         return context.idx64.previous_secondary(iterator, primary);
+      }
+
+      /*
+      int db_idx64_next( int iterator, uint64_t& primary ) {
+      }
+      int db_idx64_prev( int iterator, uint64_t& primary ) {
+      }
+      int db_idx64_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t primary ) {
+      }
+      int db_idx64_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t& primary ) {
+      }
+      int db_idx64_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t& primary ) {
+      }
+      int db_idx64_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t& primary ) {
+      }
+      */
 
 
       int db_idx128_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const uint128_t& secondary ) {
@@ -765,6 +804,37 @@ class database_api : public context_aware_api {
       void db_idx128_remove( int iterator ) {
          return context.idx128.remove( iterator );
       }
+      int db_idx128_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t primary ) {
+         return context.idx128.find_primary( code, scope, table, secondary, primary );
+      }
+      int db_idx128_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
+         return context.idx128.find_secondary(code, scope, table, secondary, primary);
+      }
+      int db_idx128_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
+         return context.idx128.lowerbound_secondary(code, scope, table, secondary, primary);
+      }
+      int db_idx128_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
+         return context.idx128.upperbound_secondary(code, scope, table, secondary, primary);
+      }
+      int db_idx128_next( int iterator, uint64_t& primary ) {
+         return context.idx128.next_secondary(iterator, primary);
+      }
+      int db_idx128_previous( int iterator, uint64_t& primary ) {
+         return context.idx128.previous_secondary(iterator, primary);
+      }
+
+   /*
+      int db_idx128_next( int iterator, uint64_t& primary ) {
+      }
+      int db_idx128_prev( int iterator, uint64_t& primary ) {
+      }
+      int db_idx128_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
+      }
+      int db_idx128_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
+      }
+      int db_idx128_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
+      }
+      */
 };
 
 
@@ -1330,23 +1400,36 @@ REGISTER_INTRINSICS(producer_api,
 );
 
 REGISTER_INTRINSICS( database_api,
-   (db_store_i64,        int(int64_t,int64_t,int64_t,int64_t,int,int) )
-   (db_update_i64,       void(int,int64_t,int,int)                    )
-   (db_remove_i64,       void(int)                                    )
-   (db_get_i64,          int(int, int, int, int)                      )
-   (db_next_i64,         int(int)                                     )
-   (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t)         )
-   (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t)         )
+   (db_store_i64,        int(int64_t,int64_t,int64_t,int64_t,int,int))
+   (db_update_i64,       void(int,int64_t,int,int))
+   (db_remove_i64,       void(int))
+   (db_get_i64,          int(int, int, int))
+   (db_next_i64,         int(int, int))
+   (db_previous_i64,     int(int, int))
+   (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t))
+   (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
+   (db_upperbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
+                             
+   (db_idx64_store,          int(int64_t,int64_t,int64_t,int64_t,int))
+   (db_idx64_remove,         void(int))
+   (db_idx64_update,         void(int,int64_t,int))
+   (db_idx64_find_primary,   int(int64_t,int64_t,int64_t,int,int64_t))
+   (db_idx64_find_secondary, int(int64_t,int64_t,int64_t,int,int))
+   (db_idx64_lowerbound,     int(int64_t,int64_t,int64_t,int,int))
+   (db_idx64_upperbound,     int(int64_t,int64_t,int64_t,int,int))
+   (db_idx64_next,           int(int, int))
+   (db_idx64_previous,       int(int, int))
 
-   (db_idx64_store,      int(int64_t,int64_t,int64_t,int64_t,int)     )
-   (db_idx64_remove,     void(int)                                    )
-   (db_idx64_update,     void(int,int64_t,int)                        )
-
-
-   (db_idx128_store,      int(int64_t,int64_t,int64_t,int64_t,int)    )
-   (db_idx128_remove,     void(int)                                   )
-   (db_idx128_update,     void(int,int64_t,int)                       )
-)
+   (db_idx128_store,          int(int64_t,int64_t,int64_t,int64_t,int))
+   (db_idx128_remove,         void(int))
+   (db_idx128_update,         void(int,int64_t,int))
+   (db_idx128_find_primary,   int(int64_t,int64_t,int64_t,int,int64_t))
+   (db_idx128_find_secondary, int(int64_t,int64_t,int64_t,int,int))
+   (db_idx128_lowerbound,     int(int64_t,int64_t,int64_t,int,int))
+   (db_idx128_upperbound,     int(int64_t,int64_t,int64_t,int,int))
+   (db_idx128_next,           int(int, int))
+   (db_idx128_previous,       int(int, int))
+);
 
 REGISTER_INTRINSICS(crypto_api,
    (assert_recover_key,     void(int, int, int, int, int) )
@@ -1366,9 +1449,9 @@ REGISTER_INTRINSICS(string_api,
 );
 
 REGISTER_INTRINSICS(system_api,
-   (abort,        void()         )
-   (eosio_assert,   void(int, int) )
-   (now,          int()          )
+   (abort,        void())
+   (eosio_assert, void(int, int))
+   (now,          int())
 );
 
 /*
@@ -1390,6 +1473,7 @@ REGISTER_INTRINSICS(apply_context,
    (require_read_lock,     void(int64_t, int64_t) )
    (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&)const)
+   (is_account,            int(int64_t)           )
 );
 
 REGISTER_INTRINSICS(console_api,
