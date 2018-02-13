@@ -11,7 +11,10 @@ namespace eosio { namespace chain { namespace webassembly { namespace common {
    using wasm_double = boost::multiprecision::cpp_dec_float_50;
 
    struct wasm_context {
-      wasm_context(wasm_cache::entry &code, apply_context& ctx, uint32_t sbrk_bytes) : code(code), context(ctx)
+      wasm_context(wasm_cache::entry &code, apply_context& ctx, uint32_t sbrk_bytes)
+      : code(code)
+      , context(ctx)
+      , sbrk_bytes(sbrk_bytes)
       {
       }
       eosio::chain::wasm_cache::entry& code;

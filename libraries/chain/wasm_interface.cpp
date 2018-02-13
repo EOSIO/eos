@@ -33,39 +33,6 @@ using namespace IR;
 using namespace Runtime;
 using boost::asio::io_service;
 
-#if 0
-   // account.h/hpp expected account API balance interchange format
-   // must match account.hpp account_balance definition
-   PACKED_STRUCT(
-   struct account_balance
-   {
-      /**
-      * Name of the account who's balance this is
-      */
-      account_name account;
-
-      /**
-      * Balance for this account
-      */
-      asset eos_balance;
-
-      /**
-      * Staked balance for this account
-      */
-      asset staked_balance;
-
-      /**
-      * Unstaking balance for this account
-      */
-      asset unstaking_balance;
-
-      /**
-      * Time at which last unstaking occurred for this account
-      */
-      time last_unstaking_time;
-   })
-#endif
-
 namespace eosio { namespace chain {
    using namespace contracts;
    using namespace webassembly;
@@ -305,7 +272,7 @@ namespace eosio { namespace chain {
       scoped_context(optional<wasm_context> &context, Args&... args)
       :context(context)
       {
-         context = wasm_context{ args... };
+         context.emplace( std::forward<Args>(args)... );
       }
 
       ~scoped_context() {
@@ -314,25 +281,6 @@ namespace eosio { namespace chain {
 
       optional<wasm_context>& context;
    };
-
-   void wasm_interface_impl::call(const string& entry_point, const vector<Value>& args, wasm_cache::entry& code, apply_context& context)
-   try {
-      FunctionInstance* call = asFunctionNullable(getInstanceExport(code.jit.instance,entry_point) );
-      if( !call ) {
-         return;
-      }
-
-      FC_ASSERT( getFunctionType(call)->parameters.size() == args.size() );
-
-      auto context_guard = scoped_context(current_context, code, context, code.default_sbrk_bytes);
-      runInstanceStartFunc(code.jit.instance);
-      Runtime::invokeFunction(call,args);
-   } catch( const Runtime::Exception& e ) {
-      FC_THROW_EXCEPTION(wasm_execution_error,
-                         "cause: ${cause}\n${callstack}",
-                         ("cause", string(describeExceptionCause(e.cause)))
-                         ("callstack", e.callStack));
-   } FC_CAPTURE_AND_RETHROW()
 
    wasm_interface::wasm_interface()
       :my( new wasm_interface_impl() ) {
@@ -347,14 +295,13 @@ namespace eosio { namespace chain {
    }
 
    void wasm_interface::apply( wasm_cache::entry& code, apply_context& context ) {
-      vector<Value> args = {Value(uint64_t(context.act.account)),
-                            Value(uint64_t(context.act.name))};
-      my->call("apply", args, code, context);
+      auto context_guard = scoped_context(my->current_context, code, context, code.default_sbrk_bytes);
+      code.jit.call_apply(context);
    }
 
    void wasm_interface::error( wasm_cache::entry& code, apply_context& context ) {
-      vector<Value> args = { /* */ };
-      my->call("error", args, code, context);
+      auto context_guard = scoped_context(my->current_context, code, context, code.default_sbrk_bytes);
+      code.jit.call_error(context);
    }
 
    wasm_context& common::intrinsics_accessor::get_context(wasm_interface &wasm) {

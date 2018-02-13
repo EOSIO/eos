@@ -1,5 +1,6 @@
 #include <eosio/chain/webassembly/jit.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
+#include <eosio/chain/apply_context.hpp>
 
 #include "IR/Module.h"
 #include "Platform/Platform.h"
@@ -34,6 +35,41 @@ struct root_resolver : Runtime::Resolver
       return false;
    } FC_CAPTURE_AND_RETHROW( (mod_name)(export_name) ) }
 };
+
+void entry::call(const string &entry_point, const vector <Value> &args, apply_context &context)
+{
+   try {
+      FunctionInstance* call = asFunctionNullable(getInstanceExport(instance,entry_point) );
+      if( !call ) {
+         return;
+      }
+
+      FC_ASSERT( getFunctionType(call)->parameters.size() == args.size() );
+
+      runInstanceStartFunc(instance);
+      Runtime::invokeFunction(call,args);
+   } catch( const Runtime::Exception& e ) {
+      FC_THROW_EXCEPTION(wasm_execution_error,
+                         "cause: ${cause}\n${callstack}",
+                         ("cause", string(describeExceptionCause(e.cause)))
+                         ("callstack", e.callStack));
+   } FC_CAPTURE_AND_RETHROW()
+}
+
+void entry::call_apply(apply_context& context)
+{
+   vector<Value> args = {Value(uint64_t(context.act.account)),
+                         Value(uint64_t(context.act.name))};
+
+   call("apply", args, context);
+}
+
+void entry::call_error(apply_context& context)
+{
+   vector<Value> args = {/* */};
+   call("error", args, context);
+}
+
 
 void entry::reset(const info& base_info) {
    if(getDefaultMemory(instance)) {

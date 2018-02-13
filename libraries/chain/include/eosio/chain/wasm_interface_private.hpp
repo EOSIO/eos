@@ -20,8 +20,6 @@ namespace eosio { namespace chain {
 
    struct wasm_interface_impl {
       optional<common::wasm_context> current_context;
-
-      void call(const string &entry_point, const vector <Value> &args, wasm_cache::entry &code, apply_context &context);
    };
 
 #define _REGISTER_INTRINSIC_EXPLICIT(CLS, METHOD, WASM_SIG, NAME, SIG)\

@@ -24,6 +24,12 @@ struct entry {
 
    void reset(const info& );
 
+
+   void call(const string &entry_point, const vector <Value> &args, apply_context &context);
+
+   void call_apply(apply_context&);
+   void call_error(apply_context&);
+
    static const entry& get(wasm_interface& wasm);
 
    static entry build(const char* wasm_binary, size_t wasm_binary_size);
