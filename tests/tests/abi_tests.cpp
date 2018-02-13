@@ -1536,7 +1536,7 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
 BOOST_AUTO_TEST_CASE(linkauth)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1568,7 +1568,7 @@ BOOST_AUTO_TEST_CASE(linkauth)
 BOOST_AUTO_TEST_CASE(unlinkauth)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1597,7 +1597,7 @@ BOOST_AUTO_TEST_CASE(unlinkauth)
 BOOST_AUTO_TEST_CASE(updateauth)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1664,7 +1664,7 @@ BOOST_AUTO_TEST_CASE(updateauth)
 BOOST_AUTO_TEST_CASE(deleteauth)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1690,7 +1690,7 @@ BOOST_AUTO_TEST_CASE(deleteauth)
 BOOST_AUTO_TEST_CASE(newaccount)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1834,7 +1834,7 @@ BOOST_AUTO_TEST_CASE(newaccount)
 BOOST_AUTO_TEST_CASE(setcode)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    const char* test_data = R"=====(
    {
@@ -1865,7 +1865,7 @@ BOOST_AUTO_TEST_CASE(setcode)
 BOOST_AUTO_TEST_CASE(setabi)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    const char* test_data = R"=====(
    {
@@ -2028,7 +2028,7 @@ BOOST_AUTO_TEST_CASE(setabi)
 BOOST_AUTO_TEST_CASE(postrecovery)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    const char* test_data = R"=====(
    {
@@ -2078,7 +2078,7 @@ BOOST_AUTO_TEST_CASE(postrecovery)
 BOOST_AUTO_TEST_CASE(passrecovery)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    const char* test_data = R"=====(
    {
@@ -2100,7 +2100,7 @@ BOOST_AUTO_TEST_CASE(passrecovery)
 BOOST_AUTO_TEST_CASE(vetorecovery)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    const char* test_data = R"=====(
    {
