@@ -82,7 +82,7 @@ namespace bancor {
                save_and_send( trans.from, state, output, args.min_return );
             } 
             else {
-               assert( false, "invalid to currency" );
+               eos_assert( false, "invalid to currency" );
             }
          }
 
@@ -118,7 +118,7 @@ namespace bancor {
          template<typename CurrencyType>
          static void start_convert( const typename CurrencyType::transfer_memo& trans ) {
             auto args = unpack<converter_args>( trans.memo );
-            assert( args.to_currency_type != trans.quantity.token_type(), "cannot convert to self" );
+            eos_assert( args.to_currency_type != trans.quantity.token_type(), "cannot convert to self" );
 
             auto state = read_converter_state();
             on_convert( trans, args, state );
@@ -148,7 +148,7 @@ namespace bancor {
             if( trans.to == converter_account ) {
                start_convert( trans );
             } else {
-               assert( trans.from == converter_account, 
+               eos_assert( trans.from == converter_account, 
                        "received unexpected notification of transfer" );
             }
          }
@@ -159,7 +159,7 @@ namespace bancor {
                            converter_currency::issue,
                            first_currency::transfer,
                            second_currency::transfer ) {
-               assert( false, "received unexpected action" );
+               eos_assert( false, "received unexpected action" );
             }
          }
    }; /// converter_contract

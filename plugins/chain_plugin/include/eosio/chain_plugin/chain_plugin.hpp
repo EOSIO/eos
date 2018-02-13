@@ -41,6 +41,9 @@ struct permission {
    authority         required_auth;
 };
 
+template<typename>
+struct resolver_factory;
+
 class read_only {
    const chain_controller& db;
 
@@ -143,20 +146,7 @@ public:
       string block_num_or_id;
    };
 
-   struct get_block_results : public chain::signed_block {
-      get_block_results( const chain::signed_block& b )
-      :signed_block(b),
-      id(b.id()),
-      block_num(b.block_num()),
-      ref_block_prefix( id._hash[1] )
-      {}
-
-      chain::block_id_type id;
-      uint32_t             block_num = 0;
-      uint32_t             ref_block_prefix = 0;
-   };
-
-   get_block_results get_block(const get_block_params& params) const;
+   fc::variant get_block(const get_block_params& params) const;
 
    struct get_table_rows_params {
       bool        json = false;
@@ -196,13 +186,13 @@ public:
 
    fc::variant get_currency_stats( const get_currency_stats_params& params )const;
 
-   void copy_row(const chain::contracts::key_value_object& obj, vector<char>& data)const {
+   static void copy_row(const chain::contracts::key_value_object& obj, vector<char>& data) {
       data.resize( sizeof(uint64_t) + obj.value.size() );
       memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
       memcpy( data.data()+sizeof(uint64_t), obj.value.data(), obj.value.size() );
    }
 
-   void copy_row(const chain::contracts::keystr_value_object& obj, vector<char>& data)const {
+   static void copy_row(const chain::contracts::keystr_value_object& obj, vector<char>& data) {
       data.resize( obj.primary_key.size() + obj.value.size() + 8 );
       fc::datastream<char*> ds(data.data(), data.size());
       fc::raw::pack(ds, obj.primary_key);
@@ -210,14 +200,14 @@ public:
       data.resize(ds.tellp());
    }
 
-   void copy_row(const chain::contracts::key128x128_value_object& obj, vector<char>& data)const {
+   static void copy_row(const chain::contracts::key128x128_value_object& obj, vector<char>& data) {
       data.resize( 2*sizeof(uint128_t) + obj.value.size() );
       memcpy( data.data(), &obj.primary_key, sizeof(uint128_t) );
       memcpy( data.data()+sizeof(uint128_t), &obj.secondary_key, sizeof(uint128_t) );
       memcpy( data.data()+2*sizeof(uint128_t), obj.value.data(), obj.value.size() );
    }
 
-   void copy_row(const chain::contracts::key64x64x64_value_object& obj, vector<char>& data)const {
+   static void copy_row(const chain::contracts::key64x64x64_value_object& obj, vector<char>& data) {
       data.resize( 3*sizeof(uint64_t) + obj.value.size() );
       memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
       memcpy( data.data()+sizeof(uint64_t), &obj.secondary_key, sizeof(uint64_t) );
@@ -292,7 +282,8 @@ public:
       }
       return result;
    }
-      
+
+   friend struct resolver_factory<read_only>;
 };
 
 class read_write {
@@ -316,6 +307,8 @@ public:
    using push_transactions_params  = vector<push_transaction_params>;
    using push_transactions_results = vector<push_transaction_results>;
    push_transactions_results push_transactions(const push_transactions_params& params);
+
+   friend resolver_factory<read_write>;
 };
 } // namespace chain_apis
 
@@ -365,7 +358,6 @@ FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
   (recent_slots)(participation_rate))
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
   
-FC_REFLECT_DERIVED( eosio::chain_apis::read_only::get_block_results, (eosio::chain::signed_block), (id)(block_num)(ref_block_prefix) );
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
   
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit) )

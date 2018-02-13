@@ -26,6 +26,7 @@ EOS.IO currently supports the following operating systems:
 5. [Developer Telegram Group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ)
 6. [White Paper](https://github.com/EOSIO/Documentation/blob/master/TechnicalWhitePaper.md)
 7. [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md)
+8. [Wiki](https://github.com/EOSIO/eos/wiki)
 
 # Table of contents
 
@@ -40,6 +41,7 @@ EOS.IO currently supports the following operating systems:
 	1. [Getting the code](#getcode)
 	2. [Building from source code](#build)
 	3. [Creating and launching a single-node testnet](#singlenode)
+  4. [Next steps](#nextsteps)
 4. [Example Currency Contract Walkthrough](#smartcontracts)
 	1. [Example Contracts](#smartcontractexample)
 	2. [Setting up a wallet and importing account key](#walletimport)
@@ -77,7 +79,7 @@ We are working on supporting Centos, Amazon Linux & Red Hat in future releases.
 It is called eosio_build.sh
 
 ```bash
-cd ~/eos
+cd eos
 ./eosio_build.sh
 ```
 Choose whether you will be building for a local testnet or for the public testnet and jump to the appropriate section below.  Clone the EOS repository recursively as described and run eosio_build.sh located in the root `eos` folder.
@@ -87,13 +89,19 @@ Choose whether you will be building for a local testnet or for the public testne
 We strongly recommend following the instructions for building the public testnet version for [Ubuntu](#autoubuntupublic) or [Mac OS X](#automacpublic). `master` is in pieces on the garage floor while we rebuild this hotrod. This notice will be removed when `master` is usable again. Your patience is appreciated.
 
 <a name="autoubuntulocal"></a>
-#### Clean install Linux (Ubuntu & Fedora) for a local testnet
+#### :no_entry: Clean install Linux (Ubuntu & Fedora) for a local testnet :no_entry:
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
 ./eosio_build.sh
+```
+
+For ease of contract development, one further step is required:
+
+```bash
+sudo make install
 ```
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
@@ -105,14 +113,21 @@ Now you can proceed to the next step - [Creating and launching a single-node tes
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
-git checkout dawn-2.x
+
+git checkout DAWN-2018-01-25
 ./eosio_build.sh
+```
+
+For ease of contract development, one further step is required:
+
+```bash
+sudo make install
 ```
 
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
 
 <a name="automaclocal"></a>
-#### MacOS for a local testnet
+#### :no_entry: MacOS for a local testnet :no_entry:
 
 Before running the script make sure you have installed/updated XCode. Note: The build script
 will install homebrew if it is not already installed on you system. [Homebrew Website](https://brew.sh)
@@ -124,6 +139,12 @@ git clone https://github.com/eosio/eos --recursive
 
 cd eos
 ./eosio_build.sh
+```
+
+For ease of contract development, one further step is required:
+
+```bash
+make install
 ```
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
@@ -140,8 +161,15 @@ Then clone the EOS repository recursively, checkout the branch that is compatibl
 git clone https://github.com/eosio/eos --recursive
 
 cd eos
-git checkout dawn-2.x
+
+git checkout DAWN-2018-01-25
 ./eosio_build.sh
+```
+
+For ease of contract development, one further step is required:
+
+```bash
+make install
 ```
 
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
@@ -247,6 +275,10 @@ When running `eosiod` you should get log messages similar to below. It means the
 1578001ms thread-0   producer_plugin.cpp:207       block_production_loo ] initc generated block #2 @ 2017-09-04T04:26:18 with 0 trxs  0 pending
 ...
 ```
+<a name="nextsteps"></a>
+### Next Steps
+
+Further documentation is available in the [wiki](https://github.com/EOSIO/eos/wiki). Wiki pages include detailed reference documentation for all programs and tools and the database schema and API. The wiki also includes a section describing smart contract development. A simple walkthrough of the "currency" contract follows.
 
 <a name="smartcontracts"></a>
 ## Example "Currency" Contract Walkthrough
@@ -529,7 +561,7 @@ Dependencies:
 
 * Clang 4.0.0
 * CMake 3.5.1
-* Boost 1.64
+* Boost 1.66
 * OpenSSL
 * LLVM 4.0
 * [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
@@ -550,14 +582,14 @@ sudo apt-get install clang-4.0 lldb-4.0 libclang-4.0-dev cmake make \
                      autoconf libtool git
 ```
 
-Install Boost 1.64:
+Install Boost 1.66:
 
 ```bash
 cd ~
-wget -c 'https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_64_0.tar.bz2/download' -O boost_1.64.0.tar.bz2
-tar xjf boost_1.64.0.tar.bz2
-cd boost_1_64_0/
-echo "export BOOST_ROOT=$HOME/boost_1_64_0" >> ~/.bash_profile
+wget -c 'https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_66_0.tar.bz2/download' -O boost_1.64.0.tar.bz2
+tar xjf boost_1.66.0.tar.bz2
+cd boost_1_66_0/
+echo "export BOOST_ROOT=$HOME/boost_1_66_0" >> ~/.bash_profile
 source ~/.bash_profile
 ./bootstrap.sh "--prefix=$BOOST_ROOT"
 ./b2 install
@@ -687,14 +719,14 @@ cd ..
 mkdir build
 cd build
 cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
-make -j4 install
+make -j$( nproc ) install
 ```
 
 Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
 
 ```bash
 echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
-echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
+echo "export LLVM_DIR=/usr/local/Cellar/llvm@4/4.0.1/lib/cmake/llvm/" >> ~/.bash_profile
 source ~/.bash_profile
 ```
 
@@ -718,7 +750,7 @@ Install Boost 1.66:
 cd ~
 curl -L https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2 > boost_1.66.0.tar.bz2
 tar xf boost_1.66.0.tar.bz2
-echo "export BOOST_ROOT=$HOME/boost_1_64_0" >> ~/.bash_profile
+echo "export BOOST_ROOT=$HOME/boost_1_66_0" >> ~/.bash_profile
 source ~/.bash_profile
 cd boost_1_66_0/
 ./bootstrap.sh "--prefix=$BOOST_ROOT"
@@ -774,7 +806,7 @@ Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
 
 ```bash
 echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
-echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
+echo "export LLVM_DIR=~/wasm-compiler/lib/cmake/llvm" >> ~/.bash_profile
 source ~/.bash_profile
 ```
 Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.

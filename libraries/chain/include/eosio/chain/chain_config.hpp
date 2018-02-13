@@ -17,7 +17,6 @@ namespace eosio { namespace chain {
  */
 struct chain_config {
 
-   share_type producer_pay;
    uint32_t   target_block_size;
    uint32_t   max_block_size;
 
@@ -46,7 +45,6 @@ inline bool operator!=(const chain_config& a, const chain_config& b) { return !(
 } } // namespace eosio::chain
 
 FC_REFLECT(eosio::chain::chain_config, 
-           (producer_pay)
            (target_block_size)
            (max_block_size)
            (target_block_acts_per_scope)
