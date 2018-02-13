@@ -991,7 +991,7 @@ class WalletMgr(object):
     def killall(self):
         cmd="pkill %s" % (Utils.EosWalletName)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-        subprocess.run(cmd.split())
+        subprocess.call(cmd.split())
             
     def cleanup(self):
         dataDir=WalletMgr.__walletDataDir
