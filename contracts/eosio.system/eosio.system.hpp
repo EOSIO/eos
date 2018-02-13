@@ -23,6 +23,7 @@ namespace eosiosystem {
    using eosio::bytes;
    using std::map;
    using std::pair;
+   using eosio::print;
 
    template<account_name SystemAccount>
    class contract {
@@ -116,10 +117,10 @@ namespace eosiosystem {
          };
 
          ACTION( SystemAccount, regproducer ) {
-            account_name producer_to_register;
+            account_name producer;
             bytes        producer_key;
 
-            EOSLIB_SERIALIZE( regproducer, (producer_to_register)(producer_key) );
+            EOSLIB_SERIALIZE( regproducer, (producer)(producer_key) );
          };
 
          ACTION( SystemAccount, regproxy ) {
@@ -250,7 +251,7 @@ namespace eosiosystem {
 
 
          /**
-          *  This method will create a producr_config and producer_votes object for 'producer_to_register' 
+          *  This method will create a producr_config and producer_votes object for 'producer' 
           *
           *  @pre producer is not already registered
           *  @pre producer to register is an account
@@ -258,7 +259,7 @@ namespace eosiosystem {
           *  
           */
          static void on( const regproducer& reg ) {
-            auto producer = reg.producer_to_register;
+            auto producer = reg.producer;
             require_auth( producer );
 
             producer_votes_index_type votes( SystemAccount, SystemAccount );
@@ -279,14 +280,16 @@ namespace eosiosystem {
 
          ACTION( SystemAccount, stakevote ) {
             account_name      voter;
-            system_token_type amount_to_stake;
+            system_token_type amount;
 
-            EOSLIB_SERIALIZE( stakevote, (voter)(amount_to_stake) )
+            EOSLIB_SERIALIZE( stakevote, (voter)(amount) )
          };
 
          static void on( const stakevote& sv ) {
-            eosio_assert( sv.amount_to_stake.quantity > 0, "must stake some tokens" );
+            print( "on stake vote\n" );
+            eosio_assert( sv.amount.quantity > 0, "must stake some tokens" );
             require_auth( sv.voter );
+            return;
 
             account_votes_index_type avotes( SystemAccount, SystemAccount );
 
@@ -300,7 +303,7 @@ namespace eosiosystem {
             }
 
             uint128_t old_weight = acv->staked.quantity;
-            uint128_t new_weight = old_weight + sv.amount_to_stake.quantity;
+            uint128_t new_weight = old_weight + sv.amount.quantity;
 
             producer_votes_index_type votes( SystemAccount, SystemAccount );
 
@@ -313,10 +316,10 @@ namespace eosiosystem {
 
             avotes.update( *acv, 0, [&]( auto av ) {
                av.last_update = now();
-               av.staked += sv.amount_to_stake;
+               av.staked += sv.amount;
             });
             
-            currency::inline_transfer( sv.voter, SystemAccount, sv.amount_to_stake, "stake for voting" );
+         //   currency::inline_transfer( sv.voter, SystemAccount, sv.amount, "stake for voting" );
          };
 
          ACTION( SystemAccount, voteproducer ) {

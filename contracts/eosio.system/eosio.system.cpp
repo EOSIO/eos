@@ -11,6 +11,7 @@ extern "C" {
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t act ) {
+       print( name(code), "::", name(act) );
        eosiosystem::contract<N(eosio)>::apply( code, act );
     }
 }
