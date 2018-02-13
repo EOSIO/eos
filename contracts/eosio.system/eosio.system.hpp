@@ -12,6 +12,7 @@
 #include <eosiolib/datastream.hpp>
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/multi_index.hpp>
+#include <eosiolib/privileged.h>
 
 namespace eosiosystem {
 
@@ -21,12 +22,15 @@ namespace eosiosystem {
          static const account_name system_account = SystemAccount;
          typedef eosio::generic_currency< eosio::token<system_account,S(4,EOS)> > currency;
 
-         struct total_bandwidth {
+         struct total_resources {
             account_name owner;
             typename currency::token_type total_net_weight; 
             typename currency::token_type total_cpu_weight; 
+            uint32_t total_ram = 0;
 
             uint64_t primary_key()const { return owner; }
+
+            EOSLIB_SERIALIZE( total_resources, (owner)(total_net_weight)(total_cpu_weight)(total_ram) );
          };
 
 
@@ -50,10 +54,15 @@ namespace eosiosystem {
 
             
             uint64_t  primary_key()const { return to; }
+
+            EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight)
+                              (start_pending_net_withdraw)(pending_net_withdraw)(deferred_net_withdraw_handler)
+                              (start_pending_cpu_withdraw)(pending_cpu_withdraw)(deferred_cpu_withdraw_handler) );
+
          };
 
 
-         typedef eosio::multi_index< N(totalband), total_bandwidth >  total_bandwidth_index_type;
+         typedef eosio::multi_index< N(totalband), total_resources>  total_resources_index_type;
          typedef eosio::multi_index< N(delband), delegated_bandwidth> del_bandwidth_index_type;
 
 
@@ -80,7 +89,7 @@ namespace eosiosystem {
             typename currency::token_type   stake_quantity;
 
 
-            EOSLIB_SERIALIZE( delnetbw, (delegator)(receiver)(stake_quantity) )
+            EOSLIB_SERIALIZE( delnetbw, (from)(receiver)(stake_quantity) )
          };
 
          ACTION( SystemAccount, undelnetbw ) {
@@ -105,14 +114,15 @@ namespace eosiosystem {
             require_auth( del.from );
 
             del_bandwidth_index_type     del_index( SystemAccount, del.from );
-            total_bandwidth_index_type   total_index( SystemAccount, del.to );
-          //  require_account( receiver );
+            total_resources_index_type   total_index( SystemAccount, del.receiver );
 
-            auto itr = del_index.find( del.to  );
-            if( itr == del_index.end() ) {
+            //eosio_assert( is_account( del.receiver ), "can only delegate resources to an existing account" );
+
+            auto itr = del_index.find( del.receiver);
+            if( itr != nullptr ) {
                del_index.emplace( del.from, [&]( auto& dbo ){
                   dbo.from       = del.from;      
-                  dbo.to         = del.to;      
+                  dbo.to         = del.receiver;      
                   dbo.net_weight = del.stake_quantity;
                });
             }
@@ -122,10 +132,10 @@ namespace eosiosystem {
                });
             }
 
-            auto tot_itr = total_index.find( del.to );
-            if( tot_itr == total_index.end() ) {
-               total_index.emplace( del.from, [&]( auto& tot ) {
-                  tot.owner = del.to;
+            auto tot_itr = total_index.find( del.receiver );
+            if( tot_itr == nullptr ) {
+               tot_itr = &total_index.emplace( del.from, [&]( auto& tot ) {
+                  tot.owner = del.receiver;
                   tot.total_net_weight += del.stake_quantity;
                });
             } else {
@@ -133,6 +143,8 @@ namespace eosiosystem {
                   tot.total_net_weight += del.stake_quantity;
                });
             }
+
+            set_resource_limits( tot_itr->owner, tot_itr->total_ram, tot_itr->total_net_weight.quantity, tot_itr->total_cpu_weight.quantity, 0 );
 
             currency::inline_transfer( del.from, SystemAccount, del.stake_quantity, "stake bandwidth" );
          } // delnetbw
@@ -150,7 +162,7 @@ namespace eosiosystem {
 
          static void apply( account_name code, action_name act ) {
 
-            if( !eosio::dispatch<contract, regproducer, regproxy, nonce>( code, act) ) {
+            if( !eosio::dispatch<contract, regproducer, regproxy, delnetbw, nonce>( code, act) ) {
                if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                   eosio::print("Unexpected action: ", eosio::name(act), "\n");
                   eosio_assert( false, "received unexpected action");

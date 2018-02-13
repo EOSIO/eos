@@ -436,7 +436,6 @@ class multi_index
          auto secondary_keys = boost::hana::transform( _indicies, [&]( auto& idx ) {
              return idx.extract_secondary_key( obj );
          });
-         boost::hana::at_c<0>(secondary_keys);
 
          auto mutableobj = const_cast<T&>(obj);
          updater( mutableobj );
