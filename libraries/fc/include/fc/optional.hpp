@@ -93,12 +93,12 @@ namespace fc {
       }
 
       template<typename ...Args>
-      void emplace(Args... args) {
+      void emplace(Args&& ... args) {
         if (_valid) {
            reset();
         }
 
-        new ((char*)ptr()) T( args... );
+        new ((char*)ptr()) T( fc::forward<Args>(args)... );
         _valid = true;
       }
 

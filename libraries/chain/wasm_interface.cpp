@@ -174,11 +174,7 @@ namespace eosio { namespace chain {
                      // find or create a new entry
                      auto iter = _cache.emplace(code_id, code_info(std::move(*jit_info))).first;
 
-                     /// TODO: make sbrk bytes generic
-                     MemoryInstance* default_mem = Runtime::getDefaultMemory(jit->instance);
-                     uint32_t default_sbrk_bytes = default_mem ? Runtime::getMemoryNumPages(default_mem) << IR::numBytesPerPageLog2 : 0;
-
-                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(std::move(*jit), default_sbrk_bytes));
+                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(std::move(*jit)));
                      pending_result = optional_entry_ref(*iter->second.instances.back().get());
                   });
                }
@@ -269,7 +265,7 @@ namespace eosio { namespace chain {
     */
    struct scoped_context {
       template<typename ...Args>
-      scoped_context(optional<wasm_context> &context, Args&... args)
+      scoped_context(optional<wasm_context> &context, Args&&... args)
       :context(context)
       {
          context.emplace( std::forward<Args>(args)... );
@@ -295,12 +291,12 @@ namespace eosio { namespace chain {
    }
 
    void wasm_interface::apply( wasm_cache::entry& code, apply_context& context ) {
-      auto context_guard = scoped_context(my->current_context, code, context, code.default_sbrk_bytes);
+      auto context_guard = scoped_context(my->current_context, code, context);
       code.jit.call_apply(context);
    }
 
    void wasm_interface::error( wasm_cache::entry& code, apply_context& context ) {
-      auto context_guard = scoped_context(my->current_context, code, context, code.default_sbrk_bytes);
+      auto context_guard = scoped_context(my->current_context, code, context);
       code.jit.call_error(context);
    }
 
@@ -320,12 +316,10 @@ namespace eosio { namespace chain {
 class context_aware_api {
    public:
       context_aware_api(wasm_interface& wasm)
-      :context(intrinsics_accessor::get_context(wasm).context), code(intrinsics_accessor::get_context(wasm).code),
-       sbrk_bytes(intrinsics_accessor::get_context(wasm).sbrk_bytes)
+      :context(intrinsics_accessor::get_context(wasm).context), code(intrinsics_accessor::get_context(wasm).code)
       {}
 
    protected:
-      uint32_t&          sbrk_bytes;
       wasm_cache::entry& code;
       apply_context&     context;
 };
@@ -839,37 +833,7 @@ class memory_api : public context_aware_api {
       }
 
       uint32_t sbrk(int num_bytes) {
-         // TODO: omitted checktime function from previous version of sbrk, may need to be put back in at some point
-         constexpr uint32_t NBPPL2  = IR::numBytesPerPageLog2;
-         constexpr uint32_t MAX_MEM = 1024 * 1024;
-
-         MemoryInstance*  default_mem    = Runtime::getDefaultMemory(code.jit.instance);
-         if(!default_mem)
-            throw eosio::chain::page_memory_error();
-
-         const uint32_t         num_pages      = Runtime::getMemoryNumPages(default_mem);
-         const uint32_t         min_bytes      = (num_pages << NBPPL2) > UINT32_MAX ? UINT32_MAX : num_pages << NBPPL2;
-         const uint32_t         prev_num_bytes = sbrk_bytes; //_num_bytes;
-         
-         // round the absolute value of num_bytes to an alignment boundary
-         num_bytes = (num_bytes + 7) & ~7;
-
-         if ((num_bytes > 0) && (prev_num_bytes > (MAX_MEM - num_bytes)))  // test if allocating too much memory (overflowed)
-            throw eosio::chain::page_memory_error();
-         else if ((num_bytes < 0) && (prev_num_bytes < (min_bytes - num_bytes))) // test for underflow
-            throw eosio::chain::page_memory_error(); 
-
-         // update the number of bytes allocated, and compute the number of pages needed
-         sbrk_bytes += num_bytes;
-         const uint32_t num_desired_pages = (sbrk_bytes + IR::numBytesPerPage - 1) >> NBPPL2;
-
-         // grow or shrink the memory to the desired number of pages
-         if (num_desired_pages > num_pages)
-            Runtime::growMemory(default_mem, num_desired_pages - num_pages);
-         else if (num_desired_pages < num_pages)
-            Runtime::shrinkMemory(default_mem, num_pages - num_desired_pages);
-
-         return prev_num_bytes;
+         return code.jit.sbrk(num_bytes);
       }
 };
 

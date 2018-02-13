@@ -9,13 +9,12 @@ using namespace eosio::chain::webassembly;
 namespace eosio { namespace chain {
 
    struct wasm_cache::entry {
-      entry(jit::entry&& jit, uint32_t default_sbrk_bytes)
-         : jit(std::forward<jit::entry>(jit)), default_sbrk_bytes(default_sbrk_bytes)
+      entry(jit::entry&& jit)
+         : jit(std::forward<jit::entry>(jit))
       {
       }
 
       jit::entry jit;
-      uint32_t default_sbrk_bytes;
    };
 
    struct wasm_interface_impl {

@@ -13,32 +13,39 @@ using namespace eosio::chain::webassembly::common;
 namespace eosio { namespace chain { namespace webassembly { namespace jit {
 
 struct info;
-struct entry {
-   entry(ModuleInstance *instance, Module *module)
-      : instance(instance), module(module) 
-   {
-   }
+class entry {
+   public:
+      ModuleInstance* instance;
+      Module* module;
+      uint32_t sbrk_bytes;
 
-   ModuleInstance* instance;
-   Module* module;
-
-   void reset(const info& );
+      void reset(const info& );
 
 
-   void call(const string &entry_point, const vector <Value> &args, apply_context &context);
+      void call(const string &entry_point, const vector <Value> &args, apply_context &context);
 
-   void call_apply(apply_context&);
-   void call_error(apply_context&);
+      void call_apply(apply_context&);
+      void call_error(apply_context&);
 
-   static const entry& get(wasm_interface& wasm);
+      int sbrk(int num_bytes);
 
-   static entry build(const char* wasm_binary, size_t wasm_binary_size);
+      static const entry& get(wasm_interface& wasm);
+
+      static entry build(const char* wasm_binary, size_t wasm_binary_size);
+
+   private:
+      entry(ModuleInstance *instance, Module *module, uint32_t sbrk_bytes)
+              : instance(instance), module(module), sbrk_bytes(sbrk_bytes)
+      {
+      }
+
 };
 
 struct info {
    info( const entry &jit )
    {
       MemoryInstance* current_memory = Runtime::getDefaultMemory(jit.instance);
+      default_sbrk_bytes = jit.sbrk_bytes;
 
       if(current_memory) {
          char *mem_ptr = &memoryRef<char>(current_memory, 0);
@@ -53,9 +60,12 @@ struct info {
    }
 
    // a clean image of the memory used to sanitize things on checkin
-   size_t mem_start           = 0;
-   size_t mem_end             = 1<<16;
+   size_t mem_start            = 0;
+   size_t mem_end              = 1<<16;
    vector<char> mem_image;
+
+   uint32_t default_sbrk_bytes = 0;
+
 };
 
 
