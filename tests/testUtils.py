@@ -253,6 +253,7 @@ class Node(object):
                 if not retry:
                     break
                 if self.mongoSyncTime is not None:
+                    Utils.Debug and Utils.Print("cmd: sleep %d" % (self.mongoSyncTime))
                     time.sleep(self.mongoSyncTime)
 
         return None
@@ -274,6 +275,7 @@ class Node(object):
             if not retry:
                 break
             if self.mongoSyncTime is not None:
+                Utils.Debug and Utils.Print("cmd: sleep %d" % (self.mongoSyncTime))
                 time.sleep(self.mongoSyncTime)
 
         return None
@@ -317,6 +319,7 @@ class Node(object):
                 if not retry:
                     break
                 if self.mongoSyncTime is not None:
+                    Utils.Debug and Utils.Print("cmd: sleep %d" % (self.mongoSyncTime))
                     time.sleep(self.mongoSyncTime)
                 
         return None
@@ -338,6 +341,7 @@ class Node(object):
             if not retry:
                 break
             if self.mongoSyncTime is not None:
+                Utils.Debug and Utils.Print("cmd: sleep %d" % (self.mongoSyncTime))
                 time.sleep(self.mongoSyncTime)
                 
         return None
@@ -361,6 +365,7 @@ class Node(object):
             if not retry:
                 break
             if self.mongoSyncTime is not None:
+                Utils.Debug and Utils.Print("cmd: sleep %d" % (self.mongoSyncTime))
                 time.sleep(self.mongoSyncTime)
                 
         return None
@@ -382,6 +387,7 @@ class Node(object):
             if not retry:
                 break
             if self.mongoSyncTime is not None:
+                Utils.Debug and Utils.Print("cmd: sleep %d" % (self.mongoSyncTime))
                 time.sleep(self.mongoSyncTime)
                 
         return None
@@ -391,7 +397,12 @@ class Node(object):
         if trans is None:
             return False
 
-        blockNum=int(trans["transaction"]["ref_block_num"])
+        blockNum=None
+        if not self.enableMongo:
+            blockNum=int(trans["transaction"]["ref_block_num"])
+        else:
+            blockNum=int(trans["ref_block_num"])
+
         blockNum += 1
         return self.doesNodeHaveBlockNum(blockNum)
 
@@ -466,6 +477,7 @@ class Node(object):
                         return None
                     return ret
                 if self.mongoSyncTime is not None:
+                    Utils.Debug and Utils.Print("cmd: sleep %d" % (self.mongoSyncTime))
                     time.sleep(self.mongoSyncTime)
 
         return None
@@ -596,6 +608,7 @@ class Node(object):
             return balance
         else:
             if self.mongoSyncTime is not None:
+                Utils.Debug and Utils.Print("cmd: sleep %d" % (self.mongoSyncTime))
                 time.sleep(self.mongoSyncTime)
 
             account=self.getEosAccountFromDb(name)
