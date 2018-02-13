@@ -81,38 +81,37 @@ namespace eosio {
            *  scope of their account name.
            */
           typedef eosio::multi_index<accounts_table_name, account> accounts;
-         //typedef eosio::multi_index<stats_table_name, > stats;
-          typedef table64<code, stats_table_name, code, currency_stats>  stats;
+          typedef eosio::multi_index<stats_table_name, currency_stats> stats;
 
           static token_type get_balance( account_name owner ) {
              accounts t( code, owner );
              auto ptr = t.find( symbol );
              return ptr ? ptr->balance : token_type( asset(0, symbol) );
-             //return accounts::get_or_create( token_type::symbol, owner ).balance;
           }
 
          static void set_balance( account_name owner, token_type balance, account_name bill_to_if_create ) {
-             //accounts::set( account{token_type::symbol,balance}, owner );
              accounts t( code, owner );
              auto f = [&](account& acc) {
-                      acc.symbol = symbol;
                       acc.balance = balance;
              };
              auto ptr = t.find( symbol );
              if (ptr) {
                 t.update( *ptr, 0, f);
              } else {
-                t.emplace( owner, f);
+                t.emplace( bill_to_if_create, f);
              }
           }
 
           static void on( const issue& act ) {
              require_auth( code );
 
-             //stats t( code);
-             auto s = stats::get_or_create(token_type::symbol);
-             s.supply += act.quantity;
-             stats::set(s);
+             stats t( code, code );
+             auto ptr = t.find( symbol );
+             if (ptr) {
+                t.update(*ptr, 0, [&](currency_stats& s) { s.supply += act.quantity; });
+             } else {
+                t.emplace(code, [&](currency_stats& s) { s.supply = act.quantity; });
+             }
 
              set_balance( code, get_balance( code ) + act.quantity, code );
 

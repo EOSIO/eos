@@ -437,7 +437,7 @@ class multi_index
              return idx.extract_secondary_key( obj );
          });
 
-         auto mutableobj = const_cast<T&>(obj);
+         auto& mutableobj = const_cast<T&>(obj);
          updater( mutableobj );
 
          char tmp[ pack_size( obj ) ];

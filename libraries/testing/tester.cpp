@@ -332,7 +332,8 @@ namespace eosio { namespace testing {
       if (tbl) {
          const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, asset_symbol.value()));
          if (obj) {
-            fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
+            //balance is the second field after symbol, so skip the symbol
+            fc::datastream<const char *> ds(obj->value.data()+sizeof(symbol), obj->value.size()-sizeof(symbol));
             fc::raw::unpack(ds, result);
          }
       }
