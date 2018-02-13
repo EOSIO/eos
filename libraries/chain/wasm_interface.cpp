@@ -73,8 +73,8 @@ namespace eosio { namespace chain {
        * the instance handed out to other threads
        */
       struct code_info {
-         explicit code_info(jit::info&& jit_info) :jit_info(jit_info) {}
-         jit::info   jit_info;
+         explicit code_info(wavm::info&& wavm_info) :wavm_info(wavm_info) {}
+         wavm::info   wavm_info;
 
          // all existing instances of this code
          vector<unique_ptr<wasm_cache::entry>> instances;
@@ -156,13 +156,13 @@ namespace eosio { namespace chain {
             if (!pending_result) {
                // time to compile a brand new (maybe first) copy of this code
 
-               fc::optional<jit::entry> jit;
-               fc::optional<jit::info> jit_info;
+               fc::optional<wavm::entry> wavm;
+               fc::optional<wavm::info> wavm_info;
 
                try {
                   /// TODO: make validation generic
-                  jit = jit::entry::build(wasm_binary, wasm_binary_size);
-                  jit_info.emplace(*jit);
+                  wavm = wavm::entry::build(wasm_binary, wasm_binary_size);
+                  wavm_info.emplace(*wavm);
                   
                } catch (...) {
                   pending_error = std::current_exception();
@@ -172,9 +172,9 @@ namespace eosio { namespace chain {
                   // grab the lock and put this in the cache as unavailble
                   with_lock(_cache_lock, [&,this]() {
                      // find or create a new entry
-                     auto iter = _cache.emplace(code_id, code_info(std::move(*jit_info))).first;
+                     auto iter = _cache.emplace(code_id, code_info(std::move(*wavm_info))).first;
 
-                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(std::move(*jit)));
+                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(std::move(*wavm)));
                      pending_result = optional_entry_ref(*iter->second.instances.back().get());
                   });
                }
@@ -209,7 +209,7 @@ namespace eosio { namespace chain {
       void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
         // sanitize by reseting the memory that may now be dirty
         auto& info = (*fetch_info(code_id)).get();
-        entry.jit.reset(info.jit_info);
+        entry.wavm.reset(info.wavm_info);
 
         // under a lock, put this entry back in the available instances side of the instances vector
         with_lock(_cache_lock, [&,this](){
@@ -254,7 +254,7 @@ namespace eosio { namespace chain {
 
 
    void wasm_cache::checkin(const digest_type& code_id, entry& code ) {
-      MemoryInstance* default_mem = Runtime::getDefaultMemory(code.jit.instance);
+      MemoryInstance* default_mem = Runtime::getDefaultMemory(code.wavm.instance);
       if(default_mem)
          Runtime::shrinkMemory(default_mem, Runtime::getMemoryNumPages(default_mem) - 1);
       _my->return_entry(code_id, code);
@@ -292,12 +292,12 @@ namespace eosio { namespace chain {
 
    void wasm_interface::apply( wasm_cache::entry& code, apply_context& context ) {
       auto context_guard = scoped_context(my->current_context, code, context);
-      code.jit.call_apply(context);
+      code.wavm.call_apply(context);
    }
 
    void wasm_interface::error( wasm_cache::entry& code, apply_context& context ) {
       auto context_guard = scoped_context(my->current_context, code, context);
-      code.jit.call_error(context);
+      code.wavm.call_error(context);
    }
 
    wasm_context& common::intrinsics_accessor::get_context(wasm_interface &wasm) {
@@ -305,8 +305,8 @@ namespace eosio { namespace chain {
       return *wasm.my->current_context;
    }
 
-   const jit::entry& jit::entry::get(wasm_interface& wasm) {
-      return common::intrinsics_accessor::get_context(wasm).code.jit;
+   const wavm::entry& wavm::entry::get(wasm_interface& wasm) {
+      return common::intrinsics_accessor::get_context(wasm).code.wavm;
    }
 
 #if defined(assert)
@@ -833,7 +833,7 @@ class memory_api : public context_aware_api {
       }
 
       uint32_t sbrk(int num_bytes) {
-         return code.jit.sbrk(num_bytes);
+         return code.wavm.sbrk(num_bytes);
       }
 };
 

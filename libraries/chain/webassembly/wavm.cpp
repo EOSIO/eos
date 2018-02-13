@@ -1,4 +1,4 @@
-#include <eosio/chain/webassembly/jit.hpp>
+#include <eosio/chain/webassembly/wavm.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/apply_context.hpp>
 
@@ -14,7 +14,7 @@
 using namespace IR;
 using namespace Runtime;
 
-namespace eosio { namespace chain { namespace webassembly { namespace jit {
+namespace eosio { namespace chain { namespace webassembly { namespace wavm {
 
 /**
  * Integration with the WASM Linker to resolve our intrinsics

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <eosio/chain/wasm_interface.hpp>
-#include <eosio/chain/webassembly/jit.hpp>
+#include <eosio/chain/webassembly/wavm.hpp>
 
 using namespace fc;
 using namespace eosio::chain::webassembly;
@@ -9,12 +9,12 @@ using namespace eosio::chain::webassembly;
 namespace eosio { namespace chain {
 
    struct wasm_cache::entry {
-      entry(jit::entry&& jit)
-         : jit(std::forward<jit::entry>(jit))
+      entry(wavm::entry&& wavm)
+         : wavm(std::forward<wavm::entry>(wavm))
       {
       }
 
-      jit::entry jit;
+      wavm::entry wavm;
    };
 
    struct wasm_interface_impl {
@@ -22,7 +22,7 @@ namespace eosio { namespace chain {
    };
 
 #define _REGISTER_INTRINSIC_EXPLICIT(CLS, METHOD, WASM_SIG, NAME, SIG)\
-   _REGISTER_JIT_INTRINSIC(CLS, METHOD, WASM_SIG, NAME, SIG)
+   _REGISTER_WAVM_INTRINSIC(CLS, METHOD, WASM_SIG, NAME, SIG)
 
 #define _REGISTER_INTRINSIC4(CLS, METHOD, WASM_SIG, NAME, SIG)\
    _REGISTER_INTRINSIC_EXPLICIT(CLS, METHOD, WASM_SIG, NAME, SIG )

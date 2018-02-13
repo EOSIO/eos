@@ -10,7 +10,7 @@ using namespace Runtime;
 using namespace fc;
 using namespace eosio::chain::webassembly::common;
 
-namespace eosio { namespace chain { namespace webassembly { namespace jit {
+namespace eosio { namespace chain { namespace webassembly { namespace wavm {
 
 struct info;
 class entry {
@@ -42,14 +42,14 @@ class entry {
 };
 
 struct info {
-   info( const entry &jit )
+   info( const entry &wavm )
    {
-      MemoryInstance* current_memory = Runtime::getDefaultMemory(jit.instance);
-      default_sbrk_bytes = jit.sbrk_bytes;
+      MemoryInstance* current_memory = Runtime::getDefaultMemory(wavm.instance);
+      default_sbrk_bytes = wavm.sbrk_bytes;
 
       if(current_memory) {
          char *mem_ptr = &memoryRef<char>(current_memory, 0);
-         const auto allocated_memory = Runtime::getDefaultMemorySize(jit.instance);
+         const auto allocated_memory = Runtime::getDefaultMemorySize(wavm.instance);
          for (uint64_t i = 0; i < allocated_memory; ++i) {
             if (mem_ptr[i])
                mem_end = i + 1;
@@ -658,12 +658,12 @@ struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const
 #define __INTRINSIC_NAME(LABEL, SUFFIX) LABEL##SUFFIX
 #define _INTRINSIC_NAME(LABEL, SUFFIX) __INTRINSIC_NAME(LABEL,SUFFIX)
 
-#define _REGISTER_JIT_INTRINSIC(CLS, METHOD, WASM_SIG, NAME, SIG)\
+#define _REGISTER_WAVM_INTRINSIC(CLS, METHOD, WASM_SIG, NAME, SIG)\
    static Intrinsics::Function _INTRINSIC_NAME(__intrinsic_fn, __COUNTER__) (\
       "env." NAME,\
-      eosio::chain::webassembly::jit::wasm_function_type_provider<WASM_SIG>::type(),\
-      (void *)eosio::chain::webassembly::jit::intrinsic_function_invoker_wrapper<WASM_SIG, SIG>::type::fn<&CLS::METHOD>()\
+      eosio::chain::webassembly::wavm::wasm_function_type_provider<WASM_SIG>::type(),\
+      (void *)eosio::chain::webassembly::wavm::intrinsic_function_invoker_wrapper<WASM_SIG, SIG>::type::fn<&CLS::METHOD>()\
    );\
 
 
-} } } }// eosio::chain::webassembly::jit
+} } } }// eosio::chain::webassembly::wavm

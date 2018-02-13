@@ -27,7 +27,7 @@ add_library( eosio_chain
              contracts/genesis_state.cpp
              contracts/abi_serializer.cpp
 
-             webassembly/jit.cpp
+        webassembly/wavm.cpp
 
              ${HEADERS}
              transaction_metadata.cpp)
