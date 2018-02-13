@@ -5,9 +5,10 @@
 #include <eosiolib/dispatcher.hpp>
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/action.hpp>
-#include <eosiolib/string.hpp>
+#include <string>
 
 namespace eosio {
+   using std::string;
 
    template<typename Token>
    class generic_currency {
@@ -41,7 +42,7 @@ namespace eosio {
              template<typename DataStream>
              friend DataStream& operator >> ( DataStream& ds, transfer& t ){
                 ds >> t.from >> t.to >> t.quantity;
-                eos_assert( t.quantity.symbol== token_type::symbol, "unexpected asset type" );
+                eosio_assert( t.quantity.symbol== token_type::symbol, "unexpected asset type" );
                 return ds;
              }
           };
@@ -49,7 +50,7 @@ namespace eosio {
           struct transfer_memo : public transfer {
              transfer_memo(){}
              transfer_memo( account_name f, account_name t, token_type q, string m )
-             :transfer( f, t, q ), memo( move(m) ){}
+             :transfer( f, t, q ), memo( std::move(m) ){}
 
              string       memo;
 

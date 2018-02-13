@@ -29,7 +29,7 @@ extern "C" {
     *  @param cstr - a null terminated action to explain the reason for failure
 
     */
-   void  eos_assert( uint32_t test, const char* cstr );
+   void  eosio_assert( uint32_t test, const char* cstr );
 
    /**
     *  Returns the time in seconds from 1970 of the last accepted block (not the block including this action)

@@ -89,12 +89,12 @@ namespace tic_tac_toe {
    */
   void apply_create(const create& c) {
     require_auth(c.host);
-    eos_assert(c.challenger != c.host, "challenger shouldn't be the same as host");
+    eosio_assert(c.challenger != c.host, "challenger shouldn't be the same as host");
 
     // Check if game already exists
     game existing_game;
     bool game_exists = Games::get(c.challenger, existing_game, c.host);
-    eos_assert(game_exists == false, "game already exists");
+    eosio_assert(game_exists == false, "game already exists");
 
     game game_to_create(c.challenger, c.host);
     Games::store(game_to_create, c.host);
@@ -110,10 +110,10 @@ namespace tic_tac_toe {
     // Check if game exists
     game game_to_restart;
     bool game_exists = Games::get(r.challenger, game_to_restart, r.host);
-    eos_assert(game_exists == true, "game doesn't exist!");
+    eosio_assert(game_exists == true, "game doesn't exist!");
 
     // Check if this game belongs to the action sender
-    eos_assert(r.by == game_to_restart.host || r.by == game_to_restart.challenger, "this is not your game!");
+    eosio_assert(r.by == game_to_restart.host || r.by == game_to_restart.challenger, "this is not your game!");
 
     // Reset game
     game_to_restart.reset_game();
@@ -131,7 +131,7 @@ namespace tic_tac_toe {
     // Check if game exists
     game game_to_close;
     bool game_exists = Games::get(c.challenger, game_to_close, c.host);
-    eos_assert(game_exists == true, "game doesn't exist!");
+    eosio_assert(game_exists == true, "game doesn't exist!");
 
     Games::remove(game_to_close, game_to_close.host);
   }
@@ -146,18 +146,18 @@ namespace tic_tac_toe {
     // Check if game exists
     game game_to_move;
     bool game_exists = Games::get(m.challenger, game_to_move, m.host);
-    eos_assert(game_exists == true, "game doesn't exist!");
+    eosio_assert(game_exists == true, "game doesn't exist!");
 
     // Check if this game hasn't ended yet
-    eos_assert(game_to_move.winner == N(none), "the game has ended!");
+    eosio_assert(game_to_move.winner == N(none), "the game has ended!");
     // Check if this game belongs to the action sender
-    eos_assert(m.by == game_to_move.host || m.by == game_to_move.challenger, "this is not your game!");
+    eosio_assert(m.by == game_to_move.host || m.by == game_to_move.challenger, "this is not your game!");
     // Check if this is the  action sender's turn
-    eos_assert(m.by == game_to_move.turn, "it's not your turn yet!");
+    eosio_assert(m.by == game_to_move.turn, "it's not your turn yet!");
 
 
     // Check if user makes a valid movement
-    eos_assert(is_valid_movement(m.mvt, game_to_move), "not a valid movement!");
+    eosio_assert(is_valid_movement(m.mvt, game_to_move), "not a valid movement!");
 
     // Fill the cell, 1 for host, 2 for challenger
     bool is_movement_by_host = m.by == game_to_move.host;

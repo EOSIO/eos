@@ -117,6 +117,7 @@ namespace eosio { namespace chain { namespace contracts {
             >,
             ordered_unique<tag<by_secondary>,
                composite_key< index_object,
+                  member<index_object, table_id, &index_object::t_id>,
                   member<index_object, SecondaryKey, &index_object::secondary_key>,
                   member<index_object, uint64_t, &index_object::primary_key>
                >

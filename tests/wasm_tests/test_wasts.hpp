@@ -4,7 +4,7 @@
 
 static const char entry_wast[] = R"=====(
 (module
- (import "env" "eos_assert" (func $eos_assert (param i32 i32)))
+ (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
  (import "env" "now" (func $now (result i32)))
  (table 0 anyfunc)
  (memory $0 1)
@@ -18,7 +18,7 @@ static const char entry_wast[] = R"=====(
   )
  )
  (func $apply (param $0 i64) (param $1 i64)
-  (call $eos_assert
+  (call $eosio_assert
    (i32.eq
     (i32.load offset=4
      (i32.const 0)
@@ -51,7 +51,7 @@ static const char simple_no_memory_wast[] = R"=====(
 
 static const char mutable_global_wast[] = R"=====(
 (module
- (import "env" "eos_assert" (func $eos_assert (param i32 i32)))
+ (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
  (table 0 anyfunc)
  (memory $0 1)
  (export "memory" (memory $0))
@@ -61,7 +61,7 @@ static const char mutable_global_wast[] = R"=====(
     (set_global $g0 (i64.const 444))
   )
   (if (i64.eq (get_local $1) (i64.const 1))
-    (call $eos_assert (i64.eq (get_global $g0) (i64.const 2)) (i32.const 0))
+    (call $eosio_assert (i64.eq (get_global $g0) (i64.const 2)) (i32.const 0))
   )
  )
  (global $g0 (mut i64) (i64.const 2))
@@ -174,7 +174,7 @@ static const char memory_table_import[] = R"=====(
 
 static const char table_checker_wast[] = R"=====(
 (module
- (import "env" "eos_assert" (func $assert (param i32 i32)))
+ (import "env" "eosio_assert" (func $assert (param i32 i32)))
  (import "env" "printi" (func $printi (param i64)))
  (type $SIG$vj (func (param i64)))
  (table 1024 anyfunc)
@@ -216,7 +216,7 @@ static const char table_checker_wast[] = R"=====(
 
 static const char table_checker_proper_syntax_wast[] = R"=====(
 (module
- (import "env" "eos_assert" (func $assert (param i32 i32)))
+ (import "env" "eosio_assert" (func $assert (param i32 i32)))
  (import "env" "printi" (func $printi (param i64)))
  (type $SIG$vj (func (param i64)))
  (table 1024 anyfunc)
@@ -258,7 +258,7 @@ static const char table_checker_proper_syntax_wast[] = R"=====(
 
 static const char table_checker_small_wast[] = R"=====(
 (module
- (import "env" "eos_assert" (func $assert (param i32 i32)))
+ (import "env" "eosio_assert" (func $assert (param i32 i32)))
  (import "env" "printi" (func $printi (param i64)))
  (type $SIG$vj (func (param i64)))
  (table 128 anyfunc)

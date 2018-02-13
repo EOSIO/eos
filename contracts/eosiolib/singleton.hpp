@@ -27,7 +27,7 @@ namespace  eosio {
             char temp[1024+8];
             *reinterpret_cast<uint64_t *>(temp) = SingletonName;
             auto read = load_i64( Code, scope, SingletonName, temp, sizeof(temp) );
-            eos_assert( read > 0, "singleton does not exist" );
+            eosio_assert( read > 0, "singleton does not exist" );
             return unpack<T>( temp + sizeof(SingletonName), read );
          }
 
@@ -58,7 +58,7 @@ namespace  eosio {
             auto size = pack_size( value );
             char buf[size+ sizeof(SingletonName)];
 
-            eos_assert( sizeof(buf) <= 1024 + 8, "singleton too big to store" );
+            eosio_assert( sizeof(buf) <= 1024 + 8, "singleton too big to store" );
 
             datastream<char*> ds( buf, size + sizeof(SingletonName) );
             ds << SingletonName;
