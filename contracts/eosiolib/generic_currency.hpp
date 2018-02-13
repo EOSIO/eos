@@ -1,6 +1,5 @@
 #pragma once
 #include <eosiolib/multi_index.hpp>
-#include <eosiolib/table.hpp>
 #include <eosiolib/token.hpp>
 #include <eosiolib/asset.hpp>
 #include <eosiolib/dispatcher.hpp>
@@ -89,16 +88,17 @@ namespace eosio {
              return ptr ? ptr->balance : token_type( asset(0, symbol) );
           }
 
-         static void set_balance( account_name owner, token_type balance, account_name bill_to_if_create ) {
+         static void set_balance( account_name owner, token_type balance, account_name create_bill_to, account_name update_bill_to ) {
              accounts t( code, owner );
              auto f = [&](account& acc) {
-                      acc.balance = balance;
+                acc.symbol = symbol;
+                acc.balance = balance;
              };
              auto ptr = t.find( symbol );
              if (ptr) {
-                t.update( *ptr, 0, f);
+                t.update( *ptr, update_bill_to, f);
              } else {
-                t.emplace( bill_to_if_create, f);
+                t.emplace( create_bill_to, f);
              }
           }
 
@@ -113,7 +113,7 @@ namespace eosio {
                 t.emplace(code, [&](currency_stats& s) { s.supply = act.quantity; });
              }
 
-             set_balance( code, get_balance( code ) + act.quantity, code );
+             set_balance( code, get_balance( code ) + act.quantity, code, 0 );
 
              inline_transfer( code, act.to, act.quantity ); 
           }
@@ -123,8 +123,8 @@ namespace eosio {
              require_auth( act.from );
              require_recipient(act.to,act.from);
 
-             set_balance( act.from, get_balance( act.from ) - act.quantity, act.from );
-             set_balance( act.to, get_balance( act.to ) + act.quantity, act.from );
+             set_balance( act.from, get_balance( act.from ) - act.quantity, act.from, act.from );
+             set_balance( act.to, get_balance( act.to ) + act.quantity, act.from, 0 );
           }
 
           static void inline_transfer( account_name from, account_name to, token_type quantity, 
