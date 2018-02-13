@@ -76,4 +76,3 @@ struct account_permission {
 } /// extern "C"
 #endif
 /// @}
-}
