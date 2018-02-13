@@ -3,6 +3,7 @@
 #include <eosiolib/db.h>
 #include <eosiolib/db.hpp>
 #include <eosiolib/memory.hpp>
+#include <eosiolib/eosio.hpp>
 #include "test_api.hpp"
 
 int primary[11]      = {0,1,2,3,4,5,6,7,8,9,10};
@@ -68,6 +69,8 @@ extern "C" {
   bool my_memcmp(void *s1, void *s2, uint32_t n);
 }
 
+#if 0
+
 unsigned int test_db::key_str_table() {
 
     const char* keys[] = { "alice", "bob", "carol", "dave" };
@@ -76,94 +79,98 @@ unsigned int test_db::key_str_table() {
     const char* atr[]  = { "atr", "atr", "atr", "atr" };
     const char* ztr[]  = { "ztr", "ztr", "ztr", "ztr" };
     
-    eosio::var_table<N(tester), N(tester), N(atr), char*> StringTableAtr;
-    eosio::var_table<N(tester), N(tester), N(ztr), char*> StringTableZtr;
-    eosio::var_table<N(tester), N(tester), N(str), char*> StringTableStr;
+    eosio::var_table<N(tester), N(tester), N(atr), N(tester), char*> StringTableAtr;
+    eosio::var_table<N(tester), N(tester), N(ztr), N(tester), char*> StringTableZtr;
+    eosio::var_table<N(tester), N(tester), N(str), N(tester), char*> StringTableStr;
 
     uint32_t res = 0;
 
     // fill some data in contiguous tables
     for( int ii = 0; ii < 4; ++ii ) {
         res = StringTableAtr.store( (char*)keys[ii], STRLEN(keys[ii]), (char*)atr[ii], STRLEN(atr[ii]) );
-        WASM_ASSERT( res != 0, "atr" );
+        eos_assert( res != 0, "atr" );
     
         res = StringTableZtr.store( (char*)keys[ii], STRLEN(keys[ii]), (char*)ztr[ii], STRLEN(ztr[ii]) );
-        WASM_ASSERT(res != 0, "ztr" );
+        eos_assert(res != 0, "ztr" );
     }
 
     char tmp[64];
     
     res = StringTableStr.store ((char *)keys[0], STRLEN(keys[0]), (char *)vals[0], STRLEN(vals[0]));
-    WASM_ASSERT(res != 0, "store alice" );
+    eos_assert(res != 0, "store alice" );
 
     res = StringTableStr.store((char *)keys[1], STRLEN(keys[1]), (char *)vals[1], STRLEN(vals[1]) );
-    WASM_ASSERT(res != 0, "store bob" );
+    eos_assert(res != 0, "store bob" );
 
     res = StringTableStr.store((char *)keys[2], STRLEN(keys[2]), (char *)vals[2], STRLEN(vals[2]) );
-    WASM_ASSERT(res != 0, "store carol" );
+    eos_assert(res != 0, "store carol" );
 
     res = StringTableStr.store((char *)keys[3], STRLEN(keys[3]), (char *)vals[3], STRLEN(vals[3]) );
-    WASM_ASSERT(res != 0, "store dave" );
+    eos_assert(res != 0, "store dave" );
 
     res = StringTableStr.load((char *)keys[0], STRLEN(keys[0]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "load alice");
+    eos_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "load alice");
 
     res = StringTableStr.load((char *)keys[1], STRLEN(keys[1]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "load bob");
+    eos_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "load bob");
 
     res = StringTableStr.load((char *)keys[2], STRLEN(keys[2]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "load carol");
+    eos_assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "load carol");
 
     res = StringTableStr.load((char *)keys[3], STRLEN(keys[3]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "load dave");
+    eos_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "load dave");
 
     res = StringTableStr.previous((char *)keys[3], STRLEN(keys[3]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "back carol");
+    eos_assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "back carol");
 
     res = StringTableStr.previous((char *)keys[2], STRLEN(keys[2]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "back dave");
+    eos_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "back dave");
 
     res = StringTableStr.previous((char *)keys[1], STRLEN(keys[1]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "back alice");
+    eos_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "back alice");
 
     res = StringTableStr.previous((char *)keys[0], STRLEN(keys[0]), tmp, 64);
-    WASM_ASSERT(res == -1, "no prev");
+    eos_assert(res == -1, "no prev");
 
     res = StringTableStr.next((char *)keys[0], STRLEN(keys[0]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "next bob");
+    eos_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "next bob");
 
     res = StringTableStr.next((char *)keys[1], STRLEN(keys[1]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "next carol");
+    eos_assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "next carol");
 
     res = StringTableStr.next((char *)keys[2], STRLEN(keys[2]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "next dave");
+    eos_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "next dave");
 
     res = StringTableStr.next((char *)keys[3], STRLEN(keys[3]), tmp, 64);
-    WASM_ASSERT(res == -1, "no next");
+    eos_assert(res == -1, "no next");
 
     res = StringTableStr.next((char *)keys[0], STRLEN(keys[0]), tmp, 0);
-    WASM_ASSERT(res == 0, "next 0");
+    eos_assert(res == 0, "next 0");
 
     res = StringTableStr.front(tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "front alice");
+    eos_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "front alice");
 
     res = StringTableStr.back(tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "back dave");
+    eos_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "back dave");
 
     res = StringTableStr.lower_bound((char *)keys[0], STRLEN(keys[0]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "lowerbound alice");
+    eos_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "lowerbound alice");
 
     res = StringTableStr.upper_bound((char *)keys[0], STRLEN(keys[0]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "upperbound bob");
+    eos_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "upperbound bob");
 
     res = StringTableStr.lower_bound((char *)keys[3], STRLEN(keys[3]), tmp, 64);
-    WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "upperbound dave");
+    eos_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "upperbound dave");
 
     res = StringTableStr.upper_bound((char *)keys[3], STRLEN(keys[3]), tmp, 64);
-    WASM_ASSERT(res == -1, "no upper_bound");
+    eos_assert(res == -1, "no upper_bound");
 
-    return WASM_TEST_PASS;
+    return 1; // WASM_TEST_PASS;
 }
+
+#endif
+
+#if 0
 
 unsigned int test_db::key_str_general() {
 
@@ -178,85 +185,89 @@ unsigned int test_db::key_str_general() {
   //fill some data in contiguous tables
   for(int i=0; i < 4; ++i) {
     res = store_str(current_receiver(),  N(atr), (char *)keys[i], STRLEN(keys[i]), (char *)atr[i], STRLEN(atr[i]) );
-    WASM_ASSERT(res != 0, "atr" );
+    eos_assert(res != 0, "atr" );
 
     res = store_str(current_receiver(),  N(ztr), (char *)keys[i], STRLEN(keys[i]), (char *)ztr[i], STRLEN(ztr[i]) );
-    WASM_ASSERT(res != 0, "ztr" );
+    eos_assert(res != 0, "ztr" );
   }
 
   char tmp[64];
 
   res = store_str(current_receiver(),  N(str), (char *)keys[0], STRLEN(keys[0]), (char *)vals[0], STRLEN(vals[0]) );
-  WASM_ASSERT(res != 0, "store alice" );
+  eos_assert(res != 0, "store alice" );
 
   res = store_str(current_receiver(),  N(str), (char *)keys[1], STRLEN(keys[1]), (char *)vals[1], STRLEN(vals[1]) );
-  WASM_ASSERT(res != 0, "store bob" );
+  eos_assert(res != 0, "store bob" );
 
   res = store_str(current_receiver(),  N(str), (char *)keys[2], STRLEN(keys[2]), (char *)vals[2], STRLEN(vals[2]) );
-  WASM_ASSERT(res != 0, "store carol" );
+  eos_assert(res != 0, "store carol" );
 
   res = store_str(current_receiver(),  N(str), (char *)keys[3], STRLEN(keys[3]), (char *)vals[3], STRLEN(vals[3]) );
-  WASM_ASSERT(res != 0, "store dave" );
+  eos_assert(res != 0, "store dave" );
 
   res = load_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "load alice");
+  eos_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "load alice");
 
   res = load_str(current_receiver(), current_receiver(), N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "load bob");
+  eos_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "load bob");
 
   res = load_str(current_receiver(), current_receiver(), N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "load carol");
+  eos_assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "load carol");
 
   res = load_str(current_receiver(), current_receiver(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "load dave");
+  eos_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "load dave");
 
   res = previous_str(current_receiver(), current_receiver(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "back carol");
+  eos_assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "back carol");
 
   res = previous_str(current_receiver(), current_receiver(), N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "back dave");
+  eos_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "back dave");
 
   res = previous_str(current_receiver(), current_receiver(), N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "back alice");
+  eos_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "back alice");
 
   res = previous_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  WASM_ASSERT(res == -1, "no prev");
+  eos_assert(res == -1, "no prev");
 
   res = next_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "next bob");
+  eos_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "next bob");
 
   res = next_str(current_receiver(), current_receiver(), N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "next carol");
+  eos_assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "next carol");
 
   res = next_str(current_receiver(), current_receiver(), N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "next dave");
+  eos_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "next dave");
 
   res = next_str(current_receiver(), current_receiver(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  WASM_ASSERT(res == -1, "no next");
+  eos_assert(res == -1, "no next");
 
   res = next_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 0);
-  WASM_ASSERT(res == 0, "next 0");
+  eos_assert(res == 0, "next 0");
 
   res = front_str(current_receiver(), current_receiver(), N(str), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "front alice");
+  eos_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "front alice");
 
   res = back_str(current_receiver(), current_receiver(), N(str), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "back dave");
+  eos_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "back dave");
 
   res = lower_bound_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "lowerbound alice");
+  eos_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "lowerbound alice");
 
   res = upper_bound_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "upperbound bob");
+  eos_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "upperbound bob");
 
   res = lower_bound_str(current_receiver(), current_receiver(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  WASM_ASSERT(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "upperbound dave");
+  eos_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "upperbound dave");
 
   res = upper_bound_str(current_receiver(), current_receiver(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  WASM_ASSERT(res == -1, "no upper_bound");
+  eos_assert(res == -1, "no upper_bound");
 
-  return WASM_TEST_PASS;
+  return 1;//WASM_TEST_PASS;
 }
+
+#endif
+
+#if 0
 
 unsigned int test_db::key_i64_general() {
 
@@ -268,16 +279,16 @@ unsigned int test_db::key_i64_general() {
   test_model dave { N(dave),  46, 6535354};
 
   res = store_i64(current_receiver(),  N(test_table), &dave,  sizeof(test_model));
-  WASM_ASSERT(res != 0, "store dave" );
+  eos_assert(res != 0, "store dave" );
 
   res = store_i64(current_receiver(), N(test_table), &carol, sizeof(test_model));
-  WASM_ASSERT(res != 0, "store carol" );
+  eos_assert(res != 0, "store carol" );
 
   res = store_i64(current_receiver(),   N(test_table), &bob,   sizeof(test_model));
-  WASM_ASSERT(res != 0, "store bob" );
+  eos_assert(res != 0, "store bob" );
 
   res = store_i64(current_receiver(), N(test_table), &alice, sizeof(test_model));
-  WASM_ASSERT(res != 0, "store alice" );
+  eos_assert(res != 0, "store alice" );
 
   //fill with different ages in adjacent tables
   dave.age=123;  store_i64(current_receiver(), N(test_tabld), &dave,  sizeof(test_model));
@@ -292,56 +303,56 @@ unsigned int test_db::key_i64_general() {
   test_model tmp;
 
   res = front_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "front_i64 1");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "front_i64 1");
   my_memset(&tmp, 0, sizeof(test_model));
 
   res = back_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "front_i64 2");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "front_i64 2");
 
   res = previous_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol previous");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol previous");
   
   res = previous_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "bob previous");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "bob previous");
 
   res = previous_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "alice previous");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "alice previous");
 
   res = previous_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "previous null");
+  eos_assert(res == -1, "previous null");
 
   res = next_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "bob next");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "bob next");
 
   res = next_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol next");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "carol next");
 
   res = next_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "dave next");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "dave next");
 
   res = next_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "next null");
+  eos_assert(res == -1, "next null");
 
   my_memset(&alice, 0, sizeof(test_model));
 
-  WASM_ASSERT(alice.name == 0 && alice.age == 0 && alice.phone == 0, "my_memset");
+  eos_assert(alice.name == 0 && alice.age == 0 && alice.phone == 0, "my_memset");
 
   alice.name = N(alice);
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &alice, sizeof(test_model));
-  WASM_ASSERT(res == sizeof(test_model) && alice.age == 20 && alice.phone == 4234622, "alice error 1");
+  eos_assert(res == sizeof(test_model) && alice.age == 20 && alice.phone == 4234622, "alice error 1");
 
   alice.age = 21;
   alice.phone = 1234;
   
   res = store_i64(current_receiver(), N(test_table), &alice, sizeof(test_model));
-  WASM_ASSERT(res == 0, "store alice 2" );
+  eos_assert(res == 0, "store alice 2" );
 
   my_memset(&alice, 0, sizeof(test_model));
   alice.name = N(alice);
   
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &alice, sizeof(test_model));
-  WASM_ASSERT(res == sizeof(test_model) && alice.age == 21 && alice.phone == 1234, "alice error 2");
+  eos_assert(res == sizeof(test_model) && alice.age == 21 && alice.phone == 1234, "alice error 2");
 
   my_memset(&bob, 0, sizeof(test_model));
   bob.name = N(bob);
@@ -353,72 +364,72 @@ unsigned int test_db::key_i64_general() {
   dave.name = N(dave);
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &bob, sizeof(test_model));
-  WASM_ASSERT(res == sizeof(test_model) && bob.age == 15 && bob.phone == 11932435, "bob error 1");
+  eos_assert(res == sizeof(test_model) && bob.age == 15 && bob.phone == 11932435, "bob error 1");
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &carol, sizeof(test_model));
-  WASM_ASSERT(res == sizeof(test_model) && carol.age == 30 && carol.phone == 545342453, "carol error 1");
+  eos_assert(res == sizeof(test_model) && carol.age == 30 && carol.phone == 545342453, "carol error 1");
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &dave, sizeof(test_model));
-  WASM_ASSERT(res == sizeof(test_model) && dave.age == 46 && dave.phone == 6535354, "dave error 1");
+  eos_assert(res == sizeof(test_model) && dave.age == 46 && dave.phone == 6535354, "dave error 1");
 
   res = load_i64(current_receiver(), N(other_code), N(test_table), &alice, sizeof(test_model));
-  WASM_ASSERT(res == -1, "other_code");
+  eos_assert(res == -1, "other_code");
 
   res = load_i64(current_receiver(), current_receiver(), N(other_table), &alice, sizeof(test_model));
-  WASM_ASSERT(res == -1, "other_table");
+  eos_assert(res == -1, "other_table");
 
 
   test_model_v2 alicev2;
   alicev2.name = N(alice);
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &alicev2, sizeof(test_model_v2));
-  WASM_ASSERT(res == sizeof(test_model) && alicev2.age == 21 && alicev2.phone == 1234, "alicev2 load");
+  eos_assert(res == sizeof(test_model) && alicev2.age == 21 && alicev2.phone == 1234, "alicev2 load");
 
   alicev2.new_field = 66655444;
   res = store_i64(current_receiver(), N(test_table), &alicev2, sizeof(test_model_v2));
-  WASM_ASSERT(res == 0, "store alice 3" );
+  eos_assert(res == 0, "store alice 3" );
 
   my_memset(&alicev2, 0, sizeof(test_model_v2));
   alicev2.name = N(alice);
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &alicev2, sizeof(test_model_v2));
-  WASM_ASSERT(res == sizeof(test_model_v2) && alicev2.age == 21 && alicev2.phone == 1234 && alicev2.new_field == 66655444, "alice model v2");
+  eos_assert(res == sizeof(test_model_v2) && alicev2.age == 21 && alicev2.phone == 1234 && alicev2.new_field == 66655444, "alice model v2");
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(bob);
   res = lower_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(bob), "lower_bound_i64 bob" );
+  eos_assert(res == sizeof(test_model) && tmp.name == N(bob), "lower_bound_i64 bob" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(boc);
   res = lower_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(carol), "lower_bound_i64 carol" );
+  eos_assert(res == sizeof(test_model) && tmp.name == N(carol), "lower_bound_i64 carol" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(dave);
   res = lower_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(uint64_t) );
-  WASM_ASSERT(res == sizeof(uint64_t) && tmp.name == N(dave), "lower_bound_i64 dave" );
+  eos_assert(res == sizeof(uint64_t) && tmp.name == N(dave), "lower_bound_i64 dave" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(davf);
   res = lower_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(uint64_t) );
-  WASM_ASSERT(res == -1, "lower_bound_i64 fail" );
+  eos_assert(res == -1, "lower_bound_i64 fail" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(alice);
   res = upper_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.age == 15 && tmp.name == N(bob), "upper_bound_i64 bob" );
+  eos_assert(res == sizeof(test_model) && tmp.age == 15 && tmp.name == N(bob), "upper_bound_i64 bob" );
 
   my_memset(&tmp, 0, sizeof(test_model));
   tmp.name = N(dave);
   res = upper_bound_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "upper_bound_i64 dave" );
+  eos_assert(res == -1, "upper_bound_i64 dave" );
 
   test_model_v3 tmp2;
   tmp2.name = N(alice);
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &tmp2, sizeof(test_model_v3));
-  WASM_ASSERT(res == sizeof(test_model_v2) &&
+  eos_assert(res == sizeof(test_model_v2) &&
               tmp2.age == 21 && 
               tmp2.phone == 1234 &&
               tmp2.new_field == 66655444,
@@ -426,10 +437,10 @@ unsigned int test_db::key_i64_general() {
 
   tmp2.another_field = 221122;
   res = update_i64(current_receiver(), N(test_table), &tmp2, sizeof(test_model_v3));
-  WASM_ASSERT(res == 1, "update_i64");
+  eos_assert(res == 1, "update_i64");
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &tmp2, sizeof(test_model_v3));
-  WASM_ASSERT(res == sizeof(test_model_v3) &&
+  eos_assert(res == sizeof(test_model_v3) &&
               tmp2.age == 21 && 
               tmp2.phone == 1234 &&
               tmp2.new_field == 66655444 &&
@@ -438,10 +449,10 @@ unsigned int test_db::key_i64_general() {
 
   tmp2.age = 11;
   res = update_i64(current_receiver(), N(test_table), &tmp2,  sizeof(uint64_t)+1 );
-  WASM_ASSERT(res == 1, "update_i64 small");
+  eos_assert(res == 1, "update_i64 small");
 
   res = load_i64(current_receiver(), current_receiver(), N(test_table), &tmp2, sizeof(test_model_v3));
-  WASM_ASSERT(res == sizeof(test_model_v3) &&
+  eos_assert(res == sizeof(test_model_v3) &&
               tmp2.age == 11 && 
               tmp2.phone == 1234 &&
               tmp2.new_field == 66655444 &&
@@ -460,6 +471,10 @@ unsigned int test_db::key_i64_general() {
   return WASM_TEST_PASS;
 }
 
+#endif
+
+#if 0
+
 unsigned int test_db::key_i64_remove_all() {
   
   uint32_t res = 0;
@@ -467,46 +482,50 @@ unsigned int test_db::key_i64_remove_all() {
 
   key = N(alice);
   res = remove_i64(current_receiver(), N(test_table), &key);
-  WASM_ASSERT(res == 1, "remove alice");
+  eos_assert(res == 1, "remove alice");
   
   key = N(bob);
   res = remove_i64(current_receiver(),   N(test_table), &key);
-  WASM_ASSERT(res == 1, "remove bob");
+  eos_assert(res == 1, "remove bob");
   
   key = N(carol);
   res = remove_i64(current_receiver(), N(test_table), &key);
-  WASM_ASSERT(res == 1, "remove carol");
+  eos_assert(res == 1, "remove carol");
   
   key = N(dave);
   res = remove_i64(current_receiver(),  N(test_table), &key);
-  WASM_ASSERT(res == 1, "remove dave");
+  eos_assert(res == 1, "remove dave");
 
   test_model tmp;
   res = front_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "front_i64 remove");
+  eos_assert(res == -1, "front_i64 remove");
 
   res = back_i64( current_receiver(), current_receiver(), N(test_table), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "back_i64_i64 remove");
+  eos_assert(res == -1, "back_i64_i64 remove");
   
   key = N(alice);
   res = remove_i64(current_receiver(), N(test_table), &key);
-  WASM_ASSERT(res == 0, "remove alice 1");
+  eos_assert(res == 0, "remove alice 1");
   
   key = N(bob);
   res = remove_i64(current_receiver(),   N(test_table), &key);
-  WASM_ASSERT(res == 0, "remove bob 1");
+  eos_assert(res == 0, "remove bob 1");
   
   key = N(carol);
   res = remove_i64(current_receiver(), N(test_table), &key);
-  WASM_ASSERT(res == 0, "remove carol 1");
+  eos_assert(res == 0, "remove carol 1");
   
   key = N(dave);
   res = remove_i64(current_receiver(),  N(test_table), &key);
-  WASM_ASSERT(res == 0, "remove dave 1");
+  eos_assert(res == 0, "remove dave 1");
 
  
   return WASM_TEST_PASS;
 }
+
+#endif
+
+#if 0
 
 unsigned int test_db::key_i64_small_load() {
   uint64_t dummy = 0;
@@ -536,10 +555,10 @@ unsigned int test_db::key_i64_not_found() {
   uint64_t dummy = 1000;
 
   auto res = load_i64(current_receiver(), current_receiver(), N(just_uint64), &dummy, sizeof(uint64_t));
-  WASM_ASSERT(res == -1, "i64_not_found load");
+  eos_assert(res == -1, "i64_not_found load");
 
   res = remove_i64(current_receiver(),  N(just_uint64), &dummy);
-  WASM_ASSERT(res == 0, "i64_not_found remove");
+  eos_assert(res == 0, "i64_not_found remove");
   return WASM_TEST_PASS;
 }
 
@@ -561,65 +580,65 @@ unsigned int test_db::key_i64_front_back() {
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = front_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 1");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 1");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = back_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "key_i64_front 2");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "key_i64_front 2");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = front_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "key_i64_front 3");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(carol) && tmp.age == 30 && tmp.phone == 545342453, "key_i64_front 3");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = back_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 4");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 4");
 
   uint64_t key = N(carol);
   remove_i64(current_receiver(), N(b), &key);
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = front_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 5");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 5");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = back_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 6");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(dave) && tmp.age == 46 && tmp.phone == 6535354, "key_i64_front 6");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = front_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 7");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 7");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = back_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "key_i64_front 8");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(bob) && tmp.age == 15 && tmp.phone == 11932435, "key_i64_front 8");
 
   key = N(dave);
   remove_i64(current_receiver(), N(b), &key);
   
   res = front_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "key_i64_front 9");
+  eos_assert(res == -1, "key_i64_front 9");
   res = back_i64( current_receiver(), current_receiver(), N(b), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "key_i64_front 10");
+  eos_assert(res == -1, "key_i64_front 10");
 
   key = N(bob);
   remove_i64(current_receiver(), N(a), &key);
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = front_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 11");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 11");
 
   my_memset(&tmp, 0, sizeof(test_model));
   res = back_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 12");
+  eos_assert(res == sizeof(test_model) && tmp.name == N(alice) && tmp.age == 20 && tmp.phone == 4234622, "key_i64_front 12");
 
   key = N(alice);
   remove_i64(current_receiver(), N(a), &key);
 
   res = front_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "key_i64_front 13");
+  eos_assert(res == -1, "key_i64_front 13");
   res = back_i64( current_receiver(), current_receiver(), N(a), &tmp, sizeof(test_model) );
-  WASM_ASSERT(res == -1, "key_i64_front 14");
+  eos_assert(res == -1, "key_i64_front 14");
 
   return WASM_TEST_PASS;
 }
@@ -635,16 +654,16 @@ unsigned int store_set_in_table(uint64_t table_name)
   TestModel128x2 alice22{2, 200, N(alice22), table_name};
 
   res = store_i128i128(current_receiver(),  table_name, &alice0,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store alice0" );
+  eos_assert(res == 1, "store alice0" );
 
   res = store_i128i128(current_receiver(),  table_name, &alice1,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store alice1" );
+  eos_assert(res == 1, "store alice1" );
 
   res = store_i128i128(current_receiver(),  table_name, &alice2,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store alice2" );
+  eos_assert(res == 1, "store alice2" );
 
   res = store_i128i128(current_receiver(),  table_name, &alice22,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store alice22" );
+  eos_assert(res == 1, "store alice22" );
 
   TestModel128x2 bob0{10, 1, N(bob0), table_name};
   TestModel128x2 bob1{11, 2, N(bob1), table_name};
@@ -652,16 +671,16 @@ unsigned int store_set_in_table(uint64_t table_name)
   TestModel128x2 bob3{13, 4, N(bob3), table_name};
 
   res = store_i128i128(current_receiver(),  table_name, &bob0,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store bob0" );
+  eos_assert(res == 1, "store bob0" );
 
   res = store_i128i128(current_receiver(),  table_name, &bob1,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store bob1" );
+  eos_assert(res == 1, "store bob1" );
 
   res = store_i128i128(current_receiver(),  table_name, &bob2,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store bob2" );
+  eos_assert(res == 1, "store bob2" );
 
   res = store_i128i128(current_receiver(),  table_name, &bob3,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store bob3" );
+  eos_assert(res == 1, "store bob3" );
 
   TestModel128x2 carol0{20, 900, N(carol0), table_name};
   TestModel128x2 carol1{21, 800, N(carol1), table_name};
@@ -669,16 +688,16 @@ unsigned int store_set_in_table(uint64_t table_name)
   TestModel128x2 carol3{23, 600, N(carol3), table_name};
 
   res = store_i128i128(current_receiver(),  table_name, &carol0,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store carol0" );
+  eos_assert(res == 1, "store carol0" );
 
   res = store_i128i128(current_receiver(),  table_name, &carol1,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store carol1" );
+  eos_assert(res == 1, "store carol1" );
 
   res = store_i128i128(current_receiver(),  table_name, &carol2,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store carol2" );
+  eos_assert(res == 1, "store carol2" );
 
   res = store_i128i128(current_receiver(),  table_name, &carol3,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store carol3" );
+  eos_assert(res == 1, "store carol3" );
 
   TestModel128x2 dave0{30, 8, N(dave0), table_name};
   TestModel128x2 dave1{31, 7, N(dave1), table_name};
@@ -686,16 +705,16 @@ unsigned int store_set_in_table(uint64_t table_name)
   TestModel128x2 dave3{33, 4, N(dave3), table_name};
 
   res = store_i128i128(current_receiver(),  table_name, &dave0,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store dave0" );
+  eos_assert(res == 1, "store dave0" );
 
   res = store_i128i128(current_receiver(),  table_name, &dave1,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store dave1" );
+  eos_assert(res == 1, "store dave1" );
 
   res = store_i128i128(current_receiver(),  table_name, &dave2,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store dave2" );
+  eos_assert(res == 1, "store dave2" );
 
   res = store_i128i128(current_receiver(),  table_name, &dave3,  sizeof(TestModel128x2));
-  WASM_ASSERT(res == 1, "store dave3" );
+  eos_assert(res == 1, "store dave3" );
 
   return WASM_TEST_PASS;
 }
@@ -706,10 +725,14 @@ unsigned int store_set_in_table(TestModel3xi64* records, int len, uint64_t table
     TestModel3xi64 *tmp = records+i;
     tmp->table = table_name;
     res = store_i64i64i64(current_receiver(),  table_name, tmp,  sizeof(TestModel3xi64));
-    WASM_ASSERT(res == 1, "store_set_in_table" );
+    eos_assert(res == 1, "store_set_in_table" );
   }
   return res;
 }
+
+#endif
+
+#if 0
 
 unsigned int test_db::key_i64i64i64_general() {
   
@@ -750,7 +773,7 @@ unsigned int test_db::key_i64i64i64_general() {
       eosio::print(msg, " : ", res, " a:", V.a, " b:", V.b, " c:", V.c, " t:", V.table, "inx:", uint64_t(I), " ("); \
       eosio::print(BS(res == sizeof(V)), " ", BS(records[I].a == V.a), " ", BS(records[I].b == V.b), " ", BS(records[I].c == V.c), " => ", N(table2), ")\n"); \
     } \
-    WASM_ASSERT( res == sizeof(V) && records[I].a == V.a && records[I].b == V.b && \
+    eos_assert( res == sizeof(V) && records[I].a == V.a && records[I].b == V.b && \
      records[I].c == V.c /*&& records[I].table == uint64_t(N(table2))*/, msg);
 
   #define LOAD_OK(I, O, T, INX, MSG) \
@@ -761,7 +784,7 @@ unsigned int test_db::key_i64i64i64_general() {
   #define LOAD_ER(I, O, T, MSG) \
     {eosio::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
     res = LOAD(I, O, T, tmp); \
-    WASM_ASSERT(res == -1, MSG)}
+    eos_assert(res == -1, MSG)}
 
   #define FRONT_OK(I, O, T, INX, MSG) \
     {eosio::remove_reference<decltype(V)>::type tmp; my_memset(&tmp, 0, sizeof(tmp));tmp = V; \
@@ -812,7 +835,7 @@ unsigned int test_db::key_i64i64i64_general() {
       eosio::remove_reference<decltype(records[0])>::type tmp = records[I[j]]; \
       res = NEXT(I, i64i64i64, N(table2), tmp);\
       if(j+1<n){ TABLE1_ASSERT(I[j+1], tmp, "i64x3 NEXT " #I " ok "); } \
-      else { WASM_ASSERT(res == -1, "i64x3 NEXT " #I " fail "); }\
+      else { eos_assert(res == -1, "i64x3 NEXT " #I " fail "); }\
     } while(++j<n); \
   }
 
@@ -824,7 +847,7 @@ unsigned int test_db::key_i64i64i64_general() {
       eosio::remove_reference<decltype(records[0])>::type tmp = records[I[j]]; \
       res = PREV(I, i64i64i64, N(table2), tmp);\
       if(j>0){ TABLE1_ASSERT(I[j-1], tmp, "i64x3 PREV " #I " ok "); } \
-      else { WASM_ASSERT(res == -1, "i64x3 PREV " #I " fail "); }\
+      else { eos_assert(res == -1, "i64x3 PREV " #I " fail "); }\
     } while(--j>0); \
   }
 
@@ -866,7 +889,7 @@ unsigned int test_db::key_i64i64i64_general() {
     do { \
       eosio::remove_reference<decltype(records[0])>::type tmp = records[j]; \
       res = UPPER(I, i64i64i64, N(table2), tmp);\
-      if(res == -1) { WASM_ASSERT(I##_ub[j]==-1,"i64x3 UPPER " #I " fail ") } \
+      if(res == -1) { eos_assert(I##_ub[j]==-1,"i64x3 UPPER " #I " fail ") } \
       else { TABLE1_ASSERT(I##_ub[j], tmp, "i64x3 UPPER " #I " ok "); } \
     } while(++j<n); \
   }
@@ -879,21 +902,21 @@ unsigned int test_db::key_i64i64i64_general() {
   v2.a = records[6].a;
 
   res = LOAD(primary, i64i64i64, N(table2), v2);
-  WASM_ASSERT(res == sizeof(TestModel3xi64), "load v2");
+  eos_assert(res == sizeof(TestModel3xi64), "load v2");
 
   v2.new_field = 555;
 
   res = update_i64i64i64(current_receiver(),  N(table2), &v2, sizeof(TestModel3xi64_V2));
-  WASM_ASSERT(res == 1, "store v2");  
+  eos_assert(res == 1, "store v2");  
 
   res = LOAD(primary, i64i64i64, N(table2), v2);
-  WASM_ASSERT(res == sizeof(TestModel3xi64_V2), "load v2 updated");
+  eos_assert(res == sizeof(TestModel3xi64_V2), "load v2 updated");
 
   res = remove_i64i64i64(current_receiver(),  N(table2), &v2);
-  WASM_ASSERT(res == 1, "load v2 updated");
+  eos_assert(res == 1, "load v2 updated");
 
   res = LOAD(primary, i64i64i64, N(table2), v2);
-  WASM_ASSERT(res == -1, "load not found");
+  eos_assert(res == -1, "load not found");
 
   return WASM_TEST_PASS;
 }
@@ -917,7 +940,7 @@ unsigned int test_db::key_i128i128_general() {
 
   res = load_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
 
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  eos_assert( res == sizeof(TestModel128x2) &&
                tmp.price == 800 &&
                tmp.extra == N(carol1) &&
                tmp.table_name == N(table5),
@@ -927,7 +950,7 @@ unsigned int test_db::key_i128i128_general() {
   tmp.price = 4;
   
   res = load_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  eos_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 13 &&
                tmp.price == 4 &&
                tmp.extra == N(bob3) &&
@@ -935,7 +958,7 @@ unsigned int test_db::key_i128i128_general() {
               "bob3 secondary load");
 
   res = front_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  eos_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 0 &&
                tmp.price == 500 &&
                tmp.extra == N(alice0) &&
@@ -943,10 +966,10 @@ unsigned int test_db::key_i128i128_general() {
               "front primary load");
   
   res = previous_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT(res == -1, "previous primary fail");
+  eos_assert(res == -1, "previous primary fail");
 
   res = next_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  eos_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 1 &&
                tmp.price == 400 &&
                tmp.extra == N(alice1) &&
@@ -954,7 +977,7 @@ unsigned int test_db::key_i128i128_general() {
               "next primary ok");
 
   res = front_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  eos_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 10 &&
                tmp.price == 1 &&
                tmp.extra == N(bob0) &&
@@ -962,10 +985,10 @@ unsigned int test_db::key_i128i128_general() {
               "front secondary ok");
   
   res = previous_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT(res == -1, "previous secondary fail");
+  eos_assert(res == -1, "previous secondary fail");
 
   res = next_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  eos_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 11 &&
                tmp.price == 2 &&
                tmp.extra == N(bob1) &&
@@ -973,7 +996,7 @@ unsigned int test_db::key_i128i128_general() {
               "next secondary ok");
 
   res = back_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  eos_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 33 &&
                tmp.price == 4 &&
                tmp.extra == N(dave3) &&
@@ -981,10 +1004,10 @@ unsigned int test_db::key_i128i128_general() {
               "back primary ok");
   
   res = next_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT(res == -1, "next primary fail");
+  eos_assert(res == -1, "next primary fail");
 
   res = previous_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  eos_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 32 &&
                tmp.price == 5 &&
                tmp.extra == N(dave2) &&
@@ -992,7 +1015,7 @@ unsigned int test_db::key_i128i128_general() {
               "previous primary ok");
 
   res = back_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  eos_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 20 &&
                tmp.price == 900 &&
                tmp.extra == N(carol0) &&
@@ -1000,11 +1023,11 @@ unsigned int test_db::key_i128i128_general() {
               "back secondary ok");
   
   res = next_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT(res == -1, "next secondary fail");
+  eos_assert(res == -1, "next secondary fail");
 
   res = previous_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
   
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  eos_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 21 &&
                tmp.price == 800 &&
                tmp.extra == N(carol1) &&
@@ -1014,7 +1037,7 @@ unsigned int test_db::key_i128i128_general() {
   tmp.number = 1;
 
   res = lower_bound_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  eos_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 1 &&
                tmp.price == 400 &&
                tmp.extra == N(alice1) &&
@@ -1022,7 +1045,7 @@ unsigned int test_db::key_i128i128_general() {
               "lb primary ok");
 
   res = upper_bound_primary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  eos_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 2 &&
                tmp.price == 200 &&
                tmp.extra == N(alice22) &&
@@ -1032,7 +1055,7 @@ unsigned int test_db::key_i128i128_general() {
   tmp.price = 800;
 
   res = lower_bound_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp, sizeof(TestModel128x2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  eos_assert( res == sizeof(TestModel128x2) &&
                tmp.number == 21 &&
                tmp.price == 800 &&
                tmp.extra == N(carol1) &&
@@ -1043,7 +1066,7 @@ unsigned int test_db::key_i128i128_general() {
   tmp2.price = 800;
 
   res = upper_bound_secondary_i128i128( current_receiver(), current_receiver(), N(table5), &tmp2, sizeof(TestModel128x2_V2) );
-  WASM_ASSERT( res == sizeof(TestModel128x2) &&
+  eos_assert( res == sizeof(TestModel128x2) &&
                tmp2.number == 20 &&
                tmp2.price == 900 &&
                tmp2.extra == N(carol0) &&
@@ -1052,13 +1075,13 @@ unsigned int test_db::key_i128i128_general() {
   
   tmp2.new_field = 123456;
   res = update_i128i128(current_receiver(), N(table5), &tmp2, sizeof(TestModel128x2_V2));
-  WASM_ASSERT( res == 1, "update_i128i128 ok");
+  eos_assert( res == 1, "update_i128i128 ok");
 
   my_memset(&tmp2, 0, sizeof(TestModel128x2_V2));
   tmp2.number = 20;
 
   res = load_primary_i128i128(current_receiver(), current_receiver(), N(table5), &tmp2, sizeof(TestModel128x2_V2));
-  WASM_ASSERT( res == sizeof(TestModel128x2_V2) &&
+  eos_assert( res == sizeof(TestModel128x2_V2) &&
                tmp2.number == 20 &&
                tmp2.price == 900 &&
                tmp2.extra == N(carol0) &&
@@ -1068,10 +1091,10 @@ unsigned int test_db::key_i128i128_general() {
 
   tmp2.extra = N(xxxxx);
   res = update_i128i128(current_receiver(), N(table5), &tmp2, sizeof(uint128_t)*2+sizeof(uint64_t));
-  WASM_ASSERT( res == 1, "update_i128i128 small ok");
+  eos_assert( res == 1, "update_i128i128 small ok");
 
   res = load_primary_i128i128(current_receiver(), current_receiver(), N(table5), &tmp2, sizeof(TestModel128x2_V2));
-  WASM_ASSERT( res == sizeof(TestModel128x2_V2) &&
+  eos_assert( res == sizeof(TestModel128x2_V2) &&
                tmp2.number == 20 &&
                tmp2.price == 900 &&
                tmp2.extra == N(xxxxx) &&
@@ -1081,6 +1104,10 @@ unsigned int test_db::key_i128i128_general() {
 
   return WASM_TEST_PASS;
 }
+
+#endif
+
+#if 0
 
 void set_key_str(int i, char* key_4_digit)
 {
@@ -1517,4 +1544,303 @@ unsigned int test_db::key_i64i64i64_another_under_limit()
    eosio::free(value);
 
    return WASM_TEST_PASS;
+}
+
+#endif
+
+void test_db::primary_i64_general()
+{
+   auto table1 = N(table1);
+
+   int alice_itr = db_store_i64(current_receiver(), table1, current_receiver(), N(alice), "alice's info", strlen("alice's info"));
+   db_store_i64(current_receiver(), table1, current_receiver(), N(bob), "bob's info", strlen("bob's info"));
+   db_store_i64(current_receiver(), table1, current_receiver(), N(charlie), "charlie's info", strlen("charlies's info"));
+   db_store_i64(current_receiver(), table1, current_receiver(), N(allyson), "allyson's info", strlen("allyson's info"));
+
+   {
+      uint64_t prim = 0;
+      int itr_next = db_next_i64(alice_itr, &prim);
+      int itr_next_expected = db_find_i64(current_receiver(), current_receiver(), table1, N(allyson));
+      assert(itr_next == itr_next_expected);
+      assert(prim == N(allyson));
+      itr_next = db_next_i64(itr_next, &prim);
+      itr_next_expected = db_find_i64(current_receiver(), current_receiver(), table1, N(bob));
+      assert(itr_next == itr_next_expected);
+      assert(prim == N(bob));
+   }
+   {
+      int charlie_itr = db_find_i64(current_receiver(), current_receiver(), table1, N(charlie));
+      // nothing after charlie
+      uint64_t prim = 0;
+      int end_itr = db_next_i64(charlie_itr, &prim);
+      assert(end_itr == -1);
+      // prim didn't change
+      assert(prim == 0);
+   }
+   {
+      int charlie_itr = db_find_i64(current_receiver(), current_receiver(), table1, N(charlie));
+      uint64_t prim = 0;
+      int itr_prev = db_previous_i64(charlie_itr, &prim);
+      int itr_prev_expected = db_find_i64(current_receiver(), current_receiver(), table1, N(bob));
+      assert(itr_prev == itr_prev_expected);
+      assert(prim == N(bob));
+
+      itr_prev = db_previous_i64(itr_prev, &prim);
+      itr_prev_expected = db_find_i64(current_receiver(), current_receiver(), table1, N(allyson));
+      assert(itr_prev == itr_prev_expected);
+      assert(prim == N(allyson));
+
+      itr_prev = db_previous_i64(itr_prev, &prim);
+      itr_prev_expected = db_find_i64(current_receiver(), current_receiver(), table1, N(alice));
+      assert(itr_prev == itr_prev_expected);
+      assert(prim == N(alice));
+
+      itr_prev = db_previous_i64(itr_prev, &prim);
+      itr_prev_expected = -1;
+      assert(itr_prev == itr_prev_expected);
+      assert(prim == N(alice));
+   }
+   {
+      int itr = db_find_i64(current_receiver(), current_receiver(), table1, N(alice));
+      assert(itr != -1);
+      db_remove_i64(itr);
+      itr = db_find_i64(current_receiver(), current_receiver(), table1, N(alice));
+      assert(itr == -1);
+   }
+   {
+      int itr = db_find_i64(current_receiver(), current_receiver(), table1, N(bob));
+      assert(itr != -1);
+      int buffer_len = 5;
+      char value[50];
+      auto len = db_get_i64(itr, value, buffer_len);
+      value[buffer_len] = '\0';
+      std::string s(value);
+      assert(len == strlen("bob's info"));
+      assert(s == "bob's");
+      
+      buffer_len = 20;
+      db_get_i64(itr, value, buffer_len);
+      value[buffer_len] = '\0';
+      std::string sfull(value);
+      assert(sfull == "bob's info");
+   }
+   {
+      int itr = db_find_i64(current_receiver(), current_receiver(), table1, N(bob));
+      assert(itr != -1);
+      const char* new_value = "bob's new info";
+      int new_value_len = strlen(new_value); 
+      db_update_i64(itr, current_receiver(), new_value, new_value_len);
+      char ret_value[50];
+      auto len = db_get_i64(itr, ret_value, new_value_len);
+      ret_value[new_value_len] = '\0';
+      std::string sret(ret_value);
+      assert(sret == "bob's new info");
+   }
+   
+}
+
+void test_db::primary_i64_lowerbound()
+{
+   auto table = N(mytable);
+   db_store_i64(current_receiver(), table, current_receiver(), N(alice), "alice's info", strlen("alice's info"));
+   db_store_i64(current_receiver(), table, current_receiver(), N(bob), "bob's info", strlen("bob's info"));
+   db_store_i64(current_receiver(), table, current_receiver(), N(charlie), "charlie's info", strlen("charlies's info"));
+   db_store_i64(current_receiver(), table, current_receiver(), N(emily), "emily's info", strlen("emily's info"));
+   db_store_i64(current_receiver(), table, current_receiver(), N(allyson), "allyson's info", strlen("allyson's info"));
+   db_store_i64(current_receiver(), table, current_receiver(), N(joe), "nothing here", strlen("nothing here"));
+   
+   {
+      int lb = db_lowerbound_i64(current_receiver(), current_receiver(), table, N(alice));
+      assert(lb == db_find_i64(current_receiver(), current_receiver(), table, N(alice)));
+   }
+   {
+      int lb = db_lowerbound_i64(current_receiver(), current_receiver(), table, N(billy));
+      assert(lb == db_find_i64(current_receiver(), current_receiver(), table, N(bob)));
+   }
+   {
+      int lb = db_lowerbound_i64(current_receiver(), current_receiver(), table, N(frank));
+      assert(lb == db_find_i64(current_receiver(), current_receiver(), table, N(joe)));
+   }
+   {
+      int lb = db_lowerbound_i64(current_receiver(), current_receiver(), table, N(joe));
+      assert(lb == db_find_i64(current_receiver(), current_receiver(), table, N(joe)));
+   }
+   {
+      int lb = db_lowerbound_i64(current_receiver(), current_receiver(), table, N(kevin));
+      assert(lb == -1);
+   }
+}
+
+void test_db::primary_i64_upperbound()
+{
+   auto table = N(mytable);
+   {
+      int ub = db_upperbound_i64(current_receiver(), current_receiver(), table, N(alice));
+      assert(ub == db_find_i64(current_receiver(), current_receiver(), table, N(allyson)));
+   }
+   {
+      int ub = db_upperbound_i64(current_receiver(), current_receiver(), table, N(billy));
+      assert(ub == db_find_i64(current_receiver(), current_receiver(), table, N(bob)));
+   }
+   {
+      int ub = db_upperbound_i64(current_receiver(), current_receiver(), table, N(frank));
+      assert(ub == db_find_i64(current_receiver(), current_receiver(), table, N(joe)));
+   }
+   {
+      int ub = db_upperbound_i64(current_receiver(), current_receiver(), table, N(joe));
+      assert(ub == -1);
+   }
+   {
+      int ub = db_upperbound_i64(current_receiver(), current_receiver(), table, N(kevin));
+      assert(ub == -1);
+   }
+}
+
+void test_db::idx64_general()
+{
+   auto table = N(myindextable);
+
+   typedef uint64_t secondary_type;
+
+   struct record {
+      uint64_t ssn;
+      secondary_type name;
+      record(uint64_t s, const secondary_type& n): ssn(s), name(n) { }
+   };
+
+   record records[] = {{265, N(alice)},
+                       {781, N(bob)},
+                       {234, N(charlie)},
+                       {650, N(allyson)},
+                       {540, N(bob)},
+                       {976, N(emily)},
+                       {110, N(joe)}
+   };
+
+   for (int i = 0; i < sizeof(records)/sizeof(records[0]); ++i) {
+      db_idx64_store(current_receiver(), table, current_receiver(), records[i].ssn, &records[i].name);
+   }
+
+   // find_primary
+   {
+      secondary_type sec = 0;
+      int itr = db_idx64_find_primary(current_receiver(), current_receiver(), table, &sec, 999);
+      assert(itr == -1);
+      assert(sec == 0);
+      itr = db_idx64_find_primary(current_receiver(), current_receiver(), table, &sec, 110);
+      assert(itr != -1);
+      assert(sec == N(joe));
+      uint64_t prim_next = 0;
+      int itr_next = db_idx64_next(itr, &prim_next);
+      assert(itr_next == -1);
+      assert(prim_next == 0);
+   }
+
+   // iterate forward starting with charlie
+   {
+      secondary_type sec = 0;
+      int itr = db_idx64_find_primary(current_receiver(), current_receiver(), table, &sec, 234);
+      assert(itr != -1);
+      assert(sec == N(charlie));
+
+      uint64_t prim_next = 0;
+      int itr_next = db_idx64_next(itr, &prim_next);
+      assert(itr_next != -1);
+      assert(prim_next == 976);
+      secondary_type sec_next = 0;
+      int itr_next_expected = db_idx64_find_primary(current_receiver(), current_receiver(), table, &sec_next, prim_next);
+      assert(itr_next == itr_next_expected);
+      assert(sec_next == N(emily));
+
+      itr_next = db_idx64_next(itr_next, &prim_next);
+      assert(itr_next != -1);
+      assert(prim_next == 110);
+      itr_next_expected = db_idx64_find_primary(current_receiver(), current_receiver(), table, &sec_next, prim_next);
+      assert(itr_next == itr_next_expected);
+      assert(sec_next == N(joe));
+
+      itr_next = db_idx64_next(itr_next, &prim_next);
+      assert(itr_next == -1);
+      assert(prim_next == 110);
+   }
+
+   // iterate backward staring with second bob
+   {
+      secondary_type sec = 0;
+      int itr = db_idx64_find_primary(current_receiver(), current_receiver(), table, &sec, 781);
+      assert(itr != -1);
+      assert(sec == N(bob));
+
+      uint64_t prim_prev = 0;
+      int itr_prev = db_idx64_previous(itr, &prim_prev);
+      assert(itr_prev != -1);
+      assert(prim_prev == 540);
+      secondary_type sec_prev = 0;
+      int itr_prev_expected = db_idx64_find_primary(current_receiver(), current_receiver(), table, &sec_prev, prim_prev);
+      assert(itr_prev == itr_prev_expected);
+      assert(sec_prev == N(bob));
+
+      itr_prev = db_idx64_previous(itr_prev, &prim_prev);
+      assert(itr_prev != -1);
+      assert(prim_prev == 650);
+      itr_prev_expected = db_idx64_find_primary(current_receiver(), current_receiver(), table, &sec_prev, prim_prev);
+      assert(itr_prev == itr_prev_expected);
+      assert(sec_prev == N(allyson));
+
+      itr_prev = db_idx64_previous(itr_prev, &prim_prev);
+      assert(itr_prev != -1);
+      assert(prim_prev == 265);
+      itr_prev_expected = db_idx64_find_primary(current_receiver(), current_receiver(), table, &sec_prev, prim_prev);
+      assert(itr_prev == itr_prev_expected);
+      assert(sec_prev == N(alice));
+
+      itr_prev = db_idx64_previous(itr_prev, &prim_prev);
+      assert(itr_prev == -1);
+      assert(prim_prev == 265);
+   }
+
+   // find_secondary
+   {
+      uint64_t prim = 0;
+      auto sec = N(bob);
+      int itr = db_idx64_find_secondary(current_receiver(), current_receiver(), table, &sec, &prim);
+      assert(itr != -1);
+      assert(prim == 540);
+
+      sec = N(emily);
+      itr = db_idx64_find_secondary(current_receiver(), current_receiver(), table, &sec, &prim);
+      assert(itr != -1);
+      assert(prim == 976);
+
+      sec = N(frank);
+      itr = db_idx64_find_secondary(current_receiver(), current_receiver(), table, &sec, &prim);
+      assert(itr == -1);
+      assert(prim == 976);
+   }
+
+   // update and remove
+   {
+      auto one_more_bob = N(bob);
+      const uint64_t ssn = 421;
+      int itr = db_idx64_store(current_receiver(), table, current_receiver(), ssn, &one_more_bob);
+      auto new_name = N(billy);
+      db_idx64_update(itr, current_receiver(), &new_name);
+      secondary_type sec = 0;
+      int sec_itr = db_idx64_find_primary(current_receiver(), current_receiver(), table, &sec, ssn);
+      assert(sec_itr == itr);
+      assert(sec == new_name);
+      db_idx64_remove(itr);
+      int itrf = db_idx64_find_primary(current_receiver(), current_receiver(), table, &sec, ssn);
+      assert(itrf == -1);
+   }
+}
+
+void test_db::idx64_lowerbound()
+{
+   
+}
+
+void test_db::idx64_upperbound()
+{
+   
 }

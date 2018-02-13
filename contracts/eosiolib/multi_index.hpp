@@ -11,9 +11,11 @@
 #include <eosiolib/types.hpp>
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/datastream.hpp>
+#include <eosiolib/db.h>
 
 
 extern "C" {
+   /*
    int db_store_i64( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, char* buffer, size_t buffer_size );
    void db_update_i64( int iterator, uint64_t payer, char* buffer, size_t buffer_size );
    int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
@@ -40,6 +42,7 @@ extern "C" {
    int db_idx128_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t* secondary, uint64_t* primary );
    void db_idx128_remove( int iterator );
    void db_idx128_update( int iterator, uint64_t payer, const uint128_t* secondary );
+   */
 }
 
 
@@ -54,7 +57,7 @@ struct secondary_iterator;
 template<>
 struct secondary_iterator<uint64_t> {
    static int db_idx_next( int iterator, uint64_t* primary ) { return db_idx64_next( iterator, primary ); }
-   static int db_idx_prev( int iterator, uint64_t* primary ) { return db_idx64_prev( iterator, primary ); }
+   static int db_idx_prev( int iterator, uint64_t* primary ) { return db_idx64_previous( iterator, primary ); }
    static void db_idx_remove( int iterator  )                 { db_idx64_remove( iterator ); }
 };
 
