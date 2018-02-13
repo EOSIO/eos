@@ -464,7 +464,6 @@ BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, tester) { try {
  * transaction_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
-  return;
 	produce_blocks(2);
 	create_account( N(testapi) ); 
 	produce_blocks(1000);
@@ -800,58 +799,6 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_negative_bytes, tester)
       page_memory_error, is_page_memory_error);
 
 } FC_LOG_AND_RETHROW() }
-
-
-/*************************************************************************************
- * string_tests test case
- *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(string_tests, tester) { try {
-	produce_blocks(1000);
-	create_account( N(testapi) );
-	create_account( N(testextmem) );
-	produce_blocks(1000);
-
-	produce_blocks(1000);
-	set_code( N(testapi), test_api_mem_wast );
-	produce_blocks(1000);
-
-	CALL_TEST_FUNCTION( *this, "test_string", "construct_with_size", {});
-	CALL_TEST_FUNCTION( *this, "test_string", "construct_with_data", {});
-	CALL_TEST_FUNCTION( *this, "test_string", "construct_with_data_partially", {});
-	CALL_TEST_FUNCTION( *this, "test_string", "construct_with_data_copied", {});
-	CALL_TEST_FUNCTION( *this, "test_string", "copy_constructor", {});
-	CALL_TEST_FUNCTION( *this, "test_string", "assignment_operator", {});
-	CALL_TEST_FUNCTION( *this, "test_string", "index_operator", {});
-	BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_string", "index_out_of_bound", {}), fc::assert_exception, 
-         [](const fc::assert_exception& e) {
-            return expect_assert_message(e, "index out of bound");
-         }
-      );
-
-	CALL_TEST_FUNCTION( *this, "test_string", "substring", {});
-	CALL_TEST_FUNCTION( *this, "test_string", "concatenation_null_terminated", {});
-	BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_string", "substring_out_of_bound", {}), fc::assert_exception,
-         [](const fc::assert_exception& e) {
-            return expect_assert_message(e, "out of bound");
-         }
-      );
-
-	CALL_TEST_FUNCTION( *this, "test_string", "concatenation_non_null_terminated", {});
-	CALL_TEST_FUNCTION( *this, "test_string", "assign", {});
-	CALL_TEST_FUNCTION( *this, "test_string", "comparison_operator", {});
-	CALL_TEST_FUNCTION( *this, "test_string", "print_null_terminated", {});
-	CALL_TEST_FUNCTION( *this, "test_string", "print_non_null_terminated", {});
-	CALL_TEST_FUNCTION( *this, "test_string", "print_unicode", {});
-	CALL_TEST_FUNCTION( *this, "test_string", "string_literal", {});
-	CALL_TEST_FUNCTION( *this, "test_string", "valid_utf8", {});
-	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_string", "invalid_utf8", {}), fc::assert_exception,
-          [](const fc::assert_exception& e) {
-            return expect_assert_message(e, "string should be a valid utf8 string");
-         }
-      );
-  
-} FC_LOG_AND_RETHROW() }
-
 
 /*************************************************************************************
  * print_tests test case

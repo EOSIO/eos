@@ -94,7 +94,7 @@ void test_transaction::send_action_large() {
    copy_data(large_message, 8*1024, test_action.data); 
    action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
    act.send();
-   eos_assert(false, "send_message_large() should've thrown an error");
+   eosio_assert(false, "send_message_large() should've thrown an error");
 }
 
 /**
@@ -125,13 +125,13 @@ void test_transaction::send_action_inline_fail() {
 void test_transaction::test_tapos_block_prefix() {
    int tbp;
    read_action( (char*)&tbp, sizeof(int) );
-   eos_assert( tbp == tapos_block_prefix(), "tapos_block_prefix does not match" );
+   eosio_assert( tbp == tapos_block_prefix(), "tapos_block_prefix does not match" );
 }
 
 void test_transaction::test_tapos_block_num() {
    int tbn;
    read_action( (char*)&tbn, sizeof(int) );
-   eos_assert( tbn == tapos_block_num(), "tapos_block_num does not match" );
+   eosio_assert( tbn == tapos_block_num(), "tapos_block_num does not match" );
 }
 
 
@@ -148,7 +148,7 @@ void test_transaction::test_transaction_size() {
    uint32_t trans_size = 0;
    read_action( (char*)&trans_size, sizeof(uint32_t) );
    
-   eos_assert( trans_size == transaction_size(), "transaction size does not match" );
+   eosio_assert( trans_size == transaction_size(), "transaction size does not match" );
 }
 /*
 void test_transaction::read_transaction() {
@@ -188,7 +188,7 @@ void test_transaction::send_transaction_empty() {
    auto trx = transaction();
    trx.send(0);
 
-   eos_assert(false, "send_transaction_empty() should've thrown an error");
+   eosio_assert(false, "send_transaction_empty() should've thrown an error");
 }
 
 /**
@@ -205,5 +205,5 @@ void test_transaction::send_transaction_large() {
 
    trx.send(0);
 
-   eos_assert(false, "send_transaction_large() should've thrown an error");
+   eosio_assert(false, "send_transaction_large() should've thrown an error");
 }

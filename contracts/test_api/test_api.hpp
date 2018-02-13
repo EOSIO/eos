@@ -170,29 +170,6 @@ struct test_chain {
   static void test_activeprods();
 };
 
-struct test_string {
-  static void construct_with_size();
-  static void construct_with_data();
-  static void construct_with_data_copied();
-  static void construct_with_data_partially();
-  static void copy_constructor();
-  static void assignment_operator();
-  static void index_operator();
-  static void index_out_of_bound();
-  static void substring();
-  static void substring_out_of_bound();
-  static void concatenation_null_terminated();
-  static void concatenation_non_null_terminated();
-  static void assign();
-  static void comparison_operator();
-  static void print_null_terminated();
-  static void print_non_null_terminated();
-  static void print_unicode();
-  static void valid_utf8();
-  static void invalid_utf8();
-  static void string_literal();
-};
-
 struct test_fixedpoint {
    static void create_instances();
    static void test_addition();
