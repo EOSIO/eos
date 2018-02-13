@@ -101,7 +101,7 @@ namespace eosiosystem {
          //  1. hash + collision 
          //  2. incrementing count  (key=> tablename 
 
-         void on( const delnetbw& del ) {
+         static void on( const delnetbw& del ) {
             require_auth( del.from );
 
             del_bandwidth_index_type     del_index( SystemAccount, del.from );
@@ -137,26 +137,26 @@ namespace eosiosystem {
             currency::inline_transfer( del.from, SystemAccount, del.stake_quantity, "stake bandwidth" );
          } // delnetbw
 
-         void on( const regproducer& reg ) {
+         static void on( const regproducer& reg ) {
             require_auth( reg.producer_to_register );
          }
 
-         void on( const regproxy& reg ) {
+         static void on( const regproxy& reg ) {
             require_auth( reg.proxy_to_register );
          }
 
-         void on( const nonce& ) {
+         static void on( const nonce& ) {
          }
 
-         void apply( account_name code, action_name act ) {
-            /*
+         static void apply( account_name code, action_name act ) {
+
             if( !eosio::dispatch<contract, regproducer, regproxy, nonce>( code, act) ) {
                if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                   eosio::print("Unexpected action: ", eosio::name(act), "\n");
                   eosio_assert( false, "received unexpected action");
                }
             }
-            */
+
          } /// apply 
    };
 
