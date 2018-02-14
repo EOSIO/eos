@@ -17,9 +17,15 @@ relaunch() {
     nohup $RD/$prog $* --data-dir $DD > $DD/stdout.txt  2> $log &
     pid=$!
 
+    prevsize=0
     echo $pid > $DD/$prog.pid
     for (( a = 10; $a; a = $(($a - 1)) )); do
-        echo checking viability pass $((11 - $a))
+        cursize=`wc -l $log | awk '{print $1}'`
+        if [ "$cursize" -gt "$prevsize" ]; then
+            a=10
+            prevsize=$cursize;
+        fi
+        echo checking viability pass $((11 - $a)) logsize $prevsize
         sleep 2
         running=`ps -hp $pid`
         if [ -z "$running" ]; then

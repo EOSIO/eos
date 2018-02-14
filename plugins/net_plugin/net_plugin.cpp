@@ -287,6 +287,8 @@ namespace eosio {
 
    constexpr auto     message_header_size = 4;
 
+   constexpr auto     tag_2018_01_05 = 2638;
+
    /**
     *  Index by id
     *  Index by is_known, block_num, validated_time, this is the order we will broadcast
@@ -1349,7 +1351,18 @@ namespace eosio {
       fc_ilog (logger, "sync_manager got ${m} block notice",("m",modes_str(msg.known_blocks.mode)));
       if (msg.known_blocks.mode == catch_up) {
          if (msg.known_blocks.ids.size() == 0) {
-            elog ("got a catch up with ids size = 0");
+            if (c->last_handshake_recv.network_version == tag_2018_01_05) {
+               wlog ("sender is a 2018-01-05 release, blocks pending = ${p}",
+                     ("p",msg.known_blocks.pending));
+               request_message req;
+               req.req_blocks.mode = catch_up;
+               req.req_blocks.pending = msg.known_blocks.pending;
+               req.req_trx.mode = none;
+               c->enqueue( req );
+            }
+            else {
+               elog ("got a catch up with ids size = 0");
+            }
          }
          else {
             verify_catchup(c,  msg.known_blocks.pending, msg.known_blocks.ids.back());
