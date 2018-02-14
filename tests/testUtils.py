@@ -48,6 +48,8 @@ class Utils:
     SigKillTag="kill"
     SigTermTag="term"
 
+    systemWaitTimeout=60
+
     # mongoSyncTime: eosiod mongodb plugin seems to sync with a 10-15 seconds delay. This will inject
     #  a wait period before the 2nd DB check (if first check fails)
     mongoSyncTime=25
@@ -69,6 +71,10 @@ class Utils:
     @staticmethod
     def setMongoSyncTime(syncTime):
         Utils.mongoSyncTime=syncTime
+
+    @staticmethod
+    def setSystemWaitTimeout(timeout):
+        Utils.systemWaitTimeout=timeout
     
     @staticmethod
     def getChainStrategies():
@@ -253,7 +259,7 @@ class Node(object):
                 if not retry:
                     break
                 if self.mongoSyncTime is not None:
-                    Utils.Debug and Utils.Print("cmd: sleep %d" % (self.mongoSyncTime))
+                    Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
                     time.sleep(self.mongoSyncTime)
 
         return None
@@ -275,7 +281,7 @@ class Node(object):
             if not retry:
                 break
             if self.mongoSyncTime is not None:
-                Utils.Debug and Utils.Print("cmd: sleep %d" % (self.mongoSyncTime))
+                Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
                 time.sleep(self.mongoSyncTime)
 
         return None
@@ -319,7 +325,7 @@ class Node(object):
                 if not retry:
                     break
                 if self.mongoSyncTime is not None:
-                    Utils.Debug and Utils.Print("cmd: sleep %d" % (self.mongoSyncTime))
+                    Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
                     time.sleep(self.mongoSyncTime)
                 
         return None
@@ -341,7 +347,7 @@ class Node(object):
             if not retry:
                 break
             if self.mongoSyncTime is not None:
-                Utils.Debug and Utils.Print("cmd: sleep %d" % (self.mongoSyncTime))
+                Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
                 time.sleep(self.mongoSyncTime)
                 
         return None
@@ -365,7 +371,7 @@ class Node(object):
             if not retry:
                 break
             if self.mongoSyncTime is not None:
-                Utils.Debug and Utils.Print("cmd: sleep %d" % (self.mongoSyncTime))
+                Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
                 time.sleep(self.mongoSyncTime)
                 
         return None
@@ -387,7 +393,7 @@ class Node(object):
             if not retry:
                 break
             if self.mongoSyncTime is not None:
-                Utils.Debug and Utils.Print("cmd: sleep %d" % (self.mongoSyncTime))
+                Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
                 time.sleep(self.mongoSyncTime)
                 
         return None
@@ -477,38 +483,49 @@ class Node(object):
                         return None
                     return ret
                 if self.mongoSyncTime is not None:
-                    Utils.Debug and Utils.Print("cmd: sleep %d" % (self.mongoSyncTime))
+                    Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
                     time.sleep(self.mongoSyncTime)
 
         return None
     
-    def waitForBlockNumOnNode(self, blockNum, timeout=60):
+    def waitForBlockNumOnNode(self, blockNum, timeout=None):
+        if timeout is None:
+            timeout=Utils.systemWaitTimeout
         startTime=time.time()
         remainingTime=timeout
+        Utils.Debug and Utils.Print("cmd: remaining time %d seconds" % (remainingTime))
         while time.time()-startTime < timeout:
             if self.doesNodeHaveBlockNum(blockNum):
                 return True
             sleepTime=3 if remainingTime > 3 else (3 - remainingTime)
             remainingTime -= sleepTime
+            Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (sleepTime))
             time.sleep(sleepTime)
 
         return False
 
-    def waitForTransIdOnNode(self, transId, timeout=60):
+    def waitForTransIdOnNode(self, transId, timeout=None):
+        if timeout is None:
+            timeout=Utils.systemWaitTimeout
         startTime=time.time()
         remainingTime=timeout
+        Utils.Debug and Utils.Print("cmd: remaining time %d seconds" % (remainingTime))
         while time.time()-startTime < timeout:
             if self.doesNodeHaveTransId(transId):
                 return True
             sleepTime=3 if remainingTime > 3 else (3 - remainingTime)
             remainingTime -= sleepTime
+            Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (sleepTime))
             time.sleep(sleepTime)
 
         return False
 
-    def waitForNextBlock(self, timeout=60):
+    def waitForNextBlock(self, timeout=None):
+        if timeout is None:
+            timeout=Utils.systemWaitTimeout
         startTime=time.time()
         remainingTime=timeout
+        Utils.Debug and Utils.Print("cmd: remaining time %d seconds" % (remainingTime))
         num=self.getIrreversibleBlockNum()
         Utils.Debug and Utils.Print("Current block number: %s" % (num))
         
@@ -520,6 +537,7 @@ class Node(object):
 
             sleepTime=.5 if remainingTime > .5 else (.5 - remainingTime)
             remainingTime -= sleepTime
+            Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (sleepTime))
             time.sleep(sleepTime)
 
         return False
@@ -608,7 +626,7 @@ class Node(object):
             return balance
         else:
             if self.mongoSyncTime is not None:
-                Utils.Debug and Utils.Print("cmd: sleep %d" % (self.mongoSyncTime))
+                Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (self.mongoSyncTime))
                 time.sleep(self.mongoSyncTime)
 
             account=self.getEosAccountFromDb(name)
@@ -1153,8 +1171,11 @@ class Cluster(object):
 
     # If a last transaction exists wait for it on root node, then collect its head block number.
     #  Wait on this block number on each cluster node
-    def waitOnClusterSync(self, timeout=60):
+    def waitOnClusterSync(self, timeout=None):
+        if timeout is None:
+            timeout=Utils.systemWaitTimeout
         startTime=time.time()
+        Utils.Debug and Utils.Print("cmd: remaining time %d seconds" % (timeout))
         if self.nodes[0].alive is False:
             Utils.Print("ERROR: Root node is down.")
             return False;
@@ -1173,9 +1194,12 @@ class Cluster(object):
         currentTimeout=timeout-(time.time()-startTime)
         return self.waitOnClusterBlockNumSync(targetHeadBlockNum, currentTimeout)
 
-    def waitOnClusterBlockNumSync(self, targetHeadBlockNum, timeout=60):
+    def waitOnClusterBlockNumSync(self, targetHeadBlockNum, timeout=None):
+        if timeout is None:
+            timeout=Utils.systemWaitTimeout
         startTime=time.time()
         remainingTime=timeout
+        Utils.Debug and Utils.Print("cmd: remaining time %d seconds" % (remainingTime))
         while time.time()-startTime < timeout:
             synced=True
             for node in self.nodes:
@@ -1189,6 +1213,7 @@ class Cluster(object):
             #Utils.Debug and Utils.Print("Brief pause to allow nodes to catch up.")
             sleepTime=3 if remainingTime > 3 else (3 - remainingTime)
             remainingTime -= sleepTime
+            Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (sleepTime))
             time.sleep(sleepTime)
 
         return False
@@ -1493,9 +1518,11 @@ class Cluster(object):
             except:
                 pass
             
-    def waitForNextBlock(self, timeout=60):
+    def waitForNextBlock(self, timeout=None):
+        if timeout is None:
+            timeout=Utils.systemWaitTimeout
         node=self.nodes[0]
-        return node.waitForNextBlock()
+        return node.waitForNextBlock(timeout)
     
     def cleanup(self):
         for f in glob.glob("tn_data_*"):

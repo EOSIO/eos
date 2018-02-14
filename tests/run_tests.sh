@@ -19,7 +19,7 @@ scriptNames[4]='restart-scenarios-test.py -c replay -p4 --not-noon --dumpErrorDe
 
 # Test for validating consensus based block production. We introduce malicious producers which
 #  reject all transactions.
-scriptNames[5]='consensusValidationMaliciousProducers.py --not-noon --dumpErrorDetails'
+scriptNames[5]='consensusValidationMaliciousProducers.py --not-noon -w 80 --dumpErrorDetails'
 
 # Test to kill node with SIGKILL and restart without an explicit chain sync strategy argument
 #  This doesn't seem to be deterministic and ocassionally fails, so disabling it.

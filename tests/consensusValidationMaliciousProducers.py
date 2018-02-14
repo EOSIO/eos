@@ -204,7 +204,7 @@ parser = argparse.ArgumentParser()
 tests=[1,2,3]
 
 parser.add_argument("-t", "--tests", type=str, help="1|2|3 1=run no malicious producers test, 2=minority malicious, 3=majority malicious.", default=None)
-
+parser.add_argument("-w", type=int, help="system wait time", default=testUtils.Utils.systemWaitTimeout)
 parser.add_argument("-v", help="verbose logging", action='store_true')
 parser.add_argument("--dumpErrorDetails",
                     help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
@@ -217,6 +217,7 @@ parser.add_argument("--dontKill", help="Leave cluster running after test finishe
 args = parser.parse_args()
 testsArg=args.tests
 debug=args.v
+waitTimeout=args.w
 dumpErrorDetails=args.dumpErrorDetails
 keepLogs=args.keepLogs
 amINoon=not args.not_noon
@@ -228,7 +229,8 @@ testUtils.Utils.Debug=debug
 assert (testsArg is None or testsArg == "1" or testsArg == "2" or testsArg == "3")
 if testsArg is not None:
     tests=[int(testsArg)]
-    
+
+testUtils.Utils.setSystemWaitTimeout(waitTimeout)
 testUtils.Utils.iAmNotNoon()
 
 def myTest(transWillEnterBlock):
@@ -343,8 +345,8 @@ def myTest(transWillEnterBlock):
         cycles=block["cycles"]
         if len(cycles) > 0:
             blockTransSignature=cycles[0][0]["user_input"][0]["signatures"][0]
-            Print("Transaction signature: %s\nBlock transaction signature: %s" %
-                  (signature, blockTransSignature))
+            # Print("Transaction signature: %s\nBlock transaction signature: %s" %
+            #       (signature, blockTransSignature))
             transInBlock=(signature == blockTransSignature)
         
         if transWillEnterBlock:
