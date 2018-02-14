@@ -9,16 +9,15 @@ namespace eosio { namespace testing {
 
    using namespace eosio::chain;
 
-
    /**
     *  @class tester
     *  @brief provides utility function to simplify the creation of unit tests
     */
-   class tester {
+   class base_tester {
       public:
          typedef string action_result;
 
-         tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits(), bool process_genesis = true);
+         base_tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
 
          void              close();
          void              open();
@@ -99,6 +98,11 @@ namespace eosio { namespace testing {
          chain_controller::controller_config           cfg;
 
          map<transaction_id_type, transaction_receipt> chain_transactions;
+   };
+
+   class tester : public base_tester {
+   public:
+      tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
    };
 
    /**
