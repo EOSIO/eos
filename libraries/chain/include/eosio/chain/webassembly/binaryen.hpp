@@ -30,32 +30,17 @@ struct intrinsic_registrator {
 };
 
 struct interpreter_interface : ModuleInstance::ExternalInterface {
+   interpreter_interface(linear_memory_type& memory, call_indirect_table_type& table, const uint32_t& sbrk_bytes)
+   :memory(memory),table(table), sbrk_bytes(sbrk_bytes)
+   {}
+
    void importGlobals(std::map<Name, Literal>& globals, Module& wasm) override
    {
 
    }
+
    void init(Module& wasm, ModuleInstance& instance) override {
-      FC_ASSERT(wasm.memory.initial * wasm::Memory::kPageSize <= wasm_constraints::maximum_linear_memory);
-      // initialize the linear memory
-      memset(memory.data, 0, wasm.memory.initial * Memory::kPageSize);
-      for(size_t i = 0; i < wasm.memory.segments.size(); i++ ) {
-         const auto& segment = wasm.memory.segments.at(i);
-         Address offset = ConstantExpressionRunner<TrivialGlobalManager>(instance.globals).visit(segment.offset).value.geti32();
-         char *base = memory.data + offset;
-         FC_ASSERT(offset + segment.data.size() <= wasm_constraints::maximum_linear_memory);
-         memcpy(base, segment.data.data(), segment.data.size());
-      }
 
-      table.resize(wasm.table.initial);
-      for (auto& segment : wasm.table.segments) {
-         Address offset = ConstantExpressionRunner<TrivialGlobalManager>(instance.globals).visit(segment.offset).value.geti32();
-         assert(offset + segment.data.size() <= wasm.table.initial);
-         for (size_t i = 0; i != segment.data.size(); ++i) {
-            table[offset + i] = segment.data[i];
-         }
-      }
-
-      sbrk_bytes = wasm.memory.initial * Memory::kPageSize;
    }
 
    Literal callImport(Import *import, LiteralList &args) override
@@ -141,18 +126,19 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
    void store32(Address addr, int32_t value) override { store_memory(addr, value); }
    void store64(Address addr, int64_t value) override { store_memory(addr, value); }
 
-   linear_memory_type           memory;
-   call_indirect_table_type     table;
-   uint32_t                     sbrk_bytes;
+   linear_memory_type&          memory;
+   call_indirect_table_type&    table;
+   const uint32_t&              sbrk_bytes;
 };
 
 struct info;
 class entry {
 public:
    unique_ptr<Module>                  module;
-   unique_ptr<interpreter_interface>   interface;
-   unique_ptr<ModuleInstance>          instance;
-
+   linear_memory_type                  memory;
+   call_indirect_table_type            table;
+   interpreter_interface*              interface;
+   uint32_t                            sbrk_bytes;
 
    void reset(const info& );
 
@@ -167,16 +153,15 @@ public:
    static entry build(const char* wasm_binary, size_t wasm_binary_size);
 
 private:
-   entry(unique_ptr<Module>&& module, unique_ptr<interpreter_interface>&& interface, unique_ptr<ModuleInstance>&& instance);
+   entry(unique_ptr<Module>&& module, linear_memory_type&& memory, call_indirect_table_type&& table, uint32_t sbrk_bytes);
 
 };
 
 struct info {
    info( const entry& binaryen )
    {
-      int num_segments = binaryen.module->memory.segments.size();
-      default_sbrk_bytes = binaryen.interface->sbrk_bytes;
-      const char* start = binaryen.interface->memory.data;
+      default_sbrk_bytes = binaryen.sbrk_bytes;
+      const char* start = binaryen.memory.data;
       const char* high_watermark = start + (binaryen.module->memory.initial * Memory::kPageSize);
       while (high_watermark > start) {
          if (*high_watermark) {

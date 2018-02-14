@@ -8,7 +8,10 @@ namespace eosio { namespace chain { namespace webassembly { namespace binaryen {
 
 void entry::call(const string &entry_point, LiteralList& args, apply_context &context)
 {
-   instance->callExport(Name(entry_point), args);
+   interpreter_interface local_interface(memory, table, sbrk_bytes);
+   interface = &local_interface;
+   ModuleInstance instance(*module.get(), interface);
+   instance.callExport(Name(entry_point), args);
 }
 
 void entry::call_apply(apply_context& context)
@@ -30,7 +33,7 @@ int entry::sbrk(int num_bytes) {
    constexpr uint32_t NBPPL2  = 16;
    const uint32_t         num_pages      = module->memory.initial;
    const uint32_t         min_bytes      = (num_pages << NBPPL2) > UINT32_MAX ? UINT32_MAX : num_pages << NBPPL2;
-   const uint32_t         prev_num_bytes = interface->sbrk_bytes; //_num_bytes;
+   const uint32_t         prev_num_bytes = sbrk_bytes; //_num_bytes;
 
    // round the absolute value of num_bytes to an alignment boundary
    num_bytes = (num_bytes + 7) & ~7;
@@ -41,18 +44,19 @@ int entry::sbrk(int num_bytes) {
       throw eosio::chain::page_memory_error();
 
    // update the number of bytes allocated, and compute the number of pages needed
-   interface->sbrk_bytes += num_bytes;
+   sbrk_bytes += num_bytes;
    return prev_num_bytes;
 }
 
 void entry::reset(const info& base_info) {
    const auto& image = base_info.mem_image;
-   char *base = interface->memory.data;
+   char *base = memory.data;
    memcpy(base, image.data(), image.size());
-   if (interface->sbrk_bytes > image.size()) {
-      memset(interface->memory.data + image.size(), 0, interface->sbrk_bytes - image.size());
+   if (sbrk_bytes > image.size()) {
+      memset(memory.data + image.size(), 0, sbrk_bytes - image.size());
    }
-   interface->sbrk_bytes = base_info.default_sbrk_bytes;
+   sbrk_bytes = base_info.default_sbrk_bytes;
+   interface = nullptr;
 }
 
 
@@ -63,21 +67,52 @@ entry entry::build(const char* wasm_binary, size_t wasm_binary_size) {
       WasmBinaryBuilder builder(*module, code, false);
       builder.read();
 
-      unique_ptr<interpreter_interface> interface(new interpreter_interface());
-      unique_ptr<ModuleInstance> instance(new ModuleInstance(*module.get(), interface.get()));
+      linear_memory_type memory;
+      call_indirect_table_type table;
+
+      FC_ASSERT(module->memory.initial * Memory::kPageSize <= wasm_constraints::maximum_linear_memory);
+
+      // create a temporary globals to  use
+      TrivialGlobalManager globals;
+      for (auto& global : module->globals) {
+         globals[global->name] = ConstantExpressionRunner<TrivialGlobalManager>(globals).visit(global->init).value;
+      }
+
+      // initialize the linear memory
+      memset(memory.data, 0, module->memory.initial * Memory::kPageSize);
+      for(size_t i = 0; i < module->memory.segments.size(); i++ ) {
+         const auto& segment = module->memory.segments.at(i);
+         Address offset = ConstantExpressionRunner<TrivialGlobalManager>(globals).visit(segment.offset).value.geti32();
+         char *base = memory.data + offset;
+         FC_ASSERT(offset + segment.data.size() <= wasm_constraints::maximum_linear_memory);
+         memcpy(base, segment.data.data(), segment.data.size());
+      }
+
+      table.resize(module->table.initial);
+      for (auto& segment : module->table.segments) {
+         Address offset = ConstantExpressionRunner<TrivialGlobalManager>(globals).visit(segment.offset).value.geti32();
+         assert(offset + segment.data.size() <= module->table.initial);
+         for (size_t i = 0; i != segment.data.size(); ++i) {
+            table[offset + i] = segment.data[i];
+         }
+      }
+
+      uint32_t sbrk_bytes = module->memory.initial * Memory::kPageSize;
 
       //TODO: validate
 
-      return entry(move(module), move(interface), move(instance));
+      return entry(move(module), std::move(memory), std::move(table), sbrk_bytes);
    } catch (const ParseException &e) {
       FC_THROW_EXCEPTION(wasm_execution_error, "Error building interpreter: ${s}", ("s", e.text));
    }
 };
 
-entry::entry(unique_ptr<Module>&& module, unique_ptr<interpreter_interface>&& interface, unique_ptr<ModuleInstance>&& instance)
+entry::entry(unique_ptr<Module>&& module, linear_memory_type&& memory, call_indirect_table_type&& table, uint32_t sbrk_bytes)
 :module(forward<decltype(module)>(module))
-,interface(forward<decltype(interface)>(interface))
-,instance (forward<decltype(instance)>(instance))
+,memory(forward<decltype(memory)>(memory))
+,table (forward<decltype(table)>(table))
+,interface(nullptr)
+,sbrk_bytes(sbrk_bytes)
 {
 
 }
