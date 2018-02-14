@@ -409,8 +409,7 @@ void apply_context::db_remove_i64( int iterator ) {
 
 int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) {
    const key_value_object& obj = keyval_cache.get( iterator );
-   if( buffer_size >= obj.value.size() )
-      memcpy( buffer, obj.value.data(), obj.value.size() );
+   memcpy( buffer, obj.value.data(), std::min(obj.value.size(), buffer_size) );
    
    return obj.value.size();
 }
