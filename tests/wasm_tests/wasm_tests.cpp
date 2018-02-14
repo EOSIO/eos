@@ -830,7 +830,6 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
 } FC_LOG_AND_RETHROW()
 #endif
 
-#if 1
 BOOST_FIXTURE_TEST_CASE( test_db, tester ) try {
    produce_blocks(2);
    
@@ -921,6 +920,6 @@ BOOST_FIXTURE_TEST_CASE( test_db, tester ) try {
    }
 
 } FC_LOG_AND_RETHROW() /// test_db
-#endif
+
 
 BOOST_AUTO_TEST_SUITE_END()

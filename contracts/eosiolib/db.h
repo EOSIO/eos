@@ -1027,46 +1027,36 @@ int32_t store_i64i64i64( account_name scope, table_name table, account_name bta,
  * @return 1 if the record was updated, 0 if no record with key was found
  */
 int32_t update_i64i64i64( account_name scope, table_name table, account_name bta, const void* data, uint32_t len );
+///@}  dbi64i64i64 
 
+int32_t db_store_i64(account_name scope, table_name table, account_name payer, uint64_t id,  const void* data, uint32_t len);
+void db_update_i64(int32_t iterator, account_name payer, const void* data, uint32_t len);
+void db_remove_i64(int32_t iterator);
+int32_t db_get_i64(int32_t iterator, const void* data, uint32_t len);
+int32_t db_next_i64(int32_t iterator, uint64_t* primary);
+int32_t db_previous_i64(int32_t iterator, uint64_t* primary);
+int32_t db_find_i64(account_name code, account_name scope, table_name table, uint64_t id);
+int32_t db_lowerbound_i64( account_name code, account_name scope, table_name table, uint64_t id);
+int32_t db_upperbound_i64( account_name code, account_name scope, table_name table, uint64_t id);
 
-   int32_t db_store_i64(account_name scope, table_name table, account_name payer, uint64_t id,  const void* data, uint32_t len);
-   void db_update_i64(int32_t iterator, account_name payer, const void* data, uint32_t len);
-   void db_remove_i64(int32_t iterator);
-   int32_t db_get_i64(int32_t iterator, const void* data, uint32_t len);
-   int32_t db_next_i64(int32_t iterator, uint64_t* primary);
-   int32_t db_previous_i64(int32_t iterator, uint64_t* primary);
-   int32_t db_find_i64(account_name code, account_name scope, table_name table, uint64_t id);
-   int32_t db_lowerbound_i64( account_name code, account_name scope, table_name table, uint64_t id);
-   int32_t db_upperbound_i64( account_name code, account_name scope, table_name table, uint64_t id);
+int32_t db_idx64_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint64_t* secondary);
+void db_idx64_update(int32_t iterator, account_name payer, const uint64_t* secondary);
+void db_idx64_remove(int32_t iterator);
+int32_t db_idx64_next(int32_t iterator, uint64_t* primary);
+int32_t db_idx64_previous(int32_t iterator, uint64_t* primary);
+int32_t db_idx64_find_primary(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t primary);
+int32_t db_idx64_find_secondary(account_name code, account_name scope, table_name table, const uint64_t* secondary, uint64_t* primary);
+int32_t db_idx64_lowerbound(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t* primary);
+int32_t db_idx64_upperbound(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t* primary);
 
-   /*
-   void db_update_i64( int iterator, uint64_t payer, char* buffer, size_t buffer_size );
-   int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
-   int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
-   int db_get_i64( int iterator, char* buffer, size_t buffer_size );
-   void db_remove_i64( int iterator );
-   int db_next_i64( int iterator, uint64_t* pk );
-   int db_previous_i64( int iterator, uint64_t* pk );
-   */
+int32_t db_idx128_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint128_t* secondary);
+void db_idx128_update(int32_t iterator, account_name payer, const uint128_t* secondary);
+void db_idx128_remove(int32_t iterator);
+int32_t db_idx128_next(int32_t iterator, uint64_t* primary);
+int32_t db_idx128_previous(int32_t iterator, uint64_t* primary);
+int32_t db_idx128_find_primary(account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t primary);
+int32_t db_idx128_find_secondary(account_name code, account_name scope, table_name table, const uint128_t* secondary, uint64_t* primary);
+int32_t db_idx128_lowerbound(account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t* primary);
+int32_t db_idx128_upperbound(account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t* primary);
 
-   int32_t db_idx64_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint64_t* secondary);
-   void db_idx64_update(int32_t iterator, account_name payer, const uint64_t* secondary);
-   void db_idx64_remove(int32_t iterator);
-   int32_t db_idx64_next(int32_t iterator, uint64_t* primary);
-   int32_t db_idx64_previous(int32_t iterator, uint64_t* primary);
-   int32_t db_idx64_find_primary(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t primary);
-   int32_t db_idx64_find_secondary(account_name code, account_name scope, table_name table, const uint64_t* secondary, uint64_t* primary);
-   int32_t db_idx64_lowerbound(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t* primary);
-   int32_t db_idx64_upperbound(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t* primary);
-   
-   int db_idx128_next(int iterator, uint64_t* primary);
-   int db_idx128_prev(int iterator, uint64_t* primary);
-   int db_idx128_find_primary(uint64_t code, uint64_t scope, uint64_t table, uint128_t* secondary, uint64_t primary);
-   int db_idx128_find_secondary(uint64_t code, uint64_t scope, uint64_t table, uint128_t* secondary, uint64_t* primary);
-   int db_idx128_lowerbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t* secondary, uint64_t* primary);
-   int db_idx128_upperbound(uint64_t code, uint64_t scope, uint64_t table, uint128_t* secondary, uint64_t* primary);
-   void db_idx128_remove(int iterator);
-   void db_idx128_update(int iterator, uint64_t payer, const uint128_t* secondary);
-
-///@}  dbi64i64i64
 }
