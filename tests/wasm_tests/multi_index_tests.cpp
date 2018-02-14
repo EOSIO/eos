@@ -42,10 +42,7 @@ BOOST_FIXTURE_TEST_CASE( multi_index_load, tester ) try {
       trx.actions.emplace_back(std::move(trigger_act));
       set_tapos(trx);
       trx.sign(get_private_key(N(multitest), "active"), chain_id_type());
-      auto result = push_transaction(trx);
-      //std::cerr << fc::json::to_pretty_string(result) << "\n";
-      //for( const auto& act : result.action_traces )
-      //   std::cerr << act.console << "\n";
+      push_transaction(trx);
    }
 
    signed_transaction trx2;
@@ -62,10 +59,7 @@ BOOST_FIXTURE_TEST_CASE( multi_index_load, tester ) try {
       trx.actions.emplace_back(std::move(trigger_act));
       set_tapos(trx);
       trx.sign(get_private_key(N(multitest), "active"), chain_id_type());
-      auto result = push_transaction(trx);
-      //std::cerr << fc::json::to_pretty_string(result) << "\n";
-      //for( const auto& act : result.action_traces )
-      //   std::cerr << act.console << "\n";
+      push_transaction(trx);
    }
 
    produce_block();

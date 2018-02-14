@@ -49,7 +49,7 @@ class apply_context {
 
             void remove( int iterator ) {
                auto obj_ptr = _iterator_to_object[iterator];
-               if( obj_ptr ) return;
+               if( !obj_ptr ) return;
                _iterator_to_object[iterator] = nullptr;
                _object_to_iterator.erase( obj_ptr );
             }

@@ -72,7 +72,7 @@ namespace eosio {
     * @param Value to be printed
     */
    inline void print( uint128_t num ) {
-      printi128((uint128_t*)&num);
+      printi128(&num);
    }
 
    /**
@@ -81,7 +81,7 @@ namespace eosio {
     * @param Value of 256 bit integer to be printed
     */
    inline void print( const uint256& num ) {
-      printi256((uint256*)&num);
+      printi256(&num);
    }
 
    /**
