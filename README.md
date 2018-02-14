@@ -14,9 +14,10 @@ The public testnet described in the [wiki](https://github.com/EOSIO/eos/wiki/Tes
 
 ### Supported Operating Systems
 EOS.IO currently supports the following operating systems:  
-1. Ubuntu 16.04 and higher (Ubuntu 16.10 recommended).  
-2. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
-3. Fedora 25 and higher (Fedora 27 recommended).  
+1. Amazon 2017.09 and higher.  
+2. Fedora 25 and higher (Fedora 27 recommended).  
+3. Ubuntu 16.04 and higher (Ubuntu 16.10 recommended).  
+4. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
 
 # Resources
 1. [EOS.IO Website](https://eos.io)
@@ -33,8 +34,8 @@ EOS.IO currently supports the following operating systems:
 1. [Getting Started](#gettingstarted)
 2. [Setting up a build/development environment](#setup)
 	1. [Automated build script](#autobuild)
-      1. [Clean install Linux (Ubuntu & Fedora) for a local testnet](#autoubuntulocal)
-      2. [Clean install Linux (Ubuntu & Fedora) for the public testnet](#autoubuntupublic)
+      1. [Clean install Linux (Amazon, Fedora & Ubuntu) for a local testnet](#autoubuntulocal)
+      2. [Clean install Linux (Amazon, Fedora & Ubuntu) for the public testnet](#autoubuntupublic)
       3. [MacOS for a local testnet](#automaclocal)
       4. [MacOS for the public testnet](#automacpublic)
 3. [Building EOS and running a node](#runanode)
@@ -69,12 +70,13 @@ The following instructions detail the process of getting the software, building 
 ### Automated build script
 
 Supported Operating Systems:  
-1. Ubuntu 16.04 and higher.  
-2. MacOS Darwin 10.12 and higher.  
-3. Fedora 25 and higher.  
+1. Amazon 2017.09 and higher.  
+2. Fedora 25 and higher (Fedora 27 recommended).  
+3. Ubuntu 16.04 and higher (Ubuntu 16.10 recommended).  
+4. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
 
-For Ubuntu, MacOS and Fedora there is an automated build script that can install all dependencies and builds EOS.
-We are working on supporting Centos, Amazon Linux & Red Hat in future releases.
+For Amazon, Fedora, Ubuntu & MacOS there is an automated build script that can install all dependencies and builds EOS.
+We are working on supporting other Linux/Unix distributions in future releases.
 
 It is called eosio_build.sh
 
@@ -89,7 +91,7 @@ Choose whether you will be building for a local testnet or for the public testne
 We strongly recommend following the instructions for building the public testnet version for [Ubuntu](#autoubuntupublic) or [Mac OS X](#automacpublic). `master` is in pieces on the garage floor while we rebuild this hotrod. This notice will be removed when `master` is usable again. Your patience is appreciated.
 
 <a name="autoubuntulocal"></a>
-#### :no_entry: Clean install Linux (Ubuntu & Fedora) for a local testnet :no_entry:
+#### :no_entry: Clean install Linux (Anmazon, Fedora & Ubuntu) for a local testnet :no_entry:
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
@@ -107,7 +109,7 @@ sudo make install
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
 
 <a name="autoubuntupublic"></a>
-#### Clean install Linux (Ubuntu & Fedora) for the public testnet
+#### Clean install Linux (Anmazon, Fedora & Ubuntu) for the public testnet
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
@@ -644,7 +646,7 @@ Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
 
 ```bash
 echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
-echo "export LLVM_DIR=~/wasm-compiler/lib/cmake/llvm" >> ~/.bash_profile
+echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
 source ~/.bash_profile
 ```
 
