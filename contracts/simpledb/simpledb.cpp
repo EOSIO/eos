@@ -54,7 +54,7 @@ extern "C" {
             auto bytes = eosio::raw::pack(tmp);
             store_i64i64i64( N(simpledb), N(record3), bytes.data, bytes.len);
          } else {
-            eos_assert(0, "unknown message");
+            eosio_assert(0, "unknown message");
          }
       }
    }

@@ -10,11 +10,11 @@ extern "C" {
  *
  *  checksum calc_hash;
  *  sha256( data, length, &calc_hash );
- *  eos_assert( calc_hash == hash, "invalid hash" );
+ *  eosio_assert( calc_hash == hash, "invalid hash" );
  *
  *  This method is optimized to a NO-OP when in fast evaluation mode
  */
-void eos_assert_sha256( char* data, uint32_t length, const checksum* hash );
+void eosio_assert_sha256( char* data, uint32_t length, const checksum* hash );
 
 /**
  *  Calculates sha256( data,length) and stores result in memory pointed to by hash 

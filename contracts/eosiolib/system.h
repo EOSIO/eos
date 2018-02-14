@@ -29,7 +29,7 @@ extern "C" {
     *  @param cstr - a null terminated action to explain the reason for failure
 
     */
-   void  eos_assert( uint32_t test, const char* cstr );
+   void  eosio_assert( uint32_t test, const char* cstr );
 
    /**
     *  Returns the time in seconds from 1970 of the last accepted block (not the block including this action)
@@ -39,25 +39,6 @@ extern "C" {
    time  now();
    ///@ } systemcapi
 
-   /**
-    * @defgroup privilegedapi Privileged API
-    * @ingroup systemapi
-    * @brief Defines an API for accessing configuration of the chain that can only be done by privileged accounts
-    */
-
-   /**
-    * @defgroup privilegedcapi Privileged C API
-    * @ingroup privilegedapi
-    * @brief Define C Privileged API
-    *
-    * @{
-    */
-
-   void set_resource_limits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight, int64_t ignored);
-
-   void set_active_producers( char *producer_data, size_t producer_data_size );
-
-   ///@ } privilegedcapi
 
 }
 

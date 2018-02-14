@@ -84,7 +84,7 @@ class apply_context {
 
                context.require_write_lock( scope );
 
-               const auto& tab = context.find_or_create_table( scope, context.receiver, table );
+               const auto& tab = context.find_or_create_table( context.receiver, scope, table );
 
                const auto& obj = context.mutable_db.create<ObjectType>( [&]( auto& o ){
                   o.t_id          = tab.id;
@@ -134,52 +134,150 @@ class apply_context {
                });
             }
 
-            int find_secondary( uint64_t code, uint64_t scope, uint64_t table, const secondary_key_type& secondary ) {
-               auto tab = context.find_table( scope, context.receiver, table );
+            int find_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_type& secondary, uint64_t& primary ) {
+               auto tab = context.find_table( context.receiver, scope, table );
                if( !tab ) return -1;
 
                const auto* obj = context.db.find<ObjectType, contracts::by_secondary>( boost::make_tuple( tab->id, secondary ) );
                if( !obj ) return -1;
 
+               primary = obj->primary_key;
+               secondary = obj->secondary_key;
+
                itr_cache.cache_table( *tab );
                return itr_cache.add( *obj );
             }
 
-            int lowerbound_secondary( uint64_t code, uint64_t scope, uint64_t table, const secondary_key_type& secondary ) {
-               auto tab = context.find_table( scope, context.receiver, table );
+            int lowerbound_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_type& secondary, uint64_t& primary ) {
+               auto tab = context.find_table( context.receiver, scope, table );
                if( !tab ) return -1;
 
-               const auto& idx = context.db.get_index< chainbase::get_index_type<ObjectType>::type, contracts::by_secondary >();
+               const auto& idx = context.db.get_index< typename chainbase::get_index_type<ObjectType>::type, contracts::by_secondary >();
                auto itr = idx.lower_bound( boost::make_tuple( tab->id, secondary ) );
                if( itr == idx.end() ) return -1;
                if( itr->t_id != tab->id ) return -1;
 
+               primary = itr->primary_key;
+               secondary = itr->secondary_key;
+
                itr_cache.cache_table( *tab );
                return itr_cache.add( *itr );
             }
 
-            int upperbound_secondary( uint64_t code, uint64_t scope, uint64_t table, const secondary_key_type& secondary ) {
-               auto tab = context.find_table( scope, context.receiver, table );
+            int upperbound_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_type& secondary, uint64_t& primary ) {
+               auto tab = context.find_table( context.receiver, scope, table );
                if( !tab ) return -1;
 
-               const auto& idx = context.db.get_index< chainbase::get_index_type<ObjectType>::type, contracts::by_secondary >();
+               const auto& idx = context.db.get_index< typename chainbase::get_index_type<ObjectType>::type, contracts::by_secondary >();
                auto itr = idx.upper_bound( boost::make_tuple( tab->id, secondary ) );
                if( itr == idx.end() ) return -1;
                if( itr->t_id != tab->id ) return -1;
 
+               primary = itr->primary_key;
+               secondary = itr->secondary_key;
+
                itr_cache.cache_table( *tab );
                return itr_cache.add( *itr );
             }
 
-            int find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary ) {
-               auto tab = context.find_table( scope, context.receiver, table );
+            int next_secondary( int iterator, uint64_t& primary ) {
+               const auto& obj = itr_cache.get(iterator);
+               const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_secondary>();
+
+               auto itr = idx.iterator_to(obj);
+               if (itr == idx.end()) return -1;
+
+               ++itr;
+               
+               if (itr == idx.end() || itr->t_id != obj.t_id) return -1;
+
+               primary = itr->primary_key;
+               return itr_cache.add(*itr);
+            }
+            
+            int previous_secondary( int iterator, uint64_t& primary ) {
+               const auto& obj = itr_cache.get(iterator);
+               const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_secondary>();
+
+               auto itr = idx.iterator_to(obj);
+               if (itr == idx.end() || itr == idx.begin()) return -1;
+
+               --itr;
+
+               if (itr->t_id != obj.t_id) return -1;
+
+               primary = itr->primary_key;
+               return itr_cache.add(*itr);
+            }
+
+            
+
+            int find_primary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_type& secondary, uint64_t primary ) {
+               auto tab = context.find_table( context.receiver, scope, table );
                if( !tab ) return -1;
 
                const auto* obj = context.db.find<ObjectType, contracts::by_primary>( boost::make_tuple( tab->id, primary ) );
                if( !obj ) return -1;
+               secondary = obj->secondary_key;
 
                itr_cache.cache_table( *tab );
                return itr_cache.add( *obj );
+            }
+
+            int lowerbound_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary ) {
+               auto tab = context.find_table(context.receiver, scope, table);
+               if (!tab) return -1;
+               
+               const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_primary>();
+               auto itr = idx.lower_bound(boost::make_tuple(tab->id, primary));
+               if (itr == idx.end()) return -1;
+               if (itr->t_id != tab->id) return -1;
+
+               itr_cache.cache_table(*tab);
+               return itr_cache.add(*itr);
+            }
+
+            int upperbound_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary ) {
+               auto tab = context.find_table(context.receiver, scope, table);
+               if ( !tab ) return -1;
+
+               const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_primary>();
+               auto itr = idx.upper_bound(boost::make_tuple(tab->id, primary));
+               if (itr == idx.end()) return -1;
+               if (itr->t_id != tab->id) return -1;
+
+               itr_cache.cache_table(*tab);
+               return itr_cache(*itr);
+            }
+
+            int next_primary( int iterator, uint64_t& primary ) {
+               const auto& obj = itr_cache.get(iterator);
+               const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_primary>();
+
+               auto itr = idx.iterator_to(obj);
+               if (itr == idx.end()) return -1;
+
+               ++itr;
+
+               if (itr == idx.end() || itr->t_id != obj.t_id) return -1;
+
+               primary = itr->primary_key;
+               return itr_cache.add(*itr);
+            }
+
+            int previous_primary( int iterator, uint64_t& primary ) {
+               const auto& obj = itr_cache.get(iterator);
+               const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_primary>();
+
+               auto itr = idx.iterator_to(obj);
+               if (itr == idx.end() || itr == idx.begin()) return -1;
+
+               --itr;
+
+               if (itr->t_id != obj.t_id) return -1;
+
+               primary = itr->primary_key;
+               return itr_cache.add(*itr);
             }
 
             void get( int iterator, uint64_t& primary, secondary_key_type& secondary ) {
@@ -265,6 +363,11 @@ class apply_context {
       void require_read_lock(const account_name& account, const scope_name& scope);
 
       /**
+       * @return true if account exists, false if it does not
+       */
+      bool is_account(const account_name& account)const;
+
+      /**
        * Requires that the current action be delivered to account
        */
       void require_recipient(account_name account);
@@ -297,51 +400,6 @@ class apply_context {
 
       const transaction_metadata&   trx_meta;
 
-   ///< pending transaction construction
-     /*
-      typedef uint32_t pending_transaction_handle;
-      struct pending_transaction : public transaction {
-         typedef uint32_t handle_type;
-         
-         pending_transaction(const handle_type& _handle, const apply_context& _context, const uint16_t& block_num, const uint32_t& block_ref, const time_point& expiration )
-            : transaction(block_num, block_ref, expiration, vector<account_name>(),  vector<account_name>(), vector<action>())
-            , handle(_handle)
-            , context(_context) {}
-         
-         
-         handle_type handle;
-         const apply_context& context;
-
-         void check_size() const;
-      };
-
-      pending_transaction::handle_type next_pending_transaction_serial;
-      vector<pending_transaction> pending_transactions;
-
-      pending_transaction& get_pending_transaction(pending_transaction::handle_type handle);
-      pending_transaction& create_pending_transaction();
-      void release_pending_transaction(pending_transaction::handle_type handle);
-
-      ///< pending message construction
-      typedef uint32_t pending_message_handle;
-      struct pending_message : public action {
-         typedef uint32_t handle_type;
-         
-         pending_message(const handle_type& _handle, const account_name& code, const action_name& type, const vector<char>& data)
-            : action(code, type, vector<permission_level>(), data)
-            , handle(_handle) {}
-
-         handle_type handle;
-      };
-
-      pending_transaction::handle_type next_pending_message_serial;
-      vector<pending_message> pending_messages;
-
-      pending_message& get_pending_message(pending_message::handle_type handle);
-      pending_message& create_pending_message(const account_name& code, const action_name& type, const vector<char>& data);
-      void release_pending_message(pending_message::handle_type handle);
-      */
-
       struct apply_results {
          vector<action_trace>          applied_actions;
          vector<deferred_transaction>  generated_transactions;
@@ -367,149 +425,16 @@ class apply_context {
 
       void checktime(uint32_t instruction_count) const;
 
-      void update_db_usage( const account_name& payer, int64_t delta ) {
-         require_write_lock( payer );
-         if( (delta > 0) && payer != account_name(receiver) ) {
-            require_authorization( payer );
-         }
-      }
-
-
-      int db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
-         require_write_lock( scope );
-         const auto& tab = find_or_create_table( scope, receiver, table );
-         auto tableid = tab.id;
-         validate_or_add_table_key(tab, contracts::table_key_type::type_i64);
-
-         FC_ASSERT( payer != account_name(), "must specify a valid account to pay for new record" );
-
-         const auto& obj = mutable_db.create<key_value_object>( [&]( auto& o ) {
-            o.t_id        = tableid;
-            o.primary_key = id;
-            o.value.resize( buffer_size );
-            o.payer       = payer;
-            memcpy( o.value.data(), buffer, buffer_size );
-         });
-
-         mutable_db.modify( tab, [&]( auto& t ) {
-           ++t.count;
-         });
-
-         update_db_usage( payer, buffer_size + 200 );
-
-         keyval_cache.cache_table( tab );
-         return keyval_cache.add( obj );
-      }
-
-      void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size ) {
-         const key_value_object& obj = keyval_cache.get( iterator );
-
-         require_write_lock( keyval_cache.get_table( obj.t_id ).scope );
-
-         int64_t old_size = obj.value.size();
-
-         if( payer == account_name() ) payer = obj.payer;
-
-         if( account_name(obj.payer) == payer ) {
-            update_db_usage( obj.payer, buffer_size + 200 - old_size );
-         } else  {
-            update_db_usage( obj.payer,  -(old_size+200) );
-            update_db_usage( payer,  (buffer_size+200) );
-         }
-
-         mutable_db.modify( obj, [&]( auto& o ) {
-           o.value.resize( buffer_size );
-           memcpy( o.value.data(), buffer, buffer_size );
-           o.payer = payer;
-         });
-      }
-
-      void db_remove_i64( int iterator ) {
-         const key_value_object& obj = keyval_cache.get( iterator );
-         update_db_usage( obj.payer,  -(obj.value.size()+200) );
-
-         const auto& table_obj = keyval_cache.get_table( obj.t_id );
-         require_write_lock( table_obj.scope );
-
-         mutable_db.modify( table_obj, [&]( auto& t ) {
-            --t.count;
-         });
-         mutable_db.remove( obj );
-
-         keyval_cache.remove( iterator, obj );
-      }
-
-      int db_get_i64( int iterator, uint64_t& id, char* buffer, size_t buffer_size ) {
-         const key_value_object& obj = keyval_cache.get( iterator );
-         if( buffer_size >= obj.value.size() ) {
-            memcpy( buffer, obj.value.data(), obj.value.size() );
-         }
-         id = obj.primary_key;
-         return obj.value.size();
-      }
-
-      int db_next_i64( int iterator ) {
-         const auto& obj = keyval_cache.get( iterator );
-         const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
-
-         auto itr = idx.iterator_to( obj );
-         ++itr;
-
-         if( itr == idx.end() ) return -1;
-         if( itr->t_id != obj.t_id ) return -1;
-
-         return keyval_cache.add( *itr );
-      }
-
-      int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-         require_read_lock( code, scope );
-
-         const auto* tab = find_table( scope, code, table );
-         if( !tab ) return -1;
-         validate_table_key(*tab, contracts::table_key_type::type_i64);
-
-
-         const key_value_object* obj = db.find<key_value_object, contracts::by_scope_primary>( boost::make_tuple( tab->id, id ) );
-         if( !obj ) return -1;
-
-         keyval_cache.cache_table( *tab );
-         return keyval_cache.add( *obj );
-      }
-
-      int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-         require_read_lock( code, scope );
-
-         const auto* tab = find_table( scope, code, table );
-         if( !tab ) return -1;
-         validate_table_key(*tab, contracts::table_key_type::type_i64);
-
-
-         const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
-         auto itr = idx.lower_bound( boost::make_tuple( tab->id, id ) );
-         if( itr == idx.end() ) return -1;
-         if( itr->t_id != tab->id ) return -1;
-
-         keyval_cache.cache_table( *tab );
-         return keyval_cache.add( *itr );
-      }
-
-      int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-         require_read_lock( code, scope );
-
-         const auto* tab = find_table( scope, code, table );
-         if( !tab ) return -1;
-         validate_table_key(*tab, contracts::table_key_type::type_i64);
-
-
-         const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
-         auto itr = idx.upper_bound( boost::make_tuple( tab->id, id ) );
-         if( itr == idx.end() ) return -1;
-         if( itr->t_id != tab->id ) return -1;
-
-         keyval_cache.cache_table( *tab );
-         return keyval_cache.add( *itr );
-      }
-
+      void update_db_usage( const account_name& payer, int64_t delta );
+      int  db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
+      void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
+      void db_remove_i64( int iterator );
+      int db_get_i64( int iterator, char* buffer, size_t buffer_size );
+      int db_next_i64( int iterator, uint64_t& primary ); 
+      int db_previous_i64( int iterator, uint64_t& primary );
+      int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
+      int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
+      int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
 
       generic_index<contracts::index64_object>    idx64;
       generic_index<contracts::index128_object>   idx128;

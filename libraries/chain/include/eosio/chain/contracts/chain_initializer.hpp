@@ -24,7 +24,7 @@ namespace eosio { namespace chain {  namespace contracts {
 
          void prepare_database(chain::chain_controller& chain, chainbase::database& db);
 
-         static abi_def eos_contract_abi();
+         static abi_def eos_contract_abi(const abi_def& eosio_system_abi);
 
       private:
          genesis_state_type genesis;

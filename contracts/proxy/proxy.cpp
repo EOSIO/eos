@@ -29,11 +29,11 @@ namespace proxy {
       config code_config;
       const auto self = current_receiver();
       auto get_res = configs::get(code_config, self);
-      eos_assert(get_res, "Attempting to use unconfigured proxy");
+      eosio_assert(get_res, "Attempting to use unconfigured proxy");
       if (transfer.from == self) {
-         eos_assert(transfer.to == code_config.owner,  "proxy may only pay its owner" );
+         eosio_assert(transfer.to == code_config.owner,  "proxy may only pay its owner" );
       } else {
-         eos_assert(transfer.to == self, "proxy is not involved in this transfer");
+         eosio_assert(transfer.to == self, "proxy is not involved in this transfer");
          T new_transfer = T(transfer);
          new_transfer.from = self;
          new_transfer.to = code_config.owner;
@@ -62,7 +62,7 @@ namespace proxy {
       eosio::print("starting onerror\n");
       const auto self = current_receiver();
       config code_config;
-      eos_assert(configs::get(code_config, self), "Attempting use of unconfigured proxy");
+      eosio_assert(configs::get(code_config, self), "Attempting use of unconfigured proxy");
 
       auto id = code_config.next_id++;
       configs::store(code_config, self);
