@@ -8,7 +8,7 @@
 #include <eosiolib/types.hpp>
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/system.h>
-#include <eosiolib/print.hpp>
+#include <eosiolib/privileged.h>
 
 using namespace eosio;
 

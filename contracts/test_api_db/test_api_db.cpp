@@ -15,6 +15,13 @@ extern "C" {
 
    void apply( unsigned long long code, unsigned long long action ) {
 
+      WASM_TEST_HANDLER(test_db, primary_i64_general);
+      WASM_TEST_HANDLER(test_db, primary_i64_lowerbound);
+      WASM_TEST_HANDLER(test_db, primary_i64_upperbound);
+      WASM_TEST_HANDLER(test_db, idx64_general);
+      WASM_TEST_HANDLER(test_db, idx64_lowerbound);
+      WASM_TEST_HANDLER(test_db, idx64_upperbound);
+
       WASM_TEST_HANDLER(test_db, key_str_general);
 #if 0
       //test db

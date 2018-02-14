@@ -14,10 +14,8 @@ import re
 ###############################################################
 
 Print=testUtils.Utils.Print
+errorExit=testUtils.Utils.errorExit
 
-def errorExit(msg="", raw=False, errorCode=1):
-    Print("ERROR:" if not raw else "", msg)
-    exit(errorCode)
 
 def cmdError(name, code=0, exitNow=False):
     msg="FAILURE - %s%s" % (name, ("" if code == 0 else (" returned error code %d" % code)))
@@ -374,7 +372,8 @@ try:
             amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
         else:
             typeVal=  transaction["name"]
-            amountVal=transaction["data"]["amount"]
+            amountVal=transaction["data"]["quantity"]
+            amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
     else:
         if not enableMongo:
             typeVal=  transaction["transaction"]["messages"][0]["type"]
@@ -582,7 +581,7 @@ try:
     for blockNum in range(1, currentBlockNum+1):
         block=node.getBlock(blockNum, retry=False)
         if block is None:
-            cmdError("% get block" % (ClientName))
+            cmdError("%s get block" % (ClientName))
             errorExit("mongo get block by num %d" % blockNum)
 
         if enableMongo:

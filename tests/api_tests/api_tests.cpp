@@ -656,6 +656,12 @@ BOOST_FIXTURE_TEST_CASE(db_tests, tester) { try {
 	produce_blocks(1);
 
 	CALL_TEST_FUNCTION( *this, "test_db", "key_str_general", {});
+	CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_general", {});
+	CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_lowerbound", {});
+	CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_upperbound", {});
+	CALL_TEST_FUNCTION( *this, "test_db", "idx64_general", {});
+	CALL_TEST_FUNCTION( *this, "test_db", "idx64_lowerbound", {});
+	CALL_TEST_FUNCTION( *this, "test_db", "idx64_upperbound", {});
    /*
 	CALL_TEST_FUNCTION( *this, "test_db", "key_i64_general", {});
 	CALL_TEST_FUNCTION( *this, "test_db", "key_i64_remove_all", {});
