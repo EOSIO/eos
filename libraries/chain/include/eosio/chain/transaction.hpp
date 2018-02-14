@@ -115,6 +115,8 @@ namespace eosio { namespace chain {
       uint16_t               region        = 0; ///< the computational memory region this transaction applies to.
       uint16_t               ref_block_num = 0; ///< specifies a block num in the last 2^16 blocks.
       uint32_t               ref_block_prefix = 0; ///< specifies the lower 32 bits of the blockid at get_ref_blocknum
+      uint16_t               packed_bandwidth_words = 0; /// number of 8 byte words this transaction can compress into
+      uint16_t               context_free_cpu_bandwidth = 0; /// number of CPU usage units to bill transaction for
 
       /**
        * @return the absolute block number given the relative ref_block_num
@@ -132,6 +134,7 @@ namespace eosio { namespace chain {
     *  read and write scopes.
     */
    struct transaction : public transaction_header {
+      vector<action>         context_free_actions;
       vector<action>         actions;
 
       transaction_id_type        id()const;
@@ -152,6 +155,7 @@ namespace eosio { namespace chain {
       }
 
       vector<signature_type>    signatures;
+      vector<vector<char>>      context_free_data; ///< for each context-free action, there is an entry here
 
       const signature_type&     sign(const private_key_type& key, const chain_id_type& chain_id);
       signature_type            sign(const private_key_type& key, const chain_id_type& chain_id)const;
@@ -252,9 +256,9 @@ namespace eosio { namespace chain {
 
 FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
 FC_REFLECT( eosio::chain::action, (account)(name)(authorization)(data) )
-FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix) )
-FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (actions) )
-FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures) )
+FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix)(packed_bandwidth_words)(context_free_cpu_bandwidth) )
+FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions) )
+FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures)(context_free_data) )
 FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
 FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(data) )
 FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(execute_after) )

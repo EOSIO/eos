@@ -304,6 +304,45 @@ void apply_context::update_db_usage( const account_name& payer, int64_t delta ) 
 }
 
 
+int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const 
+{
+   const transaction& trx = trx_meta.trx();
+   const action* act = nullptr;
+   if( type == 0 ) {
+      if( index >= trx.context_free_actions.size() ) 
+         return -1;
+      act = &trx.context_free_actions[index];
+   }
+   else if( type == 1 ) {
+      if( index >= trx.actions.size() ) 
+         return -1;
+      act = &trx.actions[index];
+   }
+
+   auto ps = fc::raw::pack_size( *act );
+   if( ps <= buffer_size ) {
+      fc::datastream<char*> ds(buffer, buffer_size);
+      fc::raw::pack( ds, *act );
+   }
+   return ps;
+}
+
+int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const {
+   if( index >= trx_meta.context_free_data.size() ) return -1;
+
+   auto s = trx_meta.context_free_data[index].size();
+
+   if( buffer_size == 0 ) return s;
+
+   if( buffer_size < s )
+      memcpy( buffer, trx_meta.context_free_data.data(), buffer_size );
+   else 
+      memcpy( buffer, trx_meta.context_free_data.data(), s );
+
+   return s;
+}
+
+
 int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
    require_write_lock( scope );
    const auto& tab = find_or_create_table( receiver, scope, table );
