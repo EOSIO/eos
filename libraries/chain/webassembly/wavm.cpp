@@ -73,7 +73,6 @@ void entry::call_error(apply_context& context)
 int entry::sbrk(int num_bytes) {
    // TODO: omitted checktime function from previous version of sbrk, may need to be put back in at some point
    constexpr uint32_t NBPPL2  = IR::numBytesPerPageLog2;
-   constexpr uint32_t MAX_MEM = 1024 * 1024;
 
    MemoryInstance*  default_mem    = Runtime::getDefaultMemory(instance);
    if(!default_mem)
@@ -86,7 +85,7 @@ int entry::sbrk(int num_bytes) {
    // round the absolute value of num_bytes to an alignment boundary
    num_bytes = (num_bytes + 7) & ~7;
 
-   if ((num_bytes > 0) && (prev_num_bytes > (MAX_MEM - num_bytes)))  // test if allocating too much memory (overflowed)
+   if ((num_bytes > 0) && (prev_num_bytes > (wasm_constraints::maximum_linear_memory - num_bytes)))  // test if allocating too much memory (overflowed)
       throw eosio::chain::page_memory_error();
    else if ((num_bytes < 0) && (prev_num_bytes < (min_bytes - num_bytes))) // test for underflow
       throw eosio::chain::page_memory_error();
@@ -106,7 +105,10 @@ int entry::sbrk(int num_bytes) {
 }
 
 void entry::reset(const info& base_info) {
-   if(getDefaultMemory(instance)) {
+   MemoryInstance* default_mem = getDefaultMemory(instance);
+   if(default_mem) {
+      shrinkMemory(default_mem, getMemoryNumPages(default_mem) - 1);
+
       char* memstart = &memoryRef<char>( getDefaultMemory(instance), 0 );
       memset( memstart + base_info.mem_end, 0, ((1<<16) - base_info.mem_end) );
       memcpy( memstart, base_info.mem_image.data(), base_info.mem_end);

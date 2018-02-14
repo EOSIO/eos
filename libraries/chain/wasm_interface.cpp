@@ -27,12 +27,6 @@
 #include <thread>
 #include <condition_variable>
 
-
-
-using namespace IR;
-using namespace Runtime;
-using boost::asio::io_service;
-
 namespace eosio { namespace chain {
    using namespace contracts;
    using namespace webassembly;
@@ -57,7 +51,7 @@ namespace eosio { namespace chain {
        * returned before this can be destroyed
        */
       ~wasm_cache_impl() {
-         freeUnreferencedObjects({});
+         Runtime::freeUnreferencedObjects({});
       }
 
       /**
@@ -73,8 +67,14 @@ namespace eosio { namespace chain {
        * the instance handed out to other threads
        */
       struct code_info {
-         explicit code_info(wavm::info&& wavm_info) :wavm_info(wavm_info) {}
+         explicit code_info(wavm::info&& wavm_info, binaryen::info&& binaryen_info)
+         : wavm_info(wavm_info)
+         , binaryen_info(binaryen_info)
+         {}
+
+
          wavm::info   wavm_info;
+         binaryen::info binaryen_info;
 
          // all existing instances of this code
          vector<unique_ptr<wasm_cache::entry>> instances;
@@ -158,11 +158,17 @@ namespace eosio { namespace chain {
 
                fc::optional<wavm::entry> wavm;
                fc::optional<wavm::info> wavm_info;
+               fc::optional<binaryen::entry> binaryen;
+               fc::optional<binaryen::info> binaryen_info;
 
                try {
                   /// TODO: make validation generic
                   wavm = wavm::entry::build(wasm_binary, wasm_binary_size);
                   wavm_info.emplace(*wavm);
+
+                  binaryen = binaryen::entry::build(wasm_binary, wasm_binary_size);
+                  binaryen_info.emplace(*binaryen);
+
                   
                } catch (...) {
                   pending_error = std::current_exception();
@@ -172,9 +178,9 @@ namespace eosio { namespace chain {
                   // grab the lock and put this in the cache as unavailble
                   with_lock(_cache_lock, [&,this]() {
                      // find or create a new entry
-                     auto iter = _cache.emplace(code_id, code_info(std::move(*wavm_info))).first;
+                     auto iter = _cache.emplace(code_id, code_info(std::move(*wavm_info),std::move(*binaryen_info))).first;
 
-                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(std::move(*wavm)));
+                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(std::move(*wavm), std::move(*binaryen)));
                      pending_result = optional_entry_ref(*iter->second.instances.back().get());
                   });
                }
@@ -207,26 +213,27 @@ namespace eosio { namespace chain {
        * @param entry - the entry to return
        */
       void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
-        // sanitize by reseting the memory that may now be dirty
-        auto& info = (*fetch_info(code_id)).get();
-        entry.wavm.reset(info.wavm_info);
+         // sanitize by reseting the memory that may now be dirty
+         auto& info = (*fetch_info(code_id)).get();
+         entry.wavm.reset(info.wavm_info);
+         entry.binaryen.reset(info.binaryen_info);
 
-        // under a lock, put this entry back in the available instances side of the instances vector
-        with_lock(_cache_lock, [&,this](){
-           // walk the vector and find this entry
-           auto iter = info.instances.begin();
-           while (iter->get() != &entry) {
-              ++iter;
-           }
+         // under a lock, put this entry back in the available instances side of the instances vector
+         with_lock(_cache_lock, [&,this](){
+            // walk the vector and find this entry
+            auto iter = info.instances.begin();
+            while (iter->get() != &entry) {
+               ++iter;
+            }
 
-           FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
+            FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
 
-           auto first_unavailable = (info.instances.begin() + info.available_instances);
-           if (iter != first_unavailable) {
-              std::swap(iter, first_unavailable);
-           }
-           info.available_instances++;
-        });
+            auto first_unavailable = (info.instances.begin() + info.available_instances);
+            if (iter != first_unavailable) {
+               std::swap(iter, first_unavailable);
+            }
+            info.available_instances++;
+         });
       }
 
       // mapping of digest to an entry for the code
@@ -254,9 +261,6 @@ namespace eosio { namespace chain {
 
 
    void wasm_cache::checkin(const digest_type& code_id, entry& code ) {
-      MemoryInstance* default_mem = Runtime::getDefaultMemory(code.wavm.instance);
-      if(default_mem)
-         Runtime::shrinkMemory(default_mem, Runtime::getMemoryNumPages(default_mem) - 1);
       _my->return_entry(code_id, code);
    }
 
@@ -307,6 +311,11 @@ namespace eosio { namespace chain {
 
    const wavm::entry& wavm::entry::get(wasm_interface& wasm) {
       return common::intrinsics_accessor::get_context(wasm).code.wavm;
+   }
+
+
+   const binaryen::entry& binaryen::entry::get(wasm_interface& wasm) {
+      return common::intrinsics_accessor::get_context(wasm).code.binaryen;
    }
 
 #if defined(assert)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/wasm_interface.hpp>
+#include <eosio/chain/wasm_eosio_constraints.hpp>
 
 #include <boost/multiprecision/cpp_dec_float.hpp>
 

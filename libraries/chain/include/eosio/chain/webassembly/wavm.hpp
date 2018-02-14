@@ -5,12 +5,12 @@
 #include "IR/Types.h"
 
 
+namespace eosio { namespace chain { namespace webassembly { namespace wavm {
+
 using namespace IR;
 using namespace Runtime;
 using namespace fc;
 using namespace eosio::chain::webassembly::common;
-
-namespace eosio { namespace chain { namespace webassembly { namespace wavm {
 
 struct info;
 class entry {

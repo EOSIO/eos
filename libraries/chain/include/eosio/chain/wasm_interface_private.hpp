@@ -2,6 +2,7 @@
 
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/webassembly/wavm.hpp>
+#include <eosio/chain/webassembly/binaryen.hpp>
 
 using namespace fc;
 using namespace eosio::chain::webassembly;
@@ -9,12 +10,14 @@ using namespace eosio::chain::webassembly;
 namespace eosio { namespace chain {
 
    struct wasm_cache::entry {
-      entry(wavm::entry&& wavm)
+      entry(wavm::entry&& wavm, binaryen::entry&& binaryen)
          : wavm(std::forward<wavm::entry>(wavm))
+         , binaryen(std::forward<binaryen::entry>(binaryen))
       {
       }
 
       wavm::entry wavm;
+      binaryen::entry binaryen;
    };
 
    struct wasm_interface_impl {
@@ -22,7 +25,8 @@ namespace eosio { namespace chain {
    };
 
 #define _REGISTER_INTRINSIC_EXPLICIT(CLS, METHOD, WASM_SIG, NAME, SIG)\
-   _REGISTER_WAVM_INTRINSIC(CLS, METHOD, WASM_SIG, NAME, SIG)
+   _REGISTER_WAVM_INTRINSIC(CLS, METHOD, WASM_SIG, NAME, SIG)\
+   _REGISTER_BINARYEN_INTRINSIC(CLS, METHOD, WASM_SIG, NAME, SIG)
 
 #define _REGISTER_INTRINSIC4(CLS, METHOD, WASM_SIG, NAME, SIG)\
    _REGISTER_INTRINSIC_EXPLICIT(CLS, METHOD, WASM_SIG, NAME, SIG )
