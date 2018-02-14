@@ -39,6 +39,7 @@
 	TEMP_DIR=/tmp
 	ARCH=$(uname)
 
+	txtbld=$(tput bold)
 	bldred=${txtbld}$(tput setaf 1)
 	txtrst=$(tput sgr0)
 
