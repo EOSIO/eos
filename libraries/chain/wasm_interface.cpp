@@ -240,7 +240,7 @@ namespace eosio { namespace chain {
                      mem_image.resize(mem_end);
                      memcpy(mem_image.data(), mem_ptr, mem_end);
                   }
-                  
+
                } catch (...) {
                   pending_error = std::current_exception();
                }
@@ -432,7 +432,7 @@ class privileged_api : public context_aware_api {
        *  block that includes this call is irreversible. It should
        *  fail if the feature is already pending.
        *
-       *  Feature name should be base32 encoded name. 
+       *  Feature name should be base32 encoded name.
        */
       void activate_feature( int64_t feature_name ) {
          FC_ASSERT( !"Unsupported Harfork Detected" );
@@ -448,7 +448,7 @@ class privileged_api : public context_aware_api {
          return false;
       }
 
-      void set_resource_limits( account_name account, 
+      void set_resource_limits( account_name account,
                                 int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight,
                                 int64_t cpu_usec_per_period ) {
          auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
@@ -472,16 +472,16 @@ class privileged_api : public context_aware_api {
       }
 
 
-      void get_resource_limits( account_name account, 
+      void get_resource_limits( account_name account,
                                 uint64_t& ram_bytes, uint64_t& net_weight, uint64_t cpu_weight ) {
       }
-                                               
+
       void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          producer_schedule_type psch;
          fc::raw::unpack(ds, psch);
 
-         context.mutable_db.modify( context.controller.get_global_properties(), 
+         context.mutable_db.modify( context.controller.get_global_properties(),
             [&]( auto& gprops ) {
                  gprops.new_active_producers = psch;
          });
@@ -538,9 +538,9 @@ class crypto_api : public context_aware_api {
 
       /**
        * This method can be optimized out during replay as it has
-       * no possible side effects other than "passing". 
+       * no possible side effects other than "passing".
        */
-      void assert_recover_key( fc::sha256& digest, 
+      void assert_recover_key( fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
          fc::crypto::signature s;
@@ -555,7 +555,7 @@ class crypto_api : public context_aware_api {
          FC_ASSERT( check == p, "Error expected key different than recovered key" );
       }
 
-      int recover_key( fc::sha256& digest, 
+      int recover_key( fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
          fc::crypto::signature s;
@@ -673,6 +673,21 @@ class console_api : public context_aware_api {
          context.console_append(fc::variant(v).get_string());
       }
 
+      void printi256(const uint256& num) {
+         // Assumes uint64_t stored in little endian format
+         context.console_append("0x");
+         uint64_t val;
+         for( auto i = 0; i < 4; ++i ) {
+            val = num.words[i];
+            // Reverse order of bytes in val:
+            val = ((val << 8) & 0xFF00FF00FF00FF00ULL) | ((val >> 8) & 0x00FF00FF00FF00FFULL);
+            val = ((val << 16) & 0xFFFF0000FFFF0000ULL) | ((val >> 16) & 0x0000FFFF0000FFFFULL);
+            val = (val << 32) | (val >> 32);
+            // Print next 8 bytes in hexidecimal:
+            context.console_append(fc::to_hex(reinterpret_cast<const char*>(&val), 8));
+         }
+      }
+
       void printd( wasm_double val ) {
          context.console_append(val.str());
       }
@@ -685,6 +700,35 @@ class console_api : public context_aware_api {
          context.console_append(fc::to_hex(data, data_len));
       }
 };
+
+#define DB_API_METHOD_WRAPPERS(IDX, TYPE)\
+      int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
+         return context.IDX.store( scope, table, payer, id, secondary );\
+      }\
+      void db_##IDX##_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
+         return context.IDX.update( iterator, payer, secondary );\
+      }\
+      void db_##IDX##_remove( int iterator ) {\
+         return context.IDX.remove( iterator );\
+      }\
+      int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
+         return context.IDX.find_secondary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t primary ) {\
+         return context.IDX.find_secondary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
+         return context.IDX.lowerbound_secondary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
+         return context.IDX.upperbound_secondary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_next( int iterator, uint64_t& primary  ) {\
+         return context.IDX.next_secondary(iterator, primary);\
+      }\
+      int db_##IDX##_previous( int iterator, uint64_t& primary ) {\
+         return context.IDX.previous_secondary(iterator, primary);\
+      }
 
 class database_api : public context_aware_api {
    public:
@@ -708,101 +752,20 @@ class database_api : public context_aware_api {
       int db_previous_i64( int itr, uint64_t& primary ) {
          return context.db_previous_i64(itr, primary);
       }
-      int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
-         return context.db_find_i64( code, scope, table, id ); 
+      int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+         return context.db_find_i64( code, scope, table, id );
       }
-      int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
-         return context.db_lowerbound_i64( code, scope, table, id ); 
+      int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+         return context.db_lowerbound_i64( code, scope, table, id );
       }
-      int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
-         return context.db_lowerbound_i64( code, scope, table, id ); 
-      }
-
-      int db_idx64_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const uint64_t& secondary ) {
-         return context.idx64.store( scope, table, payer, id, secondary );
-      }
-      void db_idx64_update( int iterator, uint64_t payer, const uint64_t& secondary ) {
-         return context.idx64.update( iterator, payer, secondary );
-      }
-      void db_idx64_remove( int iterator ) {
-         return context.idx64.remove( iterator );
-      }
-      int db_idx64_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t& primary ) {
-         return context.idx64.find_secondary(code, scope, table, secondary, primary);
-      }
-      int db_idx64_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t primary ) {
-         return context.idx64.find_secondary(code, scope, table, secondary, primary);
+      int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+         return context.db_lowerbound_i64( code, scope, table, id );
       }
 
-      int db_idx64_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  uint64_t& secondary, uint64_t& primary ) {
-         return context.idx64.lowerbound_secondary(code, scope, table, secondary, primary);
-      }
-      int db_idx64_upperbound( uint64_t code, uint64_t scope, uint64_t table,  uint64_t& secondary, uint64_t& primary ) {
-         return context.idx64.upperbound_secondary(code, scope, table, secondary, primary);
-      }
-      int db_idx64_next( int iterator, uint64_t& primary  ) {
-         return context.idx64.next_secondary(iterator, primary);
-      }
-      int db_idx64_previous( int iterator, uint64_t& primary ) {
-         return context.idx64.previous_secondary(iterator, primary);
-      }
+      DB_API_METHOD_WRAPPERS(idx64,  uint64_t)
+      DB_API_METHOD_WRAPPERS(idx128, uint128_t)
+      DB_API_METHOD_WRAPPERS(idx256, uint256)
 
-      /*
-      int db_idx64_next( int iterator, uint64_t& primary ) {
-      }
-      int db_idx64_prev( int iterator, uint64_t& primary ) {
-      }
-      int db_idx64_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t primary ) {
-      }
-      int db_idx64_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t& primary ) {
-      }
-      int db_idx64_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t& primary ) {
-      }
-      int db_idx64_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t& primary ) {
-      }
-      */
-
-
-      int db_idx128_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const uint128_t& secondary ) {
-         return context.idx128.store( scope, table, payer, id, secondary );
-      }
-      void db_idx128_update( int iterator, uint64_t payer, const uint128_t& secondary ) {
-         return context.idx128.update( iterator, payer, secondary );
-      }
-      void db_idx128_remove( int iterator ) {
-         return context.idx128.remove( iterator );
-      }
-      int db_idx128_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t primary ) {
-         return context.idx128.find_primary( code, scope, table, secondary, primary );
-      }
-      int db_idx128_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
-         return context.idx128.find_secondary(code, scope, table, secondary, primary);
-      }
-      int db_idx128_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
-         return context.idx128.lowerbound_secondary(code, scope, table, secondary, primary);
-      }
-      int db_idx128_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
-         return context.idx128.upperbound_secondary(code, scope, table, secondary, primary);
-      }
-      int db_idx128_next( int iterator, uint64_t& primary ) {
-         return context.idx128.next_secondary(iterator, primary);
-      }
-      int db_idx128_previous( int iterator, uint64_t& primary ) {
-         return context.idx128.previous_secondary(iterator, primary);
-      }
-
-   /*
-      int db_idx128_next( int iterator, uint64_t& primary ) {
-      }
-      int db_idx128_prev( int iterator, uint64_t& primary ) {
-      }
-      int db_idx128_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
-      }
-      int db_idx128_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
-      }
-      int db_idx128_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
-      }
-      */
 };
 
 
@@ -910,7 +873,7 @@ class db_index_api : public context_aware_api {
 class memory_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
-     
+
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
          return (char *)::memcpy(dest, src, length);
       }
@@ -939,14 +902,14 @@ class memory_api : public context_aware_api {
          const uint32_t         num_pages      = Runtime::getMemoryNumPages(default_mem);
          const uint32_t         min_bytes      = (num_pages << NBPPL2) > UINT32_MAX ? UINT32_MAX : num_pages << NBPPL2;
          const uint32_t         prev_num_bytes = sbrk_bytes; //_num_bytes;
-         
+
          // round the absolute value of num_bytes to an alignment boundary
          num_bytes = (num_bytes + 7) & ~7;
 
          if ((num_bytes > 0) && (prev_num_bytes > (MAX_MEM - num_bytes)))  // test if allocating too much memory (overflowed)
             throw eosio::chain::page_memory_error();
          else if ((num_bytes < 0) && (prev_num_bytes < (min_bytes - num_bytes))) // test for underflow
-            throw eosio::chain::page_memory_error(); 
+            throw eosio::chain::page_memory_error();
 
          // update the number of bytes allocated, and compute the number of pages needed
          sbrk_bytes += num_bytes;
@@ -1035,6 +998,17 @@ REGISTER_INTRINSICS(producer_api,
    (get_active_producers,      int(int, int))
 );
 
+#define DB_SECONDARY_INDEX_METHOD_SEQ(IDX) \
+   (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int))\
+   (db_##IDX##_remove,         void(int))\
+   (db_##IDX##_update,         void(int,int64_t,int))\
+   (db_##IDX##_find_primary,   int(int64_t,int64_t,int64_t,int,int64_t))\
+   (db_##IDX##_find_secondary, int(int64_t,int64_t,int64_t,int,int))\
+   (db_##IDX##_lowerbound,     int(int64_t,int64_t,int64_t,int,int))\
+   (db_##IDX##_upperbound,     int(int64_t,int64_t,int64_t,int,int))\
+   (db_##IDX##_next,           int(int, int))\
+   (db_##IDX##_previous,       int(int, int))
+
 REGISTER_INTRINSICS( database_api,
    (db_store_i64,        int(int64_t,int64_t,int64_t,int64_t,int,int))
    (db_update_i64,       void(int,int64_t,int,int))
@@ -1045,26 +1019,10 @@ REGISTER_INTRINSICS( database_api,
    (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t))
    (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
    (db_upperbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
-                             
-   (db_idx64_store,          int(int64_t,int64_t,int64_t,int64_t,int))
-   (db_idx64_remove,         void(int))
-   (db_idx64_update,         void(int,int64_t,int))
-   (db_idx64_find_primary,   int(int64_t,int64_t,int64_t,int,int64_t))
-   (db_idx64_find_secondary, int(int64_t,int64_t,int64_t,int,int))
-   (db_idx64_lowerbound,     int(int64_t,int64_t,int64_t,int,int))
-   (db_idx64_upperbound,     int(int64_t,int64_t,int64_t,int,int))
-   (db_idx64_next,           int(int, int))
-   (db_idx64_previous,       int(int, int))
 
-   (db_idx128_store,          int(int64_t,int64_t,int64_t,int64_t,int))
-   (db_idx128_remove,         void(int))
-   (db_idx128_update,         void(int,int64_t,int))
-   (db_idx128_find_primary,   int(int64_t,int64_t,int64_t,int,int64_t))
-   (db_idx128_find_secondary, int(int64_t,int64_t,int64_t,int,int))
-   (db_idx128_lowerbound,     int(int64_t,int64_t,int64_t,int,int))
-   (db_idx128_upperbound,     int(int64_t,int64_t,int64_t,int,int))
-   (db_idx128_next,           int(int, int))
-   (db_idx128_previous,       int(int, int))
+   DB_SECONDARY_INDEX_METHOD_SEQ(idx64)
+   DB_SECONDARY_INDEX_METHOD_SEQ(idx128)
+   DB_SECONDARY_INDEX_METHOD_SEQ(idx256)
 );
 
 REGISTER_INTRINSICS(crypto_api,
@@ -1108,6 +1066,7 @@ REGISTER_INTRINSICS(console_api,
    (prints_l,              void(int, int)  )
    (printi,                void(int64_t)   )
    (printi128,             void(int)       )
+   (printi256,             void(int)       )
    (printd,                void(int64_t)   )
    (printn,                void(int64_t)   )
    (printhex,              void(int, int)  )

@@ -74,6 +74,13 @@ extern "C" {
    void printi128( const uint128_t* value );
 
    /**
+    * Prints a 256 bit unsigned integer as a hexidecimal string
+    * @brief Prints a 256 bit unsigned integer as a hexidecimal string
+    * @param Value of 256 bit integer to be printed
+    */
+   void printi256( const uint256* value );
+
+   /**
     * Prints value as double
     * @brief Prints value as double
     * @param Value of double (interpreted as 64 bit unsigned integer) to be printed

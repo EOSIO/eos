@@ -118,13 +118,13 @@ void apply_context::require_authorization( const account_name& account )const {
      if( auth.actor == account ) return;
   EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}", ("account",account));
 }
-void apply_context::require_authorization(const account_name& account, 
+void apply_context::require_authorization(const account_name& account,
                                           const permission_name& permission)const {
   for( const auto& auth : act.authorization )
      if( auth.actor == account ) {
         if( auth.permission == permission ) return;
      }
-  EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}/${permission}", 
+  EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}/${permission}",
               ("account",account)("permission",permission) );
 }
 
@@ -162,7 +162,7 @@ void apply_context::require_read_lock(const account_name& account, const scope_n
 
 bool apply_context::has_recipient( account_name code )const {
    for( auto a : _notified )
-      if( a == code ) 
+      if( a == code )
          return true;
    return false;
 }
@@ -365,14 +365,14 @@ void apply_context::db_remove_i64( int iterator ) {
    });
    mutable_db.remove( obj );
 
-   keyval_cache.remove( iterator, obj );
+   keyval_cache.remove( iterator );
 }
 
 int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) {
    const key_value_object& obj = keyval_cache.get( iterator );
    if( buffer_size >= obj.value.size() )
       memcpy( buffer, obj.value.data(), obj.value.size() );
-   
+
    return obj.value.size();
 }
 
@@ -393,14 +393,14 @@ int apply_context::db_next_i64( int iterator, uint64_t& primary ) {
 int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
    const auto& obj = keyval_cache.get(iterator);
    const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
-   
+
    auto itr = idx.iterator_to(obj);
    if (itr == idx.end() || itr == idx.begin()) return -1;
 
    --itr;
 
    if (itr->t_id != obj.t_id) return -1;
-   
+
    primary = itr->primary_key;
    return keyval_cache.add(*itr);
 }

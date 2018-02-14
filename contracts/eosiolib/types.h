@@ -19,10 +19,6 @@ extern "C" {
  *  @{
  */
 
-struct uint256 {
-   uint64_t words[4];
-};
-
 typedef uint64_t account_name;
 typedef uint64_t permission_name;
 typedef uint64_t token_name;
@@ -66,6 +62,10 @@ typedef struct fixed_string32 type_name;
 struct account_permission {
    account_name account;
    permission_name permission;
+};
+
+struct uint256 {
+   uint64_t words[4];
 };
 
 #ifdef __cplusplus
