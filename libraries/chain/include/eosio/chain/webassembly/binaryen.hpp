@@ -37,13 +37,13 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
    void init(Module& wasm, ModuleInstance& instance) override {
       FC_ASSERT(wasm.memory.initial * wasm::Memory::kPageSize <= wasm_constraints::maximum_linear_memory);
       // initialize the linear memory
+      memset(memory.data, 0, wasm.memory.initial * Memory::kPageSize);
       for(size_t i = 0; i < wasm.memory.segments.size(); i++ ) {
          const auto& segment = wasm.memory.segments.at(i);
-         char *base = memory.data + (i * Memory::kPageSize);
+         Address offset = ConstantExpressionRunner<TrivialGlobalManager>(instance.globals).visit(segment.offset).value.geti32();
+         char *base = memory.data + offset;
+         FC_ASSERT(offset + segment.data.size() <= wasm_constraints::maximum_linear_memory);
          memcpy(base, segment.data.data(), segment.data.size());
-         if (segment.data.size() < Memory::kPageSize) {
-            memset(base + segment.data.size(), 0, Memory::kPageSize - segment.data.size());
-         }
       }
 
       table.resize(wasm.table.initial);
@@ -54,6 +54,8 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
             table[offset + i] = segment.data[i];
          }
       }
+
+      sbrk_bytes = wasm.memory.initial * Memory::kPageSize;
    }
 
    Literal callImport(Import *import, LiteralList &args) override
@@ -120,6 +122,11 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
       }
    }
 
+   void growMemory(Address, Address) override
+   {
+      FC_THROW_EXCEPTION(wasm_execution_error, "grow memory is not supported");
+   }
+
    int8_t load8s(Address addr) override { return load_memory<int8_t>(addr); }
    uint8_t load8u(Address addr) override { return load_memory<uint8_t>(addr); }
    int16_t load16s(Address addr) override { return load_memory<int16_t>(addr); }
@@ -168,28 +175,21 @@ struct info {
    info( const entry& binaryen )
    {
       int num_segments = binaryen.module->memory.segments.size();
-      default_sbrk_bytes = num_segments * Memory::kPageSize;
-      mem_images.reserve(num_segments);
-      for(const auto& segment : binaryen.module->memory.segments ) {
-         const char* start = segment.data.data();
-         const char* high_watermark = start + segment.data.size();
-         while (high_watermark > start) {
-            if (*high_watermark) {
-               break;
-            }
-            high_watermark--;
+      default_sbrk_bytes = binaryen.interface->sbrk_bytes;
+      const char* start = binaryen.interface->memory.data;
+      const char* high_watermark = start + (binaryen.module->memory.initial * Memory::kPageSize);
+      while (high_watermark > start) {
+         if (*high_watermark) {
+            break;
          }
-
-         if (high_watermark > start) {
-            mem_images.emplace_back(start, high_watermark);
-         } else {
-            mem_images.emplace_back();
-         }
+         high_watermark--;
       }
+      mem_image.resize(high_watermark - start);
+      memcpy(mem_image.data(), start, high_watermark - start);
    }
 
    // a clean image of the memory used to sanitize things on checkin
-   vector<vector<char>> mem_images;
+   vector<char> mem_image;
    uint32_t default_sbrk_bytes;
 };
 

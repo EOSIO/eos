@@ -46,31 +46,32 @@ int entry::sbrk(int num_bytes) {
 }
 
 void entry::reset(const info& base_info) {
-   for (size_t i = 0; i < base_info.mem_images.size(); i++) {
-      const auto& image = base_info.mem_images.at(i);
-      char *base = interface->memory.data + (i * Memory::kPageSize);
-      memcpy(base, image.data(), image.size());
-   }
-
-   if (interface->sbrk_bytes > base_info.default_sbrk_bytes) {
-      memset(interface->memory.data + base_info.default_sbrk_bytes, 0, interface->sbrk_bytes - base_info.default_sbrk_bytes);
+   const auto& image = base_info.mem_image;
+   char *base = interface->memory.data;
+   memcpy(base, image.data(), image.size());
+   if (interface->sbrk_bytes > image.size()) {
+      memset(interface->memory.data + image.size(), 0, interface->sbrk_bytes - image.size());
    }
    interface->sbrk_bytes = base_info.default_sbrk_bytes;
 }
 
 
 entry entry::build(const char* wasm_binary, size_t wasm_binary_size) {
-   vector<char> code(wasm_binary, wasm_binary + wasm_binary_size);
-   unique_ptr<Module> module;
-   WasmBinaryBuilder builder(*module, code, false);
-   builder.read();
+   try {
+      vector<char> code(wasm_binary, wasm_binary + wasm_binary_size);
+      unique_ptr<Module> module(new Module());
+      WasmBinaryBuilder builder(*module, code, false);
+      builder.read();
 
-   unique_ptr<interpreter_interface> interface;
-   unique_ptr<ModuleInstance> instance(new ModuleInstance(*module.get(), interface.get()));
+      unique_ptr<interpreter_interface> interface(new interpreter_interface());
+      unique_ptr<ModuleInstance> instance(new ModuleInstance(*module.get(), interface.get()));
 
-   //TODO: validate
+      //TODO: validate
 
-   return entry(move(module), move(interface), move(instance));
+      return entry(move(module), move(interface), move(instance));
+   } catch (const ParseException &e) {
+      FC_THROW_EXCEPTION(wasm_execution_error, "Error building interpreter: ${s}", ("s", e.text));
+   }
 };
 
 entry::entry(unique_ptr<Module>&& module, unique_ptr<interpreter_interface>&& interface, unique_ptr<ModuleInstance>&& instance)

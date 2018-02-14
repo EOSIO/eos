@@ -1,6 +1,7 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/asset.hpp>
+#include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/contracts/eos_contract.hpp>
 #include <eosio/chain/contracts/contract_table_objects.hpp>
@@ -239,48 +240,7 @@ namespace eosio { namespace testing {
    } FC_CAPTURE_AND_RETHROW( (account)(perm)(auth)(parent) ) }
 
    void tester::set_code( account_name account, const char* wast ) try {
-      const auto assemble = [](const char* wast) -> vector<unsigned char> {
-         using namespace IR;
-         using namespace WAST;
-         using namespace WASM;
-         using namespace Serialization;
-
-         Module module;
-         vector<Error> parse_errors;
-         parseModule(wast, fc::const_strlen(wast), module, parse_errors);
-         if (!parse_errors.empty()) {
-            fc::exception parse_exception(
-               FC_LOG_MESSAGE(warn, "Failed to parse WAST"),
-               fc::std_exception_code,
-               "wast_parse_error",
-               "Failed to parse WAST"
-            );
-
-            for (const auto& err: parse_errors) {
-               parse_exception.append_log( FC_LOG_MESSAGE(error, ":${desc}: ${message}", ("desc", err.locus.describe())("message", err.message.c_str()) ) );
-               parse_exception.append_log( FC_LOG_MESSAGE(error, string(err.locus.column(8), ' ') + "^" ));
-            }
-
-            throw parse_exception;
-         }
-
-         try {
-            // Serialize the WebAssembly module.
-            ArrayOutputStream stream;
-            serialize(stream,module);
-            return stream.getBytes();
-         } catch(const FatalSerializationException& ex) {
-            fc::exception serialize_exception (
-               FC_LOG_MESSAGE(warn, "Failed to serialize wasm: ${message}", ("message", ex.message)),
-               fc::std_exception_code,
-               "wasm_serialization_error",
-               "Failed to serialize WASM"
-            );
-            throw serialize_exception;
-         }
-      };
-
-      auto wasm = assemble(wast);
+      auto wasm = wast_to_wasm(wast);
 
       signed_transaction trx;
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
