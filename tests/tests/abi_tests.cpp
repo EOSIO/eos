@@ -119,12 +119,6 @@ const char* my_abi = R"=====(
          "name": "typename_arr",
          "type": "type_name[]"
       },{
-         "name": "bytes",
-         "type": "bytes"
-      },{
-         "name": "bytes_arr",
-         "type": "bytes[]"
-      },{
          "name": "uint8",
          "type": "uint8"
       },{
@@ -415,9 +409,8 @@ BOOST_AUTO_TEST_CASE(generator)
 
    const char* all_types = R"=====(
     #include <eosiolib/types.hpp>
-    #include <eosiolib/string.hpp>
     #include <eosiolib/asset.hpp>
-    #include <eosiolib/vector.hpp>
+    #include <string>
 
     typedef int field;
     typedef int struct_def;
@@ -438,7 +431,7 @@ BOOST_AUTO_TEST_CASE(generator)
 
    //@abi action
    struct test_struct {
-      eosio::string           field1;
+      std::string             field1;
       time                    field2;
       signature               field3;
       checksum                field4;
@@ -446,39 +439,38 @@ BOOST_AUTO_TEST_CASE(generator)
       fixed_string32          field6;
       fixed_string16          field7;
       type_name               field8;
-      eosio::bytes            field9;
-      uint8_t                 field10;
-      uint16_t                field11;
-      uint32_t                field12;
-      uint64_t                field13;
-      uint128_t               field14;
-      uint256                 field15;
-      int8_t                  field16;
-      int16_t                 field17;
-      int32_t                 field18;
-      int64_t                 field19;
-      eosio::name             field20;
-      field                   field21;
-      struct_def              field22;
-      fields                  field23;
-      account_name            field24;
-      permission_name         field25;
-      action_name             field26;
-      scope_name              field27;
-      permission_level        field28;
-      action                  field29;
-      permission_level_weight field30;
-      transaction             field31;
-      signed_transaction      field32;
-      key_weight              field33;
-      authority               field34;
-      chain_config            field35;
-      type_def                field36;
-      action_def              field37;
-      table_def               field38;
-      abi_def                 field39;
-      public_key              field40;
-      eosio::asset            field41;
+      uint8_t                 field9;
+      uint16_t                field10;
+      uint32_t                field11;
+      uint64_t                field12;
+      uint128_t               field13;
+      uint256                 field14;
+      int8_t                  field15;
+      int16_t                 field16;
+      int32_t                 field17;
+      int64_t                 field18;
+      eosio::name             field19;
+      field                   field20;
+      struct_def              field21;
+      fields                  field22;
+      account_name            field23;
+      permission_name         field24;
+      action_name             field25;
+      scope_name              field26;
+      permission_level        field27;
+      action                  field28;
+      permission_level_weight field29;
+      transaction             field30;
+      signed_transaction      field31;
+      key_weight              field32;
+      authority               field33;
+      chain_config            field34;
+      type_def                field35;
+      action_def              field36;
+      table_def               field37;
+      abi_def                 field38;
+      public_key              field39;
+      eosio::asset            field40;
    };
    )=====";
 
@@ -514,102 +506,99 @@ BOOST_AUTO_TEST_CASE(generator)
              "type": "type_name"
           },{
              "name": "field9",
-             "type": "bytes"
-          },{
-             "name": "field10",
              "type": "uint8"
           },{
-             "name": "field11",
+             "name": "field10",
              "type": "uint16"
           },{
-             "name": "field12",
+             "name": "field11",
              "type": "uint32"
           },{
-             "name": "field13",
+             "name": "field12",
              "type": "uint64"
           },{
-             "name": "field14",
+             "name": "field13",
              "type": "uint128"
           },{
-             "name": "field15",
+             "name": "field14",
              "type": "uint256"
           },{
-             "name": "field16",
+             "name": "field15",
              "type": "int8"
           },{
-             "name": "field17",
+             "name": "field16",
              "type": "int16"
           },{
-             "name": "field18",
+             "name": "field17",
              "type": "int32"
           },{
-             "name": "field19",
+             "name": "field18",
              "type": "int64"
           },{
-             "name": "field20",
+             "name": "field19",
              "type": "name"
           },{
-             "name": "field21",
+             "name": "field20",
              "type": "field"
           },{
-             "name": "field22",
+             "name": "field21",
              "type": "struct_def"
           },{
-             "name": "field23",
+             "name": "field22",
              "type": "fields"
           },{
-             "name": "field24",
+             "name": "field23",
              "type": "account_name"
           },{
-             "name": "field25",
+             "name": "field24",
              "type": "permission_name"
           },{
-             "name": "field26",
+             "name": "field25",
              "type": "action_name"
           },{
-             "name": "field27",
+             "name": "field26",
              "type": "scope_name"
           },{
-             "name": "field28",
+             "name": "field27",
              "type": "permission_level"
           },{
-             "name": "field29",
+             "name": "field28",
              "type": "action"
           },{
-             "name": "field30",
+             "name": "field29",
              "type": "permission_level_weight"
           },{
-             "name": "field31",
+             "name": "field30",
              "type": "transaction"
           },{
-             "name": "field32",
+             "name": "field31",
              "type": "signed_transaction"
           },{
-             "name": "field33",
+             "name": "field32",
              "type": "key_weight"
           },{
-             "name": "field34",
+             "name": "field33",
              "type": "authority"
           },{
-             "name": "field35",
+             "name": "field34",
              "type": "chain_config"
           },{
-             "name": "field36",
+             "name": "field35",
              "type": "type_def"
           },{
-             "name": "field37",
+             "name": "field36",
              "type": "action_def"
           },{
-             "name": "field38",
+             "name": "field37",
              "type": "table_def"
           },{
-             "name": "field39",
+             "name": "field38",
              "type": "abi_def"
           },{
-             "name": "field40",
+             "name": "field39",
              "type": "public_key"
           },{
-             "name": "field41",
+             "name": "field40",
              "type": "asset"
           }]
            }],
@@ -697,7 +686,7 @@ BOOST_AUTO_TEST_CASE(generator)
 
    const char* all_indexes = R"=====(
    #include <eosiolib/types.hpp>
-   #include <eosiolib/string.hpp>
+   #include <string>
 
    using namespace eosio;
 
@@ -726,7 +715,7 @@ BOOST_AUTO_TEST_CASE(generator)
 
    //@abi table
    struct table4 {
-      eosio::string key;
+      std::string key;
       my_complex_value value;
    };
 
@@ -972,12 +961,12 @@ BOOST_AUTO_TEST_CASE(generator)
 
    const char* str_table_decl = R"=====(
    #include <eosiolib/types.hpp>
-   #include <eosiolib/string.hpp>
+   #include <string>
 
    //@abi table
    class table1 {
    public:
-      eosio::string name;
+      std::string name;
       uint32_t age;
    };
 
@@ -1547,7 +1536,7 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
 BOOST_AUTO_TEST_CASE(linkauth)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1579,7 +1568,7 @@ BOOST_AUTO_TEST_CASE(linkauth)
 BOOST_AUTO_TEST_CASE(unlinkauth)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1608,7 +1597,7 @@ BOOST_AUTO_TEST_CASE(unlinkauth)
 BOOST_AUTO_TEST_CASE(updateauth)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1675,7 +1664,7 @@ BOOST_AUTO_TEST_CASE(updateauth)
 BOOST_AUTO_TEST_CASE(deleteauth)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1701,7 +1690,7 @@ BOOST_AUTO_TEST_CASE(deleteauth)
 BOOST_AUTO_TEST_CASE(newaccount)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    BOOST_CHECK(true);
    const char* test_data = R"=====(
@@ -1845,7 +1834,7 @@ BOOST_AUTO_TEST_CASE(newaccount)
 BOOST_AUTO_TEST_CASE(setcode)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    const char* test_data = R"=====(
    {
@@ -1876,7 +1865,7 @@ BOOST_AUTO_TEST_CASE(setcode)
 BOOST_AUTO_TEST_CASE(setabi)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    const char* test_data = R"=====(
    {
@@ -2039,7 +2028,7 @@ BOOST_AUTO_TEST_CASE(setabi)
 BOOST_AUTO_TEST_CASE(postrecovery)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    const char* test_data = R"=====(
    {
@@ -2089,7 +2078,7 @@ BOOST_AUTO_TEST_CASE(postrecovery)
 BOOST_AUTO_TEST_CASE(passrecovery)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    const char* test_data = R"=====(
    {
@@ -2111,7 +2100,7 @@ BOOST_AUTO_TEST_CASE(passrecovery)
 BOOST_AUTO_TEST_CASE(vetorecovery)
 { try {
 
-   abi_serializer abis(chain_initializer::eos_contract_abi());
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi_def()));
 
    const char* test_data = R"=====(
    {

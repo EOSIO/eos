@@ -17,6 +17,7 @@
 //#include "test_real.cpp"
 //#include "test_transaction.cpp"
 //#include "test_types.cpp"
+#include "test_db.cpp"
 
 extern "C" {
 
@@ -91,7 +92,14 @@ extern "C" {
 //      WASM_TEST_HANDLER(test_db, key_i64i64i64_under_limit);
 //      WASM_TEST_HANDLER(test_db, key_i64i64i64_available_space_exceed_limit);
 //      WASM_TEST_HANDLER(test_db, key_i64i64i64_another_under_limit);
-//
+
+      WASM_TEST_HANDLER(test_db, primary_i64_general);
+      WASM_TEST_HANDLER(test_db, primary_i64_lowerbound);
+      WASM_TEST_HANDLER(test_db, primary_i64_upperbound);
+      WASM_TEST_HANDLER(test_db, idx64_general);
+      WASM_TEST_HANDLER(test_db, idx64_lowerbound);
+      WASM_TEST_HANDLER(test_db, idx64_upperbound);
+
 //      //test crypto
 //      WASM_TEST_HANDLER(test_crypto, test_sha256);
 //      WASM_TEST_HANDLER(test_crypto, sha256_no_data);

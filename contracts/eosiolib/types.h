@@ -64,9 +64,9 @@ struct account_permission {
    permission_name permission;
 };
 
-struct uint256 {
+typedef struct uint256 {
    uint64_t words[4];
-};
+} uint256;
 
 #ifdef __cplusplus
 } /// extern "C"

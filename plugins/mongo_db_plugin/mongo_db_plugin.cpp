@@ -73,7 +73,6 @@ public:
 
    void consum_blocks();
 
-   bool is_scope_relevant(const vector<account_name>& scope);
    void update_account(const chain::action& msg);
 
    static const account_name newaccount;
@@ -89,8 +88,6 @@ public:
    static const std::string actions_col;
    static const std::string accounts_col;
 };
-
-abi_def mongo_db_plugin_impl::eos_abi;
 
 const account_name mongo_db_plugin_impl::newaccount = "newaccount";
 const account_name mongo_db_plugin_impl::transfer = "transfer";
@@ -181,14 +178,13 @@ namespace {
   {
      using bsoncxx::builder::basic::kvp;
      try {
+        auto from_account = find_account(accounts, msg.account);
+        auto abi = fc::json::from_string(bsoncxx::to_json(from_account.view()["abi"].get_document())).as<abi_def>();
         abi_serializer abis;
         if (msg.account == chain::config::system_account_name) {
-           abis.set_abi(mongo_db_plugin_impl::eos_abi);
-        } else {
-           auto from_account = find_account(accounts, msg.account);
-           auto abi = fc::json::from_string(bsoncxx::to_json(from_account.view()["abi"].get_document())).as<abi_def>();
-           abis.set_abi(abi);
+           abi = chain::contracts::chain_initializer::eos_contract_abi(abi);
         }
+        abis.set_abi(abi);
         auto v = abis.binary_to_variant(abis.get_action_type(msg.name), msg.data);
         auto json = fc::json::to_string(v);
         try {
@@ -264,15 +260,10 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
    auto block_num = block.block_num();
 
    if (processed == 0) {
-      if (startup) {
+      if (wipe_database_on_startup) {
          // verify on start we have no previous blocks
          verify_no_blocks(blocks);
          FC_ASSERT(block_num < 2, "Expected start of block, instead received block_num: ${bn}", ("bn", block_num));
-         // Currently we are creating a 'fake' block in chain_controller::initialize_chain() since initial accounts
-         // and producers are not written to the block log. If this is the fake block, indicate it as block_num 0.
-         if (block_num == 1 && block.producer == chain::config::system_account_name) {
-            block_num = 0;
-         }
       } else {
          // verify on restart we have previous block
          verify_last_block(blocks, prev_block_id_str);
@@ -403,17 +394,22 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
    if (msg.name == transfer) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-      /* todo need to follow eosio.system transfer
-      auto transfer = msg.as<chain::contracts::transfer>();
-      auto from_name = transfer.from.to_string();
-      auto to_name = transfer.to.to_string();
-      auto from_account = find_account(accounts, transfer.from);
-      auto to_account = find_account(accounts, transfer.to);
+
+      abi_serializer abis;
+      auto eosio_account = find_account(accounts, msg.account);
+      auto abi = fc::json::from_string(bsoncxx::to_json(eosio_account.view()["abi"].get_document())).as<abi_def>();
+      abis.set_abi(abi);
+      auto transfer = abis.binary_to_variant(abis.get_action_type(msg.name), msg.data);
+      auto from_name = transfer["from"].as<name>().to_string();
+      auto to_name = transfer["to"].as<name>().to_string();
+      auto from_account = find_account(accounts, from_name);
+      auto to_account = find_account(accounts, to_name);
 
       asset from_balance = asset::from_string(from_account.view()["eos_balance"].get_utf8().value.to_string());
       asset to_balance = asset::from_string(to_account.view()["eos_balance"].get_utf8().value.to_string());
-      from_balance -= asset(chain::share_type(transfer.amount));
-      to_balance += asset(chain::share_type(transfer.amount));
+      auto asset_quantity = transfer["quantity"].as<asset>();
+      from_balance -= asset_quantity;
+      to_balance += asset_quantity;
 
       document update_from{};
       update_from << "$set" << open_document << "eos_balance" << from_balance.to_string()
@@ -426,7 +422,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
 
       accounts.update_one(document{} << "_id" << from_account.view()["_id"].get_oid() << finalize, update_from.view());
       accounts.update_one(document{} << "_id" << to_account.view()["_id"].get_oid() << finalize, update_to.view());
-*/
+
    } else if (msg.name == newaccount) {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
@@ -496,8 +492,6 @@ void mongo_db_plugin_impl::init() {
    // Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    // See native_contract_chain_initializer::prepare_database()
 
-   eos_abi = chain::contracts::chain_initializer::eos_contract_abi();
-
    accounts = mongo_conn[db_name][accounts_col]; // Accounts
    bsoncxx::builder::stream::document doc{};
    if (accounts.count(doc.view()) == 0) {
@@ -507,7 +501,6 @@ void mongo_db_plugin_impl::init() {
           << "eos_balance" << asset(chain::config::initial_token_supply).to_string()
           << "staked_balance" << asset().to_string()
           << "unstaking_balance" << asset().to_string()
-          << "abi" << bsoncxx::from_json(fc::json::to_string(eos_abi))
           << "createdAt" << b_date{now}
           << "updatedAt" << b_date{now};
 

@@ -489,7 +489,9 @@ void* malloc(size_t size)
 
 void* calloc(size_t count, size_t size)
 {
-   return eosio::memory_heap.malloc(count*size);
+   void* ptr = eosio::memory_heap.malloc(count*size);
+   memset(ptr, 0, count*size);
+   return ptr;
 }
 
 void* realloc(void* ptr, size_t size)

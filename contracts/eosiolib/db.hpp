@@ -366,7 +366,7 @@ struct table {
 
     /**
     *  @brief Fetches a record from the table.
-    *  @details Fetches a record from the table. 
+    *  @details Fetches a record from the table.
     *  @param p - reference to primary key to retrieve
     *  @param r - reference to a record to load the value to.
     *  @param s - account scope. default is current scope of the class
@@ -381,7 +381,7 @@ struct table {
 
      /**
      *  @brief Store a record in the table.
-     *  @details Store a record in the table. 
+     *  @details Store a record in the table.
      *  @param r - reference to a record to store.
      *  @param s - account scope. default is current scope of the class
      *
@@ -394,7 +394,7 @@ struct table {
 
     /**
     *  @brief Update a record in the table.
-    *  @details Update a record in the table. 
+    *  @details Update a record in the table.
     *  @param r - reference to a record to update.
     *  @param s - account scope. default is current scope of the class
     *
@@ -407,7 +407,7 @@ struct table {
 
     /**
     *  @brief Remove a record from the table.
-    *  @details Remove a record from the table. 
+    *  @details Remove a record from the table.
     *  @param r - reference to a record to remove.
     *  @param s - account scope. default is current scope of the class
     *
@@ -421,7 +421,7 @@ struct table {
 
 template<>
 struct table_impl<sizeof(uint64_t),0> {
- 
+
     static int32_t front_primary( uint64_t code, uint64_t scope, uint64_t table_n, void* data, uint32_t len ) {
        return front_i64( code, scope, table_n, data, len );
     }
@@ -533,108 +533,117 @@ struct table_impl<sizeof(uint64_t),0> {
   */
 template<uint64_t code, uint64_t scope, uint64_t table_n, uint64_t bta, typename Record, typename PrimaryType>
 struct table<code,scope,table_n,bta,Record,PrimaryType,void> {
-   private:
-   typedef table_impl<sizeof( PrimaryType ),0> impl;
-   static_assert( sizeof(PrimaryType) <= sizeof(Record), "invalid template parameters" );
+    private:
+    typedef table_impl<sizeof( PrimaryType ),0> impl;
+    static_assert( sizeof(PrimaryType) <= sizeof(Record), "invalid template parameters" );
 
-   public:
-   typedef PrimaryType primary;
+    public:
+    typedef PrimaryType primary;
     /**
      * @brief Primary Index of the Table
      */
-   struct primary_index {
-       /**
-       *  @param r - reference to a record to store the front.
-       *
-       *  @return true if successfully retrieved the front of the table.
-       */
-      static bool front( Record& r ) {
-         return impl::front_primary( code, scope, table_n, &r, sizeof(Record) ) == sizeof(Record);
-      }
+    struct primary_index {
+        /**
+         * @param r - reference to a record to store the front.
+         * @param s - scope; defaults to scope of the class.
+         *
+         *  @return true if successfully retrieved the front of the table.
+         */
+        static bool front( Record& r, uint64_t s = scope ) {
+            return impl::front_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
+        }
 
-       /**
-       *  @param r - reference to a record to store the back.
-       *
-       *  @return true if successfully retrieved the back of the table.
-       */
-      static bool back( Record& r ) {
-         return impl::back_primary( code, scope, table_n, &r, sizeof(Record) ) == sizeof(Record);
-      }
+        /**
+         * @param r - reference to a record to store the back.
+         * @param s - scope; defaults to scope of the class.
+         *
+         * @return true if successfully retrieved the back of the table.
+         */
+        static bool back( Record& r, uint64_t s = scope ) {
+            return impl::back_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
+        }
 
-       /**
-       *  @param r - reference to store the next record. Must be initialized with a key.
-       *
-       *  @return true if successfully retrieved the next record.
-       */
-      static bool next( Record& r ) {
-         return impl::next_primary( code, scope, table_n, &r, sizeof(Record) ) == sizeof(Record);
-      }
+        /**
+         * @param r - reference to store the next record. Must be initialized with a key.
+         * @param s - scope; defaults to scope of the class.
+         *
+         * @return true if successfully retrieved the next record.
+         */
+        static bool next( Record& r, uint64_t s = scope ) {
+            return impl::next_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
+        }
 
-       /**
-       *  @param r - reference to store previous record. Must be initialized with a key.
-       *
-       *  @return true if successfully retrieved the previous record.
-       */
-      static bool previous( Record& r ) {
-         return impl::previous_primary( code, scope, table_n, &r, sizeof(Record) ) == sizeof(Record);
-      }
+        /**
+         * @param r - reference to store previous record. Must be initialized with a key.
+         * @param s - scope; defaults to scope of the class.
+         *
+         * @return true if successfully retrieved the previous record.
+         */
+        static bool previous( Record& r, uint64_t s = scope ) {
+            return impl::previous_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
+        }
 
-       /**
-       *  @param p - reference to the primary key to retrieve the record.
-       *  @param r - reference to hold the result of the query.
-        * @param s - scope; defaults to scope of the class.
-       *  @return true if successfully retrieved the record.
-       */
-      static bool get( const PrimaryType& p, Record& r, uint64_t s = scope ) {
-         *reinterpret_cast<PrimaryType*>(&r) = p;
-         return impl::load_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
-      }
+        /**
+         * @param p - reference to the primary key to retrieve the record.
+         * @param r - reference to hold the result of the query.
+         * @param s - scope; defaults to scope of the class.
+         * @return true if successfully retrieved the record.
+         */
+        static bool get( const PrimaryType& p, Record& r, uint64_t s = scope ) {
+            *reinterpret_cast<PrimaryType*>(&r) = p;
+            return impl::load_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
+        }
 
-       /**
-       *  @param p - reference to the primary key to retrieve the lower bound.
-       *  @param r - reference to hold the result of the query.
-       *  @return true if successfully retrieved the record.
-       */
-      static bool lower_bound( const PrimaryType& p, Record& r ) {
-         *reinterpret_cast<PrimaryType*>(&r) = p;
-         return impl::lower_bound_primary( code, scope, table_n, &r, sizeof(Record) ) == sizeof(Record);
-      }
+        /**
+         * @param p - reference to the primary key to retrieve the lower bound.
+         * @param r - reference to hold the result of the query.
+         * @param s - scope; defaults to scope of the class.
+         * @return true if successfully retrieved the record.
+         */
+        static bool lower_bound( const PrimaryType& p, Record& r, uint64_t s = scope ) {
+            *reinterpret_cast<PrimaryType*>(&r) = p;
+            return impl::lower_bound_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
+        }
 
-       /**
-       *  @param p - reference to the primary key to retrieve the upper bound.
-       *  @param r - reference to hold the result of the query.
-       *  @return true if successfully retrieved the record.
-       */
-       static bool upper_bound( const PrimaryType& p, Record& r ) {
-         *reinterpret_cast<PrimaryType*>(&r) = p;
-         return impl::upper_bound_primary( code, scope, table_n, &r, sizeof(Record) ) == sizeof(Record);
-      }
+        /**
+         * @param p - reference to the primary key to retrieve the upper bound.
+         * @param r - reference to hold the result of the query.
+         * @param s - scope; defaults to scope of the class.
+         * @return true if successfully retrieved the record.
+         */
+        static bool upper_bound( const PrimaryType& p, Record& r, uint64_t s = scope ) {
+            *reinterpret_cast<PrimaryType*>(&r) = p;
+            return impl::upper_bound_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
+        }
 
-       /**
-       *  @param r - reference to record to be removed.
-       *  @return true if successfully removed.
-       */
-       static bool remove( const Record& r ) {
-         return impl::remove( scope, table_n, &r ) != 0;
-      }
-   };
+        /**
+         * @param r - reference to record to be removed.
+         * @param s - scope; defaults to scope of the class.
+         * @return true if successfully removed.
+         */
+        static bool remove( const Record& r, uint64_t s = scope ) {
+            return impl::remove( s, table_n, &r ) != 0;
+        }
+    };
 
 
     /**
-    * @brief Fetches the front of the table
-    * @details Fetches the front of the table
-    * @param  r - reference to hold the value
-    * @return true if successfully retrieved the front
-    */
-    static bool front( Record& r ) { return primary_index::front(r); }
+     * @brief Fetches the front of the table
+     * @details Fetches the front of the table
+     * @param r - reference to hold the value
+     * @param s - scope; defaults to scope of the class.
+     * @return true if successfully retrieved the front
+     */
+    static bool front( Record& r, uint64_t s = scope ) { return primary_index::front(r, s); }
 
     /**
-    * @brief Fetches the back of the table
-    * @details Fetches the back of the table
-    * @param  r - reference to hold the value
-    * @return true if successfully retrieved the back
-    */
-    static bool back( Record& r )  { return primary_index::back(r);  }
+     * @brief Fetches the back of the table
+     * @details Fetches the back of the table
+     * @param r - reference to hold the value
+     * @param s - scope; defaults to scope of the class.
+     * @return true if successfully retrieved the back
+     */
+    static bool back( Record& r, uint64_t s = scope )  { return primary_index::back(r, s);  }
 
     /**
      * @brief Retrieves the record for the specified primary key
@@ -644,21 +653,21 @@ struct table<code,scope,table_n,bta,Record,PrimaryType,void> {
      * @param s - scope; defaults to scope of the class.
      * @return true if get succeeds.
      */
-   static bool get( const PrimaryType& p, Record& r, uint64_t s = scope ) {
-      *reinterpret_cast<PrimaryType*>(&r) = p;
-      return impl::load_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
-   }
+    static bool get( const PrimaryType& p, Record& r, uint64_t s = scope ) {
+        *reinterpret_cast<PrimaryType*>(&r) = p;
+        return impl::load_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
+    }
 
-   /**
-    * @brief Retrieves a record based on initialized primary key value
-    * @details Retrieves a record based on initialized primary key value
-    * @param r - reference of a record to hold return value; must be initialized to the primary key to be fetched.
-    * @param s - scope; defaults to scope of the class.
-    * @return true if get succeeds.
-    */
-   static bool get( Record& r, uint64_t s = scope ) {
-      return impl::load_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
-   }
+    /**
+     * @brief Retrieves a record based on initialized primary key value
+     * @details Retrieves a record based on initialized primary key value
+     * @param r - reference of a record to hold return value; must be initialized to the primary key to be fetched.
+     * @param s - scope; defaults to scope of the class.
+     * @return true if get succeeds.
+     */
+    static bool get( Record& r, uint64_t s = scope ) {
+        return impl::load_primary( code, s, table_n, &r, sizeof(Record) ) == sizeof(Record);
+    }
 
     /**
      * @brief Store a record to the table
@@ -667,9 +676,9 @@ struct table<code,scope,table_n,bta,Record,PrimaryType,void> {
      * @param s - scope; defaults to scope of the class.
      * @return true if store succeeds.
      */
-   static bool store( const Record& r, uint64_t s = scope, uint64_t b = bta ) {
-      return impl::store( s, table_n, b, &r, sizeof(r) ) != 0;
-   }
+    static bool store( const Record& r, uint64_t s = scope, uint64_t b = bta ) {
+        return impl::store( s, table_n, b, &r, sizeof(r) ) != 0;
+    }
 
     /**
      * @brief Update a record in the table.
@@ -678,9 +687,9 @@ struct table<code,scope,table_n,bta,Record,PrimaryType,void> {
      * @param s - scope; defaults to scope of the class.
      * @return true if update succeeds.
      */
-   static bool update( const Record& r, uint64_t s = scope, uint64_t b = bta ) {
-      return impl::update( s, table_n, b, &r, sizeof(r) ) != 0;
-   }
+    static bool update( const Record& r, uint64_t s = scope, uint64_t b = bta ) {
+        return impl::update( s, table_n, b, &r, sizeof(r) ) != 0;
+    }
 
     /**
      * @brief Remove a record from the table.
@@ -689,14 +698,15 @@ struct table<code,scope,table_n,bta,Record,PrimaryType,void> {
      * @param s - scope; defaults to scope of the class.
      * @return true if remove succeeds.
      */
-   static bool remove( const Record& r, uint64_t s = scope ) {
-      return impl::remove( s, table_n, &r ) != 0;
-   }
+    static bool remove( const Record& r, uint64_t s = scope ) {
+        return impl::remove( s, table_n, &r ) != 0;
+    }
 }; /// @} singleindextable
+
 
 template<>
 struct table_impl_obj<char*> {
-    
+
     static int32_t store( account_name scope, table_name table_n, account_name bta, char* key, uint32_t keylen, char* data, uint32_t datalen ) {
        return store_str( scope, table_n, bta, key, keylen, data, datalen );
     }
@@ -784,7 +794,7 @@ struct var_table {
     int32_t update( primary key, uint32_t keylen, char* record, uint32_t len ) {
        return impl::update( scope, table_n, bta, key, keylen, record, len );
     }
-    
+
     /**
      * @brief Fetches the front of the table
      * @details Fetches the front of the table
@@ -822,7 +832,7 @@ struct var_table {
      */
     int32_t load( primary key, uint32_t keylen, char* record, uint32_t len ) {
        return impl::load( code, scope, table_n, key, keylen, record, len );
-    } 
+    }
 
     /**
      * @brief Fetches a record which key is next of the given key
@@ -836,7 +846,7 @@ struct var_table {
     int32_t next( primary key, uint32_t keylen, char* record, uint32_t len ) {
        return impl::next( code, scope, table_n, key, keylen, record, len );
     }
-    
+
     /**
      * @brief Fetches a record which key is previous of the given key
      * @details Fetches a record which key is previous of the given key

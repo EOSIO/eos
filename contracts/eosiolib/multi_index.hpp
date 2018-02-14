@@ -11,33 +11,7 @@
 #include <eosiolib/types.hpp>
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/datastream.hpp>
-
-#define FORWARD_DECLARE_SECONDARY_ITERATOR(IDX, TYPE)\
-   int db_##IDX##_next( int iterator, uint64_t* primary );\
-   int db_##IDX##_prev( int iterator, uint64_t* primary );\
-   int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, TYPE* secondary, uint64_t primary );\
-   int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, TYPE* secondary, uint64_t* primary );\
-   int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table, TYPE* secondary, uint64_t* primary );\
-   int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table, TYPE* secondary, uint64_t* primary );\
-   void db_##IDX##_remove( int iterator );\
-   void db_##IDX##_update( int iterator, uint64_t payer, const TYPE* secondary );\
-   int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE* secondary );
-
-extern "C" {
-   int db_store_i64( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, char* buffer, size_t buffer_size );
-   void db_update_i64( int iterator, uint64_t payer, char* buffer, size_t buffer_size );
-   int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
-   int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
-   int db_get_i64( int iterator, char* buffer, size_t buffer_size );
-   void db_remove_i64( int iterator );
-   int db_next_i64( int iterator, uint64_t* pk );
-   int db_previous_i64( int iterator, uint64_t* pk );
-
-   FORWARD_DECLARE_SECONDARY_ITERATOR(idx64, uint64_t)
-   FORWARD_DECLARE_SECONDARY_ITERATOR(idx128, uint128_t)
-   FORWARD_DECLARE_SECONDARY_ITERATOR(idx256, uint256)
-}
-
+#include <eosiolib/db.h>
 
 namespace eosio {
 
@@ -51,7 +25,7 @@ struct secondary_iterator;
 template<>\
 struct secondary_iterator<TYPE> {\
    static int db_idx_next( int iterator, uint64_t* primary ) { return db_##IDX##_next( iterator, primary ); }\
-   static int db_idx_prev( int iterator, uint64_t* primary ) { return db_##IDX##_prev( iterator, primary ); }\
+   static int db_idx_prev( int iterator, uint64_t* primary ) { return db_##IDX##_previous( iterator, primary ); }\
    static void db_idx_remove( int iterator  )                { db_##IDX##_remove( iterator ); }\
 };\
 int db_idx_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\

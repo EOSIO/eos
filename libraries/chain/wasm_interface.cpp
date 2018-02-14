@@ -711,11 +711,11 @@ class console_api : public context_aware_api {
       void db_##IDX##_remove( int iterator ) {\
          return context.IDX.remove( iterator );\
       }\
-      int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
+      int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
          return context.IDX.find_secondary(code, scope, table, secondary, primary);\
       }\
       int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t primary ) {\
-         return context.IDX.find_secondary(code, scope, table, secondary, primary);\
+         return context.IDX.find_primary(code, scope, table, secondary, primary);\
       }\
       int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
          return context.IDX.lowerbound_secondary(code, scope, table, secondary, primary);\
@@ -759,7 +759,7 @@ class database_api : public context_aware_api {
          return context.db_lowerbound_i64( code, scope, table, id );
       }
       int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-         return context.db_lowerbound_i64( code, scope, table, id );
+         return context.db_upperbound_i64( code, scope, table, id );
       }
 
       DB_API_METHOD_WRAPPERS(idx64,  uint64_t)
