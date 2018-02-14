@@ -125,13 +125,12 @@ namespace eosio { namespace chain {
        * the instance handed out to other threads
        */
       struct code_info {
-         code_info( size_t mem_end, vector<char>&& mem_image )
-         :mem_end(mem_end),mem_image(std::forward<vector<char>>(mem_image))
+         code_info( vector<char>&& mem_image )
+         :mem_image(std::forward<vector<char>>(mem_image))
          {}
 
          // a clean image of the memory used to sanitize things on checkin
          size_t mem_start           = 0;
-         size_t mem_end             = 1<<16;
          vector<char> mem_image;
 
          // all existing instances of this code
@@ -215,7 +214,6 @@ namespace eosio { namespace chain {
                // time to compile a brand new (maybe first) copy of this code
                Module* module = new Module();
                ModuleInstance* instance = nullptr;
-               size_t mem_end = 0;
                vector<char> mem_image;
 
                try {
@@ -228,19 +226,22 @@ namespace eosio { namespace chain {
                   instance = instantiateModule(*module, std::move(link_result.resolvedImports));
                   FC_ASSERT(instance != nullptr);
 
-                  MemoryInstance* current_memory = Runtime::getDefaultMemory(instance);
-
-                  if(current_memory) {
-                     char *mem_ptr = &memoryRef<char>(current_memory, 0);
-                     const auto allocated_memory = Runtime::getDefaultMemorySize(instance);
-                     for (uint64_t i = 0; i < allocated_memory; ++i) {
-                        if (mem_ptr[i])
-                           mem_end = i + 1;
-                     }
-                     mem_image.resize(mem_end);
-                     memcpy(mem_image.data(), mem_ptr, mem_end);
+                  //populate the module's data segments in to a vector so the initial state can be
+                  // restored on each invocation
+                  //Be Warned, this may need to be revisited when module imports make sense. The
+                  // code won't handle data segments that initalize an imported memory which I think
+                  // is valid.
+                  for(const DataSegment& data_segment : module->dataSegments) {
+                     FC_ASSERT(data_segment.baseOffset.type == InitializerExpression::Type::i32_const);
+                     FC_ASSERT(module->memories.defs.size());
+                     const U32  base_offset = data_segment.baseOffset.i32;
+                     const Uptr memory_size = (module->memories.defs[0].type.size.min << IR::numBytesPerPageLog2);
+                     if(base_offset >= memory_size || base_offset + data_segment.data.size() > memory_size)
+                        FC_THROW_EXCEPTION(wasm_execution_error, "WASM data segment outside of valid memory range");
+                     if(base_offset + data_segment.data.size() > mem_image.size())
+                        mem_image.resize(base_offset + data_segment.data.size(), 0x00);
+                     memcpy(mem_image.data() + base_offset, data_segment.data.data(), data_segment.data.size());
                   }
-                  
                } catch (...) {
                   pending_error = std::current_exception();
                }
@@ -249,7 +250,7 @@ namespace eosio { namespace chain {
                   // grab the lock and put this in the cache as unavailble
                   with_lock(_cache_lock, [&,this]() {
                      // find or create a new entry
-                     auto iter = _cache.emplace(code_id, code_info(mem_end, std::move(mem_image))).first;
+                     auto iter = _cache.emplace(code_id, code_info(std::move(mem_image))).first;
 
                      iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(instance, module));
                      pending_result = optional_entry_ref(*iter->second.instances.back().get());
@@ -284,15 +285,7 @@ namespace eosio { namespace chain {
        * @param entry - the entry to return
        */
       void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
-        // sanitize by reseting the memory that may now be dirty
         auto& info = (*fetch_info(code_id)).get();
-        if(getDefaultMemory(entry.instance)) {
-           char* memstart = &memoryRef<char>( getDefaultMemory(entry.instance), 0 );
-           memset( memstart + info.mem_end, 0, ((1<<16) - info.mem_end) );
-           memcpy( memstart, info.mem_image.data(), info.mem_end);
-        }
-        resetGlobalInstances(entry.instance);
-
         // under a lock, put this entry back in the available instances side of the instances vector
         with_lock(_cache_lock, [&,this](){
            // walk the vector and find this entry
@@ -309,6 +302,20 @@ namespace eosio { namespace chain {
            }
            info.available_instances++;
         });
+      }
+
+      //initialize the memory for a cache entry
+      wasm_cache::entry& prepare_wasm_instance(wasm_cache::entry& wasm_cache_entry, const digest_type& code_id) {
+         resetGlobalInstances(wasm_cache_entry.instance);
+         MemoryInstance* memory_instance = getDefaultMemory(wasm_cache_entry.instance);
+         if(memory_instance) {
+            resetMemory(memory_instance, wasm_cache_entry.module->memories.defs[0].type);
+
+            const code_info& info = (*fetch_info(code_id)).get();
+            char* memstart = &memoryRef<char>(getDefaultMemory(wasm_cache_entry.instance), 0);
+            memcpy(memstart, info.mem_image.data(), info.mem_image.size());
+         }
+         return wasm_cache_entry;
       }
 
       // mapping of digest to an entry for the code
@@ -329,16 +336,14 @@ namespace eosio { namespace chain {
       // see if there is an available entry in the cache
       auto result = _my->try_fetch_entry(code_id);
       if (result) {
-         return (*result).get();
+         wasm_cache::entry& wasm_cache_entry = (*result).get();
+         return _my->prepare_wasm_instance(wasm_cache_entry, code_id);
       }
-      return _my->fetch_entry(code_id, wasm_binary, wasm_binary_size);
+      return _my->prepare_wasm_instance(_my->fetch_entry(code_id, wasm_binary, wasm_binary_size), code_id);
    }
 
 
    void wasm_cache::checkin(const digest_type& code_id, entry& code ) {
-      MemoryInstance* default_mem = Runtime::getDefaultMemory(code.instance);
-      if(default_mem)
-         Runtime::shrinkMemory(default_mem, Runtime::getMemoryNumPages(default_mem) - 1);
       _my->return_entry(code_id, code);
    }
 
