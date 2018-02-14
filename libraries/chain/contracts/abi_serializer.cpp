@@ -131,17 +131,6 @@ namespace eosio { namespace chain { namespace contracts {
       FC_ASSERT( tables.size() == abi.tables.size() );
    }
 
-   void abi_serializer::append_system_abi(account_name account, abi_def& abi) {
-      if ( account == eosio::chain::config::system_account_name ) {
-         abi_def eos_abi = chain_initializer::eos_contract_abi();
-         abi.actions.insert(abi.actions.end(), eos_abi.actions.cbegin(), eos_abi.actions.cend());
-         abi.structs.insert(abi.structs.end(), eos_abi.structs.cbegin(), eos_abi.structs.cend());
-         abi.tables.insert(abi.tables.end(), eos_abi.tables.cbegin(), eos_abi.tables.cend());
-         abi.types.insert(abi.types.end(), eos_abi.types.cbegin(), eos_abi.types.cend());
-      }
-   }
-
-   
    bool abi_serializer::is_builtin_type(const type_name& type)const {
       return built_in_types.find(type) != built_in_types.end();
    }

@@ -190,7 +190,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
       try {
          const auto& accnt  = this->control->get_database().get<account_object,by_name>( name );
          abi_def abi;
-         if (abi_serializer::to_abi(accnt.name, accnt.abi, abi)) {
+         if (abi_serializer::to_abi(accnt.abi, abi)) {
             return abi_serializer(abi);
          }
          return optional<abi_serializer>();
@@ -364,7 +364,7 @@ BOOST_FIXTURE_TEST_CASE( stl_test, tester ) try {
 
     const auto& accnt  = control->get_database().get<account_object,by_name>( N(stltest) );
     abi_def abi;
-    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.name, accnt.abi, abi), true);
+    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
     abi_serializer abi_ser(abi);
 
     //send message
@@ -462,14 +462,20 @@ BOOST_FIXTURE_TEST_CASE( memory_init_border, tester ) try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( imports, tester ) try {
-   produce_blocks(2);
+   try {
+      produce_blocks(2);
 
-   create_accounts( {N(imports)} );
-   produce_block();
+      create_accounts( {N(imports)} );
+      produce_block();
 
-   //this will fail to link but that's okay; mainly looking to make sure that the constraint
-   // system doesn't choke when memories and tables exist only as imports
-   BOOST_CHECK_THROW(set_code(N(imports), memory_table_import), fc::exception);
+      //this will fail to link but that's okay; mainly looking to make sure that the constraint
+      // system doesn't choke when memories and tables exist only as imports
+      BOOST_CHECK_THROW(set_code(N(imports), memory_table_import), fc::exception);
+   } catch ( const fc::exception& e ) {
+
+        edump((e.to_detail_string()));
+        throw;
+   }
 
 } FC_LOG_AND_RETHROW()
 
@@ -572,10 +578,11 @@ BOOST_FIXTURE_TEST_CASE(noop, tester) try {
    produce_block();
 
    set_code(N(noop), noop_wast);
+
    set_abi(N(noop), noop_abi);
    const auto& accnt  = control->get_database().get<account_object,by_name>(N(noop));
    abi_def abi;
-   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.name, accnt.abi, abi), true);
+   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
    abi_serializer abi_ser(abi);
 
    {
@@ -640,7 +647,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, tester) try {
 
    const auto& accnt  = control->get_database().get<account_object,by_name>(config::system_account_name);
    abi_def abi;
-   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.name, accnt.abi, abi), true);
+   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
    abi_serializer abi_ser(abi);
    abi_ser.validate();
 

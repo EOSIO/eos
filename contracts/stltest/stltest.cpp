@@ -6,17 +6,13 @@
 
 // include entire libc
 #include <alloca.h>
-#include <ar.h>
 #include <assert.h>
 #include <byteswap.h>
-#include <cpio.h>
 #include <crypt.h>
 #include <ctype.h>
-#include <elf.h>
 #include <endian.h>
 #include <errno.h>
 #include <features.h>
-#include <fnmatch.h>
 #include <inttypes.h>
 #include <iso646.h>
 #include <limits.h>
@@ -25,8 +21,6 @@
 #include <math.h>
 #include <memory.h>
 #include <monetary.h>
-#include <mqueue.h>
-#include <regex.h>
 #include <search.h>
 #include <stdalign.h>
 #include <stdarg.h>
@@ -39,15 +33,11 @@
 #include <stdnoreturn.h>
 #include <string.h>
 #include <strings.h>
-#include <stropts.h>
-#include <sysexits.h>
-#include <tar.h>
 #include <uchar.h>
 #include <unistd.h>
 #include <values.h>
 #include <wchar.h>
 #include <wctype.h>
-#include <wordexp.h>
 
 //include entire libstdc++
 #include<algorithm>
@@ -149,7 +139,6 @@
 */
 //include <eosiolib/eos.hpp>
 #include <eosiolib/token.hpp>
-#include <eosiolib/string.hpp>
 #include <eosiolib/dispatcher.hpp>
 
 using namespace eosio;
@@ -202,6 +191,10 @@ namespace stltest {
             }
         };
 
+       static void f(const char* __restrict, ...) {
+          prints("f() called\n");
+       }
+
         static void on(const message& msg) {
            /* manual initialization of global variable
            new(&std::__start_std_streams)std::ios_base::Init;
@@ -217,8 +210,16 @@ namespace stltest {
            prints("\nEOS string: "); prints_l(s2.get_data(), s2.get_size());
            */
            prints("STL test start\n");
+           /* doesn't work with WASM::serializeWithInjection
+           printf("stdout output\n", 0);
+           fprintf(stderr, "stderr output\n", 0);
+           */
            void* ptr = malloc(10);
            free(ptr);
+           f("abc", 10, 20);
+
+           //auto mptr = new MSTR();
+           //delete mptr;
 
            std::array<uint32_t, 10> arr;
            arr.fill(3);

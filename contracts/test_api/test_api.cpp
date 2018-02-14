@@ -154,7 +154,7 @@ extern "C" {
 //      WASM_TEST_HANDLER(test_account, test_balance_acc1);
 //
       //unhandled test call
-      eos_assert(false, "Unknown Test");
+      eosio_assert(false, "Unknown Test");
    }
 
 }

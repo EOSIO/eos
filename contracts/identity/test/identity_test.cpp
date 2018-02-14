@@ -10,8 +10,8 @@ namespace identity_test {
    
    using eosio::action_meta;
    using eosio::singleton;
-   using eosio::string;
-   using eosio::vector;
+   using std::string;
+   using std::vector;
 
    class contract {
       public:

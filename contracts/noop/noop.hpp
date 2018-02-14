@@ -6,18 +6,18 @@
 
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/dispatcher.hpp>
-#include <eosiolib/string.hpp>
 
 using namespace eosio;
 
 namespace noop {
+   using std::string;
+
+
    /**
       noop contract
       All it does is require sender authorization.
       Actions: anyaction
     */
-
-
    class noop {
       public:
          
