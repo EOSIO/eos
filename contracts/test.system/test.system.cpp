@@ -4,9 +4,11 @@
  */
 
 #include <eosiolib/action.hpp>
+#include <eosiolib/chain.h>
 #include <eosiolib/types.hpp>
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/system.h>
+#include <eosiolib/print.hpp>
 
 using namespace eosio;
 
@@ -43,20 +45,15 @@ namespace testsystem {
       account_name          account;
       std::string           public_key;
 
-      EOSLIB_SERIALIZE( producer_key, (account)(public_key) );
+      EOSLIB_SERIALIZE( producer_key, (account) ); //(public_key) );
    };
 
    struct set_producers : dispatchable<N(setprods)> {
-      uint32_t              version;
-      vector<producer_key>  producers;
-
       static void process(const set_producers&) {
          char buffer[action_size()];
          read_action( buffer, sizeof(buffer) );
          set_active_producers(buffer, sizeof(buffer));
       }
-
-      EOSLIB_SERIALIZE( set_producers, (version)(producers) );
    };
 
    struct require_auth : dispatchable<N(reqauth)> {

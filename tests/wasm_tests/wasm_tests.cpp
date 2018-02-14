@@ -57,34 +57,6 @@ struct provereset {
 
 FC_REFLECT_EMPTY(provereset);
 
-#if 0
-constexpr uint32_t DJBH(const char* cp)
-{
-   uint32_t hash = 5381;
-   while (*cp)
-      hash = 33 * hash ^ (unsigned char) *cp++;
-   return hash;
-}
-
-constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
-   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
-}
-
-
-
-template<uint64_t NAME>
-struct test_api_action {
-   static account_name get_account() {
-      return N(tester);
-   }
-
-   static action_name get_name() {
-      return action_name(NAME);
-   }
-};
-FC_REFLECT_TEMPLATE((uint64_t T), test_api_action<T>, BOOST_PP_SEQ_NIL);
-#endif
-
 BOOST_AUTO_TEST_SUITE(wasm_tests)
 
 /**
@@ -227,103 +199,6 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
    BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
 
 } FC_LOG_AND_RETHROW() /// prove_mem_reset
-
-#if 0
-BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
-   produce_blocks(2);
-
-   create_accounts( {N(tester)} );
-   produce_block();
-
-   set_code(N(tester), test_api_wast);
-   produce_blocks(1);
-
-   // make sure asserts function as we are predicated on them
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               test_api_action<TEST_METHOD("test_action", "assert_false")> {});
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      BOOST_CHECK_EXCEPTION(push_transaction(trx), fc::assert_exception, assert_message_is("test_action::assert_false"));
-      produce_block();
-
-      BOOST_REQUIRE_EQUAL(false, chain_has_transaction(trx.id()));
-   }
-
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               test_api_action<TEST_METHOD("test_action", "assert_true")> {});
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-      const auto& receipt = get_transaction_receipt(trx.id());
-      BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
-   }
-} FC_LOG_AND_RETHROW() /// test_api_bootstrap
-#endif
-
-BOOST_FIXTURE_TEST_CASE( test_proxy, tester ) try {
-   produce_blocks(2);
-
-   create_account( N(proxy), asset::from_string("0.0000 EOS") );
-   create_accounts( {N(alice), N(bob)}, asset::from_string("0.0000 EOS") );
-   transfer( N(inita), N(alice), "10.0000 EOS", "memo" );
-   produce_block();
-
-   set_code(N(proxy), proxy_wast);
-   set_abi(N(proxy), proxy_abi);
-   produce_blocks(1);
-
-   const auto& accnt  = control->get_database().get<account_object,by_name>( N(proxy) );
-   abi_def abi;
-   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-   abi_serializer abi_ser(abi);
-
-   // set up proxy owner
-   {
-      signed_transaction trx;
-      action setowner_act;
-      setowner_act.account = N(proxy);
-      setowner_act.name = N(setowner);
-      setowner_act.authorization = vector<permission_level>{{N(proxy), config::active_name}};
-      setowner_act.data = abi_ser.variant_to_binary("setowner", mutable_variant_object()
-         ("owner", "bob")
-         ("delay", 10)
-      );
-      trx.actions.emplace_back(std::move(setowner_act));
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(proxy), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   // for now wasm "time" is in seconds, so we have to truncate off any parts of a second that may have applied
-   fc::time_point expected_delivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
-   transfer(N(alice), N(proxy), "5.0000 EOS");
-
-   while(control->head_block_time() < expected_delivery) {
-      control->push_deferred_transactions(true);
-      produce_block();
-      BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 EOS").amount);
-      BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 EOS").amount);
-      BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 EOS").amount);
-   }
-
-   control->push_deferred_transactions(true);
-   BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 EOS").amount);
-   BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 EOS").amount);
-   BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("5.0000 EOS").amount);
-
-} FC_LOG_AND_RETHROW() /// test_currency
 
 BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
    produce_blocks(2);

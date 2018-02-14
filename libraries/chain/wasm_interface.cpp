@@ -421,20 +421,6 @@ class context_aware_api {
       uint32_t&          sbrk_bytes;
 };
 
-/*
-class chain_api : public context_aware_api {
-   public:
-      using context_aware_api::context_aware_api;
-   
-      int32_t get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
-         auto active_prods = context.get_active_producers();
-         size_t len = std::min(datalen, active_prods.size() * sizeof(chain::account_name));
-         memcpy(producers, active_prods.data(), len);
-         return active_prods.size() * sizeof(chain::account_name);
-      }
-};
-*/
-
 class privileged_api : public context_aware_api {
    public:
       privileged_api( wasm_interface& wasm )
@@ -496,7 +482,6 @@ class privileged_api : public context_aware_api {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          producer_schedule_type psch;
          fc::raw::unpack(ds, psch);
-
          context.mutable_db.modify( context.controller.get_global_properties(), 
             [&]( auto& gprops ) {
                  gprops.new_active_producers = psch;
@@ -541,9 +526,9 @@ class producer_api : public context_aware_api {
 
       int get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
          auto active_producers = context.get_active_producers();
-         size_t len = active_producers.size() * sizeof(chain::account_name);
+         size_t len = active_producers.size();
          size_t cpy_len = std::min(datalen, len);
-         memcpy(producers, active_producers.data(), cpy_len);
+         memcpy(producers, active_producers.data(), cpy_len * sizeof(chain::account_name) );
          return len;
       }
 };
@@ -1166,9 +1151,6 @@ class transaction_api : public context_aware_api {
 class compiler_builtins : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
-      void __break_point() {
-         __asm("int3\n");
-      }
       void __ashlti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
          fc::uint128_t i(high, low);
          i <<= shift;
@@ -1377,7 +1359,6 @@ REGISTER_INTRINSICS(math_api,
 );
 
 REGISTER_INTRINSICS(compiler_builtins,
-   (__break_point, void()                                         )
    (__ashlti3,     void(int, int64_t, int64_t, int)               )
    (__ashrti3,     void(int, int64_t, int64_t, int)               )
    (__lshlti3,     void(int, int64_t, int64_t, int)               )
