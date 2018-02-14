@@ -289,7 +289,6 @@ namespace eosiosystem {
             print( "on stake vote\n" );
             eosio_assert( sv.amount.quantity > 0, "must stake some tokens" );
             require_auth( sv.voter );
-            return;
 
             account_votes_index_type avotes( SystemAccount, SystemAccount );
 
@@ -319,7 +318,7 @@ namespace eosiosystem {
                av.staked += sv.amount;
             });
             
-         //   currency::inline_transfer( sv.voter, SystemAccount, sv.amount, "stake for voting" );
+            currency::inline_transfer( sv.voter, SystemAccount, sv.amount, "stake for voting" );
          };
 
          ACTION( SystemAccount, voteproducer ) {

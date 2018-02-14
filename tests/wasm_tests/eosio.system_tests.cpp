@@ -60,6 +60,15 @@ BOOST_FIXTURE_TEST_CASE( eosio_system_load, tester ) try {
        ("memo", "hi" ) 
    );
 
+   /*
+   permission_level_weight plw{ permission_level{N(eosio),N(active)}, 1};;
+   set_authority( N(dan), N(active), 
+                  authority( 1,
+                   vector<key_weight>({ {get_public_key(N(dan),"active"),1 } }),
+                   vector<permission_level_weight>({plw}) ) );
+                   */
+
+
    wlog( "stake vote" );
    auto trace = push_action(N(eosio), N(stakevote), N(dan), mvo()
        ("voter", "dan")
