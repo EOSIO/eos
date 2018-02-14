@@ -84,14 +84,7 @@ namespace identity {
             account_name creator;
             uint64_t     identity = 0; ///< first 32 bits determinsitically derived from creator and tapos
 
-            template<typename DataStream>
-            friend DataStream& operator << ( DataStream& ds, const create& c ){
-               return ds << c.creator << c.identity;
-            }
-            template<typename DataStream>
-            friend DataStream& operator >> ( DataStream& ds, create& c ){
-               return ds >> c.creator >> c.identity;
-            }
+            EOSLIB_SERIALIZE( create, (creator)(identity) )
          };
 
 
@@ -102,14 +95,8 @@ namespace identity {
             string        memo; ///< meta data documenting basis of certification
             uint8_t       confidence = 1; ///< used to define liability for lies, 
                                           /// 0 to delete
-            template<typename DataStream>
-            friend DataStream& operator << ( DataStream& ds, const certvalue& c ){
-               return ds << c.property << c.type << c.data << c.memo << c.confidence;
-            }
-            template<typename DataStream>
-            friend DataStream& operator >> ( DataStream& ds, certvalue& c ){
-               return ds >> c.property >> c.type >> c.data >> c.memo >> c.confidence;
-            }
+
+            EOSLIB_SERIALIZE( certvalue, (property)(type)(data)(memo)(confidence) )
          };
 
          struct certprop : public action_meta< code, N(certprop) > 
@@ -119,14 +106,7 @@ namespace identity {
             identity_name       identity;
             vector<certvalue>   values;
 
-            template<typename DataStream>
-            friend DataStream& operator << ( DataStream& ds, const certprop& c ){
-               return ds << c.bill_storage_to << c.certifier << c.identity << c.values;
-            }
-            template<typename DataStream>
-            friend DataStream& operator >> ( DataStream& ds, certprop& c ){
-               return ds >> c.bill_storage_to >> c.certifier >> c.identity >> c.values;
-            }
+            EOSLIB_SERIALIZE( certprop, (bill_storage_to)(certifier)(identity)(values) )
          };
 
          struct settrust : public action_meta< code, N(settrust) > 
@@ -135,14 +115,7 @@ namespace identity {
             account_name trusting; ///< the account receiving the trust
             uint8_t      trust = 0; /// 0 to remove, -1 to mark untrusted, 1 to mark trusted
 
-            template<typename DataStream>
-            friend DataStream& operator << ( DataStream& ds, const settrust& c ){
-               return ds << c.trustor << c.trusting << c.trust;
-            }
-            template<typename DataStream>
-            friend DataStream& operator >> ( DataStream& ds, settrust& c ){
-               return ds >> c.trustor >> c.trusting >> c.trust;
-            }
+            EOSLIB_SERIALIZE( settrust, (trustor)(trusting)(trust) )
          };
 
          /**
@@ -156,42 +129,21 @@ namespace identity {
             string              type;
             vector<char>        data;
 
-            template<typename DataStream>
-            friend DataStream& operator << ( DataStream& ds, const certrow& r ){
-               return ds << r.property << r.trusted << r.certifier << r.confidence << r.type << r.data;
-            }
-            template<typename DataStream>
-            friend DataStream& operator >> ( DataStream& ds, certrow& r ){
-               return ds >> r.property >> r.trusted >> r.certifier >> r.confidence >> r.type >> r.data;
-            }
+            EOSLIB_SERIALIZE( certrow , (property)(trusted)(certifier)(confidence)(type)(data) )
          };
 
          struct identrow {
             uint64_t     identity; 
             account_name creator;
 
-            template<typename DataStream>
-            friend DataStream& operator << ( DataStream& ds, const identrow& r ){
-               return ds << r.identity << r.creator;
-            }
-            template<typename DataStream>
-            friend DataStream& operator >> ( DataStream& ds, identrow& r ){
-               return ds >> r.identity >> r.creator;
-            }
+            EOSLIB_SERIALIZE( identrow , (identity)(creator) )
          };
 
          struct trustrow {
             account_name account;
             uint8_t      trusted;
 
-            template<typename DataStream>
-            friend DataStream& operator << ( DataStream& ds, const trustrow& r ){
-               return ds << r.account << r.trusted;
-            }
-            template<typename DataStream>
-            friend DataStream& operator >> ( DataStream& ds, trustrow& r ){
-               return ds >> r.account >> r.trusted;
-            }
+            EOSLIB_SERIALIZE( trustrow , (account)(trusted) )
          };
 
          typedef table_i64i64i64<code, N(certs), code, certrow>  certs_table;
