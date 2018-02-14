@@ -644,7 +644,7 @@ Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
 
 ```bash
 echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
-echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
+echo "export LLVM_DIR=~/wasm-compiler/lib/cmake/llvm" >> ~/.bash_profile
 source ~/.bash_profile
 ```
 
