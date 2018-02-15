@@ -55,9 +55,10 @@ EOS.IO currently supports the following operating systems:
 7. [Doxygen documentation](#doxygen)
 8. [Running EOS in Docker](#docker)
 9. [Manual installation of the dependencies](#manualdep)
-   1. [Clean install Ubuntu 16.04 and higher](#ubuntu)
-   2. [MacOS Sierra 10.12 and higher](#macos)
-   3. [Fedora 25 and higher](#fedora)
+   1. [Clean install Amazon 2017.09 and higher](#cleaninstallamazon)
+   2. [Clean install Fedora 25 and higher](#fedora)
+   3. [Clean install Ubuntu 16.04 and higher](#ubuntu)
+   4. [Clean install MacOS Sierra 10.12 and higher](#macos)
 
 <a name="gettingstarted"></a>
 ## Getting Started
@@ -569,33 +570,31 @@ Dependencies:
 * [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
 * [binaryen](https://github.com/WebAssembly/binaryen.git)
 
-<a name="ubuntu"></a>
-### Clean install Ubuntu 16.10
+<a name="cleaninstallamazon"></a>
+### Clean install Amazon 2017.09 and higher
 
 Install the development toolkit:
 
 ```bash
-sudo apt-get update
-wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
-sudo apt-get install clang-4.0 lldb-4.0 libclang-4.0-dev cmake make \
-                     libbz2-dev libssl-dev libgmp3-dev \
-                     autotools-dev build-essential \
-                     libbz2-dev libicu-dev python-dev \
-                     autoconf libtool git
+sudo yum update
+sudo yum install git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 \
+				 bzip2-devel.x86_64 openssl-devel.x86_64 gmp.x86_64 gmp-devel.x86_64 \
+				 libstdc++72.x86_64 python27-devel.x86_64 libedit-devel.x86_64 \
+				 ncurses-devel.x86_64 swig.x86_64 gettext-devel.x86_64
+
 ```
 
 Install Boost 1.66:
 
 ```bash
 cd ~
-wget -c 'https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_66_0.tar.bz2/download' -O boost_1.64.0.tar.bz2
-tar xjf boost_1.66.0.tar.bz2
-cd boost_1_66_0/
+curl -L https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2 > boost_1.66.0.tar.bz2
+tar xf boost_1.66.0.tar.bz2
 echo "export BOOST_ROOT=$HOME/boost_1_66_0" >> ~/.bash_profile
 source ~/.bash_profile
+cd boost_1_66_0/
 ./bootstrap.sh "--prefix=$BOOST_ROOT"
 ./b2 install
-source ~/.bash_profile
 ```
 
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
@@ -606,7 +605,7 @@ git clone https://github.com/cryptonomex/secp256k1-zkp.git
 cd secp256k1-zkp
 ./autogen.sh
 ./configure
-make
+make -j$( nproc )
 sudo make install
 ```
 
@@ -640,88 +639,7 @@ cd ..
 mkdir build
 cd build
 cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
-make -j4 install
-```
-Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
-
-```bash
-echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
-echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
-source ~/.bash_profile
-```
-
-Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
-
-<a name="macos"></a>
-### MacOS Sierra 10.12.6
-
-macOS additional Dependencies:
-
-* Brew
-* Newest XCode
-
-Upgrade your XCode to the newest version:
-
-```bash
-xcode-select --install
-```
-
-Install homebrew:
-
-```bash
-ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-```
-
-Install the dependencies:
-
-```bash
-brew update
-brew install git automake libtool boost openssl llvm@4 gmp ninja gettext
-brew link gettext --force
-```
-
-Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
-
-```bash
-cd ~
-git clone https://github.com/cryptonomex/secp256k1-zkp.git
-cd secp256k1-zkp
-./autogen.sh
-./configure
-make -j$( sysctl -in machdep.cpu.core_count )
-sudo make install
-```
-
-Install [binaryen v1.37.14](https://github.com/WebAssembly/binaryen.git):
-
-```bash
-cd ~
-git clone https://github.com/WebAssembly/binaryen.git
-cd ~/binaryen
-git checkout tags/1.37.14
-cmake . && make -j$( sysctl -in machdep.cpu.core_count )
-```
-
-Add `BINARYEN_ROOT` to your .bash_profile:
-
-```bash
-echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
-source ~/.bash_profile
-```
-
-Build LLVM and clang for WASM:
-
-```bash
-mkdir  ~/wasm-compiler
-cd ~/wasm-compiler
-git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
-cd llvm/tools
-git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
-cd ..
-mkdir build
-cd build
-cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
-make -j$( sysctl -in machdep.cpu.core_count )
+make -j$( nproc ) 
 make install
 ```
 
@@ -729,9 +647,10 @@ Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
 
 ```bash
 echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
-echo "export LLVM_DIR=/usr/local/Cellar/llvm@4/4.0.1/lib/cmake/llvm/" >> ~/.bash_profile
+echo "export LLVM_DIR=~/wasm-compiler/lib/cmake/llvm" >> ~/.bash_profile
 source ~/.bash_profile
 ```
+Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
 
 <a name="fedora"></a>
 ### Clean install Fedora 25 and higher
@@ -814,31 +733,33 @@ source ~/.bash_profile
 ```
 Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
 
-<a name="fedora"></a>
-### Clean install Amazon 2017.09 and higher
+<a name="ubuntu"></a>
+### Clean install Ubuntu 16.04 & Higher
 
 Install the development toolkit:
 
 ```bash
-sudo yum update
-sudo yum install git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 \
-				 bzip2-devel.x86_64 openssl-devel.x86_64 gmp.x86_64 gmp-devel.x86_64 \
-				 libstdc++72.x86_64 python27-devel.x86_64 libedit-devel.x86_64 \
-				 ncurses-devel.x86_64 swig.x86_64 gettext-devel.x86_64
-
+sudo apt-get update
+wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+sudo apt-get install clang-4.0 lldb-4.0 libclang-4.0-dev cmake make \
+                     libbz2-dev libssl-dev libgmp3-dev \
+                     autotools-dev build-essential \
+                     libbz2-dev libicu-dev python-dev \
+                     autoconf libtool git
 ```
 
 Install Boost 1.66:
 
 ```bash
 cd ~
-curl -L https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2 > boost_1.66.0.tar.bz2
-tar xf boost_1.66.0.tar.bz2
+wget -c 'https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_66_0.tar.bz2/download' -O boost_1.64.0.tar.bz2
+tar xjf boost_1.66.0.tar.bz2
+cd boost_1_66_0/
 echo "export BOOST_ROOT=$HOME/boost_1_66_0" >> ~/.bash_profile
 source ~/.bash_profile
-cd boost_1_66_0/
 ./bootstrap.sh "--prefix=$BOOST_ROOT"
 ./b2 install
+source ~/.bash_profile
 ```
 
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
@@ -849,7 +770,7 @@ git clone https://github.com/cryptonomex/secp256k1-zkp.git
 cd secp256k1-zkp
 ./autogen.sh
 ./configure
-make -j$( nproc )
+make
 sudo make install
 ```
 
@@ -883,7 +804,88 @@ cd ..
 mkdir build
 cd build
 cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
-make -j$( nproc ) 
+make -j4 install
+```
+Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
+
+```bash
+echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
+echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
+source ~/.bash_profile
+```
+
+Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
+
+<a name="macos"></a>
+### MacOS Sierra 10.12.6 & higher
+
+macOS additional Dependencies:
+
+* Brew
+* Newest XCode
+
+Upgrade your XCode to the newest version:
+
+```bash
+xcode-select --install
+```
+
+Install homebrew:
+
+```bash
+ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+```
+
+Install the dependencies:
+
+```bash
+brew update
+brew install git automake libtool boost openssl llvm@4 gmp ninja gettext
+brew link gettext --force
+```
+
+Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
+
+```bash
+cd ~
+git clone https://github.com/cryptonomex/secp256k1-zkp.git
+cd secp256k1-zkp
+./autogen.sh
+./configure
+make -j$( sysctl -in machdep.cpu.core_count )
+sudo make install
+```
+
+Install [binaryen v1.37.14](https://github.com/WebAssembly/binaryen.git):
+
+```bash
+cd ~
+git clone https://github.com/WebAssembly/binaryen.git
+cd ~/binaryen
+git checkout tags/1.37.14
+cmake . && make -j$( sysctl -in machdep.cpu.core_count )
+```
+
+Add `BINARYEN_ROOT` to your .bash_profile:
+
+```bash
+echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
+source ~/.bash_profile
+```
+
+Build LLVM and clang for WASM:
+
+```bash
+mkdir  ~/wasm-compiler
+cd ~/wasm-compiler
+git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
+cd llvm/tools
+git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
+cd ..
+mkdir build
+cd build
+cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+make -j$( sysctl -in machdep.cpu.core_count )
 make install
 ```
 
@@ -891,7 +893,7 @@ Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
 
 ```bash
 echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
-echo "export LLVM_DIR=~/wasm-compiler/lib/cmake/llvm" >> ~/.bash_profile
+echo "export LLVM_DIR=/usr/local/Cellar/llvm@4/4.0.1/lib/cmake/llvm/" >> ~/.bash_profile
 source ~/.bash_profile
 ```
 Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
