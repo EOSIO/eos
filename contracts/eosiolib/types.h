@@ -64,21 +64,13 @@ struct account_permission {
    permission_name permission;
 };
 
-union {
-   uint8_t bytes[8];
-   uint16_t uint16[8];
-   uint32_t uint32[8];
-   uint64_t uint64[4];
-   uint128_t uint128[2];
-} typedef uint256;
-
-bool operator==( const uint256& a, const uint256& b ) {
-   return a.uint128[0] == b.uint128[0] && a.uint128[1] == b.uint128[1];
-}
-
-bool operator!=( const uint256& a, const uint256& b ) {
-   return !(a == b);
-}
+typedef union {
+   uint8_t   bytes[32];
+   uint16_t  uint16s[16];
+   uint32_t  uint32s[8];
+   uint64_t  uint64s[4];
+   uint128_t uint128s[2];
+} uint256;
 
 #ifdef __cplusplus
 } /// extern "C"

@@ -20,30 +20,30 @@ namespace identity {
    /**
     *  This contract maintains a graph database of certified statements about an
     *  identity.  An identity is separated from the concept of an account because
-    *  the mapping of identity to accounts is subject to community consensus. 
+    *  the mapping of identity to accounts is subject to community consensus.
     *
     *  Some use cases need a global source of trust, this trust rooted in the voter
     *  who selects block producers. A block producer's opinion is "trusted" and so
-    *  is the opinion of anyone the block producer marks as "trusted".  
-    *  
+    *  is the opinion of anyone the block producer marks as "trusted".
+    *
     *  When a block producer is voted out the implicit trust in every certification
-    *  they made or those they trusted made is removed. All users are liable for 
-    *  making false certifications.  
+    *  they made or those they trusted made is removed. All users are liable for
+    *  making false certifications.
     *
     *  An account needs to claim the identity and a trusted account must certify the
-    *  claim.  
+    *  claim.
     *
     *  Data for an identity is stored:
     *
     *  DeployToAccount / identity / certs / [property, trusted, certifier] => value
     *
     *  Questions database is designed to answer:
-    *     
-    *     1. has $identity.$unique been certified a "trusted" certifier 
-    *     2. has $identity.$property been certified by $account 
+    *
+    *     1. has $identity.$unique been certified a "trusted" certifier
+    *     2. has $identity.$property been certified by $account
     *     3. has $identity.$trusted been certified by a "trusted" certifier
     *     4. what account has authority to speak on behalf of identity?
-    *         - for each trusted owner certification 
+    *         - for each trusted owner certification
     *            check to see if the account has claimed it
     *
     *     5. what identity does account have authority to speak on behalf?
@@ -52,12 +52,12 @@ namespace identity {
     *
     *  This database structure enables parallel opeartions on independent identities.
     *
-    *  When an account certs a property we check to see if that 
+    *  When an account certs a property we check to see if that
     */
    template<uint64_t DeployToAccount>
    class contract {
       public:
-         
+
          static const uint64_t code = DeployToAccount;
          typedef uint64_t identity_name;
          typedef uint64_t property_name;
@@ -66,14 +66,14 @@ namespace identity {
          /**
           * This action create a new globally unique 64 bit identifier,
           * to minimize collisions each account is automatically assigned
-          * a 32 bit identity prefix based upon hash(account_name) ^ hash(tapos). 
+          * a 32 bit identity prefix based upon hash(account_name) ^ hash(tapos).
           *
           * With this method no two accounts are likely to be assigned the same
           * 32 bit prefix consistantly due to the constantly changing tapos. This prevents
           * abuse of 'creator' selection to generate intentional conflicts with other users.
           *
           * The creator can determine the last 32 bits using an algorithm of their choice. We
-          * presume the creator's algorithm can avoid collisions with itself. 
+          * presume the creator's algorithm can avoid collisions with itself.
           *
           * Even if two accounts get a collision in first 32 bits, a proper creator algorithm
           * should generate randomness in last 32 bits that will minimize collisions. In event
@@ -94,25 +94,25 @@ namespace identity {
          struct certvalue {
             property_name property; ///< name of property, base32 encoded i64
             string     type; ///< defines type serialized in data
-            vector<char>  data; ///< 
+            vector<char>  data; ///<
             string        memo; ///< meta data documenting basis of certification
-            uint8_t       confidence = 1; ///< used to define liability for lies, 
+            uint8_t       confidence = 1; ///< used to define liability for lies,
                                           /// 0 to delete
 
             EOSLIB_SERIALIZE( certvalue, (property)(type)(data)(memo)(confidence) )
          };
 
-         struct certprop : public action_meta< code, N(certprop) > 
+         struct certprop : public action_meta< code, N(certprop) >
          {
             account_name        bill_storage_to; ///< account which is paying for storage
-            account_name        certifier; 
+            account_name        certifier;
             identity_name       identity;
             vector<certvalue>   values;
 
             EOSLIB_SERIALIZE( certprop, (bill_storage_to)(certifier)(identity)(values) )
          };
 
-         struct settrust : public action_meta< code, N(settrust) > 
+         struct settrust : public action_meta< code, N(settrust) >
          {
             account_name trustor; ///< the account authorizing the trust
             account_name trusting; ///< the account receiving the trust
@@ -122,7 +122,7 @@ namespace identity {
          };
 
          /**
-          * Defines an object in an i64i64i64 table 
+          * Defines an object in an i64i64i64 table
           */
          struct certrow {
             uint64_t            id;
@@ -135,10 +135,10 @@ namespace identity {
             uint64_t primary_key() const { return id; }
             constexpr static uint256 key(uint64_t property, uint64_t trusted, uint64_t certifier) {
                uint256 key;
-               key.uint64[0] = property;
-               key.uint64[1] = trusted;
-               key.uint64[2] = certifier;
-               key.uint64[3] = 0;
+               key.uint64s[0] = property;
+               key.uint64s[1] = trusted;
+               key.uint64s[2] = certifier;
+               key.uint64s[3] = 0;
                return key;
             }
             uint256 get_key() const { return key(property, trusted, certifier); };
@@ -147,7 +147,7 @@ namespace identity {
          };
 
          struct identrow {
-            uint64_t     identity; 
+            uint64_t     identity;
             account_name creator;
 
             uint64_t primary_key() const { return identity; }
@@ -175,7 +175,7 @@ namespace identity {
          }
 
          static account_name get_owner_for_identity( identity_name ident ) {
-            // for each trusted owner certification 
+            // for each trusted owner certification
             //   check to see if the certification is still trusted
             //   check to see if the account has claimed it
             certs_table certs( code, ident );
@@ -299,7 +299,7 @@ namespace identity {
             auto ptr = t.find( cert.identity );
             eosio_assert( ptr != nullptr, "identity does not exist" );
 
-            /// the table exists in the scope of the identity 
+            /// the table exists in the scope of the identity
             certs_table certs( code, cert.identity );
             bool trusted = is_trusted( cert.certifier );
 
