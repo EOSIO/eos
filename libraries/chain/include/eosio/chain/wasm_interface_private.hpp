@@ -185,10 +185,6 @@ struct native_to_wasm<uint64_t> {
    using type = I64;
 };
 template<>
-struct native_to_wasm<size_t> {
-   using type = I32;
-};
-template<>
 struct native_to_wasm<bool> {
    using type = I32;
 };
