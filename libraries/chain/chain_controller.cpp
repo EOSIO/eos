@@ -904,7 +904,7 @@ void chain_controller::process_message(const transaction& trx, account_name code
    auto us_duration = (fc::time_point::now() - start_time).count();
    if( is_producing() ) {
       EOS_ASSERT(us_duration < chain_configuration.max_trx_runtime, checktime_exceeded,
-                  "Transaction message exceeded maximum total transaction time of ${limit}ms, took ${duration}ms", ("limit", chain_configuration.max_trx_runtime/1000)("dur",us_duration/1000));
+                  "Transaction message exceeded maximum total transaction time of ${limit}ms, took ${dur}ms", ("limit", chain_configuration.max_trx_runtime/1000)("dur",us_duration/1000));
    }
    EOS_ASSERT(depth < chain_configuration.in_depth_limit, msg_resource_exhausted,
      "Message processing exceeded maximum inline recursion depth of ${limit}", ("limit", chain_configuration.in_depth_limit));
