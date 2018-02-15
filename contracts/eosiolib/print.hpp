@@ -6,6 +6,7 @@
 #include <eosiolib/print.h>
 #include <eosiolib/types.hpp>
 #include <eosiolib/math.hpp>
+#include <utility>
 
 namespace eosio {
 
@@ -71,7 +72,16 @@ namespace eosio {
     * @param Value to be printed
     */
    inline void print( uint128_t num ) {
-      printi128((uint128_t*)&num);
+      printi128(&num);
+   }
+
+   /**
+    * Prints a 256 bit unsigned integer as a hexidecimal string
+    * @brief Prints a 256 bit unsigned integer as a hexidecimal string
+    * @param Value of 256 bit integer to be printed
+    */
+   inline void print( const uint256& num ) {
+      printi256(&num);
    }
 
    /**
@@ -133,9 +143,9 @@ namespace eosio {
      *  @endcode
      */
    template<typename Arg, typename... Args>
-   void print( Arg a, Args... args ) {
-      print(a);
-      print(args...);
+   void print( Arg&& a, Args&&... args ) {
+      print(std::forward<Arg>(a));
+      print(std::forward<Args>(args)...);
    }
 
    /**

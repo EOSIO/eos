@@ -18,6 +18,7 @@
 //#include "test_transaction.cpp"
 //#include "test_types.cpp"
 #include "test_db.cpp"
+#include "test_multi_index.cpp"
 
 extern "C" {
 
@@ -99,6 +100,11 @@ extern "C" {
       WASM_TEST_HANDLER(test_db, idx64_general);
       WASM_TEST_HANDLER(test_db, idx64_lowerbound);
       WASM_TEST_HANDLER(test_db, idx64_upperbound);
+
+      //test multi_index
+      WASM_TEST_HANDLER(test_multi_index, idx64_general);
+      WASM_TEST_HANDLER(test_multi_index, idx64_store_only);
+      WASM_TEST_HANDLER(test_multi_index, idx64_check_without_storing);
 
 //      //test crypto
 //      WASM_TEST_HANDLER(test_crypto, test_sha256);

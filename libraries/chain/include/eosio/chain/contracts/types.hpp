@@ -28,6 +28,25 @@ using field_name     = fixed_string16;
 using table_name     = name;
 using action_name    = eosio::chain::action_name;
 
+// Must be in sync with definition in contracts/eoslib
+struct uint256 {
+   uint64_t words[4];
+
+   uint256()
+   {
+      for( auto i = 0; i < 4; ++i )
+         words[i] = 0;
+   }
+
+   bool operator<(const uint256& other)const {
+      for( auto i = 0; i < 4; ++i )
+      {
+         if( words[i] < other.words[i] ) return true;
+         else if( words[i] > other.words[i] ) return false;
+      }
+      return false;
+   }
+};
 
 struct type_def {
    type_def() = default;
@@ -44,7 +63,7 @@ struct field_def {
    field_def(const field_name& name, const type_name& type)
    :name(name), type(type)
    {}
-   
+
    field_name name;
    type_name  type;
 
@@ -291,4 +310,3 @@ FC_REFLECT( eosio::chain::contracts::unlinkauth                       , (account
 FC_REFLECT( eosio::chain::contracts::postrecovery                     , (account)(data)(memo) )
 FC_REFLECT( eosio::chain::contracts::passrecovery                     , (account) )
 FC_REFLECT( eosio::chain::contracts::vetorecovery                     , (account) )
-

@@ -133,7 +133,7 @@ public:
 
    fc::variant get_certrow(uint64_t identity, const string& property, uint64_t trusted, const string& certifier) {
       const auto& db = control->get_database();
-      const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), identity, N( identity /* or by tuple */ )));
+      const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), identity, N( certs )));
       FC_ASSERT(t_id != 0, "certrow not found");
 
       const auto& idx = db.get_index<index256_index, by_secondary>();
@@ -143,9 +143,6 @@ public:
       auto itr = idx.lower_bound(boost::make_tuple(t_id->id, key));
       if (itr != idx.end() && itr->t_id == t_id->id && itr->secondary_key == key) {
          auto primary_key = itr->primary_key;
-         const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), N(identity), N(ident)));
-         FC_ASSERT(t_id != 0, "object not found");
-
          const auto& idx = db.get_index<key_value_index, by_scope_primary>();
 
          auto itr = idx.lower_bound(boost::make_tuple(t_id->id, primary_key));

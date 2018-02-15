@@ -163,7 +163,7 @@ namespace eosio { namespace chain {
    using uint128_t           = __uint128_t;
    using bytes               = vector<char>;
 
-   
+
 } }  // eosio::chain
 
 

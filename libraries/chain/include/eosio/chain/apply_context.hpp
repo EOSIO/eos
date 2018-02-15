@@ -36,7 +36,7 @@ class apply_context {
             const table_id_object& get_table( table_id_object::id_type i ) {
                auto itr = _table_cache.find(i);
                FC_ASSERT( itr != _table_cache.end(), "an invariant was broken, table should be in cache" );
-               return *_table_cache[i];
+               return *itr->second;
             }
 
             const T& get( int iterator ) {
@@ -47,14 +47,16 @@ class apply_context {
                return *result;
             }
 
-            void remove( int iterator, const T& obj ) {
+            void remove( int iterator ) {
+               auto obj_ptr = _iterator_to_object[iterator];
+               if( !obj_ptr ) return;
                _iterator_to_object[iterator] = nullptr;
-               _object_to_iterator.erase( &obj );
+               _object_to_iterator.erase( obj_ptr );
             }
 
             int add( const T& obj ) {
                auto itr = _object_to_iterator.find( &obj );
-               if( itr != _object_to_iterator.end() ) 
+               if( itr != _object_to_iterator.end() )
                     return itr->second;
 
                _iterator_to_object.push_back( &obj );
@@ -88,7 +90,7 @@ class apply_context {
 
                const auto& obj = context.mutable_db.create<ObjectType>( [&]( auto& o ){
                   o.t_id          = tab.id;
-                  o.primary_key   = id;                      
+                  o.primary_key   = id;
                   o.secondary_key = value;
                   o.payer         = payer;
                });
@@ -115,7 +117,7 @@ class apply_context {
                });
                context.mutable_db.remove( obj );
 
-               itr_cache.remove( iterator, obj );
+               itr_cache.remove( iterator );
             }
 
             void update( int iterator, account_name payer, const secondary_key_type& secondary ) {
@@ -187,13 +189,13 @@ class apply_context {
                if (itr == idx.end()) return -1;
 
                ++itr;
-               
+
                if (itr == idx.end() || itr->t_id != obj.t_id) return -1;
 
                primary = itr->primary_key;
                return itr_cache.add(*itr);
             }
-            
+
             int previous_secondary( int iterator, uint64_t& primary ) {
                const auto& obj = itr_cache.get(iterator);
                const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_secondary>();
@@ -207,8 +209,7 @@ class apply_context {
 
                primary = itr->primary_key;
                return itr_cache.add(*itr);
-            }
-            
+            }      
 
             int find_primary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_type& secondary, uint64_t primary ) {
                auto tab = context.find_table( context.receiver, scope, table );
@@ -225,7 +226,7 @@ class apply_context {
             int lowerbound_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary ) {
                auto tab = context.find_table(context.receiver, scope, table);
                if (!tab) return -1;
-               
+
                const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_primary>();
                auto itr = idx.lower_bound(boost::make_tuple(tab->id, primary));
                if (itr == idx.end()) return -1;
@@ -294,14 +295,14 @@ class apply_context {
 
       apply_context(chain_controller& con, chainbase::database& db, const action& a, const transaction_metadata& trx_meta)
 
-      :controller(con), 
-       db(db), 
-       act(a), 
+      :controller(con),
+       db(db),
+       act(a),
        mutable_controller(con),
-       mutable_db(db), 
+       mutable_db(db),
        used_authorizations(act.authorization.size(), false),
-       trx_meta(trx_meta), 
-       idx64(*this), 
+       trx_meta(trx_meta),
+       idx64(*this),
        idx128(*this),
        idx256(*this)
        {}
@@ -326,26 +327,26 @@ class apply_context {
       int32_t remove_record( const table_id_object& t_id, const typename ObjectType::key_type* keys );
 
       template <typename IndexType, typename Scope>
-      int32_t load_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ); 
+      int32_t load_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen );
 
       template <typename IndexType, typename Scope>
-      int32_t front_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ); 
+      int32_t front_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen );
 
       template <typename IndexType, typename Scope>
-      int32_t back_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, 
-                           char* value, size_t valuelen ); 
+      int32_t back_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys,
+                           char* value, size_t valuelen );
 
       template <typename IndexType, typename Scope>
-      int32_t next_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ); 
+      int32_t next_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen );
 
       template <typename IndexType, typename Scope>
-      int32_t previous_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ); 
+      int32_t previous_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen );
 
       template <typename IndexType, typename Scope>
-      int32_t lower_bound_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ); 
+      int32_t lower_bound_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen );
 
       template <typename IndexType, typename Scope>
-      int32_t upper_bound_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ); 
+      int32_t upper_bound_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen );
 
       /**
        * @brief Require @ref account to have approved of this message
@@ -429,7 +430,7 @@ class apply_context {
       void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
       void db_remove_i64( int iterator );
       int db_get_i64( int iterator, char* buffer, size_t buffer_size );
-      int db_next_i64( int iterator, uint64_t& primary ); 
+      int db_next_i64( int iterator, uint64_t& primary );
       int db_previous_i64( int iterator, uint64_t& primary );
       int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
       int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
@@ -658,7 +659,7 @@ using apply_handler = std::function<void(apply_context&)>;
    int32_t apply_context::update_record( const table_id_object& t_id, const account_name& bta, const typename ObjectType::key_type* keys, const char* value, size_t valuelen ) {
       require_write_lock( t_id.scope );
       validate_or_add_table_key(t_id, get_key_type<ObjectType>());
-      
+
       auto tuple = impl::exact_tuple<ObjectType>::get(t_id, keys);
       const auto* obj = db.find<ObjectType, contracts::by_scope_primary>(tuple);
 
@@ -776,7 +777,7 @@ using apply_handler = std::function<void(apply_context&)>;
       validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
 
       const auto& pidx = db.get_index<IndexType, contracts::by_scope_primary>();
-      
+
       auto tuple = impl::exact_tuple<typename IndexType::value_type>::get(t_id, keys);
       auto pitr = pidx.find(tuple);
 
@@ -820,7 +821,7 @@ using apply_handler = std::function<void(apply_context&)>;
       validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
 
       const auto& pidx = db.get_index<IndexType, contracts::by_scope_primary>();
-      
+
       auto tuple = impl::exact_tuple<typename IndexType::value_type>::get(t_id, keys);
       auto pitr = pidx.find(tuple);
 
@@ -831,7 +832,7 @@ using apply_handler = std::function<void(apply_context&)>;
       auto itr = fidx.indicies().template project<Scope>(pitr);
 
       const auto& idx = db.get_index<IndexType, Scope>();
-      
+
       if( itr == idx.end() ||
           itr == idx.begin() ||
           itr->t_id != t_id.id ||

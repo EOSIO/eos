@@ -58,7 +58,7 @@ namespace eosio { namespace chain { namespace contracts {
    struct by_scope_secondary;
    struct by_scope_tertiary;
 
-   
+
    struct key_value_object : public chainbase::object<key_value_object_type, key_value_object> {
       OBJECT_CTOR(key_value_object, (value))
 

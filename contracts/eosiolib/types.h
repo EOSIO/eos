@@ -19,10 +19,6 @@ extern "C" {
  *  @{
  */
 
-struct uint256 {
-   uint64_t words[4];
-};
-
 typedef uint64_t account_name;
 typedef uint64_t permission_name;
 typedef uint64_t token_name;
@@ -67,6 +63,22 @@ struct account_permission {
    account_name account;
    permission_name permission;
 };
+
+union {
+   uint8_t bytes[8];
+   uint16_t uint16[8];
+   uint32_t uint32[8];
+   uint64_t uint64[4];
+   uint128_t uint128[2];
+} typedef uint256;
+
+bool operator==( const uint256& a, const uint256& b ) {
+   return a.uint128[0] == b.uint128[0] && a.uint128[1] == b.uint128[1];
+}
+
+bool operator!=( const uint256& a, const uint256& b ) {
+   return !(a == b);
+}
 
 #ifdef __cplusplus
 } /// extern "C"
