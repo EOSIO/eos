@@ -1,6 +1,7 @@
 #pragma once
 #include <tuple>
 #include <boost/hana.hpp>
+#include <type_traits>
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/mem_fun.hpp>
@@ -52,7 +53,7 @@ MAKE_SECONDARY_ITERATOR(idx128, uint128_t)
 MAKE_SECONDARY_ITERATOR(idx256, uint256)
 
 
-template<uint64_t TableName, typename T, typename... Indicies>
+template<uint64_t TableName, typename T, typename... Indices>
 class multi_index;
 
 
@@ -66,7 +67,8 @@ struct index_by {
    index_by(){}
 
    static const int index_number = IndexNumber;
-   static const uint64_t index_name   = IndexName;
+   static const uint64_t index_name = IndexName;
+   static const uint64_t table_name = TableName;
 
    private:
       template<uint64_t, typename, typename... >
@@ -111,10 +113,16 @@ auto make_index_by( Extractor&& l ) {
 */
 
 
-template<uint64_t TableName, typename T, typename... Indicies>
+template<uint64_t TableName, typename T, typename... Indices>
 class multi_index
 {
    private:
+
+      template<bool...> struct bool_pack;
+      template<bool... bs>
+      using all_true = std::is_same<bool_pack<bs..., true>, bool_pack<true, bs...>>;
+
+      static_assert(all_true<(TableName == Indices::table_name)...>::value, "index must use same table name as the multi_index it is contained within");
 
       struct item : public T
       {
@@ -126,13 +134,13 @@ class multi_index
 
          const multi_index& __idx;
          int                __primary_itr;
-         int                __iters[sizeof...(Indicies)];
+         int                __iters[sizeof...(Indices)];
       };
 
       uint64_t _code;
       uint64_t _scope;
 
-      boost::hana::tuple<Indicies...>   _indicies;
+      boost::hana::tuple<Indices...>   _indices;
 
 
       struct by_primary_key;
@@ -165,7 +173,7 @@ class multi_index
             ds >> val;
 
             i.__primary_itr = itr;
-            boost::hana::for_each( _indicies, [&]( auto& idx ) {
+            boost::hana::for_each( _indices, [&]( auto& idx ) {
                i.__iters[idx.index_number] = -1;
             });
          });
@@ -378,7 +386,7 @@ class multi_index
       }
       template<uint64_t IndexName>
       auto get_index()const  {
-        const auto& idx = boost::hana::find_if( _indicies, []( auto x ){
+        const auto& idx = boost::hana::find_if( _indices, []( auto x ){
                                      return std::integral_constant<bool,(decltype(x)::index_name == IndexName)>(); } ).value();
         return index<multi_index, typename std::decay<decltype(idx)>::type>( *this, idx );
       }
@@ -396,7 +404,7 @@ class multi_index
              auto pk = obj.primary_key();
              i.__primary_itr = db_store_i64( _scope, TableName, payer, pk, tmp, sizeof(tmp) );
 
-             boost::hana::for_each( _indicies, [&]( auto& idx ) {
+             boost::hana::for_each( _indices, [&]( auto& idx ) {
                 i.__iters[idx.index_number] = idx.store( _scope, payer, obj );
              });
          });
@@ -412,7 +420,7 @@ class multi_index
 
          // eosio_assert( &objitem.__idx == this, "invalid object" );
 
-         auto secondary_keys = boost::hana::transform( _indicies, [&]( auto& idx ) {
+         auto secondary_keys = boost::hana::transform( _indices, [&]( auto& idx ) {
              return idx.extract_secondary_key( obj );
          });
 
@@ -427,7 +435,7 @@ class multi_index
 
          db_update_i64( objitem.__primary_itr, payer, tmp, sizeof(tmp) );
 
-         boost::hana::for_each( _indicies, [&]( auto& idx ) {
+         boost::hana::for_each( _indices, [&]( auto& idx ) {
             auto secondary = idx.extract_secondary_key( obj );
             if( boost::hana::at_c<std::decay<decltype(idx)>::type::index_number>(secondary_keys) != secondary ) {
                auto indexitr = mutableitem.__iters[idx.index_number];
@@ -459,7 +467,7 @@ class multi_index
 
          db_remove_i64( objitem.__primary_itr );
 
-         boost::hana::for_each( _indicies, [&]( auto& idx ) {
+         boost::hana::for_each( _indices, [&]( auto& idx ) {
             auto i = objitem.__iters[idx.index_number];
             if( i == -1 ) {
               typename std::decay<decltype(idx)>::type::secondary_type second;
