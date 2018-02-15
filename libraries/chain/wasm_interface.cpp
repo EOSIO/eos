@@ -646,7 +646,7 @@ class database_api : public context_aware_api {
          return context.db_lowerbound_i64( code, scope, table, id ); 
       }
       int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
-         return context.db_lowerbound_i64( code, scope, table, id ); 
+         return context.db_upperbound_i64( code, scope, table, id ); 
       }
 
       int db_idx64_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const uint64_t& secondary ) {
@@ -658,13 +658,12 @@ class database_api : public context_aware_api {
       void db_idx64_remove( int iterator ) {
          return context.idx64.remove( iterator );
       }
-      int db_idx64_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t& primary ) {
+      int db_idx64_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const uint64_t& secondary, uint64_t& primary ) {
          return context.idx64.find_secondary(code, scope, table, secondary, primary);
       }
       int db_idx64_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t primary ) {
-         return context.idx64.find_secondary(code, scope, table, secondary, primary);
+         return context.idx64.find_primary(code, scope, table, secondary, primary);
       }
-
       int db_idx64_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  uint64_t& secondary, uint64_t& primary ) {
          return context.idx64.lowerbound_secondary(code, scope, table, secondary, primary);
       }
@@ -678,22 +677,6 @@ class database_api : public context_aware_api {
          return context.idx64.previous_secondary(iterator, primary);
       }
 
-      /*
-      int db_idx64_next( int iterator, uint64_t& primary ) {
-      }
-      int db_idx64_prev( int iterator, uint64_t& primary ) {
-      }
-      int db_idx64_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t primary ) {
-      }
-      int db_idx64_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t& primary ) {
-      }
-      int db_idx64_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t& primary ) {
-      }
-      int db_idx64_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t& primary ) {
-      }
-      */
-
-
       int db_idx128_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const uint128_t& secondary ) {
          return context.idx128.store( scope, table, payer, id, secondary );
       }
@@ -706,7 +689,7 @@ class database_api : public context_aware_api {
       int db_idx128_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t primary ) {
          return context.idx128.find_primary( code, scope, table, secondary, primary );
       }
-      int db_idx128_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
+      int db_idx128_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const uint128_t& secondary, uint64_t& primary ) {
          return context.idx128.find_secondary(code, scope, table, secondary, primary);
       }
       int db_idx128_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {

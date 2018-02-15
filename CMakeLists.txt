@@ -69,8 +69,8 @@ ENDIF(WIN32)
 FIND_PACKAGE(Boost 1.64 REQUIRED COMPONENTS
     thread
     date_time
-    system
     filesystem
+    system
     program_options
     signals
     serialization

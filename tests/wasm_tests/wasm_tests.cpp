@@ -190,7 +190,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
       try {
          const auto& accnt  = this->control->get_database().get<account_object,by_name>( name );
          abi_def abi;
-         if (abi_serializer::to_abi(accnt.name, accnt.abi, abi)) {
+         if (abi_serializer::to_abi(accnt.abi, abi)) {
             return abi_serializer(abi);
          }
          return optional<abi_serializer>();
@@ -364,7 +364,7 @@ BOOST_FIXTURE_TEST_CASE( stl_test, tester ) try {
 
     const auto& accnt  = control->get_database().get<account_object,by_name>( N(stltest) );
     abi_def abi;
-    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.name, accnt.abi, abi), true);
+    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
     abi_serializer abi_ser(abi);
 
     //send message
@@ -582,7 +582,7 @@ BOOST_FIXTURE_TEST_CASE(noop, tester) try {
    set_abi(N(noop), noop_abi);
    const auto& accnt  = control->get_database().get<account_object,by_name>(N(noop));
    abi_def abi;
-   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.name, accnt.abi, abi), true);
+   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
    abi_serializer abi_ser(abi);
 
    {
@@ -647,7 +647,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, tester) try {
 
    const auto& accnt  = control->get_database().get<account_object,by_name>(config::system_account_name);
    abi_def abi;
-   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.name, accnt.abi, abi), true);
+   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
    abi_serializer abi_ser(abi);
    abi_ser.validate();
 
@@ -829,6 +829,97 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
 
 } FC_LOG_AND_RETHROW()
 #endif
+
+BOOST_FIXTURE_TEST_CASE( test_db, tester ) try {
+   produce_blocks(2);
+   
+   create_accounts( {N(tester)} );
+   produce_block();
+   
+   set_code(N(tester), test_api_wast);
+   //   set_code(N(tester), test_api_abi);
+   
+   produce_blocks(1);
+   
+   {
+      signed_transaction trx;
+      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
+                               test_api_action<TEST_METHOD("test_db", "primary_i64_general")> {});
+      
+      set_tapos(trx);
+      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
+      push_transaction(trx);
+      produce_block();
+      
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+   {
+      signed_transaction trx;
+      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
+                               test_api_action<TEST_METHOD("test_db", "primary_i64_lowerbound")> {});
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
+      push_transaction(trx);
+      produce_block();
+
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+   {
+      signed_transaction trx;
+      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
+                               test_api_action<TEST_METHOD("test_db", "primary_i64_upperbound")> {});
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
+      push_transaction(trx);
+      produce_block();
+
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+   {
+      signed_transaction trx;
+      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
+                               test_api_action<TEST_METHOD("test_db", "idx64_general")> {});
+      
+      set_tapos(trx);
+      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
+      push_transaction(trx);
+      produce_block();
+      
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+   {
+      signed_transaction trx;
+      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
+                               test_api_action<TEST_METHOD("test_db", "idx64_lowerbound")> {});
+      
+      set_tapos(trx);
+      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
+      push_transaction(trx);
+      produce_block();
+      
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+   {
+      signed_transaction trx;
+      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
+                               test_api_action<TEST_METHOD("test_db", "idx64_upperbound")> {});
+      
+      set_tapos(trx);
+      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
+      push_transaction(trx);
+      produce_block();
+      
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+} FC_LOG_AND_RETHROW() /// test_db
 
 
 BOOST_AUTO_TEST_SUITE_END()

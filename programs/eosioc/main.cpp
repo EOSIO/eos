@@ -54,8 +54,8 @@ Usage: ./eosc create account [OPTIONS] creator name OwnerKey ActiveKey
 Positionals:
   creator TEXT                The name of the account creating the new account
   name TEXT                   The name of the new account
-  OwnerKey TEXT               The owner public key for the account
-  ActiveKey TEXT              The active public key for the account
+  OwnerKey TEXT               The owner public key for the new account
+  ActiveKey TEXT              The active public key for the new account
 
 Options:
   -s,--skip-signature         Specify that unlocked wallet keys should not be used to sign transaction
@@ -458,8 +458,8 @@ int main( int argc, char** argv ) {
    auto createAccount = create->add_subcommand("account", localized("Create a new account on the blockchain"), false);
    createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
    createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
-   createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the account"))->required();
-   createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the account"))->required();
+   createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
+   createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"))->required();
    createAccount->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
    add_standard_transaction_options(createAccount);
    createAccount->set_callback([&] {
