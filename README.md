@@ -34,8 +34,8 @@ EOS.IO currently supports the following operating systems:
 1. [Getting Started](#gettingstarted)
 2. [Setting up a build/development environment](#setup)
 	1. [Automated build script](#autobuild)
-      1. [Clean install Linux (Amazon, Fedora & Ubuntu) for a local testnet](#autoubuntulocal)
-      2. [Clean install Linux (Amazon, Fedora & Ubuntu) for the public testnet](#autoubuntupublic)
+      1. [Clean install Linux (Amazon, Fedora, & Ubuntu) for a local testnet](#autoubuntulocal)
+      2. [Clean install Linux (Amazon, Fedora, & Ubuntu) for the public testnet](#autoubuntupublic)
       3. [MacOS for a local testnet](#automaclocal)
       4. [MacOS for the public testnet](#automacpublic)
 3. [Building EOS and running a node](#runanode)
@@ -55,10 +55,10 @@ EOS.IO currently supports the following operating systems:
 7. [Doxygen documentation](#doxygen)
 8. [Running EOS in Docker](#docker)
 9. [Manual installation of the dependencies](#manualdep)
-   1. [Clean install Amazon 2017.09 and higher](#cleaninstallamazon)
-   2. [Clean install Fedora 25 and higher](#fedora)
-   3. [Clean install Ubuntu 16.04 and higher](#ubuntu)
-   4. [Clean install MacOS Sierra 10.12 and higher](#macos)
+   1. [Clean install Amazon 2017.09 and higher](#manualdepamazon)
+   2. [Clean install Fedora 25 and higher](#manualdepfedora)
+   3. [Clean install Ubuntu 16.04 and higher](#manualdepubuntu)
+   4. [Clean install MacOS Sierra 10.12 and higher](#manualdepmacos)
 
 <a name="gettingstarted"></a>
 ## Getting Started
@@ -570,7 +570,7 @@ Dependencies:
 * [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
 * [binaryen](https://github.com/WebAssembly/binaryen.git)
 
-<a name="cleaninstallamazon"></a>
+<a name="manualdepamazon"></a>
 ### Clean install Amazon 2017.09 and higher
 
 Install the development toolkit:
@@ -652,7 +652,7 @@ source ~/.bash_profile
 ```
 Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
 
-<a name="fedora"></a>
+<a name="manualdepfedora"></a>
 ### Clean install Fedora 25 and higher
 
 Install the development toolkit:
@@ -733,7 +733,7 @@ source ~/.bash_profile
 ```
 Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
 
-<a name="ubuntu"></a>
+<a name="manualdepubuntu"></a>
 ### Clean install Ubuntu 16.04 & Higher
 
 Install the development toolkit:
@@ -816,7 +816,7 @@ source ~/.bash_profile
 
 Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
 
-<a name="macos"></a>
+<a name="manualdepmacos"></a>
 ### MacOS Sierra 10.12.6 & higher
 
 macOS additional Dependencies:
