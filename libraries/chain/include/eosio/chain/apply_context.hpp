@@ -292,7 +292,7 @@ class apply_context {
 
 
 
-      apply_context(chain_controller& con, chainbase::database& db, const action& a, const transaction_metadata& trx_meta)
+      apply_context(chain_controller& con, chainbase::database& db, const action& a, const transaction_metadata& trx_meta, uint32_t depth=0)
 
       :controller(con), 
        db(db), 
@@ -302,7 +302,8 @@ class apply_context {
        used_authorizations(act.authorization.size(), false),
        trx_meta(trx_meta), 
        idx64(*this), 
-       idx128(*this)
+       idx128(*this),
+       recurse_depth(depth)
        {}
 
       void exec();
@@ -437,6 +438,7 @@ class apply_context {
 
       generic_index<contracts::index64_object>    idx64;
       generic_index<contracts::index128_object>   idx128;
+      uint32_t                                    recurse_depth;  // how deep inline actions can recurse
 
    private:
       iterator_cache<key_value_object> keyval_cache;

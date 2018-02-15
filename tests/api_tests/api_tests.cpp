@@ -505,7 +505,7 @@ BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, tester) { try {
 BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
 	produce_blocks(2);
 	create_account( N(testapi) ); 
-	produce_blocks(1000);
+	produce_blocks(100);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
  
@@ -514,16 +514,9 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
 
    // test send_action_empty
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_empty", {});
-
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), fc::assert_exception,
          [](const fc::assert_exception& e) {
             return expect_assert_message(e, "inline action too big");
-         }
-      );
-
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_recurse", {}), eosio::chain::wasm_execution_error,
-         [](const eosio::chain::wasm_execution_error& e) {
-            return expect_assert_message(e, "stack overflow");
          }
       );
 
@@ -534,7 +527,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
          }
       );
    control->push_deferred_transactions( true );
-   
+  
    // test send_transaction
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction", {});
    control->push_deferred_transactions( true );
@@ -555,15 +548,22 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
    // this is a bit rough, but I couldn't figure out a better way to compare the hashes
    CAPTURE( cerr, CALL_TEST_FUNCTION( *this, "test_transaction", "test_read_transaction", {} ) );
    BOOST_CHECK_EQUAL( capture.size(), 7 );
-   string sha_expect = "1abfe7bc4853e9019197c955f9d0192a41d0381947a7d354150c1da8e4921460";
+   string sha_expect = "886a50696a101c6400eacf82d2490db6eb233e59dd2862f2ceae613c01cc6d94"; 
    std::cout << std::hex << capture[3] << "\n";
 	BOOST_CHECK_EQUAL(capture[3] == sha_expect, true);
-
    // test test_tapos_block_num
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_num", fc::raw::pack(control->head_block_num()) ); 
 
    // test test_tapos_block_prefix
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_prefix", fc::raw::pack(control->head_block_id()._hash[1]) ); 
+   
+   // test send_action_recurse
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_recurse", {}), eosio::chain::transaction_exception,
+         [](const eosio::chain::transaction_exception& e) {
+            return expect_assert_message(e, "inline action recursion depth reached");
+         }
+      );
+
 } FC_LOG_AND_RETHROW() }
 
 template <uint64_t NAME>
@@ -577,8 +577,6 @@ struct setprod_act {
    }
 };
 
-// Fixing this to create active producers
-#if 1 
 /*************************************************************************************
  * chain_tests test case
  *************************************************************************************/
@@ -643,7 +641,6 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, tester) { try {
 
 	CALL_TEST_FUNCTION( *this, "test_chain", "test_activeprods", fc::raw::pack(prods));
 } FC_LOG_AND_RETHROW() }
-#endif
 
 /*************************************************************************************
  * db_tests test case

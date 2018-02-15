@@ -1242,19 +1242,37 @@ class compiler_builtins : public context_aware_api {
       static constexpr uint32_t SHIFT_WIDTH = (sizeof(uint64_t)*8)-1;
 };
 
-/*
+#if 0
 class account_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
+      PACKED_STRUCT (
+         account_balance {
+            account_name account;
+            asset        balance;
+      })
       bool account_balance_get(array_ptr<const char> balance, uint32_t len) {
+         const auto* tbl = context.db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, account, N(account)));
+         share_type result = 0;
+
+         // the balance is implied to be 0 if either the table or row does not exist
+         if (tbl) {
+            const auto *obj = context.db.find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, asset_symbol.value()));
+            if (obj) {
+               fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
+               fc::raw::unpack(ds, result);
+            }
+         }
+         return true; //asset(result, asset_symbol);
+/*
          const uint32_t account_balance_size = sizeof(account_balance);
          auto mem = Runtime::getDefaultMemory(code.instance);
          FC_ASSERT(len == account_balance_size, "passed in len ${len} is not equal to the size of an account_balance struct == ${real_len}", ("len",len)("real_len",account_balance_size));
          account_balance& total_balance = memoryRef<account_balance>(mem, balance);
+         */
       }
 };
-*/
-
+#endif
 class math_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
