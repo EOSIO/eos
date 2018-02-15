@@ -237,3 +237,7 @@ struct test_checktime {
    static void checktime_pass();
    static void checktime_failure();
 };
+
+struct test_privileged {
+   static void test_is_privileged();
+};

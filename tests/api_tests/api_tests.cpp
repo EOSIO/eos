@@ -202,51 +202,6 @@ uint32_t last_fnc_err = 0;
 	}
 
 
-#if 0
-// TODO missing intrinsic account_balance_get
-/*************************************************************************************
- * account_tests test case
- *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(account_tests, tester) { try {
-	produce_blocks(2);
-	create_account( N(testapi), asset::from_string("1000.0000 EOS") );
-	create_account( N(acc1), asset::from_string("0.0000 EOS") );
-	create_account( N(acc2), asset::from_string("0.0000 EOS") );
-	produce_blocks(1000);
-	transfer( N(inita), N(testapi), "100.0000 EOS", "memo" );
-	//transfer( N(inita), N(acc1), "1000.0000 EOS", "test");
-#if 0
-	eosio::chain::signed_transaction trx;
-	trx.write_scope = { N(acc1), N(inita) };
-
-	trx.actions.emplace_back(vector<permission_level>{{N(inita), config::active_name}}, 
-									 contracts::transfer{N(inita), N(acc1), 1000, "memo"});
-
-
-	trx.expiration = control->head_block_time() + fc::seconds(100);
-	trx.set_reference_block(control->head_block_id());
-
-	trx.sign(get_private_key(N(inita), "active"), chain_id_type());
-	push_transaction(trx);
-#endif
-	produce_blocks(1000);
-	set_code( N(testapi), test_api_wast );
-	produce_blocks(1);
-
-   transfer( N(inita), N(acc1), "24.0000 EOS", "memo" );
-	produce_blocks(1000);
-   BOOST_CHECK_EQUAL(get_balance(N(acc1)), 240000);
-
-   transfer( N(inita), N(acc1), "1.0000 EOS", "memo" );
-	produce_blocks(1000);
-   BOOST_CHECK_EQUAL(get_balance(N(acc1)), 250000);
-
-   transfer( N(inita), N(acc1), "5000.0000 EOS", "memo" );
-   BOOST_CHECK_EQUAL(get_balance(N(acc1)), 50250000);
-} FC_LOG_AND_RETHROW() }
-#endif
-
-
 /*************************************************************************************
  * action_tests test case
  *************************************************************************************/
@@ -1015,5 +970,19 @@ BOOST_FIXTURE_TEST_CASE(types_tests, tester) { try {
 	CALL_TEST_FUNCTION( *this, "test_types", "name_class", {});
 } FC_LOG_AND_RETHROW() }
 
+/*************************************************************************************
+ * privileged_tests test case
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(privileged_tests, tester) { try {
+	produce_blocks(2);
+	create_account( N(testapi) ); 
+	create_account( N(acc1) ); 
+	produce_blocks(100);
+	set_code( N(testapi), test_api_wast );
+	produce_blocks(1);
+ 
+	CALL_TEST_FUNCTION( *this, "test_privileged", "test_is_privileged", {});
+
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
