@@ -175,6 +175,8 @@ else()
   message( FATAL_ERROR "No WASM compiler cound be found" )
 endif()
 
+FIND_PACKAGE(binaryen REQUIRED)
+
 include(installer)
 
 add_subdirectory( libraries )
