@@ -2,6 +2,7 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <chainbase/chainbase.hpp>
 
 #include <identity/identity.wast.hpp>
 #include <identity/identity.abi.hpp>
@@ -47,6 +48,7 @@ public:
       abi_ser_test.set_abi(abi_test);
 
       const global_property_object &gpo = control->get_global_properties();
+      FC_ASSERT(0 < gpo.active_producers.producers.size(), "No producers");
       producer_name = (string)gpo.active_producers.producers.front().producer_name;
    }
 
@@ -112,7 +114,7 @@ public:
       BOOST_REQUIRE_EQUAL(idnt, itr->primary_key);
 
       vector<char> data;
-      read_only::copy_row(*itr, data);
+      read_only::copy_inline_row(*itr, data);
       return abi_ser.binary_to_variant("identrow", data);
    }
 
@@ -131,17 +133,27 @@ public:
 
    fc::variant get_certrow(uint64_t identity, const string& property, uint64_t trusted, const string& certifier) {
       const auto& db = control->get_database();
-      const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), identity, N(certs)));
+      const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), identity, N( identity /* or by tuple */ )));
       FC_ASSERT(t_id != 0, "certrow not found");
 
-      uint64_t prop = string_to_name(property.c_str());
-      uint64_t cert = string_to_name(certifier.c_str());
-      const auto& idx = db.get_index<key64x64x64_value_index, by_scope_primary>();
-      auto itr = idx.lower_bound(boost::make_tuple(t_id->id, prop, trusted, cert));
+      const auto& idx = db.get_index<index256_index, by_secondary>();
+      std::array<uint64_t, 4> buf { { string_to_name(property.c_str()), trusted, string_to_name(certifier.c_str()), 0 } };
+      fc::sha256 key((char*)buf.data(), sizeof(uint64_t)*buf.size());
 
-      if (itr != idx.end() && itr->t_id == t_id->id && prop == itr->primary_key && trusted == itr->secondary_key && cert == itr->tertiary_key) {
+      auto itr = idx.lower_bound(boost::make_tuple(t_id->id, key));
+      if (itr != idx.end() && itr->t_id == t_id->id && itr->secondary_key == key) {
+         auto primary_key = itr->primary_key;
+         const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), N(identity), N(ident)));
+         FC_ASSERT(t_id != 0, "object not found");
+
+         const auto& idx = db.get_index<key_value_index, by_scope_primary>();
+
+         auto itr = idx.lower_bound(boost::make_tuple(t_id->id, primary_key));
+         FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id && primary_key == itr->primary_key,
+                    "Record found in secondary index, but not found in primary index."
+         );
          vector<char> data;
-         read_only::copy_row(*itr, data);
+         read_only::copy_inline_row(*itr, data);
          return abi_ser.binary_to_variant("certrow", data);
       } else {
          return fc::variant(nullptr);

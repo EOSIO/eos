@@ -302,7 +302,8 @@ class apply_context {
        used_authorizations(act.authorization.size(), false),
        trx_meta(trx_meta), 
        idx64(*this), 
-       idx128(*this)
+       idx128(*this),
+       idx256(*this)
        {}
 
       void exec();
@@ -436,6 +437,7 @@ class apply_context {
 
       generic_index<contracts::index64_object>    idx64;
       generic_index<contracts::index128_object>   idx128;
+      generic_index<contracts::index256_object>   idx256;
 
       static constexpr int64_t base_row_fee = 200;
 

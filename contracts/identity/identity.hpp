@@ -4,13 +4,16 @@
 #include <eosiolib/dispatcher.hpp>
 #include <eosiolib/singleton.hpp>
 #include <eosiolib/table.hpp>
+#include <eosiolib/multi_index.hpp>
 #include <eosiolib/vector.hpp>
+#include <eosiolib/print.hpp>
 
 namespace identity {
    using eosio::action_meta;
    using eosio::table_i64i64i64;
    using eosio::table64;
    using eosio::singleton;
+   using eosio::print;
    using std::string;
    using std::vector;
 
@@ -122,12 +125,23 @@ namespace identity {
           * Defines an object in an i64i64i64 table 
           */
          struct certrow {
+            uint64_t            id;
             property_name       property;
             uint64_t            trusted;
             account_name        certifier;
             uint8_t             confidence = 0;
             string              type;
             vector<char>        data;
+            uint64_t primary_key() const { return id; }
+            constexpr static blob256 key(uint64_t property, uint64_t trusted, uint64_t certifier) {
+               blob256 key;
+               key.uint64[0] = property;
+               key.uint64[1] = trusted;
+               key.uint64[2] = certifier;
+               key.uint64[3] = 0;
+               return key;
+            }
+            blob256 get_key() const { return key(property, trusted, certifier); };
 
             EOSLIB_SERIALIZE( certrow , (property)(trusted)(certifier)(confidence)(type)(data) )
          };
@@ -135,6 +149,8 @@ namespace identity {
          struct identrow {
             uint64_t     identity; 
             account_name creator;
+
+            uint64_t primary_key() const { return identity; }
 
             EOSLIB_SERIALIZE( identrow , (identity)(creator) )
          };
@@ -146,8 +162,11 @@ namespace identity {
             EOSLIB_SERIALIZE( trustrow , (account)(trusted) )
          };
 
-         typedef table_i64i64i64<code, N(certs), code, certrow>  certs_table;
-         typedef table64<code, N(ident), code, identrow>         idents_table;
+         //typedef table_i64i64i64<code, N(certs), code, certrow>  certs_table;
+         typedef eosio::multi_index<N(certs), certrow,
+                                    eosio::index_by<0, N(bytuple), certrow, eosio::const_mem_fun<certrow, blob256, &certrow::get_key> >
+                                    > certs_table;
+         typedef eosio::multi_index<N(ident), identrow> idents_table;
          typedef singleton<code, N(account), code, identity_name>  accounts_table;
          typedef table64<code, N(trust), code, account_name>     trust_table;
 
@@ -159,15 +178,15 @@ namespace identity {
             // for each trusted owner certification 
             //   check to see if the certification is still trusted
             //   check to see if the account has claimed it
-            certs_table certs( ident );
-            certrow row;
-            bool ok = certs.primary_lower_bound(row, N(owner), 1, 0);
+            certs_table certs( code, ident );
+            auto idx = certs.template get_index<N(bytuple)>();
+            auto itr = idx.lower_bound(certrow::key(N(owner), 1, 0));
             account_name owner = 0;
-            while (ok && row.property == N(owner) && row.trusted) {
-               if (sizeof(account_name) == row.data.size()) {
-                  account_name account = *reinterpret_cast<account_name*>(row.data.data());
+            while (itr != idx.end() && itr->property == N(owner) && itr->trusted) {
+               if (sizeof(account_name) == itr->data.size()) {
+                  account_name account = *reinterpret_cast<const account_name*>(itr->data.data());
                   if (ident == get_claimed_identity(account)) {
-                     if (is_trusted(row.certifier) ) {
+                     if (is_trusted(itr->certifier) ) {
                         // the certifier is still trusted
                         if (!owner || owner == account) {
                            owner = account;
@@ -177,8 +196,9 @@ namespace identity {
                         }
                      } else if (DeployToAccount == current_receiver()){
                         //the certifier is no longer trusted, need to unset the flag
-                        row.trusted = 0;
-                        certs.store( row, 0 ); //assuming 0 means bill to the same account
+                        certs.update(*itr, 0, [&](certrow& r) {
+                              r.trusted = 0;
+                           });
                      } else {
                         // the certifier is no longer trusted, but the code runs in read-only mode
                      }
@@ -186,8 +206,6 @@ namespace identity {
                } else {
                   // bad row - skip it
                }
-               //ok = certs.primary_upper_bound(row, row.property, row.trusted, row.certifier);
-               ok = certs.next_primary(row, row);
             }
             if (owner) {
                //owner found, no contradictions among certifications flaged as trusted
@@ -195,15 +213,17 @@ namespace identity {
             }
             // trusted certification not found
             // let's see if some of untrusted certifications became trusted
-            ok = certs.primary_lower_bound(row, N(owner), 0, 0);
-            while (ok && row.property == N(owner) && !row.trusted) {
-               if (sizeof(account_name) == row.data.size()) {
-                  account_name account = *reinterpret_cast<account_name*>(row.data.data());
-                  if (ident == get_claimed_identity(account) && is_trusted(row.certifier)) {
+            {
+            auto itr = idx.lower_bound(certrow::key(N(owner), 0, 0));
+            while (itr != idx.end() && itr->property == N(owner) && !itr->trusted) {
+               if (sizeof(account_name) == itr->data.size()) {
+                  account_name account = *reinterpret_cast<const account_name*>(itr->data.data());
+                  if (ident == get_claimed_identity(account) && is_trusted(itr->certifier)) {
                      if (DeployToAccount == current_receiver()) {
                         // the certifier became trusted and we have permissions to update the flag
-                        row.trusted = 1;
-                        certs.store( row, 0 ); //assuming 0 means bill to the same account
+                        certs.update(*itr, 0, [&](certrow& r) {
+                              r.trusted = 1;
+                           });
                      }
                      if (!owner || owner == account) {
                         owner = account;
@@ -215,8 +235,7 @@ namespace identity {
                } else {
                   // bad row - skip it
                }
-               //ok = certs.primary_upper_bound(row, row.property, row.trusted, row.certifier);
-               ok = certs.next_primary(row, row);
+            }
             }
             return owner;
          }
@@ -229,18 +248,20 @@ namespace identity {
          }
 
          static bool is_trusted_by( account_name trusted, account_name by ) {
-            return trust_table::exists(trusted, by);
+            auto res = trust_table::exists(trusted, by);
+            return res;
+
          }
 
          static bool is_trusted( account_name acnt ) {
             account_name active_producers[21];
-            get_active_producers( active_producers, sizeof(active_producers) );
-            for( const auto& n : active_producers ) {
-               if( n == acnt ) 
+            auto count = get_active_producers( active_producers, sizeof(active_producers) );
+            for( size_t i = 0; i < count; ++i ) {
+               if( active_producers[i] == acnt )
                   return true;
             }
-            for( const auto& n : active_producers ) {
-               if( is_trusted_by( acnt, n ) )
+            for( size_t i = 0; i < count; ++i ) {
+               if( is_trusted_by( acnt, active_producers[i] ) )
                   return true;
             }
             return false;
@@ -259,10 +280,14 @@ namespace identity {
 
          static void on( const create& c ) {
             require_auth( c.creator );
-            eosio_assert( !idents_table::exists( c.identity ), "identity already exists" );
+            idents_table t( code, code);
+            auto ptr = t.find( c.identity );
+            eosio_assert( !ptr, "identity already exists" );
             eosio_assert( c.identity != 0, "identity=0 is not allowed" );
-            idents_table::set( identrow{ .identity = c.identity,
-                                         .creator  = c.creator } );
+            t.emplace(c.creator, [&](identrow& i) {
+                  i.identity = c.identity;
+                  i.creator = c.creator;
+               });
          }
 
          static void on( const certprop& cert ) {
@@ -270,25 +295,41 @@ namespace identity {
             if( cert.bill_storage_to != cert.certifier )
                require_auth( cert.bill_storage_to );
 
-            eosio_assert( idents_table::exists( cert.identity ), "identity does not exist" );
+            idents_table t( code, code );
+            auto ptr = t.find( cert.identity );
+            eosio_assert( ptr != nullptr, "identity does not exist" );
 
             /// the table exists in the scope of the identity 
-            certs_table certs( cert.identity );
+            certs_table certs( code, cert.identity );
+            bool trusted = is_trusted( cert.certifier );
 
             for( const auto& value : cert.values ) {
+               auto idx = certs.template get_index<N(bytuple)>();
                if (value.confidence) {
-                  certrow row;
-                  row.property   = value.property;
-                  row.trusted    = is_trusted( cert.certifier );
-                  row.certifier  = cert.certifier;
-                  row.confidence = value.confidence;
                   eosio_assert(value.type.size() <= 32, "certrow::type should be not longer than 32 bytes");
-                  row.type       = value.type;
-                  row.data       = value.data;
+                  auto itr = idx.lower_bound( certrow::key(value.property, trusted, cert.certifier) );
 
-                  certs.store( row, cert.bill_storage_to );
-                  //remove row with different "trusted" value
-                  certs.remove(value.property, !row.trusted, cert.certifier);
+                  if (itr != idx.end() && itr->property == value.property && itr->trusted == trusted && itr->certifier == cert.certifier) {
+                     certs.update(*itr, 0, [&](certrow& row) {
+                           row.confidence = value.confidence;
+                           row.type       = value.type;
+                           row.data       = value.data;
+                        });
+                  } else {
+                     certs.emplace(code, [&](certrow& row) {
+                           row.property   = value.property;
+                           row.trusted    = trusted;
+                           row.certifier  = cert.certifier;
+                           row.confidence = value.confidence;
+                           row.type       = value.type;
+                           row.data       = value.data;
+                        });
+                  }
+
+                  auto itr_old = idx.lower_bound( certrow::key(value.property, !trusted, cert.certifier) );
+                  if (itr_old != idx.end() && itr_old->property == value.property && itr_old->trusted == !trusted && itr_old->certifier == cert.certifier) {
+                     certs.remove(*itr_old);
+                  }
 
                   //special handling for owner
                   if (value.property == N(owner)) {
@@ -299,9 +340,14 @@ namespace identity {
                      }
                   }
                } else {
-                  //remove both tursted and untrusted because we cannot know if it was trusted back at creation time
-                  certs.remove(value.property, 0, cert.certifier);
-                  certs.remove(value.property, 1, cert.certifier);
+                  auto itr1 = idx.lower_bound( certrow::key(value.property, trusted, cert.certifier) );
+                  if (itr1 != idx.end() && itr1->property == value.property && itr1->trusted == !trusted && itr1->certifier == cert.certifier) {
+                     certs.remove(*itr1);
+                  }
+                  auto itr2 = idx.lower_bound( certrow::key(value.property, !trusted, cert.certifier) );
+                  if (itr2 != idx.end() && itr2->property == value.property && itr2->trusted == !trusted && itr2->certifier == cert.certifier) {
+                     certs.remove(*itr2);
+                  }
                   //special handling for owner
                   if (value.property == N(owner)) {
                      eosio_assert(sizeof(account_name) == value.data.size(), "data size doesn't match account_name size");

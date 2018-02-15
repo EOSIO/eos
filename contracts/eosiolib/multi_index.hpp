@@ -38,11 +38,21 @@ struct secondary_iterator<uint128_t> {
    static void db_idx_remove( int iterator  )                 { db_idx128_remove( iterator ); }
 };
 
+template<>
+struct secondary_iterator<blob256> {
+   static int db_idx_next( int iterator, uint64_t* primary ) { return db_idx256_next( iterator, primary ); }
+   static int db_idx_prev( int iterator, uint64_t* primary ) { return db_idx256_previous( iterator, primary ); }
+   static void db_idx_remove( int iterator  )                 { db_idx256_remove( iterator ); }
+};
+
 void db_idx_update( int iterator, uint64_t payer, const uint64_t& secondary ) {
    db_idx64_update( iterator, payer, &secondary );
 }
 void db_idx_update( int iterator, uint64_t payer, const uint128_t& secondary ) {
    db_idx128_update( iterator, payer, &secondary );
+}
+void db_idx_update( int iterator, uint64_t payer, const blob256& secondary ) {
+   db_idx256_update( iterator, payer, &secondary );
 }
 
 int db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t primary ) { 
@@ -72,6 +82,18 @@ int db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t&
    return db_idx128_lowerbound( code, scope, table, &secondary, &primary );
 }
 
+int db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, blob256& secondary, uint64_t primary ) {
+   return db_idx256_find_primary( code, scope, table, &secondary, primary );
+}
+int db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, blob256& secondary, uint64_t& primary ) {
+   return db_idx256_find_secondary( code, scope, table, &secondary, &primary );
+}
+int db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, blob256& secondary, uint64_t& primary ) {
+   return db_idx256_lowerbound( code, scope, table, &secondary, &primary );
+}
+int db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, blob256& secondary, uint64_t& primary ) {
+   return db_idx256_lowerbound( code, scope, table, &secondary, &primary );
+}
 
 
 template<uint64_t TableName, typename T, typename... Indicies>
@@ -124,6 +146,13 @@ struct index_by {
       }
 };
 
+bool operator==( const blob256& a, const blob256& b ) {
+   return a.uint128[0] == b.uint128[0] && a.uint128[1] == b.uint128[1];
+}
+
+bool operator!=( const blob256& a, const blob256& b ) {
+   return !(a == b);
+}
 
 /*
 template<int IndexNumber, uint64_t IndexName, typename T, typename Extractor>
@@ -263,7 +292,7 @@ class multi_index
                   }
 
                   const T& operator*()const { return *static_cast<const T*>(_item); }
-                  const T* operator->()const { return *static_cast<const T*>(_item); }
+                  const T* operator->()const { return static_cast<const T*>(_item); }
 
                private:
                   friend class index;

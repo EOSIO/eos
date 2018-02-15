@@ -610,9 +610,11 @@ class system_api : public context_aware_api {
       }
 
       void eosio_assert(bool condition, null_terminated_ptr str) {
-         std::string message( str );
-         if( !condition ) edump((message));
-         FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
+         if( !condition ) {
+            std::string message( str );
+            edump((message));
+            FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
+         }
       }
 
       fc::time_point_sec now() {
@@ -786,6 +788,34 @@ class database_api : public context_aware_api {
       int db_idx128_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
       }
       */
+
+     int db_idx256_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const fc::sha256& secondary ) {
+         return context.idx256.store( scope, table, payer, id, secondary );
+      }
+      void db_idx256_update( int iterator, uint64_t payer, const fc::sha256& secondary ) {
+         return context.idx256.update( iterator, payer, secondary );
+      }
+      void db_idx256_remove( int iterator ) {
+         return context.idx256.remove( iterator );
+      }
+      int db_idx256_find_primary( uint64_t code, uint64_t scope, uint64_t table, fc::sha256& secondary, uint64_t primary ) {
+         return context.idx256.find_primary( code, scope, table, secondary, primary );
+      }
+      int db_idx256_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const fc::sha256& secondary, uint64_t& primary ) {
+         return context.idx256.find_secondary(code, scope, table, secondary, primary);
+      }
+      int db_idx256_lowerbound( uint64_t code, uint64_t scope, uint64_t table, fc::sha256& secondary, uint64_t& primary ) {
+         return context.idx256.lowerbound_secondary(code, scope, table, secondary, primary);
+      }
+      int db_idx256_upperbound( uint64_t code, uint64_t scope, uint64_t table, fc::sha256& secondary, uint64_t& primary ) {
+         return context.idx256.upperbound_secondary(code, scope, table, secondary, primary);
+      }
+      int db_idx256_next( int iterator, uint64_t& primary ) {
+         return context.idx256.next_secondary(iterator, primary);
+      }
+      int db_idx256_previous( int iterator, uint64_t& primary ) {
+         return context.idx256.previous_secondary(iterator, primary);
+      }
 };
 
 
@@ -1048,6 +1078,16 @@ REGISTER_INTRINSICS( database_api,
    (db_idx128_upperbound,     int(int64_t,int64_t,int64_t,int,int))
    (db_idx128_next,           int(int, int))
    (db_idx128_previous,       int(int, int))
+
+   (db_idx256_store,          int(int64_t,int64_t,int64_t,int64_t,int))
+   (db_idx256_remove,         void(int))
+   (db_idx256_update,         void(int,int64_t,int))
+   (db_idx256_find_primary,   int(int64_t,int64_t,int64_t,int,int64_t))
+   (db_idx256_find_secondary, int(int64_t,int64_t,int64_t,int,int))
+   (db_idx256_lowerbound,     int(int64_t,int64_t,int64_t,int,int))
+   (db_idx256_upperbound,     int(int64_t,int64_t,int64_t,int,int))
+   (db_idx256_next,           int(int, int))
+   (db_idx256_previous,       int(int, int))
 );
 
 REGISTER_INTRINSICS(crypto_api,

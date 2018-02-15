@@ -1059,4 +1059,22 @@ int32_t db_idx128_find_secondary(account_name code, account_name scope, table_na
 int32_t db_idx128_lowerbound(account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t* primary);
 int32_t db_idx128_upperbound(account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t* primary);
 
+union {
+   uint8_t bytes[8];
+   uint16_t uint16[8];
+   uint32_t uint32[8];
+   uint64_t uint64[4];
+   uint128_t uint128[2];
+} typedef blob256;
+
+int32_t db_idx256_store(account_name scope, table_name table, account_name payer, uint64_t id, const blob256* secondary);
+void db_idx256_update(int32_t iterator, account_name payer, const blob256* secondary);
+void db_idx256_remove(int32_t iterator);
+int32_t db_idx256_next(int32_t iterator, uint64_t* primary);
+int32_t db_idx256_previous(int32_t iterator, uint64_t* primary);
+int32_t db_idx256_find_primary(account_name code, account_name scope, table_name table, blob256* secondary, uint64_t primary);
+int32_t db_idx256_find_secondary(account_name code, account_name scope, table_name table, const blob256* secondary, uint64_t* primary);
+int32_t db_idx256_lowerbound(account_name code, account_name scope, table_name table, blob256* secondary, uint64_t* primary);
+int32_t db_idx256_upperbound(account_name code, account_name scope, table_name table, blob256* secondary, uint64_t* primary);
+
 }
