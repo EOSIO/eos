@@ -143,14 +143,6 @@ extern "C" {
       WASM_TEST_HANDLER(test_account, test_balance_acc1);
 #endif
 
-      WASM_TEST_HANDLER(test_db, primary_i64_general);
-      WASM_TEST_HANDLER(test_db, primary_i64_lowerbound);
-      WASM_TEST_HANDLER(test_db, primary_i64_upperbound);
-      WASM_TEST_HANDLER(test_db, idx64_general);
-      WASM_TEST_HANDLER(test_db, idx64_lowerbound);
-      WASM_TEST_HANDLER(test_db, idx64_upperbound);
-
-
       //unhandled test call
       eosio_assert(false, "Unknown Test");
    }
