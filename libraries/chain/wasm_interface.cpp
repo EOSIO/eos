@@ -294,14 +294,28 @@ namespace eosio { namespace chain {
       return *single;
    }
 
-   void wasm_interface::apply( wasm_cache::entry& code, apply_context& context ) {
-      auto context_guard = scoped_context(my->current_context, code, context);
-      code.wavm.call_apply(context);
+   void wasm_interface::apply( wasm_cache::entry& code, apply_context& context, vm_type vm ) {
+      auto context_guard = scoped_context(my->current_context, code, context, vm);
+      switch (vm) {
+         case vm_type::wavm:
+            code.wavm.call_apply(context);
+            break;
+         case vm_type::binaryen:
+            code.binaryen.call_apply(context);
+            break;
+      }
    }
 
-   void wasm_interface::error( wasm_cache::entry& code, apply_context& context ) {
-      auto context_guard = scoped_context(my->current_context, code, context);
-      code.wavm.call_error(context);
+   void wasm_interface::error( wasm_cache::entry& code, apply_context& context, vm_type vm ) {
+      auto context_guard = scoped_context(my->current_context, code, context, vm);
+      switch (vm) {
+         case vm_type::wavm:
+            code.wavm.call_error(context);
+            break;
+         case vm_type::binaryen:
+            code.binaryen.call_error(context);
+            break;
+      }
    }
 
    wasm_context& common::intrinsics_accessor::get_context(wasm_interface &wasm) {
@@ -325,12 +339,15 @@ namespace eosio { namespace chain {
 class context_aware_api {
    public:
       context_aware_api(wasm_interface& wasm)
-      :context(intrinsics_accessor::get_context(wasm).context), code(intrinsics_accessor::get_context(wasm).code)
+      :context(intrinsics_accessor::get_context(wasm).context)
+      ,code(intrinsics_accessor::get_context(wasm).code)
+      ,vm(intrinsics_accessor::get_context(wasm).vm)
       {}
 
    protected:
-      wasm_cache::entry& code;
-      apply_context&     context;
+      wasm_cache::entry&         code;
+      apply_context&             context;
+      wasm_interface::vm_type    vm;
 };
 
 class privileged_api : public context_aware_api {
@@ -842,7 +859,12 @@ class memory_api : public context_aware_api {
       }
 
       uint32_t sbrk(int num_bytes) {
-         return code.wavm.sbrk(num_bytes);
+         switch(vm) {
+            case wasm_interface::vm_type::wavm:
+               return (uint32_t)code.wavm.sbrk(num_bytes);
+            case wasm_interface::vm_type::binaryen:
+               return (uint32_t)code.binaryen.sbrk(num_bytes);
+         }
       }
 };
 

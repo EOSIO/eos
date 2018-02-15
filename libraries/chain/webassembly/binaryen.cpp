@@ -10,8 +10,9 @@ void entry::call(const string &entry_point, LiteralList& args, apply_context &co
 {
    interpreter_interface local_interface(memory, table, sbrk_bytes);
    interface = &local_interface;
-   ModuleInstance instance(*module.get(), interface);
-   instance.callExport(Name(entry_point), args);
+   interpreter_instance local_instance(*module.get(), interface);
+   instance = &local_instance;
+   local_instance.callExport(Name(entry_point), args);
 }
 
 void entry::call_apply(apply_context& context)
@@ -45,6 +46,8 @@ int entry::sbrk(int num_bytes) {
 
    // update the number of bytes allocated, and compute the number of pages needed
    sbrk_bytes += num_bytes;
+   auto num_accessible_pages = (sbrk_bytes + Memory::kPageSize - 1) >> NBPPL2;
+   instance->set_accessible_pages(num_accessible_pages);
    return prev_num_bytes;
 }
 
@@ -59,6 +62,92 @@ void entry::reset(const info& base_info) {
    interface = nullptr;
 }
 
+static Expression* create_call_checktime(Import *checktime, Module &module) {
+   // create a calling expression
+   CallImport *call = module.allocator.alloc<CallImport>();
+   Const *value = module.allocator.alloc<Const>();
+   value->finalize();
+
+   value->set(Literal(11));
+   call->target = checktime->name;
+   call->operands.resize(1);
+   call->operands[0] = value;
+   call->type = WasmType::none;
+   call->finalize();
+   return call;
+}
+
+static Block* convert_to_injected_block(Expression *expr, Import *checktime, Module &module) {
+   Block *block = module.allocator.alloc<Block>();
+   block->list.push_back(create_call_checktime(checktime, module));
+   block->list.push_back(expr);
+   block->finalize();
+   return block;
+}
+
+static void inject_checktime_block(Block *block, Import *checktime, Module &module)
+{
+   auto old_size = block->list.size();
+   block->list.resize(block->list.size() + 1);
+   if (old_size > 0) {
+      memmove(&block->list[1], &block->list[0], old_size * sizeof(Expression *));
+   }
+
+   block->list[0] = create_call_checktime(checktime, module);
+
+   for (int i = 1; i < block->list.size(); i++) {
+      auto* expr = block->list[i];
+      if (expr->is<Block>()) {
+         inject_checktime_block(expr->cast<Block>(), checktime, module);
+      } else if (expr->is<Loop>()) {
+         Loop *loop = expr->cast<Loop>();
+         if (loop->body->is<Block>()) {
+            inject_checktime_block(loop->body->cast<Block>(), checktime, module);
+         } else {
+            loop->body = convert_to_injected_block(loop->body, checktime, module);
+         }
+      }
+   }
+}
+
+static void inject_checktime(Module& module)
+{
+   // find an appropriate function type
+   FunctionType* type = nullptr;
+   for (auto &t: module.functionTypes) {
+      if (t->result == WasmType::none && t->params.size() == 1 && t->params.at(0) == WasmType::i32) {
+         type = t.get();
+      }
+   }
+
+   if (!type) {
+      // create the type
+      type = new FunctionType();
+      type->name = Name(string("checktime-injected"));
+      type->params.push_back(WasmType::i32);
+      type->result = WasmType::none;
+      module.addFunctionType(type);
+   }
+
+   // inject the import
+   Import *import = new Import();
+   import->name = Name(string("checktime"));
+   import->module = Name(string("env"));
+   import->base = Name(string("checktime"));
+   import->kind = ExternalKind::Function;
+   import->functionType = type->name;
+   module.addImport(import);
+
+   // walk the ops and inject the callImport on function bodies, blocks and loops
+   for(auto &fn: module.functions) {
+      if (fn->body->is<Block>()) {
+         inject_checktime_block(fn->body->cast<Block>(), import, module);
+      } else {
+         fn->body = convert_to_injected_block(fn->body, import, module);
+      }
+   }
+
+}
 
 entry entry::build(const char* wasm_binary, size_t wasm_binary_size) {
    try {
@@ -66,6 +155,8 @@ entry entry::build(const char* wasm_binary, size_t wasm_binary_size) {
       unique_ptr<Module> module(new Module());
       WasmBinaryBuilder builder(*module, code, false);
       builder.read();
+
+      inject_checktime(*module.get());
 
       linear_memory_type memory;
       call_indirect_table_type table;

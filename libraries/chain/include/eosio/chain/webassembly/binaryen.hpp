@@ -29,6 +29,16 @@ struct intrinsic_registrator {
    }
 };
 
+// create own module instance to access memorySize
+class interpreter_instance : public ModuleInstance {
+   public:
+      using ModuleInstance::ModuleInstance;
+
+      void set_accessible_pages(uint32_t num_pages) {
+         memorySize = num_pages;
+      }
+};
+
 struct interpreter_interface : ModuleInstance::ExternalInterface {
    interpreter_interface(linear_memory_type& memory, call_indirect_table_type& table, const uint32_t& sbrk_bytes)
    :memory(memory),table(table), sbrk_bytes(sbrk_bytes)
@@ -47,7 +57,8 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
    {
       // TODO: build a LUT based on Import * as that is stable from the module->
       if (import->module == "env") {
-         return intrinsic_registrator::get_map()[string(import->name.c_str())](args);
+         auto& intrinsic_map = intrinsic_registrator::get_map();
+         return intrinsic_map[string(import->base.c_str())](args);
       }
 
       FC_THROW_EXCEPTION(wasm_execution_error, "unknown import ${m}:${n}", ("m", import->module.c_str())("n", import->module.c_str()));
@@ -138,6 +149,7 @@ public:
    linear_memory_type                  memory;
    call_indirect_table_type            table;
    interpreter_interface*              interface;
+   interpreter_instance*               instance;
    uint32_t                            sbrk_bytes;
 
    void reset(const info& );
@@ -287,7 +299,7 @@ inline auto convert_native_to_literal(wasm_interface &wasm, char* ptr) {
    const auto& mem = entry::get(wasm).interface->memory;
    const char* base = mem.data;
    const char* top_of_memory = base + mem.size();
-   EOS_ASSERT(ptr < base || ptr >= top_of_memory, wasm_execution_error, "returning pointer not in linear memory");
+   EOS_ASSERT(ptr >= base && ptr < top_of_memory, wasm_execution_error, "returning pointer not in linear memory");
    return Literal((int)(ptr - base));
 }
 
@@ -386,7 +398,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>> 
    template<then_type Then>
    static Ret translate_one(wasm_interface &wasm, Inputs... rest, LiteralList& args, int offset) {
       uint32_t ptr = args.at(offset - 1).geti32();
-      size_t length = args.at(offset).geti64();
+      size_t length = args.at(offset).geti32();
       return Then(wasm, array_ptr_impl<T>(wasm, ptr, length), length, rest..., args, offset - 2);
    };
 
@@ -438,7 +450,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
    static Ret translate_one(wasm_interface &wasm, Inputs... rest, LiteralList& args, int offset) {
       uint32_t ptr_t = args.at(offset - 2).geti32();
       uint32_t ptr_u = args.at(offset - 1).geti32();
-      size_t length = args.at(offset).geti64();
+      size_t length = args.at(offset).geti32();
       return Then(wasm, array_ptr_impl<T>(wasm, ptr_t, length), array_ptr_impl<U>(wasm, ptr_u, length), length, args, offset - 3);
    };
 
@@ -463,7 +475,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>> {
    static Ret translate_one(wasm_interface &wasm, LiteralList& args, int offset) {
       uint32_t ptr = args.at(offset - 2).geti32();
       uint32_t value = args.at(offset - 1).geti32();
-      size_t length = args.at(offset).geti64();
+      size_t length = args.at(offset).geti32();
       return Then(wasm, array_ptr_impl<char>(wasm, ptr, length), value, length, args, offset - 3);
    };
 
