@@ -37,7 +37,7 @@ void db_idx_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
 int db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t primary ) {\
    return db_##IDX##_find_primary( code, scope, table, &secondary, primary );\
 }\
-int db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
+int db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
    return db_##IDX##_find_secondary( code, scope, table, &secondary, &primary );\
 }\
 int db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
@@ -57,7 +57,7 @@ class multi_index;
 
 
 
-template<int IndexNumber, uint64_t IndexName, typename T, typename Extractor>
+template<int IndexNumber, uint64_t IndexName, typename T, typename Extractor, uint64_t TableName>
 struct index_by {
    //typedef  typename std::decay<decltype( (Extractor())( *((const T*)(nullptr)) ) )>::type value_type;
    typedef  Extractor                        extractor_secondary_type;
@@ -75,7 +75,7 @@ struct index_by {
       Extractor extract_secondary_key;
 
       int store( uint64_t scope, uint64_t payer, const T& obj ) {
-         return db_idx_store( scope, IndexName, payer, obj.primary_key(), extract_secondary_key(&obj) );
+         return db_idx_store( scope, TableName, payer, obj.primary_key(), extract_secondary_key(&obj) );
       }
 
       void update( int iterator, uint64_t payer, const secondary_type& secondary ) {
@@ -83,7 +83,7 @@ struct index_by {
       }
 
       int find_primary( uint64_t code, uint64_t scope, uint64_t primary, secondary_type& secondary )const {
-         return db_idx_find_primary( code, scope, IndexName,  secondary, primary );
+         return db_idx_find_primary( code, scope, TableName,  secondary, primary );
       }
 
       void remove( int itr ) {
@@ -91,14 +91,14 @@ struct index_by {
       }
 
       int find_secondary( uint64_t code, uint64_t scope, secondary_type& secondary, uint64_t& primary )const {
-         return db_idx_find_secondary( code, scope, IndexName, secondary, primary );
+         return db_idx_find_secondary( code, scope, TableName, secondary, primary );
       }
 
       int lower_bound( uint64_t code, uint64_t scope, secondary_type& secondary, uint64_t& primary )const {
-         return db_idx_lowerbound( code, scope, IndexName, secondary, primary );
+         return db_idx_lowerbound( code, scope, TableName, secondary, primary );
       }
       int upper_bound( uint64_t code, uint64_t scope, secondary_type& secondary, uint64_t& primary )const {
-         return db_idx_upperbound( code, scope, IndexName, secondary, primary );
+         return db_idx_upperbound( code, scope, TableName, secondary, primary );
       }
 };
 
@@ -259,9 +259,10 @@ class multi_index
             const_iterator lower_bound( typename IndexType::secondary_type&& secondary )const {
                return lower_bound( secondary );
             }
-            const_iterator lower_bound( typename IndexType::secondary_type& secondary )const {
+            const_iterator lower_bound( const typename IndexType::secondary_type& secondary )const {
                uint64_t primary = 0;
-               auto itr = _idx.lower_bound( _multidx._code, _multidx._scope, secondary, primary );
+               typename IndexType::secondary_type secondary_copy(secondary);
+               auto itr = _idx.lower_bound( _multidx._code, _multidx._scope, secondary_copy, primary );
                if( itr == -1 ) return end();
 
                const T& obj = *_multidx.find( primary );
@@ -273,9 +274,10 @@ class multi_index
             const_iterator upper_bound( typename IndexType::secondary_type&& secondary )const {
                return upper_bound( secondary );
             }
-            const_iterator upper_bound( typename IndexType::secondary_type& secondary )const {
+            const_iterator upper_bound( const typename IndexType::secondary_type& secondary )const {
                uint64_t primary = 0;
-               auto itr = _idx.upper_bound( _multidx._code, _multidx._scope, secondary, primary );
+               typename IndexType::secondary_type secondary_copy(secondary);
+               auto itr = _idx.upper_bound( _multidx._code, _multidx._scope, secondary_copy, primary );
                if( itr == -1 ) return end();
 
                const T& obj = *_multidx.find( primary );

@@ -886,4 +886,39 @@ BOOST_FIXTURE_TEST_CASE( test_db, tester ) try {
 } FC_LOG_AND_RETHROW() /// test_db
 
 
+BOOST_FIXTURE_TEST_CASE( test_multi_index, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(tester)} );
+   produce_block();
+
+   set_code(N(tester), test_api_wast);
+   //   set_code(N(tester), test_api_abi);
+
+   produce_blocks(1);
+
+   const char* const method_names[] = {
+      "idx64_store_only",
+      "idx64_check_without_storing", // "idx64_store_only" action must be called before this action
+      "idx64_general",
+   };
+
+   bytes empty;
+
+   for( const auto& an : test_methods_to_actions("test_multi_index", method_names) )
+   {
+      signed_transaction trx;
+      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}}, N(tester), an, empty);
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
+      push_transaction(trx);
+      produce_block();
+
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+} FC_LOG_AND_RETHROW() /// test_multi_index
+
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -51,8 +51,8 @@ namespace multi_index_test {
                {
                   print("Testing uint128_t secondary index.\n");
                   eosio::multi_index<N(orders), limit_order,
-                     index_by<0, N(byexp), limit_order, const_mem_fun<limit_order, uint64_t, &limit_order::get_expiration> >,
-                     index_by<1, N(byprice), limit_order, const_mem_fun<limit_order, uint128_t, &limit_order::get_price> >
+                     index_by<0, N(byexp), limit_order, const_mem_fun<limit_order, uint64_t, &limit_order::get_expiration>, N(orders)>,
+                     index_by<1, N(byprice), limit_order, const_mem_fun<limit_order, uint128_t, &limit_order::get_price>, N(orders)>
                      > orders( N(multitest), N(multitest) );
 
                   const auto& order1 = orders.emplace( payer, [&]( auto& o ) {
@@ -99,7 +99,7 @@ namespace multi_index_test {
                {
                   print("Testing uint256 secondary index.\n");
                   eosio::multi_index<N(test1), test_u256,
-                     index_by<0, N(byval), test_u256, const_mem_fun<test_u256, uint256, &test_u256::get_val> >
+                     index_by<0, N(byval), test_u256, const_mem_fun<test_u256, uint256, &test_u256::get_val>, N(test1)>
                   > testtable( N(multitest), N(exchange) ); // Code must be same as the receiver? Scope doesn't have to be.
 
                   const auto& entry1 = testtable.emplace( payer, [&]( auto& o ) {
