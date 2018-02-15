@@ -688,7 +688,7 @@ git clone https://github.com/cryptonomex/secp256k1-zkp.git
 cd secp256k1-zkp
 ./autogen.sh
 ./configure
-make
+make -j$( sysctl -in machdep.cpu.core_count )
 sudo make install
 ```
 
@@ -699,7 +699,7 @@ cd ~
 git clone https://github.com/WebAssembly/binaryen.git
 cd ~/binaryen
 git checkout tags/1.37.14
-cmake . && make
+cmake . && make -j$( sysctl -in machdep.cpu.core_count )
 ```
 
 Add `BINARYEN_ROOT` to your .bash_profile:
@@ -721,7 +721,8 @@ cd ..
 mkdir build
 cd build
 cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
-make -j$( nproc ) install
+make -j$( sysctl -in machdep.cpu.core_count )
+make install
 ```
 
 Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
@@ -767,7 +768,7 @@ git clone https://github.com/cryptonomex/secp256k1-zkp.git
 cd secp256k1-zkp
 ./autogen.sh
 ./configure
-make
+make -j$( nproc )
 sudo make install
 ```
 
@@ -802,6 +803,88 @@ mkdir build
 cd build
 cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
 make -j$( nproc ) install
+```
+
+Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
+
+```bash
+echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
+echo "export LLVM_DIR=~/wasm-compiler/lib/cmake/llvm" >> ~/.bash_profile
+source ~/.bash_profile
+```
+Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
+
+<a name="fedora"></a>
+### Clean install Amazon 2017.09 and higher
+
+Install the development toolkit:
+
+```bash
+sudo yum update
+sudo yum install git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 \
+				 bzip2-devel.x86_64 openssl-devel.x86_64 gmp.x86_64 gmp-devel.x86_64 \
+				 libstdc++72.x86_64 python27-devel.x86_64 libedit-devel.x86_64 \
+				 ncurses-devel.x86_64 swig.x86_64 gettext-devel.x86_64
+
+```
+
+Install Boost 1.66:
+
+```bash
+cd ~
+curl -L https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2 > boost_1.66.0.tar.bz2
+tar xf boost_1.66.0.tar.bz2
+echo "export BOOST_ROOT=$HOME/boost_1_66_0" >> ~/.bash_profile
+source ~/.bash_profile
+cd boost_1_66_0/
+./bootstrap.sh "--prefix=$BOOST_ROOT"
+./b2 install
+```
+
+Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
+
+```bash
+cd ~
+git clone https://github.com/cryptonomex/secp256k1-zkp.git
+cd secp256k1-zkp
+./autogen.sh
+./configure
+make -j$( nproc )
+sudo make install
+```
+
+To use the WASM compiler, EOS has an external dependency on [binaryen](https://github.com/WebAssembly/binaryen.git):
+
+```bash
+cd ~
+git clone https://github.com/WebAssembly/binaryen.git
+cd ~/binaryen
+git checkout tags/1.37.14
+cmake . && make
+
+```
+
+Add `BINARYEN_ROOT` to your .bash_profile:
+
+```bash
+echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
+source ~/.bash_profile
+```
+
+By default LLVM and clang do not include the WASM build target, so you will have to build it yourself:
+
+```bash
+mkdir  ~/wasm-compiler
+cd ~/wasm-compiler
+git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
+cd llvm/tools
+git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
+cd ..
+mkdir build
+cd build
+cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+make -j$( nproc ) 
+make install
 ```
 
 Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:

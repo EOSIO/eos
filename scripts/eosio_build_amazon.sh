@@ -120,7 +120,7 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make
+		make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling CMAKE.\n"
 			printf "\tExiting now.\n\n"
@@ -160,7 +160,7 @@
 			exit;
 		fi
 		./configure
-		make
+		make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling secp256k1-zkp.\n"
 			printf "\tExiting now.\n\n"
@@ -180,7 +180,7 @@
 		git clone https://github.com/WebAssembly/binaryen
 		cd binaryen
 		git checkout tags/1.37.14
-		$CMAKE . && make
+		$CMAKE . && make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling binaryen.\n"
 			printf "\tExiting now.\n\n"
@@ -214,7 +214,7 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j$(nproc)
+		make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
 			printf "\tExiting now.\n\n"
