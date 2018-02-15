@@ -763,7 +763,8 @@ class Node(object):
         keys=list(row.keys())
         return keys
 
-    def pushMessage(self, contract, action, data, opts):
+    # returns tuple with transaction and 
+    def pushMessage(self, contract, action, data, opts, silentErrors=False):
         cmd=None
         if Utils.amINoon:
             cmd="%s %s push action %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, action)
@@ -777,11 +778,12 @@ class Node(object):
         Utils.Debug and Utils.Print("cmd: %s" % (cmdArr))
         try:
             trans=Node.__runCmdArrReturnJson(cmdArr)
-            return trans
+            return (True, trans)
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Exception during push message. %s" % (msg))
-            return None
+            if not silentErrors:
+                Utils.Print("ERROR: Exception during push message. %s" % (msg))
+            return (False, msg)
 
     def setPermission(self, account, code, pType, requirement, waitForTransBlock=False):
         cmd="%s %s set action permission %s %s %s %s" % (
@@ -1299,7 +1301,7 @@ class Cluster(object):
         return True
 
     def getNode(self, id=0):
-        return self.nodes[0]
+        return self.nodes[id]
 
     def getNodes(self):
         return self.nodes

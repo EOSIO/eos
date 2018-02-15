@@ -462,10 +462,10 @@ try:
     if not amINoon:
         opts += " --scope currency,inita"
     trans=node.pushMessage(contract, action, data, opts)
-    if trans is None:
+    if not trans[0]:
         cmdError("%s push message currency transfer" % (ClientName))
         errorExit("Failed to push message to currency contract")
-    transId=testUtils.Node.getTransId(trans)
+    transId=testUtils.Node.getTransId(trans[1])
 
     Print("verify transaction exists")
     if not node.waitForTransIdOnNode(transId):

@@ -317,50 +317,54 @@ def myTest(transWillEnterBlock):
         opts="--permission currency@active"
         if not amINoon:
             opts += " --scope currency,inita"
-        trans=node.pushMessage(contract, action, data, opts)
-        if trans is None:
-            error("Push message failed.")
-            return False
 
-        transId=testUtils.Node.getTransId(trans)
-        
-        Print("verify transaction exists")
-        # transWillEnterBlock
-        if not node2.waitForTransIdOnNode(transId):
-            error("Transaction never made it to node2")
-            return False
-
-        Print("Get details for transaction %s" % (transId))
-        transaction=node2.getTransaction(transId)
-        #Print(transaction)
-        signature=transaction["transaction"]["signatures"][0]
-
-        blockNum=int(transaction["transaction"]["ref_block_num"])
-        blockNum += 1
-        Print("Our transaction is in block %d" % (blockNum))
-
+        trans=node.pushMessage(contract, action, data, opts, silentErrors=True)
         transInBlock=False
+        if not trans[0]:
+            # On slower systems e.g Travis the transaction rejection can happen immediately
+            #  We want to handle fast and slow failures.
+            if "allocated processing time was exceeded" in trans[1]:
+                Print("Push message transaction immediately failed.")
+            else:
+                error("Exception in push message. %s" % (trans[1]))
+                return False
+
+        else:
+            transId=testUtils.Node.getTransId(trans[1])
+
+            Print("verify transaction exists")
+            if not node2.waitForTransIdOnNode(transId):
+                error("Transaction never made it to node2")
+                return False
+
+            Print("Get details for transaction %s" % (transId))
+            transaction=node2.getTransaction(transId)
+            signature=transaction["transaction"]["signatures"][0]
+
+            blockNum=int(transaction["transaction"]["ref_block_num"])
+            blockNum += 1
+            Print("Our transaction is in block %d" % (blockNum))
         
-        block=node2.getBlock(blockNum)
-        cycles=block["cycles"]
-        if len(cycles) > 0:
-            blockTransSignature=cycles[0][0]["user_input"][0]["signatures"][0]
-            # Print("Transaction signature: %s\nBlock transaction signature: %s" %
-            #       (signature, blockTransSignature))
-            transInBlock=(signature == blockTransSignature)
+            block=node2.getBlock(blockNum)
+            cycles=block["cycles"]
+            if len(cycles) > 0:
+                blockTransSignature=cycles[0][0]["user_input"][0]["signatures"][0]
+                # Print("Transaction signature: %s\nBlock transaction signature: %s" %
+                #       (signature, blockTransSignature))
+                transInBlock=(signature == blockTransSignature)
         
         if transWillEnterBlock:
             if not transInBlock:
                 error("Transaction did not enter the chain.")
-                return False;
+                return False
             else:
-                Print("SUCCESS: Transaction entered in the chain.")
+                Print("SUCCESS: Transaction1 entered in the chain.")
         elif not transWillEnterBlock:
             if transInBlock:
                 error("Transaction entered the chain.")
-                return False;
+                return False
             else:
-                Print("SUCCESS: Transaction did not enter the chain.")
+                Print("SUCCESS: Transaction2 did not enter the chain.")
 
         testSuccessful=True
     finally:
