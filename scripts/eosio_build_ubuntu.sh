@@ -142,7 +142,7 @@
 			exit;
 		fi
 		mkdir -p ${HOME}/opt/binaryen/ 2>/dev/null
-		mv ${TEMP_DIR}/binaryen/bin ${HOME}/opt/binaryen/
+		mv ${TEMP_DIR}/binaryen/{bin,src,lib} ${HOME}/opt/binaryen/
 		rm -rf ${TEMP_DIR}/binaryen
 	else
 		printf "\tBinaryen found at ${HOME}/opt/binaryen\n"

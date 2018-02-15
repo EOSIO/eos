@@ -190,7 +190,7 @@
 			exit;
 		fi
 		sudo mkdir /usr/local/binaryen
-		sudo mv ${TEMP_DIR}/binaryen/bin /usr/local/binaryen
+		sudo mv ${TEMP_DIR}/binaryen/{bin,src,lib} /usr/local/binaryen
 		sudo ln -s /usr/local/binaryen/bin/* /usr/local
 		sudo rm -rf ${TEMP_DIR}/binaryen
 	else
