@@ -29,6 +29,8 @@ struct intrinsic_registrator {
    }
 };
 
+using import_lut_type = unordered_map<uintptr_t, intrinsic_registrator::intrinsic_fn>;
+
 // create own module instance to access memorySize
 class interpreter_instance : public ModuleInstance {
    public:
@@ -40,8 +42,8 @@ class interpreter_instance : public ModuleInstance {
 };
 
 struct interpreter_interface : ModuleInstance::ExternalInterface {
-   interpreter_interface(linear_memory_type& memory, call_indirect_table_type& table, const uint32_t& sbrk_bytes)
-   :memory(memory),table(table), sbrk_bytes(sbrk_bytes)
+   interpreter_interface(linear_memory_type& memory, call_indirect_table_type& table, import_lut_type& import_lut, const uint32_t& sbrk_bytes)
+   :memory(memory),table(table),import_lut(import_lut), sbrk_bytes(sbrk_bytes)
    {}
 
    void importGlobals(std::map<Name, Literal>& globals, Module& wasm) override
@@ -55,13 +57,9 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
 
    Literal callImport(Import *import, LiteralList &args) override
    {
-      // TODO: build a LUT based on Import * as that is stable from the module->
-      if (import->module == "env") {
-         auto& intrinsic_map = intrinsic_registrator::get_map();
-         return intrinsic_map[string(import->base.c_str())](args);
-      }
-
-      FC_THROW_EXCEPTION(wasm_execution_error, "unknown import ${m}:${n}", ("m", import->module.c_str())("n", import->module.c_str()));
+      auto fn_iter = import_lut.find((uintptr_t)import);
+      EOS_ASSERT(fn_iter != import_lut.end(), wasm_execution_error, "unknown import ${m}:${n}", ("m", import->module.c_str())("n", import->module.c_str()));
+      return fn_iter->second(args);
    }
 
    Literal callTable(Index index, LiteralList& arguments, WasmType result, ModuleInstance& instance) override
@@ -139,6 +137,7 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
 
    linear_memory_type&          memory;
    call_indirect_table_type&    table;
+   import_lut_type&             import_lut;
    const uint32_t&              sbrk_bytes;
 };
 
@@ -148,6 +147,7 @@ public:
    unique_ptr<Module>                  module;
    linear_memory_type                  memory;
    call_indirect_table_type            table;
+   import_lut_type                     import_lut;
    interpreter_interface*              interface;
    interpreter_instance*               instance;
    uint32_t                            sbrk_bytes;
@@ -165,7 +165,7 @@ public:
    static entry build(const char* wasm_binary, size_t wasm_binary_size);
 
 private:
-   entry(unique_ptr<Module>&& module, linear_memory_type&& memory, call_indirect_table_type&& table, uint32_t sbrk_bytes);
+   entry(unique_ptr<Module>&& module, linear_memory_type&& memory, call_indirect_table_type&& table, import_lut_type&& import_lut, uint32_t sbrk_bytes);
 
 };
 

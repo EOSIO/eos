@@ -8,7 +8,7 @@ namespace eosio { namespace chain { namespace webassembly { namespace binaryen {
 
 void entry::call(const string &entry_point, LiteralList& args, apply_context &context)
 {
-   interpreter_interface local_interface(memory, table, sbrk_bytes);
+   interpreter_interface local_interface(memory, table, import_lut, sbrk_bytes);
    interface = &local_interface;
    interpreter_instance local_instance(*module.get(), interface);
    instance = &local_instance;
@@ -158,8 +158,6 @@ entry entry::build(const char* wasm_binary, size_t wasm_binary_size) {
 
       inject_checktime(*module.get());
 
-      linear_memory_type memory;
-      call_indirect_table_type table;
 
       FC_ASSERT(module->memory.initial * Memory::kPageSize <= wasm_constraints::maximum_linear_memory);
 
@@ -170,6 +168,7 @@ entry entry::build(const char* wasm_binary, size_t wasm_binary_size) {
       }
 
       // initialize the linear memory
+      linear_memory_type memory;
       memset(memory.data, 0, module->memory.initial * Memory::kPageSize);
       for(size_t i = 0; i < module->memory.segments.size(); i++ ) {
          const auto& segment = module->memory.segments.at(i);
@@ -179,6 +178,7 @@ entry entry::build(const char* wasm_binary, size_t wasm_binary_size) {
          memcpy(base, segment.data.data(), segment.data.size());
       }
 
+      call_indirect_table_type table;
       table.resize(module->table.initial);
       for (auto& segment : module->table.segments) {
          Address offset = ConstantExpressionRunner<TrivialGlobalManager>(globals).visit(segment.offset).value.geti32();
@@ -188,20 +188,35 @@ entry entry::build(const char* wasm_binary, size_t wasm_binary_size) {
          }
       }
 
+      // initialize the import lut
+      import_lut_type import_lut;
+      import_lut.reserve(module->imports.size());
+      for (auto& import : module->imports) {
+         if (import->module == "env") {
+            auto& intrinsic_map = intrinsic_registrator::get_map();
+            auto intrinsic_itr = intrinsic_map.find(string(import->base.c_str()));
+            if (intrinsic_itr != intrinsic_map.end()) {
+               import_lut.emplace(make_pair((uintptr_t)import.get(), intrinsic_itr->second));
+               continue;
+            }
+         }
+
+         FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",import->module.c_str())("export",import->base.c_str()) );
+      }
+
       uint32_t sbrk_bytes = module->memory.initial * Memory::kPageSize;
 
-      //TODO: validate
-
-      return entry(move(module), std::move(memory), std::move(table), sbrk_bytes);
+      return entry(move(module), std::move(memory), std::move(table), std::move(import_lut), sbrk_bytes);
    } catch (const ParseException &e) {
       FC_THROW_EXCEPTION(wasm_execution_error, "Error building interpreter: ${s}", ("s", e.text));
    }
 };
 
-entry::entry(unique_ptr<Module>&& module, linear_memory_type&& memory, call_indirect_table_type&& table, uint32_t sbrk_bytes)
+entry::entry(unique_ptr<Module>&& module, linear_memory_type&& memory, call_indirect_table_type&& table, import_lut_type&& import_lut, uint32_t sbrk_bytes)
 :module(forward<decltype(module)>(module))
 ,memory(forward<decltype(memory)>(memory))
 ,table (forward<decltype(table)>(table))
+,import_lut(forward<decltype(import_lut)>(import_lut))
 ,interface(nullptr)
 ,sbrk_bytes(sbrk_bytes)
 {
