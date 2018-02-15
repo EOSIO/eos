@@ -98,7 +98,6 @@ namespace _test_multi_index {
          eosio_assert(itr == secondary_index.end(), "idx64_general - increment secondary iterator to end");
       }
 
-      /*
       // iterate backward staring with second bob
       {
          auto ptr = table.find(781);
@@ -109,7 +108,7 @@ namespace _test_multi_index {
          eosio_assert(itr->id == 781 && itr->sec == N(bob), "idx64_general - iterator to existing object in secondary index");
 
          --itr;
-         eosio_assert(itr != secondary_index.end() && itr->id == 781 && itr->sec == N(bob), "idx64_general - decrement secondary iterator");
+         eosio_assert(itr != secondary_index.end() && itr->id == 540 && itr->sec == N(bob), "idx64_general - decrement secondary iterator");
 
          --itr;
          eosio_assert(itr != secondary_index.end() && itr->id == 650 && itr->sec == N(allyson), "idx64_general - decrement secondary iterator again");
@@ -120,7 +119,6 @@ namespace _test_multi_index {
          --itr; // Decrementing an iterator at the beginning (technically undefined behavior) turns it into end(). Is this desired?
          eosio_assert(itr == secondary_index.end(), "idx64_general - decrement secondary iterator that was already at beginning");
       }
-      */
 
       // update and remove
       {
