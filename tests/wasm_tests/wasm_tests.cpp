@@ -16,6 +16,8 @@
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
 
+//#include <floattest/floattest.was.hpp>
+
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>

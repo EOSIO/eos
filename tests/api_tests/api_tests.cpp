@@ -134,6 +134,7 @@ void CallFunction(tester& test, T ac, const vector<char>& data, const vector<acc
 }
 
 #define CALL_TEST_FUNCTION(TESTER, CLS, MTH, DATA) CallFunction(TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA)
+#define CALL_TEST_FUNCTION_SYSTEM(TESTER, CLS, MTH, DATA) CallFunction(TESTER, test_chain_action<TEST_METHOD(CLS, MTH)>{}, DATA, {N(eosio)} )
 #define CALL_TEST_FUNCTION_SCOPE(TESTER, CLS, MTH, DATA, ACCOUNT) CallFunction(TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA, ACCOUNT)
 
 bool is_access_violation(fc::unhandled_exception const & e) {
@@ -537,11 +538,30 @@ struct setprod_act {
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(chain_tests, tester) { try {
 	produce_blocks(2);
+   create_account( N(inita) );
    create_account( N(initb) );
    create_account( N(initc) );
    create_account( N(initd) );
+   create_account( N(inite) );
+   create_account( N(initf) );
+   create_account( N(initg) );
+   create_account( N(inith) );
+   create_account( N(initi) );
+   create_account( N(initj) );
+   create_account( N(initk) );
+   create_account( N(initl) );
+   create_account( N(initm) );
+   create_account( N(initn) );
+   create_account( N(inito) );
+   create_account( N(initp) );
+   create_account( N(initq) );
+   create_account( N(initr) );
+   create_account( N(inits) );
+   create_account( N(initt) );
+   create_account( N(initu) );
+   create_account( N(initv) );
+
 	create_account( N(testapi) ); 
-	create_account( N(acc1) ); 
  
    // set active producers
 	{
@@ -970,6 +990,7 @@ BOOST_FIXTURE_TEST_CASE(types_tests, tester) { try {
 	CALL_TEST_FUNCTION( *this, "test_types", "name_class", {});
 } FC_LOG_AND_RETHROW() }
 
+#if 0
 /*************************************************************************************
  * privileged_tests test case
  *************************************************************************************/
@@ -980,9 +1001,57 @@ BOOST_FIXTURE_TEST_CASE(privileged_tests, tester) { try {
 	produce_blocks(100);
 	set_code( N(testapi), test_api_wast );
 	produce_blocks(1);
- 
-	CALL_TEST_FUNCTION( *this, "test_privileged", "test_is_privileged", {});
+
+   {
+		signed_transaction trx;
+
+      auto pl = vector<permission_level>{{config::system_account_name, config::active_name}};
+      action act(pl, test_chain_action<N(setprods)>());
+      vector<producer_key> prod_keys = { 
+                                          { N(inita), get_public_key( N(inita), "active" ) },
+                                          { N(initb), get_public_key( N(initb), "active" ) },
+                                          { N(initc), get_public_key( N(initc), "active" ) },
+                                          { N(initd), get_public_key( N(initd), "active" ) },
+                                          { N(inite), get_public_key( N(inite), "active" ) },
+                                          { N(initf), get_public_key( N(initf), "active" ) },
+                                          { N(initg), get_public_key( N(initg), "active" ) },
+                                          { N(inith), get_public_key( N(inith), "active" ) },
+                                          { N(initi), get_public_key( N(initi), "active" ) },
+                                          { N(initj), get_public_key( N(initj), "active" ) },
+                                          { N(initk), get_public_key( N(initk), "active" ) },
+                                          { N(initl), get_public_key( N(initl), "active" ) },
+                                          { N(initm), get_public_key( N(initm), "active" ) },
+                                          { N(initn), get_public_key( N(initn), "active" ) },
+                                          { N(inito), get_public_key( N(inito), "active" ) },
+                                          { N(initp), get_public_key( N(initp), "active" ) },
+                                          { N(initq), get_public_key( N(initq), "active" ) },
+                                          { N(initr), get_public_key( N(initr), "active" ) },
+                                          { N(inits), get_public_key( N(inits), "active" ) },
+                                          { N(initt), get_public_key( N(initt), "active" ) },
+                                          { N(initu), get_public_key( N(initu), "active" ) }
+                                       };
+      vector<char> data = fc::raw::pack(uint32_t(0));
+      vector<char> keys = fc::raw::pack(prod_keys);
+      data.insert( data.end(), keys.begin(), keys.end() );
+      act.data = data;
+      trx.actions.push_back(act);
+
+		set_tapos(trx);
+      
+		auto sigs = trx.sign(get_private_key(config::system_account_name, "active"), chain_id_type());
+      trx.get_signature_keys(chain_id_type() );
+		auto res = push_transaction(trx);
+		BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
+	}
+
+   CALL_TEST_FUNCTION( *this, "test_privileged", "test_is_privileged", {} );  
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_privileged", "test_is_privileged", {} ), fc::assert_exception,
+         [](const fc::assert_exception& e) {
+            return expect_assert_message(e, "context.privileged: testapi does not have permission to call this API");
+         }
+       );
 
 } FC_LOG_AND_RETHROW() }
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
