@@ -72,8 +72,8 @@ struct PACKED(account_balance) {
  *  @param account_balance    stream to write
  *  @ret true if account's balance is found
  */
-bool get(account_balance& b)
-{
+bool get(account_balance& b) {
+
 //   return account_balance_get(&b, sizeof(account_balance));
 }
 

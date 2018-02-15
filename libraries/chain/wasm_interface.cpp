@@ -1251,8 +1251,10 @@ class account_api : public context_aware_api {
             account_name account;
             asset        balance;
       })
+
       bool account_balance_get(array_ptr<const char> balance, uint32_t len) {
-         const auto* tbl = context.db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, account, N(account)));
+         account_balance* acc_balance = (account_balance*)balance.value();
+         const auto* tbl = context.db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, acc_balance.account, N(account)));
          share_type result = 0;
 
          // the balance is implied to be 0 if either the table or row does not exist

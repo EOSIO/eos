@@ -136,7 +136,7 @@ void test_transaction::test_tapos_block_num() {
 
 
 void test_transaction::test_read_transaction() {
-   checksum<256> h;
+   checksum256 h;
    transaction t;
    char* p = (char*)&t;
    uint64_t read = read_transaction( (char*)&t, sizeof(t) );

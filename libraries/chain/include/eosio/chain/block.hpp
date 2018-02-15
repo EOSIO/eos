@@ -18,9 +18,9 @@ namespace eosio { namespace chain {
       block_id_type                 previous;
       block_timestamp_type          timestamp;
 
-      checksum_type                 transaction_mroot; /// mroot of cycles_summary
-      checksum_type                 action_mroot;
-      checksum_type                 block_mroot;
+      checksum256_type                 transaction_mroot; /// mroot of cycles_summary
+      checksum256_type                 action_mroot;
+      checksum256_type                 block_mroot;
 
       account_name                  producer;
       /**
@@ -100,7 +100,7 @@ namespace eosio { namespace chain {
     */
    struct signed_block_summary : public signed_block_header {
       vector<region_summary> regions;
-      checksum_type          calculate_transaction_mroot()const;
+      checksum256_type          calculate_transaction_mroot()const;
    };
 
    /**
