@@ -99,7 +99,7 @@ class apply_context {
                  ++t.count;
                });
 
-               context.update_db_usage( payer, sizeof(secondary_key_type)+200 );
+               context.update_db_usage( payer, sizeof(secondary_key_type)+base_row_fee );
 
                itr_cache.cache_table( tab );
                return itr_cache.add( obj );
@@ -107,7 +107,7 @@ class apply_context {
 
             void remove( int iterator ) {
                const auto& obj = itr_cache.get( iterator );
-               context.update_db_usage( obj.payer, -( sizeof(secondary_key_type)+200 ) );
+               context.update_db_usage( obj.payer, -( sizeof(secondary_key_type)+base_row_fee ) );
 
                const auto& table_obj = itr_cache.get_table( obj.t_id );
                context.require_write_lock( table_obj.scope );
@@ -126,8 +126,8 @@ class apply_context {
                if( payer == account_name() ) payer = obj.payer;
 
                if( obj.payer != payer ) {
-                  context.update_db_usage( obj.payer, -(sizeof(secondary_key_type)+200) );
-                  context.update_db_usage( payer, +(sizeof(secondary_key_type)+200) );
+                  context.update_db_usage( obj.payer, -(sizeof(secondary_key_type)+base_row_fee) );
+                  context.update_db_usage( payer, +(sizeof(secondary_key_type)+base_row_fee) );
                }
 
                context.mutable_db.modify( obj, [&]( auto& o ) {
@@ -439,6 +439,8 @@ class apply_context {
       generic_index<contracts::index64_object>    idx64;
       generic_index<contracts::index128_object>   idx128;
       generic_index<contracts::index256_object>   idx256;
+
+      static constexpr int64_t base_row_fee = 200;
 
    private:
       iterator_cache<key_value_object> keyval_cache;

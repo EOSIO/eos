@@ -53,6 +53,7 @@ MAKE_SECONDARY_ITERATOR(idx128, uint128_t)
 MAKE_SECONDARY_ITERATOR(idx256, uint256)
 
 
+
 template<uint64_t TableName, typename T, typename... Indices>
 class multi_index;
 
@@ -103,7 +104,6 @@ struct index_by {
          return db_idx_upperbound( code, scope, TableName, secondary, primary );
       }
 };
-
 
 /*
 template<int IndexNumber, uint64_t IndexName, typename T, typename Extractor>

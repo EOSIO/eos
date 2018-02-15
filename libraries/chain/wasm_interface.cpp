@@ -610,9 +610,11 @@ class system_api : public context_aware_api {
       }
 
       void eosio_assert(bool condition, null_terminated_ptr str) {
-         std::string message( str );
-         if( !condition ) edump((message));
-         FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
+         if( !condition ) {
+            std::string message( str );
+            edump((message));
+            FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
+         }
       }
 
       fc::time_point_sec now() {
@@ -764,7 +766,7 @@ class database_api : public context_aware_api {
 
       DB_API_METHOD_WRAPPERS(idx64,  uint64_t)
       DB_API_METHOD_WRAPPERS(idx128, uint128_t)
-      DB_API_METHOD_WRAPPERS(idx256, uint256)
+      DB_API_METHOD_WRAPPERS(idx256, sha256)
 
 };
 

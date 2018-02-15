@@ -104,17 +104,17 @@ namespace multi_index_test {
 
                   const auto& entry1 = testtable.emplace( payer, [&]( auto& o ) {
                      o.id = 1;
-                     o.val = uint256{.words = {0, 0, 0, 42}};
+                     o.val = uint256{.uint64s = {0, 0, 0, 42}};
                   });
 
                   const auto& entry2 = testtable.emplace( payer, [&]( auto& o ) {
                      o.id = 2;
-                     o.val = uint256{.words = {1, 2, 3, 4}};
+                     o.val = uint256{.uint64s = {1, 2, 3, 4}};
                   });
 
                   const auto& entry3 = testtable.emplace( payer, [&]( auto& o ) {
                      o.id = 3;
-                     o.val = uint256{.words = {0, 0, 0, 42}};
+                     o.val = uint256{.uint64s = {0, 0, 0, 42}};
                   });
 
                   const auto* e = testtable.find( 2 );
@@ -126,10 +126,10 @@ namespace multi_index_test {
 
                   auto validx = testtable.get_index<N(byval)>();
 
-                  auto lower1 = validx.lower_bound(uint256{.words = {0, 0, 0, 40}});
+                  auto lower1 = validx.lower_bound(uint256{.uint64s = {0, 0, 0, 40}});
                   print("First entry with a val of at least 40 has ID=", lower1->id, ".\n");
 
-                  auto lower2 = validx.lower_bound(uint256{.words = {0, 0, 0, 50}});
+                  auto lower2 = validx.lower_bound(uint256{.uint64s = {0, 0, 0, 50}});
                   print("First entry with a val of at least 50 has ID=", lower2->id, ".\n");
 
                   if( &*lower2 == e ) {
@@ -142,7 +142,7 @@ namespace multi_index_test {
                      cout << item.val << "\n";
                   }
 
-                  auto upper = validx.upper_bound(uint256{.words={0, 0, 0, 42}});
+                  auto upper = validx.upper_bound(uint256{.uint64s={0, 0, 0, 42}});
 
                   print("First entry with a val greater than 42 has ID=", upper->id, ".\n");
 

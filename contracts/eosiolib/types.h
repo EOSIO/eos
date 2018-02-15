@@ -64,8 +64,12 @@ struct account_permission {
    permission_name permission;
 };
 
-typedef struct uint256 {
-   uint64_t words[4];
+typedef union {
+   uint8_t   bytes[32];
+   uint16_t  uint16s[16];
+   uint32_t  uint32s[8];
+   uint64_t  uint64s[4];
+   uint128_t uint128s[2];
 } uint256;
 
 #ifdef __cplusplus

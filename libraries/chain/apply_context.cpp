@@ -340,7 +340,7 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
    if( payer == account_name() ) payer = obj.payer;
 
    if( account_name(obj.payer) == payer ) {
-      update_db_usage( obj.payer, buffer_size + 200 - old_size );
+      update_db_usage( obj.payer, buffer_size - old_size );
    } else  {
       update_db_usage( obj.payer,  -(old_size+200) );
       update_db_usage( payer,  (buffer_size+200) );
