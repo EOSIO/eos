@@ -49,7 +49,7 @@ namespace eosio {
     * @brief Constructor for token given quantity of tokens available
     * @param v - quantity of tokens available
     */
-    explicit token( NumberType v ):quantity(v){};
+    explicit token( NumberType v ):quantity(v){}
 
     /**
     * Quantity of tokens available

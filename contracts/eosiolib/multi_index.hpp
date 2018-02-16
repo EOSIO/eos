@@ -11,36 +11,9 @@
 #include <eosiolib/types.hpp>
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/datastream.hpp>
+#include <eosiolib/db.h>
 
 
-extern "C" {
-   int db_store_i64( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, char* buffer, size_t buffer_size );
-   void db_update_i64( int iterator, uint64_t payer, char* buffer, size_t buffer_size );
-   int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
-   int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
-   int db_get_i64( int iterator, char* buffer, size_t buffer_size );
-   void db_remove_i64( int iterator );
-   int db_next_i64( int iterator, uint64_t* pk );
-   int db_previous_i64( int iterator, uint64_t* pk );
-
-   int db_idx64_next( int iterator, uint64_t* primary );
-   int db_idx64_prev( int iterator, uint64_t* primary );
-   int db_idx64_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t* secondary, uint64_t primary );
-   int db_idx64_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint64_t* secondary, uint64_t* primary );
-   int db_idx64_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint64_t* secondary, uint64_t* primary );
-   int db_idx64_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint64_t* secondary, uint64_t* primary );
-   void db_idx64_remove( int iterator );
-   void db_idx64_update( int iterator, uint64_t payer, const uint64_t* secondary );
-
-   int db_idx128_next( int iterator, uint64_t* primary );
-   int db_idx128_prev( int iterator, uint64_t* primary );
-   int db_idx128_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint128_t* secondary, uint64_t primary );
-   int db_idx128_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint128_t* secondary, uint64_t* primary );
-   int db_idx128_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t* secondary, uint64_t* primary );
-   int db_idx128_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t* secondary, uint64_t* primary );
-   void db_idx128_remove( int iterator );
-   void db_idx128_update( int iterator, uint64_t payer, const uint128_t* secondary );
-}
 
 
 namespace eosio {
@@ -54,14 +27,14 @@ struct secondary_iterator;
 template<>
 struct secondary_iterator<uint64_t> {
    static int db_idx_next( int iterator, uint64_t* primary ) { return db_idx64_next( iterator, primary ); }
-   static int db_idx_prev( int iterator, uint64_t* primary ) { return db_idx64_prev( iterator, primary ); }
+   static int db_idx_prev( int iterator, uint64_t* primary ) { return db_idx64_previous( iterator, primary ); }
    static void db_idx_remove( int iterator  )                 { db_idx64_remove( iterator ); }
 };
 
 template<>
 struct secondary_iterator<uint128_t> {
    static int db_idx_next( int iterator, uint64_t* primary ) { return db_idx128_next( iterator, primary ); }
-   static int db_idx_prev( int iterator, uint64_t* primary ) { return db_idx128_prev( iterator, primary ); }
+   static int db_idx_prev( int iterator, uint64_t* primary ) { return db_idx128_previous( iterator, primary ); }
    static void db_idx_remove( int iterator  )                 { db_idx128_remove( iterator ); }
 };
 
@@ -293,7 +266,7 @@ class multi_index
                   const T* operator->()const { return *static_cast<const T*>(_item); }
 
                private:
-                  friend class index;
+                  friend struct index;
                   const_iterator( const index& idx, const typename MultiIndexType::item* i = nullptr )
                   :_idx(idx), _item(i){}
 
