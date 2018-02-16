@@ -142,6 +142,8 @@ class multi_index
       uint64_t _code;
       uint64_t _scope;
 
+      uint64_t _next_primary_key;
+
       boost::hana::tuple<Indices...>   _indices;
 
 
@@ -189,7 +191,19 @@ class multi_index
 
    public:
 
-      multi_index( uint64_t code, uint64_t scope ):_code(code),_scope(scope){}
+      multi_index( uint64_t code, uint64_t scope )
+      :_code(code),_scope(scope)
+      {
+         auto itr = --end();
+         if( itr == end() ) {
+            _next_primary_key = 0;
+         } else {
+            auto pk = itr->primary_key();
+            if( pk != static_cast<uint64_t>(-1) ) ++pk;
+            _next_primary_key = pk;
+         }
+      }
+
       ~multi_index() {
       }
 
@@ -354,7 +368,8 @@ class multi_index
             //eosio_assert( _item, "null ptr" );
             if( !_item ) {
                auto ei = db_end_i64(_multidx._code, _multidx._scope, TableName);
-               prev_itr = db_previous_i64( ei , &prev_pk );
+               if( ei != -1 ) // Table exists
+                  prev_itr = db_previous_i64( ei , &prev_pk );
             }
             else
                prev_itr = db_previous_i64( _item->__primary_itr, &prev_pk );
@@ -393,6 +408,14 @@ class multi_index
          return const_iterator( *this, &obj );
       }
 
+      /// Ideally this method would only be used to determine the appropriate primary key to use within new objects added to a
+      /// table in which the primary keys of the table are strictly intended from the beginning to be autoincrementing and
+      /// thus will not ever be set to custom arbitrary values by the contract.
+      /// Violating this agreement could result in the table appearing full when in reality there is plenty of space left.
+      uint64_t available_primary_key()const {
+         eosio_assert( _next_primary_key != static_cast<uint64_t>(-1), "next primary key in table is at uint64_t limit");
+         return _next_primary_key;
+      }
 
       template<uint64_t IndexName>
       auto get_index()const  {
@@ -404,19 +427,23 @@ class multi_index
       template<typename Lambda>
       const T& emplace( uint64_t payer, Lambda&& constructor ) {
          auto  result  = _items_index.emplace( *this, [&]( auto& i ){
-             T& obj = static_cast<T&>(i);
-             constructor( obj );
+            T& obj = static_cast<T&>(i);
+            constructor( obj );
 
-             char tmp[ pack_size( obj ) ];
-             datastream<char*> ds( tmp, sizeof(tmp) );
-             ds << obj;
+            char tmp[ pack_size( obj ) ];
+            datastream<char*> ds( tmp, sizeof(tmp) );
+            ds << obj;
 
-             auto pk = obj.primary_key();
-             i.__primary_itr = db_store_i64( _scope, TableName, payer, pk, tmp, sizeof(tmp) );
+            auto pk = obj.primary_key();
 
-             boost::hana::for_each( _indices, [&]( auto& idx ) {
-                i.__iters[idx.index_number] = idx.store( _scope, payer, obj );
-             });
+            i.__primary_itr = db_store_i64( _scope, TableName, payer, pk, tmp, sizeof(tmp) );
+
+            if( pk >= _next_primary_key )
+               _next_primary_key = std::min(pk, static_cast<uint64_t>(-2)) + 1;
+
+            boost::hana::for_each( _indices, [&]( auto& idx ) {
+               i.__iters[idx.index_number] = idx.store( _scope, payer, obj );
+            });
          });
 
          /// eosio_assert( result.second, "could not insert object, uniqueness constraint in cache violated" )
@@ -444,6 +471,9 @@ class multi_index
          auto pk = obj.primary_key();
 
          db_update_i64( objitem.__primary_itr, payer, tmp, sizeof(tmp) );
+
+         if( pk >= _next_primary_key )
+            _next_primary_key = std::min(pk, static_cast<uint64_t>(-2)) + 1;
 
          boost::hana::for_each( _indices, [&]( auto& idx ) {
             auto secondary = idx.extract_secondary_key( obj );

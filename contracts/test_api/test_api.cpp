@@ -105,6 +105,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_multi_index, idx64_general);
       WASM_TEST_HANDLER(test_multi_index, idx64_store_only);
       WASM_TEST_HANDLER(test_multi_index, idx64_check_without_storing);
+      WASM_TEST_HANDLER(test_multi_index, idx128_autoincrement_test);
 
 //      //test crypto
 //      WASM_TEST_HANDLER(test_crypto, test_sha256);

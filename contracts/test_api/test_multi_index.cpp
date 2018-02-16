@@ -13,6 +13,16 @@ namespace _test_multi_index {
       EOSLIB_SERIALIZE( record_idx64, (id)(sec) )
    };
 
+   struct record_idx128 {
+      uint64_t id;
+      uint128_t sec;
+
+      auto primary_key()const { return id; }
+      uint128_t get_secondary()const { return sec; }
+
+      EOSLIB_SERIALIZE( record_idx128, (id)(sec) )
+   };
+
    template<uint64_t TableName>
    void idx64_store_only()
    {
@@ -157,4 +167,43 @@ void test_multi_index::idx64_general()
 {
    _test_multi_index::idx64_store_only<N(myindextable2)>();
    _test_multi_index::idx64_check_without_storing<N(myindextable2)>();
+}
+
+void test_multi_index::idx128_autoincrement_test()
+{
+   using namespace eosio;
+   using namespace _test_multi_index;
+
+   typedef record_idx128 record;
+
+   const uint64_t table_name = N(myindextable3);
+   auto payer = current_receiver();
+
+   multi_index<table_name, record,
+      index_by<0, N(bysecondary), record, const_mem_fun<record, uint128_t, &record::get_secondary>, table_name>
+   > table( current_receiver(), current_receiver() );
+
+   for( int i = 0; i < 5; ++i ) {
+      table.emplace( payer, [&]( auto& r ) {
+         r.id = table.available_primary_key();
+         r.sec = 1000 - static_cast<uint128_t>(r.id);
+      });
+   }
+
+   uint64_t expected_key = 1000;
+   for( const auto& r : table.get_index<N(bysecondary)>() )
+   {
+      eosio_assert( r.primary_key() == expected_key, "idx128_autoincrement_test - unexpected primary key" );
+      --expected_key;
+   }
+
+   auto ptr = table.find(3);
+   eosio_assert( ptr != nullptr, "idx128_autoincrement_test - could not find object with primary key of 3" );
+
+   table.update(*ptr, payer, [&]( auto& r ) {
+      r.id = 100;
+   });
+
+   eosio_assert( table.available_primary_key() == 101, "idx128_autoincrement_test - next_primary_key was not correct after record update" );
+
 }

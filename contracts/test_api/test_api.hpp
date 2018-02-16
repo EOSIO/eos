@@ -130,6 +130,7 @@ struct test_multi_index {
    static void idx64_general();
    static void idx64_store_only();
    static void idx64_check_without_storing();
+   static void idx128_autoincrement_test();
 };
 
 struct test_crypto {
