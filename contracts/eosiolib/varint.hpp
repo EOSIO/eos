@@ -23,7 +23,7 @@ struct unsigned_int {
     template<typename T>
     operator T()const { return static_cast<T>(value); }
 
-    unsigned_int& operator=( int32_t v ) { value = v; return *this; }
+    unsigned_int& operator=( uint32_t v ) { value = v; return *this; }
     
     uint32_t value;
 

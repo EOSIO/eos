@@ -266,7 +266,7 @@ class multi_index
                   const T* operator->()const { return *static_cast<const T*>(_item); }
 
                private:
-                  friend class index;
+                  friend struct index;
                   const_iterator( const index& idx, const typename MultiIndexType::item* i = nullptr )
                   :_idx(idx), _item(i){}
 

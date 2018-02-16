@@ -24,8 +24,8 @@ namespace eosio {
 
    class transaction {
    public:
-      transaction(time expiration = now() + 60, region_id region = 0)
-      :expiration(expiration),region(region)
+      transaction(time exp = now() + 60, region_id r = 0)
+      :expiration(exp),region(r)
       {}
 
       void send(uint32_t sender_id, time delay_until = 0) const {
@@ -43,7 +43,7 @@ namespace eosio {
       vector<action>  context_free_actions;
       vector<action>  actions;
 
-      EOSLIB_SERIALIZE( transaction, (expiration)(region)(ref_block_num)(ref_block_prefix)(packed_bandwidth_words)(context_free_cpu_bandwidth)(context_free_actions)(actions) );
+      EOSLIB_SERIALIZE( transaction, (expiration)(region)(ref_block_num)(ref_block_prefix)(packed_bandwidth_words)(context_free_cpu_bandwidth)(context_free_actions)(actions) )
    };
 
    class deferred_transaction : public transaction {
