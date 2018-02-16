@@ -75,7 +75,6 @@ namespace eosio {
          adjust_to_mem_block(size);
 
          // first pass of loop never has to initialize the slot in _available_heap
-         uint32_t needs_init = 0;
          char* buffer = nullptr;
          memory* current = nullptr;
          // need to make sure
@@ -129,7 +128,6 @@ namespace eosio {
             return nullptr;
          }
 
-         const uint32_t REMOVE = size;
          adjust_to_mem_block(size);
 
          char* realloc_ptr = nullptr;

@@ -13,7 +13,7 @@ namespace  eosio {
     *  @details Converts a base32 symbol into its binary representation, used by string_to_name()
     *  @ingroup types
     */
-   static constexpr char char_to_symbol( char c ) {
+   static constexpr  char char_to_symbol( char c ) {
       if( c >= 'a' && c <= 'z' )
          return (c - 'a') + 6;
       if( c >= '1' && c <= '5' )

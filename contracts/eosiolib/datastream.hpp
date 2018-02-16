@@ -18,7 +18,7 @@ template<typename T>
 class datastream {
    public:
       datastream( T start, size_t s )
-      :_start(start),_pos(start),_end(start+s){};
+      :_start(start),_pos(start),_end(start+s){}
       
      /**
       *  Skips a specified number of bytes from this stream
@@ -119,7 +119,7 @@ class datastream {
 template<>
 class datastream<size_t> {
    public:
-     datastream( size_t init_size = 0):_size(init_size){};
+     datastream( size_t init_size = 0):_size(init_size){}
      inline bool     skip( size_t s )                 { _size += s; return true;  }
      inline bool     write( const char* ,size_t s )  { _size += s; return true;  }
      inline bool     put(char )                      { ++_size; return  true;    }
