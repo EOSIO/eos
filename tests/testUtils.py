@@ -452,6 +452,12 @@ class Node(object):
         transId=Node.getTransId(trans[1])
         self.waitForTransIdOnNode(transId)
 
+        expectedAmount=10000000000000
+        Utils.Print("Verify eosio issue, Expected: %d" % (expectedAmount))
+        actualAmount=self.getAccountBalance(eosio.name)
+        if expectedAmount != actualAmount:
+            Utils.errorExit("Issue verification failed. Excepted %d, actual: %d" % (expectedAmount, actualAmount))
+
         initx = copy.copy(Cluster.initaAccount)
         self.createAccount(Cluster.initaAccount, eosio, 0)
         for i in range(2, 21):

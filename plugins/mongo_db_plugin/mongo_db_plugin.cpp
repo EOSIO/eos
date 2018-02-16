@@ -34,8 +34,10 @@ using chain::account_name;
 using chain::action_name;
 using chain::block_id_type;
 using chain::permission_name;
+using chain::transaction;
 using chain::signed_transaction;
 using chain::signed_block;
+using chain::block_trace;
 using chain::transaction_id_type;
 
 static appbase::abstract_plugin& _mongo_db_plugin = app().register_plugin<mongo_db_plugin>();
@@ -45,7 +47,10 @@ public:
    mongo_db_plugin_impl();
    ~mongo_db_plugin_impl();
 
+   void applied_block(const block_trace&);
    void applied_irreversible_block(const signed_block&);
+   void process_block(const block_trace&, const signed_block&);
+   void _process_block(const block_trace&, const signed_block&);
    void process_irreversible_block(const signed_block&);
    void _process_irreversible_block(const signed_block&);
 
@@ -64,7 +69,12 @@ public:
 
    size_t queue_size = 0;
    size_t processed = 0;
-   std::queue<signed_block> queue;
+   std::deque<signed_block> signed_block_queue;
+   std::deque<signed_block> signed_block_process_queue;
+   std::deque<std::pair<block_trace, signed_block>> block_trace_queue;
+   std::deque<std::pair<block_trace, signed_block>> block_trace_process_queue;
+   // transaction.id -> actions
+   std::map<std::string, std::vector<chain::action>> reversible_actions;
    boost::mutex mtx;
    boost::condition_variable condtion;
    boost::thread consum_thread;
@@ -77,10 +87,6 @@ public:
 
    static const account_name newaccount;
    static const account_name transfer;
-   static const account_name lock;
-   static const account_name unlock;
-   static const account_name claim;
-   static const account_name setcode;
    static const account_name setabi;
 
    static const std::string blocks_col;
@@ -91,10 +97,6 @@ public:
 
 const account_name mongo_db_plugin_impl::newaccount = "newaccount";
 const account_name mongo_db_plugin_impl::transfer = "transfer";
-const account_name mongo_db_plugin_impl::lock = "lock";
-const account_name mongo_db_plugin_impl::unlock = "unlock";
-const account_name mongo_db_plugin_impl::claim = "claim";
-const account_name mongo_db_plugin_impl::setcode = "setcode";
 const account_name mongo_db_plugin_impl::setabi = "setabi";
 
 const std::string mongo_db_plugin_impl::blocks_col = "Blocks";
@@ -110,7 +112,7 @@ void mongo_db_plugin_impl::applied_irreversible_block(const signed_block& block)
          process_irreversible_block(block);
       } else {
          boost::mutex::scoped_lock lock(mtx);
-         queue.push(block);
+         signed_block_queue.push_back(block);
          lock.unlock();
          condtion.notify_one();
       }
@@ -123,31 +125,69 @@ void mongo_db_plugin_impl::applied_irreversible_block(const signed_block& block)
    }
 }
 
+void mongo_db_plugin_impl::applied_block(const block_trace& bt) {
+   try {
+      if (startup) {
+         // on startup we don't want to queue, instead push back on caller
+         process_block(bt, bt.block);
+      } else {
+         boost::mutex::scoped_lock lock(mtx);
+         block_trace_queue.emplace_back(std::make_pair(bt, bt.block));
+         lock.unlock();
+         condtion.notify_one();
+      }
+   } catch (fc::exception& e) {
+      elog("FC Exception while applied_block ${e}", ("e", e.to_string()));
+   } catch (std::exception& e) {
+      elog("STD Exception while applied_block ${e}", ("e", e.what()));
+   } catch (...) {
+      elog("Unknown exception while applied_block");
+   }
+}
+
 void mongo_db_plugin_impl::consum_blocks() {
    try {
-      signed_block block;
-      size_t size = 0;
       while (true) {
          boost::mutex::scoped_lock lock(mtx);
-         while (queue.empty() && !done) {
+         while (signed_block_queue.empty() && block_trace_queue.empty() && !done) {
             condtion.wait(lock);
          }
-         size = queue.size();
-         if (size > 0) {
-            block = queue.front();
-            queue.pop();
-            lock.unlock();
-            // warn if queue size greater than 75%
-            if (size > (queue_size * 0.75)) {
-               wlog("queue size: ${q}", ("q", size + 1));
-            } else if (done) {
-               ilog("draining queue, size: ${q}", ("q", size + 1));
-            }
-            process_irreversible_block(block);
-            continue;
-         } else if (done) {
-            break;
+         // capture blocks for processing
+         size_t block_trace_size = block_trace_queue.size();
+         if (block_trace_size > 0) {
+            block_trace_process_queue = move(block_trace_queue);
+            block_trace_queue.clear();
          }
+         size_t signed_block_size = signed_block_queue.size();
+         if (signed_block_size > 0) {
+            signed_block_process_queue = move(signed_block_queue);
+            signed_block_queue.clear();
+         }
+
+         lock.unlock();
+
+         // warn if queue size greater than 75%
+         if (signed_block_size > (queue_size * 0.75) || block_trace_size > (queue_size * 0.75)) {
+            wlog("queue size: ${q}", ("q", signed_block_size + block_trace_size + 1));
+         } else if (done) {
+            ilog("draining queue, size: ${q}", ("q", signed_block_size + block_trace_size + 1));
+         }
+
+         // process block traces
+         while (!block_trace_process_queue.empty()) {
+            const auto& bt_pair = block_trace_process_queue.front();
+            process_block(bt_pair.first, bt_pair.second);
+            block_trace_process_queue.pop_front();
+         }
+
+         // process blocks
+         while (!signed_block_process_queue.empty()) {
+            const signed_block& block = signed_block_process_queue.front();
+            process_irreversible_block(block);
+            signed_block_process_queue.pop_front();
+         }
+
+         if (signed_block_size == 0 && block_trace_size == 0 && done) break;
       }
       ilog("mongo_db_plugin consum thread shutdown gracefully");
    } catch (fc::exception& e) {
@@ -170,6 +210,28 @@ namespace {
          FC_THROW("Unable to find account ${n}", ("n", name));
       }
       return *account;
+   }
+
+   auto find_transaction(mongocxx::collection& transactions, const string& id) {
+      using bsoncxx::builder::stream::document;
+      document find_trans{};
+      find_trans << "transaction_id" << id;
+      auto transaction = transactions.find_one(find_trans.view());
+      if (!transaction) {
+         FC_THROW("Unable to find transaction ${id}", ("id", id));
+      }
+      return *transaction;
+   }
+
+   auto find_block(mongocxx::collection& blocks, const string& id) {
+      using bsoncxx::builder::stream::document;
+      document find_block{};
+      find_block << "block_id" << id;
+      auto block = blocks.find_one(find_block.view());
+      if (!block) {
+         FC_THROW("Unable to find block ${id}", ("id", id));
+      }
+      return *block;
    }
 
   void add_data(bsoncxx::builder::basic::document& msg_doc,
@@ -238,8 +300,20 @@ void mongo_db_plugin_impl::process_irreversible_block(const signed_block& block)
   }
 }
 
-void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block)
-{
+void mongo_db_plugin_impl::process_block(const block_trace& bt, const signed_block& block) {
+   try {
+      _process_block(bt, block);
+   } catch (fc::exception& e) {
+      elog("FC Exception while processing block trace ${e}", ("e", e.to_string()));
+   } catch (std::exception& e) {
+      elog("STD Exception while processing block trace ${e}", ("e", e.what()));
+   } catch (...) {
+      elog("Unknown exception while processing trace block");
+   }
+}
+
+void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_block& block) {
+   // note bt.block is invalid at this point since it is a reference to internal chainbase block
    using namespace bsoncxx::types;
    using namespace bsoncxx::builder;
    using bsoncxx::builder::basic::kvp;
@@ -268,25 +342,47 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
          // verify on restart we have previous block
          verify_last_block(blocks, prev_block_id_str);
       }
-
    }
 
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
    block_doc << "block_num" << b_int32{static_cast<int32_t>(block_num)}
-       << "block_id" << block_id_str
-       << "prev_block_id" << prev_block_id_str
-       << "timestamp" << b_date{std::chrono::milliseconds{std::chrono::seconds{block.timestamp.operator fc::time_point().sec_since_epoch()}}}
-       << "transaction_merkle_root" << block.transaction_mroot.str()
-       << "producer_account_id" << block.producer.to_string();
+             << "block_id" << block_id_str
+             << "prev_block_id" << prev_block_id_str
+             << "timestamp" << b_date{std::chrono::milliseconds{std::chrono::seconds{block.timestamp.operator fc::time_point().sec_since_epoch()}}}
+             << "transaction_merkle_root" << block.transaction_mroot.str()
+             << "producer_account_id" << block.producer.to_string()
+             << "pending" << b_bool{true};
    auto blk_doc = block_doc << "transactions" << stream::open_array;
 
-   int32_t trx_num = -1;
-   for (const auto& packed_trx : block.input_transactions) {
-      const signed_transaction& trx = packed_trx.get_signed_transaction();
-      ++trx_num;
+   int32_t msg_num = -1;
+   auto process_action = [&](const std::string& trans_id_str, mongocxx::bulk_write& bulk_msgs, const chain::action& msg) {
+      auto msg_oid = bsoncxx::oid{};
+      auto msg_doc = bsoncxx::builder::basic::document{};
+      msg_doc.append(kvp("_id", b_oid{msg_oid}),
+                     kvp("action_id", b_int32{msg_num}),
+                     kvp("transaction_id", trans_id_str));
+      msg_doc.append(kvp("authorization", [&msg](bsoncxx::builder::basic::sub_array subarr) {
+         for (const auto& auth : msg.authorization) {
+            subarr.append([&auth](bsoncxx::builder::basic::sub_document subdoc) {
+               subdoc.append(kvp("actor", auth.actor.to_string()),
+                             kvp("permission", auth.permission.to_string()));
+            });
+         }
+      }));
+      msg_doc.append(kvp("handler_account_name", msg.account.to_string()));
+      msg_doc.append(kvp("name", msg.name.to_string()));
+      add_data(msg_doc, accounts, msg);
+      msg_doc.append(kvp("createdAt", b_date{now}));
+      mongocxx::model::insert_one insert_msg{msg_doc.view()};
+      bulk_msgs.append(insert_msg);
+      ++msg_num;
+   };
 
+   int32_t trx_num = 0;
+   const signed_transaction* signed_trx = nullptr;
+   auto process_trx = [&](const chain::transaction& trx ) {
       auto txn_oid = bsoncxx::oid{};
       blk_doc = blk_doc << txn_oid; // add to transaction.actions array
       stream::document doc{};
@@ -299,52 +395,20 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
             << "ref_block_num" << b_int32{static_cast<int32_t >(trx.ref_block_num)}
             << "ref_block_prefix" << b_int32{static_cast<int32_t >(trx.ref_block_prefix)}
             << "expiration" << b_date{std::chrono::milliseconds{std::chrono::seconds{trx.expiration.sec_since_epoch()}}}
+            << "pending" << b_bool{true}
             << "signatures" << stream::open_array;
-      for (const auto& sig : trx.signatures) {
-         trx_doc = trx_doc << fc::variant(sig).as_string();
-      }
-      trx_doc = trx_doc
-            << stream::close_array
-            << "actions" << stream::open_array;
-
-      mongocxx::bulk_write bulk_msgs{bulk_opts};
-      int32_t i = 0;
-      for (const auto& msg : trx.actions) {
-         auto msg_oid = bsoncxx::oid{};
-         trx_doc = trx_doc << msg_oid; // add to transaction.actions array
-
-         auto msg_doc = bsoncxx::builder::basic::document{};
-         msg_doc.append(kvp("_id", b_oid{msg_oid}),
-                        kvp("action_id", b_int32{i}),
-                        kvp("transaction_id", trans_id_str));
-         msg_doc.append(kvp("authorization", [&msg](bsoncxx::builder::basic::sub_array subarr) {
-            for (const auto& auth : msg.authorization) {
-               subarr.append([&auth](bsoncxx::builder::basic::sub_document subdoc) {
-                  subdoc.append(kvp("actor", auth.actor.to_string()),
-                                kvp("permission", auth.permission.to_string()));
-               });
-            }
-         }));
-         msg_doc.append(kvp("handler_account_name", msg.account.to_string()));
-         msg_doc.append(kvp("name", msg.name.to_string()));
-         add_data(msg_doc, accounts, msg);
-         msg_doc.append(kvp("createdAt", b_date{now}));
-         mongocxx::model::insert_one insert_msg{msg_doc.view()};
-         bulk_msgs.append(insert_msg);
-
-         // eos account update
-         if (msg.account == chain::config::system_account_name) {
-            try {
-               update_account(msg);
-            } catch (fc::exception& e) {
-               elog("Unable to update account ${e}", ("e", e.to_string()));
-            }
+      if (signed_trx != nullptr) {
+         for (const auto& sig : signed_trx->signatures) {
+            trx_doc = trx_doc << fc::variant(sig).as_string();
          }
-
-         ++i;
       }
 
       if (!trx.actions.empty()) {
+         mongocxx::bulk_write bulk_msgs{bulk_opts};
+         msg_num = 0;
+         for (const auto& msg : trx.actions) {
+            process_action(trans_id_str, bulk_msgs, msg);
+         }
          auto result = msgs.bulk_write(bulk_msgs);
          if (!result) {
             elog("Bulk action insert failed for block: ${bid}, transaction: ${trx}",
@@ -358,7 +422,49 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
       mongocxx::model::insert_one insert_op{complete_doc.view()};
       transactions_in_block = true;
       bulk_trans.append(insert_op);
+   };
 
+   trx_num = 0;
+   for (const auto& packed_trx : block.input_transactions) {
+      const signed_transaction& trx = packed_trx.get_signed_transaction();
+      signed_trx = &trx;
+      process_trx(trx);
+      ++trx_num;
+   }
+   signed_trx = nullptr;
+
+   for (const auto& rt: bt.region_traces) {
+      for (const auto& ct: rt.cycle_traces) {
+         for (const auto& st: ct.shard_traces) {
+            for (const auto& trx_trace: st.transaction_traces) {
+               trx_num = 1000000;
+               for (const auto& trx : trx_trace.deferred_transactions) {
+                  process_trx(trx);
+                  ++trx_num;
+               }
+               if (!trx_trace.action_traces.empty()) {
+                  mongocxx::bulk_write bulk_msgs{bulk_opts};
+                  msg_num = 1000000;
+                  edump((trx_trace.action_traces.size()));
+                  for (const auto& act_trace : trx_trace.action_traces) {
+                     const auto& msg = act_trace.act;
+                     edump((act_trace));
+                     process_action(trx_trace.id.str(), bulk_msgs, msg);
+                     if (trx_trace.status == chain::transaction_receipt::executed) {
+                        if (act_trace.receiver == chain::config::system_account_name) {
+                           reversible_actions[trx_trace.id.str()].emplace_back(msg);
+                        }
+                     }
+                  }
+                  auto result = msgs.bulk_write(bulk_msgs);
+                  if (!result) {
+                     elog("Bulk action insert failed for block: ${bid}, transaction: ${trx}",
+                          ("bid", block_id)("trx", trx_trace.id));
+                  }
+               }
+            }
+         }
+      }
    }
 
    auto blk_complete = blk_doc << stream::close_array
@@ -377,6 +483,56 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
    }
 
    ++processed;
+}
+
+void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block)
+{
+   using namespace bsoncxx::types;
+   using namespace bsoncxx::builder;
+   using bsoncxx::builder::basic::kvp;
+   using bsoncxx::builder::stream::document;
+   using bsoncxx::builder::stream::open_document;
+   using bsoncxx::builder::stream::close_document;
+   using bsoncxx::builder::stream::finalize;
+
+
+   auto blocks = mongo_conn[db_name][blocks_col]; // Blocks
+   auto trans = mongo_conn[db_name][trans_col]; // Transactions
+
+   const auto block_id = block.id();
+   const auto block_id_str = block_id.str();
+
+   auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
+
+   auto ir_block = find_block(blocks, block_id_str);
+
+   document update_block{};
+   update_block << "$set" << open_document << "pending" << b_bool{false}
+               << "updatedAt" << b_date{now}
+               << close_document;
+
+   blocks.update_one(document{} << "_id" << ir_block.view()["_id"].get_oid() << finalize, update_block.view());
+
+   for (const auto& packed_trx : block.input_transactions) {
+      const signed_transaction& trx = packed_trx.get_signed_transaction();
+
+      const auto trans_id_str = trx.id().str();
+      auto ir_trans = find_transaction(trans, trans_id_str);
+
+      document update_trans{};
+      update_trans << "$set" << open_document << "pending" << b_bool{false}
+                   << "updatedAt" << b_date{now}
+                   << close_document;
+
+      trans.update_one(document{} << "_id" << ir_trans.view()["_id"].get_oid() << finalize, update_trans.view());
+
+      for (const auto& msg : reversible_actions[trans_id_str]) {
+         update_account(msg);
+      }
+      reversible_actions.erase(trans_id_str);
+   }
+
 }
 
 // For now providing some simple account processing to maintain eos_balance
@@ -408,6 +564,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& msg) {
       asset from_balance = asset::from_string(from_account.view()["eos_balance"].get_utf8().value.to_string());
       asset to_balance = asset::from_string(to_account.view()["eos_balance"].get_utf8().value.to_string());
       auto asset_quantity = transfer["quantity"].as<asset>();
+      edump((from_balance)(to_balance)(asset_quantity));
       from_balance -= asset_quantity;
       to_balance += asset_quantity;
 
@@ -498,7 +655,7 @@ void mongo_db_plugin_impl::init() {
       auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
       doc << "name" << name(chain::config::system_account_name).to_string()
-          << "eos_balance" << asset(chain::config::initial_token_supply).to_string()
+          << "eos_balance" << asset().to_string()
           << "staked_balance" << asset().to_string()
           << "unstaking_balance" << asset().to_string()
           << "createdAt" << b_date{now}
@@ -515,9 +672,9 @@ void mongo_db_plugin_impl::init() {
       auto trans = mongo_conn[db_name][trans_col]; // Transactions
       trans.create_index(bsoncxx::from_json(R"xxx({ "transaction_id" : 1 })xxx"));
 
-      // Messages indexes
+      // Action indexes
       auto msgs = mongo_conn[db_name][actions_col]; // Messages
-      msgs.create_index(bsoncxx::from_json(R"xxx({ "message_id" : 1 })xxx"));
+      msgs.create_index(bsoncxx::from_json(R"xxx({ "action_id" : 1 })xxx"));
       msgs.create_index(bsoncxx::from_json(R"xxx({ "transaction_id" : 1 })xxx"));
 
       // Blocks indexes
@@ -582,6 +739,8 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
       // add callback to chain_controller config
       chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
       FC_ASSERT(chain_plug);
+      chain_plug->chain_config().applied_block_callbacks.emplace_back(
+            [my = my](const chain::block_trace& bt) { my->applied_block(bt); });
       chain_plug->chain_config().applied_irreversible_block_callbacks.emplace_back(
             [my = my](const chain::signed_block& b) { my->applied_irreversible_block(b); });
 
