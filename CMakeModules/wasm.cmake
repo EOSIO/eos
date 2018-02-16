@@ -6,7 +6,7 @@ if(NOT DEFINED WASM_LLVM_CONFIG)
   else()
    find_file( WASM_LLVM_CONFIG
               llvm-config
-              PATHS /usr/local/wasm/bin ${HOME}/opt/wasm/bin )
+              PATHS /usr/local/wasm/bin ${HOME}/opt/wasm/bin NO_DEFAULT_PATH)
   endif()
 endif()
 
