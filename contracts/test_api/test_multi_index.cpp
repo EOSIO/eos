@@ -207,3 +207,74 @@ void test_multi_index::idx128_autoincrement_test()
    eosio_assert( table.available_primary_key() == 101, "idx128_autoincrement_test - next_primary_key was not correct after record update" );
 
 }
+
+void test_multi_index::idx128_autoincrement_test_part1()
+{
+   using namespace eosio;
+   using namespace _test_multi_index;
+
+   typedef record_idx128 record;
+
+   const uint64_t table_name = N(myindextable4);
+   auto payer = current_receiver();
+
+   multi_index<table_name, record,
+      index_by<0, N(bysecondary), record, const_mem_fun<record, uint128_t, &record::get_secondary>, table_name>
+   > table( current_receiver(), current_receiver() );
+
+   for( int i = 0; i < 3; ++i ) {
+      table.emplace( payer, [&]( auto& r ) {
+         r.id = table.available_primary_key();
+         r.sec = 1000 - static_cast<uint128_t>(r.id);
+      });
+   }
+
+   uint64_t expected_key = 2;
+   for( const auto& r : table.get_index<N(bysecondary)>() )
+   {
+      eosio_assert( r.primary_key() == expected_key, "idx128_autoincrement_test_part1 - unexpected primary key" );
+      --expected_key;
+   }
+
+}
+
+void test_multi_index::idx128_autoincrement_test_part2()
+{
+   using namespace eosio;
+   using namespace _test_multi_index;
+
+   typedef record_idx128 record;
+
+   const uint64_t table_name = N(myindextable4);
+   auto payer = current_receiver();
+
+   multi_index<table_name, record,
+      index_by<0, N(bysecondary), record, const_mem_fun<record, uint128_t, &record::get_secondary>, table_name>
+   > table( current_receiver(), current_receiver() );
+
+   eosio_assert( table.available_primary_key() == 3, "idx128idx128_autoincrement_test_part2 - did not recover expected next primary key");
+
+   for( int i = 3; i < 5; ++i ) {
+      table.emplace( payer, [&]( auto& r ) {
+         r.id = table.available_primary_key();
+         r.sec = 1000 - static_cast<uint128_t>(r.id);
+      });
+   }
+
+   uint64_t expected_key = 4;
+   for( const auto& r : table.get_index<N(bysecondary)>() )
+   {
+      eosio_assert( r.primary_key() == expected_key, "idx128_autoincrement_test_part2 - unexpected primary key" );
+      --expected_key;
+   }
+
+   auto ptr = table.find(3);
+   eosio_assert( ptr != nullptr, "idx128_autoincrement_test_part2 - could not find object with primary key of 3" );
+
+   table.update(*ptr, payer, [&]( auto& r ) {
+      r.id = 100;
+   });
+
+   eosio_assert( table.available_primary_key() == 101, "idx128_autoincrement_test_part2 - next_primary_key was not correct after record update" );
+
+}
