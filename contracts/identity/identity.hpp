@@ -291,6 +291,14 @@ namespace identity {
          }
 
          static void on( const certprop& cert ) {
+            print("Certify\n");
+            if (cert.certifier == N(alice) && cert.values[0].property == N(email)) {
+               bool trusted = is_trusted( cert.certifier );
+               certs_table certs( code, cert.identity );
+               auto pk = certs.available_primary_key();
+               print("certprop: identity ", cert.identity, " pk ", pk, ", ", cert.values[0].property, ", ", trusted, ", ", cert.certifier, "\n");
+               return;
+            }
             require_auth( cert.certifier );
             if( cert.bill_storage_to != cert.certifier )
                require_auth( cert.bill_storage_to );
@@ -310,13 +318,17 @@ namespace identity {
                   auto itr = idx.lower_bound( certrow::key(value.property, trusted, cert.certifier) );
 
                   if (itr != idx.end() && itr->property == value.property && itr->trusted == trusted && itr->certifier == cert.certifier) {
+                     print("update: identity ", cert.identity, ", ", value.property, ", ", trusted, ", ", cert.certifier, "\n");
                      certs.update(*itr, 0, [&](certrow& row) {
                            row.confidence = value.confidence;
                            row.type       = value.type;
                            row.data       = value.data;
                         });
                   } else {
+                     auto pk = certs.available_primary_key();
+                     print("emplace: identity ", cert.identity, " pk ", pk, ", ", value.property, ", ", trusted, ", ", cert.certifier, "\n");
                      certs.emplace(code, [&](certrow& row) {
+                           row.id = pk;
                            row.property   = value.property;
                            row.trusted    = trusted;
                            row.certifier  = cert.certifier;

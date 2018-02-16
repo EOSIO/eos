@@ -48,6 +48,10 @@ namespace eosio {
       printi(num);
    }
 
+   inline void print( long num ) {
+      printi(num);
+   }
+
    /**
     * Prints unsigned integer as a 64 bit unsigned integer
     * @brief Prints unsigned integer

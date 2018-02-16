@@ -197,10 +197,19 @@ class multi_index
          auto itr = --end();
          if( itr == end() ) {
             _next_primary_key = 0;
+            if (scope == 0xffffffffffffffff) {
+               print("itr == end() _next_primary_key = 0\n");
+            }
          } else {
             auto pk = itr->primary_key();
+            if (scope == 0xffffffffffffffff) {
+               print("itr == ", uint32_t(itr._item), " pk = ", pk, " ");
+            }
             if( pk != static_cast<uint64_t>(-1) ) ++pk;
             _next_primary_key = pk;
+            if (scope == 0xffffffffffffffff) {
+               print(" _next_primary_key =", _next_primary_key, "\n");
+            }
          }
       }
 
@@ -368,8 +377,15 @@ class multi_index
             //eosio_assert( _item, "null ptr" );
             if( !_item ) {
                auto ei = db_end_i64(_multidx._code, _multidx._scope, TableName);
-               if( ei != -1 ) // Table exists
+               if (_multidx._scope == 0xffffffffffffffff) {
+                  print("db_end_i64( ", _multidx._code, ", ", _multidx._scope, ", ", TableName, ") = ", ei, "\n");
+               }
+               if( ei != -1 ) {// Table exists
                   prev_itr = db_previous_i64( ei , &prev_pk );
+                  if (_multidx._scope == 0xffffffffffffffff) {
+                     print("db_previous_i64( ", ei, ", ", prev_pk, ") = ", prev_itr, "\n");
+                  }
+               }
             }
             else
                prev_itr = db_previous_i64( _item->__primary_itr, &prev_pk );
@@ -379,6 +395,7 @@ class multi_index
                return *this;
             }
             _item = &_multidx.load_object_by_primary_iterator( prev_itr );
+
             return *this;
          }
 
