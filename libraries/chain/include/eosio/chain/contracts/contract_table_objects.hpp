@@ -294,7 +294,7 @@ namespace eosio { namespace chain { namespace contracts {
    >;
 
 
-   struct key64x64x64_value_object : public chainbase::object<key64x64x64_value_object_type, key64x64x64_value_object> {
+/*   struct key64x64x64_value_object : public chainbase::object<key64x64x64_value_object_type, key64x64x64_value_object> {
       OBJECT_CTOR(key64x64x64_value_object, (value))
 
       typedef uint64_t key_type;
@@ -340,7 +340,7 @@ namespace eosio { namespace chain { namespace contracts {
          >
       >
    >;
-
+*/
 
 } } }  // namespace eosio::chain::contracts
 
@@ -349,7 +349,7 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key_value_object, eosio::chain
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::keystr_value_object, eosio::chain::contracts::keystr_value_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key128x128_value_object, eosio::chain::contracts::key128x128_value_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key64x64_value_object, eosio::chain::contracts::key64x64_value_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key64x64x64_value_object, eosio::chain::contracts::key64x64x64_value_index)
+//CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key64x64x64_value_object, eosio::chain::contracts::key64x64x64_value_index)
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index64_object, eosio::chain::contracts::index64_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index128_object, eosio::chain::contracts::index128_index)
@@ -359,4 +359,4 @@ FC_REFLECT(eosio::chain::contracts::key_value_object, (id)(t_id)(primary_key)(va
 FC_REFLECT(eosio::chain::contracts::keystr_value_object, (id)(t_id)(primary_key)(value)(payer) )
 FC_REFLECT(eosio::chain::contracts::key128x128_value_object, (id)(t_id)(primary_key)(secondary_key)(value)(payer) )
 FC_REFLECT(eosio::chain::contracts::key64x64_value_object, (id)(t_id)(primary_key)(secondary_key)(value)(payer) )
-FC_REFLECT(eosio::chain::contracts::key64x64x64_value_object, (id)(t_id)(primary_key)(secondary_key)(tertiary_key)(value)(payer) )
+//FC_REFLECT(eosio::chain::contracts::key64x64x64_value_object, (id)(t_id)(primary_key)(secondary_key)(tertiary_key)(value)(payer) )

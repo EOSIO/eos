@@ -130,7 +130,7 @@ public:
    }
 
    fc::variant get_certrow(uint64_t identity, const string& property, uint64_t trusted, const string& certifier) {
-      const auto& db = control->get_database();
+    /*  const auto& db = control->get_database();
       const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), identity, N(certs)));
       FC_ASSERT(t_id != 0, "certrow not found");
 
@@ -146,6 +146,8 @@ public:
       } else {
          return fc::variant(nullptr);
       }
+   */
+     return fc::variant(nullptr);
    }
 
    fc::variant get_accountrow(const string& account) {
