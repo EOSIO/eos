@@ -241,7 +241,10 @@ namespace {
      using bsoncxx::builder::basic::kvp;
      try {
         auto from_account = find_account(accounts, msg.account);
-        auto abi = fc::json::from_string(bsoncxx::to_json(from_account.view()["abi"].get_document())).as<abi_def>();
+        abi_def abi;
+        if (from_account.view().find("abi") != from_account.view().end()) {
+           abi = fc::json::from_string(bsoncxx::to_json(from_account.view()["abi"].get_document())).as<abi_def>();
+        }
         abi_serializer abis;
         if (msg.account == chain::config::system_account_name) {
            abi = chain::contracts::chain_initializer::eos_contract_abi(abi);
@@ -527,6 +530,7 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
 
       trans.update_one(document{} << "_id" << ir_trans.view()["_id"].get_oid() << finalize, update_trans.view());
 
+      // actions are irreversible, so update account document
       for (const auto& msg : reversible_actions[trans_id_str]) {
          update_account(msg);
       }
