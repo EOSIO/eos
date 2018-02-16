@@ -901,6 +901,7 @@ BOOST_FIXTURE_TEST_CASE( test_multi_index, tester ) try {
       "idx64_store_only",
       "idx64_check_without_storing", // "idx64_store_only" action must be called before this action
       "idx64_general",
+      "idx128_autoincrement_test"
    };
 
    bytes empty;

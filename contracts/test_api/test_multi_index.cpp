@@ -190,7 +190,7 @@ void test_multi_index::idx128_autoincrement_test()
       });
    }
 
-   uint64_t expected_key = 1000;
+   uint64_t expected_key = 4;
    for( const auto& r : table.get_index<N(bysecondary)>() )
    {
       eosio_assert( r.primary_key() == expected_key, "idx128_autoincrement_test - unexpected primary key" );
