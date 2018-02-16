@@ -2170,7 +2170,6 @@ namespace eosio {
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const signed_block_summary &msg) {
-      // should only be during synch or rolling upgrade
       chain_controller &cc = chain_plug->chain();
       block_id_type blk_id = msg.id();
       uint32_t blk_num = msg.block_num();
@@ -2188,25 +2187,36 @@ namespace eosio {
       fc_dlog(logger, "got signed_block_summary #${n} from ${p} block age in secs = ${age}",
               ("n",blk_num)("p",c->peer_name())("age",age.to_seconds()));
 
-      signed_block sb;
-      sb.regions = std::move(msg.regions);
+      signed_block sb(std::move(msg));
       update_block_num ubn(blk_num);
       for (const auto &region : sb.regions) {
          for (const auto &cycle_sum : region.cycles_summary) {
             for (const auto &shard : cycle_sum) {
                for (const auto &recpt : shard.transactions) {
                   auto ltx = local_txns.get<by_id>().find(recpt.id);
-                  if( ltx == local_txns.end()) {
-                     fc_elog (logger,"summary references unknown transacion ${rid}",("rid",recpt.id));
-                     close (c); // close without go away allows reconnect
-                     return;
+                  switch (recpt.status) {
+                  case transaction_receipt::executed: {
+                     if( ltx == local_txns.end()) {
+                        fc_elog (logger,"summary references unknown transaction ${rid}",("rid",recpt.id));
+                        close (c); // close without go away allows reconnect
+                        return;
+                     }
+                     sb.input_transactions.push_back(ltx->packed_txn);
+                     local_txns.modify( ltx, ubn );
+                     break;
                   }
-                  sb.input_transactions.push_back(ltx->packed_txn);
-                  local_txns.modify( ltx, ubn );
-                  auto ctx = c->trx_state.get<by_id>().find(recpt.id);
-                  if( ctx != c->trx_state.end()) {
-                     c->trx_state.modify( ctx, ubn );
-                  }
+                  case transaction_receipt::soft_fail:
+                  case transaction_receipt::hard_fail: {
+                     if( ltx != local_txns.end()) {
+                        sb.input_transactions.push_back(ltx->packed_txn);
+                        local_txns.modify( ltx, ubn );
+                        auto ctx = c->trx_state.get<by_id>().find(recpt.id);
+                        if( ctx != c->trx_state.end()) {
+                           c->trx_state.modify( ctx, ubn );
+                        }
+                     }
+                     break;
+                  }}
                }
             }
          }
