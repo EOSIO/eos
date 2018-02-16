@@ -408,10 +408,15 @@ namespace eosio { namespace chain {
 
 class context_aware_api {
    public:
-      context_aware_api(wasm_interface& wasm)
-      :context(intrinsics_accessor::get_context(wasm).context), code(intrinsics_accessor::get_context(wasm).code),
-       sbrk_bytes(intrinsics_accessor::get_context(wasm).sbrk_bytes)
-      {}
+      context_aware_api(wasm_interface& wasm, bool context_free = false )
+      :sbrk_bytes(intrinsics_accessor::get_context(wasm).sbrk_bytes),
+       code(intrinsics_accessor::get_context(wasm).code),
+       context(intrinsics_accessor::get_context(wasm).context)
+      {
+         if( context.context_free )
+            FC_ASSERT( context_free, "only context free api's can be used in this context" );
+         context.used_context_free_api |= !context_free;
+      }
 
    protected:
       uint32_t&          sbrk_bytes;
@@ -419,6 +424,18 @@ class context_aware_api {
       apply_context&     context;
 };
 
+class context_free_api : public context_aware_api {
+   public:
+      context_free_api( wasm_interface& wasm )
+      :context_aware_api(wasm, true) { 
+         /* the context_free_data is not available during normal application because it is prunable */
+         FC_ASSERT( context.context_free, "this API may only be called from context_free apply" );
+      }
+
+      int get_context_free_data( uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
+         return context.get_context_free_data( index, buffer, buffer_size );
+      }
+};
 class privileged_api : public context_aware_api {
    public:
       privileged_api( wasm_interface& wasm )
@@ -892,7 +909,8 @@ class db_index_api : public context_aware_api {
 
 class memory_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      memory_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
      
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
          return (char *)::memcpy(dest, src, length);
@@ -949,6 +967,36 @@ class transaction_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
+      void send_inline( array_ptr<char> data, size_t data_len ) {
+         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
+         FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
+
+         action act;
+         fc::raw::unpack<action>(data, data_len, act);
+         context.execute_inline(std::move(act));
+      }
+
+      void send_deferred( uint32_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
+         try {
+            // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
+            FC_ASSERT(data_len < config::default_max_gen_trx_size, "generated transaction too big");
+
+            deferred_transaction dtrx;
+            fc::raw::unpack<transaction>(data, data_len, dtrx);
+            dtrx.sender = context.receiver;
+            dtrx.sender_id = sender_id;
+            dtrx.execute_after = execute_after;
+            context.execute_deferred(std::move(dtrx));
+         } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
+      }
+};
+
+
+class context_free_transaction_api : public context_aware_api {
+   public:
+      context_free_transaction_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
+
       int read_transaction( array_ptr<char> data, size_t data_len ) {
          bytes trx = context.get_packed_transaction();
          if (data_len >= trx.size()) {
@@ -972,28 +1020,8 @@ class transaction_api : public context_aware_api {
         return context.trx_meta.trx().ref_block_prefix;
       }
 
-      void send_inline( array_ptr<char> data, size_t data_len ) {
-         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
-         FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
-
-         action act;
-         fc::raw::unpack<action>(data, data_len, act);
-         context.execute_inline(std::move(act));
-      }
-
-
-      void send_deferred( uint32_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
-         try {
-            // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
-            FC_ASSERT(data_len < config::default_max_gen_trx_size, "generated transaction too big");
-
-            deferred_transaction dtrx;
-            fc::raw::unpack<transaction>(data, data_len, dtrx);
-            dtrx.sender = context.receiver;
-            dtrx.sender_id = sender_id;
-            dtrx.execute_after = execute_after;
-            context.execute_deferred(std::move(dtrx));
-         } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
+      int get_action( uint32_t type, uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
+         return context.get_action( type, index, buffer, buffer_size );
       }
 
 };
@@ -1096,15 +1124,23 @@ REGISTER_INTRINSICS(console_api,
    (printhex,              void(int, int)  )
 );
 
-REGISTER_INTRINSICS(transaction_api,
+REGISTER_INTRINSICS(context_free_transaction_api,
    (read_transaction,       int(int, int)            )
    (transaction_size,       int()                    )
    (expiration,             int()                    )
    (tapos_block_prefix,     int()                    )
    (tapos_block_num,        int()                    )
+   (get_action,            int (int, int, int, int)  )
+);
+
+REGISTER_INTRINSICS(transaction_api,
    (send_inline,           void(int, int)            )
    (send_deferred,         void(int, int, int, int)  )
 );
+
+REGISTER_INTRINSICS(context_free_api,
+   (get_context_free_data, int(int, int, int) )
+)
 
 REGISTER_INTRINSICS(memory_api,
    (memcpy,                 int(int, int, int)   )
