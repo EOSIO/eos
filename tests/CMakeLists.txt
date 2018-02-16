@@ -48,9 +48,13 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/p2p_tests/sync/test.sh ${CMAKE_CURREN
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run_tests.sh ${CMAKE_CURRENT_BINARY_DIR}/run_tests.sh COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/trans_sync_across_mixed_cluster_test.sh ${CMAKE_CURRENT_BINARY_DIR}/trans_sync_across_mixed_cluster_test.sh COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/distributed-transactions-test.py ${CMAKE_CURRENT_BINARY_DIR}/distributed-transactions-test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/distributed-transactions-remote-test.py ${CMAKE_CURRENT_BINARY_DIR}/distributed-transactions-remote-test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/sample-cluster-map.json ${CMAKE_CURRENT_BINARY_DIR}/sample-cluster-map.json COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/restart-scenarios-test.py ${CMAKE_CURRENT_BINARY_DIR}/restart-scenarios-test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testUtils.py ${CMAKE_CURRENT_BINARY_DIR}/testUtils.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosd_run_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosd_run_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosd_run_remote_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosd_run_remote_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/consensusValidationMaliciousProducers.py ${CMAKE_CURRENT_BINARY_DIR}/consensusValidationMaliciousProducers.py COPYONLY)
 
 if(UNIX AND NOT APPLE)
   add_test(chain_test chain_test)

@@ -34,7 +34,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( insufficient_fee,                  eosio::chain::transaction_exception, 3030007, "insufficient fee" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_scope,                  eosio::chain::transaction_exception, 3030008, "missing required scope" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_recipient,              eosio::chain::transaction_exception, 3030009, "missing required recipient" )
-   FC_DECLARE_DERIVED_EXCEPTION( checktime_exceeded,                eosio::chain::transaction_exception, 3030010, "allotted processing time was exceeded" )
+   FC_DECLARE_DERIVED_EXCEPTION( checktime_exceeded,                eosio::chain::transaction_exception, 3030010, "allocated processing time was exceeded" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate,                      eosio::chain::transaction_exception, 3030011, "duplicate transaction" )
    FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,     eosio::chain::transaction_exception, 3030012, "unknown transaction" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_scheduling_exception,           eosio::chain::transaction_exception, 3030013, "transaction failed during sheduling" )
