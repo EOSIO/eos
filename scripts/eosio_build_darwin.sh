@@ -165,13 +165,13 @@
 			exit;
 		fi
 		./configure
-		make
+		make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling secp256k1-zkp.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		sudo make install
+		sudo make -j${CPU_CORE} install
 		sudo rm -rf ${TEMP_DIR}/secp256k1-zkp
 	else
 		printf "\tsecp256k1 found at /usr/local/lib/\n"
@@ -183,7 +183,7 @@
 		git clone https://github.com/WebAssembly/binaryen
 		cd binaryen
 		git checkout tags/1.37.14
-		cmake . && make
+		cmake . && make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling binaryen.\n"
 			printf "\tExiting now.\n\n"
@@ -217,7 +217,7 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		sudo make -j4 install
+		sudo make -j${CPU_CORE} install
 		sudo rm -rf ${TEMP_DIR}/wasm-compiler
 	else
 		printf "\tWASM found at /usr/local/wasm/bin/\n"
