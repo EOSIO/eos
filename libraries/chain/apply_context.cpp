@@ -371,86 +371,115 @@ void apply_context::db_remove_i64( int iterator ) {
 int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) {
    const key_value_object& obj = keyval_cache.get( iterator );
    memcpy( buffer, obj.value.data(), std::min(obj.value.size(), buffer_size) );
-   
+
    return obj.value.size();
 }
 
 int apply_context::db_next_i64( int iterator, uint64_t& primary ) {
+   if( iterator < -1 ) // is end iterator
+      return iterator; // Is ++end() == end() desired behavior?
+
    const auto& obj = keyval_cache.get( iterator );
    const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
 
    auto itr = idx.iterator_to( obj );
    ++itr;
 
-   if( itr == idx.end() ) return -1;
-   if( itr->t_id != obj.t_id ) return -1;
+   if( itr == idx.end() || itr->t_id != obj.t_id ) return keyval_cache.get_end_iterator_by_table_id(obj.t_id);
 
    primary = itr->primary_key;
    return keyval_cache.add( *itr );
 }
 
 int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
-   const auto& obj = keyval_cache.get(iterator);
    const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
 
+   if( iterator < -1 ) // is end iterator
+   {
+      auto tab = keyval_cache.find_table_by_end_iterator(iterator);
+      FC_ASSERT( tab, "not a valid end iterator" );
+
+      auto itr = idx.upper_bound(tab->id);
+      if( itr == idx.begin() ) return iterator; // Empty table
+
+      --itr;
+
+      if( itr->t_id != tab->id ) return iterator; // Empty table
+
+      primary = itr->primary_key;
+      return keyval_cache.add(*itr);
+   }
+
+   const auto& obj = keyval_cache.get(iterator);
+
    auto itr = idx.iterator_to(obj);
-   if (itr == idx.end() || itr == idx.begin()) return -1;
+   if( itr == idx.begin() ) return keyval_cache.get_end_iterator_by_table_id(obj.t_id);
 
    --itr;
 
-   if (itr->t_id != obj.t_id) return -1;
+   if( itr->t_id != obj.t_id ) return keyval_cache.get_end_iterator_by_table_id(obj.t_id);
 
    primary = itr->primary_key;
    return keyval_cache.add(*itr);
 }
 
 int apply_context::db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-   require_read_lock( code, scope );
+   require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
    validate_table_key(*tab, contracts::table_key_type::type_i64);
 
+   auto table_end_itr = keyval_cache.cache_table( *tab );
 
    const key_value_object* obj = db.find<key_value_object, contracts::by_scope_primary>( boost::make_tuple( tab->id, id ) );
-   if( !obj ) return -1;
+   if( !obj ) return table_end_itr;
 
-   keyval_cache.cache_table( *tab );
    return keyval_cache.add( *obj );
 }
 
 int apply_context::db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-   require_read_lock( code, scope );
+   require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
    validate_table_key(*tab, contracts::table_key_type::type_i64);
 
+   auto table_end_itr = keyval_cache.cache_table( *tab );
 
    const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
    auto itr = idx.lower_bound( boost::make_tuple( tab->id, id ) );
-   if( itr == idx.end() ) return -1;
-   if( itr->t_id != tab->id ) return -1;
+   if( itr == idx.end() ) return table_end_itr;
+   if( itr->t_id != tab->id ) return table_end_itr;
 
-   keyval_cache.cache_table( *tab );
    return keyval_cache.add( *itr );
 }
 
 int apply_context::db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-   require_read_lock( code, scope );
+   require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
    validate_table_key(*tab, contracts::table_key_type::type_i64);
 
+   auto table_end_itr = keyval_cache.cache_table( *tab );
 
    const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
    auto itr = idx.upper_bound( boost::make_tuple( tab->id, id ) );
-   if( itr == idx.end() ) return -1;
-   if( itr->t_id != tab->id ) return -1;
+   if( itr == idx.end() ) return table_end_itr;
+   if( itr->t_id != tab->id ) return table_end_itr;
 
-   keyval_cache.cache_table( *tab );
    return keyval_cache.add( *itr );
+}
+
+int apply_context::db_end_i64( uint64_t code, uint64_t scope, uint64_t table ) {
+   require_read_lock( code, scope ); // redundant?
+
+   const auto* tab = find_table( code, scope, table );
+   if( !tab ) return -1;
+   validate_table_key(*tab, contracts::table_key_type::type_i64);
+
+   return keyval_cache.cache_table( *tab );
 }
 
 template<>

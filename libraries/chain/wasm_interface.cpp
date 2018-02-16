@@ -725,6 +725,9 @@ class console_api : public context_aware_api {
       int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
          return context.IDX.upperbound_secondary(code, scope, table, secondary, primary);\
       }\
+      int db_##IDX##_end( uint64_t code, uint64_t scope, uint64_t table ) {\
+         return context.IDX.end_secondary(code, scope, table);\
+      }\
       int db_##IDX##_next( int iterator, uint64_t& primary  ) {\
          return context.IDX.next_secondary(iterator, primary);\
       }\
@@ -762,6 +765,9 @@ class database_api : public context_aware_api {
       }
       int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
          return context.db_upperbound_i64( code, scope, table, id );
+      }
+      int db_end_i64( uint64_t code, uint64_t scope, uint64_t table ) {
+         return context.db_end_i64( code, scope, table );
       }
 
       DB_API_METHOD_WRAPPERS(idx64,  uint64_t)
@@ -1008,6 +1014,7 @@ REGISTER_INTRINSICS(producer_api,
    (db_##IDX##_find_secondary, int(int64_t,int64_t,int64_t,int,int))\
    (db_##IDX##_lowerbound,     int(int64_t,int64_t,int64_t,int,int))\
    (db_##IDX##_upperbound,     int(int64_t,int64_t,int64_t,int,int))\
+   (db_##IDX##_end,            int(int64_t,int64_t,int64_t))\
    (db_##IDX##_next,           int(int, int))\
    (db_##IDX##_previous,       int(int, int))
 
@@ -1021,6 +1028,7 @@ REGISTER_INTRINSICS( database_api,
    (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t))
    (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
    (db_upperbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
+   (db_end_i64,   int(int64_t,int64_t,int64_t))
 
    DB_SECONDARY_INDEX_METHOD_SEQ(idx64)
    DB_SECONDARY_INDEX_METHOD_SEQ(idx128)

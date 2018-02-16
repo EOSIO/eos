@@ -26,8 +26,9 @@ struct secondary_iterator;
 template<>\
 struct secondary_iterator<TYPE> {\
    static int db_idx_next( int iterator, uint64_t* primary ) { return db_##IDX##_next( iterator, primary ); }\
-   static int db_idx_prev( int iterator, uint64_t* primary ) { return db_##IDX##_previous( iterator, primary ); }\
+   static int db_idx_previous( int iterator, uint64_t* primary ) { return db_##IDX##_previous( iterator, primary ); }\
    static void db_idx_remove( int iterator  )                { db_##IDX##_remove( iterator ); }\
+   static int db_idx_end( uint64_t code, uint64_t scope, uint64_t table ) { return db_##IDX##_end( code, scope, table ); }\
 };\
 int db_idx_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
    return db_##IDX##_store( scope, table, payer, id, &secondary );\
@@ -100,6 +101,7 @@ struct index_by {
       int lower_bound( uint64_t code, uint64_t scope, secondary_type& secondary, uint64_t& primary )const {
          return db_idx_lowerbound( code, scope, TableName, secondary, primary );
       }
+
       int upper_bound( uint64_t code, uint64_t scope, secondary_type& secondary, uint64_t& primary )const {
          return db_idx_upperbound( code, scope, TableName, secondary, primary );
       }
@@ -198,8 +200,6 @@ class multi_index
          public:
 
             struct const_iterator {
-               private:
-
                public:
                   friend bool operator == ( const const_iterator& a, const const_iterator& b ) {
                      return a._item == b._item;
@@ -217,9 +217,11 @@ class multi_index
                   }
 
                   const_iterator& operator++() {
+                     if( !_item ) return *this;
+
                      uint64_t next_pk = 0;
                      auto next_itr = secondary_iterator<secondary_key_type>::db_idx_next( _item->__iters[IndexType::index_number], &next_pk );
-                     if( next_itr == -1 ) {
+                     if( next_itr < 0 ) {
                         _item = nullptr;
                         return *this;
                      }
@@ -234,8 +236,16 @@ class multi_index
 
                   const_iterator& operator--() {
                      uint64_t prev_pk = 0;
-                     auto prev_itr = secondary_iterator<secondary_key_type>::db_idx_prev( _item->__iters[IndexType::index_number], &prev_pk );
-                     if( prev_itr == -1 ) {
+                     int prev_itr = -1;
+
+                     if( !_item ) {
+                        auto ei = secondary_iterator<secondary_key_type>::db_idx_end(_idx._multidx._code, _idx._multidx._scope, TableName);
+                        prev_itr = secondary_iterator<secondary_key_type>::db_idx_previous( ei , &prev_pk );
+                     }
+                     else
+                        prev_itr = secondary_iterator<secondary_key_type>::db_idx_previous( _item->__iters[IndexType::index_number], &prev_pk );
+
+                     if( prev_itr < 0 ) {
                         _item = nullptr;
                         return *this;
                      }
@@ -271,7 +281,7 @@ class multi_index
                uint64_t primary = 0;
                typename IndexType::secondary_type secondary_copy(secondary);
                auto itr = _idx.lower_bound( _multidx._code, _multidx._scope, secondary_copy, primary );
-               if( itr == -1 ) return end();
+               if( itr < 0 ) return end();
 
                const T& obj = *_multidx.find( primary );
                auto& mi = const_cast<item_type&>( static_cast<const item_type&>(obj) );
@@ -286,7 +296,7 @@ class multi_index
                uint64_t primary = 0;
                typename IndexType::secondary_type secondary_copy(secondary);
                auto itr = _idx.upper_bound( _multidx._code, _multidx._scope, secondary_copy, primary );
-               if( itr == -1 ) return end();
+               if( itr < 0 ) return end();
 
                const T& obj = *_multidx.find( primary );
                auto& mi = const_cast<item_type&>( static_cast<const item_type&>(obj) );
@@ -296,6 +306,7 @@ class multi_index
             }
 
          private:
+            friend class const_iterator;
             friend class multi_index;
             index( const MultiIndexType& midx, const IndexType& idx )
             :_multidx(midx),_idx(idx){}
@@ -325,9 +336,11 @@ class multi_index
 
          const_iterator& operator++() {
             //eosio_assert( _item, "null ptr" );
-            uint64_t pk;
-            auto next_itr = db_next_i64( _item->__primary_itr, &pk );
-            if( next_itr == -1 ) {
+            if( !_item ) return *this;
+
+            uint64_t next_pk;
+            auto next_itr = db_next_i64( _item->__primary_itr, &next_pk );
+            if( next_itr < 0 ) {
                _item = nullptr;
                return *this;
             }
@@ -335,14 +348,22 @@ class multi_index
             return *this;
          }
          const_iterator& operator--() {
+            uint64_t prev_pk;
+            int prev_itr = -1;
+
             //eosio_assert( _item, "null ptr" );
-            uint64_t pk;
-            auto next_itr = db_previous_i64( _item->__primary_itr, &pk );
-            if( next_itr == -1 ) {
+            if( !_item ) {
+               auto ei = db_end_i64(_multidx._code, _multidx._scope, TableName);
+               prev_itr = db_previous_i64( ei , &prev_pk );
+            }
+            else
+               prev_itr = db_previous_i64( _item->__primary_itr, &prev_pk );
+
+            if( prev_itr < 0 ) {
                _item = nullptr;
                return *this;
             }
-            _item = &_multidx.load_object_by_primary_iterator( next_itr );
+            _item = &_multidx.load_object_by_primary_iterator( prev_itr );
             return *this;
          }
 
@@ -360,30 +381,19 @@ class multi_index
 
       const_iterator lower_bound( uint64_t primary = 0 )const {
          auto itr = db_lowerbound_i64( _code, _scope, TableName, primary );
-         if( itr == -1 ) return end();
+         if( itr < 0 ) return end();
          auto& obj = load_object_by_primary_iterator( itr );
          return const_iterator( *this, &obj );
       }
 
       const_iterator upper_bound( uint64_t primary = 0 )const {
          auto itr = db_upperbound_i64( _code, _scope, TableName, primary );
-         if( itr == -1 ) return end();
+         if( itr < 0 ) return end();
          auto& obj = load_object_by_primary_iterator( itr );
          return const_iterator( *this, &obj );
       }
 
-      void new_id( uint64_t payer )const {
-        uint64_t val = 1;
-        auto itr = db_find_i64( _code, _scope, TableName+1, 0 );
-        if( itr != -1 ) {
-           auto s = db_get_i64( itr, (char*)&val, sizeof(val) );
-           ++val;
-           db_update_i64( itr, 0, (const char*)&val, sizeof(val) );
-        }
-        else {
-           db_store_i64( _scope, TableName+1, payer, 0, (char*)&val, sizeof(val) );
-        }
-      }
+
       template<uint64_t IndexName>
       auto get_index()const  {
         const auto& idx = boost::hana::find_if( _indices, []( auto x ){
@@ -440,7 +450,7 @@ class multi_index
             if( boost::hana::at_c<std::decay<decltype(idx)>::type::index_number>(secondary_keys) != secondary ) {
                auto indexitr = mutableitem.__iters[idx.index_number];
 
-               if( indexitr == -1 )
+               if( indexitr < 0 )
                   indexitr = mutableitem.__iters[idx.index_number] = idx.find_primary( _code, _scope, pk, secondary );
 
                idx.update( indexitr, payer, secondary );
@@ -454,7 +464,7 @@ class multi_index
             return &*cacheitr;
 
          int itr = db_find_i64( _code, _scope, TableName, primary );
-         if( itr == -1 ) return nullptr;
+         if( itr < 0 ) return nullptr;
 
          const item& i = load_object_by_primary_iterator( itr );
          return &static_cast<const T&>(i);
@@ -469,11 +479,11 @@ class multi_index
 
          boost::hana::for_each( _indices, [&]( auto& idx ) {
             auto i = objitem.__iters[idx.index_number];
-            if( i == -1 ) {
+            if( i < 0 ) {
               typename std::decay<decltype(idx)>::type::secondary_type second;
               i = idx.find_primary( _code, _scope, objitem.primary_key(), second );
             }
-            if( i != -1 )
+            if( i >= 0 )
               idx.remove( i );
          });
 
