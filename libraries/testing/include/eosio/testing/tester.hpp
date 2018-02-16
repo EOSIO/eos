@@ -21,7 +21,6 @@ namespace eosio { namespace testing {
 
          void              close();
          void              open();
-         void              push_genesis_block();
 
          signed_block      produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) );
          void              produce_blocks( uint32_t n = 1 );
@@ -103,6 +102,8 @@ namespace eosio { namespace testing {
    class tester : public base_tester {
    public:
       tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
+
+      void              push_genesis_block();
    };
 
    /**

@@ -37,7 +37,7 @@ BOOST_AUTO_TEST_CASE( schedule_test ) { try {
 
 BOOST_AUTO_TEST_CASE( push_block ) { try {
    tester test1;
-   base_tester test2(chain_controller::runtime_limits{});
+   base_tester test2;
 
    for (uint32 i = 0; i < 1000; ++i) {
       test2.control->push_block(test1.produce_block());

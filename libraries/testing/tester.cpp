@@ -30,11 +30,6 @@ namespace eosio { namespace testing {
       open();
    }
 
-   void base_tester::push_genesis_block() {
-      set_code(config::system_account_name, test_system_wast);
-      set_abi(config::system_account_name, test_system_abi);
-   }
-
    public_key_type  base_tester::get_public_key( name keyname, string role ) const {
       return get_private_key( keyname, role ).get_public_key(); 
    }
@@ -366,5 +361,12 @@ namespace eosio { namespace testing {
       : base_tester(limits) {
       push_genesis_block();
    }
+
+   void tester::push_genesis_block() {
+      set_code(config::system_account_name, test_system_wast);
+      set_abi(config::system_account_name, test_system_abi);
+   }
+
+
 
 } }  /// eosio::test
