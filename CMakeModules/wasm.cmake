@@ -1,3 +1,4 @@
+find_package(Wasm REQUIRED)
 find_package(Binaryen REQUIRED)
 
 set(WASM_TOOLCHAIN FALSE)
@@ -29,7 +30,7 @@ else()
 endif()
 
 # TODO: Check if compiler is able to generate wasm32
-if( NOT ("${WASM_CLANG}" STREQUAL "" OR "${WASM_LLC}" STREQUAL "" OR "${WASM_LLVM_LINK}" STREQUAL "" OR NOT BINARYEN_FOUND) )
+if(WASM_FOUND AND BINARYEN_FOUND)
   set(WASM_TOOLCHAIN TRUE)
 endif()
 
