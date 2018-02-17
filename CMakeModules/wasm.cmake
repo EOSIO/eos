@@ -1,37 +1,9 @@
 find_package(Wasm REQUIRED)
 find_package(Binaryen REQUIRED)
 
-set(WASM_TOOLCHAIN FALSE)
-
-if(NOT DEFINED WASM_LLVM_CONFIG)
-  if(NOT "$ENV{WASM_LLVM_CONFIG}" STREQUAL "")
-    set(WASM_LLVM_CONFIG "$ENV{WASM_LLVM_CONFIG}" CACHE FILEPATH "Location of llvm-config compiled with WASM support.")
-  endif()
-endif()
-
-if(WASM_LLVM_CONFIG)
-  execute_process(
-    COMMAND ${WASM_LLVM_CONFIG} --bindir
-    RESULT_VARIABLE WASM_LLVM_CONFIG_OK
-    OUTPUT_VARIABLE WASM_LLVM_BIN
-  )
-
-  if("${WASM_LLVM_CONFIG_OK}" STREQUAL "0")
-    string(STRIP "${WASM_LLVM_BIN}" WASM_LLVM_BIN)
-    set(WASM_CLANG ${WASM_LLVM_BIN}/clang)
-    set(WASM_LLC ${WASM_LLVM_BIN}/llc)
-    set(WASM_LLVM_LINK ${WASM_LLVM_BIN}/llvm-link)
-  endif()
-
-else()
-  set(WASM_CLANG $ENV{WASM_CLANG})
-  set(WASM_LLC $ENV{WASM_LLC})
-  set(WASM_LLVM_LINK $ENV{WASM_LLVM_LINK})
-endif()
-
 # TODO: Check if compiler is able to generate wasm32
 if(WASM_FOUND AND BINARYEN_FOUND)
-  set(WASM_TOOLCHAIN TRUE)
+  set(WASM_TOOLCHAIN_FOUND TRUE)
 endif()
 
 macro(compile_wast)
