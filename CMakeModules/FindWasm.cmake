@@ -1,11 +1,8 @@
-# - Try to find EOS
+# - Try to find WASM
 # Once done this will define
-#  EOS_FOUND - System has EOS
-#  EOS_INCLUDE_DIRS - The EOS include directories
-#  EOS_LIBRARIES - The libraries needed to use EOS
-#  EOS_DEFINITIONS - Compiler switches required for using EOS
+#  WASM_FOUND - System has WASM
 
-#/home/asini/opt/wasm/bin/llvm-config
+# TODO: Check if compiler is able to generate wasm32
 
 find_file(WASM_LLVM_CONFIG llvm-config HINTS ${WASM_ROOT}/bin)
 find_program(WASM_CLANG clang HINTS ${WASM_ROOT}/bin)

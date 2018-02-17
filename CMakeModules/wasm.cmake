@@ -1,7 +1,6 @@
 find_package(Wasm REQUIRED)
 find_package(Binaryen REQUIRED)
 
-# TODO: Check if compiler is able to generate wasm32
 if(WASM_FOUND AND BINARYEN_FOUND)
   set(WASM_TOOLCHAIN_FOUND TRUE)
 endif()
