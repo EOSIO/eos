@@ -18,7 +18,7 @@
 #include <map>
 
 namespace eosiosystem {
-   using eosio::index_by;
+   using eosio::indexed_by;
    using eosio::const_mem_fun;
    using eosio::bytes;
    using std::map;
@@ -42,7 +42,7 @@ namespace eosiosystem {
             EOSLIB_SERIALIZE( producer_votes, (owner)(total_votes) );
          };
          typedef eosio::multi_index< N(producervote), producer_votes,
-            index_by<0, N(prototalvote), producer_votes, const_mem_fun<producer_votes, uint128_t, &producer_votes::by_votes>  >
+            indexed_by<N(prototalvote), const_mem_fun<producer_votes, uint128_t, &producer_votes::by_votes>  >
          >  producer_votes_index_type;
 
          struct account_votes {
