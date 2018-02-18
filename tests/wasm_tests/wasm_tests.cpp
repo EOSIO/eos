@@ -6,8 +6,6 @@
 #include <asserter/asserter.wast.hpp>
 #include <asserter/asserter.abi.hpp>
 
-//#include <test_api/test_api.wast.hpp>
-
 #include <stltest/stltest.wast.hpp>
 #include <stltest/stltest.abi.hpp>
 
@@ -15,8 +13,6 @@
 #include <noop/noop.abi.hpp>
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
-
-//#include <floattest/floattest.was.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -201,106 +197,6 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
    BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
 
 } FC_LOG_AND_RETHROW() /// prove_mem_reset
-
-BOOST_FIXTURE_TEST_CASE( test_deferred_failure, tester ) try {
-   produce_blocks(2);
-
-   create_accounts( {N(proxy), N(bob)}, asset::from_string("0.0000 EOS") );
-   create_account( N(alice), asset::from_string("0.0000 EOS") );
-   transfer( N(inita), N(alice), "10.0000 EOS", "memo" );
-   produce_block();
-
-   set_code(N(proxy), proxy_wast);
-   set_abi(N(proxy), proxy_abi);
-   set_code(N(bob), proxy_wast);
-   produce_blocks(1);
-
-   const auto& accnt  = control->get_database().get<account_object,by_name>( N(proxy) );
-   abi_def abi;
-   BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
-   abi_serializer abi_ser(abi);
-
-   // set up proxy owner
-   {
-      signed_transaction trx;
-      action setowner_act;
-      setowner_act.account = N(proxy);
-      setowner_act.name = N(setowner);
-      setowner_act.authorization = vector<permission_level>{{N(proxy), config::active_name}};
-      setowner_act.data = abi_ser.variant_to_binary("setowner", mutable_variant_object()
-         ("owner", "bob")
-         ("delay", 10)
-      );
-      trx.actions.emplace_back(std::move(setowner_act));
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(proxy), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   // for now wasm "time" is in seconds, so we have to truncate off any parts of a second that may have applied
-   fc::time_point expected_delivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
-   auto trace = transfer(N(alice), N(proxy), "5.0000 EOS");
-   BOOST_REQUIRE_EQUAL(trace.deferred_transactions.size(), 1);
-   auto deferred_id = trace.deferred_transactions.back().id();
-
-   while(control->head_block_time() < expected_delivery) {
-      control->push_deferred_transactions(true);
-      produce_block();
-      BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 EOS").amount);
-      BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 EOS").amount);
-      BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 EOS").amount);
-      BOOST_REQUIRE_EQUAL(chain_has_transaction(deferred_id), false);
-   }
-
-   fc::time_point expected_redelivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
-   control->push_deferred_transactions(true);
-   produce_block();
-   BOOST_REQUIRE_EQUAL(chain_has_transaction(deferred_id), true);
-   BOOST_REQUIRE_EQUAL(get_transaction_receipt(deferred_id).status, transaction_receipt::soft_fail);
-
-   // set up bob owner
-   {
-      signed_transaction trx;
-      action setowner_act;
-      setowner_act.account = N(bob);
-      setowner_act.name = N(setowner);
-      setowner_act.authorization = vector<permission_level>{{N(bob), config::active_name}};
-      setowner_act.data = abi_ser.variant_to_binary("setowner", mutable_variant_object()
-         ("owner", "alice")
-         ("delay", 0)
-      );
-      trx.actions.emplace_back(std::move(setowner_act));
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(bob), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   while(control->head_block_time() < expected_redelivery) {
-      control->push_deferred_transactions(true);
-      produce_block();
-      BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 EOS").amount);
-      BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 EOS").amount);
-      BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 EOS").amount);
-   }
-
-   control->push_deferred_transactions(true);
-   BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 EOS").amount);
-   BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 EOS").amount);
-   BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("5.0000 EOS").amount);
-
-   control->push_deferred_transactions(true);
-
-   BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("10.0000 EOS").amount);
-   BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 EOS").amount);
-   BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 EOS").amount);
-
-} FC_LOG_AND_RETHROW() /// test_currency
 
 /**
  * Make sure WASM "start" method is used correctly

@@ -472,7 +472,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_empty", {});
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), fc::assert_exception,
          [](const fc::assert_exception& e) {
-            return expect_assert_message(e, "inline action too big");
+            return expect_assert_message(e, "false: abort() called");
          }
       );
 

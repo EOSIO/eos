@@ -150,18 +150,7 @@ void test_transaction::test_transaction_size() {
    
    eosio_assert( trans_size == transaction_size(), "transaction size does not match" );
 }
-/*
-void test_transaction::read_transaction() {
-   dummy_action payload = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
 
-   test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "read_transaction_helper")> test_action;
-   copy_data((char*)&payload, sizeof(dummy_action), test_action.data); 
-  
-   auto trx = transaction();
-   trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
-   trx.send(0);
-}
-*/
 void test_transaction::send_transaction() {
    dummy_action payload = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
 

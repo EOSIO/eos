@@ -211,10 +211,6 @@ struct test_compiler_builtins {
    static void test_ashrti3();
 };
 
-struct test_account {
-   static void test_balance_acc1();
-};
-
 struct test_extended_memory {
 	static void test_initial_buffer();
 	static void test_page_memory();
@@ -238,6 +234,3 @@ struct test_checktime {
    static void checktime_failure();
 };
 
-struct test_privileged {
-   static void test_is_privileged();
-};

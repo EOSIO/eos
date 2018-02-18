@@ -5,7 +5,6 @@
 #include <eosiolib/eosio.hpp>
 #include "test_api.hpp"
 
-#include "test_account.cpp"
 #include "test_action.cpp"
 #include "test_print.cpp"
 #include "test_types.cpp"
@@ -16,7 +15,6 @@
 #include "test_crypto.cpp"
 #include "test_chain.cpp"
 #include "test_transaction.cpp"
-#include "test_privileged.cpp"
 #include "test_checktime.cpp"
 
 extern "C" {
@@ -137,13 +135,6 @@ extern "C" {
       // test checktime
       WASM_TEST_HANDLER(test_checktime, checktime_pass);
       WASM_TEST_HANDLER(test_checktime, checktime_failure);
-
-      //test privileged
-      WASM_TEST_HANDLER(test_privileged, test_is_privileged);
-#if 0
-      // test account
-      WASM_TEST_HANDLER(test_account, test_balance_acc1);
-#endif
 
       //unhandled test call
       eosio_assert(false, "Unknown Test");
