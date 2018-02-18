@@ -284,7 +284,7 @@ abi_def get_abi( const chain_controller& db, const name& account ) {
    const auto& code_accnt  = d.get<account_object,by_name>( account );
 
    abi_def abi;
-   abi_serializer::to_abi(code_accnt.name, code_accnt.abi, abi);
+   abi_serializer::to_abi(code_accnt.abi, abi);
    return abi;
 }
 
@@ -365,7 +365,7 @@ struct resolver_factory {
          const auto *accnt = api->db.get_database().template find<account_object, by_name>(name);
          if (accnt != nullptr) {
             abi_def abi;
-            if (abi_serializer::to_abi(accnt->name, accnt->abi, abi)) {
+            if (abi_serializer::to_abi(accnt->abi, abi)) {
                return abi_serializer(abi);
             }
          }
@@ -450,7 +450,7 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    }
 
    abi_def abi;
-   if( abi_serializer::to_abi(accnt.name, accnt.abi, abi) ) {
+   if( abi_serializer::to_abi(accnt.abi, abi) ) {
       result.abi = std::move(abi);
    }
 
@@ -492,7 +492,7 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
    abi_json_to_bin_result result;
    const auto& code_account = db.get_database().get<account_object,by_name>( params.code );
    abi_def abi;
-   if( abi_serializer::to_abi(code_account.name, code_account.abi, abi) ) {
+   if( abi_serializer::to_abi(code_account.abi, abi) ) {
       abi_serializer abis( abi );
       result.binargs = abis.variant_to_binary( abis.get_action_type( params.action ), params.args );
    }
@@ -503,7 +503,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
    abi_bin_to_json_result result;
    const auto& code_account = db.get_database().get<account_object,by_name>( params.code );
    abi_def abi;
-   if( abi_serializer::to_abi(code_account.name, code_account.abi, abi) ) {
+   if( abi_serializer::to_abi(code_account.abi, abi) ) {
       abi_serializer abis( abi );
       result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs );
    }

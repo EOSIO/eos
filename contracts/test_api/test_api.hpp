@@ -117,6 +117,13 @@ struct test_db {
    static unsigned int key_i64i64i64_under_limit();
    static unsigned int key_i64i64i64_available_space_exceed_limit();
    static unsigned int key_i64i64i64_another_under_limit();
+      
+   static void primary_i64_general();
+   static void primary_i64_lowerbound();
+   static void primary_i64_upperbound();
+   static void idx64_general();
+   static void idx64_lowerbound();
+   static void idx64_upperbound();
 };
 
 struct test_crypto {

@@ -89,7 +89,7 @@ namespace eosio { namespace testing {
               try {
                  const auto &accnt = control->get_database().get<account_object, by_name>(name);
                  contracts::abi_def abi;
-                 if (contracts::abi_serializer::to_abi(accnt.name, accnt.abi, abi)) {
+                 if (contracts::abi_serializer::to_abi(accnt.abi, abi)) {
                     return contracts::abi_serializer(abi);
                  }
                  return optional<contracts::abi_serializer>();

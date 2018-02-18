@@ -142,10 +142,15 @@ void apply_eosio_setabi(apply_context& context) {
 
    context.require_authorization(act.account);
 
+   // if system account append native abi
+   if ( act.account == eosio::chain::config::system_account_name ) {
+      act.abi = chain_initializer::eos_contract_abi(act.abi);
+   }
+
    /// if an ABI is specified make sure it is well formed and doesn't
    /// reference any undefined types
    abi_serializer(act.abi).validate();
-   // todo: figure out abi serilization location
+   // todo: figure out abi serialization location
 
    const auto& account = db.get<account_object,by_name>(act.account);
    db.modify( account, [&]( auto& a ) {
@@ -306,7 +311,7 @@ void apply_eosio_onerror(apply_context& context) {
 static const abi_serializer& get_abi_serializer() {
    static optional<abi_serializer> _abi_serializer;
    if (!_abi_serializer) {
-      _abi_serializer.emplace(chain_initializer::eos_contract_abi());
+      _abi_serializer.emplace(chain_initializer::eos_contract_abi(abi_def()));
    }
 
    return *_abi_serializer;

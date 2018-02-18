@@ -81,6 +81,11 @@ class Utils:
 
         return chainSyncStrategies
 
+    @staticmethod
+    def errorExit(msg="", raw=False, errorCode=1):
+        Utils.Print("ERROR:" if not raw else "", msg)
+        exit(errorCode)
+
 ###########################################################################################
 class Table(object):
     def __init__(self, name):
@@ -405,7 +410,7 @@ class Node(object):
         Utils.Print("Publish eosio.system contract")
         trans=self.publishContract(eosio.name, wastFile, abiFile, waitForTransBlock=True)
         if trans is None:
-           errorExit("Failed to publish oesio.system.")
+           Utils.errorExit("Failed to publish oesio.system.")
 
         Utils.Print("push issue action to eosio contract")
         contract=eosio.name
@@ -511,7 +516,7 @@ class Node(object):
             for i in range(2):
                 ret=self.getEosAccountFromDb(account.name)
                 if ret is not None:
-                    account_name=ret["account_name"]
+                    account_name=ret["name"]
                     if account_name is None:
                         Utils.Print("ERROR: Failed to verify account creation.", account.name)
                         return None
@@ -1112,7 +1117,7 @@ class Cluster(object):
                 cmdArr.append("--plugin eosio::wallet_api_plugin")
             if self.enableMongo:
                 if Utils.amINoon:
-                    cmdArr.append("--plugin eosio::mongo_db_plugin --mongodb-uri %s" % self.mongoUri)
+                    cmdArr.append("--plugin eosio::mongo_db_plugin --resync --mongodb-uri %s" % self.mongoUri)
                 else:
                     cmdArr.append("--plugin eosio::db_plugin --mongodb-uri %s" % self.mongoUri)
 
@@ -1294,7 +1299,7 @@ class Cluster(object):
         for account in accounts:
             Utils.Print("Importing keys for account %s into wallet %s." % (account.name, wallet.name))
             if not self.walletMgr.importKey(account, wallet):
-                errorExit("Failed to import key for account %s" % (account.name))
+                Utils.errorExit("Failed to import key for account %s" % (account.name))
                 return False
 
         self.accounts=accounts
@@ -1424,7 +1429,11 @@ class Cluster(object):
         nodes=[]
 
         try:
-            cmd="pgrep -a %s" % (Utils.EosServerName)
+            pgrepOpts="-a"
+            if sys.platform == "darwin":
+                pgrepOpts="-fl"
+
+            cmd="pgrep %s %s" % (pgrepOpts, Utils.EosServerName)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             psOut=subprocess.check_output(cmd.split()).decode("utf-8")
             #Utils.Print("psOut: <%s>" % psOut)
