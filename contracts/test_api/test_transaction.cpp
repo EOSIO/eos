@@ -147,7 +147,6 @@ void test_transaction::test_read_transaction() {
 void test_transaction::test_transaction_size() {
    uint32_t trans_size = 0;
    read_action( (char*)&trans_size, sizeof(uint32_t) );
-   
    eosio_assert( trans_size == transaction_size(), "transaction size does not match" );
 }
 

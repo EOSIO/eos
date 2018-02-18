@@ -497,16 +497,15 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
    control->push_deferred_transactions( true );
   
    // test test_transaction_size 
-   CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(51) );
+   CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(56) );
    control->push_deferred_transactions( true );
    
    // test test_read_transaction
    // this is a bit rough, but I couldn't figure out a better way to compare the hashes
    CAPTURE( cerr, CALL_TEST_FUNCTION( *this, "test_transaction", "test_read_transaction", {} ) );
    BOOST_CHECK_EQUAL( capture.size(), 7 );
-   string sha_expect = "886a50696a101c6400eacf82d2490db6eb233e59dd2862f2ceae613c01cc6d94"; 
-   std::cout << std::hex << capture[3] << "\n";
-	BOOST_CHECK_EQUAL(capture[3] == sha_expect, true);
+   string sha_expect = "bdeb5b58dda272e4b23ee7d2a5f0ff034820c156364893b758892e06fa39e7fe";
+   BOOST_CHECK_EQUAL(capture[3] == sha_expect, true);
    // test test_tapos_block_num
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_num", fc::raw::pack(control->head_block_num()) ); 
 
