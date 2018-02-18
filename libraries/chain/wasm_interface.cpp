@@ -287,7 +287,7 @@ namespace eosio { namespace chain {
       void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
         auto& info = (*fetch_info(code_id)).get();
         // under a lock, put this entry back in the available instances side of the instances vector
-        with_lock(_cache_lock, [&,this](){
+        with_lock(_cache_lock, [&](){
            // walk the vector and find this entry
            auto iter = info.instances.begin();
            while (iter->get() != &entry) {

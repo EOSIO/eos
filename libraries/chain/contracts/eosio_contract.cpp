@@ -87,7 +87,7 @@ void apply_eosio_newaccount(apply_context& context) {
       a.creation_date = context.controller.head_block_time();
    });
 
-   auto create_permission = [owner=create.name, &db, &context](const permission_name& name, permission_object::id_type parent, authority &&auth) {
+   auto create_permission = [owner=create.name, &db](const permission_name& name, permission_object::id_type parent, authority &&auth) {
       return db.create<permission_object>([&](permission_object& p) {
          p.name = name;
          p.parent = parent;

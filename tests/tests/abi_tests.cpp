@@ -368,7 +368,7 @@ BOOST_AUTO_TEST_CASE(generator)
 
   auto is_abi_generation_exception =[](const eosio::abi_generation_exception& e) -> bool { return true; };
 
-  auto generate_abi = [this](const char* source, const char* abi, bool opt_sfs=false) -> bool {
+  auto generate_abi = [](const char* source, const char* abi, bool opt_sfs=false) -> bool {
 
     const char* eosiolib_path = std::getenv("EOSLIB");
     FC_ASSERT(eosiolib_path != NULL);

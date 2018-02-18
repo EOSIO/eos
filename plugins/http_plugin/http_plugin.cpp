@@ -179,7 +179,7 @@ namespace eosio {
                      auto resource = con->get_uri()->get_resource();
                      auto handler_itr = my->url_handlers.find(resource);
                      if(handler_itr != my->url_handlers.end()) {
-                        handler_itr->second(resource, body, [con,this](int code, string body) {
+                        handler_itr->second(resource, body, [con](int code, string body) {
                            con->set_body(body);
                            con->set_status(websocketpp::http::status_code::value(code));
                         });
