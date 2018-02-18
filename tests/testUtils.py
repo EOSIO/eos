@@ -1429,7 +1429,11 @@ class Cluster(object):
         nodes=[]
 
         try:
-            cmd="pgrep -a %s" % (Utils.EosServerName)
+            pgrepOpts="-a"
+            if sys.platform == "darwin":
+                pgrepOpts="-fl"
+
+            cmd="pgrep %s %s" % (pgrepOpts, Utils.EosServerName)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             psOut=subprocess.check_output(cmd.split()).decode("utf-8")
             #Utils.Print("psOut: <%s>" % psOut)

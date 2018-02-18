@@ -2,8 +2,6 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <stltest/stltest.hpp> /// defines transfer struct (abi)
-
 // include entire libc
 #include <alloca.h>
 #include <assert.h>

@@ -1416,9 +1416,23 @@ static void log_handled_exceptions(const transaction& trx) {
 
 transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta ) {
    transaction_trace result(meta.id);
+
+   for (const auto &act : meta.trx().context_free_actions) {
+      FC_ASSERT( act.authorization.size() == 0, "context free actions cannot require authorization" );
+      apply_context context(*this, _db, act, meta);
+      context.context_free = true;
+      context.exec();
+      fc::move_append(result.action_traces, std::move(context.results.applied_actions));
+      FC_ASSERT( result.deferred_transactions.size() == 0 );
+      FC_ASSERT( result.canceled_deferred.size() == 0 );
+   }
+
    for (const auto &act : meta.trx().actions) {
       apply_context context(*this, _db, act, meta);
       context.exec();
+      context.used_context_free_api |= act.authorization.size();
+
+      FC_ASSERT( context.used_context_free_api, "action did not reference database state, it should be moved to context_free_actions", ("act",act) );
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
       fc::move_append(result.canceled_deferred, std::move(context.results.canceled_deferred));

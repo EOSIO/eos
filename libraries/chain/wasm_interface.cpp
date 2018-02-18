@@ -127,13 +127,12 @@ namespace eosio { namespace chain {
        * the instance handed out to other threads
        */
       struct code_info {
-         code_info( size_t mem_end, vector<char>&& mem_image )
-         :mem_end(mem_end),mem_image(std::forward<vector<char>>(mem_image))
+         code_info( vector<char>&& mem_image )
+         :mem_image(std::forward<vector<char>>(mem_image))
          {}
 
          // a clean image of the memory used to sanitize things on checkin
          size_t mem_start           = 0;
-         size_t mem_end             = 1<<16;
          vector<char> mem_image;
 
          // all existing instances of this code
@@ -217,7 +216,6 @@ namespace eosio { namespace chain {
                // time to compile a brand new (maybe first) copy of this code
                Module* module = new Module();
                ModuleInstance* instance = nullptr;
-               size_t mem_end = 0;
                vector<char> mem_image;
 
                try {
@@ -230,19 +228,22 @@ namespace eosio { namespace chain {
                   instance = instantiateModule(*module, std::move(link_result.resolvedImports));
                   FC_ASSERT(instance != nullptr);
 
-                  MemoryInstance* current_memory = Runtime::getDefaultMemory(instance);
-
-                  if(current_memory) {
-                     char *mem_ptr = &memoryRef<char>(current_memory, 0);
-                     const auto allocated_memory = Runtime::getDefaultMemorySize(instance);
-                     for (uint64_t i = 0; i < allocated_memory; ++i) {
-                        if (mem_ptr[i])
-                           mem_end = i + 1;
-                     }
-                     mem_image.resize(mem_end);
-                     memcpy(mem_image.data(), mem_ptr, mem_end);
+                  //populate the module's data segments in to a vector so the initial state can be
+                  // restored on each invocation
+                  //Be Warned, this may need to be revisited when module imports make sense. The
+                  // code won't handle data segments that initalize an imported memory which I think
+                  // is valid.
+                  for(const DataSegment& data_segment : module->dataSegments) {
+                     FC_ASSERT(data_segment.baseOffset.type == InitializerExpression::Type::i32_const);
+                     FC_ASSERT(module->memories.defs.size());
+                     const U32  base_offset = data_segment.baseOffset.i32;
+                     const Uptr memory_size = (module->memories.defs[0].type.size.min << IR::numBytesPerPageLog2);
+                     if(base_offset >= memory_size || base_offset + data_segment.data.size() > memory_size)
+                        FC_THROW_EXCEPTION(wasm_execution_error, "WASM data segment outside of valid memory range");
+                     if(base_offset + data_segment.data.size() > mem_image.size())
+                        mem_image.resize(base_offset + data_segment.data.size(), 0x00);
+                     memcpy(mem_image.data() + base_offset, data_segment.data.data(), data_segment.data.size());
                   }
-                  
                } catch (...) {
                   pending_error = std::current_exception();
                }
@@ -251,7 +252,7 @@ namespace eosio { namespace chain {
                   // grab the lock and put this in the cache as unavailble
                   with_lock(_cache_lock, [&,this]() {
                      // find or create a new entry
-                     auto iter = _cache.emplace(code_id, code_info(mem_end, std::move(mem_image))).first;
+                     auto iter = _cache.emplace(code_id, code_info(std::move(mem_image))).first;
 
                      iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(instance, module));
                      pending_result = optional_entry_ref(*iter->second.instances.back().get());
@@ -286,15 +287,7 @@ namespace eosio { namespace chain {
        * @param entry - the entry to return
        */
       void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
-        // sanitize by reseting the memory that may now be dirty
         auto& info = (*fetch_info(code_id)).get();
-        if(getDefaultMemory(entry.instance)) {
-           char* memstart = &memoryRef<char>( getDefaultMemory(entry.instance), 0 );
-           memset( memstart + info.mem_end, 0, ((1<<16) - info.mem_end) );
-           memcpy( memstart, info.mem_image.data(), info.mem_end);
-        }
-        resetGlobalInstances(entry.instance);
-
         // under a lock, put this entry back in the available instances side of the instances vector
         with_lock(_cache_lock, [&,this](){
            // walk the vector and find this entry
@@ -311,6 +304,20 @@ namespace eosio { namespace chain {
            }
            info.available_instances++;
         });
+      }
+
+      //initialize the memory for a cache entry
+      wasm_cache::entry& prepare_wasm_instance(wasm_cache::entry& wasm_cache_entry, const digest_type& code_id) {
+         resetGlobalInstances(wasm_cache_entry.instance);
+         MemoryInstance* memory_instance = getDefaultMemory(wasm_cache_entry.instance);
+         if(memory_instance) {
+            resetMemory(memory_instance, wasm_cache_entry.module->memories.defs[0].type);
+
+            const code_info& info = (*fetch_info(code_id)).get();
+            char* memstart = &memoryRef<char>(getDefaultMemory(wasm_cache_entry.instance), 0);
+            memcpy(memstart, info.mem_image.data(), info.mem_image.size());
+         }
+         return wasm_cache_entry;
       }
 
       // mapping of digest to an entry for the code
@@ -331,16 +338,14 @@ namespace eosio { namespace chain {
       // see if there is an available entry in the cache
       auto result = _my->try_fetch_entry(code_id);
       if (result) {
-         return (*result).get();
+         wasm_cache::entry& wasm_cache_entry = (*result).get();
+         return _my->prepare_wasm_instance(wasm_cache_entry, code_id);
       }
-      return _my->fetch_entry(code_id, wasm_binary, wasm_binary_size);
+      return _my->prepare_wasm_instance(_my->fetch_entry(code_id, wasm_binary, wasm_binary_size), code_id);
    }
 
 
    void wasm_cache::checkin(const digest_type& code_id, entry& code ) {
-      MemoryInstance* default_mem = Runtime::getDefaultMemory(code.instance);
-      if(default_mem)
-         Runtime::shrinkMemory(default_mem, Runtime::getMemoryNumPages(default_mem) - 1);
       _my->return_entry(code_id, code);
    }
 
@@ -410,10 +415,15 @@ namespace eosio { namespace chain {
 
 class context_aware_api {
    public:
-      context_aware_api(wasm_interface& wasm)
-      :context(intrinsics_accessor::get_context(wasm).context), code(intrinsics_accessor::get_context(wasm).code),
-       sbrk_bytes(intrinsics_accessor::get_context(wasm).sbrk_bytes)
-      {}
+      context_aware_api(wasm_interface& wasm, bool context_free = false )
+      :sbrk_bytes(intrinsics_accessor::get_context(wasm).sbrk_bytes),
+       code(intrinsics_accessor::get_context(wasm).code),
+       context(intrinsics_accessor::get_context(wasm).context)
+      {
+         if( context.context_free )
+            FC_ASSERT( context_free, "only context free api's can be used in this context" );
+         context.used_context_free_api |= !context_free;
+      }
 
    protected:
       apply_context&     context;
@@ -421,6 +431,18 @@ class context_aware_api {
       uint32_t&          sbrk_bytes;
 };
 
+class context_free_api : public context_aware_api {
+   public:
+      context_free_api( wasm_interface& wasm )
+      :context_aware_api(wasm, true) { 
+         /* the context_free_data is not available during normal application because it is prunable */
+         FC_ASSERT( context.context_free, "this API may only be called from context_free apply" );
+      }
+
+      int get_context_free_data( uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
+         return context.get_context_free_data( index, buffer, buffer_size );
+      }
+};
 class privileged_api : public context_aware_api {
    public:
       privileged_api( wasm_interface& wasm )
@@ -1022,7 +1044,8 @@ class db_index_api<keystr_value_index, by_scope_primary> : public context_aware_
 
 class memory_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      memory_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
      
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
          return (char *)::memcpy(dest, src, length);
@@ -1082,6 +1105,36 @@ class transaction_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
+      void send_inline( array_ptr<char> data, size_t data_len ) {
+         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
+         FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
+
+         action act;
+         fc::raw::unpack<action>(data, data_len, act);
+         context.execute_inline(std::move(act));
+      }
+
+      void send_deferred( uint32_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
+         try {
+            // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
+            FC_ASSERT(data_len < config::default_max_gen_trx_size, "generated transaction too big");
+
+            deferred_transaction dtrx;
+            fc::raw::unpack<transaction>(data, data_len, dtrx);
+            dtrx.sender = context.receiver;
+            dtrx.sender_id = sender_id;
+            dtrx.execute_after = execute_after;
+            context.execute_deferred(std::move(dtrx));
+         } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
+      }
+};
+
+
+class context_free_transaction_api : public context_aware_api {
+   public:
+      context_free_transaction_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
+
       int read_transaction( array_ptr<char> data, size_t data_len ) {
          bytes trx = context.get_packed_transaction();
          if (data_len >= trx.size()) {
@@ -1105,28 +1158,8 @@ class transaction_api : public context_aware_api {
         return context.trx_meta.trx().ref_block_prefix;
       }
 
-      void send_inline( array_ptr<char> data, size_t data_len ) {
-         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
-         FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
-
-         action act;
-         fc::raw::unpack<action>(data, data_len, act);
-         context.execute_inline(std::move(act));
-      }
-
-
-      void send_deferred( uint32_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
-         try {
-            // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
-            FC_ASSERT(data_len < config::default_max_gen_trx_size, "generated transaction too big");
-
-            deferred_transaction dtrx;
-            fc::raw::unpack<transaction>(data, data_len, dtrx);
-            dtrx.sender = context.receiver;
-            dtrx.sender_id = sender_id;
-            dtrx.execute_after = execute_after;
-            context.execute_deferred(std::move(dtrx));
-         } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
+      int get_action( uint32_t type, uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
+         return context.get_action( type, index, buffer, buffer_size );
       }
 
 };
@@ -1440,15 +1473,23 @@ REGISTER_INTRINSICS(console_api,
    (printhex,              void(int, int)  )
 );
 
-REGISTER_INTRINSICS(transaction_api,
+REGISTER_INTRINSICS(context_free_transaction_api,
    (read_transaction,       int(int, int)            )
    (transaction_size,       int()                    )
    (expiration,             int()                    )
    (tapos_block_prefix,     int()                    )
    (tapos_block_num,        int()                    )
+   (get_action,            int (int, int, int, int)  )
+);
+
+REGISTER_INTRINSICS(transaction_api,
    (send_inline,           void(int, int)            )
    (send_deferred,         void(int, int, int, int)  )
 );
+
+REGISTER_INTRINSICS(context_free_api,
+   (get_context_free_data, int(int, int, int) )
+)
 
 REGISTER_INTRINSICS(memory_api,
    (memcpy,                 int(int, int, int)  )

@@ -65,6 +65,8 @@ namespace Runtime
 		{
 			if(memories[memoryIndex] == this) { memories.erase(memories.begin() + memoryIndex); break; }
 		}
+
+		theMemoryInstance = nullptr;
 	}
 	
 	bool isAddressOwnedByMemory(U8* address)
@@ -85,6 +87,16 @@ namespace Runtime
 		assert(memory->type.size.max <= UINTPTR_MAX);
 		return Uptr(memory->type.size.max);
 	}
+
+	void resetMemory(MemoryInstance* memory, MemoryType& newMemoryType) {
+		memory->type.size.min = 1;
+		if(shrinkMemory(memory, memory->numPages - 1) == -1)
+			causeException(Exception::Cause::outOfMemory);
+		memset(memory->baseAddress, 0, 1<<IR::numBytesPerPageLog2);
+		memory->type = newMemoryType;
+		if(growMemory(memory, memory->type.size.min - 1) == -1)
+			causeException(Exception::Cause::outOfMemory);
+   }
 
 	Iptr growMemory(MemoryInstance* memory,Uptr numNewPages)
 	{
