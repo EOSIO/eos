@@ -69,6 +69,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/restart-scenarios-test.py ${CMAKE_CUR
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testUtils.py ${CMAKE_CURRENT_BINARY_DIR}/testUtils.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosiod_run_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosiod_run_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosiod_run_remote_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosiod_run_remote_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/consensusValidationMaliciousProducers.py ${CMAKE_CURRENT_BINARY_DIR}/consensusValidationMaliciousProducers.py COPYONLY)
 
 add_test(chain_test chain_test --report_level=detailed)
 add_test(NAME eosiod_run_test COMMAND tests/eosiod_run_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
