@@ -331,7 +331,7 @@ class Node(object):
         else:
             for i in range(2):
                 cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
-                subcommand='db.Transactions.findOne( { "transaction_id": "%s" } )' % (transId)
+                subcommand='db.Transactions.findOne( { $and : [ { "transaction_id": "%s" }, {"pending":false} ] } )' % (transId)
                 Utils.Debug and Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
                 try:
                     trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
