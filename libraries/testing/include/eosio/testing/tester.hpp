@@ -27,7 +27,11 @@ namespace eosio { namespace testing {
 
          transaction_trace push_transaction( packed_transaction& trx );
          transaction_trace push_transaction( signed_transaction& trx );
-         action_result      push_action(action&& cert_act, uint64_t authorizer);
+         action_result     push_action(action&& cert_act, uint64_t authorizer);
+
+         transaction_trace push_action( const account_name& code, const action_name& act, const account_name& signer, const variant_object &data );
+
+
          void              set_tapos( signed_transaction& trx ) const;
 
          void              create_accounts( vector<account_name> names, bool multisig = false ) {

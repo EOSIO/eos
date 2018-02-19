@@ -91,8 +91,8 @@
 	fi
 
 	if [ $ARCH == "Darwin" ]; then
-		OPENSSL_ROOT_DIR=/usr/local/opt/openssl@1.1
-		OPENSSL_LIBRARIES=/usr/local/opt/openssl@1.1/lib
+		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
+		OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
 		BINARYEN_BIN=/usr/local/binaryen/bin/
 		WASM_LLVM_CONFIG=/usr/local/wasm/bin/llvm-config
 		CXX_COMPILER=clang++

@@ -110,7 +110,7 @@ namespace eosio {
           static void inline_transfer( account_name from, account_name to, token_type quantity, 
                                        string memo = string() )
           {
-             action act( permission_level(code,N(active)), transfer_memo( from, to, asset(quantity), move(memo) ));
+             action act( permission_level(from,N(active)), transfer_memo( from, to, asset(quantity), move(memo) ));
              act.send();
           }
 
