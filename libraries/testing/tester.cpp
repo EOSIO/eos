@@ -365,4 +365,30 @@ namespace eosio { namespace testing {
       return s;
    }
 
+   transaction_trace tester::push_action( const account_name& code, 
+                             const action_name& acttype, 
+                             const account_name& actor, 
+                             const variant_object& data
+                             ) 
+   { try {
+      chain::contracts::abi_serializer abis( control->get_database().get<account_object,by_name>(code).get_abi() );    
+
+      string action_type_name = abis.get_action_type(acttype);
+   
+      action act;
+      act.account = code;
+      act.name = acttype;
+      act.authorization = vector<permission_level>{{actor, config::active_name}};
+      act.data = abis.variant_to_binary(action_type_name, data);
+      wdump((act));
+   
+      signed_transaction trx;
+      trx.actions.emplace_back(std::move(act));
+      set_tapos(trx);
+      trx.sign(get_private_key(actor, "active"), chain_id_type());
+      wdump((get_public_key( actor, "active" )));;
+
+      return push_transaction(trx);
+   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actor) ) }
+
 } }  /// eosio::test

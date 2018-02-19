@@ -29,7 +29,22 @@
       "fields": [
         {"name":"value", "type":"string"}
       ]
+    },{
+      "name": "regproducer",
+      "base": "",
+      "fields": [
+        {"name":"producer", "type":"account_name"}
+        {"name":"producer_key", "type":"bytes"}
+      ]
+    },{
+      "name": "stakevote",
+      "base": "",
+      "fields": [
+        {"name":"voter", "type":"account_name"}
+        {"name":"amount", "type":"asset"}
+      ]
     }
+
   ],
   "actions": [{
       "name": "transfer",
@@ -40,6 +55,12 @@
     },{
       "name": "nonce",
       "type": "nonce"
+    },{
+      "name": "regproducer",
+      "type": "regproducer"
+    },{
+      "name": "stakevote",
+      "type": "stakevote"
     }
   ],
   "tables": [{
