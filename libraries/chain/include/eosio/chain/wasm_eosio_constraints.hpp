@@ -17,4 +17,7 @@ namespace wasm_constraints {
 //Throws if something in the module violates
 void validate_eosio_wasm_constraints(const IR::Module& m);
 
+//Throws if an opcode is neither whitelisted nor blacklisted
+void check_wasm_opcode_dispositions();
+
 }}
