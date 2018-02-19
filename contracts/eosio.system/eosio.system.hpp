@@ -34,12 +34,13 @@ namespace eosiosystem {
 
          struct producer_votes {
             account_name      owner;
+            uint64_t          padding = 0;
             uint128_t         total_votes;
 
             uint64_t    primary_key()const { return owner;       }
             uint128_t   by_votes()const    { return total_votes; }
 
-            EOSLIB_SERIALIZE( producer_votes, (owner)(total_votes) );
+            EOSLIB_SERIALIZE( producer_votes, (owner)(total_votes) )
          };
          typedef eosio::multi_index< N(producervote), producer_votes,
             indexed_by<N(prototalvote), const_mem_fun<producer_votes, uint128_t, &producer_votes::by_votes>  >
@@ -54,7 +55,7 @@ namespace eosiosystem {
 
             uint64_t primary_key()const { return owner; }
 
-            EOSLIB_SERIALIZE( account_votes, (owner)(proxy)(last_update)(staked)(producers) );
+            EOSLIB_SERIALIZE( account_votes, (owner)(proxy)(last_update)(staked)(producers) )
          };
          typedef eosio::multi_index< N(accountvotes), account_votes>  account_votes_index_type;
 
@@ -64,7 +65,7 @@ namespace eosiosystem {
             eosio::bytes      packed_key; /// a packed public key object
 
             uint64_t primary_key()const { return owner;       }
-            EOSLIB_SERIALIZE( producer_config, (owner)(packed_key) );
+            EOSLIB_SERIALIZE( producer_config, (owner)(packed_key) )
          };
          typedef eosio::multi_index< N(producercfg), producer_config>  producer_config_index_type;
 
@@ -76,7 +77,7 @@ namespace eosiosystem {
 
             uint64_t primary_key()const { return owner; }
 
-            EOSLIB_SERIALIZE( total_resources, (owner)(total_net_weight)(total_cpu_weight)(total_ram) );
+            EOSLIB_SERIALIZE( total_resources, (owner)(total_net_weight)(total_cpu_weight)(total_ram) )
          };
 
 
@@ -102,7 +103,7 @@ namespace eosiosystem {
 
             EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight)
                               (start_pending_net_withdraw)(pending_net_withdraw)(deferred_net_withdraw_handler)
-                              (start_pending_cpu_withdraw)(pending_cpu_withdraw)(deferred_cpu_withdraw_handler) );
+                              (start_pending_cpu_withdraw)(pending_cpu_withdraw)(deferred_cpu_withdraw_handler) )
 
          };
 
@@ -120,13 +121,13 @@ namespace eosiosystem {
             account_name producer;
             bytes        producer_key;
 
-            EOSLIB_SERIALIZE( regproducer, (producer)(producer_key) );
+            EOSLIB_SERIALIZE( regproducer, (producer)(producer_key) )
          };
 
          ACTION( SystemAccount, regproxy ) {
             account_name proxy_to_register;
 
-            EOSLIB_SERIALIZE( regproxy, (proxy_to_register) );
+            EOSLIB_SERIALIZE( regproxy, (proxy_to_register) )
          };
 
          ACTION( SystemAccount, delegatebw ) {
@@ -151,7 +152,7 @@ namespace eosiosystem {
          ACTION( SystemAccount, nonce ) {
             eosio::string                   value;
 
-            EOSLIB_SERIALIZE( nonce, (value) );
+            EOSLIB_SERIALIZE( nonce, (value) )
          };
 
          /// new id options:
@@ -319,7 +320,7 @@ namespace eosiosystem {
             });
             
             currency::inline_transfer( sv.voter, SystemAccount, sv.amount, "stake for voting" );
-         };
+         }
 
          ACTION( SystemAccount, voteproducer ) {
             account_name                voter;

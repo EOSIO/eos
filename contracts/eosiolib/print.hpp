@@ -44,7 +44,7 @@ namespace eosio {
     * @param num to be printed
     */
    inline void print( int num ) {
-      printi(num);
+      printi(uint64_t(num));
    }
 
    /**

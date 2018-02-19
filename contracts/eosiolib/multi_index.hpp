@@ -168,7 +168,7 @@ class multi_index
 
          const multi_index& __idx;
          int                __primary_itr;
-         int                __iters[sizeof...(Indicies)];
+         int                __iters[sizeof...(Indicies)+(sizeof...(Indicies)==0)];
       };
 
       uint64_t _code;
@@ -214,10 +214,11 @@ class multi_index
             return *cacheitr;
 
          auto size = db_get_i64( itr, nullptr, 0 );
+         eosio_assert( size >= 0, "error reading iterator" );
          char tmp[size];
-         db_get_i64( itr, tmp, size );
+         db_get_i64( itr, tmp, uint32_t(size) );
 
-         datastream<const char*> ds(tmp,size);
+         datastream<const char*> ds(tmp,uint32_t(size));
 
          auto result = _items_index.emplace( *this, [&]( auto& i ) {
             T& val = static_cast<T&>(i);
@@ -239,7 +240,6 @@ class multi_index
    public:
 
       multi_index( uint64_t code, uint64_t scope ):_code(code),_scope(scope){}
-      ~multi_index() { }
 
       uint64_t get_code()const { return _code; }
       uint64_t get_scope()const { return _scope; }
