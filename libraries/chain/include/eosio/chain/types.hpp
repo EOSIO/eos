@@ -153,11 +153,12 @@ namespace eosio { namespace chain {
    class producer_object;
 
    using block_id_type       = fc::sha256;
+   using checksum_type       = fc::sha256;
    using checksum256_type    = fc::sha256;
    using checksum512_type    = fc::sha512;
    using checksum160_type    = fc::ripemd160;
-   using transaction_id_type = checksum256_type;
-   using digest_type         = checksum256_type;
+   using transaction_id_type = checksum_type;
+   using digest_type         = checksum_type;
    using weight_type         = uint16_t;
    using block_num_type      = uint32_t;
    using share_type          = int64_t;

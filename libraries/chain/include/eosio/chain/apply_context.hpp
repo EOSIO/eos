@@ -753,11 +753,11 @@ using apply_handler = std::function<void(apply_context&)>;
       auto tuple = boost::make_tuple( next_tid );
       auto itr = idx.lower_bound(tuple);
 
-      if( std::distance(idx.begin(), itr) == 0 ) return 0;
+      if( std::distance(idx.begin(), itr) == 0 ) return -1;
 
       --itr;
 
-      if( itr->t_id != t_id.id ) return 0;
+      if( itr->t_id != t_id.id ) return -1;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
 

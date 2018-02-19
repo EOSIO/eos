@@ -36,39 +36,6 @@ using namespace IR;
 using namespace Runtime;
 using boost::asio::io_service;
 
-#if 0
-   // account.h/hpp expected account API balance interchange format
-   // must match account.hpp account_balance definition
-   PACKED_STRUCT(
-   struct account_balance
-   {
-      /**
-      * Name of the account who's balance this is
-      */
-      eosio::chain::account_name account;
-
-      /**
-      * Balance for this account
-      */
-      eosio::chain::asset eos_balance;
-
-      /**
-      * Staked balance for this account
-      */
-      eosio::chain::asset staked_balance;
-
-      /**
-      * Unstaking balance for this account
-      */
-      eosio::chain::asset unstaking_balance;
-
-      /**
-      * Time at which last unstaking occurred for this account
-      */
-      eosio::chain::time last_unstaking_time;
-   })
-#endif
-
 namespace eosio { namespace chain {
    using namespace contracts;
 
@@ -927,7 +894,7 @@ class db_index_api : public context_aware_api {
    int call(ContextMethodType method, const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
       auto maybe_t_id = context.find_table(code, scope, table);
       if (maybe_t_id == nullptr) {
-         return 0;
+         return -1;
       }
 
       const auto& t_id = *maybe_t_id;
@@ -938,7 +905,7 @@ class db_index_api : public context_aware_api {
       size_t record_len = data_len - sizeof(KeyArrayType);
 
       auto res = (context.*(method))(t_id, keys, record_data, record_len);
-      if (res != 0) {
+      if (res != -1) {
          res += sizeof(KeyArrayType);
       }
       return res;
