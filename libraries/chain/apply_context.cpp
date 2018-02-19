@@ -116,6 +116,7 @@ bool apply_context::is_account( const account_name& account )const {
 void apply_context::require_authorization( const account_name& account )const {
   for( const auto& auth : act.authorization )
      if( auth.actor == account ) return;
+  wdump((act));
   EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}", ("account",account));
 }
 void apply_context::require_authorization(const account_name& account, 

@@ -112,8 +112,8 @@ extern "C" {
 
    /**
     *  Send an inline action in the context of this action's parent transaction
-    * @param serialized_action
-    * @param size
+    * @param serialized_action - serialized action 
+    * @param size - size of serialized action in bytes
     */
    void send_inline(char *serialized_action, size_t size);
 
