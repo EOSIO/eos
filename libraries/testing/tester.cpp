@@ -26,7 +26,6 @@ namespace eosio { namespace testing {
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
       cfg.limits = limits;
-
       open();
       if (process_genesis)
          push_genesis_block();
