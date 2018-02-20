@@ -72,26 +72,22 @@ extern "C" {
 
    /**
     * get the size of the currently executing transaction
-    * @return
     */
    size_t transaction_size();
 
    /**
     * get the block number used for TAPOS on the currently executing transaction
     *
-    * @return
     */
    int tapos_block_num();
 
    /**
     * get the block prefix used for TAPOS on the currently executing transaction
-    * @return
     */
    int tapos_block_prefix();
 
    /**
     * get the expiration of the currently executing transaction
-    * @return
     */
    time expiration();
 

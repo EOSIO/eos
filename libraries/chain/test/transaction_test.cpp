@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_SUITE(transaction_test)
    {
       try {
 
-         std::string expected = "78da63606060d8bf7ff5eab2198ace8c13962fe3909cb0f114835aa9248866044a3284784ef402d12bde1a19090a1425e6a5e4e72aa42496242a64a416a50200a9d114bb";
+         std::string expected = "78da63606060d8bf7ff5eab2198ace0c20c03861f9320ec9091b4f31a8954a826846906888e7442f10bde2ad9191a04051625e4a7eae424a6249a242466a512a00bf3414bb";
 
          transaction trx;
          trx.region = 0xBFBFU;
@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_SUITE(transaction_test)
          expected.actions.emplace_back(vector<permission_level>{{N(decomp), config::active_name}},
                                        test_action {"random data here"});
 
-         char compressed_tx_raw[] = "78da63606060d8bf7ff5eab2198ace8c13962fe3909cb0f114835aa9248866044a3284784ef402d12bde1a19090a1425e6a5e4e72aa42496242a64a416a50200a9d114bb";
+         char compressed_tx_raw[] = "78da63606060d8bf7ff5eab2198ace0c20c03861f9320ec9091b4f31a8954a826846906888e7442f10bde2ad9191a04051625e4a7eae424a6249a242466a512a00bf3414bb";
 
          packed_transaction t;
          t.data.resize((sizeof(compressed_tx_raw) - 1) / 2);

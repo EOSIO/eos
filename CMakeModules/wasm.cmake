@@ -59,7 +59,8 @@ if( NOT ("${WASM_CLANG}" STREQUAL "" OR "${WASM_LLC}" STREQUAL "" OR "${WASM_LLV
 endif()
 
 macro(compile_wast)
-  cmake_parse_arguments(ARG "" "TARGET" "SOURCE_FILES;INCLUDE_FOLDERS" ${ARGN})
+  #read arguments include ones that we don't since arguments get forwared "as is" and we don't want to threat unknown argument names as values
+  cmake_parse_arguments(ARG "NOWARNINGS" "TARGET;DESTINATION_FOLDER" "SOURCE_FILES;INCLUDE_FOLDERS;SYSTEM_INCLUDE_FOLDERS;LIBRARIES" ${ARGN})
   set(target ${ARG_TARGET})
 
   # NOTE: Setting SOURCE_FILE and looping over it to avoid cmake issue with compilation ${target}.bc's rule colliding with
@@ -106,10 +107,28 @@ macro(compile_wast)
               -nostdlib -nostdlibinc -fno-threadsafe-statics -fno-rtti -fno-exceptions
               -c ${infile} -o ${outfile}.bc
     )
+    if (${ARG_NOWARNINGS})
+      list(APPEND WASM_COMMAND -Wno-everything)
+    else()
+      list(APPEND WASM_COMMAND -Weverything -Wno-c++98-compat -Wno-old-style-cast -Wno-vla -Wno-vla-extension -Wno-c++98-compat-pedantic
+                  -Wno-missing-prototypes -Wno-missing-variable-declarations -Wno-packed -Wno-padded -Wno-c99-extensions)
+    endif()
+
     foreach(folder ${ARG_INCLUDE_FOLDERS})
        list(APPEND WASM_COMMAND -I ${folder})
     endforeach()
-  
+
+    if ("${ARG_SYSTEM_INCLUDE_FOLDERS}" STREQUAL "")
+       set (ARG_SYSTEM_INCLUDE_FOLDERS ${DEFAULT_SYSTEM_INCLUDE_FOLDERS})
+    endif()
+    foreach(folder ${ARG_SYSTEM_INCLUDE_FOLDERS})
+       list(APPEND WASM_COMMAND -isystem ${folder})
+    endforeach()
+
+    foreach(folder ${ARG_SYSTEM_INCLUDE_FOLDERS})
+       list(APPEND WASM_COMMAND -isystem ${folder})
+    endforeach()
+
     add_custom_command(OUTPUT ${outfile}.bc
       DEPENDS ${infile}
       COMMAND ${WASM_COMMAND}
@@ -128,9 +147,9 @@ macro(compile_wast)
 endmacro(compile_wast)
 
 macro(add_wast_library)
-  cmake_parse_arguments(ARG "" "TARGET;DESTINATION_FOLDER" "SOURCE_FILES;INCLUDE_FOLDERS" ${ARGN})
+  cmake_parse_arguments(ARG "NOWARNINGS" "TARGET;DESTINATION_FOLDER" "SOURCE_FILES;INCLUDE_FOLDERS;SYSTEM_INCLUDE_FOLDERS" ${ARGN})
   set(target ${ARG_TARGET})
-  compile_wast(TARGET ${ARG_TARGET} SOURCE_FILES ${ARG_SOURCE_FILES} INCLUDE_FOLDERS ${ARG_INCLUDE_FOLDERS})
+  compile_wast(${ARGV})
 
   get_filename_component("${ARG_TARGET}_BC_FILENAME" "${ARG_DESTINATION_FOLDER}/${ARG_TARGET}.bc" ABSOLUTE CACHE)
   add_custom_target(${target} ALL DEPENDS ${${ARG_TARGET}_BC_FILENAME})
@@ -146,11 +165,11 @@ macro(add_wast_library)
 endmacro(add_wast_library)
 
 macro(add_wast_executable)
-  cmake_parse_arguments(ARG "" "TARGET;DESTINATION_FOLDER" "SOURCE_FILES;INCLUDE_FOLDERS;LIBRARIES" ${ARGN})
+  cmake_parse_arguments(ARG "NOWARNINGS" "TARGET;DESTINATION_FOLDER" "SOURCE_FILES;INCLUDE_FOLDERS;SYSTEM_INCLUDE_FOLDERS;LIBRARIES" ${ARGN})
   set(target ${ARG_TARGET})
   set(DESTINATION_FOLDER ${ARG_DESTINATION_FOLDER})
 
-  compile_wast(TARGET ${ARG_TARGET} SOURCE_FILES ${ARG_SOURCE_FILES} INCLUDE_FOLDERS ${ARG_INCLUDE_FOLDERS})
+  compile_wast(${ARGV})
 
   foreach(lib ${ARG_LIBRARIES})
      list(APPEND LIBRARIES ${${lib}_BC_FILENAME})

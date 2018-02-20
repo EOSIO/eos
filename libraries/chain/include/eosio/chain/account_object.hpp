@@ -36,6 +36,13 @@ namespace eosio { namespace chain {
          fc::datastream<char*> ds( abi.data(), abi.size() );
          fc::raw::pack( ds, a );
       }
+
+      eosio::chain::contracts::abi_def get_abi()const {
+         eosio::chain::contracts::abi_def a;
+         fc::datastream<const char*> ds( abi.data(), abi.size() );
+         fc::raw::unpack( ds, a );
+         return a;
+      }
    };
    using account_id_type = account_object::id_type;
 

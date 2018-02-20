@@ -23,7 +23,7 @@ namespace eosio {
             auto read = load_i64( DefaultScope, scope , TableName, temp, sizeof(temp) );
             eosio_assert( read > 0, "key does not exist" );
 
-            datastream<const char*> ds(temp, read);
+            datastream<const char*> ds(temp, uint32_t(read) );
             T result;
             ds >> result;
             return result;
@@ -39,7 +39,7 @@ namespace eosio {
                return def;
             }
 
-            datastream<const char*> ds(temp, read);
+            datastream<const char*> ds(temp, uint32_t(read) );
             T result;
             ds >> result;
             return result;
@@ -54,7 +54,7 @@ namespace eosio {
                return def;
             }
 
-            datastream<const char*> ds(temp, read);
+            datastream<const char*> ds(temp, uint32_t(read) );
             T result;
             ds >> result;
             return result;
