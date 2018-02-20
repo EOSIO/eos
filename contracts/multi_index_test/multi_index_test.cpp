@@ -5,6 +5,7 @@ using namespace eosio;
 
 struct limit_order {
    uint64_t     id;
+   uint64_t     padding = 0;
    uint128_t    price;
    uint64_t     expiration;
    account_name owner;
@@ -32,6 +33,7 @@ extern "C" {
       });
 
       orders.update( order, payer, [&]( auto& o ) {
+         o.expiration = 4;
       });
 
       const auto* o = orders.find( 1 );
@@ -41,9 +43,11 @@ extern "C" {
       auto expidx = orders.get_index<N(byexp)>();
 
       for( const auto& item : orders ) {
+         (void)item.id;
       }
 
       for( const auto& item : expidx ) {
+         (void)item.id;
       }
 
       auto lower = expidx.lower_bound(4);

@@ -92,7 +92,7 @@ Choose whether you will be building for a local testnet or for the public testne
 We strongly recommend following the instructions for building the public testnet version for [Ubuntu](#autoubuntupublic) or [Mac OS X](#automacpublic). `master` is in pieces on the garage floor while we rebuild this hotrod. This notice will be removed when `master` is usable again. Your patience is appreciated.
 
 <a name="autoubuntulocal"></a>
-#### :no_entry: Clean install Linux (Anmazon, Fedora & Ubuntu) for a local testnet :no_entry:
+#### :no_entry: Clean install Linux (Amazon, Fedora & Ubuntu) for a local testnet :no_entry:
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
@@ -110,7 +110,7 @@ sudo make install
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
 
 <a name="autoubuntupublic"></a>
-#### Clean install Linux (Anmazon, Fedora & Ubuntu) for the public testnet
+#### Clean install Linux (Amazon, Fedora & Ubuntu) for the public testnet
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
@@ -752,7 +752,7 @@ Install Boost 1.66:
 
 ```bash
 cd ~
-wget -c 'https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_66_0.tar.bz2/download' -O boost_1.64.0.tar.bz2
+wget -c 'https://sourceforge.net/projects/boost/files/boost/1.66.0/boost_1_66_0.tar.bz2/download' -O boost_1.66.0.tar.bz2
 tar xjf boost_1.66.0.tar.bz2
 cd boost_1_66_0/
 echo "export BOOST_ROOT=$HOME/boost_1_66_0" >> ~/.bash_profile

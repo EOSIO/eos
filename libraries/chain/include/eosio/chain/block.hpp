@@ -81,22 +81,22 @@ namespace eosio { namespace chain {
     *
     *  The primary purpose of a block is to define the order in which messages are processed.
     *
-    *  The secodnary purpose of a block is certify that the messages are valid according to 
+    *  The secodnary purpose of a block is certify that the messages are valid according to
     *  a group of 3rd party validators (producers).
     *
     *  The next purpose of a block is to enable light-weight proofs that a transaction occured
     *  and was considered valid.
     *
     *  The next purpose is to enable code to generate messages that are certified by the
-    *  producers to be authorized. 
+    *  producers to be authorized.
     *
     *  A block is therefore defined by the ordered set of executed and generated transactions,
     *  and the merkle proof is over set of messages delivered as a result of executing the
-    *  transactions. 
+    *  transactions.
     *
     *  A message is defined by { receiver, code, function, permission, data }, the merkle
     *  tree of a block should be generated over a set of message IDs rather than a set of
-    *  transaction ids. 
+    *  transaction ids.
     */
    struct signed_block_summary : public signed_block_header {
       vector<region_summary> regions;
@@ -109,9 +109,16 @@ namespace eosio { namespace chain {
     * what would be logged to disk to enable the regeneration of blockchain state.
     *
     * The transactions are grouped to mirror the cycles in block_summary, generated
-    * transactions are not included.  
+    * transactions are not included.
     */
    struct signed_block : public signed_block_summary {
+      signed_block () = default;
+      signed_block (const signed_block& ) = default;
+      signed_block (const signed_block_summary& base)
+         :signed_block_summary (base),
+          input_transactions()
+      {}
+
       digest_type                  calculate_transaction_merkle_root()const;
       vector<packed_transaction>   input_transactions; /// this is loaded and indexed into map<id,trx> that is referenced by summary
    };

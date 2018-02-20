@@ -37,6 +37,9 @@ pipeline {
                             . $HOME/.bash_profile
                             export EOSLIB=$(pwd)/contracts
                             cd build
+                            printf "Waiting for testing to be available..."
+                            while /usr/bin/pgrep -x ctest > /dev/null; do sleep 1; done
+                            echo "OK!"
                             ctest --output-on-failure
                         '''
                     }

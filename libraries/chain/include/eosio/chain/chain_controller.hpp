@@ -110,7 +110,7 @@ namespace eosio { namespace chain {
           * This signal is emitted any time a new transaction is added to the pending
           * block state.
           */
-         signal<void(const packed_transaction&)> on_pending_transaction;
+      signal<void(const transaction_metadata&, const packed_transaction&)> on_pending_transaction;
 
 
 
@@ -128,7 +128,7 @@ namespace eosio { namespace chain {
           */
          bool is_applying_block()const { return _currently_applying_block; }
          bool is_start_of_round( block_num_type n )const;
-         uint32_t blocks_per_round()const; 
+         uint32_t blocks_per_round()const;
 
 
          chain_id_type get_chain_id()const { return chain_id_type(); } /// TODO: make this hash of constitution
@@ -215,7 +215,7 @@ namespace eosio { namespace chain {
             clear_pending();
 
             /** after applying f() push previously input transactions on top */
-            auto on_exit = fc::make_scoped_exit( [&](){ 
+            auto on_exit = fc::make_scoped_exit( [&](){
                for( auto& t : old_input ) {
                   try {
                      if (!is_known_transaction(t.id))
@@ -366,7 +366,7 @@ namespace eosio { namespace chain {
             validate_tapos(trx);
 
          } FC_CAPTURE_AND_RETHROW( (trx) ) }
-         
+
          /// Validate transaction helpers @{
          void validate_uniqueness(const transaction& trx)const;
          void validate_tapos(const transaction& trx)const;

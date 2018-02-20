@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-p", type=int, help="producing nodes count", default=pnodes)
 parser.add_argument("-v", help="verbose", action='store_true')
 parser.add_argument("--nodes-file", type=str, help="File containing nodes info in JSON format.", default=nodesFile)
+parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
 parser.add_argument("--dump-error-details",
                     help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
                     action='store_true')
@@ -25,6 +26,7 @@ args = parser.parse_args()
 pnodes=args.p
 nodesFile=args.nodes_file
 debug=args.v
+amINoon=not args.not_noon
 dumpErrorDetails=args.dump_error_details
 
 testUtils.Utils.Debug=debug
@@ -36,6 +38,8 @@ total_nodes=pnodes
 actualTest="tests/distributed-transactions-test.py"
 testSuccessful=False
 
+if not amINoon:
+    testUtils.Utils.iAmNotNoon()
 cluster=testUtils.Cluster()
 
 try:
@@ -54,7 +58,7 @@ try:
     if not cluster.waitOnClusterBlockNumSync(3):
         errorExit("Cluster never stabilized")
 
-    cmd="%s --nodes-file %s %s" % (actualTest, nodesFile, "-v" if debug else "")
+    cmd="%s --nodes-file %s %s %s" % (actualTest, nodesFile, "-v" if debug else "", "" if amINoon else "--not-noon")
     Print("Starting up distributed transactions test: %s" % (actualTest))
     Print("cmd: %s\n" % (cmd))
     if 0 != subprocess.call(cmd, shell=True):

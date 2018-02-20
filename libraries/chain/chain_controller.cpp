@@ -47,9 +47,9 @@ uint32_t chain_controller::blocks_per_round()const {
 }
 
 chain_controller::chain_controller( const chain_controller::controller_config& cfg )
-:_db( cfg.shared_memory_dir, 
-      (cfg.read_only ? database::read_only : database::read_write), 
-      cfg.shared_memory_size), 
+:_db( cfg.shared_memory_dir,
+      (cfg.read_only ? database::read_only : database::read_write),
+      cfg.shared_memory_size),
  _block_log(cfg.block_log_dir),
  _limits(cfg.limits)
 {
@@ -153,7 +153,7 @@ std::vector<block_id_type> chain_controller::get_block_ids_on_fork(block_id_type
  */
 void chain_controller::push_block(const signed_block& new_block, uint32_t skip)
 { try {
-   with_skip_flags( skip, [&](){ 
+   with_skip_flags( skip, [&](){
       return without_pending_transactions( [&]() {
          return _db.with_write_lock( [&]() {
             return _push_block(new_block);
@@ -254,11 +254,10 @@ transaction_trace chain_controller::push_transaction(const packed_transaction& t
 transaction_trace chain_controller::_push_transaction(const packed_transaction& trx) {
    transaction_metadata   mtrx( trx, get_chain_id(), head_block_time());
    check_transaction_authorization(mtrx.trx(), trx.signatures);
-
    auto result = _push_transaction(std::move(mtrx));
 
    // notify anyone listening to pending transactions
-   on_pending_transaction(trx);
+   on_pending_transaction(_pending_transaction_metas.back(), trx);
 
    _pending_block->input_transactions.emplace_back(trx);
 
@@ -457,11 +456,11 @@ signed_block chain_controller::generate_block(
    });
 } FC_CAPTURE_AND_RETHROW( (when) ) }
 
-signed_block chain_controller::_generate_block( block_timestamp_type when, 
-                                              account_name producer, 
+signed_block chain_controller::_generate_block( block_timestamp_type when,
+                                              account_name producer,
                                               const private_key_type& block_signing_key )
 { try {
-   
+
    try {
       uint32_t skip     = _skip_flags;
       uint32_t slot_num = get_slot_at_time( when );
@@ -585,7 +584,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
    uint32_t skip = _skip_flags;
 
    /*
-   FC_ASSERT((skip & skip_merkle_check) 
+   FC_ASSERT((skip & skip_merkle_check)
              || next_block.transaction_merkle_root == next_block.calculate_merkle_root(),
              "", ("next_block.transaction_merkle_root", next_block.transaction_merkle_root)
              ("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block.id()));
@@ -770,13 +769,13 @@ void chain_controller::check_authorization( const vector<action>& actions,
 
    if (!allow_unused_signatures && (_skip_flags & skip_transaction_signatures) == false)
       EOS_ASSERT(checker.all_keys_used(), tx_irrelevant_sig,
-                 "transaction bears irrelevant signatures from these keys: ${keys}", 
+                 "transaction bears irrelevant signatures from these keys: ${keys}",
                  ("keys", checker.unused_keys()));
 }
 
 void chain_controller::check_transaction_authorization(const transaction& trx,
                                                        const vector<signature_type>& signatures,
-                                                       bool allow_unused_signatures)const 
+                                                       bool allow_unused_signatures)const
 {
    check_authorization( trx.actions, trx.get_signature_keys( signatures, chain_id_type{} ), allow_unused_signatures );
 }
@@ -818,7 +817,7 @@ void chain_controller::validate_uniqueness( const transaction& trx )const {
 void chain_controller::record_transaction(const transaction& trx) {
    //Insert transaction into unique transactions database.
     _db.create<transaction_object>([&](transaction_object& transaction) {
-        transaction.trx_id = trx.id(); 
+        transaction.trx_id = trx.id();
         transaction.expiration = trx.expiration;
     });
 }
@@ -835,8 +834,8 @@ void chain_controller::validate_tapos(const transaction& trx)const {
               ("tapos_summary", tapos_block_summary));
 }
 
-void chain_controller::validate_referenced_accounts( const transaction& trx )const 
-{ try { 
+void chain_controller::validate_referenced_accounts( const transaction& trx )const
+{ try {
    for( const auto& act : trx.actions ) {
       require_account(act.account);
       for (const auto& auth : act.authorization )
@@ -889,7 +888,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
       EOS_ASSERT(!next_block.new_producers, block_validate_exception,
                  "Producer changes may only occur at the end of a round.");
    }
-   
+
    const producer_object& producer = get_producer(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
 
    if(!(skip&skip_producer_signature))
@@ -903,7 +902,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
                  ("block producer",next_block.producer)("scheduled producer",producer.owner));
    }
 
-   
+
    return producer;
 }
 
@@ -916,7 +915,7 @@ void chain_controller::create_block_summary(const signed_block& next_block) {
 
 /**
  *  Takes the top config::producer_count producers by total vote excluding any producer whose
- *  block_signing_key is null.  
+ *  block_signing_key is null.
  */
 producer_schedule_type chain_controller::_calculate_producer_schedule()const {
    producer_schedule_type schedule = get_global_properties().new_active_producers;
@@ -933,7 +932,7 @@ producer_schedule_type chain_controller::_calculate_producer_schedule()const {
  */
 const shared_producer_schedule_type& chain_controller::_head_producer_schedule()const {
    const auto& gpo = get_global_properties();
-   if( gpo.pending_active_producers.size() ) 
+   if( gpo.pending_active_producers.size() )
       return gpo.pending_active_producers.back().second;
    return gpo.active_producers;
 }
@@ -972,13 +971,13 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
          active_producers_authority.accounts.push_back({{name.producer_name, config::active_name}, 1});
       }
 
-      auto& po = _db.get<permission_object, by_owner>( boost::make_tuple(config::producers_account_name, 
+      auto& po = _db.get<permission_object, by_owner>( boost::make_tuple(config::producers_account_name,
                                                                          config::active_name ) );
       _db.modify(po,[active_producers_authority] (permission_object& po) {
          po.auth = active_producers_authority;
       });
    }
-} FC_CAPTURE_AND_RETHROW() } 
+} FC_CAPTURE_AND_RETHROW() }
 
 void chain_controller::add_checkpoints( const flat_map<uint32_t,block_id_type>& checkpts ) {
    for (const auto& i : checkpts)
@@ -1018,12 +1017,12 @@ account_name chain_controller::head_block_producer() const {
    return {};
 }
 
-const producer_object& chain_controller::get_producer(const account_name& owner_name) const 
+const producer_object& chain_controller::get_producer(const account_name& owner_name) const
 { try {
    return _db.get<producer_object, by_owner>(owner_name);
 } FC_CAPTURE_AND_RETHROW( (owner_name) ) }
 
-const permission_object&   chain_controller::get_permission( const permission_level& level )const 
+const permission_object&   chain_controller::get_permission( const permission_level& level )const
 { try {
    return _db.get<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
 } FC_CAPTURE_AND_RETHROW( (level) ) }
@@ -1166,7 +1165,7 @@ ProducerRound chain_controller::calculate_next_round(const signed_block& next_bl
    EOS_ASSERT(boost::range::equal(next_block.producer_changes, changes), block_validate_exception,
               "Unexpected round changes in new block header",
               ("expected changes", changes)("block changes", next_block.producer_changes));
-   
+
    fc::time_point tp = (fc::time_point)next_block.timestamp;
    utilities::rand::random rng(tp.sec_since_epoch());
    rng.shuffle(schedule);
@@ -1228,7 +1227,7 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
             dgp.recent_slots_filled = uint64_t(-1);
          else
             dgp.recent_slots_filled = 0;
-      dgp.block_merkle_root.append( head_block_id() ); 
+      dgp.block_merkle_root.append( head_block_id() );
    });
 
    _fork_db.set_max_size( _dgp.head_block_number - _dgp.last_irreversible_block_num + 1 );
@@ -1265,7 +1264,7 @@ void chain_controller::update_last_irreversible_block()
    vector<const producer_object*> producer_objs;
    producer_objs.reserve(gpo.active_producers.producers.size());
 
-   std::transform(gpo.active_producers.producers.begin(), 
+   std::transform(gpo.active_producers.producers.begin(),
                   gpo.active_producers.producers.end(), std::back_inserter(producer_objs),
                   [this](const producer_key& pk) { return &get_producer(pk.producer_name); });
 
@@ -1593,7 +1592,7 @@ void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_us
       uint128_t  used_uacts         = buo.acts.value;
       uint128_t  virtual_max_ubytes = dgpo.virtual_net_bandwidth * config::rate_limiting_precision;
       uint128_t  virtual_max_uacts  = dgpo.virtual_act_bandwidth * config::rate_limiting_precision;
-      
+
       if( !(_skip_flags & genesis_setup) ) {
          #warning TODO: restore bandwidth checks
          /* setting of bandwidth currently not implemented
@@ -1642,7 +1641,7 @@ const apply_handler* chain_controller::find_apply_handler( account_name receiver
    auto native_handler_scope = _apply_handlers.find( receiver );
    if( native_handler_scope != _apply_handlers.end() ) {
       auto handler = native_handler_scope->second.find( make_pair( scope, act ) );
-      if( handler != native_handler_scope->second.end() ) 
+      if( handler != native_handler_scope->second.end() )
          return &handler->second;
    }
    return nullptr;

@@ -304,8 +304,6 @@ int32_t update_str( account_name scope, table_name table, account_name bta, char
   *  @param scope - the account scope that will be read, must exist in the transaction scopes list
   *  @param code  - identifies the code that controls write-access to the data
   *  @param table - the ID/name of the table within the scope/code context to query
-  *  @param key  - location of the record key
-  *  @param keylen - length of the record key
   *  @param value  - location to copy the front record value
   *  @param valuelen - maximum length of the record value to read 
   *  @return the number of bytes read or -1 if key was not found
@@ -316,8 +314,6 @@ int32_t update_str( account_name scope, table_name table, account_name bta, char
   *  @param scope - the account scope that will be read, must exist in the transaction scopes list
   *  @param code  - identifies the code that controls write-access to the data
   *  @param table - the ID/name of the table within the scope/code context to query
-  *  @param key  - location of the record key
-  *  @param keylen - length of the record key
   *  @param value  - location to copy the back record value
   *  @param valuelen - maximum length of the record value to read 
   *  @return the number of bytes read or -1 if key was not found

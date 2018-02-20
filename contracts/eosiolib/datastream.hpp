@@ -99,7 +99,7 @@ class datastream {
       *  @brief Gets the position within the current stream
       *  @return p the position within the current stream
       */
-      inline size_t tellp()const      { return _pos - _start; }
+      inline size_t tellp()const      { return size_t(_pos - _start); }
       
      /**
       *  Returns the number of remaining bytes that can be read/skipped
