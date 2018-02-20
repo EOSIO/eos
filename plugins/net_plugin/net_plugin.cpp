@@ -2187,7 +2187,7 @@ namespace eosio {
       fc_dlog(logger, "got signed_block_summary #${n} from ${p} block age in secs = ${age}",
               ("n",blk_num)("p",c->peer_name())("age",age.to_seconds()));
 
-      signed_block sb(std::move(msg));
+      signed_block sb(msg);
       update_block_num ubn(blk_num);
       for (const auto &region : sb.regions) {
          for (const auto &cycle_sum : region.cycles_summary) {

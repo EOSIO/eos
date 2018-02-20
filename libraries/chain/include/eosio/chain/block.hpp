@@ -114,7 +114,7 @@ namespace eosio { namespace chain {
    struct signed_block : public signed_block_summary {
       signed_block () = default;
       signed_block (const signed_block& ) = default;
-      signed_block (const signed_block_summary&& base)
+      signed_block (const signed_block_summary& base)
          :signed_block_summary (base),
           input_transactions()
       {}
