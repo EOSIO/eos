@@ -487,23 +487,4 @@ contracts::table_key_type apply_context::get_key_type<contracts::key_value_objec
    return contracts::table_key_type::type_i64;
 }
 
-template<>
-contracts::table_key_type apply_context::get_key_type<contracts::keystr_value_object>() {
-   return contracts::table_key_type::type_str;
-}
-
-template<>
-contracts::table_key_type apply_context::get_key_type<contracts::key128x128_value_object>() {
-   return contracts::table_key_type::type_i128i128;
-}
-
-template<>
-contracts::table_key_type apply_context::get_key_type<contracts::key64x64_value_object>() {
-   return contracts::table_key_type::type_i64i64;
-}
-
-template<>
-contracts::table_key_type apply_context::get_key_type<contracts::key64x64x64_value_object>() {
-   return contracts::table_key_type::type_i64i64i64;
-}
 } } /// eosio::chain

@@ -304,20 +304,6 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
 
    if( table_type == KEYi64 ) {
       return get_table_rows_ex<contracts::key_value_index, contracts::by_scope_primary>(p,abi);
-   } else if( table_type == KEYstr ) {
-      return get_table_rows_ex<contracts::keystr_value_index, contracts::by_scope_primary>(p,abi);
-   } else if( table_type == KEYi128i128 ) { 
-      if( table_key == PRIMARY )
-         return get_table_rows_ex<contracts::key128x128_value_index, contracts::by_scope_primary>(p,abi);
-      if( table_key == SECONDARY )
-         return get_table_rows_ex<contracts::key128x128_value_index, contracts::by_scope_secondary>(p,abi);
-   } else if( table_type == KEYi64i64i64 ) {
-      if( table_key == PRIMARY )
-         return get_table_rows_ex<contracts::key64x64x64_value_index, contracts::by_scope_primary>(p,abi);
-      if( table_key == SECONDARY )
-         return get_table_rows_ex<contracts::key64x64x64_value_index, contracts::by_scope_secondary>(p,abi);
-      if( table_key == TERTIARY )
-         return get_table_rows_ex<contracts::key64x64x64_value_index, contracts::by_scope_tertiary>(p,abi);
    }
    FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("key",table_key)("abi",abi));
 }
