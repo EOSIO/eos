@@ -100,7 +100,7 @@ namespace eosio { namespace chain {
     */
    struct signed_block_summary : public signed_block_header {
       vector<region_summary> regions;
-      checksum_type          calculate_transaction_mroot()const;
+      digest_type            calculate_transaction_merkle_root()const;
    };
 
    /**
@@ -119,8 +119,8 @@ namespace eosio { namespace chain {
           input_transactions()
       {}
 
-      digest_type                  calculate_transaction_merkle_root()const;
-      vector<packed_transaction>   input_transactions; /// this is loaded and indexed into map<id,trx> that is referenced by summary
+      /// this is loaded and indexed into map<id,trx> that is referenced by summary; order doesn't matter
+      vector<packed_transaction>   input_transactions;
    };
 
    struct shard_trace {
