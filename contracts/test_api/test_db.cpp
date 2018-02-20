@@ -1,7 +1,6 @@
 #include <eosiolib/types.hpp>
 #include <eosiolib/action.hpp>
 #include <eosiolib/db.h>
-#include <eosiolib/db.hpp>
 #include <eosiolib/memory.hpp>
 #include "test_api.hpp"
 
