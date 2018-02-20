@@ -1,5 +1,6 @@
 # Find an installed build of LLVM
 find_package(LLVM 4.0 REQUIRED CONFIG)
+find_package(Clang)
 set( CMAKE_CXX_STANDARD 14 )
 
 file(GLOB HEADERS "include/eosio/abi_generator/*.hpp")
