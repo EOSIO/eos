@@ -513,8 +513,4 @@ contracts::table_key_type apply_context::get_key_type<contracts::key64x64_value_
    return contracts::table_key_type::type_i64i64;
 }
 
-template<>
-contracts::table_key_type apply_context::get_key_type<contracts::key64x64x64_value_object>() {
-   return contracts::table_key_type::type_i64i64i64;
-}
 } } /// eosio::chain
