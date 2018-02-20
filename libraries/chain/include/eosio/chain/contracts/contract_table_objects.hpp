@@ -294,54 +294,6 @@ namespace eosio { namespace chain { namespace contracts {
    >;
 
 
-/*   struct key64x64x64_value_object : public chainbase::object<key64x64x64_value_object_type, key64x64x64_value_object> {
-      OBJECT_CTOR(key64x64x64_value_object, (value))
-
-      typedef uint64_t key_type;
-      static const int number_of_keys = 3;
-
-      id_type               id;
-      table_id              t_id;
-      uint64_t              primary_key;
-      uint64_t              secondary_key;
-      uint64_t              tertiary_key;
-      shared_string         value;
-      account_name          payer;
-   };
-
-   using key64x64x64_value_index = chainbase::shared_multi_index_container<
-      key64x64x64_value_object,
-      indexed_by<
-         ordered_unique<tag<by_id>, member<key64x64x64_value_object, key64x64x64_value_object::id_type, &key64x64x64_value_object::id>>,
-         ordered_unique<tag<by_scope_primary>,
-            composite_key< key64x64x64_value_object,
-               member<key64x64x64_value_object, table_id, &key64x64x64_value_object::t_id>,
-               member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::primary_key>,
-               member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::secondary_key>,
-               member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::tertiary_key>
-            >,
-            composite_key_compare< std::less<table_id>,std::less<uint64_t>,std::less<uint64_t>,std::less<uint64_t> >
-         >,
-         ordered_unique<tag<by_scope_secondary>,
-            composite_key< key64x64x64_value_object,
-               member<key64x64x64_value_object, table_id, &key64x64x64_value_object::t_id>,
-               member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::secondary_key>,
-               member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::tertiary_key>,
-               member<key64x64x64_value_object, typename key64x64x64_value_object::id_type, &key64x64x64_value_object::id>
-            >
-         >,
-         ordered_unique<tag<by_scope_tertiary>,
-            composite_key< key64x64x64_value_object,
-               member<key64x64x64_value_object, table_id, &key64x64x64_value_object::t_id>,
-               member<key64x64x64_value_object, uint64_t, &key64x64x64_value_object::tertiary_key>,
-               member<key64x64x64_value_object, typename key64x64x64_value_object::id_type, &key64x64x64_value_object::id>
-            >,
-            composite_key_compare< std::less<table_id>,std::less<uint64_t>,std::less<typename key64x64x64_value_object::id_type> >
-         >
-      >
-   >;
-*/
-
 } } }  // namespace eosio::chain::contracts
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::table_id_object, eosio::chain::contracts::table_id_multi_index)

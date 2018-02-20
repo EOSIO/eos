@@ -130,23 +130,6 @@ public:
    }
 
    fc::variant get_certrow(uint64_t identity, const string& property, uint64_t trusted, const string& certifier) {
-    /*  const auto& db = control->get_database();
-      const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(identity), identity, N(certs)));
-      FC_ASSERT(t_id != 0, "certrow not found");
-
-      uint64_t prop = string_to_name(property.c_str());
-      uint64_t cert = string_to_name(certifier.c_str());
-      const auto& idx = db.get_index<key64x64x64_value_index, by_scope_primary>();
-      auto itr = idx.lower_bound(boost::make_tuple(t_id->id, prop, trusted, cert));
-
-      if (itr != idx.end() && itr->t_id == t_id->id && prop == itr->primary_key && trusted == itr->secondary_key && cert == itr->tertiary_key) {
-         vector<char> data;
-         read_only::copy_row(*itr, data);
-         return abi_ser.binary_to_variant("certrow", data);
-      } else {
-         return fc::variant(nullptr);
-      }
-   */
      return fc::variant(nullptr);
    }
 

@@ -207,14 +207,6 @@ public:
       memcpy( data.data()+2*sizeof(uint128_t), obj.value.data(), obj.value.size() );
    }
 
-/*   static void copy_row(const chain::contracts::key64x64x64_value_object& obj, vector<char>& data) {
-      data.resize( 3*sizeof(uint64_t) + obj.value.size() );
-      memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
-      memcpy( data.data()+sizeof(uint64_t), &obj.secondary_key, sizeof(uint64_t) );
-      memcpy( data.data()+2*sizeof(uint64_t), &obj.tertiary_key, sizeof(uint64_t) );
-      memcpy( data.data()+3*sizeof(uint64_t), obj.value.data(), obj.value.size() );
-   }
-*/
    template<typename IndexType, typename Scope, typename Function>
    void walk_table(const name& code, const name& scope, const name& table, Function f) const
    {
