@@ -12,6 +12,7 @@
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
+#include <fc/io/json.hpp>
 
 #include "test_wasts.hpp"
 
@@ -168,7 +169,7 @@ public:
       auto itr = idx.lower_bound(boost::make_tuple(t_id->id, N(account)));
       if( itr != idx.end() && itr->t_id == t_id->id && N(account) == itr->primary_key) {
          vector<char> data;
-         read_only::copy_row(*itr, data);
+         read_only::copy_inline_row(*itr, data);
          return abi_ser.binary_to_variant("accountrow", data);
       } else {
          return fc::variant(nullptr);
