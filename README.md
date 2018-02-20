@@ -752,7 +752,7 @@ Install Boost 1.66:
 
 ```bash
 cd ~
-wget -c 'https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_66_0.tar.bz2/download' -O boost_1.64.0.tar.bz2
+wget -c 'https://sourceforge.net/projects/boost/files/boost/1.66.0/boost_1_66_0.tar.bz2/download' -O boost_1.66.0.tar.bz2
 tar xjf boost_1.66.0.tar.bz2
 cd boost_1_66_0/
 echo "export BOOST_ROOT=$HOME/boost_1_66_0" >> ~/.bash_profile
