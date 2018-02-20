@@ -11,16 +11,27 @@ namespace proxy {
    using namespace eosio;
 
    namespace configs {
+
+      typedef multi_index<N(config), config> config_table;
+
       bool get(config &out, const account_name &self) {
-         auto read = load_i64(self, self, N(config), (char*)&out, sizeof(config));
-         if (read < 0) {
+         auto it = db_find_i64(self, self, N(config), config::key);
+         if (it != -1) {
+            auto size = db_get_i64(it, (char*)&out, sizeof(config));
+            eosio_assert(size == sizeof(config), "Wrong record size");
+            return true;
+         } else {
             return false;
          }
-         return true;
       }
 
       void store(const config &in, const account_name &self) {
-         store_i64(self, N(config), self, (const char *)&in, sizeof(config));
+         auto it = db_find_i64(self, self, N(config), config::key);
+         if (it != -1) {
+            db_update_i64(it, self, (const char *)&in, sizeof(config));
+         } else {
+            db_store_i64(self, N(config), self, config::key, (const char *)&in, sizeof(config));
+         }
       }
    };
 
