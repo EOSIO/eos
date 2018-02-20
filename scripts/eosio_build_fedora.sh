@@ -16,6 +16,17 @@
 	printf "\tDisk space total: ${DISK_TOTAL}G\n"
 	printf "\tDisk space available: ${DISK_AVAIL}G\n"
 
+        BINARYEN_FLAG=false
+        while [ ! $# -eq 0 ]
+        do
+            case "$1" in
+                --update-binaryen)
+                    BINARYEN_FLAG=true
+                    shift
+                    ;;
+            esac
+        done
+
 	if [ $MEM_MEG -lt 4000 ]; then
 		printf "\tYour system must have 8 or more Gigabytes of physical memory installed.\n"
 		printf "\tExiting now.\n"
@@ -146,13 +157,13 @@
 	fi
 	
 	printf "\n\tChecking for binaryen\n"
-	if [ ! -d ${HOME}/opt/binaryen ]; then
-		# Install binaryen v1.37.14:
-		printf "\tInstalling binaryen v1.37.14:\n"
+	if [ ! -d ${HOME}/opt/binaryen ] || $BINARYEN_FLAG; then
+		# Install binaryen eosio branch:
+		printf "\tInstalling binaryen eosio branch:\n"
 		cd ${TEMP_DIR}
-		git clone https://github.com/WebAssembly/binaryen
+		git clone https://github.com/EOSIO/binaryen
 		cd binaryen
-		git checkout tags/1.37.14
+		git checkout eosio
 		cmake . && make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling binaryen.\n"

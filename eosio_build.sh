@@ -43,6 +43,17 @@
 	bldred=${txtbld}$(tput setaf 1)
 	txtrst=$(tput sgr0)
 
+        BINARYEN_FLAG=false
+        while [ ! $# -eq 0 ]
+        do
+            case "$1" in
+                --update-binaryen)
+                    BINARYEN_FLAG=true
+                    shift
+                    ;;
+            esac
+        done
+        
 	printf "\n\tARCHITECTURE ${ARCH}\n"
 
 	if [ $ARCH == "Linux" ]; then
@@ -86,8 +97,13 @@
 		export OPENSSL_LIBRARIES=/usr/include/openssl
 		export WASM_LLVM_CONFIG=${HOME}/opt/wasm/bin/llvm-config
 	
-	 . $FILE
-	
+                
+                if $BINARYEN_FLAG; then
+                    . $FILE --update-binaryen
+                else
+                    . $FILE
+                fi
+
 	fi
 
 	if [ $ARCH == "Darwin" ]; then
@@ -98,7 +114,11 @@
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
 
-	  . scripts/eosio_build_darwin.sh
+                if $BINARYEN_FLAG; then
+	            . scripts/eosio_build_darwin.sh --update-binaryen
+                else
+                    . scripts/eosio_build_darwin.sh
+                fi
 	fi
 
 	printf "\n\n>>>>>>>> ALL dependencies sucessfully found or installed . Installing EOS.IO\n\n"
