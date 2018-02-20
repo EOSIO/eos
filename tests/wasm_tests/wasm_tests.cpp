@@ -424,8 +424,8 @@ BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
 
    set_tapos(trx);
    trx.sign(get_private_key( N(bigmem), "active" ), chain_id_type());
-   //but should not be able to grow beyond 16th page
-   BOOST_CHECK_THROW(push_transaction(trx), fc::exception);
+   //but should not be able to grow beyond 16th page, asserts if sbrk(1) returns other then -1
+   push_transaction(trx);
 
    produce_blocks(1);
 

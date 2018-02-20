@@ -101,17 +101,22 @@ static const char grow_memory_wast[] = R"=====(
 static const char biggest_memory_wast[] = R"=====(
 (module
  (import "env" "sbrk" (func $sbrk (param i32) (result i32)))
+ (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
  (table 0 anyfunc)
  (memory $0 16)
  (export "memory" (memory $0))
  (export "apply" (func $apply))
  
  (func $apply (param $0 i64) (param $1 i64)
-   (drop
+  (call $eosio_assert
+   (i32.eq
      (call $sbrk
        (i32.const 1)
      )
+     (i32.const -1)
    )
+   (i32.const 0)
+  )
  )
 )
 )=====";
