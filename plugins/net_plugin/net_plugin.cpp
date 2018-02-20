@@ -2145,7 +2145,7 @@ namespace eosio {
    void net_plugin_impl::handle_message( connection_ptr c, const packed_transaction &msg) {
       fc_dlog(logger, "got a signed transaction from ${p}", ("p",c->peer_name()));
       if( sync_master->is_active(c) ) {
-         fc_dlog(logger, "got a txn during sync - droppXning");
+         fc_dlog(logger, "got a txn during sync - dropping");
          return;
       }
 
