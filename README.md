@@ -117,7 +117,7 @@ git clone https://github.com/eosio/eos --recursive
 
 cd eos
 
-git checkout DAWN-2018-02-14
+git checkout DAWN-2018-01-25
 ./eosio_build.sh
 ```
 
@@ -165,7 +165,7 @@ git clone https://github.com/eosio/eos --recursive
 
 cd eos
 
-git checkout DAWN-2018-02-14
+git checkout DAWN-2018-01-25
 ./eosio_build.sh
 ```
 
