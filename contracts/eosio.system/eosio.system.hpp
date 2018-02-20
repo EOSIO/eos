@@ -63,6 +63,7 @@ namespace eosiosystem {
          struct producer_config {
             account_name      owner;
             eosio::bytes      packed_key; /// a packed public key object
+            uint64_t          real_ram = 0;
 
             uint64_t primary_key()const { return owner;       }
             EOSLIB_SERIALIZE( producer_config, (owner)(packed_key) )
@@ -70,10 +71,10 @@ namespace eosiosystem {
          typedef eosio::multi_index< N(producercfg), producer_config>  producer_config_index_type;
 
          struct total_resources {
-            account_name owner;
-            typename currency::token_type total_net_weight; 
-            typename currency::token_type total_cpu_weight; 
-            uint32_t total_ram = 0;
+            account_name                    owner;
+            typename currency::token_type   total_net_weight; 
+            typename currency::token_type   total_cpu_weight; 
+            uint64_t                        total_ram = 0;
 
             uint64_t primary_key()const { return owner; }
 
@@ -120,8 +121,9 @@ namespace eosiosystem {
          ACTION( SystemAccount, regproducer ) {
             account_name producer;
             bytes        producer_key;
+            uint64_t     real_ram;
 
-            EOSLIB_SERIALIZE( regproducer, (producer)(producer_key) )
+            EOSLIB_SERIALIZE( regproducer, (producer)(producer_key)(real_ram) )
          };
 
          ACTION( SystemAccount, regproxy ) {
@@ -252,12 +254,11 @@ namespace eosiosystem {
 
 
          /**
-          *  This method will create a producr_config and producer_votes object for 'producer' 
-          *
-          *  @pre producer is not already registered
+          *  This method will create a producr_config and producer_votes object for 'producer' or
+          *  update an existing producer config with the new values provided.
+          * 
           *  @pre producer to register is an account
           *  @pre authority of producer to register 
-          *  
           */
          static void on( const regproducer& reg ) {
             auto producer = reg.producer;
@@ -265,18 +266,27 @@ namespace eosiosystem {
 
             producer_votes_index_type votes( SystemAccount, SystemAccount );
             const auto* existing = votes.find( producer );
-            eosio_assert( !existing, "producer already registered" );
+            if( !existing ) {
+               votes.emplace( producer, [&]( auto& pv ){
+                  pv.owner       = producer;
+                  pv.total_votes = 0;
+               });
 
-            votes.emplace( producer, [&]( auto& pv ){
-               pv.owner       = producer;
-               pv.total_votes = 0;
-            });
-
-            producer_config_index_type proconfig( SystemAccount, SystemAccount );
-            proconfig.emplace( producer, [&]( auto& pc ) {
-               pc.owner      = producer;
-               pc.packed_key = reg.producer_key;
-            });
+               producer_config_index_type proconfig( SystemAccount, SystemAccount );
+               proconfig.emplace( producer, [&]( auto& pc ) {
+                  pc.owner      = producer;
+                  pc.packed_key = reg.producer_key;
+                  pc.real_ram   = reg.real_ram;
+               });
+            }
+            else {
+               producer_config_index_type proconfig( SystemAccount, SystemAccount );
+               const auto& p = proconfig.get( producer );
+               proconfig.update( p, producer, [&]( auto& pc ) {
+                  pc.packed_key = reg.producer_key;
+                  pc.real_ram   = reg.real_ram;
+               });
+            }
          }
 
          ACTION( SystemAccount, stakevote ) {
