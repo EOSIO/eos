@@ -38,7 +38,7 @@ target_link_libraries( chain_test eosio_testing eosio_chain chainbase eos_utilit
 if(WASM_TOOLCHAIN)
   target_include_directories( chain_test PUBLIC ${CMAKE_BINARY_DIR}/contracts ${CMAKE_CURRENT_BINARY_DIR}/tests/contracts )
   target_include_directories( chain_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/wasm_tests )
-  add_dependencies(chain_test asserter test_api currency proxy identity stltest infinite)
+  add_dependencies(chain_test asserter test_api currency proxy identity identity_test stltest infinite)
 endif()
 
 

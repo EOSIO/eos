@@ -1,6 +1,7 @@
 #pragma once
 #include <tuple>
 #include <boost/hana.hpp>
+#include <functional>
 #include <type_traits>
 
 #include <boost/multi_index_container.hpp>
@@ -249,7 +250,7 @@ class multi_index
                         return *this;
                      }
 
-                     const T& obj = *_idx._multidx.find( next_pk );
+                     const T& obj = *_idx.get()._multidx.find( next_pk );
                      auto& mi = const_cast<item_type&>( static_cast<const item_type&>(obj) );
                      mi.__iters[IndexType::index_number] = next_itr;
                      _item = &mi;
@@ -262,7 +263,7 @@ class multi_index
                      int prev_itr = -1;
 
                      if( !_item ) {
-                        auto ei = secondary_iterator<secondary_key_type>::db_idx_end(_idx._multidx._code, _idx._multidx._scope, TableName);
+                        auto ei = secondary_iterator<secondary_key_type>::db_idx_end(_idx.get()._multidx._code, _idx.get()._multidx._scope, TableName);
                         prev_itr = secondary_iterator<secondary_key_type>::db_idx_previous( ei , &prev_pk );
                      }
                      else
@@ -273,7 +274,7 @@ class multi_index
                         return *this;
                      }
 
-                     const T& obj = *_idx._multidx.find( prev_pk );
+                     const T& obj = *_idx.get()._multidx.find( prev_pk );
                      auto& mi = const_cast<item_type&>( static_cast<const item_type&>(obj) );
                      mi.__iters[IndexType::index_number] = prev_itr;
                      _item = &mi;
@@ -287,9 +288,9 @@ class multi_index
                private:
                   friend class index;
                   const_iterator( const index& idx, const typename MultiIndexType::item* i = nullptr )
-                  :_idx(idx), _item(i){}
+                     :_idx(std::cref(idx)), _item(i){}
 
-                  const index& _idx;
+                  std::reference_wrapper<const index> _idx;
                   const typename MultiIndexType::item* _item;
             };
 
