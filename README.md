@@ -92,7 +92,7 @@ Choose whether you will be building for a local testnet or for the public testne
 We strongly recommend following the instructions for building the public testnet version for [Ubuntu](#autoubuntupublic) or [Mac OS X](#automacpublic). `master` is in pieces on the garage floor while we rebuild this hotrod. This notice will be removed when `master` is usable again. Your patience is appreciated.
 
 <a name="autoubuntulocal"></a>
-#### :no_entry: Clean install Linux (Anmazon, Fedora & Ubuntu) for a local testnet :no_entry:
+#### :no_entry: Clean install Linux (Amazon, Fedora & Ubuntu) for a local testnet :no_entry:
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
@@ -110,7 +110,7 @@ sudo make install
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
 
 <a name="autoubuntupublic"></a>
-#### Clean install Linux (Anmazon, Fedora & Ubuntu) for the public testnet
+#### Clean install Linux (Amazon, Fedora & Ubuntu) for the public testnet
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
