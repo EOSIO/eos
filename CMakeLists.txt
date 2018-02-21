@@ -174,7 +174,7 @@ else()
   message( FATAL_ERROR "No WASM compiler cound be found" )
 endif()
 
-FIND_PACKAGE(binaryen REQUIRED)
+FIND_PACKAGE(Binaryen REQUIRED)
 
 include(installer)
 
