@@ -59,7 +59,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/restart-scenarios-test.py ${CMAKE_CUR
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testUtils.py ${CMAKE_CURRENT_BINARY_DIR}/testUtils.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosiod_run_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosiod_run_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosiod_run_remote_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosiod_run_remote_test.py COPYONLY)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/consensusValidationMaliciousProducers.py ${CMAKE_CURRENT_BINARY_DIR}/consensusValidationMaliciousProducers.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/consensus-validation-malicious-producers.py ${CMAKE_CURRENT_BINARY_DIR}/consensus-validation-malicious-producers.py COPYONLY)
 
 add_test(chain_test chain_test --report_level=detailed)
 add_test(NAME eosiod_run_test COMMAND tests/eosiod_run_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -76,9 +76,9 @@ endif()
 # TODO: add_test(NAME trans_sync_across_mixed_cluster_test COMMAND tests/trans_sync_across_mixed_cluster_test.sh -p 1 -n 2 WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # TODO: add_test(NAME distributed-transactions-test COMMAND tests/distributed-transactions-test.py -p 1 -n 4 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # TODO: add_test(NAME distributed-transactions-remote-test COMMAND tests/distributed-transactions-remote-test.py --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-# TODO: add_test(NAME restart-scenarios-test_resync COMMAND tests/restart-scenarios-test.py -c resync -p3 --dumpErrorDetails WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-# TODO: add_test(NAME restart-scenarios-test_replay COMMAND tests/restart-scenarios-test.py -c replay -p3 --dumpErrorDetails WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-# TODO: add_test(NAME consensus-validation-malicious-producers COMMAND tests/consensus-validation-malicious-producers.py -w 80 --dumpErrorDetails WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+# TODO: add_test(NAME restart-scenarios-test_resync COMMAND tests/restart-scenarios-test.py -c resync -p3 --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+# TODO: add_test(NAME restart-scenarios-test_replay COMMAND tests/restart-scenarios-test.py -c replay -p3 --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+# TODO: add_test(NAME consensus-validation-malicious-producers COMMAND tests/consensus-validation-malicious-producers.py -w 80 --dump-error-details WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 if(ENABLE_COVERAGE_TESTING)
 

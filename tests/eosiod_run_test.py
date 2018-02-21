@@ -9,8 +9,8 @@ import re
 
 ###############################################################
 # eosiod_run_test
-# --dumpErrorDetails <Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout>
-# --keepLogs <Don't delete tn_data_* folders upon test completion>
+# --dump-error-details <Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout>
+# --keep-logs <Don't delete tn_data_* folders upon test completion>
 ###############################################################
 
 Print=testUtils.Utils.Print

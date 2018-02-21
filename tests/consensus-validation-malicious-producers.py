@@ -206,23 +206,23 @@ tests=[1,2,3]
 parser.add_argument("-t", "--tests", type=str, help="1|2|3 1=run no malicious producers test, 2=minority malicious, 3=majority malicious.", default=None)
 parser.add_argument("-w", type=int, help="system wait time", default=testUtils.Utils.systemWaitTimeout)
 parser.add_argument("-v", help="verbose logging", action='store_true')
-parser.add_argument("--dumpErrorDetails",
+parser.add_argument("--dump-error-details",
                     help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
                     action='store_true')
-parser.add_argument("--keepLogs", help="Don't delete tn_data_* folders upon test completion",
+parser.add_argument("--keep-logs", help="Don't delete tn_data_* folders upon test completion",
                     action='store_true')
 parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
-parser.add_argument("--dontKill", help="Leave cluster running after test finishes", action='store_true')
+parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
 
 args = parser.parse_args()
 testsArg=args.tests
 debug=args.v
 waitTimeout=args.w
-dumpErrorDetails=args.dumpErrorDetails
-keepLogs=args.keepLogs
+dumpErrorDetails=args.dump-error-details
+keepLogs=args.keep-logs
 amINoon=not args.not_noon
-killEosInstances= not args.dontKill
-killWallet= not args.dontKill
+killEosInstances= not args.dont-kill
+killWallet= not args.dont-kill
 
 testUtils.Utils.Debug=debug
 
