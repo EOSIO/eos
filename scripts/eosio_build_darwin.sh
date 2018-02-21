@@ -19,12 +19,12 @@
 	printf "\tDisk space total: ${DISK_TOTAL}G\n"
 	printf "\tDisk space available: ${DISK_AVAIL}G\n\n"
 
-        BINARYEN_FLAG=false
+        FORCE_FLAG=false
         while [ ! $# -eq 0 ]
         do
             case "$1" in
-                --update-binaryen)
-                    BINARYEN_FLAG=true
+                --force|-f)
+                    FORCE_FLAG=true
                     shift
                     ;;
             esac
@@ -165,7 +165,7 @@
 
 	printf "\n\tChecking for secp256k1-zkp\n"
     # install secp256k1-zkp (Cryptonomex branch)
-    if [ ! -e /usr/local/lib/libsecp256k1.a ]; then
+    if [ ! -e /usr/local/lib/libsecp256k1.a ] || $FORCE_FLAG; then
 		cd ${TEMP_DIR}
 		git clone https://github.com/cryptonomex/secp256k1-zkp.git
 		cd secp256k1-zkp
@@ -189,7 +189,7 @@
 	fi
 
 	printf "\n\tChecking for binaryen\n"
-	if [ ! -e /usr/local/binaryen/bin/binaryen.js ] || $BINARYEN_FLAG; then
+	if [ ! -e /usr/local/binaryen/bin/binaryen.js ] || $FORCE_FLAG; then
 		cd ${TEMP_DIR}
                 git clone https://github.com/EOSIO/binaryen
 		cd binaryen
@@ -210,7 +210,7 @@
 	fi
 
 	printf "\n\tChecking for WASM\n"
-	if [ ! -d /usr/local/wasm/bin ]; then
+	if [ ! -d /usr/local/wasm/bin ] || $FORCE_FLAG; then
 		# Build LLVM and clang for WASM:
 		cd ${TEMP_DIR}
 		mkdir wasm-compiler

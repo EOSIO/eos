@@ -43,12 +43,12 @@
 	bldred=${txtbld}$(tput setaf 1)
 	txtrst=$(tput sgr0)
 
-        BINARYEN_FLAG=false
+        FORCE_FLAG=false
         while [ ! $# -eq 0 ]
         do
             case "$1" in
-                --update-binaryen)
-                    BINARYEN_FLAG=true
+                --force|-f)
+                    FORCE_FLAG=true
                     shift
                     ;;
             esac
@@ -98,8 +98,8 @@
 		export WASM_LLVM_CONFIG=${HOME}/opt/wasm/bin/llvm-config
 	
                 
-                if $BINARYEN_FLAG; then
-                    . $FILE --update-binaryen
+                if $FORCE_FLAG; then
+                    . $FILE --force
                 else
                     . $FILE
                 fi
@@ -114,8 +114,8 @@
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
 
-                if $BINARYEN_FLAG; then
-	            . scripts/eosio_build_darwin.sh --update-binaryen
+                if $FORCE_FLAG; then
+	            . scripts/eosio_build_darwin.sh --force
                 else
                     . scripts/eosio_build_darwin.sh
                 fi
