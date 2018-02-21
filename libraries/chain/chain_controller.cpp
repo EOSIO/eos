@@ -34,7 +34,6 @@
 
 #include <fstream>
 #include <functional>
-#include <iostream>
 #include <chrono>
 
 namespace eosio { namespace chain {
@@ -1246,6 +1245,17 @@ void chain_controller::update_signing_producer(const producer_object& signing_pr
    } );
 }
 
+void chain_controller::update_or_create_producers( const producer_schedule_type& producers ) {
+   for ( auto prod : producers.producers ) {
+      if ( _db.find<producer_object, by_owner>(prod.producer_name) == nullptr ) {
+         _db.create<producer_object>( [&]( auto& pro ) {
+            pro.owner       = prod.producer_name;
+            pro.signing_key = prod.block_signing_key;
+         });
+      }
+   }
+}
+
 void chain_controller::update_last_irreversible_block()
 {
    const global_property_object& gpo = get_global_properties();
@@ -1307,6 +1317,7 @@ void chain_controller::update_last_irreversible_block()
          }
       }
       if( new_producer_schedule ) {
+         update_or_create_producers( *new_producer_schedule );
          _db.modify( gpo, [&]( auto& props ){
               boost::range::remove_erase_if(props.pending_active_producers,
                                             [new_last_irreversible_block_num](const typename decltype(props.pending_active_producers)::value_type& v) -> bool {
@@ -1351,7 +1362,6 @@ account_name chain_controller::get_scheduled_producer(uint32_t slot_num)const
    auto number_of_active_producers = gpo.active_producers.producers.size();
    auto index = current_aslot % (number_of_active_producers);
    index /= config::producer_repititions;
-
    FC_ASSERT( gpo.active_producers.producers.size() > 0, "no producers defined" );
 
    return gpo.active_producers.producers[index].producer_name;

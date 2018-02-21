@@ -402,6 +402,7 @@ namespace eosio { namespace chain {
          void update_usage( transaction_metadata&, uint32_t act_usage );
          void update_signing_producer(const producer_object& signing_producer, const signed_block& new_block);
          void update_last_irreversible_block();
+         void update_or_create_producers( const producer_schedule_type& producers);
          void clear_expired_transactions();
          /// @}
 

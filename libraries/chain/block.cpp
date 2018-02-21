@@ -42,7 +42,7 @@ namespace eosio { namespace chain {
       return signee() == expected_signee;
    }
 
-   digest_type signed_block_summary::calculate_transaction_merkle_root()const {
+   checksum256_type signed_block_summary::calculate_transaction_merkle_root()const {
       vector<digest_type> merkle_of_each_shard;
       for(const region_summary& rs : regions) {
          for(const cycle& cs : rs.cycles_summary) {
