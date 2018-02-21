@@ -16,6 +16,7 @@ file(GLOB THREAD_SOURCES "upstream/src/thread/*.c") #only for __lock __unlock
 set(INTERNAL_SOURCES upstream/src/internal/intscan.c upstream/src/internal/shgetc.c upstream/src/internal/libc.c)
 
 add_wast_library(TARGET libc
+  NOWARNINGS
   SOURCE_FILES ${CRYPT_SOURCES} ${CTYPE_SOURCES} ${ENV_SOURCES} ${ERRNO_SOURCES} ${EXIT_SOURCES} ${INTERNAL_SOURCES} ${LOCALE_SOURCES} ${MBYTE_SOURCES}
   ${MISC_SOURCES} ${SEARCH_SOURCES} ${STDIO_SOURCES} ${STDLIB_SOURCES} ${STRING_SOURCES} ${TIME_SOURCES} ${THREAD_SOURCES}
   INCLUDE_FOLDERS ${CMAKE_SOURCE_DIR}/contracts/musl/upstream/include

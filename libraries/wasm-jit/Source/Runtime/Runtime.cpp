@@ -56,7 +56,7 @@ namespace Runtime
 
 	[[noreturn]] void handleHardwareTrap(Platform::HardwareTrapType trapType,Platform::CallStack&& trapCallStack,Uptr trapOperand)
 	{
-    std::cerr << "handle hadrware trap \n";
+      std::cerr << "handle hardware trap\n";
 		std::vector<std::string> callStackDescription = describeCallStack(trapCallStack);
 
 		switch(trapType)

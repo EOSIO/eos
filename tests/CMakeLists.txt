@@ -12,25 +12,15 @@ link_directories(${LLVM_LIBRARY_DIR})
 
 set( CMAKE_CXX_STANDARD 14 )
 
-#file(GLOB UNIT_TESTS "tests/*.cpp")
+#include_directories("${CMAKE_BINARY_DIR}/tests/api_tests")
+include_directories("${CMAKE_BINARY_DIR}/contracts")
+include_directories("${CMAKE_SOURCE_DIR}/contracts")
+
+file(GLOB UNIT_TESTS "chain_tests/*.cpp" "api_tests/*.cpp" "tests/abi_tests.cpp" "tests/database_tests.cpp")
+
 #if(WASM_TOOLCHAIN)
-#  add_subdirectory(tests/contracts/rate_limit_auth)
-#  file(GLOB WASM_UNIT_TESTS "tests/wasm_tests/*.cpp")
-#  list(APPEND UNIT_TESTS ${WASM_UNIT_TESTS})
+#    file(GLOB WASM_UNIT_TESTS "wasm_tests/*.cpp")
 #endif()
-#add_executable( chain_test ${UNIT_TESTS} ${COMMON_SOURCES} )
-#target_link_libraries( chain_test eos_native_contract eosio_chain chainbase eos_utilities eos_egenesis_none wallet_plugin chain_plugin producer_plugin fc ${PLATFORM_SPECIFIC_LIBS} )
-#if(WASM_TOOLCHAIN)
-#  target_include_directories( chain_test PUBLIC ${CMAKE_BINARY_DIR}/contracts ${CMAKE_CURRENT_BINARY_DIR}/tests/contracts )
-#  add_dependencies(chain_test rate_limit_auth)
-#endif()
-
-
-
-file(GLOB UNIT_TESTS "chain_tests/*.cpp" "tests/abi_tests.cpp" "tests/database_tests.cpp")
-if(WASM_TOOLCHAIN)
-    file(GLOB WASM_UNIT_TESTS "wasm_tests/*.cpp")
-endif()
 
 add_executable( chain_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} common/main.cpp )
 target_link_libraries( chain_test eosio_testing eosio_chain chainbase eos_utilities eos_egenesis_none chain_plugin abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
@@ -69,6 +59,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/restart-scenarios-test.py ${CMAKE_CUR
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/testUtils.py ${CMAKE_CURRENT_BINARY_DIR}/testUtils.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosiod_run_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosiod_run_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/eosiod_run_remote_test.py ${CMAKE_CURRENT_BINARY_DIR}/eosiod_run_remote_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/consensusValidationMaliciousProducers.py ${CMAKE_CURRENT_BINARY_DIR}/consensusValidationMaliciousProducers.py COPYONLY)
 
 add_test(chain_test chain_test --report_level=detailed)
 add_test(NAME eosiod_run_test COMMAND tests/eosiod_run_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

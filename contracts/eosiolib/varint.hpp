@@ -23,7 +23,7 @@ struct unsigned_int {
     template<typename T>
     operator T()const { return static_cast<T>(value); }
 
-    unsigned_int& operator=( int32_t v ) { value = v; return *this; }
+    unsigned_int& operator=( uint32_t v ) { value = v; return *this; }
     
     uint32_t value;
 
@@ -102,7 +102,7 @@ struct signed_int {
 
     template<typename DataStream>
     friend DataStream& operator << ( DataStream& ds, const signed_int& v ){
-      uint32_t val = (v.value<<1) ^ (v.value>>31);
+      uint32_t val = uint32_t((v.value<<1) ^ (v.value>>31));
       do {
          uint8_t b = uint8_t(val) & 0x7f;
          val >>= 7;

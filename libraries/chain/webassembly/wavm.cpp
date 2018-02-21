@@ -108,16 +108,20 @@ void entry::reset(const info& base_info) {
    MemoryInstance* default_mem = getDefaultMemory(instance);
    if(default_mem) {
       shrinkMemory(default_mem, getMemoryNumPages(default_mem) - 1);
-
-      char* memstart = &memoryRef<char>( getDefaultMemory(instance), 0 );
-      memset( memstart + base_info.mem_end, 0, ((1<<16) - base_info.mem_end) );
-      memcpy( memstart, base_info.mem_image.data(), base_info.mem_end);
    }
-   resetGlobalInstances(instance);
-
    sbrk_bytes = base_info.default_sbrk_bytes;
 }
 
+void entry::prepare( const info& base_info ) {
+   resetGlobalInstances(instance);
+   MemoryInstance* memory_instance = getDefaultMemory(instance);
+   if(memory_instance) {
+      resetMemory(memory_instance, module->memories.defs[0].type);
+
+      char* memstart = &memoryRef<char>(getDefaultMemory(instance), 0);
+      memcpy(memstart, base_info.mem_image.data(), base_info.mem_image.size());
+   }
+}
 
 entry entry::build(const char* wasm_binary, size_t wasm_binary_size) {
    Module* module = new Module();

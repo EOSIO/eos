@@ -62,6 +62,9 @@ void entry::reset(const info& base_info) {
    interface = nullptr;
 }
 
+void entry::prepare( const info& base_info) {
+}
+
 static Expression* create_call_checktime(Import *checktime, Module &module) {
    // create a calling expression
    CallImport *call = module.allocator.alloc<CallImport>();

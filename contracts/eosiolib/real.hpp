@@ -92,8 +92,6 @@ namespace eosio {
      * @brief Compares two double variables c1 and c2
      * 
      * @details Compares two double variables c1 and c2
-     * @param c1
-     * @param c2
      * @return if c1 == c2, return true, otherwise false
      */
     bool operator==(const real &c1, const real &c2) {
@@ -105,8 +103,6 @@ namespace eosio {
      * @brief Compares two double variables c1 and c2
      * 
      * @details Compares two double variables c1 and c2
-     * @param c1
-     * @param c2
      * @return if c1 > c2, return true, otherwise false
      */
     bool operator>(const real &c1, const real &c2) {
@@ -118,8 +114,6 @@ namespace eosio {
      * @brief Compares two double variables c1 and c2
      * 
      * @details Compares two double variables c1 and c2
-     * @param c1
-     * @param c2
      * @return if c1 < c2, return true, otherwise false
      */
     bool operator<(const real &c1, const real &c2) {

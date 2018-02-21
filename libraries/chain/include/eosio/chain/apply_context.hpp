@@ -292,7 +292,7 @@ class apply_context {
 
 
 
-      apply_context(chain_controller& con, chainbase::database& db, const action& a, const transaction_metadata& trx_meta)
+      apply_context(chain_controller& con, chainbase::database& db, const action& a, const transaction_metadata& trx_meta, uint32_t depth=0)
 
       :controller(con), 
        db(db), 
@@ -302,7 +302,8 @@ class apply_context {
        used_authorizations(act.authorization.size(), false),
        trx_meta(trx_meta), 
        idx64(*this), 
-       idx128(*this)
+       idx128(*this),
+       recurse_depth(depth)
        {}
 
       void exec();
@@ -326,6 +327,7 @@ class apply_context {
 
       template <typename IndexType, typename Scope>
       int32_t load_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ); 
+
 
       template <typename IndexType, typename Scope>
       int32_t front_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ); 
@@ -387,7 +389,9 @@ class apply_context {
       const chainbase::database&    db;  ///< database where state is stored
       const action&                 act; ///< message being applied
       account_name                  receiver; ///< the code that is currently running
-      bool                          privileged = false;
+      bool                          privileged   = false;
+      bool                          context_free = false;
+      bool                          used_context_free_api = false;
 
       chain_controller&             mutable_controller;
       chainbase::database&          mutable_db;
@@ -423,6 +427,9 @@ class apply_context {
 
       void checktime(uint32_t instruction_count) const;
 
+      int get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const;
+      int get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const;
+
       void update_db_usage( const account_name& payer, int64_t delta );
       int  db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
       void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
@@ -436,6 +443,7 @@ class apply_context {
 
       generic_index<contracts::index64_object>    idx64;
       generic_index<contracts::index128_object>   idx128;
+      uint32_t                                    recurse_depth;  // how deep inline actions can recurse
 
    private:
       iterator_cache<key_value_object> keyval_cache;
@@ -635,7 +643,6 @@ using apply_handler = std::function<void(apply_context&)>;
       const auto* obj = db.find<ObjectType, contracts::by_scope_primary>(tuple);
 
       if( obj ) {
-
          mutable_db.modify( *obj, [&]( auto& o ) {
             o.value.assign(value, valuelen);
          });
@@ -700,7 +707,6 @@ using apply_handler = std::function<void(apply_context&)>;
           !impl::record_scope_compare<IndexType, Scope>::compare(*itr, keys)) return -1;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
-
       if (valuelen) {
          auto copylen = std::min<size_t>(itr->value.size(), valuelen);
          if (copylen) {
@@ -712,7 +718,7 @@ using apply_handler = std::function<void(apply_context&)>;
       }
    }
 
-   template <typename IndexType, typename Scope>
+   template <typename IndexType, typename Scope> 
    int32_t apply_context::front_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
       require_read_lock( t_id.code, t_id.scope );
       validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
@@ -821,7 +827,7 @@ using apply_handler = std::function<void(apply_context&)>;
       auto pitr = pidx.find(tuple);
 
       if(pitr == pidx.end())
-        return -1;
+        return 0;
 
       const auto& fidx = db.get_index<IndexType>();
       auto itr = fidx.indicies().template project<Scope>(pitr);
@@ -831,11 +837,11 @@ using apply_handler = std::function<void(apply_context&)>;
       if( itr == idx.end() ||
           itr == idx.begin() ||
           itr->t_id != t_id.id ||
-          !impl::key_helper<typename IndexType::value_type>::compare(*itr, keys) ) return -1;
+          !impl::key_helper<typename IndexType::value_type>::compare(*itr, keys) ) return 0;
 
       --itr;
 
-      if( itr->t_id != t_id.id ) return -1;
+      if( itr->t_id != t_id.id ) return 0;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
 
@@ -860,7 +866,7 @@ using apply_handler = std::function<void(apply_context&)>;
       auto itr = idx.lower_bound(tuple);
 
       if( itr == idx.end() ||
-          itr->t_id != t_id.id) return -1;
+          itr->t_id != t_id.id) return 0;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
 
@@ -885,7 +891,7 @@ using apply_handler = std::function<void(apply_context&)>;
       auto itr = idx.upper_bound(tuple);
 
       if( itr == idx.end() ||
-          itr->t_id != t_id.id ) return -1;
+          itr->t_id != t_id.id ) return 0;
 
       impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
 

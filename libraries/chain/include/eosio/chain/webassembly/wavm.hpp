@@ -20,7 +20,7 @@ class entry {
       uint32_t sbrk_bytes;
 
       void reset(const info& );
-
+      void prepare(const info& );
 
       void call(const string &entry_point, const vector <Value> &args, apply_context &context);
 
@@ -44,24 +44,29 @@ class entry {
 struct info {
    info( const entry &wavm )
    {
-      MemoryInstance* current_memory = Runtime::getDefaultMemory(wavm.instance);
       default_sbrk_bytes = wavm.sbrk_bytes;
+      const auto* module = wavm.module;
 
-      if(current_memory) {
-         char *mem_ptr = &memoryRef<char>(current_memory, 0);
-         const auto allocated_memory = Runtime::getDefaultMemorySize(wavm.instance);
-         for (uint64_t i = 0; i < allocated_memory; ++i) {
-            if (mem_ptr[i])
-               mem_end = i + 1;
-         }
-         mem_image.resize(mem_end);
-         memcpy(mem_image.data(), mem_ptr, mem_end);
+      //populate the module's data segments in to a vector so the initial state can be
+      // restored on each invocation
+      //Be Warned, this may need to be revisited when module imports make sense. The
+      // code won't handle data segments that initalize an imported memory which I think
+      // is valid.
+      for(const DataSegment& data_segment : module->dataSegments) {
+         FC_ASSERT(data_segment.baseOffset.type == InitializerExpression::Type::i32_const);
+         FC_ASSERT(module->memories.defs.size());
+         const U32 base_offset = data_segment.baseOffset.i32;
+         const Uptr memory_size = (module->memories.defs[0].type.size.min << IR::numBytesPerPageLog2);
+         if (base_offset >= memory_size || base_offset + data_segment.data.size() > memory_size)
+            FC_THROW_EXCEPTION(wasm_execution_error, "WASM data segment outside of valid memory range");
+         if (base_offset + data_segment.data.size() > mem_image.size())
+            mem_image.resize(base_offset + data_segment.data.size(), 0x00);
+         memcpy(mem_image.data() + base_offset, data_segment.data.data(), data_segment.data.size());
       }
    }
 
    // a clean image of the memory used to sanitize things on checkin
    size_t mem_start            = 0;
-   size_t mem_end              = 1<<16;
    vector<char> mem_image;
 
    uint32_t default_sbrk_bytes = 0;

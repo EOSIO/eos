@@ -5,6 +5,7 @@ using namespace eosio;
 
 struct limit_order {
    uint64_t     id;
+   uint64_t     padding = 0;
    uint128_t    price;
    uint64_t     expiration;
    account_name owner;
@@ -20,8 +21,8 @@ extern "C" {
    /// The apply method implements the dispatch of events to this contract
    void apply( uint64_t code, uint64_t action ) {
       eosio::multi_index<N(orders), limit_order,
-         index_by<0, N(byexp), limit_order, const_mem_fun<limit_order, uint64_t, &limit_order::get_expiration> >,
-         index_by<1, N(byprice), limit_order, const_mem_fun<limit_order, uint128_t, &limit_order::get_price> >
+         indexed_by<N(byexp), const_mem_fun<limit_order, uint64_t, &limit_order::get_expiration> >,
+         indexed_by<N(byprice), const_mem_fun<limit_order, uint128_t, &limit_order::get_price> >
          > orders( N(exchange), N(exchange) );
 
       auto payer = code;
@@ -32,6 +33,7 @@ extern "C" {
       });
 
       orders.update( order, payer, [&]( auto& o ) {
+         o.expiration = 4;
       });
 
       const auto* o = orders.find( 1 );
@@ -41,9 +43,11 @@ extern "C" {
       auto expidx = orders.get_index<N(byexp)>();
 
       for( const auto& item : orders ) {
+         (void)item.id;
       }
 
       for( const auto& item : expidx ) {
+         (void)item.id;
       }
 
       auto lower = expidx.lower_bound(4);

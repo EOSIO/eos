@@ -153,6 +153,7 @@ public:
    uint32_t                            sbrk_bytes;
 
    void reset(const info& );
+   void prepare( const info& );
 
    void call(const string& entry_point, LiteralList& args, apply_context& context);
    void call_apply(apply_context&);
