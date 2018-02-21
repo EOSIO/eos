@@ -668,9 +668,9 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, tester) { try {
 	set_code( N(testapi), test_api_multi_index_wast );
 	produce_blocks(1);
 
-	//CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_general", {});
-	//CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_store_only", {});
-	//CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_check_without_storing", {});
+	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_general", {});
+	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_store_only", {});
+	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_check_without_storing", {});
 	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test", {});
 	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test_part1", {});
 	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test_part2", {});

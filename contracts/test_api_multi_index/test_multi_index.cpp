@@ -154,7 +154,7 @@ void test_multi_index::idx64_store_only()
 
 void test_multi_index::idx64_check_without_storing()
 {
-   _test_multi_index::idx64_check_without_storing<N(indx1.step), N(indextable1)>();
+   _test_multi_index::idx64_check_without_storing<N(idx1.step), N(indextable1)>();
 }
 
 void test_multi_index::idx64_general()
