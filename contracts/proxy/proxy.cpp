@@ -12,8 +12,6 @@ namespace proxy {
 
    namespace configs {
 
-      typedef multi_index<N(config), config> config_table;
-
       bool get(config &out, const account_name &self) {
          auto it = db_find_i64(self, self, N(config), config::key);
          if (it != -1) {
