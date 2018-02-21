@@ -45,6 +45,7 @@ before_install:
       export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/ext/lib
       MONGOCXX_CMAKE_OPTIONS="-DLIBBSON_DIR=$TRAVIS_BUILD_DIR/ext -DLIBMONGOC_DIR=$TRAVIS_BUILD_DIR/ext"
       EOS_CMAKE_OPTIONS="-DBOOST_ROOT=$TRAVIS_BUILD_DIR/ext"
+      UBUNTU_LLVM_CMOD=";/usr/lib/llvm-4.0/lib/cmake;/usr/share/llvm-4.0/cmake/"
       wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.bz2
       tar xjf boost_1_64_0.tar.bz2
       cd boost_1_64_0
@@ -76,7 +77,7 @@ before_install:
 
 script:
   - mkdir build && cd build
-  - ${CMAKE_DIR}cmake -G Ninja -DWASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext -DBINARYEN_ROOT=$TRAVIS_BUILD_DIR/ext/wasm-compiler -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/ext -DCMAKE_BUILD_TYPE=Release -DBUILD_MONGO_DB_PLUGIN=true $EOS_CMAKE_OPTIONS ..
+  - ${CMAKE_DIR}cmake -G Ninja -DWASM_LLVM_CONFIG=$TRAVIS_BUILD_DIR/ext/wasm-compiler/bin/llvm-config -DSecp256k1_ROOT_DIR=$TRAVIS_BUILD_DIR/ext -DBINARYEN_ROOT=$TRAVIS_BUILD_DIR/ext/wasm-compiler -DCMAKE_PREFIX_PATH=$TRAVIS_BUILD_DIR/ext$UBUNTU_LLVM_CMOD -DCMAKE_BUILD_TYPE=Release -DBUILD_MONGO_DB_PLUGIN=true $EOS_CMAKE_OPTIONS ..
   - ninja -j4
   - '[ "$TRAVIS_OS_NAME" == "osx" ] || (export EOSLIB=$TRAVIS_BUILD_DIR/contracts; ctest --output-on-failure)'
   - cpack
