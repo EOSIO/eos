@@ -7,6 +7,7 @@
 #pragma once
 #include <eosiolib/account.h>
 #include <eosiolib/print.hpp>
+#include <eosiolib/asset.hpp>
 
 
 namespace eosio { namespace account {
@@ -68,13 +69,12 @@ struct PACKED(account_balance) {
 /**
  *  @brief Retrieve a populated balance structure
  *  @details Retrieve a populated balance structure
- *  @param account_balance    stream to write
- *  @ret true if account's balance is found
+ *  @param acnt - account
+ *  @return true if account's balance is found
  */
-
-bool get(account_balance& b)
+bool get(account_balance& acnt)
 {
-   return account_balance_get(&b, sizeof(account_balance));
+   return account_balance_get(&acnt, sizeof(account_balance));
 }
 
 /// @}  eosio

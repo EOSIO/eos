@@ -102,7 +102,8 @@ void apply_context::exec()
    }
 
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
-      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta);
+      EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
+      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta, recurse_depth + 1 );
       ncontext.exec();
       append_results(move(ncontext.results));
    }
@@ -116,6 +117,7 @@ bool apply_context::is_account( const account_name& account )const {
 void apply_context::require_authorization( const account_name& account )const {
   for( const auto& auth : act.authorization )
      if( auth.actor == account ) return;
+  wdump((act));
   EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}", ("account",account));
 }
 void apply_context::require_authorization(const account_name& account,
@@ -301,6 +303,45 @@ void apply_context::update_db_usage( const account_name& payer, int64_t delta ) 
    if( (delta > 0) && payer != account_name(receiver) ) {
       require_authorization( payer );
    }
+}
+
+
+int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const 
+{
+   const transaction& trx = trx_meta.trx();
+   const action* act = nullptr;
+   if( type == 0 ) {
+      if( index >= trx.context_free_actions.size() ) 
+         return -1;
+      act = &trx.context_free_actions[index];
+   }
+   else if( type == 1 ) {
+      if( index >= trx.actions.size() ) 
+         return -1;
+      act = &trx.actions[index];
+   }
+
+   auto ps = fc::raw::pack_size( *act );
+   if( ps <= buffer_size ) {
+      fc::datastream<char*> ds(buffer, buffer_size);
+      fc::raw::pack( ds, *act );
+   }
+   return ps;
+}
+
+int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const {
+   if( index >= trx_meta.context_free_data.size() ) return -1;
+
+   auto s = trx_meta.context_free_data[index].size();
+
+   if( buffer_size == 0 ) return s;
+
+   if( buffer_size < s )
+      memcpy( buffer, trx_meta.context_free_data.data(), buffer_size );
+   else 
+      memcpy( buffer, trx_meta.context_free_data.data(), s );
+
+   return s;
 }
 
 

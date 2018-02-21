@@ -155,6 +155,9 @@ namespace eosio { namespace chain {
 
    using block_id_type       = fc::sha256;
    using checksum_type       = fc::sha256;
+   using checksum256_type    = fc::sha256;
+   using checksum512_type    = fc::sha512;
+   using checksum160_type    = fc::ripemd160;
    using transaction_id_type = checksum_type;
    using digest_type         = checksum_type;
    using weight_type         = uint16_t;

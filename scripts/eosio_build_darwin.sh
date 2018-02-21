@@ -20,20 +20,20 @@
 	printf "\tDisk space available: ${DISK_AVAIL}G\n\n"
 	
 	if [ $MEM_GIG -lt 8 ]; then
-		printf "\tYour system must have 8 or more Gigabytes of physical memory installed.\n"
-		printf "\tExiting now.\n"
+		echo "Your system must have 8 or more Gigabytes of physical memory installed."
+		echo "Exiting now."
 		exit 1
 	fi
 
 	if [ $OS_MIN -lt 12 ]; then
-		printf "\tYou must be running Mac OS 10.12.x or higher to install EOSIO.\n"
-		printf "\tExiting now.\n"
+		echo "You must be running Mac OS 10.12.x or higher to install EOSIO."
+		echo "Exiting now."
 		exit 1
 	fi
 
 	if [ $DISK_AVAIL -lt 100 ]; then
-		printf "\tYou must have at least 100GB of available storage to install EOSIO.\n"
-		printf "\tExiting now.\n"
+		echo "You must have at least 100GB of available storage to install EOSIO."
+		echo "Exiting now."
 		exit 1
 	fi
 
@@ -165,13 +165,13 @@
 			exit;
 		fi
 		./configure
-		make
+		make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling secp256k1-zkp.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		sudo make install
+		sudo make -j${CPU_CORE} install
 		sudo rm -rf ${TEMP_DIR}/secp256k1-zkp
 	else
 		printf "\tsecp256k1 found at /usr/local/lib/\n"
@@ -183,7 +183,7 @@
 		git clone https://github.com/WebAssembly/binaryen
 		cd binaryen
 		git checkout tags/1.37.14
-		cmake . && make
+		cmake . && make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling binaryen.\n"
 			printf "\tExiting now.\n\n"
@@ -217,7 +217,7 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		sudo make -j4 install
+		sudo make -j${CPU_CORE} install
 		sudo rm -rf ${TEMP_DIR}/wasm-compiler
 	else
 		printf "\tWASM found at /usr/local/wasm/bin/\n"

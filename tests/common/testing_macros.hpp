@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <eos/chain/wast_to_wasm.hpp>
+#include <eosio/chain/wast_to_wasm.hpp>
 
 #include "macro_support.hpp"
 

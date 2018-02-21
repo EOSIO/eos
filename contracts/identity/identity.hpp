@@ -141,7 +141,7 @@ namespace identity {
                key.uint64s[3] = 0;
                return key;
             }
-            uint256 get_key() const { return key(property, trusted, certifier); };
+            uint256 get_key() const { return key(property, trusted, certifier); }
 
             EOSLIB_SERIALIZE( certrow , (property)(trusted)(certifier)(confidence)(type)(data) )
          };
@@ -164,7 +164,7 @@ namespace identity {
 
          //typedef table_i64i64i64<code, N(certs), code, certrow>  certs_table;
          typedef eosio::multi_index<N(certs), certrow,
-                                    eosio::index_by<0, N(bytuple), certrow, eosio::const_mem_fun<certrow, uint256, &certrow::get_key>, N(certs) >
+                                    eosio::indexed_by< N(bytuple), eosio::const_mem_fun<certrow, uint256, &certrow::get_key> >
                                     > certs_table;
          typedef eosio::multi_index<N(ident), identrow> idents_table;
          typedef singleton<code, N(account), code, identity_name>  accounts_table;

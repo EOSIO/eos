@@ -51,7 +51,7 @@ extern "C" {
    /**
     * Prints value as a 64 bit unsigned integer
     * @brief Prints value as a 64 bit unsigned integer
-    * @param Value of 64 bit unsigned integer to be printed
+    * @param value of 64 bit unsigned integer to be printed
     *
     *  Example:
     *  @code
@@ -74,16 +74,16 @@ extern "C" {
    void printi128( const uint128_t* value );
 
    /**
-    * Prints a 256 bit unsigned integer as a hexidecimal string
-    * @brief Prints a 256 bit unsigned integer as a hexidecimal string
-    * @param Value of 256 bit integer to be printed
+    * Prints value as a hexidecimal string
+    * @brief Prints value as a hexidecimal string
+    * @param value 256 bit integer to be printed
     */
    void printi256( const uint256* value );
 
    /**
     * Prints value as double
     * @brief Prints value as double
-    * @param Value of double (interpreted as 64 bit unsigned integer) to be printed
+    * @param value of double (interpreted as 64 bit unsigned integer) to be printed
     *
     *  Example:
     *  @code
@@ -96,7 +96,7 @@ extern "C" {
    /**
     * Prints a 64 bit names as base32 encoded string
     * @brief Prints a 64 bit names as base32 encoded string
-    * @param Value of 64 bit names to be printed
+    * @param name - 64 bit name to be printed
     *
     * Example:
     * @code
@@ -108,6 +108,7 @@ extern "C" {
    /**
     */
    void printhex( void* data, uint32_t datalen );
+
    /// @}
 #ifdef __cplusplus
 }

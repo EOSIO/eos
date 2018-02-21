@@ -1,5 +1,5 @@
 #include <eosiolib/multi_index.hpp>
-#include "test_api.hpp"
+#include "../test_api/test_api.hpp"
 
 namespace _test_multi_index {
 
@@ -23,7 +23,7 @@ namespace _test_multi_index {
       EOSLIB_SERIALIZE( record_idx128, (id)(sec) )
    };
 
-   template<uint64_t TableName>
+   template<uint64_t ScopeName, uint64_t TableName>
    void idx64_store_only()
    {
       using namespace eosio;
@@ -42,12 +42,12 @@ namespace _test_multi_index {
 
       // Construct and fill table using multi_index
       multi_index<TableName, record,
-         index_by<0, N(bysecondary), record, const_mem_fun<record, uint64_t, &record::get_secondary>, TableName>
-      > table( current_receiver(), current_receiver() );
+         indexed_by< N(bysecondary), const_mem_fun<record, uint64_t, &record::get_secondary> >
+      > table( current_receiver(), ScopeName );
 
       auto payer = current_receiver();
 
-      for (int i = 0; i < num_records; ++i) {
+      for (size_t i = 0; i < num_records; ++i) {
          table.emplace( payer, [&]( auto& r ) {
             r.id = records[i].id;
             r.sec = records[i].sec;
@@ -55,7 +55,7 @@ namespace _test_multi_index {
       }
    }
 
-   template<uint64_t TableName>
+   template<uint64_t ScopeName, uint64_t TableName>
    void idx64_check_without_storing()
    {
       using namespace eosio;
@@ -64,18 +64,12 @@ namespace _test_multi_index {
 
       // Load table using multi_index
       multi_index<TableName, record,
-         index_by<0, N(bysecondary), record, const_mem_fun<record, uint64_t, &record::get_secondary>, TableName>
-      > table( current_receiver(), current_receiver() );
+         indexed_by< N(bysecondary), const_mem_fun<record, uint64_t, &record::get_secondary> >
+      > table( current_receiver(), ScopeName );
 
       auto payer = current_receiver();
 
       auto secondary_index = table.template get_index<N(bysecondary)>();
-
-      // TODO: multi_index should be modified to be more like Boost multi_index:
-      //         return iterators rather than pointers or references to objects, and
-      //         allow projecting (in constant time) from an iterator (pointing to some object) in one index to another
-      //         iterator (pointing to the same object) in another index within the same multi_index container.
-      // Until then, I need to make do with hacky workarounds like (1) and (2):
 
       // find by primary key
       {
@@ -85,7 +79,7 @@ namespace _test_multi_index {
          ptr = table.find(976);
          eosio_assert(ptr != nullptr && ptr->sec == N(emily), "idx64_general - table.find() of existing primary key");
 
-         // Workaround (1): would prefer to instead receive iterator (rather than pointer) from find().
+         // Workaround: would prefer to instead receive iterator (rather than pointer) from find().
          auto itr = table.lower_bound(976);
          eosio_assert(itr != table.end() && itr->id == 976 && itr->sec == N(emily), "idx64_general - iterator to existing object in primary index");
 
@@ -113,7 +107,7 @@ namespace _test_multi_index {
          auto ptr = table.find(781);
          eosio_assert(ptr != nullptr && ptr->sec == N(bob), "idx64_general - table.find() of existing primary key");
 
-         // Workaround (2): would prefer to instead project the primary iterator to *ptr into the secondary iterator itr.
+         // Workaround: need to add find_primary wrapper support in secondary indices of multi_index
          auto itr = secondary_index.upper_bound(ptr->sec); --itr;
          eosio_assert(itr->id == 781 && itr->sec == N(bob), "idx64_general - iterator to existing object in secondary index");
 
@@ -155,18 +149,18 @@ namespace _test_multi_index {
 
 void test_multi_index::idx64_store_only()
 {
-   _test_multi_index::idx64_store_only<N(myindextable)>();
+   _test_multi_index::idx64_store_only<N(idx1.step), N(indextable1)>();
 }
 
 void test_multi_index::idx64_check_without_storing()
 {
-   _test_multi_index::idx64_check_without_storing<N(myindextable)>();
+   _test_multi_index::idx64_check_without_storing<N(indx1.step), N(indextable1)>();
 }
 
 void test_multi_index::idx64_general()
 {
-   _test_multi_index::idx64_store_only<N(myindextable2)>();
-   _test_multi_index::idx64_check_without_storing<N(myindextable2)>();
+   _test_multi_index::idx64_store_only<N(idx1.comb), N(indextable2)>();
+   _test_multi_index::idx64_check_without_storing<N(idx1.comb), N(indextable2)>();
 }
 
 void test_multi_index::idx128_autoincrement_test()
@@ -176,12 +170,12 @@ void test_multi_index::idx128_autoincrement_test()
 
    typedef record_idx128 record;
 
-   const uint64_t table_name = N(myindextable3);
+   const uint64_t table_name = N(indextable3);
    auto payer = current_receiver();
 
    multi_index<table_name, record,
-      index_by<0, N(bysecondary), record, const_mem_fun<record, uint128_t, &record::get_secondary>, table_name>
-   > table( current_receiver(), current_receiver() );
+      indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> >
+   > table( current_receiver(), N(inc.comb) );
 
    for( int i = 0; i < 5; ++i ) {
       table.emplace( payer, [&]( auto& r ) {
@@ -215,12 +209,12 @@ void test_multi_index::idx128_autoincrement_test_part1()
 
    typedef record_idx128 record;
 
-   const uint64_t table_name = N(myindextable4);
+   const uint64_t table_name = N(indextable4);
    auto payer = current_receiver();
 
    multi_index<table_name, record,
-      index_by<0, N(bysecondary), record, const_mem_fun<record, uint128_t, &record::get_secondary>, table_name>
-   > table( current_receiver(), current_receiver() );
+      indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> >
+   > table( current_receiver(), N(inc.step) );
 
    for( int i = 0; i < 3; ++i ) {
       table.emplace( payer, [&]( auto& r ) {
@@ -245,14 +239,14 @@ void test_multi_index::idx128_autoincrement_test_part2()
 
    typedef record_idx128 record;
 
-   const uint64_t table_name = N(myindextable4);
+   const uint64_t table_name = N(indextable4);
    auto payer = current_receiver();
 
    multi_index<table_name, record,
-      index_by<0, N(bysecondary), record, const_mem_fun<record, uint128_t, &record::get_secondary>, table_name>
-   > table( current_receiver(), current_receiver() );
+      indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> >
+   > table( current_receiver(), N(inc.step) );
 
-   eosio_assert( table.available_primary_key() == 3, "idx128idx128_autoincrement_test_part2 - did not recover expected next primary key");
+   eosio_assert( table.available_primary_key() == 3, "idx128_autoincrement_test_part2 - did not recover expected next primary key");
 
    for( int i = 3; i < 5; ++i ) {
       table.emplace( payer, [&]( auto& r ) {

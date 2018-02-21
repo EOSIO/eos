@@ -34,7 +34,6 @@
 
 #include <fstream>
 #include <functional>
-#include <iostream>
 #include <chrono>
 
 namespace eosio { namespace chain {
@@ -255,11 +254,10 @@ transaction_trace chain_controller::push_transaction(const packed_transaction& t
 transaction_trace chain_controller::_push_transaction(const packed_transaction& trx) {
    transaction_metadata   mtrx( trx, get_chain_id(), head_block_time());
    check_transaction_authorization(mtrx.trx(), trx.signatures);
-
    auto result = _push_transaction(std::move(mtrx));
 
    // notify anyone listening to pending transactions
-   on_pending_transaction(trx);
+   on_pending_transaction(_pending_transaction_metas.back(), trx);
 
    _pending_block->input_transactions.emplace_back(trx);
 
@@ -1248,6 +1246,17 @@ void chain_controller::update_signing_producer(const producer_object& signing_pr
    } );
 }
 
+void chain_controller::update_or_create_producers( const producer_schedule_type& producers ) {
+   for ( auto prod : producers.producers ) {
+      if ( _db.find<producer_object, by_owner>(prod.producer_name) == nullptr ) {
+         _db.create<producer_object>( [&]( auto& pro ) {
+            pro.owner       = prod.producer_name;
+            pro.signing_key = prod.block_signing_key;
+         });
+      }
+   }
+}
+
 void chain_controller::update_last_irreversible_block()
 {
    const global_property_object& gpo = get_global_properties();
@@ -1309,6 +1318,7 @@ void chain_controller::update_last_irreversible_block()
          }
       }
       if( new_producer_schedule ) {
+         update_or_create_producers( *new_producer_schedule );
          _db.modify( gpo, [&]( auto& props ){
               boost::range::remove_erase_if(props.pending_active_producers,
                                             [new_last_irreversible_block_num](const typename decltype(props.pending_active_producers)::value_type& v) -> bool {
@@ -1353,7 +1363,6 @@ account_name chain_controller::get_scheduled_producer(uint32_t slot_num)const
    auto number_of_active_producers = gpo.active_producers.producers.size();
    auto index = current_aslot % (number_of_active_producers);
    index /= config::producer_repititions;
-
    FC_ASSERT( gpo.active_producers.producers.size() > 0, "no producers defined" );
 
    return gpo.active_producers.producers[index].producer_name;
@@ -1407,9 +1416,23 @@ static void log_handled_exceptions(const transaction& trx) {
 
 transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta ) {
    transaction_trace result(meta.id);
+
+   for (const auto &act : meta.trx().context_free_actions) {
+      FC_ASSERT( act.authorization.size() == 0, "context free actions cannot require authorization" );
+      apply_context context(*this, _db, act, meta);
+      context.context_free = true;
+      context.exec();
+      fc::move_append(result.action_traces, std::move(context.results.applied_actions));
+      FC_ASSERT( result.deferred_transactions.size() == 0 );
+      FC_ASSERT( result.canceled_deferred.size() == 0 );
+   }
+
    for (const auto &act : meta.trx().actions) {
       apply_context context(*this, _db, act, meta);
       context.exec();
+      context.used_context_free_api |= act.authorization.size();
+
+      FC_ASSERT( context.used_context_free_api, "action did not reference database state, it should be moved to context_free_actions", ("act",act) );
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
       fc::move_append(result.canceled_deferred, std::move(context.results.canceled_deferred));

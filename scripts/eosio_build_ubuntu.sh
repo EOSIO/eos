@@ -19,20 +19,20 @@
 	printf "\tDisk space available: ${DISK_AVAIL}G\n"
 
 	if [ $MEM_MEG -lt 4000 ]; then
-		echo "Your system must have 8 or more Gigabytes of physical memory installed."
-		echo "exiting now."
+		printf "\tYour system must have 8 or more Gigabytes of physical memory installed.\n"
+		printf "\tExiting now.\n"
 		exit 1
 	fi
 
 	if [ $OS_MIN -lt 4 ]; then
-		echo "You must be running Ubuntu 16.04.x or higher to install EOSIO."
-		echo "exiting now"
+		printf "\tYou must be running Ubuntu 16.04.x or higher to install EOSIO.\n"
+		printf "\tExiting now.\n"
 		exit 1
 	fi
 
 	if [ $DISK_AVAIL -lt 100 ]; then
-		echo "You must have at least 100GB of available storage to install EOSIO."
-		echo "exiting now"
+		printf "\tYou must have at least 100GB of available storage to install EOSIO.\n"
+		printf "\tExiting now.\n"
 		exit 1
 	fi
 
@@ -94,7 +94,7 @@
 		tar xf boost_1.66.0.tar.bz2
 		cd boost_1_66_0/
 		./bootstrap.sh "--prefix=$BOOST_ROOT"
-		./b2 install
+		./b2 -j${CPU_CORE} install
 		rm -rf ${TEMP_DIR}/boost_1_66_0/
 		rm -f  ${TEMP_DIR}/boost_1.66.0.tar.bz2
 	else
@@ -115,13 +115,13 @@
 			exit;
 		fi
 		./configure
-		make
+		make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling secp256k1-zkp.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		sudo make install
+		sudo make -j${CPU_CORE} install
 		rm -rf cd ${TEMP_DIR}/secp256k1-zkp
 	else
 		printf "\tsecp256k1 found\n"
@@ -135,7 +135,7 @@
 		git clone https://github.com/WebAssembly/binaryen
 		cd binaryen
 		git checkout tags/1.37.14
-		cmake . && make
+		cmake . && make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling binaryen.\n"
 			printf "\tExiting now.\n\n"
@@ -167,7 +167,7 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j$(nproc)
+		make -j${CPU_CORE} install
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
 			printf "\tExiting now.\n\n"

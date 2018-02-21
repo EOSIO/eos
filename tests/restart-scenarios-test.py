@@ -22,7 +22,7 @@ import signal
 ###############################################################
 
 
-DefaultKillPercent=50
+DefaultKillPercent=25
 Print=testUtils.Utils.Print
 
 def errorExit(msg="", errorCode=1):
@@ -41,6 +41,7 @@ parser.add_argument("--killSig", type=str, help="kill signal[%s|%s]" %
 parser.add_argument("--killCount", type=int, help="eosiod instances to kill", default=-1)
 parser.add_argument("-v", help="verbose logging", action='store_true')
 parser.add_argument("--dontKill", help="Leave cluster running after test finishes", action='store_true')
+parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
 parser.add_argument("--dumpErrorDetails",
                     help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
                     action='store_true')
@@ -54,13 +55,17 @@ delay=args.d
 chainSyncStrategyStr=args.c
 debug=args.v
 total_nodes = pnodes
-killCount=args.killCount if args.killCount > 0 else int((DefaultKillPercent/100.0)*total_nodes)
+killCount=args.killCount if args.killCount > 0 else int(round((DefaultKillPercent/100.0)*total_nodes))
 killSignal=args.killSig
 killEosInstances= not args.dontKill
 dumpErrorDetails=args.dumpErrorDetails
 keepLogs=args.keepLogs
+amINoon=not args.not_noon
 
 testUtils.Utils.Debug=debug
+
+if not amINoon:
+    testUtils.Utils.iAmNotNoon()
 
 Print ("producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d, chain sync strategy: %s" % (
     pnodes, topo, delay, chainSyncStrategyStr))
@@ -148,7 +153,7 @@ finally:
     if not testSuccessful and dumpErrorDetails:
         cluster.dumpErrorDetails()
         walletMgr.dumpErrorDetails()
-        Utils.Print("== Errors see above ==")
+        Print("== Errors see above ==")
 
     if killEosInstances:
         Print("Shut down the cluster%s" % (" and cleanup." if (testSuccessful and not keepLogs) else "."))

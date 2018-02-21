@@ -89,11 +89,11 @@ const char* my_abi = R"=====(
          "name": "signature_arr",
          "type": "signature[]"
       },{
-         "name": "checksum",
-         "type": "checksum"
+         "name": "checksum256",
+         "type": "checksum256"
       },{
-         "name": "checksum_arr",
-         "type": "checksum[]"
+         "name": "checksum256_arr",
+         "type": "checksum256[]"
       },{
          "name": "fieldname",
          "type": "field_name"
@@ -434,7 +434,7 @@ BOOST_AUTO_TEST_CASE(generator)
       std::string             field1;
       time                    field2;
       signature               field3;
-      checksum                field4;
+      checksum256             field4;
       field_name              field5;
       fixed_string32          field6;
       fixed_string16          field7;
@@ -491,7 +491,7 @@ BOOST_AUTO_TEST_CASE(generator)
              "type": "signature"
           },{
              "name": "field4",
-             "type": "checksum"
+             "type": "checksum256"
           },{
              "name": "field5",
              "type": "field_name"
@@ -1288,8 +1288,8 @@ BOOST_AUTO_TEST_CASE(general)
       "time_arr"          : ["2021-12-20T15:30","2021-12-20T15:31"],
       "signature"         : "EOSJzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwT77X1U",
       "signature_arr"     : ["EOSJzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwT77X1U","EOSJzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwT77X1U"],
-      "checksum"          : "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-      "checksum_arr"      : ["ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad","ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"],
+      "checksum256"       : "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "checksum256_arr"      : ["ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad","ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"],
       "fieldname"         : "name1",
       "fieldname_arr"     : ["name1","name2"],
       "fixedstring32"     : "1234567890abcdef1234567890abcdef",

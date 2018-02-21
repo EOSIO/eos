@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import testUtils
 
@@ -458,13 +458,19 @@ try:
     Print("push transfer action to currency contract")
     contract="currency"
     action="transfer"
-    data="{\"from\":\"currency\",\"to\":\"inita\",\"quantity\":\"00.0050 CUR\",\"memo\":\"test\"}"
+    data="{\"from\":\"currency\",\"to\":\"inita\",\"quantity\":"
+    if amINoon:
+        data +="\"00.0050 CUR\",\"memo\":\"test\"}"
+    else:
+        data +="50}"
     opts="--permission currency@active"
+    if not amINoon:
+        opts += " --scope currency,inita"
     trans=node.pushMessage(contract, action, data, opts)
-    if trans is None:
+    if not trans[0]:
         cmdError("%s push message currency transfer" % (ClientName))
         errorExit("Failed to push message to currency contract")
-    transId=testUtils.Node.getTransId(trans)
+    transId=testUtils.Node.getTransId(trans[1])
 
     Print("verify transaction exists")
     if not node.waitForTransIdOnNode(transId):

@@ -36,7 +36,7 @@ int db_idx_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, c
 void db_idx_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
    db_##IDX##_update( iterator, payer, &secondary );\
 }\
-int db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t primary ) {\
+int db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary, TYPE& secondary ) {\
    return db_##IDX##_find_primary( code, scope, table, &secondary, primary );\
 }\
 int db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
@@ -58,73 +58,94 @@ MAKE_SECONDARY_ITERATOR(idx256, uint256)
 template<uint64_t TableName, typename T, typename... Indices>
 class multi_index;
 
-
-
-template<int IndexNumber, uint64_t IndexName, typename T, typename Extractor, uint64_t TableName>
-struct index_by {
-   //typedef  typename std::decay<decltype( (Extractor())( *((const T*)(nullptr)) ) )>::type value_type;
-   typedef  Extractor                        extractor_secondary_type;
+template<uint64_t IndexName, typename Extractor>
+struct indexed_by {
+   enum constants { index_name   = IndexName };
+   typedef  Extractor                        secondary_extractor_type;
    typedef  decltype( Extractor()(nullptr) ) secondary_type;
+};
+
+
+template<uint64_t TableName, uint64_t IndexName, typename T, typename Extractor, int N = 0>
+struct index_by {
+   typedef  Extractor                                                    extractor_secondary_type;
+   typedef  typename std::decay<decltype( Extractor()(nullptr) )>::type secondary_type;
 
    index_by(){}
 
-   static const int index_number = IndexNumber;
-   static const uint64_t index_name = IndexName;
-   static const uint64_t table_name = TableName;
+   enum constants {
+      table_name   = TableName,
+      index_name   = IndexName,
+      index_number = N,
+      // index_table_name = (TableName & 0xFFFFFFFFFFFFFFF0ULL) | (N & 0x000000000000000FULL) // Assuming no more than 16 secondary indices are allowed
+   };
+
+   constexpr static int number()    { return N; }
+   constexpr static uint64_t name() {
+      return IndexName;
+      // return index_table_name;
+   }
 
    private:
       template<uint64_t, typename, typename... >
       friend class multi_index;
 
-      Extractor extract_secondary_key;
-
-      int store( uint64_t scope, uint64_t payer, const T& obj ) {
-         return db_idx_store( scope, TableName, payer, obj.primary_key(), extract_secondary_key(&obj) );
+      /*
+      constexpr static bool validate_table_name(uint64_t n) {
+         // Limit table names to 12 characters so that the last character (4 bits) can be used to distinguish between the secondary indices.
+         return (n & 0x000000000000000FULL) == 0;
       }
 
-      void update( int iterator, uint64_t payer, const secondary_type& secondary ) {
+      static_assert( validate_table_name(TableName), "currently only table names of maximum length 12 are supported by multi_index");
+      */
+
+      static auto extract_secondary_key(const T& obj) { return extractor_secondary_type()(obj); }
+
+      static int store( uint64_t scope, uint64_t payer, const T& obj ) {
+         return db_idx_store( scope, name(), payer, obj.primary_key(), extract_secondary_key(obj) );
+      }
+
+      static void update( int iterator, uint64_t payer, const secondary_type& secondary ) {
          db_idx_update( iterator, payer, secondary );
       }
 
-      int find_primary( uint64_t code, uint64_t scope, uint64_t primary, secondary_type& secondary )const {
-         return db_idx_find_primary( code, scope, TableName,  secondary, primary );
+      static int find_primary( uint64_t code, uint64_t scope, uint64_t primary, secondary_type& secondary ) {
+         return db_idx_find_primary( code, scope, name(), primary,  secondary );
       }
 
-      void remove( int itr ) {
+      static void remove( int itr ) {
          secondary_iterator<secondary_type>::db_idx_remove( itr );
       }
 
-      int find_secondary( uint64_t code, uint64_t scope, secondary_type& secondary, uint64_t& primary )const {
-         return db_idx_find_secondary( code, scope, TableName, secondary, primary );
+      static int find_secondary( uint64_t code, uint64_t scope, secondary_type& secondary, uint64_t& primary ) {
+         return db_idx_find_secondary( code, scope, name(), secondary, primary );
       }
 
-      int lower_bound( uint64_t code, uint64_t scope, secondary_type& secondary, uint64_t& primary )const {
-         return db_idx_lowerbound( code, scope, TableName, secondary, primary );
+      static int lower_bound( uint64_t code, uint64_t scope, secondary_type& secondary, uint64_t& primary ) {
+         return db_idx_lowerbound( code, scope, name(), secondary, primary );
       }
 
-      int upper_bound( uint64_t code, uint64_t scope, secondary_type& secondary, uint64_t& primary )const {
-         return db_idx_upperbound( code, scope, TableName, secondary, primary );
+      static int upper_bound( uint64_t code, uint64_t scope, secondary_type& secondary, uint64_t& primary ) {
+         return db_idx_upperbound( code, scope, name(), secondary, primary );
       }
 };
 
-/*
-template<int IndexNumber, uint64_t IndexName, typename T, typename Extractor>
-auto make_index_by( Extractor&& l ) {
-   return index_by<IndexNumber, IndexName, T, Extractor>{ std::forward<Extractor>(l) };
-}
-*/
 
+namespace hana = boost::hana;
 
 template<uint64_t TableName, typename T, typename... Indices>
 class multi_index
 {
    private:
-
+      /*
       template<bool...> struct bool_pack;
       template<bool... bs>
       using all_true = std::is_same<bool_pack<bs..., true>, bool_pack<true, bs...>>;
 
       static_assert(all_true<(TableName == Indices::table_name)...>::value, "index must use same table name as the multi_index it is contained within");
+      */
+
+      static_assert( sizeof...(Indices) <= 6, "currently only a maximum of 6 secondary indices are supported" ); // See transform_indices implementation below for the reason.
 
       struct item : public T
       {
@@ -136,7 +157,7 @@ class multi_index
 
          const multi_index& __idx;
          int                __primary_itr;
-         int                __iters[sizeof...(Indices)];
+         int                __iters[sizeof...(Indices)+(sizeof...(Indices)==0)];
       };
 
       uint64_t _code;
@@ -144,8 +165,29 @@ class multi_index
 
       uint64_t _next_primary_key;
 
-      boost::hana::tuple<Indices...>   _indices;
+      template<uint64_t I>
+      struct intc { enum e{ value = I }; operator uint64_t()const{ return I; }  };
 
+      static constexpr auto transform_indices( ) {
+         typedef decltype( hana::zip_shortest(
+                             hana::make_tuple( intc<0>(), intc<1>(), intc<2>(), intc<3>(), intc<4>(), intc<5>() ), // QUESTION: We only allow up to 6 secondary indices?
+                             hana::tuple<Indices...>() ) ) indices_input_type;
+
+         return hana::transform( indices_input_type(), [&]( auto&& idx ){
+             typedef typename std::decay<decltype(hana::at_c<0>(idx))>::type num_type;
+             typedef typename std::decay<decltype(hana::at_c<1>(idx))>::type idx_type;
+             return index_by<TableName,
+                             idx_type::index_name,
+                             T,
+                             typename idx_type::secondary_extractor_type,
+                             num_type::e::value>();
+
+         });
+      }
+
+      typedef decltype( multi_index::transform_indices() ) indices_type;
+
+      indices_type _indices;
 
       struct by_primary_key;
       struct by_primary_itr;
@@ -157,9 +199,6 @@ class multi_index
          >
       > _items_index;
 
-//      mutable std::map<uint64_t, item*> _items; /// by_primary_key
-//      mutable std::map<int, item*>      _items_by_itr;
-
       const item& load_object_by_primary_iterator( int itr )const {
          const auto& by_pitr = _items_index.template get<by_primary_itr>();
          auto cacheitr = by_pitr.find( itr );
@@ -167,10 +206,11 @@ class multi_index
             return *cacheitr;
 
          auto size = db_get_i64( itr, nullptr, 0 );
+         eosio_assert( size >= 0, "error reading iterator" );
          char tmp[size];
-         db_get_i64( itr, tmp, size );
+         db_get_i64( itr, tmp, uint32_t(size) );
 
-         datastream<const char*> ds(tmp,size);
+         datastream<const char*> ds(tmp,uint32_t(size));
 
          auto result = _items_index.emplace( *this, [&]( auto& i ) {
             T& val = static_cast<T&>(i);
@@ -178,7 +218,7 @@ class multi_index
 
             i.__primary_itr = itr;
             boost::hana::for_each( _indices, [&]( auto& idx ) {
-               i.__iters[idx.index_number] = -1;
+               i.__iters[ idx.number() ] = -1;
             });
          });
 
@@ -204,14 +244,17 @@ class multi_index
          }
       }
 
-      ~multi_index() {
-      }
+      uint64_t get_code()const { return _code; }
+      uint64_t get_scope()const { return _scope; }
 
-      template<typename MultiIndexType, typename IndexType>
+      template<typename MultiIndexType, typename IndexType, uint64_t Number>
       struct index {
+         private:
             typedef typename MultiIndexType::item item_type;
             typedef typename IndexType::secondary_type secondary_key_type;
+
          public:
+            static constexpr uint64_t name() { return IndexType::name(); }
 
             struct const_iterator {
                public:
@@ -232,9 +275,17 @@ class multi_index
 
                   const_iterator& operator++() {
                      if( !_item ) return *this;
+                     if( _item->__iters[Number] == -1 ) {
+                        /// TODO: lookup iter for this item in this index
+                        secondary_key_type temp_secondary_key;
+                        auto idxitr = db_idx_find_primary(_idx.get_code(),
+                                                          _idx.get_scope(),
+                                                          _idx.name(),
+                                                          _item->primary_key(), temp_secondary_key);
+                     }
 
                      uint64_t next_pk = 0;
-                     auto next_itr = secondary_iterator<secondary_key_type>::db_idx_next( _item->__iters[IndexType::index_number], &next_pk );
+                     auto next_itr = secondary_iterator<secondary_key_type>::db_idx_next( _item->__iters[Number], &next_pk );
                      if( next_itr < 0 ) {
                         _item = nullptr;
                         return *this;
@@ -242,7 +293,7 @@ class multi_index
 
                      const T& obj = *_idx._multidx.find( next_pk );
                      auto& mi = const_cast<item_type&>( static_cast<const item_type&>(obj) );
-                     mi.__iters[IndexType::index_number] = next_itr;
+                     mi.__iters[Number] = next_itr;
                      _item = &mi;
 
                      return *this;
@@ -253,11 +304,11 @@ class multi_index
                      int prev_itr = -1;
 
                      if( !_item ) {
-                        auto ei = secondary_iterator<secondary_key_type>::db_idx_end(_idx._multidx._code, _idx._multidx._scope, TableName);
+                        auto ei = secondary_iterator<secondary_key_type>::db_idx_end(_idx.get_code(), _idx.get_scope(), _idx.name());
                         prev_itr = secondary_iterator<secondary_key_type>::db_idx_previous( ei , &prev_pk );
                      }
                      else
-                        prev_itr = secondary_iterator<secondary_key_type>::db_idx_previous( _item->__iters[IndexType::index_number], &prev_pk );
+                        prev_itr = secondary_iterator<secondary_key_type>::db_idx_previous( _item->__iters[Number], &prev_pk );
 
                      if( prev_itr < 0 ) {
                         _item = nullptr;
@@ -266,7 +317,7 @@ class multi_index
 
                      const T& obj = *_idx._multidx.find( prev_pk );
                      auto& mi = const_cast<item_type&>( static_cast<const item_type&>(obj) );
-                     mi.__iters[IndexType::index_number] = prev_itr;
+                     mi.__iters[Number] = prev_itr;
                      _item = &mi;
 
                      return *this;
@@ -276,7 +327,7 @@ class multi_index
                   const T* operator->()const { return static_cast<const T*>(_item); }
 
                private:
-                  friend class index;
+                  friend struct index;
                   const_iterator( const index& idx, const typename MultiIndexType::item* i = nullptr )
                   :_idx(idx), _item(i){}
 
@@ -294,12 +345,12 @@ class multi_index
             const_iterator lower_bound( const typename IndexType::secondary_type& secondary )const {
                uint64_t primary = 0;
                typename IndexType::secondary_type secondary_copy(secondary);
-               auto itr = _idx.lower_bound( _multidx._code, _multidx._scope, secondary_copy, primary );
+               auto itr = IndexType::lower_bound( get_code(), get_scope(), secondary_copy, primary );
                if( itr < 0 ) return end();
 
                const T& obj = *_multidx.find( primary );
                auto& mi = const_cast<item_type&>( static_cast<const item_type&>(obj) );
-               mi.__iters[IndexType::index_number] = itr;
+               mi.__iters[Number] = itr;
 
                return const_iterator( *this, &mi );
             }
@@ -309,24 +360,25 @@ class multi_index
             const_iterator upper_bound( const typename IndexType::secondary_type& secondary )const {
                uint64_t primary = 0;
                typename IndexType::secondary_type secondary_copy(secondary);
-               auto itr = _idx.upper_bound( _multidx._code, _multidx._scope, secondary_copy, primary );
+               auto itr = IndexType::upper_bound( get_code(), get_scope(), secondary_copy, primary );
                if( itr < 0 ) return end();
 
                const T& obj = *_multidx.find( primary );
                auto& mi = const_cast<item_type&>( static_cast<const item_type&>(obj) );
-               mi.__iters[IndexType::index_number] = itr;
+               mi.__iters[Number] = itr;
 
                return const_iterator( *this, &mi );
             }
 
-         private:
-            friend class const_iterator;
-            friend class multi_index;
-            index( const MultiIndexType& midx, const IndexType& idx )
-            :_multidx(midx),_idx(idx){}
+            uint64_t get_code()const  { return _multidx.get_code(); }
+            uint64_t get_scope()const { return _multidx.get_scope(); }
 
-            const MultiIndexType& _multidx;
-            const IndexType&     _idx;
+         private:
+            friend class multi_index;
+            index( const MultiIndexType& midx ) //, const IndexType& idx )
+            :_multidx(midx){}
+
+            const MultiIndexType _multidx;
       };
 
 
@@ -354,11 +406,10 @@ class multi_index
 
             uint64_t next_pk;
             auto next_itr = db_next_i64( _item->__primary_itr, &next_pk );
-            if( next_itr < 0 ) {
+            if( next_itr < 0 )
                _item = nullptr;
-               return *this;
-            }
-            _item = &_multidx.load_object_by_primary_iterator( next_itr );
+            else
+               _item = &_multidx.load_object_by_primary_iterator( next_itr );
             return *this;
          }
          const_iterator& operator--() {
@@ -374,11 +425,10 @@ class multi_index
             else
                prev_itr = db_previous_i64( _item->__primary_itr, &prev_pk );
 
-            if( prev_itr < 0 ) {
+            if( prev_itr < 0 )
                _item = nullptr;
-               return *this;
-            }
-            _item = &_multidx.load_object_by_primary_iterator( prev_itr );
+            else
+               _item = &_multidx.load_object_by_primary_iterator( prev_itr );
             return *this;
          }
 
@@ -419,9 +469,11 @@ class multi_index
 
       template<uint64_t IndexName>
       auto get_index()const  {
-        const auto& idx = boost::hana::find_if( _indices, []( auto x ){
-                                     return std::integral_constant<bool,(decltype(x)::index_name == IndexName)>(); } ).value();
-        return index<multi_index, typename std::decay<decltype(idx)>::type>( *this, idx );
+        auto idx = boost::hana::find_if( _indices, []( auto&& in ) {
+            return std::integral_constant<bool, std::decay<decltype(in)>::type::index_name == IndexName>();
+        }).value();
+
+        return index<multi_index, decltype(idx), idx.number()>( *this );
       }
 
       template<typename Lambda>
@@ -442,7 +494,7 @@ class multi_index
                _next_primary_key = std::min(pk, static_cast<uint64_t>(-2)) + 1;
 
             boost::hana::for_each( _indices, [&]( auto& idx ) {
-               i.__iters[idx.index_number] = idx.store( _scope, payer, obj );
+               i.__iters[idx.number()] = idx.store( _scope, payer, obj );
             });
          });
 
@@ -457,7 +509,7 @@ class multi_index
 
          // eosio_assert( &objitem.__idx == this, "invalid object" );
 
-         auto secondary_keys = boost::hana::transform( _indices, [&]( auto& idx ) {
+         auto secondary_keys = boost::hana::transform( _indices, [&]( auto&& idx ) {
              return idx.extract_secondary_key( obj );
          });
 
@@ -476,18 +528,25 @@ class multi_index
             _next_primary_key = std::min(pk, static_cast<uint64_t>(-2)) + 1;
 
          boost::hana::for_each( _indices, [&]( auto& idx ) {
+            typedef typename std::decay<decltype(idx)>::type index_type;
+
             auto secondary = idx.extract_secondary_key( obj );
-            if( boost::hana::at_c<std::decay<decltype(idx)>::type::index_number>(secondary_keys) != secondary ) {
-               auto indexitr = mutableitem.__iters[idx.index_number];
+            if( hana::at_c<index_type::index_number>(secondary_keys) != secondary ) {
+               auto indexitr = mutableitem.__iters[idx.number()];
 
                if( indexitr < 0 )
-                  indexitr = mutableitem.__iters[idx.index_number] = idx.find_primary( _code, _scope, pk, secondary );
+                  indexitr = mutableitem.__iters[idx.number()] = idx.find_primary( _code, _scope, pk, secondary );
 
                idx.update( indexitr, payer, secondary );
             }
          });
       }
 
+      const T& get( uint64_t primary )const {
+         auto result = find( primary );
+         eosio_assert( result != nullptr, "unable to find key" );
+         return *result;
+      }
       const T* find( uint64_t primary )const {
          auto cacheitr = _items_index.find(primary);
          if( cacheitr != _items_index.end() )
@@ -508,7 +567,7 @@ class multi_index
          db_remove_i64( objitem.__primary_itr );
 
          boost::hana::for_each( _indices, [&]( auto& idx ) {
-            auto i = objitem.__iters[idx.index_number];
+            auto i = objitem.__iters[idx.number()];
             if( i < 0 ) {
               typename std::decay<decltype(idx)>::type::secondary_type second;
               i = idx.find_primary( _code, _scope, objitem.primary_key(), second );
