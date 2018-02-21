@@ -20,5 +20,7 @@ extern "C" {
 
    void set_active_producers( char *producer_data, size_t producer_data_size );
 
+   bool is_privileged( account_name account );
+
    ///@ } privilegedcapi
 }

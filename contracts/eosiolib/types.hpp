@@ -90,5 +90,4 @@ namespace  eosio {
 
    /// @}
 
-
 } // namespace eos

@@ -42,9 +42,9 @@ namespace eosio { namespace chain {
       return signee() == expected_signee;
    }
 
-   checksum_type signed_block_summary::calculate_transaction_mroot()const
+   checksum256_type signed_block_summary::calculate_transaction_mroot()const
    {
-      return checksum_type();// TODO ::hash(merkle(ids));
+      return checksum256_type();// TODO ::hash(merkle(ids));
    }
 
    digest_type   signed_block::calculate_transaction_merkle_root()const {

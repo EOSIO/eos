@@ -1,11 +1,15 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/producer_schedule.hpp>
+#include <eosio/chain/asset.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
+#include <boost/multiprecision/cpp_bin_float.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/utf8.hpp>
@@ -28,44 +32,9 @@
 #include <thread>
 #include <condition_variable>
 
-
-
 using namespace IR;
 using namespace Runtime;
 using boost::asio::io_service;
-
-#if 0
-   // account.h/hpp expected account API balance interchange format
-   // must match account.hpp account_balance definition
-   PACKED_STRUCT(
-   struct account_balance
-   {
-      /**
-      * Name of the account who's balance this is
-      */
-      account_name account;
-
-      /**
-      * Balance for this account
-      */
-      asset eos_balance;
-
-      /**
-      * Staked balance for this account
-      */
-      asset staked_balance;
-
-      /**
-      * Unstaking balance for this account
-      */
-      asset unstaking_balance;
-
-      /**
-      * Time at which last unstaking occurred for this account
-      */
-      time last_unstaking_time;
-   })
-#endif
 
 namespace eosio { namespace chain {
    using namespace contracts;
@@ -424,9 +393,9 @@ class context_aware_api {
       }
 
    protected:
-      uint32_t&          sbrk_bytes;
-      wasm_cache::entry& code;
       apply_context&     context;
+      wasm_cache::entry& code;
+      uint32_t&          sbrk_bytes;
 };
 
 class context_free_api : public context_aware_api {
@@ -457,7 +426,7 @@ class privileged_api : public context_aware_api {
        *  Feature name should be base32 encoded name. 
        */
       void activate_feature( int64_t feature_name ) {
-         FC_ASSERT( !"Unsupported Harfork Detected" );
+         FC_ASSERT( !"Unsupported Hardfork Detected" );
       }
 
       /**
@@ -474,7 +443,7 @@ class privileged_api : public context_aware_api {
                                 int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight,
                                 int64_t cpu_usec_per_period ) {
          auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
-         FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free to much space" );
+         FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free too much space" );
 
          auto& gdp = context.controller.get_dynamic_global_properties();
          context.mutable_db.modify( gdp, [&]( auto& p ) {
@@ -502,7 +471,6 @@ class privileged_api : public context_aware_api {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          producer_schedule_type psch;
          fc::raw::unpack(ds, psch);
-
          context.mutable_db.modify( context.controller.get_global_properties(), 
             [&]( auto& gprops ) {
                  gprops.new_active_producers = psch;
@@ -547,9 +515,9 @@ class producer_api : public context_aware_api {
 
       int get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
          auto active_producers = context.get_active_producers();
-         size_t len = active_producers.size() * sizeof(chain::account_name);
+         size_t len = active_producers.size();
          size_t cpy_len = std::min(datalen, len);
-         memcpy(producers, active_producers.data(), cpy_len);
+         memcpy(producers, active_producers.data(), cpy_len * sizeof(chain::account_name) );
          return len;
       }
 };
@@ -571,7 +539,7 @@ class crypto_api : public context_aware_api {
          datastream<const char*> pubds( pub, publen );
 
          fc::raw::unpack(ds, s);
-         fc::raw::unpack(ds, p);
+         fc::raw::unpack(pubds, p);
 
          auto check = fc::crypto::public_key( s, digest, false );
          FC_ASSERT( check == p, "Error expected key different than recovered key" );
@@ -593,6 +561,22 @@ class crypto_api : public context_aware_api {
          auto result = fc::sha256::hash( data, datalen );
          FC_ASSERT( result == hash_val, "hash miss match" );
       }
+
+      void assert_sha1(array_ptr<char> data, size_t datalen, const fc::sha1& hash_val) {
+         auto result = fc::sha1::hash( data, datalen );
+         FC_ASSERT( result == hash_val, "hash miss match" );
+      }
+
+      void assert_sha512(array_ptr<char> data, size_t datalen, const fc::sha512& hash_val) {
+         auto result = fc::sha512::hash( data, datalen );
+         FC_ASSERT( result == hash_val, "hash miss match" );
+      }
+
+      void assert_ripemd160(array_ptr<char> data, size_t datalen, const fc::ripemd160& hash_val) {
+         auto result = fc::ripemd160::hash( data, datalen );
+         FC_ASSERT( result == hash_val, "hash miss match" );
+      }
+
 
       void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
          hash_val = fc::sha1::hash( data, datalen );
@@ -636,10 +620,10 @@ class system_api : public context_aware_api {
          if( !condition ) edump((message));
          FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
       }
-
+      
       fc::time_point_sec now() {
          return context.controller.head_block_time();
-      }
+      } 
 };
 
 class action_api : public context_aware_api {
@@ -842,10 +826,60 @@ class db_api : public context_aware_api {
       int update(const scope_name& scope, const name& table, const account_name& bta, array_ptr<const char> data, size_t data_len) {
          return call(&apply_context::update_record<ObjectType>, scope, table, bta, data, data_len);
       }
-
+      
       int remove(const scope_name& scope, const name& table, const KeyArrayType &keys) {
          const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
          return context.remove_record<ObjectType>(t_id, keys);
+      }
+};
+
+template<>
+class db_api<keystr_value_object> : public context_aware_api {
+   using KeyType = std::string;
+   static constexpr int KeyCount = 1;
+   using KeyArrayType = KeyType[KeyCount];
+   using ContextMethodType = int(apply_context::*)(const table_id_object&, const KeyType*, const char*, size_t);
+
+/* TODO something weird is going on here, will maybe fix before DB changes or this might get 
+ * totally changed anyway
+   private:
+      int call(ContextMethodType method, const scope_name& scope, const name& table, account_name bta,
+            null_terminated_ptr key, size_t key_len, array_ptr<const char> data, size_t data_len) {
+         const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
+         const KeyType keys((const char*)key.value, key_len); 
+
+         const char* record_data =  ((const char*)data); 
+         size_t record_len = data_len; 
+         return (context.*(method))(t_id, bta, &keys, record_data, record_len);
+      }
+*/
+   public:
+      using context_aware_api::context_aware_api;
+
+      int store_str(const scope_name& scope, const name& table, const account_name& bta,
+            null_terminated_ptr key, uint32_t key_len, array_ptr<const char> data, size_t data_len) {
+         const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
+         const KeyType keys(key.value, key_len); 
+         const char* record_data =  ((const char*)data); 
+         size_t record_len = data_len; 
+         return context.store_record<keystr_value_object>(t_id, bta, &keys, record_data, record_len);
+         //return call(&apply_context::store_record<keystr_value_object>, scope, table, bta, key, key_len, data, data_len);
+      }
+
+      int update_str(const scope_name& scope,  const name& table, const account_name& bta, 
+            null_terminated_ptr key, uint32_t key_len, array_ptr<const char> data, size_t data_len) {
+         const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
+         const KeyType keys((const char*)key, key_len); 
+         const char* record_data =  ((const char*)data); 
+         size_t record_len = data_len; 
+         return context.update_record<keystr_value_object>(t_id, bta, &keys, record_data, record_len);
+         //return call(&apply_context::update_record<keystr_value_object>, scope, table, bta, key, key_len, data, data_len);
+      }
+      
+      int remove_str(const scope_name& scope, const name& table, array_ptr<const char> &key, uint32_t key_len) {
+         const auto& t_id = context.find_or_create_table(scope, context.receiver, table);
+         const KeyArrayType k = {std::string(key, key_len)};
+         return context.remove_record<keystr_value_object>(t_id, k);
       }
 };
 
@@ -880,36 +914,99 @@ class db_index_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      int load(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
-         auto res = call(&apply_context::load_record<IndexType, Scope>, code, scope, table, data, data_len);
-         //ilog("LOAD [${scope},${code},${table}] => ${res} :: ${HEX}", ("scope",scope)("code",code)("table",table)("res",res)("HEX", fc::to_hex(data, data_len)));
+      int load(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::load_record<IndexType, Scope>, scope, code, table, data, data_len);
          return res;
       }
 
-      int front(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::front_record<IndexType, Scope>, code, scope, table, data, data_len);
+      int front(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::front_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return res;
       }
 
-      int back(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::back_record<IndexType, Scope>, code, scope, table, data, data_len);
+      int back(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::back_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return res;
       }
 
-      int next(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::next_record<IndexType, Scope>, code, scope, table, data, data_len);
+      int next(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::next_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return res;
       }
 
-      int previous(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::previous_record<IndexType, Scope>, code, scope, table, data, data_len);
+      int previous(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::previous_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return res;
       }
 
-      int lower_bound(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::lower_bound_record<IndexType, Scope>, code, scope, table, data, data_len);
+      int lower_bound(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::lower_bound_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return res;
       }
 
-      int upper_bound(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::upper_bound_record<IndexType, Scope>, code, scope, table, data, data_len);
+      int upper_bound(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::upper_bound_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return res;
       }
 
+};
+
+template<>
+class db_index_api<keystr_value_index, by_scope_primary> : public context_aware_api {
+   using KeyType = std::string;
+   static constexpr int KeyCount = 1;
+   using KeyArrayType = KeyType[KeyCount];
+   using ContextMethodType = int(apply_context::*)(const table_id_object&, KeyType*, char*, size_t);
+
+
+   int call(ContextMethodType method, const scope_name& scope, const account_name& code, const name& table, 
+         array_ptr<char> &key, uint32_t key_len, array_ptr<char> data, size_t data_len) {
+      auto maybe_t_id = context.find_table(scope, context.receiver, table);
+      if (maybe_t_id == nullptr) {
+         return 0;
+      }
+
+      const auto& t_id = *maybe_t_id;
+      //FC_ASSERT(data_len >= KeyCount * sizeof(KeyType), "Data is not long enough to contain keys");
+      KeyType keys((const char*)key, key_len); // = reinterpret_cast<KeyType *>((char *)data);
+
+      char* record_data =  ((char*)data); // + sizeof(KeyArrayType);
+      size_t record_len = data_len; // - sizeof(KeyArrayType);
+
+      return (context.*(method))(t_id, &keys, record_data, record_len); // + sizeof(KeyArrayType);
+   }
+
+   public:
+      using context_aware_api::context_aware_api;
+
+      int load_str(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> key, size_t key_len, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::load_record<keystr_value_index, by_scope_primary>, scope, code, table, key, key_len, data, data_len);
+         return res;
+      }
+
+      int front_str(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> key, size_t key_len, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::front_record<keystr_value_index, by_scope_primary>, scope, code, table, key, key_len, data, data_len);
+      }
+
+      int back_str(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> key, size_t key_len, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::back_record<keystr_value_index, by_scope_primary>, scope, code, table, key, key_len, data, data_len);
+      }
+
+      int next_str(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> key, size_t key_len, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::next_record<keystr_value_index, by_scope_primary>, scope, code, table, key, key_len, data, data_len);
+      }
+
+      int previous_str(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> key, size_t key_len, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::previous_record<keystr_value_index, by_scope_primary>, scope, code, table, key, key_len, data, data_len);
+      }
+
+      int lower_bound_str(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> key, size_t key_len, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::lower_bound_record<keystr_value_index, by_scope_primary>, scope, code, table, key, key_len, data, data_len);
+      }
+
+      int upper_bound_str(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> key, size_t key_len, array_ptr<char> data, size_t data_len) {
+         return call(&apply_context::upper_bound_record<keystr_value_index, by_scope_primary>, scope, code, table, key, key_len, data, data_len);
+      }
 };
 
 class memory_api : public context_aware_api {
@@ -934,6 +1031,9 @@ class memory_api : public context_aware_api {
       }
 
       int sbrk(int num_bytes) {
+         // sbrk should only allow for memory to grow
+         if (num_bytes < 0)
+            throw eosio::chain::page_memory_error();
          // TODO: omitted checktime function from previous version of sbrk, may need to be put back in at some point
          constexpr uint32_t NBPPL2  = IR::numBytesPerPageLog2;
          constexpr uint32_t MAX_MEM = 1024 * 1024;
@@ -1032,16 +1132,224 @@ class context_free_transaction_api : public context_aware_api {
 
 };
 
+class compiler_builtins : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+      void __ashlti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
+         fc::uint128_t i(high, low);
+         i <<= shift;
+         ret = (unsigned __int128)i;
+      }
+
+      void __ashrti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
+         // retain the signedness
+         ret = high;
+         ret <<= 64;
+         ret |= low;
+         ret >>= shift;
+      }
+
+      void __lshlti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
+         fc::uint128_t i(high, low);
+         i <<= shift;
+         ret = (unsigned __int128)i;
+      }
+
+      void __lshrti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
+         fc::uint128_t i(high, low);
+         i >>= shift;
+         ret = (unsigned __int128)i;
+      }
+      
+      void __divti3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+         __int128 lhs = ha;
+         __int128 rhs = hb;
+         
+         lhs <<= 64;
+         lhs |=  la;
+
+         rhs <<= 64;
+         rhs |=  lb;
+
+         FC_ASSERT(rhs != 0, "divide by zero");    
+
+         lhs /= rhs; 
+
+         ret = lhs;
+      } 
+
+      void __udivti3(unsigned __int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+         unsigned __int128 lhs = ha;
+         unsigned __int128 rhs = hb;
+         
+         lhs <<= 64;
+         lhs |=  la;
+
+         rhs <<= 64;
+         rhs |=  lb;
+
+         FC_ASSERT(rhs != 0, "divide by zero");    
+
+         lhs /= rhs; 
+         ret = lhs;
+      }
+
+      void __multi3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+         __int128 lhs = ha;
+         __int128 rhs = hb;
+
+         lhs <<= 64;
+         lhs |=  la;
+
+         rhs <<= 64;
+         rhs |=  lb;
+
+         lhs *= rhs; 
+         ret = lhs;
+      } 
+
+      void __modti3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+         __int128 lhs = ha;
+         __int128 rhs = hb;
+
+         lhs <<= 64;
+         lhs |=  la;
+   
+         rhs <<= 64;
+         rhs |=  lb;
+         
+         FC_ASSERT(rhs != 0, "divide by zero");
+
+         lhs %= rhs;
+         ret = lhs;
+      }
+
+      void __umodti3(unsigned __int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+         unsigned __int128 lhs = ha;
+         unsigned __int128 rhs = hb;
+
+         lhs <<= 64;
+         lhs |=  la;
+   
+         rhs <<= 64;
+         rhs |=  lb;
+         
+         FC_ASSERT(rhs != 0, "divide by zero");
+
+         lhs %= rhs;
+         ret = lhs;
+      }
+
+      static constexpr uint32_t SHIFT_WIDTH = (sizeof(uint64_t)*8)-1;
+};
+
+class math_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+      
+
+      void diveq_i128(unsigned __int128* self, const unsigned __int128* other) {
+         fc::uint128_t s(*self);
+         const fc::uint128_t o(*other);
+         FC_ASSERT( o != 0, "divide by zero" );
+         
+         s = s/o;
+         *self = (unsigned __int128)s;
+      }
+
+      void multeq_i128(unsigned __int128* self, const unsigned __int128* other) {
+         fc::uint128_t s(*self);
+         const fc::uint128_t o(*other);
+         s *= o;
+         *self = (unsigned __int128)s;
+      }
+
+      uint64_t double_add(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
+                  + DOUBLE(*reinterpret_cast<double *>(&b));
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint64_t double_mult(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
+                  * DOUBLE(*reinterpret_cast<double *>(&b));
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint64_t double_div(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE divisor = DOUBLE(*reinterpret_cast<double *>(&b));
+         FC_ASSERT(divisor != 0, "divide by zero");
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a)) / divisor;
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint32_t double_eq(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) == DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint32_t double_lt(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) < DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint32_t double_gt(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) > DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint64_t double_to_i64(uint64_t n) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&n)).convert_to<int64_t>();
+      }
+
+      uint64_t i64_to_double(int64_t n) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         double res = DOUBLE(n).convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+};
+
+REGISTER_INTRINSICS(math_api,
+   (diveq_i128,    void(int, int)            )
+   (multeq_i128,   void(int, int)            )
+   (double_add,    int64_t(int64_t, int64_t) )
+   (double_mult,   int64_t(int64_t, int64_t) )
+   (double_div,    int64_t(int64_t, int64_t) )
+   (double_eq,     int32_t(int64_t, int64_t) )
+   (double_lt,     int32_t(int64_t, int64_t) )
+   (double_gt,     int32_t(int64_t, int64_t) )
+   (double_to_i64, int64_t(int64_t)          )
+   (i64_to_double, int64_t(int64_t)          )
+);
+
+REGISTER_INTRINSICS(compiler_builtins,
+   (__ashlti3,     void(int, int64_t, int64_t, int)               )
+   (__ashrti3,     void(int, int64_t, int64_t, int)               )
+   (__lshlti3,     void(int, int64_t, int64_t, int)               )
+   (__lshrti3,     void(int, int64_t, int64_t, int)               )
+   (__divti3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__udivti3,     void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__modti3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__umodti3,     void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__multi3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+);
 
 REGISTER_INTRINSICS(privileged_api,
-   (activate_feature,          void(int64_t))
-   (is_feature_active,         int(int64_t))
-   (set_resource_limits,       void(int64_t,int64_t,int64_t,int64_t,int64_t))
-   (set_active_producers,      void(int,int))
-   (is_privileged,             int(int64_t))
-   (set_privileged,            void(int64_t, int))
-   (freeze_account,            void(int64_t, int))
-   (is_frozen,                 int(int64_t))
+   (activate_feature,          void(int64_t)                                 )
+   (is_feature_active,         int(int64_t)                                  )
+   (set_resource_limits,       void(int64_t,int64_t,int64_t,int64_t,int64_t) )
+   (set_active_producers,      void(int,int)                                 )
+   (is_privileged,             int(int64_t)                                  )
+   (set_privileged,            void(int64_t, int)                            )
+   (freeze_account,            void(int64_t, int)                            )
+   (is_frozen,                 int(int64_t)                                  )
 );
 
 REGISTER_INTRINSICS(checktime_api,
@@ -1049,7 +1357,7 @@ REGISTER_INTRINSICS(checktime_api,
 );
 
 REGISTER_INTRINSICS(producer_api,
-   (get_active_producers,      int(int, int))
+   (get_active_producers,      int(int, int) )
 );
 
 REGISTER_INTRINSICS( database_api,
@@ -1085,17 +1393,20 @@ REGISTER_INTRINSICS( database_api,
 );
 
 REGISTER_INTRINSICS(crypto_api,
-   (assert_recover_key,  void(int, int, int, int, int))
-   (recover_key,    int(int, int, int, int, int))
-   (assert_sha256,  void(int, int, int))
-   (sha1,           void(int, int, int))
-   (sha256,         void(int, int, int))
-   (sha512,         void(int, int, int))
-   (ripemd160,      void(int, int, int))
+   (assert_recover_key,     void(int, int, int, int, int) )
+   (recover_key,            int(int, int, int, int, int)  )
+   (assert_sha256,          void(int, int, int)           )
+   (assert_sha1,            void(int, int, int)           )
+   (assert_sha512,          void(int, int, int)           )
+   (assert_ripemd160,       void(int, int, int)           )
+   (sha1,                   void(int, int, int)           )
+   (sha256,                 void(int, int, int)           )
+   (sha512,                 void(int, int, int)           )
+   (ripemd160,              void(int, int, int)           )
 );
 
 REGISTER_INTRINSICS(string_api,
-   (assert_is_utf8,  void(int, int, int))
+   (assert_is_utf8,  void(int, int, int) )
 );
 
 REGISTER_INTRINSICS(system_api,
@@ -1113,11 +1424,11 @@ REGISTER_INTRINSICS(action_api,
 );
 
 REGISTER_INTRINSICS(apply_context,
-   (require_write_lock,    void(int64_t)            )
-   (require_read_lock,     void(int64_t, int64_t)   )
-   (require_recipient,     void(int64_t)            )
+   (require_write_lock,    void(int64_t)          )
+   (require_read_lock,     void(int64_t, int64_t) )
+   (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&)const)
-   (is_account,            int(int64_t)             )
+   (is_account,            int(int64_t)           )
 );
 
 REGISTER_INTRINSICS(console_api,
@@ -1149,13 +1460,12 @@ REGISTER_INTRINSICS(context_free_api,
 )
 
 REGISTER_INTRINSICS(memory_api,
-   (memcpy,                 int(int, int, int)   )
-   (memmove,                int(int, int, int)   )
-   (memcmp,                 int(int, int, int)   )
-   (memset,                 int(int, int, int)   )
-   (sbrk,                   int(int)             )
+   (memcpy,                 int(int, int, int)  )
+   (memmove,                int(int, int, int)  )
+   (memcmp,                 int(int, int, int)  )
+   (memset,                 int(int, int, int)  )
+   (sbrk,                   int(int)            )
 );
-
 
 #define DB_METHOD_SEQ(SUFFIX) \
    (store,        int32_t(int64_t, int64_t, int64_t, int, int),   "store_"#SUFFIX ) \
@@ -1186,13 +1496,24 @@ using db_index_api_key64x64x64_value_index_by_scope_secondary = db_index_api<key
 using db_index_api_key64x64x64_value_index_by_scope_tertiary  = db_index_api<key64x64x64_value_index,by_scope_tertiary>;
 
 REGISTER_INTRINSICS(db_api_key_value_object,         DB_METHOD_SEQ(i64));
-REGISTER_INTRINSICS(db_api_keystr_value_object,      DB_METHOD_SEQ(str));
 REGISTER_INTRINSICS(db_api_key128x128_value_object,  DB_METHOD_SEQ(i128i128));
 REGISTER_INTRINSICS(db_api_key64x64_value_object,    DB_METHOD_SEQ(i64i64));
 REGISTER_INTRINSICS(db_api_key64x64x64_value_object, DB_METHOD_SEQ(i64i64i64));
+REGISTER_INTRINSICS(db_api_keystr_value_object,
+   (store_str,                int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
+   (update_str,               int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
+   (remove_str,               int32_t(int64_t, int64_t, int, int)  ));
 
 REGISTER_INTRINSICS(db_index_api_key_value_index_by_scope_primary,           DB_INDEX_METHOD_SEQ(i64));
-REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,        DB_INDEX_METHOD_SEQ(str));
+REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,
+   (load_str,            int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
+   (front_str,           int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
+   (back_str,            int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
+   (next_str,            int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
+   (previous_str,        int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
+   (lower_bound_str,     int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
+   (upper_bound_str,     int32_t(int64_t, int64_t, int64_t, int, int, int, int)  ));
+
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_primary,    DB_INDEX_METHOD_SEQ(primary_i128i128));
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_secondary,  DB_INDEX_METHOD_SEQ(secondary_i128i128));
 REGISTER_INTRINSICS(db_index_api_key64x64_value_index_by_scope_primary,      DB_INDEX_METHOD_SEQ(primary_i64i64));
