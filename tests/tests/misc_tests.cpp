@@ -22,26 +22,6 @@ using namespace std;
 
 BOOST_AUTO_TEST_SUITE(misc_tests)
 
-/// Test processing of unbalanced strings
-BOOST_AUTO_TEST_CASE(json_from_string_test)
-{
-  bool exc_found = false;
-  try {
-    auto val = fc::json::from_string("{\"}");
-  } catch(...) {
-    exc_found = true;
-  }
-  BOOST_CHECK_EQUAL(exc_found, true);
-
-  exc_found = false;
-  try {
-    auto val = fc::json::from_string("{\"block_num_or_id\":5");
-  } catch(...) {
-    exc_found = true;
-  }
-  BOOST_CHECK_EQUAL(exc_found, true);
-}
-
 /// Test calculation of median values of blockchain operation properties
 BOOST_AUTO_TEST_CASE(median_properties_test)
 { try {

@@ -39,7 +39,7 @@ namespace  eosio {
 
       for( uint32_t i = 0; i <= 12; ++i ) {
          uint64_t c = 0;
-         if( i < len && i <= 12 ) c = char_to_symbol( str[i] );
+         if( i < len && i <= 12 ) c = uint64_t(char_to_symbol( str[i] ));
 
          if( i < 12 ) {
             c &= 0x1f;
@@ -89,6 +89,5 @@ namespace  eosio {
    };
 
    /// @}
-
 
 } // namespace eos

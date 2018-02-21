@@ -1,0 +1,9 @@
+automake,http://ftp.gnu.org/gnu/automake/automake-1.15.tar.gz
+libtool,http://gnu.askapache.com/libtool/libtool-2.4.6.tar.gz
+openssl,https://www.openssl.org/source/openssl-1.0.2n.tar.gz
+LLVM,http://releases.llvm.org/5.0.1/llvm-5.0.1.src.tar.xz
+wget,https://ftp.gnu.org/gnu/wget/wget-1.19.2.tar.gz
+cmake,https://cmake.org/files/v3.10/cmake-3.10.1-Darwin-x86_64.tar.gz
+boost,https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.gz
+gmp,https://ftp.gnu.org/gnu/gmp/gmp-6.1.2.tar.bz2
+gettext,https://ftp.gnu.org/pub/gnu/gettext/gettext-latest.tar.gz

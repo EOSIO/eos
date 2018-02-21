@@ -47,7 +47,7 @@ namespace eosio {
             return nullptr;
          }
 
-         const uint32_t new_heap_size = remaining > _new_heap_size ? _new_heap_size : remaining;
+         const uint32_t new_heap_size = uint32_t(remaining) > _new_heap_size ? _new_heap_size : uint32_t(remaining);
          char* new_memory_start = static_cast<char*>(sbrk(new_heap_size));
          // if we can expand the current memory, keep working with it
          if (current_memory->expand_memory(new_memory_start, new_heap_size))
@@ -281,12 +281,11 @@ namespace eosio {
                return nullptr;
             }
 
-            const int32_t diff = size - *orig_ptr_size;
-            if (diff < 0)
+            if( *orig_ptr_size > size ) 
             {
                // use a buffer_ptr to allocate the memory to free
                char* const new_ptr = ptr + size + _size_marker;
-               buffer_ptr excess_to_free(new_ptr, -diff, _heap + _heap_size);
+               buffer_ptr excess_to_free(new_ptr, *orig_ptr_size - size, _heap + _heap_size);
                excess_to_free.mark_free();
 
                return ptr;
@@ -295,11 +294,11 @@ namespace eosio {
             else if (orig_buffer_end == &_heap[_offset])
             {
                orig_buffer.size(size);
-               _offset += diff;
+               _offset += size - *orig_ptr_size;
 
                return ptr;
             }
-            if (-diff == 0)
+            if (size == *orig_ptr_size )
                return ptr;
 
             if (!orig_buffer.merge_contiguous_if_available(size))
@@ -416,7 +415,7 @@ namespace eosio {
             bool merge_contiguous(uint32_t needed_size, bool all_or_nothing)
             {
                // do not bother if there isn't contiguious space to allocate
-               if (all_or_nothing && _heap_end - _ptr < needed_size)
+               if( all_or_nothing && uint32_t(_heap_end - _ptr) < needed_size )
                   return false;
 
                uint32_t possible_size = _size;
@@ -470,7 +469,7 @@ namespace eosio {
       uint32_t _heaps_actual_size;
       uint32_t _active_heap;
       uint32_t _active_free_heap;
-      static const uint32_t _alloc_memory_mask = 1 << 31;
+      static const uint32_t _alloc_memory_mask = uint32_t(1) << 31;
    };
 
    memory_manager memory_heap;

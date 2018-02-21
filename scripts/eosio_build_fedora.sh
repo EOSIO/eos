@@ -17,20 +17,20 @@
 	printf "\tDisk space available: ${DISK_AVAIL}G\n"
 
 	if [ $MEM_MEG -lt 4000 ]; then
-		echo "Your system must have 8 or more Gigabytes of physical memory installed."
-		echo "exiting now."
+		printf "\tYour system must have 8 or more Gigabytes of physical memory installed.\n"
+		printf "\tExiting now.\n"
 		exit 1
 	fi
 
 	if [ $OS_VER -lt 25 ]; then
-		echo "You must be running Fedora 25 or higher to install EOSIO."
-		echo "exiting now"
+		printf "\tYou must be running Fedora 25 or higher to install EOSIO.\n"
+		printf "\tExiting now.\n"
 		exit 1
 	fi
 
 	if [ $DISK_AVAIL -lt 100 ]; then
-		echo "You must have at least 100GB of available storage to install EOSIO."
-		echo "exiting now"
+		printf "\tYou must have at least 100GB of available storage to install EOSIO.\n"
+		printf "\tExiting now.\n"
 		exit 1
 	fi
 	

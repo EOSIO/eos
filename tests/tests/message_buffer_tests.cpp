@@ -7,29 +7,6 @@
 #include <boost/test/unit_test.hpp>
 #include <iostream>
 
-#if BOOST_VERSION >= 106600
-namespace boost
-{
-  namespace asio
-  {
-    namespace detail
-    {
-      inline void* buffer_cast_helper(const mutable_buffer& b)
-      {
-      #if defined(BOOST_ASIO_ENABLE_BUFFER_DEBUGGING)
-        if (b.size() && b.get_debug_check())
-          b.get_debug_check()();
-      #endif // BOOST_ASIO_ENABLE_BUFFER_DEBUGGING
-        return b.data();
-      }
-      inline size_t buffer_size_helper(const mutable_buffer& b)
-      {
-        return b.size();
-      }
-    }
-  }
-}
-#endif
 
 namespace eosio {
 using namespace std;
