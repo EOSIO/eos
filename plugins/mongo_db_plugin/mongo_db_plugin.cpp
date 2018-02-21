@@ -77,11 +77,11 @@ public:
    std::map<std::string, std::vector<chain::action>> reversible_actions;
    boost::mutex mtx;
    boost::condition_variable condtion;
-   boost::thread consum_thread;
+   boost::thread consume_thread;
    boost::atomic<bool> done{false};
    boost::atomic<bool> startup{true};
 
-   void consum_blocks();
+   void consume_blocks();
 
    void update_account(const chain::action& msg);
 
@@ -147,7 +147,7 @@ void mongo_db_plugin_impl::applied_block(const block_trace& bt) {
    }
 }
 
-void mongo_db_plugin_impl::consum_blocks() {
+void mongo_db_plugin_impl::consume_blocks() {
    try {
       while (true) {
          boost::mutex::scoped_lock lock(mtx);
@@ -191,7 +191,7 @@ void mongo_db_plugin_impl::consum_blocks() {
 
          if (signed_block_size == 0 && block_trace_size == 0 && done) break;
       }
-      ilog("mongo_db_plugin consum thread shutdown gracefully");
+      ilog("mongo_db_plugin consume thread shutdown gracefully");
    } catch (fc::exception& e) {
       elog("FC Exception while consuming block ${e}", ("e", e.to_string()));
    } catch (std::exception& e) {
@@ -573,26 +573,31 @@ void mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block
 
    blocks.update_one(document{} << "_id" << ir_block.view()["_id"].get_oid() << finalize, update_block.view());
 
-   for (const auto& packed_trx : block.input_transactions) {
-      const signed_transaction& trx = packed_trx.get_signed_transaction();
+   for (const auto& r: block.regions) {
+      for (const auto& cs: r.cycles_summary) {
+         for (const auto& ss: cs) {
+            for (const auto& trx_receipt: ss.transactions) {
+               const auto trans_id_str = trx_receipt.id.str();
+               auto ir_trans = find_transaction(trans, trans_id_str);
 
-      const auto trans_id_str = trx.id().str();
-      auto ir_trans = find_transaction(trans, trans_id_str);
+               document update_trans{};
+               update_trans << "$set" << open_document << "pending" << b_bool{false}
+                            << "updatedAt" << b_date{now}
+                            << close_document;
 
-      document update_trans{};
-      update_trans << "$set" << open_document << "pending" << b_bool{false}
-                   << "updatedAt" << b_date{now}
-                   << close_document;
+               trans.update_one(document{} << "_id" << ir_trans.view()["_id"].get_oid() << finalize,
+                                update_trans.view());
 
-      trans.update_one(document{} << "_id" << ir_trans.view()["_id"].get_oid() << finalize, update_trans.view());
-
-      // actions are irreversible, so update account document
-      if (ir_trans.view()["status"].get_utf8().value.to_string() == "executed") {
-         for (const auto& msg : reversible_actions[trans_id_str]) {
-            update_account(msg);
+               // actions are irreversible, so update account document
+               if (ir_trans.view()["status"].get_utf8().value.to_string() == "executed") {
+                  for (const auto& msg : reversible_actions[trans_id_str]) {
+                     update_account(msg);
+                  }
+               }
+               reversible_actions.erase(trans_id_str);
+            }
          }
       }
-      reversible_actions.erase(trans_id_str);
    }
 
 }
@@ -686,9 +691,9 @@ mongo_db_plugin_impl::~mongo_db_plugin_impl() {
       done = true;
       condtion.notify_one();
 
-      consum_thread.join();
+      consume_thread.join();
    } catch (std::exception& e) {
-      elog("Exception on mongo_db_plugin shutdown of consum thread: ${e}", ("e", e.what()));
+      elog("Exception on mongo_db_plugin shutdown of consume thread: ${e}", ("e", e.what()));
    }
 }
 
@@ -827,7 +832,7 @@ void mongo_db_plugin::plugin_startup()
    if (my->configured) {
       ilog("starting db plugin");
 
-      my->consum_thread = boost::thread([this] { my->consum_blocks(); });
+      my->consume_thread = boost::thread([this] { my->consume_blocks(); });
 
       // chain_controller is created and has resynced or replayed if needed
       my->startup = false;
