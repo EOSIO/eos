@@ -23,7 +23,7 @@ namespace _test_multi_index {
       EOSLIB_SERIALIZE( record_idx128, (id)(sec) )
    };
 
-   template<uint64_t ScopeName, uint64_t TableName>
+   template<uint64_t TableName>
    void idx64_store_only()
    {
       using namespace eosio;
@@ -43,7 +43,7 @@ namespace _test_multi_index {
       // Construct and fill table using multi_index
       multi_index<TableName, record,
          indexed_by< N(bysecondary), const_mem_fun<record, uint64_t, &record::get_secondary> >
-      > table( current_receiver(), ScopeName );
+      > table( current_receiver(), current_receiver() );
 
       auto payer = current_receiver();
 
@@ -55,7 +55,7 @@ namespace _test_multi_index {
       }
    }
 
-   template<uint64_t ScopeName, uint64_t TableName>
+   template<uint64_t TableName>
    void idx64_check_without_storing()
    {
       using namespace eosio;
@@ -65,7 +65,7 @@ namespace _test_multi_index {
       // Load table using multi_index
       multi_index<TableName, record,
          indexed_by< N(bysecondary), const_mem_fun<record, uint64_t, &record::get_secondary> >
-      > table( current_receiver(), ScopeName );
+      > table( current_receiver(), current_receiver() );
 
       auto payer = current_receiver();
 
@@ -149,18 +149,18 @@ namespace _test_multi_index {
 
 void test_multi_index::idx64_store_only()
 {
-   _test_multi_index::idx64_store_only<N(idx1.step), N(indextable1)>();
+   _test_multi_index::idx64_store_only<N(indextable1)>();
 }
 
 void test_multi_index::idx64_check_without_storing()
 {
-   _test_multi_index::idx64_check_without_storing<N(idx1.step), N(indextable1)>();
+   _test_multi_index::idx64_check_without_storing<N(indextable1)>();
 }
 
 void test_multi_index::idx64_general()
 {
-   _test_multi_index::idx64_store_only<N(idx1.comb), N(indextable2)>();
-   _test_multi_index::idx64_check_without_storing<N(idx1.comb), N(indextable2)>();
+   _test_multi_index::idx64_store_only<N(indextable2)>();
+   _test_multi_index::idx64_check_without_storing<N(indextable2)>();
 }
 
 void test_multi_index::idx128_autoincrement_test()
@@ -175,7 +175,7 @@ void test_multi_index::idx128_autoincrement_test()
 
    multi_index<table_name, record,
       indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> >
-   > table( current_receiver(), N(inc.comb) );
+   > table( current_receiver(), current_receiver() );
 
    for( int i = 0; i < 5; ++i ) {
       table.emplace( payer, [&]( auto& r ) {
@@ -214,7 +214,7 @@ void test_multi_index::idx128_autoincrement_test_part1()
 
    multi_index<table_name, record,
       indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> >
-   > table( current_receiver(), N(inc.step) );
+   > table( current_receiver(), current_receiver() );
 
    for( int i = 0; i < 3; ++i ) {
       table.emplace( payer, [&]( auto& r ) {
@@ -244,7 +244,7 @@ void test_multi_index::idx128_autoincrement_test_part2()
 
    multi_index<table_name, record,
       indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> >
-   > table( current_receiver(), N(inc.step) );
+   > table( current_receiver(), current_receiver() );
 
    eosio_assert( table.available_primary_key() == 3, "idx128_autoincrement_test_part2 - did not recover expected next primary key");
 
