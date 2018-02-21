@@ -77,27 +77,18 @@ struct index_by {
       table_name   = TableName,
       index_name   = IndexName,
       index_number = N,
-      // index_table_name = (TableName & 0xFFFFFFFFFFFFFFF0ULL) | (N & 0x000000000000000FULL) // Assuming no more than 16 secondary indices are allowed
+      index_table_name = (TableName & 0xFFFFFFFFFFFFFFF0ULL) | (N & 0x000000000000000FULL) // Assuming no more than 16 secondary indices are allowed
    };
 
    constexpr static int number()    { return N; }
    constexpr static uint64_t name() {
-      return IndexName;
-      // return index_table_name;
+      // return IndexName;
+      return index_table_name;
    }
 
    private:
       template<uint64_t, typename, typename... >
       friend class multi_index;
-
-      /*
-      constexpr static bool validate_table_name(uint64_t n) {
-         // Limit table names to 12 characters so that the last character (4 bits) can be used to distinguish between the secondary indices.
-         return (n & 0x000000000000000FULL) == 0;
-      }
-
-      static_assert( validate_table_name(TableName), "currently only table names of maximum length 12 are supported by multi_index");
-      */
 
       static auto extract_secondary_key(const T& obj) { return extractor_secondary_type()(obj); }
 
@@ -145,7 +136,14 @@ class multi_index
       static_assert(all_true<(TableName == Indices::table_name)...>::value, "index must use same table name as the multi_index it is contained within");
       */
 
-      static_assert( sizeof...(Indices) <= 6, "currently only a maximum of 6 secondary indices are supported" ); // See transform_indices implementation below for the reason.
+      static_assert( sizeof...(Indices) <= 16, "multi_index only supports a maximum of 16 secondary indices" );
+
+      constexpr static bool validate_table_name(uint64_t n) {
+         // Limit table names to 12 characters so that the last character (4 bits) can be used to distinguish between the secondary indices.
+         return (n & 0x000000000000000FULL) == 0;
+      }
+
+      static_assert( validate_table_name(TableName), "multi_index does not support table names with a length greater than 12");
 
       struct item : public T
       {
@@ -170,7 +168,9 @@ class multi_index
 
       static constexpr auto transform_indices( ) {
          typedef decltype( hana::zip_shortest(
-                             hana::make_tuple( intc<0>(), intc<1>(), intc<2>(), intc<3>(), intc<4>(), intc<5>() ), // QUESTION: We only allow up to 6 secondary indices?
+                             hana::make_tuple( intc<0>(), intc<1>(), intc<2>(), intc<3>(), intc<4>(), intc<5>(),
+                                               intc<6>(), intc<7>(), intc<8>(), intc<9>(), intc<10>(), intc<11>(),
+                                               intc<12>(), intc<13>(), intc<14>(), intc<15>() ),
                              hana::tuple<Indices...>() ) ) indices_input_type;
 
          return hana::transform( indices_input_type(), [&]( auto&& idx ){
