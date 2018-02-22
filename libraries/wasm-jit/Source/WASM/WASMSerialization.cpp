@@ -190,7 +190,7 @@ public:
    {
       // make sure the import is added
       addImport(module);
-      LiteralImm<I32> param_imm { 11 };
+      LiteralImm<I32> param_imm { 0 };
       codeValidationStream.i32_const(param_imm);
       operatorEncoderStream.i32_const(param_imm);
       CallImm checktime_imm { checktimeIndex(module) };
