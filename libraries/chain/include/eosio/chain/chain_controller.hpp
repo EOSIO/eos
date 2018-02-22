@@ -74,7 +74,7 @@ namespace eosio { namespace chain {
             bool                           read_only           =  false;
             std::vector<signal<void(const block_trace&)>::slot_type> applied_block_callbacks;
             std::vector<signal<void(const signed_block&)>::slot_type> applied_irreversible_block_callbacks;
-            std::vector<signal<void(const packed_transaction&)>::slot_type> on_pending_transaction_callbacks;
+            std::vector<signal<void(const transaction_metadata&, const packed_transaction&)>::slot_type> on_pending_transaction_callbacks;
             contracts::genesis_state_type  genesis;
             runtime_limits                 limits;
          };
