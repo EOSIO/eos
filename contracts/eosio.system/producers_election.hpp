@@ -108,7 +108,6 @@ namespace eosiosystem {
          };
 
          typedef eosio::multi_index< N(unstakerequests), unstake_request,
-                                     indexed_by<N(byaccount), member<unstake_request, account_name, &unstake_request::account> >,
                                      indexed_by<N(bytime), member<unstake_request, time, &unstake_request::refund_time> >
                                      > unstake_requests_table;
 
@@ -177,14 +176,14 @@ namespace eosiosystem {
                });
          }
 
-         ACTION( SystemAccount, stakevote ) {
+         ACTION( SystemAccount, stake_vote ) {
             account_name      voter;
             system_token_type amount;
 
-            EOSLIB_SERIALIZE( stakevote, (voter)(amount) )
+            EOSLIB_SERIALIZE( stake_vote, (voter)(amount) )
          };
 
-         static void on( const stakevote& sv ) {
+         static void on( const stake_vote& sv ) {
             eosio_assert( sv.amount.quantity > 0, "must stake some tokens" );
             require_auth( sv.voter );
 
@@ -218,14 +217,14 @@ namespace eosiosystem {
             currency::inline_transfer( sv.voter, SystemAccount, sv.amount, "stake for voting" );
          }
 
-         ACTION( SystemAccount, unstakevote ) {
+         ACTION( SystemAccount, unstake_vote ) {
             account_name      voter;
             system_token_type amount;
 
-            EOSLIB_SERIALIZE( unstakevote, (voter)(amount) )
+            EOSLIB_SERIALIZE( unstake_vote, (voter)(amount) )
          };
 
-         static void on( const unstakevote& usv ) {
+         static void on( const unstake_vote& usv ) {
             eosio_assert( usv.amount.quantity > 0, "unstake amount should be > 0" );
             require_auth( usv.voter );
 
@@ -244,7 +243,7 @@ namespace eosiosystem {
             requests.emplace( usv.voter, [&](unstake_request& r) {
                   r.id = pk;
                   r.account = usv.voter;
-                  r.transfer_time = now() + voting_stake_freez_time;
+                  r.refund_time = now() + voting_stake_freez_time;
                });
 
             account_votes_index_type avotes( SystemAccount, SystemAccount );
@@ -262,23 +261,23 @@ namespace eosiosystem {
                   });
             }
 
-            if ( usv.amount.quantity < acv->staked ) {
+            if ( usv.amount < acv->staked ) {
                avotes.update( *acv, 0, [&]( auto& av ) {
                      av.last_update = now();
-                     av.staked -= usv.amount.quantity;
+                     av.staked -= usv.amount;
                   });
             } else {
-               eos_assert( usv.amount.quantity == acv->staked, "unstaking more than is at staked" );
+               eosio_assert( usv.amount == acv->staked, "unstaking more than is at staked" );
                avotes.remove( *acv );
             }
          }
 
-         ACTION( SystemAccount, voteproducer ) {
+         ACTION( SystemAccount, vote_producer ) {
             account_name                voter;
             account_name                proxy;
             std::vector<account_name>   producers;
 
-            EOSLIB_SERIALIZE( voteproducer, (voter)(proxy)(producers) )
+            EOSLIB_SERIALIZE( vote_producer, (voter)(proxy)(producers) )
          };
 
          /**
@@ -288,7 +287,7 @@ namespace eosiosystem {
           *  @pre vp.voter must authorize this action
           *  @pre voter must have previously staked some EOS for voting
           */
-         static void on( const voteproducer& vp ) {
+         static void on( const vote_producer& vp ) {
             require_auth( vp.voter );
 
             //validate input
@@ -332,7 +331,7 @@ namespace eosiosystem {
 
             producer_info_index_type producers( SystemAccount, SystemAccount );
 
-            //revoke prower only from no longer elected
+            //revoke votes only from no longer elected
             std::vector<account_name> revoked( old_producers->size() );
             auto end_it = std::set_difference( old_producers->begin(), old_producers->end(), new_producers->begin(), new_producers->end(), revoked.begin() );
             for ( auto it = revoked.begin(); it != end_it; ++it ) {
@@ -367,9 +366,10 @@ namespace eosiosystem {
             auto ptr = avotes.find( reg.proxy_to_register );
             if ( ptr ) {
                eosio_assert( ptr->i_am_proxy == 0, "account is already a proxy" );
-               eosio_assert( ptr->proxy == 0, "account that uses another proxy is not allowed to become a proxy" );
+               eosio_assert( ptr->proxy == 0, "account that uses a proxy is not allowed to become a proxy" );
                avotes.update( *ptr, 0, [&](account_votes& a) {
                      a.i_am_proxy = 1;
+                     a.last_update = now();
                   });
             } else {
                avotes.emplace( reg.proxy_to_register, [&]( account_votes& a ) {
@@ -381,6 +381,11 @@ namespace eosiosystem {
                      a.staked.quantity = 0;
                   });
             }
+         }
+
+         struct block {};
+
+         static void on( const block& ) {
          }
    };
 }
