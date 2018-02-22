@@ -58,7 +58,7 @@ namespace eosio { namespace chain { namespace contracts {
    struct by_scope_secondary;
    struct by_scope_tertiary;
 
-   
+
    struct key_value_object : public chainbase::object<key_value_object_type, key_value_object> {
       OBJECT_CTOR(key_value_object, (value))
 
@@ -131,6 +131,9 @@ namespace eosio { namespace chain { namespace contracts {
 
    typedef secondary_index<uint128_t,index128_object_type>::index_object index128_object;
    typedef secondary_index<uint128_t,index128_object_type>::index_index  index128_index;
+
+   typedef secondary_index<fc::sha256,index256_object_type>::index_object index256_object;
+   typedef secondary_index<fc::sha256,index256_object_type>::index_index  index256_index;
 
    /*
    struct index64_object : public chainbase::object<index64_object_type, index64_object> {
@@ -353,6 +356,7 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key64x64x64_value_object, eosi
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index64_object, eosio::chain::contracts::index64_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index128_object, eosio::chain::contracts::index128_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index256_object, eosio::chain::contracts::index256_index)
 
 FC_REFLECT(eosio::chain::contracts::table_id_object, (id)(code)(scope)(table)(key_type) )
 FC_REFLECT(eosio::chain::contracts::key_value_object, (id)(t_id)(primary_key)(value)(payer) )

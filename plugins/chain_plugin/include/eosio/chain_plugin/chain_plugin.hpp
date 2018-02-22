@@ -192,6 +192,11 @@ public:
       memcpy( data.data()+sizeof(uint64_t), obj.value.data(), obj.value.size() );
    }
 
+   static void copy_inline_row(const chain::contracts::key_value_object& obj, vector<char>& data) {
+      data.resize( obj.value.size() );
+      memcpy( data.data(), obj.value.data(), obj.value.size() );
+   }
+
    static void copy_row(const chain::contracts::keystr_value_object& obj, vector<char>& data) {
       data.resize( obj.primary_key.size() + obj.value.size() + 8 );
       fc::datastream<char*> ds(data.data(), data.size());
@@ -213,6 +218,11 @@ public:
       memcpy( data.data()+sizeof(uint64_t), &obj.secondary_key, sizeof(uint64_t) );
       memcpy( data.data()+2*sizeof(uint64_t), &obj.tertiary_key, sizeof(uint64_t) );
       memcpy( data.data()+3*sizeof(uint64_t), obj.value.data(), obj.value.size() );
+   }
+
+   static void copy_inline_row(const chain::contracts::key64x64x64_value_object& obj, vector<char>& data) {
+      data.resize( obj.value.size() );
+      memcpy( data.data(), obj.value.data(), obj.value.size() );
    }
 
    template<typename IndexType, typename Scope, typename Function>

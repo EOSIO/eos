@@ -21,6 +21,9 @@
 
 #include "test_wasts.hpp"
 
+#include <array>
+#include <utility>
+
 using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::chain::contracts;
@@ -426,7 +429,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_globals, tester ) try {
    //add a few immutable ones for good measure
    for(unsigned int i = 0; i < 10; ++i)
       ss << "(global $g" << i+200 << " i32 (i32.const 0))";
-   
+
    set_code(N(globals),
       string(ss.str() + ")")
    .c_str());
@@ -763,96 +766,107 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
 } FC_LOG_AND_RETHROW()
 #endif
 
+#if 0
+constexpr uint32_t DJBH(const char* cp)
+{
+   uint32_t hash = 5381;
+   while (*cp)
+      hash = 33 * hash ^ (unsigned char) *cp++;
+   return hash;
+}
+
+constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
+   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
+}
+
+template<size_t N, size_t... Is>
+constexpr auto test_methods_to_actions(const char* class_name, const char* const (&method_names)[N], std::index_sequence<Is...>)
+-> std::array<uint64_t, N>
+{
+    return {{ TEST_METHOD(class_name, method_names[Is])... }};
+}
+
+template<size_t N>
+constexpr auto test_methods_to_actions(const char* class_name, const char* const (&method_names)[N])
+-> decltype( test_methods_to_actions(class_name, method_names, std::make_index_sequence<N>{}) )
+{
+    return test_methods_to_actions(class_name, method_names, std::make_index_sequence<N>{});
+}
+
 BOOST_FIXTURE_TEST_CASE( test_db, tester ) try {
    produce_blocks(2);
-   
+
    create_accounts( {N(tester)} );
    produce_block();
-   
+
    set_code(N(tester), test_api_wast);
    //   set_code(N(tester), test_api_abi);
-   
+
    produce_blocks(1);
-   
+
+   const char* const method_names[] = {
+      "primary_i64_general",
+      "primary_i64_lowerbound",
+      "primary_i64_upperbound",
+      "idx64_general",
+      "idx64_lowerbound",
+      "idx64_upperbound"
+   };
+
+   bytes empty;
+
+   for( const auto& an : test_methods_to_actions("test_db", method_names) )
    {
       signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               test_api_action<TEST_METHOD("test_db", "primary_i64_general")> {});
-      
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-      
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               test_api_action<TEST_METHOD("test_db", "primary_i64_lowerbound")> {});
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               test_api_action<TEST_METHOD("test_db", "primary_i64_upperbound")> {});
+      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}}, N(tester), an, empty);
 
       set_tapos(trx);
       trx.sign(get_private_key(N(tester), "active"), chain_id_type());
       push_transaction(trx);
       produce_block();
 
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               test_api_action<TEST_METHOD("test_db", "idx64_general")> {});
-      
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-      
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               test_api_action<TEST_METHOD("test_db", "idx64_lowerbound")> {});
-      
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-      
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               test_api_action<TEST_METHOD("test_db", "idx64_upperbound")> {});
-      
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-      
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    }
 
 } FC_LOG_AND_RETHROW() /// test_db
 
+
+BOOST_FIXTURE_TEST_CASE( test_multi_index, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(tester)} );
+   produce_block();
+
+   set_code(N(tester), test_api_wast);
+   //   set_code(N(tester), test_api_abi);
+
+   produce_blocks(1);
+
+   const char* const method_names[] = {
+      "idx64_store_only",
+      "idx64_check_without_storing", // "idx64_store_only" action must be called before this action
+      "idx64_general",
+      "idx128_autoincrement_test",
+      "idx128_autoincrement_test_part1",
+      "idx128_autoincrement_test_part2" // "idx128_autoincrement_test_part1" action must be called before this action
+   };
+
+   bytes empty;
+
+   for( const auto& an : test_methods_to_actions("test_multi_index", method_names) )
+   {
+      signed_transaction trx;
+      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}}, N(tester), an, empty);
+
+      set_tapos(trx);
+      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
+      push_transaction(trx);
+      produce_block();
+
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+   }
+
+} FC_LOG_AND_RETHROW() /// test_multi_index
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
