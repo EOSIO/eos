@@ -108,7 +108,7 @@ namespace eosiosystem {
             EOSLIB_SERIALIZE( unstake_request, (id)(account)(amount)(refund_time) )
          };
 
-         typedef eosio::multi_index< N(unstakerequests), unstake_request,
+         typedef eosio::multi_index< N(unstakereqs), unstake_request,
                                      indexed_by<N(bytime), const_mem_fun<unstake_request, uint64_t, &unstake_request::rt> >
                                      > unstake_requests_table;
 
