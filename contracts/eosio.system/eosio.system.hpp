@@ -4,6 +4,8 @@
  */
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/token.hpp>
+#include <eosiolib/transaction.h>
+#include <eosiolib/crypto.h>
 #include <eosiolib/db.hpp>
 #include <eosiolib/reflect.hpp>
 #include <eosiolib/print.hpp>
@@ -111,6 +113,17 @@ namespace eosiosystem {
          typedef eosio::multi_index< N(totalband), total_resources>  total_resources_index_type;
          typedef eosio::multi_index< N(delband), delegated_bandwidth> del_bandwidth_index_type;
 
+         struct genesis_balance {
+            checksum256 pubkey_hash;
+            typename currency::token_type balance;
+
+            checksum256 primary_key()const { return pubkey_hash; }
+
+            EOSLIB_SERIALIZE( genesis_balance, (pubkey_hash)(balance) )
+         };
+//TODO         typedef eosio::multi_index< N(genbal), genesis_balance> genesis_balance_index_type;
+               //indexed_by<N(genpubkey), const_mem_fun<genesis_balance, checksum256, &genesis_balance::by_pubkey> > > genesis_balance_index_type;
+
 
          ACTION( SystemAccount, finshundel ) {
             account_name from;
@@ -147,6 +160,29 @@ namespace eosiosystem {
             typename currency::token_type   unstake_cpu_quantity;
 
             EOSLIB_SERIALIZE( undelegatebw, (from)(receiver)(unstake_net_quantity)(unstake_cpu_quantity) )
+         };
+
+         ACTION( SystemAccount, setgen ) {
+            std::map<checksum256, typename currency::token_type> genesis_balances;
+
+            EOSLIB_SERIALIZE( setgen, (genesis_balances) )
+         };
+
+         ACTION( SystemAccount, claimgen ) {
+            account_name   name;
+            checksum256    pubkey_hash;
+            uint32_t       cfa_idx; // context free action index
+
+            EOSLIB_SERIALIZE( claimgen, (name)(pubkey_hash)(cfa_idx) )
+         };
+
+         // context free action
+         ACTION( SystemAccount, keyproof ) {
+            checksum256    pubkey_hash;
+            checksum256    digest;  // hash of purchase agreement
+            uint32_t       cfd_idx; // context free data index
+
+            EOSLIB_SERIALIZE( keyproof, (pubkey_hash)(digest)(cfd_idx) )
          };
 
          ACTION( SystemAccount, nonce ) {
@@ -380,6 +416,45 @@ namespace eosiosystem {
 
          }
 
+      /**
+       * @pre setgen not previously applied
+       * @param gen the map of pubkey to balance of genesis
+       */
+         static void on( const setgen& gen ) {
+            require_auth( system_account );
+/*
+            genesis_balance_index_type genesis_balances( system_account, system_account );
+            eosio_assert( genesis_balances.begin() != genesis_balances.end(), "setgen already applied." );
+
+            for( const auto& gb : gen.genesis_balances ) {
+               genesis_balances.emplace( system_account, [&]( auto& v ) {
+                  v.pubkey_hash = gb.first;
+                  v.balance = gb.second;
+               });
+            }
+            */
+         }
+
+         static void on( const claimgen& cg ) {
+
+         }
+
+         /**
+          * Context free action.
+          * Verifies associated context free data signature matches provided hashed public key.
+          * @param kp
+          */
+         static void on( const keyproof& kp ) {
+            signature sig;
+            int size = get_context_free_data( kp.cfd_idx, reinterpret_cast<char*>(&sig), sizeof(sig) );
+            eosio_assert( size == sizeof(sig), "keyproof associated context free signature data wrong size" );
+
+            public_key pk;
+            recover_key( &kp.digest, reinterpret_cast<const char*>(&sig), sizeof(sig), reinterpret_cast<char*>(&pk), sizeof(pk) );
+
+            assert_sha256(reinterpret_cast<char*>(&pk), sizeof(pk), &kp.pubkey_hash );
+         }
+
          static void on( const nonce& ) {
          }
 
@@ -389,6 +464,7 @@ namespace eosiosystem {
                                  regproducer, regproxy,
                                  delegatebw, undelegatebw,
                                  regproducer, voteproducer, stakevote,
+                                 setgen, claimgen, keyproof,
                                  nonce>( code, act) ) {
                if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                   eosio::print("Unexpected action: ", eosio::name(act), "\n");

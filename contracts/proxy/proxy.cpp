@@ -92,15 +92,15 @@ extern "C" {
           if (action == N(onerror)) {
              apply_onerror(deferred_transaction::from_current_action());
           } if( action == N(transfer) ) {
-             apply_transfer(code, unpack_action<eosiosystem::contract<N(eosio.system)>::currency::transfer_memo>());
+             apply_transfer(code, unpack_action_data<eosiosystem::contract<N(eosio.system)>::currency::transfer_memo>());
           }
        } else if ( code == N(currency) ) {
           if( action == N(transfer) ) {
-             apply_transfer(code, unpack_action<currency::contract::transfer_memo>());
+             apply_transfer(code, unpack_action_data<currency::contract::transfer_memo>());
           }
        } else if (code == current_receiver() ) {
           if ( action == N(setowner)) {
-             apply_setowner(current_action<set_owner>());
+             apply_setowner(current_action_data<set_owner>());
           }
        }
     }

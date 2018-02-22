@@ -53,7 +53,7 @@ namespace eosio {
          time         delay_until;
 
          static deferred_transaction from_current_action() {
-            return unpack_action<deferred_transaction>();
+            return unpack_action_data<deferred_transaction>();
          }
 
          EOSLIB_SERIALIZE_DERIVED( deferred_transaction, transaction, (sender_id)(sender)(delay_until) )

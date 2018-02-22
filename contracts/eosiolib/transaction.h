@@ -92,10 +92,20 @@ extern "C" {
    time expiration();
 
    /**
+    * Retrieve the indicated action from the active transaction.
+    * @param type - 0 for context free action, 1 for action
+    * @param index - the index of the requested action
+    * @param buff - output buff for the action
+    * @param size - amount of buff read, pass 0 to have size returned
+    * @return the size of the action
+    */
+   int get_action( uint32_t type, uint32_t index, char* buff, size_t size );
+
+   /**
     * Retrieve the signed_transaction.context_free_data[index].
     * @param index - the index of the context_free_data entry to retrieve
-    * @param buff - output buff of the context_feee_data entry
-    * @param size - amount of context_free_data[index] to retrieve
+    * @param buff - output buff of the context_free_data entry
+    * @param size - amount of context_free_data[index] to retrieve into buff
     * @return signed_transaction.context_free_data[index].size() or -1 if index not valid
     */
    int get_context_free_data( uint32_t index, char* buff, size_t size );

@@ -103,7 +103,7 @@ void test_transaction::send_action_large() {
  */
 void test_transaction::send_action_recurse() {
    char buffer[1024];
-   read_action(buffer, 1024);
+   read_action_data(buffer, 1024);
 
    test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "send_action_recurse")> test_action;
    copy_data(buffer, 1024, test_action.data); 
@@ -125,13 +125,13 @@ void test_transaction::send_action_inline_fail() {
 
 void test_transaction::test_tapos_block_prefix() {
    int tbp;
-   read_action( (char*)&tbp, sizeof(int) );
+   read_action_data( (char*)&tbp, sizeof(int) );
    eosio_assert( tbp == tapos_block_prefix(), "tapos_block_prefix does not match" );
 }
 
 void test_transaction::test_tapos_block_num() {
    int tbn;
-   read_action( (char*)&tbn, sizeof(int) );
+   read_action_data( (char*)&tbn, sizeof(int) );
    eosio_assert( tbn == tapos_block_num(), "tapos_block_num does not match" );
 }
 
@@ -147,7 +147,7 @@ void test_transaction::test_read_transaction() {
 
 void test_transaction::test_transaction_size() {
    uint32_t trans_size = 0;
-   read_action( (char*)&trans_size, sizeof(uint32_t) );
+   read_action_data( (char*)&trans_size, sizeof(uint32_t) );
    eosio_assert( trans_size == transaction_size(), "transaction size does not match" );
 }
 
@@ -164,7 +164,7 @@ void test_transaction::send_transaction() {
 
 void test_transaction::send_action_sender() {
    account_name cur_send;
-   read_action( &cur_send, sizeof(account_name) );
+   read_action_data( &cur_send, sizeof(account_name) );
    test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "test_current_sender")> test_action;
    copy_data((char*)&cur_send, sizeof(account_name), test_action.data);
 
