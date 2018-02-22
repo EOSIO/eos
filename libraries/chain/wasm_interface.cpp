@@ -1036,7 +1036,7 @@ class memory_api : public context_aware_api {
             throw eosio::chain::page_memory_error();
          // TODO: omitted checktime function from previous version of sbrk, may need to be put back in at some point
          constexpr uint32_t NBPPL2  = IR::numBytesPerPageLog2;
-         constexpr uint32_t MAX_MEM = 1024 * 1024;
+         constexpr uint32_t MAX_MEM = wasm_constraints::maximum_linear_memory;
 
          MemoryInstance*  default_mem    = Runtime::getDefaultMemory(code.instance);
          if(!default_mem)

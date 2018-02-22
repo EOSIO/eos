@@ -103,7 +103,7 @@ static const char biggest_memory_wast[] = R"=====(
  (import "env" "sbrk" (func $sbrk (param i32) (result i32)))
  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
  (table 0 anyfunc)
- (memory $0 16)
+ (memory $0 ${MAX_WASM_PAGES})
  (export "memory" (memory $0))
  (export "apply" (func $apply))
  
@@ -124,7 +124,7 @@ static const char biggest_memory_wast[] = R"=====(
 static const char too_big_memory_wast[] = R"=====(
 (module
  (table 0 anyfunc)
- (memory $0 17)
+ (memory $0 ${MAX_WASM_PAGES_PLUS_ONE})
  (export "memory" (memory $0))
  (export "apply" (func $apply))
  (func $apply (param $0 i64) (param $1 i64))

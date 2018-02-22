@@ -338,14 +338,17 @@ BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-//Make sure we can create a wasm with 16 pages, but not grow it any
+//Make sure we can create a wasm with maximum pages, but not grow it any
 BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
    produce_blocks(2);
 
    create_accounts( {N(bigmem)} );
    produce_block();
 
-   set_code(N(bigmem), biggest_memory_wast);  //should pass, 16 pages is fine
+   string biggest_memory_wast_f = fc::format_string(biggest_memory_wast, fc::mutable_variant_object(
+                                          "MAX_WASM_PAGES", eosio::chain::wasm_constraints::maximum_linear_memory/64*1024));
+
+   set_code(N(bigmem), biggest_memory_wast_f);  //should pass, 16 pages is fine
    produce_blocks(1);
 
    signed_transaction trx;
@@ -362,8 +365,9 @@ BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
 
    produce_blocks(1);
 
-   //should fail, 17 blocks is no no
-   BOOST_CHECK_THROW(set_code(N(bigmem), too_big_memory_wast), eosio::chain::wasm_execution_error);
+   string too_big_memory_wast_f = fc::format_string(biggest_memory_wast, fc::mutable_variant_object(
+                                          "MAX_WASM_PAGES_PLUS_ONE", eosio::chain::wasm_constraints::maximum_linear_memory/64*1024+1));
+   BOOST_CHECK_THROW(set_code(N(bigmem), too_big_memory_wast_f), eosio::chain::wasm_execution_error);
 
 } FC_LOG_AND_RETHROW()
 
