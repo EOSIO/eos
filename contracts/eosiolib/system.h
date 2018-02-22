@@ -10,14 +10,14 @@ extern "C" {
    /**
     * @defgroup systemapi System API
     * @ingroup contractdev
-    * @brief Define API for interating with system level intrinsics
+    * @brief Define API for interacting with system level intrinsics
     *
     */
 
    /**
     * @defgroup systemcapi System C API
     * @ingroup systemapi
-    * @brief Define API for interating with system level intrinsics
+    * @brief Define API for interacting with system level intrinsics
     *
     * @{
     */
