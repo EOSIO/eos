@@ -600,14 +600,14 @@ class action_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      int read_action(array_ptr<char> memory, size_t size) {
+      int read_action_data(array_ptr<char> memory, size_t size) {
          FC_ASSERT(size > 0);
          int minlen = std::min<size_t>(context.act.data.size(), size);
          memcpy((void *)memory, context.act.data.data(), minlen);
          return minlen;
       }
 
-      int action_size() {
+      int action_data_size() {
          return context.act.data.size();
       }
 
@@ -1538,8 +1538,8 @@ REGISTER_INTRINSICS(system_api,
 );
 
 REGISTER_INTRINSICS(action_api,
-   (read_action,            int(int, int)  )
-   (action_size,            int()          )
+   (read_action_data,       int(int, int)  )
+   (action_data_size,       int()          )
    (current_receiver,   int64_t()          )
    (publication_time,   int32_t()          )
    (current_sender,     int64_t()          )

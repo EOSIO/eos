@@ -3,6 +3,7 @@
  * @copyright defined in eos/LICENSE.txt
  */
 #include <eosiolib/action.hpp>
+#include <eosiolib/transaction.hpp>
 
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/print.hpp>
@@ -16,18 +17,18 @@ void test_action::read_action_normal() {
 
    eosio_assert( current_receiver() == N(testapi),  "current_receiver() == N(testapi)" );
 
-   eosio_assert(action_size() == sizeof(dummy_action), "action_size() == sizeof(dummy_action)");
+   eosio_assert(action_data_size() == sizeof(dummy_action), "action_size() == sizeof(dummy_action)");
 
-   total = read_action(buffer, 30);
+   total = read_action_data(buffer, 30);
    eosio_assert(total == sizeof(dummy_action) , "read_action(30)" );
 
-   total = read_action(buffer, 100);
+   total = read_action_data(buffer, 100);
    eosio_assert(total == sizeof(dummy_action) , "read_action(100)" );
 
-   total = read_action(buffer, 5);
+   total = read_action_data(buffer, 5);
    eosio_assert(total == 5 , "read_action(5)" );
 
-   total = read_action(buffer, sizeof(dummy_action) );
+   total = read_action_data(buffer, sizeof(dummy_action) );
    eosio_assert(total == sizeof(dummy_action), "read_action(sizeof(dummy_action))" );
 
    dummy_action *dummy13 = reinterpret_cast<dummy_action *>(buffer);
@@ -35,14 +36,38 @@ void test_action::read_action_normal() {
    eosio_assert(dummy13->a == DUMMY_ACTION_DEFAULT_A, "dummy13->a == DUMMY_ACTION_DEFAULT_A");
    eosio_assert(dummy13->b == DUMMY_ACTION_DEFAULT_B, "dummy13->b == DUMMY_ACTION_DEFAULT_B");
    eosio_assert(dummy13->c == DUMMY_ACTION_DEFAULT_C, "dummy13->c == DUMMY_ACTION_DEFAULT_C");
+/*todo
+   // get_action
+   total = get_action(1, 0, buffer, 0);
+   printi(total);
+   prints("\n");
+   printi(sizeof(dummy_action));
+
+   eosio_assert( total == sizeof(dummy_action) , "get_action(0)" );
+
+   total = get_action(1, 0, buffer, 50);
+   eosio_assert( total == sizeof(dummy_action) , "get_action(50)" );
+
+   total = get_action(1, 0, buffer, 100);
+   eosio_assert( total == sizeof(dummy_action) , "get_action(100)" );
+
+   total = get_action(1, 0, buffer, sizeof(dummy_action) );
+   eosio_assert(total == sizeof(dummy_action), "get_action(sizeof(dummy_action))" );
+
+   dummy13 = reinterpret_cast<dummy_action*>(buffer);
+
+   eosio_assert(dummy13->a == DUMMY_ACTION_DEFAULT_A, "dummy13->a == DUMMY_ACTION_DEFAULT_A");
+   eosio_assert(dummy13->b == DUMMY_ACTION_DEFAULT_B, "dummy13->b == DUMMY_ACTION_DEFAULT_B");
+   eosio_assert(dummy13->c == DUMMY_ACTION_DEFAULT_C, "dummy13->c == DUMMY_ACTION_DEFAULT_C");
+    */
 }
 
 void test_action::read_action_to_0() {
-   read_action((void *)0, action_size());
+   read_action_data((void *)0, action_size());
 }
 
 void test_action::read_action_to_64k() {
-   read_action( (void *)((1<<16)-2), action_size());
+   read_action_data( (void *)((1<<16)-2), action_size());
 }
 
 void test_action::require_notice() {
@@ -78,26 +103,26 @@ void test_action::test_abort() {
 
 void test_action::test_publication_time() {
    uint32_t pub_time = 0;
-   read_action(&pub_time, sizeof(uint32_t));
+   read_action_data(&pub_time, sizeof(uint32_t));
    eosio_assert( pub_time == publication_time(), "pub_time == publication_time()" );
 }
 
 void test_action::test_current_receiver() {
    account_name cur_rec;
-   read_action(&cur_rec, sizeof(account_name));
+   read_action_data(&cur_rec, sizeof(account_name));
    
    eosio_assert( current_receiver() == cur_rec, "the current receiver does not match" );
 }
 
 void test_action::test_current_sender() {
    account_name cur_send;
-   read_action(&cur_send, sizeof(account_name));
+   read_action_data(&cur_send, sizeof(account_name));
    eosio_assert( current_sender() == cur_send, "the current sender does not match" );
 }
 
 void test_action::now() {
    uint32_t tmp = 0;
-   uint32_t total = read_action(&tmp, sizeof(uint32_t));
+   uint32_t total = read_action_data(&tmp, sizeof(uint32_t));
    eosio_assert( total == sizeof(uint32_t), "total == sizeof(uint32_t)");
    eosio_assert( tmp == ::now(), "tmp == now()" );
 }

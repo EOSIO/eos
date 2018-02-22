@@ -33,21 +33,21 @@ namespace eosio {
     *    unsigned long long b; //8
     *    int  c; //4
     *  };
-    *  dummy_action msg = current_action<dummy_action>();
+    *  dummy_action msg = current_action_data<dummy_action>();
     *  @endcode
     */
    template<typename T>
-   T current_action() {
+   T current_action_data() {
       T value;
-      auto read = read_action( &value, sizeof(value) );
+      auto read = read_action_data( &value, sizeof(value) );
       eosio_assert( read >= sizeof(value), "action shorter than expected" );
       return value;
    }
 
    template<typename T>
-   T unpack_action() {
-      char buffer[action_size()];
-      read_action( buffer, sizeof(buffer) );
+   T unpack_action_data() {
+      char buffer[action_data_size()];
+      read_action_data( buffer, sizeof(buffer) );
       return unpack<T>( buffer, sizeof(buffer) );
    }
 
