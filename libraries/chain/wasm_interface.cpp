@@ -498,7 +498,7 @@ class crypto_api : public context_aware_api {
        * This method can be optimized out during replay as it has
        * no possible side effects other than "passing".
        */
-      void assert_recover_key( fc::sha256& digest,
+      void assert_recover_key( const fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
          fc::crypto::signature s;
@@ -513,7 +513,7 @@ class crypto_api : public context_aware_api {
          FC_ASSERT( check == p, "Error expected key different than recovered key" );
       }
 
-      int recover_key( fc::sha256& digest,
+      int recover_key( const fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
          fc::crypto::signature s;
