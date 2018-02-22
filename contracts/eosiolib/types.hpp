@@ -4,6 +4,8 @@
  */
 #pragma once
 #include <eosiolib/types.h>
+#include <functional>
+#include <tuple>
 
 namespace  eosio {
 
@@ -90,3 +92,27 @@ namespace  eosio {
    /// @}
 
 } // namespace eos
+
+namespace std {
+   /**
+    * @brief provide less for uint256
+    */
+   template<>
+   struct less<uint256> : binary_function<uint256, uint256, bool> {
+      bool operator()( const uint256& lhs, const uint256& rhs ) const {
+         return std::tie(lhs.words[0], lhs.words[1], lhs.words[2], lhs.words[3]) <
+                std::tie(rhs.words[0], rhs.words[1], rhs.words[2], rhs.words[3]);
+      }
+   };
+
+   /**
+    * @brief provide less for checksum256
+    */
+   template<>
+   struct less<checksum256> : binary_function<checksum256, checksum256, bool> {
+      bool operator()( const checksum256& lhs, const checksum256& rhs ) const {
+         return memcmp(&lhs, &rhs, sizeof(lhs)) < 0;
+      }
+   };
+
+} // namespace std
