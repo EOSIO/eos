@@ -34,8 +34,8 @@ namespace eosiosystem {
          static void apply( account_name code, action_name act ) {
             if( !eosio::dispatch<contract, typename delegate_bandwith<SystemAccount>::delegatebw,
                                  typename delegate_bandwith<SystemAccount>::undelegatebw,
-                                 typename producers_election<SystemAccount>::regproxy,
-                                 typename producers_election<SystemAccount>::regproducer,
+                                 typename producers_election<SystemAccount>::register_proxy,
+                                 typename producers_election<SystemAccount>::register_producer,
                                  typename producers_election<SystemAccount>::voteproducer,
                                  typename producers_election<SystemAccount>::stakevote,
                                  nonce>( code, act) ) {

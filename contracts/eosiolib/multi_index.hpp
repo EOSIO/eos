@@ -20,6 +20,7 @@ namespace eosio {
 
 namespace bmi = boost::multi_index;
 using boost::multi_index::const_mem_fun;
+using boost::multi_index::member;
 
 template<typename T>
 struct secondary_iterator;
