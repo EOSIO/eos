@@ -64,8 +64,6 @@ struct special_instruction_count_visitor : public opcode_instruction_count_visit
       if (instructionCounts.empty())
          FC_THROW_EXCEPTION(wasm_execution_error, "Smart Contract encountered end instruction with nothing to end");
 
-#warning TODO: need to determine what the trailing instructions are
-
       uint32_t residule_count = 0;
       {
          auto& instructionCount = instructionCounts.back();
@@ -90,7 +88,6 @@ struct special_instruction_count_visitor : public opcode_instruction_count_visit
 };
 
 void wasm_esio_instruction_count::inject_instruction_count(const IR::Module& module) {
-   //wlog("inject_instruction_count start");
    for(const FunctionDef& fd : module.functions.defs) {
       special_instruction_count_visitor visitor;
       OperatorDecoderStream decoder(fd.code);
