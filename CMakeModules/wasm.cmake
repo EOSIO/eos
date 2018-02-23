@@ -1,9 +1,8 @@
 find_package(Wasm REQUIRED)
 find_package(Binaryen REQUIRED)
 
-if(WASM_FOUND AND BINARYEN_FOUND)
-  set(WASM_TOOLCHAIN_FOUND TRUE)
-endif()
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(WASM_TOOLCHAIN DEFAULT_MSG WASM_FOUND BINARYEN_FOUND)
 
 macro(compile_wast)
   #read arguments include ones that we don't since arguments get forwared "as is" and we don't want to threat unknown argument names as values
