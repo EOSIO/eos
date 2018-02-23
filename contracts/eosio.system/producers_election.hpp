@@ -11,6 +11,7 @@
 #include <eosiolib/datastream.hpp>
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/multi_index.hpp>
+#include <eosiolib/privileged.h>
 #include <eosiolib/transaction.hpp>
 
 #include <map>
@@ -33,7 +34,8 @@ namespace eosiosystem {
          typedef typename currency::token_type system_token_type;
 
          static constexpr uint32_t max_unstake_requests = 10;
-         static constexpr uint32_t voting_stake_freez_time = 180*24*3600;
+         static constexpr uint32_t unstake_pay_period = 7*24*3600; // one per week
+         static constexpr uint32_t unstake_payments = 26; // during 26 weeks
 
          struct producer_preferences {
             uint32_t max_blk_size;
@@ -100,12 +102,13 @@ namespace eosiosystem {
          struct unstake_request {
             uint64_t id;
             account_name account;
-            system_token_type amount;
-            time refund_time;
+            system_token_type current_amount;
+            system_token_type weekly_refund_amount;
+            time next_refund_time;
 
             uint64_t primary_key() const { return id; }
-            uint64_t rt() const { return refund_time; }
-            EOSLIB_SERIALIZE( unstake_request, (id)(account)(amount)(refund_time) )
+            uint64_t rt() const { return next_refund_time; }
+            EOSLIB_SERIALIZE( unstake_request, (id)(account)(current_amount)(weekly_refund_amount)(next_refund_time) )
          };
 
          typedef eosio::multi_index< N(unstakereqs), unstake_request,
@@ -226,7 +229,50 @@ namespace eosiosystem {
             }
          }
 
-         static void on( const stake_vote& sv ) {
+         static void update_elected_producers() {
+            producer_info_index_type producers_tbl( SystemAccount, SystemAccount );
+            auto& idx = producers_tbl.template get<>( N(prototalvote) );
+
+            //use twice bigger integer types for aggregates
+            uint64_t max_blk_size =0;
+            uint64_t target_blk_size = 0;
+            uint128_t max_storage_size = 0;
+            uint128_t rescource_window_size= 0;
+            uint64_t max_blk_cpu = 0;
+            uint64_t target_blk_cpu = 0;
+            uint32_t inflation_rate = 0;
+            uint64_t max_trx_lifetime = 0;
+            uint32_t max_transaction_recursion = 0;
+
+            std::vector<account_name> elected(21);
+            auto it = std::prev( idx.end() );
+            for (auto out = elected.begin(); out != elected.end(); ++out) {
+               *out = it->owner;
+
+               max_blk_size += it->prefs.max_blk_size;
+               target_blk_size += it->prefs.target_blk_size;
+               max_storage_size += it->prefs.max_storage_size;
+               rescource_window_size += it->prefs.rescource_window_size;
+               max_blk_cpu += it->prefs.max_blk_cpu;
+               target_blk_cpu += it->prefs.target_blk_cpu;
+               inflation_rate += it->prefs.inflation_rate;
+               max_trx_lifetime += it->prefs.max_trx_lifetime;
+               max_transaction_recursion += it->prefs.max_transaction_recursion;
+
+               if (it == idx.begin()) {
+                  break;
+               }
+               --it;
+            }
+            set_active_producers( elected.data(), elected.size() );
+            //set_max_blk_size(max_blk_size);
+         }
+
+         static void process_unstake_requests() {
+            
+         }
+
+      static void on( const stake_vote& sv ) {
             eosio_assert( sv.amount.quantity > 0, "must stake some tokens" );
             require_auth( sv.voter );
 
@@ -261,8 +307,10 @@ namespace eosiosystem {
             requests.emplace( usv.voter, [&](unstake_request& r) {
                   r.id = pk;
                   r.account = usv.voter;
-                  r.amount = usv.amount;
-                  r.refund_time = now() + voting_stake_freez_time;
+                  r.current_amount = usv.amount;
+                  //round up to guarantee that there will be no unpaid balance after 26 weeks, and we are able refund amount < unstake_payments
+                  r.weekly_refund_amount = system_token_type( usv.amount.quantity/unstake_payments + usv.amount.quantity%unstake_payments );
+                  r.next_refund_time = now() + unstake_pay_period;
                });
 
             account_votes_index_type avotes( SystemAccount, SystemAccount );
@@ -292,35 +340,27 @@ namespace eosiosystem {
                }
             }
 
-            if ( usv.amount <= acv->staked ) {
-               //only update, never delete, because we need to keep is_proxy flag and proxied_amount
-               avotes.update( *acv, 0, [&]( auto& av ) {
-                     av.last_update = now();
-                     av.staked -= usv.amount;
-                  });
-            }
+            //only update, never delete, because we need to keep is_proxy flag and proxied_amount
+            avotes.update( *acv, 0, [&]( auto& av ) {
+                  av.last_update = now();
+                  av.staked -= usv.amount;
+               });
          }
 
-         ACTION( SystemAccount, decrease_unstake_vote_request ) {
+         ACTION( SystemAccount, cancel_unstake_vote_request ) {
             uint64_t request_id;
-            system_token_type amount;
 
-            EOSLIB_SERIALIZE( decrease_unstake_vote_request, (request_id) )
+            EOSLIB_SERIALIZE( cancel_unstake_vote_request, (request_id) )
          };
 
-         static void on( const decrease_unstake_vote_request& decrease_req ) {
+         static void on( const cancel_unstake_vote_request& cancel_req ) {
             unstake_requests_table requests( SystemAccount, SystemAccount );
-            auto ptr = requests.find( decrease_req.request_id );
+            auto ptr = requests.find( cancel_req.request_id );
             eosio_assert( bool(ptr), "unstake vote request not found" );
 
             require_auth( ptr->account );
-            eosio_assert( ptr->amount <= decrease_req.amount, "unstake request amount is less than amount of requested decrease" );
-            increase_voting_power( ptr->account, ptr->amount );
-            if ( ptr->amount == decrease_req.amount ) {
-               requests.remove( *ptr );
-            } else {
-               requests.update( *ptr, 0, [&](auto& r) { r.amount -= decrease_req.amount; } );
-            }
+            increase_voting_power( ptr->account, ptr->current_amount );
+            requests.remove( *ptr );
          }
 
          ACTION( SystemAccount, vote_producer ) {
@@ -470,6 +510,8 @@ namespace eosiosystem {
          struct block {};
 
          static void on( const block& ) {
+            update_elected_producers();
+            process_unstake_requests();
          }
    };
 }
