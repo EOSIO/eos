@@ -35,10 +35,12 @@ namespace eosiosystem {
             if( !eosio::dispatch<contract, typename delegate_bandwith<SystemAccount>::delegatebw,
                                  typename delegate_bandwith<SystemAccount>::undelegatebw,
                                  typename producers_election<SystemAccount>::register_proxy,
+                                 typename producers_election<SystemAccount>::unregister_proxy,
                                  typename producers_election<SystemAccount>::register_producer,
                                  typename producers_election<SystemAccount>::vote_producer,
                                  typename producers_election<SystemAccount>::stake_vote,
                                  typename producers_election<SystemAccount>::unstake_vote,
+                                 typename producers_election<SystemAccount>::decrease_unstake_vote_request,
                                  nonce>( code, act) ) {
                if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                   eosio::print("Unexpected action: ", eosio::name(act), "\n");
