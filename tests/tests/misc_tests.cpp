@@ -57,27 +57,27 @@ BOOST_AUTO_TEST_CASE(median_properties_test)
    try
    {
       vector<chain_config> votes{
-          {asset(5000 ).amount, 512 , 1024 , 256, 512 , 512 , 1024 , 1000, 4096, 512 , 6, 1000 , 3, 4096, 65536},
-          {asset(3333 ).amount, 100 , 10000, 50 , 5000, 100 , 10000, 500 , 4096, 100 , 6, 3000 , 2, 4096, 65536},
-          {asset(5432 ).amount, 1500, 2048 , 750, 1024, 1500, 2048 , 300 , 1000, 1500, 6, 5000 , 9, 4096, 65536},
-          {asset(90000).amount, 25  , 100  , 12 , 50  , 25  , 100  , 1200, 1024, 25  , 6, 10000, 4, 4096, 65536},
-          {asset(10   ).amount, 1000, 1024 , 500, 512 , 10  , 1024 , 1500, 100 , 1000, 6, 4000 , 1, 4096, 65536}};
+          {512 , 1024 , 256, 512 , 512 , 1024 , 1000, 4096, 512 , 6, 1000 , 3, 4096, 65536},
+          {100 , 10000, 50 , 5000, 100 , 10000, 500 , 4096, 100 , 6, 3000 , 2, 4096, 65536},
+          {1500, 2048 , 750, 1024, 1500, 2048 , 300 , 1000, 1500, 6, 5000 , 9, 4096, 65536},
+          {25  , 100  , 12 , 50  , 25  , 100  , 1200, 1024, 25  , 6, 10000, 4, 4096, 65536},
+          {1000, 1024 , 500, 512 , 10  , 1024 , 1500, 100 , 1000, 6, 4000 , 1, 4096, 65536}};
 
       chain_config medians{
-          asset(5000).amount, 512, 1024, 256, 512, 100, 1024, 1000, 1024, 512, 6, 4000, 3, 4096, 65536};
+          512, 1024, 256, 512, 100, 1024, 1000, 1024, 512, 6, 4000, 3, 4096, 65536};
 
       BOOST_TEST(chain_config::get_median_values(votes) == medians);
 
-      votes.emplace_back(chain_config{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-      votes.emplace_back(chain_config{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-      medians = chain_config{asset(3333).amount, 100, 1024, 50, 512, 25, 1024, 500, 1000, 100, 6, 3000, 2, 4096, 65536};
+      votes.emplace_back(chain_config{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+      votes.emplace_back(chain_config{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+      medians = chain_config{100, 1024, 50, 512, 25, 1024, 500, 1000, 100, 6, 3000, 2, 4096, 65536};
 
       BOOST_TEST(chain_config::get_median_values(votes) == medians);
       BOOST_TEST(chain_config::get_median_values({medians}) == medians);
 
       votes.erase(votes.begin() + 2);
       votes.erase(votes.end() - 1);
-      medians = chain_config{asset(3333).amount, 100, 1024, 50, 512, 25, 1024, 1000, 1024, 100, 6, 3000, 2, 4096, 65536};
+      medians = chain_config{100, 1024, 50, 512, 25, 1024, 1000, 1024, 100, 6, 3000, 2, 4096, 65536};
       BOOST_TEST(chain_config::get_median_values(votes) == medians);
    }
    FC_LOG_AND_RETHROW()

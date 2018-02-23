@@ -40,8 +40,7 @@ struct chain_config {
 
    template<typename Stream>
    friend Stream& operator << ( Stream& out, const chain_config& c ) {
-      return out << "Producer Pay: " << c.producer_pay << ", " 
-                 << "Target Block Size: " << c.target_block_size << ", " 
+      return out << "Target Block Size: " << c.target_block_size << ", "
                  << "Max Block Size: " << c.max_block_size << ", " 
                  << "Target Block Acts Per Scope: " << c.target_block_acts_per_scope << ", " 
                  << "Max Block Acts Per Scope: " << c.max_block_acts_per_scope << ", " 
