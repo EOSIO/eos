@@ -48,10 +48,11 @@
 	if [ $ARCH == "Linux" ]; then
 		
 		if [ ! -e /etc/os-release ]; then
-			printf "EOSIO currently supports Ubuntu, Red Hat & Fedora Linux only.\n"
+			printf "EOSIO currently supports Amazon, Fedora & Ubuntu Linux only.\n"
 			printf "Please install on the latest version of one of these Linux distributions.\n"
-			printf "https://www.ubuntu.com/\n"
+			printf "https://aws.amazon.com/amazon-linux-ami/\n"
 			printf "https://start.fedoraproject.org/en/\n"
+			printf "https://www.ubuntu.com/\n"
 			printf "Exiting now.\n"
 			exit 1
 		fi
@@ -59,21 +60,28 @@
 		OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
 	
 		case $OS_NAME in
-			"Ubuntu")
-				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
-				CXX_COMPILER=clang++-4.0
-				C_COMPILER=clang-4.0
+			"Amazon Linux AMI")
+				FILE=${WORK_DIR}/scripts/eosio_build_amazon.sh
+				CMAKE=${HOME}/opt/cmake/bin/cmake
+				CXX_COMPILER=g++
+				C_COMPILER=gcc
+			;;
+			"CentOS Linux")
+				FILE=${WORK_DIR}/scripts/eosio_build_centos.sh
+				export CMAKE=${HOME}/opt/cmake/bin/cmake
+				CXX_COMPILER=g++
+				C_COMPILER=gcc
+				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 			;;
 			"Fedora")
 				FILE=${WORK_DIR}/scripts/eosio_build_fedora.sh
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 			;;
-			"Amazon Linux AMI")
-				FILE=${WORK_DIR}/scripts/eosio_build_amazon.sh
-				CMAKE=${HOME}/opt/cmake/bin/cmake
-				CXX_COMPILER=g++
-				C_COMPILER=gcc
+			"Ubuntu")
+				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
+				CXX_COMPILER=clang++-4.0
+				C_COMPILER=clang-4.0
 			;;
 			*)
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
