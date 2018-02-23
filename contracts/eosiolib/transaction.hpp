@@ -8,6 +8,7 @@
 #include <eosiolib/print.hpp>
 #include <eosiolib/types.hpp>
 #include <eosiolib/serialize.hpp>
+#include <vector>
 
 namespace eosio {
 
@@ -20,7 +21,6 @@ namespace eosio {
     *
     * @{ 
     */
-
 
    class transaction {
    public:
@@ -59,7 +59,23 @@ namespace eosio {
          EOSLIB_SERIALIZE_DERIVED( deferred_transaction, transaction, (sender_id)(sender)(delay_until) )
    };
 
- ///@} transactioncpp api
+   /**
+    * Retrieve the indicated action from the active transaction.
+    * @param type - 0 for context free action, 1 for action
+    * @param index - the index of the requested action
+    * @return the indicated action
+    */
+   action get_action( uint32_t type, uint32_t index ) {
+      std::vector<char> buf;
+      int size = ::get_action(type, index, nullptr, 0);
+      eosio_assert( size > 0, "get_action size failed" );
+      buf.resize( size );
+      size = ::get_action(type, index, &buf[0], size );
+      eosio_assert( size > 0, "get_action failed" );
+      return eosio::unpack<eosio::action>(&buf[0], size);
+   }
+
+   ///@} transactioncpp api
 
 } // namespace eos
 

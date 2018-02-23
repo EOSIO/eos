@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
+#include <eosiolib/serialize.hpp>
 
 typedef unsigned long long u64;
 typedef unsigned int u32;
@@ -27,9 +28,18 @@ static constexpr u64 WASM_TEST_ACTION(const char* cls, const char* method)
 
 #pragma pack(push, 1)
 struct dummy_action {
+   static uint64_t get_name() {
+      return N(dummy_action);
+   }
+   static uint64_t get_account() {
+      return N(testapi);
+   }
+
   char a; //1
-  unsigned long long b; //8
-  int  c; //4
+  uint64_t b; //8
+  int32_t  c; //4
+
+  EOSLIB_SERIALIZE( dummy_action, (a)(b)(c) )
 };
 
 struct u128_action {

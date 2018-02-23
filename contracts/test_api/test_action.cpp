@@ -36,30 +36,21 @@ void test_action::read_action_normal() {
    eosio_assert(dummy13->a == DUMMY_ACTION_DEFAULT_A, "dummy13->a == DUMMY_ACTION_DEFAULT_A");
    eosio_assert(dummy13->b == DUMMY_ACTION_DEFAULT_B, "dummy13->b == DUMMY_ACTION_DEFAULT_B");
    eosio_assert(dummy13->c == DUMMY_ACTION_DEFAULT_C, "dummy13->c == DUMMY_ACTION_DEFAULT_C");
-/*todo
+
    // get_action
-   total = get_action(1, 0, buffer, 0);
-   printi(total);
-   prints("\n");
-   printi(sizeof(dummy_action));
+   total = get_action( 1, 0, buffer, 0 );
+   total = get_action( 1, 0, buffer, total );
+   eosio_assert( total > 0, "get_action failed" );
+   eosio::action act = eosio::get_action( 1, 0 );
+   eosio_assert( eosio::pack_size(act) == total, "pack_size does not match get_action size" );
+   eosio_assert( act.account == N(testapi), "expected testapi account" );
 
-   eosio_assert( total == sizeof(dummy_action) , "get_action(0)" );
+   dummy_action dum13 = act.data_as<dummy_action>();
 
-   total = get_action(1, 0, buffer, 50);
-   eosio_assert( total == sizeof(dummy_action) , "get_action(50)" );
-
-   total = get_action(1, 0, buffer, 100);
-   eosio_assert( total == sizeof(dummy_action) , "get_action(100)" );
-
-   total = get_action(1, 0, buffer, sizeof(dummy_action) );
-   eosio_assert(total == sizeof(dummy_action), "get_action(sizeof(dummy_action))" );
-
-   dummy13 = reinterpret_cast<dummy_action*>(buffer);
-
-   eosio_assert(dummy13->a == DUMMY_ACTION_DEFAULT_A, "dummy13->a == DUMMY_ACTION_DEFAULT_A");
-   eosio_assert(dummy13->b == DUMMY_ACTION_DEFAULT_B, "dummy13->b == DUMMY_ACTION_DEFAULT_B");
-   eosio_assert(dummy13->c == DUMMY_ACTION_DEFAULT_C, "dummy13->c == DUMMY_ACTION_DEFAULT_C");
-    */
+   eosio_assert( dum13.a == DUMMY_ACTION_DEFAULT_A, "dum13.a == DUMMY_ACTION_DEFAULT_A" );
+   eosio_assert( dum13.b == DUMMY_ACTION_DEFAULT_B, "dum13.b == DUMMY_ACTION_DEFAULT_B" );
+   eosio_assert( dum13.c == DUMMY_ACTION_DEFAULT_C, "dum13.c == DUMMY_ACTION_DEFAULT_C" );
+   
 }
 
 void test_action::read_action_to_0() {
