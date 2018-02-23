@@ -109,7 +109,6 @@ namespace eosio {
          data          = pack(value);
       }
 
-
       /**
        *  @tparam Action - a type derived from action_meta<Scope,Name>
        *  @param value - will be serialized via pack into data
@@ -128,6 +127,22 @@ namespace eosio {
          auto serialize = pack(*this);
          ::send_inline(serialize.data(), serialize.size());
       }
+
+      /**
+       * Retrieve the unpacked data as T
+       * @tparam T expected type of data
+       * @return the action data
+       */
+      template<typename T>
+      T data_as() {
+ //        eosio_assert( name == T::get_name(), "Invalid name" );
+ //        eosio_assert( account == T::get_account(), "Invalid account" );
+         eosio::print(data.size());
+         //return unpack<T>( &data[0], data.size() );
+         T t;
+         return t;
+      }
+
    };
 
    template<uint64_t Account, uint64_t Name>

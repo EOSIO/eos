@@ -95,7 +95,7 @@ extern "C" {
     * Retrieve the indicated action from the active transaction.
     * @param type - 0 for context free action, 1 for action
     * @param index - the index of the requested action
-    * @param buff - output buff for the action
+    * @param buff - output packed buff of the action
     * @param size - amount of buff read, pass 0 to have size returned
     * @return the size of the action
     */

@@ -4,7 +4,7 @@
  */
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/token.hpp>
-#include <eosiolib/transaction.h>
+#include <eosiolib/transaction.hpp>
 #include <eosiolib/crypto.h>
 #include <eosiolib/db.hpp>
 #include <eosiolib/reflect.hpp>
@@ -422,9 +422,9 @@ namespace eosiosystem {
        */
          static void on( const setgen& gen ) {
             require_auth( system_account );
-/*
+/* TODO - waiting on multi-index support for checksum256
             genesis_balance_index_type genesis_balances( system_account, system_account );
-            eosio_assert( genesis_balances.begin() != genesis_balances.end(), "setgen already applied." );
+            eosio_assert( genesis_balances.begin() == genesis_balances.end(), "setgen already applied." );
 
             for( const auto& gb : gen.genesis_balances ) {
                genesis_balances.emplace( system_account, [&]( auto& v ) {
@@ -432,11 +432,29 @@ namespace eosiosystem {
                   v.balance = gb.second;
                });
             }
-            */
+ */
          }
 
+         /**
+          * @pre in transaction with an associated keyproof context free action
+          * @param cg action to claim genesis balance for given account
+          */
          static void on( const claimgen& cg ) {
+            // verify associated keyproof context free action contains same pubkey_hash
+            eosio::action cfa = eosio::get_action ( 0, 0 );
+            keyproof kp = cfa.data_as<keyproof>();
+            eosio_assert( kp.pubkey_hash == cg.pubkey_hash, "claimgen pubkey_hash not equal to keyproof pubkey_hash" );
 
+//            genesis_balance_index_type genesis_balances( system_account, system_account );
+//            const genesis_balance* gb = genesis_balances.find(cg.pubkey_hash);
+            const genesis_balance* gb = nullptr;
+
+            eosio_assert( gb != nullptr, "unable to find genesis pubkey_hash" );
+
+            currency::inline_transfer( system_account, cg.name, gb->balance, "claimed genesis balance" );
+
+            // remove genesis balance from claimable table
+//            genesis_balances.remove(*gb);
          }
 
          /**
