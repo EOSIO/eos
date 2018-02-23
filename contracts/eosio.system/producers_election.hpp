@@ -14,7 +14,7 @@
 #include <eosiolib/privileged.h>
 #include <eosiolib/transaction.hpp>
 
-#include <map>
+#include <array>
 
 namespace eosiosystem {
    using eosio::indexed_by;
@@ -23,8 +23,6 @@ namespace eosiosystem {
    using eosio::bytes;
    using eosio::print;
    using eosio::transaction;
-   using std::map;
-   using std::pair;
 
    template<account_name SystemAccount>
    class producers_election {
@@ -61,11 +59,13 @@ namespace eosiosystem {
          struct producer_info {
             account_name      owner;
             uint64_t          padding = 0;
-            uint128_t         total_votes;
+            uint128_t         total_votes = 0;
             producer_preferences prefs;
+            eosio::bytes      packed_key; /// a packed public key object
 
             uint64_t    primary_key()const { return owner;       }
             uint128_t   by_votes()const    { return total_votes; }
+            bool active() const { return !packed_key.empty(); }
 
             EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(prefs) )
          };
@@ -143,11 +143,11 @@ namespace eosiosystem {
          static void on( const register_producer& reg ) {
             require_auth( reg.producer );
 
-            producer_info_index_type producers( SystemAccount, SystemAccount );
-            const auto* existing = producers.find( reg.producer );
+            producer_info_index_type producers_tbl( SystemAccount, SystemAccount );
+            const auto* existing = producers_tbl.find( reg.producer );
             eosio_assert( !existing, "producer already registered" );
 
-            producers.emplace( reg.producer, [&]( producer_info& info ){
+            producers_tbl.emplace( reg.producer, [&]( producer_info& info ){
                   info.owner       = reg.producer;
                   info.total_votes = 0;
                   info.prefs = reg.prefs;
@@ -171,11 +171,11 @@ namespace eosiosystem {
          static void on( const change_producer_preferences& change) {
             require_auth( change.producer );
 
-            producer_info_index_type producers( SystemAccount, SystemAccount );
-            const auto* ptr = producers.find( change.producer );
+            producer_info_index_type producers_tbl( SystemAccount, SystemAccount );
+            const auto* ptr = producers_tbl.find( change.producer );
             eosio_assert( bool(ptr), "producer is not registered" );
 
-            producers.update( *ptr, change.producer, [&]( producer_info& info ){
+            producers_tbl.update( *ptr, change.producer, [&]( producer_info& info ){
                   info.prefs = change.prefs;
                });
          }
@@ -222,7 +222,9 @@ namespace eosiosystem {
             if ( producers ) {
                producer_info_index_type producers_tbl( SystemAccount, SystemAccount );
                for( auto p : *producers ) {
-                  producers_tbl.update( producers_tbl.get( p ), 0, [&]( auto& v ) {
+                  auto ptr = producers_tbl.find( p );
+                  eosio_assert( bool(ptr), "never existed producer" ); //data corruption
+                  producers_tbl.update( *ptr, 0, [&]( auto& v ) {
                         v.total_votes += amount.quantity;
                      });
                }
@@ -234,38 +236,43 @@ namespace eosiosystem {
             auto& idx = producers_tbl.template get<>( N(prototalvote) );
 
             //use twice bigger integer types for aggregates
-            uint64_t max_blk_size =0;
-            uint64_t target_blk_size = 0;
-            uint128_t max_storage_size = 0;
-            uint128_t rescource_window_size= 0;
-            uint64_t max_blk_cpu = 0;
-            uint64_t target_blk_cpu = 0;
-            uint32_t inflation_rate = 0;
-            uint64_t max_trx_lifetime = 0;
-            uint32_t max_transaction_recursion = 0;
+            std::array<uint32_t, 21> max_blk_size;
+            std::array<uint32_t, 21> target_blk_size;
+            std::array<uint64_t, 21> max_storage_size;
+            std::array<uint64_t, 21> rescource_window_size;
+            std::array<uint32_t, 21> max_blk_cpu;
+            std::array<uint32_t, 21> target_blk_cpu;
+            std::array<uint16_t, 21> inflation_rate; // inflation in percents * 10000;
+            std::array<uint32_t, 21> max_trx_lifetime;
+            std::array<uint16_t, 21> max_transaction_recursion;
 
-            std::vector<account_name> elected(21);
+            std::array<account_name, 21> elected;
             auto it = std::prev( idx.end() );
-            for (auto out = elected.begin(); out != elected.end(); ++out) {
-               *out = it->owner;
+            size_t n = 0;
+            while ( n < 21 ) {
+               if ( it->active() ) {
+                  elected[n] = it->owner;
 
-               max_blk_size += it->prefs.max_blk_size;
-               target_blk_size += it->prefs.target_blk_size;
-               max_storage_size += it->prefs.max_storage_size;
-               rescource_window_size += it->prefs.rescource_window_size;
-               max_blk_cpu += it->prefs.max_blk_cpu;
-               target_blk_cpu += it->prefs.target_blk_cpu;
-               inflation_rate += it->prefs.inflation_rate;
-               max_trx_lifetime += it->prefs.max_trx_lifetime;
-               max_transaction_recursion += it->prefs.max_transaction_recursion;
+                  max_blk_size[n] = it->prefs.max_blk_size;
+                  target_blk_size[n] = it->prefs.target_blk_size;
+                  max_storage_size[n] = it->prefs.max_storage_size;
+                  rescource_window_size[n] = it->prefs.rescource_window_size;
+                  max_blk_cpu[n] = it->prefs.max_blk_cpu;
+                  target_blk_cpu[n] = it->prefs.target_blk_cpu;
+                  inflation_rate[n] = it->prefs.inflation_rate;
+                  max_trx_lifetime[n] = it->prefs.max_trx_lifetime;
+                  max_transaction_recursion[n] = it->prefs.max_transaction_recursion;
+                  ++n;
+               }
 
                if (it == idx.begin()) {
                   break;
                }
                --it;
             }
-            set_active_producers( elected.data(), elected.size() );
-            //set_max_blk_size(max_blk_size);
+            set_active_producers( elected.data(), n );
+            size_t median = n/2;
+            //set_max_blk_size(max_blk_size[median]);
          }
 
          static void process_unstake_requests() {
@@ -277,7 +284,6 @@ namespace eosiosystem {
             require_auth( sv.voter );
 
             increase_voting_power( sv.voter, sv.amount );
-
             currency::inline_transfer( sv.voter, SystemAccount, sv.amount, "stake for voting" );
          }
 
@@ -297,9 +303,9 @@ namespace eosiosystem {
             eosio_assert( !ptr || ptr->count < max_unstake_requests, "unstake requests limit exceeded");
 
             if ( ptr ) {
-               counts.update(*ptr, usv.voter, [&](auto& r) { ++r.count; });
+               counts.update( *ptr, usv.voter, [&](auto& r) { ++r.count; } );
             } else {
-               counts.emplace(usv.voter, [&](auto& r) { r.count = 1; });
+               counts.emplace( usv.voter, [&](auto& r) { r.count = 1; } );
             }
 
             unstake_requests_table requests( SystemAccount, SystemAccount );
@@ -334,10 +340,12 @@ namespace eosiosystem {
             if ( producers ) {
                producer_info_index_type producers_tbl( SystemAccount, SystemAccount );
                for( auto p : *producers ) {
-                  producers_tbl.update( producers_tbl.get( p ), 0, [&]( auto& v ) {
+                  auto prod = producers_tbl.find( p );
+                  eosio_assert( bool(prod), "never existed producer" ); //data corruption
+                  producers_tbl.update( *prod, 0, [&]( auto& v ) {
                         v.total_votes -= usv.amount.quantity;
                      });
-               }
+                  }
             }
 
             //only update, never delete, because we need to keep is_proxy flag and proxied_amount
@@ -424,14 +432,16 @@ namespace eosiosystem {
                new_producers = &vp.producers;
             }
 
-            producer_info_index_type producers( SystemAccount, SystemAccount );
+            producer_info_index_type producers_tbl( SystemAccount, SystemAccount );
 
             if ( old_producers ) { //old_producers == 0 if proxy has stoped being a proxy and votes were taken back from producers at that moment
                //revoke votes only from no longer elected
                std::vector<account_name> revoked( old_producers->size() );
                auto end_it = std::set_difference( old_producers->begin(), old_producers->end(), new_producers->begin(), new_producers->end(), revoked.begin() );
                for ( auto it = revoked.begin(); it != end_it; ++it ) {
-                  producers.update( producers.get( *it ), 0, [&]( auto& pi ) { pi.total_votes -= ptr->staked.quantity; });
+                  auto prod = producers_tbl.find( *it );
+                  eosio_assert( bool(prod), "never existed producer" ); //data corruption
+                  producers_tbl.update( *prod, 0, [&]( auto& pi ) { pi.total_votes -= ptr->staked.quantity; });
                }
             }
 
@@ -439,7 +449,12 @@ namespace eosiosystem {
             std::vector<account_name> elected( new_producers->size() );
             auto end_it = std::set_difference( new_producers->begin(), new_producers->end(), old_producers->begin(), old_producers->end(), elected.begin() );
             for ( auto it = elected.begin(); it != end_it; ++it ) {
-               producers.update( producers.get( *it ), 0, [&]( auto& pi ) { pi.total_votes += ptr->staked.quantity; });
+               auto prod = producers_tbl.find( *it );
+               eosio_assert( bool(prod), "never existed producer" ); //data corruption
+               if ( vp.proxy == 0 ) { //direct voting, in case of proxy voting update total_votes even for inactive producers
+                  eosio_assert( prod->active(), "can vote only for active producers" );
+               }
+               producers_tbl.update( *prod, 0, [&]( auto& pi ) { pi.total_votes += ptr->staked.quantity; });
             }
 
             // save new values to the account itself
@@ -491,16 +506,18 @@ namespace eosiosystem {
             require_auth( reg.proxy_to_unregister );
 
             account_votes_index_type avotes( SystemAccount, SystemAccount );
-            auto ptr = avotes.find( reg.proxy_to_unregister );
-            eosio_assert( bool(ptr), "proxy not found" );
-            eosio_assert( ptr->is_proxy == 1, "account is already a proxy" );
+            auto proxy = avotes.find( reg.proxy_to_unregister );
+            eosio_assert( bool(proxy), "proxy not found" );
+            eosio_assert( proxy->is_proxy == 1, "account is already a proxy" );
 
-            producer_info_index_type producers( SystemAccount, SystemAccount );
-            for ( auto pr : ptr->producers ) {
-               producers.update( producers.get( pr ), 0, [&]( auto& pi ) { pi.total_votes -= ptr->proxied_votes; });
+            producer_info_index_type producers_tbl( SystemAccount, SystemAccount );
+            for ( auto p : proxy->producers ) {
+               auto ptr = producers_tbl.find( p );
+               eosio_assert( bool(ptr), "never existed producer" ); //data corruption
+               producers_tbl.update( *ptr, 0, [&]( auto& pi ) { pi.total_votes -= proxy->proxied_votes; });
             }
 
-            avotes.update( *ptr, 0, [&](account_votes& a) {
+            avotes.update( *proxy, 0, [&](account_votes& a) {
                      a.is_proxy = 0;
                      a.last_update = now();
                      //a.proxied_votes should be kept in order to be able to reenable this proxy in the future
