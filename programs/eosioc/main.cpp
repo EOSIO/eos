@@ -978,9 +978,9 @@ int main( int argc, char** argv ) {
    trxsSubcommand->set_callback([&] {
       fc::variant trx_var;
       try {
-         trx_var = fc::json::from_string(trxJson);
+         trx_var = fc::json::from_string(trxsJson);
       } EOS_CAPTURE_AND_RETHROW(transaction_type_exception, "Fail to parse transaction JSON")
-      auto trxs_result = call(push_txn_func, trx_var);
+      auto trxs_result = call(push_txns_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
 
