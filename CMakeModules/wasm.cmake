@@ -1,7 +1,11 @@
-find_package(Wasm REQUIRED)
+find_package(Wasm)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(WASM_TOOLCHAIN DEFAULT_MSG WASM_FOUND)
+
+if (NOT WASM_TOOLCHAIN_FOUND)
+    return()
+endif()
 
 macro(compile_wast)
   #read arguments include ones that we don't since arguments get forwared "as is" and we don't want to threat unknown argument names as values
