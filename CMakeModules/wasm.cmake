@@ -1,8 +1,7 @@
 find_package(Wasm REQUIRED)
-find_package(Binaryen REQUIRED)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(WASM_TOOLCHAIN DEFAULT_MSG WASM_FOUND BINARYEN_FOUND)
+find_package_handle_standard_args(WASM_TOOLCHAIN DEFAULT_MSG WASM_FOUND)
 
 macro(compile_wast)
   #read arguments include ones that we don't since arguments get forwared "as is" and we don't want to threat unknown argument names as values
@@ -141,7 +140,7 @@ macro(add_wast_executable)
 
   add_custom_command(OUTPUT ${DESTINATION_FOLDER}/${target}.wast
     DEPENDS ${target}.s
-    COMMAND ${BINARYEN_BIN} -o ${DESTINATION_FOLDER}/${target}.wast -s 4096 ${target}.s
+    COMMAND "$<TARGET_FILE:s2wasm>" -o ${DESTINATION_FOLDER}/${target}.wast -s 4096 ${target}.s
     COMMENT "Generating WAST ${target}.wast"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM
