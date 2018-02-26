@@ -1031,17 +1031,17 @@ class memory_api : public context_aware_api {
          return (char *)::memset( dest, value, length );
       }
 
-      uint32_t sbrk(int num_bytes) {
+      int sbrk(int num_bytes) {
          // sbrk should only allow for memory to grow
          if (num_bytes < 0)
             throw eosio::chain::page_memory_error();
          // TODO: omitted checktime function from previous version of sbrk, may need to be put back in at some point
          constexpr uint32_t NBPPL2  = IR::numBytesPerPageLog2;
-         constexpr uint32_t MAX_MEM = 1024 * 1024;
+         constexpr uint32_t MAX_MEM = wasm_constraints::maximum_linear_memory;
 
          MemoryInstance*  default_mem    = Runtime::getDefaultMemory(code.instance);
          if(!default_mem)
-            throw eosio::chain::page_memory_error();
+            return -1;
 
          const uint32_t         num_pages      = Runtime::getMemoryNumPages(default_mem);
          const uint32_t         min_bytes      = (num_pages << NBPPL2) > UINT32_MAX ? UINT32_MAX : num_pages << NBPPL2;
@@ -1051,20 +1051,21 @@ class memory_api : public context_aware_api {
          num_bytes = (num_bytes + 7) & ~7;
 
          if ((num_bytes > 0) && (prev_num_bytes > (MAX_MEM - num_bytes)))  // test if allocating too much memory (overflowed)
-            throw eosio::chain::page_memory_error();
+            return -1;
          else if ((num_bytes < 0) && (prev_num_bytes < (min_bytes - num_bytes))) // test for underflow
             throw eosio::chain::page_memory_error(); 
 
-         // update the number of bytes allocated, and compute the number of pages needed
-         sbrk_bytes += num_bytes;
-         const uint32_t num_desired_pages = (sbrk_bytes + IR::numBytesPerPage - 1) >> NBPPL2;
+         const uint32_t num_desired_pages = (sbrk_bytes + num_bytes + IR::numBytesPerPage - 1) >> NBPPL2;
 
          // grow or shrink the memory to the desired number of pages
          if (num_desired_pages > num_pages)
-            Runtime::growMemory(default_mem, num_desired_pages - num_pages);
+            if(Runtime::growMemory(default_mem, num_desired_pages - num_pages) == -1)
+               return -1;
          else if (num_desired_pages < num_pages)
-            Runtime::shrinkMemory(default_mem, num_pages - num_desired_pages);
+            if(Runtime::shrinkMemory(default_mem, num_pages - num_desired_pages) == -1)
+               return -1;
 
+         sbrk_bytes += num_bytes;
          return prev_num_bytes;
       }
 };

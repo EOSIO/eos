@@ -558,7 +558,7 @@ namespace WASM
 		Serialization::OutputStream& byteStream;
 		FunctionDef& functionDef;
 	};
-
+   
 	template<typename Injection>
    struct WasmSerializationImpl
    {
