@@ -16,7 +16,7 @@ set( CMAKE_CXX_STANDARD 14 )
 include_directories("${CMAKE_BINARY_DIR}/contracts")
 include_directories("${CMAKE_SOURCE_DIR}/contracts")
 
-file(GLOB UNIT_TESTS "chain_tests/*.cpp" "api_tests/*.cpp" "tests/abi_tests.cpp" "tests/database_tests.cpp")
+file(GLOB UNIT_TESTS "chain_tests/*.cpp" "api_tests/*.cpp" "tests/abi_tests.cpp" "tests/database_tests.cpp" "tests/misc_tests.cpp")
 
 #if(WASM_TOOLCHAIN)
 #    file(GLOB WASM_UNIT_TESTS "wasm_tests/*.cpp")
