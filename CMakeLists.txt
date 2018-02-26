@@ -164,6 +164,8 @@ if(ENABLE_COVERAGE_TESTING)
   find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
+add_subdirectory( externals )
+
 include(wasm)
 if(WASM_TOOLCHAIN)
   message(STATUS "Using WASM clang => " ${WASM_CLANG})

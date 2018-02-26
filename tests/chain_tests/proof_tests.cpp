@@ -118,6 +118,51 @@ bool proof_is_valid(const digest_type& digest, const vector<digest_type>& path, 
 
 BOOST_AUTO_TEST_SUITE(proof_tests)
 
+static const char poo[] = R"=====(
+(module
+ (table 0 anyfunc)
+ (memory $0 16)
+ (export "memory" (memory $0))
+ (export "apply" (func $apply))
+
+ (func $complex_stuff_and_return_a_bool (result i32)
+   (i32.const 0)
+ )
+ 
+ (func $apply (param $0 i64) (param $1 i64)
+   (br_if 0 (call $complex_stuff_and_return_a_bool))
+
+   (drop (i64.mul (i64.const 56) (i64.const 34)))
+   (drop (i64.mul (i64.const 12) (i64.const 55)))
+   (drop (i64.mul (i64.const 536) (i64.const 2333)))
+   (drop (i64.mul (i64.const 23) (i64.const 12)))
+   (drop (i64.mul (i64.const 543) (i64.const 76533)))
+ )
+)
+)=====";
+
+BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(bigmem)} );
+   produce_block();
+
+   set_code(N(bigmem), poo);
+   produce_blocks(1);
+
+   signed_transaction trx;
+   action act;
+   act.account = N(bigmem);
+   act.name = N();
+   act.authorization = vector<permission_level>{{N(bigmem),config::active_name}};
+   trx.actions.push_back(act);
+
+   set_tapos(trx);
+   trx.sign(get_private_key( N(bigmem), "active" ), chain_id_type());
+   push_transaction(trx);
+
+} FC_LOG_AND_RETHROW()
+
 BOOST_FIXTURE_TEST_CASE( prove_block_in_chain, tester ) { try {
    vector<block_id_type> known_blocks;
    known_blocks.reserve(100);

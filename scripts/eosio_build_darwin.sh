@@ -181,26 +181,6 @@
 		printf "\tsecp256k1 found at /usr/local/lib/\n"
 	fi
 
-	printf "\n\tChecking for binaryen\n"
-	if [ ! -e /usr/local/binaryen/bin/binaryen.js ]; then
-		cd ${TEMP_DIR}
-		git clone https://github.com/WebAssembly/binaryen
-		cd binaryen
-		git checkout tags/1.37.14
-		cmake . && make -j${CPU_CORE}
-		if [ $? -ne 0 ]; then
-			printf "\tError compiling binaryen.\n"
-			printf "\tExiting now.\n\n"
-			exit;
-		fi
-		sudo mkdir /usr/local/binaryen
-		sudo mv ${TEMP_DIR}/binaryen/bin /usr/local/binaryen
-		sudo ln -s /usr/local/binaryen/bin/* /usr/local
-		sudo rm -rf ${TEMP_DIR}/binaryen
-	else
-		printf "\tBinaryen found at /usr/local/binaryen/bin/\n"
-	fi
-
 	printf "\n\tChecking for WASM\n"
 	if [ ! -d /usr/local/wasm/bin ]; then
 		# Build LLVM and clang for WASM:

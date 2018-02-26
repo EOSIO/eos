@@ -40,8 +40,8 @@ function build_contract {
     @WASM_LLVM_LINK@ -o $workdir/linked.bc $workdir/built/*
 #    echo @WASM_LLC@ --asm-verbose=false -o $workdir/assembly.s $workdir/linked.bc
     @WASM_LLC@ --asm-verbose=false -o $workdir/assembly.s $workdir/linked.bc
-#  echo @BINARYEN_BIN@/s2wasm -o $outname -s 16384 $workdir/assembly.s
-    @BINARYEN_BIN@/s2wasm -o $outname -s 16384 $workdir/assembly.s
+#  echo ${EOSIO_INSTALL_DIR}/bin/eosio-s2wasm -o $outname -s 16384 $workdir/assembly.s
+    ${EOSIO_INSTALL_DIR}/bin/eosio-s2wasm -o $outname -s 16384 $workdir/assembly.s
 
 #    echo rm -rf $workdir
     rm -rf $workdir
