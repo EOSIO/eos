@@ -132,9 +132,9 @@
 		# Install binaryen v1.37.14:
 		printf "\tInstalling binaryen v1.37.14:\n"
 		cd ${TEMP_DIR}
-		git clone https://github.com/WebAssembly/binaryen
+		git clone https://github.com/EOSIO/binaryen
 		cd binaryen
-		git checkout tags/1.37.14
+		git checkout eosio
 		cmake . && make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling binaryen.\n"
