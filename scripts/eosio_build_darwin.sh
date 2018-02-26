@@ -70,7 +70,7 @@
 					$XCODESELECT --install 2>/dev/null;
 					$RUBY -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 					if [ $? -ne 0 ]; then
-						echo "User aborted homebrew installation. Exiting now."
+						echo "Unable to install homebrew at this time. Exiting now."
 						exit 0;
 					fi
 					break;;
@@ -108,6 +108,10 @@
 				
 				if [ $pkg = "LLVM" ]; then
 					pkg="llvm@4"
+				fi
+
+				if [ $pkg = "openssl" ]; then
+					pkg="openssl@1.0"
 				fi
 
 				if [ $pkg = "gettext" ]; then
