@@ -203,7 +203,6 @@
                 sudo rm -rf /usr/local/binaryen
 		sudo mkdir /usr/local/binaryen
 		sudo mv ${TEMP_DIR}/binaryen/bin /usr/local/binaryen
-		sudo ln -sf /usr/local/binaryen/bin/* /usr/local
 		sudo rm -rf ${TEMP_DIR}/binaryen
 	else
 		printf "\tBinaryen found at /usr/local/binaryen/bin/\n"
