@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import testUtils
 
@@ -14,11 +14,11 @@ import signal
 # -s <topology>
 # -d <delay between nodes startup>
 # -v <verbose logging>
-# --killSig <kill signal [term|kill]>
-# --killCount <Eosiod instances to kill>
-# --dontKill <Leave cluster running after test finishes>
-# --dumpErrorDetails <Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout>
-# --keepLogs <Don't delete tn_data_* folders upon test completion>
+# --kill-sig <kill signal [term|kill]>
+# --kill-count <Eosiod instances to kill>
+# --dont-kill <Leave cluster running after test finishes>
+# --dump-error-details <Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout>
+# --keep-logs <Don't delete tn_data_* folders upon test completion>
 ###############################################################
 
 
@@ -36,16 +36,16 @@ parser.add_argument("-s", type=str, help="topology", default="mesh")
 parser.add_argument("-c", type=str, help="chain strategy[%s|%s|%s]" %
                     (testUtils.Utils.SyncResyncTag, testUtils.Utils.SyncReplayTag, testUtils.Utils.SyncNoneTag),
                     default=testUtils.Utils.SyncResyncTag)
-parser.add_argument("--killSig", type=str, help="kill signal[%s|%s]" %
+parser.add_argument("--kill-sig", type=str, help="kill signal[%s|%s]" %
                     (testUtils.Utils.SigKillTag, testUtils.Utils.SigTermTag), default=testUtils.Utils.SigKillTag)
-parser.add_argument("--killCount", type=int, help="eosiod instances to kill", default=-1)
+parser.add_argument("--kill-count", type=int, help="eosiod instances to kill", default=-1)
 parser.add_argument("-v", help="verbose logging", action='store_true')
-parser.add_argument("--dontKill", help="Leave cluster running after test finishes", action='store_true')
+parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
 parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
-parser.add_argument("--dumpErrorDetails",
+parser.add_argument("--dump-error-details",
                     help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
                     action='store_true')
-parser.add_argument("--keepLogs", help="Don't delete tn_data_* folders upon test completion",
+parser.add_argument("--keep-logs", help="Don't delete tn_data_* folders upon test completion",
                     action='store_true')
 
 args = parser.parse_args()
@@ -55,11 +55,11 @@ delay=args.d
 chainSyncStrategyStr=args.c
 debug=args.v
 total_nodes = pnodes
-killCount=args.killCount if args.killCount > 0 else int(round((DefaultKillPercent/100.0)*total_nodes))
-killSignal=args.killSig
-killEosInstances= not args.dontKill
-dumpErrorDetails=args.dumpErrorDetails
-keepLogs=args.keepLogs
+killCount=args.kill-count if args.kill-count > 0 else int(round((DefaultKillPercent/100.0)*total_nodes))
+killSignal=args.kill-sig
+killEosInstances= not args.dont-kill
+dumpErrorDetails=args.dump_error_details
+keepLogs=args.keep-logs
 amINoon=not args.not_noon
 
 testUtils.Utils.Debug=debug

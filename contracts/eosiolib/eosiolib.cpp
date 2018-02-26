@@ -210,7 +210,6 @@ namespace eosio {
          {
             _heap_size = size;
             _heap = mem_heap;
-            memset(_heap, 0, _heap_size);
          }
 
          uint32_t is_init() const
