@@ -72,12 +72,14 @@ namespace eosio { namespace chain {
             path                           shared_memory_dir   =  config::default_shared_memory_dir;
             uint64_t                       shared_memory_size  =  config::default_shared_memory_size;
             bool                           read_only           =  false;
+            std::vector<signal<void(const block_trace&)>::slot_type> applied_block_callbacks;
             std::vector<signal<void(const signed_block&)>::slot_type> applied_irreversible_block_callbacks;
+            std::vector<signal<void(const transaction_metadata&, const packed_transaction&)>::slot_type> on_pending_transaction_callbacks;
             contracts::genesis_state_type  genesis;
             runtime_limits                 limits;
          };
 
-         chain_controller( const controller_config& cfg );
+         explicit chain_controller( const controller_config& cfg );
          ~chain_controller();
 
 

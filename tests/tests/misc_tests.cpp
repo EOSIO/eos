@@ -2,8 +2,12 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
+#include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/authority_checker.hpp>
 #include <eosio/chain/authority.hpp>
+#include <eosio/chain/types.hpp>
+#include <eosio/chain/asset.hpp>
+#include <eosio/testing/tester.hpp>
 
 #include <eosio/utilities/key_conversion.hpp>
 #include <eosio/utilities/rand.hpp>
@@ -13,9 +17,8 @@
 #include <boost/test/unit_test.hpp>
 
 using namespace eosio::chain;
-
-
-namespace eosio {
+namespace eosio
+{
 using namespace chain;
 using namespace std;
 
@@ -41,36 +44,37 @@ BOOST_AUTO_TEST_CASE(json_from_string_test)
   BOOST_CHECK_EQUAL(exc_found, true);
 }
 
-/* Disabling test. It may no longer be relevant
 /// Test calculation of median values of blockchain operation properties
 BOOST_AUTO_TEST_CASE(median_properties_test)
-{ try {
-      vector<blockchain_configuration> votes{
-         {1024  , 512   , 4096  , asset(5000   ).amount, asset(4000   ).amount, asset(100  ).amount, 512   , 6, 1000  , 3, 4096, 65536 },
-         {10000 , 100   , 4096  , asset(3333   ).amount, asset(27109  ).amount, asset(10   ).amount, 100   , 6, 3000  , 2, 4096, 65536 },
-         {2048  , 1500  , 1000  , asset(5432   ).amount, asset(2000   ).amount, asset(50   ).amount, 1500  , 6, 5000  , 9, 4096, 65536 },
-         {100   , 25    , 1024  , asset(90000  ).amount, asset(0      ).amount, asset(433  ).amount, 25    , 6, 10000 , 4, 4096, 65536 },
-         {1024  , 1000  , 100   , asset(10     ).amount, asset(50     ).amount, asset(200  ).amount, 1000  , 6, 4000  , 1, 4096, 65536 },
-      };
-      blockchain_configuration medians{
-         1024, 512, 1024, asset(5000).amount, asset(2000).amount, asset(100).amount, 512, 6, 4000, 3, 4096, 65536
-      };
+{
+   try
+   {
+      vector<chain_config> votes{
+          {512 , 1024 , 256, 512 , 512 , 1024 , 1000, 4096, 512 , 6, 1000 , 3, 4096, 65536},
+          {100 , 10000, 50 , 5000, 100 , 10000, 500 , 4096, 100 , 6, 3000 , 2, 4096, 65536},
+          {1500, 2048 , 750, 1024, 1500, 2048 , 300 , 1000, 1500, 6, 5000 , 9, 4096, 65536},
+          {25  , 100  , 12 , 50  , 25  , 100  , 1200, 1024, 25  , 6, 10000, 4, 4096, 65536},
+          {1000, 1024 , 500, 512 , 10  , 1024 , 1500, 100 , 1000, 6, 4000 , 1, 4096, 65536}};
 
-      BOOST_CHECK_EQUAL(blockchain_configuration::get_median_values(votes), medians);
+      chain_config medians{
+          512, 1024, 256, 512, 100, 1024, 1000, 1024, 512, 6, 4000, 3, 4096, 65536};
 
-      votes.emplace_back(blockchain_configuration{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-      votes.emplace_back(blockchain_configuration{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-      medians = blockchain_configuration {1024, 100, 1000, asset(3333).amount, asset(50).amount, asset(50).amount, 100, 6, 3000, 2, 4096, 65536 };
+      BOOST_TEST(chain_config::get_median_values(votes) == medians);
 
-      BOOST_CHECK_EQUAL(blockchain_configuration::get_median_values(votes), medians);
-      BOOST_CHECK_EQUAL(blockchain_configuration::get_median_values({medians}), medians);
+      votes.emplace_back(chain_config{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+      votes.emplace_back(chain_config{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+      medians = chain_config{100, 1024, 50, 512, 25, 1024, 500, 1000, 100, 6, 3000, 2, 4096, 65536};
+
+      BOOST_TEST(chain_config::get_median_values(votes) == medians);
+      BOOST_TEST(chain_config::get_median_values({medians}) == medians);
 
       votes.erase(votes.begin() + 2);
       votes.erase(votes.end() - 1);
-      medians = blockchain_configuration {1024, 100, 1024, asset(3333).amount, asset(50).amount, asset(100).amount, 100, 6, 3000, 2, 4096, 65536 };
-      BOOST_CHECK_EQUAL(blockchain_configuration::get_median_values(votes), medians);
-} FC_LOG_AND_RETHROW() }
-*/
+      medians = chain_config{100, 1024, 50, 512, 25, 1024, 1000, 1024, 100, 6, 3000, 2, 4096, 65536};
+      BOOST_TEST(chain_config::get_median_values(votes) == medians);
+   }
+   FC_LOG_AND_RETHROW()
+}
 
 /// Test that our deterministic random shuffle algorithm gives the same results in all environments
 BOOST_AUTO_TEST_CASE(deterministic_randomness)
@@ -78,10 +82,10 @@ BOOST_AUTO_TEST_CASE(deterministic_randomness)
    utilities::rand::random rng(123454321);
    vector<string> words = {"infamy", "invests", "estimated", "potters", "memorizes", "hal9000"};
    rng.shuffle(words);
-   BOOST_CHECK_EQUAL(fc::json::to_string(words),
+   BOOST_TEST(fc::json::to_string(words) ==
                      fc::json::to_string(vector<string>{"hal9000","infamy","invests","estimated","memorizes","potters"}));
    rng.shuffle(words);
-   BOOST_CHECK_EQUAL(fc::json::to_string(words), 
+   BOOST_TEST(fc::json::to_string(words) ==
                      fc::json::to_string(vector<string>{"memorizes","infamy","hal9000","potters","estimated","invests"}));
 } FC_LOG_AND_RETHROW() }
 
@@ -89,21 +93,203 @@ BOOST_AUTO_TEST_CASE(deterministic_distributions)
 { try {
    utilities::rand::random rng(123454321);
 
-   BOOST_CHECK_EQUAL(rng.next(), UINT64_C(13636622732572118961));
-   BOOST_CHECK_EQUAL(rng.next(), UINT64_C(8049736256506128729));
-   BOOST_CHECK_EQUAL(rng.next(), UINT64_C(1224405983932261174));
+   BOOST_TEST(rng.next() == UINT64_C(13636622732572118961));
+   BOOST_TEST(rng.next() == UINT64_C(8049736256506128729));
+   BOOST_TEST(rng.next() ==  UINT64_C(1224405983932261174));
 
    std::vector<int> nums = {0, 1, 2};
 
    rng.shuffle(nums);
    std::vector<int> a{2, 0, 1};
-   BOOST_CHECK(std::equal(nums.begin(), nums.end(), a.begin()));
+   BOOST_TEST(std::equal(nums.begin(), nums.end(), a.begin()));
    rng.shuffle(nums);
    std::vector<int> b{0, 2, 1};
-   BOOST_CHECK(std::equal(nums.begin(), nums.end(), b.begin()));
+   BOOST_TEST(std::equal(nums.begin(), nums.end(), b.begin()));
    rng.shuffle(nums);
    std::vector<int> c{1, 0, 2};
-   BOOST_CHECK(std::equal(nums.begin(), nums.end(), c.begin()));
+   BOOST_TEST(std::equal(nums.begin(), nums.end(), c.begin()));
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(authority_checker)
+{ try {
+   testing::tester test;
+   auto a = test.get_public_key("a", "active");
+   auto b = test.get_public_key("b", "active");
+   auto c = test.get_public_key("c", "active");
+
+   auto GetNullAuthority = [](auto){abort(); return authority();};
+
+   auto A = authority(2, {key_weight{a, 1}, key_weight{b, 1}});
+   {
+      auto checker = make_auth_checker(GetNullAuthority, 2, {a, b});
+      BOOST_TEST(checker.satisfied(A));
+      BOOST_TEST(checker.all_keys_used());
+      BOOST_TEST(checker.used_keys().size() == 2);
+      BOOST_TEST(checker.unused_keys().size() == 0);
+   }
+   {
+      auto checker = make_auth_checker(GetNullAuthority, 2, {a, c});
+      BOOST_TEST(!checker.satisfied(A));
+      BOOST_TEST(!checker.all_keys_used());
+      BOOST_TEST(checker.used_keys().size() == 0);
+      BOOST_TEST(checker.unused_keys().size() == 2);
+   }
+   {
+      auto checker = make_auth_checker(GetNullAuthority, 2, {a, b, c});
+      BOOST_TEST(checker.satisfied(A));
+      BOOST_TEST(!checker.all_keys_used());
+      BOOST_TEST(checker.used_keys().size() == 2);
+      BOOST_TEST(checker.used_keys().count(a) == 1);
+      BOOST_TEST(checker.used_keys().count(b) == 1);
+      BOOST_TEST(checker.unused_keys().size() == 1);
+      BOOST_TEST(checker.unused_keys().count(c) == 1);
+   }
+   {
+      auto checker = make_auth_checker(GetNullAuthority, 2, {b, c});
+      BOOST_TEST(!checker.satisfied(A));
+      BOOST_TEST(!checker.all_keys_used());
+      BOOST_TEST(checker.used_keys().size() == 0);
+   }
+
+   A = authority(3, {key_weight{a, 1}, key_weight{b, 1}, key_weight{c, 1}});
+   BOOST_TEST(make_auth_checker(GetNullAuthority, 2, {c, b, a}).satisfied(A));
+   BOOST_TEST(!make_auth_checker(GetNullAuthority, 2, {a, b}).satisfied(A));
+   BOOST_TEST(!make_auth_checker(GetNullAuthority, 2, {a, c}).satisfied(A));
+   BOOST_TEST(!make_auth_checker(GetNullAuthority, 2, {b, c}).satisfied(A));
+
+   A = authority(1, {key_weight{a, 1}, key_weight{b, 1}});
+   BOOST_TEST(make_auth_checker(GetNullAuthority, 2, {a}).satisfied(A));
+   BOOST_TEST(make_auth_checker(GetNullAuthority, 2, {b}).satisfied(A));
+   BOOST_TEST(!make_auth_checker(GetNullAuthority, 2, {c}).satisfied(A));
+
+   A = authority(1, {key_weight{a, 2}, key_weight{b, 1}});
+   BOOST_TEST(make_auth_checker(GetNullAuthority, 2, {a}).satisfied(A));
+   BOOST_TEST(make_auth_checker(GetNullAuthority, 2, {b}).satisfied(A));
+   BOOST_TEST(!make_auth_checker(GetNullAuthority, 2, {c}).satisfied(A));
+
+   auto GetCAuthority = [c](auto){
+      return authority(1, {key_weight{c, 1}});
+   };
+
+   A = authority(2, {key_weight{a, 2}, key_weight{b, 1}}, {permission_level_weight{{"hello",  "world"}, 1}});
+   {
+      auto checker = make_auth_checker(GetCAuthority, 2, {a});
+      BOOST_TEST(checker.satisfied(A));
+      BOOST_TEST(checker.all_keys_used());
+   }
+   {
+      auto checker = make_auth_checker(GetCAuthority, 2, {b});
+      BOOST_TEST(!checker.satisfied(A));
+      BOOST_TEST(checker.used_keys().size() == 0);
+      BOOST_TEST(checker.unused_keys().size() == 1);
+      BOOST_TEST(checker.unused_keys().count(b) == 1);
+   }
+   {
+      auto checker = make_auth_checker(GetCAuthority, 2, {c});
+      BOOST_TEST(!checker.satisfied(A));
+      BOOST_TEST(checker.used_keys().size() == 0);
+      BOOST_TEST(checker.unused_keys().size() == 1);
+      BOOST_TEST(checker.unused_keys().count(c) == 1);
+   }
+   {
+      auto checker = make_auth_checker(GetCAuthority, 2, {b, c});
+      BOOST_TEST(checker.satisfied(A));
+      BOOST_TEST(checker.all_keys_used());
+      BOOST_TEST(checker.used_keys().size() == 2);
+      BOOST_TEST(checker.unused_keys().size() == 0);
+      BOOST_TEST(checker.used_keys().count(b) == 1);
+      BOOST_TEST(checker.used_keys().count(c) == 1);
+   }
+   {
+      auto checker = make_auth_checker(GetCAuthority, 2, {b, c, a});
+      BOOST_TEST(checker.satisfied(A));
+      BOOST_TEST(!checker.all_keys_used());
+      BOOST_TEST(checker.used_keys().size() == 1);
+      BOOST_TEST(checker.used_keys().count(a) == 1);
+      BOOST_TEST(checker.unused_keys().size() == 2);
+      BOOST_TEST(checker.unused_keys().count(b) == 1);
+      BOOST_TEST(checker.unused_keys().count(c) == 1);
+   }
+
+   A = authority(2, {key_weight{a, 1}, key_weight{b, 1}}, {permission_level_weight{{"hello",  "world"}, 1}});
+   BOOST_TEST(!make_auth_checker(GetCAuthority, 2, {a}).satisfied(A));
+   BOOST_TEST(!make_auth_checker(GetCAuthority, 2, {b}).satisfied(A));
+   BOOST_TEST(!make_auth_checker(GetCAuthority, 2, {c}).satisfied(A));
+   BOOST_TEST(make_auth_checker(GetCAuthority, 2, {a, b}).satisfied(A));
+   BOOST_TEST(make_auth_checker(GetCAuthority, 2, {b, c}).satisfied(A));
+   BOOST_TEST(make_auth_checker(GetCAuthority, 2, {a, c}).satisfied(A));
+   {
+      auto checker = make_auth_checker(GetCAuthority, 2, {a, b, c});
+      BOOST_TEST(checker.satisfied(A));
+      BOOST_TEST(!checker.all_keys_used());
+      BOOST_TEST(checker.used_keys().size() == 2);
+      BOOST_TEST(checker.unused_keys().size() == 1);
+      BOOST_TEST(checker.unused_keys().count(c) == 1);
+   }
+
+   A = authority(2, {key_weight{a, 1}, key_weight{b, 1}}, {permission_level_weight{{"hello",  "world"}, 2}});
+   BOOST_TEST(make_auth_checker(GetCAuthority, 2, {a, b}).satisfied(A));
+   BOOST_TEST(make_auth_checker(GetCAuthority, 2, {c}).satisfied(A));
+   BOOST_TEST(!make_auth_checker(GetCAuthority, 2, {a}).satisfied(A));
+   BOOST_TEST(!make_auth_checker(GetCAuthority, 2, {b}).satisfied(A));
+   {
+      auto checker = make_auth_checker(GetCAuthority, 2, {a, b, c});
+      BOOST_TEST(checker.satisfied(A));
+      BOOST_TEST(!checker.all_keys_used());
+      BOOST_TEST(checker.used_keys().size() == 1);
+      BOOST_TEST(checker.unused_keys().size() == 2);
+      BOOST_TEST(checker.used_keys().count(c) == 1);
+   }
+
+   auto d = test.get_public_key("d", "active");
+   auto e = test.get_public_key("e", "active");
+
+   auto GetAuthority = [d, e] (const permission_level& perm) {
+      if (perm.actor == "top")
+         return authority(2, {key_weight{d, 1}}, {permission_level_weight{{"bottom",  "bottom"}, 1}});
+      return authority{1, {{e, 1}}, {}};
+   };
+   
+   A = authority(5, {key_weight{a, 2}, key_weight{b, 2}, key_weight{c, 2}}, {permission_level_weight{{"top",  "top"}, 5}});
+   {
+      auto checker = make_auth_checker(GetAuthority, 2, {d, e});
+      BOOST_TEST(checker.satisfied(A));
+      BOOST_TEST(checker.all_keys_used());
+   }
+   {
+      auto checker = make_auth_checker(GetAuthority, 2, {a, b, c, d, e});
+      BOOST_TEST(checker.satisfied(A));
+      BOOST_TEST(!checker.all_keys_used());
+      BOOST_TEST(checker.used_keys().size() == 2);
+      BOOST_TEST(checker.unused_keys().size() == 3);
+      BOOST_TEST(checker.used_keys().count(d) == 1);
+      BOOST_TEST(checker.used_keys().count(e) == 1);
+   }
+   {
+      auto checker = make_auth_checker(GetAuthority, 2, {a, b, c, e});
+      BOOST_TEST(checker.satisfied(A));
+      BOOST_TEST(!checker.all_keys_used());
+      BOOST_TEST(checker.used_keys().size() == 3);
+      BOOST_TEST(checker.unused_keys().size() == 1);
+      BOOST_TEST(checker.used_keys().count(a) == 1);
+      BOOST_TEST(checker.used_keys().count(b) == 1);
+      BOOST_TEST(checker.used_keys().count(c) == 1);
+   }
+   BOOST_TEST(make_auth_checker(GetAuthority, 1, {a, b, c}).satisfied(A));
+   // Fails due to short recursion depth limit
+   BOOST_TEST(!make_auth_checker(GetAuthority, 1, {d, e}).satisfied(A));
+
+   A = authority(2, {key_weight{c, 1}, key_weight{b, 1}, key_weight{a, 1}});
+   auto B =  authority(1, {key_weight{c, 1}, key_weight{b, 1}});
+   {
+      auto checker = make_auth_checker(GetNullAuthority, 2, {a, b, c});
+      BOOST_TEST(validate(A));
+      BOOST_TEST(validate(B));
+      BOOST_TEST(checker.satisfied(A));
+      BOOST_TEST(checker.satisfied(B));
+      BOOST_TEST(!checker.all_keys_used());
+      BOOST_TEST(checker.unused_keys().count(a) == 1);
+   }
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(alphabetic_sort)
@@ -132,7 +318,7 @@ BOOST_AUTO_TEST_CASE(alphabetic_sort)
     "...g",
     "lale.....333",
   };
-  
+
   std::sort(words.begin(), words.end(), std::less<string>());
 
   vector<uint64_t> uwords;
@@ -150,7 +336,7 @@ BOOST_AUTO_TEST_CASE(alphabetic_sort)
   }
 
   for(int i = 0; i < words.size(); ++i ) {
-    BOOST_CHECK_EQUAL(tmp[i], words[i]);
+    BOOST_TEST(tmp[i] == words[i]);
   }
 
 } FC_LOG_AND_RETHROW() }
