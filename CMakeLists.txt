@@ -174,7 +174,6 @@ else()
   message( FATAL_ERROR "No WASM compiler cound be found" )
 endif()
 
-FIND_PACKAGE(softfloat REQUIRED)
 include(installer)
 
 add_subdirectory( libraries )
