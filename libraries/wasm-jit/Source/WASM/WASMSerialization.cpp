@@ -9,6 +9,8 @@
 
 #include <iostream>
 
+#include <softfloat.h>
+
 using namespace Serialization;
 
 static void throwIfNotValidUTF8(const std::string& string)
@@ -558,7 +560,7 @@ namespace WASM
 		Serialization::OutputStream& byteStream;
 		FunctionDef& functionDef;
 	};
-
+   
 	template<typename Injection>
    struct WasmSerializationImpl
    {
