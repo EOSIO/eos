@@ -16,6 +16,8 @@
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 #include <fc/exception/exception.hpp>
+#include <eosio/http_plugin/http_plugin.hpp>
+#include <eosio/chain_plugin/chain_plugin.hpp>
 
 using boost::asio::ip::tcp;
 
@@ -106,8 +108,24 @@ fc::variant call( const std::string& server, uint16_t port,
          throw boost::system::system_error(error);
 
      //  std::cout << re.str() <<"\n";
+       const auto response_result = fc::json::from_string(re.str());
        if( status_code == 200 || status_code == 201 || status_code == 202 ) {
-          return fc::json::from_string(re.str());
+          return response_result;
+       } else {
+          auto &&error = response_result.as<eosio::error_results>().error;
+
+          // eos recognized error code is from 3000000 to 3999999
+          // refer to libraries/chain/include/eosio/chain/exceptions.hpp
+          if (error.code >= 3000000 && error.code <= 3999999) {
+             // Construct fc exception from error
+             fc::exception new_exception(error.code, error.name, error.message);
+             new_exception.append_log(fc::log_message(fc::log_context(), error.details));
+
+             for (auto & trace : error.stack_trace) {
+                new_exception.append_log(fc::log_message(trace, std::string()));
+             }
+             throw new_exception;
+          }
        }
 
        FC_ASSERT( status_code == 200, "Error code ${c}\n: ${msg}\n", ("c", status_code)("msg", re.str()) );

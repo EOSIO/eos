@@ -459,6 +459,8 @@ int main( int argc, char** argv ) {
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
+   bool show_error_trace = false;
+   app.add_flag( "-t,--error-trace", show_error_trace, localized("output error stack trace"));
 
    auto version = app.add_subcommand("version", localized("Retrieve version information"), false);
    version->require_subcommand();
@@ -1006,7 +1008,7 @@ int main( int argc, char** argv ) {
          }
       } else {
          // attempt to extract the error code if one is present
-         if (verbose_errors || !print_help_text(e)) {
+         if (verbose_errors || !print_help_text(e, show_error_trace)) {
             elog("Failed with error: ${e}", ("e", verbose_errors ? e.to_detail_string() : e.to_string()));
          }
       }
