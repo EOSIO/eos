@@ -9,8 +9,6 @@
 
 #include <iostream>
 
-#include <softfloat.h>
-
 using namespace Serialization;
 
 static void throwIfNotValidUTF8(const std::string& string)
