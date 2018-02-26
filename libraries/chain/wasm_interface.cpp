@@ -8,6 +8,7 @@
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
+#include <eosio/chain/wasm_eosio_instruction_count.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
@@ -190,6 +191,7 @@ namespace eosio { namespace chain {
                   Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
                   WASM::serializeWithInjection(stream, *module);
                   validate_eosio_wasm_constraints(*module);
+                  wasm_esio_instruction_count::inject_instruction_count(*module);
 
                   root_resolver resolver;
                   LinkResult link_result = linkModule(*module, resolver);
