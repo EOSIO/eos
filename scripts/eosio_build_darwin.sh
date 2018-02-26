@@ -184,9 +184,9 @@
 	printf "\n\tChecking for binaryen\n"
 	if [ ! -e /usr/local/binaryen/bin/binaryen.js ]; then
 		cd ${TEMP_DIR}
-		git clone https://github.com/WebAssembly/binaryen
+		git clone https://github.com/EOSIO/binaryen
 		cd binaryen
-		git checkout tags/1.37.14
+		git checkout eosio
 		cmake . && make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling binaryen.\n"
