@@ -245,7 +245,7 @@ class apply_context {
                if (itr->t_id != tab->id) return -1;
 
                itr_cache.cache_table(*tab);
-               return itr_cache(*itr);
+               return itr_cache.add(*itr);
             }
 
             int next_primary( int iterator, uint64_t& primary ) {

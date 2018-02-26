@@ -18,9 +18,9 @@ include_directories("${CMAKE_SOURCE_DIR}/contracts")
 
 file(GLOB UNIT_TESTS "chain_tests/*.cpp" "api_tests/*.cpp" "tests/abi_tests.cpp" "tests/database_tests.cpp")
 
-#if(WASM_TOOLCHAIN)
-#    file(GLOB WASM_UNIT_TESTS "wasm_tests/*.cpp")
-#endif()
+if(WASM_TOOLCHAIN)
+    file(GLOB WASM_UNIT_TESTS "wasm_tests/*.cpp")
+endif()
 
 add_executable( chain_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} common/main.cpp )
 target_link_libraries( chain_test eosio_testing eosio_chain chainbase eos_utilities eos_egenesis_none chain_plugin abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
@@ -28,7 +28,7 @@ target_link_libraries( chain_test eosio_testing eosio_chain chainbase eos_utilit
 if(WASM_TOOLCHAIN)
   target_include_directories( chain_test PUBLIC ${CMAKE_BINARY_DIR}/contracts ${CMAKE_CURRENT_BINARY_DIR}/tests/contracts )
   target_include_directories( chain_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/wasm_tests )
-  add_dependencies(chain_test asserter test_api currency proxy identity stltest infinite)
+  add_dependencies(chain_test asserter test_api currency proxy identity identity_test stltest infinite)
 endif()
 
 
