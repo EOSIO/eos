@@ -18,7 +18,18 @@
 	printf "\tPhysical Memory: $MEM_GIG Gbytes\n"
 	printf "\tDisk space total: ${DISK_TOTAL}G\n"
 	printf "\tDisk space available: ${DISK_AVAIL}G\n\n"
-	
+
+        FORCE_FLAG=false
+        while [ ! $# -eq 0 ]
+        do
+            case "$1" in
+                --force|-f)
+                    FORCE_FLAG=true
+                    shift
+                    ;;
+            esac
+        done
+
 	if [ $MEM_GIG -lt 8 ]; then
 		echo "Your system must have 8 or more Gigabytes of physical memory installed."
 		echo "Exiting now."
@@ -154,7 +165,7 @@
 
 	printf "\n\tChecking for secp256k1-zkp\n"
     # install secp256k1-zkp (Cryptonomex branch)
-    if [ ! -e /usr/local/lib/libsecp256k1.a ]; then
+    if [ ! -e /usr/local/lib/libsecp256k1.a ] || $FORCE_FLAG; then
 		cd ${TEMP_DIR}
 		git clone https://github.com/cryptonomex/secp256k1-zkp.git
 		cd secp256k1-zkp
@@ -178,27 +189,27 @@
 	fi
 
 	printf "\n\tChecking for binaryen\n"
-	if [ ! -e /usr/local/binaryen/bin/binaryen.js ]; then
+	if [ ! -e /usr/local/binaryen/bin/binaryen.js ] || $FORCE_FLAG; then
 		cd ${TEMP_DIR}
-		git clone https://github.com/WebAssembly/binaryen
+                git clone https://github.com/EOSIO/binaryen
 		cd binaryen
-		git checkout tags/1.37.14
+		git checkout eosio
 		cmake . && make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling binaryen.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
+                sudo rm -rf /usr/local/binaryen
 		sudo mkdir /usr/local/binaryen
 		sudo mv ${TEMP_DIR}/binaryen/bin /usr/local/binaryen
-		sudo ln -s /usr/local/binaryen/bin/* /usr/local
 		sudo rm -rf ${TEMP_DIR}/binaryen
 	else
 		printf "\tBinaryen found at /usr/local/binaryen/bin/\n"
 	fi
 
 	printf "\n\tChecking for WASM\n"
-	if [ ! -d /usr/local/wasm/bin ]; then
+	if [ ! -d /usr/local/wasm/bin ] || $FORCE_FLAG; then
 		# Build LLVM and clang for WASM:
 		cd ${TEMP_DIR}
 		mkdir wasm-compiler

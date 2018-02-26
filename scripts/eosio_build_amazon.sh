@@ -16,6 +16,17 @@
 	printf "\tDisk space total: ${DISK_TOTAL}G\n"
 	printf "\tDisk space available: ${DISK_AVAIL}G\n"
 
+        FORCE_FLAG=false
+        while [ ! $# -eq 0 ]
+        do
+            case "$1" in
+                --force|-f)
+                    FORCE_FLAG=true
+                    shift
+                    ;;
+            esac
+        done
+
 	if [ $MEM_MEG -lt 4000 ]; then
 		printf "\tYour system must have 4 or more Gigabytes of physical memory installed.\n"
 		printf "\texiting now.\n"
@@ -105,7 +116,7 @@
 
 	printf "\n\tChecking for CMAKE.\n"
     # install CMAKE 3.10.2
-    if [ ! -e ${CMAKE} ]; then
+    if [ ! -e ${CMAKE} ] || $FORCE_FLAG; then
 		printf "\tInstalling CMAKE\n"
 		mkdir -p ${HOME}/opt/ 2>/dev/null
 		cd ${HOME}/opt
@@ -131,7 +142,7 @@
 	fi
 
 	printf "\n\tChecking for boost libraries\n"
-	if [ ! -d ${HOME}/opt/boost_1_66_0 ]; then
+	if [ ! -d ${HOME}/opt/boost_1_66_0 ] $FORCE_FLAG; then
 		# install boost
 		printf "\tInstalling boost libraries\n"
 		cd ${TEMP_DIR}
@@ -148,7 +159,7 @@
 
 	printf "\n\tChecking for secp256k1-zkp\n"
     # install secp256k1-zkp (Cryptonomex branch)
-    if [ ! -e /usr/local/lib/libsecp256k1.a ]; then
+    if [ ! -e /usr/local/lib/libsecp256k1.a ] || $FORCE_FLAG; then
 		printf "\tInstalling secp256k1-zkp (Cryptonomex branch)\n"
 		cd ${TEMP_DIR}
 		git clone https://github.com/cryptonomex/secp256k1-zkp.git
@@ -173,19 +184,20 @@
 	fi
 	
 	printf "\n\tChecking for binaryen\n"
-	if [ ! -d ${HOME}/opt/binaryen ]; then
-		# Install binaryen v1.37.14:
-		printf "\tInstalling binaryen v1.37.14:\n"
+	if [ ! -d ${HOME}/opt/binaryen ] || $FORCE_FLAG; then
+		# Install binaryen eosio branch:
+		printf "\tInstalling binaryen eosio branch:\n"
 		cd ${TEMP_DIR}
-		git clone https://github.com/WebAssembly/binaryen
+		git clone https://github.com/EOSIO/binaryen
 		cd binaryen
-		git checkout tags/1.37.14
+		git checkout eosio
 		$CMAKE . && make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling binaryen.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
+                rm -rf ${HOME}/opt/binaryen
 		mkdir -p ${HOME}/opt/binaryen/ 2>/dev/null
 		mv ${TEMP_DIR}/binaryen/bin ${HOME}/opt/binaryen/
 		rm -rf ${TEMP_DIR}/binaryen
@@ -194,7 +206,7 @@
 	fi
 	
 	printf "\n\tChecking for LLVM with WASM support.\n"
-	if [ ! -d ${HOME}/opt/wasm/bin ]; then
+	if [ ! -d ${HOME}/opt/wasm/bin ] || $FORCE_FLAG; then
 		# Build LLVM and clang with EXPERIMENTAL WASM support:
 		printf "\tInstalling LLVM & WASM\n"
 		cd ${TEMP_DIR}
