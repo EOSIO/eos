@@ -19,4 +19,4 @@
 	branch = eosio
 [submodule "external/binaryen"]
 	path = external/binaryen
-	url = https://github.com/WebAssembly/binaryen.git
+	url = https://github.com/EOSIO/binaryen.git
