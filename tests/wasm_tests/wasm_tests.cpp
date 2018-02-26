@@ -346,9 +346,9 @@ BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
    produce_block();
 
    string biggest_memory_wast_f = fc::format_string(biggest_memory_wast, fc::mutable_variant_object(
-                                          "MAX_WASM_PAGES", eosio::chain::wasm_constraints::maximum_linear_memory/64*1024));
+                                          "MAX_WASM_PAGES", eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024)));
 
-   set_code(N(bigmem), biggest_memory_wast_f);  //should pass, 16 pages is fine
+   set_code(N(bigmem), biggest_memory_wast_f.c_str());
    produce_blocks(1);
 
    signed_transaction trx;
@@ -360,14 +360,14 @@ BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
 
    set_tapos(trx);
    trx.sign(get_private_key( N(bigmem), "active" ), chain_id_type());
-   //but should not be able to grow beyond 16th page, asserts if sbrk(1) returns other then -1
+   //but should not be able to grow beyond largest page
    push_transaction(trx);
 
    produce_blocks(1);
 
-   string too_big_memory_wast_f = fc::format_string(biggest_memory_wast, fc::mutable_variant_object(
-                                          "MAX_WASM_PAGES_PLUS_ONE", eosio::chain::wasm_constraints::maximum_linear_memory/64*1024+1));
-   BOOST_CHECK_THROW(set_code(N(bigmem), too_big_memory_wast_f), eosio::chain::wasm_execution_error);
+   string too_big_memory_wast_f = fc::format_string(too_big_memory_wast, fc::mutable_variant_object(
+                                          "MAX_WASM_PAGES_PLUS_ONE", eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024)+1));
+   BOOST_CHECK_THROW(set_code(N(bigmem), too_big_memory_wast_f.c_str()), eosio::chain::wasm_execution_error);
 
 } FC_LOG_AND_RETHROW()
 
@@ -471,8 +471,8 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
 
    for(const string& s : loadops) {
       std::stringstream ss;
-      ss << "(module (memory $0 16) (func $apply (param $0 i64) (param $1 i64) ";
-      ss << "(drop (" << s << " offset=1048574 (i32.const 0)))";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(drop (" << s << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory-2 << " (i32.const 0)))";
       ss << "))";
 
       set_code(N(offsets), ss.str().c_str());
@@ -480,8 +480,8 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
    }
    for(const vector<string>& o : storeops) {
       std::stringstream ss;
-      ss << "(module (memory $0 16) (func $apply (param $0 i64) (param $1 i64) ";
-      ss << "(" << o[0] << " offset=1048574 (i32.const 0) (" << o[1] << ".const 0))";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(" << o[0] << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory-2 << " (i32.const 0) (" << o[1] << ".const 0))";
       ss << "))";
 
       set_code(N(offsets), ss.str().c_str());
@@ -490,8 +490,8 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
 
    for(const string& s : loadops) {
       std::stringstream ss;
-      ss << "(module (memory $0 16) (func $apply (param $0 i64) (param $1 i64) ";
-      ss << "(drop (" << s << " offset=1048580 (i32.const 0)))";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(drop (" << s << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory+4 << " (i32.const 0)))";
       ss << "))";
 
       BOOST_CHECK_THROW(set_code(N(offsets), ss.str().c_str()), eosio::chain::wasm_execution_error);
@@ -499,8 +499,8 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
    }
    for(const vector<string>& o : storeops) {
       std::stringstream ss;
-      ss << "(module (memory $0 16) (func $apply (param $0 i64) (param $1 i64) ";
-      ss << "(" << o[0] << " offset=1048580 (i32.const 0) (" << o[1] << ".const 0))";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(" << o[0] << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory+4 << " (i32.const 0) (" << o[1] << ".const 0))";
       ss << "))";
 
       BOOST_CHECK_THROW(set_code(N(offsets), ss.str().c_str()), eosio::chain::wasm_execution_error);
