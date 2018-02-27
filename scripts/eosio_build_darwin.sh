@@ -193,9 +193,10 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
+		[ -d /usr/local/binaryen ] && sudo rm -r /usr/local/binaryen
 		sudo mkdir /usr/local/binaryen
 		sudo mv ${TEMP_DIR}/binaryen/bin /usr/local/binaryen
-		sudo ln -s /usr/local/binaryen/bin/* /usr/local
+		sudo ln -sf /usr/local/binaryen/bin/* /usr/local/bin
 		sudo rm -rf ${TEMP_DIR}/binaryen
 	else
 		printf "\tBinaryen found at /usr/local/binaryen/bin/\n"
