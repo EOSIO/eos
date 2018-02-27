@@ -186,7 +186,7 @@ namespace eosio {
                      } else {
                         wlog("404 - not found: ${ep}", ("ep",resource));
                         error_results results{websocketpp::http::status_code::not_found,
-                                              "Not Found", fc::exception(fc::log_message(fc::log_context(), "Unknown Endpoint"))};
+                                              "Not Found", fc::exception(FC_LOG_MESSAGE(error, "Unknown Endpoint"))};
                         con->set_body(fc::json::to_string(results));
                         con->set_status(websocketpp::http::status_code::not_found);
                      }
@@ -199,12 +199,12 @@ namespace eosio {
                   } catch( const std::exception& e ) {
                      elog( "http: ${e}", ("e",e.what()));
                      error_results results{websocketpp::http::status_code::internal_server_error,
-                                           "Internal Service Error", fc::exception(fc::log_message(fc::log_context(), e.what()))};
+                                           "Internal Service Error", fc::exception(FC_LOG_MESSAGE(error, e.what()))};
                      con->set_body(fc::json::to_string(results));
                      con->set_status(websocketpp::http::status_code::internal_server_error);
                   } catch( ... ) {
                      error_results results{websocketpp::http::status_code::internal_server_error,
-                                           "Internal Service Error", fc::exception(fc::log_message(fc::log_context(), "Unknown Exception"))};
+                                           "Internal Service Error", fc::exception(FC_LOG_MESSAGE(error, "Unknown Exception"))};
                      con->set_body(fc::json::to_string(results));
                      con->set_status(websocketpp::http::status_code::internal_server_error);
                   }

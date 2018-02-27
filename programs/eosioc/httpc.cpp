@@ -118,11 +118,15 @@ fc::variant call( const std::string& server, uint16_t port,
           // refer to libraries/chain/include/eosio/chain/exceptions.hpp
           if (error.code >= 3000000 && error.code <= 3999999) {
              // Construct fc exception from error
+             const auto &stack_trace = error.stack_trace;
              fc::exception new_exception(error.code, error.name, error.message);
-             new_exception.append_log(fc::log_message(fc::log_context(), error.details));
-
-             for (auto & trace : error.stack_trace) {
-                new_exception.append_log(fc::log_message(trace, std::string()));
+             if (stack_trace.empty()) {
+                new_exception.append_log(FC_LOG_MESSAGE(error, error.details));
+             } else {
+                for (auto itr = stack_trace.begin(); itr != stack_trace.end(); itr++) {
+                   const auto &error_message = itr == stack_trace.begin() ? error.details : std::string();
+                   new_exception.append_log(fc::log_message(*itr, error_message));
+                }
              }
              throw new_exception;
           }
@@ -132,5 +136,6 @@ fc::variant call( const std::string& server, uint16_t port,
     }
 
     FC_ASSERT( !"unable to connect" );
-  } FC_CAPTURE_AND_RETHROW( (server)(port)(path)(postdata) ) 
+  } FC_RETHROW_EXCEPTIONS( error, "Request Path: ${server}:${port}${path}\n  Request Post Data: ${postdata}}" ,
+                           ("server", server)("port", port)("path", path)("postdata", postdata) )
 }
