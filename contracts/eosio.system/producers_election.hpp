@@ -12,6 +12,7 @@
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/multi_index.hpp>
 #include <eosiolib/privileged.hpp>
+#include <eosiolib/singleton.hpp>
 #include <eosiolib/transaction.hpp>
 
 #include <array>
@@ -22,6 +23,7 @@ namespace eosiosystem {
    using eosio::member;
    using eosio::bytes;
    using eosio::print;
+   using eosio::singleton;
    using eosio::transaction;
 
    template<account_name SystemAccount>
@@ -60,6 +62,8 @@ namespace eosiosystem {
          typedef eosio::multi_index< N(producervote), producer_info,
                                      indexed_by<N(prototalvote), const_mem_fun<producer_info, uint128_t, &producer_info::by_votes>  >
                                      >  producer_info_index_type;
+
+         typedef singleton<SystemAccount, N(inflation), SystemAccount, uint32_t>  inflation_singleton;
 
          struct account_votes {
             account_name                owner = 0;
@@ -163,9 +167,6 @@ namespace eosiosystem {
                acv = &avotes.emplace( voter, [&]( account_votes& a ) {
                      a.owner = voter;
                      a.last_update = now();
-                     a.proxy = 0;
-                     a.is_proxy = 0;
-                     a.proxied_votes = 0;
                      a.staked = amount;
                   });
             } else {
@@ -272,6 +273,8 @@ namespace eosiosystem {
             };
 
             set_blockchain_parameters(&concensus);
+
+            inflation_singleton::set( inflation_rate[median] );
          }
 
          static void on( const stake_vote& sv ) {
