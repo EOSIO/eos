@@ -198,14 +198,11 @@ git submodule update --init --recursive
 <a name="build"></a>
 ### Building from source code
 
-The *WASM_LLVM_CONFIG* environment variable is used to find our recently built WASM compiler.
-This is needed to compile the example contracts inside `eos/contracts` folder and their respective tests.
-
 ```bash
 cd ~
 git clone https://github.com/eosio/eos --recursive
 mkdir -p ~/eos/build && cd ~/eos/build
-cmake -DBINARYEN_BIN=~/binaryen/bin -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DOPENSSL_LIBRARIES=/usr/local/opt/openssl/lib ..
+cmake -DBINARYEN_BIN=~/binaryen/bin -DWASM_ROOT=~/wasm-compiler/llvm -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DOPENSSL_LIBRARIES=/usr/local/opt/openssl/lib ..
 make -j$( nproc )
 ```
 
@@ -643,13 +640,6 @@ make -j$( nproc )
 make install
 ```
 
-Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
-
-```bash
-echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
-echo "export LLVM_DIR=~/wasm-compiler/lib/cmake/llvm" >> ~/.bash_profile
-source ~/.bash_profile
-```
 Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
 
 <a name="manualdepfedora"></a>
@@ -724,13 +714,6 @@ cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DL
 make -j$( nproc ) install
 ```
 
-Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
-
-```bash
-echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
-echo "export LLVM_DIR=~/wasm-compiler/lib/cmake/llvm" >> ~/.bash_profile
-source ~/.bash_profile
-```
 Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
 
 <a name="manualdepubuntu"></a>
@@ -805,13 +788,6 @@ mkdir build
 cd build
 cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
 make -j4 install
-```
-Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
-
-```bash
-echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
-echo "export LLVM_DIR=/usr/local/Cellar/llvm/4.0.1/lib/cmake/llvm" >> ~/.bash_profile
-source ~/.bash_profile
 ```
 
 Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
@@ -889,11 +865,4 @@ make -j$( sysctl -in machdep.cpu.core_count )
 make install
 ```
 
-Add `WASM_LLVM_CONFIG` and `LLVM_DIR` to your `.bash_profile`:
-
-```bash
-echo "export WASM_LLVM_CONFIG=~/wasm-compiler/llvm/bin/llvm-config" >> ~/.bash_profile
-echo "export LLVM_DIR=/usr/local/Cellar/llvm@4/4.0.1/lib/cmake/llvm/" >> ~/.bash_profile
-source ~/.bash_profile
-```
 Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
