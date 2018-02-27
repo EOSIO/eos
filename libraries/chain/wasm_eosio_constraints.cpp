@@ -1,4 +1,5 @@
 #include <eosio/chain/wasm_eosio_constraints.hpp>
+#include <eosio/chain/wasm_binary_ops.hpp>
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include "IR/Module.h"
@@ -7,6 +8,189 @@
 namespace eosio { namespace chain {
 
 using namespace IR;
+
+namespace wasm_constraints {
+
+void noop_validator::validate( Module& m ) {
+   // just pass
+}
+
+void blacklist_validator::validate( Module& m ) {
+    
+}
+
+void memories_validator::validate( Module& m ) {
+   if ( m.memories.defs.size() && m.memories.defs[0].type.size.min > wasm_constraints::maximum_linear_memory/(64*1024) )
+      FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract initial memory size must be less than or equal to ${k}KiB", 
+            ("k", wasm_constraints::maximum_linear_memory/1024));
+}
+
+void data_segments_validator::validate( Module& m ) {
+   for ( const DataSegment& ds : m.dataSegments ) {
+      if ( ds.baseOffset.type != InitializerExpression::Type::i32_const )
+         FC_THROW_EXCEPTION( wasm_execution_error, "Smart contract has unexpected memory base offset type" );
+
+      if ( static_cast<uint32_t>( ds.baseOffset.i32 ) + ds.data.size() > wasm_constraints::maximum_linear_memory_init )
+         FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract data segments must lie in first ${k}KiB", 
+               ("k", wasm_constraints::maximum_linear_memory_init/1024));
+   }
+}
+
+void tables_validator::validate( Module& m ) {
+   if ( m.tables.defs.size() && m.tables.defs[0].type.size.min > wasm_constraints::maximum_table_elements )
+      FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract table limited to ${t} elements", 
+            ("t", wasm_constraints::maximum_table_elements));
+}
+
+void globals_validator::validate( Module& m ) {
+   unsigned mutable_globals_total_size = 0;
+   for(const GlobalDef& global_def : m.globals.defs) {
+      if(!global_def.type.isMutable)
+         continue;
+      switch(global_def.type.valueType) {
+         case ValueType::any:
+         case ValueType::num:
+            FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract has unexpected global definition value type");
+         case ValueType::i64:
+         case ValueType::f64:
+            mutable_globals_total_size += 4;
+         case ValueType::i32:
+         case ValueType::f32:
+            mutable_globals_total_size += 4;
+      }
+   }
+   if(mutable_globals_total_size > wasm_constraints::maximum_mutable_globals)
+      FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract has more than ${k} bytes of mutable globals",
+            ("k", wasm_constraints::maximum_mutable_globals));
+}
+/*
+bool is_whitelisted( uint8_t op ) {
+   // white list of instructions
+   static auto wasm_eosio_whitelist = std::unordered_set<uint8_t> {
+         UNREACHABLE, 
+         NOP, 
+         BLOCK, 
+         LOOP, 
+         IF, 
+         ELSE, 
+         END, 
+         BR, 
+         BR_IF, 
+         BR_TABLE, 
+         RETURN, 
+         CALL, 
+         CALL_INDIRECT, 
+         DROP, 
+         SELECT,
+         GET_LOCAL,
+         SET_LOCAL, 
+         TEE_LOCAL, 
+         GET_GLOBAL,
+         SET_GLOBAL,
+         I32_LOAD,
+         I64_LOAD,
+         F32_LOAD,
+         F64_LOAD,
+         I32_LOAD8_S,
+         I32_LOAD8_U,
+         I32_LOAD16_S,
+         I32_LOAD16_U,
+         I64_LOAD8_S,
+         I64_LOAD8_U,
+         I64_LOAD16_S,
+         I64_LOAD16_U,
+         I64_LOAD32_S,
+         I64_LOAD32_U,
+         I32_STORE,    
+         I64_STORE,
+         F32_STORE,
+         F64_STORE,
+         I32_STORE8, 
+         I32_STORE16,
+         I64_STORE8, 
+         I64_STORE16,
+         I64_STORE32,
+         I32_CONST,
+         I64_CONST,
+         // TODO verify these can stay in
+         F32_CONST, 
+         F64_CONST,
+         I32_EQZ,
+         I32_EQ,
+         I32_NE,
+         I32_LT_S,
+         I32_LT_U,
+         I32_GT_S,
+         I32_GT_U,
+         I32_LE_S,
+         I32_LE_U,
+         I32_GE_S,
+         I32_GE_U,
+         I64_EQZ,
+         I64_EQ,
+         I64_NE,
+         I64_LT_S,
+         I64_LT_U,
+         I64_GT_S,
+         I64_GT_U,
+         I64_LE_S,
+         I64_LE_U,
+         I64_GE_S,
+         I64_GE_U,
+         I32_CLZ,
+         I32_CTZ,
+         I32_POPCOUNT,
+         I32_ADD,
+         I32_SUB,
+         I32_MUL,  
+         I32_DIV_S,
+         I32_DIV_U,
+         I32_REM_S,
+         I32_REM_U,
+         I32_AND,
+         I32_OR, 
+         I32_XOR,
+         I32_SHL,
+         I32_SHR_S,
+         I32_SHR_U,
+         I32_ROTL, 
+         I32_ROTR, 
+         I64_CLZ,
+         I64_CTZ,
+         I64_POPCOUNT,
+         I64_ADD,
+         I64_SUB,
+         I64_MUL,
+         I64_DIV_S,
+         I64_DIV_U,
+         I64_REM_S,
+         I64_REM_U,
+         I64_AND,
+         I64_OR, 
+         I64_XOR,
+         I64_SHL,
+         I64_SHR_S,
+         I64_SHR_U,
+         I64_ROTL,
+         I64_ROTR,
+         I32_WRAP_I64,
+         I64_EXTEND_S_I32,
+         I64_EXTEND_U_I32,
+         // TODO these might be okay too
+         I32_REINTERPRET_F32,
+         I64_REINTERPRET_F64,
+         F32_REINTERPRET_I32,
+         F64_REINTERPRET_I64
+   };
+   
+  if ( whitelist.find( op ) == whitelist.end() ) 
+     return false;
+
+  return true;
+}
+*/
+
+} // namespace wasm_constraints
 
 struct wasm_opcode_no_disposition_exception {
    string opcode_name;

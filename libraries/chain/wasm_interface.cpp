@@ -8,6 +8,7 @@
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
+#include <eosio/chain/wasm_module_walker.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
@@ -190,6 +191,19 @@ namespace eosio { namespace chain {
                   Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
                   WASM::serializeWithInjection(stream, *module);
                   validate_eosio_wasm_constraints(*module);
+                  wasm_module_walker<
+                  wasm_constraints::constraints_validators<wasm_constraints::memories_validator,
+                                                   wasm_constraints::data_segments_validator,
+                                                   wasm_constraints::tables_validator,
+                                                   wasm_constraints::globals_validator>, 
+                  wasm_constraints::constraints_validators<wasm_constraints::memories_validator,
+                                                   wasm_constraints::data_segments_validator,
+                                                   wasm_constraints::tables_validator,
+                                                   wasm_constraints::globals_validator>>
+
+                                                   wmw(*module);
+                 // wasm_module_walker<wasm_eosio_standard_constraints> wmw(*module);
+                  wmw.pre_validate();
 
                   root_resolver resolver;
                   LinkResult link_result = linkModule(*module, resolver);
