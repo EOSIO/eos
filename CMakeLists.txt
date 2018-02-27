@@ -164,7 +164,7 @@ if(ENABLE_COVERAGE_TESTING)
   find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
-add_subdirectory(external)
+add_subdirectory( externals )
 
 include(wasm)
 if(WASM_TOOLCHAIN_FOUND)
