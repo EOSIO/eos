@@ -8,7 +8,7 @@ pipeline {
                     steps {
                         sh '''
                             . $HOME/.bash_profile
-                            ./eosio_build.sh
+                            echo 1 | ./eosio_build.sh
                         '''
                     }
                 }
@@ -17,7 +17,7 @@ pipeline {
                     steps {
                         sh '''
                             . $HOME/.bash_profile
-                            ./eosio_build.sh 
+                            echo 1 | ./eosio_build.sh 
                         ''' 
                     }
                 }
