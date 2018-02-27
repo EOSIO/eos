@@ -1364,7 +1364,7 @@ account_name chain_controller::get_scheduled_producer(uint32_t slot_num)const
    uint64_t current_aslot = dpo.current_absolute_slot + slot_num;
    const auto& gpo = _db.get<global_property_object>();
    auto number_of_active_producers = gpo.active_producers.producers.size();
-   auto index = current_aslot % (number_of_active_producers);
+   auto index = current_aslot % (number_of_active_producers * config::producer_repititions);
    index /= config::producer_repititions;
    FC_ASSERT( gpo.active_producers.producers.size() > 0, "no producers defined" );
 

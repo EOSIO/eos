@@ -18,14 +18,14 @@ include_directories("${CMAKE_SOURCE_DIR}/contracts")
 
 file(GLOB UNIT_TESTS "chain_tests/*.cpp" "api_tests/*.cpp" "tests/abi_tests.cpp" "tests/database_tests.cpp" "tests/misc_tests.cpp")
 
-if(WASM_TOOLCHAIN)
+if(WASM_TOOLCHAIN_FOUND)
     file(GLOB WASM_UNIT_TESTS "wasm_tests/*.cpp")
 endif()
 
 add_executable( chain_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} common/main.cpp )
 target_link_libraries( chain_test eosio_testing eosio_chain chainbase eos_utilities eos_egenesis_none chain_plugin abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
 
-if(WASM_TOOLCHAIN)
+if(WASM_TOOLCHAIN_FOUND)
   target_include_directories( chain_test PUBLIC ${CMAKE_BINARY_DIR}/contracts ${CMAKE_CURRENT_BINARY_DIR}/tests/contracts )
   target_include_directories( chain_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/wasm_tests )
   add_dependencies(chain_test asserter test_api currency proxy identity identity_test stltest infinite)
@@ -33,7 +33,7 @@ endif()
 
 
 # WASM only tests
-#if(WASM_TOOLCHAIN)
+#if(WASM_TOOLCHAIN_FOUND)
 #  file(GLOB SLOW_TESTS "slow_tests/*.cpp")
 #  add_executable( slow_test ${SLOW_TESTS} ${COMMON_SOURCES} )
 #  target_link_libraries( slow_test eos_native_contract eosio_chain chainbase eos_utilities eos_egenesis_none chain_plugin producer_plugin fc ${PLATFORM_SPECIFIC_LIBS} )

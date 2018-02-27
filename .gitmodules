@@ -20,3 +20,4 @@
 [submodule "externals/binaryen"]
 	path = externals/binaryen
 	url = https://github.com/EOSIO/binaryen
+

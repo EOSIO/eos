@@ -18,12 +18,3 @@ add_dependencies( eosio_testing test.system )
 if(MSVC)
   set_source_files_properties( db_init.cpp db_block.cpp database.cpp block_log.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
 endif(MSVC)
-
-INSTALL( TARGETS
-   eosio_testing
-
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
-)
-INSTALL( FILES ${HEADERS} DESTINATION "include/eos/chain" )

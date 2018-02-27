@@ -167,7 +167,7 @@ endif()
 add_subdirectory( externals )
 
 include(wasm)
-if(WASM_TOOLCHAIN)
+if(WASM_TOOLCHAIN_FOUND)
   message(STATUS "Using WASM clang => " ${WASM_CLANG})
   message(STATUS "Using WASM llc => " ${WASM_LLC})
   message(STATUS "Using WASM llvm-link => " ${WASM_LLVM_LINK})
