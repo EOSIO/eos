@@ -117,7 +117,7 @@ macro(add_wast_library)
 endmacro(add_wast_library)
 
 macro(add_wast_executable)
-  cmake_parse_arguments(ARG "NOWARNINGS" "TARGET;DESTINATION_FOLDER;MAX_MEMORY" "SOURCE_FILES;INCLUDE_FOLDERS;SYSTEM_INCLUDE_FOLDERS;LIBRARIES" ${ARGN})
+  cmake_parse_arguments(ARG "NOWARNINGS" "TARGET;DESTINATION_FOLDER;MAX_MEMORY" "SOURCE_FILES;INCLUDE_FOLDERS;SYSTEM_INCLUDE_FOLDERS;LIBRARIES;DEBUG_FLAG" ${ARGN})
   set(target ${ARG_TARGET})
   set(DESTINATION_FOLDER ${ARG_DESTINATION_FOLDER})
 
@@ -189,5 +189,24 @@ macro(add_wast_executable)
   set_property(TARGET ${target} PROPERTY INCLUDE_DIRECTORIES ${ARG_INCLUDE_FOLDERS})
 
   set(extra_target_dependency)
+
+  if ("${ARG_DEBUG_FLAG}" STREQUAL "true")
+    # Add debug library for native contract debugging
+    if ("${ARG_SOURCE_FILES}" STREQUAL "")
+      set(SOURCE_FILES ${target}.cpp)
+    else()
+      set(SOURCE_FILES ${ARG_SOURCE_FILES})
+    endif()
+
+    set(debug_target ${target}_deb)
+    add_library( ${debug_target} SHARED ${SOURCE_FILES} )
+
+    target_link_libraries( ${debug_target} fc )
+    target_include_directories( ${debug_target} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/contracts" )
+
+    target_compile_definitions(${debug_target} PRIVATE EOSIO_NATIVE_CONTRACT_COMPILATION)
+
+    install( TARGETS ${debug_target} RUNTIME DESTINATION bin LIBRARY DESTINATION lib ARCHIVE DESTINATION lib )
+  endif()
 
 endmacro(add_wast_executable)
