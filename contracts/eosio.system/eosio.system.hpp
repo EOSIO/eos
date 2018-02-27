@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include "producers_election.hpp"
+#include "voting.hpp"
 #include "delegate_bandwith.hpp"
 
 #include <eosiolib/generic_currency.hpp>
@@ -12,11 +12,11 @@
 namespace eosiosystem {
 
    template<account_name SystemAccount>
-   class contract : public producers_election<SystemAccount>, public delegate_bandwith<SystemAccount> {
+   class contract : public voting<SystemAccount>, public delegate_bandwith<SystemAccount> {
       public:
-         using producers_election<SystemAccount>::on;
+         using voting<SystemAccount>::on;
          using delegate_bandwith<SystemAccount>::on;
-         using pe = producers_election<SystemAccount>;
+         using pe = voting<SystemAccount>;
          using db = delegate_bandwith<SystemAccount>;
 
          static const account_name system_account = SystemAccount;
@@ -34,13 +34,13 @@ namespace eosiosystem {
          static void apply( account_name code, action_name act ) {
             if( !eosio::dispatch<contract, typename delegate_bandwith<SystemAccount>::delegatebw,
                                  typename delegate_bandwith<SystemAccount>::undelegatebw,
-                                 typename producers_election<SystemAccount>::register_proxy,
-                                 typename producers_election<SystemAccount>::unregister_proxy,
-                                 typename producers_election<SystemAccount>::register_producer,
-                                 typename producers_election<SystemAccount>::vote_producer,
-                                 typename producers_election<SystemAccount>::stake_vote,
-                                 typename producers_election<SystemAccount>::unstake_vote,
-                                 typename producers_election<SystemAccount>::unstake_vote_deferred,
+                                 typename voting<SystemAccount>::register_proxy,
+                                 typename voting<SystemAccount>::unregister_proxy,
+                                 typename voting<SystemAccount>::register_producer,
+                                 typename voting<SystemAccount>::vote_producer,
+                                 typename voting<SystemAccount>::stake_vote,
+                                 typename voting<SystemAccount>::unstake_vote,
+                                 typename voting<SystemAccount>::unstake_vote_deferred,
                                  nonce>( code, act) ) {
                if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                   eosio::print("Unexpected action: ", eosio::name(act), "\n");

@@ -27,7 +27,7 @@ namespace eosiosystem {
    using eosio::transaction;
 
    template<account_name SystemAccount>
-   class producers_election {
+   class voting {
       public:
          static const account_name system_account = SystemAccount;
          typedef eosio::generic_currency< eosio::token<system_account,S(4,EOS)> > currency;
@@ -364,7 +364,8 @@ namespace eosiosystem {
             eosio_assert( bool(acv), "stake not found" );
 
             auto weeks = (now() - acv->last_unstake_time) / unstake_pay_period;
-            eosio_assert( 0 == weeks, "less than one week since last unstaking balance transfer" );
+            eosio_assert( 0 == weeks, "less than one week passed since last transfer or unstake request" );
+            eosio_assert( 0 < acv->unstaking.quantity, "no unstaking money to transfer" );
 
             auto unstake_amount = std::min(weeks * acv->unstake_per_week, acv->unstaking);
             uint32_t new_trx_id = unstake_amount < acv->unstaking ? /* XXX send_deferred() */ 0 : 0;
