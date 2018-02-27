@@ -1,12 +1,16 @@
 #!/bin/bash
 
-EOSIO_INSTALL_DIR=@CMAKE_INSTALL_PREFIX@
-ABIGEN=${EOSIO_INSTALL_DIR}/bin/abi_gen
-CODEGEN=${EOSIO_INSTALL_DIR}/bin/codegen
+EOSIO_BIN_INSTALL_DIR=`dirname $0`
+if [ "${EOSIO_BIN_INSTALL_DIR}" == "." ]; then
+  EOSIO_BIN_INSTALL_DIR=`pwd`
+fi
+EOSIO_INSTALL_DIR=`dirname ${EOSIO_BIN_INSTALL_DIR}`
+ABIGEN=${EOSIO_INSTALL_DIR}/bin/eosio-abigen
+CODEGEN=${EOSIO_INSTALL_DIR}/bin/eosio-codegen
 
 function copy_skeleton {
     set -e
-    cp -r ${EOSIO_INSTALL_DIR}/share/skeleton/. $newname
+    cp -r "${EOSIO_INSTALL_DIR}/share/eosio/skeleton/." $newname
 
     for file in $(find ./$newname -name 'skeleton.*')
     do
