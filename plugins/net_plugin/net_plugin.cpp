@@ -2478,9 +2478,9 @@ namespace eosio {
    chain::public_key_type net_plugin_impl::get_authentication_key() const {
       if(!private_keys.empty())
          return private_keys.begin()->first;
-      producer_plugin* pp = app().find_plugin<producer_plugin>();
+      /*producer_plugin* pp = app().find_plugin<producer_plugin>();
       if(pp != nullptr && pp->get_state() == abstract_plugin::started)
-         return pp->first_producer_public_key();
+         return pp->first_producer_public_key();*/
       return chain::public_key_type();
    }
 

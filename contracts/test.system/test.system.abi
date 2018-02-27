@@ -19,15 +19,15 @@
       "name": "producer_key",
       "base": "",
       "fields": [
-        {"name":"account",    "type":"account_name"},
-        {"name":"public_key", "type":"string"}
+        {"name":"producer_name",      "type":"account_name"},
+        {"name":"signing_key",  "type":"public_key"}
       ]
     },{
       "name": "set_producers",
       "base": "",
       "fields": [
         {"name":"version",    "type":"uint32"},
-        {"name":"producer",   "type":"producer_key[]"}
+        {"name":"producers",   "type":"producer_key[]"}
       ]
     },{
       "name": "require_auth",
