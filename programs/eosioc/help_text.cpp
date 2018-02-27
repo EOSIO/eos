@@ -5,6 +5,7 @@
 #include "help_text.hpp"
 #include "localize.hpp"
 #include <regex>
+#include <fc/io/json.hpp>
 
 using namespace eosio::client::localize;
 
@@ -182,22 +183,25 @@ e.g.
   }]
 })=====";
 
+const char* error_advice_3030002 =  R"=====(Ensure that you have the related private keys inside your wallet)=====";
+
 const std::map<int64_t, std::string> error_advice = {
    { 3120001, error_advice_3120001 },
    { 3120002, error_advice_3120002 },
    { 3120003, error_advice_3120003 },
    { 3120004, error_advice_3120004 },
    { 3120005, error_advice_3120005 },
-   { 3120006, error_advice_3120006 }
+   { 3120006, error_advice_3120006 },
+   { 3030002, error_advice_3030002 }
 };
 
 
 namespace eosio { namespace client { namespace help {
-bool print_recognized_error_code(const fc::exception& e) {
+bool print_recognized_error_code(const fc::exception& e, const bool verbose_errors) {
    // eos recognized error code is from 3000000 to 3999999
    // refer to libraries/chain/include/eosio/chain/exceptions.hpp
    if (e.code() >= 3000000 && e.code() <= 3999999) {
-      std::string advice, explanation;
+      std::string advice, explanation, stack_trace;
 
       // Get advice, if any
       const auto advice_itr = error_advice.find(e.code());
@@ -209,21 +213,35 @@ bool print_recognized_error_code(const fc::exception& e) {
          if (!log.get_format().empty()) {
             // Localize the message as needed
             explanation += "\n  " + localized_with_variant(log.get_format().data(), log.get_data());
+         } else if (log.get_data().size() > 0 && verbose_errors) {
+            // Show data-only log only if verbose_errors option is enabled
+            explanation += "\n  " + fc::json::to_string(log.get_data());
+         }
+         // Check if there's stack trace to be added
+         if (!log.get_context().get_method().empty() && verbose_errors) {
+            stack_trace += "\n  " +
+                           log.get_context().get_file() +  ":" +
+                           fc::to_string(log.get_context().get_line_number())  + " " +
+                           log.get_context().get_method();
          }
       }
+      // Append header
       if (!explanation.empty()) explanation = std::string("Error Details:") + explanation;
+      if (!stack_trace.empty()) stack_trace = std::string("Stack Trace:") + stack_trace;
 
       std::cerr << "\033[31m" << "Error " << e.code() << ": " << e.what() << "\033[0m";
       if (!advice.empty()) std::cerr << "\n" << "\033[32m" << advice << "\033[0m";
-      if (!explanation.empty()) std::cerr  << "\n" << "\033[33m" << explanation << "\033[0m" << std::endl;
+      if (!explanation.empty()) std::cerr  << "\n" << "\033[33m" << explanation << "\033[0m";
+      if (!stack_trace.empty()) std::cerr  << "\n" << stack_trace;
+      std::cerr << std::endl;
       return true;
    }
    return false;
 }
 
-bool print_help_text(const fc::exception& e) {
+bool print_help_text(const fc::exception& e, const bool verbose_errors) {
    // Check if the exception has recognized error code
-   if (print_recognized_error_code(e)) return true;
+   if (print_recognized_error_code(e, verbose_errors)) return true;
    bool result = false;
    // Large input strings to std::regex can cause SIGSEGV, this is a known bug in libstdc++.
    // See https://stackoverflow.com/questions/36304204/%D0%A1-regex-segfault-on-long-sequences
