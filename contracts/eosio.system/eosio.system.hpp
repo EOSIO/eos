@@ -40,7 +40,7 @@ namespace eosiosystem {
                                  typename producers_election<SystemAccount>::vote_producer,
                                  typename producers_election<SystemAccount>::stake_vote,
                                  typename producers_election<SystemAccount>::unstake_vote,
-                                 typename producers_election<SystemAccount>::cancel_unstake_vote_request,
+                                 typename producers_election<SystemAccount>::unstake_vote_deferred,
                                  nonce>( code, act) ) {
                if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                   eosio::print("Unexpected action: ", eosio::name(act), "\n");

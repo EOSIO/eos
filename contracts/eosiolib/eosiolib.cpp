@@ -1,4 +1,6 @@
+#include "datastream.hpp"
 #include "memory.hpp"
+#include "privileged.hpp"
 
 namespace eosio {
 
@@ -499,6 +501,13 @@ void* realloc(void* ptr, size_t size)
 void free(void* ptr)
 {
    return eosio::memory_heap.free(ptr);
+}
+
+void set_blockchain_parameters_packed(char* data, size_t datalen);
+
+void set_blockchain_parameters(const struct blockchain_parameters* params) {
+   auto data = eosio::pack<eosio::blockchain_parameters>( *static_cast<const eosio::blockchain_parameters*>(params) );
+   set_blockchain_parameters_packed( data.data(), data.size() );
 }
 
 }

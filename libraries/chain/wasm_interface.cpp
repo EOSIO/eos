@@ -467,13 +467,23 @@ class privileged_api : public context_aware_api {
                                 uint64_t& ram_bytes, uint64_t& net_weight, uint64_t cpu_weight ) {
       }
 
-      void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
-         datastream<const char*> ds( packed_producer_schedule, datalen );
+      void set_active_producers( array_ptr<char> packed_producer_schedule, size_t num) {
+         datastream<const char*> ds( packed_producer_schedule, num * sizeof(uint64_t) );
          producer_schedule_type psch;
          fc::raw::unpack(ds, psch);
          context.mutable_db.modify( context.controller.get_global_properties(),
             [&]( auto& gprops ) {
                  gprops.new_active_producers = psch;
+         });
+      }
+
+   void set_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t datalen) {
+         datastream<const char*> ds( packed_blockchain_parameters, datalen );
+         chain::chain_config cfg;
+         fc::raw::unpack(ds, cfg);
+         context.mutable_db.modify( context.controller.get_global_properties(),
+            [&]( auto& gprops ) {
+                 gprops.configuration = cfg;
          });
       }
 
@@ -513,10 +523,10 @@ class producer_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      int get_active_producers(array_ptr<chain::account_name> producers, size_t datalen) {
+      int get_active_producers(array_ptr<chain::account_name> producers, size_t num) {
          auto active_producers = context.get_active_producers();
          size_t len = active_producers.size();
-         size_t cpy_len = std::min(datalen, len);
+         size_t cpy_len = std::min(num, len);
          memcpy(producers, active_producers.data(), cpy_len * sizeof(chain::account_name) );
          return len;
       }
@@ -1337,6 +1347,7 @@ REGISTER_INTRINSICS(privileged_api,
    (set_privileged,            void(int64_t, int)                            )
    (freeze_account,            void(int64_t, int)                            )
    (is_frozen,                 int(int64_t)                                  )
+   (set_blockchain_parameters_packed, void(int,int)                          )
 );
 
 REGISTER_INTRINSICS(checktime_api,

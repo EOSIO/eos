@@ -11,7 +11,7 @@
 #include <eosiolib/datastream.hpp>
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/multi_index.hpp>
-#include <eosiolib/privileged.h>
+#include <eosiolib/privileged.hpp>
 #include <eosiolib/transaction.hpp>
 
 #include <array>
@@ -35,25 +35,12 @@ namespace eosiosystem {
          static constexpr uint32_t unstake_pay_period = 7*24*3600; // one per week
          static constexpr uint32_t unstake_payments = 26; // during 26 weeks
 
-         struct producer_preferences {
-            uint32_t max_blk_size;
-            uint32_t target_blk_size;
-
-            uint64_t max_storage_size;
-            uint64_t rescource_window_size;
-
-            uint32_t max_blk_cpu;
-            uint32_t target_blk_cpu;
-
-            uint16_t inflation_rate; // inflation in percents * 10000;
-
-            uint32_t max_trx_lifetime;
-            uint16_t max_transaction_recursion;
+         struct producer_preferences : eosio::blockchain_parameters {
+            uint32_t inflation_rate; // inflation coefficient * 10000 (i.e. inflation in percent * 1000)
 
             producer_preferences() { bzero(this, sizeof(*this)); }
 
-            EOSLIB_SERIALIZE( producer_preferences, (max_blk_size)(target_blk_size)(max_storage_size)(rescource_window_size)
-                              (max_blk_cpu)(target_blk_cpu)(inflation_rate)(max_trx_lifetime)(max_transaction_recursion) )
+            EOSLIB_SERIALIZE_DERIVED( producer_preferences, eosio::blockchain_parameters, (inflation_rate) )
          };
 
          struct producer_info {
@@ -75,18 +62,23 @@ namespace eosiosystem {
                                      >  producer_info_index_type;
 
          struct account_votes {
-            account_name                owner;
-            account_name                proxy;
-            uint32_t                    last_update;
-            uint32_t                    is_proxy;
-            uint128_t                   proxied_votes;
+            account_name                owner = 0;
+            account_name                proxy = 0;
+            uint32_t                    last_update = 0;
+            uint32_t                    is_proxy = 0;
             system_token_type           staked;
+            system_token_type           unstaking;
+            system_token_type           unstake_per_week;
+            uint128_t                   proxied_votes = 0;
             std::vector<account_name>   producers;
+            uint32_t                    deferred_trx_id = 0;
+            time                        last_unstake_time = 0; //uint32
 
             uint64_t primary_key()const { return owner; }
 
-            EOSLIB_SERIALIZE( account_votes, (owner)(proxy)(last_update)(is_proxy)(staked)(producers) )
+            EOSLIB_SERIALIZE( account_votes, (owner)(proxy)(last_update)(is_proxy)(staked)(unstaking)(unstake_per_week)(proxied_votes)(producers)(deferred_trx_id)(last_unstake_time) )
          };
+
          typedef eosio::multi_index< N(accountvotes), account_votes>  account_votes_index_type;
 
 
@@ -97,32 +89,8 @@ namespace eosiosystem {
             uint64_t primary_key()const { return owner;       }
             EOSLIB_SERIALIZE( producer_config, (owner)(packed_key) )
          };
+
          typedef eosio::multi_index< N(producercfg), producer_config>  producer_config_index_type;
-
-         struct unstake_request {
-            uint64_t id;
-            account_name account;
-            system_token_type current_amount;
-            system_token_type weekly_refund_amount;
-            time next_refund_time;
-
-            uint64_t primary_key() const { return id; }
-            uint64_t rt() const { return next_refund_time; }
-            EOSLIB_SERIALIZE( unstake_request, (id)(account)(current_amount)(weekly_refund_amount)(next_refund_time) )
-         };
-
-         typedef eosio::multi_index< N(unstakereqs), unstake_request,
-                                     indexed_by<N(bytime), const_mem_fun<unstake_request, uint64_t, &unstake_request::rt> >
-                                     > unstake_requests_table;
-
-         struct unstake_requests_count {
-            account_name account;
-            uint16_t count;
-            uint64_t primary_key() const { return account; }
-            EOSLIB_SERIALIZE( unstake_requests_count, (account)(count) )
-         };
-
-         typedef eosio::multi_index< N(unstakecount), unstake_requests_count> unstake_requests_counts_table;
 
          ACTION( SystemAccount, register_producer ) {
             account_name producer;
@@ -235,33 +203,47 @@ namespace eosiosystem {
             producer_info_index_type producers_tbl( SystemAccount, SystemAccount );
             auto& idx = producers_tbl.template get<>( N(prototalvote) );
 
-            //use twice bigger integer types for aggregates
-            std::array<uint32_t, 21> max_blk_size;
-            std::array<uint32_t, 21> target_blk_size;
+            std::array<uint32_t, 21> target_block_size;
+            std::array<uint32_t, 21> max_block_size;
+            std::array<uint32_t, 21> target_block_acts_per_scope;
+            std::array<uint32_t, 21> max_block_acts_per_scope;
+            std::array<uint32_t, 21> target_block_acts;
+            std::array<uint32_t, 21> max_block_acts;
             std::array<uint64_t, 21> max_storage_size;
-            std::array<uint64_t, 21> rescource_window_size;
-            std::array<uint32_t, 21> max_blk_cpu;
-            std::array<uint32_t, 21> target_blk_cpu;
-            std::array<uint16_t, 21> inflation_rate; // inflation in percents * 10000;
-            std::array<uint32_t, 21> max_trx_lifetime;
-            std::array<uint16_t, 21> max_transaction_recursion;
+            std::array<uint32_t, 21> max_transaction_lifetime;
+            std::array<uint16_t, 21> max_authority_depth;
+            std::array<uint32_t, 21> max_transaction_exec_time;
+            std::array<uint16_t, 21> max_inline_depth;
+            std::array<uint32_t, 21> max_inline_action_size;
+            std::array<uint32_t, 21> max_generated_transaction_size;
+            std::array<uint32_t, 21> inflation_rate;
 
             std::array<account_name, 21> elected;
+
             auto it = std::prev( idx.end() );
             size_t n = 0;
             while ( n < 21 ) {
                if ( it->active() ) {
                   elected[n] = it->owner;
 
-                  max_blk_size[n] = it->prefs.max_blk_size;
-                  target_blk_size[n] = it->prefs.target_blk_size;
+                  target_block_size[n] = it->prefs.target_block_size;
+                  max_block_size[n] = it->prefs.max_block_size;
+
+                  target_block_acts_per_scope[n] = it->prefs.target_block_acts_per_scope;
+                  max_block_acts_per_scope[n] = it->prefs.max_block_acts_per_scope;
+
+                  target_block_acts[n] = it->prefs.target_block_acts;
+                  max_block_acts[n] = it->prefs.max_block_acts;
+
                   max_storage_size[n] = it->prefs.max_storage_size;
-                  rescource_window_size[n] = it->prefs.rescource_window_size;
-                  max_blk_cpu[n] = it->prefs.max_blk_cpu;
-                  target_blk_cpu[n] = it->prefs.target_blk_cpu;
+                  max_transaction_lifetime[n] = it->prefs.max_transaction_lifetime;
+                  max_authority_depth[n] = it->prefs.max_authority_depth;
+                  max_transaction_exec_time[n] = it->prefs.max_transaction_exec_time;
+                  max_inline_depth[n] = it->prefs.max_inline_depth;
+                  max_inline_action_size[n] = it->prefs.max_inline_action_size;
+                  max_generated_transaction_size[n] = it->prefs.max_generated_transaction_size;
+
                   inflation_rate[n] = it->prefs.inflation_rate;
-                  max_trx_lifetime[n] = it->prefs.max_trx_lifetime;
-                  max_transaction_recursion[n] = it->prefs.max_transaction_recursion;
                   ++n;
                }
 
@@ -272,14 +254,27 @@ namespace eosiosystem {
             }
             set_active_producers( elected.data(), n );
             size_t median = n/2;
-            //set_max_blk_size(max_blk_size[median]);
+
+            ::blockchain_parameters concensus = {
+               target_block_size[median],
+               max_block_size[median],
+               target_block_acts_per_scope[median],
+               max_block_acts_per_scope[median],
+               target_block_acts[median],
+               max_block_acts[median],
+               max_storage_size[median],
+               max_transaction_lifetime[median],
+               max_transaction_exec_time[median],
+               max_authority_depth[median],
+               max_inline_depth[median],
+               max_inline_action_size[median],
+               max_generated_transaction_size[median]
+            };
+
+            set_blockchain_parameters(&concensus);
          }
 
-         static void process_unstake_requests() {
-            
-         }
-
-      static void on( const stake_vote& sv ) {
+         static void on( const stake_vote& sv ) {
             eosio_assert( sv.amount.quantity > 0, "must stake some tokens" );
             require_auth( sv.voter );
 
@@ -295,80 +290,89 @@ namespace eosiosystem {
          };
 
          static void on( const unstake_vote& usv ) {
-            eosio_assert( usv.amount.quantity > 0, "unstake amount should be > 0" );
             require_auth( usv.voter );
-
-            unstake_requests_counts_table counts( SystemAccount, SystemAccount );
-            auto ptr = counts.find( usv.voter );
-            eosio_assert( !ptr || ptr->count < max_unstake_requests, "unstake requests limit exceeded");
-
-            if ( ptr ) {
-               counts.update( *ptr, usv.voter, [&](auto& r) { ++r.count; } );
-            } else {
-               counts.emplace( usv.voter, [&](auto& r) { r.count = 1; } );
-            }
-
-            unstake_requests_table requests( SystemAccount, SystemAccount );
-            auto pk = requests.available_primary_key();
-            requests.emplace( usv.voter, [&](unstake_request& r) {
-                  r.id = pk;
-                  r.account = usv.voter;
-                  r.current_amount = usv.amount;
-                  //round up to guarantee that there will be no unpaid balance after 26 weeks, and we are able refund amount < unstake_payments
-                  r.weekly_refund_amount = system_token_type( usv.amount.quantity/unstake_payments + usv.amount.quantity%unstake_payments );
-                  r.next_refund_time = now() + unstake_pay_period;
-               });
-
             account_votes_index_type avotes( SystemAccount, SystemAccount );
-
             const auto* acv = avotes.find( usv.voter );
             eosio_assert( bool(acv), "stake not found" );
 
-            eosio_assert( acv->staked.quantity < usv.amount.quantity, "attempt to unstake more than total stake amount" );
+            if ( 0 < usv.amount.quantity ) {
+               eosio_assert( acv->staked < usv.amount, "cannot unstake more than total stake amount" );
 
-            const std::vector<account_name>* producers = nullptr;
-            if ( acv->proxy ) {
-               auto proxy = avotes.find( acv->proxy );
-               avotes.update( *proxy, 0, [&](account_votes& a) { a.proxied_votes -= usv.amount.quantity; } );
-               if ( proxy->is_proxy ) { //only if proxy is still active. if proxy has been unregistered, we update proxied_votes, but don't propagate to producers
-                  producers = &proxy->producers;
+               if (acv->deferred_trx_id) {
+                  //XXX cancel_deferred_transaction(acv->deferred_trx_id);
+               }
+
+               uint32_t new_trx_id = 0;//XXX send_deferred();
+
+               avotes.update( *acv, 0, [&](account_votes& a) {
+                     a.staked -= usv.amount;
+                     a.unstaking += a.unstaking + usv.amount;
+                     //round up to guarantee that there will be no unpaid balance after 26 weeks, and we are able refund amount < unstake_payments
+                     a.unstake_per_week = system_token_type( a.unstaking.quantity /unstake_payments + a.unstaking.quantity % unstake_payments );
+                     a.deferred_trx_id = new_trx_id;
+                     a.last_update = now();
+                  });
+
+               const std::vector<account_name>* producers = nullptr;
+               if ( acv->proxy ) {
+                  auto proxy = avotes.find( acv->proxy );
+                  avotes.update( *proxy, 0, [&](account_votes& a) { a.proxied_votes -= usv.amount.quantity; } );
+                  if ( proxy->is_proxy ) { //only if proxy is still active. if proxy has been unregistered, we update proxied_votes, but don't propagate to producers
+                     producers = &proxy->producers;
+                  }
+               } else {
+                  producers = &acv->producers;
+               }
+
+               if ( producers ) {
+                  producer_info_index_type producers_tbl( SystemAccount, SystemAccount );
+                  for( auto p : *producers ) {
+                     auto prod = producers_tbl.find( p );
+                     eosio_assert( bool(prod), "never existed producer" ); //data corruption
+                     producers_tbl.update( *prod, 0, [&]( auto& v ) {
+                           v.total_votes -= usv.amount.quantity;
+                        });
+                  }
                }
             } else {
-               producers = &acv->producers;
+               if (acv->deferred_trx_id) {
+                  //XXX cancel_deferred_transaction(acv->deferred_trx_id);
+               }
+               avotes.update( *acv, 0, [&](account_votes& a) {
+                     a.staked += a.unstaking;
+                     a.unstaking.quantity = 0;
+                     a.unstake_per_week.quantity = 0;
+                     a.deferred_trx_id = 0;
+                     a.last_update = now();
+                  });
             }
-
-            if ( producers ) {
-               producer_info_index_type producers_tbl( SystemAccount, SystemAccount );
-               for( auto p : *producers ) {
-                  auto prod = producers_tbl.find( p );
-                  eosio_assert( bool(prod), "never existed producer" ); //data corruption
-                  producers_tbl.update( *prod, 0, [&]( auto& v ) {
-                        v.total_votes -= usv.amount.quantity;
-                     });
-                  }
-            }
-
-            //only update, never delete, because we need to keep is_proxy flag and proxied_amount
-            avotes.update( *acv, 0, [&]( auto& av ) {
-                  av.last_update = now();
-                  av.staked -= usv.amount;
-               });
          }
 
-         ACTION( SystemAccount, cancel_unstake_vote_request ) {
-            uint64_t request_id;
+         ACTION(  SystemAccount, unstake_vote_deferred ) {
+            account_name                voter;
 
-            EOSLIB_SERIALIZE( cancel_unstake_vote_request, (request_id) )
+            EOSLIB_SERIALIZE( unstake_vote_deferred, (voter) )
          };
 
-         static void on( const cancel_unstake_vote_request& cancel_req ) {
-            unstake_requests_table requests( SystemAccount, SystemAccount );
-            auto ptr = requests.find( cancel_req.request_id );
-            eosio_assert( bool(ptr), "unstake vote request not found" );
+         static void on( const unstake_vote_deferred& usv) {
+            require_auth( usv.voter );
+            account_votes_index_type avotes( SystemAccount, SystemAccount );
+            const auto* acv = avotes.find( usv.voter );
+            eosio_assert( bool(acv), "stake not found" );
 
-            require_auth( ptr->account );
-            increase_voting_power( ptr->account, ptr->current_amount );
-            requests.remove( *ptr );
+            auto weeks = (now() - acv->last_unstake_time) / unstake_pay_period;
+            eosio_assert( 0 == weeks, "less than one week since last unstaking balance transfer" );
+
+            auto unstake_amount = std::min(weeks * acv->unstake_per_week, acv->unstaking);
+            uint32_t new_trx_id = unstake_amount < acv->unstaking ? /* XXX send_deferred() */ 0 : 0;
+
+            currency::inline_transfer( usv.voter, SystemAccount, unstake_amount, "unstake voting" );
+
+            avotes.update( *acv, 0, [&](account_votes& a) {
+                  a.unstaking -= unstake_amount;
+                  a.deferred_trx_id = new_trx_id;
+                  a.last_unstake_time = a.last_unstake_time + weeks * unstake_pay_period;
+               });
          }
 
          ACTION( SystemAccount, vote_producer ) {
@@ -528,7 +532,6 @@ namespace eosiosystem {
 
          static void on( const block& ) {
             update_elected_producers();
-            process_unstake_requests();
          }
    };
 }

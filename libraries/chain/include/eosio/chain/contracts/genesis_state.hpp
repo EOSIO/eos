@@ -23,7 +23,6 @@ struct genesis_state_type {
       .max_block_acts_per_scope       = config::default_max_block_acts_per_scope,
       .target_block_acts              = config::default_target_block_acts,
       .max_block_acts                 = config::default_max_block_acts,
-      .real_threads                   = 0, // TODO: unused?
       .max_storage_size               = config::default_max_storage_size,
       .max_transaction_lifetime       = config::default_max_trx_lifetime,
       .max_authority_depth            = config::default_max_auth_depth,

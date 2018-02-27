@@ -112,6 +112,47 @@ namespace eosio {
     }
 
     /**
+    * Multiplies quantity of token by an integer
+    * Throws an exception if overflow
+    * @brief Multiplies quantity of token by an integer
+    * @param a multipier
+    * @return this token after addition
+    */
+    token& operator*=( uint64_t a ) {
+      eosio_assert( (quantity * a) / a == quantity, "integer overflow multiplying token balance" );
+      quantity *= a;
+      return *this;
+    }
+
+    /**
+    * Multiplies token and integer
+    * Throws an exception if overflow
+    * @brief Adds quantity of two tokens and return a new token
+    * @param a token to be multiplied
+    * @param b multipier
+    * @return result of addition as a new token
+    */
+    inline friend token operator*( const token& a, uint64_t b ) {
+      token result = a;
+      result *= b;
+      return result;
+    }
+
+    /**
+    * Multiplies token and integer
+    * Throws an exception if overflow
+    * @brief Adds quantity of two tokens and return a new token
+    * @param a token to be multiplied
+    * @param b multipier
+    * @return result of addition as a new token
+    */
+   inline friend token operator*( uint64_t b, const token& a ) {
+      token result = a;
+      result *= b;
+      return result;
+    }
+
+    /**
     * Less than or equal to comparison operator
     * @brief Less than or equal to comparison operator
     * @param a token to be compared
