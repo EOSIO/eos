@@ -46,9 +46,9 @@ namespace eosiosystem {
             eosio_parameters  prefs;
             eosio::bytes      packed_key; /// a packed public key object
             eosio::asset      per_block_payments;
-            time              last_rewards_claim = 0;
-            time              time_became_active = 0;
-            time              last_produced_block_time = 0;
+            eosio_time        last_rewards_claim = 0;
+            eosio_time        time_became_active = 0;
+            eosio_time        last_produced_block_time = 0;
 
             uint64_t    primary_key()const { return owner;       }
             uint128_t   by_votes()const    { return total_votes; }
@@ -67,7 +67,7 @@ namespace eosiosystem {
          struct voter_info {
             account_name                owner = 0;
             account_name                proxy = 0;
-            time                        last_update = 0;
+            eosio_time                  last_update = 0;
             uint32_t                    is_proxy = 0;
             eosio::asset                staked;
             eosio::asset                unstaking;
@@ -75,7 +75,7 @@ namespace eosiosystem {
             uint128_t                   proxied_votes = 0;
             std::vector<account_name>   producers;
             uint32_t                    deferred_trx_id = 0;
-            time                        last_unstake_time = 0; //uint32
+            eosio_time                  last_unstake_time = 0; //uint32
 
             uint64_t primary_key()const { return owner; }
 
@@ -238,7 +238,7 @@ namespace eosiosystem {
             return eosio::asset(payment, system_token_symbol);
          }
 
-         static void update_elected_producers(time cycle_time) {
+         static void update_elected_producers(eosio_time cycle_time) {
             producers_table producers_tbl( SystemAccount, SystemAccount );
             auto idx = producers_tbl.template get_index<N(prototalvote)>();
 

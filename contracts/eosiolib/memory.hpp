@@ -9,6 +9,7 @@
 
 void* sbrk(size_t num_bytes);
 
+#ifndef EOSIO_NATIVE_CONTRACT_COMPILATION
 extern "C" {
 
 void* malloc(size_t size);
@@ -20,3 +21,5 @@ void* realloc(void* ptr, size_t size);
 void free(void* ptr);
 
 }
+#endif
+

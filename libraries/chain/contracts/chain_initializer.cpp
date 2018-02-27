@@ -59,7 +59,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.types.push_back( type_def{"context_free_type","bytes"} );
    eos_abi.types.push_back( type_def{"weight_type","uint16"} );
    eos_abi.types.push_back( type_def{"fields","field[]"} );
-   eos_abi.types.push_back( type_def{"time_point_sec","time"} );
+   eos_abi.types.push_back( type_def{"time_point_sec","eosio_time"} );
 
    // TODO add ricardian contracts
    eos_abi.actions.push_back( action_def{name("setcode"), "setcode",""} );

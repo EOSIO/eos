@@ -11,7 +11,9 @@
 
 namespace eosio {
 
+   #ifndef EOSIO_NATIVE_CONTRACT_COMPILATION
    static_assert( sizeof(long) == sizeof(int), "unexpected size difference" );
+   #endif
 
    /**
     *  Prints string
@@ -22,6 +24,7 @@ namespace eosio {
       prints(ptr);
    }
 
+   #ifndef EOSIO_NATIVE_CONTRACT_COMPILATION
    /**
     * Prints signed integer
     * @brief Prints signed integer as a 64 bit signed integer
@@ -30,6 +33,7 @@ namespace eosio {
    inline void print( int num ) {
       printi(num);
    }
+   #endif
 
    /**
     * Prints 32 bit signed integer
@@ -49,7 +53,7 @@ namespace eosio {
       printi(num);
    }
 
-
+   #ifndef EOSIO_NATIVE_CONTRACT_COMPILATION
    /**
     * Prints unsigned integer
     * @brief Prints unsigned integer as a 64 bit unsigned integer
@@ -67,6 +71,7 @@ namespace eosio {
    inline void print( uint32_t num ) {
       printui(num);
    }
+   #endif
 
    /**
     * Prints 64 bit unsigned integer

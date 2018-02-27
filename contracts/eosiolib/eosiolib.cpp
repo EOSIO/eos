@@ -1,6 +1,8 @@
 #include "datastream.hpp"
 #include "memory.hpp"
 #include "privileged.hpp"
+#include <string.h>
+#include <unistd.h>
 
 void* sbrk(size_t num_bytes) {
       constexpr uint32_t NBPPL2  = 16U;
@@ -90,7 +92,7 @@ namespace eosio {
          constexpr uint32_t wasm_page_size = 64*1024;
          memory* const current_memory = _available_heaps + _active_heap;
 
-         const uint32_t current_memory_size = reinterpret_cast<uint32_t>(sbrk(0));
+         const uint32_t current_memory_size = reinterpret_cast<uint32_t>(sbrk(size_t(0)));
          if(static_cast<int32_t>(current_memory_size) < 0)
             return nullptr;
 
@@ -101,7 +103,7 @@ namespace eosio {
             heap_adj = (current_memory_size + wasm_page_size) - (current_memory_size % wasm_page_size) - current_memory_size;
          else
             heap_adj = (current_memory_size + wasm_page_size*2) - (current_memory_size % (wasm_page_size*2)) - current_memory_size;
-         char* new_memory_start = reinterpret_cast<char*>(sbrk(heap_adj));
+         char* new_memory_start = reinterpret_cast<char*>(sbrk(size_t(heap_adj)));
          if(reinterpret_cast<int32_t>(new_memory_start) == -1) {
             // ensure that any remaining unallocated memory gets cleaned up
             current_memory->cleanup_remaining();

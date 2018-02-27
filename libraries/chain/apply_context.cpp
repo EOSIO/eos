@@ -16,12 +16,21 @@ void apply_context::exec_one()
    try {
       const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
       privileged = a.privileged;
+
+      // If there is a native contract registered for this action, then run it.
       auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
       if (native) {
-         (*native)(*this);
+         try {
+            (*native)(*this);
+         } catch ( const wasm_exit& ){}
       }
 
-      if (a.code.size() > 0 && !(act.name == N(setcode) && act.account == config::system_account_name)) {
+      // If wasm code exists for this account, run it if either:
+      //    this is a system contract and not the setcode action or
+      //    this is not a system contract and there is no native contract registered for this action
+      if (a.code.size() > 0 &&
+          ((act.account == config::system_account_name && act.name != N(setcode)) ||
+           (act.account != config::system_account_name && !native))) {
          try {
             mutable_controller.get_wasm_interface().apply(a.code_version, a.code, *this);
          } catch ( const wasm_exit& ){}

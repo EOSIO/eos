@@ -43,6 +43,8 @@ else()
   set(no_whole_archive_flag "--no-whole-archive")
 endif()
 
+SET( CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -rdynamic" )
+
 target_link_libraries( nodeos
         PRIVATE appbase
         PRIVATE -Wl,${whole_archive_flag} account_history_api_plugin -Wl,${no_whole_archive_flag}
@@ -51,7 +53,8 @@ target_link_libraries( nodeos
         PRIVATE -Wl,${whole_archive_flag} net_api_plugin             -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} faucet_testnet_plugin      -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} txn_test_gen_plugin        -Wl,${no_whole_archive_flag}
-        PRIVATE account_history_plugin producer_plugin chain_plugin net_plugin http_plugin
+        PRIVATE -Wl,${whole_archive_flag} debug_plugin               -Wl,${no_whole_archive_flag}
+        PRIVATE account_history_plugin producer_plugin chain_plugin net_plugin http_plugin debug_plugin
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 if(BUILD_MONGO_DB_PLUGIN)

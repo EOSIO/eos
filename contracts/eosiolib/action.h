@@ -139,7 +139,7 @@ extern "C" {
     *  @brief Get the publication time
     *  @return the time in seconds from 1970 of the publication_time
     */
-   time  publication_time();
+   eosio_time  publication_time();
 
    /**
     *  Get the account which specifies the sender of the action

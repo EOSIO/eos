@@ -39,9 +39,9 @@ namespace eosiosystem {
             eosio::asset         total_storage_stake;
             eosio::asset         payment_per_block;
             eosio::asset         payment_to_eos_bucket;
-            time                 first_block_time_in_cycle = 0;
+            eosio_time           first_block_time_in_cycle = 0;
             uint32_t             blocks_per_cycle = 0;
-            time                 last_bucket_fill_time = 0;
+            eosio_time           last_bucket_fill_time = 0;
             eosio::asset         eos_bucket;
 
             EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_storage_bytes_reserved)(total_storage_stake)

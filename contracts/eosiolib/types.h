@@ -19,11 +19,16 @@ extern "C" {
  *  @{
  */
 
+#ifdef EOSIO_NATIVE_CONTRACT_COMPILATION
+typedef unsigned __int128    uint128_t;
+typedef __int128             int128_t;
+#endif
+
 typedef uint64_t account_name;
 typedef uint64_t permission_name;
 typedef uint64_t token_name;
 typedef uint64_t table_name;
-typedef uint32_t time;
+typedef uint32_t eosio_time;
 typedef uint64_t scope_name;
 typedef uint64_t action_name;
 typedef uint16_t region_id;

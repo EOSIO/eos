@@ -326,12 +326,14 @@ namespace eosio { namespace chain {
 
          bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);            }
 
+      public:
          /**
           *  The controller can override any script endpoint with native code.
           */
          ///@{
          void _set_apply_handler( account_name contract, account_name scope, action_name action, apply_handler v );
          //@}
+      private:
 
 
          transaction_trace _push_transaction( const packed_transaction& trx );

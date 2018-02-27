@@ -300,7 +300,7 @@ class dice : public eosio::contract {
       struct game {
          uint64_t id;
          asset    bet;
-         time     deadline;
+         eosio_time deadline;
          player   player1;
          player   player2;
 

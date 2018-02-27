@@ -62,7 +62,7 @@ struct PACKED(account_balance) {
   * @brief Time at which last unstaking occurred for this account
   * @details Time at which last unstaking occurred for this account
   */
-  time last_unstaking_time;
+  eosio_time last_unstaking_time;
 };
 /// @} account_balance
 

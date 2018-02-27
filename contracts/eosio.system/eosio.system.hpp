@@ -14,7 +14,7 @@ namespace eosiosystem {
 
    struct block_header {
       checksum256                               previous;
-      time                                      timestamp;
+      eosio_time                                timestamp;
       checksum256                               transaction_mroot;
       checksum256                               action_mroot;
       checksum256                               block_mroot;
@@ -55,7 +55,7 @@ namespace eosiosystem {
          static void on( const nonce& ) {
          }
 
-         static bool update_cycle(time block_time) {
+         static bool update_cycle(eosio_time block_time) {
             auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
                : common<SystemAccount>::get_default_parameters();
             if (parameters.first_block_time_in_cycle == 0) {
@@ -69,7 +69,7 @@ namespace eosiosystem {
             static const uint32_t slots_per_cycle = parameters.blocks_per_cycle;
             const uint32_t time_slots = block_time - parameters.first_block_time_in_cycle;
             if (time_slots >= slots_per_cycle) {
-               time beginning_of_cycle = block_time - (time_slots % slots_per_cycle);
+               eosio_time beginning_of_cycle = block_time - (time_slots % slots_per_cycle);
                voting<SystemAccount>::update_elected_producers(beginning_of_cycle);
                return true;
             }

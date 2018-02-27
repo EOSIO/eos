@@ -6,6 +6,7 @@
 #include <eosiolib/types.h>
 #include <functional>
 #include <tuple>
+#include <string.h>
 
 namespace eosio {
 

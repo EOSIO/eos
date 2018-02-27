@@ -202,9 +202,9 @@ namespace fc
         {
            static exception_builder<T> builder;
            auto itr = _registered_exceptions.find( T::code_value );
-           assert( itr == _registered_exceptions.end() );
-           (void)itr; // in release builds this hides warnings
-           _registered_exceptions[T::code_value] = &builder;
+           if ( itr == _registered_exceptions.end() ) {
+              _registered_exceptions[T::code_value] = &builder;
+           }
         }
 
         void NO_RETURN rethrow( const exception& e )const;

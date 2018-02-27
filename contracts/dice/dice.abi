@@ -43,7 +43,7 @@
           "type": "asset"
         },{
           "name": "deadline",
-          "type": "time"
+          "type": "eosio_time"
         },{
           "name": "player1",
           "type": "player"

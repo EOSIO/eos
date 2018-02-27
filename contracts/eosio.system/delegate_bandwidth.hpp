@@ -30,8 +30,8 @@ namespace eosiosystem {
    class delegate_bandwidth : public voting<SystemAccount> {
       public:
          static constexpr account_name system_account = SystemAccount;
-         static constexpr time refund_delay = 3*24*3600;
-         static constexpr time refund_expiration_time = 3600;
+         static constexpr eosio_time refund_delay = 3*24*3600;
+         static constexpr eosio_time refund_expiration_time = 3600;
          using eosio_parameters = typename common<SystemAccount>::eosio_parameters;
          using global_state_singleton = typename common<SystemAccount>::global_state_singleton;
 
@@ -69,7 +69,7 @@ namespace eosiosystem {
 
          struct refund_request {
             account_name  owner;
-            time          request_time;
+            eosio_time          request_time;
             eosio::asset  amount;
 
             uint64_t  primary_key()const { return owner; }
