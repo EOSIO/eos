@@ -42,20 +42,21 @@ namespace eosio { namespace chain {
       return signee() == expected_signee;
    }
 
-   checksum_type signed_block_summary::calculate_transaction_mroot()const
-   {
-      return checksum_type();// TODO ::hash(merkle(ids));
-   }
-
-   digest_type   signed_block::calculate_transaction_merkle_root()const {
-      vector<digest_type> ids; 
-      ids.reserve(input_transactions.size());
-
-      for( const auto& t : input_transactions ) 
-         ids.emplace_back( t.get_transaction().id() );
-
-      return merkle( std::move(ids) );
-   }
+   checksum256_type signed_block_summary::calculate_transaction_mroot()const {
+      vector<digest_type> merkle_of_each_shard;
+      for(const region_summary& rs : regions) {
+         for(const cycle& cs : rs.cycles_summary) {
+            for(const shard_summary& ss: cs) {
+               vector<digest_type> merkle_list_for_txns_in_shard;
+               for(const transaction_receipt& tr : ss.transactions) {
+                  merkle_list_for_txns_in_shard.emplace_back(tr.id);
+               }
+               merkle_of_each_shard.emplace_back( merkle(std::move(merkle_list_for_txns_in_shard)) );
+            }
+         }
+      }
+      return merkle( std::move(merkle_of_each_shard) );
+    }
 
    void shard_trace::calculate_root() {
       static const size_t GUESS_ACTS_PER_TX = 10;

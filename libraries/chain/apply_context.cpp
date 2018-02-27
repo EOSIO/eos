@@ -23,11 +23,10 @@ void apply_context::exec_one()
             // get code from cache
             auto code = mutable_controller.get_wasm_cache().checkout_scoped(a.code_version, a.code.data(),
                                                                             a.code.size());
-
             // get wasm_interface
             auto &wasm = wasm_interface::get();
             wasm.apply(code, *this);
-         }
+      }
       }
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 
@@ -95,14 +94,14 @@ void apply_context::exec_one()
 void apply_context::exec()
 {
    _notified.push_back(act.account);
-
    for( uint32_t i = 0; i < _notified.size(); ++i ) {
       receiver = _notified[i];
       exec_one();
    }
 
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
-      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta);
+      EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
+      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta, recurse_depth + 1 );
       ncontext.exec();
       append_results(move(ncontext.results));
    }
@@ -116,6 +115,7 @@ bool apply_context::is_account( const account_name& account )const {
 void apply_context::require_authorization( const account_name& account )const {
   for( const auto& auth : act.authorization )
      if( auth.actor == account ) return;
+  wdump((act));
   EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}", ("account",account));
 }
 void apply_context::require_authorization(const account_name& account, 

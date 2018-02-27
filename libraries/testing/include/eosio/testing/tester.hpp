@@ -9,27 +9,29 @@ namespace eosio { namespace testing {
 
    using namespace eosio::chain;
 
-
    /**
     *  @class tester
     *  @brief provides utility function to simplify the creation of unit tests
     */
-   class tester {
+   class base_tester {
       public:
          typedef string action_result;
 
-         tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits(), bool process_genesis = true);
+         base_tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
 
          void              close();
          void              open();
-         void              push_genesis_block();
 
          signed_block      produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) );
          void              produce_blocks( uint32_t n = 1 );
 
          transaction_trace push_transaction( packed_transaction& trx );
          transaction_trace push_transaction( signed_transaction& trx );
-         action_result      push_action(action&& cert_act, uint64_t authorizer);
+         action_result     push_action(action&& cert_act, uint64_t authorizer);
+
+         transaction_trace push_action( const account_name& code, const action_name& act, const account_name& signer, const variant_object &data );
+
+
          void              set_tapos( signed_transaction& trx ) const;
 
          void              create_accounts( vector<account_name> names, bool multisig = false ) {
@@ -43,6 +45,7 @@ namespace eosio { namespace testing {
          void              create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
 
          transaction_trace push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys );
+         transaction_trace push_reqauth(account_name from, string role, bool multi_sig = false);
          transaction_trace push_nonce( account_name from, const string& v = "blah" );
          transaction_trace transfer( account_name from, account_name to, asset amount, string memo, account_name currency );
          transaction_trace transfer( account_name from, account_name to, string amount, string memo, account_name currency );
@@ -99,6 +102,13 @@ namespace eosio { namespace testing {
          chain_controller::controller_config           cfg;
 
          map<transaction_id_type, transaction_receipt> chain_transactions;
+   };
+
+   class tester : public base_tester {
+   public:
+      tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
+
+      void              push_genesis_block();
    };
 
    /**

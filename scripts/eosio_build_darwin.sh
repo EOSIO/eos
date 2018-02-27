@@ -20,20 +20,20 @@
 	printf "\tDisk space available: ${DISK_AVAIL}G\n\n"
 	
 	if [ $MEM_GIG -lt 8 ]; then
-		printf "\tYour system must have 8 or more Gigabytes of physical memory installed.\n"
-		printf "\tExiting now.\n"
+		echo "Your system must have 8 or more Gigabytes of physical memory installed."
+		echo "Exiting now."
 		exit 1
 	fi
 
 	if [ $OS_MIN -lt 12 ]; then
-		printf "\tYou must be running Mac OS 10.12.x or higher to install EOSIO.\n"
-		printf "\tExiting now.\n"
+		echo "You must be running Mac OS 10.12.x or higher to install EOSIO."
+		echo "Exiting now."
 		exit 1
 	fi
 
 	if [ $DISK_AVAIL -lt 100 ]; then
-		printf "\tYou must have at least 100GB of available storage to install EOSIO.\n"
-		printf "\tExiting now.\n"
+		echo "You must have at least 100GB of available storage to install EOSIO."
+		echo "Exiting now."
 		exit 1
 	fi
 
@@ -70,7 +70,7 @@
 					$XCODESELECT --install 2>/dev/null;
 					$RUBY -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 					if [ $? -ne 0 ]; then
-						echo "User aborted homebrew installation. Exiting now."
+						echo "Unable to install homebrew at this time. Exiting now."
 						exit 0;
 					fi
 					break;;
@@ -108,6 +108,10 @@
 				
 				if [ $pkg = "LLVM" ]; then
 					pkg="llvm@4"
+				fi
+
+				if [ $pkg = "openssl" ]; then
+					pkg="openssl@1.0"
 				fi
 
 				if [ $pkg = "gettext" ]; then
@@ -175,26 +179,6 @@
 		sudo rm -rf ${TEMP_DIR}/secp256k1-zkp
 	else
 		printf "\tsecp256k1 found at /usr/local/lib/\n"
-	fi
-
-	printf "\n\tChecking for binaryen\n"
-	if [ ! -e /usr/local/binaryen/bin/binaryen.js ]; then
-		cd ${TEMP_DIR}
-		git clone https://github.com/WebAssembly/binaryen
-		cd binaryen
-		git checkout tags/1.37.14
-		cmake . && make -j${CPU_CORE}
-		if [ $? -ne 0 ]; then
-			printf "\tError compiling binaryen.\n"
-			printf "\tExiting now.\n\n"
-			exit;
-		fi
-		sudo mkdir /usr/local/binaryen
-		sudo mv ${TEMP_DIR}/binaryen/bin /usr/local/binaryen
-		sudo ln -s /usr/local/binaryen/bin/* /usr/local
-		sudo rm -rf ${TEMP_DIR}/binaryen
-	else
-		printf "\tBinaryen found at /usr/local/binaryen/bin/\n"
 	fi
 
 	printf "\n\tChecking for WASM\n"

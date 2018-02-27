@@ -6,8 +6,6 @@
 #include <asserter/asserter.wast.hpp>
 #include <asserter/asserter.abi.hpp>
 
-#include <test_api/test_api.wast.hpp>
-
 #include <stltest/stltest.wast.hpp>
 #include <stltest/stltest.abi.hpp>
 
@@ -56,32 +54,6 @@ struct provereset {
 };
 
 FC_REFLECT_EMPTY(provereset);
-
-constexpr uint32_t DJBH(const char* cp)
-{
-   uint32_t hash = 5381;
-   while (*cp)
-      hash = 33 * hash ^ (unsigned char) *cp++;
-   return hash;
-}
-
-constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
-   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
-}
-
-
-template<uint64_t NAME>
-struct test_api_action {
-   static account_name get_account() {
-      return N(tester);
-   }
-
-   static action_name get_name() {
-      return action_name(NAME);
-   }
-};
-FC_REFLECT_TEMPLATE((uint64_t T), test_api_action<T>, BOOST_PP_SEQ_NIL);
-
 
 BOOST_AUTO_TEST_SUITE(wasm_tests)
 
@@ -226,45 +198,6 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
 
 } FC_LOG_AND_RETHROW() /// prove_mem_reset
 
-BOOST_FIXTURE_TEST_CASE( test_api_bootstrap, tester ) try {
-   produce_blocks(2);
-
-   create_accounts( {N(tester)} );
-   produce_block();
-
-   set_code(N(tester), test_api_wast);
-   produce_blocks(1);
-
-   // make sure asserts function as we are predicated on them
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               test_api_action<TEST_METHOD("test_action", "assert_false")> {});
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      BOOST_CHECK_EXCEPTION(push_transaction(trx), fc::assert_exception, assert_message_is("test_action::assert_false"));
-      produce_block();
-
-      BOOST_REQUIRE_EQUAL(false, chain_has_transaction(trx.id()));
-   }
-
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               test_api_action<TEST_METHOD("test_action", "assert_true")> {});
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-      const auto& receipt = get_transaction_receipt(trx.id());
-      BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
-   }
-} FC_LOG_AND_RETHROW() /// test_api_bootstrap
-
 /**
  * Make sure WASM "start" method is used correctly
  */
@@ -405,14 +338,17 @@ BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-//Make sure we can create a wasm with 16 pages, but not grow it any
+//Make sure we can create a wasm with maximum pages, but not grow it any
 BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
    produce_blocks(2);
 
    create_accounts( {N(bigmem)} );
    produce_block();
 
-   set_code(N(bigmem), biggest_memory_wast);  //should pass, 16 pages is fine
+   string biggest_memory_wast_f = fc::format_string(biggest_memory_wast, fc::mutable_variant_object(
+                                          "MAX_WASM_PAGES", eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024)));
+
+   set_code(N(bigmem), biggest_memory_wast_f.c_str());
    produce_blocks(1);
 
    signed_transaction trx;
@@ -424,13 +360,14 @@ BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
 
    set_tapos(trx);
    trx.sign(get_private_key( N(bigmem), "active" ), chain_id_type());
-   //but should not be able to grow beyond 16th page
-   BOOST_CHECK_THROW(push_transaction(trx), fc::exception);
+   //but should not be able to grow beyond largest page
+   push_transaction(trx);
 
    produce_blocks(1);
 
-   //should fail, 17 blocks is no no
-   BOOST_CHECK_THROW(set_code(N(bigmem), too_big_memory_wast), eosio::chain::wasm_execution_error);
+   string too_big_memory_wast_f = fc::format_string(too_big_memory_wast, fc::mutable_variant_object(
+                                          "MAX_WASM_PAGES_PLUS_ONE", eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024)+1));
+   BOOST_CHECK_THROW(set_code(N(bigmem), too_big_memory_wast_f.c_str()), eosio::chain::wasm_execution_error);
 
 } FC_LOG_AND_RETHROW()
 
@@ -534,8 +471,8 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
 
    for(const string& s : loadops) {
       std::stringstream ss;
-      ss << "(module (memory $0 16) (func $apply (param $0 i64) (param $1 i64) ";
-      ss << "(drop (" << s << " offset=1048574 (i32.const 0)))";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(drop (" << s << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory-2 << " (i32.const 0)))";
       ss << "))";
 
       set_code(N(offsets), ss.str().c_str());
@@ -543,8 +480,8 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
    }
    for(const vector<string>& o : storeops) {
       std::stringstream ss;
-      ss << "(module (memory $0 16) (func $apply (param $0 i64) (param $1 i64) ";
-      ss << "(" << o[0] << " offset=1048574 (i32.const 0) (" << o[1] << ".const 0))";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(" << o[0] << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory-2 << " (i32.const 0) (" << o[1] << ".const 0))";
       ss << "))";
 
       set_code(N(offsets), ss.str().c_str());
@@ -553,8 +490,8 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
 
    for(const string& s : loadops) {
       std::stringstream ss;
-      ss << "(module (memory $0 16) (func $apply (param $0 i64) (param $1 i64) ";
-      ss << "(drop (" << s << " offset=1048580 (i32.const 0)))";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(drop (" << s << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory+4 << " (i32.const 0)))";
       ss << "))";
 
       BOOST_CHECK_THROW(set_code(N(offsets), ss.str().c_str()), eosio::chain::wasm_execution_error);
@@ -562,8 +499,8 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
    }
    for(const vector<string>& o : storeops) {
       std::stringstream ss;
-      ss << "(module (memory $0 16) (func $apply (param $0 i64) (param $1 i64) ";
-      ss << "(" << o[0] << " offset=1048580 (i32.const 0) (" << o[1] << ".const 0))";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(" << o[0] << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory+4 << " (i32.const 0) (" << o[1] << ".const 0))";
       ss << "))";
 
       BOOST_CHECK_THROW(set_code(N(offsets), ss.str().c_str()), eosio::chain::wasm_execution_error);
@@ -829,97 +766,5 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
 
 } FC_LOG_AND_RETHROW()
 #endif
-
-BOOST_FIXTURE_TEST_CASE( test_db, tester ) try {
-   produce_blocks(2);
-   
-   create_accounts( {N(tester)} );
-   produce_block();
-   
-   set_code(N(tester), test_api_wast);
-   //   set_code(N(tester), test_api_abi);
-   
-   produce_blocks(1);
-   
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               test_api_action<TEST_METHOD("test_db", "primary_i64_general")> {});
-      
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-      
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               test_api_action<TEST_METHOD("test_db", "primary_i64_lowerbound")> {});
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               test_api_action<TEST_METHOD("test_db", "primary_i64_upperbound")> {});
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               test_api_action<TEST_METHOD("test_db", "idx64_general")> {});
-      
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-      
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               test_api_action<TEST_METHOD("test_db", "idx64_lowerbound")> {});
-      
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-      
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                               test_api_action<TEST_METHOD("test_db", "idx64_upperbound")> {});
-      
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-      
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-} FC_LOG_AND_RETHROW() /// test_db
-
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -34,12 +34,22 @@ namespace eosio {
 
       memory* next_active_heap()
       {
+         constexpr uint32_t wasm_page_size = 64*1024;
          memory* const current_memory = _available_heaps + _active_heap;
 
-         // make sure we will not exceed the 1M limit (needs to match wasm_interface.cpp _max_memory)
-         auto remaining = 1024 * 1024 - reinterpret_cast<int32_t>(sbrk(0));
-         if (remaining <= 0)
-         {
+         const uint32_t current_memory_size = reinterpret_cast<uint32_t>(sbrk(0));
+         if(static_cast<int32_t>(current_memory_size) < 0)
+            return nullptr;
+         
+         //grab up to the end of the current WASM memory page provided that it has 1KiB remaining, otherwise
+         // grow to end of next page
+         uint32_t heap_adj;
+         if(current_memory_size % wasm_page_size <= wasm_page_size-1024)
+            heap_adj = (current_memory_size + wasm_page_size) - (current_memory_size % wasm_page_size) - current_memory_size;
+         else
+            heap_adj = (current_memory_size + wasm_page_size*2) - (current_memory_size % (wasm_page_size*2)) - current_memory_size;
+         char* new_memory_start = reinterpret_cast<char*>(sbrk(heap_adj));
+         if(reinterpret_cast<int32_t>(new_memory_start) == -1) {
             // ensure that any remaining unallocated memory gets cleaned up
             current_memory->cleanup_remaining();
             ++_active_heap;
@@ -47,10 +57,8 @@ namespace eosio {
             return nullptr;
          }
 
-         const uint32_t new_heap_size = remaining > _new_heap_size ? _new_heap_size : remaining;
-         char* new_memory_start = static_cast<char*>(sbrk(new_heap_size));
          // if we can expand the current memory, keep working with it
-         if (current_memory->expand_memory(new_memory_start, new_heap_size))
+         if (current_memory->expand_memory(new_memory_start, heap_adj))
             return current_memory;
 
          // ensure that any remaining unallocated memory gets cleaned up
@@ -58,7 +66,7 @@ namespace eosio {
 
          ++_active_heap;
          memory* const next = _available_heaps + _active_heap;
-         next->init(new_memory_start, new_heap_size);
+         next->init(new_memory_start, heap_adj);
 
          return next;
       }
@@ -75,7 +83,6 @@ namespace eosio {
          adjust_to_mem_block(size);
 
          // first pass of loop never has to initialize the slot in _available_heap
-         uint32_t needs_init = 0;
          char* buffer = nullptr;
          memory* current = nullptr;
          // need to make sure
@@ -129,7 +136,6 @@ namespace eosio {
             return nullptr;
          }
 
-         const uint32_t REMOVE = size;
          adjust_to_mem_block(size);
 
          char* realloc_ptr = nullptr;
@@ -204,7 +210,6 @@ namespace eosio {
          {
             _heap_size = size;
             _heap = mem_heap;
-            memset(_heap, 0, _heap_size);
          }
 
          uint32_t is_init() const
@@ -283,12 +288,11 @@ namespace eosio {
                return nullptr;
             }
 
-            const int32_t diff = size - *orig_ptr_size;
-            if (diff < 0)
+            if( *orig_ptr_size > size ) 
             {
                // use a buffer_ptr to allocate the memory to free
                char* const new_ptr = ptr + size + _size_marker;
-               buffer_ptr excess_to_free(new_ptr, -diff, _heap + _heap_size);
+               buffer_ptr excess_to_free(new_ptr, *orig_ptr_size - size, _heap + _heap_size);
                excess_to_free.mark_free();
 
                return ptr;
@@ -297,11 +301,11 @@ namespace eosio {
             else if (orig_buffer_end == &_heap[_offset])
             {
                orig_buffer.size(size);
-               _offset += diff;
+               _offset += size - *orig_ptr_size;
 
                return ptr;
             }
-            if (-diff == 0)
+            if (size == *orig_ptr_size )
                return ptr;
 
             if (!orig_buffer.merge_contiguous_if_available(size))
@@ -418,7 +422,7 @@ namespace eosio {
             bool merge_contiguous(uint32_t needed_size, bool all_or_nothing)
             {
                // do not bother if there isn't contiguious space to allocate
-               if (all_or_nothing && _heap_end - _ptr < needed_size)
+               if( all_or_nothing && uint32_t(_heap_end - _ptr) < needed_size )
                   return false;
 
                uint32_t possible_size = _size;
@@ -464,7 +468,6 @@ namespace eosio {
       static const uint32_t _mem_block = 8;
       static const uint32_t _rem_mem_block_mask = _mem_block - 1;
       static const uint32_t _initial_heap_size = 8192;//32768;
-      static const uint32_t _new_heap_size = 65536;
       // if sbrk is not called outside of this file, then this is the max times we can call it
       static const uint32_t _heaps_size = 16;
       char _initial_heap[_initial_heap_size];
@@ -472,7 +475,7 @@ namespace eosio {
       uint32_t _heaps_actual_size;
       uint32_t _active_heap;
       uint32_t _active_free_heap;
-      static const uint32_t _alloc_memory_mask = 1 << 31;
+      static const uint32_t _alloc_memory_mask = uint32_t(1) << 31;
    };
 
    memory_manager memory_heap;

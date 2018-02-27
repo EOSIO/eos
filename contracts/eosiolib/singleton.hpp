@@ -38,7 +38,7 @@ namespace  eosio {
             if ( read < 0 ) {
                return def;
             }
-            return unpack<T>( temp + sizeof(SingletonName), read );
+            return unpack<T>( temp + sizeof(SingletonName), size_t(read) );
          }
 
          static T get_or_create( scope_name scope = Code, const T& def = T() ) {

@@ -34,7 +34,6 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
 set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
@@ -164,6 +163,8 @@ if(ENABLE_COVERAGE_TESTING)
   find_program( LCOV_PATH  lcov )
   find_program( GENHTML_PATH NAMES genhtml)
 endif()
+
+add_subdirectory( externals )
 
 include(wasm)
 if(WASM_TOOLCHAIN)

@@ -17,20 +17,20 @@
 	printf "\tDisk space available: ${DISK_AVAIL}G\n"
 
 	if [ $MEM_MEG -lt 4000 ]; then
-		echo "Your system must have 8 or more Gigabytes of physical memory installed."
-		echo "exiting now."
+		printf "\tYour system must have 4 or more Gigabytes of physical memory installed.\n"
+		printf "\texiting now.\n"
 		exit 1
 	fi
 
 	if [ $OS_VER -lt 2017 ]; then
-		echo "You must be running Fedora 25 or higher to install EOSIO."
-		echo "exiting now"
+		printf "\tYou must be running Amazon Linux 2017.09 or higher to install EOSIO.\n"
+		printf "\texiting now.\n"
 		exit 1
 	fi
 
 	if [ $DISK_AVAIL -lt 100 ]; then
-		echo "You must have at least 100GB of available storage to install EOSIO."
-		echo "exiting now"
+		printf "\tYou must have at least 100GB of available storage to install EOSIO.\n"
+		printf "\texiting now.\n"
 		exit 1
 	fi
 	printf "\n\tChecking Yum installation\n"
@@ -170,27 +170,6 @@
 		rm -rf cd ${TEMP_DIR}/secp256k1-zkp
 	else
 		printf "\tsecp256k1 found\n"
-	fi
-	
-	printf "\n\tChecking for binaryen\n"
-	if [ ! -d ${HOME}/opt/binaryen ]; then
-		# Install binaryen v1.37.14:
-		printf "\tInstalling binaryen v1.37.14:\n"
-		cd ${TEMP_DIR}
-		git clone https://github.com/WebAssembly/binaryen
-		cd binaryen
-		git checkout tags/1.37.14
-		$CMAKE . && make -j${CPU_CORE}
-		if [ $? -ne 0 ]; then
-			printf "\tError compiling binaryen.\n"
-			printf "\tExiting now.\n\n"
-			exit;
-		fi
-		mkdir -p ${HOME}/opt/binaryen/ 2>/dev/null
-		mv ${TEMP_DIR}/binaryen/bin ${HOME}/opt/binaryen/
-		rm -rf ${TEMP_DIR}/binaryen
-	else
-		printf "\tBinaryen found at ${HOME}/opt/binaryen\n"
 	fi
 	
 	printf "\n\tChecking for LLVM with WASM support.\n"

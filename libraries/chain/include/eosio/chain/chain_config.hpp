@@ -37,6 +37,24 @@ struct chain_config {
    uint32_t   max_generated_transaction_size;
 
    static chain_config get_median_values( vector<chain_config> votes );
+
+   template<typename Stream>
+   friend Stream& operator << ( Stream& out, const chain_config& c ) {
+      return out << "Target Block Size: " << c.target_block_size << ", "
+                 << "Max Block Size: " << c.max_block_size << ", " 
+                 << "Target Block Acts Per Scope: " << c.target_block_acts_per_scope << ", " 
+                 << "Max Block Acts Per Scope: " << c.max_block_acts_per_scope << ", " 
+                 << "Target Block Acts: " << c.target_block_acts << ", " 
+                 << "Max Block Acts: " << c.max_block_acts << ", " 
+                 << "Real Threads: " << c.real_threads << ", " 
+                 << "Max Storage Size: " << c.max_storage_size << ", " 
+                 << "Max Transaction Lifetime: " << c.max_transaction_lifetime << ", " 
+                 << "Max Authority Depth: " << c.max_authority_depth << ", " 
+                 << "Max Transaction Exec Time: " << c.max_transaction_exec_time << ", " 
+                 << "Max Inline Depth: " << c.max_inline_depth << ", " 
+                 << "Max Inline Action Size: " << c.max_inline_action_size << ", " 
+                 << "Max Generated Transaction Size: " << c.max_generated_transaction_size << "\n";
+   }
 };
 
        bool operator==(const chain_config& a, const chain_config& b);
