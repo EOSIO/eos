@@ -20,9 +20,9 @@ add_custom_command(TARGET eosio-applesedemo POST_BUILD
 install( TARGETS
    eosio-applesedemo
 
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
+   RUNTIME DESTINATION usr/bin
+   LIBRARY DESTINATION usr/lib
+   ARCHIVE DESTINATION usr/lib
 )
 
 endif(APPLE)

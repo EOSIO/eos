@@ -22,7 +22,7 @@ target_link_libraries(eosio-abigen abi_generator)
 
 install( TARGETS
    eosio-abigen
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
+   RUNTIME DESTINATION usr/bin
+   LIBRARY DESTINATION usr/lib
+   ARCHIVE DESTINATION usr/lib
 )
