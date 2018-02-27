@@ -39,15 +39,14 @@ class apply_context {
                return *_table_cache[i];
             }
 
-            const T& get( int iterator ) {
-               FC_ASSERT( iterator >= 0, "invalid iterator" );
+            const T& get( unsigned iterator ) {
                FC_ASSERT( iterator < _iterator_to_object.size(), "iterator out of range" );
                auto result = _iterator_to_object[iterator];
                FC_ASSERT( result, "reference of deleted object" );
                return *result;
             }
 
-            void remove( int iterator, const T& obj ) {
+            void remove( unsigned iterator, const T& obj ) {
                _iterator_to_object[iterator] = nullptr;
                _object_to_iterator.erase( &obj );
             }

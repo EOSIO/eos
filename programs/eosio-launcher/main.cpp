@@ -12,7 +12,10 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/program_options.hpp>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
 #include <boost/process/child.hpp>
+#pragma GCC diagnostic pop
 #include <boost/process/system.hpp>
 #include <boost/process/io.hpp>
 #include <boost/lexical_cast.hpp>
