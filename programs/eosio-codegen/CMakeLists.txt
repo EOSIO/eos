@@ -5,7 +5,7 @@ endif()
 
 find_package( Gperftools QUIET )
 if( GPERFTOOLS_FOUND )
-    message( STATUS "Found gperftools; compiling steemd with TCMalloc")
+    message( STATUS "Found gperftools; compiling eosio-codegen with TCMalloc")
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
@@ -15,7 +15,7 @@ target_link_libraries( eosio-codegen
 install( TARGETS
    eosio-codegen
 
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
+   RUNTIME DESTINATION usr/bin
+   LIBRARY DESTINATION usr/lib
+   ARCHIVE DESTINATION usr/lib
 )

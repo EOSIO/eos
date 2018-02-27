@@ -2,9 +2,9 @@
 #INCLUDE(GetPrerequisites)
 #INCLUDE(VersionMacros)
 
-SET( DEFAULT_HEADER_INSTALL_DIR include/${target} )
-SET( DEFAULT_LIBRARY_INSTALL_DIR lib/ )
-SET( DEFAULT_EXECUTABLE_INSTALL_DIR bin/ )
+SET( DEFAULT_HEADER_INSTALL_DIR usr/include/${target} )
+SET( DEFAULT_LIBRARY_INSTALL_DIR usr/lib )
+SET( DEFAULT_EXECUTABLE_INSTALL_DIR usr/bin )
 SET( CMAKE_DEBUG_POSTFIX _debug )
 SET( BUILD_SHARED_LIBS NO )
 SET( ECC_IMPL secp256k1 CACHE STRING "secp256k1 or openssl or mixed" )
@@ -122,11 +122,11 @@ list(APPEND sources ${fc_headers})
 setup_library( fc SOURCES ${sources} LIBRARY_TYPE STATIC )
 
 INSTALL( TARGETS fc
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
+   RUNTIME DESTINATION usr/bin
+   LIBRARY DESTINATION usr/lib
+   ARCHIVE DESTINATION usr/lib
 )
-INSTALL( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include DESTINATION . )
+INSTALL( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include DESTINATION usr )
   
 IF(APPLE)
   # As of 10.10 yosemite, the OpenSSL static libraries shipped with os x have a dependency

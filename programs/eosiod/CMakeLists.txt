@@ -58,7 +58,27 @@ endif()
 install( TARGETS
    eosiod
 
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
+   RUNTIME DESTINATION usr/bin
+   LIBRARY DESTINATION usr/lib
+   ARCHIVE DESTINATION usr/lib
+)
+install(DIRECTORY DESTINATION var/log/eosio
+        DIRECTORY_PERMISSIONS OWNER_READ
+                              OWNER_WRITE
+                              OWNER_EXECUTE
+                              GROUP_READ
+                              GROUP_WRITE
+                              GROUP_EXECUTE
+                              WORLD_READ
+                              WORLD_EXECUTE
+)
+install(DIRECTORY DESTINATION var/lib/eosio
+        DIRECTORY_PERMISSIONS OWNER_READ
+                              OWNER_WRITE
+                              OWNER_EXECUTE
+                              GROUP_READ
+                              GROUP_WRITE
+                              GROUP_EXECUTE
+                              WORLD_READ
+                              WORLD_EXECUTE
 )
