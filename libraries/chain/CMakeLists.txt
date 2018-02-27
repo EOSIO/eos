@@ -41,15 +41,6 @@ if(MSVC)
   set_source_files_properties( db_init.cpp db_block.cpp database.cpp block_log.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
 endif(MSVC)
 
-INSTALL( TARGETS
-   eosio_chain
-
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
-)
-INSTALL( FILES ${HEADERS} DESTINATION "include/eosio/chain" )
-
 add_subdirectory(test)
 
 #add_executable( test test.cpp )

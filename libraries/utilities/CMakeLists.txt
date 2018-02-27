@@ -30,12 +30,3 @@ if (USE_PCH)
   set_target_properties(eos_utilities PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
   cotire(eos_utilities)
 endif(USE_PCH)
-
-install( TARGETS
-   eos_utilities
-
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
-)
-install( FILES ${HEADERS} DESTINATION "include/eos/utilities" )
