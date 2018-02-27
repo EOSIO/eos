@@ -409,8 +409,8 @@ class privileged_api : public context_aware_api {
       }
 
       void set_resource_limits( account_name account,
-                                int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight,
-                                int64_t cpu_usec_per_period ) {
+                                uint64_t ram_bytes, int64_t net_weight, int64_t cpu_weight,
+                                int64_t /*cpu_usec_per_period*/ ) {
          auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
          FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free too much space" );
 

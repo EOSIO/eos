@@ -1297,7 +1297,7 @@ void chain_controller::update_last_irreversible_block()
 
    // Write newly irreversible blocks to disk. First, get the number of the last block on disk...
    auto old_last_irreversible_block = _block_log.head();
-   int last_block_on_disk = 0;
+   unsigned last_block_on_disk = 0;
    // If this is null, there are no blocks on disk, so the zero is correct
    if (old_last_irreversible_block)
       last_block_on_disk = old_last_irreversible_block->block_num();
