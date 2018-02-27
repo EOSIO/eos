@@ -48,7 +48,7 @@
 	if [ $ARCH == "Linux" ]; then
 		
 		if [ ! -e /etc/os-release ]; then
-			printf "EOSIO currently supports Amazon, Fedora & Ubuntu Linux only.\n"
+			printf "EOSIO currently supports Amazon, Centos, Fedora & Ubuntu Linux only.\n"
 			printf "Please install on the latest version of one of these Linux distributions.\n"
 			printf "https://aws.amazon.com/amazon-linux-ami/\n"
 			printf "https://start.fedoraproject.org/en/\n"

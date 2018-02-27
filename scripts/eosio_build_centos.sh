@@ -87,6 +87,8 @@
 		exit 1
 	fi
 	printf "\n\tCentos devtoolset-7 successfully enabled.\n"
+	
+	printf "\n\tUpdating YUM repository.\n"
 
 	sudo yum -y update 2>/dev/null
 	
@@ -96,7 +98,8 @@
 		exit 1
 	fi
 
-# 	DEP_ARRAY=(clang-4.0 lldb-4.0 libclang-4.0-dev cmake make libbz2-dev libssl-dev libgmp3-dev autotools-dev build-essential libicu-dev python-dev autoconf libtool)
+	printf "\n\tYUM repository successfully updated.\n"
+
 	DEP_ARRAY=( git autoconf automake libtool ocaml.x86_64 doxygen libicu-devel.x86_64 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 python-devel.x86_64 )
 	DCOUNT=0
 	COUNT=1
@@ -220,9 +223,9 @@
 		# Install binaryen v1.37.14:
 		printf "\tInstalling binaryen v1.37.14:\n"
 		cd ${TEMP_DIR}
-		git clone https://github.com/WebAssembly/binaryen
+		git clone https://github.com/EOSIO/binaryen
 		cd binaryen
-		git checkout tags/1.37.14
+		git checkout eosio
 		$CMAKE . && make
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling binaryen.\n"
