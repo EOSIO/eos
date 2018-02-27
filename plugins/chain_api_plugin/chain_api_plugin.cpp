@@ -36,20 +36,20 @@ void chain_api_plugin::plugin_initialize(const variables_map&) {}
              auto result = api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name ## _params>()); \
              cb(http_response_code, fc::json::to_string(result)); \
           } catch (chain::tx_missing_sigs& e) { \
-             error_results results{401, "UnAuthorized", e.to_string()}; \
+             error_results results{401, "UnAuthorized", e}; \
              cb(401, fc::json::to_string(results)); \
           } catch (chain::tx_duplicate& e) { \
-             error_results results{409, "Conflict", e.to_string()}; \
+             error_results results{409, "Conflict", e}; \
              cb(409, fc::json::to_string(results)); \
           } catch (chain::transaction_exception& e) { \
-             error_results results{400, "Bad Request", e.to_string()}; \
+             error_results results{400, "Bad Request", e}; \
              cb(400, fc::json::to_string(results)); \
           } catch (fc::eof_exception& e) { \
-             error_results results{400, "Bad Request", e.to_string()}; \
+             error_results results{400, "Bad Request", e}; \
              cb(400, fc::json::to_string(results)); \
              elog("Unable to parse arguments: ${args}", ("args", body)); \
           } catch (fc::exception& e) { \
-             error_results results{500, "Internal Service Error", e.to_detail_string()}; \
+             error_results results{500, "Internal Service Error", e}; \
              cb(500, fc::json::to_string(results)); \
              elog("Exception encountered while processing ${call}: ${e}", ("call", #api_name "." #call_name)("e", e)); \
           } \

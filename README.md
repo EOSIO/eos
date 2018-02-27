@@ -1,6 +1,6 @@
 ## EOS.IO - The Most Powerful Infrastructure for Decentralized Applications
 
-[![Build Status](https://travis-ci.org/EOSIO/eos.svg?branch=master)](https://travis-ci.org/EOSIO/eos)
+[![Build Status](https://jenkins.eos.io/buildStatus/icon?job=eosio/master)](https://jenkins.eos.io/job/eosio/job/master/)
 
 Welcome to the EOS.IO source code repository!  EOS.IO software enables developers to create and deploy
 high-performance, horizontally scalable, blockchain infrastructure upon which decentralized applications
@@ -117,7 +117,7 @@ git clone https://github.com/eosio/eos --recursive
 
 cd eos
 
-git checkout DAWN-2018-01-25
+git checkout DAWN-2018-02-14
 ./eosio_build.sh
 ```
 
@@ -165,7 +165,7 @@ git clone https://github.com/eosio/eos --recursive
 
 cd eos
 
-git checkout DAWN-2018-01-25
+git checkout DAWN-2018-02-14
 ./eosio_build.sh
 ```
 

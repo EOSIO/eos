@@ -1470,11 +1470,11 @@ namespace eosio {
    void big_msg_manager::bcast_transaction (const transaction_id_type & txnid,
                                             time_point_sec expiration,
                                             const packed_transaction& txn) {
-      connection_ptr skip;
+      connection_ptr skip = pending_txn_source;
+      pending_txn_source.reset();
+
       for (auto ref = req_txn.begin(); ref != req_txn.end(); ++ref) {
          if (*ref == txnid) {
-            skip = pending_txn_source;
-            pending_txn_source.reset();
             req_txn.erase(ref);
             break;
          }

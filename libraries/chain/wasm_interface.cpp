@@ -44,6 +44,7 @@ namespace eosio { namespace chain {
    struct wasm_cache_impl {
       wasm_cache_impl()
       {
+         check_wasm_opcode_dispositions();
          Runtime::init();
       }
 
@@ -998,7 +999,7 @@ class memory_api : public context_aware_api {
          return (char *)::memset( dest, value, length );
       }
 
-      uint32_t sbrk(int num_bytes) {
+      int sbrk(int num_bytes) {
          // sbrk should only allow for memory to grow
          if (num_bytes < 0)
             throw eosio::chain::page_memory_error();
