@@ -47,6 +47,13 @@ IF(NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
   message(STATUS "Setting up OpenSSL root and include vars to ${OPENSSL_ROOT_DIR}, ${OPENSSL_INCLUDE_DIR}")
 ENDIF()
 
+IF( NOT OPENSSL_ROOT_DIR )
+   set( OPENSSL_ROOT_DIR /usr/local/opt/openssl CACHE FILEPATH "" )
+   set( OPENSSL_INCLUDE_DIR /usr/local/opt/openssl/include CACHE FILEPATH "location of Open SSL includes")
+ENDIF()
+
+message(STATUS "Setting up OpenSSL root and include vars to ${OPENSSL_ROOT_DIR}, ${OPENSSL_INCLUDE_DIR}")
+
 find_package(OpenSSL REQUIRED)
 
 set( CMAKE_FIND_LIBRARY_SUFFIXES ${ORIGINAL_LIB_SUFFIXES} )

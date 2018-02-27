@@ -3,10 +3,15 @@ set(WASM_TOOLCHAIN FALSE)
 if(NOT DEFINED WASM_LLVM_CONFIG)
   if(NOT "$ENV{WASM_LLVM_CONFIG}" STREQUAL "")
     set(WASM_LLVM_CONFIG "$ENV{WASM_LLVM_CONFIG}" CACHE FILEPATH "Location of llvm-config compiled with WASM support.")
+  else()
+   find_file( WASM_LLVM_CONFIG
+              llvm-config
+              PATHS /usr/local/wasm/bin ${HOME}/opt/wasm/bin NO_DEFAULT_PATH)
   endif()
 endif()
 
 if(WASM_LLVM_CONFIG)
+  message( STATUS "using ${WASM_LLVM_CONFIG}" )
   execute_process(
     COMMAND ${WASM_LLVM_CONFIG} --bindir
     RESULT_VARIABLE WASM_LLVM_CONFIG_OK
