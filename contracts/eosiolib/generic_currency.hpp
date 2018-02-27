@@ -35,16 +35,7 @@ namespace eosio {
              account_name to;
              asset        quantity;
 
-             template<typename DataStream>
-             friend DataStream& operator << ( DataStream& ds, const transfer& t ){
-                return ds << t.from << t.to << t.quantity;
-             }
-             template<typename DataStream>
-             friend DataStream& operator >> ( DataStream& ds, transfer& t ){
-                ds >> t.from >> t.to >> t.quantity;
-                eosio_assert( t.quantity.symbol== token_type::symbol, "unexpected asset type" );
-                return ds;
-             }
+             EOSLIB_SERIALIZE( transfer, (from)(to)(quantity) )
           };
 
           struct transfer_memo : public transfer {

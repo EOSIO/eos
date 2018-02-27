@@ -43,6 +43,7 @@ endif()
 
 target_link_libraries( eosiod
         PRIVATE appbase
+        PRIVATE -Wl,${whole_archive_flag} debug_plugin -Wl,${no_whole_archive_flag} debug_plugin
         PRIVATE -Wl,${whole_archive_flag} account_history_api_plugin -Wl,${no_whole_archive_flag} account_history_plugin
         PRIVATE -Wl,${whole_archive_flag} chain_api_plugin -Wl,${no_whole_archive_flag} producer_plugin chain_plugin
         PRIVATE -Wl,${whole_archive_flag} wallet_api_plugin -Wl,${no_whole_archive_flag}

@@ -1,4 +1,6 @@
 #include "memory.hpp"
+#include <string.h>
+#include <unistd.h>
 
 namespace eosio {
 
