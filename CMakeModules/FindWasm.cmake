@@ -3,7 +3,7 @@
 # TODO: Check if compiler is able to generate wasm32
 
 find_program(WASM_CLANG clang PATHS ${WASM_ROOT}/bin NO_DEFAULT_PATH)
-find_program(WASM_LLC llc HPATHS ${WASM_ROOT}/bin NO_DEFAULT_PATH)
+find_program(WASM_LLC llc PATHS ${WASM_ROOT}/bin NO_DEFAULT_PATH)
 find_program(WASM_LLVM_LINK llvm-link PATHS ${WASM_ROOT}/bin NO_DEFAULT_PATH)
 
 include(FindPackageHandleStandardArgs)
