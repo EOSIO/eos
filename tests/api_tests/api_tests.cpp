@@ -120,6 +120,25 @@ string U128Str(unsigned __int128 i)
    return fc::variant(fc::uint128_t(i)).get_string();
 }
 
+template <typename T>
+void CallAction(tester& test, T ac, const vector<account_name>& scope = {N(testapi)}) {
+   signed_transaction trx;
+
+   auto pl = vector<permission_level>{{scope[0], config::active_name}};
+   if (scope.size() > 1)
+      for (int i = 1; i < scope.size(); i++)
+         pl.push_back({scope[i], config::active_name});
+
+   action act(pl, ac);
+   trx.actions.push_back(act);
+
+   test.set_tapos(trx);
+   auto sigs = trx.sign(test.get_private_key(scope[0], "active"), chain_id_type());
+   trx.get_signature_keys(chain_id_type());
+   auto res = test.push_transaction(trx);
+   BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
+   test.produce_block();
+}
 
 template <typename T>
 void CallFunction(tester& test, T ac, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}) {
@@ -364,7 +383,9 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
          }
       );
 
-
+   dummy_action da = { DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C };
+   CallAction(*this, da);
+  
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************

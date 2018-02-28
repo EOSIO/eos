@@ -36,6 +36,11 @@ void test_action::read_action_normal() {
    eosio_assert(dummy13->a == DUMMY_ACTION_DEFAULT_A, "dummy13->a == DUMMY_ACTION_DEFAULT_A");
    eosio_assert(dummy13->b == DUMMY_ACTION_DEFAULT_B, "dummy13->b == DUMMY_ACTION_DEFAULT_B");
    eosio_assert(dummy13->c == DUMMY_ACTION_DEFAULT_C, "dummy13->c == DUMMY_ACTION_DEFAULT_C");
+}
+
+void test_action::test_dummy_action() {
+   char buffer[100];
+   uint32_t total = 0;
 
    // get_action
    total = get_action( 1, 0, buffer, 0 );
@@ -50,7 +55,7 @@ void test_action::read_action_normal() {
    eosio_assert( dum13.a == DUMMY_ACTION_DEFAULT_A, "dum13.a == DUMMY_ACTION_DEFAULT_A" );
    eosio_assert( dum13.b == DUMMY_ACTION_DEFAULT_B, "dum13.b == DUMMY_ACTION_DEFAULT_B" );
    eosio_assert( dum13.c == DUMMY_ACTION_DEFAULT_C, "dum13.c == DUMMY_ACTION_DEFAULT_C" );
-   
+
 }
 
 void test_action::read_action_to_0() {
