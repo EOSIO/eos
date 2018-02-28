@@ -74,6 +74,7 @@
 				CMAKE=${HOME}/opt/cmake/bin/cmake
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
+				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 			;;
 			*)
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"

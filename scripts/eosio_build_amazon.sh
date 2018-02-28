@@ -28,7 +28,7 @@
 		exit 1
 	fi
 
-	if [ $DISK_AVAIL -lt 100 ]; then
+	if [ $DISK_AVAIL -lt 20 ]; then
 		printf "\tYou must have at least 100GB of available storage to install EOSIO.\n"
 		printf "\texiting now.\n"
 		exit 1
@@ -186,7 +186,7 @@
 		mkdir build 2>/dev/null
 		cd build
 		$CMAKE -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm \
-		-DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly \
+		-DLLVM_ENABLE_RTTI=1 -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly \
 		-DCMAKE_BUILD_TYPE=Release ../
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
