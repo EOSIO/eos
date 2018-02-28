@@ -8,6 +8,9 @@
       FC_THROW_EXCEPTION( exc_type, FORMAT, __VA_ARGS__ );            \
    FC_MULTILINE_MACRO_END
 
+#define EOS_THROW( exc_type, FORMAT, ... ) \
+    throw exc_type( FC_LOG_MESSAGE( error, FORMAT, __VA_ARGS__ ) );
+
 #define EOS_CAPTURE_AND_RETHROW(exc_type, FORMAT, ... ) \
    catch (fc::exception& e) { \
       exc_type new_exception(FC_LOG_MESSAGE( error, FORMAT, __VA_ARGS__ )); \
@@ -15,7 +18,14 @@
          new_exception.append_log(log); \
       } \
       throw new_exception; \
-   } 
+   } catch( const std::exception& e ) {  \
+      exc_type fce(FC_LOG_MESSAGE( warn, FORMAT" (${what})" ,__VA_ARGS__("what",e.what()))); \
+      throw fce;\
+   } catch( ... ) {  \
+      throw fc::unhandled_exception( \
+                FC_LOG_MESSAGE( warn, FORMAT,__VA_ARGS__), \
+                std::current_exception() ); \
+   }
 
 
 #define EOS_DECLARE_OP_BASE_EXCEPTIONS( op_name )                \

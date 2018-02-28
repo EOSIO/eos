@@ -22,8 +22,11 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           eosio::chain::chain_exception, 3110000, "unknown block" )
    FC_DECLARE_DERIVED_EXCEPTION( chain_type_exception,              eosio::chain::chain_exception, 3120000, "chain type exception" )
    FC_DECLARE_DERIVED_EXCEPTION( missing_plugin_exception,          eosio::chain::chain_exception, 3130000, "missing plugin exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( wallet_exception,                  eosio::chain::chain_exception, 3140000, "wallet exception" )
 
-   FC_DECLARE_DERIVED_EXCEPTION( permission_query_exception,        eosio::chain::database_query_exception, 3010001, "permission query exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( permission_query_exception,        eosio::chain::database_query_exception, 3010001, "Permission Query Exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( account_query_exception,           eosio::chain::database_query_exception, 3010002, "Account Query Exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( contract_table_query_exception,    eosio::chain::database_query_exception, 3010003, "Contract Table Query Exception" )
 
    FC_DECLARE_DERIVED_EXCEPTION( block_tx_output_exception,         eosio::chain::block_validate_exception, 3020001, "transaction outputs in block do not match transaction outputs from applying block" )
    FC_DECLARE_DERIVED_EXCEPTION( block_concurrency_exception,       eosio::chain::block_validate_exception, 3020002, "block does not guarantee concurrent exection without conflicts" )
@@ -58,16 +61,26 @@ namespace eosio { namespace chain {
 
    FC_DECLARE_DERIVED_EXCEPTION( name_type_exception,               eosio::chain::chain_type_exception, 3120001, "Invalid name" )
    FC_DECLARE_DERIVED_EXCEPTION( public_key_type_exception,         eosio::chain::chain_type_exception, 3120002, "Invalid public key" )
-   FC_DECLARE_DERIVED_EXCEPTION( authority_type_exception,          eosio::chain::chain_type_exception, 3120003, "Invalid authority" )
-   FC_DECLARE_DERIVED_EXCEPTION( action_type_exception,             eosio::chain::chain_type_exception, 3120004, "Invalid action" )
-   FC_DECLARE_DERIVED_EXCEPTION( transaction_type_exception,        eosio::chain::chain_type_exception, 3120005, "Invalid transaction" )
-   FC_DECLARE_DERIVED_EXCEPTION( abi_type_exception,                eosio::chain::chain_type_exception, 3120006, "Invalid ABI" )
-   FC_DECLARE_DERIVED_EXCEPTION( asset_type_exception,              eosio::chain::chain_type_exception, 3120007, "Invalid asset" )
+   FC_DECLARE_DERIVED_EXCEPTION( private_key_type_exception,        eosio::chain::chain_type_exception, 3120003, "Invalid private key" )
+   FC_DECLARE_DERIVED_EXCEPTION( authority_type_exception,          eosio::chain::chain_type_exception, 3120004, "Invalid authority" )
+   FC_DECLARE_DERIVED_EXCEPTION( action_type_exception,             eosio::chain::chain_type_exception, 3120005, "Invalid action" )
+   FC_DECLARE_DERIVED_EXCEPTION( transaction_type_exception,        eosio::chain::chain_type_exception, 3120006, "Invalid transaction" )
+   FC_DECLARE_DERIVED_EXCEPTION( abi_type_exception,                eosio::chain::chain_type_exception, 3120007, "Invalid ABI" )
+   FC_DECLARE_DERIVED_EXCEPTION( block_id_type_exception,           eosio::chain::chain_type_exception, 3120008, "Invalid block ID" )
+   FC_DECLARE_DERIVED_EXCEPTION( transaction_id_type_exception,     eosio::chain::chain_type_exception, 3120009, "Invalid transaction ID" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( asset_type_exception,     eosio::chain::chain_type_exception, 3120011, "Invalid asset" )
 
    FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,                 eosio::chain::missing_plugin_exception, 3130001, "Missing Chain API Plugin" )
    FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,                eosio::chain::missing_plugin_exception, 3130002, "Missing Wallet API Plugin" )
    FC_DECLARE_DERIVED_EXCEPTION( missing_account_history_api_plugin_exception,       eosio::chain::missing_plugin_exception, 3130003, "Missing Account History API Plugin" )
-   FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,                   eosio::chain::missing_plugin_exception, 3130003, "Missing Net API Plugin" )
+   FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,                   eosio::chain::missing_plugin_exception, 3130004, "Missing Net API Plugin" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( wallet_exist_exception,            eosio::chain::wallet_exception, 3140001, "Wallet already exists" )
+   FC_DECLARE_DERIVED_EXCEPTION( wallet_nonexistent_exception,      eosio::chain::wallet_exception, 3140002, "Nonexistent wallet" )
+   FC_DECLARE_DERIVED_EXCEPTION( wallet_locked_exception,           eosio::chain::wallet_exception, 3140003, "Locked wallet" )
+   FC_DECLARE_DERIVED_EXCEPTION( wallet_missing_pub_key_exception,  eosio::chain::wallet_exception, 3140004, "Missing public key" )
+   FC_DECLARE_DERIVED_EXCEPTION( wallet_invalid_password_exception, eosio::chain::wallet_exception, 3140005, "Invalid wallet password" )
 
 
    #define EOS_RECODE_EXC( cause_type, effect_type ) \

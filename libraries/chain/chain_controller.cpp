@@ -1090,7 +1090,7 @@ const producer_object& chain_controller::get_producer(const account_name& owner_
 const permission_object&   chain_controller::get_permission( const permission_level& level )const
 { try {
    return _db.get<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
-} FC_CAPTURE_AND_RETHROW( (level) ) }
+} EOS_CAPTURE_AND_RETHROW( chain::permission_query_exception, "Fail to retrieve permission: ${level}", ("level", level) ) }
 
 uint32_t chain_controller::last_irreversible_block_num() const {
    return get_dynamic_global_properties().last_irreversible_block_num;

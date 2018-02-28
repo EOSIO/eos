@@ -24,6 +24,8 @@
 #ifndef WIN32
 # include <sys/types.h>
 # include <sys/stat.h>
+#include <eosio/chain/exceptions.hpp>
+
 #endif
 
 namespace eosio { namespace wallet {
@@ -295,7 +297,8 @@ void wallet_api::unlock(string password)
    FC_ASSERT(pk.checksum == pw);
    my->_keys = std::move(pk.keys);
    my->_checksum = pk.checksum;
-} FC_CAPTURE_AND_RETHROW() }
+} EOS_CAPTURE_AND_RETHROW(chain::wallet_invalid_password_exception,
+                          "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename())) }
 
 void wallet_api::set_password( string password )
 {

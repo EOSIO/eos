@@ -97,11 +97,16 @@ auto smatch_to_variant(const std::smatch& smatch) {
    return result;
 };
 
+const char* error_advice_3010001 =  "Most likely, the given account/ permission doesn't exist in the blockchain.";
+const char* error_advice_3010002 =  "Most likely, the given account doesn't exist in the blockchain.";
+const char* error_advice_3010003 =  "Most likely, the given table doesnt' exist in the blockchain.";
+
+const char* error_advice_3030002 =  "Ensure that you have the related private keys inside your wallet and you wallet is unlocked.";
+
 const char* error_advice_3120001 = R"=====(Name should be less than 13 characters and only contains the following symbol .12345abcdefghijklmnopqrstuvwxyz)=====";
-
 const char* error_advice_3120002 = R"=====(Public key should be encoded in base58 and starts with EOS prefix)=====";
-
-const char* error_advice_3120003 = R"=====(Ensure that your authority JSON follows the following format!
+const char* error_advice_3120003 = R"=====(Private key should be encoded in base58 WIF)=====";
+const char* error_advice_3120004 = R"=====(Ensure that your authority JSON follows the following format!
 {
   "threshold":"uint32_t",
   "keys":[{ "key":"public_key", "weight":"uint16_t" }],
@@ -119,10 +124,8 @@ e.g.
     "weight":"1
   }]
 })=====";
-
-const char* error_advice_3120004 = R"=====(Ensure that your action JSON follows the contract's abi!)=====";
-
-const char* error_advice_3120005 = R"=====(Ensure that your transaction JSON follows the following format!\n"
+const char* error_advice_3120005 = R"=====(Ensure that your action JSON follows the contract's abi!)=====";
+const char* error_advice_3120006 = R"=====(Ensure that your transaction JSON follows the following format!\n"
 {
   "ref_block_num":"uint16_t",
   "ref_block_prefix":"uint32_t",
@@ -152,8 +155,7 @@ e.g.
     "data":"000000008093dd74000000000094dd74e80300000000000000"
   }]
 })=====";
-
-const char* error_advice_3120006 =  R"=====(Ensure that your abi JSON follows the following format!
+const char* error_advice_3120007 =  R"=====(Ensure that your abi JSON follows the following format!
 {
   "types" : [{ "new_type_name":"type_name", "type":"type_name" }],
   "structs" : [{ "name":"type_name", "base":"type_name", "fields": [{ "name":"field_name", "type": "type_name" }] }],
@@ -182,27 +184,49 @@ e.g.
     "type":"foobar" "
   }]
 })=====";
+const char* error_advice_3120008 =  "Ensure that the block ID is a SHA-256 hexadecimal string!";
+const char* error_advice_3120009 =  "Ensure that the transaction ID is a SHA-256 hexadecimal string!";
 
-const char* error_advice_3030002 =  "Ensure that you have the related private keys inside your wallet.";
+const char* error_advice_3130001 =  "Ensure that you have \033[2meosio::chain_api_plugin\033[0m\033[32m added to your node's configuration!";
+const char* error_advice_3130002 =  "Ensure that you have \033[2meosio::wallet_api_plugin\033[0m\033[32m added to your node's configuration!\n"\
+                                    "Otherwise specify your wallet location with \033[2m--wallet-host\033[0m\033[32m and \033[2m--wallet_port\033[0m\033[32m arguments!";
+const char* error_advice_3130003 =  "Ensure that you have \033[2meosio::account_history_api_plugin\033[0m\033[32m added to your node's configuration!";
+const char* error_advice_3130004 =  "Ensure that you have \033[2meosio::net_api_plugin\033[0m\033[32m added to your node's configuration!";
 
-const char* error_advice_3130001 =  "Ensure that you have \033[2meosio::chain_api_plugin\033[0m\033[32m added to your node's configuration.";
-const char* error_advice_3130002 =  "Ensure that you have \033[2meosio::wallet_api_plugin\033[0m\033[32m added to your node's configuration.\n"\
-                                    "Otherwise specify your wallet location with \033[2m--wallet-host\033[0m\033[32m and \033[2m--wallet_port\033[0m\033[32m arguments.";
-const char* error_advice_3130003 =  "Ensure that you have \033[2meosio::account_history_api_plugin\033[0m\033[32m added to your node's configuration.";
-const char* error_advice_3130004 =  "Ensure that you have \033[2meosio::net_api_plugin\033[0m\033[32m added to your node's configuration";
+const char* error_advice_3140001 =  "Try to use different wallet name.";
+const char* error_advice_3140002 =  "Are you sure you typed the name correctly?";
+const char* error_advice_3140003 =  "Ensure that your wallet is unlocked before using it!";
+const char* error_advice_3140004 =  "Ensure that you have the relevant private key imported!";
+const char* error_advice_3140005 =  "Are you sure you are using the right password?";
+
 
 const std::map<int64_t, std::string> error_advice = {
+   { 3010001, error_advice_3010001 },
+   { 3010002, error_advice_3010002 },
+   { 3010003, error_advice_3010003 },
+
+   { 3030002, error_advice_3030002 },
+
    { 3120001, error_advice_3120001 },
    { 3120002, error_advice_3120002 },
    { 3120003, error_advice_3120003 },
    { 3120004, error_advice_3120004 },
    { 3120005, error_advice_3120005 },
    { 3120006, error_advice_3120006 },
+   { 3120007, error_advice_3120007 },
+   { 3120008, error_advice_3120008 },
+   { 3120009, error_advice_3120008 },
+
    { 3130001, error_advice_3130001 },
    { 3130002, error_advice_3130002 },
    { 3130003, error_advice_3130003 },
    { 3130004, error_advice_3130004 },
-   { 3030002, error_advice_3030002 }
+
+   { 3140001, error_advice_3140001 },
+   { 3140002, error_advice_3140002 },
+   { 3140003, error_advice_3140003 },
+   { 3140004, error_advice_3140004 },
+   { 3140005, error_advice_3140005 }
 };
 
 

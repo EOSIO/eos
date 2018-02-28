@@ -287,11 +287,14 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
 }
 
 abi_def get_abi( const chain_controller& db, const name& account ) {
-   const auto& d = db.get_database();
-   const auto& code_accnt  = d.get<account_object,by_name>( account );
-
+   const auto &d = db.get_database();
+   const account_object *code_accnt = nullptr;
+   try {
+      code_accnt = &d.get<account_object, by_name>(account);
+      FC_ASSERT(code_accnt != nullptr);
+   } EOS_CAPTURE_AND_RETHROW( chain::account_query_exception, "Fail to retrive account for ${account}", ("account", account) )
    abi_def abi;
-   abi_serializer::to_abi(code_accnt.abi, abi);
+   abi_serializer::to_abi(code_accnt->abi, abi);
    return abi;
 }
 
@@ -301,7 +304,7 @@ string get_table_type( const abi_def& abi, const name& table_name ) {
          return t.index_type;
       }
    }
-   FC_ASSERT( !"ABI does not define table", "Table ${table} not specified in ABI", ("table",table_name) );
+   EOS_ASSERT( false, chain::contract_table_query_exception, "Table ${table} is not specified in the ABI", ("table",table_name) );
 }
 
 read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
@@ -311,7 +314,8 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
    if( table_type == KEYi64 ) {
       return get_table_rows_ex<contracts::key_value_index, contracts::by_scope_primary>(p,abi);
    }
-   FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("abi",abi));
+
+   EOS_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type ${type}", ("type",table_type)("abi",abi));
 }
 
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
@@ -380,7 +384,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
          block = db.fetch_block_by_number(fc::to_uint64(params.block_num_or_id));
       }
 
-   } catch (fc::bad_cast_exception) {/* do nothing */}
+   } EOS_CAPTURE_AND_RETHROW(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
 
    if (!block)
       FC_THROW_EXCEPTION(unknown_block_exception,
