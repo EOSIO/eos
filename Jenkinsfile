@@ -21,6 +21,15 @@ pipeline {
                         ''' 
                     }
                 }
+                stage('Fedora') {
+                    agent { label 'Fedora' }
+                    steps {
+                        sh '''
+                            . $HOME/.bash_profile
+                            echo 1 | ./eosio_build.sh 
+                        ''' 
+                    }
+                }
             }
         }
         stage('Tests') {
@@ -53,6 +62,20 @@ pipeline {
                         '''
                     }
                 }
+                stage('Fedora') {
+                    agent { label 'Fedora' }
+                    steps {
+                        sh '''
+                            . $HOME/.bash_profile
+                            export EOSLIB=$(pwd)/contracts
+                            cd build
+                            printf "Waiting for testing to be available..."
+                            while /usr/bin/pgrep -x ctest > /dev/null; do sleep 1; done
+                            echo "OK!"
+                            ctest --output-on-failure
+                        '''
+                    }
+                }
             }
         }
     }
@@ -63,6 +86,10 @@ pipeline {
             }
             
             node('MacOS') {
+                cleanWs()
+            }
+
+            node('Fedora') {
                 cleanWs()
             }
         }
