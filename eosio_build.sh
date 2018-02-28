@@ -92,7 +92,7 @@
 	if [ $ARCH == "Darwin" ]; then
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 		OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
-		WASM_ROOT=/usr/local/wasm
+		export WASM_ROOT=/usr/local/wasm
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
 
