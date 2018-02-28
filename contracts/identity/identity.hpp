@@ -7,6 +7,7 @@
 #include <eosiolib/multi_index.hpp>
 #include <eosiolib/vector.hpp>
 #include <eosiolib/print.hpp>
+#include <eosiolib/key256.hpp>
 
 namespace identity {
    using eosio::action_meta;
@@ -14,6 +15,7 @@ namespace identity {
    using eosio::table64;
    using eosio::singleton;
    using eosio::print;
+   using eosio::key256;
    using std::string;
    using std::vector;
 
@@ -133,15 +135,17 @@ namespace identity {
             string              type;
             vector<char>        data;
             uint64_t primary_key() const { return id; }
-            constexpr static uint256 key(uint64_t property, uint64_t trusted, uint64_t certifier) {
-               uint256 key;
+            /* constexpr */ static key256 key(uint64_t property, uint64_t trusted, uint64_t certifier) {
+               /*
+               key256 key;
                key.uint64s[0] = property;
                key.uint64s[1] = trusted;
                key.uint64s[2] = certifier;
                key.uint64s[3] = 0;
-               return key;
+               */
+               return {property, trusted, certifier, 0};
             }
-            uint256 get_key() const { return key(property, trusted, certifier); }
+            key256 get_key() const { return key(property, trusted, certifier); }
 
             EOSLIB_SERIALIZE( certrow , (property)(trusted)(certifier)(confidence)(type)(data) )
          };
@@ -164,7 +168,7 @@ namespace identity {
 
          //typedef table_i64i64i64<code, N(certs), code, certrow>  certs_table;
          typedef eosio::multi_index<N(certs), certrow,
-                                    eosio::indexed_by< N(bytuple), eosio::const_mem_fun<certrow, uint256, &certrow::get_key> >
+                                    eosio::indexed_by< N(bytuple), eosio::const_mem_fun<certrow, key256, &certrow::get_key> >
                                     > certs_table;
          typedef eosio::multi_index<N(ident), identrow> idents_table;
          typedef singleton<code, N(account), code, identity_name>  accounts_table;

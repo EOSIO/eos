@@ -1,7 +1,10 @@
 #include <eosiolib/multi_index.hpp>
 #include "../test_api/test_api.hpp"
+#include <eosiolib/print.hpp>
 
 namespace _test_multi_index {
+
+   using eosio::key256;
 
    struct record_idx64 {
       uint64_t id;
@@ -14,13 +17,23 @@ namespace _test_multi_index {
    };
 
    struct record_idx128 {
-      uint64_t id;
+      uint64_t  id;
       uint128_t sec;
 
       auto primary_key()const { return id; }
       uint128_t get_secondary()const { return sec; }
 
       EOSLIB_SERIALIZE( record_idx128, (id)(sec) )
+   };
+
+   struct record_idx256 {
+      uint64_t id;
+      key256   sec;
+
+      auto primary_key()const { return id; }
+      key256 get_secondary()const { return sec; }
+
+      EOSLIB_SERIALIZE( record_idx256, (id)(sec) )
    };
 
    template<uint64_t TableName>
@@ -199,7 +212,6 @@ void test_multi_index::idx128_autoincrement_test()
    });
 
    eosio_assert( table.available_primary_key() == 101, "idx128_autoincrement_test - next_primary_key was not correct after record update" );
-
 }
 
 void test_multi_index::idx128_autoincrement_test_part1()
@@ -229,7 +241,6 @@ void test_multi_index::idx128_autoincrement_test_part1()
       eosio_assert( r.primary_key() == expected_key, "idx128_autoincrement_test_part1 - unexpected primary key" );
       --expected_key;
    }
-
 }
 
 void test_multi_index::idx128_autoincrement_test_part2()
@@ -270,5 +281,72 @@ void test_multi_index::idx128_autoincrement_test_part2()
    });
 
    eosio_assert( table.available_primary_key() == 101, "idx128_autoincrement_test_part2 - next_primary_key was not correct after record update" );
+}
 
+void test_multi_index::idx256_general()
+{
+   using namespace eosio;
+   using namespace _test_multi_index;
+
+   typedef record_idx256 record;
+
+   const uint64_t table_name = N(indextable5);
+   auto payer = current_receiver();
+
+   print("Testing key256 secondary index.\n");
+   multi_index<table_name, record,
+      indexed_by< N(bysecondary), const_mem_fun<record, key256, &record::get_secondary> >
+   > table( current_receiver(), current_receiver() );
+
+   const auto& entry1 = table.emplace( payer, [&]( auto& o ) {
+      o.id = 1;
+      o.sec = key256(0, 0, 0, 42);
+   });
+
+   const auto& entry2 = table.emplace( payer, [&]( auto& o ) {
+      o.id = 2;
+      o.sec = key256(1, 2, 3, 4);
+   });
+
+   const auto& entry3 = table.emplace( payer, [&]( auto& o ) {
+      o.id = 3;
+      o.sec = key256(0, 0, 0, 42);
+   });
+
+   const auto* e = table.find( 2 );
+
+   print("Items sorted by primary key:\n");
+   for( const auto& item : table ) {
+      print(" ID=", item.primary_key(), ", secondary=", item.sec, "\n");
+   }
+
+   auto secidx = table.get_index<N(bysecondary)>();
+
+   auto lower1 = secidx.lower_bound(key256(0, 0, 0, 40));
+   print("First entry with a secondary key of at least 40 has ID=", lower1->id, ".\n");
+
+   auto lower2 = secidx.lower_bound(key256(0, 0, 0, 50));
+   print("First entry with a secondary key of at least 50 has ID=", lower2->id, ".\n");
+
+   if( &*lower2 == e ) {
+      print("Previously found entry is the same as the one found earlier with a primary key value of 2.\n");
+   }
+
+   print("Items sorted by secondary key (key256):\n");
+   for( const auto& item : secidx ) {
+      print(" ID=", item.primary_key(), ", secondary=");
+      cout << item.sec << "\n";
+   }
+
+   auto upper = secidx.upper_bound(key256(0, 0, 0, 42));
+
+   print("First entry with a secondary key greater than 42 has ID=", upper->id, ".\n");
+
+   print("Removed entry with ID=", lower1->id, ".\n");
+   table.remove( *lower1 );
+
+   print("Items sorted by primary key:\n");
+   for( const auto& item : table ) {
+      print(" ID=", item.primary_key(), ", secondary=", item.sec, "\n");
+   }
 }

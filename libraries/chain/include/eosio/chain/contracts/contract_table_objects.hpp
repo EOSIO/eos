@@ -9,6 +9,9 @@
 
 #include <chainbase/chainbase.hpp>
 
+#include <array>
+#include <type_traits>
+
 namespace eosio { namespace chain { namespace contracts {
 
    enum table_key_type {
@@ -126,14 +129,37 @@ namespace eosio { namespace chain { namespace contracts {
       > index_index;
    };
 
+/*
+   template <typename T, typename = void>
+   struct _is_array : std::false_type {};
+
+   template <typename T>
+   struct _is_array<T, std::enable_if<std::is_same<size_t, decltype(SecondaryKey::arr_size)>::type> : std::true_type {};
+
+   template<SecondaryKey>
+   inline
+   typename std::enable_if<_is_array<SecondaryKey>::value, size_t>::type
+   get_key_memory_usage() {
+      return SecondaryKey::arr_size;
+   }
+*/
+
+   template<typename SecondaryKey>
+   inline
+   //typename std::enable_if<!_is_array<SecondaryKey>::value, size_t>::type
+   size_t
+   get_key_memory_usage() {
+      return sizeof(SecondaryKey);
+   }
+
    typedef secondary_index<uint64_t,index64_object_type>::index_object   index64_object;
    typedef secondary_index<uint64_t,index64_object_type>::index_index    index64_index;
 
    typedef secondary_index<uint128_t,index128_object_type>::index_object index128_object;
    typedef secondary_index<uint128_t,index128_object_type>::index_index  index128_index;
 
-   typedef secondary_index<fc::sha256,index256_object_type>::index_object index256_object;
-   typedef secondary_index<fc::sha256,index256_object_type>::index_index  index256_index;
+   typedef secondary_index<std::array<char,32>,index256_object_type>::index_object index256_object;
+   typedef secondary_index<std::array<char,32>,index256_object_type>::index_index  index256_index;
 
    /*
    struct index64_object : public chainbase::object<index64_object_type, index64_object> {

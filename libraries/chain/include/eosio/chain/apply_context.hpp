@@ -9,6 +9,7 @@
 #include <eosio/chain/contracts/contract_table_objects.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
+#include <algorithm>
 
 namespace chainbase { class database; }
 
@@ -104,16 +105,82 @@ class apply_context {
             inline int index_to_end_iterator( size_t indx )const { return -(indx + 2); }
       };
 
+      template<typename>
+      struct array_size;
+
+      template<typename T, size_t N>
+      struct array_size< std::array<T,N> > {
+          static constexpr size_t size = N;
+      };
+
+      template <typename SecondaryKey, typename SecondaryKeyProxy, typename SecondaryKeyProxyConst, typename Enable = void>
+      class secondary_key_helper;
+
+      template<typename SecondaryKey, typename SecondaryKeyProxy, typename SecondaryKeyProxyConst>
+      class secondary_key_helper<SecondaryKey, SecondaryKeyProxy, SecondaryKeyProxyConst,
+         typename std::enable_if<std::is_same<SecondaryKey, typename std::decay<SecondaryKeyProxy>::type>::value>::type >
+      {
+         public:
+            typedef SecondaryKey secondary_key_type;
+
+            static void set(secondary_key_type& sk_in_table, const secondary_key_type& sk_from_wasm) {
+               sk_in_table = sk_from_wasm;
+            }
+
+            static void get(secondary_key_type& sk_from_wasm, const secondary_key_type& sk_in_table ) {
+               sk_from_wasm = sk_in_table;
+            }
+
+            static auto create_tuple(const contracts::table_id_object& tab, const secondary_key_type& secondary) {
+               return boost::make_tuple( tab.id, secondary );
+            }
+      };
+
+      template<typename SecondaryKey, typename SecondaryKeyProxy, typename SecondaryKeyProxyConst>
+      class secondary_key_helper<SecondaryKey, SecondaryKeyProxy, SecondaryKeyProxyConst,
+         typename std::enable_if<!std::is_same<SecondaryKey, typename std::decay<SecondaryKeyProxy>::type>::value &&
+                                 std::is_pointer<typename std::decay<SecondaryKeyProxy>::type>::value>::type >
+      {
+         public:
+            typedef SecondaryKey      secondary_key_type;
+            typedef SecondaryKeyProxy secondary_key_proxy_type;
+            typedef SecondaryKeyProxyConst secondary_key_proxy_const_type;
+
+            static constexpr size_t N = array_size<SecondaryKey>::size;
+
+            static void set(secondary_key_type& sk_in_table, secondary_key_proxy_const_type sk_from_wasm) {
+               std::copy(sk_from_wasm, sk_from_wasm + N, sk_in_table.begin());
+            }
+
+            static void get(secondary_key_proxy_type sk_from_wasm, const secondary_key_type& sk_in_table) {
+               std::copy(sk_in_table.begin(), sk_in_table.end(), sk_from_wasm);
+            }
+
+            static auto create_tuple(const contracts::table_id_object& tab, secondary_key_proxy_const_type sk_from_wasm) {
+               secondary_key_type secondary;
+               std::copy(sk_from_wasm, sk_from_wasm + N, secondary.begin());
+               return boost::make_tuple( tab.id, secondary );
+            }
+      };
+
    public:
-      template<typename ObjectType>
+      template<typename ObjectType,
+               typename SecondaryKeyProxy = typename std::add_lvalue_reference<typename ObjectType::secondary_key_type>::type,
+               typename SecondaryKeyProxyConst = typename std::add_lvalue_reference<
+                                                   typename std::add_const<typename ObjectType::secondary_key_type>::type>::type >
       class generic_index
       {
          public:
             typedef typename ObjectType::secondary_key_type secondary_key_type;
+            typedef SecondaryKeyProxy      secondary_key_proxy_type;
+            typedef SecondaryKeyProxyConst secondary_key_proxy_const_type;
+
+            using secondary_key_helper_t = secondary_key_helper<secondary_key_type, secondary_key_proxy_type, secondary_key_proxy_const_type>;
+
             generic_index( apply_context& c ):context(c){}
 
             int store( uint64_t scope, uint64_t table, const account_name& payer,
-                       uint64_t id, const secondary_key_type& value )
+                       uint64_t id, secondary_key_proxy_const_type value )
             {
                FC_ASSERT( payer != account_name(), "must specify a valid account to pay for new record" );
 
@@ -124,7 +191,7 @@ class apply_context {
                const auto& obj = context.mutable_db.create<ObjectType>( [&]( auto& o ){
                   o.t_id          = tab.id;
                   o.primary_key   = id;
-                  o.secondary_key = value;
+                  secondary_key_helper_t::set(o.secondary_key, value);
                   o.payer         = payer;
                });
 
@@ -132,7 +199,7 @@ class apply_context {
                  ++t.count;
                });
 
-               context.update_db_usage( payer, sizeof(secondary_key_type)+base_row_fee );
+               context.update_db_usage( payer, contracts::get_key_memory_usage<secondary_key_type>()+base_row_fee );
 
                itr_cache.cache_table( tab );
                return itr_cache.add( obj );
@@ -140,7 +207,7 @@ class apply_context {
 
             void remove( int iterator ) {
                const auto& obj = itr_cache.get( iterator );
-               context.update_db_usage( obj.payer, -( sizeof(secondary_key_type)+base_row_fee ) );
+               context.update_db_usage( obj.payer, -( contracts::get_key_memory_usage<secondary_key_type>()+base_row_fee ) );
 
                const auto& table_obj = itr_cache.get_table( obj.t_id );
                context.require_write_lock( table_obj.scope );
@@ -153,7 +220,7 @@ class apply_context {
                itr_cache.remove( iterator );
             }
 
-            void update( int iterator, account_name payer, const secondary_key_type& secondary ) {
+            void update( int iterator, account_name payer, secondary_key_proxy_const_type secondary ) {
                const auto& obj = itr_cache.get( iterator );
 
                context.require_write_lock( itr_cache.get_table( obj.t_id ).scope );
@@ -161,23 +228,23 @@ class apply_context {
                if( payer == account_name() ) payer = obj.payer;
 
                if( obj.payer != payer ) {
-                  context.update_db_usage( obj.payer, -(sizeof(secondary_key_type)+base_row_fee) );
-                  context.update_db_usage( payer, +(sizeof(secondary_key_type)+base_row_fee) );
+                  context.update_db_usage( obj.payer, -(contracts::get_key_memory_usage<secondary_key_type>()+base_row_fee) );
+                  context.update_db_usage( payer, +(contracts::get_key_memory_usage<secondary_key_type>()+base_row_fee) );
                }
 
                context.mutable_db.modify( obj, [&]( auto& o ) {
-                 o.secondary_key = secondary;
+                 secondary_key_helper_t::set(o.secondary_key, secondary);
                  o.payer = payer;
                });
             }
 
-            int find_secondary( uint64_t code, uint64_t scope, uint64_t table, const secondary_key_type& secondary, uint64_t& primary ) {
+            int find_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_const_type secondary, uint64_t& primary ) {
                auto tab = context.find_table( code, scope, table );
                if( !tab ) return -1;
 
                auto table_end_itr = itr_cache.cache_table( *tab );
 
-               const auto* obj = context.db.find<ObjectType, contracts::by_secondary>( boost::make_tuple( tab->id, secondary ) );
+               const auto* obj = context.db.find<ObjectType, contracts::by_secondary>( secondary_key_helper_t::create_tuple( *tab, secondary ) );
                if( !obj ) return table_end_itr;
 
                primary = obj->primary_key;
@@ -185,36 +252,36 @@ class apply_context {
                return itr_cache.add( *obj );
             }
 
-            int lowerbound_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_type& secondary, uint64_t& primary ) {
+            int lowerbound_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_type secondary, uint64_t& primary ) {
                auto tab = context.find_table( code, scope, table );
                if( !tab ) return -1;
 
                auto table_end_itr = itr_cache.cache_table( *tab );
 
                const auto& idx = context.db.get_index< typename chainbase::get_index_type<ObjectType>::type, contracts::by_secondary >();
-               auto itr = idx.lower_bound( boost::make_tuple( tab->id, secondary ) );
+               auto itr = idx.lower_bound( secondary_key_helper_t::create_tuple( *tab, secondary ) );
                if( itr == idx.end() ) return table_end_itr;
                if( itr->t_id != tab->id ) return table_end_itr;
 
                primary = itr->primary_key;
-               secondary = itr->secondary_key;
+               secondary_key_helper_t::get(secondary, itr->secondary_key);
 
                return itr_cache.add( *itr );
             }
 
-            int upperbound_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_type& secondary, uint64_t& primary ) {
+            int upperbound_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_type secondary, uint64_t& primary ) {
                auto tab = context.find_table( code, scope, table );
                if( !tab ) return -1;
 
                auto table_end_itr = itr_cache.cache_table( *tab );
 
                const auto& idx = context.db.get_index< typename chainbase::get_index_type<ObjectType>::type, contracts::by_secondary >();
-               auto itr = idx.upper_bound( boost::make_tuple( tab->id, secondary ) );
+               auto itr = idx.upper_bound( secondary_key_helper_t::create_tuple( *tab, secondary ) );
                if( itr == idx.end() ) return table_end_itr;
                if( itr->t_id != tab->id ) return table_end_itr;
 
                primary = itr->primary_key;
-               secondary = itr->secondary_key;
+               secondary_key_helper_t::get(secondary, itr->secondary_key);
 
                return itr_cache.add( *itr );
             }
@@ -274,7 +341,7 @@ class apply_context {
                return itr_cache.add(*itr);
             }
 
-            int find_primary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_type& secondary, uint64_t primary ) {
+            int find_primary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_type secondary, uint64_t primary ) {
                auto tab = context.find_table( code, scope, table );
                if( !tab ) return -1;
 
@@ -282,7 +349,7 @@ class apply_context {
 
                const auto* obj = context.db.find<ObjectType, contracts::by_primary>( boost::make_tuple( tab->id, primary ) );
                if( !obj ) return table_end_itr;
-               secondary = obj->secondary_key;
+               secondary_key_helper_t::get(secondary, obj->secondary_key);
 
                return itr_cache.add( *obj );
             }
@@ -364,10 +431,10 @@ class apply_context {
                return itr_cache.add(*itr);
             }
 
-            void get( int iterator, uint64_t& primary, secondary_key_type& secondary ) {
+            void get( int iterator, uint64_t& primary, secondary_key_proxy_type secondary ) {
                const auto& obj = itr_cache.get( iterator );
                primary   = obj.primary_key;
-               secondary = obj.secondary_key;
+               secondary_key_helper_t::get(secondary, obj.secondary_key);
             }
 
          private:
@@ -531,11 +598,11 @@ class apply_context {
 
       generic_index<contracts::index64_object>    idx64;
       generic_index<contracts::index128_object>   idx128;
-      generic_index<contracts::index256_object>   idx256;
+      generic_index<contracts::index256_object, char*, const char*>   idx256;
 
       uint32_t                                    recurse_depth;  // how deep inline actions can recurse
 
-      static constexpr int64_t base_row_fee = 200;
+      static constexpr uint32_t base_row_fee = 200;
 
    private:
       iterator_cache<key_value_object> keyval_cache;

@@ -13,6 +13,7 @@
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/datastream.hpp>
 #include <eosiolib/db.h>
+#include <eosiolib/key256.hpp>
 
 namespace eosio {
 
@@ -22,7 +23,7 @@ using boost::multi_index::const_mem_fun;
 template<typename T>
 struct secondary_iterator;
 
-#define MAKE_SECONDARY_ITERATOR(IDX, TYPE)\
+#define WRAP_SECONDARY_SIMPLE_TYPE(IDX, TYPE)\
 template<>\
 struct secondary_iterator<TYPE> {\
    static int db_idx_next( int iterator, uint64_t* primary ) { return db_##IDX##_next( iterator, primary ); }\
@@ -49,10 +50,36 @@ int db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, TYPE& seco
    return db_##IDX##_upperbound( code, scope, table, &secondary, &primary );\
 }
 
-MAKE_SECONDARY_ITERATOR(idx64, uint64_t)
-MAKE_SECONDARY_ITERATOR(idx128, uint128_t)
-MAKE_SECONDARY_ITERATOR(idx256, uint256)
+#define WRAP_SECONDARY_ARRAY_TYPE(IDX, TYPE)\
+template<>\
+struct secondary_iterator<TYPE> {\
+   static int db_idx_next( int iterator, uint64_t* primary ) { return db_##IDX##_next( iterator, primary ); }\
+   static int db_idx_previous( int iterator, uint64_t* primary ) { return db_##IDX##_previous( iterator, primary ); }\
+   static void db_idx_remove( int iterator  )                { db_##IDX##_remove( iterator ); }\
+   static int db_idx_end( uint64_t code, uint64_t scope, uint64_t table ) { return db_##IDX##_end( code, scope, table ); }\
+};\
+int db_idx_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
+   return db_##IDX##_store( scope, table, payer, id, secondary.data(), TYPE::arr_size );\
+}\
+void db_idx_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
+   db_##IDX##_update( iterator, payer, secondary.data(), TYPE::arr_size );\
+}\
+int db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary, TYPE& secondary ) {\
+   return db_##IDX##_find_primary( code, scope, table, secondary.data(), TYPE::arr_size, primary );\
+}\
+int db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
+   return db_##IDX##_find_secondary( code, scope, table, secondary.data(), TYPE::arr_size, &primary );\
+}\
+int db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
+   return db_##IDX##_lowerbound( code, scope, table, secondary.data(), TYPE::arr_size, &primary );\
+}\
+int db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
+   return db_##IDX##_upperbound( code, scope, table, secondary.data(), TYPE::arr_size, &primary );\
+}
 
+WRAP_SECONDARY_SIMPLE_TYPE(idx64,  uint64_t)
+WRAP_SECONDARY_SIMPLE_TYPE(idx128, uint128_t)
+WRAP_SECONDARY_ARRAY_TYPE(idx256, key256)
 
 
 template<uint64_t TableName, typename T, typename... Indices>
@@ -128,13 +155,6 @@ template<uint64_t TableName, typename T, typename... Indices>
 class multi_index
 {
    private:
-      /*
-      template<bool...> struct bool_pack;
-      template<bool... bs>
-      using all_true = std::is_same<bool_pack<bs..., true>, bool_pack<true, bs...>>;
-
-      static_assert(all_true<(TableName == Indices::table_name)...>::value, "index must use same table name as the multi_index it is contained within");
-      */
 
       static_assert( sizeof...(Indices) <= 16, "multi_index only supports a maximum of 16 secondary indices" );
 
@@ -547,6 +567,7 @@ class multi_index
          eosio_assert( result != nullptr, "unable to find key" );
          return *result;
       }
+      
       const T* find( uint64_t primary )const {
          auto cacheitr = _items_index.find(primary);
          if( cacheitr != _items_index.end() )

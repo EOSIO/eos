@@ -6,6 +6,7 @@
 #include <eosiolib/print.h>
 #include <eosiolib/types.hpp>
 #include <eosiolib/math.hpp>
+#include <eosiolib/key256.hpp>
 #include <utility>
 
 namespace eosio {
@@ -76,12 +77,13 @@ namespace eosio {
    }
 
    /**
-    * Prints 256 bit unsigned integer as a hexidecimal string
-    * @brief Prints 256 bit unsigned integer as a hexidecimal string
-    * @param num to be printed
+    * Prints 256 bit key as a hexidecimal string
+    * @brief Prints 256 bit key as a hexidecimal string
+    * @param val to be printed
     */
-   inline void print( const uint256& num ) {
-      printi256(&num);
+   inline void print( const key256& val ) {
+      prints("0x");
+      printhex(static_cast<const void*>(val.data()), key256::arr_size);
    }
 
    /**

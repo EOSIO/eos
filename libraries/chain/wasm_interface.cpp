@@ -681,21 +681,6 @@ class console_api : public context_aware_api {
          context.console_append(fc::variant(v).get_string());
       }
 
-      void printi256(const uint256& num) {
-         // Assumes uint64_t stored in little endian format
-         context.console_append("0x");
-         uint64_t val;
-         for( auto i = 0; i < 4; ++i ) {
-            val = num.words[i];
-            // Reverse order of bytes in val:
-            val = ((val << 8) & 0xFF00FF00FF00FF00ULL) | ((val >> 8) & 0x00FF00FF00FF00FFULL);
-            val = ((val << 16) & 0xFFFF0000FFFF0000ULL) | ((val >> 16) & 0x0000FFFF0000FFFFULL);
-            val = (val << 32) | (val >> 32);
-            // Print next 8 bytes in hexidecimal:
-            context.console_append(fc::to_hex(reinterpret_cast<const char*>(&val), 8));
-         }
-      }
-
       void printd( wasm_double val ) {
          context.console_append(val.str());
       }
@@ -709,7 +694,7 @@ class console_api : public context_aware_api {
       }
 };
 
-#define DB_API_METHOD_WRAPPERS(IDX, TYPE)\
+#define DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(IDX, TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
          return context.IDX.store( scope, table, payer, id, secondary );\
       }\
@@ -740,6 +725,57 @@ class console_api : public context_aware_api {
       int db_##IDX##_previous( int iterator, uint64_t& primary ) {\
          return context.IDX.previous_secondary(iterator, primary);\
       }
+
+#define DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(IDX, ARR_SIZE)\
+      int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, array_ptr<const char> data, size_t data_len) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.store(scope, table, payer, id, data.value);\
+      }\
+      void db_##IDX##_update( int iterator, uint64_t payer, array_ptr<const char> data, size_t data_len ) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.update(iterator, payer, data.value);\
+      }\
+      void db_##IDX##_remove( int iterator ) {\
+         return context.IDX.remove(iterator);\
+      }\
+      int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<const char> data, size_t data_len, uint64_t& primary ) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.find_secondary(code, scope, table, data, primary);\
+      }\
+      int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<char> data, size_t data_len, uint64_t primary ) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.find_primary(code, scope, table, data.value, primary);\
+      }\
+      int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<char> data, size_t data_len, uint64_t& primary ) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.lowerbound_secondary(code, scope, table, data.value, primary);\
+      }\
+      int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<char> data, size_t data_len, uint64_t& primary ) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.upperbound_secondary(code, scope, table, data.value, primary);\
+      }\
+      int db_##IDX##_end( uint64_t code, uint64_t scope, uint64_t table ) {\
+         return context.IDX.end_secondary(code, scope, table);\
+      }\
+      int db_##IDX##_next( int iterator, uint64_t& primary  ) {\
+         return context.IDX.next_secondary(iterator, primary);\
+      }\
+      int db_##IDX##_previous( int iterator, uint64_t& primary ) {\
+         return context.IDX.previous_secondary(iterator, primary);\
+      }
+
 
 class database_api : public context_aware_api {
    public:
@@ -776,10 +812,9 @@ class database_api : public context_aware_api {
          return context.db_end_i64( code, scope, table );
       }
 
-      DB_API_METHOD_WRAPPERS(idx64,  uint64_t)
-      DB_API_METHOD_WRAPPERS(idx128, uint128_t)
-      DB_API_METHOD_WRAPPERS(idx256, sha256)
-
+      DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)
+      DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx128, uint128_t)
+      DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(idx256, 32)
 };
 
 
@@ -1347,7 +1382,7 @@ REGISTER_INTRINSICS(producer_api,
    (get_active_producers,      int(int, int) )
 );
 
-#define DB_SECONDARY_INDEX_METHOD_SEQ(IDX) \
+#define DB_SECONDARY_INDEX_METHODS_SIMPLE(IDX) \
    (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int))\
    (db_##IDX##_remove,         void(int))\
    (db_##IDX##_update,         void(int,int64_t,int))\
@@ -1359,6 +1394,18 @@ REGISTER_INTRINSICS(producer_api,
    (db_##IDX##_next,           int(int, int))\
    (db_##IDX##_previous,       int(int, int))
 
+#define DB_SECONDARY_INDEX_METHODS_ARRAY(IDX) \
+      (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int,int))\
+      (db_##IDX##_remove,         void(int))\
+      (db_##IDX##_update,         void(int,int64_t,int,int))\
+      (db_##IDX##_find_primary,   int(int64_t,int64_t,int64_t,int,int,int64_t))\
+      (db_##IDX##_find_secondary, int(int64_t,int64_t,int64_t,int,int,int))\
+      (db_##IDX##_lowerbound,     int(int64_t,int64_t,int64_t,int,int,int))\
+      (db_##IDX##_upperbound,     int(int64_t,int64_t,int64_t,int,int,int))\
+      (db_##IDX##_end,            int(int64_t,int64_t,int64_t))\
+      (db_##IDX##_next,           int(int, int))\
+      (db_##IDX##_previous,       int(int, int))
+
 REGISTER_INTRINSICS( database_api,
    (db_store_i64,        int(int64_t,int64_t,int64_t,int64_t,int,int))
    (db_update_i64,       void(int,int64_t,int,int))
@@ -1369,11 +1416,11 @@ REGISTER_INTRINSICS( database_api,
    (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t))
    (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
    (db_upperbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
-   (db_end_i64,   int(int64_t,int64_t,int64_t))
+   (db_end_i64,          int(int64_t,int64_t,int64_t))
 
-   DB_SECONDARY_INDEX_METHOD_SEQ(idx64)
-   DB_SECONDARY_INDEX_METHOD_SEQ(idx128)
-   DB_SECONDARY_INDEX_METHOD_SEQ(idx256)
+   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
+   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
+   DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
 );
 
 REGISTER_INTRINSICS(crypto_api,
@@ -1420,7 +1467,6 @@ REGISTER_INTRINSICS(console_api,
    (prints_l,              void(int, int)  )
    (printi,                void(int64_t)   )
    (printi128,             void(int)       )
-   (printi256,             void(int)       )
    (printd,                void(int64_t)   )
    (printn,                void(int64_t)   )
    (printhex,              void(int, int)  )
