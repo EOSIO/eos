@@ -62,7 +62,7 @@ void validate_authority_precondition( const apply_context& context, const author
  *  This method is called assuming precondition_system_newaccount succeeds a
  */
 void apply_eosio_newaccount(apply_context& context) { 
-   auto create = context.act.as<newaccount>();
+   auto create = context.act.data_as<newaccount>();
    try {
    context.require_authorization(create.creator);
    context.require_write_lock( config::eosio_auth_scope );
@@ -106,7 +106,7 @@ void apply_eosio_newaccount(apply_context& context) {
 
 void apply_eosio_setcode(apply_context& context) {
    auto& db = context.mutable_db;
-   auto  act = context.act.as<setcode>();
+   auto  act = context.act.data_as<setcode>();
 
    context.require_authorization(act.account);
    context.require_write_lock( config::eosio_auth_scope );
@@ -138,7 +138,7 @@ void apply_eosio_setcode(apply_context& context) {
 
 void apply_eosio_setabi(apply_context& context) {
    auto& db = context.mutable_db;
-   auto  act = context.act.as<setabi>();
+   auto  act = context.act.data_as<setabi>();
 
    context.require_authorization(act.account);
 
@@ -161,7 +161,7 @@ void apply_eosio_setabi(apply_context& context) {
 void apply_eosio_updateauth(apply_context& context) {
    context.require_write_lock( config::eosio_auth_scope );
 
-   auto update = context.act.as<updateauth>();
+   auto update = context.act.data_as<updateauth>();
    EOS_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
    EOS_ASSERT(update.permission != update.parent, action_validate_exception,
               "Cannot set an authority as its own parent");
@@ -237,7 +237,7 @@ void apply_eosio_updateauth(apply_context& context) {
 }
 
 void apply_eosio_deleteauth(apply_context& context) {
-   auto remove = context.act.as<deleteauth>();
+   auto remove = context.act.data_as<deleteauth>();
    EOS_ASSERT(remove.permission != "active", action_validate_exception, "Cannot delete active authority");
    EOS_ASSERT(remove.permission != "owner", action_validate_exception, "Cannot delete owner authority");
 
@@ -263,7 +263,7 @@ void apply_eosio_deleteauth(apply_context& context) {
 }
 
 void apply_eosio_linkauth(apply_context& context) {
-   auto requirement = context.act.as<linkauth>();
+   auto requirement = context.act.data_as<linkauth>();
    EOS_ASSERT(!requirement.requirement.empty(), action_validate_exception, "Required permission cannot be empty");
 
    context.require_authorization(requirement.account);
@@ -294,7 +294,7 @@ void apply_eosio_linkauth(apply_context& context) {
 
 void apply_eosio_unlinkauth(apply_context& context) {
    auto& db = context.mutable_db;
-   auto unlink = context.act.as<unlinkauth>();
+   auto unlink = context.act.data_as<unlinkauth>();
 
    context.require_authorization(unlink.account);
 
@@ -370,7 +370,7 @@ void apply_eosio_postrecovery(apply_context& context) {
 
    FC_ASSERT(context.act.authorization.size() == 1, "Recovery Message must have exactly one authorization");
 
-   auto recover_act = context.act.as<postrecovery>();
+   auto recover_act = context.act.data_as<postrecovery>();
    const auto &auth = context.act.authorization.front();
    const auto& account = recover_act.account;
    context.require_write_lock(account);
@@ -447,7 +447,7 @@ static void remove_pending_recovery(apply_context& context, const account_name& 
 }
 
 void apply_eosio_passrecovery(apply_context& context) {
-   auto pass_act = context.act.as<passrecovery>();
+   auto pass_act = context.act.data_as<passrecovery>();
    const auto& account = pass_act.account;
 
    // ensure this is only processed if it is a deferred transaction from the system account
@@ -470,7 +470,7 @@ void apply_eosio_passrecovery(apply_context& context) {
 
 void apply_eosio_vetorecovery(apply_context& context) {
    context.require_write_lock( config::eosio_auth_scope );
-   auto pass_act = context.act.as<vetorecovery>();
+   auto pass_act = context.act.data_as<vetorecovery>();
    const auto& account = pass_act.account;
    context.require_authorization(account);
 
