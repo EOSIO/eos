@@ -29,4 +29,6 @@ add_subdirectory(test.system)
 add_subdirectory(noop)
 
 install( DIRECTORY eosiolib DESTINATION include/ )
+install( DIRECTORY musl DESTINATION include/ )
+install( DIRECTORY libc++ DESTINATION include/ )
 install( DIRECTORY skeleton DESTINATION share/ )
