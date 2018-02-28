@@ -81,7 +81,9 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
    }
 
    void assert_memory_is_accessible(uint32_t offset, size_t size) {
-      EOS_ASSERT(offset + size <= sbrk_bytes, wasm_execution_error, "Access violation accessing ${s} bytes at ${o}! Max is ${m}", ("s", size)("o", offset)("m", sbrk_bytes));
+      #warning this is wrong
+      if(offset + size > sbrk_bytes)
+      FC_THROW_EXCEPTION(wasm_execution_error, "access violation");
    }
 
    char* get_validated_pointer(uint32_t offset, size_t size) {
