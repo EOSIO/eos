@@ -79,12 +79,6 @@ Supported Operating Systems:
 For Amazon, Fedora, Ubuntu & MacOS there is an automated build script that can install all dependencies and builds EOS.
 We are working on supporting other Linux/Unix distributions in future releases.
 
-It is called eosio_build.sh
-
-```bash
-cd eos
-./eosio_build.sh
-```
 Choose whether you will be building for a local testnet or for the public testnet and jump to the appropriate section below.  Clone the EOS repository recursively as described and run eosio_build.sh located in the root `eos` folder.
 
 :warning: **As of February 2018, `master` is under heavy development and is not suitable for experimentation.** :warning:
