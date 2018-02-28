@@ -60,6 +60,13 @@ extern "C" {
       WASM_TEST_HANDLER(test_action, test_current_sender);
       WASM_TEST_HANDLER(test_action, test_publication_time);
 
+      // test named actions
+      // We enforce action name matches action data type name, so name mangling will not work for these tests.
+      if ( action == N(dummy_action) ) {
+         test_action::test_dummy_action();
+         return;
+      }
+
       //test_print
       WASM_TEST_HANDLER(test_print, test_prints);
       WASM_TEST_HANDLER(test_print, test_prints_l);

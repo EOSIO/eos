@@ -74,6 +74,7 @@ struct test_action {
   static void read_action_normal();
   static void read_action_to_0();
   static void read_action_to_64k();
+  static void test_dummy_action();
   static void require_notice();
   static void require_auth();
   static void assert_false();

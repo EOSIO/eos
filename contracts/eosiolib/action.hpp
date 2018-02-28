@@ -135,12 +135,9 @@ namespace eosio {
        */
       template<typename T>
       T data_as() {
- //        eosio_assert( name == T::get_name(), "Invalid name" );
- //        eosio_assert( account == T::get_account(), "Invalid account" );
-         eosio::print(data.size());
-         //return unpack<T>( &data[0], data.size() );
-         T t;
-         return t;
+         eosio_assert( name == T::get_name(), "Invalid name" );
+         eosio_assert( account == T::get_account(), "Invalid account" );
+         return unpack<T>( &data[0], data.size() );
       }
 
    };
