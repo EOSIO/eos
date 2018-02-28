@@ -354,23 +354,24 @@ BOOST_AUTO_TEST_CASE(uint_types)
 
 } FC_LOG_AND_RETHROW() }
 
+struct abi_gen_helper {
 
-BOOST_AUTO_TEST_CASE(generator)
-{ try {
+  const char* eosiolib_path = nullptr;
 
-  if( std::getenv("EOSLIB") == nullptr ) {
-    wlog("*************************************");
-    wlog("*  EOSLIB env variable not defined  *");
-    wlog("*  ABIGenerator tests will not run  *");
-    wlog("*************************************");
-    return;
+  abi_gen_helper() {
+    eosiolib_path = std::getenv("EOSLIB");
+    if( eosiolib_path == nullptr ) {
+      wlog("*************************************");
+      wlog("*  EOSLIB env variable not set      *");
+      wlog("*  ABIGenerator tests will fail     *");
+      wlog("*************************************");
+    }
   }
 
-  auto is_abi_generation_exception =[](const eosio::abi_generation_exception& e) -> bool { return true; };
+  static bool is_abi_generation_exception(const eosio::abi_generation_exception& e) { return true; };
 
-  auto generate_abi = [this](const char* source, const char* abi, bool opt_sfs=false) -> bool {
-
-    const char* eosiolib_path = std::getenv("EOSLIB");
+  bool generate_abi(const char* source, const char* abi, bool opt_sfs=false) {
+    
     FC_ASSERT(eosiolib_path != NULL);
 
     std::string include_param = std::string("-I") + eosiolib_path;
@@ -394,7 +395,12 @@ BOOST_AUTO_TEST_CASE(generator)
     }
 
     return e;
-  };
+  }
+
+};
+
+BOOST_FIXTURE_TEST_CASE(abigen_unknown_type, abi_gen_helper)
+{ try {
 
    const char* unknown_type = R"=====(
    #include <eosiolib/types.h>
@@ -405,7 +411,12 @@ BOOST_AUTO_TEST_CASE(generator)
    };
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(unknown_type, ""), eosio::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(unknown_type, ""), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
+{ try {
 
    const char* all_types = R"=====(
     #include <eosiolib/types.hpp>
@@ -611,6 +622,11 @@ BOOST_AUTO_TEST_CASE(generator)
    )=====";
    BOOST_TEST( generate_abi(all_types, all_types_abi) == true);
 
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_double_base, abi_gen_helper)
+{ try {
+
    const char* double_base = R"=====(
    #include <eosiolib/types.h>
 
@@ -627,7 +643,13 @@ BOOST_AUTO_TEST_CASE(generator)
    };
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(double_base, ""), eosio::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(double_base, ""), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
+
+} FC_LOG_AND_RETHROW() }
+
+
+BOOST_FIXTURE_TEST_CASE(abigen_double_action, abi_gen_helper)
+{ try {
 
    const char* double_action = R"=====(
    #include <eosiolib/types.h>
@@ -683,6 +705,12 @@ BOOST_AUTO_TEST_CASE(generator)
 
 
    BOOST_TEST( generate_abi(double_action, double_action_abi) == true );
+
+} FC_LOG_AND_RETHROW() }
+
+
+BOOST_FIXTURE_TEST_CASE(abigen_all_indexes, abi_gen_helper)
+{ try {
 
    const char* all_indexes = R"=====(
    #include <eosiolib/types.hpp>
@@ -831,6 +859,11 @@ BOOST_AUTO_TEST_CASE(generator)
 
    BOOST_TEST( generate_abi(all_indexes, all_indexes_abi) == true );
 
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_unable_to_determine_index, abi_gen_helper)
+{ try {
+
    const char* unable_to_determine_index = R"=====(
    #include <eosiolib/types.h>
 
@@ -842,10 +875,14 @@ BOOST_AUTO_TEST_CASE(generator)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(unable_to_determine_index, ""), eosio::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(unable_to_determine_index, ""), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_long_field_name, abi_gen_helper)
+{ try {
 
    //TODO: full action / full table
-
   // typedef fixed_string16 FieldName;
    const char* long_field_name = R"=====(
    #include <eosiolib/types.h>
@@ -857,7 +894,12 @@ BOOST_AUTO_TEST_CASE(generator)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(long_field_name, ""), eosio::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(long_field_name, ""), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_long_type_name, abi_gen_helper)
+{ try {
 
    const char* long_type_name = R"=====(
    #include <eosiolib/types.h>
@@ -874,7 +916,12 @@ BOOST_AUTO_TEST_CASE(generator)
    )=====";
 
 
-   BOOST_CHECK_EXCEPTION( generate_abi(long_type_name, "{}"), eosio::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(long_type_name, "{}"), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_same_type_different_namespace, abi_gen_helper)
+{ try {
 
    const char* same_type_different_namespace = R"=====(
    #include <eosiolib/types.h>
@@ -895,12 +942,17 @@ BOOST_AUTO_TEST_CASE(generator)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(same_type_different_namespace, ""), eosio::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(same_type_different_namespace, ""), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_bad_index_type, abi_gen_helper)
+{ try {
 
    const char* bad_index_type = R"=====(
    #include <eosiolib/types.h>
 
-   //@abi table i64
+   //@abi table table1 i128i128
    struct table1 {
       uint32_t key;
       uint64_t field1;
@@ -909,12 +961,17 @@ BOOST_AUTO_TEST_CASE(generator)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(bad_index_type, ""), eosio::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(bad_index_type, "{}"), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_full_table_decl, abi_gen_helper)
+{ try {
 
    const char* full_table_decl = R"=====(
    #include <eosiolib/types.hpp>
 
-   //@abi table i64
+   //@abi table table1 i64
    class table1 {
    public:
       uint64_t  id;
@@ -958,6 +1015,11 @@ BOOST_AUTO_TEST_CASE(generator)
    )=====";
 
    BOOST_TEST( generate_abi(full_table_decl, full_table_decl_abi) == true );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_str_table_decl, abi_gen_helper)
+{ try {
 
    const char* str_table_decl = R"=====(
    #include <eosiolib/types.hpp>
@@ -1004,6 +1066,10 @@ BOOST_AUTO_TEST_CASE(generator)
    )=====";
 
    BOOST_TEST( generate_abi(str_table_decl, str_table_decl_abi) == true );
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_union_table, abi_gen_helper)
+{ try {
 
    const char* union_table = R"=====(
    #include <eosiolib/types.h>
@@ -1016,7 +1082,12 @@ BOOST_AUTO_TEST_CASE(generator)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(union_table, ""), eosio::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(union_table, ""), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_same_action_different_type, abi_gen_helper)
+{ try {
 
    const char* same_action_different_type = R"=====(
    #include <eosiolib/types.h>
@@ -1033,7 +1104,11 @@ BOOST_AUTO_TEST_CASE(generator)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(same_action_different_type, ""), eosio::abi_generation_exception, is_abi_generation_exception );
+   BOOST_CHECK_EXCEPTION( generate_abi(same_action_different_type, ""), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_template_base, abi_gen_helper)
+{ try {
 
    const char* template_base = R"=====(
    #include <eosiolib/types.h>
@@ -1045,7 +1120,7 @@ BOOST_AUTO_TEST_CASE(generator)
 
    typedef base<uint32_t> base32;
 
-   //@abi table i64
+   //@abi table table1 i64
    class table1 : base32 {
    public:
       uint64_t id;
@@ -1088,6 +1163,11 @@ BOOST_AUTO_TEST_CASE(generator)
    )=====";
 
    BOOST_TEST( generate_abi(template_base, template_base_abi) == true );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_action_and_table, abi_gen_helper)
+{ try {
 
    const char* action_and_table = R"=====(
    #include <eosiolib/types.h>
@@ -1133,6 +1213,11 @@ BOOST_AUTO_TEST_CASE(generator)
    )=====";
 
    BOOST_TEST( generate_abi(action_and_table, action_and_table_abi) == true );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_simple_typedef, abi_gen_helper)
+{ try {
 
    const char* simple_typedef = R"=====(
    #include <eosiolib/types.hpp>
@@ -1190,6 +1275,10 @@ BOOST_AUTO_TEST_CASE(generator)
    )=====";
 
    BOOST_TEST( generate_abi(simple_typedef, simple_typedef_abi) == true );
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_field_typedef, abi_gen_helper)
+{ try {
 
    const char* field_typedef = R"=====(
    #include <eosiolib/types.hpp>
@@ -1264,8 +1353,247 @@ BOOST_AUTO_TEST_CASE(generator)
 
    BOOST_TEST( generate_abi(field_typedef, field_typedef_abi) == true );
 
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_vector_of_POD, abi_gen_helper)
+{ try {
+
+   const char* abigen_vector_of_POD = R"=====(
+   #include <vector>
+   #include <string>
+   #include <eosiolib/types.hpp>
+
+   using namespace eosio;
+   using namespace std;
+
+   //@abi table
+   struct table1 {
+      uint64_t         field1;
+      vector<uint64_t> uints64;
+      vector<uint32_t> uints32;
+      vector<uint16_t> uints16;
+      vector<uint8_t>  uints8;
+   };
+
+   )=====";
+
+   const char* abigen_vector_of_POD_abi = R"=====(
+   {
+     "types": [],
+     "structs": [{
+         "name": "table1",
+         "base": "",
+         "fields": [{
+             "name": "field1",
+             "type": "uint64"
+           },{
+             "name": "uints64",
+             "type": "uint64[]"
+           },{
+             "name": "uints32",
+             "type": "uint32[]"
+           },{
+             "name": "uints16",
+             "type": "uint16[]"
+           },{
+             "name": "uints8",
+             "type": "uint8[]"
+           }
+         ]
+       }
+     ],
+     "actions": [],
+     "tables": [{
+         "name": "table1",
+         "index_type": "i64",
+         "key_names": [
+           "field1"
+         ],
+         "key_types": [
+           "uint64"
+         ],
+         "type": "table1"
+       }
+     ]
+   }
+   )=====";
+
+   BOOST_TEST( generate_abi(abigen_vector_of_POD, abigen_vector_of_POD_abi) == true );
 
 } FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_vector_of_structs, abi_gen_helper)
+{ try {
+
+   const char* abigen_vector_of_structs = R"=====(
+   #include <vector>
+   #include <string>
+   #include <eosiolib/types.hpp>
+
+   using namespace eosio;
+   using namespace std;
+
+   struct my_struct {
+      vector<uint64_t> uints64;
+      vector<uint32_t> uints32;
+      vector<uint16_t> uints16;
+      vector<uint8_t>  uints8;
+      string           str;
+   };
+
+   //@abi table
+   struct table1 {
+      uint64_t          field1;
+      vector<my_struct> field2;
+   };
+
+   )=====";
+
+   const char* abigen_vector_of_structs_abi = R"=====(
+   {
+     "types": [],
+     "structs": [{
+         "name": "my_struct",
+         "base": "",
+         "fields": [{
+             "name": "uints64",
+             "type": "uint64[]"
+           },{
+             "name": "uints32",
+             "type": "uint32[]"
+           },{
+             "name": "uints16",
+             "type": "uint16[]"
+           },{
+             "name": "uints8",
+             "type": "uint8[]"
+           },{
+             "name": "str",
+             "type": "string"
+           }
+         ]
+       },{
+         "name": "table1",
+         "base": "",
+         "fields": [{
+             "name": "field1",
+             "type": "uint64"
+           },{
+             "name": "field2",
+             "type": "my_struct[]"
+           }
+         ]
+       }
+     ],
+     "actions": [],
+     "tables": [{
+         "name": "table1",
+         "index_type": "i64",
+         "key_names": [
+           "field1"
+         ],
+         "key_types": [
+           "uint64"
+         ],
+         "type": "table1"
+       }
+     ]
+   }
+   )=====";
+
+   BOOST_TEST( generate_abi(abigen_vector_of_structs, abigen_vector_of_structs_abi) == true );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abigen_vector_multidimension, abi_gen_helper)
+{ try {
+
+   const char* abigen_vector_multidimension = R"=====(
+   #include <vector>
+   #include <string>
+   #include <eosiolib/types.hpp>
+
+   using namespace eosio;
+   using namespace std;
+
+   //@abi table
+   struct table1 {
+      uint64_t                 field1;
+      vector<vector<uint64_t>> field2;
+   };
+
+   )=====";
+
+   BOOST_CHECK_EXCEPTION( generate_abi(abigen_vector_multidimension, ""), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abgigen_vector_alias, abi_gen_helper)
+{ try {
+
+   const char* abgigen_vector_alias = R"=====(
+   #include <string>
+   #include <vector>
+   #include <eosiolib/types.hpp>
+   #include <eosiolib/print.hpp>
+
+   using namespace std;
+
+   struct row {
+    std::vector<uint32_t> cells;
+   };
+
+   typedef vector<row> array_of_rows;
+
+   //@abi action
+   struct my_action {
+     uint64_t id;
+     array_of_rows rows;
+   };
+
+   )=====";
+
+   const char* abgigen_vector_alias_abi = R"=====(
+   {
+     "types": [{
+         "new_type_name": "array_of_rows",
+         "type": "row[]"
+       }
+     ],
+     "structs": [{
+         "name": "row",
+         "base": "",
+         "fields": [{
+             "name": "cells",
+             "type": "uint32[]"
+           }
+         ]
+       },{
+         "name": "my_action",
+         "base": "",
+         "fields": [{
+             "name": "id",
+             "type": "uint64"
+           },{
+             "name": "rows",
+             "type": "array_of_rows"
+           }
+         ]
+       }
+     ],
+     "actions": [{
+         "name": "myaction",
+         "type": "my_action"
+       }
+     ],
+     "tables": []
+   }
+   )=====";
+
+   BOOST_TEST( generate_abi(abgigen_vector_alias, abgigen_vector_alias_abi) == true );
+
+} FC_LOG_AND_RETHROW() }
+
 
 BOOST_AUTO_TEST_CASE(general)
 { try {
