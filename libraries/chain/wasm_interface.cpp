@@ -9,6 +9,7 @@
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/wasm_module_walker.hpp>
+#include <eosio/chain/wasm_eosio_rewriters.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
@@ -169,6 +170,17 @@ namespace eosio { namespace chain {
        * @param wasm_binary_size - the size of the binary
        * @return reference to a usable cache entry
        */
+      struct test_mutator {
+         static void accept( wasm_ops::instr* inst ) {
+            std::cout << "ACCEPTING\n";
+         }
+      };
+      struct test_mutator2 {
+         static void accept( wasm_ops::instr* inst ) {
+            std::cout << "ACCEPTING2\n";
+         }
+      };
+
       wasm_cache::entry& fetch_entry(const digest_type& code_id, const char* wasm_binary, size_t wasm_binary_size) {
          std::condition_variable condition;
          optional_entry_ref result;
@@ -193,15 +205,35 @@ namespace eosio { namespace chain {
                   validate_eosio_wasm_constraints(*module);
                   wasm_module_walker<
                   wasm_constraints::constraints_validators<wasm_constraints::memories_validator,
-                                                   wasm_constraints::data_segments_validator,
-                                                   wasm_constraints::tables_validator,
-                                                   wasm_constraints::globals_validator>, 
+                                                           wasm_constraints::data_segments_validator,
+                                                           wasm_constraints::tables_validator,
+                                                           wasm_constraints::globals_validator>, 
                   wasm_constraints::constraints_validators<wasm_constraints::memories_validator,
-                                                   wasm_constraints::data_segments_validator,
-                                                   wasm_constraints::tables_validator,
-                                                   wasm_constraints::globals_validator>>
-
+                                                           wasm_constraints::data_segments_validator,
+                                                           wasm_constraints::tables_validator,
+                                                           wasm_constraints::globals_validator>>
                                                    wmw(*module);
+
+                  wasm_ops::wasm_instr_ptr nopi = std::make_shared< wasm_ops::nop<test_mutator> >();
+                  wasm_ops::wasm_instr_ptr blocki = std::make_shared< wasm_ops::block<test_mutator2> >(std::vector<uint8_t>{3,5,6,7,8});
+//                  nopi->visit();
+//                  blocki->visit();
+                  wasm_ops::op_types<test_mutator>::block_t b(std::vector<uint8_t>{3,4,5,6,7});
+                  wasm_ops::op_types<test_mutator>::i64_popcount_t ipc;
+                  wasm_ops::nop<test_mutator> n;
+                  wasm_ops::call<test_mutator> br {134};
+                  wasm_rewriter::op_constrainers::f32_add_t f32;
+                  b.visit();
+                  ipc.visit();
+//                  f32.visit();
+//                  std::cout << "NOP SIZE " << (int)fc::raw::pack(*nopi)[0] << "\n";
+                  //std::cout << "BLOCK SIZE " << (int)fc::raw::pack(b).size() << "\n";
+                  std::cout << "B ";
+                  for (auto c : b.pack() )
+                     std::cout << (int)c << " ";
+                  std::cout << "\nBLOCK SIZE " << (int)b.pack().size() << "\n";
+                  std::cout << "NOP " << (int)n.pack()[0] << "\n";
+                  std::cout << "BR " << (int)((br.pack()[1] << 24) | (br.pack()[2] << 16) | (br.pack()[3] << 8) | (br.pack()[4])) << "\n";
                  // wasm_module_walker<wasm_eosio_standard_constraints> wmw(*module);
                   wmw.pre_validate();
 
