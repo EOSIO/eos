@@ -226,7 +226,11 @@ fc::variant push_transaction( signed_transaction& trx, bool skip_sign, packed_tr
        sign_transaction(trx);
     }
 
-    return call( push_txn_func, packed_transaction(trx, compression) );
+    if (!tx_dont_broadcast) {
+       return call(push_txn_func, packed_transaction(trx, compression));
+    } else {
+       return fc::variant(trx);
+    }
 }
 
 fc::variant push_actions(std::vector<chain::action>&& actions, bool skip_sign, packed_transaction::compression_type compression = packed_transaction::none ) {
@@ -735,6 +739,13 @@ int main( int argc, char** argv ) {
 
    add_standard_transaction_options(transfer, false);
    transfer->set_callback([&] {
+      signed_transaction trx;
+      if (tx_force_unique && memo.size() == 0) {
+         // use the memo to add a nonce
+         memo = generate_nonce_value();
+         tx_force_unique = false;
+      }
+
       auto transfer = fc::mutable_variant_object
             ("from", sender)
             ("to", recipient)
@@ -883,6 +894,43 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
+   // sign subcommand
+   string trx_json_to_sign;
+   string str_private_key;
+   bool push_trx = false;
+
+   auto sign = app.add_subcommand("sign", localized("Sign a transaction"), false);
+   sign->add_option("transaction", trx_json_to_sign,
+                                 localized("The JSON of the transaction to sign, or the name of a JSON file containing the transaction"), true)->required();
+   sign->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
+   sign->add_flag( "-p,--push-transaction", push_trx, localized("Push transaction after signing"));
+
+   sign->set_callback([&] {
+      signed_transaction trx;
+      if ( is_regular_file(trx_json_to_sign) ) {
+         trx = fc::json::from_file(trx_json_to_sign).as<signed_transaction>();
+      } else {
+         trx = fc::json::from_string(trx_json_to_sign).as<signed_transaction>();
+      }
+
+      if( str_private_key.size() == 0 ) {
+         std::cerr << localized("private key: ");
+         fc::set_console_echo(false);
+         std::getline( std::cin, str_private_key, '\n' );
+         fc::set_console_echo(true);
+      }
+
+      auto priv_key = fc::crypto::private_key::regenerate(*utilities::wif_to_key(str_private_key));
+      trx.sign(priv_key, chain_id_type{});
+
+      if(push_trx) {
+         auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
+         std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
+      } else {
+         std::cout << fc::json::to_pretty_string(trx) << std::endl;
+      }
+   });
+
    // Push subcommand
    auto push = app.add_subcommand("push", localized("Push arbitrary transactions to the blockchain"), false);
    push->require_subcommand();
@@ -936,7 +984,8 @@ int main( int argc, char** argv ) {
       try {
          trx_var = fc::json::from_string(trxJson);
       } EOS_CAPTURE_AND_RETHROW(transaction_type_exception, "Fail to parse transaction JSON")
-      auto trx_result = call(push_txn_func, trx_var);
+      signed_transaction trx = trx_var.as<signed_transaction>();
+      auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
    });
 
