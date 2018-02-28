@@ -33,21 +33,21 @@ int entry::sbrk(int num_bytes) {
    // TODO: omitted checktime function from previous version of sbrk, may need to be put back in at some point
    constexpr uint32_t NBPPL2  = 16;
    const uint32_t         num_pages      = module->memory.initial;
-   const uint32_t         min_bytes      = (num_pages << NBPPL2) > UINT32_MAX ? UINT32_MAX : num_pages << NBPPL2;
    const uint32_t         prev_num_bytes = sbrk_bytes; //_num_bytes;
 
    // round the absolute value of num_bytes to an alignment boundary
    num_bytes = (num_bytes + 7) & ~7;
 
    if ((num_bytes > 0) && (prev_num_bytes > (wasm_constraints::maximum_linear_memory - num_bytes)))  // test if allocating too much memory (overflowed)
-      throw eosio::chain::page_memory_error();
-   else if ((num_bytes < 0) && (prev_num_bytes < (min_bytes - num_bytes))) // test for underflow
-      throw eosio::chain::page_memory_error();
+      return -1;
 
    // update the number of bytes allocated, and compute the number of pages needed
-   sbrk_bytes += num_bytes;
-   auto num_accessible_pages = (sbrk_bytes + Memory::kPageSize - 1) >> NBPPL2;
+   
+   auto num_accessible_pages = (sbrk_bytes + num_bytes + Memory::kPageSize - 1) >> NBPPL2;
+   if(num_accessible_pages > module->memory.max)
+      return -1;
    instance->set_accessible_pages(num_accessible_pages);
+   sbrk_bytes += num_bytes;
    return prev_num_bytes;
 }
 

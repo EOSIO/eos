@@ -76,29 +76,23 @@ int entry::sbrk(int num_bytes) {
 
    MemoryInstance*  default_mem    = Runtime::getDefaultMemory(instance);
    if(!default_mem)
-      throw eosio::chain::page_memory_error();
+      return -1;
 
    const uint32_t         num_pages      = Runtime::getMemoryNumPages(default_mem);
-   const uint32_t         min_bytes      = (num_pages << NBPPL2) > UINT32_MAX ? UINT32_MAX : num_pages << NBPPL2;
    const uint32_t         prev_num_bytes = sbrk_bytes; //_num_bytes;
 
    // round the absolute value of num_bytes to an alignment boundary
    num_bytes = (num_bytes + 7) & ~7;
 
    if ((num_bytes > 0) && (prev_num_bytes > (wasm_constraints::maximum_linear_memory - num_bytes)))  // test if allocating too much memory (overflowed)
-      throw eosio::chain::page_memory_error();
-   else if ((num_bytes < 0) && (prev_num_bytes < (min_bytes - num_bytes))) // test for underflow
-      throw eosio::chain::page_memory_error();
+      return -1;
 
-   // update the number of bytes allocated, and compute the number of pages needed
+   const uint32_t num_desired_pages = (sbrk_bytes + num_bytes + IR::numBytesPerPage - 1) >> NBPPL2;
+
+   if(Runtime::growMemory(default_mem, num_desired_pages - num_pages) == -1)
+      return -1;
+   
    sbrk_bytes += num_bytes;
-   const uint32_t num_desired_pages = (sbrk_bytes + IR::numBytesPerPage - 1) >> NBPPL2;
-
-   // grow or shrink the memory to the desired number of pages
-   if (num_desired_pages > num_pages)
-      Runtime::growMemory(default_mem, num_desired_pages - num_pages);
-   else if (num_desired_pages < num_pages)
-      Runtime::shrinkMemory(default_mem, num_pages - num_desired_pages);
 
    return prev_num_bytes;
 
