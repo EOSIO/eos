@@ -109,6 +109,24 @@ namespace eosio { namespace chain {
       >
    >;
 
+   class pending_total_usage_object : public chainbase::object<pending_total_usage_object_type, pending_total_usage_object> {
+      OBJECT_CTOR(total_usage_delta_object)
+
+      id_type           id;
+      uint64_t          total_net_weight  = 1;
+      uint64_t          total_cpu_weight  = 1;
+      uint64_t          total_db_capacity = 1024*1024*1024ull*1024ull;
+      uint64_t          total_db_reserved = 0;
+   };
+
+   using pending_total_usage_multi_index = chainbase::shared_multi_index_container<
+      pending_total_usage_object,
+      indexed_by<
+         ordered_unique<tag<by_id>,
+            BOOST_MULTI_INDEX_MEMBER(pending_total_usage_object, pending_total_usage_object::id_type, id)
+         >
+      >
+   >;
 
 } } /// eosio::chain
 

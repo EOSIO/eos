@@ -439,6 +439,7 @@ void chain_controller::_finalize_block( const block_trace& trace ) { try {
    clear_expired_transactions();
 
    update_last_irreversible_block();
+   update_rate_limiting();
 
    applied_block( trace ); //emit
    if (_currently_replaying_blocks)
@@ -1335,6 +1336,19 @@ void chain_controller::update_last_irreversible_block()
    // Trim fork_database and undo histories
    _fork_db.set_max_size(head_block_num() - new_last_irreversible_block_num + 1);
    _db.commit(new_last_irreversible_block_num);
+}
+
+void chain_controller::update_rate_limiting()
+{
+   const auto* ptu = _db.find<pending_total_usage_object>();
+   if (ptu) {
+      auto& gdp = get_dynamic_global_properties();
+      _db.modify( gdp, [&]( dynamic_global_property_object& p ) {
+         p.total_net_weight = ptu->total_net_weight;
+         p.total_cpu_weight = ptu->total_cpu_weight;
+         p.total_db_capacity = ptu->total_db_capacity;
+      });
+   }
 }
 
 void chain_controller::clear_expired_transactions()

@@ -76,7 +76,7 @@ namespace eosio { namespace chain {
         uint64_t total_cpu_weight  = 1;
         uint64_t total_db_capacity = 1024*1024*1024ull*1024ull;
         uint64_t total_db_reserved = 0;
-        
+
         /**
          * The current absolute slot number.  Equal to the total
          * number of slots since genesis.  Also equal to the total

@@ -145,6 +145,7 @@ namespace eosio { namespace chain {
       bandwidth_usage_object_type,
       compute_usage_object_type,
       table_id_object_type,
+      pending_total_usage_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 

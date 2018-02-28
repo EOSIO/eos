@@ -408,23 +408,28 @@ class privileged_api : public context_aware_api {
          return false;
       }
 
-      void set_resource_limits( account_name account, 
-                                int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight,
-                                int64_t cpu_usec_per_period ) {
+      void set_resource_limits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
          auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
          FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free too much space" );
 
-         auto& gdp = context.controller.get_dynamic_global_properties();
-         context.mutable_db.modify( gdp, [&]( auto& p ) {
-           p.total_net_weight -= buo.net_weight;
-           p.total_net_weight += net_weight;
-           p.total_cpu_weight -= buo.cpu_weight;
-           p.total_cpu_weight += cpu_weight;
-           p.total_db_reserved -= buo.db_reserved_capacity;
-           p.total_db_reserved += ram_bytes;
-         });
+         const auto* pending_totals = context.mutable_db.find<pending_total_usage_object>();
+         if (!pending_totals) {
+            context.mutable_db.create([&](pending_total_usage_object& ptu) {
+               auto& gdp = context.controller.get_dynamic_global_properties();
+               ptu.total_net_weight = gdp.total_net_weight + net_weight - buo.net_weight;
+               ptu.total_cpu_weight = gdp.total_cpu_weight + cpu_weight - buo.cpu_weight;
+               ptu.total_db_reserved = gdp.total_db_reserved + ram_bytes - buo.db_reserved_capacity;
+            });
+         } else {
+            context.mutable_db.modify(*pending_totals, [&](pending_total_usage_object& ptu){
+               auto& gdp = context.controller.get_dynamic_global_properties();
+               ptu.total_net_weight += net_weight - buo.net_weight;
+               ptu.total_cpu_weight += cpu_weight - buo.cpu_weight;
+               ptu.total_db_reserved += ram_bytes - buo.db_reserved_capacity;
+            });
+         }
 
-         context.mutable_db.modify( buo, [&]( auto& o ){
+         context.mutable_db.modify( buo, [&]( bandwidth_usage_object& o ){
             o.net_weight = net_weight;
             o.cpu_weight = cpu_weight;
             o.db_reserved_capacity = ram_bytes;
