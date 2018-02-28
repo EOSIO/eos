@@ -17,6 +17,8 @@
 #include <eosio/chain/contracts/abi_serializer.hpp>
 #include <eosio/abi_generator/abi_generator.hpp>
 
+#include "config.hpp"
+
 using namespace eosio;
 using namespace chain;
 using namespace chain::contracts;
@@ -354,26 +356,16 @@ BOOST_AUTO_TEST_CASE(uint_types)
 
 } FC_LOG_AND_RETHROW() }
 
+using namespace eosio::tests::config;
+
 struct abi_gen_helper {
 
-  const char* eosiolib_path = nullptr;
-
-  abi_gen_helper() {
-    eosiolib_path = std::getenv("EOSLIB");
-    if( eosiolib_path == nullptr ) {
-      wlog("*************************************");
-      wlog("*  EOSLIB env variable not set      *");
-      wlog("*  ABIGenerator tests will fail     *");
-      wlog("*************************************");
-    }
-  }
+  abi_gen_helper() {}
 
   static bool is_abi_generation_exception(const eosio::abi_generation_exception& e) { return true; };
 
   bool generate_abi(const char* source, const char* abi, bool opt_sfs=false) {
     
-    FC_ASSERT(eosiolib_path != NULL);
-
     std::string include_param = std::string("-I") + eosiolib_path;
     std::string stdcpp_include_param = std::string("-I") + eosiolib_path + "/libc++/upstream/include";
     std::string stdc_include_param = std::string("-I") + eosiolib_path +  "/musl/upstream/include";
