@@ -62,7 +62,7 @@ namespace eosio { namespace chain {
       }
 
       template<typename T>
-      T as()const {
+      T data_as()const {
          FC_ASSERT( account == T::get_account() );
          FC_ASSERT( name == T::get_name()  );
          return fc::raw::unpack<T>(data);
