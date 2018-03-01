@@ -17,11 +17,14 @@ namespace eosio { namespace chain { namespace wasm_ops {
 // forward declaration
 struct instr;
 
+using wasm_op_ptr	  = std::unique_ptr<instr>;
 using wasm_instr_ptr      = std::shared_ptr<instr>;
 using wasm_return_t       = fc::optional<std::vector<uint8_t>>; 
 using wasm_instr_callback = std::function<std::vector<wasm_instr_ptr>(uint8_t)>;
 using code_iterator       = std::vector<uint8_t>::iterator;
 using wasm_op_generator   = std::function<wasm_instr_ptr(std::vector<uint8_t>, size_t)>;
+
+//#define BUILD_WASM_OP_STRUCTURES:w
 
 enum code {
    UNREACHABLE    = 0x00,
@@ -268,7 +271,7 @@ struct instr {
    virtual std::string to_string() { return "instr"; }
    virtual wasm_return_t visit() = 0;
    virtual std::vector<uint8_t> pack() { return { code }; }
-
+   virtual uint32_t skip_ahead() { return 1; } // amount to skip past operands
    /*
    template <typename Stream>
    friend Stream& operator >> ( Stream& out, const instr& in ) {
@@ -289,6 +292,11 @@ struct instr_base : instr {
 };
 
 // control insructions
+template <typename ... Mutators>
+struct end : instr_base<END, Mutators...> {
+   std::string to_string() { return "end"; }
+};
+
 template <typename ... Mutators>
 struct unreachable : instr_base<UNREACHABLE, Mutators...> {
    std::string to_string() { return "unreachable"; }
@@ -317,6 +325,10 @@ struct block_base : instr_base<Code, Mutators...> {
       ret.push_back( end );
       return ret; 
    }
+
+   virtual uint32_t skip_ahead() {
+      return instr::skip_ahead() + sizeof(blocktype); // + in.size() + 1;
+   }
 };
 
 template <typename ... Mutators>
@@ -339,10 +351,9 @@ struct if_eps : block_base<IF, Mutators...> {
 
 template <typename ... Mutators>
 struct if_else : block_base<IF, Mutators...> {
-   if_else( std::vector<uint8_t> if_body, std::vector<uint8_t> else_body ) : block_base<IF, Mutators...>(if_body), in2(else_body) {}
+//   if_else( std::vector<uint8_t> if_body, std::vector<uint8_t> else_body ) : block_base<IF, Mutators...>(if_body), in2(else_body) {}
+   using block_base<ELSE, Mutators...>::block_base;
    std::string to_string() { return "if else"; }
-   uint8_t _else = ELSE;
-   std::vector<uint8_t> in2;
 };
 
 template <uint8_t Code, typename ... Mutators>
@@ -353,6 +364,9 @@ struct br_base : instr_base<Code, Mutators...> {
       std::vector<uint8_t> ret = instr::pack();
       ret.insert( ret.end(), { (uint8_t)(l >> 24), (uint8_t)(l >> 16), (uint8_t)(l >> 8), (uint8_t)l } );
       return ret;
+   }
+   virtual uint32_t skip_ahead() {
+      return instr::skip_ahead() + sizeof(l);
    }
 };
 
@@ -381,7 +395,9 @@ struct br_table : instr_base<BR_TABLE, Mutators...> {
       ret.insert( ret.end(), { (uint8_t)(lN >> 24), (uint8_t)(lN>> 16), (uint8_t)(lN>> 8), (uint8_t)lN } );
       return ret;
    }
-
+   virtual uint32_t skip_ahead() {
+      return instr::skip_ahead(); // + l.size() + sizeof(lN);
+   }
 };
 
 template <uint8_t Code, typename ... Mutators>
@@ -393,7 +409,9 @@ struct call_base : instr_base<Code, Mutators...> {
       ret.insert( ret.end(), { (uint8_t)(funcidx >> 24), (uint8_t)(funcidx >> 16), (uint8_t)(funcidx >> 8), (uint8_t)funcidx } );
       return ret;
    }
-
+   virtual uint32_t skip_ahead() {
+      return instr::skip_ahead() + sizeof(funcidx);
+   }
 };
 
 template <typename ... Mutators>
@@ -412,7 +430,9 @@ struct call_indirect : call_base<CALL_INDIRECT, Mutators...> {
       ret.push_back( end );
       return ret;
    }
-
+   virtual uint32_t skip_ahead() {
+      return instr::skip_ahead() + 1;
+   }
 };
 
 // parametric instructions
@@ -435,6 +455,9 @@ struct variable_base : instr_base<Code, Mutators...> {
       std::vector<uint8_t> ret = instr::pack();
       ret.insert( ret.end(), { (uint8_t)(localidx >> 24), (uint8_t)(localidx >> 16), (uint8_t)(localidx >> 8), (uint8_t)localidx } );
       return ret;
+   }
+   virtual uint32_t skip_ahead() {
+      return instr::skip_ahead() + sizeof(localidx);
    }
 };
 
@@ -478,6 +501,9 @@ struct mem_base : instr_base<Code, Mutators...> {
       ret.insert( ret.end(), { (uint8_t)(m.a >> 24), (uint8_t)(m.a >> 16), (uint8_t)(m.a >> 8), (uint8_t)m.a,
                                (uint8_t)(m.o >> 24), (uint8_t)(m.o >> 16), (uint8_t)(m.o >> 8), (uint8_t)m.o } );
       return ret;
+   }
+   virtual uint32_t skip_ahead() {
+      return instr::skip_ahead() + sizeof(memarg);
    }
 };
 template <typename ... Mutators>
@@ -621,11 +647,19 @@ struct i64_store32 : mem_base<I64_STORE32, Mutators...> {
 template <typename ... Mutators>
 struct current_memory : instr_base<CURRENT_MEM, Mutators...> {
    uint8_t end = UNREACHABLE;
+   std::string to_string() { return "current_memory"; }
+   virtual uint32_t skip_ahead() {
+      return instr::skip_ahead() + 1;
+   }
 };
 
 template <typename ... Mutators>
 struct grow_memory : instr_base<GROW_MEM> {
    uint8_t end = UNREACHABLE;
+   std::string to_string() { return "grow_memory"; }
+   virtual uint32_t skip_ahead() {
+      return instr::skip_ahead() + 1;
+   }
 };
 
 // numeric instructions
@@ -637,6 +671,9 @@ struct const_base : instr_base<Code, Mutators...> {
       std::vector<uint8_t> ret = instr::pack();
       ret.insert( ret.end(), { (uint8_t)(n >> 24), (uint8_t)(n >> 16), (uint8_t)(n >> 8), (uint8_t)n } );
       return ret;
+   }
+   virtual uint32_t skip_ahead() {
+      return instr::skip_ahead() + sizeof(n);
    }
 };
 
@@ -1177,8 +1214,10 @@ struct nop_mutator {
    static void accept( instr* inst ) {}
 };
 
+// class to inherit from to attach specific mutators and have default behavior for all specified types
 template < typename Mutator = nop_mutator, typename ... Mutators>
 struct op_types {
+   using end_t = end< Mutator, Mutators...>;
    using unreachable_t = unreachable< Mutator, Mutators...>;
    using nop_t = nop<Mutator, Mutators...>;
    using block_t = block<Mutator, Mutators...>;
@@ -1365,6 +1404,369 @@ struct op_types {
    using f64_reinterpret_i64_t = f64_reinterpret_i64<Mutator, Mutators...>;
 }; // op_types
 
-extern std::unordered_map<uint8_t, wasm_op_generator> op_generators;
+// function to get cast a memory chunk to the correct type
+template <class Op_Types>
+wasm_op_ptr get_wasm_op_ptr( char* code ) {
+   switch ((uint8_t)*code) {
+      case END:
+         return reinterpret_cast<*Op_Types::end_t>(code);
+      case UNREACHABLE:
+         return reinterpret_cast<*Op_Types::unreachable_t>(code);
+      case NOP:
+         return reinterpret_cast<*Op_Types::nop_t>(code);
+      case BLOCK:
+         return reinterpret_cast<Op_Types::block_t>(code);
+      case LOOP:
+         return reinterpret_cast<Op_Types::loop_t>(code);
+      case IF:
+         return reinterpret_cast<Op_Types::if_eps_t>(code);
+      case ELSE:
+         return reinterpret_cast<Op_Types::if_else_t>(code);
+      case BR:
+         return reinterpret_cast<Op_Types::br_t>(code);
+      case BR_IF:
+         return reinterpret_cast<Op_Types::br_if_t>(code);
+      case BR_TABLE:
+         return reinterpret_cast<Op_Types::br_table_t>(code);
+      case RETURN:
+         return reinterpret_cast<Op_Types::return_t>(code);
+      case CALL:
+         return reinterpret_cast<Op_Types::call_t>(code);
+      case CALL_INDIRECT:
+         return reinterpret_cast<Op_Types::call_indirect_t>(code);
+      case DROP:
+         return reinterpret_cast<Op_Types::drop_t>(code);
+      case SELECT:
+         return reinterpret_cast<Op_Types::select_t>(code);
+
+      case GET_LOCAL:
+         return reinterpret_cast<Op_Types::get_local_t>(code);
+      case SET_LOCAL:
+         return reinterpret_cast<Op_Types::set_local_t>(code);
+      case TEE_LOCAL:
+         return reinterpret_cast<Op_Types::tee_local_t>(code);
+      case GET_GLOBAL:
+         return reinterpret_cast<Op_Types::get_global_t>(code);
+      case SET_GLOBAL:
+         return reinterpret_cast<Op_Types::set_global_t>(code);
+
+      case I32_LOAD:
+         return reinterpret_cast<Op_Types::i32_load_t>(code);
+      case I64_LOAD:
+         return reinterpret_cast<Op_Types::i64_load_t>(code);
+      case F32_LOAD:
+         return reinterpret_cast<Op_Types::f32_load_t>(code);
+      case F64_LOAD:
+         return reinterpret_cast<Op_Types::f64_load_t>(code);
+      case I32_LOAD8_S:
+         return reinterpret_cast<Op_Types::i32_load8_s_t>(code);
+      case I32_LOAD8_U:
+         return reinterpret_cast<Op_Types::i32_load8_u_t>(code);
+      case I32_LOAD16_S:
+         return reinterpret_cast<Op_Types::i32_load16_s_t>(code);
+      case I32_LOAD16_U:
+         return reinterpret_cast<Op_Types::i32_load16_u_t>(code);
+      case I64_LOAD8_S:
+         return reinterpret_cast<Op_Types::i64_load8_s_t>(code);
+      case I64_LOAD8_U:
+         return reinterpret_cast<Op_Types::i64_load8_u_t>(code);
+      case I64_LOAD16_S:
+         return reinterpret_cast<Op_Types::i64_load16_s_t>(code);
+      case I64_LOAD16_U:
+         return reinterpret_cast<Op_Types::i64_load16_u_t>(code);
+      case I64_LOAD32_S:
+         return reinterpret_cast<Op_Types::i64_load32_s_t>(code);
+      case I64_LOAD32_U:
+         return reinterpret_cast<Op_Types::i64_load32_u_t>(code);
+      case I32_STORE:
+         return reinterpret_cast<Op_Types::i32_store_t>(code);
+      case I64_STORE:
+         return reinterpret_cast<Op_Types::i64_store_t>(code);
+      case F32_STORE:
+         return reinterpret_cast<Op_Types::f32_store_t>(code);
+      case F64_STORE:
+         return reinterpret_cast<Op_Types::f64_store_t>(code);
+      case I32_STORE8:
+         return reinterpret_cast<Op_Types::i32_store8_t>(code);
+      case I32_STORE16:
+         return reinterpret_cast<Op_Types::i32_store16_t>(code);
+      case I64_STORE8:
+         return reinterpret_cast<Op_Types::i64_store8_t>(code);
+      case I64_STORE16:
+         return reinterpret_cast<Op_Types::i64_store16_t>(code);
+      case I64_STORE32:
+         return reinterpret_cast<Op_Types::i64_store32_t>(code);
+      case CURRENT_MEM:
+         return reinterpret_cast<Op_Types::current_memory_t>(code);
+      case GROW_MEM:
+         return reinterpret_cast<Op_Types::grow_memory_t>(code);
+
+      case I32_CONST:
+         return reinterpret_cast<Op_Types::i32_const_t>(code);
+      case I64_CONST:
+         return reinterpret_cast<Op_Types::i64_const_t>(code);
+      case F32_CONST:
+         return reinterpret_cast<Op_Types::f32_const_t>(code);
+      case F64_CONST:
+         return reinterpret_cast<Op_Types::f64_const_t>(code);
+
+      case I32_EQZ:
+         return reinterpret_cast<Op_Types::i32_eqz_t>(code);
+      case I32_EQ:
+         return reinterpret_cast<Op_Types::i32_eq_t>(code);
+      case I32_NE:
+         return reinterpret_cast<Op_Types::i32_ne_t>(code);
+      case I32_LT_S:
+         return reinterpret_cast<Op_Types::i32_lt_s_t>(code);
+      case I32_LT_U:
+         return reinterpret_cast<Op_Types::i32_lt_u_t>(code);
+      case I32_GT_S:
+         return reinterpret_cast<Op_Types::i32_gt_s_t>(code);
+      case I32_GT_U:
+         return reinterpret_cast<Op_Types::i32_gt_u_t>(code);
+      case I32_LE_S:
+         return reinterpret_cast<Op_Types::i32_le_s_t>(code);
+      case I32_LE_U:
+         return reinterpret_cast<Op_Types::i32_le_u_t>(code);
+      case I32_GE_S:
+         return reinterpret_cast<Op_Types::i32_ge_s_t>(code);
+      case I32_GE_U:
+         return reinterpret_cast<Op_Types::i32_ge_u_t>(code);
+
+      case I64_EQZ:
+         return reinterpret_cast<Op_Types::i64_eqz_t>(code);
+      case I64_EQ:
+         return reinterpret_cast<Op_Types::i64_eq_t>(code);
+      case I64_NE:
+         return reinterpret_cast<Op_Types::i64_ne_t>(code);
+      case I64_LT_S:
+         return reinterpret_cast<Op_Types::i64_lt_s_t>(code);
+      case I64_LT_U:
+         return reinterpret_cast<Op_Types::i64_lt_u_t>(code);
+      case I64_GT_S:
+         return reinterpret_cast<Op_Types::i64_gt_s_t>(code);
+      case I64_GT_U:
+         return reinterpret_cast<Op_Types::i64_gt_u_t>(code);
+      case I64_LE_S:
+         return reinterpret_cast<Op_Types::i64_le_s_t>(code);
+      case I64_LE_U:
+         return reinterpret_cast<Op_Types::i64_le_u_t>(code);
+      case I64_GE_S:
+         return reinterpret_cast<Op_Types::i64_ge_s_t>(code);
+      case I64_GE_U:
+         return reinterpret_cast<Op_Types::i64_ge_u_t>(code);
+
+      case F32_EQ:
+         return reinterpret_cast<Op_Types::f32_eq_t>(code);
+      case F32_NE:
+         return reinterpret_cast<Op_Types::f32_ne_t>(code);
+      case F32_LT:
+         return reinterpret_cast<Op_Types::f32_lt_t>(code);
+      case F32_GT:
+         return reinterpret_cast<Op_Types::f32_gt_t>(code);
+      case F32_LE:
+         return reinterpret_cast<Op_Types::f32_le_t>(code);
+      case F32_GE:
+         return reinterpret_cast<Op_Types::f32_ge_t>(code);
+
+      case F64_EQ:
+         return reinterpret_cast<Op_Types::f64_eq_t>(code);
+      case F64_NE:
+         return reinterpret_cast<Op_Types::f64_ne_t>(code);
+      case F64_LT:
+         return reinterpret_cast<Op_Types::f64_lt_t>(code);
+      case F64_GT:
+         return reinterpret_cast<Op_Types::f64_gt_t>(code);
+      case F64_LE:
+         return reinterpret_cast<Op_Types::f64_le_t>(code);
+      case F64_GE:
+         return reinterpret_cast<Op_Types::f64_ge_t>(code);
+      
+      case I32_CLZ:
+         return reinterpret_cast<Op_Types::i32_clz_t>(code);
+      case I32_CTZ:
+         return reinterpret_cast<Op_Types::i32_ctz_t>(code);
+      case I32_POPCOUNT:
+         return reinterpret_cast<Op_Types::i32_popcount_t>(code);
+      case I32_ADD:
+         return reinterpret_cast<Op_Types::i32_add_t>(code);
+      case I32_SUB:
+         return reinterpret_cast<Op_Types::i32_sub_t>(code);
+      case I32_MUL:
+         return reinterpret_cast<Op_Types::i32_mul_t>(code);
+      case I32_DIV_S:
+         return reinterpret_cast<Op_Types::i32_div_s_t>(code);
+      case I32_DIV_U:
+         return reinterpret_cast<Op_Types::i32_div_u_t>(code);
+      case I32_REM_S:
+         return reinterpret_cast<Op_Types::i32_rem_s_t>(code);
+      case I32_REM_U:
+         return reinterpret_cast<Op_Types::i32_rem_u_t>(code);
+      case I32_AND:
+         return reinterpret_cast<Op_Types::i32_and_t>(code);
+      case I32_OR:
+         return reinterpret_cast<Op_Types::i32_or_t>(code);
+      case I32_XOR:
+         return reinterpret_cast<Op_Types::i32_xor_t>(code);
+      case I32_SHL:
+         return reinterpret_cast<Op_Types::i32_shl_t>(code);
+      case I32_SHR_S:
+         return reinterpret_cast<Op_Types::i32_shr_s_t>(code);
+      case I32_SHR_U:
+         return reinterpret_cast<Op_Types::i32_shr_u_t>(code);
+      case I32_ROTL:
+         return reinterpret_cast<Op_Types::i32_rotl_t>(code);
+      case I32_ROTR:
+         return reinterpret_cast<Op_Types::i32_rotr_t>(code);
+
+      case I64_CLZ:
+         return reinterpret_cast<Op_Types::i64_clz_t>(code);
+      case I64_CTZ:
+         return reinterpret_cast<Op_Types::i64_ctz_t>(code);
+      case I64_POPCOUNT:
+         return reinterpret_cast<Op_Types::i64_popcount_t>(code);
+      case I64_ADD:
+         return reinterpret_cast<Op_Types::i64_add_t>(code);
+      case I64_SUB:
+         return reinterpret_cast<Op_Types::i64_sub_t>(code);
+      case I64_MUL:
+         return reinterpret_cast<Op_Types::i64_mul_t>(code);
+      case I64_DIV_S:
+         return reinterpret_cast<Op_Types::i64_div_s_t>(code);
+      case I64_DIV_U:
+         return reinterpret_cast<Op_Types::i64_div_u_t>(code);
+      case I64_REM_S:
+         return reinterpret_cast<Op_Types::i64_rem_s_t>(code);
+      case I64_REM_U:
+         return reinterpret_cast<Op_Types::i64_rem_u_t>(code);
+      case I64_AND:
+         return reinterpret_cast<Op_Types::i64_and_t>(code);
+      case I64_OR:
+         return reinterpret_cast<Op_Types::i64_or_t>(code);
+      case I64_XOR:
+         return reinterpret_cast<Op_Types::i64_xor_t>(code);
+      case I64_SHL:
+         return reinterpret_cast<Op_Types::i64_shl_t>(code);
+      case I64_SHR_S:
+         return reinterpret_cast<Op_Types::i64_shr_s_t>(code);
+      case I64_SHR_U:
+         return reinterpret_cast<Op_Types::i64_shr_u_t>(code);
+      case I64_ROTL:
+         return reinterpret_cast<Op_Types::i64_rotl_t>(code);
+      case I64_ROTR:
+         return reinterpret_cast<Op_Types::i64_rotr_t>(code);
+
+      case F32_ABS:
+         return reinterpret_cast<Op_Types::f32_abs_t>(code);
+      case F32_NEG:
+         return reinterpret_cast<Op_Types::f32_neg_t>(code);
+      case F32_CEIL:
+         return reinterpret_cast<Op_Types::f32_ceil_t>(code);
+      case F32_FLOOR:
+         return reinterpret_cast<Op_Types::f32_floor_t>(code);
+      case F32_TRUNC:
+         return reinterpret_cast<Op_Types::f32_trunc_t>(code);
+      case F32_NEAREST:
+         return reinterpret_cast<Op_Types::f32_nearest_t>(code);
+      case F32_SQRT:
+         return reinterpret_cast<Op_Types::f32_sqrt_t>(code);
+      case F32_ADD:
+         return reinterpret_cast<Op_Types::f32_add_t>(code);
+      case F32_SUB:
+         return reinterpret_cast<Op_Types::f32_sub_t>(code);
+      case F32_MUL:
+         return reinterpret_cast<Op_Types::f32_mul_t>(code);
+      case F32_DIV:
+         return reinterpret_cast<Op_Types::f32_div_t>(code);
+      case F32_MIN:
+         return reinterpret_cast<Op_Types::f32_min_t>(code);
+      case F32_MAX:
+         return reinterpret_cast<Op_Types::f32_max_t>(code);
+      case F32_COPYSIGN:
+         return reinterpret_cast<Op_Types::f32_copysign_t>(code);
+
+      case F64_ABS:
+         return reinterpret_cast<Op_Types::f64_abs_t>(code);
+      case F64_NEG:
+         return reinterpret_cast<Op_Types::f64_neg_t>(code);
+      case F64_CEIL:
+         return reinterpret_cast<Op_Types::f64_ceil_t>(code);
+      case F64_FLOOR:
+         return reinterpret_cast<Op_Types::f64_floor_t>(code);
+      case F64_TRUNC:
+         return reinterpret_cast<Op_Types::f64_trunc_t>(code);
+      case F64_NEAREST:
+         return reinterpret_cast<Op_Types::f64_nearest_t>(code);
+      case F64_SQRT:
+         return reinterpret_cast<Op_Types::f64_sqrt_t>(code);
+      case F64_ADD:
+         return reinterpret_cast<Op_Types::f64_add_t>(code);
+      case F64_SUB:
+         return reinterpret_cast<Op_Types::f64_sub_t>(code);
+      case F64_MUL:
+         return reinterpret_cast<Op_Types::f64_mul_t>(code);
+      case F64_DIV:
+         return reinterpret_cast<Op_Types::f64_div_t>(code);
+      case F64_MIN:
+         return reinterpret_cast<Op_Types::f64_min_t>(code);
+      case F64_MAX:
+         return reinterpret_cast<Op_Types::f64_max_t>(code);
+      case F64_COPYSIGN:
+         return reinterpret_cast<Op_Types::f64_copysign_t>(code);
+
+      case I32_WRAP_I64:
+         return reinterpret_cast<Op_Types::i32_wrap_i64_t>(code);
+      case I32_TRUNC_S_F32:
+         return reinterpret_cast<Op_Types::i32_trunc_s_f32_t>(code);
+      case I32_TRUNC_U_F32:
+         return reinterpret_cast<Op_Types::i32_trunc_u_f32_t>(code);
+      case I32_TRUNC_S_F64:
+         return reinterpret_cast<Op_Types::i32_trunc_s_f64_t>(code);
+      case I32_TRUNC_U_F64:
+         return reinterpret_cast<Op_Types::i32_trunc_u_f64_t>(code);
+      case I64_EXTEND_S_I32:
+         return reinterpret_cast<Op_Types::i64_extend_s_i32_t>(code);
+      case I64_EXTEND_U_I32:
+         return reinterpret_cast<Op_Types::i64_extend_u_i32_t>(code);
+      case I64_TRUNC_S_F32:
+         return reinterpret_cast<Op_Types::i64_trunc_s_f32_t>(code);
+      case I64_TRUNC_U_F32:
+         return reinterpret_cast<Op_Types::i64_trunc_u_f32_t>(code);
+      case I64_TRUNC_S_F64:
+         return reinterpret_cast<Op_Types::i64_trunc_s_f64_t>(code);
+      case I64_TRUNC_U_F64:
+         return reinterpret_cast<Op_Types::i64_trunc_u_f64_t>(code);
+      case F32_CONVERT_S_I32:
+         return reinterpret_cast<Op_Types::f32_convert_s_i32_t>(code);
+      case F32_CONVERT_U_I32:
+         return reinterpret_cast<Op_Types::f32_convert_u_i32_t>(code);
+      case F32_CONVERT_S_I64:
+         return reinterpret_cast<Op_Types::f32_convert_s_i64_t>(code);
+      case F32_CONVERT_U_I64:
+         return reinterpret_cast<Op_Types::f32_convert_u_i64_t>(code);
+      case F32_DEMOTE_F64:
+         return reinterpret_cast<Op_Types::f32_demote_f64_t>(code);
+      case F64_CONVERT_S_I32:
+         return reinterpret_cast<Op_Types::f64_convert_s_i32_t>(code);
+      case F64_CONVERT_U_I32:
+         return reinterpret_cast<Op_Types::f64_convert_u_i32_t>(code);
+      case F64_CONVERT_S_I64:
+         return reinterpret_cast<Op_Types::f64_convert_s_i64_t>(code);
+      case F64_CONVERT_U_I64:
+         return reinterpret_cast<Op_Types::f64_convert_u_i64_t>(code);
+      case F64_PROMOTE_F32:
+         return reinterpret_cast<Op_Types::f64_promote_f32_t>(code);
+      case I32_REINTERPRET_F32:
+         return reinterpret_cast<Op_Types::i32_reinterpret_f32_t>(code);
+      case I64_REINTERPRET_F64:
+         return reinterpret_cast<Op_Types::i64_reinterpret_f64_t>(code);
+      case F32_REINTERPRET_I32:
+         return reinterpret_cast<Op_Types::f32_reinterpret_i32_t>(code);
+      case F64_REINTERPRET_I64:
+         return reinterpret_cast<Op_Types::f64_reinterpret_i64_t>(code);
+
+   }
+}
+
 }}} // namespace eosio, chain, wasm_ops
 

@@ -236,7 +236,18 @@ namespace eosio { namespace chain {
                   std::cout << "BR " << (int)((br.pack()[1] << 24) | (br.pack()[2] << 16) | (br.pack()[3] << 8) | (br.pack()[4])) << "\n";
                  // wasm_module_walker<wasm_eosio_standard_constraints> wmw(*module);
                   wmw.pre_validate();
-
+            
+                  for (auto def : module->functions.defs) {
+                     char* code = (char*)(def.code.data());
+                     char* code_end = code+def.code.size();
+                     while (code < code_end) {
+                        wasm_ops::wasm_op_ptr op = wasm_ops::get_wasm_op_ptr<wasm_ops::op_types<>>(code);
+                        code += op->skip_ahead();
+                        std::cout << "OP " << op->to_string() << "\n"; 
+                     }
+                        //std::cout << (int)n << " ";
+                  } 
+                  std::cout << "\n";
                   root_resolver resolver;
                   LinkResult link_result = linkModule(*module, resolver);
                   instance = instantiateModule(*module, std::move(link_result.resolvedImports));

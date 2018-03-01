@@ -32,6 +32,7 @@ struct op_constrainers : op_types<blacklist_mutator> {
    using if_t           = if_eps<whitelist_mutator>;
    using if_else_t      = if_else<whitelist_mutator>;
    
+   using end_t          = end<whitelist_mutator>;
    using unreachable_t  = unreachable<whitelist_mutator>;
    using br_t           = br<whitelist_mutator>;
    using br_if_t        = br_if<whitelist_mutator>;
@@ -134,16 +135,24 @@ struct instruction_count {
    static wasm_return_t accept( instr* inst ) {
       icnt++;
    }
-   static uint32_t icnt = 0;
+   static uint32_t icnt;
 };
+
+uint32_t instruction_count::icnt = 0;
 
 struct checktime_injector {
    static wasm_return_t accept( instr* inst ) {
-      // if we are at a block instruction
-      if (inst->code >= 0x02 && inst->code < 0x05)
-
+      if (checktime_idx == -1)
+	FC_THROW("Error, this should be run after module rewriter");
+      wasm_ops::op_types<>::i32_const_t cnt = { instruction_count::icnt }; 
+      wasm_ops::op_types<>::call_t chktm(checktime_idx); 
+      instruction_count::icnt = 0;
    }
-}
+   static int32_t checktime_idx;
+};
+
+int32_t checktime_injector::checktime_idx = -1;
+
 struct rewriters : op_types<whitelist_mutator> {
 
 };
