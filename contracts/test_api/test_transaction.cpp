@@ -8,6 +8,8 @@
 
 #include "test_api.hpp"
 
+using namespace eosio;
+
 #pragma pack(push, 1)
 template <uint64_t ACCOUNT, uint64_t NAME>
 struct test_action_action {
@@ -45,7 +47,7 @@ struct test_dummy_action {
       return action_name(NAME);
    }
    char a;
-   unsigned long long b;
+   uint64_t b;
    int32_t c;
 
    template <typename DataStream>

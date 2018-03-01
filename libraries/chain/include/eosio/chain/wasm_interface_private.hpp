@@ -87,6 +87,9 @@ struct array_ptr {
    : value(validated_ptr(wasm, ptr, length)){
    }
 
+   // Only for native contract compilation
+   explicit array_ptr (T* ptr) : value (ptr) { }
+
    static T* validated_ptr (wasm_interface& wasm, U32 ptr, size_t length) {
       auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
       if(!mem || ptr + length > IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
@@ -130,6 +133,9 @@ struct null_terminated_ptr {
 
       Runtime::causeException(Exception::Cause::accessViolation);
    }
+
+   // Only for native contract compilation
+   explicit null_terminated_ptr(const char* val) : value((char*) val) { }
 
    typename std::add_lvalue_reference<char>::type operator*() const {
       return *value;
@@ -219,15 +225,15 @@ auto convert_native_to_wasm(const wasm_interface &wasm, T val) {
    return native_to_wasm_t<T>(val);
 }
 
-auto convert_native_to_wasm(const wasm_interface &wasm, const name &val) {
+inline auto convert_native_to_wasm(const wasm_interface &wasm, const name &val) {
    return native_to_wasm_t<const name &>(val.value);
 }
 
-auto convert_native_to_wasm(const wasm_interface &wasm, const fc::time_point_sec &val) {
+inline auto convert_native_to_wasm(const wasm_interface &wasm, const fc::time_point_sec &val) {
    return native_to_wasm_t<const fc::time_point_sec &>(val.sec_since_epoch());
 }
 
-auto convert_native_to_wasm(wasm_interface &wasm, char* ptr) {
+inline auto convert_native_to_wasm(wasm_interface &wasm, char* ptr) {
    auto mem = getDefaultMemory(intrinsics_accessor::get_context(wasm).code.instance);
    if(!mem)
       Runtime::causeException(Exception::Cause::accessViolation);
@@ -244,7 +250,7 @@ auto convert_wasm_to_native(native_to_wasm_t<T> val) {
 }
 
 template<>
-auto convert_wasm_to_native<wasm_double>(I64 val) {
+inline auto convert_wasm_to_native<wasm_double>(I64 val) {
    return wasm_double(*reinterpret_cast<wasm_double *>(&val));
 }
 

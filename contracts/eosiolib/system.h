@@ -36,7 +36,7 @@ extern "C" {
     *  @brief Get time of the last accepted block
     *  @return time in seconds from 1970 of the last accepted block
     */
-   time  now();
+   eosio_time  now();
    ///@ } systemcapi
 
 
