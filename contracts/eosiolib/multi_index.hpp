@@ -1,6 +1,7 @@
 #pragma once
 #include <tuple>
 #include <boost/hana.hpp>
+#include <functional>
 #include <type_traits>
 
 #include <boost/multi_index_container.hpp>
@@ -291,11 +292,13 @@ class multi_index
 
                   const_iterator& operator++() {
                      eosio_assert( _item != nullptr, "cannot increment end iterator" );
+                     const auto& idx = _idx.get();
+
                      if( _item->__iters[Number] == -1 ) {
                         secondary_key_type temp_secondary_key;
-                        auto idxitr = db_idx_find_primary(_idx.get_code(),
-                                                          _idx.get_scope(),
-                                                          _idx.name(),
+                        auto idxitr = db_idx_find_primary(idx.get_code(),
+                                                          idx.get_scope(),
+                                                          idx.name(),
                                                           _item->primary_key(), temp_secondary_key);
                         auto& mi = const_cast<item_type&>( *_item );
                         mi.__iters[Number] = idxitr;
@@ -308,7 +311,7 @@ class multi_index
                         return *this;
                      }
 
-                     const T& obj = *_idx._multidx.find( next_pk );
+                     const T& obj = *idx._multidx.find( next_pk );
                      auto& mi = const_cast<item_type&>( static_cast<const item_type&>(obj) );
                      mi.__iters[Number] = next_itr;
                      _item = &mi;
@@ -319,18 +322,19 @@ class multi_index
                   const_iterator& operator--() {
                      uint64_t prev_pk = 0;
                      int prev_itr = -1;
+                     const auto& idx = _idx.get();
 
                      if( !_item ) {
-                        auto ei = secondary_iterator<secondary_key_type>::db_idx_end(_idx.get_code(), _idx.get_scope(), _idx.name());
+                        auto ei = secondary_iterator<secondary_key_type>::db_idx_end(idx.get_code(), idx.get_scope(), idx.name());
                         eosio_assert( ei != -1, "cannot decrement end iterator when the index is empty" );
                         prev_itr = secondary_iterator<secondary_key_type>::db_idx_previous( ei , &prev_pk );
                         eosio_assert( prev_itr != -1, "cannot decrement end iterator when the index is empty" );
                      } else {
                         if( _item->__iters[Number] == -1 ) {
                            secondary_key_type temp_secondary_key;
-                           auto idxitr = db_idx_find_primary(_idx.get_code(),
-                                                             _idx.get_scope(),
-                                                             _idx.name(),
+                           auto idxitr = db_idx_find_primary(idx.get_code(),
+                                                             idx.get_scope(),
+                                                             idx.name(),
                                                              _item->primary_key(), temp_secondary_key);
                            auto& mi = const_cast<item_type&>( *_item );
                            mi.__iters[Number] = idxitr;
@@ -339,7 +343,7 @@ class multi_index
                         eosio_assert( prev_itr >= 0, "cannot decrement iterator at beginning of index" );
                      }
 
-                     const T& obj = *_idx._multidx.find( prev_pk );
+                     const T& obj = *idx._multidx.find( prev_pk );
                      auto& mi = const_cast<item_type&>( static_cast<const item_type&>(obj) );
                      mi.__iters[Number] = prev_itr;
                      _item = &mi;
@@ -353,9 +357,9 @@ class multi_index
                private:
                   friend struct index;
                   const_iterator( const index& idx, const typename MultiIndexType::item* i = nullptr )
-                  :_idx(idx), _item(i){}
+                  :_idx(std::cref(idx)), _item(i){}
 
-                  const index& _idx;
+                  std::reference_wrapper<const index> _idx;
                   const typename MultiIndexType::item* _item;
             };
 
@@ -402,7 +406,7 @@ class multi_index
             index( const MultiIndexType& midx ) //, const IndexType& idx )
             :_multidx(midx){}
 
-            const MultiIndexType _multidx;
+            const MultiIndexType& _multidx;
       };
 
 
@@ -426,21 +430,23 @@ class multi_index
 
          const_iterator& operator++() {
             eosio_assert( _item != nullptr, "cannot increment end iterator" );
+            const auto& multidx = _multidx.get();
 
             uint64_t next_pk;
             auto next_itr = db_next_i64( _item->__primary_itr, &next_pk );
             if( next_itr < 0 )
                _item = nullptr;
             else
-               _item = &_multidx.load_object_by_primary_iterator( next_itr );
+               _item = &multidx.load_object_by_primary_iterator( next_itr );
             return *this;
          }
          const_iterator& operator--() {
             uint64_t prev_pk;
             int prev_itr = -1;
+            const auto& multidx = _multidx.get();
 
             if( !_item ) {
-               auto ei = db_end_i64(_multidx.get_code(), _multidx.get_scope(), TableName);
+               auto ei = db_end_i64(multidx.get_code(), multidx.get_scope(), TableName);
                eosio_assert( ei != -1, "cannot decrement end iterator when the table is empty" );
                prev_itr = db_previous_i64( ei , &prev_pk );
                eosio_assert( prev_itr != -1, "cannot decrement end iterator when the table is empty" );
@@ -449,15 +455,15 @@ class multi_index
                eosio_assert( prev_itr >= 0, "cannot decrement iterator at beginning of table" );
             }
 
-            _item = &_multidx.load_object_by_primary_iterator( prev_itr );
+            _item = &multidx.load_object_by_primary_iterator( prev_itr );
             return *this;
          }
 
          private:
             const_iterator( const multi_index& mi, const item* i = nullptr )
-            :_multidx(mi),_item(i){}
+            :_multidx(std::cref(mi)),_item(i){}
 
-            const multi_index& _multidx;
+            std::reference_wrapper<const multi_index> _multidx;
             const item*  _item;
             friend class multi_index;
       };
