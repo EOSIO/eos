@@ -486,7 +486,7 @@ class producer_api : public context_aware_api {
          auto active_producers = context.get_active_producers();
          size_t len = active_producers.size();
          size_t cpy_len = std::min(datalen, len);
-         memcpy(producers, active_producers.data(), cpy_len * sizeof(chain::account_name) );
+         memcpy(producers, active_producers.data(), cpy_len * sizeof(chain::account_name));
          return len;
       }
 };

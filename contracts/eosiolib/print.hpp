@@ -49,6 +49,10 @@ namespace eosio {
       printi(uint64_t(num));
    }
 
+   inline void print( long num ) {
+      printi(num);
+   }
+
    /**
     * Prints unsigned integer as a 64 bit unsigned integer
     * @brief Prints unsigned integer
