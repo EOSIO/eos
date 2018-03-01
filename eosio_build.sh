@@ -1,6 +1,6 @@
 #!/bin/bash
 ##########################################################################
-# This is EOS bootstrapper script for Linux and OS X.
+# This is EOS automated install script for Linux and OS X.
 # This file was downloaded from https://github.com/EOSIO/eos
 #
 # Copyright (c) 2017, Respective Authors all rights reserved.
@@ -63,9 +63,10 @@
 		case $OS_NAME in
 			"Amazon Linux AMI")
 				FILE=${WORK_DIR}/scripts/eosio_build_amazon.sh
-				CMAKE=${HOME}/opt/cmake/bin/cmake
+				export CMAKE=${HOME}/opt/cmake/bin/cmake
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
+				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 			;;
 			"CentOS Linux")
 				FILE=${WORK_DIR}/scripts/eosio_build_centos.sh
@@ -93,7 +94,7 @@
 		export BOOST_ROOT=${HOME}/opt/boost_1_66_0
 		export OPENSSL_ROOT_DIR=/usr/include/openssl
 		export OPENSSL_LIBRARIES=/usr/include/openssl
-                export WASM_ROOT=${HOME}/opt/wasm
+		export WASM_ROOT=${HOME}/opt/wasm
 	
 	 . $FILE
 	
@@ -111,7 +112,6 @@
 
 	printf "\n\n>>>>>>>> ALL dependencies sucessfully found or installed . Installing EOS.IO\n\n"
 
-	# Debug flags
 	COMPILE_EOS=1
 	COMPILE_CONTRACTS=1
 	CMAKE_BUILD_TYPE=RelWithDebugInfo
@@ -128,6 +128,7 @@
 	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
 	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} \
 	-DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} ..
+	
 	if [ $? -ne 0 ]; then
 		printf "\n\t>>>>>>>>>>>>>>>>>>>> CMAKE building EOSIO has exited with the above error.\n\n"
 		exit -1

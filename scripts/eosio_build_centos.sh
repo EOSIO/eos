@@ -28,8 +28,8 @@
 		exit 1
 	fi
 
-	if [ $DISK_AVAIL -lt 100 ]; then
-		echo "You must have at least 100GB of available storage to install EOSIO."
+	if [ $DISK_AVAIL -lt $DISK_MIN ]; then
+		echo "You must have at least 20GB of available storage to install EOSIO."
 		echo "exiting now"
 		exit 1
 	fi
