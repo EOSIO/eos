@@ -38,7 +38,8 @@
 	BUILD_DIR=${WORK_DIR}/build
 	TEMP_DIR=/tmp
 	ARCH=$(uname)
-
+	DISK_MIN=20
+	
 	txtbld=$(tput bold)
 	bldred=${txtbld}$(tput setaf 1)
 	txtrst=$(tput sgr0)
