@@ -1,3 +1,4 @@
+#pragma once
 #include "privileged.h"
 #include "serialize.hpp"
 

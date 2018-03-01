@@ -3,6 +3,8 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
+#include "common.hpp"
+
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/token.hpp>
 #include <eosiolib/print.hpp>
@@ -26,30 +28,25 @@ namespace eosiosystem {
    using eosio::singleton;
    using eosio::transaction;
 
+
    template<account_name SystemAccount>
    class voting {
       public:
-         static const account_name system_account = SystemAccount;
-         typedef eosio::generic_currency< eosio::token<system_account,S(4,EOS)> > currency;
-         typedef typename currency::token_type system_token_type;
+         static constexpr account_name system_account = SystemAccount;
+         using currency = typename common<SystemAccount>::currency;
+         using system_token_type = typename common<SystemAccount>::system_token_type;
+         using eosio_parameters = typename common<SystemAccount>::eosio_parameters;
+         using eosio_parameters_singleton = typename common<SystemAccount>::eosio_parameters_singleton;
 
          static constexpr uint32_t max_unstake_requests = 10;
          static constexpr uint32_t unstake_pay_period = 7*24*3600; // one per week
          static constexpr uint32_t unstake_payments = 26; // during 26 weeks
 
-         struct producer_preferences : eosio::blockchain_parameters {
-            uint32_t inflation_rate; // inflation coefficient * 10000 (i.e. inflation in percent * 1000)
-
-            producer_preferences() { bzero(this, sizeof(*this)); }
-
-            EOSLIB_SERIALIZE_DERIVED( producer_preferences, eosio::blockchain_parameters, (inflation_rate) )
-         };
-
          struct producer_info {
             account_name      owner;
             uint64_t          padding = 0;
             uint128_t         total_votes = 0;
-            producer_preferences prefs;
+            eosio_parameters prefs;
             eosio::bytes      packed_key; /// a packed public key object
 
             uint64_t    primary_key()const { return owner;       }
@@ -63,7 +60,6 @@ namespace eosiosystem {
                                      indexed_by<N(prototalvote), const_mem_fun<producer_info, uint128_t, &producer_info::by_votes>  >
                                      >  producers_table;
 
-         typedef singleton<SystemAccount, N(inflation), SystemAccount, uint32_t>  inflation_singleton;
 
          struct account_votes {
             account_name                owner = 0;
@@ -99,7 +95,7 @@ namespace eosiosystem {
          ACTION( SystemAccount, register_producer ) {
             account_name producer;
             bytes        producer_key;
-            producer_preferences prefs;
+            eosio_parameters prefs;
 
             EOSLIB_SERIALIZE( register_producer, (producer)(producer_key)(prefs) )
          };
@@ -132,15 +128,15 @@ namespace eosiosystem {
                });
          }
 
-         ACTION( SystemAccount, change_producer_preferences ) {
+         ACTION( SystemAccount, change_eosio_parameters ) {
             account_name producer;
             bytes        producer_key;
-            producer_preferences prefs;
+            eosio_parameters prefs;
 
             EOSLIB_SERIALIZE( register_producer, (producer)(producer_key)(prefs) )
          };
 
-         static void on( const change_producer_preferences& change) {
+         static void on( const change_eosio_parameters& change) {
             require_auth( change.producer );
 
             producers_table producers_tbl( SystemAccount, SystemAccount );
@@ -218,6 +214,7 @@ namespace eosiosystem {
             std::array<uint32_t, 21> max_inline_action_size;
             std::array<uint32_t, 21> max_generated_transaction_size;
             std::array<uint32_t, 21> inflation_rate;
+            std::array<uint32_t, 21> storage_reserve_ratio;
 
             std::array<account_name, 21> elected;
 
@@ -244,6 +241,7 @@ namespace eosiosystem {
                   max_inline_action_size[n] = it->prefs.max_inline_action_size;
                   max_generated_transaction_size[n] = it->prefs.max_generated_transaction_size;
 
+                  storage_reserve_ratio[n] = it->prefs.storage_reserve_ratio;
                   inflation_rate[n] = it->prefs.inflation_rate;
                   ++n;
                }
@@ -256,25 +254,31 @@ namespace eosiosystem {
             set_active_producers( elected.data(), n );
             size_t median = n/2;
 
-            ::blockchain_parameters concensus = {
-               target_block_size[median],
-               max_block_size[median],
-               target_block_acts_per_scope[median],
-               max_block_acts_per_scope[median],
-               target_block_acts[median],
-               max_block_acts[median],
-               max_storage_size[median],
-               max_transaction_lifetime[median],
-               max_transaction_exec_time[median],
-               max_authority_depth[median],
-               max_inline_depth[median],
-               max_inline_action_size[median],
-               max_generated_transaction_size[median]
-            };
+            auto parameters = eosio_parameters_singleton::get();
 
-            set_blockchain_parameters(&concensus);
+            parameters.target_block_size = target_block_size[median];
+            parameters.max_block_size = max_block_size[median];
+            parameters.target_block_acts_per_scope = target_block_acts_per_scope[median];
+            parameters.max_block_acts_per_scope = max_block_acts_per_scope[median];
+            parameters.target_block_acts = target_block_acts[median];
+            parameters.max_block_acts = max_block_acts[median];
+            parameters.max_storage_size = max_storage_size[median];
+            parameters.max_transaction_lifetime = max_transaction_lifetime[median];
+            parameters.max_transaction_exec_time = max_transaction_exec_time[median];
+            parameters.max_authority_depth = max_authority_depth[median];
+            parameters.max_inline_depth = max_inline_depth[median];
+            parameters.max_inline_action_size = max_inline_action_size[median];
+            parameters.max_generated_transaction_size = max_generated_transaction_size[median];
+            parameters.storage_reserve_ratio = storage_reserve_ratio[median];
+            parameters.inflation_rate = inflation_rate[median];
 
-            inflation_singleton::set( inflation_rate[median] );
+            if ( parameters.max_storage_size < parameters.total_storage_bytes_reserved ) {
+               parameters.max_storage_size = parameters.total_storage_bytes_reserved;
+            }
+
+            set_blockchain_parameters(&parameters);
+
+            eosio_parameters_singleton::set( parameters );
          }
 
          static void on( const stake_vote& sv ) {

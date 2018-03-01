@@ -28,7 +28,7 @@ namespace  eosio {
             *reinterpret_cast<uint64_t *>(temp) = SingletonName;
             auto read = load_i64( Code, scope, SingletonName, temp, sizeof(temp) );
             eosio_assert( read > 0, "singleton does not exist" );
-            return unpack<T>( temp + sizeof(SingletonName), read );
+            return unpack<T>( temp + sizeof(SingletonName), size_t(read) );
          }
 
          static T get_or_default( scope_name scope = Code, const T& def = T() ) {

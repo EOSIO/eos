@@ -127,7 +127,7 @@ namespace eosio {
     /**
     * Multiplies token and integer
     * Throws an exception if overflow
-    * @brief Adds quantity of two tokens and return a new token
+    * @brief Multiplies quantity of two tokens and return a new token
     * @param a token to be multiplied
     * @param b multipier
     * @return result of addition as a new token
@@ -141,7 +141,7 @@ namespace eosio {
     /**
     * Multiplies token and integer
     * Throws an exception if overflow
-    * @brief Adds quantity of two tokens and return a new token
+    * @brief Multiplies quantity of two tokens and return a new token
     * @param a token to be multiplied
     * @param b multipier
     * @return result of addition as a new token
@@ -150,6 +150,44 @@ namespace eosio {
       token result = a;
       result *= b;
       return result;
+    }
+
+    /**
+    * Divides quantity of token by an integer
+    * Throws an exception if overflow
+    * @brief Divides quantity of token by an integer
+    * @param a multipier
+    * @return this token after addition
+    */
+    token& operator/=( uint64_t a ) {
+      quantity /= a;
+      return *this;
+    }
+
+    /**
+    * Divides token and integer
+    * Throws an exception if overflow
+    * @brief Divides quantity of two tokens and return a new token
+    * @param a token to be multiplied
+    * @param b multipier
+    * @return result of addition as a new token
+    */
+    inline friend token operator/( const token& a, uint64_t b ) {
+      token result = a;
+      result /= b;
+      return result;
+    }
+
+     /**
+    * Divides two tokens
+    * Throws an exception if overflow
+    * @brief Divides quantity of two tokens and return a new token
+    * @param a token
+    * @param b token
+    * @return result of addition as a new token
+    */
+    inline friend NumberType operator/( const token& a, const token& b ) {
+      return a.quantity / b.quantity;
     }
 
     /**

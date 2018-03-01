@@ -134,6 +134,11 @@ namespace eosio {
              act.send();
           }
 
+          static token_type get_total_supply() {
+             stats t( code, code );
+             auto ptr = t.find( symbol );
+             return ptr ? ptr->supply : token_type(0);
+          }
 
          static void apply( account_name c, action_name act) {
             eosio::dispatch<generic_currency, transfer, issue>(c,act);
