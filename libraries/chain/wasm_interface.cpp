@@ -7,7 +7,6 @@
 #include <boost/core/ignore_unused.hpp>
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
-#include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
@@ -32,32 +31,10 @@
 #include <thread>
 #include <condition_variable>
 
-using namespace IR;
-using namespace Runtime;
-using boost::asio::io_service;
-
 namespace eosio { namespace chain {
    using namespace contracts;
-
-   /**
-    * Integration with the WASM Linker to resolve our intrinsics
-    */
-   struct root_resolver : Runtime::Resolver
-   {
-      bool resolve(const string& mod_name,
-                   const string& export_name,
-                   ObjectType type,
-                   ObjectInstance*& out) override
-      { try {
-         // Try to resolve an intrinsic first.
-         if(IntrinsicResolver::singleton.resolve(mod_name,export_name,type, out)) {
-            return true;
-         }
-
-         FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",mod_name)("export",export_name) );
-         return false;
-      } FC_CAPTURE_AND_RETHROW( (mod_name)(export_name) ) }
-   };
+   using namespace webassembly;
+   using namespace webassembly::common;
 
    /**
     *  Implementation class for the wasm cache
@@ -79,7 +56,7 @@ namespace eosio { namespace chain {
        * returned before this can be destroyed
        */
       ~wasm_cache_impl() {
-         freeUnreferencedObjects({});
+         Runtime::freeUnreferencedObjects({});
       }
 
       /**
@@ -95,13 +72,14 @@ namespace eosio { namespace chain {
        * the instance handed out to other threads
        */
       struct code_info {
-         code_info( vector<char>&& mem_image )
-         :mem_image(std::forward<vector<char>>(mem_image))
+         explicit code_info(wavm::info&& wavm_info, binaryen::info&& binaryen_info)
+         : wavm_info(std::forward<wavm::info>(wavm_info))
+         , binaryen_info(std::forward<binaryen::info>(binaryen_info))
          {}
 
-         // a clean image of the memory used to sanitize things on checkin
-         size_t mem_start           = 0;
-         vector<char> mem_image;
+
+         wavm::info   wavm_info;
+         binaryen::info binaryen_info;
 
          // all existing instances of this code
          vector<unique_ptr<wasm_cache::entry>> instances;
@@ -182,36 +160,19 @@ namespace eosio { namespace chain {
 
             if (!pending_result) {
                // time to compile a brand new (maybe first) copy of this code
-               Module* module = new Module();
-               ModuleInstance* instance = nullptr;
-               vector<char> mem_image;
+
+               fc::optional<wavm::entry> wavm;
+               fc::optional<wavm::info> wavm_info;
+               fc::optional<binaryen::entry> binaryen;
+               fc::optional<binaryen::info> binaryen_info;
 
                try {
-                  Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
-                  WASM::serializeWithInjection(stream, *module);
-                  validate_eosio_wasm_constraints(*module);
+                  /// TODO: make validation generic
+                  wavm = wavm::entry::build(wasm_binary, wasm_binary_size);
+                  wavm_info.emplace(*wavm);
 
-                  root_resolver resolver;
-                  LinkResult link_result = linkModule(*module, resolver);
-                  instance = instantiateModule(*module, std::move(link_result.resolvedImports));
-                  FC_ASSERT(instance != nullptr);
-
-                  //populate the module's data segments in to a vector so the initial state can be
-                  // restored on each invocation
-                  //Be Warned, this may need to be revisited when module imports make sense. The
-                  // code won't handle data segments that initalize an imported memory which I think
-                  // is valid.
-                  for(const DataSegment& data_segment : module->dataSegments) {
-                     FC_ASSERT(data_segment.baseOffset.type == InitializerExpression::Type::i32_const);
-                     FC_ASSERT(module->memories.defs.size());
-                     const U32  base_offset = data_segment.baseOffset.i32;
-                     const Uptr memory_size = (module->memories.defs[0].type.size.min << IR::numBytesPerPageLog2);
-                     if(base_offset >= memory_size || base_offset + data_segment.data.size() > memory_size)
-                        FC_THROW_EXCEPTION(wasm_execution_error, "WASM data segment outside of valid memory range");
-                     if(base_offset + data_segment.data.size() > mem_image.size())
-                        mem_image.resize(base_offset + data_segment.data.size(), 0x00);
-                     memcpy(mem_image.data() + base_offset, data_segment.data.data(), data_segment.data.size());
-                  }
+                  binaryen = binaryen::entry::build(wasm_binary, wasm_binary_size);
+                  binaryen_info.emplace(*binaryen);
                } catch (...) {
                   pending_error = std::current_exception();
                }
@@ -220,9 +181,9 @@ namespace eosio { namespace chain {
                   // grab the lock and put this in the cache as unavailble
                   with_lock(_cache_lock, [&,this]() {
                      // find or create a new entry
-                     auto iter = _cache.emplace(code_id, code_info(std::move(mem_image))).first;
+                     auto iter = _cache.emplace(code_id, code_info(std::move(*wavm_info),std::move(*binaryen_info))).first;
 
-                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(instance, module));
+                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(std::move(*wavm), std::move(*binaryen)));
                      pending_result = optional_entry_ref(*iter->second.instances.back().get());
                   });
                }
@@ -255,36 +216,34 @@ namespace eosio { namespace chain {
        * @param entry - the entry to return
        */
       void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
-        auto& info = (*fetch_info(code_id)).get();
-        // under a lock, put this entry back in the available instances side of the instances vector
-        with_lock(_cache_lock, [&,this](){
-           // walk the vector and find this entry
-           auto iter = info.instances.begin();
-           while (iter->get() != &entry) {
-              ++iter;
-           }
+         // sanitize by reseting the memory that may now be dirty
+         auto& info = (*fetch_info(code_id)).get();
+         entry.wavm.reset(info.wavm_info);
+         entry.binaryen.reset(info.binaryen_info);
 
-           FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
+         // under a lock, put this entry back in the available instances side of the instances vector
+         with_lock(_cache_lock, [&,this](){
+            // walk the vector and find this entry
+            auto iter = info.instances.begin();
+            while (iter->get() != &entry) {
+               ++iter;
+            }
 
-           auto first_unavailable = (info.instances.begin() + info.available_instances);
-           if (iter != first_unavailable) {
-              std::swap(iter, first_unavailable);
-           }
-           info.available_instances++;
-        });
+            FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
+
+            auto first_unavailable = (info.instances.begin() + info.available_instances);
+            if (iter != first_unavailable) {
+               std::swap(iter, first_unavailable);
+            }
+            info.available_instances++;
+         });
       }
 
       //initialize the memory for a cache entry
       wasm_cache::entry& prepare_wasm_instance(wasm_cache::entry& wasm_cache_entry, const digest_type& code_id) {
-         resetGlobalInstances(wasm_cache_entry.instance);
-         MemoryInstance* memory_instance = getDefaultMemory(wasm_cache_entry.instance);
-         if(memory_instance) {
-            resetMemory(memory_instance, wasm_cache_entry.module->memories.defs[0].type);
-
-            const code_info& info = (*fetch_info(code_id)).get();
-            char* memstart = &memoryRef<char>(getDefaultMemory(wasm_cache_entry.instance), 0);
-            memcpy(memstart, info.mem_image.data(), info.mem_image.size());
-         }
+         auto& info = (*fetch_info(code_id)).get();
+         wasm_cache_entry.wavm.prepare(info.wavm_info);
+         wasm_cache_entry.binaryen.prepare(info.binaryen_info);
          return wasm_cache_entry;
       }
 
@@ -322,10 +281,10 @@ namespace eosio { namespace chain {
     */
    struct scoped_context {
       template<typename ...Args>
-      scoped_context(optional<wasm_context> &context, Args&... args)
+      scoped_context(optional<wasm_context> &context, Args&&... args)
       :context(context)
       {
-         context = wasm_context{ args... };
+         context.emplace( std::forward<Args>(args)... );
       }
 
       ~scoped_context() {
@@ -334,25 +293,6 @@ namespace eosio { namespace chain {
 
       optional<wasm_context>& context;
    };
-
-   void wasm_interface_impl::call(const string& entry_point, const vector<Value>& args, wasm_cache::entry& code, apply_context& context)
-   try {
-      FunctionInstance* call = asFunctionNullable(getInstanceExport(code.instance,entry_point) );
-      if( !call ) {
-         return;
-      }
-
-      FC_ASSERT( getFunctionType(call)->parameters.size() == args.size() );
-
-      auto context_guard = scoped_context(current_context, code, context);
-      runInstanceStartFunc(code.instance);
-      Runtime::invokeFunction(call,args);
-   } catch( const Runtime::Exception& e ) {
-      FC_THROW_EXCEPTION(wasm_execution_error,
-                         "cause: ${cause}\n${callstack}",
-                         ("cause", string(describeExceptionCause(e.cause)))
-                         ("callstack", e.callStack));
-   } FC_CAPTURE_AND_RETHROW()
 
    wasm_interface::wasm_interface()
       :my( new wasm_interface_impl() ) {
@@ -366,15 +306,42 @@ namespace eosio { namespace chain {
       return *single;
    }
 
-   void wasm_interface::apply( wasm_cache::entry& code, apply_context& context ) {
-      vector<Value> args = {Value(uint64_t(context.act.account)),
-                            Value(uint64_t(context.act.name))};
-      my->call("apply", args, code, context);
+   void wasm_interface::apply( wasm_cache::entry& code, apply_context& context, vm_type vm ) {
+      auto context_guard = scoped_context(my->current_context, code, context, vm);
+      switch (vm) {
+         case vm_type::wavm:
+            code.wavm.call_apply(context);
+            break;
+         case vm_type::binaryen:
+            code.binaryen.call_apply(context);
+            break;
+      }
    }
 
-   void wasm_interface::error( wasm_cache::entry& code, apply_context& context ) {
-      vector<Value> args = { /* */ };
-      my->call("error", args, code, context);
+   void wasm_interface::error( wasm_cache::entry& code, apply_context& context, vm_type vm ) {
+      auto context_guard = scoped_context(my->current_context, code, context, vm);
+      switch (vm) {
+         case vm_type::wavm:
+            code.wavm.call_error(context);
+            break;
+         case vm_type::binaryen:
+            code.binaryen.call_error(context);
+            break;
+      }
+   }
+
+   wasm_context& common::intrinsics_accessor::get_context(wasm_interface &wasm) {
+      FC_ASSERT(wasm.my->current_context.valid());
+      return *wasm.my->current_context;
+   }
+
+   const wavm::entry& wavm::entry::get(wasm_interface& wasm) {
+      return common::intrinsics_accessor::get_context(wasm).code.wavm;
+   }
+
+
+   const binaryen::entry& binaryen::entry::get(wasm_interface& wasm) {
+      return common::intrinsics_accessor::get_context(wasm).code.binaryen;
    }
 
 #if defined(assert)
@@ -384,9 +351,9 @@ namespace eosio { namespace chain {
 class context_aware_api {
    public:
       context_aware_api(wasm_interface& wasm, bool context_free = false )
-      :sbrk_bytes(intrinsics_accessor::get_context(wasm).sbrk_bytes),
-       code(intrinsics_accessor::get_context(wasm).code),
+      :code(intrinsics_accessor::get_context(wasm).code),
        context(intrinsics_accessor::get_context(wasm).context)
+      ,vm(intrinsics_accessor::get_context(wasm).vm)
       {
          if( context.context_free )
             FC_ASSERT( context_free, "only context free api's can be used in this context" );
@@ -394,9 +361,10 @@ class context_aware_api {
       }
 
    protected:
-      apply_context&     context;
-      wasm_cache::entry& code;
-      uint32_t&          sbrk_bytes;
+      apply_context&             context;
+      wasm_cache::entry&         code;
+      wasm_interface::vm_type    vm;
+
 };
 
 class context_free_api : public context_aware_api {
@@ -1035,38 +1003,13 @@ class memory_api : public context_aware_api {
          // sbrk should only allow for memory to grow
          if (num_bytes < 0)
             throw eosio::chain::page_memory_error();
-         // TODO: omitted checktime function from previous version of sbrk, may need to be put back in at some point
-         constexpr uint32_t NBPPL2  = IR::numBytesPerPageLog2;
-         constexpr uint32_t MAX_MEM = wasm_constraints::maximum_linear_memory;
 
-         MemoryInstance*  default_mem    = Runtime::getDefaultMemory(code.instance);
-         if(!default_mem)
-            return -1;
-
-         const uint32_t         num_pages      = Runtime::getMemoryNumPages(default_mem);
-         const uint32_t         min_bytes      = (num_pages << NBPPL2) > UINT32_MAX ? UINT32_MAX : num_pages << NBPPL2;
-         const uint32_t         prev_num_bytes = sbrk_bytes; //_num_bytes;
-         
-         // round the absolute value of num_bytes to an alignment boundary
-         num_bytes = (num_bytes + 7) & ~7;
-
-         if ((num_bytes > 0) && (prev_num_bytes > (MAX_MEM - num_bytes)))  // test if allocating too much memory (overflowed)
-            return -1;
-         else if ((num_bytes < 0) && (prev_num_bytes < (min_bytes - num_bytes))) // test for underflow
-            throw eosio::chain::page_memory_error(); 
-
-         const uint32_t num_desired_pages = (sbrk_bytes + num_bytes + IR::numBytesPerPage - 1) >> NBPPL2;
-
-         // grow or shrink the memory to the desired number of pages
-         if (num_desired_pages > num_pages)
-            if(Runtime::growMemory(default_mem, num_desired_pages - num_pages) == -1)
-               return -1;
-         else if (num_desired_pages < num_pages)
-            if(Runtime::shrinkMemory(default_mem, num_pages - num_desired_pages) == -1)
-               return -1;
-
-         sbrk_bytes += num_bytes;
-         return prev_num_bytes;
+         switch(vm) {
+            case wasm_interface::vm_type::wavm:
+               return (uint32_t)code.wavm.sbrk(num_bytes);
+            case wasm_interface::vm_type::binaryen:
+               return (uint32_t)code.binaryen.sbrk(num_bytes);
+         }
       }
 };
 

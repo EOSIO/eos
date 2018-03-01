@@ -7,7 +7,7 @@ namespace IR {
 namespace eosio { namespace chain {
 
 namespace wasm_constraints {
-   constexpr unsigned maximum_linear_memory      = 33*1024*1024;//bytes
+   constexpr unsigned maximum_linear_memory      = 2*1024*1024;//bytes
    constexpr unsigned maximum_mutable_globals    = 1024;        //bytes
    constexpr unsigned maximum_table_elements     = 1024;        //elements
    constexpr unsigned maximum_linear_memory_init = 64*1024;     //bytes

@@ -1,36 +1,13 @@
-set(WASM_TOOLCHAIN FALSE)
+find_package(Wasm)
 
-if(NOT DEFINED WASM_LLVM_CONFIG)
-  if(NOT "$ENV{WASM_LLVM_CONFIG}" STREQUAL "")
-    set(WASM_LLVM_CONFIG "$ENV{WASM_LLVM_CONFIG}" CACHE FILEPATH "Location of llvm-config compiled with WASM support.")
-  endif()
-endif()
-
-if(WASM_LLVM_CONFIG)
-  execute_process(
-    COMMAND ${WASM_LLVM_CONFIG} --bindir
-    RESULT_VARIABLE WASM_LLVM_CONFIG_OK
-    OUTPUT_VARIABLE WASM_LLVM_BIN
-  )
-
-  if("${WASM_LLVM_CONFIG_OK}" STREQUAL "0")
-    string(STRIP "${WASM_LLVM_BIN}" WASM_LLVM_BIN)
-    set(WASM_CLANG ${WASM_LLVM_BIN}/clang)
-    set(WASM_LLC ${WASM_LLVM_BIN}/llc)
-    set(WASM_LLVM_LINK ${WASM_LLVM_BIN}/llvm-link)
-  endif()
-
+if(WASM_FOUND)
+  message(STATUS "Using WASM clang => " ${WASM_CLANG})
+  message(STATUS "Using WASM llc => " ${WASM_LLC})
+  message(STATUS "Using WASM llvm-link => " ${WASM_LLVM_LINK})
 else()
-  set(WASM_CLANG $ENV{WASM_CLANG})
-  set(WASM_LLC $ENV{WASM_LLC})
-  set(WASM_LLVM_LINK $ENV{WASM_LLVM_LINK})
+  message( FATAL_ERROR "No WASM compiler cound be found (make sure WASM_ROOT is set)" )
+  return()
 endif()
-
-# TODO: Check if compiler is able to generate wasm32
-if( NOT ("${WASM_CLANG}" STREQUAL "" OR "${WASM_LLC}" STREQUAL "" OR "${WASM_LLVM_LINK}" STREQUAL "") )
-  set(WASM_TOOLCHAIN TRUE)
-endif()
-
 macro(compile_wast)
   #read arguments include ones that we don't since arguments get forwared "as is" and we don't want to threat unknown argument names as values
   cmake_parse_arguments(ARG "NOWARNINGS" "TARGET;DESTINATION_FOLDER" "SOURCE_FILES;INCLUDE_FOLDERS;SYSTEM_INCLUDE_FOLDERS;LIBRARIES" ${ARGN})

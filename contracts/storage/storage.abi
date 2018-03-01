@@ -7,32 +7,32 @@
     "structs": [{
         "name": "transfer",
         "base": "",
-        "fields": {
-            "from": "account_name",
-            "to": "account_name",
-            "amount": "uint64"
-        } 
+        "fields": [
+            {"name":"from", "type":"account_name"},
+            {"name":"to", "type":"account_name"},
+            {"name":"amount", "type":"uint64"}
+        ]
     },{
         "name": "account",
         "base": "",
-        "fields": {
-            "account": "account_name",
-            "tokbalance": "uint64",
-            "quotausage": "uint64"
-        }
+        "fields": [
+            {"name":"account", "type":"account_name"},
+            {"name":"tokbalance", "type":"uint64"},
+            {"name":"quotausage", "type":"uint64"}
+        ]
     },{ 
         "name": "link",
         "base": "",
-        "fields": {
-            "owner"  : "account_name",
-            "eospath" : "string",
-            "ipfspath" : "string",
-            "size"  : "uint32",
-            "store" : "uint8",
-            "accept": "uint8",
-            "stake" : "uint64",
-            "producer": "account_name"
-        }
+        "fields": [
+            {"name":"owner", "type":"account_name"},
+            {"name":"eospath", "type":"string"},
+            {"name":"ipfspath", "type":"string"},
+            {"name":"size" , "type":"uint32"},
+            {"name":"store", "type":"uint8"},
+            {"name":"accept", "type":"uint8"},
+            {"name":"stake", "type":"uint64"},
+            {"name":"producer", "type":"account_name"}
+        ]
     }
   ],
     "actions": [{
@@ -62,7 +62,7 @@
          "name": "links",
          "type" : "link",
          "index_type": "str",
-         "key_names" : ["eospath"]
+         "key_names" : ["eospath"],
          "key_types" : ["string"]
     }
   ]

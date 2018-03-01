@@ -63,15 +63,6 @@ if(BUILD_MONGO_DB_PLUGIN)
           PUBLIC chain_plugin eosio_chain appbase
           ${EOS_LIBMONGOCXX} ${EOS_LIBBSONCXX}
           )
-
-  install( TARGETS
-     mongo_db_plugin
-
-     RUNTIME DESTINATION bin
-     LIBRARY DESTINATION lib
-     ARCHIVE DESTINATION lib
-  )
-  install( FILES ${HEADERS} DESTINATION "include/eosio/mongo_db_plugin" )
 else()
   message("mongo_db_plugin not selected and will be omitted.")
 endif()
