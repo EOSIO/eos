@@ -25,32 +25,6 @@
 
 namespace eosio { namespace chain { namespace contracts {
 
-void intialize_eosio_tokens(chainbase::database& db, const account_name& system_account, share_type initial_tokens) {
-   const auto& t_id = db.create<contracts::table_id_object>([&](contracts::table_id_object &t_id){
-      t_id.scope = system_account;
-      t_id.code = config::system_account_name;
-      t_id.table = N(currency);
-   });
-
-   db.create<key_value_object>([&](key_value_object &o){
-      o.t_id = t_id.id;
-      o.primary_key = N(account);
-      o.value.insert(0, reinterpret_cast<const char *>(&initial_tokens), sizeof(share_type));
-   });
-}
-
-static void modify_eosio_balance( apply_context& context, const account_name& account, share_type amt) {
-   const auto& t_id = context.find_or_create_table(config::system_account_name, account, N(currency));
-   uint64_t key = N(account);
-   share_type balance = 0;
-   context.front_record<key_value_index, by_scope_primary>(t_id, &key, (char *)&balance, sizeof(balance));
-
-   balance += amt;
-
-   context.store_record<key_value_object>(t_id, config::system_account_name, &key, (const char *)&balance, sizeof(balance));
-}
-
-
 void validate_authority_precondition( const apply_context& context, const authority& auth ) {
    for(const auto& a : auth.accounts) {
       context.db.get<account_object, by_name>(a.permission.actor);
