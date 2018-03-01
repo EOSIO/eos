@@ -136,6 +136,6 @@ fc::variant call( const std::string& server, uint16_t port,
     }
 
     FC_ASSERT( !"unable to connect" );
-  } FC_RETHROW_EXCEPTIONS( error, "Request Path: ${server}:${port}${path}\n  Request Post Data: ${postdata}}" ,
+  } FC_RETHROW_EXCEPTIONS( error, "Request Path: ${server}:${port}${path}, Request Post Data: ${postdata}" ,
                            ("server", server)("port", port)("path", path)("postdata", postdata) )
 }
