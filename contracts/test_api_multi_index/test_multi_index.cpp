@@ -131,10 +131,7 @@ namespace _test_multi_index {
          eosio_assert(itr != secondary_index.end() && itr->id == 650 && itr->sec == N(allyson), "idx64_general - decrement secondary iterator again");
 
          --itr;
-         eosio_assert(itr != secondary_index.end() && itr->id == 265 && itr->sec == N(alice), "idx64_general - decrement secondary iterator to beginning");
-
-         --itr; // Decrementing an iterator at the beginning (technically undefined behavior) turns it into end(). Is this desired?
-         eosio_assert(itr == secondary_index.end(), "idx64_general - decrement secondary iterator that was already at beginning");
+         eosio_assert(itr == secondary_index.begin() && itr->id == 265 && itr->sec == N(alice), "idx64_general - decrement secondary iterator to beginning");
       }
 
       // update and remove

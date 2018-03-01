@@ -304,17 +304,17 @@ void apply_context::update_db_usage( const account_name& payer, int64_t delta ) 
 }
 
 
-int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const 
+int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const
 {
    const transaction& trx = trx_meta.trx();
    const action* act = nullptr;
    if( type == 0 ) {
-      if( index >= trx.context_free_actions.size() ) 
+      if( index >= trx.context_free_actions.size() )
          return -1;
       act = &trx.context_free_actions[index];
    }
    else if( type == 1 ) {
-      if( index >= trx.actions.size() ) 
+      if( index >= trx.actions.size() )
          return -1;
       act = &trx.actions[index];
    }
@@ -336,7 +336,7 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
 
    if( buffer_size < s )
       memcpy( buffer, trx_meta.context_free_data.data(), buffer_size );
-   else 
+   else
       memcpy( buffer, trx_meta.context_free_data.data(), s );
 
    return s;
@@ -415,10 +415,9 @@ int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) 
 }
 
 int apply_context::db_next_i64( int iterator, uint64_t& primary ) {
-   if( iterator < -1 ) // is end iterator
-      return iterator; // Is ++end() == end() desired behavior?
+   if( iterator < -1 ) return -1; // cannot increment past end iterator of table
 
-   const auto& obj = keyval_cache.get( iterator );
+   const auto& obj = keyval_cache.get( iterator ); // Check for iterator != -1 happens in this call
    const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
 
    auto itr = idx.iterator_to( obj );
@@ -439,11 +438,11 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
       FC_ASSERT( tab, "not a valid end iterator" );
 
       auto itr = idx.upper_bound(tab->id);
-      if( itr == idx.begin() ) return iterator; // Empty table
+      if( itr == idx.begin() ) return -1; // Empty table
 
       --itr;
 
-      if( itr->t_id != tab->id ) return iterator; // Empty table
+      if( itr->t_id != tab->id ) return -1; // Empty table
 
       primary = itr->primary_key;
       return keyval_cache.add(*itr);
@@ -452,11 +451,11 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
    const auto& obj = keyval_cache.get(iterator);
 
    auto itr = idx.iterator_to(obj);
-   if( itr == idx.begin() ) return keyval_cache.get_end_iterator_by_table_id(obj.t_id);
+   if( itr == idx.begin() ) return -1; // cannot decrement past beginning iterator of table
 
    --itr;
 
-   if( itr->t_id != obj.t_id ) return keyval_cache.get_end_iterator_by_table_id(obj.t_id);
+   if( itr->t_id != obj.t_id ) return -1; // cannot decrement past beginning iterator of table
 
    primary = itr->primary_key;
    return keyval_cache.add(*itr);

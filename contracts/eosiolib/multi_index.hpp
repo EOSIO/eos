@@ -254,10 +254,10 @@ class multi_index
       multi_index( uint64_t code, uint64_t scope )
       :_code(code),_scope(scope)
       {
-         auto itr = --end();
-         if( itr == end() ) {
+         if( begin() == end() ) {
             _next_primary_key = 0;
          } else {
+            auto itr = --end();
             auto pk = itr->primary_key();
             if( pk != static_cast<uint64_t>(-1) ) ++pk;
             _next_primary_key = pk;
@@ -294,14 +294,15 @@ class multi_index
                   }
 
                   const_iterator& operator++() {
-                     if( !_item ) return *this;
+                     eosio_assert( _item != nullptr, "cannot increment end iterator" );
                      if( _item->__iters[Number] == -1 ) {
-                        /// TODO: lookup iter for this item in this index
                         secondary_key_type temp_secondary_key;
                         auto idxitr = db_idx_find_primary(_idx.get_code(),
                                                           _idx.get_scope(),
                                                           _idx.name(),
                                                           _item->primary_key(), temp_secondary_key);
+                        auto& mi = const_cast<item_type&>( *_item );
+                        mi.__iters[Number] = idxitr;
                      }
 
                      uint64_t next_pk = 0;
@@ -325,14 +326,21 @@ class multi_index
 
                      if( !_item ) {
                         auto ei = secondary_iterator<secondary_key_type>::db_idx_end(_idx.get_code(), _idx.get_scope(), _idx.name());
+                        eosio_assert( ei != -1, "cannot decrement end iterator when the index is empty" );
                         prev_itr = secondary_iterator<secondary_key_type>::db_idx_previous( ei , &prev_pk );
-                     }
-                     else
+                        eosio_assert( prev_itr != -1, "cannot decrement end iterator when the index is empty" );
+                     } else {
+                        if( _item->__iters[Number] == -1 ) {
+                           secondary_key_type temp_secondary_key;
+                           auto idxitr = db_idx_find_primary(_idx.get_code(),
+                                                             _idx.get_scope(),
+                                                             _idx.name(),
+                                                             _item->primary_key(), temp_secondary_key);
+                           auto& mi = const_cast<item_type&>( *_item );
+                           mi.__iters[Number] = idxitr;
+                        }
                         prev_itr = secondary_iterator<secondary_key_type>::db_idx_previous( _item->__iters[Number], &prev_pk );
-
-                     if( prev_itr < 0 ) {
-                        _item = nullptr;
-                        return *this;
+                        eosio_assert( prev_itr >= 0, "cannot decrement iterator at beginning of index" );
                      }
 
                      const T& obj = *_idx._multidx.find( prev_pk );
@@ -421,8 +429,7 @@ class multi_index
          }
 
          const_iterator& operator++() {
-            //eosio_assert( _item, "null ptr" );
-            if( !_item ) return *this;
+            eosio_assert( _item != nullptr, "cannot increment end iterator" );
 
             uint64_t next_pk;
             auto next_itr = db_next_i64( _item->__primary_itr, &next_pk );
@@ -436,19 +443,17 @@ class multi_index
             uint64_t prev_pk;
             int prev_itr = -1;
 
-            //eosio_assert( _item, "null ptr" );
             if( !_item ) {
-               auto ei = db_end_i64(_multidx._code, _multidx._scope, TableName);
-               if( ei != -1 ) // Table exists
-                  prev_itr = db_previous_i64( ei , &prev_pk );
-            }
-            else
+               auto ei = db_end_i64(_multidx.get_code(), _multidx.get_scope(), TableName);
+               eosio_assert( ei != -1, "cannot decrement end iterator when the table is empty" );
+               prev_itr = db_previous_i64( ei , &prev_pk );
+               eosio_assert( prev_itr != -1, "cannot decrement end iterator when the table is empty" );
+            } else {
                prev_itr = db_previous_i64( _item->__primary_itr, &prev_pk );
+               eosio_assert( prev_itr >= 0, "cannot decrement iterator at beginning of table" );
+            }
 
-            if( prev_itr < 0 )
-               _item = nullptr;
-            else
-               _item = &_multidx.load_object_by_primary_iterator( prev_itr );
+            _item = &_multidx.load_object_by_primary_iterator( prev_itr );
             return *this;
          }
 

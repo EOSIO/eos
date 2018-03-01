@@ -294,10 +294,9 @@ class apply_context {
             }
 
             int next_secondary( int iterator, uint64_t& primary ) {
-               if( iterator < -1 ) // is end iterator
-                  return iterator;
+               if( iterator < -1 ) return -1; // cannot increment past end iterator of index
 
-               const auto& obj = itr_cache.get(iterator);
+               const auto& obj = itr_cache.get(iterator); // Check for iterator != -1 happens in this call
                const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_secondary>();
 
                auto itr = idx.iterator_to(obj);
@@ -318,11 +317,11 @@ class apply_context {
                   FC_ASSERT( tab, "not a valid end iterator" );
 
                   auto itr = idx.upper_bound(tab->id);
-                  if( itr == idx.begin() ) return iterator; // Empty table
+                  if( itr == idx.begin() ) return -1; // Empty index
 
                   --itr;
 
-                  if( itr->t_id != tab->id ) return iterator; // Empty table
+                  if( itr->t_id != tab->id ) return -1; // Empty index
 
                   primary = itr->primary_key;
                   return itr_cache.add(*itr);
@@ -331,11 +330,11 @@ class apply_context {
                const auto& obj = itr_cache.get(iterator);
 
                auto itr = idx.iterator_to(obj);
-               if( itr == idx.begin() ) return itr_cache.get_end_iterator_by_table_id(obj.t_id);
+               if( itr == idx.begin() ) return -1; // cannot decrement past beginning iterator of index
 
                --itr;
 
-               if( itr->t_id != obj.t_id ) return itr_cache.get_end_iterator_by_table_id(obj.t_id);
+               if( itr->t_id != obj.t_id ) return -1; // cannot decrement past beginning iterator of index
 
                primary = itr->primary_key;
                return itr_cache.add(*itr);
@@ -384,10 +383,9 @@ class apply_context {
             }
 
             int next_primary( int iterator, uint64_t& primary ) {
-               if( iterator < -1 ) // is end iterator
-                  return iterator;
+               if( iterator < -1 ) return -1; // cannot increment past end iterator of table
 
-               const auto& obj = itr_cache.get(iterator);
+               const auto& obj = itr_cache.get(iterator); // Check for iterator != -1 happens in this call
                const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_primary>();
 
                auto itr = idx.iterator_to(obj);
@@ -408,11 +406,11 @@ class apply_context {
                   FC_ASSERT( tab, "not a valid end iterator" );
 
                   auto itr = idx.upper_bound(tab->id);
-                  if( itr == idx.begin() ) return iterator; // Empty table
+                  if( itr == idx.begin() ) return -1; // Empty table
 
                   --itr;
 
-                  if( itr->t_id != tab->id ) return iterator; // Empty table
+                  if( itr->t_id != tab->id ) return -1; // Empty table
 
                   primary = itr->primary_key;
                   return itr_cache.add(*itr);
@@ -421,11 +419,11 @@ class apply_context {
                const auto& obj = itr_cache.get(iterator);
 
                auto itr = idx.iterator_to(obj);
-               if( itr == idx.begin() ) return itr_cache.get_end_iterator_by_table_id(obj.t_id);
+               if( itr == idx.begin() ) return -1; // cannot decrement past beginning iterator of table
 
                --itr;
 
-               if( itr->t_id != obj.t_id ) return itr_cache.get_end_iterator_by_table_id(obj.t_id);
+               if( itr->t_id != obj.t_id ) return -1; // cannot decrement past beginning iterator of index
 
                primary = itr->primary_key;
                return itr_cache.add(*itr);
