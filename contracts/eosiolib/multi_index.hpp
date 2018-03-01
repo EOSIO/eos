@@ -181,7 +181,12 @@ class multi_index
       uint64_t _code;
       uint64_t _scope;
 
-      uint64_t _next_primary_key;
+      mutable uint64_t _next_primary_key;
+
+      enum next_primary_key_tags : uint64_t {
+         no_available_primary_key = static_cast<uint64_t>(-2), // Must be the smallest uint64_t value compared to all other tags
+         unset_next_primary_key = static_cast<uint64_t>(-1)
+      };
 
       template<uint64_t I>
       struct intc { enum e{ value = I }; operator uint64_t()const{ return I; }  };
@@ -252,17 +257,8 @@ class multi_index
    public:
 
       multi_index( uint64_t code, uint64_t scope )
-      :_code(code),_scope(scope)
-      {
-         if( begin() == end() ) {
-            _next_primary_key = 0;
-         } else {
-            auto itr = --end();
-            auto pk = itr->primary_key();
-            if( pk != static_cast<uint64_t>(-1) ) ++pk;
-            _next_primary_key = pk;
-         }
-      }
+      :_code(code),_scope(scope),_next_primary_key(unset_next_primary_key)
+      {}
 
       uint64_t get_code()const { return _code; }
       uint64_t get_scope()const { return _scope; }
@@ -483,12 +479,27 @@ class multi_index
          return const_iterator( *this, &obj );
       }
 
-      /// Ideally this method would only be used to determine the appropriate primary key to use within new objects added to a
-      /// table in which the primary keys of the table are strictly intended from the beginning to be autoincrementing and
-      /// thus will not ever be set to custom arbitrary values by the contract.
-      /// Violating this agreement could result in the table appearing full when in reality there is plenty of space left.
+      /** Ideally this method would only be used to determine the appropriate primary key to use within new objects added to a
+       *  table in which the primary keys of the table are strictly intended from the beginning to be autoincrementing and
+       *  thus will not ever be set to custom arbitrary values by the contract.
+       *  Violating this agreement could result in the table appearing full when in reality there is plenty of space left.
+       */
       uint64_t available_primary_key()const {
-         eosio_assert( _next_primary_key != static_cast<uint64_t>(-1), "next primary key in table is at uint64_t limit");
+         if( _next_primary_key == unset_next_primary_key ) {
+            // This is the first time available_primary_key() is called for this multi_index instance.
+            if( begin() == end() ) { // empty table
+               _next_primary_key = 0;
+            } else {
+               auto itr = --end(); // last row of table sorted by primary key
+               auto pk = itr->primary_key(); // largest primary key currently in table
+               if( pk >= no_available_primary_key ) // Reserve the tags
+                  _next_primary_key = no_available_primary_key;
+               else
+                  _next_primary_key = pk + 1;
+            }
+         }
+
+         eosio_assert( _next_primary_key < no_available_primary_key, "next primary key in table is at autoincrement limit");
          return _next_primary_key;
       }
 
@@ -516,7 +527,7 @@ class multi_index
             i.__primary_itr = db_store_i64( _scope, TableName, payer, pk, tmp, sizeof(tmp) );
 
             if( pk >= _next_primary_key )
-               _next_primary_key = std::min(pk, static_cast<uint64_t>(-2)) + 1;
+               _next_primary_key = (pk >= no_available_primary_key) ? no_available_primary_key : (pk + 1);
 
             boost::hana::for_each( _indices, [&]( auto& idx ) {
                i.__iters[idx.number()] = idx.store( _scope, payer, obj );
@@ -550,7 +561,7 @@ class multi_index
          db_update_i64( objitem.__primary_itr, payer, tmp, sizeof(tmp) );
 
          if( pk >= _next_primary_key )
-            _next_primary_key = std::min(pk, static_cast<uint64_t>(-2)) + 1;
+            _next_primary_key = (pk >= no_available_primary_key) ? no_available_primary_key : (pk + 1);
 
          boost::hana::for_each( _indices, [&]( auto& idx ) {
             typedef typename std::decay<decltype(idx)>::type index_type;
