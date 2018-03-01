@@ -30,10 +30,12 @@ GROUP=${USER}
 case "$1" in
 
   configure)
+    set +e
     getent passwd ${USER} > /dev/null 2>&1
     if [ $? -ne 0 ]; then
       adduser --no-create-home --group --system ${USER}
     fi
+    set -e
     chown ${USER}:${GROUP} /var/log/${PACKAGE}
     chown ${USER}:${GROUP} /var/lib/${PACKAGE}
     chown ${USER}:${GROUP} /etc/${PACKAGE}

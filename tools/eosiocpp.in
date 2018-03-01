@@ -1,11 +1,15 @@
 #!/bin/bash
 
-EOSIO_INSTALL_DIR=@CMAKE_INSTALL_PREFIX@
+EOSIO_BIN_INSTALL_DIR=`dirname $0`
+if [ "${EOSIO_BIN_INSTALL_DIR}" == "." ]; then
+  EOSIO_BIN_INSTALL_DIR=`pwd`
+fi
+EOSIO_INSTALL_DIR=`dirname ${EOSIO_BIN_INSTALL_DIR}`
 ABIGEN=${EOSIO_INSTALL_DIR}/bin/eosio-abigen
 BOOST_INCLUDE_DIR=@Boost_INCLUDE_DIR@
 function copy_skeleton {
     set -e
-    cp -r ${EOSIO_INSTALL_DIR}/share/skeleton/. $newname
+    cp -r "${EOSIO_INSTALL_DIR}/share/eosio/skeleton/." $newname
 
     for file in $(find ./$newname -name 'skeleton.*')
     do

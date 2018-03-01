@@ -22,7 +22,7 @@ target_link_libraries(eosio-abigen abi_generator)
 
 install( TARGETS
    eosio-abigen
-   RUNTIME DESTINATION usr/bin
-   LIBRARY DESTINATION usr/lib
-   ARCHIVE DESTINATION usr/lib
+   RUNTIME DESTINATION usr/${CMAKE_INSTALL_BINDIR}
+   LIBRARY DESTINATION usr/${CMAKE_INSTALL_LIBDIR}
+   ARCHIVE DESTINATION usr/${CMAKE_INSTALL_LIBDIR}
 )

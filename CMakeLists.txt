@@ -7,6 +7,7 @@ enable_testing()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
+include( GNUInstallDirs )
 include( VersionMacros )
 include( SetupTargetMacros )
 include( InstallDirectoryPermissions )
@@ -159,10 +160,10 @@ if(ENABLE_COVERAGE_TESTING)
   find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
+add_subdirectory( externals )
+
 include(wasm)
 
-add_subdirectory( externals )
-add_subdirectory( contracts )
 add_subdirectory( libraries )
 add_subdirectory( plugins )
 add_subdirectory( programs )
@@ -171,9 +172,9 @@ add_subdirectory( tests )
 add_subdirectory( tools )
 add_subdirectory( debian )
 
-install(FILES genesis.json DESTINATION etc/eosio/node_00)
-install_directory_permissions(DIRECTORY etc/eosio)
-install_directory_permissions(DIRECTORY etc/eosio/node_00)
+install(FILES genesis.json DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/eosio/node_00)
+install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_SYSCONFDIR}/eosio)
+install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_SYSCONFDIR}/eosio/node_00)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis.json ${CMAKE_CURRENT_BINARY_DIR}/etc/eosio/node_00/genesis.json COPYONLY)
 
 include(installer)

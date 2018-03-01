@@ -58,11 +58,11 @@ endif()
 install( TARGETS
    eosiod
 
-   RUNTIME DESTINATION usr/bin
-   LIBRARY DESTINATION usr/lib
-   ARCHIVE DESTINATION usr/lib
+   RUNTIME DESTINATION usr/${CMAKE_INSTALL_BINDIR}
+   LIBRARY DESTINATION usr/${CMAKE_INSTALL_LIBDIR}
+   ARCHIVE DESTINATION usr/${CMAKE_INSTALL_LIBDIR}
 )
-install(DIRECTORY DESTINATION var/log/eosio
+install(DIRECTORY DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/log/eosio
         DIRECTORY_PERMISSIONS OWNER_READ
                               OWNER_WRITE
                               OWNER_EXECUTE
@@ -72,7 +72,7 @@ install(DIRECTORY DESTINATION var/log/eosio
                               WORLD_READ
                               WORLD_EXECUTE
 )
-install(DIRECTORY DESTINATION var/lib/eosio
+install(DIRECTORY DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/lib/eosio
         DIRECTORY_PERMISSIONS OWNER_READ
                               OWNER_WRITE
                               OWNER_EXECUTE
