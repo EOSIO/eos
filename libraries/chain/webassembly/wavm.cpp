@@ -103,7 +103,6 @@ void entry::reset(const info& base_info) {
    if(default_mem) {
       shrinkMemory(default_mem, getMemoryNumPages(default_mem) - 1);
    }
-   sbrk_bytes = base_info.default_sbrk_bytes;
 }
 
 void entry::prepare( const info& base_info ) {
@@ -114,6 +113,7 @@ void entry::prepare( const info& base_info ) {
 
       char* memstart = &memoryRef<char>(getDefaultMemory(instance), 0);
       memcpy(memstart, base_info.mem_image.data(), base_info.mem_image.size());
+      sbrk_bytes = Runtime::getMemoryNumPages(memory_instance) << IR::numBytesPerPageLog2;
    }
 }
 
@@ -128,14 +128,7 @@ entry entry::build(const char* wasm_binary, size_t wasm_binary_size) {
    ModuleInstance *instance = instantiateModule(*module, std::move(link_result.resolvedImports));
    FC_ASSERT(instance != nullptr);
 
-   MemoryInstance* current_memory = Runtime::getDefaultMemory(instance);
-
-   uint32_t sbrk_bytes = 0;
-   if(current_memory) {
-      sbrk_bytes = Runtime::getMemoryNumPages(current_memory) << IR::numBytesPerPageLog2;
-   }
-
-   return entry(instance, module, sbrk_bytes);
+   return entry(instance, module, 0);
 };
 
 info::info( const entry &wavm )
