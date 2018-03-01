@@ -181,14 +181,15 @@ void apply_eosio_updateauth(apply_context& context) {
       if (act_auth.permission == config::owner_name || act_auth.permission == update.permission) {
          return true;
       }
+      const permission_object *current = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
+      // Permission doesn't exist yet
+      if (current == nullptr) return true;
 
-      auto current = db.get<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
-      while(current.name != config::owner_name) {
-         if (current.name == act_auth.permission) {
+      while(current->name != config::owner_name) {
+         if (current->name == act_auth.permission) {
             return true;
          }
-
-         current = db.get<permission_object>(current.parent);
+         current = &db.get<permission_object>(current->parent);
       }
 
       return false;
