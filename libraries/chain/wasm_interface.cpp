@@ -10,6 +10,7 @@
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/wasm_module_walker.hpp>
 #include <eosio/chain/wasm_eosio_rewriters.hpp>
+#include <eosio/chain/wasm_eosio_binops_table.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
@@ -214,14 +215,15 @@ namespace eosio { namespace chain {
                                                            wasm_constraints::globals_validator>>
                                                    wmw(*module);
 
-                  wasm_ops::wasm_instr_ptr nopi = std::make_shared< wasm_ops::nop<test_mutator> >();
-                  wasm_ops::wasm_instr_ptr blocki = std::make_shared< wasm_ops::block<test_mutator2> >(std::vector<uint8_t>{3,5,6,7,8});
+                  wasm_ops::wasm_instr_ptr nopi = std::make_shared< wasm_ops::_nop<test_mutator> >();
+                  wasm_ops::wasm_instr_ptr blocki = std::make_shared< wasm_ops::_block<test_mutator2> >();
 //                  nopi->visit();
 //                  blocki->visit();
-                  wasm_ops::op_types<test_mutator>::block_t b(std::vector<uint8_t>{3,4,5,6,7});
+                  wasm_ops::op_types<test_mutator>::block_t b;
                   wasm_ops::op_types<test_mutator>::i64_popcount_t ipc;
-                  wasm_ops::nop<test_mutator> n;
-                  wasm_ops::call<test_mutator> br {134};
+                  wasm_ops::_nop<test_mutator> n;
+                  wasm_ops::_call<test_mutator> br;
+                  br.n = 23;
                   wasm_rewriter::op_constrainers::f32_add_t f32;
                   b.visit();
                   ipc.visit();
@@ -236,7 +238,7 @@ namespace eosio { namespace chain {
                   std::cout << "BR " << (int)((br.pack()[1] << 24) | (br.pack()[2] << 16) | (br.pack()[3] << 8) | (br.pack()[4])) << "\n";
                  // wasm_module_walker<wasm_eosio_standard_constraints> wmw(*module);
                   wmw.pre_validate();
-            
+           /* 
                   for (auto def : module->functions.defs) {
                      char* code = (char*)(def.code.data());
                      char* code_end = code+def.code.size();
@@ -247,7 +249,16 @@ namespace eosio { namespace chain {
                      }
                         //std::cout << (int)n << " ";
                   } 
+                  */
                   std::cout << "\n";
+                  uint8_t* buff = new uint8_t[2];
+                  buff[0] = wasm_ops::nop;
+                  buff[1] = wasm_ops::nop;
+                  std::vector<uint8_t> code = {wasm_ops::block, 13, wasm_ops::nop};
+                  wasm_ops::instr* nop_ = new wasm_ops::which_pointer<wasm_ops::op_types<>, wasm_ops::block>::instr_t();
+                  datastream<uint8_t*> ds( code.data(), code.size() );
+                  //fc::raw::unpack(ds, *nop_);
+                  n.visit();
                   root_resolver resolver;
                   LinkResult link_result = linkModule(*module, resolver);
                   instance = instantiateModule(*module, std::move(link_result.resolvedImports));
