@@ -113,11 +113,8 @@
 	# Debug flags
 	COMPILE_EOS=1
 	COMPILE_CONTRACTS=1
-
-	# Define default arguments.
 	CMAKE_BUILD_TYPE=RelWithDebugInfo
 
-	# Create the build dir
 	cd ${WORK_DIR}
 	mkdir -p ${BUILD_DIR}
 	cd ${BUILD_DIR}
@@ -126,10 +123,9 @@
 		CMAKE=$( which cmake )
 	fi
 	
-	# Build EOS
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
-  -DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
-  -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} \
+	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
+	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} \
 	-DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} ..
 	if [ $? -ne 0 ]; then
 		printf "\n\t>>>>>>>>>>>>>>>>>>>> CMAKE building EOSIO has exited with the above error.\n\n"
