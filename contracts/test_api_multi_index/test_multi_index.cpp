@@ -31,7 +31,7 @@ namespace _test_multi_index {
       key256   sec;
 
       auto primary_key()const { return id; }
-      key256 get_secondary()const { return sec; }
+      const key256& get_secondary()const { return sec; }
 
       EOSLIB_SERIALIZE( record_idx256, (id)(sec) )
    };
@@ -295,22 +295,25 @@ void test_multi_index::idx256_general()
 
    print("Testing key256 secondary index.\n");
    multi_index<table_name, record,
-      indexed_by< N(bysecondary), const_mem_fun<record, key256, &record::get_secondary> >
+      indexed_by< N(bysecondary), const_mem_fun<record, const key256&, &record::get_secondary> >
    > table( current_receiver(), current_receiver() );
+
+   auto fourtytwo       = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
+   auto onetwothreefour = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL);
 
    const auto& entry1 = table.emplace( payer, [&]( auto& o ) {
       o.id = 1;
-      o.sec = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
+      o.sec = fourtytwo;
    });
 
    const auto& entry2 = table.emplace( payer, [&]( auto& o ) {
       o.id = 2;
-      o.sec = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL);
+      o.sec = onetwothreefour;
    });
 
    const auto& entry3 = table.emplace( payer, [&]( auto& o ) {
       o.id = 3;
-      o.sec = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
+      o.sec = fourtytwo;
    });
 
    const auto* e = table.find( 2 );
@@ -320,13 +323,26 @@ void test_multi_index::idx256_general()
       print(" ID=", item.primary_key(), ", secondary=", item.sec, "\n");
    }
 
+   {
+      auto itr = table.begin();
+      eosio_assert( itr->primary_key() == 1 && itr->get_secondary() == fourtytwo, "idx256_general - primary key sort" );
+      ++itr;
+      eosio_assert( itr->primary_key() == 2 && itr->get_secondary() == onetwothreefour, "idx256_general - primary key sort" );
+      ++itr;
+      eosio_assert( itr->primary_key() == 3 && itr->get_secondary() == fourtytwo, "idx256_general - primary key sort" );
+      ++itr;
+      eosio_assert( itr == table.end(), "idx256_general - primary key sort" );
+   }
+
    auto secidx = table.get_index<N(bysecondary)>();
 
    auto lower1 = secidx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 40ULL));
    print("First entry with a secondary key of at least 40 has ID=", lower1->id, ".\n");
+   eosio_assert( lower1->id == 1, "idx256_general - lower_bound" );
 
    auto lower2 = secidx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 50ULL));
    print("First entry with a secondary key of at least 50 has ID=", lower2->id, ".\n");
+   eosio_assert( lower2->id == 2, "idx256_general - lower_bound" );
 
    if( &*lower2 == e ) {
       print("Previously found entry is the same as the one found earlier with a primary key value of 2.\n");
@@ -338,9 +354,21 @@ void test_multi_index::idx256_general()
       cout << item.sec << "\n";
    }
 
+   {
+      auto itr = secidx.begin();
+      eosio_assert( itr->primary_key() == 1, "idx256_general - secondary key sort" );
+      ++itr;
+      eosio_assert( itr->primary_key() == 3, "idx256_general - secondary key sort" );
+      ++itr;
+      eosio_assert( itr->primary_key() == 2, "idx256_general - secondary key sort" );
+      ++itr;
+      eosio_assert( itr == secidx.end(), "idx256_general - secondary key sort" );
+   }
+
    auto upper = secidx.upper_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL));
 
    print("First entry with a secondary key greater than 42 has ID=", upper->id, ".\n");
+   eosio_assert( upper->id == 2, "idx256_general - upper_bound" );
 
    print("Removed entry with ID=", lower1->id, ".\n");
    table.remove( *lower1 );
@@ -348,5 +376,14 @@ void test_multi_index::idx256_general()
    print("Items sorted by primary key:\n");
    for( const auto& item : table ) {
       print(" ID=", item.primary_key(), ", secondary=", item.sec, "\n");
+   }
+
+   {
+      auto itr = table.begin();
+      eosio_assert( itr->primary_key() == 2 && itr->get_secondary() == onetwothreefour, "idx256_general - primary key sort after remove" );
+      ++itr;
+      eosio_assert( itr->primary_key() == 3 && itr->get_secondary() == fourtytwo, "idx256_general - primary key sort after remove" );
+      ++itr;
+      eosio_assert( itr == table.end(), "idx256_general - primary key sort after remove" );
    }
 }

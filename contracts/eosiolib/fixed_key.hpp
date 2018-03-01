@@ -12,8 +12,20 @@
 
 namespace eosio {
 
+   template<size_t Size>
+   class fixed_key;
 
+   template<size_t Size>
+   bool operator==(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
 
+   template<size_t Size>
+   bool operator!=(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
+
+   template<size_t Size>
+   bool operator>(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
+
+   template<size_t Size>
+   bool operator<(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
 
     /**
     *  @defgroup fixed_key fixed size key sorted lexicographically
@@ -143,13 +155,13 @@ namespace eosio {
          }
 
          // Comparison operators
-         friend bool operator==(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
+         friend bool operator== <>(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
 
-         friend bool operator!=(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
+         friend bool operator!= <>(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
 
-         friend bool operator>(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
+         friend bool operator> <>(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
 
-         friend bool operator<(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
+         friend bool operator< <>(const fixed_key<Size> &c1, const fixed_key<Size> &c2);
 
       private:
 
