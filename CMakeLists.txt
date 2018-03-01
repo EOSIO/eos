@@ -164,20 +164,11 @@ if(ENABLE_COVERAGE_TESTING)
   find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
-add_subdirectory( externals )
-
 include(wasm)
-if(WASM_TOOLCHAIN_FOUND)
-  message(STATUS "Using WASM clang => " ${WASM_CLANG})
-  message(STATUS "Using WASM llc => " ${WASM_LLC})
-  message(STATUS "Using WASM llvm-link => " ${WASM_LLVM_LINK})
-  add_subdirectory(contracts)
-else()
-  message( FATAL_ERROR "No WASM compiler cound be found" )
-endif()
-
 include(installer)
 
+add_subdirectory( externals )
+add_subdirectory( contracts )
 add_subdirectory( libraries )
 add_subdirectory( plugins )
 add_subdirectory( programs )

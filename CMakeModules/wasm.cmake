@@ -1,12 +1,13 @@
 find_package(Wasm)
 
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(WASM_TOOLCHAIN DEFAULT_MSG WASM_FOUND)
-
-if (NOT WASM_TOOLCHAIN_FOUND)
-    return()
+if(WASM_FOUND)
+  message(STATUS "Using WASM clang => " ${WASM_CLANG})
+  message(STATUS "Using WASM llc => " ${WASM_LLC})
+  message(STATUS "Using WASM llvm-link => " ${WASM_LLVM_LINK})
+else()
+  message( FATAL_ERROR "No WASM compiler cound be found (make sure WASM_ROOT is set)" )
+  return()
 endif()
-
 macro(compile_wast)
   #read arguments include ones that we don't since arguments get forwared "as is" and we don't want to threat unknown argument names as values
   cmake_parse_arguments(ARG "NOWARNINGS" "TARGET;DESTINATION_FOLDER" "SOURCE_FILES;INCLUDE_FOLDERS;SYSTEM_INCLUDE_FOLDERS;LIBRARIES" ${ARGN})

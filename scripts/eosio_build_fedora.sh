@@ -45,7 +45,7 @@
 	
 	printf "\tYum installation found at ${YUM}.\n"
 	printf "\tUpdating YUM.\n"
-	UPDATE=$( sudo yum update )
+	UPDATE=$( sudo yum -y update )
 	
 	if [ $? -ne 0 ]; then
 		printf "\n\tYUM update failed.\n"
@@ -158,7 +158,7 @@
 		cd ..
 		mkdir build
 		cd build
-		cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+		cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm -DLLVM_ENABLE_RTTI=1 -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
 			printf "\tExiting now.\n\n"
