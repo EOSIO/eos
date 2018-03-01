@@ -74,6 +74,7 @@
 				CMAKE=${HOME}/opt/cmake/bin/cmake
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
+				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 			;;
 			*)
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
@@ -92,7 +93,7 @@
 	if [ $ARCH == "Darwin" ]; then
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 		OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
-		WASM_ROOT=/usr/local/wasm
+		export WASM_ROOT=/usr/local/wasm
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
 
