@@ -267,7 +267,7 @@ BOOST_FIXTURE_TEST_CASE( check_global_reset, tester ) try {
    {
    action act;
    act.account = N(globalreset);
-   act.name = name(0ULL);
+   act.name = 0ULL;
    act.authorization = vector<permission_level>{{N(globalreset),config::active_name}};
    trx.actions.push_back(act);
    }
