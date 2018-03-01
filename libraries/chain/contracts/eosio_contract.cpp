@@ -99,7 +99,7 @@ void apply_eosio_newaccount(apply_context& context) {
    const auto& owner_permission = create_permission("owner", 0, std::move(create.owner));
    create_permission("active", owner_permission.id, std::move(create.active));
 
-   db.create<bandwidth_usage_object>([&]( auto& bu ) { bu.owner = create.name; });
+   db.create<resource_limits_object>([&]( auto& bu ) { bu.owner = create.name; });
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 

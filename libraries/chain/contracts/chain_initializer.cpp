@@ -200,7 +200,7 @@ void chain_initializer::prepare_database( chain_controller& chain,
          p.auth.threshold = 1;
          p.auth.keys.push_back( key_weight{ .key = genesis.initial_key, .weight = 1 } );
       });
-      db.create<bandwidth_usage_object>([&](auto& sb) { 
+      db.create<resource_limits_object>([&](auto& sb) {
          sb.owner = name;      
          sb.net_weight  = -1;
          sb.cpu_weight  = -1;

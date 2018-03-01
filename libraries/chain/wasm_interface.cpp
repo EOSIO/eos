@@ -30,6 +30,7 @@
 #include <mutex>
 #include <thread>
 #include <condition_variable>
+#include <eosio/chain/rate_limiting.hpp>
 
 namespace eosio { namespace chain {
    using namespace contracts;
@@ -408,37 +409,59 @@ class privileged_api : public context_aware_api {
          return false;
       }
 
+      /**
+       * update the resource limits associated with an account.  Note these new values will not take effect until the
+       * next resource "tick" which is currently defined as a cycle boundary inside a block.
+       *
+       * @param account - the account whose limits are being modified
+       * @param ram_bytes - the limit for ram bytes
+       * @param net_weight - the weight for determining share of network capacity
+       * @param cpu_weight - the weight for determining share of compute capacity
+       */
       void set_resource_limits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
-         auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
-         FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free too much space" );
+         EOS_ASSERT(ram_bytes >= -1 && ram_bytes <= INT64_MAX, wasm_execution_error, "invalid value for ram resource limit expected [-1,INT64_MAX]");
+         EOS_ASSERT(net_weight >= -1 && net_weight <= INT64_MAX, wasm_execution_error, "invalid value for net resource weight expected [-1,INT64_MAX]");
+         EOS_ASSERT(cpu_weight >= -1 && cpu_weight <= INT64_MAX, wasm_execution_error, "invalid value for cpu resource weight expected [-1,INT64_MAX]");
 
-         const auto* pending_totals = context.mutable_db.find<pending_total_usage_object>();
-         if (!pending_totals) {
-            context.mutable_db.create([&](pending_total_usage_object& ptu) {
-               auto& gdp = context.controller.get_dynamic_global_properties();
-               ptu.total_net_weight = gdp.total_net_weight + net_weight - buo.net_weight;
-               ptu.total_cpu_weight = gdp.total_cpu_weight + cpu_weight - buo.cpu_weight;
-               ptu.total_db_reserved = gdp.total_db_reserved + ram_bytes - buo.db_reserved_capacity;
-            });
-         } else {
-            context.mutable_db.modify(*pending_totals, [&](pending_total_usage_object& ptu){
-               auto& gdp = context.controller.get_dynamic_global_properties();
-               ptu.total_net_weight += net_weight - buo.net_weight;
-               ptu.total_cpu_weight += cpu_weight - buo.cpu_weight;
-               ptu.total_db_reserved += ram_bytes - buo.db_reserved_capacity;
-            });
+         /*
+          * Since we need to delay these until the next resource limiting boundary, these are created in a "pending"
+          * state or adjusted in an existing "pending" state.  The chain controller will collapse "pending" state into
+          * the actual state at the next appropriate boundary.
+          */
+         auto find_or_create_pending_limits = [&]() -> const resource_limits_object& {
+            const auto* pending_limits = context.db.find<resource_limits_object, by_owner>( boost::make_tuple(account, true) );
+            if (pending_limits == nullptr) {
+               const auto& limits = context.db.get<resource_limits_object, by_owner>( boost::make_tuple(account, false));
+               return context.mutable_db.create<resource_limits_object>([&](resource_limits_object& pending_limits){
+                  pending_limits.owner = limits.owner;
+                  pending_limits.ram_bytes = limits.ram_bytes;
+                  pending_limits.net_weight = limits.net_weight;
+                  pending_limits.cpu_weight = limits.cpu_weight;
+               });
+            } else {
+               return *pending_limits;
+            }
+         };
+
+         auto& limits = find_or_create_pending_limits();
+         if (ram_bytes >= 0) {
+            EOS_ASSERT(limits.ram_bytes <= ram_bytes, wasm_execution_error, "attempting to release committed ram resources");
          }
 
-         context.mutable_db.modify( buo, [&]( bandwidth_usage_object& o ){
-            o.net_weight = net_weight;
-            o.cpu_weight = cpu_weight;
-            o.db_reserved_capacity = ram_bytes;
+         // update the users weights directly
+         context.mutable_db.modify( limits, [&]( resource_limits_object& pending_limits ){
+            pending_limits.ram_bytes = ram_bytes;
+            pending_limits.net_weight = net_weight;
+            pending_limits.cpu_weight = cpu_weight;
          });
       }
 
 
-      void get_resource_limits( account_name account, 
-                                uint64_t& ram_bytes, uint64_t& net_weight, uint64_t cpu_weight ) {
+      void get_resource_limits( account_name account, int64_t& ram_bytes, int64_t& net_weight, int64_t cpu_weight ) {
+         auto& buo = context.db.get<resource_limits_object,by_owner>( account );
+         ram_bytes = buo.ram_bytes;
+         net_weight = buo.net_weight;
+         cpu_weight = buo.cpu_weight;
       }
                                                
       void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {

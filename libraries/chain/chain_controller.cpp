@@ -1600,7 +1600,7 @@ void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_us
    auto head_time = head_block_time();
    for( const auto& authaccnt : authorizing_accounts ) {
 
-      const auto& buo = _db.get<bandwidth_usage_object,by_owner>( authaccnt.first );
+      const auto& buo = _db.get<resource_limits_object,by_owner>( authaccnt.first );
       _db.modify( buo, [&]( auto& bu ){
           bu.bytes.add_usage( trx_size, head_time );
           bu.acts.add_usage( act_usage, head_time );
