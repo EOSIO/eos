@@ -300,17 +300,17 @@ void test_multi_index::idx256_general()
 
    const auto& entry1 = table.emplace( payer, [&]( auto& o ) {
       o.id = 1;
-      o.sec = key256(0, 0, 0, 42);
+      o.sec = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
    });
 
    const auto& entry2 = table.emplace( payer, [&]( auto& o ) {
       o.id = 2;
-      o.sec = key256(1, 2, 3, 4);
+      o.sec = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL);
    });
 
    const auto& entry3 = table.emplace( payer, [&]( auto& o ) {
       o.id = 3;
-      o.sec = key256(0, 0, 0, 42);
+      o.sec = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
    });
 
    const auto* e = table.find( 2 );
@@ -322,10 +322,10 @@ void test_multi_index::idx256_general()
 
    auto secidx = table.get_index<N(bysecondary)>();
 
-   auto lower1 = secidx.lower_bound(key256(0, 0, 0, 40));
+   auto lower1 = secidx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 40ULL));
    print("First entry with a secondary key of at least 40 has ID=", lower1->id, ".\n");
 
-   auto lower2 = secidx.lower_bound(key256(0, 0, 0, 50));
+   auto lower2 = secidx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 50ULL));
    print("First entry with a secondary key of at least 50 has ID=", lower2->id, ".\n");
 
    if( &*lower2 == e ) {
@@ -338,7 +338,7 @@ void test_multi_index::idx256_general()
       cout << item.sec << "\n";
    }
 
-   auto upper = secidx.upper_bound(key256(0, 0, 0, 42));
+   auto upper = secidx.upper_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL));
 
    print("First entry with a secondary key greater than 42 has ID=", upper->id, ".\n");
 

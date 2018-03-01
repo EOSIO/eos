@@ -13,7 +13,7 @@
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/datastream.hpp>
 #include <eosiolib/db.h>
-#include <eosiolib/key256.hpp>
+#include <eosiolib/fixed_key.hpp>
 
 namespace eosio {
 
@@ -59,22 +59,22 @@ struct secondary_iterator<TYPE> {\
    static int db_idx_end( uint64_t code, uint64_t scope, uint64_t table ) { return db_##IDX##_end( code, scope, table ); }\
 };\
 int db_idx_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
-   return db_##IDX##_store( scope, table, payer, id, secondary.data(), TYPE::arr_size );\
+   return db_##IDX##_store( scope, table, payer, id, secondary.data(), TYPE::num_words() );\
 }\
 void db_idx_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
-   db_##IDX##_update( iterator, payer, secondary.data(), TYPE::arr_size );\
+   db_##IDX##_update( iterator, payer, secondary.data(), TYPE::num_words() );\
 }\
 int db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary, TYPE& secondary ) {\
-   return db_##IDX##_find_primary( code, scope, table, secondary.data(), TYPE::arr_size, primary );\
+   return db_##IDX##_find_primary( code, scope, table, secondary.data(), TYPE::num_words(), primary );\
 }\
 int db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
-   return db_##IDX##_find_secondary( code, scope, table, secondary.data(), TYPE::arr_size, &primary );\
+   return db_##IDX##_find_secondary( code, scope, table, secondary.data(), TYPE::num_words(), &primary );\
 }\
 int db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
-   return db_##IDX##_lowerbound( code, scope, table, secondary.data(), TYPE::arr_size, &primary );\
+   return db_##IDX##_lowerbound( code, scope, table, secondary.data(), TYPE::num_words(), &primary );\
 }\
 int db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
-   return db_##IDX##_upperbound( code, scope, table, secondary.data(), TYPE::arr_size, &primary );\
+   return db_##IDX##_upperbound( code, scope, table, secondary.data(), TYPE::num_words(), &primary );\
 }
 
 WRAP_SECONDARY_SIMPLE_TYPE(idx64,  uint64_t)
@@ -567,7 +567,7 @@ class multi_index
          eosio_assert( result != nullptr, "unable to find key" );
          return *result;
       }
-      
+
       const T* find( uint64_t primary )const {
          auto cacheitr = _items_index.find(primary);
          if( cacheitr != _items_index.end() )

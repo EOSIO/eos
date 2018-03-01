@@ -16,6 +16,8 @@
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 #include <fc/exception/exception.hpp>
+#include <eosio/http_plugin/http_plugin.hpp>
+#include <eosio/chain_plugin/chain_plugin.hpp>
 
 using boost::asio::ip::tcp;
 
@@ -106,13 +108,34 @@ fc::variant call( const std::string& server, uint16_t port,
          throw boost::system::system_error(error);
 
      //  std::cout << re.str() <<"\n";
+       const auto response_result = fc::json::from_string(re.str());
        if( status_code == 200 || status_code == 201 || status_code == 202 ) {
-          return fc::json::from_string(re.str());
+          return response_result;
+       } else {
+          auto &&error = response_result.as<eosio::error_results>().error;
+
+          // eos recognized error code is from 3000000 to 3999999
+          // refer to libraries/chain/include/eosio/chain/exceptions.hpp
+          if (error.code >= 3000000 && error.code <= 3999999) {
+             // Construct fc exception from error
+             const auto &stack_trace = error.stack_trace;
+             fc::exception new_exception(error.code, error.name, error.message);
+             if (stack_trace.empty()) {
+                new_exception.append_log(FC_LOG_MESSAGE(error, error.details));
+             } else {
+                for (auto itr = stack_trace.begin(); itr != stack_trace.end(); itr++) {
+                   const auto &error_message = itr == stack_trace.begin() ? error.details : std::string();
+                   new_exception.append_log(fc::log_message(*itr, error_message));
+                }
+             }
+             throw new_exception;
+          }
        }
 
        FC_ASSERT( status_code == 200, "Error code ${c}\n: ${msg}\n", ("c", status_code)("msg", re.str()) );
     }
 
     FC_ASSERT( !"unable to connect" );
-  } FC_CAPTURE_AND_RETHROW( (server)(port)(path)(postdata) ) 
+  } FC_RETHROW_EXCEPTIONS( error, "Request Path: ${server}:${port}${path}\n  Request Post Data: ${postdata}}" ,
+                           ("server", server)("port", port)("path", path)("postdata", postdata) )
 }

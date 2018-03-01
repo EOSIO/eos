@@ -58,7 +58,6 @@ namespace eosio { namespace chain {
    using                               std::make_pair;
    using                               std::enable_shared_from_this;
    using                               std::tie;
-   using                               std::make_pair;
    using                               std::move;
    using                               std::forward;
    using                               std::to_string;

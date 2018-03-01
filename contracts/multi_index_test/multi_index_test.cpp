@@ -105,17 +105,17 @@ struct limit_order {
 
                   const auto& entry1 = testtable.emplace( payer, [&]( auto& o ) {
                      o.id = 1;
-                     o.val = key256(0, 0, 0, 42);
+                     o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
                   });
 
                   const auto& entry2 = testtable.emplace( payer, [&]( auto& o ) {
                      o.id = 2;
-                     o.val = key256(1, 2, 3, 4);
+                     o.val = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL);
                   });
 
                   const auto& entry3 = testtable.emplace( payer, [&]( auto& o ) {
                      o.id = 3;
-                     o.val = key256(0, 0, 0, 42);
+                     o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
                   });
 
                   const auto* e = testtable.find( 2 );
@@ -127,10 +127,10 @@ struct limit_order {
 
                   auto validx = testtable.get_index<N(byval)>();
 
-                  auto lower1 = validx.lower_bound(key256(0, 0, 0, 40));
+                  auto lower1 = validx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 40ULL));
                   print("First entry with a val of at least 40 has ID=", lower1->id, ".\n");
 
-                  auto lower2 = validx.lower_bound(key256(0, 0, 0, 50));
+                  auto lower2 = validx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 50ULL));
                   print("First entry with a val of at least 50 has ID=", lower2->id, ".\n");
 
                   if( &*lower2 == e ) {
@@ -143,7 +143,7 @@ struct limit_order {
                      cout << item.val << "\n";
                   }
 
-                  auto upper = validx.upper_bound(key256(0, 0, 0, 42));
+                  auto upper = validx.upper_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL));
 
                   print("First entry with a val greater than 42 has ID=", upper->id, ".\n");
 

@@ -158,8 +158,9 @@ namespace eosio { namespace chain { namespace contracts {
    typedef secondary_index<uint128_t,index128_object_type>::index_object index128_object;
    typedef secondary_index<uint128_t,index128_object_type>::index_index  index128_index;
 
-   typedef secondary_index<std::array<char,32>,index256_object_type>::index_object index256_object;
-   typedef secondary_index<std::array<char,32>,index256_object_type>::index_index  index256_index;
+   typedef std::array<uint128_t, 2> key256_t;
+   typedef secondary_index<key256_t,index256_object_type>::index_object index256_object;
+   typedef secondary_index<key256_t,index256_object_type>::index_index  index256_index;
 
    /*
    struct index64_object : public chainbase::object<index64_object_type, index64_object> {

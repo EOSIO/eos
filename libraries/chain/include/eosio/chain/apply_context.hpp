@@ -380,7 +380,7 @@ class apply_context {
                if (itr->t_id != tab->id) return table_end_itr;
 
                itr_cache.cache_table(*tab);
-               return itr_cache(*itr);
+               return itr_cache.add(*itr);
             }
 
             int next_primary( int iterator, uint64_t& primary ) {
@@ -598,7 +598,7 @@ class apply_context {
 
       generic_index<contracts::index64_object>    idx64;
       generic_index<contracts::index128_object>   idx128;
-      generic_index<contracts::index256_object, char*, const char*>   idx256;
+      generic_index<contracts::index256_object, uint128_t*, const uint128_t*>   idx256;
 
       uint32_t                                    recurse_depth;  // how deep inline actions can recurse
 

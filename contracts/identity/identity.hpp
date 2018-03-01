@@ -7,7 +7,7 @@
 #include <eosiolib/multi_index.hpp>
 #include <eosiolib/vector.hpp>
 #include <eosiolib/print.hpp>
-#include <eosiolib/key256.hpp>
+#include <eosiolib/fixed_key.hpp>
 
 namespace identity {
    using eosio::action_meta;
@@ -143,7 +143,7 @@ namespace identity {
                key.uint64s[2] = certifier;
                key.uint64s[3] = 0;
                */
-               return {property, trusted, certifier, 0};
+               return key256::make_from_word_sequence<uint64_t>(property, trusted, certifier);
             }
             key256 get_key() const { return key(property, trusted, certifier); }
 

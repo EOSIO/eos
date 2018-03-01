@@ -341,14 +341,17 @@ BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-//Make sure we can create a wasm with 16 pages, but not grow it any
+//Make sure we can create a wasm with maximum pages, but not grow it any
 BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
    produce_blocks(2);
 
    create_accounts( {N(bigmem)} );
    produce_block();
 
-   set_code(N(bigmem), biggest_memory_wast);  //should pass, 16 pages is fine
+   string biggest_memory_wast_f = fc::format_string(biggest_memory_wast, fc::mutable_variant_object(
+                                          "MAX_WASM_PAGES", eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024)));
+
+   set_code(N(bigmem), biggest_memory_wast_f.c_str());
    produce_blocks(1);
 
    signed_transaction trx;
@@ -360,13 +363,14 @@ BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
 
    set_tapos(trx);
    trx.sign(get_private_key( N(bigmem), "active" ), chain_id_type());
-   //but should not be able to grow beyond 16th page
-   BOOST_CHECK_THROW(push_transaction(trx), fc::exception);
+   //but should not be able to grow beyond largest page
+   push_transaction(trx);
 
    produce_blocks(1);
 
-   //should fail, 17 blocks is no no
-   BOOST_CHECK_THROW(set_code(N(bigmem), too_big_memory_wast), eosio::chain::wasm_execution_error);
+   string too_big_memory_wast_f = fc::format_string(too_big_memory_wast, fc::mutable_variant_object(
+                                          "MAX_WASM_PAGES_PLUS_ONE", eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024)+1));
+   BOOST_CHECK_THROW(set_code(N(bigmem), too_big_memory_wast_f.c_str()), eosio::chain::wasm_execution_error);
 
 } FC_LOG_AND_RETHROW()
 
@@ -470,8 +474,8 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
 
    for(const string& s : loadops) {
       std::stringstream ss;
-      ss << "(module (memory $0 16) (func $apply (param $0 i64) (param $1 i64) ";
-      ss << "(drop (" << s << " offset=1048574 (i32.const 0)))";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(drop (" << s << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory-2 << " (i32.const 0)))";
       ss << "))";
 
       set_code(N(offsets), ss.str().c_str());
@@ -479,8 +483,8 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
    }
    for(const vector<string>& o : storeops) {
       std::stringstream ss;
-      ss << "(module (memory $0 16) (func $apply (param $0 i64) (param $1 i64) ";
-      ss << "(" << o[0] << " offset=1048574 (i32.const 0) (" << o[1] << ".const 0))";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(" << o[0] << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory-2 << " (i32.const 0) (" << o[1] << ".const 0))";
       ss << "))";
 
       set_code(N(offsets), ss.str().c_str());
@@ -489,8 +493,8 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
 
    for(const string& s : loadops) {
       std::stringstream ss;
-      ss << "(module (memory $0 16) (func $apply (param $0 i64) (param $1 i64) ";
-      ss << "(drop (" << s << " offset=1048580 (i32.const 0)))";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(drop (" << s << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory+4 << " (i32.const 0)))";
       ss << "))";
 
       BOOST_CHECK_THROW(set_code(N(offsets), ss.str().c_str()), eosio::chain::wasm_execution_error);
@@ -498,8 +502,8 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
    }
    for(const vector<string>& o : storeops) {
       std::stringstream ss;
-      ss << "(module (memory $0 16) (func $apply (param $0 i64) (param $1 i64) ";
-      ss << "(" << o[0] << " offset=1048580 (i32.const 0) (" << o[1] << ".const 0))";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(" << o[0] << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory+4 << " (i32.const 0) (" << o[1] << ".const 0))";
       ss << "))";
 
       BOOST_CHECK_THROW(set_code(N(offsets), ss.str().c_str()), eosio::chain::wasm_execution_error);
@@ -764,109 +768,6 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
    }
 
 } FC_LOG_AND_RETHROW()
-#endif
-
-#if 0
-constexpr uint32_t DJBH(const char* cp)
-{
-   uint32_t hash = 5381;
-   while (*cp)
-      hash = 33 * hash ^ (unsigned char) *cp++;
-   return hash;
-}
-
-constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
-   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
-}
-
-template<size_t N, size_t... Is>
-constexpr auto test_methods_to_actions(const char* class_name, const char* const (&method_names)[N], std::index_sequence<Is...>)
--> std::array<uint64_t, N>
-{
-    return {{ TEST_METHOD(class_name, method_names[Is])... }};
-}
-
-template<size_t N>
-constexpr auto test_methods_to_actions(const char* class_name, const char* const (&method_names)[N])
--> decltype( test_methods_to_actions(class_name, method_names, std::make_index_sequence<N>{}) )
-{
-    return test_methods_to_actions(class_name, method_names, std::make_index_sequence<N>{});
-}
-
-BOOST_FIXTURE_TEST_CASE( test_db, tester ) try {
-   produce_blocks(2);
-
-   create_accounts( {N(tester)} );
-   produce_block();
-
-   set_code(N(tester), test_api_wast);
-   //   set_code(N(tester), test_api_abi);
-
-   produce_blocks(1);
-
-   const char* const method_names[] = {
-      "primary_i64_general",
-      "primary_i64_lowerbound",
-      "primary_i64_upperbound",
-      "idx64_general",
-      "idx64_lowerbound",
-      "idx64_upperbound"
-   };
-
-   bytes empty;
-
-   for( const auto& an : test_methods_to_actions("test_db", method_names) )
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}}, N(tester), an, empty);
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-} FC_LOG_AND_RETHROW() /// test_db
-
-
-BOOST_FIXTURE_TEST_CASE( test_multi_index, tester ) try {
-   produce_blocks(2);
-
-   create_accounts( {N(tester)} );
-   produce_block();
-
-   set_code(N(tester), test_api_wast);
-   //   set_code(N(tester), test_api_abi);
-
-   produce_blocks(1);
-
-   const char* const method_names[] = {
-      "idx64_store_only",
-      "idx64_check_without_storing", // "idx64_store_only" action must be called before this action
-      "idx64_general",
-      "idx128_autoincrement_test",
-      "idx128_autoincrement_test_part1",
-      "idx128_autoincrement_test_part2" // "idx128_autoincrement_test_part1" action must be called before this action
-   };
-
-   bytes empty;
-
-   for( const auto& an : test_methods_to_actions("test_multi_index", method_names) )
-   {
-      signed_transaction trx;
-      trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}}, N(tester), an, empty);
-
-      set_tapos(trx);
-      trx.sign(get_private_key(N(tester), "active"), chain_id_type());
-      push_transaction(trx);
-      produce_block();
-
-      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   }
-
-} FC_LOG_AND_RETHROW() /// test_multi_index
 #endif
 
 BOOST_AUTO_TEST_SUITE_END()

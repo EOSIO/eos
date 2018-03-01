@@ -179,6 +179,16 @@ namespace eosio { namespace testing {
       return push_transaction( trx );
    }
 
+    transaction_trace base_tester::push_reqauth(account_name from, string role, bool multi_sig) {
+        if (!multi_sig) {
+            return push_reqauth(from, vector<permission_level>{{from, config::owner_name}},
+                                        {get_private_key(from, role)});
+        } else {
+            return push_reqauth(from, vector<permission_level>{{from, config::owner_name}},
+                                        {get_private_key(from, role), get_private_key( config::system_account_name, "active" )} );
+        }
+    }
+
    transaction_trace base_tester::push_nonce(account_name from, const string& v) {
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({

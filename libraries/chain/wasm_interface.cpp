@@ -67,6 +67,7 @@ namespace eosio { namespace chain {
    struct wasm_cache_impl {
       wasm_cache_impl()
       {
+         check_wasm_opcode_dispositions();
          Runtime::init();
       }
 
@@ -726,14 +727,14 @@ class console_api : public context_aware_api {
          return context.IDX.previous_secondary(iterator, primary);\
       }
 
-#define DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(IDX, ARR_SIZE)\
-      int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, array_ptr<const char> data, size_t data_len) {\
+#define DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(IDX, ARR_SIZE, ARR_ELEMENT_TYPE)\
+      int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len) {\
          FC_ASSERT( data_len == ARR_SIZE,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.store(scope, table, payer, id, data.value);\
       }\
-      void db_##IDX##_update( int iterator, uint64_t payer, array_ptr<const char> data, size_t data_len ) {\
+      void db_##IDX##_update( int iterator, uint64_t payer, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len ) {\
          FC_ASSERT( data_len == ARR_SIZE,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
@@ -742,25 +743,25 @@ class console_api : public context_aware_api {
       void db_##IDX##_remove( int iterator ) {\
          return context.IDX.remove(iterator);\
       }\
-      int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<const char> data, size_t data_len, uint64_t& primary ) {\
+      int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
          FC_ASSERT( data_len == ARR_SIZE,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.find_secondary(code, scope, table, data, primary);\
       }\
-      int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<char> data, size_t data_len, uint64_t primary ) {\
+      int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t primary ) {\
          FC_ASSERT( data_len == ARR_SIZE,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.find_primary(code, scope, table, data.value, primary);\
       }\
-      int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<char> data, size_t data_len, uint64_t& primary ) {\
+      int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
          FC_ASSERT( data_len == ARR_SIZE,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
          return context.IDX.lowerbound_secondary(code, scope, table, data.value, primary);\
       }\
-      int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<char> data, size_t data_len, uint64_t& primary ) {\
+      int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
          FC_ASSERT( data_len == ARR_SIZE,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
@@ -814,7 +815,7 @@ class database_api : public context_aware_api {
 
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx128, uint128_t)
-      DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(idx256, 32)
+      DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(idx256, 2, uint128_t)
 };
 
 
@@ -1053,17 +1054,17 @@ class memory_api : public context_aware_api {
          return (char *)::memset( dest, value, length );
       }
 
-      uint32_t sbrk(int num_bytes) {
+      int sbrk(int num_bytes) {
          // sbrk should only allow for memory to grow
          if (num_bytes < 0)
             throw eosio::chain::page_memory_error();
          // TODO: omitted checktime function from previous version of sbrk, may need to be put back in at some point
          constexpr uint32_t NBPPL2  = IR::numBytesPerPageLog2;
-         constexpr uint32_t MAX_MEM = 1024 * 1024;
+         constexpr uint32_t MAX_MEM = wasm_constraints::maximum_linear_memory;
 
          MemoryInstance*  default_mem    = Runtime::getDefaultMemory(code.instance);
          if(!default_mem)
-            throw eosio::chain::page_memory_error();
+            return -1;
 
          const uint32_t         num_pages      = Runtime::getMemoryNumPages(default_mem);
          const uint32_t         min_bytes      = (num_pages << NBPPL2) > UINT32_MAX ? UINT32_MAX : num_pages << NBPPL2;
@@ -1073,20 +1074,21 @@ class memory_api : public context_aware_api {
          num_bytes = (num_bytes + 7) & ~7;
 
          if ((num_bytes > 0) && (prev_num_bytes > (MAX_MEM - num_bytes)))  // test if allocating too much memory (overflowed)
-            throw eosio::chain::page_memory_error();
+            return -1;
          else if ((num_bytes < 0) && (prev_num_bytes < (min_bytes - num_bytes))) // test for underflow
             throw eosio::chain::page_memory_error();
 
-         // update the number of bytes allocated, and compute the number of pages needed
-         sbrk_bytes += num_bytes;
-         const uint32_t num_desired_pages = (sbrk_bytes + IR::numBytesPerPage - 1) >> NBPPL2;
+         const uint32_t num_desired_pages = (sbrk_bytes + num_bytes + IR::numBytesPerPage - 1) >> NBPPL2;
 
          // grow or shrink the memory to the desired number of pages
          if (num_desired_pages > num_pages)
-            Runtime::growMemory(default_mem, num_desired_pages - num_pages);
+            if(Runtime::growMemory(default_mem, num_desired_pages - num_pages) == -1)
+               return -1;
          else if (num_desired_pages < num_pages)
-            Runtime::shrinkMemory(default_mem, num_pages - num_desired_pages);
+            if(Runtime::shrinkMemory(default_mem, num_pages - num_desired_pages) == -1)
+               return -1;
 
+         sbrk_bytes += num_bytes;
          return prev_num_bytes;
       }
 };

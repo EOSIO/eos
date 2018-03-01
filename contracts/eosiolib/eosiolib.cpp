@@ -34,12 +34,22 @@ namespace eosio {
 
       memory* next_active_heap()
       {
+         constexpr uint32_t wasm_page_size = 64*1024;
          memory* const current_memory = _available_heaps + _active_heap;
 
-         // make sure we will not exceed the 1M limit (needs to match wasm_interface.cpp _max_memory)
-         auto remaining = 1024 * 1024 - reinterpret_cast<int32_t>(sbrk(0));
-         if (remaining <= 0)
-         {
+         const uint32_t current_memory_size = reinterpret_cast<uint32_t>(sbrk(0));
+         if(static_cast<int32_t>(current_memory_size) < 0)
+            return nullptr;
+         
+         //grab up to the end of the current WASM memory page provided that it has 1KiB remaining, otherwise
+         // grow to end of next page
+         uint32_t heap_adj;
+         if(current_memory_size % wasm_page_size <= wasm_page_size-1024)
+            heap_adj = (current_memory_size + wasm_page_size) - (current_memory_size % wasm_page_size) - current_memory_size;
+         else
+            heap_adj = (current_memory_size + wasm_page_size*2) - (current_memory_size % (wasm_page_size*2)) - current_memory_size;
+         char* new_memory_start = reinterpret_cast<char*>(sbrk(heap_adj));
+         if(reinterpret_cast<int32_t>(new_memory_start) == -1) {
             // ensure that any remaining unallocated memory gets cleaned up
             current_memory->cleanup_remaining();
             ++_active_heap;
@@ -47,10 +57,8 @@ namespace eosio {
             return nullptr;
          }
 
-         const uint32_t new_heap_size = uint32_t(remaining) > _new_heap_size ? _new_heap_size : uint32_t(remaining);
-         char* new_memory_start = static_cast<char*>(sbrk(new_heap_size));
          // if we can expand the current memory, keep working with it
-         if (current_memory->expand_memory(new_memory_start, new_heap_size))
+         if (current_memory->expand_memory(new_memory_start, heap_adj))
             return current_memory;
 
          // ensure that any remaining unallocated memory gets cleaned up
@@ -58,7 +66,7 @@ namespace eosio {
 
          ++_active_heap;
          memory* const next = _available_heaps + _active_heap;
-         next->init(new_memory_start, new_heap_size);
+         next->init(new_memory_start, heap_adj);
 
          return next;
       }
@@ -202,7 +210,6 @@ namespace eosio {
          {
             _heap_size = size;
             _heap = mem_heap;
-            memset(_heap, 0, _heap_size);
          }
 
          uint32_t is_init() const
@@ -461,7 +468,6 @@ namespace eosio {
       static const uint32_t _mem_block = 8;
       static const uint32_t _rem_mem_block_mask = _mem_block - 1;
       static const uint32_t _initial_heap_size = 8192;//32768;
-      static const uint32_t _new_heap_size = 65536;
       // if sbrk is not called outside of this file, then this is the max times we can call it
       static const uint32_t _heaps_size = 16;
       char _initial_heap[_initial_heap_size];

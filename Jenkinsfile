@@ -1,29 +1,23 @@
 pipeline {
-    agent any
+    agent none
     stages {
         stage('Build') {
             parallel {
                 stage('Ubuntu') {
+                    agent { label 'Ubuntu' }
                     steps {
                         sh '''
                             . $HOME/.bash_profile
-                            ./eosio_build.sh
+                            echo 1 | ./eosio_build.sh
                         '''
                     }
                 }
                 stage('MacOS') {
+                    agent { label 'MacOS' }
                     steps {
                         sh '''
                             . $HOME/.bash_profile
-                            echo "Darwin build coming soon..."
-                        ''' 
-                    }
-                }
-                stage('Fedora') {
-                    steps {
-                        sh '''
-                            . $HOME/.bash_profile
-                            echo "Fedora build coming soon..."
+                            echo 1 | ./eosio_build.sh 
                         ''' 
                     }
                 }
@@ -32,6 +26,7 @@ pipeline {
         stage('Tests') {
             parallel {
                 stage('Ubuntu') {
+                    agent { label 'Ubuntu' }
                     steps {
                         sh '''
                             . $HOME/.bash_profile
@@ -45,18 +40,16 @@ pipeline {
                     }
                 }
                 stage('MacOS') {
+                    agent { label 'MacOS' }
                     steps {
                         sh '''
                             . $HOME/.bash_profile
-                            echo "Darwin tests coming soon..."
-                        '''
-                    }
-                }
-                stage('Fedora') {
-                    steps {
-                        sh '''
-                            . $HOME/.bash_profile
-                            echo "Fedora tests coming soon..."
+                            export EOSLIB=$(pwd)/contracts
+                            cd build
+                            printf "Waiting for testing to be available..."
+                            while /usr/bin/pgrep -x ctest > /dev/null; do sleep 1; done
+                            echo "OK!"
+                            ctest --output-on-failure
                         '''
                     }
                 }
@@ -65,7 +58,13 @@ pipeline {
     }
     post { 
         always { 
-            cleanWs()
+            node('Ubuntu') {
+                cleanWs()
+            }
+            
+            node('MacOS') {
+                cleanWs()
+            }
         }
     }
 }

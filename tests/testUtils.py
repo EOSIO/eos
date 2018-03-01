@@ -331,7 +331,7 @@ class Node(object):
         else:
             for i in range(2):
                 cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
-                subcommand='db.Transactions.findOne( { "transaction_id": "%s" } )' % (transId)
+                subcommand='db.Transactions.findOne( { $and : [ { "transaction_id": "%s" }, {"pending":false} ] } )' % (transId)
                 Utils.Debug and Utils.Print("cmd: echo '%s' | %s" % (subcommand, cmd))
                 try:
                     trans=Node.runMongoCmdReturnJson(cmd.split(), subcommand)
@@ -451,6 +451,12 @@ class Node(object):
         trans=self.pushMessage(contract, action, data, opts)
         transId=Node.getTransId(trans[1])
         self.waitForTransIdOnNode(transId)
+
+        expectedAmount=10000000000000
+        Utils.Print("Verify eosio issue, Expected: %d" % (expectedAmount))
+        actualAmount=self.getAccountBalance(eosio.name)
+        if expectedAmount != actualAmount:
+            Utils.errorExit("Issue verification failed. Excepted %d, actual: %d" % (expectedAmount, actualAmount))
 
         initx = copy.copy(Cluster.initaAccount)
         self.createAccount(Cluster.initaAccount, eosio, 0)
