@@ -296,6 +296,12 @@ namespace eosiosystem {
             EOSLIB_SERIALIZE( unstake_vote, (voter)(amount) )
          };
 
+         ACTION(  SystemAccount, unstake_vote_deferred ) {
+            account_name                voter;
+
+            EOSLIB_SERIALIZE( unstake_vote_deferred, (voter) )
+         };
+
          static void on( const unstake_vote& usv ) {
             require_auth( usv.voter );
             account_votes_table avotes( SystemAccount, SystemAccount );
@@ -304,12 +310,14 @@ namespace eosiosystem {
 
             if ( 0 < usv.amount.quantity ) {
                eosio_assert( acv->staked < usv.amount, "cannot unstake more than total stake amount" );
-
+               /*
                if (acv->deferred_trx_id) {
                   //XXX cancel_deferred_transaction(acv->deferred_trx_id);
                }
 
-               uint32_t new_trx_id = 0;//XXX send_deferred();
+               unstake_vote_deferred dt;
+               dt.voter = usv.voter;
+               uint32_t new_trx_id = 0;//XXX send_deferred(dt);
 
                avotes.update( *acv, 0, [&](account_votes& a) {
                      a.staked -= usv.amount;
@@ -319,6 +327,15 @@ namespace eosiosystem {
                      a.deferred_trx_id = new_trx_id;
                      a.last_update = now();
                   });
+               */
+
+               // Temporary code: immediate unstake
+               avotes.update( *acv, 0, [&](account_votes& a) {
+                     a.staked -= usv.amount;
+                     a.last_update = now();
+                  });
+               currency::inline_transfer( usv.voter, SystemAccount, usv.amount, "unstake voting" );
+               // end of temporary code
 
                const std::vector<account_name>* producers = nullptr;
                if ( acv->proxy ) {
@@ -354,12 +371,6 @@ namespace eosiosystem {
                   });
             }
          }
-
-         ACTION(  SystemAccount, unstake_vote_deferred ) {
-            account_name                voter;
-
-            EOSLIB_SERIALIZE( unstake_vote_deferred, (voter) )
-         };
 
          static void on( const unstake_vote_deferred& usv) {
             require_auth( usv.voter );
