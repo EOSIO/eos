@@ -43,7 +43,6 @@ namespace eosio { namespace chain {
    struct wasm_cache_impl {
       wasm_cache_impl()
       {
-         check_wasm_opcode_dispositions();
          Runtime::init();
       }
 

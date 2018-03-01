@@ -224,7 +224,8 @@ struct eosio_constraints_visitor : public nop_opcode_visitor {
    
 };
 
-void check_wasm_opcode_dispositions() {
+struct check_wasm_opcode_dispositions {
+check_wasm_opcode_dispositions() {
    eosio_constraints_visitor visitor;
    vector<string> opcodes_without_disposition;
    vector<string> opcodes_allowed;
@@ -241,12 +242,15 @@ void check_wasm_opcode_dispositions() {
    #undef VISIT_OPCODE
 
    if(opcodes_without_disposition.size()) {
-      elog("WASM opcode disposition not defined for opcodes:");
+      std::cout << "WASM opcode disposition not defined for opcodes:" << std::endl;
       for(const string& g : opcodes_without_disposition)
-         elog("  ${p}", ("p", g));
-      FC_THROW("All opcodes must have a constraint");
+         std::cout << "  " << g << std::endl;
+      std::cout << "All opcodes must have a constraint; exiting" << std::endl;
+      exit(1);
    }
 }
+};
+static check_wasm_opcode_dispositions chk;
 
 void validate_eosio_wasm_constraints(const Module& m) {
    if(m.memories.defs.size() && m.memories.defs[0].type.size.min > wasm_constraints::maximum_linear_memory/(64*1024))
