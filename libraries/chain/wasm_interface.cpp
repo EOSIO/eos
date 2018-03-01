@@ -467,8 +467,8 @@ class privileged_api : public context_aware_api {
                                 uint64_t& ram_bytes, uint64_t& net_weight, uint64_t cpu_weight ) {
       }
 
-      void set_active_producers( array_ptr<char> packed_producer_schedule, size_t num) {
-         datastream<const char*> ds( packed_producer_schedule, num * sizeof(uint64_t) );
+      void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
+         datastream<const char*> ds( packed_producer_schedule, datalen );
          producer_schedule_type psch;
          fc::raw::unpack(ds, psch);
          context.mutable_db.modify( context.controller.get_global_properties(),

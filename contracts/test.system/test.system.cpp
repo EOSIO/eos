@@ -50,11 +50,9 @@ namespace testsystem {
 
    struct set_producers : dispatchable<N(setprods)> {
       static void process(const set_producers&) {
-         eosio_assert( action_size() % sizeof(account_name) == 0, "action size is not multiple of account_name size" );
-         size_t n = action_size() / sizeof(account_name);
-         account_name buffer[n];
+         char buffer[action_size()];
          read_action( buffer, sizeof(buffer) );
-         set_active_producers( buffer, n );
+         set_active_producers(buffer, sizeof(buffer));
       }
    };
 

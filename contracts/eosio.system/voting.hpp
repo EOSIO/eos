@@ -251,7 +251,8 @@ namespace eosiosystem {
                }
                --it;
             }
-            set_active_producers( elected.data(), n );
+            // should use producer_schedule_type from libraries/chain/include/eosio/chain/producer_schedule.hpp
+            //set_active_producers( elected.data(), n );
             size_t median = n/2;
 
             auto parameters = eosio_parameters_singleton::get();

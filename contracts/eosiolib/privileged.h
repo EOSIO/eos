@@ -18,7 +18,7 @@ extern "C" {
 
    void set_resource_limits( account_name account, uint64_t ram_bytes, uint64_t net_weight, uint64_t cpu_weight, int64_t ignored);
 
-   void set_active_producers( account_name *producer_data, size_t producer_data_size );
+   void set_active_producers( char *producer_data, size_t producer_data_size );
 
    bool is_privileged( account_name account );
 
