@@ -77,6 +77,7 @@ namespace eosio { namespace chain {
             std::vector<signal<void(const transaction_metadata&, const packed_transaction&)>::slot_type> on_pending_transaction_callbacks;
             contracts::genesis_state_type  genesis;
             runtime_limits                 limits;
+            wasm_interface::vm_type        wasm_runtime        =  config::default_wasm_runtime;
          };
 
          explicit chain_controller( const controller_config& cfg );

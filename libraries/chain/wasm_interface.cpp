@@ -1614,5 +1614,16 @@ REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_primary,   DB_
 REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_secondary, DB_INDEX_METHOD_SEQ(secondary_i64i64i64));
 REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_tertiary,  DB_INDEX_METHOD_SEQ(tertiary_i64i64i64));
 
+std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
+   std::string s;
+   in >> s;
+   if (s == "wavm")
+      runtime = eosio::chain::wasm_interface::vm_type::wavm;
+   else if (s == "binaryen")
+      runtime = eosio::chain::wasm_interface::vm_type::binaryen;
+   else
+      in.setstate(std::ios_base::failbit);
+   return in;
+}
 
 } } /// eosio::chain
