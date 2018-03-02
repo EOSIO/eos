@@ -44,7 +44,6 @@ struct chain_config {
                  << "Max Block Acts Per Scope: " << c.max_block_acts_per_scope << ", " 
                  << "Target Block Acts: " << c.target_block_acts << ", " 
                  << "Max Block Acts: " << c.max_block_acts << ", " 
-                 << "Real Threads: " << c.real_threads << ", " 
                  << "Max Storage Size: " << c.max_storage_size << ", " 
                  << "Max Transaction Lifetime: " << c.max_transaction_lifetime << ", " 
                  << "Max Authority Depth: " << c.max_authority_depth << ", " 
