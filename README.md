@@ -561,7 +561,6 @@ Dependencies:
 * OpenSSL
 * LLVM 4.0
 * [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
-* [binaryen](https://github.com/WebAssembly/binaryen.git)
 
 <a name="manualdepamazon"></a>
 ### Clean install Amazon 2017.09 and higher
@@ -616,24 +615,6 @@ make -j$( nproc )
 sudo make install
 ```
 
-To use the WASM compiler, EOS has an external dependency on [binaryen](https://github.com/WebAssembly/binaryen.git):
-
-```bash
-cd ~
-git clone https://github.com/WebAssembly/binaryen.git
-cd ~/binaryen
-git checkout tags/1.37.14
-cmake . && make
-
-```
-
-Add `BINARYEN_ROOT` to your .bash_profile:
-
-```bash
-echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
-source ~/.bash_profile
-```
-
 By default LLVM and clang do not include the WASM build target, so you will have to build it yourself:
 
 ```bash
@@ -656,6 +637,9 @@ Your environment is set up. Now you can <a href="#runanode">build EOS and run a 
 ### Clean install Centos 7 and higher
 
 Install the development toolkit:
+* Installation on Centos requires installing/enabling the Centos Software Collections
+Repository.
+[Centos SCL](https://wiki.centos.org/AdditionalResources/Repositories/SCL):
 
 ```bash
 sudo yum --enablerepo=extras install centos-release-scl
@@ -704,24 +688,6 @@ cd secp256k1-zkp
 ./configure
 make -j$( nproc )
 sudo make install
-```
-
-To use the WASM compiler, EOS has an external dependency on [binaryen](https://github.com/WebAssembly/binaryen.git):
-
-```bash
-cd ~
-git clone https://github.com/WebAssembly/binaryen.git
-cd ~/binaryen
-git checkout tags/1.37.14
-cmake . && make
-
-```
-
-Add `BINARYEN_ROOT` to your .bash_profile:
-
-```bash
-echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
-source ~/.bash_profile
 ```
 
 By default LLVM and clang do not include the WASM build target, so you will have to build it yourself:
@@ -779,24 +745,6 @@ cd secp256k1-zkp
 ./configure
 make -j$( nproc )
 sudo make install
-```
-
-To use the WASM compiler, EOS has an external dependency on [binaryen](https://github.com/WebAssembly/binaryen.git):
-
-```bash
-cd ~
-git clone https://github.com/WebAssembly/binaryen.git
-cd ~/binaryen
-git checkout tags/1.37.14
-cmake . && make
-
-```
-
-Add `BINARYEN_ROOT` to your .bash_profile:
-
-```bash
-echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
-source ~/.bash_profile
 ```
 
 By default LLVM and clang do not include the WASM build target, so you will have to build it yourself:
@@ -857,24 +805,6 @@ make
 sudo make install
 ```
 
-To use the WASM compiler, EOS has an external dependency on [binaryen](https://github.com/WebAssembly/binaryen.git):
-
-```bash
-cd ~
-git clone https://github.com/WebAssembly/binaryen.git
-cd ~/binaryen
-git checkout tags/1.37.14
-cmake . && make
-
-```
-
-Add `BINARYEN_ROOT` to your .bash_profile:
-
-```bash
-echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
-source ~/.bash_profile
-```
-
 By default LLVM and clang do not include the WASM build target, so you will have to build it yourself:
 
 ```bash
@@ -930,23 +860,6 @@ cd secp256k1-zkp
 ./configure
 make -j$( sysctl -in machdep.cpu.core_count )
 sudo make install
-```
-
-Install [binaryen v1.37.14](https://github.com/WebAssembly/binaryen.git):
-
-```bash
-cd ~
-git clone https://github.com/WebAssembly/binaryen.git
-cd ~/binaryen
-git checkout tags/1.37.14
-cmake . && make -j$( sysctl -in machdep.cpu.core_count )
-```
-
-Add `BINARYEN_ROOT` to your .bash_profile:
-
-```bash
-echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
-source ~/.bash_profile
 ```
 
 Build LLVM and clang for WASM:
