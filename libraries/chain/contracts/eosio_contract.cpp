@@ -182,8 +182,12 @@ void apply_eosio_updateauth(apply_context& context) {
          return true;
       }
       const permission_object *current = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
-      // Permission doesn't exist yet
-      if (current == nullptr) return true;
+      // Permission doesn't exist yet, check parent permission
+      if (current == nullptr) current = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.parent));
+      // Ensure either the permission or parent's permission exists
+      EOS_ASSERT(current != nullptr, permission_query_exception,
+                 "Fail to retrieve permission for: {\"actor\": \"${actor}\", \"permission\": \"${permission}\" }",
+                 ("actor", update.account)("permission", update.parent));
 
       while(current->name != config::owner_name) {
          if (current->name == act_auth.permission) {
