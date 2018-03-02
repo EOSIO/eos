@@ -138,7 +138,7 @@
 
    printf "\n\t>>>>>>>>>>>>>>>>>>>> EOSIO has been successfully built.\n\n"
 
-   if [ DEFINED EOSIO_BUILD_PACKAGE ]; then
+   if [ -n ${EOSIO_BUILD_PACKAGE} ]; then
       # Build eos.io package
       $CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
       -DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
