@@ -25,7 +25,7 @@
         {"name":"type", "type":"string"},
         {"name":"data", "type":"uint8[]"},
         {"name":"memo", "type":"string"},
-        {"name":"confidence", "type":"uint8"},
+        {"name":"confidence", "type":"uint8"}
      ]
     },{
      "name": "certprop",
@@ -66,7 +66,6 @@
       "name": "accountrow",
       "base": "",
       "fields": [
-        {"name":"singleton_name", "type":"uint64"},
         {"name":"identity", "type":"uint64"}
       ]
     }

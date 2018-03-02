@@ -49,11 +49,3 @@ target_include_directories( eos_egenesis_brief
    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
 target_include_directories( eos_egenesis_full
    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
-
-INSTALL( TARGETS
-   embed_genesis eos_egenesis_none eos_egenesis_brief eos_egenesis_full
-
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
-)

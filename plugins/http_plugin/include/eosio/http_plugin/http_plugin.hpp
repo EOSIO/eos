@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <appbase/application.hpp>
+#include <fc/exception/exception.hpp>
 
 #include <fc/reflect/reflect.hpp>
 
@@ -80,10 +81,36 @@ namespace eosio {
     * @brief Structure used to create JSON error responses
     */
    struct error_results {
-     uint16_t code;
-     string message;
-     string details;
+      struct error_detail {
+         int64_t code;
+         string name;
+         string message;
+         string details;
+         vector<fc::log_context> stack_trace;
+
+         static const uint8_t stack_trace_limit = 10;
+
+         error_detail() {};
+
+         error_detail(const fc::exception& exc) {
+            code = exc.code();
+            name = exc.name();
+            message = exc.what();
+            details = exc.top_message();
+            for (auto itr = exc.get_log().begin(); itr != exc.get_log().end(); ++itr) {
+               // Prevent sending trace that are too big
+               if (stack_trace.size() >= stack_trace_limit) break;
+               // Append context
+               stack_trace.emplace_back(itr->get_context());
+            }
+         }
+      };
+
+      uint16_t code;
+      string message;
+      error_detail error;
    };
 }
 
-FC_REFLECT(eosio::error_results, (code)(message)(details))
+FC_REFLECT(eosio::error_results::error_detail, (code)(name)(message)(details)(stack_trace))
+FC_REFLECT(eosio::error_results, (code)(message)(error))

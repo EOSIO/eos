@@ -89,13 +89,4 @@ namespace  eosio {
    };
    /// @}
 
-   bool operator==( const uint256& a, const uint256& b ) {
-      return a.uint128s[0] == b.uint128s[0] && a.uint128s[1] == b.uint128s[1];
-   }
-
-   bool operator!=( const uint256& a, const uint256& b ) {
-      return !(a == b);
-   }
-
-
 } // namespace eos

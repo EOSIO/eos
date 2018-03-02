@@ -19,14 +19,14 @@ class datastream {
    public:
       datastream( T start, size_t s )
       :_start(start),_pos(start),_end(start+s){}
-      
+
      /**
       *  Skips a specified number of bytes from this stream
       *  @brief Skips a specific number of bytes from this stream
       *  @param s The number of bytes to skip
       */
       inline void skip( size_t s ){ _pos += s; }
-      
+
      /**
       *  Reads a specified number of bytes from the stream into a buffer
       *  @brief Reads a specified number of bytes from this stream into a buffer
@@ -52,30 +52,30 @@ class datastream {
         _pos += s;
         return true;
       }
-     
+
      /**
       *  Writes a byte into the stream
       *  @brief Writes a byte into the stream
       *  @param c byte to write
       */
-      inline bool put(char c) { 
+      inline bool put(char c) {
         eosio_assert( _pos < _end, "put" );
-        *_pos = c; 
-        ++_pos; 
+        *_pos = c;
+        ++_pos;
         return true;
       }
-     
+
      /**
       *  Reads a byte from the stream
       *  @brief Reads a byte from the stream
       *  @param c reference to destination byte
       */
       inline bool get( unsigned char& c ) { return get( *(char*)&c ); }
-      inline bool get( char& c ) 
+      inline bool get( char& c )
       {
         eosio_assert( _pos < _end, "get" );
         c = *_pos;
-        ++_pos; 
+        ++_pos;
         return true;
       }
 
@@ -86,7 +86,7 @@ class datastream {
       */
       T pos()const { return _pos; }
       inline bool valid()const { return _pos <= _end && _pos >= _start;  }
-      
+
      /**
       *  Sets the position within the current stream
       *  @brief Sets the position within the current stream
@@ -100,7 +100,7 @@ class datastream {
       *  @return p the position within the current stream
       */
       inline size_t tellp()const      { return size_t(_pos - _start); }
-      
+
      /**
       *  Returns the number of remaining bytes that can be read/skipped
       *  @brief Returns the number of remaining bytes that can be read/skipped
@@ -132,25 +132,25 @@ class datastream<size_t> {
 };
 
 /**
- *  Serialize a uint256 into a stream
- *  @brief Serialize a uint256
+ *  Serialize a key256 into a stream
+ *  @brief Serialize a key256
  *  @param ds stream to write
  *  @param d value to serialize
  */
 template<typename Stream>
-inline datastream<Stream>& operator<<(datastream<Stream>& ds, const uint256 d) {
-  ds.write( (const char*)&d, sizeof(d) );
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const key256 d) {
+  ds.write( (const char*)d.data(), d.size() );
   return ds;
 }
 /**
- *  Deserialize a uint256 from a stream
- *  @brief Deserialize a uint256
+ *  Deserialize a key256 from a stream
+ *  @brief Deserialize a key256
  *  @param ds stream to read
  *  @param d destination for deserialized value
  */
 template<typename Stream>
-inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint256& d) {
-  ds.read((char*)&d, sizeof(d) );
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, key256& d) {
+  ds.read((char*)d.data(), d.size() );
   return ds;
 }
 
@@ -245,6 +245,19 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint32_t& d) {
   ds.read((char*)&d, sizeof(d) );
   return ds;
 }
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const bool& d) {
+  return ds << uint8_t(d);
+}
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, bool& d) {
+  uint8_t t;
+  ds >> t;
+  d = t;
+  return ds;
+}
+
 
 /**
  *  Serialize a int64_t into a stream
@@ -430,7 +443,7 @@ T unpack( const char* buffer, size_t len ) {
 
 template<typename T>
 size_t pack_size( const T& value ) {
-  datastream<size_t> ps; 
+  datastream<size_t> ps;
   ps << value;
   return ps.tellp();
 }
@@ -446,4 +459,3 @@ bytes pack( const T& value ) {
 }
 
 }
-

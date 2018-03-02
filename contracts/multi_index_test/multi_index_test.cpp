@@ -20,14 +20,14 @@ struct limit_order {
       EOSLIB_SERIALIZE( limit_order, (id)(price)(expiration)(owner) )
    };
 
-   struct test_u256 {
+   struct test_k256 {
       uint64_t     id;
-      uint256      val;
+      key256      val;
 
       auto primary_key()const { return id; }
-      uint256 get_val()const { return val; }
+      key256 get_val()const { return val; }
 
-      EOSLIB_SERIALIZE( test_u256, (id)(val) )
+      EOSLIB_SERIALIZE( test_k256, (id)(val) )
    };
 
    class multi_index_test {
@@ -96,26 +96,26 @@ struct limit_order {
 
                }
                break;
-               case 1: // Test uint265 secondary index
+               case 1: // Test key265 secondary index
                {
-                  print("Testing uint256 secondary index.\n");
-                  eosio::multi_index<N(test1), test_u256,
-                     indexed_by< N(byval), const_mem_fun<test_u256, uint256, &test_u256::get_val> >
+                  print("Testing key256 secondary index.\n");
+                  eosio::multi_index<N(test1), test_k256,
+                     indexed_by< N(byval), const_mem_fun<test_k256, key256, &test_k256::get_val> >
                   > testtable( N(multitest), N(exchange) ); // Code must be same as the receiver? Scope doesn't have to be.
 
                   const auto& entry1 = testtable.emplace( payer, [&]( auto& o ) {
                      o.id = 1;
-                     o.val = uint256{.uint64s = {0, 0, 0, 42}};
+                     o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
                   });
 
                   const auto& entry2 = testtable.emplace( payer, [&]( auto& o ) {
                      o.id = 2;
-                     o.val = uint256{.uint64s = {1, 2, 3, 4}};
+                     o.val = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL);
                   });
 
                   const auto& entry3 = testtable.emplace( payer, [&]( auto& o ) {
                      o.id = 3;
-                     o.val = uint256{.uint64s = {0, 0, 0, 42}};
+                     o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
                   });
 
                   const auto* e = testtable.find( 2 );
@@ -127,10 +127,10 @@ struct limit_order {
 
                   auto validx = testtable.get_index<N(byval)>();
 
-                  auto lower1 = validx.lower_bound(uint256{.uint64s = {0, 0, 0, 40}});
+                  auto lower1 = validx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 40ULL));
                   print("First entry with a val of at least 40 has ID=", lower1->id, ".\n");
 
-                  auto lower2 = validx.lower_bound(uint256{.uint64s = {0, 0, 0, 50}});
+                  auto lower2 = validx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 50ULL));
                   print("First entry with a val of at least 50 has ID=", lower2->id, ".\n");
 
                   if( &*lower2 == e ) {
@@ -143,7 +143,7 @@ struct limit_order {
                      cout << item.val << "\n";
                   }
 
-                  auto upper = validx.upper_bound(uint256{.uint64s={0, 0, 0, 42}});
+                  auto upper = validx.upper_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL));
 
                   print("First entry with a val greater than 42 has ID=", upper->id, ".\n");
 

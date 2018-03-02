@@ -6,6 +6,7 @@
 #include <eosiolib/print.h>
 #include <eosiolib/types.hpp>
 #include <eosiolib/math.hpp>
+#include <eosiolib/fixed_key.hpp>
 #include <utility>
 
 namespace eosio {
@@ -48,6 +49,10 @@ namespace eosio {
       printi(uint64_t(num));
    }
 
+   inline void print( long num ) {
+      printi(num);
+   }
+
    /**
     * Prints unsigned integer as a 64 bit unsigned integer
     * @brief Prints unsigned integer
@@ -75,13 +80,17 @@ namespace eosio {
       printi128(&num);
    }
 
+
    /**
-    * Prints 256 bit unsigned integer as a hexidecimal string
-    * @brief Prints 256 bit unsigned integer as a hexidecimal string
-    * @param num to be printed
+    * Prints fixed_key as a hexidecimal string
+    * @brief Prints fixed_key as a hexidecimal string
+    * @param val to be printed
     */
-   inline void print( const uint256& num ) {
-      printi256(&num);
+   template<size_t Size>
+   inline void print( const fixed_key<Size>& val ) {
+      auto arr = val.extract_as_byte_array();
+      prints("0x");
+      printhex(static_cast<const void*>(arr.data()), arr.size());
    }
 
    /**

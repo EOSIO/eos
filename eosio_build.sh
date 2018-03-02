@@ -38,7 +38,8 @@
 	BUILD_DIR=${WORK_DIR}/build
 	TEMP_DIR=/tmp
 	ARCH=$(uname)
-
+	DISK_MIN=20
+	
 	txtbld=$(tput bold)
 	bldred=${txtbld}$(tput setaf 1)
 	txtrst=$(tput sgr0)
@@ -74,6 +75,7 @@
 				CMAKE=${HOME}/opt/cmake/bin/cmake
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
+				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 			;;
 			*)
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
@@ -81,10 +83,9 @@
 		esac
 			
 		export BOOST_ROOT=${HOME}/opt/boost_1_66_0
-		export BINARYEN_BIN=${HOME}/opt/binaryen/bin
 		export OPENSSL_ROOT_DIR=/usr/include/openssl
 		export OPENSSL_LIBRARIES=/usr/include/openssl
-		export WASM_LLVM_CONFIG=${HOME}/opt/wasm/bin/llvm-config
+                export WASM_ROOT=${HOME}/opt/wasm
 	
 	 . $FILE
 	
@@ -93,8 +94,7 @@
 	if [ $ARCH == "Darwin" ]; then
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 		OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
-		BINARYEN_BIN=/usr/local/binaryen/bin/
-		WASM_LLVM_CONFIG=/usr/local/wasm/bin/llvm-config
+		export WASM_ROOT=/usr/local/wasm
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
 
@@ -121,8 +121,8 @@
 	
 	# Build EOS
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
-	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_LLVM_CONFIG=${WASM_LLVM_CONFIG} \
-	-DBINARYEN_BIN=${BINARYEN_BIN} -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} \
+  -DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
+  -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} \
 	-DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} ..
 	if [ $? -ne 0 ]; then
 		printf "\n\t>>>>>>>>>>>>>>>>>>>> CMAKE building EOSIO has exited with the above error.\n\n"

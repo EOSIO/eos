@@ -74,13 +74,6 @@ extern "C" {
    void printi128( const uint128_t* value );
 
    /**
-    * Prints value as a hexidecimal string
-    * @brief Prints value as a hexidecimal string
-    * @param value 256 bit integer to be printed
-    */
-   void printi256( const uint256* value );
-
-   /**
     * Prints value as double
     * @brief Prints value as double
     * @param value of double (interpreted as 64 bit unsigned integer) to be printed
@@ -107,7 +100,7 @@ extern "C" {
 
    /**
     */
-   void printhex( void* data, uint32_t datalen );
+   void printhex( const void* data, uint32_t datalen );
 
    /// @}
 #ifdef __cplusplus

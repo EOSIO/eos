@@ -28,7 +28,7 @@
 		exit 1
 	fi
 
-	if [ $DISK_AVAIL -lt 100 ]; then
+	if [ $DISK_AVAIL -lt $DISK_MIN ]; then
 		printf "\tYou must have at least 100GB of available storage to install EOSIO.\n"
 		printf "\tExiting now.\n"
 		exit 1
@@ -45,7 +45,7 @@
 	
 	printf "\tYum installation found at ${YUM}.\n"
 	printf "\tUpdating YUM.\n"
-	UPDATE=$( sudo yum update )
+	UPDATE=$( sudo yum -y update )
 	
 	if [ $? -ne 0 ]; then
 		printf "\n\tYUM update failed.\n"
@@ -145,27 +145,6 @@
 		printf "\tsecp256k1 found\n"
 	fi
 	
-	printf "\n\tChecking for binaryen\n"
-	if [ ! -d ${HOME}/opt/binaryen ]; then
-		# Install binaryen v1.37.14:
-		printf "\tInstalling binaryen v1.37.14:\n"
-		cd ${TEMP_DIR}
-		git clone https://github.com/WebAssembly/binaryen
-		cd binaryen
-		git checkout tags/1.37.14
-		cmake . && make -j${CPU_CORE}
-		if [ $? -ne 0 ]; then
-			printf "\tError compiling binaryen.\n"
-			printf "\tExiting now.\n\n"
-			exit;
-		fi
-		mkdir -p ${HOME}/opt/binaryen/ 2>/dev/null
-		mv ${TEMP_DIR}/binaryen/bin ${HOME}/opt/binaryen/
-		rm -rf ${TEMP_DIR}/binaryen
-	else
-		printf "\tBinaryen found at ${HOME}/opt/binaryen\n"
-	fi
-	
 	printf "\n\tChecking for LLVM with WASM support.\n"
 	if [ ! -d ${HOME}/opt/wasm/bin ]; then
 		# Build LLVM and clang with EXPERIMENTAL WASM support:
@@ -179,7 +158,7 @@
 		cd ..
 		mkdir build
 		cd build
-		cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+		cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm -DLLVM_ENABLE_RTTI=1 -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
 			printf "\tExiting now.\n\n"
