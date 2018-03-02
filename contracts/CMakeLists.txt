@@ -41,8 +41,8 @@ add_custom_command(OUTPUT share/eosio/skeleton/skeleton.cpp
                    VERBATIM)
 add_custom_target(copy_skeleton_contract ALL DEPENDS share/eosio/skeleton/skeleton.cpp)
 
-install(DIRECTORY eosiolib DESTINATION usr/${CMAKE_INSTALL_INCLUDEDIR})
-install(DIRECTORY musl DESTINATION usr/${CMAKE_INSTALL_INCLUDEDIR})
-install(DIRECTORY libc++ DESTINATION usr/${CMAKE_INSTALL_INCLUDEDIR})
-install(DIRECTORY skeleton DESTINATION usr/${CMAKE_INSTALL_DATAROOTDIR}/eosio)
-install_directory_permissions(DIRECTORY usr/${CMAKE_INSTALL_DATAROOTDIR}/eosio)
+install(DIRECTORY eosiolib DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
+install(DIRECTORY musl DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
+install(DIRECTORY libc++ DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
+install(DIRECTORY skeleton DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/eosio)
+install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_DATAROOTDIR}/eosio)

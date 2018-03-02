@@ -136,4 +136,26 @@
 		exit -1
 	fi
 
-	printf "\n\t>>>>>>>>>>>>>>>>>>>> EOSIO has been successfully installed.\n\n"
+   printf "\n\t>>>>>>>>>>>>>>>>>>>> EOSIO has been successfully built.\n\n"
+
+   if [ DEFINED EOSIO_BUILD_PACKAGE ]
+      # Build eos.io package
+      $CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
+      -DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
+      -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} \
+      -DCMAKE_INSTALL_PREFIX=/usr ..
+
+      if [ $? -ne 0 ]; then
+         printf "\n\t>>>>>>>>>>>>>>>>>>>> CMAKE building eos.io package has exited with the above error.\n\n"
+         exit -1
+      fi
+
+      make -j${CPU_CORE} VERBOSE=0
+
+      if [ $? -ne 0 ]; then
+         printf "\n\t>>>>>>>>>>>>>>>>>>>> MAKE building eos.io package has exited with the above error.\n\n"
+         exit -1
+      fi
+
+      printf "\n\t>>>>>>>>>>>>>>>>>>>> eos.io package has been successfully built.\n\n"
+   fi

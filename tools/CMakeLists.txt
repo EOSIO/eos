@@ -1,5 +1,5 @@
 configure_file( eosiocpp.in eosiocpp @ONLY)
-install( FILES ${CMAKE_CURRENT_BINARY_DIR}/eosiocpp DESTINATION usr/${CMAKE_INSTALL_BINDIR}
+install( FILES ${CMAKE_CURRENT_BINARY_DIR}/eosiocpp DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
          PERMISSIONS OWNER_READ
                      OWNER_WRITE
                      OWNER_EXECUTE
