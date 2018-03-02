@@ -85,8 +85,7 @@ BOOST_AUTO_TEST_SUITE(eosio_system_tests)
 
 BOOST_FIXTURE_TEST_CASE( delegate_to_myself, eosio_system_tester ) try {
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
-   auto balance = get_balance( "alice" );
-   std::cout << "Balance: " << N(alice) << ": " << balance << std::endl;
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
 
    push_action(N(alice), N(delegatebw), mvo()
                ("from",     "alice")
@@ -97,13 +96,30 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_myself, eosio_system_tester ) try {
    );
 
    auto stake = get_total_stake( "alice" );
-   BOOST_REQUIRE_EQUAL( 2000000, stake["net_weight"].as_uint64());
-   BOOST_REQUIRE_EQUAL( 1000000, stake["cpu_weight"].as_uint64());
-   BOOST_REQUIRE_EQUAL( 3000000, stake["storage_stake"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS").amount, stake["net_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS").amount, stake["cpu_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("300.0000 EOS").amount, stake["storage_stake"].as_uint64());
 
-   balance = get_balance( "alice" );
-   std::cout << "Balance: " << balance << std::endl;
+   auto bytes = stake["storage_bytes"].as_uint64();
+   BOOST_REQUIRE_EQUAL( true, 0 < bytes );
 
- } FC_LOG_AND_RETHROW()
+   BOOST_REQUIRE_EQUAL( asset::from_string("400.0000 EOS"), get_balance( "alice" ) );
+
+   push_action(N(alice), N(undelegatebw), mvo()
+               ("from",     "alice")
+               ("receiver", "alice")
+               ("unstake_net", "200.0000 EOS")
+               ("unstake_cpu", "100.0000 EOS")
+               ("unstake_bytes", bytes)
+   );
+
+   stake = get_total_stake( "alice" );
+   std::cout << "STAKE: " << stake["net_weight"].as_uint64() << ' ' << stake["cpu_weight"].as_uint64() << std::endl;
+   BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, stake["net_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, stake["cpu_weight"].as_uint64());
+   //BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, stake["storage_stake"].as_uint64());
+
+
+} FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()

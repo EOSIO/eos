@@ -130,6 +130,7 @@ namespace eosiosystem {
 
             eosio_assert( 0 < storage_bytes, "stake is too small to increase storage even by 1 byte" );
 
+            print( "delegatebw: from = ", del.from, " receiver = ", del.receiver, "\n" );
             auto itr = del_index.find( del.receiver);
             if( itr != nullptr ) {
                del_index.emplace( del.from, [&]( auto& dbo ){
@@ -188,7 +189,9 @@ namespace eosiosystem {
 
             //eosio_assert( is_account( del.receiver ), "can only delegate resources to an existing account" );
 
-            const auto& dbw = del_index.get(del.receiver);
+            print ("undelegatebw: from = ", del.from, " receiver = ", del.receiver, "\n");
+            const auto& dbw = del_index.get( del.receiver );
+
             eosio_assert( dbw.net_weight >= del.unstake_net_quantity, "insufficient staked net bandwidth" );
             eosio_assert( dbw.cpu_weight >= del.unstake_cpu_quantity, "insufficient staked cpu bandwidth" );
 
@@ -196,7 +199,7 @@ namespace eosiosystem {
             system_token_type storage_stake_decrease = totals.storage_stake * del.unstake_storage_bytes / totals.storage_bytes;
 
             auto total_refund = system_token_type(del.unstake_cpu_quantity) + system_token_type(del.unstake_net_quantity) + storage_stake_decrease;
-            eosio_assert( total_refund.quantity >= 0, "must unstake a positive amount" );
+            //eosio_assert( total_refund.quantity >= 0, "must unstake a positive amount" );
 
             del_index.update( dbw, del.from, [&]( auto& dbo ){
                dbo.net_weight -= del.unstake_net_quantity;
@@ -215,7 +218,8 @@ namespace eosiosystem {
             set_resource_limits( totals.owner, totals.storage_bytes, totals.net_weight.quantity, totals.cpu_weight.quantity, 0 );
 
             /// TODO: implement / enforce time delays on withdrawing
-            currency::inline_transfer( SystemAccount, del.from, asset( total_refund.quantity ), "unstake bandwidth" );
+            print( "undelegatebw: ", total_refund.quantity, "\n" );
+            currency::inline_transfer( SystemAccount, del.from, asset( static_cast<int64_t>( total_refund.quantity )), "unstake bandwidth" );
 
             auto parameters = eosio_parameters_singleton::get();
             parameters.total_storage_bytes_reserved -= del.unstake_storage_bytes;

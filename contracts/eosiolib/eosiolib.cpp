@@ -510,4 +510,15 @@ void set_blockchain_parameters(const struct blockchain_parameters* params) {
    set_blockchain_parameters_packed( data.data(), data.size() );
 }
 
+int get_blockchain_parameters_packed(char* data, size_t datalen);
+
+void get_blockchain_parameters(struct blockchain_parameters* params) {
+   char buf[sizeof(struct blockchain_parameters)];
+   size_t size = get_blockchain_parameters_packed( buf, sizeof(buf) );
+   eosio_assert( size <= sizeof(buf), "buffer is too small" );
+   static_assert(sizeof(blockchain_parameters) == sizeof(eosio::blockchain_parameters), "data structures are not the same");
+   eosio::datastream<const char*> ds( buf, size_t(size) );
+   ds >> *reinterpret_cast<eosio::blockchain_parameters*>(params);
+}
+
 }

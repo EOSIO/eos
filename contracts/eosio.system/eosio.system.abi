@@ -52,7 +52,7 @@
          {"name":"receiver", "type":"account_name"},
          {"name":"unstake_net", "type":"asset"},
          {"name":"unstake_cpu", "type":"asset"},
-         {"name":"stake_storage_bytes", "type":"uint64"}
+         {"name":"unstake_bytes", "type":"uint64"}
       ]
     },{
       "name": "total_resources",
