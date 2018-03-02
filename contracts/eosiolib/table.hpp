@@ -1,5 +1,7 @@
 #pragma once
+#include <eosiolib/system.h>
 #include <eosiolib/db.h>
+#include <eosiolib/datastream.hpp>
 
 namespace eosio {
 
