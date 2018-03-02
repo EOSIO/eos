@@ -232,12 +232,15 @@ void test_multi_index::idx128_autoincrement_test_part1()
       });
    }
 
+   table.remove(table.get(0));
+
    uint64_t expected_key = 2;
    for( const auto& r : table.get_index<N(bysecondary)>() )
    {
       eosio_assert( r.primary_key() == expected_key, "idx128_autoincrement_test_part1 - unexpected primary key" );
       --expected_key;
    }
+
 }
 
 void test_multi_index::idx128_autoincrement_test_part2()
@@ -250,15 +253,29 @@ void test_multi_index::idx128_autoincrement_test_part2()
    const uint64_t table_name = N(indextable4);
    auto payer = current_receiver();
 
+   {
+      multi_index<table_name, record,
+         indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> >
+      > table( current_receiver(), current_receiver() );
+
+      eosio_assert( table.available_primary_key() == 3, "idx128_autoincrement_test_part2 - did not recover expected next primary key");
+   }
+
    multi_index<table_name, record,
       indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> >
    > table( current_receiver(), current_receiver() );
 
-   eosio_assert( table.available_primary_key() == 3, "idx128_autoincrement_test_part2 - did not recover expected next primary key");
+   table.emplace( payer, [&]( auto& r) {
+      r.id = 0;
+      r.sec = 1000;
+   });
+   // Done this way to make sure that table._next_primary_key is not incorrectly set to 1.
 
    for( int i = 3; i < 5; ++i ) {
       table.emplace( payer, [&]( auto& r ) {
-         r.id = table.available_primary_key();
+         auto itr = table.available_primary_key();
+         print(itr, "\n");
+         r.id = itr;
          r.sec = 1000 - static_cast<uint128_t>(r.id);
       });
    }
