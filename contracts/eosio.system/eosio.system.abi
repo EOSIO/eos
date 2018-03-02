@@ -1,5 +1,9 @@
 {
-  "types": [],
+  "types": [{
+      "new_type_name": "account_name",
+      "type": "name"
+    }
+  ],
   "structs": [{
       "name": "transfer",
       "base": "",
@@ -20,31 +24,72 @@
       "name": "account",
       "base": "",
       "fields": [
-        {"name":"key", "type":"name"},
+        {"name":"currency", "type":"uint64"},
         {"name":"balance", "type":"uint64"}
       ]
     },{
-      "name": "nonce",
+      "name": "currency_stats",
       "base": "",
       "fields": [
-        {"name":"value", "type":"string"}
+        {"name":"currency", "type":"uint64"},
+        {"name":"supply", "type":"uint64"}
+      ]
+    },{
+      "name": "delegatebw",
+      "base": "",
+      "fields": [
+         {"name":"from", "type":"account_name"},
+         {"name":"receiver", "type":"account_name"},
+         {"name":"stake_net", "type":"asset"},
+         {"name":"stake_cpu", "type":"asset"},
+         {"name":"stake_storage", "type":"asset"}
+      ]
+    },{
+      "name": "undelegatebw",
+      "base": "",
+      "fields": [
+         {"name":"from", "type":"account_name"},
+         {"name":"receiver", "type":"account_name"},
+         {"name":"unstake_net", "type":"asset"},
+         {"name":"unstake_cpu", "type":"asset"},
+         {"name":"stake_storage_bytes", "type":"uint64"}
+      ]
+    },{
+      "name": "total_resources",
+      "base": "",
+      "fields": [
+         {"name":"owner", "type":"account_name"},
+         {"name":"net_weight", "type":"uint64"},
+         {"name":"cpu_weight", "type":"uint64"},
+         {"name":"storage_stake", "type":"uint64"},
+         {"name":"storage_bytes", "type":"uint64"}
       ]
     },{
       "name": "regproducer",
       "base": "",
       "fields": [
-        {"name":"producer", "type":"account_name"}
+        {"name":"producer", "type":"account_name"},
         {"name":"producer_key", "type":"bytes"}
       ]
     },{
       "name": "stakevote",
       "base": "",
       "fields": [
-        {"name":"voter", "type":"account_name"}
+        {"name":"voter", "type":"account_name"},
         {"name":"amount", "type":"asset"}
       ]
+    },{
+      "name": "delegated_bandwidth",
+      "base": "",
+      "fields": [
+         {"name":"from", "type":"account_name"},
+         {"name":"to", "type":"account_name"},
+         {"name":"net_weight", "type":"asset"},
+         {"name":"cpu_weight", "type":"asset"},
+         {"name":"storage_stake", "type":"asset"},
+         {"name":"storage_bytes", "type":"uint64"}
+      ]
     }
-
   ],
   "actions": [{
       "name": "transfer",
@@ -53,8 +98,11 @@
       "name": "issue",
       "type": "issue"
     },{
-      "name": "nonce",
-      "type": "nonce"
+      "name": "delegatebw",
+      "type": "delegatebw"
+    },{
+      "name": "undelegatebw",
+      "type": "undelegatebw"
     },{
       "name": "regproducer",
       "type": "regproducer"
@@ -63,12 +111,6 @@
       "type": "stakevote"
     }
   ],
-  "tables": [{
-      "name": "account",
-      "type": "account",
-      "index_type": "i64",
-      "key_names" : ["key"],
-      "key_types" : ["name"]
-    }
+  "tables": [
   ]
 }

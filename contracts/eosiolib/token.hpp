@@ -38,10 +38,11 @@ namespace eosio {
     */
     token(){}
 
-    operator asset()const { return asset( quantity, Symbol ); }
+    operator asset()const { return asset( static_cast<int64_t>(quantity), Symbol ); }
 
-    token( const asset& a ):quantity(a.amount) {
+    token( const asset& a ):quantity(static_cast<uint64_t>(a.amount)) {
        eosio_assert( a.symbol == Symbol, "attempt to construct token from asset with different symbol" );
+       eosio_assert( 0 <= a.amount, "attemt to convert asset with negative value to token" );
     }
 
     /**

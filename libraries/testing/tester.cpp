@@ -112,12 +112,12 @@ namespace eosio { namespace testing {
       return push_transaction( ptrx );
    }
 
-   base_tester::action_result base_tester::push_action(action&& cert_act, uint64_t authorizer) {
+   base_tester::action_result base_tester::push_action(action&& act, uint64_t authorizer) {
       signed_transaction trx;
       if (authorizer) {
-         cert_act.authorization = vector<permission_level>{{authorizer, config::active_name}};
+         act.authorization = vector<permission_level>{{authorizer, config::active_name}};
       }
-      trx.actions.emplace_back(std::move(cert_act));
+      trx.actions.emplace_back(std::move(act));
       set_tapos(trx);
       if (authorizer) {
          trx.sign(get_private_key(authorizer, "active"), chain_id_type());
@@ -233,6 +233,32 @@ namespace eosio { namespace testing {
       set_tapos( trx );
 
       trx.sign( get_private_key( from, name(config::active_name).to_string() ), chain_id_type()  );
+      return push_transaction( trx );
+   }
+
+   transaction_trace base_tester::issue( account_name to, string amount, account_name currency ) {
+      variant pretty_trx = fc::mutable_variant_object()
+         ("actions", fc::variants({
+            fc::mutable_variant_object()
+               ("account", currency)
+               ("name", "issue")
+               ("authorization", fc::variants({
+                  fc::mutable_variant_object()
+                     ("actor", currency )
+                     ("permission", name(config::active_name))
+               }))
+               ("data", fc::mutable_variant_object()
+                  ("to", to)
+                  ("quantity", amount)
+               )
+            })
+         );
+
+      signed_transaction trx;
+      contracts::abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+      set_tapos( trx );
+
+      trx.sign( get_private_key( currency, name(config::active_name).to_string() ), chain_id_type()  );
       return push_transaction( trx );
    }
 

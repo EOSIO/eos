@@ -477,7 +477,7 @@ class privileged_api : public context_aware_api {
          });
       }
 
-   void set_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t datalen) {
+      void set_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t datalen) {
          datastream<const char*> ds( packed_blockchain_parameters, datalen );
          chain::chain_config cfg;
          fc::raw::unpack(ds, cfg);
@@ -485,6 +485,16 @@ class privileged_api : public context_aware_api {
             [&]( auto& gprops ) {
                  gprops.configuration = cfg;
          });
+      }
+
+      int get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t datalen) {
+         auto& gpo = context.controller.get_global_properties();
+         auto size = fc::raw::pack_size( gpo.configuration );
+         if ( size <= datalen ) {
+            datastream<char*> ds( packed_blockchain_parameters, datalen );
+            fc::raw::pack(ds, gpo.configuration);
+         }
+         return size;
       }
 
       bool is_privileged( account_name n )const {
@@ -1348,6 +1358,7 @@ REGISTER_INTRINSICS(privileged_api,
    (freeze_account,            void(int64_t, int)                            )
    (is_frozen,                 int(int64_t)                                  )
    (set_blockchain_parameters_packed, void(int,int)                          )
+   (get_blockchain_parameters_packed, int(int, int)                          )
 );
 
 REGISTER_INTRINSICS(checktime_api,

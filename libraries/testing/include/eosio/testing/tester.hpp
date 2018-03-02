@@ -48,6 +48,7 @@ namespace eosio { namespace testing {
          transaction_trace push_nonce( account_name from, const string& v = "blah" );
          transaction_trace transfer( account_name from, account_name to, asset amount, string memo, account_name currency );
          transaction_trace transfer( account_name from, account_name to, string amount, string memo, account_name currency );
+         transaction_trace issue( account_name to, string amount, account_name currency );
 
          template<typename ObjectType, typename IndexBy, typename... Args>
          const auto& get( Args&&... args ) {

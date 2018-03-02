@@ -18,9 +18,7 @@ namespace eosiosystem {
          using delegate_bandwith<SystemAccount>::on;
          using pe = voting<SystemAccount>;
          using db = delegate_bandwith<SystemAccount>;
-
-         static const account_name system_account = SystemAccount;
-         typedef eosio::generic_currency< eosio::token<system_account,S(4,EOS)> > currency;
+         using currency = typename common<SystemAccount>::currency;
 
          ACTION( SystemAccount, nonce ) {
             eosio::string                   value;

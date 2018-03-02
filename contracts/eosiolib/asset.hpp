@@ -24,10 +24,10 @@ namespace eosio {
    typedef uint64_t symbol_name;
 
    struct asset {
-      uint64_t     amount = 0;
+      int64_t      amount = 0;
       symbol_name  symbol = S(4,EOS);
 
-      explicit asset( uint64_t a = 0, uint64_t s = S(4,EOS))
+      explicit asset( int64_t a = 0, uint64_t s = S(4,EOS))
       :amount(a),symbol(s){}
 
 

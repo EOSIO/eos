@@ -43,5 +43,7 @@ extern "C" {
 
    void set_blockchain_parameters(const struct blockchain_parameters* params);
 
+   void get_blockchain_parameters(struct blockchain_parameters* params);
+
    ///@ } privilegedcapi
 }
