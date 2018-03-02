@@ -246,6 +246,19 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint32_t& d) {
   return ds;
 }
 
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const bool& d) {
+  return ds << uint8_t(d);
+}
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, bool& d) {
+  uint8_t t;
+  ds >> t;
+  d = t;
+  return ds;
+}
+
+
 /**
  *  Serialize a int64_t into a stream
  *  @brief Serialize a int64_t
