@@ -96,7 +96,8 @@ struct indexed_by {
 
 template<uint64_t TableName, uint64_t IndexName, typename T, typename Extractor, int N = 0>
 struct index_by {
-   typedef  Extractor                                                    extractor_secondary_type;
+   typedef  Extractor  extractor_secondary_type;
+   typedef  Extractor  secondary_extractor_type;
    typedef  typename std::decay<decltype( Extractor()(nullptr) )>::type secondary_type;
 
    index_by(){}
@@ -271,6 +272,7 @@ class multi_index
             typedef typename IndexType::secondary_type secondary_key_type;
 
          public:
+            typedef typename IndexType::secondary_extractor_type  secondary_extractor_type;
             static constexpr uint64_t name() { return IndexType::name(); }
 
             struct const_iterator {
@@ -367,6 +369,16 @@ class multi_index
             const_iterator begin()const {
                return lower_bound(typename IndexType::secondary_type());
             }
+            const_iterator find( typename IndexType::secondary_type&& secondary )const {
+               auto lb = lower_bound( secondary );
+               auto e = end();
+               if( lb == e ) return e;
+
+               if( secondary != typename IndexType::extractor_secondary_type()(*lb) )
+                  return e;
+               return lb;
+            }
+
             const_iterator lower_bound( typename IndexType::secondary_type&& secondary )const {
                return lower_bound( secondary );
             }
@@ -471,7 +483,8 @@ class multi_index
       const_iterator end()const   { return const_iterator( *this ); }
       const_iterator begin()const { return lower_bound();     }
 
-      const_iterator lower_bound( uint64_t primary = 0 )const {
+
+      const_iterator lower_bound( uint64_t primary = 0 )const { 
          auto itr = db_lowerbound_i64( _code, _scope, TableName, primary );
          if( itr < 0 ) return end();
          auto& obj = load_object_by_primary_iterator( itr );
@@ -604,7 +617,7 @@ class multi_index
 
       void remove( const T& obj ) {
          const auto& objitem = static_cast<const item&>(obj);
-         auto& mutableitem = const_cast<item&>(objitem);
+         //auto& mutableitem = const_cast<item&>(objitem);
          // eosio_assert( &objitem.__idx == this, "invalid object" );
 
          db_remove_i64( objitem.__primary_itr );
