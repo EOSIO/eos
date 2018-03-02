@@ -110,9 +110,6 @@ namespace eosiosystem {
 
             require_auth( del.from );
 
-            del_bandwidth_index_type     del_index( SystemAccount, del.from );
-            total_resources_index_type   total_index( SystemAccount, del.receiver );
-
             //eosio_assert( is_account( del.receiver ), "can only delegate resources to an existing account" );
 
             auto parameters = eosio_parameters_singleton::exists() ? eosio_parameters_singleton::get()
@@ -130,9 +127,9 @@ namespace eosiosystem {
 
             eosio_assert( 0 < storage_bytes, "stake is too small to increase storage even by 1 byte" );
 
-            print( "delegatebw: from = ", del.from, " receiver = ", del.receiver, "\n" );
+            del_bandwidth_index_type     del_index( SystemAccount, del.from );
             auto itr = del_index.find( del.receiver);
-            if( itr != nullptr ) {
+            if( itr == nullptr ) {
                del_index.emplace( del.from, [&]( auto& dbo ){
                   dbo.from          = del.from;
                   dbo.to            = del.receiver;
@@ -151,6 +148,7 @@ namespace eosiosystem {
                });
             }
 
+            total_resources_index_type   total_index( SystemAccount, del.receiver );
             auto tot_itr = total_index.find( del.receiver );
             if( tot_itr == nullptr ) {
                tot_itr = &total_index.emplace( del.from, [&]( auto& tot ) {
@@ -184,22 +182,19 @@ namespace eosiosystem {
 
             require_auth( del.from );
 
-            del_bandwidth_index_type     del_index( SystemAccount, del.from );
-            total_resources_index_type   total_index( SystemAccount, del.receiver );
-
             //eosio_assert( is_account( del.receiver ), "can only delegate resources to an existing account" );
 
-            print ("undelegatebw: from = ", del.from, " receiver = ", del.receiver, "\n");
+            del_bandwidth_index_type     del_index( SystemAccount, del.from );
             const auto& dbw = del_index.get( del.receiver );
-
             eosio_assert( dbw.net_weight >= del.unstake_net_quantity, "insufficient staked net bandwidth" );
             eosio_assert( dbw.cpu_weight >= del.unstake_cpu_quantity, "insufficient staked cpu bandwidth" );
+            eosio_assert( dbw.storage_bytes >= del.unstake_storage_bytes, "insufficient staked storage" );
 
-            const auto& totals = total_index.get( del.receiver );
-            system_token_type storage_stake_decrease = totals.storage_stake * del.unstake_storage_bytes / totals.storage_bytes;
+            system_token_type storage_stake_decrease = dbw.storage_stake * del.unstake_storage_bytes / dbw.storage_bytes;
 
             auto total_refund = system_token_type(del.unstake_cpu_quantity) + system_token_type(del.unstake_net_quantity) + storage_stake_decrease;
-            //eosio_assert( total_refund.quantity >= 0, "must unstake a positive amount" );
+
+            eosio_assert( total_refund.quantity >= 0, "must unstake a positive amount" );
 
             del_index.update( dbw, del.from, [&]( auto& dbo ){
                dbo.net_weight -= del.unstake_net_quantity;
@@ -208,6 +203,8 @@ namespace eosiosystem {
                dbo.storage_bytes -= del.unstake_storage_bytes;
             });
 
+            total_resources_index_type   total_index( SystemAccount, del.receiver );
+            const auto& totals = total_index.get( del.receiver );
             total_index.update( totals, 0, [&]( auto& tot ) {
                tot.net_weight -= del.unstake_net_quantity;
                tot.cpu_weight -= del.unstake_cpu_quantity;
@@ -218,7 +215,6 @@ namespace eosiosystem {
             set_resource_limits( totals.owner, totals.storage_bytes, totals.net_weight.quantity, totals.cpu_weight.quantity, 0 );
 
             /// TODO: implement / enforce time delays on withdrawing
-            print( "undelegatebw: ", total_refund.quantity, "\n" );
             currency::inline_transfer( SystemAccount, del.from, asset( static_cast<int64_t>( total_refund.quantity )), "unstake bandwidth" );
 
             auto parameters = eosio_parameters_singleton::get();

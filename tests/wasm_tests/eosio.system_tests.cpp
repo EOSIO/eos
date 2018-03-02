@@ -105,6 +105,43 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_myself, eosio_system_tester ) try {
 
    BOOST_REQUIRE_EQUAL( asset::from_string("400.0000 EOS"), get_balance( "alice" ) );
 
+   //trying to unstake more net bandwith than at stake
+   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked net bandwidth"),
+                        push_action( N(alice), N(undelegatebw), mvo()
+                                    ("from",     "alice")
+                                    ("receiver", "alice")
+                                    ("unstake_net", "200.0001 EOS")
+                                    ("unstake_cpu", "0.0000 EOS")
+                                    ("unstake_bytes", 0) )
+   );
+
+   //trying to unstake more cpu bandwith than at stake
+   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked cpu bandwidth"),
+                        push_action(N(alice), N(undelegatebw), mvo()
+                                    ("from",     "alice")
+                                    ("receiver", "alice")
+                                    ("unstake_net", "000.0000 EOS")
+                                    ("unstake_cpu", "100.0001 EOS")
+                                    ("unstake_bytes", 0) )
+   );
+
+   //trying to unstake more storage than at stake
+   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked storage"),
+                        push_action(N(alice), N(undelegatebw), mvo()
+                                    ("from",     "alice")
+                                    ("receiver", "alice")
+                                    ("unstake_net", "000.0000 EOS")
+                                    ("unstake_cpu", "000.0001 EOS")
+                                    ("unstake_bytes", bytes+1) )
+   );
+
+   //check that nothing has changed
+   stake = get_total_stake( "alice" );
+   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS").amount, stake["net_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS").amount, stake["cpu_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("300.0000 EOS").amount, stake["storage_stake"].as_uint64());
+   BOOST_REQUIRE_EQUAL( bytes, stake["storage_bytes"].as_uint64() );
+
    push_action(N(alice), N(undelegatebw), mvo()
                ("from",     "alice")
                ("receiver", "alice")
@@ -117,8 +154,39 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_myself, eosio_system_tester ) try {
    std::cout << "STAKE: " << stake["net_weight"].as_uint64() << ' ' << stake["cpu_weight"].as_uint64() << std::endl;
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, stake["net_weight"].as_uint64());
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, stake["cpu_weight"].as_uint64());
-   //BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, stake["storage_stake"].as_uint64());
+   BOOST_REQUIRE_EQUAL( 0, stake["storage_stake"].as_uint64());
 
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( stake_negative, eosio_system_tester ) try {
+   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+
+   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must stake a positive amount"),
+                        push_action( N(alice), N(delegatebw), mvo()
+                                    ("from",     "alice")
+                                    ("receiver", "alice")
+                                    ("stake_net", "-0.0001 EOS")
+                                    ("stake_cpu", "0.0000 EOS")
+                                    ("stake_storage", "0.0000 EOS") )
+   );
+
+   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must stake a positive amount"),
+                        push_action( N(alice), N(delegatebw), mvo()
+                                    ("from",     "alice")
+                                    ("receiver", "alice")
+                                    ("stake_net", "0.0000 EOS")
+                                    ("stake_cpu", "-0.0001 EOS")
+                                    ("stake_storage", "0.0000 EOS") )
+   );
+
+   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must stake a positive amount"),
+                        push_action( N(alice), N(delegatebw), mvo()
+                                    ("from",     "alice")
+                                    ("receiver", "alice")
+                                    ("stake_net", "0.0000 EOS")
+                                    ("stake_cpu", "0.0000 EOS")
+                                    ("stake_storage", "-0.0001 EOS") )
+   );
 
 } FC_LOG_AND_RETHROW()
 
