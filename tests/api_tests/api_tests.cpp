@@ -460,11 +460,11 @@ BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, tester) { try {
  * transaction_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
-	produce_blocks(2);
-	create_account( N(testapi) );
-	produce_blocks(100);
-	set_code( N(testapi), test_api_wast );
-	produce_blocks(1);
+   produce_blocks(2);
+   create_account( N(testapi) );
+   produce_blocks(100);
+   set_code( N(testapi), test_api_wast );
+   produce_blocks(1);
 
    // test send_action
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_action", {});
@@ -472,10 +472,10 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
    // test send_action_empty
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_empty", {});
 
-	// test send_action_large
+   // test send_action_large
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), fc::assert_exception,
          [](const fc::assert_exception& e) {
-				return expect_assert_message(e, "data_len < config::default_max_inline_action_size: inline action too big");
+            return expect_assert_message(e, "data_len < config::default_max_inline_action_size: inline action too big");
          }
       );
 
