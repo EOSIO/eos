@@ -56,10 +56,15 @@ asset asset::from_string(const string& from)
          auto fractpart = "1" + s.substr(dot_pos + 1, space_pos - dot_pos - 1);
          
          result.amount *= int64_t(result.precision());
-         result.amount += int64_t(fc::to_int64(fractpart));
-         result.amount -= int64_t(result.precision());
+         if ( intpart[0] == '-' ) {
+            result.amount -= int64_t(fc::to_int64(fractpart));
+            result.amount += int64_t(result.precision());
+         } else {
+            result.amount += int64_t(fc::to_int64(fractpart));
+            result.amount -= int64_t(result.precision());
+         }
+         
       }
-      
       return result;
    }
    FC_CAPTURE_LOG_AND_RETHROW( (from) )
