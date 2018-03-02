@@ -21,6 +21,9 @@
 
 #include "test_wasts.hpp"
 
+#include <array>
+#include <utility>
+
 using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::chain::contracts;
@@ -430,7 +433,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_globals, tester ) try {
    //add a few immutable ones for good measure
    for(unsigned int i = 0; i < 10; ++i)
       ss << "(global $g" << i+200 << " i32 (i32.const 0))";
-   
+
    set_code(N(globals),
       string(ss.str() + ")")
    .c_str());
