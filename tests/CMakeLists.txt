@@ -58,7 +58,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/consensusValidationMaliciousProducers
 
 add_test(chain_test chain_test)
 add_test(slow_test slow_test)
-add_test(api_test api_test -t !api_tests/test_memory_hunks_disjoint)
+add_test(api_test api_test -t !api_tests/test_memory_hunks_disjoint -t !api_tests/test_all)
 if(UNIX AND NOT APPLE)
   if (libmongoc-1.0_FOUND)
     # Placeholder for mongodb tests
