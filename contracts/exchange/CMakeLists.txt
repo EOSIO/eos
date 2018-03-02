@@ -6,3 +6,6 @@ add_wast_executable(TARGET exchange
 )
 configure_file("${ABI_FILES}" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
 add_dependencies( exchange currency )
+
+add_executable(test_exchange test_exchange.cpp )
+target_link_libraries( test_exchange fc )
