@@ -29,7 +29,7 @@
 	fi
 
 	if [ $DISK_AVAIL -lt $DISK_MIN ]; then
-		echo "You must have at least 20GB of available storage to install EOSIO."
+		echo "You must have at least ${DISK_MIN}GB of available storage to install EOSIO."
 		echo "exiting now"
 		exit 1
 	fi
@@ -100,7 +100,7 @@
 
 	printf "\n\tYUM repository successfully updated.\n"
 
-	DEP_ARRAY=( git autoconf automake libtool ocaml.x86_64 doxygen libicu-devel.x86_64 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 python-devel.x86_64 )
+	DEP_ARRAY=( git autoconf automake libtool ocaml.x86_64 doxygen libicu-devel.x86_64 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 python-devel.x86_64 gettext-devel.x86_64)
 	DCOUNT=0
 	COUNT=1
 	DISPLAY=""

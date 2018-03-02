@@ -663,7 +663,7 @@ sudo yum update
 sudo yum install -y devtoolset-7
 scl enable devtoolset-7 bash
 sudo yum install git autoconf automake libtool make bzip2 \
-				 bzip2-devel.x86_64 openssl-devel.x86_64 gmp.x86_64 gmp-devel.x86_64 \
+				 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 \
 				 ocaml.x86_64 doxygen libicu-devel.x86_64 python27-devel.x86_64 \
 				 gettext-devel.x86_64
 
@@ -750,9 +750,9 @@ Install the development toolkit:
 ```bash
 sudo yum update
 sudo yum install git gcc.x86_64 gcc-c++.x86_64 autoconf automake libtool make cmake.x86_64 \
-					bzip2 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 \
-					libstdc++-devel.x86_64 python3-devel.x86_64 libedit.x86_64 \
-					ncurses-devel.x86_64 swig.x86_64 gettext-devel.x86_64
+				 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 \
+				 libstdc++-devel.x86_64 python3-devel.x86_64 libedit.x86_64 \
+				 ncurses-devel.x86_64 swig.x86_64 gettext-devel.x86_64
 
 ```
 
