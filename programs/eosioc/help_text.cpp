@@ -183,7 +183,13 @@ e.g.
   }]
 })=====";
 
-const char* error_advice_3030002 =  R"=====(Ensure that you have the related private keys inside your wallet)=====";
+const char* error_advice_3030002 =  "Ensure that you have the related private keys inside your wallet.";
+
+const char* error_advice_3130001 =  "Ensure that you have \033[2meosio::chain_api_plugin\033[0m\033[32m added to your node's configuration.";
+const char* error_advice_3130002 =  "Ensure that you have \033[2meosio::wallet_api_plugin\033[0m\033[32m added to your node's configuration.\n"\
+                                    "Otherwise specify your wallet location with \033[2m--wallet-host\033[0m\033[32m and \033[2m--wallet_port\033[0m\033[32m arguments.";
+const char* error_advice_3130003 =  "Ensure that you have \033[2meosio::account_history_api_plugin\033[0m\033[32m added to your node's configuration.";
+const char* error_advice_3130004 =  "Ensure that you have \033[2meosio::net_api_plugin\033[0m\033[32m added to your node's configuration";
 
 const std::map<int64_t, std::string> error_advice = {
    { 3120001, error_advice_3120001 },
@@ -192,6 +198,10 @@ const std::map<int64_t, std::string> error_advice = {
    { 3120004, error_advice_3120004 },
    { 3120005, error_advice_3120005 },
    { 3120006, error_advice_3120006 },
+   { 3130001, error_advice_3130001 },
+   { 3130002, error_advice_3130002 },
+   { 3130003, error_advice_3130003 },
+   { 3130004, error_advice_3130004 },
    { 3030002, error_advice_3030002 }
 };
 
