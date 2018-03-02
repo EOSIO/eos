@@ -21,81 +21,55 @@ struct instr;
 using namespace fc;
 using wasm_op_ptr	  = std::unique_ptr<instr>;
 using wasm_instr_ptr      = std::shared_ptr<instr>;
-using wasm_return_t       = fc::optional<std::vector<uint8_t>>; 
+using wasm_return_t       = std::vector<uint8_t>; 
 using wasm_instr_callback = std::function<std::vector<wasm_instr_ptr>(uint8_t)>;
 using code_iterator       = std::vector<uint8_t>::iterator;
 using wasm_op_generator   = std::function<wasm_instr_ptr(std::vector<uint8_t>, size_t)>;
- //  BOOST_PP_CAT(_, OP)( char* block ) {   \
- //  }\
 
-// helper types for construction
 struct no_param_op {
-   static constexpr bool has_data = false;
-};
-struct memarg;
-struct mem_param_op {
-   static constexpr bool has_data = true;
-   typedef memarg t;
-};
-struct blocktype;
-struct block_param_op {
-   static constexpr bool has_data = true;
-   typedef blocktype t;
-};
-struct uint32_param_op {
-   static constexpr bool has_data = true;
-   typedef uint32_t t;
-};
-struct uint64_param_op {
-   static constexpr bool has_data = true;
-   typedef uint64_t t;
+   static constexpr bool has_param = false;
 };
 
-#define CONSTRUCT_OP( r, DATA, OP )       \
-template <typename ... Mutators>          \
-struct BOOST_PP_CAT(_, OP) : instr_base<Mutators...> {  \
-   BOOST_PP_CAT(_, OP)( char* block ){     \
-      if constexpr ( DATA ::has_data ) {   \
-         field = *((field*)(block));      \
-      }                                   \
-   }                                      \
-   uint8_t code = OP;                     \
-   if constexpr ( DATA ::has_data ){       \
-      DATA ::t field;                      \
-   }                                      \
-   std::string to_string() { return #OP; }\
-}; 
+struct block_param_op {
+};
+
+#define CONSTRUCT_OP( r, DATA, OP )                            \
+template <typename ... Mutators>                               \
+struct OP : instr_base<Mutators...> {                          \
+   OP() = default;                                             \
+   OP( char* block ) {}                                        \
+   uint8_t code = BOOST_PP_CAT(OP,_code);                      \
+   uint8_t get_code() { return BOOST_PP_CAT(OP,_code); }       \
+   char* skip_ahead( char* block ) { return ++block; }         \
+   std::string to_string() { return BOOST_PP_STRINGIZE(OP); }  \
+};
+//   char* unpack( char* block ) { return ++block; }             \
+//   std::vector<char> pack() { return { code }; }                    \
+//};
+
+#define CONSTRUCT_OP_HAS_DATA( r, DATA, OP )                                        \
+template <typename ... Mutators>                                                    \
+struct OP : instr_base<Mutators...> {                                               \
+   OP() = default;                                                                  \
+   OP( char* block ) { code = *((uint8_t*)(block++)); field = *((DATA*)(block)); }  \
+   uint8_t code = BOOST_PP_CAT(OP,_code);                                           \
+   DATA field;                                                                      \
+   uint8_t get_code() { return BOOST_PP_CAT(OP,_code); }                            \
+   char* skip_ahead( char* block) { return block + 1 + sizeof(DATA); }              \
+   std::string to_string() { return BOOST_PP_STRINGIZE(OP); }                       \
+};
 /*
-#define CONSTRUCT_OP( r, DATA, OP )       \
-template <typename ... Mutators>          \
-struct BOOST_PP_CAT(_, OP) : instr_base<Mutators...> {  \
-   BOOST_PP_CAT(_, OP)( char* block ) {   \
-   }\
-   uint8_t code = OP;                     \
-   DATA;                                  \
-   std::string to_string() { return #OP; }\
-}; 
-#define CONSTRUCT_OP( r, DATA, OP )       \
-template <typename ... Mutators>          \
-struct BOOST_PP_CAT(_, OP) : instr_base<Mutators...> {  \
-   BOOST_PP_CAT(_, OP)( char* block ) {   \
-   }\
-   uint8_t code = OP;                     \
-   DATA;                                  \
-   std::string to_string() { return #OP; }\
-}; 
-#define CONSTRUCT_OP( r, DATA, OP )       \
-template <typename ... Mutators>          \
-struct BOOST_PP_CAT(_, OP) : instr_base<Mutators...> {  \
-   BOOST_PP_CAT(_, OP)( char* block ) {   \
-   }\
-   uint8_t code = OP;                     \
-   DATA;                                  \
-   std::string to_string() { return #OP; }\
-}; 
+   char* unpack( char* block ) { return block + 1 + sizeof(DATA); }                 \
+   std::vector<char> pack() {                                                            \
+      std::vector<char> ret_vec = { code };                                      \
+      std::vector<char> field_vec = fc::raw::pack(field);                        \
+      return ret_vec.insert( ret_vec.end(), field_vec.begin(), field_vec.end() );   \
+   }                                                                                \
+};
 */
-#define WASM_OP_SEQ_LEN 169
-#define WASM_OP_SEQ  (end)          \
+
+#define WASM_OP_SEQ  (error)        \
+                     (end)          \
                      (unreachable)  \
                      (nop)          \
                      (ret)          \
@@ -263,182 +237,185 @@ struct BOOST_PP_CAT(_, OP) : instr_base<Mutators...> {  \
                      (i64_store16)     \
                      (i64_store32)   \
                      (i64_const)     \
-                     (f64_const)  
+                     (f64_const)    \
+                     (call_indirect) \
+                     (grow_memory) \
+                     (current_memory) 
 
 enum code {
-   unreachable    = 0x00,
-   nop            = 0x01,
-   block          = 0x02,
-   loop           = 0x03,
-   if_eps         = 0x04,
-   if_else        = 0x05,
-   end            = 0x0B,
-   br             = 0x0C,
-   br_if          = 0x0D,
-   br_table       = 0x0E,
-   ret            = 0x0F,
-   call           = 0x10,
-   call_indirect  = 0x11,
-   drop           = 0x1A,
-   select         = 0x1B,
-   get_local      = 0x20,
-   set_local      = 0x21,
-   tee_local      = 0x22,
-   get_global     = 0x23,
-   set_global     = 0x24,
-   i32_load       = 0x28,
-   i64_load       = 0x29,
-   f32_load       = 0x2A,
-   f64_load       = 0x2B,
-   i32_load8_s    = 0x2C,
-   i32_load8_u    = 0x2D,
-   i32_load16_s   = 0x2E,
-   i32_load16_u   = 0x2F,
-   i64_load8_s    = 0x30,
-   i64_load8_u    = 0x31,
-   i64_load16_s   = 0x32,
-   i64_load16_u   = 0x33,
-   i64_load32_s   = 0x34,
-   i64_load32_u   = 0x35,
-   i32_store      = 0x36,
-   i64_store      = 0x37,
-   f32_store      = 0x38,
-   f64_store      = 0x39,
-   i32_store8     = 0x3A,
-   i32_store16    = 0x3B,
-   i64_store8     = 0x3C,
-   i64_store16    = 0x3D,
-   i64_store32    = 0x3E,
-   current_memory    = 0x3F,
-   grow_memory       = 0x40,
-   i32_const      = 0x41,
-   i64_const      = 0x42,
-   f32_const      = 0x43,
-   f64_const      = 0x44,
-   i32_eqz        = 0x45,
-   i32_eq         = 0x46,
-   i32_ne         = 0x47,
-   i32_lt_s       = 0x48,
-   i32_lt_u       = 0x49,
-   i32_gt_s       = 0x4A,
-   i32_gt_u       = 0x4B,
-   i32_le_s       = 0x4C,
-   i32_le_u       = 0x4D,
-   i32_ge_s       = 0x4E,
-   i32_ge_u       = 0x4F,
-   i64_eqz        = 0x50,
-   i64_eq         = 0x51,
-   i64_ne         = 0x52,
-   i64_lt_s       = 0x53,
-   i64_lt_u       = 0x54,
-   i64_gt_s       = 0x55,
-   i64_gt_u       = 0x56,
-   i64_le_s       = 0x57,
-   i64_le_u       = 0x58,
-   i64_ge_s       = 0x59,
-   i64_ge_u       = 0x5A,
-   f32_eq         = 0x5B,
-   f32_ne         = 0x5C,
-   f32_lt         = 0x5D,
-   f32_gt         = 0x5E,
-   f32_le         = 0x5F,
-   f32_ge         = 0x60,
-   f64_eq         = 0x61,
-   f64_ne         = 0x62,
-   f64_lt         = 0x63,
-   f64_gt         = 0x64,
-   f64_le         = 0x65,
-   f64_ge         = 0x66,
-   i32_clz        = 0x67,
-   i32_ctz        = 0x68,
-   i32_popcount   = 0x69,
-   i32_add        = 0x6A,
-   i32_sub        = 0x6B,
-   i32_mul        = 0x6C,
-   i32_div_s      = 0x6D,
-   i32_div_u      = 0x6E,
-   i32_rem_s      = 0x6F,
-   i32_rem_u      = 0x70,
-   i32_and        = 0x71,
-   i32_or         = 0x72,
-   i32_xor        = 0x73,
-   i32_shl        = 0x74,
-   i32_shr_s      = 0x75,
-   i32_shr_u      = 0x76,
-   i32_rotl       = 0x77,
-   i32_rotr       = 0x78,
-   i64_clz        = 0x79,
-   i64_ctz        = 0x7A,
-   i64_popcount   = 0x7B,
-   i64_add        = 0x7C,
-   i64_sub        = 0x7D,
-   i64_mul        = 0x7E,
-   i64_div_s      = 0x7F,
-   i64_div_u      = 0x80,
-   i64_rem_s      = 0x81,
-   i64_rem_u      = 0x82,
-   i64_and        = 0x83,
-   i64_or         = 0x84,
-   i64_xor        = 0x85,
-   i64_shl        = 0x86,
-   i64_shr_s      = 0x87,
-   i64_shr_u      = 0x88,
-   i64_rotl       = 0x89,
-   i64_rotr       = 0x8A,
-   f32_abs        = 0x8B,
-   f32_neg        = 0x8C,
-   f32_ceil       = 0x8D,
-   f32_floor      = 0x8E,
-   f32_trunc      = 0x8F,
-   f32_nearest    = 0x90,
-   f32_sqrt       = 0x91,
-   f32_add        = 0x92,
-   f32_sub        = 0x93,
-   f32_mul        = 0x94,
-   f32_div        = 0x95,
-   f32_min        = 0x96,
-   f32_max        = 0x97,
-   f32_copysign   = 0x98,
-   f64_abs        = 0x99,
-   f64_neg        = 0x9A,
-   f64_ceil       = 0x9B,
-   f64_floor      = 0x9C,
-   f64_trunc      = 0x9D,
-   f64_nearest    = 0x9E,
-   f64_sqrt       = 0x9F,
-   f64_add        = 0xA0,
-   f64_sub        = 0xA1,
-   f64_mul        = 0xA2,
-   f64_div        = 0xA3,
-   f64_min        = 0xA4,
-   f64_max        = 0xA5,
-   f64_copysign   = 0xA6,
-   i32_wrap_i64       = 0xA7,
-   i32_trunc_s_f32    = 0xA8,
-   i32_trunc_u_f32    = 0xA9,
-   i32_trunc_s_f64    = 0xAA,
-   i32_trunc_u_f64    = 0xAB,
-   i64_extend_s_i32   = 0xAC,
-   i64_extend_u_i32   = 0xAD,
-   i64_trunc_s_f32    = 0xAE,
-   i64_trunc_u_f32    = 0xAF,
-   i64_trunc_s_f64    = 0xB0,
-   i64_trunc_u_f64    = 0xB1,
-   f32_convert_s_i32  = 0xB2,
-   f32_convert_u_i32  = 0xB3,
-   f32_convert_s_i64  = 0xB4,
-   f32_convert_u_i64  = 0xB5,
-   f32_demote_f64     = 0xB6,
-   f64_convert_s_i32  = 0xB7,
-   f64_convert_u_i32  = 0xB8,
-   f64_convert_s_i64  = 0xB9,
-   f64_convert_u_i64  = 0xBA,
-   f64_promote_f32    = 0xBB,
-   i32_reinterpret_f32 = 0xBC,
-   i64_reinterpret_f64 = 0xBD,
-   f32_reinterpret_i32 = 0xBE,
-   f64_reinterpret_i64 = 0xBF,
-   error               = 0xFF,
+   unreachable_code    = 0x00,
+   nop_code            = 0x01,
+   block_code          = 0x02,
+   loop_code           = 0x03,
+   if_eps_code         = 0x04,
+   if_else_code        = 0x05,
+   end_code            = 0x0B,
+   br_code             = 0x0C,
+   br_if_code          = 0x0D,
+   br_table_code       = 0x0E,
+   ret_code            = 0x0F,
+   call_code           = 0x10,
+   call_indirect_code  = 0x11,
+   drop_code           = 0x1A,
+   select_code         = 0x1B,
+   get_local_code      = 0x20,
+   set_local_code      = 0x21,
+   tee_local_code      = 0x22,
+   get_global_code     = 0x23,
+   set_global_code     = 0x24,
+   i32_load_code       = 0x28,
+   i64_load_code       = 0x29,
+   f32_load_code       = 0x2A,
+   f64_load_code       = 0x2B,
+   i32_load8_s_code    = 0x2C,
+   i32_load8_u_code    = 0x2D,
+   i32_load16_s_code   = 0x2E,
+   i32_load16_u_code   = 0x2F,
+   i64_load8_s_code    = 0x30,
+   i64_load8_u_code    = 0x31,
+   i64_load16_s_code   = 0x32,
+   i64_load16_u_code   = 0x33,
+   i64_load32_s_code   = 0x34,
+   i64_load32_u_code   = 0x35,
+   i32_store_code      = 0x36,
+   i64_store_code      = 0x37,
+   f32_store_code      = 0x38,
+   f64_store_code      = 0x39,
+   i32_store8_code     = 0x3A,
+   i32_store16_code    = 0x3B,
+   i64_store8_code     = 0x3C,
+   i64_store16_code    = 0x3D,
+   i64_store32_code    = 0x3E,
+   current_memory_code    = 0x3F,
+   grow_memory_code       = 0x40,
+   i32_const_code      = 0x41,
+   i64_const_code      = 0x42,
+   f32_const_code      = 0x43,
+   f64_const_code      = 0x44,
+   i32_eqz_code        = 0x45,
+   i32_eq_code         = 0x46,
+   i32_ne_code         = 0x47,
+   i32_lt_s_code       = 0x48,
+   i32_lt_u_code       = 0x49,
+   i32_gt_s_code       = 0x4A,
+   i32_gt_u_code       = 0x4B,
+   i32_le_s_code       = 0x4C,
+   i32_le_u_code       = 0x4D,
+   i32_ge_s_code       = 0x4E,
+   i32_ge_u_code       = 0x4F,
+   i64_eqz_code        = 0x50,
+   i64_eq_code         = 0x51,
+   i64_ne_code         = 0x52,
+   i64_lt_s_code       = 0x53,
+   i64_lt_u_code       = 0x54,
+   i64_gt_s_code       = 0x55,
+   i64_gt_u_code       = 0x56,
+   i64_le_s_code       = 0x57,
+   i64_le_u_code       = 0x58,
+   i64_ge_s_code       = 0x59,
+   i64_ge_u_code       = 0x5A,
+   f32_eq_code         = 0x5B,
+   f32_ne_code         = 0x5C,
+   f32_lt_code         = 0x5D,
+   f32_gt_code         = 0x5E,
+   f32_le_code         = 0x5F,
+   f32_ge_code         = 0x60,
+   f64_eq_code         = 0x61,
+   f64_ne_code         = 0x62,
+   f64_lt_code         = 0x63,
+   f64_gt_code         = 0x64,
+   f64_le_code         = 0x65,
+   f64_ge_code         = 0x66,
+   i32_clz_code        = 0x67,
+   i32_ctz_code        = 0x68,
+   i32_popcount_code   = 0x69,
+   i32_add_code        = 0x6A,
+   i32_sub_code        = 0x6B,
+   i32_mul_code        = 0x6C,
+   i32_div_s_code      = 0x6D,
+   i32_div_u_code      = 0x6E,
+   i32_rem_s_code      = 0x6F,
+   i32_rem_u_code      = 0x70,
+   i32_and_code        = 0x71,
+   i32_or_code         = 0x72,
+   i32_xor_code        = 0x73,
+   i32_shl_code        = 0x74,
+   i32_shr_s_code      = 0x75,
+   i32_shr_u_code      = 0x76,
+   i32_rotl_code       = 0x77,
+   i32_rotr_code       = 0x78,
+   i64_clz_code        = 0x79,
+   i64_ctz_code        = 0x7A,
+   i64_popcount_code   = 0x7B,
+   i64_add_code        = 0x7C,
+   i64_sub_code        = 0x7D,
+   i64_mul_code        = 0x7E,
+   i64_div_s_code      = 0x7F,
+   i64_div_u_code      = 0x80,
+   i64_rem_s_code      = 0x81,
+   i64_rem_u_code      = 0x82,
+   i64_and_code        = 0x83,
+   i64_or_code         = 0x84,
+   i64_xor_code        = 0x85,
+   i64_shl_code        = 0x86,
+   i64_shr_s_code      = 0x87,
+   i64_shr_u_code      = 0x88,
+   i64_rotl_code       = 0x89,
+   i64_rotr_code       = 0x8A,
+   f32_abs_code        = 0x8B,
+   f32_neg_code        = 0x8C,
+   f32_ceil_code       = 0x8D,
+   f32_floor_code      = 0x8E,
+   f32_trunc_code      = 0x8F,
+   f32_nearest_code    = 0x90,
+   f32_sqrt_code       = 0x91,
+   f32_add_code        = 0x92,
+   f32_sub_code        = 0x93,
+   f32_mul_code        = 0x94,
+   f32_div_code        = 0x95,
+   f32_min_code        = 0x96,
+   f32_max_code        = 0x97,
+   f32_copysign_code   = 0x98,
+   f64_abs_code        = 0x99,
+   f64_neg_code        = 0x9A,
+   f64_ceil_code       = 0x9B,
+   f64_floor_code      = 0x9C,
+   f64_trunc_code      = 0x9D,
+   f64_nearest_code    = 0x9E,
+   f64_sqrt_code       = 0x9F,
+   f64_add_code        = 0xA0,
+   f64_sub_code        = 0xA1,
+   f64_mul_code        = 0xA2,
+   f64_div_code        = 0xA3,
+   f64_min_code        = 0xA4,
+   f64_max_code        = 0xA5,
+   f64_copysign_code   = 0xA6,
+   i32_wrap_i64_code       = 0xA7,
+   i32_trunc_s_f32_code    = 0xA8,
+   i32_trunc_u_f32_code    = 0xA9,
+   i32_trunc_s_f64_code    = 0xAA,
+   i32_trunc_u_f64_code    = 0xAB,
+   i64_extend_s_i32_code   = 0xAC,
+   i64_extend_u_i32_code   = 0xAD,
+   i64_trunc_s_f32_code    = 0xAE,
+   i64_trunc_u_f32_code    = 0xAF,
+   i64_trunc_s_f64_code    = 0xB0,
+   i64_trunc_u_f64_code    = 0xB1,
+   f32_convert_s_i32_code  = 0xB2,
+   f32_convert_u_i32_code  = 0xB3,
+   f32_convert_s_i64_code  = 0xB4,
+   f32_convert_u_i64_code  = 0xB5,
+   f32_demote_f64_code     = 0xB6,
+   f64_convert_s_i32_code  = 0xB7,
+   f64_convert_u_i32_code  = 0xB8,
+   f64_convert_s_i64_code  = 0xB9,
+   f64_convert_u_i64_code  = 0xBA,
+   f64_promote_f32_code    = 0xBB,
+   i32_reinterpret_f32_code = 0xBC,
+   i64_reinterpret_f64_code = 0xBD,
+   f32_reinterpret_i32_code = 0xBE,
+   f64_reinterpret_i64_code = 0xBF,
+   error_code               = 0xFF,
 }; // code
 
 enum valtype {
@@ -494,68 +471,89 @@ struct globaltype {
 };
 
 struct instr {
-   uint8_t code;
    virtual std::string to_string() { return "instr"; }
+   virtual uint8_t get_code() = 0;
    virtual wasm_return_t visit() = 0;
-   virtual std::vector<uint8_t> pack() { return { code }; }
+   virtual char* skip_ahead( char* block ) = 0;
+};
+
+struct callindirecttype {
+   uint32_t funcidx;
+   uint8_t end = unreachable_code;
+};
+
+struct memoryoptype {
+   uint8_t end = unreachable_code;
 };
 
 template <typename ... Mutators>
 struct instr_base : instr {
    virtual wasm_return_t visit( ) {//code_iterator start, code_iterator end ) {
-      for ( auto m : { Mutators::accept... } )
-         m( this );
-      
-      return {};
+      std::vector<uint8_t> ret_vec = {};
+      for ( auto m : { Mutators::accept... } ) {
+         std::vector<uint8_t> temp = m(this);
+         ret_vec.insert(ret_vec.end(), temp.begin(), temp.end());
+      }
+      return ret_vec;
    } 
 };
-
+/*
+// odd specializations that don't fit anywhere
 // error
 template <typename ... Mutators>
-struct _error : instr_base<Mutators...> {
-   uint8_t code = error;
+struct error : instr_base<Mutators...> {
+   uint8_t code = error_code;
+   uint8_t get_code() { return error_code; }
    std::string to_string() { return "error"; }
-   virtual wasm_return_t visit( ) {//code_iterator start, code_iterator end ) {
-      //FC_THROW("ERROR, invalid instruction");  //TODO add exception here
-      return {};
-   } 
-};
-template <typename ... Mutators>
-struct _call_indirect : instr_base<Mutators...> {
-   uint8_t code = call_indirect;
-   uint32_t funcidx;
-   uint8_t end = unreachable;
-   std::string to_string() { return "call_indirect"; }
-};
-template <typename ... Mutators>
-struct _current_memory : instr_base<Mutators...> {
-   uint8_t code = current_memory;
-   uint8_t end = unreachable;
-   std::string to_string() { return "current_memory"; }
-};
-template <typename ... Mutators>
-struct _grow_memory : instr_base<Mutators...>{
-   uint8_t code = grow_memory;
-   uint8_t end = unreachable;
-   std::string to_string() { return "grow_memory"; }
+   char* skip_ahead( char* block ) { return block + sizeof(code); }
 };
 
+template <typename ... Mutators>
+struct call_indirect : instr_base<Mutators...> {
+   uint8_t code = call_indirect_code;
+   uint32_t funcidx;
+   uint8_t end = unreachable_code;
+   std::string to_string() { return "call_indirect"; }
+   uint8_t get_code() { return error_code; }
+   char* skip_ahead( char* block ) { return block + sizeof(code)+sizeof(funcidx)+sizeof(end); }
+};
+template <typename ... Mutators>
+struct current_memory : instr_base<Mutators...> {
+   uint8_t code = current_memory_code;
+   uint8_t end = unreachable_code;
+   std::string to_string() { return "current_memory"; }
+   uint8_t get_code() { return current_memory_code; }
+   char* skip_ahead( char* block ) { return block + sizeof(code)+sizeof(end); }
+};
+template <typename ... Mutators>
+struct grow_memory : instr_base<Mutators...>{
+   uint8_t code = grow_memory_code;
+   uint8_t end = unreachable_code;
+   std::string to_string() { return "grow_memory"; }
+   uint8_t get_code() { return grow_memory_code; }
+   char* skip_ahead( char* block ) { return block + sizeof(code)+sizeof(end); }
+};
+*/
 
 // construct the ops
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP, no_param_op,             BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 130 ) )
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP, block_param_op, BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 130, 4 ) )
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP, uint32_param_op,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 134, 10 ) )
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP, mem_param_op,     BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 144, 23 ) )
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP, uint64_param op,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 167, 2 ) )
-
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP, no_param_op ,                    BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 131 ) )
+//BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP, block_param_op ,                    BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 130 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, blocktype,  BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 131, 4 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, uint32_t,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 135, 10 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, memarg,     BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 145, 23 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, uint64_t,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 168, 2 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, callindirecttype,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 170, 1 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, memoryoptype,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 171, 2 ) )
+#undef CONSTRUCT_OP
+#undef CONSTRUCT_OP_HAS_DATA
 #pragma pack (pop)
 
 struct nop_mutator {
-   static void accept( instr* inst ) {}
+   static wasm_return_t accept( instr* inst ) {}
 };
 
 #define GEN_TYPE( r, T, OP ) \
-   using BOOST_PP_CAT( OP, _t ) = BOOST_PP_CAT(_, OP) < T , BOOST_PP_CAT(T, s) ...>;
+   using BOOST_PP_CAT( OP, _t ) = OP < T , BOOST_PP_CAT(T, s) ...>;
 
 // class to inherit from to attach specific mutators and have default behavior for all specified types
 template < typename Mutator = nop_mutator, typename ... Mutators>
@@ -563,15 +561,53 @@ struct op_types {
    BOOST_PP_SEQ_FOR_EACH( GEN_TYPE, Mutator, WASM_OP_SEQ )
 }; // op_types
 
+// simple struct to house a set of instaniated ops that we can take the reference from
+template <class Op_Types>
+struct cached_ops {
+ #define GEN_FIELD( r, P, OP ) \
+   typename Op_Types::BOOST_PP_CAT(OP,_t) BOOST_PP_CAT(P, OP);
+   BOOST_PP_SEQ_FOR_EACH( GEN_FIELD, cached_, WASM_OP_SEQ )
+ #undef GEN_FIELD
+};
+
+// function to dynamically get the instr pointer we want
+template <class Op_Types>
+instr* get_instr_from_op( uint8_t code ) {
+   static cached_ops<Op_Types> _cached_ops;
+
+#define GEN_CASE( r, P, OP )     \
+   case BOOST_PP_CAT(OP, _code): \
+      return &_cached_ops.BOOST_PP_CAT(P, OP);   
+
+   switch ( code ) {
+   BOOST_PP_SEQ_FOR_EACH( GEN_CASE, cached_, WASM_OP_SEQ )
+   }
+#undef GEN_CASE
+}
+
 }}} // namespace eosio, chain, wasm_ops
-/*
+
 #define REFLECT_OP( r, FIELD, OP ) \
-FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::BOOST_PP_CAT(_,OP)< T >, (code)( FIELD ) )
+FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::OP< T >, (code) )
+/*
 BOOST_PP_SEQ_FOR_EACH( REFLECT_OP, ,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 130 ) )
 BOOST_PP_SEQ_FOR_EACH( REFLECT_OP, rt, BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 130, 4 ) )
 BOOST_PP_SEQ_FOR_EACH( REFLECT_OP, n,  BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 134, 10 ) )
 BOOST_PP_SEQ_FOR_EACH( REFLECT_OP, m,  BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 144, 23 ) )
 BOOST_PP_SEQ_FOR_EACH( REFLECT_OP, n,  BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 167, 2 ) )
 */
-FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::_nop< T >, (code) )
-FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::_block< T >, (code)(rt) )
+FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::nop< T >, (code) )
+//BOOST_PP_SEQ_FOR_EACH( REFLECT_OP, , BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 130 ) )
+#undef REFLECT_OP
+FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::block< T >, (code)(rt) )
+FC_REFLECT( eosio::chain::wasm_ops::memarg, (a)(o) )
+FC_REFLECT( eosio::chain::wasm_ops::blocktype, (result) )
+//FC_REFLECT( eosio::chain::wasm_ops::functype, (code)(params)(results) )
+FC_REFLECT( eosio::chain::wasm_ops::limits, (code)(min)(max) )
+FC_REFLECT( eosio::chain::wasm_ops::memtype, (lim) )
+FC_REFLECT( eosio::chain::wasm_ops::elemtype, (code) )
+FC_REFLECT( eosio::chain::wasm_ops::tabletype, (et)(lim) )
+FC_REFLECT( eosio::chain::wasm_ops::mut, (code) )
+FC_REFLECT( eosio::chain::wasm_ops::globaltype, (t)(m) )
+FC_REFLECT( eosio::chain::wasm_ops::callindirecttype, (funcidx)(end) )
+FC_REFLECT( eosio::chain::wasm_ops::memoryoptype, (end) )

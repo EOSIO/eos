@@ -10,7 +10,7 @@
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/wasm_module_walker.hpp>
 #include <eosio/chain/wasm_eosio_rewriters.hpp>
-#include <eosio/chain/wasm_eosio_binops_table.hpp>
+//#include <eosio/chain/wasm_eosio_binops_table.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
@@ -172,13 +172,15 @@ namespace eosio { namespace chain {
        * @return reference to a usable cache entry
        */
       struct test_mutator {
-         static void accept( wasm_ops::instr* inst ) {
+         static std::vector<uint8_t> accept( wasm_ops::instr* inst ) {
             std::cout << "ACCEPTING\n";
+            return {};
          }
       };
       struct test_mutator2 {
-         static void accept( wasm_ops::instr* inst ) {
+         static std::vector<uint8_t> accept( wasm_ops::instr* inst ) {
             std::cout << "ACCEPTING2\n";
+            return {};
          }
       };
 
@@ -215,50 +217,54 @@ namespace eosio { namespace chain {
                                                            wasm_constraints::globals_validator>>
                                                    wmw(*module);
 
-                  wasm_ops::wasm_instr_ptr nopi = std::make_shared< wasm_ops::_nop<test_mutator> >();
-                  wasm_ops::wasm_instr_ptr blocki = std::make_shared< wasm_ops::_block<test_mutator2> >();
+                  wasm_ops::wasm_instr_ptr nopi = std::make_shared< wasm_ops::nop<test_mutator> >();
+                  wasm_ops::wasm_instr_ptr blocki = std::make_shared< wasm_ops::block<test_mutator2> >();
 //                  nopi->visit();
 //                  blocki->visit();
                   wasm_ops::op_types<test_mutator>::block_t b;
                   wasm_ops::op_types<test_mutator>::i64_popcount_t ipc;
-                  wasm_ops::_nop<test_mutator> n;
-                  wasm_ops::_call<test_mutator> br;
-                  br.n = 23;
+                  wasm_ops::nop<test_mutator> n;
+                  wasm_ops::call<test_mutator> br;
+                  br.field = 23;
                   wasm_rewriter::op_constrainers::f32_add_t f32;
                   b.visit();
                   ipc.visit();
 //                  f32.visit();
 //                  std::cout << "NOP SIZE " << (int)fc::raw::pack(*nopi)[0] << "\n";
                   //std::cout << "BLOCK SIZE " << (int)fc::raw::pack(b).size() << "\n";
-                  std::cout << "B ";
-                  for (auto c : b.pack() )
-                     std::cout << (int)c << " ";
-                  std::cout << "\nBLOCK SIZE " << (int)b.pack().size() << "\n";
-                  std::cout << "NOP " << (int)n.pack()[0] << "\n";
-                  std::cout << "BR " << (int)((br.pack()[1] << 24) | (br.pack()[2] << 16) | (br.pack()[3] << 8) | (br.pack()[4])) << "\n";
-                 // wasm_module_walker<wasm_eosio_standard_constraints> wmw(*module);
                   wmw.pre_validate();
-           /* 
                   for (auto def : module->functions.defs) {
                      char* code = (char*)(def.code.data());
                      char* code_end = code+def.code.size();
                      while (code < code_end) {
-                        wasm_ops::wasm_op_ptr op = wasm_ops::get_wasm_op_ptr<wasm_ops::op_types<>>(code);
+                        wasm_ops::instr* op = wasm_ops::get_instr_from_op<wasm_ops::op_types<>>(*code);
                         code += op->skip_ahead();
                         std::cout << "OP " << op->to_string() << "\n"; 
                      }
                         //std::cout << (int)n << " ";
                   } 
-                  */
+                  /*
                   std::cout << "\n";
-                  uint8_t* buff = new uint8_t[2];
-                  buff[0] = wasm_ops::nop;
-                  buff[1] = wasm_ops::nop;
-                  std::vector<uint8_t> code = {wasm_ops::block, 13, wasm_ops::nop};
-                  wasm_ops::instr* nop_ = new wasm_ops::which_pointer<wasm_ops::op_types<>, wasm_ops::block>::instr_t();
+                  uint8_t* buff = new uint8_t[3];
+                  buff[0] = wasm_ops::block_code;
+                  buff[1] = 120;
+                  //buff[2] = wasm_ops::nop_code;
+                  buff[2] = 34;
+                  std::vector<uint8_t> code = {wasm_ops::block_code, 13, wasm_ops::nop_code};
+//                  wasm_ops::instr* block_ = new wasm_ops::wasm_op_table::which_pointer<wasm_ops::op_types<test_mutator2>, wasm_ops::block_code>::instr_t((char*)buff);
+//                  wasm_ops::instr* nop_ = new wasm_ops::wasm_op_table::which_pointer<wasm_ops::op_types<test_mutator2>, wasm_ops::nop_code>::instr_t(block_->skip_ahead((char*)buff));
+                  wasm_ops::instr* block_ = wasm_ops::get_instr_from_op<wasm_ops::op_types<test_mutator2>>(wasm_ops::block_code);
+                  wasm_ops::instr* nop_ = wasm_ops::get_instr_from_op<wasm_ops::op_types<test_mutator2>>(wasm_ops::nop_code);
+
                   datastream<uint8_t*> ds( code.data(), code.size() );
+
                   //fc::raw::unpack(ds, *nop_);
-                  n.visit();
+                  block_->visit();
+
+                  std::cout << "FIELD : " <<  (uint64_t)((wasm_ops::block<test_mutator>*)block_)->field.result << "\n";
+                  std::cout << "CODE : " << (int)block_->get_code() << "NAME : " << block_->to_string() << "\n";
+                  std::cout << "CODE : " << (int)nop_->get_code() << "NAME : " << nop_->to_string() << "\n";
+                  */
                   root_resolver resolver;
                   LinkResult link_result = linkModule(*module, resolver);
                   instance = instantiateModule(*module, std::move(link_result.resolvedImports));
