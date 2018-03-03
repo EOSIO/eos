@@ -330,6 +330,16 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata&& da
    return result;
 }
 
+optional<block_header> chain_controller::head_block_header() const
+{
+   auto b = _fork_db.fetch_block(head_block_id());
+   if( b ) return optional<block_header>(b->data);
+
+   if (auto head_block = fetch_block_by_id(head_block_id()))
+      return optional<block_header>(*head_block);
+   return optional<block_header>();
+}
+
 void chain_controller::_start_pending_block()
 {
    FC_ASSERT( !_pending_block );
@@ -339,6 +349,32 @@ void chain_controller::_start_pending_block()
    _pending_block->regions.resize(1);
    _pending_block_trace->region_traces.resize(1);
    _start_pending_cycle();
+   _apply_on_block_transaction();
+}
+
+optional<transaction> chain_controller::_get_on_block_transaction()
+{
+   optional<block_header> header = head_block_header();
+   if (!header) return optional<transaction>();
+   action on_block_act;
+   on_block_act.account = config::system_account_name;
+   on_block_act.name = N(onblock);
+   on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
+   on_block_act.data = fc::raw::pack(*header);
+
+   transaction trx;
+   trx.actions.emplace_back(std::move(on_block_act));
+   trx.set_reference_block(head_block_id());
+   return trx;
+}
+
+void chain_controller::_apply_on_block_transaction()
+{
+   auto trx = _get_on_block_transaction();
+   if (trx) {
+      transaction_metadata mtrx(packed_transaction(*trx), get_chain_id(), head_block_time());
+      _push_transaction(std::move(mtrx));
+   }
 }
 
 /**
@@ -604,7 +640,12 @@ void chain_controller::__apply_block(const signed_block& next_block)
    /// cache the input tranasction ids so that they can be looked up when executing the
    /// summary
    vector<transaction_metadata> input_metas;
-   input_metas.reserve(next_block.input_transactions.size());
+   input_metas.reserve(next_block.input_transactions.size() + 1);
+   {
+      auto trx = _get_on_block_transaction();
+      if (!trx)
+         input_metas.emplace_back(packed_transaction(*trx), get_chain_id(), head_block_time());
+   }
    map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
       input_metas.emplace_back(t, chain_id_type(), next_block.timestamp);
@@ -663,10 +704,16 @@ void chain_controller::__apply_block(const signed_block& next_block)
                   if( itr != trx_index.end() ) {
                      return &input_metas.at(itr->second);
                   } else {
-                     const auto& gtrx = _db.get<generated_transaction_object,by_trx_id>(receipt.id);
-                     auto trx = fc::raw::unpack<deferred_transaction>(gtrx.packed_trx.data(), gtrx.packed_trx.size());
-                     _temp.emplace(trx, gtrx.published, trx.sender, trx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() );
-                     return &*_temp;
+                     const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
+                     if (gtrx != nullptr) {
+                        auto trx = fc::raw::unpack<deferred_transaction>(gtrx->packed_trx.data(), gtrx->packed_trx.size());
+                        _temp.emplace(trx, gtrx->published, trx.sender, trx.sender_id, gtrx->packed_trx.data(), gtrx->packed_trx.size() );
+                        return &*_temp;
+                     } else {
+                        const auto& mtrx = input_metas[0];
+                        FC_ASSERT(mtrx.id == receipt.id, "on-block transaction id mismatch");
+                        return &input_metas[0];
+                     }
                   }
                };
 
