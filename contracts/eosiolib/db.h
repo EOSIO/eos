@@ -1035,6 +1035,7 @@ int32_t db_find_i64(account_name code, account_name scope, table_name table, uin
 int32_t db_lowerbound_i64(account_name code, account_name scope, table_name table, uint64_t id);
 int32_t db_upperbound_i64(account_name code, account_name scope, table_name table, uint64_t id);
 int32_t db_end_i64(account_name code, account_name scope, table_name table);
+int32_t db_rend_i64(account_name code, account_name scope, table_name table);
 
 int32_t db_idx64_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint64_t* secondary);
 void db_idx64_update(int32_t iterator, account_name payer, const uint64_t* secondary);
@@ -1046,6 +1047,7 @@ int32_t db_idx64_find_secondary(account_name code, account_name scope, table_nam
 int32_t db_idx64_lowerbound(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t* primary);
 int32_t db_idx64_upperbound(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t* primary);
 int32_t db_idx64_end(account_name code, account_name scope, table_name table);
+int32_t db_idx64_rend(account_name code, account_name scope, table_name table);
 
 int32_t db_idx128_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint128_t* secondary);
 void db_idx128_update(int32_t iterator, account_name payer, const uint128_t* secondary);
@@ -1057,6 +1059,7 @@ int32_t db_idx128_find_secondary(account_name code, account_name scope, table_na
 int32_t db_idx128_lowerbound(account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t* primary);
 int32_t db_idx128_upperbound(account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t* primary);
 int32_t db_idx128_end(account_name code, account_name scope, table_name table);
+int32_t db_idx128_rend(account_name code, account_name scope, table_name table);
 
 int32_t db_idx256_store(account_name scope, table_name table, account_name payer, uint64_t id, const void* data, uint32_t data_len );
 void db_idx256_update(int32_t iterator, account_name payer, const void* data, uint32_t data_len);
@@ -1068,5 +1071,6 @@ int32_t db_idx256_find_secondary(account_name code, account_name scope, table_na
 int32_t db_idx256_lowerbound(account_name code, account_name scope, table_name table, void* data, uint32_t data_len, uint64_t* primary);
 int32_t db_idx256_upperbound(account_name code, account_name scope, table_name table, void* data, uint32_t data_len, uint64_t* primary);
 int32_t db_idx256_end(account_name code, account_name scope, table_name table);
+int32_t db_idx256_rend(account_name code, account_name scope, table_name table);
 
 }
