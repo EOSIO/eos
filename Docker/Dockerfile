@@ -13,7 +13,7 @@ RUN echo "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-4.0 main" >> /et
   && apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y git-core automake autoconf libtool build-essential pkg-config libtool \
      mpi-default-dev libicu-dev python-dev python3-dev libbz2-dev zlib1g-dev libssl-dev libgmp-dev \
-     clang-4.0 lldb-4.0 lld-4.0 llvm-4.0-dev libclang-4.0-dev libsasl2-dev ninja-build \
+     clang-4.0 lldb-4.0 lld-4.0 llvm-4.0-dev libclang-4.0-dev ninja-build \
   && rm -rf /var/lib/apt/lists/*
 
 RUN update-alternatives --install /usr/bin/clang clang /usr/lib/llvm-4.0/bin/clang 400 \
@@ -30,15 +30,15 @@ RUN wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.
     && cd boost_1_64_0 \
     && ./bootstrap.sh --prefix=/usr/local \
     && echo 'using clang : 4.0 : clang++-4.0 ;' >> project-config.jam \
-    && ./b2 -d0 -j4 --with-thread --with-date_time --with-system --with-filesystem --with-program_options \
+    && ./b2 -d0 -j$(nproc) --with-thread --with-date_time --with-system --with-filesystem --with-program_options \
        --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine --with-iostreams toolset=clang link=static install \
     && cd .. && rm -rf boost_1_64_0
 
-RUN wget https://github.com/mongodb/mongo-c-driver/releases/download/1.8.0/mongo-c-driver-1.8.0.tar.gz -O - | tar -xz \
-    && cd mongo-c-driver-1.8.0 \
+RUN wget https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz -O - | tar -xz \
+    && cd mongo-c-driver-1.9.3 \
     && ./configure --disable-automatic-init-and-cleanup --prefix=/usr/local \
-    && make install \
-    && cd .. && rm -rf mongo-c-driver-1.8.0
+    && make -j$(nproc) install \
+    && cd .. && rm -rf mongo-c-driver-1.9.3
 
 RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git \
     && git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git llvm/tools/clang \
@@ -58,22 +58,8 @@ RUN git clone --depth 1 git://github.com/cryptonomex/secp256k1-zkp \
     && cd secp256k1-zkp \
     && ./autogen.sh \
     && ./configure --prefix=/usr/local \
-    && make install \
+    && make -j$(nproc) install \
     && cd .. && rm -rf secp256k1-zkp
-
-RUN wget https://github.com/mongodb/libbson/releases/download/1.9.3/libbson-1.9.3.tar.gz -O - | tar -xz \
-    && cd libbson-1.9.3 \
-    && ./configure --prefix=/usr/local \
-    && cmake -H. -Bbuild -GNinja -DCMAKE_BUILD_TYPE=Release \
-    && cmake --build build --target install \
-    && cd .. && rm -rf libbson-1.9.3
-
-RUN wget https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz -O - | tar -xz \
-    && cd mongo-c-driver-1.9.3 \
-    && ./configure --disable-automatic-init-and-cleanup --prefix=/usr/local \
-    && cmake -H. -Bbuild -GNinja -DCMAKE_BUILD_TYPE=Release \
-    && cmake --build build --target install \
-    && cd .. && rm -rf mongo-c-driver-1.9.3
 
 RUN git clone --depth 1 -b releases/stable git://github.com/mongodb/mongo-cxx-driver \
     && cd mongo-cxx-driver \
