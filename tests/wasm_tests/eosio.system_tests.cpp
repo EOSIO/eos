@@ -151,10 +151,37 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_myself, eosio_system_tester ) try {
    );
 
    stake = get_total_stake( "alice" );
-   std::cout << "STAKE: " << stake["net_weight"].as_uint64() << ' ' << stake["cpu_weight"].as_uint64() << std::endl;
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, stake["net_weight"].as_uint64());
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, stake["cpu_weight"].as_uint64());
-   BOOST_REQUIRE_EQUAL( 0, stake["storage_stake"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, stake["storage_stake"].as_uint64());
+   BOOST_REQUIRE_EQUAL( 0, stake["storage_bytes"].as_uint64());
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
+   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+
+   BOOST_REQUIRE_EQUAL( error("missing authority of alice"),
+                        push_action( N(alice), N(delegatebw), mvo()
+                                    ("from",     "alice")
+                                    ("receiver", "bob")
+                                    ("stake_net", "10.0000 EOS")
+                                    ("stake_cpu", "10.0000 EOS")
+                                    ("stake_storage", "10.0000 EOS"),
+                                    false
+                        )
+   );
+
+   BOOST_REQUIRE_EQUAL( error("missing authority of alice"),
+                        push_action(N(alice), N(undelegatebw), mvo()
+                                    ("from",     "alice")
+                                    ("receiver", "bob")
+                                    ("unstake_net", "200.0000 EOS")
+                                    ("unstake_cpu", "100.0000 EOS")
+                                    ("unstake_bytes", 0)
+                                    ,false
+                        )
+   );
 
 } FC_LOG_AND_RETHROW()
 
@@ -186,6 +213,90 @@ BOOST_FIXTURE_TEST_CASE( stake_negative, eosio_system_tester ) try {
                                     ("stake_net", "0.0000 EOS")
                                     ("stake_cpu", "0.0000 EOS")
                                     ("stake_storage", "-0.0001 EOS") )
+   );
+
+   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must stake a positive amount"),
+                        push_action( N(alice), N(delegatebw), mvo()
+                                    ("from",     "alice")
+                                    ("receiver", "alice")
+                                    ("stake_net", "0.0000 EOS")
+                                    ("stake_cpu", "0.0000 EOS")
+                                    ("stake_storage", "0.0000 EOS") )
+   );
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( unstake_negative, eosio_system_tester ) try {
+   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+
+   push_action(N(alice), N(delegatebw), mvo()
+               ("from",     "alice")
+               ("receiver", "bob")
+               ("stake_net", "200.0000 EOS")
+               ("stake_cpu", "100.0000 EOS")
+               ("stake_storage", "300.0000 EOS")
+   );
+
+   auto stake = get_total_stake( "bob" );
+   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS").amount, stake["net_weight"].as_uint64());
+
+   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must unstake a positive amount"),
+                        push_action(N(alice), N(undelegatebw), mvo()
+                                    ("from",     "alice")
+                                    ("receiver", "bob")
+                                    ("unstake_net", "-1.0000 EOS")
+                                    ("unstake_cpu", "0.0000 EOS")
+                                    ("unstake_bytes", 0) )
+   );
+
+   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must unstake a positive amount"),
+                        push_action(N(alice), N(undelegatebw), mvo()
+                                    ("from",     "alice")
+                                    ("receiver", "bob")
+                                    ("unstake_net", "0.0000 EOS")
+                                    ("unstake_cpu", "-1.0000 EOS")
+                                    ("unstake_bytes", 0) )
+   );
+
+   //unstake all zeros
+   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must unstake a positive amount"),
+                        push_action(N(alice), N(undelegatebw), mvo()
+                                    ("from",     "alice")
+                                    ("receiver", "bob")
+                                    ("unstake_net", "0.0000 EOS")
+                                    ("unstake_cpu", "0.0000 EOS")
+                                    ("unstake_bytes", 0) )
+   );
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
+   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
+
+   push_action(N(alice), N(delegatebw), mvo()
+               ("from",     "alice")
+               ("receiver", "bob")
+               ("stake_net", "000.0000 EOS")
+               ("stake_cpu", "100.0000 EOS")
+               ("stake_storage", "80.0000 EOS")
+   );
+
+   auto stake = get_total_stake( "bob" );
+   BOOST_REQUIRE_EQUAL( asset::from_string("000.0000 EOS").amount, stake["net_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS").amount, stake["cpu_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("80.0000 EOS").amount, stake["storage_stake"].as_uint64());
+   auto bytes = stake["storage_bytes"].as_uint64();
+   BOOST_REQUIRE_EQUAL( true, 0 < bytes );
+
+   //bob should not be able to unstake what was staked by alice
+   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: unable to find key"),
+                        push_action(N(bob), N(undelegatebw), mvo()
+                                    ("from",     "bob")
+                                    ("receiver", "bob")
+                                    ("unstake_net", "000.0000 EOS")
+                                    ("unstake_cpu", "10.0000 EOS")
+                                    ("unstake_bytes", bytes) )
    );
 
 } FC_LOG_AND_RETHROW()

@@ -128,7 +128,7 @@ namespace eosio {
     * @return this token after addition
     */
     token& operator*=( uint64_t a ) {
-      eosio_assert( (quantity * a) / a == quantity, "integer overflow multiplying token balance" );
+      eosio_assert( a == 0 || (quantity * a) / a == quantity, "integer overflow multiplying token balance" );
       quantity *= a;
       return *this;
     }

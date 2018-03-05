@@ -105,8 +105,9 @@ namespace eosiosystem {
             eosio_assert( del.stake_net_quantity.amount >= 0, "must stake a positive amount" );
             eosio_assert( del.stake_storage_quantity.amount >= 0, "must stake a positive amount" );
 
-            system_token_type total_stake = system_token_type(del.stake_cpu_quantity) + system_token_type(del.stake_net_quantity) + system_token_type(del.stake_storage_quantity);
-            eosio_assert( total_stake.quantity >= 0, "must stake a positive amount" );
+            system_token_type total_stake = system_token_type(del.stake_cpu_quantity)
+               + system_token_type(del.stake_net_quantity) + system_token_type(del.stake_storage_quantity);
+            eosio_assert( total_stake.quantity > 0, "must stake a positive amount" );
 
             require_auth( del.from );
 
@@ -190,11 +191,14 @@ namespace eosiosystem {
             eosio_assert( dbw.cpu_weight >= del.unstake_cpu_quantity, "insufficient staked cpu bandwidth" );
             eosio_assert( dbw.storage_bytes >= del.unstake_storage_bytes, "insufficient staked storage" );
 
-            system_token_type storage_stake_decrease = dbw.storage_stake * del.unstake_storage_bytes / dbw.storage_bytes;
+            system_token_type storage_stake_decrease = 0 < dbw.storage_bytes ?
+               dbw.storage_stake * del.unstake_storage_bytes / dbw.storage_bytes
+               : system_token_type(0);
 
-            auto total_refund = system_token_type(del.unstake_cpu_quantity) + system_token_type(del.unstake_net_quantity) + storage_stake_decrease;
+            auto total_refund = system_token_type(del.unstake_cpu_quantity)
+               + system_token_type(del.unstake_net_quantity) + storage_stake_decrease;
 
-            eosio_assert( total_refund.quantity >= 0, "must unstake a positive amount" );
+            eosio_assert( total_refund.quantity > 0, "must unstake a positive amount" );
 
             del_index.update( dbw, del.from, [&]( auto& dbo ){
                dbo.net_weight -= del.unstake_net_quantity;
