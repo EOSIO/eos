@@ -15,23 +15,23 @@ extern "C" {
  *  EOS.IO organizes data according to the following broad structure:
  *
  *  - **scope** - an account where the data is stored
- *     - **code** - the account name which has write permission 
+ *     - **code** - the account name which has write permission
  *        - **table** - a name for the table that is being stored
  *           - **record** - a row in the table
  *
  *  Every transaction specifies the set of valid scopes that may be read and/or written
  *  to. The code that is running determines what can be written to; therefore, write operations
- *  do not allow you to specify/configure the code. 
+ *  do not allow you to specify/configure the code.
  *
- *  @note Attempts to read and/or write outside the valid scope and/or code sections will 
+ *  @note Attempts to read and/or write outside the valid scope and/or code sections will
  *  cause your transaction to fail.
  *
  *
  *  @section tabletypes table Types
  *  There are several supported table types identified by the number and
- *  size of the index.  
+ *  size of the index.
  *
- *  1. @ref dbi64 
+ *  1. @ref dbi64
  *  2. @ref dbi128i128
  *
  *  The database APIs assume that the first bytes of each record represent
@@ -264,7 +264,7 @@ int32_t remove_i64( account_name scope, table_name table, void* data );
  *
  */
 int32_t store_str( account_name scope, table_name table, account_name bta, char* key, uint32_t keylen, char* value, uint32_t valuelen );
- 
+
 /**
  * @param scope - the account scope that will be read, must exist in the transaction scopes list
  * @param table - the ID/name of the table within the current scope/code context to modify
@@ -286,7 +286,7 @@ int32_t store_str( account_name scope, table_name table, account_name bta, char*
  *
  */
 int32_t update_str( account_name scope, table_name table, account_name bta, char* key, uint32_t keylen, char* value, uint32_t valuelen );
- 
+
  /**
   *  @param scope - the account scope that will be read, must exist in the transaction scopes list
   *  @param code  - identifies the code that controls write-access to the data
@@ -294,7 +294,7 @@ int32_t update_str( account_name scope, table_name table, account_name bta, char
   *  @param key  - location of the record key
   *  @param keylen - length of the record key
   *  @param value  - location to copy the record value
-  *  @param valuelen - maximum length of the record value to read 
+  *  @param valuelen - maximum length of the record value to read
   *
   *  @return the number of bytes read or -1 if key was not found
   */
@@ -305,7 +305,7 @@ int32_t update_str( account_name scope, table_name table, account_name bta, char
   *  @param code  - identifies the code that controls write-access to the data
   *  @param table - the ID/name of the table within the scope/code context to query
   *  @param value  - location to copy the front record value
-  *  @param valuelen - maximum length of the record value to read 
+  *  @param valuelen - maximum length of the record value to read
   *  @return the number of bytes read or -1 if key was not found
   */
  int32_t front_str( account_name code, account_name scope, table_name table, char* value, uint32_t valuelen );
@@ -315,7 +315,7 @@ int32_t update_str( account_name scope, table_name table, account_name bta, char
   *  @param code  - identifies the code that controls write-access to the data
   *  @param table - the ID/name of the table within the scope/code context to query
   *  @param value  - location to copy the back record value
-  *  @param valuelen - maximum length of the record value to read 
+  *  @param valuelen - maximum length of the record value to read
   *  @return the number of bytes read or -1 if key was not found
   */
  int32_t back_str( account_name code, account_name scope, table_name table, char* value, uint32_t valuelen );
@@ -327,7 +327,7 @@ int32_t update_str( account_name scope, table_name table, account_name bta, char
   *  @param key  - location of the record key
   *  @param keylen - length of the record key
   *  @param value  - location to copy the next record value
-  *  @param valuelen - maximum length of the record value to read 
+  *  @param valuelen - maximum length of the record value to read
   *  @return the number of bytes read or -1 if key was not found
   */
  int32_t next_str( account_name code, account_name scope, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
@@ -339,7 +339,7 @@ int32_t update_str( account_name scope, table_name table, account_name bta, char
   *  @param key  - location of the record key
   *  @param keylen - length of the record key
   *  @param value  - location to copy the previous record value
-  *  @param valuelen - maximum length of the record value to read 
+  *  @param valuelen - maximum length of the record value to read
   *  @return the number of bytes read or -1 if key was not found
   */
  int32_t previous_str( account_name code, account_name scope, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
@@ -367,7 +367,7 @@ int32_t update_str( account_name scope, table_name table, account_name bta, char
   *  @return the number of bytes read or -1 if key was not found
   */
  int32_t upper_bound_str( account_name code, account_name scope, table_name table, char* key, uint32_t keylen, char* value, uint32_t valuelen );
- 
+
  /**
   *  @param key  - location of the record key
   *  @param keylen - length of the record key
@@ -375,22 +375,22 @@ int32_t update_str( account_name scope, table_name table, account_name bta, char
   *  @return 1 if a record was removed, and 0 if no record with key was found
   */
  int32_t remove_str( account_name scope, table_name table, char* key, uint32_t keylen );
- 
+
  ///@} dbstr
 
 /**
  *  @defgroup dbi128i128  Dual 128 bit Index table
  *  @brief Interface to a database table with 128 bit primary and secondary keys and arbitary binary data value.
- *  @ingroup databaseC 
+ *  @ingroup databaseC
  *
  *  @param scope - the account where table data will be found
  *  @param code  - the code which owns the table
  *  @param table - the name of the table where record is stored
- *  @param data  - a pointer to memory that is at least 32 bytes long 
+ *  @param data  - a pointer to memory that is at least 32 bytes long
  *  @param len   - the length of data, must be greater than or equal to 32 bytes
  *
- *  @return the total number of bytes read or -1 for "not found" or "end" where bytes 
- *  read includes 32 bytes of the key  
+ *  @return the total number of bytes read or -1 for "not found" or "end" where bytes
+ *  read includes 32 bytes of the key
  *
  *  These methods assume a database table with records of the form:
  *
@@ -671,16 +671,16 @@ int32_t update_i128i128( account_name scope, table_name table, account_name bta,
 /**
  *  @defgroup dbi64i64i64 Triple 64 bit Index table
  *  @brief Interface to a database table with 64 bit primary, secondary and tertiary keys and arbitrary binary data value.
- *  @ingroup databaseC 
+ *  @ingroup databaseC
  *
  *  @param scope - the account where table data will be found
  *  @param code  - the code which owns the table
  *  @param table - the name of the table where record is stored
- *  @param data  - a pointer to memory that is at least 32 bytes long 
+ *  @param data  - a pointer to memory that is at least 32 bytes long
  *  @param len   - the length of data, must be greater than or equal to 32 bytes
  *
- *  @return the total number of bytes read or -1 for "not found" or "end" where bytes 
- *  read includes 24 bytes of the key  
+ *  @return the total number of bytes read or -1 for "not found" or "end" where bytes
+ *  read includes 24 bytes of the key
  *
  *  These methods assume a database table with records of the form:
  *
@@ -1023,7 +1023,7 @@ int32_t store_i64i64i64( account_name scope, table_name table, account_name bta,
  * @return 1 if the record was updated, 0 if no record with key was found
  */
 int32_t update_i64i64i64( account_name scope, table_name table, account_name bta, const void* data, uint32_t len );
-///@}  dbi64i64i64 
+///@}  dbi64i64i64
 
 int32_t db_store_i64(account_name scope, table_name table, account_name payer, uint64_t id,  const void* data, uint32_t len);
 void db_update_i64(int32_t iterator, account_name payer, const void* data, uint32_t len);
@@ -1032,8 +1032,9 @@ int32_t db_get_i64(int32_t iterator, const void* data, uint32_t len);
 int32_t db_next_i64(int32_t iterator, uint64_t* primary);
 int32_t db_previous_i64(int32_t iterator, uint64_t* primary);
 int32_t db_find_i64(account_name code, account_name scope, table_name table, uint64_t id);
-int32_t db_lowerbound_i64( account_name code, account_name scope, table_name table, uint64_t id);
-int32_t db_upperbound_i64( account_name code, account_name scope, table_name table, uint64_t id);
+int32_t db_lowerbound_i64(account_name code, account_name scope, table_name table, uint64_t id);
+int32_t db_upperbound_i64(account_name code, account_name scope, table_name table, uint64_t id);
+int32_t db_end_i64(account_name code, account_name scope, table_name table);
 
 int32_t db_idx64_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint64_t* secondary);
 void db_idx64_update(int32_t iterator, account_name payer, const uint64_t* secondary);
@@ -1044,6 +1045,7 @@ int32_t db_idx64_find_primary(account_name code, account_name scope, table_name 
 int32_t db_idx64_find_secondary(account_name code, account_name scope, table_name table, const uint64_t* secondary, uint64_t* primary);
 int32_t db_idx64_lowerbound(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t* primary);
 int32_t db_idx64_upperbound(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t* primary);
+int32_t db_idx64_end(account_name code, account_name scope, table_name table);
 
 int32_t db_idx128_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint128_t* secondary);
 void db_idx128_update(int32_t iterator, account_name payer, const uint128_t* secondary);
@@ -1054,5 +1056,17 @@ int32_t db_idx128_find_primary(account_name code, account_name scope, table_name
 int32_t db_idx128_find_secondary(account_name code, account_name scope, table_name table, const uint128_t* secondary, uint64_t* primary);
 int32_t db_idx128_lowerbound(account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t* primary);
 int32_t db_idx128_upperbound(account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t* primary);
+int32_t db_idx128_end(account_name code, account_name scope, table_name table);
+
+int32_t db_idx256_store(account_name scope, table_name table, account_name payer, uint64_t id, const void* data, uint32_t data_len );
+void db_idx256_update(int32_t iterator, account_name payer, const void* data, uint32_t data_len);
+void db_idx256_remove(int32_t iterator);
+int32_t db_idx256_next(int32_t iterator, uint64_t* primary);
+int32_t db_idx256_previous(int32_t iterator, uint64_t* primary);
+int32_t db_idx256_find_primary(account_name code, account_name scope, table_name table, void* data, uint32_t data_len, uint64_t primary);
+int32_t db_idx256_find_secondary(account_name code, account_name scope, table_name table, const void* data, uint32_t data_len, uint64_t* primary);
+int32_t db_idx256_lowerbound(account_name code, account_name scope, table_name table, void* data, uint32_t data_len, uint64_t* primary);
+int32_t db_idx256_upperbound(account_name code, account_name scope, table_name table, void* data, uint32_t data_len, uint64_t* primary);
+int32_t db_idx256_end(account_name code, account_name scope, table_name table);
 
 }
