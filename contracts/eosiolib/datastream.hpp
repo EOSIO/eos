@@ -458,4 +458,17 @@ bytes pack( const T& value ) {
   return result;
 }
 
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum256 d) {
+   ds.write( (const char*)&d, sizeof(d) );
+   return ds;
+}
+   
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum256& d) {
+   ds.read((char*)&d, sizeof(d) );
+   return ds;
+}
+
+
 }

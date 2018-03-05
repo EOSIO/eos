@@ -101,6 +101,8 @@ namespace eosio { namespace chain { namespace contracts {
       built_in_types.emplace("action_def",                pack_unpack<action_def>());
       built_in_types.emplace("table_def",                 pack_unpack<table_def>());
       built_in_types.emplace("abi_def",                   pack_unpack<abi_def>());
+      //      built_in_types.emplace("producer_schedule_optional", pack_unpack<fc::optional<producer_schedule_type>>());
+      //    built_in_types.emplace("block_header",              pack_unpack<block_header>());
    }
 
    void abi_serializer::set_abi(const abi_def& abi) {

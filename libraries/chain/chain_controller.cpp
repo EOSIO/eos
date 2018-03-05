@@ -330,6 +330,7 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata&& da
    return result;
 }
 
+/*
 optional<block_header> chain_controller::head_block_header() const
 {
    auto b = _fork_db.fetch_block(head_block_id());
@@ -338,6 +339,17 @@ optional<block_header> chain_controller::head_block_header() const
    if (auto head_block = fetch_block_by_id(head_block_id()))
       return optional<block_header>(*head_block);
    return optional<block_header>();
+}
+*/
+
+block_header chain_controller::head_block_header() const
+{
+   auto b = _fork_db.fetch_block(head_block_id());
+   if( b ) return b->data;
+   
+   if (auto head_block = fetch_block_by_id(head_block_id()))
+      return *head_block;
+   return block_header();
 }
 
 void chain_controller::_start_pending_block()
@@ -352,15 +364,40 @@ void chain_controller::_start_pending_block()
    _apply_on_block_transaction();
 }
 
-optional<transaction> chain_controller::_get_on_block_transaction()
+transaction chain_controller::_get_on_block_transaction()
 {
-   optional<block_header> header = head_block_header();
-   if (!header) return optional<transaction>();
+   //  optional<block_header> header = head_block_header();
+   //   auto header = head_block_header();
+   //   if (!header) return optional<transaction>();
+   
    action on_block_act;
    on_block_act.account = config::system_account_name;
    on_block_act.name = N(onblock);
    on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
-   on_block_act.data = fc::raw::pack(*header);
+   block_header header = head_block_header();
+   /*
+   struct red_header {
+         checksum256_type                 previous;
+         block_timestamp_type                        timestamp;
+         checksum256_type                 transaction_mroot;
+         checksum256_type                 action_mroot;
+         checksum256_type                 block_mroot;
+         account_name                producer;
+   };
+   */
+   /*
+   red_header red;
+
+   red.previous = header.previous;
+   red.timestamp = header.timestamp;
+   red.transaction_mroot = header.transaction_mroot;
+   red.action_mroot = header.action_mroot;
+   red.block_mroot = header.block_mroot;
+   red.producer = header.producer;
+   red.new_producers = header.new_producers;
+   */
+
+   on_block_act.data = fc::raw::pack(header);
 
    transaction trx;
    trx.actions.emplace_back(std::move(on_block_act));
@@ -371,10 +408,10 @@ optional<transaction> chain_controller::_get_on_block_transaction()
 void chain_controller::_apply_on_block_transaction()
 {
    auto trx = _get_on_block_transaction();
-   if (trx) {
-      transaction_metadata mtrx(packed_transaction(*trx), get_chain_id(), head_block_time());
+   //   if (trx) {
+      transaction_metadata mtrx(packed_transaction(trx), get_chain_id(), head_block_time());
       _push_transaction(std::move(mtrx));
-   }
+      //   }
 }
 
 /**
@@ -643,8 +680,8 @@ void chain_controller::__apply_block(const signed_block& next_block)
    input_metas.reserve(next_block.input_transactions.size() + 1);
    {
       auto trx = _get_on_block_transaction();
-      if (!trx)
-         input_metas.emplace_back(packed_transaction(*trx), get_chain_id(), head_block_time());
+      //   if (!trx)
+         input_metas.emplace_back(packed_transaction(trx), get_chain_id(), head_block_time());
    }
    map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
@@ -936,8 +973,10 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
    }
 
    if( !is_start_of_round( next_block.block_num() ) )  {
+      #if 0
       EOS_ASSERT(!next_block.new_producers, block_validate_exception,
                  "Producer changes may only occur at the end of a round.");
+      #endif
    }
 
    const producer_object& producer = get_producer(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
@@ -993,15 +1032,18 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
    // and "producers" special account authority
    if( is_start_of_round( b.block_num() ) ) {
       auto schedule = _calculate_producer_schedule();
+#if 0
       if( b.new_producers )
       {
           FC_ASSERT( schedule == *b.new_producers, "pending producer set different than expected" );
       }
-
+#endif
       const auto& gpo = get_global_properties();
 
       if( _head_producer_schedule() != schedule ) {
+#if 0
          FC_ASSERT( b.new_producers, "pending producer set changed but block didn't indicate it" );
+#endif
       }
       _db.modify( gpo, [&]( auto& props ) {
          if( props.pending_active_producers.size() && props.pending_active_producers.back().first == b.block_num() )
