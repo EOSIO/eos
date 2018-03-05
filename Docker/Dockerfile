@@ -61,12 +61,6 @@ RUN git clone --depth 1 git://github.com/cryptonomex/secp256k1-zkp \
     && make install \
     && cd .. && rm -rf secp256k1-zkp
 
-RUN git clone --depth 1 -b releases/stable git://github.com/mongodb/mongo-cxx-driver \
-    && cd mongo-cxx-driver \
-    && cmake -H. -Bbuild -G Ninja -DCMAKE_BUILD_TYPE=Release  -DCMAKE_INSTALL_PREFIX=/usr/local\
-    && cmake --build build --target install
-
-
 ### If you don't want to change the depedencies, you can comment out above lines and uncomnent the following line to get faster build time.
 # FROM huangminghuang/eos_builder as builder
 
