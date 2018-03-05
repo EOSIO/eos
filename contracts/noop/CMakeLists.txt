@@ -4,5 +4,6 @@ add_wast_executable(TARGET noop
   INCLUDE_FOLDERS "${STANDARD_INCLUDE_FOLDERS}"
   LIBRARIES libc++ libc eosiolib
   DESTINATION_FOLDER ${CMAKE_CURRENT_BINARY_DIR}
+  DEBUG_FLAG true
 )
 

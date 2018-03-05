@@ -31,6 +31,9 @@ public:
 
 private:
    std::unique_ptr<class debug_plugin_impl> my;
+   std::string account_name;
+   std::vector<string> actions;
+   std::string library_name;
 };
 
 }

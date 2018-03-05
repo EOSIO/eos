@@ -11,6 +11,8 @@ namespace eosio { namespace chain {
    class apply_context;
    class intrinsics_accessor;
 
+   extern apply_context* native_context;
+
    /**
     * @class wasm_cache
     *
