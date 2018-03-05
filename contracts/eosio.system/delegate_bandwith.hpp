@@ -129,7 +129,7 @@ namespace eosiosystem {
             eosio_assert( 0 < storage_bytes, "stake is too small to increase storage even by 1 byte" );
 
             del_bandwidth_index_type     del_index( SystemAccount, del.from );
-            auto itr = del_index.find( del.receiver);
+            auto itr = del_index.find( del.receiver );
             if( itr == nullptr ) {
                del_index.emplace( del.from, [&]( auto& dbo ){
                   dbo.from          = del.from;
