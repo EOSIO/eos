@@ -51,9 +51,9 @@ namespace eosiosystem {
 
             uint64_t    primary_key()const { return owner;       }
             uint128_t   by_votes()const    { return total_votes; }
-            bool active() const { return !packed_key.empty(); }
+            bool active() const { return packed_key == 4 + 33 /*serialized key size*/; }
 
-            EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(prefs) )
+            EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(prefs)(packed_key) )
          };
 
          typedef eosio::multi_index< N(producervote), producer_info,
@@ -81,17 +81,6 @@ namespace eosiosystem {
 
          typedef eosio::multi_index< N(accountvotes), account_votes>  account_votes_table;
 
-
-         struct producer_config {
-            account_name      owner;
-            eosio::bytes      packed_key; /// a packed public key object
-
-            uint64_t primary_key()const { return owner;       }
-            EOSLIB_SERIALIZE( producer_config, (owner)(packed_key) )
-         };
-
-         typedef eosio::multi_index< N(producercfg), producer_config>  producer_config_index_type;
-
          ACTION( SystemAccount, register_producer ) {
             account_name producer;
             bytes        producer_key;
@@ -118,13 +107,8 @@ namespace eosiosystem {
             producers_tbl.emplace( reg.producer, [&]( producer_info& info ){
                   info.owner       = reg.producer;
                   info.total_votes = 0;
-                  info.prefs = reg.prefs;
-               });
-
-            producer_config_index_type proconfig( SystemAccount, SystemAccount );
-            proconfig.emplace( reg.producer, [&]( auto& pc ) {
-                  pc.owner      = reg.producer;
-                  pc.packed_key = reg.producer_key;
+                  info.prefs       = reg.prefs;
+                  info.packed_key  = reg.producer_key;
                });
          }
 
@@ -216,13 +200,17 @@ namespace eosiosystem {
             std::array<uint32_t, 21> inflation_rate;
             std::array<uint32_t, 21> storage_reserve_ratio;
 
-            std::array<account_name, 21> elected;
+            eosio::producer_schedule schedule;
+            schedule.producers.reserve(21);
 
             auto it = std::prev( idx.end() );
             size_t n = 0;
             while ( n < 21 ) {
                if ( it->active() ) {
-                  elected[n] = it->owner;
+                  schedule.producers.emplace_back();
+                  schedule.producers.back().producer_name = it->owner;
+                  std::copy(it->packed_key.begin(), it->packed_key.end(),
+                            schedule.producers.back().block_signing_key.begin());
 
                   target_block_size[n] = it->prefs.target_block_size;
                   max_block_size[n] = it->prefs.max_block_size;
@@ -252,7 +240,8 @@ namespace eosiosystem {
                --it;
             }
             // should use producer_schedule_type from libraries/chain/include/eosio/chain/producer_schedule.hpp
-            //set_active_producers( elected.data(), n );
+            bytes packed_schedule = pack(schedule);
+            set_active_producers( packed_schedule.data(),  packed_schedule.size() );
             size_t median = n/2;
 
             auto parameters = eosio_parameters_singleton::get();
