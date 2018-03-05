@@ -14,6 +14,7 @@
 #include <sys/resource.h>
 #include <string.h>
 #include <iostream>
+#include <string>
 
 #include <sys/time.h>
 
@@ -113,11 +114,7 @@ namespace Platform
 			Dl_info symbolInfo;
 			if(dladdr((void*)ip,&symbolInfo) && symbolInfo.dli_sname)
 			{
-				#ifdef __linux__
-					outDescription = symbolInfo.dli_sname;
-				#else
-					outDescription.append(symbolInfo.dli_sname);
-				#endif
+				outDescription = symbolInfo.dli_sname;
 				return true;
 			}
 		#endif
@@ -150,11 +147,10 @@ namespace Platform
 			#if defined __linux__ || defined __FreeBSD__
 				// Linux uses pthread_getattr_np/pthread_attr_getstack, and returns a pointer to the minimum address of the stack.
 				pthread_attr_t threadAttributes;
+				pthread_attr_init(&threadAttributes);
 				#ifdef __linux__
-					memset(&threadAttributes,0,sizeof(threadAttributes));
 					pthread_getattr_np(pthread_self(),&threadAttributes);
 				#else
-					pthread_attr_init(&threadAttributes);
 					pthread_attr_get_np(pthread_self(), &threadAttributes);
 				#endif
 				Uptr stackSize;
@@ -174,11 +170,7 @@ namespace Platform
 		}
 	}
 
-	#ifdef __FreeBSD__
-		THREAD_LOCAL sigjmp_buf signalReturnEnv;
-	#else
-		THREAD_LOCAL jmp_buf signalReturnEnv;
-	#endif
+	THREAD_LOCAL sigjmp_buf signalReturnEnv;
 	THREAD_LOCAL HardwareTrapType signalType = HardwareTrapType::none;
 	THREAD_LOCAL CallStack* signalCallStack = nullptr;
 	THREAD_LOCAL Uptr* signalOperand = nullptr;
