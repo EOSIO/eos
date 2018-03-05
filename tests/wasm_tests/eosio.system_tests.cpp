@@ -420,8 +420,8 @@ BOOST_FIXTURE_TEST_CASE( adding_stake_partial_unstake, eosio_system_tester ) try
    auto bytes = stake["storage_bytes"].as_uint64();
    BOOST_REQUIRE_EQUAL( true, bytes0 < bytes );
    BOOST_REQUIRE_EQUAL( asset::from_string("430.0000 EOS"), get_balance( "alice" ) );
-   
-   //trying to unstake more cpu bandwith than at stake
+
+   //unstake a share
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(undelegatebw), mvo()
                                                ("from",     "alice")
                                                ("receiver", "bob")

@@ -160,7 +160,7 @@ namespace eosiosystem {
                   tot.storage_bytes = storage_bytes;
                });
             } else {
-               total_index.update( *tot_itr, 0, [&]( auto& tot ) {
+               total_index.update( *tot_itr, del.from == del.receiver ? del.from : 0, [&]( auto& tot ) {
                   tot.net_weight    += del.stake_net_quantity;
                   tot.cpu_weight    += del.stake_cpu_quantity;
                   tot.storage_stake += del.stake_storage_quantity;
