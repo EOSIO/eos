@@ -1,5 +1,7 @@
+#include <math.h>
 #include "exchange.hpp"
 
+/*
 extern "C" {
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t act ) {
@@ -8,4 +10,10 @@ extern "C" {
 
           exchange<N(exchange), S(4,EXC), eos, cur>::apply( code, act );
     }
+}
+*/
+
+extern "C" {
+   void apply() {
+   }
 }
