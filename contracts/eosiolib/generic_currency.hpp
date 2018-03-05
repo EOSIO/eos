@@ -58,12 +58,12 @@ namespace eosio {
           };
 
           struct account {
-             uint64_t   symbol = token_type::symbol;
              token_type balance;
+             uint64_t   symbol = token_type::symbol;
 
              auto primary_key() const { return symbol; }
 
-             EOSLIB_SERIALIZE( account, (symbol)(balance) )
+             EOSLIB_SERIALIZE( account, (balance)(symbol) )
           };
 
           struct currency_stats {
@@ -115,7 +115,7 @@ namespace eosio {
 
              set_balance( code, get_balance( code ) + act.quantity, code, 0 );
 
-             inline_transfer( code, act.to, act.quantity ); 
+             inline_transfer( code, act.to, act.quantity );
           }
 
 
@@ -127,7 +127,7 @@ namespace eosio {
              set_balance( act.to, get_balance( act.to ) + act.quantity, act.from, 0 );
           }
 
-          static void inline_transfer( account_name from, account_name to, token_type quantity, 
+          static void inline_transfer( account_name from, account_name to, token_type quantity,
                                        string memo = string() )
           {
              action act( permission_level(from,N(active)), transfer_memo( from, to, asset(quantity), move(memo) ));
@@ -141,6 +141,3 @@ namespace eosio {
    };
 
 } /// namespace eosio
-
-
-
