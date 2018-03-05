@@ -27,36 +27,33 @@ function build_contract {
 #    echo mkdir $workdir/built
     mkdir $workdir/built
 
+    if [[ ${VERBOSE} == "1" ]]; then
+       PRINT_CMDS="set -x"
+    fi
+
     for file in $@; do
         name=`basename $file`
         filePath=`dirname $file`
 
-        # echo @WASM_CLANG@ -emit-llvm -O3 --std=c++14 --target=wasm32 -nostdinc \
-        #              -nostdlib -nostdlibinc -ffreestanding -nostdlib -fno-threadsafe-statics -fno-rtti \
-        #              -fno-exceptions -I ${EOSIO_INSTALL_DIR}/include \
-        #              -I${EOSIO_INSTALL_DIR}/include/libc++/upstream/include \
-        #              -I${EOSIO_INSTALL_DIR}/include/musl/upstream/include \
-        #              -I${BOOST_INCLUDE_DIR} \
-        #              -I $filePath \
-        #              -c $file -o $workdir/built/$name
-
-        @WASM_CLANG@ -emit-llvm -O3 --std=c++14 --target=wasm32 -nostdinc \
-                     -nostdlib -nostdlibinc -ffreestanding -nostdlib -fno-threadsafe-statics -fno-rtti \
-                     -fno-exceptions -I ${EOSIO_INSTALL_DIR}/include \
-                     -I${EOSIO_INSTALL_DIR}/include/libc++/upstream/include \
-                     -I${EOSIO_INSTALL_DIR}/include/musl/upstream/include \
-                     -I${BOOST_INCLUDE_DIR} \
-                     -I $filePath \
-                     -c $file -o $workdir/built/$name
+        ($PRINT_CMDS; @WASM_CLANG@ -emit-llvm -O3 --std=c++14 --target=wasm32 -nostdinc \
+                                   -nostdlib -nostdlibinc -ffreestanding -nostdlib -fno-threadsafe-statics -fno-rtti \
+                                   -fno-exceptions -I ${EOSIO_INSTALL_DIR}/include \
+                                   -I${EOSIO_INSTALL_DIR}/include/libc++/upstream/include \
+                                   -I${EOSIO_INSTALL_DIR}/include/musl/upstream/include \
+                                   -I${BOOST_INCLUDE_DIR} \
+                                   -I $filePath \
+                                   -c $file -o $workdir/built/$name
+        )
 
     done
 
-#    echo @WASM_LLVM_LINK@ -o $workdir/linked.bc $workdir/built/*
-    @WASM_LLVM_LINK@ -o $workdir/linked.bc $workdir/built/*
-#    echo @WASM_LLC@ --asm-verbose=false -o $workdir/assembly.s $workdir/linked.bc
-    @WASM_LLC@ --asm-verbose=false -o $workdir/assembly.s $workdir/linked.bc
-#  echo ${EOSIO_INSTALL_DIR}/bin/eosio-s2wasm -o $outname -s 16384 $workdir/assembly.s
-    ${EOSIO_INSTALL_DIR}/bin/eosio-s2wasm -o $outname -s 16384 $workdir/assembly.s
+    ($PRINT_CMDS; @WASM_LLVM_LINK@ -only-needed -o $workdir/linked.bc $workdir/built/* \
+                                   ${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc.bc \
+                                   ${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/libc++.bc \
+                                   ${EOSIO_INSTALL_DIR}/usr/share/eosio/contractsdk/lib/eosiolib.bc 
+    )
+    ($PRINT_CMDS; @WASM_LLC@ -thread-model=single --asm-verbose=false -o $workdir/assembly.s $workdir/linked.bc)
+    ($PRINT_CMDS; ${EOSIO_INSTALL_DIR}/bin/eosio-s2wasm -o $outname -s 16384 $workdir/assembly.s)
 
 #    echo rm -rf $workdir
     rm -rf $workdir
