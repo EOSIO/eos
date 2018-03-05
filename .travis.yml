@@ -54,8 +54,8 @@ before_install:
       wget https://cmake.org/files/v3.9/cmake-3.9.0-Linux-x86_64.tar.gz
       tar xzf cmake-3.9.0-Linux-x86_64.tar.gz
       wget https://github.com/mongodb/mongo-c-driver/releases/download/1.9.2/mongo-c-driver-1.9.2.tar.gz
-      tar xzf mongo-c-driver-1.8.0.tar.gz
-      cd mongo-c-driver-1.8.0
+      tar xzf mongo-c-driver-1.9.2.tar.gz
+      cd mongo-c-driver-1.9.2
       ./configure --disable-automatic-init-and-cleanup --prefix=$TRAVIS_BUILD_DIR/ext
       make install
     fi
