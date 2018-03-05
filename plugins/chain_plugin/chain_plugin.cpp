@@ -397,13 +397,12 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
    fc::variant pretty_output;
    abi_serializer::to_variant(*block, pretty_output, make_resolver(this));
 
-
-
+   uint32_t ref_block_prefix = block->id()._hash[1];
 
    return fc::mutable_variant_object(pretty_output.get_object())
            ("id", block->id())
            ("block_num",block->block_num())
-           ("ref_block_prefix", block->id()._hash[1]);
+           ("ref_block_prefix", ref_block_prefix);
 }
 
 read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {
