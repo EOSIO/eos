@@ -80,7 +80,7 @@ class exchange {
 
       account_index_type       _accounts;
       limit_base_quote_index   _base_quote_orders;
-      limit_base_quote_index   _quote_base_orders;
+      limit_quote_base_index   _quote_base_orders;
 
       exchange()
       :_accounts( ExchangeAccount, ExchangeAccount ),
