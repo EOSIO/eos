@@ -67,8 +67,8 @@
     }
   ],
   "tables": [
-    {"table":"bids","type":"bid"},
-    {"table":"asks","type":"ask"},
-    {"table":"account","type":"account"}
+    {"name":"bids","type":"bid"},
+    {"name":"asks","type":"ask"},
+    {"name":"account","type":"account"}
   ]
 }
