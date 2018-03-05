@@ -1,4 +1,4 @@
-	OS_VER=$( cat /etc/os-release | grep VERSION_ID | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' )
+	OS_VER=$( cat /etc/os-release | grep VERSION_ID | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' | cut -d'.' -f1 )
 
 	MEM_MEG=$( free -m | grep Mem | tr -s ' ' | cut -d\  -f2 )
 
@@ -17,23 +17,22 @@
 	printf "\tDisk space available: ${DISK_AVAIL}G\n"
 
 	if [ $MEM_MEG -lt 4000 ]; then
-		printf "\tYour system must have 8 or more Gigabytes of physical memory installed.\n"
-		printf "\tExiting now.\n"
+		echo "Your system must have 4 or more Gigabytes of physical memory installed."
+		echo "exiting now."
 		exit 1
 	fi
 
-	if [ $OS_VER -lt 25 ]; then
-		printf "\tYou must be running Fedora 25 or higher to install EOSIO.\n"
-		printf "\tExiting now.\n"
+	if [ $OS_VER -lt 7 ]; then
+		echo "You must be running Centos 7 or higher to install EOSIO."
+		echo "exiting now"
 		exit 1
 	fi
 
 	if [ $DISK_AVAIL -lt $DISK_MIN ]; then
-		printf "\tYou must have at least ${DISK_MIN}GB of available storage to install EOSIO.\n"
-		printf "\tExiting now.\n"
+		echo "You must have at least ${DISK_MIN}GB of available storage to install EOSIO."
+		echo "exiting now"
 		exit 1
 	fi
-	
 	printf "\n\tChecking Yum installation\n"
 	
 	YUM=$( which yum 2>/dev/null )
@@ -44,17 +43,64 @@
 	fi
 	
 	printf "\tYum installation found at ${YUM}.\n"
-	printf "\tUpdating YUM.\n"
-	UPDATE=$( sudo yum -y update )
+	printf "\n\tChecking installation of Centos Software Collections Repository.\n"
+	
+	SCL=$( which scl 2>/dev/null )
+	if [ -z $SCL ]; then
+		printf "\n\tThe Centos Software Collections Repository and devtoolset-7 are required to install EOSIO.\n"
+		printf "\tDo you wish to install and enable this repository and devtoolset package?\n"
+		select yn in "Yes" "No"; do
+			case $yn in
+				[Yy]* ) 
+					printf "\n\n\tInstalling SCL.\n\n"
+					sudo yum -y --enablerepo=extras install centos-release-scl 2>/dev/null
+					if [ $? -ne 0 ]; then
+						printf "\n\tCentos Software Collections Repository installation failed.\n"
+						printf "\n\tExiting now.\n"
+						exit 1
+					else
+						printf "\n\tCentos Software Collections Repository installed successfully.\n"
+					fi
+					printf "\n\n\tInstalling devtoolset-7.\n\n"
+					sudo yum install -y devtoolset-7 2>/dev/null
+					if [ $? -ne 0 ]; then
+						printf "\n\tCentos devtoolset-7 installation failed.\n"
+						printf "\n\tExiting now.\n"
+						exit 1
+					else
+						printf "\n\tCentos devtoolset installed successfully.\n"
+					fi
+				break;;
+				[Nn]* ) echo "User aborting installation of required Centos Software Collections Repository, Exiting now."; exit;;
+				* ) echo "Please type 1 for yes or 2 for no.";;
+			esac
+		done
+	else 
+		printf "\n\tCentos Software Collections Repository found.\n"
+	fi
+
+	printf "\n\tEnabling Centos devtoolset-7.\n"
+	source /opt/rh/devtoolset-7/enable
+	if [ $? -ne 0 ]; then
+		printf "\n\tUnable to enable Centos devtoolset-7 at this time.\n"
+		printf "\n\tExiting now.\n"
+		exit 1
+	fi
+	printf "\n\tCentos devtoolset-7 successfully enabled.\n"
+	
+	printf "\n\tUpdating YUM repository.\n"
+
+	sudo yum -y update 2>/dev/null
 	
 	if [ $? -ne 0 ]; then
 		printf "\n\tYUM update failed.\n"
 		printf "\n\tExiting now.\n"
 		exit 1
 	fi
-	
-	printf "\t${UPDATE}\n"
-	DEP_ARRAY=( git gcc.x86_64 gcc-c++.x86_64 autoconf automake libtool make cmake.x86_64 bzip2 bzip2-devel.x86_64 openssl-devel.x86_64 gmp.x86_64 gmp-devel.x86_64 libstdc++-devel.x86_64 python3-devel.x86_64 libedit.x86_64 ncurses-devel.x86_64 swig.x86_64 )
+
+	printf "\n\tYUM repository successfully updated.\n"
+
+	DEP_ARRAY=( git autoconf automake libtool ocaml.x86_64 doxygen libicu-devel.x86_64 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 python-devel.x86_64 gettext-devel.x86_64)
 	DCOUNT=0
 	COUNT=1
 	DISPLAY=""
@@ -66,7 +112,7 @@
 	do
 		pkg=$( sudo $YUM info ${DEP_ARRAY[$i]} 2>/dev/null | grep Repo | tr -s ' ' | cut -d: -f2 | sed 's/ //g' )
 
-		if [ "$pkg" != "@System" ]; then
+		if [ "$pkg" != "installed" ]; then
 			DEP=$DEP" ${DEP_ARRAY[$i]} "
 			DISPLAY="${DISPLAY}${COUNT}. ${DEP_ARRAY[$i]}\n\t"
 			printf "\tPackage ${DEP_ARRAY[$i]} ${bldred} NOT ${txtrst} found.\n"
@@ -103,6 +149,33 @@
 		printf "\n\tNo required YUM dependencies to install.\n"
 	fi
 
+	printf "\n\tChecking for CMAKE.\n"
+    # install CMAKE 3.10.2
+    if [ ! -e ${CMAKE} ]; then
+		printf "\tInstalling CMAKE\n"
+		mkdir -p ${HOME}/opt/ 2>/dev/null
+		cd ${HOME}/opt
+		curl -L -O https://cmake.org/files/v3.10/cmake-3.10.2.tar.gz
+		tar xf cmake-3.10.2.tar.gz
+		rm -f cmake-3.10.2.tar.gz
+		ln -s cmake-3.10.2/ cmake
+		cd cmake
+		./bootstrap
+		if [ $? -ne 0 ]; then
+			printf "\tError running bootstrap for CMAKE.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		make
+		if [ $? -ne 0 ]; then
+			printf "\tError compiling CMAKE.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+	else
+		printf "\tCMAKE found\n"
+	fi
+
 	printf "\n\tChecking for boost libraries\n"
 	if [ ! -d ${HOME}/opt/boost_1_66_0 ]; then
 		# install boost
@@ -112,7 +185,7 @@
 		tar xf boost_1.66.0.tar.bz2
 		cd boost_1_66_0/
 		./bootstrap.sh "--prefix=$BOOST_ROOT"
-		./b2 -j${CPU_CORE} install
+		./b2 install
 		rm -rf ${TEMP_DIR}/boost_1_66_0/
 		rm -f  ${TEMP_DIR}/boost_1.66.0.tar.bz2
 	else
@@ -133,16 +206,37 @@
 			exit;
 		fi
 		./configure
-		make -j${CPU_CORE}
+		make
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling secp256k1-zkp.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		sudo make -j${CPU_CORE} install
+		sudo make install
 		rm -rf cd ${TEMP_DIR}/secp256k1-zkp
 	else
 		printf "\tsecp256k1 found\n"
+	fi
+	
+	printf "\n\tChecking for binaryen\n"
+	if [ ! -d ${HOME}/opt/binaryen ]; then
+		# Install binaryen v1.37.14:
+		printf "\tInstalling binaryen v1.37.14:\n"
+		cd ${TEMP_DIR}
+		git clone https://github.com/EOSIO/binaryen
+		cd binaryen
+		git checkout eosio
+		$CMAKE . && make
+		if [ $? -ne 0 ]; then
+			printf "\tError compiling binaryen.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		mkdir -p ${HOME}/opt/binaryen/ 2>/dev/null
+		mv ${TEMP_DIR}/binaryen/bin ${HOME}/opt/binaryen/
+		rm -rf ${TEMP_DIR}/binaryen
+	else
+		printf "\tBinaryen found at ${HOME}/opt/binaryen\n"
 	fi
 	
 	printf "\n\tChecking for LLVM with WASM support.\n"
@@ -156,21 +250,23 @@
 		cd llvm/tools
 		git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
 		cd ..
-		mkdir build
+		mkdir build 2>/dev/null
 		cd build
-		cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm -DLLVM_ENABLE_RTTI=1 -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+		$CMAKE -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm \
+		-DLLVM_TARGETS_TO_BUILD="host" -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly \
+		-DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release ../
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE}
+		make -j$(nproc)
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE} install
+		make install
 		rm -rf ${TEMP_DIR}/llvm-compiler 2>/dev/null
 	else
 		printf "\tWASM found at ${HOME}/opt/wasm\n"

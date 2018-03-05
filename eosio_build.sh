@@ -1,6 +1,6 @@
 #!/bin/bash
 ##########################################################################
-# This is EOS bootstrapper script for Linux and OS X.
+# This is EOS automated install script for Linux and OS X.
 # This file was downloaded from https://github.com/EOSIO/eos
 #
 # Copyright (c) 2017, Respective Authors all rights reserved.
@@ -49,10 +49,11 @@
 	if [ $ARCH == "Linux" ]; then
 		
 		if [ ! -e /etc/os-release ]; then
-			printf "EOSIO currently supports Ubuntu, Red Hat & Fedora Linux only.\n"
+			printf "EOSIO currently supports Amazon, Centos, Fedora & Ubuntu Linux only.\n"
 			printf "Please install on the latest version of one of these Linux distributions.\n"
-			printf "https://www.ubuntu.com/\n"
+			printf "https://aws.amazon.com/amazon-linux-ami/\n"
 			printf "https://start.fedoraproject.org/en/\n"
+			printf "https://www.ubuntu.com/\n"
 			printf "Exiting now.\n"
 			exit 1
 		fi
@@ -60,22 +61,30 @@
 		OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
 	
 		case $OS_NAME in
-			"Ubuntu")
-				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
-				CXX_COMPILER=clang++-4.0
-				C_COMPILER=clang-4.0
+			"Amazon Linux AMI")
+				FILE=${WORK_DIR}/scripts/eosio_build_amazon.sh
+				export CMAKE=${HOME}/opt/cmake/bin/cmake
+				CXX_COMPILER=g++
+				C_COMPILER=gcc
+				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
+			;;
+			"CentOS Linux")
+				FILE=${WORK_DIR}/scripts/eosio_build_centos.sh
+				export CMAKE=${HOME}/opt/cmake/bin/cmake
+				CXX_COMPILER=g++
+				C_COMPILER=gcc
+				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 			;;
 			"Fedora")
 				FILE=${WORK_DIR}/scripts/eosio_build_fedora.sh
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
-			;;
-			"Amazon Linux AMI")
-				FILE=${WORK_DIR}/scripts/eosio_build_amazon.sh
-				CMAKE=${HOME}/opt/cmake/bin/cmake
-				CXX_COMPILER=g++
-				C_COMPILER=gcc
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
+			;;
+			"Ubuntu")
+				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
+				CXX_COMPILER=clang++-4.0
+				C_COMPILER=clang-4.0
 			;;
 			*)
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
@@ -85,7 +94,7 @@
 		export BOOST_ROOT=${HOME}/opt/boost_1_66_0
 		export OPENSSL_ROOT_DIR=/usr/include/openssl
 		export OPENSSL_LIBRARIES=/usr/include/openssl
-                export WASM_ROOT=${HOME}/opt/wasm
+		export WASM_ROOT=${HOME}/opt/wasm
 	
 	 . $FILE
 	
@@ -103,14 +112,10 @@
 
 	printf "\n\n>>>>>>>> ALL dependencies sucessfully found or installed . Installing EOS.IO\n\n"
 
-	# Debug flags
 	COMPILE_EOS=1
 	COMPILE_CONTRACTS=1
-
-	# Define default arguments.
 	CMAKE_BUILD_TYPE=RelWithDebugInfo
 
-	# Create the build dir
 	cd ${WORK_DIR}
 	mkdir -p ${BUILD_DIR}
 	cd ${BUILD_DIR}
@@ -119,11 +124,11 @@
 		CMAKE=$( which cmake )
 	fi
 	
-	# Build EOS
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
-  -DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
-  -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} \
+	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
+	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} \
 	-DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} ..
+	
 	if [ $? -ne 0 ]; then
 		printf "\n\t>>>>>>>>>>>>>>>>>>>> CMAKE building EOSIO has exited with the above error.\n\n"
 		exit -1
