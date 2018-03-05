@@ -195,7 +195,7 @@ namespace simpledb {
    struct dispatcher_impl<T> {
       static bool dispatch(uint64_t action) {
          if (action == T::action_name) {
-            unpack_action<T>().process();
+            unpack_action_data<T>().process();
             return true;
          }
 
