@@ -6,10 +6,11 @@
 
 #include <stdint.h>
 #include <wchar.h>
-/*
-struct checksum_base {
+
+template <uint32_t N>
+struct checksum_n {
+   uint8_t hash[N>>3];
 };
-*/
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,17 +46,9 @@ struct signature {
    uint8_t data[66];
 };
 
-struct checksum256 {
-   uint8_t hash[32];
-};
-
-struct checksum160 {
-   uint8_t hash[20];
-};
-
-struct checksum512 {
-   uint8_t hash[64];
-};
+typedef checksum_n<160> checksum160;
+typedef checksum_n<256> checksum256;
+typedef checksum_n<512> checksum512;
 
 struct fixed_string16 {
    uint8_t len;

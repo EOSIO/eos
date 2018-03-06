@@ -330,17 +330,6 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata&& da
    return result;
 }
 
-/*
-optional<block_header> chain_controller::head_block_header() const
-{
-   auto b = _fork_db.fetch_block(head_block_id());
-   if( b ) return optional<block_header>(b->data);
-
-   if (auto head_block = fetch_block_by_id(head_block_id()))
-      return optional<block_header>(*head_block);
-   return optional<block_header>();
-}
-*/
 
 block_header chain_controller::head_block_header() const
 {
@@ -366,38 +355,11 @@ void chain_controller::_start_pending_block()
 
 transaction chain_controller::_get_on_block_transaction()
 {
-   //  optional<block_header> header = head_block_header();
-   //   auto header = head_block_header();
-   //   if (!header) return optional<transaction>();
-   
    action on_block_act;
    on_block_act.account = config::system_account_name;
    on_block_act.name = N(onblock);
    on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
-   block_header header = head_block_header();
-   /*
-   struct red_header {
-         checksum256_type                 previous;
-         block_timestamp_type                        timestamp;
-         checksum256_type                 transaction_mroot;
-         checksum256_type                 action_mroot;
-         checksum256_type                 block_mroot;
-         account_name                producer;
-   };
-   */
-   /*
-   red_header red;
-
-   red.previous = header.previous;
-   red.timestamp = header.timestamp;
-   red.transaction_mroot = header.transaction_mroot;
-   red.action_mroot = header.action_mroot;
-   red.block_mroot = header.block_mroot;
-   red.producer = header.producer;
-   red.new_producers = header.new_producers;
-   */
-
-   on_block_act.data = fc::raw::pack(header);
+   on_block_act.data = fc::raw::pack(head_block_header());
 
    transaction trx;
    trx.actions.emplace_back(std::move(on_block_act));
@@ -408,10 +370,8 @@ transaction chain_controller::_get_on_block_transaction()
 void chain_controller::_apply_on_block_transaction()
 {
    auto trx = _get_on_block_transaction();
-   //   if (trx) {
-      transaction_metadata mtrx(packed_transaction(trx), get_chain_id(), head_block_time());
-      _push_transaction(std::move(mtrx));
-      //   }
+   transaction_metadata mtrx(packed_transaction(trx), get_chain_id(), head_block_time());
+   _push_transaction(std::move(mtrx));
 }
 
 /**
