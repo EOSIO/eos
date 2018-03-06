@@ -438,7 +438,7 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
       FC_ASSERT( tab, "not a valid end iterator" );
 
       auto itr = idx.upper_bound(tab->id);
-      if( itr == idx.begin() ) return -1; // Empty table
+      if( idx.begin() == idx.end() || itr == idx.begin() ) return -1; // Empty table
 
       --itr;
 
@@ -448,7 +448,7 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
       return keyval_cache.add(*itr);
    }
 
-   const auto& obj = keyval_cache.get(iterator);
+   const auto& obj = keyval_cache.get(iterator); // Check for iterator != -1 happens in this call
 
    auto itr = idx.iterator_to(obj);
    if( itr == idx.begin() ) return -1; // cannot decrement past beginning iterator of table

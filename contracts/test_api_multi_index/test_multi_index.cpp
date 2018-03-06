@@ -1,6 +1,7 @@
 #include <eosiolib/multi_index.hpp>
 #include "../test_api/test_api.hpp"
 #include <eosiolib/print.hpp>
+#include <boost/range/iterator_range.hpp>
 
 namespace _test_multi_index {
 
@@ -115,7 +116,7 @@ namespace _test_multi_index {
          eosio_assert(itr == secondary_index.end(), "idx64_general - increment secondary iterator to end");
       }
 
-      // iterate backward staring with second bob
+      // iterate backward starting with second bob
       {
          auto ptr = table.find(781);
          eosio_assert(ptr != nullptr && ptr->sec == N(bob), "idx64_general - table.find() of existing primary key");
@@ -132,6 +133,20 @@ namespace _test_multi_index {
 
          --itr;
          eosio_assert(itr == secondary_index.begin() && itr->id == 265 && itr->sec == N(alice), "idx64_general - decrement secondary iterator to beginning");
+      }
+
+      // iterate backward starting with emily using const_reverse_iterator
+      {
+         std::array<uint64_t, 6> pks{{976, 234, 781, 540, 650, 265}};
+
+         auto pk_itr = pks.begin();
+
+         auto itr = --std::make_reverse_iterator( secondary_index.find( N(emily) ) );
+         for( ; itr != secondary_index.rend(); ++itr ) {
+            eosio_assert(pk_itr != pks.end(), "idx64_general - unexpected continuation of secondary index in reverse iteration");
+            eosio_assert(*pk_itr == itr->id, "idx64_general - primary key mismatch in reverse iteration");
+            ++pk_itr;
+         }
       }
 
       // update and remove
@@ -388,17 +403,17 @@ void test_multi_index::idx256_general()
    print("Removed entry with ID=", lower1->id, ".\n");
    table.remove( *lower1 );
 
-   print("Items sorted by primary key:\n");
-   for( const auto& item : table ) {
+   print("Items reverse sorted by primary key:\n");
+   for( const auto& item : boost::make_iterator_range(table.rbegin(), table.rend()) ) {
       print(" ID=", item.primary_key(), ", secondary=", item.sec, "\n");
    }
 
    {
-      auto itr = table.begin();
-      eosio_assert( itr->primary_key() == 2 && itr->get_secondary() == onetwothreefour, "idx256_general - primary key sort after remove" );
-      ++itr;
+      auto itr = table.rbegin();
       eosio_assert( itr->primary_key() == 3 && itr->get_secondary() == fourtytwo, "idx256_general - primary key sort after remove" );
       ++itr;
-      eosio_assert( itr == table.end(), "idx256_general - primary key sort after remove" );
+      eosio_assert( itr->primary_key() == 2 && itr->get_secondary() == onetwothreefour, "idx256_general - primary key sort after remove" );
+      ++itr;
+      eosio_assert( itr == table.rend(), "idx256_general - primary key sort after remove" );
    }
 }
