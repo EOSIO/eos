@@ -95,6 +95,7 @@
 		export OPENSSL_ROOT_DIR=/usr/include/openssl
 		export OPENSSL_LIBRARIES=/usr/include/openssl
 		export WASM_ROOT=${HOME}/opt/wasm
+      export SOFTFLOAT_ROOT=${HOME}/opt/berkeley-softfloat-3
 	
 	 . $FILE
 	
