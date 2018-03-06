@@ -288,11 +288,8 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
 
 abi_def get_abi( const chain_controller& db, const name& account ) {
    const auto &d = db.get_database();
-   const account_object *code_accnt = nullptr;
-   try {
-      code_accnt = &d.get<account_object, by_name>(account);
-      FC_ASSERT(code_accnt != nullptr);
-   } EOS_CAPTURE_AND_RETHROW( chain::account_query_exception, "Fail to retrive account for ${account}", ("account", account) )
+   const account_object *code_accnt = d.find<account_object, by_name>(account);
+   EOS_ASSERT(code_accnt != nullptr, chain::account_query_exception, "Fail to retrieve account for ${account}", ("account", account) );
    abi_def abi;
    abi_serializer::to_abi(code_accnt->abi, abi);
    return abi;
