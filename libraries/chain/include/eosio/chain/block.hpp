@@ -35,7 +35,7 @@ namespace eosio { namespace chain {
        * Even though the above examples are semantically equivalent (replace A and B with X and Y), only the first is
        * legal.
        */
-       optional<producer_schedule_type>  new_producers;
+      optional<producer_schedule_type>  new_producers;
    };
 
    struct signed_block_header : public block_header

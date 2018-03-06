@@ -278,7 +278,6 @@ namespace eosio { namespace chain {
          uint32_t             head_block_num()const;
          block_id_type        head_block_id()const;
          account_name         head_block_producer()const;
-         //         optional<block_header>         head_block_header()const;
          block_header         head_block_header()const; 
 
          uint32_t last_irreversible_block_num() const;
