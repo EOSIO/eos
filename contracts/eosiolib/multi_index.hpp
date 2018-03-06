@@ -3,6 +3,8 @@
 #include <boost/hana.hpp>
 #include <functional>
 #include <type_traits>
+#include <iterator>
+#include <limits>
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/mem_fun.hpp>
@@ -96,7 +98,6 @@ struct indexed_by {
 
 template<uint64_t TableName, uint64_t IndexName, typename T, typename Extractor, int N = 0>
 struct index_by {
-   typedef  Extractor  extractor_secondary_type;
    typedef  Extractor  secondary_extractor_type;
    typedef  typename std::decay<decltype( Extractor()(nullptr) )>::type secondary_type;
 
@@ -119,7 +120,7 @@ struct index_by {
       template<uint64_t, typename, typename... >
       friend class multi_index;
 
-      static auto extract_secondary_key(const T& obj) { return extractor_secondary_type()(obj); }
+      static auto extract_secondary_key(const T& obj) { return secondary_extractor_type()(obj); }
 
       static int store( uint64_t scope, uint64_t payer, const T& obj ) {
          return db_idx_store( scope, name(), payer, obj.primary_key(), extract_secondary_key(obj) );
@@ -275,7 +276,7 @@ class multi_index
             typedef typename IndexType::secondary_extractor_type  secondary_extractor_type;
             static constexpr uint64_t name() { return IndexType::name(); }
 
-            struct const_iterator {
+            struct const_iterator : std::iterator<std::bidirectional_iterator_tag, const T> {
                public:
                   friend bool operator == ( const const_iterator& a, const const_iterator& b ) {
                      return a._item == b._item;
@@ -330,7 +331,7 @@ class multi_index
                         auto ei = secondary_iterator<secondary_key_type>::db_idx_end(idx.get_code(), idx.get_scope(), idx.name());
                         eosio_assert( ei != -1, "cannot decrement end iterator when the index is empty" );
                         prev_itr = secondary_iterator<secondary_key_type>::db_idx_previous( ei , &prev_pk );
-                        eosio_assert( prev_itr != -1, "cannot decrement end iterator when the index is empty" );
+                        eosio_assert( prev_itr >= 0, "cannot decrement end iterator when the index is empty" );
                      } else {
                         if( _item->__iters[Number] == -1 ) {
                            secondary_key_type temp_secondary_key;
@@ -365,16 +366,28 @@ class multi_index
                   const typename MultiIndexType::item* _item;
             };
 
-            const_iterator end()const { return const_iterator( *this ); }
-            const_iterator begin()const {
-               return lower_bound(typename IndexType::secondary_type());
+            typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+
+            const_iterator cbegin()const {
+               return lower_bound(std::numeric_limits<typename IndexType::secondary_type>::lowest());
             }
+            const_iterator begin()const  { return cbegin(); }
+
+            const_iterator cend()const   { return const_iterator( *this ); }
+            const_iterator end()const    { return cend(); }
+
+            const_reverse_iterator crbegin()const { return std::make_reverse_iterator(cend()); }
+            const_reverse_iterator rbegin()const  { return crbegin(); }
+
+            const_reverse_iterator crend()const   { return std::make_reverse_iterator(cbegin()); }
+            const_reverse_iterator rend()const    { return crend(); }
+
             const_iterator find( typename IndexType::secondary_type&& secondary )const {
                auto lb = lower_bound( secondary );
                auto e = end();
                if( lb == e ) return e;
 
-               if( secondary != typename IndexType::extractor_secondary_type()(*lb) )
+               if( secondary != typename IndexType::secondary_extractor_type()(*lb) )
                   return e;
                return lb;
             }
@@ -421,8 +434,7 @@ class multi_index
             const MultiIndexType& _multidx;
       };
 
-
-      struct const_iterator {
+      struct const_iterator : std::iterator<std::bidirectional_iterator_tag, const T> {
          friend bool operator == ( const const_iterator& a, const const_iterator& b ) {
             return a._item == b._item;
          }
@@ -461,7 +473,7 @@ class multi_index
                auto ei = db_end_i64(multidx.get_code(), multidx.get_scope(), TableName);
                eosio_assert( ei != -1, "cannot decrement end iterator when the table is empty" );
                prev_itr = db_previous_i64( ei , &prev_pk );
-               eosio_assert( prev_itr != -1, "cannot decrement end iterator when the table is empty" );
+               eosio_assert( prev_itr >= 0, "cannot decrement end iterator when the table is empty" );
             } else {
                prev_itr = db_previous_i64( _item->__primary_itr, &prev_pk );
                eosio_assert( prev_itr >= 0, "cannot decrement iterator at beginning of table" );
@@ -480,18 +492,30 @@ class multi_index
             friend class multi_index;
       };
 
-      const_iterator end()const   { return const_iterator( *this ); }
-      const_iterator begin()const { return lower_bound();     }
+      typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
+      const_iterator cbegin()const {
+         return lower_bound(std::numeric_limits<uint64_t>::lowest());
+      }
+      const_iterator begin()const  { return cbegin(); }
 
-      const_iterator lower_bound( uint64_t primary = 0 )const { 
+      const_iterator cend()const   { return const_iterator( *this ); }
+      const_iterator end()const    { return cend(); }
+
+      const_reverse_iterator crbegin()const { return std::make_reverse_iterator(cend()); }
+      const_reverse_iterator rbegin()const  { return crbegin(); }
+
+      const_reverse_iterator crend()const   { return std::make_reverse_iterator(cbegin()); }
+      const_reverse_iterator rend()const    { return crend(); }
+
+      const_iterator lower_bound( uint64_t primary )const {
          auto itr = db_lowerbound_i64( _code, _scope, TableName, primary );
          if( itr < 0 ) return end();
          auto& obj = load_object_by_primary_iterator( itr );
          return const_iterator( *this, &obj );
       }
 
-      const_iterator upper_bound( uint64_t primary = 0 )const {
+      const_iterator upper_bound( uint64_t primary )const {
          auto itr = db_upperbound_i64( _code, _scope, TableName, primary );
          if( itr < 0 ) return end();
          auto& obj = load_object_by_primary_iterator( itr );
