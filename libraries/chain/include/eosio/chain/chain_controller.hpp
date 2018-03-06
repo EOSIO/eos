@@ -356,7 +356,7 @@ namespace eosio { namespace chain {
 
          /**
           * This method performs some consistency checks on a transaction.
-          * @thow transaction_exception if the transaction is invalid
+          * @throw transaction_exception if the transaction is invalid
           */
          template<typename T>
          void validate_transaction(const T& trx) const {
