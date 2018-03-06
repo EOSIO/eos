@@ -52,7 +52,9 @@ parser.add_argument("--keep-logs", help="Don't delete tn_data_* folders upon tes
 parser.add_argument("--exit-early", help="Exit prior to known error point.", action='store_true')
 parser.add_argument("-v", help="verbose logging", action='store_true')
 parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
-
+parser.add_argument("--keep-wallet", help="Don't kill walletd on exit", action='store_true')
+parser.add_argument("--skip-init", help="skip initial accounts/contract", action='store_true')
+parser.add_argument("--skip-create-account", help="skip create account", action='store_true')
 
 args = parser.parse_args()
 testOutputFile=args.output
@@ -67,15 +69,17 @@ initbPrvtKey=args.initb_prvt_key
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontLaunch=args.dont_launch
+skipInit=args.skip_init
+skipCreateAccount=args.skip_create_account
 
 testUtils.Utils.Debug=debug
 localTest=True if server == LOCAL_HOST else False
-cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, initaPrvtKey=initaPrvtKey, initbPrvtKey=initbPrvtKey)
-walletMgr=testUtils.WalletMgr(True)
+cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, initaPrvtKey=initaPrvtKey, initbPrvtKey=initbPrvtKey, host=server, port=port)
+walletMgr=testUtils.WalletMgr(True, port, server)
 
 testSuccessful=False
 killEosInstances=True
-killWallet=True
+killWallet=args.keep_wallet
 
 WalletdName="eos-walletd"
 ClientName="eosc"
@@ -94,7 +98,7 @@ try:
     print("SERVER: %s" % (server))
     print("PORT: %d" % (port))
 
-    if localTest and not dontLaunch:
+    if not dontLaunch:
         cluster.killall()
         cluster.cleanup()
         Print("Stand up cluster")
@@ -102,6 +106,7 @@ try:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
+        Print("Initializing Nodes")
         cluster.initializeNodes()
         killEosInstances=False
 
@@ -221,14 +226,19 @@ try:
     if node is None:
         errorExit("Cluster in bad state, received None node")
 
-    Print("Create initial accounts")
-    node.createInitAccounts()
+    if skipInit is False:
+        Print("Create initial accounts")
+        node.createInitAccounts()
+    else:
+        Print("Skip initial account/contracts")
 
     Print("Create new account %s via %s" % (testeraAccount.name, initaAccount.name))
     transId=node.createAccount(testeraAccount, initaAccount, stakedDeposit=0, waitForTransBlock=True)
     if transId is None:
         cmdError("%s create account" % (ClientName))
-        errorExit("Failed to create account %s" % (testeraAccount.name))
+        Print("Failed to create account %s, account might exist already" % (testeraAccount.name))
+    else:
+        Print("account %s created" % (testeraAccount.name))
 
     Print("Verify account %s" % (testeraAccount))
     if not node.verifyAccount(testeraAccount):
