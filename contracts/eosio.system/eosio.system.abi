@@ -90,6 +90,13 @@
         {"name":"amount", "type":"asset"}
       ]
     },{
+      "name": "unstakevote",
+      "base": "",
+      "fields": [
+        {"name":"voter", "type":"account_name"},
+        {"name":"amount", "type":"asset"}
+      ]
+    },{
       "name": "voter_info",
       "base": "",
       "fields": [
@@ -125,6 +132,9 @@
     },{
       "name": "stakevote",
       "type": "stakevote"
+    },{
+      "name": "unstakevote",
+      "type": "unstakevote"
     }
   ],
   "tables": [

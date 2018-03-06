@@ -460,21 +460,11 @@ BOOST_FIXTURE_TEST_CASE( adding_stake_partial_unstake, eosio_system_tester ) try
 
 // Tests for voting
 
-BOOST_FIXTURE_TEST_CASE( stake_vote_add_more_partial_unstake, eosio_system_tester ) try {
-   issue( "alice", "1000.0000 EOS",  config::system_account_name );
-
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(stakevote), mvo()
-                                               ("voter",  "alice")
-                                               ("amount", "100.0000 EOS")
-                        )
-   );
-
-   auto vi = get_voter_info( "alice" );
+void require_simple_voter(const fc::variant& vi) {
+   //BOOST_REQUIRE_EQUAL( vi, vi );
    BOOST_REQUIRE_EQUAL( true, vi.is_object() );
    BOOST_REQUIRE_EQUAL( name(0).to_string(), vi["proxy"].as_string() );
-   //BOOST_REQUIRE_EQUAL( time(), vi["last_update"].as_uint32() );
    BOOST_REQUIRE_EQUAL( 0, vi["is_proxy"].as_uint64() ); //uint32
-   BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS").amount, vi["staked"].as_uint64() );
    BOOST_REQUIRE_EQUAL( 0, vi["unstaking"].as_uint64() );
    BOOST_REQUIRE_EQUAL( 0, vi["unstake_per_week"].as_uint64() );
    BOOST_REQUIRE_EQUAL( 0, vi["proxied_votes"].as_uint64() ); //uint128
@@ -482,6 +472,72 @@ BOOST_FIXTURE_TEST_CASE( stake_vote_add_more_partial_unstake, eosio_system_teste
    BOOST_REQUIRE_EQUAL( true, vi["producers"].get_array().empty() );
    BOOST_REQUIRE_EQUAL( 0, vi["deferred_trx_id"].as_uint64() );
    BOOST_REQUIRE_EQUAL( 0, vi["last_unstake"].as_uint64() );
+}
+
+BOOST_FIXTURE_TEST_CASE( stake_add_more_partial_unstake, eosio_system_tester ) try {
+   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(stakevote), mvo()
+                                               ("voter",  "alice")
+                                               ("amount", "70.0000 EOS")
+                        )
+   );
+
+   auto vi = get_voter_info( "alice" );
+   require_simple_voter( vi );
+   BOOST_REQUIRE_EQUAL( time_point_sec( control->head_block_time() ).sec_since_epoch()-1, vi["last_update"].as_uint64() ); //XXX why it works with -1
+   BOOST_REQUIRE_EQUAL( asset::from_string("70.0000 EOS").amount, vi["staked"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( asset::from_string("930.0000 EOS"), get_balance( "alice" ) );
+
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(stakevote), mvo()
+                                               ("voter",  "alice")
+                                               ("amount", "30.0000 EOS")
+                        )
+   );
+   vi = get_voter_info( "alice" );
+   require_simple_voter( vi );
+   BOOST_REQUIRE_EQUAL( time_point_sec( control->head_block_time() ).sec_since_epoch(), vi["last_update"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS").amount, vi["staked"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( asset::from_string("900.0000 EOS"), get_balance( "alice" ) );
+
+   //trying to stake more than available balance
+   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: integer underflow subtracting token balance"),
+                        push_action(N(alice), N(stakevote), mvo()
+                                    ("voter",  "alice")
+                                    ("amount", "900.0001 EOS")
+                        )
+   );
+
+   //trying to unstake more than at stake
+   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: cannot unstake more than total stake amount"),
+                        push_action(N(alice), N(unstakevote), mvo()
+                                    ("voter",  "alice")
+                                    ("amount", "100.0001 EOS")
+                        )
+   );
+
+   //partial unstake
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(unstakevote), mvo()
+                                               ("voter",  "alice")
+                                               ("amount", "60.0000 EOS")
+                        )
+   );
+   vi = get_voter_info( "alice" );
+   require_simple_voter( vi );
+   BOOST_REQUIRE_EQUAL( time_point_sec( control->head_block_time() ).sec_since_epoch()-1, vi["last_update"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( asset::from_string("40.0000 EOS").amount, vi["staked"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( asset::from_string("960.0000 EOS"), get_balance( "alice" ) );
+
+   //unstake the rest
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(unstakevote), mvo()
+                                               ("voter",  "alice")
+                                               ("amount", "40.0000 EOS")
+                        )
+   );
+   vi = get_voter_info( "alice" );
+   require_simple_voter( vi );
+   BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, vi["staked"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
 
 } FC_LOG_AND_RETHROW()
 

@@ -154,7 +154,6 @@ namespace eosiosystem {
                      av.last_update = now();
                      av.staked += amount;
                   });
-
             }
 
             const std::vector<account_name>* producers = nullptr;
@@ -299,7 +298,7 @@ namespace eosiosystem {
             eosio_assert( bool(voter), "stake not found" );
 
             if ( 0 < usv.amount.quantity ) {
-               eosio_assert( voter->staked < usv.amount, "cannot unstake more than total stake amount" );
+               eosio_assert( usv.amount <= voter->staked, "cannot unstake more than total stake amount" );
                /*
                if (voter->deferred_trx_id) {
                   //XXX cancel_deferred_transaction(voter->deferred_trx_id);
@@ -324,7 +323,7 @@ namespace eosiosystem {
                      a.staked -= usv.amount;
                      a.last_update = now();
                   });
-               currency::inline_transfer( usv.voter, SystemAccount, usv.amount, "unstake voting" );
+               currency::inline_transfer( SystemAccount, usv.voter, usv.amount, "unstake voting" );
                // end of temporary code
 
                const std::vector<account_name>* producers = nullptr;
@@ -375,7 +374,7 @@ namespace eosiosystem {
             auto unstake_amount = std::min(weeks * voter->unstake_per_week, voter->unstaking);
             uint32_t new_trx_id = unstake_amount < voter->unstaking ? /* XXX send_deferred() */ 0 : 0;
 
-            currency::inline_transfer( usv.voter, SystemAccount, unstake_amount, "unstake voting" );
+            currency::inline_transfer( SystemAccount, usv.voter, unstake_amount, "unstake voting" );
 
             voters_tbl.update( *voter, 0, [&](voter_info& a) {
                   a.unstaking -= unstake_amount;
