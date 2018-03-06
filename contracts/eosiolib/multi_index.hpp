@@ -275,39 +275,25 @@ class multi_index
             typedef typename IndexType::secondary_extractor_type  secondary_extractor_type;
             static constexpr uint64_t name() { return IndexType::name(); }
 
-            template<bool ForwardDirection>
-            struct _const_iterator {
+            struct const_iterator : std::iterator<std::bidirectional_iterator_tag, const T> {
                public:
-                  typedef std::ptrdiff_t difference_type;
-                  typedef const T              value_type;
-                  typedef const T*             pointer;
-                  typedef const T&             reference;
-                  typedef std::bidirectional_iterator_tag iterator_category;
 
-                  friend bool operator == ( const _const_iterator& a, const _const_iterator& b ) {
+                  friend bool operator == ( const const_iterator& a, const const_iterator& b ) {
                      return a._item == b._item;
                   }
-                  friend bool operator != ( const _const_iterator& a, const _const_iterator& b ) {
+                  friend bool operator != ( const const_iterator& a, const const_iterator& b ) {
                      return a._item != b._item;
                   }
 
-                  template<bool FwdDir = ForwardDirection>
-                  explicit _const_iterator( typename std::enable_if<FwdDir, const _const_iterator<false>& >::type itr )
-                  :_idx(itr._idx),_item(itr._item) {}
-
-                  template<bool FwdDir = ForwardDirection>
-                  explicit _const_iterator( typename std::enable_if<!FwdDir, const _const_iterator<true>& >::type itr )
-                  :_idx(itr._idx),_item(itr._item) {}
-
-                  _const_iterator operator++(int)const {
-                     return ++(_const_iterator(*this));
+                  const_iterator operator++(int)const {
+                     return ++(const_iterator(*this));
                   }
 
-                  _const_iterator operator--(int)const {
-                     return --(_const_iterator(*this));
+                  const_iterator operator--(int)const {
+                     return --(const_iterator(*this));
                   }
 
-                  _const_iterator& operator++() {
+                  const_iterator& operator++() {
                      eosio_assert( _item != nullptr, "cannot increment end iterator" );
                      const auto& idx = _idx.get();
 
@@ -322,8 +308,7 @@ class multi_index
                      }
 
                      uint64_t next_pk = 0;
-                     auto next_itr = ForwardDirection ? secondary_iterator<secondary_key_type>::db_idx_next( _item->__iters[Number], &next_pk )
-                                                      : secondary_iterator<secondary_key_type>::db_idx_previous( _item->__iters[Number], &next_pk );
+                     auto next_itr = secondary_iterator<secondary_key_type>::db_idx_next( _item->__iters[Number], &next_pk );
                      if( next_itr < 0 ) {
                         _item = nullptr;
                         return *this;
@@ -337,7 +322,7 @@ class multi_index
                      return *this;
                   }
 
-                  _const_iterator& operator--() {
+                  const_iterator& operator--() {
                      uint64_t prev_pk = 0;
                      int prev_itr = -1;
                      const auto& idx = _idx.get();
@@ -345,8 +330,7 @@ class multi_index
                      if( !_item ) {
                         auto ei = secondary_iterator<secondary_key_type>::db_idx_end(idx.get_code(), idx.get_scope(), idx.name());
                         eosio_assert( ei != -1, "cannot decrement end iterator when the index is empty" );
-                        prev_itr = ForwardDirection ? secondary_iterator<secondary_key_type>::db_idx_previous( ei , &prev_pk )
-                                                    : secondary_iterator<secondary_key_type>::db_idx_next( ei , &prev_pk );
+                        prev_itr = secondary_iterator<secondary_key_type>::db_idx_previous( ei , &prev_pk );
                         eosio_assert( prev_itr >= 0, "cannot decrement end iterator when the index is empty" );
                      } else {
                         if( _item->__iters[Number] == -1 ) {
@@ -358,8 +342,7 @@ class multi_index
                            auto& mi = const_cast<item_type&>( *_item );
                            mi.__iters[Number] = idxitr;
                         }
-                        prev_itr = ForwardDirection ? secondary_iterator<secondary_key_type>::db_idx_previous( _item->__iters[Number], &prev_pk )
-                                                    : secondary_iterator<secondary_key_type>::db_idx_next( _item->__iters[Number], &prev_pk );
+                        prev_itr = secondary_iterator<secondary_key_type>::db_idx_previous( _item->__iters[Number], &prev_pk );
                         eosio_assert( prev_itr >= 0, "cannot decrement iterator at beginning of index" );
                      }
 
@@ -376,15 +359,14 @@ class multi_index
 
                private:
                   friend struct index;
-                  _const_iterator( const index& idx, const typename MultiIndexType::item* i = nullptr )
+                  const_iterator( const index& idx, const typename MultiIndexType::item* i = nullptr )
                   :_idx(std::cref(idx)), _item(i){}
 
                   std::reference_wrapper<const index> _idx;
                   const typename MultiIndexType::item* _item;
             };
 
-            typedef _const_iterator<true>  const_iterator;
-            typedef _const_iterator<false> const_reverse_iterator;
+            typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
             const_iterator cbegin()const {
                auto rei = secondary_iterator<secondary_key_type>::db_idx_rend( get_code(), get_scope(), TableName );
@@ -404,22 +386,10 @@ class multi_index
             const_iterator cend()const   { return const_iterator( *this ); }
             const_iterator end()const    { return cend(); }
 
-            const_reverse_iterator crbegin()const {
-               auto ei = secondary_iterator<secondary_key_type>::db_idx_end( get_code(), get_scope(), TableName );
-               if( ei == -1 ) return crend();
-
-               uint64_t prev_pk;
-               auto itr = secondary_iterator<secondary_key_type>::db_idx_previous( ei, &prev_pk );
-               if( itr < 0 ) return crend();
-
-               const T& obj = *_multidx.find( prev_pk );
-               auto& mi = const_cast<item_type&>( static_cast<const item_type&>(obj) );
-               mi.__iters[Number] = itr;
-               return const_reverse_iterator( *this, &mi );
-            }
+            const_reverse_iterator crbegin()const { return std::make_reverse_iterator(cend()); }
             const_reverse_iterator rbegin()const  { return crbegin(); }
 
-            const_reverse_iterator crend()const   { return const_reverse_iterator( *this ); }
+            const_reverse_iterator crend()const   { return std::make_reverse_iterator(cbegin()); }
             const_reverse_iterator rend()const    { return crend(); }
 
             const_iterator find( typename IndexType::secondary_type&& secondary )const {
@@ -474,67 +444,49 @@ class multi_index
             const MultiIndexType& _multidx;
       };
 
-      template<bool ForwardDirection>
-      struct _const_iterator {
-         typedef std::ptrdiff_t difference_type;
-         typedef const T              value_type;
-         typedef const T*             pointer;
-         typedef const T&             reference;
-         typedef std::bidirectional_iterator_tag iterator_category;
+      struct const_iterator : std::iterator<std::bidirectional_iterator_tag, const T> {
 
-         friend bool operator == ( const _const_iterator& a, const _const_iterator& b ) {
+         friend bool operator == ( const const_iterator& a, const const_iterator& b ) {
             return a._item == b._item;
          }
-         friend bool operator != ( const _const_iterator& a, const _const_iterator& b ) {
+         friend bool operator != ( const const_iterator& a, const const_iterator& b ) {
             return a._item != b._item;
          }
-
-         template<bool FwdDir = ForwardDirection>
-         explicit _const_iterator( typename std::enable_if<FwdDir, const _const_iterator<false>& >::type itr )
-         :_multidx(itr._multidx),_item(itr._item) {}
-
-         template<bool FwdDir = ForwardDirection>
-         explicit _const_iterator( typename std::enable_if<!FwdDir, const _const_iterator<true>& >::type itr )
-         :_multidx(itr._multidx),_item(itr._item) {}
 
          const T& operator*()const { return *static_cast<const T*>(_item); }
          const T* operator->()const { return static_cast<const T*>(_item); }
 
-         _const_iterator operator++(int)const {
-            return ++(_const_iterator(*this));
+         const_iterator operator++(int)const {
+            return ++(const_iterator(*this));
          }
-         _const_iterator operator--(int)const {
-            return --(_const_iterator(*this));
+         const_iterator operator--(int)const {
+            return --(const_iterator(*this));
          }
 
-         _const_iterator& operator++() {
+         const_iterator& operator++() {
             eosio_assert( _item != nullptr, "cannot increment end iterator" );
             const auto& multidx = _multidx.get();
 
             uint64_t next_pk;
-            auto next_itr = ForwardDirection ? db_next_i64( _item->__primary_itr, &next_pk )
-                                             : db_previous_i64( _item->__primary_itr, &next_pk );
+            auto next_itr = db_next_i64( _item->__primary_itr, &next_pk );
             if( next_itr < 0 )
                _item = nullptr;
             else
                _item = &multidx.load_object_by_primary_iterator( next_itr );
             return *this;
          }
-         _const_iterator& operator--() {
+         const_iterator& operator--() {
             uint64_t prev_pk;
             int prev_itr = -1;
             const auto& multidx = _multidx.get();
 
             if( !_item ) {
-               auto ei = ForwardDirection ? db_end_i64(multidx.get_code(), multidx.get_scope(), TableName)
-                                          : db_rend_i64(multidx.get_code(), multidx.get_scope(), TableName);
+               auto ei = db_end_i64(multidx.get_code(), multidx.get_scope(), TableName);
                eosio_assert( ei != -1, "cannot decrement end iterator when the table is empty" );
-               prev_itr = ForwardDirection ? db_previous_i64( ei , &prev_pk )
-                                           : db_next_i64( ei, &prev_pk );
+               prev_itr = db_previous_i64( ei , &prev_pk );
                eosio_assert( prev_itr >= 0, "cannot decrement end iterator when the table is empty" );
             } else {
-               prev_itr = ForwardDirection ? db_previous_i64( _item->__primary_itr, &prev_pk )
-                                           : db_next_i64( _item->__primary_itr, &prev_pk );
+               prev_itr = db_previous_i64( _item->__primary_itr, &prev_pk );
                eosio_assert( prev_itr >= 0, "cannot decrement iterator at beginning of table" );
             }
 
@@ -543,7 +495,7 @@ class multi_index
          }
 
          private:
-            _const_iterator( const multi_index& mi, const item* i = nullptr )
+            const_iterator( const multi_index& mi, const item* i = nullptr )
             :_multidx(std::cref(mi)),_item(i){}
 
             std::reference_wrapper<const multi_index> _multidx;
@@ -551,8 +503,7 @@ class multi_index
             friend class multi_index;
       };
 
-      typedef _const_iterator<true>  const_iterator;
-      typedef _const_iterator<false> const_reverse_iterator;
+      typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
       const_iterator cbegin()const {
          auto rei = db_rend_i64( _code, _scope, TableName );
@@ -570,22 +521,11 @@ class multi_index
       const_iterator cend()const   { return const_iterator( *this ); }
       const_iterator end()const    { return cend(); }
 
-      const_reverse_iterator crbegin()const {
-         auto ei = db_end_i64( _code, _scope, TableName );
-         if( ei == -1 ) return crend();
-
-         uint64_t prev_pk;
-         auto itr = db_previous_i64( ei, &prev_pk );
-         if( itr < 0 ) return crend();
-
-         auto& obj = load_object_by_primary_iterator( itr );
-         return const_reverse_iterator( *this, &obj );
-      }
+      const_reverse_iterator crbegin()const { return std::make_reverse_iterator(cend()); }
       const_reverse_iterator rbegin()const  { return crbegin(); }
 
-      const_reverse_iterator crend()const   { return const_reverse_iterator( *this ); }
+      const_reverse_iterator crend()const   { return std::make_reverse_iterator(cbegin()); }
       const_reverse_iterator rend()const    { return crend(); }
-
 
       const_iterator lower_bound( uint64_t primary = 0 )const {
          auto itr = db_lowerbound_i64( _code, _scope, TableName, primary );

@@ -141,7 +141,7 @@ namespace _test_multi_index {
 
          auto pk_itr = pks.begin();
 
-         auto itr = static_cast<typename decltype(secondary_index)::const_reverse_iterator>(secondary_index.find(N(emily)));
+         auto itr = --std::make_reverse_iterator( secondary_index.find( N(emily) ) );
          for( ; itr != secondary_index.rend(); ++itr ) {
             eosio_assert(pk_itr != pks.end(), "idx64_general - unexpected continuation of secondary index in reverse iteration");
             eosio_assert(*pk_itr == itr->id, "idx64_general - primary key mismatch in reverse iteration");
