@@ -13,6 +13,7 @@
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/multi_index.hpp>
 #include <eosiolib/privileged.h>
+#include <eosiolib/optional.hpp>
 
 #include <algorithm>
 #include <map>
@@ -51,48 +52,6 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE(producer_schedule, (version)(producers))
    };
 
-   struct producer_schedule_optional {
-         uint64_t value[((sizeof(producer_schedule)+7)/8)];
-         //       producer_schedule value;
-         bool valid;
-         //         EOSLIB_SERIALIZE(producer_schedule_optional, (value)(valid))
-   };
-   
-   template<typename Stream>
-   inline eosio::datastream<Stream>& operator<<(eosio::datastream<Stream>& ds, const producer_schedule_optional& op) {
-      ds.write((const char*)&op.value, sizeof(op.value));
-      ds << op.valid;
-      return ds;
-   }
-
-   template<typename Stream>
-   inline eosio::datastream<Stream>& operator>>(eosio::datastream<Stream>& ds, producer_schedule_optional& op) {
-      ds.read((char*)&op.value, sizeof(op.value));
-      ds >> op.valid;
-      /*
-      char opt = 0;
-      ds >> opt;
-      if (opt) {
-         o = producer_schedule_optional();
-         ds >> *o;
-      }
-      */
-      return ds;
-   }
-
-   /*
-   template<typename Stream>
-   inline eosio::datastream<Stream>& operator<<(eosio::datastream<Stream>& ds, const producer_schedule op) {
-      ds << op.version << op.producers;
-      return ds;
-   }
-
-   template<typename Stream>
-   inline eosio::datastream<Stream>& operator>>(eosio::datastream<Stream>& ds, producer_schedule& op) {
-      ds >> op.version >> op.producers;
-      return ds;
-   }
-   */
    struct block_header {
       checksum256                 previous;
       time                        timestamp;
@@ -100,9 +59,9 @@ namespace eosiosystem {
       checksum256                 action_mroot;
       checksum256                 block_mroot;
       account_name                producer;
-         //         producer_schedule           new_producers;
-      producer_schedule_optional  new_producers;
-         EOSLIB_SERIALIZE(block_header, (previous)(timestamp)(transaction_mroot)(action_mroot)(block_mroot)(producer)(new_producers))
+      optional<producer_schedule> new_producers;
+      
+      EOSLIB_SERIALIZE(block_header, (previous)(timestamp)(transaction_mroot)(action_mroot)(block_mroot)(producer)(new_producers))
    };
 
    template<account_name SystemAccount>
@@ -470,7 +429,7 @@ namespace eosiosystem {
 
          ACTION(SystemAccount, onblock) {
             block_header header;
-            //            account_name header;
+
             EOSLIB_SERIALIZE(onblock, (header))
                };
 
