@@ -27,20 +27,21 @@ class apply_context {
             typedef contracts::table_id_object table_id_object;
 
             iterator_cache(){
-               _end_iterator_to_table.reserve(8);
+               _special_iterator_to_table.reserve(8);
                _iterator_to_object.reserve(32);
             }
 
-            /// Returns end iterator of the table.
-            int cache_table( const table_id_object& tobj ) {
+            /// Returns index into _special_iterator_to_table corresponding to this table.
+            /// Convert to end iterator or rend iterator using the index_to_{end,rend}_iterator functions.
+            size_t cache_table( const table_id_object& tobj ) {
                auto itr = _table_cache.find(tobj.id);
                if( itr != _table_cache.end() )
                   return itr->second.second;
 
-               auto ei = index_to_end_iterator(_end_iterator_to_table.size());
-               _end_iterator_to_table.push_back( &tobj );
-               _table_cache.emplace( tobj.id, make_pair(&tobj, ei) );
-               return ei;
+               auto indx = _special_iterator_to_table.size();
+               _special_iterator_to_table.push_back( &tobj );
+               _table_cache.emplace( tobj.id, make_pair(&tobj, indx) );
+               return indx;
             }
 
             const table_id_object& get_table( table_id_object::id_type i )const {
@@ -52,22 +53,35 @@ class apply_context {
             int get_end_iterator_by_table_id( table_id_object::id_type i )const {
                auto itr = _table_cache.find(i);
                FC_ASSERT( itr != _table_cache.end(), "an invariant was broken, table should be in cache" );
-               return itr->second.second;
+               return index_to_end_iterator(itr->second.second);
+            }
+
+            int get_rend_iterator_by_table_id( table_id_object::id_type i )const {
+               auto itr = _table_cache.find(i);
+               FC_ASSERT( itr != _table_cache.end(), "an invariant was broken, table should be in cache" );
+               return index_to_rend_iterator(itr->second.second);
             }
 
             const table_id_object* find_table_by_end_iterator( int ei )const {
-               FC_ASSERT( ei < -1, "not an end iterator" );
+               FC_ASSERT( is_end_iterator(ei), "not an end iterator" ); // end iterators are negative evens
                auto indx = end_iterator_to_index(ei);
-               if( indx >= _end_iterator_to_table.size() ) return nullptr;
-               return _end_iterator_to_table[indx];
+               if( indx >= _special_iterator_to_table.size() ) return nullptr;
+               return _special_iterator_to_table[indx];
+            }
+
+            const table_id_object* find_table_by_rend_iterator( int rei )const {
+               FC_ASSERT( is_rend_iterator(rei), "not an rend iterator" ); // rend iterators are negative odds < -1
+               auto indx = rend_iterator_to_index(rei);
+               if( indx >= _special_iterator_to_table.size() ) return nullptr;
+               return _special_iterator_to_table[indx];
             }
 
             const T& get( int iterator ) {
                FC_ASSERT( iterator != -1, "invalid iterator" );
-               FC_ASSERT( iterator >= 0, "reference of end iterator" );
+               FC_ASSERT( iterator >= 0, "dereference of end or rend iterator" );
                FC_ASSERT( iterator < _iterator_to_object.size(), "iterator out of range" );
                auto result = _iterator_to_object[iterator];
-               FC_ASSERT( result, "reference of deleted object" );
+               FC_ASSERT( result, "dereference of deleted object" );
                return *result;
             }
 
@@ -92,17 +106,29 @@ class apply_context {
                return _iterator_to_object.size() - 1;
             }
 
+            /// Precondition: indx < _special_iterator_to_table.size() <= (std::numeric_limits<int>::max() - 1)/2
+            inline int index_to_end_iterator( size_t indx )const { return -(2*indx + 2); }
+            /// Precondition: indx < _special_iterator_to_table.size() <= (std::numeric_limits<int>::max() - 1)/2
+            inline int index_to_rend_iterator( size_t indx )const { return -(2*indx + 3); }
+
+            inline bool is_end_iterator( int itr )const  { return (itr < -1) && (itr % 2 == 0); }
+            inline bool is_rend_iterator( int itr )const { return (itr < -1) && (itr % 2 != 0); }
+
          private:
-            map<table_id_object::id_type, pair<const table_id_object*, int>> _table_cache;
-            vector<const table_id_object*>                  _end_iterator_to_table;
+            map<table_id_object::id_type, pair<const table_id_object*, size_t>> _table_cache;
+            vector<const table_id_object*>                  _special_iterator_to_table;
             vector<const T*>                                _iterator_to_object;
             map<const T*,int>                               _object_to_iterator;
 
-            /// Precondition: std::numeric_limits<int>::min() < ei < -1
             /// Iterator of -1 is reserved for invalid iterators (i.e. when the appropriate table has not yet been created).
-            inline size_t end_iterator_to_index( int ei )const { return (-ei - 2); }
-            /// Precondition: indx < _end_iterator_to_table.size() <= std::numeric_limits<int>::max()
-            inline int index_to_end_iterator( size_t indx )const { return -(indx + 2); }
+
+            /// end iterators are negative evens
+            /// Precondition: (std::numeric_limits<int>::min()+2 <= ei <= -2) && (ei % 2 == 0)
+            inline size_t end_iterator_to_index( int ei )const { return (-ei/2 - 1); }
+
+            /// rend iterators are negative odds less than -1
+            /// Precondition: (std::numeric_limits<int>::min()+1 <= ei <= -3) && (ei % 2 != 0)
+            inline size_t rend_iterator_to_index( int ei )const { return (-ei/2 - 1); }
       };
 
       template<typename>
@@ -242,7 +268,7 @@ class apply_context {
                auto tab = context.find_table( code, scope, table );
                if( !tab ) return -1;
 
-               auto table_end_itr = itr_cache.cache_table( *tab );
+               auto table_end_itr = itr_cache.index_to_end_iterator( itr_cache.cache_table( *tab ) );
 
                const auto* obj = context.db.find<ObjectType, contracts::by_secondary>( secondary_key_helper_t::create_tuple( *tab, secondary ) );
                if( !obj ) return table_end_itr;
@@ -256,7 +282,7 @@ class apply_context {
                auto tab = context.find_table( code, scope, table );
                if( !tab ) return -1;
 
-               auto table_end_itr = itr_cache.cache_table( *tab );
+               auto table_end_itr = itr_cache.index_to_end_iterator( itr_cache.cache_table( *tab ) );
 
                const auto& idx = context.db.get_index< typename chainbase::get_index_type<ObjectType>::type, contracts::by_secondary >();
                auto itr = idx.lower_bound( secondary_key_helper_t::create_tuple( *tab, secondary ) );
@@ -273,7 +299,7 @@ class apply_context {
                auto tab = context.find_table( code, scope, table );
                if( !tab ) return -1;
 
-               auto table_end_itr = itr_cache.cache_table( *tab );
+               auto table_end_itr = itr_cache.index_to_end_iterator( itr_cache.cache_table( *tab ) );
 
                const auto& idx = context.db.get_index< typename chainbase::get_index_type<ObjectType>::type, contracts::by_secondary >();
                auto itr = idx.upper_bound( secondary_key_helper_t::create_tuple( *tab, secondary ) );
@@ -290,38 +316,63 @@ class apply_context {
                auto tab = context.find_table( code, scope, table );
                if( !tab ) return -1;
 
-               return itr_cache.cache_table( *tab );
+               return itr_cache.index_to_end_iterator( itr_cache.cache_table( *tab ) );
+            }
+
+            int rend_secondary( uint64_t code, uint64_t scope, uint64_t table ) {
+               auto tab = context.find_table( code, scope, table );
+               if( !tab ) return -1;
+
+               return itr_cache.index_to_rend_iterator( itr_cache.cache_table( *tab ) );
             }
 
             int next_secondary( int iterator, uint64_t& primary ) {
-               if( iterator < -1 ) return -1; // cannot increment past end iterator of index
+               if( itr_cache.is_end_iterator(iterator) ) return -1; // cannot increment past end iterator of index
+
+               const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_secondary>();
+
+               if( itr_cache.is_rend_iterator(iterator) ) {
+                  auto tab = itr_cache.find_table_by_rend_iterator(iterator);
+                  FC_ASSERT( tab, "not a valid rend iterator" );
+
+                  auto itr = idx.lower_bound(tab->id);
+                  if( itr == idx.end() || itr->t_id != tab->id ) // Empty index
+                     return itr_cache.get_end_iterator_by_table_id(tab->id);
+
+                  primary = itr->primary_key;
+                  return itr_cache.add(*itr);
+               }
 
                const auto& obj = itr_cache.get(iterator); // Check for iterator != -1 happens in this call
-               const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_secondary>();
 
                auto itr = idx.iterator_to(obj);
                ++itr;
 
-               if (itr == idx.end() || itr->t_id != obj.t_id) return itr_cache.get_end_iterator_by_table_id(obj.t_id);
+               if (itr == idx.end() || itr->t_id != obj.t_id)
+                  return itr_cache.get_end_iterator_by_table_id(obj.t_id);
 
                primary = itr->primary_key;
                return itr_cache.add(*itr);
             }
 
             int previous_secondary( int iterator, uint64_t& primary ) {
+               if( itr_cache.is_rend_iterator(iterator) ) return -1; // cannot decrement past rend iterator of index
+
                const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_secondary>();
 
-               if( iterator < -1 ) // is end iterator
+               if( itr_cache.is_end_iterator(iterator) )
                {
                   auto tab = itr_cache.find_table_by_end_iterator(iterator);
                   FC_ASSERT( tab, "not a valid end iterator" );
 
                   auto itr = idx.upper_bound(tab->id);
-                  if( itr == idx.begin() ) return -1; // Empty index
+                  if( idx.begin() == idx.end() || itr == idx.begin() ) // Empty index
+                     return itr_cache.get_rend_iterator_by_table_id(tab->id);
 
                   --itr;
 
-                  if( itr->t_id != tab->id ) return -1; // Empty index
+                  if( itr->t_id != tab->id ) // Empty index
+                     return itr_cache.get_rend_iterator_by_table_id(tab->id);
 
                   primary = itr->primary_key;
                   return itr_cache.add(*itr);
@@ -330,11 +381,13 @@ class apply_context {
                const auto& obj = itr_cache.get(iterator);
 
                auto itr = idx.iterator_to(obj);
-               if( itr == idx.begin() ) return -1; // cannot decrement past beginning iterator of index
+               if( itr == idx.begin() )
+                  return itr_cache.get_rend_iterator_by_table_id(obj.t_id);
 
                --itr;
 
-               if( itr->t_id != obj.t_id ) return -1; // cannot decrement past beginning iterator of index
+               if( itr->t_id != obj.t_id )
+                  return itr_cache.get_rend_iterator_by_table_id(obj.t_id);
 
                primary = itr->primary_key;
                return itr_cache.add(*itr);
@@ -344,7 +397,7 @@ class apply_context {
                auto tab = context.find_table( code, scope, table );
                if( !tab ) return -1;
 
-               auto table_end_itr = itr_cache.cache_table( *tab );
+               auto table_end_itr = itr_cache.index_to_end_iterator( itr_cache.cache_table( *tab ) );
 
                const auto* obj = context.db.find<ObjectType, contracts::by_primary>( boost::make_tuple( tab->id, primary ) );
                if( !obj ) return table_end_itr;
@@ -357,7 +410,7 @@ class apply_context {
                auto tab = context.find_table( code, scope, table );
                if (!tab) return -1;
 
-               auto table_end_itr = itr_cache.cache_table( *tab );
+               auto table_end_itr = itr_cache.index_to_end_iterator( itr_cache.cache_table( *tab ) );
 
                const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_primary>();
                auto itr = idx.lower_bound(boost::make_tuple(tab->id, primary));
@@ -371,59 +424,78 @@ class apply_context {
                auto tab = context.find_table( code, scope, table );
                if ( !tab ) return -1;
 
-               auto table_end_itr = itr_cache.cache_table( *tab );
+               auto table_end_itr = itr_cache.index_to_end_iterator( itr_cache.cache_table( *tab ) );
 
                const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_primary>();
                auto itr = idx.upper_bound(boost::make_tuple(tab->id, primary));
                if (itr == idx.end()) return table_end_itr;
                if (itr->t_id != tab->id) return table_end_itr;
 
-               itr_cache.cache_table(*tab);
                return itr_cache.add(*itr);
             }
 
             int next_primary( int iterator, uint64_t& primary ) {
-               if( iterator < -1 ) return -1; // cannot increment past end iterator of table
+               if( itr_cache.is_end_iterator(iterator) ) return -1; // cannot increment past end iterator of table
+
+               const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_primary>();
+
+               if( itr_cache.is_rend_iterator(iterator) ) {
+                  auto tab = itr_cache.find_table_by_rend_iterator(iterator);
+                  FC_ASSERT( tab, "not a valid rend iterator" );
+
+                  auto itr = idx.lower_bound(tab->id);
+                  if( itr == idx.end() || itr->t_id != tab->id ) // Empty table
+                     return itr_cache.get_end_iterator_by_table_id(tab->id);
+
+                  primary = itr->primary_key;
+                  return itr_cache.add(*itr);
+               }
 
                const auto& obj = itr_cache.get(iterator); // Check for iterator != -1 happens in this call
-               const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_primary>();
 
                auto itr = idx.iterator_to(obj);
                ++itr;
 
-               if (itr == idx.end() || itr->t_id != obj.t_id) return itr_cache.get_end_iterator_by_table_id(obj.t_id);
+               if (itr == idx.end() || itr->t_id != obj.t_id)
+                  return itr_cache.get_end_iterator_by_table_id(obj.t_id);
 
                primary = itr->primary_key;
                return itr_cache.add(*itr);
             }
 
             int previous_primary( int iterator, uint64_t& primary ) {
+               if( itr_cache.is_rend_iterator(iterator) ) return -1; // cannot decrement past rend iterator of table
+
                const auto& idx = context.db.get_index<typename chainbase::get_index_type<ObjectType>::type, contracts::by_primary>();
 
-               if( iterator < -1 ) // is end iterator
+               if( itr_cache.is_end_iterator(iterator) )
                {
                   auto tab = itr_cache.find_table_by_end_iterator(iterator);
                   FC_ASSERT( tab, "not a valid end iterator" );
 
                   auto itr = idx.upper_bound(tab->id);
-                  if( itr == idx.begin() ) return -1; // Empty table
+                  if( idx.begin() == idx.end() || itr == idx.begin() ) // Empty table
+                     return itr_cache.get_rend_iterator_by_table_id(tab->id);
 
                   --itr;
 
-                  if( itr->t_id != tab->id ) return -1; // Empty table
+                  if( itr->t_id != tab->id ) // Empty table
+                     return itr_cache.get_rend_iterator_by_table_id(tab->id);
 
                   primary = itr->primary_key;
                   return itr_cache.add(*itr);
                }
 
-               const auto& obj = itr_cache.get(iterator);
+               const auto& obj = itr_cache.get(iterator); // Check for iterator != -1 happens in this call
 
                auto itr = idx.iterator_to(obj);
-               if( itr == idx.begin() ) return -1; // cannot decrement past beginning iterator of table
+               if( itr == idx.begin() )
+                  return itr_cache.get_rend_iterator_by_table_id(obj.t_id);
 
                --itr;
 
-               if( itr->t_id != obj.t_id ) return -1; // cannot decrement past beginning iterator of index
+               if( itr->t_id != obj.t_id )
+                  return itr_cache.get_rend_iterator_by_table_id(obj.t_id);
 
                primary = itr->primary_key;
                return itr_cache.add(*itr);
@@ -593,6 +665,7 @@ class apply_context {
       int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
       int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
       int db_end_i64( uint64_t code, uint64_t scope, uint64_t table );
+      int db_rend_i64( uint64_t code, uint64_t scope, uint64_t table );
 
       generic_index<contracts::index64_object>    idx64;
       generic_index<contracts::index128_object>   idx128;
