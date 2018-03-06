@@ -313,7 +313,8 @@ void test_multi_index::idx256_general()
    > table( current_receiver(), current_receiver() );
 
    auto fourtytwo       = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
-   auto onetwothreefour = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL);
+   //auto onetwothreefour = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL);
+   auto onetwothreefour = key256{std::array<uint32_t, 8>{{0,1, 0,2, 0,3, 0,4}}};
 
    const auto& entry1 = table.emplace( payer, [&]( auto& o ) {
       o.id = 1;
@@ -379,7 +380,7 @@ void test_multi_index::idx256_general()
       eosio_assert( itr == secidx.end(), "idx256_general - secondary key sort" );
    }
 
-   auto upper = secidx.upper_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL));
+   auto upper = secidx.upper_bound(key256{std::array<uint64_t,4>{{0, 0, 0, 42}}});
 
    print("First entry with a secondary key greater than 42 has ID=", upper->id, ".\n");
    eosio_assert( upper->id == 2, "idx256_general - upper_bound" );
