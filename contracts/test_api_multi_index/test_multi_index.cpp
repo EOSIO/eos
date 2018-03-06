@@ -85,6 +85,22 @@ namespace _test_multi_index {
 
       auto secondary_index = table.template get_index<N(bysecondary)>();
 
+      /*
+      // struct that can be used to trick iterator_to into thinking it is given a reference to an object in the table cache.
+      struct augmented_record : record
+      {
+         augmented_record( const decltype(table)& midx, uint64_t _id, uint64_t _sec )
+         : multidx(midx)
+         {
+            id = _id;
+            sec = _sec;
+         }
+
+         const decltype(table)& multidx;
+         int primary_itr = -1;
+      };
+      */
+
       // find by primary key
       {
          auto ptr = table.find(999);
@@ -93,11 +109,20 @@ namespace _test_multi_index {
          ptr = table.find(976);
          eosio_assert(ptr != nullptr && ptr->sec == N(emily), "idx64_general - table.find() of existing primary key");
 
-         // Workaround: would prefer to instead receive iterator (rather than pointer) from find().
-         auto itr = table.lower_bound(976);
+         /*
+         multi_index<TableName, record,
+            indexed_by< N(bysecondary), const_mem_fun<record, uint64_t, &record::get_secondary> >
+         > table2( current_receiver(), current_receiver() );
+         augmented_record r{table2, 976, N(emily)};
+         auto itr = table.iterator_to(r); // Attempt to misuse iterator_to in a way that it can catch. This should cause an assertion error.
+         print("Should not see this if iterator_to caught the misuse.\n");
+         */
+         auto itr = table.iterator_to(*ptr);
          eosio_assert(itr != table.end() && itr->id == 976 && itr->sec == N(emily), "idx64_general - iterator to existing object in primary index");
 
+
          ++itr;
+         print("Still okay\n");
          eosio_assert(itr == table.end(), "idx64_general - increment primary iterator to end");
       }
 
@@ -121,8 +146,7 @@ namespace _test_multi_index {
          auto ptr = table.find(781);
          eosio_assert(ptr != nullptr && ptr->sec == N(bob), "idx64_general - table.find() of existing primary key");
 
-         // Workaround: need to add find_primary wrapper support in secondary indices of multi_index
-         auto itr = secondary_index.upper_bound(ptr->sec); --itr;
+         auto itr = secondary_index.iterator_to(*ptr);
          eosio_assert(itr->id == 781 && itr->sec == N(bob), "idx64_general - iterator to existing object in secondary index");
 
          --itr;
