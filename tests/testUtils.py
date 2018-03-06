@@ -482,12 +482,6 @@ class Node(object):
     # Create account and return creation transactions. Return transaction json object
     # waitForTransBlock: wait on creation transaction id to appear in a block
     def createAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
-        #try:
-        #    trans=self.getEosAccount(account.name)
-        #    Utils.Print("WARNING: skip creating account %s because it already exists." % #(account.name))
-       #     return trans
-       # except subprocess.CalledProcessError as ex:
-        #    Utils.Print("Create account %s with creator %s" % (account.name, creatorAccount.name))
 
         cmd=None
         if Utils.amINoon:
