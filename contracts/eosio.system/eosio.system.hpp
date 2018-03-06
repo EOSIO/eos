@@ -37,8 +37,8 @@ namespace eosiosystem {
                                  typename voting<SystemAccount>::unregister_proxy,
                                  typename voting<SystemAccount>::register_producer,
                                  typename voting<SystemAccount>::vote_producer,
-                                 typename voting<SystemAccount>::stake_vote,
-                                 typename voting<SystemAccount>::unstake_vote,
+                                 typename voting<SystemAccount>::stakevote,
+                                 typename voting<SystemAccount>::unstakevote,
                                  typename voting<SystemAccount>::unstake_vote_deferred,
                                  nonce>( code, act) ) {
                   eosio::print("Unexpected action: ", eosio::name(act), "\n");

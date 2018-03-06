@@ -51,7 +51,7 @@ namespace eosiosystem {
 
             uint64_t    primary_key()const { return owner;       }
             uint128_t   by_votes()const    { return total_votes; }
-            bool active() const { return packed_key == 4 + 33 /*serialized key size*/; }
+            bool active() const { return packed_key.size() == 4 + 33 /*serialized key size*/; }
 
             EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(prefs)(packed_key) )
          };
@@ -61,7 +61,7 @@ namespace eosiosystem {
                                      >  producers_table;
 
 
-         struct account_votes {
+         struct voter_info {
             account_name                owner = 0;
             account_name                proxy = 0;
             uint32_t                    last_update = 0;
@@ -76,10 +76,10 @@ namespace eosiosystem {
 
             uint64_t primary_key()const { return owner; }
 
-            EOSLIB_SERIALIZE( account_votes, (owner)(proxy)(last_update)(is_proxy)(staked)(unstaking)(unstake_per_week)(proxied_votes)(producers)(deferred_trx_id)(last_unstake_time) )
+            EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(last_update)(is_proxy)(staked)(unstaking)(unstake_per_week)(proxied_votes)(producers)(deferred_trx_id)(last_unstake_time) )
          };
 
-         typedef eosio::multi_index< N(accountvotes), account_votes>  account_votes_table;
+         typedef eosio::multi_index< N(voters), voter_info>  voters_table;
 
          ACTION( SystemAccount, register_producer ) {
             account_name producer;
@@ -132,25 +132,25 @@ namespace eosiosystem {
                });
          }
 
-         ACTION( SystemAccount, stake_vote ) {
+         ACTION( SystemAccount, stakevote ) {
             account_name      voter;
             system_token_type amount;
 
-            EOSLIB_SERIALIZE( stake_vote, (voter)(amount) )
+            EOSLIB_SERIALIZE( stakevote, (voter)(amount) )
          };
 
-         static void increase_voting_power( account_name voter, system_token_type amount ) {
-            account_votes_table avotes( SystemAccount, SystemAccount );
-            const auto* acv = avotes.find( voter );
+         static void increase_voting_power( account_name acnt, system_token_type amount ) {
+            voters_table voters_tbl( SystemAccount, SystemAccount );
+            const auto* voter = voters_tbl.find( acnt );
 
-            if( !acv ) {
-               acv = &avotes.emplace( voter, [&]( account_votes& a ) {
-                     a.owner = voter;
+            if( !voter ) {
+               voter = &voters_tbl.emplace( acnt, [&]( voter_info& a ) {
+                     a.owner = acnt;
                      a.last_update = now();
                      a.staked = amount;
                   });
             } else {
-               avotes.update( *acv, 0, [&]( auto& av ) {
+               voters_tbl.update( *voter, 0, [&]( auto& av ) {
                      av.last_update = now();
                      av.staked += amount;
                   });
@@ -158,14 +158,14 @@ namespace eosiosystem {
             }
 
             const std::vector<account_name>* producers = nullptr;
-            if ( acv->proxy ) {
-               auto proxy = avotes.find( acv->proxy );
-               avotes.update( *proxy, 0, [&](account_votes& a) { a.proxied_votes += amount.quantity; } );
+            if ( voter->proxy ) {
+               auto proxy = voters_tbl.find( voter->proxy );
+               voters_tbl.update( *proxy, 0, [&](voter_info& a) { a.proxied_votes += amount.quantity; } );
                if ( proxy->is_proxy ) { //only if proxy is still active. if proxy has been unregistered, we update proxied_votes, but don't propagate to producers
                   producers = &proxy->producers;
                }
             } else {
-               producers = &acv->producers;
+               producers = &voter->producers;
             }
 
             if ( producers ) {
@@ -271,7 +271,7 @@ namespace eosiosystem {
             eosio_parameters_singleton::set( parameters );
          }
 
-         static void on( const stake_vote& sv ) {
+         static void on( const stakevote& sv ) {
             eosio_assert( sv.amount.quantity > 0, "must stake some tokens" );
             require_auth( sv.voter );
 
@@ -279,11 +279,11 @@ namespace eosiosystem {
             currency::inline_transfer( sv.voter, SystemAccount, sv.amount, "stake for voting" );
          }
 
-         ACTION( SystemAccount, unstake_vote ) {
+         ACTION( SystemAccount, unstakevote ) {
             account_name      voter;
             system_token_type amount;
 
-            EOSLIB_SERIALIZE( unstake_vote, (voter)(amount) )
+            EOSLIB_SERIALIZE( unstakevote, (voter)(amount) )
          };
 
          ACTION(  SystemAccount, unstake_vote_deferred ) {
@@ -292,24 +292,24 @@ namespace eosiosystem {
             EOSLIB_SERIALIZE( unstake_vote_deferred, (voter) )
          };
 
-         static void on( const unstake_vote& usv ) {
+         static void on( const unstakevote& usv ) {
             require_auth( usv.voter );
-            account_votes_table avotes( SystemAccount, SystemAccount );
-            const auto* acv = avotes.find( usv.voter );
-            eosio_assert( bool(acv), "stake not found" );
+            voters_table voters_tbl( SystemAccount, SystemAccount );
+            const auto* voter = voters_tbl.find( usv.voter );
+            eosio_assert( bool(voter), "stake not found" );
 
             if ( 0 < usv.amount.quantity ) {
-               eosio_assert( acv->staked < usv.amount, "cannot unstake more than total stake amount" );
+               eosio_assert( voter->staked < usv.amount, "cannot unstake more than total stake amount" );
                /*
-               if (acv->deferred_trx_id) {
-                  //XXX cancel_deferred_transaction(acv->deferred_trx_id);
+               if (voter->deferred_trx_id) {
+                  //XXX cancel_deferred_transaction(voter->deferred_trx_id);
                }
 
                unstake_vote_deferred dt;
                dt.voter = usv.voter;
                uint32_t new_trx_id = 0;//XXX send_deferred(dt);
 
-               avotes.update( *acv, 0, [&](account_votes& a) {
+               avotes.update( *voter, 0, [&](voter_info& a) {
                      a.staked -= usv.amount;
                      a.unstaking += a.unstaking + usv.amount;
                      //round up to guarantee that there will be no unpaid balance after 26 weeks, and we are able refund amount < unstake_payments
@@ -320,7 +320,7 @@ namespace eosiosystem {
                */
 
                // Temporary code: immediate unstake
-               avotes.update( *acv, 0, [&](account_votes& a) {
+               voters_tbl.update( *voter, 0, [&](voter_info& a) {
                      a.staked -= usv.amount;
                      a.last_update = now();
                   });
@@ -328,14 +328,14 @@ namespace eosiosystem {
                // end of temporary code
 
                const std::vector<account_name>* producers = nullptr;
-               if ( acv->proxy ) {
-                  auto proxy = avotes.find( acv->proxy );
-                  avotes.update( *proxy, 0, [&](account_votes& a) { a.proxied_votes -= usv.amount.quantity; } );
+               if ( voter->proxy ) {
+                  auto proxy = voters_tbl.find( voter->proxy );
+                  voters_tbl.update( *proxy, 0, [&](voter_info& a) { a.proxied_votes -= usv.amount.quantity; } );
                   if ( proxy->is_proxy ) { //only if proxy is still active. if proxy has been unregistered, we update proxied_votes, but don't propagate to producers
                      producers = &proxy->producers;
                   }
                } else {
-                  producers = &acv->producers;
+                  producers = &voter->producers;
                }
 
                if ( producers ) {
@@ -349,10 +349,10 @@ namespace eosiosystem {
                   }
                }
             } else {
-               if (acv->deferred_trx_id) {
-                  //XXX cancel_deferred_transaction(acv->deferred_trx_id);
+               if (voter->deferred_trx_id) {
+                  //XXX cancel_deferred_transaction(voter->deferred_trx_id);
                }
-               avotes.update( *acv, 0, [&](account_votes& a) {
+               voters_tbl.update( *voter, 0, [&](voter_info& a) {
                      a.staked += a.unstaking;
                      a.unstaking.quantity = 0;
                      a.unstake_per_week.quantity = 0;
@@ -364,20 +364,20 @@ namespace eosiosystem {
 
          static void on( const unstake_vote_deferred& usv) {
             require_auth( usv.voter );
-            account_votes_table avotes( SystemAccount, SystemAccount );
-            const auto* acv = avotes.find( usv.voter );
-            eosio_assert( bool(acv), "stake not found" );
+            voters_table voters_tbl( SystemAccount, SystemAccount );
+            const auto* voter = voters_tbl.find( usv.voter );
+            eosio_assert( bool(voter), "stake not found" );
 
-            auto weeks = (now() - acv->last_unstake_time) / unstake_pay_period;
+            auto weeks = (now() - voter->last_unstake_time) / unstake_pay_period;
             eosio_assert( 0 == weeks, "less than one week passed since last transfer or unstake request" );
-            eosio_assert( 0 < acv->unstaking.quantity, "no unstaking money to transfer" );
+            eosio_assert( 0 < voter->unstaking.quantity, "no unstaking money to transfer" );
 
-            auto unstake_amount = std::min(weeks * acv->unstake_per_week, acv->unstaking);
-            uint32_t new_trx_id = unstake_amount < acv->unstaking ? /* XXX send_deferred() */ 0 : 0;
+            auto unstake_amount = std::min(weeks * voter->unstake_per_week, voter->unstaking);
+            uint32_t new_trx_id = unstake_amount < voter->unstaking ? /* XXX send_deferred() */ 0 : 0;
 
             currency::inline_transfer( usv.voter, SystemAccount, unstake_amount, "unstake voting" );
 
-            avotes.update( *acv, 0, [&](account_votes& a) {
+            voters_tbl.update( *voter, 0, [&](voter_info& a) {
                   a.unstaking -= unstake_amount;
                   a.deferred_trx_id = new_trx_id;
                   a.last_unstake_time = a.last_unstake_time + weeks * unstake_pay_period;
@@ -411,8 +411,8 @@ namespace eosiosystem {
                eosio_assert( std::is_sorted( vp.producers.begin(), vp.producers.end() ), "producer votes must be sorted" );
             }
 
-            account_votes_table avotes( SystemAccount, SystemAccount );
-            auto voter = avotes.find( vp.voter );
+            voters_table voters_tbl( SystemAccount, SystemAccount );
+            auto voter = voters_tbl.find( vp.voter );
 
             eosio_assert( bool(voter), "no stake to vote" );
             if ( voter->is_proxy ) {
@@ -425,8 +425,8 @@ namespace eosiosystem {
                if ( voter->proxy == vp.proxy ) {
                   return; // nothing changed
                }
-               auto old_proxy = avotes.find( voter->proxy );
-               avotes.update( *old_proxy, 0, [&](auto& a) { a.proxied_votes -= voter->staked.quantity; } );
+               auto old_proxy = voters_tbl.find( voter->proxy );
+               voters_tbl.update( *old_proxy, 0, [&](auto& a) { a.proxied_votes -= voter->staked.quantity; } );
                if ( old_proxy->is_proxy ) { //if proxy stoped being proxy, the votes were already taken back from producers by on( const unregister_proxy& )
                   old_producers = &old_proxy->producers;
                }
@@ -437,9 +437,9 @@ namespace eosiosystem {
             //find new producers, update new proxy if needed
             const std::vector<account_name>* new_producers = nullptr;
             if ( vp.proxy ) {
-               auto new_proxy = avotes.find( vp.proxy );
+               auto new_proxy = voters_tbl.find( vp.proxy );
                eosio_assert( new_proxy->is_proxy, "selected proxy has not elected to be a proxy" );
-               avotes.update( *new_proxy, 0, [&](auto& a) { a.proxied_votes += voter->staked.quantity; } );
+               voters_tbl.update( *new_proxy, 0, [&](auto& a) { a.proxied_votes += voter->staked.quantity; } );
                new_producers = &new_proxy->producers;
             } else {
                new_producers = &vp.producers;
@@ -471,7 +471,7 @@ namespace eosiosystem {
             }
 
             // save new values to the account itself
-            avotes.update( *voter, 0, [&](account_votes& a) {
+            voters_tbl.update( *voter, 0, [&](voter_info& a) {
                   a.proxy = vp.proxy;
                   a.last_update = now();
                   a.producers = vp.producers;
@@ -487,18 +487,18 @@ namespace eosiosystem {
          static void on( const register_proxy& reg ) {
             require_auth( reg.proxy_to_register );
 
-            account_votes_table avotes( SystemAccount, SystemAccount );
-            auto voter = avotes.find( reg.proxy_to_register );
+            voters_table voters_tbl( SystemAccount, SystemAccount );
+            auto voter = voters_tbl.find( reg.proxy_to_register );
             if ( voter ) {
                eosio_assert( voter->is_proxy == 0, "account is already a proxy" );
                eosio_assert( voter->proxy == 0, "account that uses a proxy is not allowed to become a proxy" );
-               avotes.update( *voter, 0, [&](account_votes& a) {
+               voters_tbl.update( *voter, 0, [&](voter_info& a) {
                      a.is_proxy = 1;
                      a.last_update = now();
                      //a.proxied_votes may be > 0, if the proxy has been unregistered, so we had to keep the value
                   });
             } else {
-               avotes.emplace( reg.proxy_to_register, [&]( account_votes& a ) {
+               voters_tbl.emplace( reg.proxy_to_register, [&]( voter_info& a ) {
                      a.owner = reg.proxy_to_register;
                      a.last_update = now();
                      a.proxy = 0;
@@ -518,8 +518,8 @@ namespace eosiosystem {
          static void on( const unregister_proxy& reg ) {
             require_auth( reg.proxy_to_unregister );
 
-            account_votes_table avotes( SystemAccount, SystemAccount );
-            auto proxy = avotes.find( reg.proxy_to_unregister );
+            voters_table voters_tbl( SystemAccount, SystemAccount );
+            auto proxy = voters_tbl.find( reg.proxy_to_unregister );
             eosio_assert( bool(proxy), "proxy not found" );
             eosio_assert( proxy->is_proxy == 1, "account is already a proxy" );
 
@@ -530,7 +530,7 @@ namespace eosiosystem {
                producers_tbl.update( *prod, 0, [&]( auto& pi ) { pi.total_votes -= proxy->proxied_votes; });
             }
 
-            avotes.update( *proxy, 0, [&](account_votes& a) {
+            voters_tbl.update( *proxy, 0, [&](voter_info& a) {
                      a.is_proxy = 0;
                      a.last_update = now();
                      //a.proxied_votes should be kept in order to be able to reenable this proxy in the future

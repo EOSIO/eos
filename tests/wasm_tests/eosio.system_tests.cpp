@@ -78,6 +78,22 @@ public:
       return abi_ser.binary_to_variant( "total_resources", data );
    }
 
+   fc::variant get_voter_info( const account_name& act ) {
+      const auto& db = control->get_database();
+      const auto* t_id = db.find<table_id_object, by_code_scope_table>( boost::make_tuple( config::system_account_name, config::system_account_name, N(voters) ));
+      FC_ASSERT(t_id != 0, "object not found");
+
+      const auto& idx = db.get_index<key_value_index, by_scope_primary>();
+
+      auto itr = idx.lower_bound( boost::make_tuple( t_id->id, act ));
+      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
+      BOOST_REQUIRE_EQUAL( act.value, itr->primary_key );
+
+      vector<char> data;
+      read_only::copy_inline_row( *itr, data );
+      return abi_ser.binary_to_variant( "voter_info", data );
+   }
+
    abi_serializer abi_ser;
 };
 
@@ -389,6 +405,7 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
+
 BOOST_FIXTURE_TEST_CASE( adding_stake_partial_unstake, eosio_system_tester ) try {
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
 
@@ -438,6 +455,33 @@ BOOST_FIXTURE_TEST_CASE( adding_stake_partial_unstake, eosio_system_tester ) try
    BOOST_REQUIRE_EQUAL( asset::from_string("120.0000 EOS").amount - asset::from_string("120.0000 EOS").amount * (bytes/2)/bytes,
                         stake["storage_stake"].as_uint64());
    BOOST_REQUIRE_EQUAL( asset::from_string("714.9599 EOS"), get_balance( "alice" ) );
+
+} FC_LOG_AND_RETHROW()
+
+// Tests for voting
+
+BOOST_FIXTURE_TEST_CASE( stake_vote_add_more_partial_unstake, eosio_system_tester ) try {
+   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(stakevote), mvo()
+                                               ("voter",  "alice")
+                                               ("amount", "100.0000 EOS")
+                        )
+   );
+
+   auto vi = get_voter_info( "alice" );
+   BOOST_REQUIRE_EQUAL( true, vi.is_object() );
+   BOOST_REQUIRE_EQUAL( name(0).to_string(), vi["proxy"].as_string() );
+   //BOOST_REQUIRE_EQUAL( time(), vi["last_update"].as_uint32() );
+   BOOST_REQUIRE_EQUAL( 0, vi["is_proxy"].as_uint64() ); //uint32
+   BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS").amount, vi["staked"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( 0, vi["unstaking"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( 0, vi["unstake_per_week"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( 0, vi["proxied_votes"].as_uint64() ); //uint128
+   BOOST_REQUIRE_EQUAL( true, vi["producers"].is_array() );
+   BOOST_REQUIRE_EQUAL( true, vi["producers"].get_array().empty() );
+   BOOST_REQUIRE_EQUAL( 0, vi["deferred_trx_id"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( 0, vi["last_unstake"].as_uint64() );
 
 } FC_LOG_AND_RETHROW()
 

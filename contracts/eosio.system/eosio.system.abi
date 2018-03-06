@@ -55,6 +55,17 @@
          {"name":"unstake_bytes", "type":"uint64"}
       ]
     },{
+      "name": "delegated_bandwidth",
+      "base": "",
+      "fields": [
+         {"name":"from", "type":"account_name"},
+         {"name":"to", "type":"account_name"},
+         {"name":"net_weight", "type":"asset"},
+         {"name":"cpu_weight", "type":"asset"},
+         {"name":"storage_stake", "type":"asset"},
+         {"name":"storage_bytes", "type":"uint64"}
+      ]
+    },{
       "name": "total_resources",
       "base": "",
       "fields": [
@@ -79,15 +90,20 @@
         {"name":"amount", "type":"asset"}
       ]
     },{
-      "name": "delegated_bandwidth",
+      "name": "voter_info",
       "base": "",
       "fields": [
-         {"name":"from", "type":"account_name"},
-         {"name":"to", "type":"account_name"},
-         {"name":"net_weight", "type":"asset"},
-         {"name":"cpu_weight", "type":"asset"},
-         {"name":"storage_stake", "type":"asset"},
-         {"name":"storage_bytes", "type":"uint64"}
+        {"name":"owner",             "type":"account_name"},
+        {"name":"proxy",             "type":"account_name"},
+        {"name":"last_update",       "type":"uint32"},
+        {"name":"is_proxy",          "type":"uint32"},
+        {"name":"staked",            "type":"uint32"},
+        {"name":"unstaking",         "type":"uint32"},
+        {"name":"unstake_per_week",  "type":"uint32"},
+        {"name":"proxied_votes",     "type":"uint128"},
+        {"name":"producers",         "type":"account_name[]"},
+        {"name":"deferred_trx_id",   "type":"uint32"},
+        {"name":"last_unstake",      "type":"uint32"}
       ]
     }
   ],
