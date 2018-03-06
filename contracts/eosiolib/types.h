@@ -23,10 +23,6 @@ extern "C" {
  *  @{
  */
 
-struct uint256 {
-   uint64_t words[4];
-};
-
 typedef uint64_t account_name;
 typedef uint64_t permission_name;
 typedef uint64_t token_name;

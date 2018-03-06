@@ -100,7 +100,7 @@ extern "C" {
 
    /**
     */
-   void printhex( void* data, uint32_t datalen );
+   void printhex( const void* data, uint32_t datalen );
 
    /// @}
 #ifdef __cplusplus

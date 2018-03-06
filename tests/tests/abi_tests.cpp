@@ -310,7 +310,7 @@ const char* my_abi = R"=====(
 
 BOOST_AUTO_TEST_CASE(uint_types)
 { try {
-   
+
    const char* currency_abi = R"=====(
    {
        "types": [],
@@ -365,7 +365,7 @@ struct abi_gen_helper {
   static bool is_abi_generation_exception(const eosio::abi_generation_exception& e) { return true; };
 
   bool generate_abi(const char* source, const char* abi, bool opt_sfs=false) {
-    
+
     std::string include_param = std::string("-I") + eosiolib_path;
     std::string stdcpp_include_param = std::string("-I") + eosiolib_path + "/libc++/upstream/include";
     std::string stdc_include_param = std::string("-I") + eosiolib_path +  "/musl/upstream/include";
@@ -447,7 +447,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
       uint32_t                field11;
       uint64_t                field12;
       uint128_t               field13;
-      uint256                 field14;
+      //uint256                 field14;
       int8_t                  field15;
       int16_t                 field16;
       int32_t                 field17;
@@ -522,9 +522,6 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
           },{
              "name": "field13",
              "type": "uint128"
-          },{
-             "name": "field14",
-             "type": "uint256"
           },{
              "name": "field15",
              "type": "int8"

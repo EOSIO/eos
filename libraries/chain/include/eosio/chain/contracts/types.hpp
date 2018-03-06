@@ -28,7 +28,6 @@ using field_name     = fixed_string16;
 using table_name     = name;
 using action_name    = eosio::chain::action_name;
 
-
 struct type_def {
    type_def() = default;
    type_def(const type_name& new_type_name, const type_name& type)
@@ -44,7 +43,7 @@ struct field_def {
    field_def(const field_name& name, const type_name& type)
    :name(name), type(type)
    {}
-   
+
    field_name name;
    type_name  type;
 
@@ -291,4 +290,3 @@ FC_REFLECT( eosio::chain::contracts::unlinkauth                       , (account
 FC_REFLECT( eosio::chain::contracts::postrecovery                     , (account)(data)(memo) )
 FC_REFLECT( eosio::chain::contracts::passrecovery                     , (account) )
 FC_REFLECT( eosio::chain::contracts::vetorecovery                     , (account) )
-

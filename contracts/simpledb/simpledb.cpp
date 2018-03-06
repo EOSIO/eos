@@ -12,7 +12,7 @@
 using namespace eosio;
 
 namespace simpledb {
-   
+
    template<uint64_t Val>
    struct dispatchable {
       constexpr static uint64_t action_name = Val;
@@ -20,22 +20,22 @@ namespace simpledb {
 
    //@abi table
    struct record1 {
-      
+
       uint64_t  key;
-      
-      uint256   u256;
+
+      //uint256   u256;
       uint128_t u128;
       uint64_t  u64;
       uint32_t  u32;
-      uint16_t  u16; 
+      uint16_t  u16;
       uint8_t   u8;
 
       int64_t   i64;
       int32_t   i32;
       int16_t   i16;
       int8_t    i8;
-      
-      EOSLIB_SERIALIZE( record1, (key)(u256)(u128)(u64)(u32)(u16)(u8)(i64)(i32)(i16)(i8) );
+
+      EOSLIB_SERIALIZE( record1, (key)(u128)(u64)(u32)(u16)(u8)(i64)(i32)(i16)(i8) );
    };
 
    //@abi action insert1

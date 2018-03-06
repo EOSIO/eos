@@ -29,7 +29,7 @@
 	fi
 
 	if [ $DISK_AVAIL -lt $DISK_MIN ]; then
-		printf "\tYou must have at least 100GB of available storage to install EOSIO.\n"
+		printf "\tYou must have at least ${DISK_MIN}GB of available storage to install EOSIO.\n"
 		printf "\texiting now.\n"
 		exit 1
 	fi
