@@ -1,5 +1,6 @@
 #pragma once
 
+#include <eosio/chain/wasm_eosio_rewriters.hpp>
 #include <functional>
 #include <vector>
 #include <iostream>
@@ -9,36 +10,36 @@
 
 namespace eosio { namespace chain { namespace wasm_constraints {
    // effectively do nothing and pass
-   struct noop_validator {
+   struct noop_validation_visitor {
       static void validate( IR::Module& m );
    };
 
-   struct memories_validator {
+   struct memories_validation_visitor {
       static void validate( IR::Module& m );
    };
 
-   struct data_segments_validator {
+   struct data_segments_validation_visitor {
       static void validate( IR::Module& m );
    };
 
-   struct tables_validator {
+   struct tables_validation_visitor {
       static void validate( IR::Module& m );
    };
 
-   struct globals_validator {
+   struct globals_validation_visitor {
       static void validate( IR::Module& m );
    };
 
-   struct blacklist_validator {
+   struct blacklist_validation_visitor {
       static void validate( IR::Module& m );
    };
 
    using wasm_validate_func = std::function<void(IR::Module&)>;
 
-   template <typename ... Validators>
+   template <typename ... Visitors>
    struct constraints_validators {
       static void validate( IR::Module& m ) {
-         for ( auto validator : { Validators::validate... } )
+         for ( auto validator : { Visitors::validate... } )
             validator( m );
       }
    };
@@ -48,23 +49,26 @@ namespace eosio { namespace chain { namespace wasm_constraints {
       static void validate( IR::Module& m ) {}
    };
    
-   // inherit from this class and define own validators 
+   struct blacklist_validator { 
+   struct standard_op_constrainers : op_types<blacklist_validator> { 
+      
+   };
+   // inherit from this class and define your own validators 
    class wasm_binary_validation {
-      using standard_constraints_validators = constraints_validators< memories_validator,
-                                                                      data_segments_validator,
-                                                                      tables_validator,
-                                                                      globals_validator>;
+      using standard_module_constraints_validators = constraints_validators< memories_validation_visitor,
+                                                                      data_segments_validation_visitor,
+                                                                      tables_validation_visitor,
+                                                                      globals_validation_visitor>;
       public:
-         static bool validate( const char* wasm_binary, size_t wasm_binary_size ) {
-            /*
+         static void validate( const char* wasm_binary, size_t wasm_binary_size ) {
             IR::Module* mod = new IR::Module();
             Serialization::MemoryInputStream stream((const U8* )wasm_binary, wasm_binary_size);
             WASM::serialize( stream, *mod );
             _validators.validate( *mod );
-            */
          }
       private:
-         static constraints_validators<standard_constraints_validators> _validators;
+         static constraints_validators<standard_module_constraints_validators> _module_validators;
+         static instruction_validators<standard_module_constraints_validators> _instr_validators;
    };
 
 }}} // namespace wasm_constraints, chain, eosio

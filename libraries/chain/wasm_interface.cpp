@@ -296,24 +296,12 @@ namespace eosio { namespace chain {
                   }
 #endif
                   /// TODO: make validation generic
-#if 0
-                  using standard_wasm_constraints = wasm_constraints::constraints_validators< wasm_constraints::memories_validator, 
-                                                                                              wasm_constraints::data_segments_validator, 
-                                                                                              wasm_constraints::tables_validator, 
-                                                                                              wasm_constraints::globals_validator>;
-#endif
                   wasm_constraints::wasm_binary_validation::validate( wasm_binary, wasm_binary_size );
-                  //wasm_constraints::validate_wasm_binary<standard_wasm_constraints>( wasm_binary, wasm_binary_size );
-                  //if ( wasm_constraints::validate_wasm_binary<standard_wasm_constraints>( wasm_binary, wasm_binary_size ) ) {
-                     wavm = wavm::entry::build(wasm_binary, wasm_binary_size);
-                     wavm_info.emplace(*wavm);
+                  wavm = wavm::entry::build(wasm_binary, wasm_binary_size);
+                  wavm_info.emplace(*wavm);
 
-                     binaryen = binaryen::entry::build(wasm_binary, wasm_binary_size);
-                     binaryen_info.emplace(*binaryen);
-                 //}
-                  // TODO
-                  //else
-                     // throw some error
+                  binaryen = binaryen::entry::build(wasm_binary, wasm_binary_size);
+                  binaryen_info.emplace(*binaryen);
                } catch (...) {
                   pending_error = std::current_exception();
                }
