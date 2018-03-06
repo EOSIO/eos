@@ -219,8 +219,6 @@ namespace eosio { namespace chain {
 
                   wasm_ops::wasm_instr_ptr nopi = std::make_shared< wasm_ops::nop<test_mutator> >();
                   wasm_ops::wasm_instr_ptr blocki = std::make_shared< wasm_ops::block<test_mutator2> >();
-//                  nopi->visit();
-//                  blocki->visit();
                   wasm_ops::op_types<test_mutator>::block_t b;
                   wasm_ops::op_types<test_mutator>::i64_popcount_t ipc;
                   wasm_ops::nop<test_mutator> n;
@@ -229,18 +227,45 @@ namespace eosio { namespace chain {
                   wasm_rewriter::op_constrainers::f32_add_t f32;
                   b.visit();
                   ipc.visit();
-//                  f32.visit();
-//                  std::cout << "NOP SIZE " << (int)fc::raw::pack(*nopi)[0] << "\n";
-                  //std::cout << "BLOCK SIZE " << (int)fc::raw::pack(b).size() << "\n";
                   wmw.pre_validate();
                   for (auto def : module->functions.defs) {
                      char* code = (char*)(def.code.data());
                      char* code_end = code+def.code.size();
-                     while (code < code_end) {
-                        wasm_ops::instr* op = wasm_ops::get_instr_from_op<wasm_ops::op_types<>>(*code);
-                        code += op->skip_ahead();
-                        std::cout << "OP " << op->to_string() << "\n"; 
+                     std::cout << "FUNC " << "\n";
+                     uint32_t it = 0; 
+                     /*
+                     while ( it < def.code.size() ) {
+                        std::cout << "OPCODE " << std::hex << (uint32_t)code[it] << "\n";
+                        it++;
                      }
+                     */
+                     it = 0;
+                     for (FunctionDef& fd : module->functions.defs ) {
+                        OperatorDecoderStream decoder(fd.code);
+                        while (decoder) {
+                           std::cout << "OP " << std::hex << (uint32_t)decoder.decodeOp() << "\n";
+                           wasm_ops::instr* op = wasm_ops::get_instr_from_op<wasm_ops::op_types<>>(*(decoder.index));
+                           std::cout << "OP2 " << op->to_string() << " " << (uint32_t)((wasm_ops::i32_const<test_mutator>*)op)->field << "\n"; 
+                           /*
+                        if ( op->get_code() == 0x41 )
+                        else
+                           std::cout << "OP2 " << std::hex << (uint32_t)op->get_code() << " " << op->to_string() << "\n";
+                           */
+                        }
+                     }
+                     /*
+                     while ( it < def.code.size() ) {
+                        std::cout << "OPCODE " << std::hex << (uint32_t)code[it] << "\n";
+                        wasm_ops::instr* op = wasm_ops::get_instr_from_op<wasm_ops::op_types<>>(code[it]);
+                        it = op->unpack( def.code, it );
+                        if ( op->get_code() == 0x41 )
+                           std::cout << "OP " << op->to_string() << " " << (uint32_t)((wasm_ops::i32_const<test_mutator>*)op)->field << "\n"; 
+                        else if ( op->get_code() == 0x42 )
+                           std::cout << "OP " << op->to_string() << " " << (uint32_t)((wasm_ops::i32_const<test_mutator>*)op)->field << "\n"; 
+                        else
+                           std::cout << "OP " << op->to_string() << "\n"; 
+                     }
+                     */
                         //std::cout << (int)n << " ";
                   } 
                   /*

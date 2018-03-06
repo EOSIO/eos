@@ -23,6 +23,7 @@ using wasm_op_ptr	  = std::unique_ptr<instr>;
 using wasm_instr_ptr      = std::shared_ptr<instr>;
 using wasm_return_t       = std::vector<uint8_t>; 
 using wasm_instr_callback = std::function<std::vector<wasm_instr_ptr>(uint8_t)>;
+using code_vector         = std::vector<uint8_t>;
 using code_iterator       = std::vector<uint8_t>::iterator;
 using wasm_op_generator   = std::function<wasm_instr_ptr(std::vector<uint8_t>, size_t)>;
 
@@ -33,15 +34,22 @@ struct no_param_op {
 struct block_param_op {
 };
 
-#define CONSTRUCT_OP( r, DATA, OP )                            \
-template <typename ... Mutators>                               \
-struct OP : instr_base<Mutators...> {                          \
-   OP() = default;                                             \
-   OP( char* block ) {}                                        \
-   uint8_t code = BOOST_PP_CAT(OP,_code);                      \
-   uint8_t get_code() { return BOOST_PP_CAT(OP,_code); }       \
-   char* skip_ahead( char* block ) { return ++block; }         \
-   std::string to_string() { return BOOST_PP_STRINGIZE(OP); }  \
+      //FC_ASSERT(start <= block.end(), "Error while unpacking code"); 
+
+
+#define CONSTRUCT_OP( r, DATA, OP )                                  \
+template <typename ... Mutators>                                     \
+struct OP : instr_base<Mutators...> {                                \
+   OP() = default;                                                   \
+   OP( char* block ) {}                                              \
+   uint8_t code = BOOST_PP_CAT(OP,_code);                            \
+   uint8_t get_code() { return BOOST_PP_CAT(OP,_code); }             \
+   int skip_ahead() { return sizeof(code); }                         \
+   uint32_t unpack( code_vector& block, uint32_t start )             \
+   {                                                                 \
+      return start + skip_ahead();                                   \
+   }                                                                 \
+   std::string to_string() { return BOOST_PP_STRINGIZE(OP); }        \
 };
 //   char* unpack( char* block ) { return ++block; }             \
 //   std::vector<char> pack() { return { code }; }                    \
@@ -55,9 +63,15 @@ struct OP : instr_base<Mutators...> {                                           
    uint8_t code = BOOST_PP_CAT(OP,_code);                                           \
    DATA field;                                                                      \
    uint8_t get_code() { return BOOST_PP_CAT(OP,_code); }                            \
-   char* skip_ahead( char* block) { return block + 1 + sizeof(DATA); }              \
-   std::string to_string() { return BOOST_PP_STRINGIZE(OP); }                       \
+   int skip_ahead() { return 1+sizeof(code) + sizeof(field); }                      \
+   uint32_t unpack( code_vector& block, uint32_t start ) {                          \
+      field = *((DATA*)(block.data()+start+sizeof(code)));                          \
+      return start + skip_ahead();                                                  \
+   }                                                                                \
+   std::string to_string() { return BOOST_PP_STRINGIZE(OP); }                                             \
 };
+
+
 /*
    char* unpack( char* block ) { return block + 1 + sizeof(DATA); }                 \
    std::vector<char> pack() {                                                            \
@@ -75,7 +89,6 @@ struct OP : instr_base<Mutators...> {                                           
                      (ret)          \
                      (drop)         \
                      (select)       \
-                     (br_table)     \
                      (i32_eqz)      \
                      (i32_eq)       \
                      (i32_ne)       \
@@ -199,6 +212,7 @@ struct OP : instr_base<Mutators...> {                                           
                      (i64_reinterpret_f64)         \
                      (f32_reinterpret_i32)         \
                      (f64_reinterpret_i64)         \
+                     (br_table)     \
                      (block)        \
                      (loop)         \
                      (if_eps)       \
@@ -425,6 +439,32 @@ enum valtype {
    f64 = 0x7C
 };
 
+struct leb_buff {
+   uint8_t storage[8] = {0};
+   uint8_t size;
+};
+
+template <unsigned MaxSize, bool Signed>
+struct leb128;
+/*
+template <unsigned MaxSize>
+struct leb128<MaxSize, false> { 
+   leb128( uint8_t* code ) {
+      uint32_t shift = 0;
+      while (true) {
+         
+      }
+   }
+   leb_buff val;
+};
+
+template <unsigned MaxSize>
+struct leb128<MaxSize, true> { 
+   leb128( uint8_t* code ) {
+   }
+   leb_buff val;
+};
+*/
 #pragma pack (push)
 struct memarg {
    uint32_t a;   // align
@@ -474,7 +514,8 @@ struct instr {
    virtual std::string to_string() { return "instr"; }
    virtual uint8_t get_code() = 0;
    virtual wasm_return_t visit() = 0;
-   virtual char* skip_ahead( char* block ) = 0;
+   virtual int skip_ahead() = 0;
+   virtual uint32_t unpack( code_vector&, uint32_t ) = 0;
 };
 
 struct callindirecttype {
@@ -536,14 +577,34 @@ struct grow_memory : instr_base<Mutators...>{
 */
 
 // construct the ops
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP, no_param_op ,                    BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 131 ) )
-//BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP, block_param_op ,                    BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 130 ) )
+// special case for br_table
+template <typename ... Mutators>                                     
+struct br_table : instr_base<Mutators...> {
+   br_table() = default;
+   br_table( char* block ) {}
+   uint8_t code = br_table_code;
+   std::vector<uint32_t> targets;
+   uint32_t else_target;
+   uint8_t get_code() { return br_table_code; }
+   int skip_ahead() { return sizeof(code); }
+   uint32_t unpack( code_vector& block, uint32_t start )
+   {
+      uint8_t* code = (uint8_t*)(block.data() + sizeof(code));  // skip the opcode
+       
+      return start + skip_ahead();
+   }
+   std::string to_string() { return "br_table"; }
+
+};
+
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP, no_param_op ,        BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 130 ) )   // NOTE, this skips past br_table as it is defined above
 BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, blocktype,  BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 131, 4 ) )
 BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, uint32_t,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 135, 10 ) )
 BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, memarg,     BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 145, 23 ) )
 BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, uint64_t,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 168, 2 ) )
 BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, callindirecttype,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 170, 1 ) )
 BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, memoryoptype,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 171, 2 ) )
+
 #undef CONSTRUCT_OP
 #undef CONSTRUCT_OP_HAS_DATA
 #pragma pack (pop)
@@ -589,13 +650,7 @@ instr* get_instr_from_op( uint8_t code ) {
 
 #define REFLECT_OP( r, FIELD, OP ) \
 FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::OP< T >, (code) )
-/*
-BOOST_PP_SEQ_FOR_EACH( REFLECT_OP, ,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 130 ) )
-BOOST_PP_SEQ_FOR_EACH( REFLECT_OP, rt, BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 130, 4 ) )
-BOOST_PP_SEQ_FOR_EACH( REFLECT_OP, n,  BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 134, 10 ) )
-BOOST_PP_SEQ_FOR_EACH( REFLECT_OP, m,  BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 144, 23 ) )
-BOOST_PP_SEQ_FOR_EACH( REFLECT_OP, n,  BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 167, 2 ) )
-*/
+
 FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::nop< T >, (code) )
 //BOOST_PP_SEQ_FOR_EACH( REFLECT_OP, , BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 130 ) )
 #undef REFLECT_OP

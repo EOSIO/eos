@@ -36,8 +36,8 @@
 #include <Runtime/Runtime.h>
 
 #include <test_api/test_api.wast.hpp>
-#include <test_api_mem/test_api_mem.wast.hpp>
-#include <test_api_db/test_api_db.wast.hpp>
+//#include <test_api_mem/test_api_mem.wast.hpp>
+//#include <test_api_db/test_api_db.wast.hpp>
 #include <test_api/test_api.hpp>
 
 FC_REFLECT( dummy_action, (a)(b)(c) );
@@ -355,7 +355,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
   
 
 } FC_LOG_AND_RETHROW() }
-
+#if 0
 /*************************************************************************************
  * checktime_tests test case
  *************************************************************************************/
@@ -1051,6 +1051,7 @@ BOOST_FIXTURE_TEST_CASE(privileged_tests, tester) { try {
        );
 
 } FC_LOG_AND_RETHROW() }
+#endif
 #endif
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -4,7 +4,7 @@
  */
 #include <eosiolib/eosio.hpp>
 #include "test_api.hpp"
-
+/*
 #include "test_action.cpp"
 #include "test_print.cpp"
 #include "test_types.cpp"
@@ -16,7 +16,7 @@
 #include "test_chain.cpp"
 #include "test_transaction.cpp"
 #include "test_checktime.cpp"
-
+*/
 extern "C" {
 
     void init()  {
@@ -24,7 +24,11 @@ extern "C" {
     }
 
    void apply( unsigned long long code, unsigned long long action ) {
-
+      uint8_t a = 3;
+      uint32_t b = 23;
+      uint64_t c = a+b;
+      printi(c);
+#if 0
       //eosio::print("==> CONTRACT: ", code, " ", action, "\n");
       //test_types
       WASM_TEST_HANDLER(test_types, types_size);
@@ -138,5 +142,6 @@ extern "C" {
 
       //unhandled test call
       eosio_assert(false, "Unknown Test");
+#endif
    }
 }
