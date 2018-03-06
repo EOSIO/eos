@@ -92,7 +92,7 @@ namespace eosio { namespace chain { namespace contracts {
    struct by_primary;
    struct by_secondary;
 
-   template<typename SecondaryKey, uint64_t ObjectTypeId>
+   template<typename SecondaryKey, uint64_t ObjectTypeId, typename SecondaryKeyLess = std::less<SecondaryKey> >
    struct secondary_index
    {
       struct index_object : public chainbase::object<ObjectTypeId,index_object> {
@@ -123,7 +123,8 @@ namespace eosio { namespace chain { namespace contracts {
                   member<index_object, table_id, &index_object::t_id>,
                   member<index_object, SecondaryKey, &index_object::secondary_key>,
                   member<index_object, uint64_t, &index_object::primary_key>
-               >
+               >,
+               composite_key_compare< std::less<table_id>, SecondaryKeyLess, std::less<uint64_t> >
             >
          >
       > index_index;
@@ -161,6 +162,17 @@ namespace eosio { namespace chain { namespace contracts {
    typedef std::array<uint128_t, 2> key256_t;
    typedef secondary_index<key256_t,index256_object_type>::index_object index256_object;
    typedef secondary_index<key256_t,index256_object_type>::index_index  index256_index;
+
+   struct double_less {
+      bool operator()( uint64_t a, uint64_t b )const {
+         //TODO(arhag): Fix this to use soft float.
+         return a < b; // This is incorrect.
+      }
+   };
+
+   typedef secondary_index<uint64_t,index_double_object_type,double_less>::index_object  index_double_object;
+   typedef secondary_index<uint64_t,index_double_object_type,double_less>::index_index   index_double_index;
+
 
    /*
    struct index64_object : public chainbase::object<index64_object_type, index64_object> {
@@ -384,6 +396,7 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key64x64x64_value_object, eosi
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index64_object, eosio::chain::contracts::index64_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index128_object, eosio::chain::contracts::index128_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index256_object, eosio::chain::contracts::index256_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index_double_object, eosio::chain::contracts::index_double_index)
 
 FC_REFLECT(eosio::chain::contracts::table_id_object, (id)(code)(scope)(table)(key_type) )
 FC_REFLECT(eosio::chain::contracts::key_value_object, (id)(t_id)(primary_key)(value)(payer) )
