@@ -459,16 +459,27 @@ bytes pack( const T& value ) {
 }
 
 template<typename Stream>
-inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum256 d) {
-   ds.write( (const char*)&d, sizeof(d) );
-   return ds;
-}
-   
-template<typename Stream>
-inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum256& d) {
-   ds.read((char*)&d, sizeof(d) );
+inline eosio::datastream<Stream>& operator<<(eosio::datastream<Stream>& ds, const public_key pk) {
+   ds.write((const char*)&pk, sizeof(pk));
    return ds;
 }
 
+template<typename Stream>
+inline eosio::datastream<Stream>& operator>>(eosio::datastream<Stream>& ds, public_key& pk) {
+   ds.read((char*)&pk, sizeof(pk));
+   return ds;
+}
+
+template<typename Stream, uint32_t N>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum_n<N>& cs) {
+   ds.write((const char*)&cs, sizeof(cs));
+   return ds;
+}
+
+template<typename Stream, uint32_t N>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum_n<N>& cs) {
+   ds.read((char*)&cs, sizeof(cs));
+   return ds;
+}
 
 }

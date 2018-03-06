@@ -12,40 +12,28 @@
 
 namespace eosiosystem {
 
-   template<typename Stream>
-   inline eosio::datastream<Stream>& operator<<(eosio::datastream<Stream>& ds, const public_key& pk) {
-      ds.write((const char*)&pk, sizeof(pk));
-      return ds;
-   }
-
-   template<typename Stream>
-   inline eosio::datastream<Stream>& operator>>(eosio::datastream<Stream>& ds, public_key& pk) {
-      ds.read((char*)&pk, sizeof(pk));
-      return ds;
-   }
-
-   struct producer_key {
+   struct PACKED(producer_key) {
       account_name producer_name;
       public_key block_signing_key;
 
       EOSLIB_SERIALIZE(producer_key, (producer_name)(block_signing_key))
    };
 
-   struct producer_schedule {
+   struct PACKED(producer_schedule) {
       uint32_t version;
       std::vector<producer_key> producers;
 
       EOSLIB_SERIALIZE(producer_schedule, (version)(producers))
    };
 
-   struct block_header {
+   struct PACKED(block_header) {
       checksum256                 previous;
       time                        timestamp;
       checksum256                 transaction_mroot;
       checksum256                 action_mroot;
       checksum256                 block_mroot;
       account_name                producer;
-      optional<producer_schedule> new_producers;
+      eosio::optional<producer_schedule> new_producers;
       
       EOSLIB_SERIALIZE(block_header, (previous)(timestamp)(transaction_mroot)(action_mroot)(block_mroot)(producer)(new_producers))
    };
@@ -72,10 +60,9 @@ namespace eosiosystem {
             block_header header;
 
             EOSLIB_SERIALIZE(onblock, (header))
-               };
+         };
 
          static void on(const onblock& ob) {
-            
          }
 
          static void apply( account_name code, action_name act ) {

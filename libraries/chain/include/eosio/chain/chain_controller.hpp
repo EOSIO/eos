@@ -450,18 +450,4 @@ namespace eosio { namespace chain {
          runtime_limits                   _limits;
    };
 
-      struct red_header {
-            checksum256_type                 previous;
-            block_timestamp_type                        timestamp;
-            checksum256_type                 transaction_mroot;
-            checksum256_type                 action_mroot;
-            checksum256_type                 block_mroot;
-            account_name                producer;
-            producer_schedule_type      new_producers;
-            //            std::vector<int> new_producers;
-      };
-
 } }
-
-//using namespace fc;
-FC_REFLECT(eosio::chain::red_header, (previous)(timestamp)(transaction_mroot)(action_mroot)(block_mroot)(producer)(new_producers))
