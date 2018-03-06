@@ -111,6 +111,8 @@ macro(add_wast_library)
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM
   )
+  #TODO: Fix this path on pending cmake install changes
+  install(FILES ${${ARG_TARGET}_BC_FILENAME} DESTINATION usr/share/eosio/contractsdk/lib)
 
 endmacro(add_wast_library)
 

@@ -64,10 +64,10 @@ class apply_context {
 
             const T& get( int iterator ) {
                FC_ASSERT( iterator != -1, "invalid iterator" );
-               FC_ASSERT( iterator >= 0, "reference of end iterator" );
+               FC_ASSERT( iterator >= 0, "dereference of end iterator" );
                FC_ASSERT( iterator < _iterator_to_object.size(), "iterator out of range" );
                auto result = _iterator_to_object[iterator];
-               FC_ASSERT( result, "reference of deleted object" );
+               FC_ASSERT( result, "dereference of deleted object" );
                return *result;
             }
 
@@ -302,7 +302,7 @@ class apply_context {
                auto itr = idx.iterator_to(obj);
                ++itr;
 
-               if (itr == idx.end() || itr->t_id != obj.t_id) return itr_cache.get_end_iterator_by_table_id(obj.t_id);
+               if( itr == idx.end() || itr->t_id != obj.t_id ) return itr_cache.get_end_iterator_by_table_id(obj.t_id);
 
                primary = itr->primary_key;
                return itr_cache.add(*itr);
@@ -317,7 +317,7 @@ class apply_context {
                   FC_ASSERT( tab, "not a valid end iterator" );
 
                   auto itr = idx.upper_bound(tab->id);
-                  if( itr == idx.begin() ) return -1; // Empty index
+                  if( idx.begin() == idx.end() || itr == idx.begin() ) return -1; // Empty index
 
                   --itr;
 
@@ -327,7 +327,7 @@ class apply_context {
                   return itr_cache.add(*itr);
                }
 
-               const auto& obj = itr_cache.get(iterator);
+               const auto& obj = itr_cache.get(iterator); // Check for iterator != -1 happens in this call
 
                auto itr = idx.iterator_to(obj);
                if( itr == idx.begin() ) return -1; // cannot decrement past beginning iterator of index
@@ -391,7 +391,7 @@ class apply_context {
                auto itr = idx.iterator_to(obj);
                ++itr;
 
-               if (itr == idx.end() || itr->t_id != obj.t_id) return itr_cache.get_end_iterator_by_table_id(obj.t_id);
+               if( itr == idx.end() || itr->t_id != obj.t_id ) return itr_cache.get_end_iterator_by_table_id(obj.t_id);
 
                primary = itr->primary_key;
                return itr_cache.add(*itr);
@@ -406,7 +406,7 @@ class apply_context {
                   FC_ASSERT( tab, "not a valid end iterator" );
 
                   auto itr = idx.upper_bound(tab->id);
-                  if( itr == idx.begin() ) return -1; // Empty table
+                  if( idx.begin() == idx.end() || itr == idx.begin() ) return -1; // Empty table
 
                   --itr;
 
@@ -416,7 +416,7 @@ class apply_context {
                   return itr_cache.add(*itr);
                }
 
-               const auto& obj = itr_cache.get(iterator);
+               const auto& obj = itr_cache.get(iterator); // Check for iterator != -1 happens in this call
 
                auto itr = idx.iterator_to(obj);
                if( itr == idx.begin() ) return -1; // cannot decrement past beginning iterator of table
