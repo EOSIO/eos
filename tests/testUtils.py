@@ -961,8 +961,8 @@ class WalletMgr(object):
             Utils.Print("ERROR: Wallet Manager wasn't configured to launch walletd")
             return False
             
-        cmd="%s --data-dir %s --http-server-address=%s:%d" % (
-            Utils.EosWalletPath, WalletMgr.__walletDataDir, self.host, self.port)
+        cmd="%s --data-dir %s --config-dir %s --http-server-address=%s:%d" % (
+            Utils.EosWalletPath, WalletMgr.__walletDataDir, WalletMgr.__walletDataDir, self.host, self.port)
         Utils.Print("cmd: %s" % (cmd))
         with open(WalletMgr.__walletLogFile, 'w') as sout, open(WalletMgr.__walletLogFile, 'w') as serr:
             popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
