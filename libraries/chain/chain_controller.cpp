@@ -640,8 +640,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
    input_metas.reserve(next_block.input_transactions.size() + 1);
    {
       auto trx = _get_on_block_transaction();
-      //   if (!trx)
-         input_metas.emplace_back(packed_transaction(trx), get_chain_id(), head_block_time());
+      input_metas.emplace_back(packed_transaction(trx), get_chain_id(), head_block_time());
    }
    map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
@@ -933,10 +932,8 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
    }
 
    if( !is_start_of_round( next_block.block_num() ) )  {
-      #if 0
       EOS_ASSERT(!next_block.new_producers, block_validate_exception,
                  "Producer changes may only occur at the end of a round.");
-      #endif
    }
 
    const producer_object& producer = get_producer(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
@@ -992,18 +989,14 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
    // and "producers" special account authority
    if( is_start_of_round( b.block_num() ) ) {
       auto schedule = _calculate_producer_schedule();
-#if 0
       if( b.new_producers )
       {
           FC_ASSERT( schedule == *b.new_producers, "pending producer set different than expected" );
       }
-#endif
       const auto& gpo = get_global_properties();
 
       if( _head_producer_schedule() != schedule ) {
-#if 0
          FC_ASSERT( b.new_producers, "pending producer set changed but block didn't indicate it" );
-#endif
       }
       _db.modify( gpo, [&]( auto& props ) {
          if( props.pending_active_producers.size() && props.pending_active_producers.back().first == b.block_num() )
