@@ -14,12 +14,25 @@ BOOST_FIXTURE_TEST_CASE( missing_sigs, tester ) { try {
    produce_block();
 
    BOOST_REQUIRE_THROW( push_reqauth( N(alice), {permission_level{N(alice), config::active_name}}, {} ), tx_missing_sigs );
-   auto trace = push_reqauth(N(alice), {permission_level{N(alice), config::active_name}}, { get_private_key(N(alice), "active") } );
+   auto trace = push_reqauth(N(alice), "owner");
 
-   produce_block();
+                    produce_block();
    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace.id));
 
 } FC_LOG_AND_RETHROW() } /// missing_sigs
+
+BOOST_FIXTURE_TEST_CASE( missing_multi_sigs, tester ) { try {
+    produce_block();
+    create_account(N(alice), config::system_account_name, true);
+    produce_block();
+
+    BOOST_REQUIRE_THROW(push_reqauth(N(alice), "owner"), tx_missing_sigs); // without multisig
+    auto trace = push_reqauth(N(alice), "owner", true); // with multisig
+
+    produce_block();
+    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace.id));
+
+ } FC_LOG_AND_RETHROW() } /// missing_multi_sigs
 
 BOOST_FIXTURE_TEST_CASE( missing_auths, tester ) { try {
    create_accounts( {N(alice), N(bob)} );

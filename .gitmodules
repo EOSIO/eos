@@ -17,3 +17,7 @@
 	path = contracts/libc++/upstream
 	url = https://github.com/EOSIO/libcxx.git
 	branch = eosio
+[submodule "externals/binaryen"]
+	path = externals/binaryen
+	url = https://github.com/EOSIO/binaryen
+

@@ -58,7 +58,6 @@ namespace eosio { namespace chain {
    using                               std::make_pair;
    using                               std::enable_shared_from_this;
    using                               std::tie;
-   using                               std::make_pair;
    using                               std::move;
    using                               std::forward;
    using                               std::to_string;
@@ -123,6 +122,7 @@ namespace eosio { namespace chain {
       key64x64_value_object_type,
       index64_object_type,
       index128_object_type,
+      index256_object_type,
       action_permission_object_type,
       global_property_object_type,
       dynamic_global_property_object_type,
@@ -165,7 +165,7 @@ namespace eosio { namespace chain {
    using uint128_t           = __uint128_t;
    using bytes               = vector<char>;
 
-   
+
 } }  // eosio::chain
 
 
@@ -181,6 +181,7 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (key64x64_value_object_type)
                 (index64_object_type)
                 (index128_object_type)
+                (index256_object_type)
                 (action_permission_object_type)
                 (global_property_object_type)
                 (dynamic_global_property_object_type)

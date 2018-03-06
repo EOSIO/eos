@@ -73,6 +73,7 @@ Options:
 #include <eosio/utilities/key_conversion.hpp>
 
 #include <eosio/chain/config.hpp>
+#include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
@@ -95,12 +96,14 @@ Options:
 #include "help_text.hpp"
 #include "localize.hpp"
 #include "config.hpp"
+#include "httpc.hpp"
 
 using namespace std;
 using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::utilities;
 using namespace eosio::client::help;
+using namespace eosio::client::http;
 using namespace eosio::client::localize;
 using namespace eosio::client::config;
 using namespace boost::filesystem;
@@ -126,43 +129,6 @@ uint32_t port = 8888;
 string wallet_host = "localhost";
 uint32_t wallet_port = 8888;
 
-const string chain_func_base = "/v1/chain";
-const string get_info_func = chain_func_base + "/get_info";
-const string push_txn_func = chain_func_base + "/push_transaction";
-const string push_txns_func = chain_func_base + "/push_transactions";
-const string json_to_bin_func = chain_func_base + "/abi_json_to_bin";
-const string get_block_func = chain_func_base + "/get_block";
-const string get_account_func = chain_func_base + "/get_account";
-const string get_table_func = chain_func_base + "/get_table_rows";
-const string get_code_func = chain_func_base + "/get_code";
-const string get_currency_balance_func = chain_func_base + "/get_currency_balance";
-const string get_currency_stats_func = chain_func_base + "/get_currency_stats";
-const string get_required_keys = chain_func_base + "/get_required_keys";
-
-const string account_history_func_base = "/v1/account_history";
-const string get_transaction_func = account_history_func_base + "/get_transaction";
-const string get_transactions_func = account_history_func_base + "/get_transactions";
-const string get_key_accounts_func = account_history_func_base + "/get_key_accounts";
-const string get_controlled_accounts_func = account_history_func_base + "/get_controlled_accounts";
-
-const string net_func_base = "/v1/net";
-const string net_connect = net_func_base + "/connect";
-const string net_disconnect = net_func_base + "/disconnect";
-const string net_status = net_func_base + "/status";
-const string net_connections = net_func_base + "/connections";
-
-
-const string wallet_func_base = "/v1/wallet";
-const string wallet_create = wallet_func_base + "/create";
-const string wallet_open = wallet_func_base + "/open";
-const string wallet_list = wallet_func_base + "/list_wallets";
-const string wallet_list_keys = wallet_func_base + "/list_keys";
-const string wallet_public_keys = wallet_func_base + "/get_public_keys";
-const string wallet_lock = wallet_func_base + "/lock";
-const string wallet_lock_all = wallet_func_base + "/lock_all";
-const string wallet_unlock = wallet_func_base + "/unlock";
-const string wallet_import_key = wallet_func_base + "/import_key";
-const string wallet_sign_trx = wallet_func_base + "/sign_transaction";
 
 inline std::vector<name> sort_names( const std::vector<name>& names ) {
    auto results = std::vector<name>(names);
@@ -170,38 +136,6 @@ inline std::vector<name> sort_names( const std::vector<name>& names ) {
    auto itr = std::unique( results.begin(), results.end() );
    results.erase( itr, results.end() );
    return results;
-}
-
-vector<uint8_t> assemble_wast( const std::string& wast ) {
-   IR::Module module;
-   std::vector<WAST::Error> parseErrors;
-   WAST::parseModule(wast.c_str(),wast.size(),module,parseErrors);
-   if(parseErrors.size())
-   {
-      // Print any parse errors;
-      std::cerr << localized("Error parsing WebAssembly text file:") << std::endl;
-      for(auto& error : parseErrors)
-      {
-         std::cerr << ":" << error.locus.describe() << ": " << error.message.c_str() << std::endl;
-         std::cerr << error.locus.sourceLine << std::endl;
-         std::cerr << std::setw(error.locus.column(8)) << "^" << std::endl;
-      }
-      FC_THROW_EXCEPTION( explained_exception, "wast parse error" );
-   }
-
-   try
-   {
-      // Serialize the WebAssembly module.
-      Serialization::ArrayOutputStream stream;
-      WASM::serialize(stream,module);
-      return stream.getBytes();
-   }
-   catch(Serialization::FatalSerializationException exception)
-   {
-      std::cerr << localized("Error serializing WebAssembly binary file:") << std::endl;
-      std::cerr << exception.message << std::endl;
-      FC_THROW_EXCEPTION( explained_exception, "wasm serialize error");
-   }
 }
 
 auto tx_expiration = fc::seconds(30);
@@ -244,19 +178,14 @@ vector<chain::permission_level> get_account_permissions(const vector<string>& pe
    return accountPermissions;
 }
 
-fc::variant call( const std::string& server, uint16_t port,
-                  const std::string& path,
-                  const fc::variant& postdata = fc::variant() );
-
-
 template<typename T>
 fc::variant call( const std::string& server, uint16_t port,
                   const std::string& path,
-                  const T& v ) { return call( server, port, path, fc::variant(v) ); }
+                  const T& v ) { return eosio::client::http::call( server, port, path, fc::variant(v) ); }
 
 template<typename T>
 fc::variant call( const std::string& path,
-                  const T& v ) { return call( host, port, path, fc::variant(v) ); }
+                  const T& v ) { return eosio::client::http::call( host, port, path, fc::variant(v) ); }
 
 eosio::chain_apis::read_only::get_info_results get_info() {
   return call(host, port, get_info_func ).as<eosio::chain_apis::read_only::get_info_results>();
@@ -717,7 +646,7 @@ int main( int argc, char** argv ) {
       }
       else {
          std::cout << localized("Assembling WASM...") << std::endl;
-         wasm = assemble_wast(wast);
+         wasm = wast_to_wasm(wast);
       }
 
       contracts::setcode handler;
@@ -978,9 +907,9 @@ int main( int argc, char** argv ) {
    trxsSubcommand->set_callback([&] {
       fc::variant trx_var;
       try {
-         trx_var = fc::json::from_string(trxJson);
+         trx_var = fc::json::from_string(trxsJson);
       } EOS_CAPTURE_AND_RETHROW(transaction_type_exception, "Fail to parse transaction JSON")
-      auto trxs_result = call(push_txn_func, trx_var);
+      auto trxs_result = call(push_txns_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
 
@@ -1006,8 +935,11 @@ int main( int argc, char** argv ) {
          }
       } else {
          // attempt to extract the error code if one is present
-         if (verbose_errors || !print_help_text(e)) {
-            elog("Failed with error: ${e}", ("e", verbose_errors ? e.to_detail_string() : e.to_string()));
+         if (!print_recognized_errors(e, verbose_errors)) {
+            // Error is not recognized
+            if (!print_help_text(e) || verbose_errors) {
+               elog("Failed with error: ${e}", ("e", verbose_errors ? e.to_detail_string() : e.to_string()));
+            }
          }
       }
       return 1;

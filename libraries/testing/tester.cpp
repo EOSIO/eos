@@ -1,6 +1,7 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/asset.hpp>
+#include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/contracts/eos_contract.hpp>
 #include <eosio/chain/contracts/contract_table_objects.hpp>
@@ -30,7 +31,7 @@ namespace eosio { namespace testing {
    }
 
    public_key_type  base_tester::get_public_key( name keyname, string role ) const {
-      return get_private_key( keyname, role ).get_public_key(); 
+      return get_private_key( keyname, role ).get_public_key();
    }
 
    private_key_type base_tester::get_private_key( name keyname, string role ) const {
@@ -89,7 +90,7 @@ namespace eosio { namespace testing {
          owner_auth =  authority( get_public_key( a, "owner" ) );
       }
 
-      trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}}, 
+      trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
                                 contracts::newaccount{
                                    .creator  = creator,
                                    .name     = a,
@@ -132,23 +133,23 @@ namespace eosio { namespace testing {
       return success();
    }
 
-   transaction_trace base_tester::push_action( const account_name& code, 
-                             const action_name& acttype, 
-                             const account_name& actor, 
+   transaction_trace base_tester::push_action( const account_name& code,
+                             const action_name& acttype,
+                             const account_name& actor,
                              const variant_object& data
-                             ) 
+                             )
    { try {
-      chain::contracts::abi_serializer abis( control->get_database().get<account_object,by_name>(code).get_abi() );    
+      chain::contracts::abi_serializer abis( control->get_database().get<account_object,by_name>(code).get_abi() );
 
       string action_type_name = abis.get_action_type(acttype);
-   
+
       action act;
       act.account = code;
       act.name = acttype;
       act.authorization = vector<permission_level>{{actor, config::active_name}};
       act.data = abis.variant_to_binary(action_type_name, data);
       wdump((act));
-   
+
       signed_transaction trx;
       trx.actions.emplace_back(std::move(act));
       set_tapos(trx);
@@ -178,6 +179,16 @@ namespace eosio { namespace testing {
          trx.sign( *iter, chain_id_type() );
       return push_transaction( trx );
    }
+
+    transaction_trace base_tester::push_reqauth(account_name from, string role, bool multi_sig) {
+        if (!multi_sig) {
+            return push_reqauth(from, vector<permission_level>{{from, config::owner_name}},
+                                        {get_private_key(from, role)});
+        } else {
+            return push_reqauth(from, vector<permission_level>{{from, config::owner_name}},
+                                        {get_private_key(from, role), get_private_key( config::system_account_name, "active" )} );
+        }
+    }
 
    transaction_trace base_tester::push_nonce(account_name from, const string& v) {
       variant pretty_trx = fc::mutable_variant_object()
@@ -250,53 +261,12 @@ namespace eosio { namespace testing {
                                 });
 
       set_tapos( trx );
-      trx.sign( get_private_key( account, "active" ), chain_id_type()  ); 
+      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
       push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account)(perm)(auth)(parent) ) }
 
    void base_tester::set_code( account_name account, const char* wast ) try {
-      const auto assemble = [](const char* wast) -> vector<unsigned char> {
-         using namespace IR;
-         using namespace WAST;
-         using namespace WASM;
-         using namespace Serialization;
-
-         Module module;
-         vector<Error> parse_errors;
-         parseModule(wast, fc::const_strlen(wast), module, parse_errors);
-         if (!parse_errors.empty()) {
-            fc::exception parse_exception(
-               FC_LOG_MESSAGE(warn, "Failed to parse WAST"),
-               fc::std_exception_code,
-               "wast_parse_error",
-               "Failed to parse WAST"
-            );
-
-            for (const auto& err: parse_errors) {
-               parse_exception.append_log( FC_LOG_MESSAGE(error, ":${desc}: ${message}", ("desc", err.locus.describe())("message", err.message.c_str()) ) );
-               parse_exception.append_log( FC_LOG_MESSAGE(error, string(err.locus.column(8), ' ') + "^" ));
-            }
-
-            throw parse_exception;
-         }
-
-         try {
-            // Serialize the WebAssembly module.
-            ArrayOutputStream stream;
-            serialize(stream,module);
-            return stream.getBytes();
-         } catch(const FatalSerializationException& ex) {
-            fc::exception serialize_exception (
-               FC_LOG_MESSAGE(warn, "Failed to serialize wasm: ${message}", ("message", ex.message)),
-               fc::std_exception_code,
-               "wasm_serialization_error",
-               "Failed to serialize WASM"
-            );
-            throw serialize_exception;
-         }
-      };
-
-      auto wasm = assemble(wast);
+      auto wasm = wast_to_wasm(wast);
 
       signed_transaction trx;
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
@@ -348,6 +318,7 @@ namespace eosio { namespace testing {
       if (tbl) {
          const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, asset_symbol.value()));
          if (obj) {
+            //balance is the second field after symbol, so skip the symbol
             fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
             fc::raw::unpack(ds, result);
          }

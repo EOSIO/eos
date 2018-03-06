@@ -62,13 +62,3 @@ if (USE_PCH)
   set_target_properties(abi_generator PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
   cotire(eos_utilities)
 endif(USE_PCH)
-
-install( TARGETS
-   abi_generator
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
-)
-
-install( FILES ${HEADERS} DESTINATION "include/eosio/abi_generator" )
-

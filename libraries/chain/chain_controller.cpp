@@ -55,8 +55,12 @@ chain_controller::chain_controller( const chain_controller::controller_config& c
 {
    _initialize_indexes();
 
+   for (auto& f : cfg.applied_block_callbacks)
+      applied_block.connect(f);
    for (auto& f : cfg.applied_irreversible_block_callbacks)
       applied_irreversible_block.connect(f);
+   for (auto& f : cfg.on_pending_transaction_callbacks)
+      on_pending_transaction.connect(f);
 
    contracts::chain_initializer starter(cfg.genesis);
    starter.register_types(*this, _db);
@@ -1044,6 +1048,7 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<contracts::key_value_index>();
    _db.add_index<contracts::index64_index>();
    _db.add_index<contracts::index128_index>();
+   _db.add_index<contracts::index256_index>();
 
 
    _db.add_index<contracts::keystr_value_index>();
@@ -1360,7 +1365,7 @@ account_name chain_controller::get_scheduled_producer(uint32_t slot_num)const
    uint64_t current_aslot = dpo.current_absolute_slot + slot_num;
    const auto& gpo = _db.get<global_property_object>();
    auto number_of_active_producers = gpo.active_producers.producers.size();
-   auto index = current_aslot % (number_of_active_producers);
+   auto index = current_aslot % (number_of_active_producers * config::producer_repititions);
    index /= config::producer_repititions;
    FC_ASSERT( gpo.active_producers.producers.size() > 0, "no producers defined" );
 

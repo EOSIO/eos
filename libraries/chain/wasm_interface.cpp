@@ -8,6 +8,7 @@
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
+#include <eosio/chain/wasm_eosio_validators.hpp>
 #include <eosio/chain/wasm_module_walker.hpp>
 #include <eosio/chain/wasm_eosio_rewriters.hpp>
 //#include <eosio/chain/wasm_eosio_binops_table.hpp>
@@ -35,32 +36,10 @@
 #include <thread>
 #include <condition_variable>
 
-using namespace IR;
-using namespace Runtime;
-using boost::asio::io_service;
-
 namespace eosio { namespace chain {
    using namespace contracts;
-
-   /**
-    * Integration with the WASM Linker to resolve our intrinsics
-    */
-   struct root_resolver : Runtime::Resolver
-   {
-      bool resolve(const string& mod_name,
-                   const string& export_name,
-                   ObjectType type,
-                   ObjectInstance*& out) override
-      { try {
-         // Try to resolve an intrinsic first.
-         if(IntrinsicResolver::singleton.resolve(mod_name,export_name,type, out)) {
-            return true;
-         }
-
-         FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",mod_name)("export",export_name) );
-         return false;
-      } FC_CAPTURE_AND_RETHROW( (mod_name)(export_name) ) }
-   };
+   using namespace webassembly;
+   using namespace webassembly::common;
 
    /**
     *  Implementation class for the wasm cache
@@ -82,7 +61,7 @@ namespace eosio { namespace chain {
        * returned before this can be destroyed
        */
       ~wasm_cache_impl() {
-         freeUnreferencedObjects({});
+         Runtime::freeUnreferencedObjects({});
       }
 
       /**
@@ -98,13 +77,14 @@ namespace eosio { namespace chain {
        * the instance handed out to other threads
        */
       struct code_info {
-         code_info( vector<char>&& mem_image )
-         :mem_image(std::forward<vector<char>>(mem_image))
+         explicit code_info(wavm::info&& wavm_info, binaryen::info&& binaryen_info)
+         : wavm_info(std::forward<wavm::info>(wavm_info))
+         , binaryen_info(std::forward<binaryen::info>(binaryen_info))
          {}
 
-         // a clean image of the memory used to sanitize things on checkin
-         size_t mem_start           = 0;
-         vector<char> mem_image;
+
+         wavm::info   wavm_info;
+         binaryen::info binaryen_info;
 
          // all existing instances of this code
          vector<unique_ptr<wasm_cache::entry>> instances;
@@ -198,11 +178,14 @@ namespace eosio { namespace chain {
 
             if (!pending_result) {
                // time to compile a brand new (maybe first) copy of this code
-               Module* module = new Module();
-               ModuleInstance* instance = nullptr;
-               vector<char> mem_image;
+
+               fc::optional<wavm::entry> wavm;
+               fc::optional<wavm::info> wavm_info;
+               fc::optional<binaryen::entry> binaryen;
+               fc::optional<binaryen::info> binaryen_info;
 
                try {
+#if 0
                   Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
                   WASM::serializeWithInjection(stream, *module);
                   validate_eosio_wasm_constraints(*module);
@@ -311,6 +294,26 @@ namespace eosio { namespace chain {
                         mem_image.resize(base_offset + data_segment.data.size(), 0x00);
                      memcpy(mem_image.data() + base_offset, data_segment.data.data(), data_segment.data.size());
                   }
+#endif
+                  /// TODO: make validation generic
+#if 0
+                  using standard_wasm_constraints = wasm_constraints::constraints_validators< wasm_constraints::memories_validator, 
+                                                                                              wasm_constraints::data_segments_validator, 
+                                                                                              wasm_constraints::tables_validator, 
+                                                                                              wasm_constraints::globals_validator>;
+#endif
+                  wasm_constraints::wasm_binary_validation::validate( wasm_binary, wasm_binary_size );
+                  //wasm_constraints::validate_wasm_binary<standard_wasm_constraints>( wasm_binary, wasm_binary_size );
+                  //if ( wasm_constraints::validate_wasm_binary<standard_wasm_constraints>( wasm_binary, wasm_binary_size ) ) {
+                     wavm = wavm::entry::build(wasm_binary, wasm_binary_size);
+                     wavm_info.emplace(*wavm);
+
+                     binaryen = binaryen::entry::build(wasm_binary, wasm_binary_size);
+                     binaryen_info.emplace(*binaryen);
+                 //}
+                  // TODO
+                  //else
+                     // throw some error
                } catch (...) {
                   pending_error = std::current_exception();
                }
@@ -319,9 +322,9 @@ namespace eosio { namespace chain {
                   // grab the lock and put this in the cache as unavailble
                   with_lock(_cache_lock, [&,this]() {
                      // find or create a new entry
-                     auto iter = _cache.emplace(code_id, code_info(std::move(mem_image))).first;
+                     auto iter = _cache.emplace(code_id, code_info(std::move(*wavm_info),std::move(*binaryen_info))).first;
 
-                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(instance, module));
+                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(std::move(*wavm), std::move(*binaryen)));
                      pending_result = optional_entry_ref(*iter->second.instances.back().get());
                   });
                }
@@ -354,36 +357,34 @@ namespace eosio { namespace chain {
        * @param entry - the entry to return
        */
       void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
-        auto& info = (*fetch_info(code_id)).get();
-        // under a lock, put this entry back in the available instances side of the instances vector
-        with_lock(_cache_lock, [&,this](){
-           // walk the vector and find this entry
-           auto iter = info.instances.begin();
-           while (iter->get() != &entry) {
-              ++iter;
-           }
+         // sanitize by reseting the memory that may now be dirty
+         auto& info = (*fetch_info(code_id)).get();
+         entry.wavm.reset(info.wavm_info);
+         entry.binaryen.reset(info.binaryen_info);
 
-           FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
+         // under a lock, put this entry back in the available instances side of the instances vector
+         with_lock(_cache_lock, [&,this](){
+            // walk the vector and find this entry
+            auto iter = info.instances.begin();
+            while (iter->get() != &entry) {
+               ++iter;
+            }
 
-           auto first_unavailable = (info.instances.begin() + info.available_instances);
-           if (iter != first_unavailable) {
-              std::swap(iter, first_unavailable);
-           }
-           info.available_instances++;
-        });
+            FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
+
+            auto first_unavailable = (info.instances.begin() + info.available_instances);
+            if (iter != first_unavailable) {
+               std::swap(iter, first_unavailable);
+            }
+            info.available_instances++;
+         });
       }
 
       //initialize the memory for a cache entry
       wasm_cache::entry& prepare_wasm_instance(wasm_cache::entry& wasm_cache_entry, const digest_type& code_id) {
-         resetGlobalInstances(wasm_cache_entry.instance);
-         MemoryInstance* memory_instance = getDefaultMemory(wasm_cache_entry.instance);
-         if(memory_instance) {
-            resetMemory(memory_instance, wasm_cache_entry.module->memories.defs[0].type);
-
-            const code_info& info = (*fetch_info(code_id)).get();
-            char* memstart = &memoryRef<char>(getDefaultMemory(wasm_cache_entry.instance), 0);
-            memcpy(memstart, info.mem_image.data(), info.mem_image.size());
-         }
+         auto& info = (*fetch_info(code_id)).get();
+         wasm_cache_entry.wavm.prepare(info.wavm_info);
+         wasm_cache_entry.binaryen.prepare(info.binaryen_info);
          return wasm_cache_entry;
       }
 
@@ -421,10 +422,10 @@ namespace eosio { namespace chain {
     */
    struct scoped_context {
       template<typename ...Args>
-      scoped_context(optional<wasm_context> &context, Args&... args)
+      scoped_context(optional<wasm_context> &context, Args&&... args)
       :context(context)
       {
-         context = wasm_context{ args... };
+         context.emplace( std::forward<Args>(args)... );
       }
 
       ~scoped_context() {
@@ -433,25 +434,6 @@ namespace eosio { namespace chain {
 
       optional<wasm_context>& context;
    };
-
-   void wasm_interface_impl::call(const string& entry_point, const vector<Value>& args, wasm_cache::entry& code, apply_context& context)
-   try {
-      FunctionInstance* call = asFunctionNullable(getInstanceExport(code.instance,entry_point) );
-      if( !call ) {
-         return;
-      }
-
-      FC_ASSERT( getFunctionType(call)->parameters.size() == args.size() );
-
-      auto context_guard = scoped_context(current_context, code, context);
-      runInstanceStartFunc(code.instance);
-      Runtime::invokeFunction(call,args);
-   } catch( const Runtime::Exception& e ) {
-      FC_THROW_EXCEPTION(wasm_execution_error,
-                         "cause: ${cause}\n${callstack}",
-                         ("cause", string(describeExceptionCause(e.cause)))
-                         ("callstack", e.callStack));
-   } FC_CAPTURE_AND_RETHROW()
 
    wasm_interface::wasm_interface()
       :my( new wasm_interface_impl() ) {
@@ -465,15 +447,42 @@ namespace eosio { namespace chain {
       return *single;
    }
 
-   void wasm_interface::apply( wasm_cache::entry& code, apply_context& context ) {
-      vector<Value> args = {Value(uint64_t(context.act.account)),
-                            Value(uint64_t(context.act.name))};
-      my->call("apply", args, code, context);
+   void wasm_interface::apply( wasm_cache::entry& code, apply_context& context, vm_type vm ) {
+      auto context_guard = scoped_context(my->current_context, code, context, vm);
+      switch (vm) {
+         case vm_type::wavm:
+            code.wavm.call_apply(context);
+            break;
+         case vm_type::binaryen:
+            code.binaryen.call_apply(context);
+            break;
+      }
    }
 
-   void wasm_interface::error( wasm_cache::entry& code, apply_context& context ) {
-      vector<Value> args = { /* */ };
-      my->call("error", args, code, context);
+   void wasm_interface::error( wasm_cache::entry& code, apply_context& context, vm_type vm ) {
+      auto context_guard = scoped_context(my->current_context, code, context, vm);
+      switch (vm) {
+         case vm_type::wavm:
+            code.wavm.call_error(context);
+            break;
+         case vm_type::binaryen:
+            code.binaryen.call_error(context);
+            break;
+      }
+   }
+
+   wasm_context& common::intrinsics_accessor::get_context(wasm_interface &wasm) {
+      FC_ASSERT(wasm.my->current_context.valid());
+      return *wasm.my->current_context;
+   }
+
+   const wavm::entry& wavm::entry::get(wasm_interface& wasm) {
+      return common::intrinsics_accessor::get_context(wasm).code.wavm;
+   }
+
+
+   const binaryen::entry& binaryen::entry::get(wasm_interface& wasm) {
+      return common::intrinsics_accessor::get_context(wasm).code.binaryen;
    }
 
 #if defined(assert)
@@ -483,9 +492,9 @@ namespace eosio { namespace chain {
 class context_aware_api {
    public:
       context_aware_api(wasm_interface& wasm, bool context_free = false )
-      :sbrk_bytes(intrinsics_accessor::get_context(wasm).sbrk_bytes),
-       code(intrinsics_accessor::get_context(wasm).code),
+      :code(intrinsics_accessor::get_context(wasm).code),
        context(intrinsics_accessor::get_context(wasm).context)
+      ,vm(intrinsics_accessor::get_context(wasm).vm)
       {
          if( context.context_free )
             FC_ASSERT( context_free, "only context free api's can be used in this context" );
@@ -493,15 +502,16 @@ class context_aware_api {
       }
 
    protected:
-      apply_context&     context;
-      wasm_cache::entry& code;
-      uint32_t&          sbrk_bytes;
+      apply_context&             context;
+      wasm_cache::entry&         code;
+      wasm_interface::vm_type    vm;
+
 };
 
 class context_free_api : public context_aware_api {
    public:
       context_free_api( wasm_interface& wasm )
-      :context_aware_api(wasm, true) { 
+      :context_aware_api(wasm, true) {
          /* the context_free_data is not available during normal application because it is prunable */
          FC_ASSERT( context.context_free, "this API may only be called from context_free apply" );
       }
@@ -523,7 +533,7 @@ class privileged_api : public context_aware_api {
        *  block that includes this call is irreversible. It should
        *  fail if the feature is already pending.
        *
-       *  Feature name should be base32 encoded name. 
+       *  Feature name should be base32 encoded name.
        */
       void activate_feature( int64_t feature_name ) {
          FC_ASSERT( !"Unsupported Hardfork Detected" );
@@ -539,7 +549,7 @@ class privileged_api : public context_aware_api {
          return false;
       }
 
-      void set_resource_limits( account_name account, 
+      void set_resource_limits( account_name account,
                                 int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight,
                                 int64_t cpu_usec_per_period ) {
          auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
@@ -563,15 +573,15 @@ class privileged_api : public context_aware_api {
       }
 
 
-      void get_resource_limits( account_name account, 
+      void get_resource_limits( account_name account,
                                 uint64_t& ram_bytes, uint64_t& net_weight, uint64_t cpu_weight ) {
       }
-                                               
+
       void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          producer_schedule_type psch;
          fc::raw::unpack(ds, psch);
-         context.mutable_db.modify( context.controller.get_global_properties(), 
+         context.mutable_db.modify( context.controller.get_global_properties(),
             [&]( auto& gprops ) {
                  gprops.new_active_producers = psch;
          });
@@ -617,7 +627,7 @@ class producer_api : public context_aware_api {
          auto active_producers = context.get_active_producers();
          size_t len = active_producers.size();
          size_t cpy_len = std::min(datalen, len);
-         memcpy(producers, active_producers.data(), cpy_len * sizeof(chain::account_name) );
+         memcpy(producers, active_producers.data(), cpy_len * sizeof(chain::account_name));
          return len;
       }
 };
@@ -628,9 +638,9 @@ class crypto_api : public context_aware_api {
 
       /**
        * This method can be optimized out during replay as it has
-       * no possible side effects other than "passing". 
+       * no possible side effects other than "passing".
        */
-      void assert_recover_key( fc::sha256& digest, 
+      void assert_recover_key( fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
          fc::crypto::signature s;
@@ -645,7 +655,7 @@ class crypto_api : public context_aware_api {
          FC_ASSERT( check == p, "Error expected key different than recovered key" );
       }
 
-      int recover_key( fc::sha256& digest, 
+      int recover_key( fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
          fc::crypto::signature s;
@@ -716,14 +726,16 @@ class system_api : public context_aware_api {
       }
 
       void eosio_assert(bool condition, null_terminated_ptr str) {
-         std::string message( str );
-         if( !condition ) edump((message));
-         FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
+         if( !condition ) {
+            std::string message( str );
+            edump((message));
+            FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
+         }
       }
-      
+
       fc::time_point_sec now() {
          return context.controller.head_block_time();
-      } 
+      }
 };
 
 class action_api : public context_aware_api {
@@ -792,6 +804,89 @@ class console_api : public context_aware_api {
       }
 };
 
+#define DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(IDX, TYPE)\
+      int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
+         return context.IDX.store( scope, table, payer, id, secondary );\
+      }\
+      void db_##IDX##_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
+         return context.IDX.update( iterator, payer, secondary );\
+      }\
+      void db_##IDX##_remove( int iterator ) {\
+         return context.IDX.remove( iterator );\
+      }\
+      int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
+         return context.IDX.find_secondary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t primary ) {\
+         return context.IDX.find_primary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
+         return context.IDX.lowerbound_secondary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
+         return context.IDX.upperbound_secondary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_end( uint64_t code, uint64_t scope, uint64_t table ) {\
+         return context.IDX.end_secondary(code, scope, table);\
+      }\
+      int db_##IDX##_next( int iterator, uint64_t& primary  ) {\
+         return context.IDX.next_secondary(iterator, primary);\
+      }\
+      int db_##IDX##_previous( int iterator, uint64_t& primary ) {\
+         return context.IDX.previous_secondary(iterator, primary);\
+      }
+
+#define DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(IDX, ARR_SIZE, ARR_ELEMENT_TYPE)\
+      int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.store(scope, table, payer, id, data.value);\
+      }\
+      void db_##IDX##_update( int iterator, uint64_t payer, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len ) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.update(iterator, payer, data.value);\
+      }\
+      void db_##IDX##_remove( int iterator ) {\
+         return context.IDX.remove(iterator);\
+      }\
+      int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.find_secondary(code, scope, table, data, primary);\
+      }\
+      int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t primary ) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.find_primary(code, scope, table, data.value, primary);\
+      }\
+      int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.lowerbound_secondary(code, scope, table, data.value, primary);\
+      }\
+      int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.upperbound_secondary(code, scope, table, data.value, primary);\
+      }\
+      int db_##IDX##_end( uint64_t code, uint64_t scope, uint64_t table ) {\
+         return context.IDX.end_secondary(code, scope, table);\
+      }\
+      int db_##IDX##_next( int iterator, uint64_t& primary  ) {\
+         return context.IDX.next_secondary(iterator, primary);\
+      }\
+      int db_##IDX##_previous( int iterator, uint64_t& primary ) {\
+         return context.IDX.previous_secondary(iterator, primary);\
+      }
+
+
 class database_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
@@ -814,84 +909,22 @@ class database_api : public context_aware_api {
       int db_previous_i64( int itr, uint64_t& primary ) {
          return context.db_previous_i64(itr, primary);
       }
-      int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
-         return context.db_find_i64( code, scope, table, id ); 
+      int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+         return context.db_find_i64( code, scope, table, id );
       }
-      int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
-         return context.db_lowerbound_i64( code, scope, table, id ); 
+      int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+         return context.db_lowerbound_i64( code, scope, table, id );
       }
-      int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) { 
-         return context.db_upperbound_i64( code, scope, table, id ); 
+      int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+         return context.db_upperbound_i64( code, scope, table, id );
       }
-
-      int db_idx64_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const uint64_t& secondary ) {
-         return context.idx64.store( scope, table, payer, id, secondary );
-      }
-      void db_idx64_update( int iterator, uint64_t payer, const uint64_t& secondary ) {
-         return context.idx64.update( iterator, payer, secondary );
-      }
-      void db_idx64_remove( int iterator ) {
-         return context.idx64.remove( iterator );
-      }
-      int db_idx64_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const uint64_t& secondary, uint64_t& primary ) {
-         return context.idx64.find_secondary(code, scope, table, secondary, primary);
-      }
-      int db_idx64_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t& secondary, uint64_t primary ) {
-         return context.idx64.find_primary(code, scope, table, secondary, primary);
-      }
-      int db_idx64_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  uint64_t& secondary, uint64_t& primary ) {
-         return context.idx64.lowerbound_secondary(code, scope, table, secondary, primary);
-      }
-      int db_idx64_upperbound( uint64_t code, uint64_t scope, uint64_t table,  uint64_t& secondary, uint64_t& primary ) {
-         return context.idx64.upperbound_secondary(code, scope, table, secondary, primary);
-      }
-      int db_idx64_next( int iterator, uint64_t& primary  ) {
-         return context.idx64.next_secondary(iterator, primary);
-      }
-      int db_idx64_previous( int iterator, uint64_t& primary ) {
-         return context.idx64.previous_secondary(iterator, primary);
+      int db_end_i64( uint64_t code, uint64_t scope, uint64_t table ) {
+         return context.db_end_i64( code, scope, table );
       }
 
-      int db_idx128_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const uint128_t& secondary ) {
-         return context.idx128.store( scope, table, payer, id, secondary );
-      }
-      void db_idx128_update( int iterator, uint64_t payer, const uint128_t& secondary ) {
-         return context.idx128.update( iterator, payer, secondary );
-      }
-      void db_idx128_remove( int iterator ) {
-         return context.idx128.remove( iterator );
-      }
-      int db_idx128_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t primary ) {
-         return context.idx128.find_primary( code, scope, table, secondary, primary );
-      }
-      int db_idx128_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const uint128_t& secondary, uint64_t& primary ) {
-         return context.idx128.find_secondary(code, scope, table, secondary, primary);
-      }
-      int db_idx128_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
-         return context.idx128.lowerbound_secondary(code, scope, table, secondary, primary);
-      }
-      int db_idx128_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
-         return context.idx128.upperbound_secondary(code, scope, table, secondary, primary);
-      }
-      int db_idx128_next( int iterator, uint64_t& primary ) {
-         return context.idx128.next_secondary(iterator, primary);
-      }
-      int db_idx128_previous( int iterator, uint64_t& primary ) {
-         return context.idx128.previous_secondary(iterator, primary);
-      }
-
-   /*
-      int db_idx128_next( int iterator, uint64_t& primary ) {
-      }
-      int db_idx128_prev( int iterator, uint64_t& primary ) {
-      }
-      int db_idx128_find_secondary( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
-      }
-      int db_idx128_lowerbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
-      }
-      int db_idx128_upperbound( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t& primary ) {
-      }
-      */
+      DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)
+      DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx128, uint128_t)
+      DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(idx256, 2, uint128_t)
 };
 
 
@@ -926,7 +959,7 @@ class db_api : public context_aware_api {
       int update(const scope_name& scope, const name& table, const account_name& bta, array_ptr<const char> data, size_t data_len) {
          return call(&apply_context::update_record<ObjectType>, scope, table, bta, data, data_len);
       }
-      
+
       int remove(const scope_name& scope, const name& table, const KeyArrayType &keys) {
          const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
          return context.remove_record<ObjectType>(t_id, keys);
@@ -940,16 +973,16 @@ class db_api<keystr_value_object> : public context_aware_api {
    using KeyArrayType = KeyType[KeyCount];
    using ContextMethodType = int(apply_context::*)(const table_id_object&, const KeyType*, const char*, size_t);
 
-/* TODO something weird is going on here, will maybe fix before DB changes or this might get 
+/* TODO something weird is going on here, will maybe fix before DB changes or this might get
  * totally changed anyway
    private:
       int call(ContextMethodType method, const scope_name& scope, const name& table, account_name bta,
             null_terminated_ptr key, size_t key_len, array_ptr<const char> data, size_t data_len) {
          const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
-         const KeyType keys((const char*)key.value, key_len); 
+         const KeyType keys((const char*)key.value, key_len);
 
-         const char* record_data =  ((const char*)data); 
-         size_t record_len = data_len; 
+         const char* record_data =  ((const char*)data);
+         size_t record_len = data_len;
          return (context.*(method))(t_id, bta, &keys, record_data, record_len);
       }
 */
@@ -959,23 +992,23 @@ class db_api<keystr_value_object> : public context_aware_api {
       int store_str(const scope_name& scope, const name& table, const account_name& bta,
             null_terminated_ptr key, uint32_t key_len, array_ptr<const char> data, size_t data_len) {
          const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
-         const KeyType keys(key.value, key_len); 
-         const char* record_data =  ((const char*)data); 
-         size_t record_len = data_len; 
+         const KeyType keys(key.value, key_len);
+         const char* record_data =  ((const char*)data);
+         size_t record_len = data_len;
          return context.store_record<keystr_value_object>(t_id, bta, &keys, record_data, record_len);
          //return call(&apply_context::store_record<keystr_value_object>, scope, table, bta, key, key_len, data, data_len);
       }
 
-      int update_str(const scope_name& scope,  const name& table, const account_name& bta, 
+      int update_str(const scope_name& scope,  const name& table, const account_name& bta,
             null_terminated_ptr key, uint32_t key_len, array_ptr<const char> data, size_t data_len) {
          const auto& t_id = context.find_or_create_table(context.receiver, scope, table);
-         const KeyType keys((const char*)key, key_len); 
-         const char* record_data =  ((const char*)data); 
-         size_t record_len = data_len; 
+         const KeyType keys((const char*)key, key_len);
+         const char* record_data =  ((const char*)data);
+         size_t record_len = data_len;
          return context.update_record<keystr_value_object>(t_id, bta, &keys, record_data, record_len);
          //return call(&apply_context::update_record<keystr_value_object>, scope, table, bta, key, key_len, data, data_len);
       }
-      
+
       int remove_str(const scope_name& scope, const name& table, array_ptr<const char> &key, uint32_t key_len) {
          const auto& t_id = context.find_or_create_table(scope, context.receiver, table);
          const KeyArrayType k = {std::string(key, key_len)};
@@ -1059,7 +1092,7 @@ class db_index_api<keystr_value_index, by_scope_primary> : public context_aware_
    using ContextMethodType = int(apply_context::*)(const table_id_object&, KeyType*, char*, size_t);
 
 
-   int call(ContextMethodType method, const scope_name& scope, const account_name& code, const name& table, 
+   int call(ContextMethodType method, const scope_name& scope, const account_name& code, const name& table,
          array_ptr<char> &key, uint32_t key_len, array_ptr<char> data, size_t data_len) {
       auto maybe_t_id = context.find_table(scope, context.receiver, table);
       if (maybe_t_id == nullptr) {
@@ -1113,7 +1146,7 @@ class memory_api : public context_aware_api {
    public:
       memory_api( wasm_interface& wasm )
       :context_aware_api(wasm,true){}
-     
+
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
          return (char *)::memcpy(dest, src, length);
       }
@@ -1130,41 +1163,17 @@ class memory_api : public context_aware_api {
          return (char *)::memset( dest, value, length );
       }
 
-      uint32_t sbrk(int num_bytes) {
+      int sbrk(int num_bytes) {
          // sbrk should only allow for memory to grow
          if (num_bytes < 0)
             throw eosio::chain::page_memory_error();
-         // TODO: omitted checktime function from previous version of sbrk, may need to be put back in at some point
-         constexpr uint32_t NBPPL2  = IR::numBytesPerPageLog2;
-         constexpr uint32_t MAX_MEM = 1024 * 1024;
 
-         MemoryInstance*  default_mem    = Runtime::getDefaultMemory(code.instance);
-         if(!default_mem)
-            throw eosio::chain::page_memory_error();
-
-         const uint32_t         num_pages      = Runtime::getMemoryNumPages(default_mem);
-         const uint32_t         min_bytes      = (num_pages << NBPPL2) > UINT32_MAX ? UINT32_MAX : num_pages << NBPPL2;
-         const uint32_t         prev_num_bytes = sbrk_bytes; //_num_bytes;
-         
-         // round the absolute value of num_bytes to an alignment boundary
-         num_bytes = (num_bytes + 7) & ~7;
-
-         if ((num_bytes > 0) && (prev_num_bytes > (MAX_MEM - num_bytes)))  // test if allocating too much memory (overflowed)
-            throw eosio::chain::page_memory_error();
-         else if ((num_bytes < 0) && (prev_num_bytes < (min_bytes - num_bytes))) // test for underflow
-            throw eosio::chain::page_memory_error(); 
-
-         // update the number of bytes allocated, and compute the number of pages needed
-         sbrk_bytes += num_bytes;
-         const uint32_t num_desired_pages = (sbrk_bytes + IR::numBytesPerPage - 1) >> NBPPL2;
-
-         // grow or shrink the memory to the desired number of pages
-         if (num_desired_pages > num_pages)
-            Runtime::growMemory(default_mem, num_desired_pages - num_pages);
-         else if (num_desired_pages < num_pages)
-            Runtime::shrinkMemory(default_mem, num_pages - num_desired_pages);
-
-         return prev_num_bytes;
+         switch(vm) {
+            case wasm_interface::vm_type::wavm:
+               return (uint32_t)code.wavm.sbrk(num_bytes);
+            case wasm_interface::vm_type::binaryen:
+               return (uint32_t)code.binaryen.sbrk(num_bytes);
+         }
       }
 };
 
@@ -1259,37 +1268,37 @@ class compiler_builtins : public context_aware_api {
          i >>= shift;
          ret = (unsigned __int128)i;
       }
-      
+
       void __divti3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
          __int128 lhs = ha;
          __int128 rhs = hb;
-         
+
          lhs <<= 64;
          lhs |=  la;
 
          rhs <<= 64;
          rhs |=  lb;
 
-         FC_ASSERT(rhs != 0, "divide by zero");    
+         FC_ASSERT(rhs != 0, "divide by zero");
 
-         lhs /= rhs; 
+         lhs /= rhs;
 
          ret = lhs;
-      } 
+      }
 
       void __udivti3(unsigned __int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
          unsigned __int128 lhs = ha;
          unsigned __int128 rhs = hb;
-         
+
          lhs <<= 64;
          lhs |=  la;
 
          rhs <<= 64;
          rhs |=  lb;
 
-         FC_ASSERT(rhs != 0, "divide by zero");    
+         FC_ASSERT(rhs != 0, "divide by zero");
 
-         lhs /= rhs; 
+         lhs /= rhs;
          ret = lhs;
       }
 
@@ -1303,9 +1312,9 @@ class compiler_builtins : public context_aware_api {
          rhs <<= 64;
          rhs |=  lb;
 
-         lhs *= rhs; 
+         lhs *= rhs;
          ret = lhs;
-      } 
+      }
 
       void __modti3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
          __int128 lhs = ha;
@@ -1313,10 +1322,10 @@ class compiler_builtins : public context_aware_api {
 
          lhs <<= 64;
          lhs |=  la;
-   
+
          rhs <<= 64;
          rhs |=  lb;
-         
+
          FC_ASSERT(rhs != 0, "divide by zero");
 
          lhs %= rhs;
@@ -1329,10 +1338,10 @@ class compiler_builtins : public context_aware_api {
 
          lhs <<= 64;
          lhs |=  la;
-   
+
          rhs <<= 64;
          rhs |=  lb;
-         
+
          FC_ASSERT(rhs != 0, "divide by zero");
 
          lhs %= rhs;
@@ -1345,13 +1354,13 @@ class compiler_builtins : public context_aware_api {
 class math_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
-      
+
 
       void diveq_i128(unsigned __int128* self, const unsigned __int128* other) {
          fc::uint128_t s(*self);
          const fc::uint128_t o(*other);
          FC_ASSERT( o != 0, "divide by zero" );
-         
+
          s = s/o;
          *self = (unsigned __int128)s;
       }
@@ -1459,6 +1468,30 @@ REGISTER_INTRINSICS(producer_api,
    (get_active_producers,      int(int, int) )
 );
 
+#define DB_SECONDARY_INDEX_METHODS_SIMPLE(IDX) \
+   (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int))\
+   (db_##IDX##_remove,         void(int))\
+   (db_##IDX##_update,         void(int,int64_t,int))\
+   (db_##IDX##_find_primary,   int(int64_t,int64_t,int64_t,int,int64_t))\
+   (db_##IDX##_find_secondary, int(int64_t,int64_t,int64_t,int,int))\
+   (db_##IDX##_lowerbound,     int(int64_t,int64_t,int64_t,int,int))\
+   (db_##IDX##_upperbound,     int(int64_t,int64_t,int64_t,int,int))\
+   (db_##IDX##_end,            int(int64_t,int64_t,int64_t))\
+   (db_##IDX##_next,           int(int, int))\
+   (db_##IDX##_previous,       int(int, int))
+
+#define DB_SECONDARY_INDEX_METHODS_ARRAY(IDX) \
+      (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int,int))\
+      (db_##IDX##_remove,         void(int))\
+      (db_##IDX##_update,         void(int,int64_t,int,int))\
+      (db_##IDX##_find_primary,   int(int64_t,int64_t,int64_t,int,int,int64_t))\
+      (db_##IDX##_find_secondary, int(int64_t,int64_t,int64_t,int,int,int))\
+      (db_##IDX##_lowerbound,     int(int64_t,int64_t,int64_t,int,int,int))\
+      (db_##IDX##_upperbound,     int(int64_t,int64_t,int64_t,int,int,int))\
+      (db_##IDX##_end,            int(int64_t,int64_t,int64_t))\
+      (db_##IDX##_next,           int(int, int))\
+      (db_##IDX##_previous,       int(int, int))
+
 REGISTER_INTRINSICS( database_api,
    (db_store_i64,        int(int64_t,int64_t,int64_t,int64_t,int,int))
    (db_update_i64,       void(int,int64_t,int,int))
@@ -1469,26 +1502,11 @@ REGISTER_INTRINSICS( database_api,
    (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t))
    (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
    (db_upperbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
-                             
-   (db_idx64_store,          int(int64_t,int64_t,int64_t,int64_t,int))
-   (db_idx64_remove,         void(int))
-   (db_idx64_update,         void(int,int64_t,int))
-   (db_idx64_find_primary,   int(int64_t,int64_t,int64_t,int,int64_t))
-   (db_idx64_find_secondary, int(int64_t,int64_t,int64_t,int,int))
-   (db_idx64_lowerbound,     int(int64_t,int64_t,int64_t,int,int))
-   (db_idx64_upperbound,     int(int64_t,int64_t,int64_t,int,int))
-   (db_idx64_next,           int(int, int))
-   (db_idx64_previous,       int(int, int))
+   (db_end_i64,          int(int64_t,int64_t,int64_t))
 
-   (db_idx128_store,          int(int64_t,int64_t,int64_t,int64_t,int))
-   (db_idx128_remove,         void(int))
-   (db_idx128_update,         void(int,int64_t,int))
-   (db_idx128_find_primary,   int(int64_t,int64_t,int64_t,int,int64_t))
-   (db_idx128_find_secondary, int(int64_t,int64_t,int64_t,int,int))
-   (db_idx128_lowerbound,     int(int64_t,int64_t,int64_t,int,int))
-   (db_idx128_upperbound,     int(int64_t,int64_t,int64_t,int,int))
-   (db_idx128_next,           int(int, int))
-   (db_idx128_previous,       int(int, int))
+   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
+   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
+   DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
 );
 
 REGISTER_INTRINSICS(crypto_api,

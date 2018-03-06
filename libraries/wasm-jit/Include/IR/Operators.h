@@ -15,7 +15,6 @@ namespace IR
 	struct ControlStructureImm
 	{
 		ResultType resultType;
-      
 	};
 
 	struct BranchImm
@@ -675,30 +674,6 @@ namespace IR
 			}
 		}
 
-	   uint8_t decodeOp()
-		{
-         index = nextByte;
-			assert(nextByte + sizeof(Opcode) <= end);
-			Opcode opcode = *(Opcode*)nextByte;
-			switch(opcode)
-			{
-					//OpcodeAndImm<Imm>* encodedOperator = (OpcodeAndImm<Imm>*)nextByte;
-			#define VISIT_OPCODE(opcode,name,nameString,Imm,...) \
-            case Opcode::name: \
-				{ \
-               if (opcode == 0x41)
-					assert(nextByte + sizeof(OpcodeAndImm<Imm>) <= end); \
-					nextByte += sizeof(OpcodeAndImm<Imm>); \
-					return opcode; \
-				}
-			ENUM_OPERATORS(VISIT_OPCODE)
-			#undef VISIT_OPCODE
-			default:
-				nextByte += sizeof(Opcode);
-				return 0xFF;
-			}
-		}
-
 		template<typename Visitor>
 		typename Visitor::Result decodeOpWithoutConsume(Visitor& visitor)
 		{
@@ -707,7 +682,6 @@ namespace IR
 			nextByte = savedNextByte;
 			return result;
 		}
-      const U8* index;
   
 	private:
 

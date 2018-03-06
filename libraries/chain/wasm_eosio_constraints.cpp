@@ -1,9 +1,11 @@
 #include <eosio/chain/wasm_eosio_constraints.hpp>
+#include <eosio/chain/wasm_eosio_validators.hpp>
 #include <eosio/chain/wasm_binary_ops.hpp>
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include "IR/Module.h"
 #include "IR/Operators.h"
+#include "WASM/WASM.h"
 
 namespace eosio { namespace chain {
 
@@ -63,133 +65,8 @@ void globals_validator::validate( Module& m ) {
       FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract has more than ${k} bytes of mutable globals",
             ("k", wasm_constraints::maximum_mutable_globals));
 }
-/*
-bool is_whitelisted( uint8_t op ) {
-   // white list of instructions
-   static auto wasm_eosio_whitelist = std::unordered_set<uint8_t> {
-         UNREACHABLE, 
-         NOP, 
-         BLOCK, 
-         LOOP, 
-         IF, 
-         ELSE, 
-         END, 
-         BR, 
-         BR_IF, 
-         BR_TABLE, 
-         RETURN, 
-         CALL, 
-         CALL_INDIRECT, 
-         DROP, 
-         SELECT,
-         GET_LOCAL,
-         SET_LOCAL, 
-         TEE_LOCAL, 
-         GET_GLOBAL,
-         SET_GLOBAL,
-         I32_LOAD,
-         I64_LOAD,
-         F32_LOAD,
-         F64_LOAD,
-         I32_LOAD8_S,
-         I32_LOAD8_U,
-         I32_LOAD16_S,
-         I32_LOAD16_U,
-         I64_LOAD8_S,
-         I64_LOAD8_U,
-         I64_LOAD16_S,
-         I64_LOAD16_U,
-         I64_LOAD32_S,
-         I64_LOAD32_U,
-         I32_STORE,    
-         I64_STORE,
-         F32_STORE,
-         F64_STORE,
-         I32_STORE8, 
-         I32_STORE16,
-         I64_STORE8, 
-         I64_STORE16,
-         I64_STORE32,
-         I32_CONST,
-         I64_CONST,
-         // TODO verify these can stay in
-         F32_CONST, 
-         F64_CONST,
-         I32_EQZ,
-         I32_EQ,
-         I32_NE,
-         I32_LT_S,
-         I32_LT_U,
-         I32_GT_S,
-         I32_GT_U,
-         I32_LE_S,
-         I32_LE_U,
-         I32_GE_S,
-         I32_GE_U,
-         I64_EQZ,
-         I64_EQ,
-         I64_NE,
-         I64_LT_S,
-         I64_LT_U,
-         I64_GT_S,
-         I64_GT_U,
-         I64_LE_S,
-         I64_LE_U,
-         I64_GE_S,
-         I64_GE_U,
-         I32_CLZ,
-         I32_CTZ,
-         I32_POPCOUNT,
-         I32_ADD,
-         I32_SUB,
-         I32_MUL,  
-         I32_DIV_S,
-         I32_DIV_U,
-         I32_REM_S,
-         I32_REM_U,
-         I32_AND,
-         I32_OR, 
-         I32_XOR,
-         I32_SHL,
-         I32_SHR_S,
-         I32_SHR_U,
-         I32_ROTL, 
-         I32_ROTR, 
-         I64_CLZ,
-         I64_CTZ,
-         I64_POPCOUNT,
-         I64_ADD,
-         I64_SUB,
-         I64_MUL,
-         I64_DIV_S,
-         I64_DIV_U,
-         I64_REM_S,
-         I64_REM_U,
-         I64_AND,
-         I64_OR, 
-         I64_XOR,
-         I64_SHL,
-         I64_SHR_S,
-         I64_SHR_U,
-         I64_ROTL,
-         I64_ROTR,
-         I32_WRAP_I64,
-         I64_EXTEND_S_I32,
-         I64_EXTEND_U_I32,
-         // TODO these might be okay too
-         I32_REINTERPRET_F32,
-         I64_REINTERPRET_F64,
-         F32_REINTERPRET_I32,
-         F64_REINTERPRET_I64
-   };
-   
-  if ( whitelist.find( op ) == whitelist.end() ) 
-     return false;
 
-  return true;
-}
-*/
-
+bool validate_wasm_binary( const char* bin, size_t s ) { }
 } // namespace wasm_constraints
 
 struct wasm_opcode_no_disposition_exception {
@@ -404,5 +281,4 @@ void validate_eosio_wasm_constraints(const Module& m) {
       }
    }
 }
-
 }}
