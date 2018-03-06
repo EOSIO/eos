@@ -46,23 +46,23 @@ curl http://127.0.0.1:8888/v1/chain/get_info
 docker-compose up
 ```
 
-After `docker-compose up`, two services named eosd and walletd will be started. eosd service would expose ports 8888 and 9876 to the host. walletd service does not expose any port to the host, it is only accessible to eosc when runing eosc is running inside the walletd container as described in "Execute eosc commands" section.
+After `docker-compose up`, two services named eosd and eosiowd will be started. eosd service would expose ports 8888 and 9876 to the host. eosiowd service does not expose any port to the host, it is only accessible to eosioc when runing eosc is running inside the walletd container as described in "Execute eosioc commands" section.
 
 
-### Execute eosc commands
+### Execute eosioc commands
 
-You can run the `eosc` commands via a bash alias.
+You can run the `eosioc` commands via a bash alias.
 
 ```bash
-alias eosc='docker-compose exec walletd /opt/eos/bin/eosc -H eosd'
-eosc get info
-eosc get account inita
+alias eosioc='docker-compose exec walletd /opt/eosio/bin/eosioc -H eosd'
+eosioc get info
+eosioc get account inita
 ```
 
 Upload sample exchange contract
 
 ```bash
-eosc set contract exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi
+eosioc set contract exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi
 ```
 
 If you don't need walletd afterwards, you can stop the walletd service using
