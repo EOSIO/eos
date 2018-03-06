@@ -441,7 +441,7 @@ class Node(object):
         Utils.Print("Publish eosio.system contract")
         trans=self.publishContract(eosio.name, wastFile, abiFile, waitForTransBlock=True)
         if trans is None:
-           Utils.errorExit("Failed to publish oesio.system.")
+           Utils.errorExit("Failed to publish eosio.system.")
 
         Utils.Print("push issue action to eosio contract")
         contract=eosio.name
@@ -1189,7 +1189,6 @@ class Cluster(object):
                     cmdArr.append("--plugin eosio::mongo_db_plugin --resync --mongodb-uri %s" % self.mongoUri)
                 else:
                     cmdArr.append("--plugin eosio::db_plugin --mongodb-uri %s" % self.mongoUri)
-
         Utils.Print("cmd: ", cmdArr)
         if 0 != subprocess.call(cmdArr):
             Utils.Print("ERROR: Launcher failed to launch.")
@@ -1515,7 +1514,7 @@ class Cluster(object):
             #Utils.Print("psOut: <%s>" % psOut)
 
             for i in range(0, totalNodes):
-                pattern="[\n]?(\d+) (.* --data-dir tn_data_%02d)\n" % (i)
+                pattern="[\n]?(\d+) (.* --data-dir tn_data_%02d)" % (i)
                 m=re.search(pattern, psOut, re.MULTILINE)
                 if m is None:
                     Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))

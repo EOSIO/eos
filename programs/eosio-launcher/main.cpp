@@ -123,7 +123,7 @@ class eosd_def;
 class host_def {
 public:
   host_def ()
-    : genesis("./genesis.json"),
+    : genesis("../genesis.json"),
       ssh_identity (""),
       ssh_args (""),
       eos_root_dir(),
@@ -395,7 +395,7 @@ launcher_def::set_options (bpo::options_description &cli) {
     ("pnodes,p",bpo::value<size_t>(&prod_nodes)->default_value(1),"number of nodes that are producers")
     ("mode,m",bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"),"connection mode, combination of \"any\", \"producers\", \"specified\", \"none\"")
     ("shape,s",bpo::value<string>(&shape)->default_value("star"),"network topology, use \"star\" \"mesh\" or give a filename for custom")
-    ("genesis,g",bpo::value<bf::path>(&genesis)->default_value("./genesis.json"),"set the path to genesis.json")
+    ("genesis,g",bpo::value<bf::path>(&genesis)->default_value("../genesis.json"),"set the path to genesis.json")
     ("output,o",bpo::value<bf::path>(&output),"save a copy of the generated topology in this file")
     ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), "EOSD does not require transaction signatures.")
     ("eosiod", bpo::value<string>(&eosd_extra_args), "forward eosiod command line argument(s) to each instance of eosiod, enclose arg in quotes")
@@ -1130,6 +1130,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   }
 
   eosdcmd += "--data-dir " + instance.data_dir;
+  eosdcmd += " --config-dir " + instance.data_dir;
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
   }
