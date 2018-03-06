@@ -26,7 +26,8 @@ before_install:
   - |
     mkdir ext && cd ext
     if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-      brew install python3 boost openssl llvm@4 gmp gettext ninja mongodb mongo-c-driver
+      brew install boost openssl llvm@4 gmp gettext ninja mongodb mongo-c-driver python3
+      brew upgrade python
       brew link gettext --force
       brew link python3 --force
       brew services start mongodb
