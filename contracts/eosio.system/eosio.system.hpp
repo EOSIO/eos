@@ -76,7 +76,7 @@ namespace eosiosystem {
                                  typename voting<SystemAccount>::stakevote,
                                  typename voting<SystemAccount>::unstakevote,
                                  typename voting<SystemAccount>::unstake_vote_deferred,
-                                 typename voting<SystemAccount>::onblock,
+                                 onblock,
                                  nonce>( code, act) ) {
                   eosio::print("Unexpected action: ", eosio::name(act), "\n");
                   eosio_assert( false, "received unexpected action");
