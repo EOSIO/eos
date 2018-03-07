@@ -45,7 +45,6 @@ if (USE_PCH)
   include (cotire)
 endif(USE_PCH)
 
-
 if(UNIX)
   if(APPLE)
     set(whole_archive_flag "-force_load")
@@ -166,6 +165,7 @@ endif()
 
 include(wasm)
 include(installer)
+include(softfloat)
 
 add_subdirectory( externals )
 add_subdirectory( contracts )

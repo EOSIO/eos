@@ -58,12 +58,12 @@ namespace eosio {
           };
 
           struct account {
-             uint64_t   symbol = token_type::symbol;
              token_type balance;
+             uint64_t   symbol = token_type::symbol;
 
              auto primary_key() const { return symbol; }
 
-             EOSLIB_SERIALIZE( account, (symbol)(balance) )
+             EOSLIB_SERIALIZE( account, (balance)(symbol) )
           };
 
           struct currency_stats {
@@ -84,8 +84,8 @@ namespace eosio {
 
           static token_type get_balance( account_name owner ) {
              accounts t( code, owner );
-             auto ptr = t.find( symbol );
-             return ptr ? ptr->balance : token_type( asset(0, symbol) );
+             auto itr = t.find( symbol );
+             return itr != t.end() ? itr->balance : token_type( asset(0, symbol) );
           }
 
          static void set_balance( account_name owner, token_type balance, account_name create_bill_to, account_name update_bill_to ) {
@@ -94,9 +94,9 @@ namespace eosio {
                 acc.symbol = symbol;
                 acc.balance = balance;
              };
-             auto ptr = t.find( symbol );
-             if (ptr) {
-                t.update( *ptr, update_bill_to, f);
+             auto itr = t.find( symbol );
+             if( itr != t.end() ) {
+                t.modify( itr, update_bill_to, f);
              } else {
                 t.emplace( create_bill_to, f);
              }
@@ -106,16 +106,16 @@ namespace eosio {
              require_auth( code );
 
              stats t( code, code );
-             auto ptr = t.find( symbol );
-             if (ptr) {
-                t.update(*ptr, 0, [&](currency_stats& s) { s.supply += act.quantity; });
+             auto itr = t.find( symbol );
+             if( itr != t.end() ) {
+                t.modify(itr, 0, [&](currency_stats& s) { s.supply += act.quantity; });
              } else {
                 t.emplace(code, [&](currency_stats& s) { s.supply = act.quantity; });
              }
 
              set_balance( code, get_balance( code ) + act.quantity, code, 0 );
 
-             inline_transfer( code, act.to, act.quantity ); 
+             inline_transfer( code, act.to, act.quantity );
           }
 
 
@@ -127,7 +127,7 @@ namespace eosio {
              set_balance( act.to, get_balance( act.to ) + act.quantity, act.from, 0 );
           }
 
-          static void inline_transfer( account_name from, account_name to, token_type quantity, 
+          static void inline_transfer( account_name from, account_name to, token_type quantity,
                                        string memo = string() )
           {
              action act( permission_level(from,N(active)), transfer_memo( from, to, asset(quantity), move(memo) ));
@@ -141,6 +141,3 @@ namespace eosio {
    };
 
 } /// namespace eosio
-
-
-

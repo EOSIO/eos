@@ -34,8 +34,8 @@ EOS.IO currently supports the following operating systems:
 1. [Getting Started](#gettingstarted)
 2. [Setting up a build/development environment](#setup)
 	1. [Automated build script](#autobuild)
-      1. [Clean install Linux (Amazon, Fedora, & Ubuntu) for a local testnet](#autoubuntulocal)
-      2. [Clean install Linux (Amazon, Fedora, & Ubuntu) for the public testnet](#autoubuntupublic)
+      1. [Clean install Linux (Amazon, Centos, Fedora, & Ubuntu) for a local testnet](#autoubuntulocal)
+      2. [Clean install Linux (Amazon, Centos, Fedora, & Ubuntu) for the public testnet](#autoubuntupublic)
       3. [MacOS for a local testnet](#automaclocal)
       4. [MacOS for the public testnet](#automacpublic)
 3. [Building EOS and running a node](#runanode)
@@ -56,9 +56,10 @@ EOS.IO currently supports the following operating systems:
 8. [Running EOS in Docker](#docker)
 9. [Manual installation of the dependencies](#manualdep)
    1. [Clean install Amazon 2017.09 and higher](#manualdepamazon)
-   2. [Clean install Fedora 25 and higher](#manualdepfedora)
-   3. [Clean install Ubuntu 16.04 and higher](#manualdepubuntu)
-   4. [Clean install MacOS Sierra 10.12 and higher](#manualdepmacos)
+   2. [Clean install Centos 7 and higher](#manualdepcentos)
+   3. [Clean install Fedora 25 and higher](#manualdepfedora)
+   4. [Clean install Ubuntu 16.04 and higher](#manualdepubuntu)
+   5. [Clean install MacOS Sierra 10.12 and higher](#manualdepmacos)
 
 <a name="gettingstarted"></a>
 ## Getting Started
@@ -72,11 +73,12 @@ The following instructions detail the process of getting the software, building 
 
 Supported Operating Systems:  
 1. Amazon 2017.09 and higher.  
-2. Fedora 25 and higher (Fedora 27 recommended).  
-3. Ubuntu 16.04 and higher (Ubuntu 16.10 recommended).  
-4. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
+2. Centos 7 and higher.  
+3. Fedora 25 and higher (Fedora 27 recommended).  
+4. Ubuntu 16.04 and higher (Ubuntu 16.10 recommended).  
+5. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
 
-For Amazon, Fedora, Ubuntu & MacOS there is an automated build script that can install all dependencies and builds EOS.
+For Amazon, Centos, Fedora, Ubuntu & MacOS there is an automated build script that can install all dependencies and builds EOS.
 We are working on supporting other Linux/Unix distributions in future releases.
 
 Choose whether you will be building for a local testnet or for the public testnet and jump to the appropriate section below.  Clone the EOS repository recursively as described and run eosio_build.sh located in the root `eos` folder.
@@ -86,7 +88,7 @@ Choose whether you will be building for a local testnet or for the public testne
 We strongly recommend following the instructions for building the public testnet version for [Ubuntu](#autoubuntupublic) or [Mac OS X](#automacpublic). `master` is in pieces on the garage floor while we rebuild this hotrod. This notice will be removed when `master` is usable again. Your patience is appreciated.
 
 <a name="autoubuntulocal"></a>
-#### :no_entry: Clean install Linux (Amazon, Fedora & Ubuntu) for a local testnet :no_entry:
+#### :no_entry: Clean install Linux (Amazon, Centos, Fedora & Ubuntu) for a local testnet :no_entry:
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
@@ -104,7 +106,7 @@ sudo make install
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
 
 <a name="autoubuntupublic"></a>
-#### Clean install Linux (Amazon, Fedora & Ubuntu) for the public testnet
+#### Clean install Linux (Amazon, Centos, Fedora & Ubuntu) for the public testnet
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
@@ -559,7 +561,6 @@ Dependencies:
 * OpenSSL
 * LLVM 4.0
 * [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git)
-* [binaryen](https://github.com/WebAssembly/binaryen.git)
 
 <a name="manualdepamazon"></a>
 ### Clean install Amazon 2017.09 and higher
@@ -573,6 +574,20 @@ sudo yum install git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool mak
 				 libstdc++72.x86_64 python27-devel.x86_64 libedit-devel.x86_64 \
 				 ncurses-devel.x86_64 swig.x86_64 gettext-devel.x86_64
 
+```
+
+Install CMake 3.10.2:
+
+```bash
+cd ~
+curl -L -O https://cmake.org/files/v3.10/cmake-3.10.2.tar.gz
+tar xf cmake-3.10.2.tar.gz
+rm -f cmake-3.10.2.tar.gz
+ln -s cmake-3.10.2/ cmake
+cd cmake
+./bootstrap
+make
+sudo make install
 ```
 
 Install Boost 1.66:
@@ -600,22 +615,79 @@ make -j$( nproc )
 sudo make install
 ```
 
-To use the WASM compiler, EOS has an external dependency on [binaryen](https://github.com/WebAssembly/binaryen.git):
+By default LLVM and clang do not include the WASM build target, so you will have to build it yourself:
 
 ```bash
-cd ~
-git clone https://github.com/WebAssembly/binaryen.git
-cd ~/binaryen
-git checkout tags/1.37.14
-cmake . && make
+mkdir  ~/wasm-compiler
+cd ~/wasm-compiler
+git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
+cd llvm/tools
+git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
+cd ..
+mkdir build
+cd build
+cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+make -j$( nproc ) 
+make install
+```
+
+Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
+
+<a name="manualdepcentos"></a>
+### Clean install Centos 7 and higher
+
+Install the development toolkit:
+* Installation on Centos requires installing/enabling the Centos Software Collections
+Repository.
+[Centos SCL](https://wiki.centos.org/AdditionalResources/Repositories/SCL):
+
+```bash
+sudo yum --enablerepo=extras install centos-release-scl
+sudo yum update
+sudo yum install -y devtoolset-7
+scl enable devtoolset-7 bash
+sudo yum install git autoconf automake libtool make bzip2 \
+				 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 \
+				 ocaml.x86_64 doxygen libicu-devel.x86_64 python27-devel.x86_64 \
+				 gettext-devel.x86_64
 
 ```
 
-Add `BINARYEN_ROOT` to your .bash_profile:
+Install CMake 3.10.2:
 
 ```bash
-echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
+cd ~
+curl -L -O https://cmake.org/files/v3.10/cmake-3.10.2.tar.gz
+tar xf cmake-3.10.2.tar.gz
+cd cmake-3.10.2
+./bootstrap
+make -j$( nproc )
+sudo make install
+```
+
+Install Boost 1.66:
+
+```bash
+cd ~
+curl -L https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2 > boost_1.66.0.tar.bz2
+tar xf boost_1.66.0.tar.bz2
+echo "export BOOST_ROOT=$HOME/boost_1_66_0" >> ~/.bash_profile
 source ~/.bash_profile
+cd boost_1_66_0/
+./bootstrap.sh "--prefix=$BOOST_ROOT"
+./b2 install
+```
+
+Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
+
+```bash
+cd ~
+git clone https://github.com/cryptonomex/secp256k1-zkp.git
+cd secp256k1-zkp
+./autogen.sh
+./configure
+make -j$( nproc )
+sudo make install
 ```
 
 By default LLVM and clang do not include the WASM build target, so you will have to build it yourself:
@@ -644,9 +716,9 @@ Install the development toolkit:
 ```bash
 sudo yum update
 sudo yum install git gcc.x86_64 gcc-c++.x86_64 autoconf automake libtool make cmake.x86_64 \
-					bzip2 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 \
-					libstdc++-devel.x86_64 python3-devel.x86_64 libedit.x86_64 \
-					ncurses-devel.x86_64 swig.x86_64 gettext-devel.x86_64
+				 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 \
+				 libstdc++-devel.x86_64 python3-devel.x86_64 libedit.x86_64 \
+				 ncurses-devel.x86_64 swig.x86_64 gettext-devel.x86_64
 
 ```
 
@@ -673,24 +745,6 @@ cd secp256k1-zkp
 ./configure
 make -j$( nproc )
 sudo make install
-```
-
-To use the WASM compiler, EOS has an external dependency on [binaryen](https://github.com/WebAssembly/binaryen.git):
-
-```bash
-cd ~
-git clone https://github.com/WebAssembly/binaryen.git
-cd ~/binaryen
-git checkout tags/1.37.14
-cmake . && make
-
-```
-
-Add `BINARYEN_ROOT` to your .bash_profile:
-
-```bash
-echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
-source ~/.bash_profile
 ```
 
 By default LLVM and clang do not include the WASM build target, so you will have to build it yourself:
@@ -751,24 +805,6 @@ make
 sudo make install
 ```
 
-To use the WASM compiler, EOS has an external dependency on [binaryen](https://github.com/WebAssembly/binaryen.git):
-
-```bash
-cd ~
-git clone https://github.com/WebAssembly/binaryen.git
-cd ~/binaryen
-git checkout tags/1.37.14
-cmake . && make
-
-```
-
-Add `BINARYEN_ROOT` to your .bash_profile:
-
-```bash
-echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
-source ~/.bash_profile
-```
-
 By default LLVM and clang do not include the WASM build target, so you will have to build it yourself:
 
 ```bash
@@ -824,23 +860,6 @@ cd secp256k1-zkp
 ./configure
 make -j$( sysctl -in machdep.cpu.core_count )
 sudo make install
-```
-
-Install [binaryen v1.37.14](https://github.com/WebAssembly/binaryen.git):
-
-```bash
-cd ~
-git clone https://github.com/WebAssembly/binaryen.git
-cd ~/binaryen
-git checkout tags/1.37.14
-cmake . && make -j$( sysctl -in machdep.cpu.core_count )
-```
-
-Add `BINARYEN_ROOT` to your .bash_profile:
-
-```bash
-echo "export BINARYEN_ROOT=~/binaryen" >> ~/.bash_profile
-source ~/.bash_profile
 ```
 
 Build LLVM and clang for WASM:

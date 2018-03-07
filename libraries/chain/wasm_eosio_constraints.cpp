@@ -64,12 +64,12 @@ struct eosio_constraints_visitor : public nop_opcode_visitor {
       void name(Imm) override { FC_THROW_EXCEPTION(wasm_execution_error, "Smart contracts may not use WASM memory operators"); }
    ENUM_MEMORY_OPERATORS(VISIT_OPCODE);
    #undef VISIT_OPCODE
-
+/*
    #define VISIT_OPCODE(opcode,name,nameString,Imm,...) \
       void name(Imm) override { FC_THROW_EXCEPTION(wasm_execution_error, "Smart contracts may not use any floating point opcodes"); }
    ENUM_FLOAT_NONCONTROL_NONPARAMETRIC_OPERATORS(VISIT_OPCODE);
    #undef VISIT_OPCODE
-
+*/
    //Allow all these through untouched/////////////////////////
    #define VISIT_OPCODE(opcode,name,nameString,Imm,...) \
       void name(Imm) override {}
@@ -79,6 +79,9 @@ struct eosio_constraints_visitor : public nop_opcode_visitor {
    VISIT_OPCODE(0x01,nop,"nop",NoImm,NULLARY(none));
    VISIT_OPCODE(0x41,i32_const,"i32.const",LiteralImm<I32>,NULLARY(i32));
    VISIT_OPCODE(0x42,i64_const,"i64.const",LiteralImm<I64>,NULLARY(i64));
+   VISIT_OPCODE(0x43,f32_const,"f32.const",LiteralImm<F32>,NULLARY(f32));
+   VISIT_OPCODE(0x44,f64_const,"f64.const",LiteralImm<F64>,NULLARY(f64));
+
 
    VISIT_OPCODE(0x45,i32_eqz,"i32.eqz",NoImm,UNARY(i32,i32));
    VISIT_OPCODE(0x46,i32_eq,"i32.eq",NoImm,BINARY(i32,i32));
@@ -147,6 +150,76 @@ struct eosio_constraints_visitor : public nop_opcode_visitor {
    VISIT_OPCODE(0xa7,i32_wrap_i64,"i32.wrap/i64",NoImm,UNARY(i64,i32));
    VISIT_OPCODE(0xac,i64_extend_s_i32,"i64.extend_s/i32",NoImm,UNARY(i32,i64));
    VISIT_OPCODE(0xad,i64_extend_u_i32,"i64.extend_u/i32",NoImm,UNARY(i32,i64));
+
+   // TODO: these add non-determinism, this will be fixed with softfloat inclusion
+   // unblacklist floats and doubles for the time being
+   VISIT_OPCODE(0x2a,f32_load,"f32.load",LoadOrStoreImm<2>,LOAD(f32));
+   VISIT_OPCODE(0x2b,f64_load,"f64.load",LoadOrStoreImm<3>,LOAD(f64));
+   VISIT_OPCODE(0x38,f32_store,"f32.store",LoadOrStoreImm<2>,STORE(f32));
+   VISIT_OPCODE(0x39,f64_store,"f64.store",LoadOrStoreImm<3>,STORE(f64));
+   VISIT_OPCODE(0x5b,f32_eq,"f32.eq",NoImm,BINARY(f32,i32));
+   VISIT_OPCODE(0x5c,f32_ne,"f32.ne",NoImm,BINARY(f32,i32));
+   VISIT_OPCODE(0x5d,f32_lt,"f32.lt",NoImm,BINARY(f32,i32));
+   VISIT_OPCODE(0x5e,f32_gt,"f32.gt",NoImm,BINARY(f32,i32));
+   VISIT_OPCODE(0x5f,f32_le,"f32.le",NoImm,BINARY(f32,i32));
+   VISIT_OPCODE(0x60,f32_ge,"f32.ge",NoImm,BINARY(f32,i32));
+   VISIT_OPCODE(0x61,f64_eq,"f64.eq",NoImm,BINARY(f64,i32)); 
+   VISIT_OPCODE(0x62,f64_ne,"f64.ne",NoImm,BINARY(f64,i32));
+   VISIT_OPCODE(0x63,f64_lt,"f64.lt",NoImm,BINARY(f64,i32));
+   VISIT_OPCODE(0x64,f64_gt,"f64.gt",NoImm,BINARY(f64,i32));
+   VISIT_OPCODE(0x65,f64_le,"f64.le",NoImm,BINARY(f64,i32));
+   VISIT_OPCODE(0x66,f64_ge,"f64.ge",NoImm,BINARY(f64,i32));
+   VISIT_OPCODE(0x8b,f32_abs,"f32.abs",NoImm,UNARY(f32,f32));
+   VISIT_OPCODE(0x8c,f32_neg,"f32.neg",NoImm,UNARY(f32,f32));
+   VISIT_OPCODE(0x8d,f32_ceil,"f32.ceil",NoImm,UNARY(f32,f32));
+   VISIT_OPCODE(0x8e,f32_floor,"f32.floor",NoImm,UNARY(f32,f32));
+   VISIT_OPCODE(0x8f,f32_trunc,"f32.trunc",NoImm,UNARY(f32,f32));
+   VISIT_OPCODE(0x90,f32_nearest,"f32.nearest",NoImm,UNARY(f32,f32));
+   VISIT_OPCODE(0x91,f32_sqrt,"f32.sqrt",NoImm,UNARY(f32,f32));
+   VISIT_OPCODE(0x92,f32_add,"f32.add",NoImm,BINARY(f32,f32));
+   VISIT_OPCODE(0x93,f32_sub,"f32.sub",NoImm,BINARY(f32,f32));
+   VISIT_OPCODE(0x94,f32_mul,"f32.mul",NoImm,BINARY(f32,f32));
+   VISIT_OPCODE(0x95,f32_div,"f32.div",NoImm,BINARY(f32,f32));
+   VISIT_OPCODE(0x96,f32_min,"f32.min",NoImm,BINARY(f32,f32));
+   VISIT_OPCODE(0x97,f32_max,"f32.max",NoImm,BINARY(f32,f32));
+   VISIT_OPCODE(0x98,f32_copysign,"f32.copysign",NoImm,BINARY(f32,f32));
+   VISIT_OPCODE(0x99,f64_abs,"f64.abs",NoImm,UNARY(f64,f64));
+   VISIT_OPCODE(0x9a,f64_neg,"f64.neg",NoImm,UNARY(f64,f64));
+   VISIT_OPCODE(0x9b,f64_ceil,"f64.ceil",NoImm,UNARY(f64,f64));
+   VISIT_OPCODE(0x9c,f64_floor,"f64.floor",NoImm,UNARY(f64,f64));
+   VISIT_OPCODE(0x9d,f64_trunc,"f64.trunc",NoImm,UNARY(f64,f64));
+   VISIT_OPCODE(0x9e,f64_nearest,"f64.nearest",NoImm,UNARY(f64,f64));
+   VISIT_OPCODE(0x9f,f64_sqrt,"f64.sqrt",NoImm,UNARY(f64,f64));
+   VISIT_OPCODE(0xa0,f64_add,"f64.add",NoImm,BINARY(f64,f64));
+   VISIT_OPCODE(0xa1,f64_sub,"f64.sub",NoImm,BINARY(f64,f64));
+   VISIT_OPCODE(0xa2,f64_mul,"f64.mul",NoImm,BINARY(f64,f64));
+   VISIT_OPCODE(0xa3,f64_div,"f64.div",NoImm,BINARY(f64,f64));
+   VISIT_OPCODE(0xa4,f64_min,"f64.min",NoImm,BINARY(f64,f64));
+   VISIT_OPCODE(0xa5,f64_max,"f64.max",NoImm,BINARY(f64,f64));
+   VISIT_OPCODE(0xa6,f64_copysign,"f64.copysign",NoImm,BINARY(f64,f64));
+   VISIT_OPCODE(0xa8,i32_trunc_s_f32,"i32.trunc_s/f32",NoImm,UNARY(f32,i32));
+   VISIT_OPCODE(0xa9,i32_trunc_u_f32,"i32.trunc_u/f32",NoImm,UNARY(f32,i32));
+   VISIT_OPCODE(0xaa,i32_trunc_s_f64,"i32.trunc_s/f64",NoImm,UNARY(f64,i32));
+   VISIT_OPCODE(0xab,i32_trunc_u_f64,"i32.trunc_u/f64",NoImm,UNARY(f64,i32));
+   VISIT_OPCODE(0xae,i64_trunc_s_f32,"i64.trunc_s/f32",NoImm,UNARY(f32,i64));
+   VISIT_OPCODE(0xaf,i64_trunc_u_f32,"i64.trunc_u/f32",NoImm,UNARY(f32,i64));
+   VISIT_OPCODE(0xb0,i64_trunc_s_f64,"i64.trunc_s/f64",NoImm,UNARY(f64,i64));
+   VISIT_OPCODE(0xb1,i64_trunc_u_f64,"i64.trunc_u/f64",NoImm,UNARY(f64,i64));
+   VISIT_OPCODE(0xb2,f32_convert_s_i32,"f32.convert_s/i32",NoImm,UNARY(i32,f32));
+   VISIT_OPCODE(0xb3,f32_convert_u_i32,"f32.convert_u/i32",NoImm,UNARY(i32,f32));
+   VISIT_OPCODE(0xb4,f32_convert_s_i64,"f32.convert_s/i64",NoImm,UNARY(i64,f32));
+   VISIT_OPCODE(0xb5,f32_convert_u_i64,"f32.convert_u/i64",NoImm,UNARY(i64,f32));
+   VISIT_OPCODE(0xb6,f32_demote_f64,"f32.demote/f64",NoImm,UNARY(f64,f32));
+   VISIT_OPCODE(0xb7,f64_convert_s_i32,"f64.convert_s/i32",NoImm,UNARY(i32,f64));
+   VISIT_OPCODE(0xb8,f64_convert_u_i32,"f64.convert_u/i32",NoImm,UNARY(i32,f64));
+   VISIT_OPCODE(0xb9,f64_convert_s_i64,"f64.convert_s/i64",NoImm,UNARY(i64,f64));
+   VISIT_OPCODE(0xba,f64_convert_u_i64,"f64.convert_u/i64",NoImm,UNARY(i64,f64));
+   VISIT_OPCODE(0xbb,f64_promote_f32,"f64.promote/f32",NoImm,UNARY(f32,f64));
+   VISIT_OPCODE(0xbc,i32_reinterpret_f32,"i32.reinterpret/f32",NoImm,UNARY(f32,i32));
+   VISIT_OPCODE(0xbd,i64_reinterpret_f64,"i64.reinterpret/f64",NoImm,UNARY(f64,i64));
+   VISIT_OPCODE(0xbe,f32_reinterpret_i32,"f32.reinterpret/i32",NoImm,UNARY(i32,f32));
+   VISIT_OPCODE(0xbf,f64_reinterpret_i64,"f64.reinterpret/i64",NoImm,UNARY(i64,f64));
+
    #undef VISIT_OPCODE
    
 };

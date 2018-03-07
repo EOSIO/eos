@@ -30,15 +30,15 @@ RUN wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.
     && cd boost_1_64_0 \
     && ./bootstrap.sh --prefix=/usr/local \
     && echo 'using clang : 4.0 : clang++-4.0 ;' >> project-config.jam \
-    && ./b2 -d0 -j4 --with-thread --with-date_time --with-system --with-filesystem --with-program_options \
+    && ./b2 -d0 -j$(nproc) --with-thread --with-date_time --with-system --with-filesystem --with-program_options \
        --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine --with-iostreams toolset=clang link=static install \
     && cd .. && rm -rf boost_1_64_0
 
-RUN wget https://github.com/mongodb/mongo-c-driver/releases/download/1.8.0/mongo-c-driver-1.8.0.tar.gz -O - | tar -xz \
-    && cd mongo-c-driver-1.8.0 \
+RUN wget https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz -O - | tar -xz \
+    && cd mongo-c-driver-1.9.3 \
     && ./configure --disable-automatic-init-and-cleanup --prefix=/usr/local \
-    && make install \
-    && cd .. && rm -rf mongo-c-driver-1.8.0
+    && make -j$(nproc) install \
+    && cd .. && rm -rf mongo-c-driver-1.9.3
 
 RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git \
     && git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git llvm/tools/clang \
@@ -58,14 +58,13 @@ RUN git clone --depth 1 git://github.com/cryptonomex/secp256k1-zkp \
     && cd secp256k1-zkp \
     && ./autogen.sh \
     && ./configure --prefix=/usr/local \
-    && make install \
+    && make -j$(nproc) install \
     && cd .. && rm -rf secp256k1-zkp
 
 RUN git clone --depth 1 -b releases/stable git://github.com/mongodb/mongo-cxx-driver \
     && cd mongo-cxx-driver \
     && cmake -H. -Bbuild -G Ninja -DCMAKE_BUILD_TYPE=Release  -DCMAKE_INSTALL_PREFIX=/usr/local\
     && cmake --build build --target install
-
 
 ### If you don't want to change the depedencies, you can comment out above lines and uncomnent the following line to get faster build time.
 # FROM huangminghuang/eos_builder as builder
@@ -75,8 +74,6 @@ RUN git clone -b master --depth 1 https://github.com/EOSIO/eos.git --recursive \
     && cmake -H. -B"/tmp/build" -GNinja -DCMAKE_BUILD_TYPE=Release -DWASM_ROOT=/opt/wasm -DCMAKE_CXX_COMPILER=clang++ \
        -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/opt/eos  -DSecp256k1_ROOT_DIR=/usr/local \
     && cmake --build /tmp/build --target install
-
-
 
 FROM ubuntu:16.04
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl && rm -rf /var/lib/apt/lists/*
