@@ -79,7 +79,7 @@ walletMgr=testUtils.WalletMgr(True, port, server)
 
 testSuccessful=False
 killEosInstances=True
-killWallet=args.keep_wallet
+killWallet=not args.keep_wallet
 
 WalletdName="eos-walletd"
 ClientName="eosc"

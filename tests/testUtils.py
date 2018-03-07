@@ -39,7 +39,6 @@ class Utils:
         stackDepth=len(inspect.stack())-2
         str=' '*stackDepth
         sys.stdout.write(str)
-        #sys.stdout.write(datetime.datetime.utcnow().strftime("%H:%M:%S "))
         print(*args, **kwargs)
 
     SyncStrategy=namedtuple("ChainSyncStrategy", "name id arg")
@@ -482,7 +481,6 @@ class Node(object):
     # Create account and return creation transactions. Return transaction json object
     # waitForTransBlock: wait on creation transaction id to appear in a block
     def createAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
-
         cmd=None
         if Utils.amINoon:
             cmd="%s %s create account %s %s %s %s" % (
