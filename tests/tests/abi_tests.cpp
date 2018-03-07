@@ -338,7 +338,7 @@ BOOST_AUTO_TEST_CASE(uint_types)
 
    auto abi = fc::json::from_string(currency_abi).as<abi_def>();
 
-   abi_serializer abis(abi);
+   abi_serializer abis(chain_initializer::eos_contract_abi(abi));
    abis.validate();
 
    const char* test_data = R"=====(
@@ -375,7 +375,7 @@ struct abi_gen_helper {
       {"-fparse-all-comments", "--std=c++14", "--target=wasm32", "-ffreestanding", "-nostdlib", "-nostdlibinc", "-fno-threadsafe-statics", "-fno-rtti",  "-fno-exceptions", include_param, stdcpp_include_param, stdc_include_param });
 
     FC_ASSERT(res == true);
-    abi_serializer(output).validate();
+    abi_serializer(chain_initializer::eos_contract_abi(output)).validate();
 
     auto abi1 = fc::json::from_string(abi).as<abi_def>();
 
@@ -1587,7 +1587,7 @@ BOOST_FIXTURE_TEST_CASE(abgigen_vector_alias, abi_gen_helper)
 BOOST_AUTO_TEST_CASE(general)
 { try {
 
-   auto abi = fc::json::from_string(my_abi).as<abi_def>();
+   auto abi = chain_initializer::eos_contract_abi(fc::json::from_string(my_abi).as<abi_def>());
 
    abi_serializer abis(abi);
    abis.validate();
@@ -1655,8 +1655,8 @@ BOOST_AUTO_TEST_CASE(general)
       "scopename_arr"     : ["acc1","acc2"],
       "permlvl"           : {"actor":"acc1","permission":"permname1"},
       "permlvl_arr"       : [{"actor":"acc1","permission":"permname1"},{"actor":"acc2","permission":"permname2"}],
-      "action"            : {"scope":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"},
-      "action_arr"        : [{"scope":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"},{"scope":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}],
+      "action"            : {"account":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"},
+      "action_arr"        : [{"account":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"},{"account":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}],
       "permlvlwgt"        : {"permission":{"actor":"acc1","permission":"permname1"},"weight":"1"},
       "permlvlwgt_arr"    : [{"permission":{"actor":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"actor":"acc2","permission":"permname2"},"weight":"2"}],
       "transaction"       : {
@@ -1664,20 +1664,29 @@ BOOST_AUTO_TEST_CASE(general)
         "ref_block_prefix":"2",
         "expiration":"2021-12-20T15:30",
         "region": "1",
-        "actions":[{"scope":"scopename1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}]
+        "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
+        "actions":[{"account":"accountname1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
+        "packed_bandwidth_words":15,
+        "context_free_cpu_bandwidth":43
       },
       "transaction_arr": [{
         "ref_block_num":"1",
         "ref_block_prefix":"2",
         "expiration":"2021-12-20T15:30",
         "region": "1",
-        "actions":[{"scope":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}]
+        "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
+        "actions":[{"account":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
+        "packed_bandwidth_words":15,
+        "context_free_cpu_bandwidth":43
       },{
         "ref_block_num":"2",
         "ref_block_prefix":"3",
         "expiration":"2021-12-20T15:40",
         "region": "1",
-        "actions":[{"scope":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}]
+        "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
+        "actions":[{"account":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}],
+        "packed_bandwidth_words":21,
+        "context_free_cpu_bandwidth":87
       }],
       "strx": {
         "ref_block_num":"1",
@@ -1685,7 +1694,11 @@ BOOST_AUTO_TEST_CASE(general)
         "expiration":"2021-12-20T15:30",
         "region": "1",
         "signatures" : ["EOSJzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwT77X1U"],
-        "actions":[{"scope":"scopename1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}]
+        "context_free_data" : ["abcdef","0123456789","ABCDEF0123456789abcdef"],
+        "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
+        "actions":[{"account":"accountname1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
+        "packed_bandwidth_words":15,
+        "context_free_cpu_bandwidth":43
       },
       "strx_arr": [{
         "ref_block_num":"1",
@@ -1693,20 +1706,28 @@ BOOST_AUTO_TEST_CASE(general)
         "expiration":"2021-12-20T15:30",
         "region": "1",
         "signatures" : ["EOSJzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwT77X1U"],
-        "actions":[{"scope":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}]
+        "context_free_data" : ["abcdef","0123456789","ABCDEF0123456789abcdef"],
+        "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
+        "actions":[{"account":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
+        "packed_bandwidth_words":15,
+        "context_free_cpu_bandwidth":43
       },{
         "ref_block_num":"2",
         "ref_block_prefix":"3",
         "expiration":"2021-12-20T15:40",
         "region": "1",
         "signatures" : ["EOSJzdpi5RCzHLGsQbpGhndXBzcFs8vT5LHAtWLMxPzBdwRHSmJkcCdVu6oqPUQn1hbGUdErHvxtdSTS1YA73BThQFwT77X1U"],
-        "actions":[{"scope":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}]
+        "context_free_data" : ["abcdef","0123456789","ABCDEF0123456789abcdef"],
+        "context_free_actions":[{"account":"contextfree2", "name":"cfactionname2", "authorization":[{"actor":"cfacc2","permission":"cfpermname2"}], "data":"667788"}],
+        "actions":[{"account":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}],
+        "packed_bandwidth_words":15,
+        "context_free_cpu_bandwidth":43
       }],
       "keyweight": {"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},
       "keyweight_arr": [{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}],
       "authority": {
          "threshold":"10",
-         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}],
+         "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":100},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":200}],
          "accounts":[{"permission":{"actor":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"actor":"acc2","permission":"permname2"},"weight":"2"}]
        },
       "authority_arr": [{
@@ -1838,7 +1859,7 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
    }
    )=====";
 
-   auto abi = fc::json::from_string(typedef_cycle_abi).as<abi_def>();
+   auto abi = chain_initializer::eos_contract_abi(fc::json::from_string(typedef_cycle_abi).as<abi_def>());
    abi_serializer abis(abi);
 
    auto is_assert_exception = [](fc::assert_exception const & e) -> bool { std::cout << e.to_string() << std::endl; return true; };
@@ -2442,10 +2463,10 @@ BOOST_AUTO_TEST_CASE(abi_type_repeat)
    const char* repeat_abi = R"=====(
    {
      "types": [{
-         "new_type_name": "account_name",
+         "new_type_name": "actor_name",
          "type": "name"
        },{
-         "new_type_name": "account_name",
+         "new_type_name": "actor_name",
          "type": "name"
        }
      ],
@@ -2454,10 +2475,10 @@ BOOST_AUTO_TEST_CASE(abi_type_repeat)
          "base": "",
          "fields": [{
             "name": "from",
-            "type": "account_name"
+            "type": "actor_name"
          },{
             "name": "to",
-            "type": "account_name"
+            "type": "actor_name"
          },{
             "name": "amount",
             "type": "uint64"
@@ -2490,7 +2511,7 @@ BOOST_AUTO_TEST_CASE(abi_type_repeat)
    }
    )=====";
 
-   auto abi = fc::json::from_string(repeat_abi).as<abi_def>();
+   auto abi = chain_initializer::eos_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("types.size") != std::string::npos; };
    BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
@@ -2501,7 +2522,7 @@ BOOST_AUTO_TEST_CASE(abi_struct_repeat)
    const char* repeat_abi = R"=====(
    {
      "types": [{
-         "new_type_name": "account_name",
+         "new_type_name": "actor_name",
          "type": "name"
        }
      ],
@@ -2510,10 +2531,10 @@ BOOST_AUTO_TEST_CASE(abi_struct_repeat)
          "base": "",
          "fields": [{
             "name": "from",
-            "type": "account_name"
+            "type": "actor_name"
          },{
             "name": "to",
-            "type": "account_name"
+            "type": "actor_name"
          },{
             "name": "amount",
             "type": "uint64"
@@ -2546,7 +2567,7 @@ BOOST_AUTO_TEST_CASE(abi_struct_repeat)
    }
    )=====";
 
-   auto abi = fc::json::from_string(repeat_abi).as<abi_def>();
+   auto abi = chain_initializer::eos_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("structs.size") != std::string::npos; };
    BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
@@ -2557,7 +2578,7 @@ BOOST_AUTO_TEST_CASE(abi_action_repeat)
    const char* repeat_abi = R"=====(
    {
      "types": [{
-         "new_type_name": "account_name",
+         "new_type_name": "actor_name",
          "type": "name"
        }
      ],
@@ -2566,10 +2587,10 @@ BOOST_AUTO_TEST_CASE(abi_action_repeat)
          "base": "",
          "fields": [{
             "name": "from",
-            "type": "account_name"
+            "type": "actor_name"
          },{
             "name": "to",
-            "type": "account_name"
+            "type": "actor_name"
          },{
             "name": "amount",
             "type": "uint64"
@@ -2605,7 +2626,7 @@ BOOST_AUTO_TEST_CASE(abi_action_repeat)
    }
    )=====";
 
-   auto abi = fc::json::from_string(repeat_abi).as<abi_def>();
+   auto abi = chain_initializer::eos_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("actions.size") != std::string::npos; };
    BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
@@ -2616,7 +2637,7 @@ BOOST_AUTO_TEST_CASE(abi_table_repeat)
    const char* repeat_abi = R"=====(
    {
      "types": [{
-         "new_type_name": "account_name",
+         "new_type_name": "actor_name",
          "type": "name"
        }
      ],
@@ -2625,10 +2646,10 @@ BOOST_AUTO_TEST_CASE(abi_table_repeat)
          "base": "",
          "fields": [{
             "name": "from",
-            "type": "account_name"
+            "type": "actor_name"
          },{
             "name": "to",
-            "type": "account_name"
+            "type": "actor_name"
          },{
             "name": "amount",
             "type": "uint64"
@@ -2667,7 +2688,7 @@ BOOST_AUTO_TEST_CASE(abi_table_repeat)
    }
    )=====";
 
-   auto abi = fc::json::from_string(repeat_abi).as<abi_def>();
+   auto abi = chain_initializer::eos_contract_abi(fc::json::from_string(repeat_abi).as<abi_def>());
    auto is_table_exception = [](fc::assert_exception const & e) -> bool { return e.to_detail_string().find("tables.size") != std::string::npos; };
    BOOST_CHECK_EXCEPTION( abi_serializer abis(abi), fc::assert_exception, is_table_exception );
 } FC_LOG_AND_RETHROW() }
