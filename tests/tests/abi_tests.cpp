@@ -883,7 +883,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_long_field_name, abi_gen_helper)
 
    )=====";
 
-   BOOST_CHECK_EXCEPTION( generate_abi(long_field_name, ""), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
+   BOOST_TEST( generate_abi(long_field_name, "{}") == false );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -905,7 +905,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_long_type_name, abi_gen_helper)
    )=====";
 
 
-   BOOST_CHECK_EXCEPTION( generate_abi(long_type_name, "{}"), eosio::abi_generation_exception, abi_gen_helper::is_abi_generation_exception );
+   BOOST_TEST( generate_abi(long_type_name, "{}") == false );
 
 } FC_LOG_AND_RETHROW() }
 
