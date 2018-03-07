@@ -155,7 +155,7 @@
          exit -1
       fi
 
-      make -j${CPU_CORE} VERBOSE=0
+      make -j${CPU_CORE} VERBOSE=0 package
 
       if [ $? -ne 0 ]; then
          printf "\n\t>>>>>>>>>>>>>>>>>>>> MAKE building eos.io package has exited with the above error.\n\n"
