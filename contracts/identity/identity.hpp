@@ -191,7 +191,7 @@ namespace identity {
                         }
                      } else if (DeployToAccount == current_receiver()){
                         //the certifier is no longer trusted, need to unset the flag
-                        certs.update(*itr, 0, [&](certrow& r) {
+                        idx.modify(itr, 0, [&](certrow& r) {
                               r.trusted = 0;
                            });
                      } else {
@@ -216,7 +216,7 @@ namespace identity {
                   if (ident == get_claimed_identity(account) && is_trusted(itr->certifier)) {
                      if (DeployToAccount == current_receiver()) {
                         // the certifier became trusted and we have permissions to update the flag
-                        certs.update(*itr, 0, [&](certrow& r) {
+                        idx.modify(itr, 0, [&](certrow& r) {
                               r.trusted = 1;
                            });
                      }
@@ -244,7 +244,7 @@ namespace identity {
 
          static bool is_trusted_by( account_name trusted, account_name by ) {
             trust_table t( code, by );
-            return t.find( trusted );
+            return t.find( trusted ) != t.end();
          }
 
          static bool is_trusted( account_name acnt ) {
@@ -266,21 +266,21 @@ namespace identity {
             require_recipient( t.trusting );
 
             trust_table table( code, t.trustor );
-            auto ptr = table.find(t.trusting);
-            if (!ptr && t.trust > 0) {
+            auto itr = table.find(t.trusting);
+            if( itr == table.end() && t.trust > 0 ) {
                table.emplace( t.trustor, [&](trustrow& row) {
                      row.account = t.trusting;
                   });
-            } else if (ptr && t.trust == 0) {
-               table.remove(*ptr);
+            } else if( itr != table.end() && t.trust == 0 ) {
+               table.erase(itr);
             }
          }
 
          static void on( const create& c ) {
             require_auth( c.creator );
             idents_table t( code, code);
-            auto ptr = t.find( c.identity );
-            eosio_assert( !ptr, "identity already exists" );
+            auto itr = t.find( c.identity );
+            eosio_assert( itr == t.end(), "identity already exists" );
             eosio_assert( c.identity != 0, "identity=0 is not allowed" );
             t.emplace(c.creator, [&](identrow& i) {
                   i.identity = c.identity;
@@ -294,8 +294,7 @@ namespace identity {
                require_auth( cert.bill_storage_to );
 
             idents_table t( code, code );
-            auto ptr = t.find( cert.identity );
-            eosio_assert( ptr != nullptr, "identity does not exist" );
+            eosio_assert( t.find( cert.identity ) != t.end(), "identity does not exist" );
 
             /// the table exists in the scope of the identity
             certs_table certs( code, cert.identity );
@@ -308,7 +307,7 @@ namespace identity {
                   auto itr = idx.lower_bound( certrow::key(value.property, trusted, cert.certifier) );
 
                   if (itr != idx.end() && itr->property == value.property && itr->trusted == trusted && itr->certifier == cert.certifier) {
-                     certs.update(*itr, 0, [&](certrow& row) {
+                     idx.modify(itr, 0, [&](certrow& row) {
                            row.confidence = value.confidence;
                            row.type       = value.type;
                            row.data       = value.data;
@@ -328,7 +327,7 @@ namespace identity {
 
                   auto itr_old = idx.lower_bound( certrow::key(value.property, !trusted, cert.certifier) );
                   if (itr_old != idx.end() && itr_old->property == value.property && itr_old->trusted == !trusted && itr_old->certifier == cert.certifier) {
-                     certs.remove(*itr_old);
+                     idx.erase(itr_old);
                   }
 
                   //special handling for owner
@@ -343,13 +342,13 @@ namespace identity {
                   bool removed = false;
                   auto itr = idx.lower_bound( certrow::key(value.property, trusted, cert.certifier) );
                   if (itr != idx.end() && itr->property == value.property && itr->trusted == trusted && itr->certifier == cert.certifier) {
-                     certs.remove(*itr);
+                     idx.erase(itr);
                   } else {
                      removed = true;
                   }
                   itr = idx.lower_bound( certrow::key(value.property, !trusted, cert.certifier) );
                   if (itr != idx.end() && itr->property == value.property && itr->trusted == !trusted && itr->certifier == cert.certifier) {
-                     certs.remove(*itr);
+                     idx.erase(itr);
                   } else {
                      removed = true;
                   }

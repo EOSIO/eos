@@ -87,15 +87,11 @@ namespace _test_multi_index {
 
       // find by primary key
       {
-         auto ptr = table.find(999);
-         eosio_assert(ptr == nullptr, "idx64_general - table.find() of non-existing primary key");
+         auto itr = table.find(999);
+         eosio_assert(itr == table.end(), "idx64_general - table.find() of non-existing primary key");
 
-         ptr = table.find(976);
-         eosio_assert(ptr != nullptr && ptr->sec == N(emily), "idx64_general - table.find() of existing primary key");
-
-         // Workaround: would prefer to instead receive iterator (rather than pointer) from find().
-         auto itr = table.lower_bound(976);
-         eosio_assert(itr != table.end() && itr->id == 976 && itr->sec == N(emily), "idx64_general - iterator to existing object in primary index");
+         itr = table.find(976);
+         eosio_assert(itr != table.end() && itr->sec == N(emily), "idx64_general - table.find() of existing primary key");
 
          ++itr;
          eosio_assert(itr == table.end(), "idx64_general - increment primary iterator to end");
@@ -118,11 +114,10 @@ namespace _test_multi_index {
 
       // iterate backward starting with second bob
       {
-         auto ptr = table.find(781);
-         eosio_assert(ptr != nullptr && ptr->sec == N(bob), "idx64_general - table.find() of existing primary key");
+         auto pk_itr = table.find(781);
+         eosio_assert(pk_itr != table.end() && pk_itr->sec == N(bob), "idx64_general - table.find() of existing primary key");
 
-         // Workaround: need to add find_primary wrapper support in secondary indices of multi_index
-         auto itr = secondary_index.upper_bound(ptr->sec); --itr;
+         auto itr = secondary_index.iterator_to(*pk_itr);
          eosio_assert(itr->id == 781 && itr->sec == N(bob), "idx64_general - iterator to existing object in secondary index");
 
          --itr;
@@ -149,7 +144,7 @@ namespace _test_multi_index {
          }
       }
 
-      // update and remove
+      // modify and erase
       {
          const uint64_t ssn = 421;
          const auto& new_person = table.emplace( payer, [&]( auto& r ) {
@@ -157,16 +152,16 @@ namespace _test_multi_index {
             r.sec = N(bob);
          });
 
-         table.update(new_person, payer, [&]( auto& r ) {
+         table.modify(new_person, payer, [&]( auto& r ) {
             r.sec = N(billy);
          });
 
-         auto ptr = table.find(ssn);
-         eosio_assert(ptr != nullptr && ptr->sec == N(billy), "idx64_general - table.update()");
+         auto itr1 = table.find(ssn);
+         eosio_assert(itr1 != table.end() && itr1->sec == N(billy), "idx64_general - table.modify()");
 
-         table.remove(*ptr);
-         auto ptr2 = table.find(ssn);
-         eosio_assert( ptr2 == nullptr, "idx64_general - table.remove()");
+         table.erase(itr1);
+         auto itr2 = table.find(ssn);
+         eosio_assert( itr2 == table.end(), "idx64_general - table.erase()");
       }
    }
 
@@ -216,14 +211,14 @@ void test_multi_index::idx128_autoincrement_test()
       --expected_key;
    }
 
-   auto ptr = table.find(3);
-   eosio_assert( ptr != nullptr, "idx128_autoincrement_test - could not find object with primary key of 3" );
+   auto itr = table.find(3);
+   eosio_assert( itr != table.end(), "idx128_autoincrement_test - could not find object with primary key of 3" );
 
-   table.update(*ptr, payer, [&]( auto& r ) {
+   table.modify(itr, payer, [&]( auto& r ) {
       r.id = 100;
    });
 
-   eosio_assert( table.available_primary_key() == 101, "idx128_autoincrement_test - next_primary_key was not correct after record update" );
+   eosio_assert( table.available_primary_key() == 101, "idx128_autoincrement_test - next_primary_key was not correct after record modify" );
 }
 
 void test_multi_index::idx128_autoincrement_test_part1()
@@ -247,7 +242,7 @@ void test_multi_index::idx128_autoincrement_test_part1()
       });
    }
 
-   table.remove(table.get(0));
+   table.erase(table.get(0));
 
    uint64_t expected_key = 2;
    for( const auto& r : table.get_index<N(bysecondary)>() )
@@ -302,10 +297,10 @@ void test_multi_index::idx128_autoincrement_test_part2()
       --expected_key;
    }
 
-   auto ptr = table.find(3);
-   eosio_assert( ptr != nullptr, "idx128_autoincrement_test_part2 - could not find object with primary key of 3" );
+   auto itr = table.find(3);
+   eosio_assert( itr != table.end(), "idx128_autoincrement_test_part2 - could not find object with primary key of 3" );
 
-   table.update(*ptr, payer, [&]( auto& r ) {
+   table.modify(itr, payer, [&]( auto& r ) {
       r.id = 100;
    });
 
@@ -331,22 +326,22 @@ void test_multi_index::idx256_general()
    //auto onetwothreefour = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL);
    auto onetwothreefour = key256{std::array<uint32_t, 8>{{0,1, 0,2, 0,3, 0,4}}};
 
-   const auto& entry1 = table.emplace( payer, [&]( auto& o ) {
+   table.emplace( payer, [&]( auto& o ) {
       o.id = 1;
       o.sec = fourtytwo;
    });
 
-   const auto& entry2 = table.emplace( payer, [&]( auto& o ) {
+   table.emplace( payer, [&]( auto& o ) {
       o.id = 2;
       o.sec = onetwothreefour;
    });
 
-   const auto& entry3 = table.emplace( payer, [&]( auto& o ) {
+   table.emplace( payer, [&]( auto& o ) {
       o.id = 3;
       o.sec = fourtytwo;
    });
 
-   const auto* e = table.find( 2 );
+   auto e = table.find( 2 );
 
    print("Items sorted by primary key:\n");
    for( const auto& item : table ) {
@@ -374,7 +369,7 @@ void test_multi_index::idx256_general()
    print("First entry with a secondary key of at least 50 has ID=", lower2->id, ".\n");
    eosio_assert( lower2->id == 2, "idx256_general - lower_bound" );
 
-   if( &*lower2 == e ) {
+   if( table.iterator_to(*lower2) == e ) {
       print("Previously found entry is the same as the one found earlier with a primary key value of 2.\n");
    }
 
@@ -401,7 +396,7 @@ void test_multi_index::idx256_general()
    eosio_assert( upper->id == 2, "idx256_general - upper_bound" );
 
    print("Removed entry with ID=", lower1->id, ".\n");
-   table.remove( *lower1 );
+   secidx.erase( lower1 );
 
    print("Items reverse sorted by primary key:\n");
    for( const auto& item : boost::make_iterator_range(table.rbegin(), table.rend()) ) {
