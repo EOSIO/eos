@@ -17,6 +17,8 @@ include_directories("${CMAKE_BINARY_DIR}/contracts")
 include_directories("${CMAKE_SOURCE_DIR}/contracts")
 include_directories("${CMAKE_SOURCE_DIR}/plugins/wallet_plugin/include")
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/tests/config.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/tests/config.hpp ESCAPE_QUOTES)
+
 file(GLOB UNIT_TESTS "chain_tests/*.cpp" "api_tests/*.cpp" "tests/abi_tests.cpp" "tests/database_tests.cpp" "tests/misc_tests.cpp" "wasm_tests/*.cpp" "tests/wallet_tests.cpp")
 
 add_executable( chain_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} common/main.cpp )

@@ -23,7 +23,7 @@ namespace  eosio {
 
 
    /**
-    *  @brief Converts a base32 string to a uint64_t. 
+    *  @brief Converts a base32 string to a uint64_t.
     *
     *  @details Converts a base32 string to a uint64_t. This is a constexpr so that
     *  this method can be used in template arguments as well.
@@ -87,7 +87,6 @@ namespace  eosio {
          return ds >> v.value;
       }
    };
-
    /// @}
 
 } // namespace eos
