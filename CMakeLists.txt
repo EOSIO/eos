@@ -1,5 +1,6 @@
 # Defines EOS library target.
 project( EOS )
+
 cmake_minimum_required( VERSION 2.8.12 )
 
 enable_testing()
@@ -44,6 +45,34 @@ set(EOS_EGENESIS_JSON "${CMAKE_CURRENT_SOURCE_DIR}/genesis.json" )
 if (USE_PCH)
   include (cotire)
 endif(USE_PCH)
+
+# add defaults for openssl
+if ("${OPENSSL_ROOT_DIR}" STREQUAL "")
+   if (NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
+      set(OPENSSL_ROOT_DIR $ENV{OPENSSL_ROOT_DIR})
+      set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
+   elseif (APPLE)
+      set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")
+      set(OPENSSL_INCLUDE_DIR "/usr/local/opt/openssl/include")
+   elseif(UNIX AND NOT APPLE)
+      set(OPENSSL_ROOT_DIR "/usr/include/openssl")
+      set(OPENSSL_INCLUDE_DIR "/usr/include/openssl/include")
+   else()
+      message(FATAL_ERROR "openssl not found and don't know where to look, please specify OPENSSL_ROOT_DIR")
+   endif()
+endif()
+
+if ("${OPENSSL_LIBRARIES}" STREQUAL "")
+   if (NOT "$ENV{OPENSSL_LIBRARIES}" STREQUAL "")
+      set(OPENSSL_LIBRARIES $ENV{OPENSSL_LIBRARIES})
+   elseif (APPLE)
+      set(OPENSSL_LIBRARIES "/usr/local/opt/openssl/lib")
+   elseif(UNIX AND NOT APPLE)
+      set(OPENSSL_LIBRARIES "/usr/include/openssl")
+   else()
+      message(FATAL_ERROR "openssl libs not found and don't know where to look, please specify OPENSSL_LIBRARIES")
+   endif()
+endif()
 
 if(UNIX)
   if(APPLE)
