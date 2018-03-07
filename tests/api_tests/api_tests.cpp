@@ -81,7 +81,13 @@ struct test_chain_action {
 
 FC_REFLECT_TEMPLATE((uint64_t T), test_chain_action<T>, BOOST_PP_SEQ_NIL);
 
+struct check_auth {
+   account_name            account;
+   permission_name         permission;
+   vector<public_key_type> pubkeys;
+};
 
+FC_REFLECT(check_auth, (account)(permission)(pubkeys) );
 
 bool expect_assert_message(const fc::exception& ex, string expected) {
    BOOST_TEST_MESSAGE("LOG : " << "expected: " << expected << ", actual: " << ex.get_log().at(0).get_message());
@@ -1205,6 +1211,104 @@ BOOST_FIXTURE_TEST_CASE(types_tests, tester) { try {
 	CALL_TEST_FUNCTION( *this, "test_types", "char_to_symbol", {});
 	CALL_TEST_FUNCTION( *this, "test_types", "string_to_name", {});
 	CALL_TEST_FUNCTION( *this, "test_types", "name_class", {});
+} FC_LOG_AND_RETHROW() }
+
+/*************************************************************************************
+ * permission_tests test case
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(permission_tests, tester) { try {
+   produce_blocks(1);
+   create_account( N(testapi) );
+
+   produce_blocks(1);
+   set_code( N(testapi), test_api_wast );
+   produce_blocks(1);
+
+   auto get_result_uint64 = [&]() -> uint64_t {
+      const auto& db = control->get_database();
+      const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(testapi), N(testapi), N(testapi)));
+      FC_ASSERT(t_id != 0, "Table id not found");
+
+      const auto& idx = db.get_index<key_value_index, by_scope_primary>();
+
+      auto itr = idx.lower_bound(boost::make_tuple(t_id->id));
+      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
+
+      FC_ASSERT( 0 == itr->value.size(), "unexpected result size");
+      return itr->primary_key;
+   };
+
+   CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
+      fc::raw::pack( check_auth {
+         .account    = N(testapi),
+         .permission = N(active),
+         .pubkeys    = {
+            get_public_key(N(testapi), "active")
+         }
+      })
+   );
+   BOOST_CHECK_EQUAL( uint64_t(1), get_result_uint64() );
+
+   CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
+      fc::raw::pack( check_auth {
+         .account    = N(testapi),
+         .permission = N(active),
+         .pubkeys    = {
+            public_key_type(string("EOS7GfRtyDWWgxV88a5TRaYY59XmHptyfjsFmHHfioGNJtPjpSmGX"))
+         }
+      })
+   );
+   BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() );
+
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
+      fc::raw::pack( check_auth {
+         .account    = N(testapi),
+         .permission = N(active),
+         .pubkeys    = {
+            get_public_key(N(testapi), "active"),
+            public_key_type(string("EOS7GfRtyDWWgxV88a5TRaYY59XmHptyfjsFmHHfioGNJtPjpSmGX"))
+         }
+      })), tx_irrelevant_sig,
+       [](const tx_irrelevant_sig& e) {
+         return expect_assert_message(e, "irrelevant signatures from these keys: [\"EOS7GfRtyDWWgxV88a5TRaYY59XmHptyfjsFmHHfioGNJtPjpSmGX\"]");
+      }
+   );
+
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
+      fc::raw::pack( check_auth {
+         .account    = N(noname),
+         .permission = N(active),
+         .pubkeys    = {
+            get_public_key(N(testapi), "active")
+         }
+      })), fc::exception,
+       [](const fc::exception& e) {
+         return expect_assert_message(e, "unknown key");
+      }
+   );
+
+   CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
+      fc::raw::pack( check_auth {
+         .account    = N(testapi),
+         .permission = N(active),
+         .pubkeys    = {}
+      })
+   );
+   BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() );
+
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
+      fc::raw::pack( check_auth {
+         .account    = N(testapi),
+         .permission = N(noname),
+         .pubkeys    = {
+            get_public_key(N(testapi), "active")
+         }
+      })), fc::exception,
+       [](const fc::exception& e) {
+         return expect_assert_message(e, "unknown key");
+      }
+   );
+
 } FC_LOG_AND_RETHROW() }
 
 #if 0

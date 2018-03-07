@@ -142,6 +142,29 @@ class datastream<size_t> {
 };
 
 /**
+ *  Serialize a public_key into a stream
+ *  @brief Serialize a public_key
+ *  @param ds stream to write
+ *  @param pubkey value to serialize
+ */
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const public_key pubkey) {
+  ds.write( (const char*)&pubkey, sizeof(pubkey));
+  return ds;
+}
+/**
+ *  Deserialize a public_key from a stream
+ *  @brief Deserialize a public_key
+ *  @param ds stream to read
+ *  @param pubkey destination for deserialized value
+ */
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, public_key& pubkey) {
+  ds.read((char*)&pubkey, sizeof(pubkey));
+  return ds;
+}
+
+/**
  *  Serialize a key256 into a stream
  *  @brief Serialize a key256
  *  @param ds stream to write
