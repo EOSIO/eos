@@ -49,7 +49,8 @@ namespace eosio { namespace chain {
    struct wasm_cache_impl {
       wasm_cache_impl()
       {
-         check_wasm_opcode_dispositions();
+         // TODO clean this up
+         //check_wasm_opcode_dispositions();
          Runtime::init();
       }
 
@@ -296,11 +297,18 @@ namespace eosio { namespace chain {
                   }
 #endif
                   /// TODO: make validation generic
-                  wasm_constraints::wasm_binary_validation::validate( wasm_binary, wasm_binary_size );
-                  wavm = wavm::entry::build(wasm_binary, wasm_binary_size);
+                  IR::Module* module = new IR::Module();
+                  Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
+                  wasm_constraints::wasm_binary_validation::validate( *module );
+                  WASM::serialize(stream, *module);
+                  Serialization::ArrayOutputStream outstream;
+                  WASM::serialize(outstream, *module);
+                  std::vector<U8> bytes = outstream.getBytes();
+                  wasm_constraints::wasm_binary_validation::validate( *module );
+                  wavm = wavm::entry::build((char*)bytes.data(), bytes.size());
                   wavm_info.emplace(*wavm);
 
-                  binaryen = binaryen::entry::build(wasm_binary, wasm_binary_size);
+                  binaryen = binaryen::entry::build((char*)bytes.data(), bytes.size());
                   binaryen_info.emplace(*binaryen);
                } catch (...) {
                   pending_error = std::current_exception();

@@ -14,6 +14,8 @@
 #include <utility>
 #include <vector>
 
+#include "IR/Operators.h"
+
 namespace eosio { namespace chain { namespace wasm_ops {
 
 // forward declaration
@@ -86,7 +88,7 @@ struct OP : instr_base<Mutators...> {                                           
                      (end)          \
                      (unreachable)  \
                      (nop)          \
-                     (ret)          \
+                     (return_)          \
                      (drop)         \
                      (select)       \
                      (i32_eqz)      \
@@ -125,7 +127,7 @@ struct OP : instr_base<Mutators...> {                                           
                      (f64_ge)       \
                      (i32_clz)         \
                      (i32_ctz)         \
-                     (i32_popcount)       \
+                     (i32_popcnt)       \
                      (i32_add)         \
                      (i32_sub)         \
                      (i32_mul)         \
@@ -143,7 +145,7 @@ struct OP : instr_base<Mutators...> {                                           
                      (i32_rotr)        \
                      (i64_clz)         \
                      (i64_ctz)         \
-                     (i64_popcount)       \
+                     (i64_popcnt)       \
                      (i64_add)         \
                      (i64_sub)         \
                      (i64_mul)         \
@@ -215,8 +217,8 @@ struct OP : instr_base<Mutators...> {                                           
                      (br_table)     \
                      (block)        \
                      (loop)         \
-                     (if_eps)       \
-                     (if_else)      \
+                     (if_)       \
+                     (else_)      \
                      (br)           \
                      (br_if)        \
                      (call)         \
@@ -261,13 +263,13 @@ enum code {
    nop_code            = 0x01,
    block_code          = 0x02,
    loop_code           = 0x03,
-   if_eps_code         = 0x04,
-   if_else_code        = 0x05,
+   if__code            = 0x04,
+   else__code          = 0x05,
    end_code            = 0x0B,
    br_code             = 0x0C,
    br_if_code          = 0x0D,
    br_table_code       = 0x0E,
-   ret_code            = 0x0F,
+   return__code        = 0x0F,
    call_code           = 0x10,
    call_indirect_code  = 0x11,
    drop_code           = 0x1A,
@@ -342,7 +344,7 @@ enum code {
    f64_ge_code         = 0x66,
    i32_clz_code        = 0x67,
    i32_ctz_code        = 0x68,
-   i32_popcount_code   = 0x69,
+   i32_popcnt_code     = 0x69,
    i32_add_code        = 0x6A,
    i32_sub_code        = 0x6B,
    i32_mul_code        = 0x6C,
@@ -360,7 +362,7 @@ enum code {
    i32_rotr_code       = 0x78,
    i64_clz_code        = 0x79,
    i64_ctz_code        = 0x7A,
-   i64_popcount_code   = 0x7B,
+   i64_popcnt_code     = 0x7B,
    i64_add_code        = 0x7C,
    i64_sub_code        = 0x7D,
    i64_mul_code        = 0x7E,
@@ -631,6 +633,54 @@ struct cached_ops {
  #undef GEN_FIELD
 };
 
+// Decodes an operator from an input stream and dispatches by opcode.
+// This code is from wasm-jit/Include/IR/Operators.h
+template <class Op_Types>
+struct EOSIO_OperatorDecoderStream
+{
+	EOSIO_OperatorDecoderStream(const std::vector<U8>& codeBytes)
+	: nextByte(codeBytes.data()), end(codeBytes.data()+codeBytes.size()) {}
+
+	operator bool() const { return nextByte < end; }
+
+	instr* decodeOp()
+	{
+		assert(nextByte + sizeof(IR::Opcode) <= end);
+      IR::Opcode opcode = *(IR::Opcode*)nextByte;
+		switch(opcode)
+		{
+		#define VISIT_OPCODE(opcode,name,nameString,Imm,...) \
+         case IR::Opcode::name: \
+			{ \
+				assert(nextByte + sizeof(IR::OpcodeAndImm<IR::Imm>) <= end); \
+				IR::OpcodeAndImm<IR::Imm>* encodedOperator = (IR::OpcodeAndImm<IR::Imm>*)nextByte; \
+				nextByte += sizeof(IR::OpcodeAndImm<IR::Imm>); \
+            auto op = &_cached_ops.BOOST_PP_CAT(cached_, name); \
+				return op;  \
+			}
+		ENUM_OPERATORS(VISIT_OPCODE)
+		#undef VISIT_OPCODE
+		default:
+			nextByte += sizeof(IR::Opcode);
+			return &_cached_ops.cached_error; 
+		}
+	}
+
+	instr* decodeOpWithoutConsume()
+	{
+		const U8* savedNextByte = nextByte;
+		instr* result = decodeOp();
+		nextByte = savedNextByte;
+		return result;
+	}
+
+private:
+   static cached_ops<Op_Types> _cached_ops;
+	const U8* nextByte;
+	const U8* end;
+};
+
+/*
 // function to dynamically get the instr pointer we want
 template <class Op_Types>
 instr* get_instr_from_op( uint8_t code ) {
@@ -645,6 +695,7 @@ instr* get_instr_from_op( uint8_t code ) {
    }
 #undef GEN_CASE
 }
+*/
 
 }}} // namespace eosio, chain, wasm_ops
 

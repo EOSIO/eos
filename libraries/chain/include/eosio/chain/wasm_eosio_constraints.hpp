@@ -22,10 +22,11 @@ namespace eosio { namespace chain { namespace wasm_constraints {
    static_assert(maximum_linear_memory_init%wasm_page_size == 0, "maximum_linear_memory_init must be mulitple of wasm page size");
 } // namespace  wasm_constraints
 
+/* TODO clean these up
 //Throws if something in the module violates
 void validate_eosio_wasm_constraints(const IR::Module& m);
 
 //Throws if an opcode is neither whitelisted nor blacklisted
 void check_wasm_opcode_dispositions();
-
+*/
 }} // namespace eosio, chain

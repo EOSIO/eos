@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fc/exception/exception.hpp>
 #include <eosio/chain/wasm_binary_ops.hpp>
 #include <iostream>
 
@@ -14,13 +15,11 @@ struct whitelist_mutator {
    }
 };
 
-struct wasm_opcode_no_disposition_exception {
-   std::string opcode_name;
-};
+
+
 struct blacklist_mutator {
    static wasm_return_t accept( instr* inst ) {
       // fail
-      throw wasm_opcode_no_disposition_exception { inst->to_string() };   
    }
 };
 
@@ -29,15 +28,15 @@ struct blacklist_mutator {
 struct op_constrainers : op_types<blacklist_mutator> {
    using block_t        = block<whitelist_mutator>;
    using loop_t         = loop<whitelist_mutator>;
-   using if_t           = if_eps<whitelist_mutator>;
-   using if_else_t      = if_else<whitelist_mutator>;
+   using if__t          = if_<whitelist_mutator>;
+   using else__t        = else_<whitelist_mutator>;
    
    using end_t          = end<whitelist_mutator>;
    using unreachable_t  = unreachable<whitelist_mutator>;
    using br_t           = br<whitelist_mutator>;
    using br_if_t        = br_if<whitelist_mutator>;
    using br_table_t     = br_table<whitelist_mutator>;
-   using return_t       = ret<whitelist_mutator>;
+   using return_t       = return_<whitelist_mutator>;
    using call_t         = call<whitelist_mutator>;
    using call_indirect_t = call_indirect<whitelist_mutator>;
    using drop_t         = drop<whitelist_mutator>;
@@ -69,7 +68,7 @@ struct op_constrainers : op_types<blacklist_mutator> {
 
    using i32_clz_t      = i32_clz<whitelist_mutator>;
    using i32_ctz_t      = i32_ctz<whitelist_mutator>;
-   using i32_popcount_t = i32_popcount<whitelist_mutator>;
+   using i32_popcnt_t   = i32_popcnt<whitelist_mutator>;
 
    using i32_add_t      = i32_add<whitelist_mutator>; 
    using i32_sub_t      = i32_sub<whitelist_mutator>; 
@@ -101,7 +100,7 @@ struct op_constrainers : op_types<blacklist_mutator> {
 
    using i64_clz_t      = i64_clz<whitelist_mutator>;
    using i64_ctz_t      = i64_ctz<whitelist_mutator>;
-   using i64_popcount_t = i64_popcount<whitelist_mutator>;
+   using i64_popcnt_t   = i64_popcnt<whitelist_mutator>;
 
    using i64_add_t      = i64_add<whitelist_mutator>; 
    using i64_sub_t      = i64_sub<whitelist_mutator>; 
@@ -138,8 +137,6 @@ struct instruction_counter {
    static uint32_t icnt;
 };
 
-uint32_t instruction_counter::icnt = 0;
-
 struct checktime_injector {
    static wasm_return_t accept( instr* inst ) {
       if (checktime_idx == -1)
@@ -152,8 +149,6 @@ struct checktime_injector {
    }
    static int32_t checktime_idx;
 };
-
-int32_t checktime_injector::checktime_idx = -1;
 
 struct rewriters : op_types<whitelist_mutator> {
 

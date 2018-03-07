@@ -121,7 +121,8 @@ entry entry::build(const char* wasm_binary, size_t wasm_binary_size) {
    Module* module = new Module();
    Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
    WASM::serializeWithInjection(stream, *module);
-   validate_eosio_wasm_constraints(*module);
+   // TODO clean this up
+   //validate_eosio_wasm_constraints(*module);
 
    root_resolver resolver;
    LinkResult link_result = linkModule(*module, resolver);

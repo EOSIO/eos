@@ -9,6 +9,11 @@
 
 namespace eosio { namespace chain {
 
+namespace wasm_rewriter {
+   uint32_t instruction_counter::icnt = 0;
+   int32_t checktime_injector::checktime_idx = -1;
+} // namespace wasm_rewriter
+
 using namespace IR;
 
 namespace wasm_constraints {
@@ -65,14 +70,11 @@ void globals_validation_visitor::validate( Module& m ) {
       FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract has more than ${k} bytes of mutable globals",
             ("k", wasm_constraints::maximum_mutable_globals));
 }
-
-bool validate_wasm_binary( const char* bin, size_t s ) { }
-} // namespace wasm_constraints
-
+/*
 struct wasm_opcode_no_disposition_exception {
    string opcode_name;
 };
-
+*/
 struct nop_opcode_visitor {
    typedef void Result;
 
@@ -211,7 +213,7 @@ struct eosio_constraints_visitor : public nop_opcode_visitor {
    #undef VISIT_OPCODE
    
 };
-
+/*
 void check_wasm_opcode_dispositions() {
    eosio_constraints_visitor visitor;
    vector<string> opcodes_without_disposition;
@@ -280,5 +282,6 @@ void validate_eosio_wasm_constraints(const Module& m) {
          decoder.decodeOp(visitor);
       }
    }
+   */
 }
 }}
