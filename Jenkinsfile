@@ -46,12 +46,12 @@ pipeline {
                             ctest --output-on-failure
                         '''
                     }
-                }
-                post {
-                    failure {
-                        archiveArtifacts 'build/tn_data_00/config.ini'
-                        archiveArtifacts 'build/tn_data_00/stderr.txt'
-                        archiveArtifacts 'build/test_walletd_output.log'
+                    post {
+                        failure {
+                            archiveArtifacts 'build/tn_data_00/config.ini'
+                            archiveArtifacts 'build/tn_data_00/stderr.txt'
+                            archiveArtifacts 'build/test_walletd_output.log'
+                        }
                     }
                 }
                 stage('MacOS') {
@@ -66,12 +66,12 @@ pipeline {
                             ctest --output-on-failure
                         '''
                     }
-                }
-                post {
-                    failure {
-                        archiveArtifacts 'build/tn_data_00/config.ini'
-                        archiveArtifacts 'build/tn_data_00/stderr.txt'
-                        archiveArtifacts 'build/test_walletd_output.log'
+                    post {
+                        failure {
+                            archiveArtifacts 'build/tn_data_00/config.ini'
+                            archiveArtifacts 'build/tn_data_00/stderr.txt'
+                            archiveArtifacts 'build/test_walletd_output.log'
+                        }
                     }
                 }
                 stage('Fedora') {
@@ -86,12 +86,12 @@ pipeline {
                             ctest --output-on-failure
                         '''
                     }
-                }
-                post {
-                    failure {
-                        archiveArtifacts 'build/tn_data_00/config.ini'
-                        archiveArtifacts 'build/tn_data_00/stderr.txt'
-                        archiveArtifacts 'build/test_walletd_output.log'
+                    post {
+                        failure {
+                            archiveArtifacts 'build/tn_data_00/config.ini'
+                            archiveArtifacts 'build/tn_data_00/stderr.txt'
+                            archiveArtifacts 'build/test_walletd_output.log'
+                        }
                     }
                 }
             }
