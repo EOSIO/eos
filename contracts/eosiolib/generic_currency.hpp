@@ -84,8 +84,8 @@ namespace eosio {
 
           static token_type get_balance( account_name owner ) {
              accounts t( code, owner );
-             auto ptr = t.find( symbol );
-             return ptr ? ptr->balance : token_type( asset(0, symbol) );
+             auto itr = t.find( symbol );
+             return itr != t.end() ? itr->balance : token_type( asset(0, symbol) );
           }
 
          static void set_balance( account_name owner, token_type balance, account_name create_bill_to, account_name update_bill_to ) {
@@ -94,9 +94,9 @@ namespace eosio {
                 acc.symbol = symbol;
                 acc.balance = balance;
              };
-             auto ptr = t.find( symbol );
-             if (ptr) {
-                t.update( *ptr, update_bill_to, f);
+             auto itr = t.find( symbol );
+             if( itr != t.end() ) {
+                t.modify( itr, update_bill_to, f);
              } else {
                 t.emplace( create_bill_to, f);
              }
@@ -106,9 +106,9 @@ namespace eosio {
              require_auth( code );
 
              stats t( code, code );
-             auto ptr = t.find( symbol );
-             if (ptr) {
-                t.update(*ptr, 0, [&](currency_stats& s) { s.supply += act.quantity; });
+             auto itr = t.find( symbol );
+             if( itr != t.end() ) {
+                t.modify(itr, 0, [&](currency_stats& s) { s.supply += act.quantity; });
              } else {
                 t.emplace(code, [&](currency_stats& s) { s.supply = act.quantity; });
              }

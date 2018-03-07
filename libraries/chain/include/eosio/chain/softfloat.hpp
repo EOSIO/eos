@@ -1,16 +1,10 @@
 #pragma once
 
-#ifndef THREAD_LOCAL
-   #ifdef _WIN32
-      #define THREAD_LOCAL thread_local
-   #else
-      // Use __thread instead of the C++11 thread_local because Apple's clang doesn't support thread_local yet.
-      #define THREAD_LOCAL __thread
-   #endif
-#endif
-
 #include <softfloat_types.h>
 
+#ifndef THREAD_LOCAL
+#define THREAD_LOCAL __thread
+#endif
 extern "C" {
 /*----------------------------------------------------------------------------
 | Integer-to-floating-point conversion routines.

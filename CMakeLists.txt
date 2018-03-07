@@ -45,7 +45,6 @@ if (USE_PCH)
   include (cotire)
 endif(USE_PCH)
 
-
 if(UNIX)
   if(APPLE)
     set(whole_archive_flag "-force_load")

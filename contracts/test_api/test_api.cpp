@@ -24,7 +24,6 @@ extern "C" {
     }
 
    void apply( unsigned long long code, unsigned long long action ) {
-
       //eosio::print("==> CONTRACT: ", code, " ", action, "\n");
       //test_types
       WASM_TEST_HANDLER(test_types, types_size);

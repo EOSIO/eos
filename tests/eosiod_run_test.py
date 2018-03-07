@@ -537,14 +537,12 @@ try:
         cmdError("%s set action permission set" % (ClientName))
         errorExit("Failed to set permission")
 
-# TODO remove failed on eos-noon
-    if not amINoon:
-        Print("remove permission")
-        requirement="null"
-        trans=node.setPermission(testeraAccount.name, code, pType, requirement, waitForTransBlock=True)
-        if trans is None:
-            cmdError("%s set action permission set" % (ClientName))
-            errorExit("Failed to remove permission")
+    Print("remove permission")
+    requirement="null"
+    trans=node.setPermission(testeraAccount.name, code, pType, requirement, waitForTransBlock=True)
+    if trans is None:
+        cmdError("%s set action permission set" % (ClientName))
+        errorExit("Failed to remove permission")
                   
     Print("Locking all wallets.")
     if not walletMgr.lockAllWallets():
