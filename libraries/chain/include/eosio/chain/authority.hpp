@@ -91,5 +91,5 @@ inline bool validate( const Authority& auth ) {
 
 FC_REFLECT(eosio::chain::permission_level_weight, (permission)(weight) )
 FC_REFLECT(eosio::chain::key_weight, (key)(weight) )
-FC_REFLECT(eosio::chain::authority, (threshold)(accounts)(keys))
-FC_REFLECT(eosio::chain::shared_authority, (threshold)(accounts)(keys))
+FC_REFLECT(eosio::chain::authority, (threshold)(keys)(accounts))
+FC_REFLECT(eosio::chain::shared_authority, (threshold)(keys)(accounts))
