@@ -35,7 +35,7 @@ namespace eosiosystem {
                                  typename delegate_bandwith<SystemAccount>::undelegatebw,
                                  typename voting<SystemAccount>::register_proxy,
                                  typename voting<SystemAccount>::unregister_proxy,
-                                 typename voting<SystemAccount>::register_producer,
+                                 typename voting<SystemAccount>::regproducer,
                                  typename voting<SystemAccount>::vote_producer,
                                  typename voting<SystemAccount>::stakevote,
                                  typename voting<SystemAccount>::unstakevote,

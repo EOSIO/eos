@@ -33,7 +33,7 @@ namespace eosiosystem {
          using currency = typename common<SystemAccount>::currency;
          using system_token_type = typename common<SystemAccount>::system_token_type;
          using eosio_parameters = typename common<SystemAccount>::eosio_parameters;
-         using eosio_parameters_singleton = typename common<SystemAccount>::eosio_parameters_singleton;
+         using global_state_singleton = typename common<SystemAccount>::global_state_singleton;
 
          struct total_resources {
             account_name owner;
@@ -113,7 +113,7 @@ namespace eosiosystem {
 
             //eosio_assert( is_account( del.receiver ), "can only delegate resources to an existing account" );
 
-            auto parameters = eosio_parameters_singleton::exists() ? eosio_parameters_singleton::get()
+            auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
                : common<SystemAccount>::get_default_parameters();
             auto token_supply = currency::get_total_supply();//.quantity;
 
@@ -174,7 +174,7 @@ namespace eosiosystem {
 
             parameters.total_storage_bytes_reserved += storage_bytes;
             parameters.total_storage_stake += del.stake_storage_quantity;
-            eosio_parameters_singleton::set(parameters);
+            global_state_singleton::set(parameters);
          } // delegatebw
 
          static void on( const undelegatebw& del ) {
@@ -221,10 +221,10 @@ namespace eosiosystem {
             /// TODO: implement / enforce time delays on withdrawing
             currency::inline_transfer( SystemAccount, del.from, asset( static_cast<int64_t>( total_refund.quantity )), "unstake bandwidth" );
 
-            auto parameters = eosio_parameters_singleton::get();
+            auto parameters = global_state_singleton::get();
             parameters.total_storage_bytes_reserved -= del.unstake_storage_bytes;
             parameters.total_storage_stake -= storage_stake_decrease;
-            eosio_parameters_singleton::set( parameters );
+            global_state_singleton::set( parameters );
          } // undelegatebw
    };
 }

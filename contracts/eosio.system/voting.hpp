@@ -36,7 +36,7 @@ namespace eosiosystem {
          using currency = typename common<SystemAccount>::currency;
          using system_token_type = typename common<SystemAccount>::system_token_type;
          using eosio_parameters = typename common<SystemAccount>::eosio_parameters;
-         using eosio_parameters_singleton = typename common<SystemAccount>::eosio_parameters_singleton;
+         using global_state_singleton = typename common<SystemAccount>::global_state_singleton;
 
          static constexpr uint32_t max_unstake_requests = 10;
          static constexpr uint32_t unstake_pay_period = 7*24*3600; // one per week
@@ -51,7 +51,7 @@ namespace eosiosystem {
 
             uint64_t    primary_key()const { return owner;       }
             uint128_t   by_votes()const    { return total_votes; }
-            bool active() const { return packed_key.size() == 4 + 33 /*serialized key size*/; }
+            bool active() const { return packed_key.size() == sizeof(public_key); }
 
             EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(prefs)(packed_key) )
          };
@@ -81,12 +81,12 @@ namespace eosiosystem {
 
          typedef eosio::multi_index< N(voters), voter_info>  voters_table;
 
-         ACTION( SystemAccount, register_producer ) {
+         ACTION( SystemAccount, regproducer ) {
             account_name producer;
             bytes        producer_key;
             eosio_parameters prefs;
 
-            EOSLIB_SERIALIZE( register_producer, (producer)(producer_key)(prefs) )
+            EOSLIB_SERIALIZE( regproducer, (producer)(producer_key)(prefs) )
          };
 
          /**
@@ -97,39 +97,24 @@ namespace eosiosystem {
           *  @pre authority of producer to register 
           *  
           */
-         static void on( const register_producer& reg ) {
+         static void on( const regproducer& reg ) {
             require_auth( reg.producer );
 
             producers_table producers_tbl( SystemAccount, SystemAccount );
-            const auto* existing = producers_tbl.find( reg.producer );
-            eosio_assert( !existing, "producer already registered" );
+            const auto* prod = producers_tbl.find( reg.producer );
 
-            producers_tbl.emplace( reg.producer, [&]( producer_info& info ){
-                  info.owner       = reg.producer;
-                  info.total_votes = 0;
-                  info.prefs       = reg.prefs;
-                  info.packed_key  = reg.producer_key;
-               });
-         }
-
-         ACTION( SystemAccount, change_eosio_parameters ) {
-            account_name producer;
-            bytes        producer_key;
-            eosio_parameters prefs;
-
-            EOSLIB_SERIALIZE( register_producer, (producer)(producer_key)(prefs) )
-         };
-
-         static void on( const change_eosio_parameters& change) {
-            require_auth( change.producer );
-
-            producers_table producers_tbl( SystemAccount, SystemAccount );
-            const auto* prod = producers_tbl.find( change.producer );
-            eosio_assert( bool(prod), "producer is not registered" );
-
-            producers_tbl.update( *prod, change.producer, [&]( producer_info& info ){
-                  info.prefs = change.prefs;
-               });
+            if ( prod ) {
+               producers_tbl.update( *prod, reg.producer, [&]( producer_info& info ){
+                     info.prefs = reg.prefs;
+                  });
+            } else {
+               producers_tbl.emplace( reg.producer, [&]( producer_info& info ){
+                     info.owner       = reg.producer;
+                     info.total_votes = 0;
+                     info.prefs       = reg.prefs;
+                     info.packed_key  = reg.producer_key;
+                  });
+            }
          }
 
          ACTION( SystemAccount, stakevote ) {
@@ -208,8 +193,9 @@ namespace eosiosystem {
                if ( it->active() ) {
                   schedule.producers.emplace_back();
                   schedule.producers.back().producer_name = it->owner;
+                  eosio_assert( sizeof(schedule.producers) == it->packed_key.size(), "size mismatch" );
                   std::copy(it->packed_key.begin(), it->packed_key.end(),
-                            schedule.producers.back().block_signing_key.begin());
+                            schedule.producers);
 
                   target_block_size[n] = it->prefs.target_block_size;
                   max_block_size[n] = it->prefs.max_block_size;
@@ -243,7 +229,7 @@ namespace eosiosystem {
             set_active_producers( packed_schedule.data(),  packed_schedule.size() );
             size_t median = n/2;
 
-            auto parameters = eosio_parameters_singleton::get();
+            auto parameters = global_state_singleton::get();
 
             parameters.target_block_size = target_block_size[median];
             parameters.max_block_size = max_block_size[median];
@@ -267,7 +253,7 @@ namespace eosiosystem {
 
             set_blockchain_parameters(&parameters);
 
-            eosio_parameters_singleton::set( parameters );
+            global_state_singleton::set( parameters );
          }
 
          static void on( const stakevote& sv ) {

@@ -76,11 +76,39 @@
          {"name":"storage_bytes", "type":"uint64"}
       ]
     },{
+      "name": "eosio_parameters",
+      "base": "",
+      "fields": [
+         {"name":"target_block_size", "type":"uint32"},
+         {"name":"max_block_size", "type":"uint32"},
+         {"name":"target_block_acts_per_scope", "type":"uint32"},
+         {"name":"max_block_acts_per_scope", "type":"uint32"},
+         {"name":"target_block_acts", "type":"uint32"},
+         {"name":"max_block_acts", "type":"uint32"},
+         {"name":"max_storage_size", "type":"uint64"},
+         {"name":"max_transaction_lifetime", "type":"uint32"},
+         {"name":"max_transaction_exec_time", "type":"uint32"},
+         {"name":"max_authority_depth", "type":"uint16"},
+         {"name":"max_inline_depth", "type":"uint16"},
+         {"name":"max_inline_action_size", "type":"uint32"},
+         {"name":"max_generated_transaction_size", "type":"uint32"},
+         {"name":"inflation_rate", "type":"uint32"},
+         {"name":"storage_reserve_ratio", "type":"uint32"},
+      ]
+    },,{
+      "name": "eosio_global_state",
+      "base": "eosio_parameters",
+      "fields": [
+         {"name":"total_storage_bytes_reserved", "type":"uint64"},
+         {"name":"total_storage_stake", "type":"uint64"}
+      ]
+    },{
       "name": "regproducer",
       "base": "",
       "fields": [
-        {"name":"producer", "type":"account_name"},
-        {"name":"producer_key", "type":"bytes"}
+        {"name":"producer",     "type":"account_name"},
+        {"name":"producer_key", "type":"bytes"},
+        {"name":"prefs",        "type":"eosio_parameters"}
       ]
     },{
       "name": "stakevote",
