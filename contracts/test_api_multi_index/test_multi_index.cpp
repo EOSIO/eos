@@ -144,7 +144,7 @@ namespace _test_multi_index {
          }
       }
 
-      // update and remove
+      // modify and erase
       {
          const uint64_t ssn = 421;
          const auto& new_person = table.emplace( payer, [&]( auto& r ) {
@@ -152,16 +152,16 @@ namespace _test_multi_index {
             r.sec = N(bob);
          });
 
-         table.update(new_person, payer, [&]( auto& r ) {
+         table.modify(new_person, payer, [&]( auto& r ) {
             r.sec = N(billy);
          });
 
          auto itr1 = table.find(ssn);
-         eosio_assert(itr1 != table.end() && itr1->sec == N(billy), "idx64_general - table.update()");
+         eosio_assert(itr1 != table.end() && itr1->sec == N(billy), "idx64_general - table.modify()");
 
-         table.remove(itr1);
+         table.erase(itr1);
          auto itr2 = table.find(ssn);
-         eosio_assert( itr2 == table.end(), "idx64_general - table.remove()");
+         eosio_assert( itr2 == table.end(), "idx64_general - table.erase()");
       }
    }
 
@@ -214,11 +214,11 @@ void test_multi_index::idx128_autoincrement_test()
    auto itr = table.find(3);
    eosio_assert( itr != table.end(), "idx128_autoincrement_test - could not find object with primary key of 3" );
 
-   table.update(itr, payer, [&]( auto& r ) {
+   table.modify(itr, payer, [&]( auto& r ) {
       r.id = 100;
    });
 
-   eosio_assert( table.available_primary_key() == 101, "idx128_autoincrement_test - next_primary_key was not correct after record update" );
+   eosio_assert( table.available_primary_key() == 101, "idx128_autoincrement_test - next_primary_key was not correct after record modify" );
 }
 
 void test_multi_index::idx128_autoincrement_test_part1()
@@ -242,7 +242,7 @@ void test_multi_index::idx128_autoincrement_test_part1()
       });
    }
 
-   table.remove(table.find(0));
+   table.erase(table.get(0));
 
    uint64_t expected_key = 2;
    for( const auto& r : table.get_index<N(bysecondary)>() )
@@ -300,7 +300,7 @@ void test_multi_index::idx128_autoincrement_test_part2()
    auto itr = table.find(3);
    eosio_assert( itr != table.end(), "idx128_autoincrement_test_part2 - could not find object with primary key of 3" );
 
-   table.update(itr, payer, [&]( auto& r ) {
+   table.modify(itr, payer, [&]( auto& r ) {
       r.id = 100;
    });
 
@@ -396,7 +396,7 @@ void test_multi_index::idx256_general()
    eosio_assert( upper->id == 2, "idx256_general - upper_bound" );
 
    print("Removed entry with ID=", lower1->id, ".\n");
-   secidx.remove( lower1 );
+   secidx.erase( lower1 );
 
    print("Items reverse sorted by primary key:\n");
    for( const auto& item : boost::make_iterator_range(table.rbegin(), table.rend()) ) {

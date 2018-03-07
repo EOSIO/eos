@@ -191,7 +191,7 @@ namespace identity {
                         }
                      } else if (DeployToAccount == current_receiver()){
                         //the certifier is no longer trusted, need to unset the flag
-                        idx.update(itr, 0, [&](certrow& r) {
+                        idx.modify(itr, 0, [&](certrow& r) {
                               r.trusted = 0;
                            });
                      } else {
@@ -216,7 +216,7 @@ namespace identity {
                   if (ident == get_claimed_identity(account) && is_trusted(itr->certifier)) {
                      if (DeployToAccount == current_receiver()) {
                         // the certifier became trusted and we have permissions to update the flag
-                        idx.update(itr, 0, [&](certrow& r) {
+                        idx.modify(itr, 0, [&](certrow& r) {
                               r.trusted = 1;
                            });
                      }
@@ -272,7 +272,7 @@ namespace identity {
                      row.account = t.trusting;
                   });
             } else if( itr != table.end() && t.trust == 0 ) {
-               table.remove(itr);
+               table.erase(itr);
             }
          }
 
@@ -307,7 +307,7 @@ namespace identity {
                   auto itr = idx.lower_bound( certrow::key(value.property, trusted, cert.certifier) );
 
                   if (itr != idx.end() && itr->property == value.property && itr->trusted == trusted && itr->certifier == cert.certifier) {
-                     idx.update(itr, 0, [&](certrow& row) {
+                     idx.modify(itr, 0, [&](certrow& row) {
                            row.confidence = value.confidence;
                            row.type       = value.type;
                            row.data       = value.data;
@@ -327,7 +327,7 @@ namespace identity {
 
                   auto itr_old = idx.lower_bound( certrow::key(value.property, !trusted, cert.certifier) );
                   if (itr_old != idx.end() && itr_old->property == value.property && itr_old->trusted == !trusted && itr_old->certifier == cert.certifier) {
-                     idx.remove(itr_old);
+                     idx.erase(itr_old);
                   }
 
                   //special handling for owner
@@ -342,13 +342,13 @@ namespace identity {
                   bool removed = false;
                   auto itr = idx.lower_bound( certrow::key(value.property, trusted, cert.certifier) );
                   if (itr != idx.end() && itr->property == value.property && itr->trusted == trusted && itr->certifier == cert.certifier) {
-                     idx.remove(itr);
+                     idx.erase(itr);
                   } else {
                      removed = true;
                   }
                   itr = idx.lower_bound( certrow::key(value.property, !trusted, cert.certifier) );
                   if (itr != idx.end() && itr->property == value.property && itr->trusted == !trusted && itr->certifier == cert.certifier) {
-                     idx.remove(itr);
+                     idx.erase(itr);
                   } else {
                      removed = true;
                   }

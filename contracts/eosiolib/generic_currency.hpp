@@ -96,7 +96,7 @@ namespace eosio {
              };
              auto itr = t.find( symbol );
              if( itr != t.end() ) {
-                t.update( itr, update_bill_to, f);
+                t.modify( itr, update_bill_to, f);
              } else {
                 t.emplace( create_bill_to, f);
              }
@@ -108,7 +108,7 @@ namespace eosio {
              stats t( code, code );
              auto itr = t.find( symbol );
              if( itr != t.end() ) {
-                t.update(itr, 0, [&](currency_stats& s) { s.supply += act.quantity; });
+                t.modify(itr, 0, [&](currency_stats& s) { s.supply += act.quantity; });
              } else {
                 t.emplace(code, [&](currency_stats& s) { s.supply = act.quantity; });
              }

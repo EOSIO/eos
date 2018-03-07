@@ -322,19 +322,19 @@ class multi_index
             }
 
             template<typename Lambda>
-            void update( const_iterator itr, uint64_t payer, Lambda&& updater ) {
-               eosio_assert( itr != end(), "cannot pass end iterator to update" );
+            void modify( const_iterator itr, uint64_t payer, Lambda&& updater ) {
+               eosio_assert( itr != end(), "cannot pass end iterator to modify" );
 
-               _multidx.update(_multidx.iterator_to(*itr), payer, std::forward<Lambda&&>(updater));
+               _multidx.modify( *itr, payer, std::forward<Lambda&&>(updater) );
             }
 
-            const_iterator remove( const_iterator itr ) {
-               eosio_assert( itr != end(), "cannot pass end iterator to remove" );
+            const_iterator erase( const_iterator itr ) {
+               eosio_assert( itr != end(), "cannot pass end iterator to erase" );
 
-               auto pk_itr = _multidx.iterator_to(*itr);
+               const auto& obj = *itr;
                ++itr;
 
-               _multidx.remove(pk_itr);
+               _multidx.erase(obj);
 
                return itr;
             }
@@ -626,10 +626,14 @@ class multi_index
       }
 
       template<typename Lambda>
-      void update( const_iterator itr, uint64_t payer, Lambda&& updater ) {
+      void modify( const_iterator itr, uint64_t payer, Lambda&& updater ) {
          eosio_assert( itr != end(), "cannot pass end iterator to update" );
 
-         const auto& obj = *itr;
+         modify( *itr, payer, std::forward<Lambda&&>(updater) );
+      }
+
+      template<typename Lambda>
+      void modify( const T& obj, uint64_t payer, Lambda&& updater ) {
          const auto& objitem = static_cast<const item&>(obj);
          auto& mutableitem = const_cast<item&>(objitem);
 
@@ -688,14 +692,21 @@ class multi_index
          return iterator_to(static_cast<const T&>(i));
       }
 
-      const_iterator remove( const_iterator itr ) {
-         eosio_assert( itr != end(), "cannot pass end iterator to remove" );
+      const_iterator erase( const_iterator itr ) {
+         eosio_assert( itr != end(), "cannot pass end iterator to erase" );
 
-         const auto& objitem = static_cast<const item&>(*itr);
+         const auto& obj = *itr;
+         ++itr;
+
+         erase(obj);
+
+         return itr;
+      }
+
+      void erase( const T& obj ) {
+         const auto& objitem = static_cast<const item&>(obj);
          //auto& mutableitem = const_cast<item&>(objitem);
          // eosio_assert( &objitem.__idx == this, "invalid object" );
-
-         ++itr;
 
          db_remove_i64( objitem.__primary_itr );
 
@@ -715,8 +726,6 @@ class multi_index
          if( cacheitr != _items_index.end() )  {
             _items_index.erase(cacheitr);
          }
-
-         return itr;
       }
 
 };

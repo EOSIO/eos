@@ -80,8 +80,8 @@ struct limit_order {
                      print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name(item.owner), "\n");
                   }
 
-                  print("Updating expiration of order with ID=2 to 400.\n");
-                  orders.update( order2, payer, [&]( auto& o ) {
+                  print("Modifying expiration of order with ID=2 to 400.\n");
+                  orders.modify( order2, payer, [&]( auto& o ) {
                      o.expiration = 400;
                   });
 
@@ -148,7 +148,7 @@ struct limit_order {
                   print("First entry with a val greater than 42 has ID=", upper->id, ".\n");
 
                   print("Removed entry with ID=", lower1->id, ".\n");
-                  validx.remove( lower1 );
+                  validx.erase( lower1 );
 
                   print("Items sorted by primary key:\n");
                   for( const auto& item : testtable ) {

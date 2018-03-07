@@ -109,13 +109,13 @@ class exchange {
          switch( d.amount.symbol ) {
             case base_token_type::symbol:
                BaseCurrency::inline_transfer( d.from, ExchangeAccount, base_token_type(d.amount.amount) );
-               _accounts.update( owner, 0, [&]( auto& a ) {
+               _accounts.modify( owner, 0, [&]( auto& a ) {
                   a.base_balance += base_token_type(d.amount);
                });
                break;
             case quote_token_type::symbol:
                QuoteCurrency::inline_transfer( d.from, ExchangeAccount, quote_token_type(d.amount.amount) );
-               _accounts.update( owner, 0, [&]( auto& a ) {
+               _accounts.modify( owner, 0, [&]( auto& a ) {
                   a.quote_balance += quote_token_type(d.amount);
                });
                break;
@@ -141,7 +141,7 @@ class exchange {
             case base_token_type::symbol:
                eosio_assert( owner->base_balance >= base_token_type(w.amount), "insufficient balance" );
 
-               _accounts.update( owner, 0, [&]( auto& a ) {
+               _accounts.modify( owner, 0, [&]( auto& a ) {
                   a.base_balance -= base_token_type(w.amount);
                });
 
@@ -150,7 +150,7 @@ class exchange {
             case quote_token_type::symbol:
                eosio_assert( owner->quote_balance >= quote_token_type(w.amount), "insufficient balance" );
 
-               _accounts.update( owner, 0, [&]( auto& a ) {
+               _accounts.modify( owner, 0, [&]( auto& a ) {
                   a.quote_balance -= quote_token_type(w.amount);
                });
 
@@ -210,7 +210,7 @@ class exchange {
          auto idx = _base_quote_orders.template get_index<N(ownerid)>();
          auto itr = idx.find( limit_base_quote::get_owner_id( order.owner, order.id ) );
          if( itr != idx.end() ) {
-            idx.remove(itr);
+            idx.erase(itr);
          }
       }
 
