@@ -1,6 +1,9 @@
 #pragma once
 #include <softfloat_types.h>
 
+#ifndef THREAD_LOCAL
+#define THREAD_LOCAL __thread
+#endif
 extern "C" {
 /*----------------------------------------------------------------------------
 | Integer-to-floating-point conversion routines.
