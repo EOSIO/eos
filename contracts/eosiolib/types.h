@@ -6,10 +6,6 @@
 
 #include <stdint.h>
 #include <wchar.h>
-/*
-struct checksum_base {
-};
-*/
 
 #ifdef __cplusplus
 extern "C" {

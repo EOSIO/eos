@@ -458,4 +458,52 @@ bytes pack( const T& value ) {
   return result;
 }
 
+template<typename Stream>
+inline eosio::datastream<Stream>& operator<<(eosio::datastream<Stream>& ds, const public_key pk) {
+   ds.write((const char*)&pk, sizeof(pk));
+   return ds;
+}
+
+template<typename Stream>
+inline eosio::datastream<Stream>& operator>>(eosio::datastream<Stream>& ds, public_key& pk) {
+   ds.read((char*)&pk, sizeof(pk));
+   return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum160& cs) {
+   ds.write((const char*)&cs, sizeof(cs));
+   return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum160& cs) {
+   ds.read((char*)&cs, sizeof(cs));
+   return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum256& cs) {
+   ds.write((const char*)&cs, sizeof(cs));
+   return ds;
+}
+   
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum256& cs) {
+   ds.read((char*)&cs, sizeof(cs));
+   return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum512& cs) {
+   ds.write((const char*)&cs, sizeof(cs));
+   return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum512& cs) {
+   ds.read((char*)&cs, sizeof(cs));
+   return ds;
+}
+
 }
