@@ -5,6 +5,7 @@
 #include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/contracts/eos_contract.hpp>
 #include <eosio/chain/contracts/contract_table_objects.hpp>
+#include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <test.system/test.system.wast.hpp>
 #include <test.system/test.system.abi.hpp>
@@ -352,6 +353,22 @@ namespace eosio { namespace testing {
       return asset(result, asset_symbol);
    }
 
+   vector<char> base_tester::get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act ) {
+      const auto& db = control->get_database();
+      const auto* t_id = db.find<chain::contracts::table_id_object, chain::contracts::by_code_scope_table>( boost::make_tuple( code, scope, table ) );
+      FC_ASSERT( t_id != 0, "object not found" );
+
+      const auto& idx = db.get_index<chain::contracts::key_value_index, chain::contracts::by_scope_primary>();
+
+      auto itr = idx.lower_bound( boost::make_tuple( t_id->id, act ) );
+      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
+      BOOST_REQUIRE_EQUAL( act.value, itr->primary_key );
+
+      vector<char> data;
+      chain_apis::read_only::copy_inline_row( *itr, data );
+      return data;
+   }
+
    vector<uint8_t> base_tester::to_uint8_vector(const string& s) {
       vector<uint8_t> v(s.size());
       copy(s.begin(), s.end(), v.begin());
@@ -390,3 +407,9 @@ namespace eosio { namespace testing {
    }
 
 } }  /// eosio::test
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant& v ) {
+   //fc::json::to_stream( osm, v );
+   osm << fc::json::to_pretty_string( v );
+   return osm;
+}

@@ -1,9 +1,25 @@
 #pragma once
 #include <eosio/chain/chain_controller.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
+#include <fc/io/json.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/test/unit_test.hpp>
 
-#include <iostream>
+#include <iosfwd>
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant& v );
+
+namespace boost { namespace test_tools { namespace tt_detail {
+
+   template<>
+   struct print_log_value<fc::variant> {
+      void operator()( std::ostream& osm, const fc::variant& v )
+      {
+         ::operator<<( osm, v );
+      }
+   };                       
+
+} } }
 
 namespace eosio { namespace testing {
 
@@ -72,6 +88,8 @@ namespace eosio { namespace testing {
                                                              const symbol&       asset_symbol,
                                                              const account_name& account ) const;
 
+        vector<char> get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act );
+
         static vector<uint8_t> to_uint8_vector(const string& s);
 
         static vector<uint8_t> to_uint8_vector(uint64_t x);
@@ -128,5 +146,5 @@ namespace eosio { namespace testing {
       string expected;
    };
 
-
 } } /// eosio::testing
+
