@@ -19,6 +19,7 @@
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/Tooling/CommonOptionsParser.h"
+#include "clang/Tooling/Core/QualTypeNames.h"
 #include "llvm/Support/raw_ostream.h"
 #include <boost/algorithm/string.hpp>
 
@@ -60,7 +61,7 @@ namespace eosio {
          map<string, uint64_t>  type_size;
          map<string, string>    full_types;
          string                 abi_context;
-   
+         clang::ASTContext*     ast_context;   
       public:
       
          enum optimization {
@@ -70,7 +71,8 @@ namespace eosio {
          abi_generator()
          :optimizations(0)
          , output(nullptr)
-         , compiler_instance(nullptr) 
+         , compiler_instance(nullptr)
+         , ast_context(nullptr)
          {}
       
          ~abi_generator() {}
@@ -161,11 +163,29 @@ namespace eosio {
 
          string decl_to_string(clang::Decl* d);
 
-         void add_typedef(const clang::TypedefType* typeDef);
+         bool is_typedef(const clang::QualType& qt);
+         QualType add_typedef(const clang::QualType& qt);
 
-         string get_name_to_add(const clang::QualType& qual_type);
+         bool is_vector(const clang::QualType& qt);
+         bool is_vector(const string& type_name);
+         string add_vector(const clang::QualType& qt);
 
-         string add_struct(const clang::QualType& qual_type);
+         bool is_struct(const clang::QualType& qt);
+         string add_struct(const clang::QualType& qt, string full_type_name="");
+
+         string get_type_name(const clang::QualType& qt, bool no_namespace);
+         string add_type(const clang::QualType& tqt);
+
+         bool is_elaborated(const clang::QualType& qt);
+         bool is_struct_specialization(const clang::QualType& qt);
+
+         QualType get_vector_element_type(const clang::QualType& qt);
+         string get_vector_element_type(const string& type_name);
+         
+         clang::QualType get_named_type_if_elaborated(const clang::QualType& qt);
+
+         const clang::RecordDecl::field_range get_struct_fields(const clang::QualType& qt);
+         clang::CXXRecordDecl::base_class_range get_struct_bases(const clang::QualType& qt);
    };
    
    struct abi_generator_astconsumer : public ASTConsumer {

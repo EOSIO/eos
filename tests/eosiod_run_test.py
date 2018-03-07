@@ -49,19 +49,18 @@ parser.add_argument("--dont-launch", help="Don't launch own node. Assume node is
                     action='store_true')
 parser.add_argument("--keep-logs", help="Don't delete tn_data_* folders upon test completion",
                     action='store_true')
-parser.add_argument("--exit-early", help="Exit prior to known error point.", action='store_true')
 parser.add_argument("-v", help="verbose logging", action='store_true')
 parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
 parser.add_argument("--keep-wallet", help="Don't kill walletd on exit", action='store_true')
 parser.add_argument("--skip-init", help="skip initial accounts/contract", action='store_true')
 parser.add_argument("--skip-create-account", help="skip create account", action='store_true')
+parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
 
 args = parser.parse_args()
 testOutputFile=args.output
 server=args.host
 port=args.port
 debug=args.v
-exitEarly=args.exit_early
 enableMongo=args.mongodb
 amINoon=not args.not_noon
 initaPrvtKey=args.inita_prvt_key
@@ -71,6 +70,7 @@ keepLogs=args.keep_logs
 dontLaunch=args.dont_launch
 skipInit=args.skip_init
 skipCreateAccount=args.skip_create_account
+dontKill=args.dont_kill
 
 testUtils.Utils.Debug=debug
 localTest=True if server == LOCAL_HOST else False
@@ -80,6 +80,8 @@ walletMgr=testUtils.WalletMgr(True, port, server)
 testSuccessful=False
 killEosInstances=True
 killWallet=args.keep_wallet
+killEosInstances=not dontKill
+killWallet=not dontKill
 
 WalletdName="eos-walletd"
 ClientName="eosc"
@@ -511,15 +513,13 @@ try:
     Print("Exchange Contract Tests")
     Print("upload exchange contract")
 
-# TODO Exchange contract currently not working on eos-noon
-    if not amINoon:
-      wastFile="contracts/exchange/exchange.wast"
-      abiFile="contracts/exchange/exchange.abi"
-      Print("Publish exchange contract")
-      trans=node.publishContract(exchangeAccount.name, wastFile, abiFile, waitForTransBlock=True)
-      if trans is None:
-          cmdError("%s set contract exchange" % (ClientName))
-          errorExit("Failed to publish contract.")
+    wastFile="contracts/exchange/exchange.wast"
+    abiFile="contracts/exchange/exchange.abi"
+    Print("Publish exchange contract")
+    trans=node.publishContract(exchangeAccount.name, wastFile, abiFile, waitForTransBlock=True)
+    if trans is None:
+        cmdError("%s set contract exchange" % (ClientName))
+        errorExit("Failed to publish contract.")
 
     wastFile="contracts/simpledb/simpledb.wast"
     abiFile="contracts/simpledb/simpledb.abi"

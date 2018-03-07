@@ -168,7 +168,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 void chain_plugin::plugin_startup()
 { try {
    FC_ASSERT( fc::exists( my->genesis_file ),
-              "unable to find genesis file '${f}', check --genesis-json argument", 
+              "unable to find genesis file '${f}', check --genesis-json argument",
               ("f",my->genesis_file.generic_string()) );
    my->chain_config->block_log_dir = my->block_log_dir;
    my->chain_config->shared_memory_dir = app().data_dir() / default_shared_memory_dir;
@@ -306,7 +306,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
       return get_table_rows_ex<contracts::key_value_index, contracts::by_scope_primary>(p,abi);
    } else if( table_type == KEYstr ) {
       return get_table_rows_ex<contracts::keystr_value_index, contracts::by_scope_primary>(p,abi);
-   } else if( table_type == KEYi128i128 ) { 
+   } else if( table_type == KEYi128i128 ) {
       if( table_key == PRIMARY )
          return get_table_rows_ex<contracts::key128x128_value_index, contracts::by_scope_primary>(p,abi);
       if( table_key == SECONDARY )
@@ -330,12 +330,12 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
       fc::raw::unpack(ds, balance);
       auto cursor = asset(balance, symbol(obj.primary_key));
 
-      if (p.symbol || cursor.symbol_name().compare(*p.symbol) == 0) {
+      if( !p.symbol || cursor.symbol_name().compare(*p.symbol) == 0 ) {
          results.emplace_back(balance, symbol(obj.primary_key));
       }
 
       // return false if we are looking for one and found it, true otherwise
-      return p.symbol || cursor.symbol_name().compare(*p.symbol) != 0;
+      return !p.symbol || cursor.symbol_name().compare(*p.symbol) != 0;
    });
 
    return results;
@@ -397,13 +397,12 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
    fc::variant pretty_output;
    abi_serializer::to_variant(*block, pretty_output, make_resolver(this));
 
-
-
+   uint32_t ref_block_prefix = block->id()._hash[1];
 
    return fc::mutable_variant_object(pretty_output.get_object())
            ("id", block->id())
            ("block_num",block->block_num())
-           ("ref_block_prefix", block->id()._hash[1]);
+           ("ref_block_prefix", ref_block_prefix);
 }
 
 read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {
@@ -429,9 +428,9 @@ read_write::push_transactions_results read_write::push_transactions(const read_w
    result.reserve(params.size());
    for( const auto& item : params ) {
       try {
-        result.emplace_back( push_transaction( item ) ); 
+        result.emplace_back( push_transaction( item ) );
       } catch ( const fc::exception& e ) {
-        result.emplace_back( read_write::push_transaction_results{ transaction_id_type(), 
+        result.emplace_back( read_write::push_transaction_results{ transaction_id_type(),
                           fc::mutable_variant_object( "error", e.to_detail_string() ) } );
       }
    }
@@ -468,7 +467,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    const auto& permissions = d.get_index<permission_index,by_owner>();
    auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );
    while( perm != permissions.end() && perm->owner == params.account_name ) {
-      /// TODO: lookup perm->parent name 
+      /// TODO: lookup perm->parent name
       name parent;
 
       // Don't lookup parent if null
@@ -476,8 +475,8 @@ read_only::get_account_results read_only::get_account( const get_account_params&
          const auto* p = d.find<permission_object,by_id>( perm->parent );
          if( p ) {
             FC_ASSERT(perm->owner == p->owner, "Invalid parent");
-            parent = p->name; 
-         } 
+            parent = p->name;
+         }
       }
 
       result.permissions.push_back( permission{ perm->name, parent, perm->auth.to_authority() } );

@@ -8,8 +8,12 @@
 	CPU_SPEED=`bc <<< "scale=2; ($(sysctl -in hw.cpufrequency) / 100000000) / 10"`
 	CPU_CORE=$( sysctl -in machdep.cpu.core_count )
 
-	DISK_TOTAL=`df -H $PWD | grep /dev | tr -s ' ' | cut -d\  -f2 | sed 's/[^0-9]//'`
-	DISK_AVAIL=`df -H $PWD | grep /dev | tr -s ' ' | cut -d\  -f4 | sed 's/[^0-9]//'`
+	blksize=`df . | head -1 | awk '{print $2}' | cut -d- -f1`
+	gbfactor=$(( 1073741824 / $blksize ))
+	total_blks=`df . | tail -1 | awk '{print $2}'`
+	avail_blks=`df . | tail -1 | awk '{print $4}'`
+	DISK_TOTAL=$(($total_blks / $gbfactor ))
+	DISK_AVAIL=$(($avail_blks / $gbfactor ))
 
 	printf "\n\tOS name: $ARCH\n"
 	printf "\tOS Version: ${OS_VER}\n"
@@ -31,8 +35,8 @@
 		exit 1
 	fi
 
-	if [ $DISK_AVAIL -lt 100 ]; then
-		echo "You must have at least 100GB of available storage to install EOSIO."
+	if [ $DISK_AVAIL -lt $DISK_MIN ]; then
+		echo "You must have at least ${DISK_MIN}GB of available storage to install EOSIO."
 		echo "Exiting now."
 		exit 1
 	fi
