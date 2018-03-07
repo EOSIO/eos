@@ -83,9 +83,7 @@ int db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, TYPE& seco
 WRAP_SECONDARY_SIMPLE_TYPE(idx64,  uint64_t)
 WRAP_SECONDARY_SIMPLE_TYPE(idx128, uint128_t)
 WRAP_SECONDARY_ARRAY_TYPE(idx256, key256)
-WRAP_SECONDARY_SIMPLE_TYPE(idx_double,  double)
 
-#if 0
 template<>
 struct secondary_iterator<double> {
    static int db_idx_next( int iterator, uint64_t* primary ) { return db_idx_double_next( iterator, primary ); }
@@ -93,40 +91,39 @@ struct secondary_iterator<double> {
    static void db_idx_remove( int iterator  )                { db_idx_double_remove( iterator ); }
    static int db_idx_end( uint64_t code, uint64_t scope, uint64_t table ) { return db_idx_double_end( code, scope, table ); }
 };
-int db_idx_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const double& secondary ) {
-   uint64_t val = ???; // Get uint64_t representation of double secondary
+int db_idx_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, double secondary ) {
+   uint64_t val = *reinterpret_cast<uint64_t*>(&secondary); // Get uint64_t representation of double secondary
    return db_idx_double_store( scope, table, payer, id, &val );
 }
-void db_idx_update( int iterator, uint64_t payer, const double& secondary ) {
-   uint64_t val = ???; // Get uint64_t representation of double secondary
+void db_idx_update( int iterator, uint64_t payer, double secondary ) {
+   uint64_t val = *reinterpret_cast<uint64_t*>(&secondary); // Get uint64_t representation of double secondary
    db_idx_double_update( iterator, payer, &val );
 }
 int db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary, double& secondary ) {
    uint64_t val = 0;
    int itr = db_idx_double_find_primary( code, scope, table, &val, primary );
    if( itr >= 0 )
-      secondary = ???; // Store double secondary from uint64_t representation stored in val
+      secondary = *reinterpret_cast<double*>(&val); // Store double secondary from uint64_t representation stored in val
    return itr;
 }
-int db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const double& secondary, uint64_t& primary ) {
-   uint64_t val = secondary.value();
+int db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, double secondary, uint64_t& primary ) {
+   uint64_t val = *reinterpret_cast<uint64_t*>(&secondary);
    return db_idx_double_find_secondary( code, scope, table, &val, &primary );
 }
 int db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, double& secondary, uint64_t& primary ) {
-   uint64_t val = ???; // Get uint64_t representation of double secondary
+   uint64_t val = *reinterpret_cast<uint64_t*>(&secondary); // Get uint64_t representation of double secondary
    int itr = db_idx_double_lowerbound( code, scope, table, &val, &primary );
-   if( itr >= 0 /* && val != ??? */ )
-      secondary = ???; // Store double secondary from uint64_t representation stored in val
+   if( itr >= 0 )
+      secondary = *reinterpret_cast<double*>(&val); // Store double secondary from uint64_t representation stored in val
    return itr;
 }
 int db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, double& secondary, uint64_t& primary ) {
-   uint64_t val = ???; // Get uint64_t representation of double secondary
+   uint64_t val = *reinterpret_cast<uint64_t*>(&secondary); // Get uint64_t representation of double secondary
    int itr = db_idx_double_upperbound( code, scope, table, &val, &primary );
-   if( itr >= 0 /* && val != ??? */ )
-      secondary = ???; // Store double secondary from uint64_t representation stored in val
+   if( itr >= 0 )
+      secondary = *reinterpret_cast<double*>(&val); // Store double secondary from uint64_t representation stored in val
    return itr;
 }
-#endif
 
 template<uint64_t TableName, typename T, typename... Indices>
 class multi_index;

@@ -6,6 +6,7 @@
 
 #include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/multi_index_includes.hpp>
+#include <eosio/chain/softfloat.hpp>
 
 #include <chainbase/chainbase.hpp>
 
@@ -165,8 +166,7 @@ namespace eosio { namespace chain { namespace contracts {
 
    struct double_less {
       bool operator()( uint64_t a, uint64_t b )const {
-         //TODO(arhag): Fix this to use soft float.
-         return a < b; // This is incorrect.
+         return f64_lt(ui64_to_f64(a), ui64_to_f64(b));
       }
    };
 
