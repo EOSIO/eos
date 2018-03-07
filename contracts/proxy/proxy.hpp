@@ -15,7 +15,7 @@ namespace proxy {
    //@abi table
    struct config {
       config(){}
-      const uint64_t      key = N(config);
+      constexpr static uint64_t key = N(config);
       account_name        owner = 0;
       uint32_t            delay = 0;
       uint32_t            next_id = 0;
