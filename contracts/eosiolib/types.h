@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 /**
- *  @defgroup types Builtin Types
+ *  @defgroup types Builtin Types 
  *  @ingroup contractdev
  *  @brief Specifies typedefs and aliases
  *
