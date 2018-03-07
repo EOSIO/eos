@@ -1,5 +1,6 @@
 # Defines EOS library target.
 project( EOS )
+
 cmake_minimum_required( VERSION 2.8.12 )
 
 enable_testing()
