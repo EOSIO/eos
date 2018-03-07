@@ -63,35 +63,18 @@ public:
    }
 
    fc::variant get_total_stake( const account_name& act ) {
-      const auto& db = control->get_database();
-      const auto* t_id = db.find<table_id_object, by_code_scope_table>( boost::make_tuple( config::system_account_name, act, N(totalband) ));
-      FC_ASSERT(t_id != 0, "object not found");
-
-      const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-
-      auto itr = idx.lower_bound( boost::make_tuple( t_id->id, act ));
-      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
-      BOOST_REQUIRE_EQUAL( act.value, itr->primary_key );
-
-      vector<char> data;
-      read_only::copy_inline_row( *itr, data );
+      vector<char> data = get_row_by_account( config::system_account_name, act, N(totalband), act );
       return abi_ser.binary_to_variant( "total_resources", data );
    }
 
    fc::variant get_voter_info( const account_name& act ) {
-      const auto& db = control->get_database();
-      const auto* t_id = db.find<table_id_object, by_code_scope_table>( boost::make_tuple( config::system_account_name, config::system_account_name, N(voters) ));
-      FC_ASSERT(t_id != 0, "object not found");
-
-      const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-
-      auto itr = idx.lower_bound( boost::make_tuple( t_id->id, act ));
-      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
-      BOOST_REQUIRE_EQUAL( act.value, itr->primary_key );
-
-      vector<char> data;
-      read_only::copy_inline_row( *itr, data );
+      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(voters), act );
       return abi_ser.binary_to_variant( "voter_info", data );
+   }
+
+   fc::variant get_producer_info( const account_name& act ) {
+      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(producerinfo), act );
+      return abi_ser.binary_to_variant( "eosio_global_state", data );
    }
 
    abi_serializer abi_ser;
@@ -538,6 +521,40 @@ BOOST_FIXTURE_TEST_CASE( stake_add_more_partial_unstake, eosio_system_tester ) t
    require_simple_voter( vi );
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, vi["staked"].as_uint64() );
    BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
+
+} FC_LOG_AND_RETHROW()
+
+
+BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try {
+   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+
+   fc::variant params = mutable_variant_object()
+      ("target_block_size", 1024 * 1024)
+      ("max_block_size", 10 * 1024)
+      ("target_block_acts_per_scope", 1001)
+      ("max_block_acts_per_scope", 10001)
+      ("target_block_acts", 1101)
+      ("max_block_acts", 11001)
+      ("max_storage_size", 2001)
+      ("max_transaction_lifetime", 3601)
+      ("max_transaction_exec_time", 9999)
+      ("max_authority_depth", 6)
+      ("max_inline_depth", 4)
+      ("max_inline_action_size", 4096)
+      ("max_generated_transaction_size", 64*1024)
+      ("inflation_rate", 1051)
+      ("storage_reserve_ratio", 1005);
+
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproducer), mvo()
+                                               ("producer",  "alice")
+                                               ("producer_key", fc::raw::pack( fc::crypto::public_key( std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV") ) ) )
+                                               ("prefs", params)
+                        )
+   );
+
+   auto info = get_producer_info( "alice" );
+   BOOST_REQUIRE_EQUAL( true, info.is_object() );
+   REQUIRE_EQUAL_OBJECTS( params, info );
 
 } FC_LOG_AND_RETHROW()
 

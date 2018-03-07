@@ -413,3 +413,13 @@ std::ostream& operator<<( std::ostream& osm, const fc::variant& v ) {
    osm << fc::json::to_pretty_string( v );
    return osm;
 }
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant_object& v ) {
+   osm << fc::variant(v);
+   return osm;
+}
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant_object::entry& e ) {
+   osm << "{ " << e.key() << ": " << e.value() << " }";
+   return osm;
+}

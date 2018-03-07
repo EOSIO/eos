@@ -19,8 +19,7 @@ namespace eosiosystem {
          uint32_t inflation_rate = 0; // inflation coefficient * 10000 (i.e. inflation in percent * 100)
          uint32_t storage_reserve_ratio = 1000; // ratio * 1000
 
-         EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (inflation_rate)(storage_reserve_ratio)
-                                   (storage_reserve_ratio) )
+         EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (inflation_rate)(storage_reserve_ratio) )
       };
 
       struct eosio_global_state : eosio_parameters {

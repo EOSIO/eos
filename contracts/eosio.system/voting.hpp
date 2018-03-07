@@ -56,7 +56,7 @@ namespace eosiosystem {
             EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(prefs)(packed_key) )
          };
 
-         typedef eosio::multi_index< N(producervote), producer_info,
+         typedef eosio::multi_index< N(producerinfo), producer_info,
                                      indexed_by<N(prototalvote), const_mem_fun<producer_info, uint128_t, &producer_info::by_votes>  >
                                      >  producers_table;
 

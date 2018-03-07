@@ -7,7 +7,15 @@
 
 #include <iosfwd>
 
+#define REQUIRE_EQUAL_OBJECTS(a, b) BOOST_REQUIRE_EQUAL( true, a.is_object() ); \
+   BOOST_REQUIRE_EQUAL( true, b.is_object() ); \
+   BOOST_REQUIRE_EQUAL_COLLECTIONS( a.get_object().begin(), a.get_object().end(), b.get_object().begin(), b.get_object().end() );
+
 std::ostream& operator<<( std::ostream& osm, const fc::variant& v );
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant_object& v );
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant_object::entry& e );
 
 namespace boost { namespace test_tools { namespace tt_detail {
 
@@ -18,6 +26,22 @@ namespace boost { namespace test_tools { namespace tt_detail {
          ::operator<<( osm, v );
       }
    };                       
+
+   template<>
+   struct print_log_value<fc::variant_object> {
+      void operator()( std::ostream& osm, const fc::variant_object& v )
+      {
+         ::operator<<( osm, v );
+      }
+   };
+
+   template<>
+   struct print_log_value<fc::variant_object::entry> {
+      void operator()( std::ostream& osm, const fc::variant_object::entry& e )
+      {
+         ::operator<<( osm, e );
+      }
+   };
 
 } } }
 
