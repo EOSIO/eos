@@ -166,6 +166,7 @@ endif()
 
 include(wasm)
 include(installer)
+include(softfloat)
 
 add_subdirectory( externals )
 add_subdirectory( contracts )
