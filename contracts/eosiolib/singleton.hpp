@@ -35,29 +35,29 @@ namespace  eosio {
 
          static T get( scope_name scope = Code ) {
             table t( Code, scope );
-            auto ptr = t.find( pk_value );
-            eosio_assert( bool(ptr), "singleton does not exist" );
-            return ptr->value;
+            auto itr = t.find( pk_value );
+            eosio_assert( itr != t.end(), "singleton does not exist" );
+            return itr->value;
          }
 
          static T get_or_default( scope_name scope = Code, const T& def = T() ) {
             table t( Code, scope );
-            auto ptr = t.find( pk_value );
-            return ptr ? ptr->value : def;
+            auto itr = t.find( pk_value );
+            return itr != t.end() ? itr->value : def;
          }
 
          static T get_or_create( scope_name scope = Code, const T& def = T() ) {
             table t( Code, scope );
-            auto ptr = t.find( pk_value );
-            return ptr ? ptr->value
+            auto itr = t.find( pk_value );
+            return itr != t.end() ? itr->value
                : t.emplace(BillToAccount, [&](row& r) { r.value = def; });
          }
 
          static void set( const T& value = T(), scope_name scope = Code, account_name b = BillToAccount ) {
             table t( Code, scope );
-            auto ptr = t.find( pk_value );
-            if (ptr) {
-               t.update(*ptr, b, [&](row& r) { r.value = value; });
+            auto itr = t.find( pk_value );
+            if( itr != t.end() ) {
+               t.update(*itr, b, [&](row& r) { r.value = value; });
             } else {
                t.emplace(b, [&](row& r) { r.value = value; });
             }
@@ -65,9 +65,9 @@ namespace  eosio {
 
          static void remove( scope_name scope = Code ) {
             table t( Code, scope );
-            auto ptr = t.find( pk_value );
-            if (ptr) {
-               t.remove(*ptr);
+            auto itr = t.find( pk_value );
+            if( itr != t.end() ) {
+               t.remove(*itr);
             }
          }
    };

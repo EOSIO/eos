@@ -71,8 +71,8 @@ namespace eosiosystem {
 
          struct total_resources {
             account_name owner;
-            typename currency::token_type total_net_weight; 
-            typename currency::token_type total_cpu_weight; 
+            typename currency::token_type total_net_weight;
+            typename currency::token_type total_cpu_weight;
             uint32_t total_ram = 0;
 
             uint64_t primary_key()const { return owner; }
@@ -87,8 +87,8 @@ namespace eosiosystem {
          struct delegated_bandwidth {
             account_name from;
             account_name to;
-            typename currency::token_type net_weight; 
-            typename currency::token_type cpu_weight; 
+            typename currency::token_type net_weight;
+            typename currency::token_type cpu_weight;
 
             uint32_t start_pending_net_withdraw = 0;
             typename currency::token_type pending_net_withdraw;
@@ -98,7 +98,7 @@ namespace eosiosystem {
             typename currency::token_type pending_cpu_withdraw;
             uint64_t deferred_cpu_withdraw_handler = 0;
 
-            
+
             uint64_t  primary_key()const { return to; }
 
             EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight)
@@ -156,8 +156,8 @@ namespace eosiosystem {
          };
 
          /// new id options:
-         //  1. hash + collision 
-         //  2. incrementing count  (key=> tablename 
+         //  1. hash + collision
+         //  2. incrementing count  (key=> tablename
 
          static void on( const delegatebw& del ) {
             eosio_assert( del.stake_cpu_quantity.quantity >= 0, "must stake a positive amount" );
@@ -175,10 +175,10 @@ namespace eosiosystem {
             //eosio_assert( is_account( del.receiver ), "can only delegate resources to an existing account" );
 
             auto itr = del_index.find( del.receiver);
-            if( itr != nullptr ) {
+            if( itr != del_index.end() ) {
                del_index.emplace( del.from, [&]( auto& dbo ){
-                  dbo.from       = del.from;      
-                  dbo.to         = del.receiver;      
+                  dbo.from       = del.from;
+                  dbo.to         = del.receiver;
                   dbo.net_weight = del.stake_net_quantity;
                   dbo.cpu_weight = del.stake_cpu_quantity;
                });
@@ -191,12 +191,12 @@ namespace eosiosystem {
             }
 
             auto tot_itr = total_index.find( del.receiver );
-            if( tot_itr == nullptr ) {
-               tot_itr = &total_index.emplace( del.from, [&]( auto& tot ) {
+            if( tot_itr == total_index.end() ) {
+               tot_itr = total_index.iterator_to(total_index.emplace( del.from, [&]( auto& tot ) {
                   tot.owner = del.receiver;
                   tot.total_net_weight += del.stake_net_quantity;
                   tot.total_cpu_weight += del.stake_cpu_quantity;
-               });
+               }));
             } else {
                total_index.update( *tot_itr, 0, [&]( auto& tot ) {
                   tot.total_net_weight += del.stake_net_quantity;
@@ -252,20 +252,20 @@ namespace eosiosystem {
 
 
          /**
-          *  This method will create a producr_config and producer_votes object for 'producer' 
+          *  This method will create a producr_config and producer_votes object for 'producer'
           *
           *  @pre producer is not already registered
           *  @pre producer to register is an account
-          *  @pre authority of producer to register 
-          *  
+          *  @pre authority of producer to register
+          *
           */
          static void on( const regproducer& reg ) {
             auto producer = reg.producer;
             require_auth( producer );
 
             producer_votes_index_type votes( SystemAccount, SystemAccount );
-            const auto* existing = votes.find( producer );
-            eosio_assert( !existing, "producer already registered" );
+            auto existing = votes.find( producer );
+            eosio_assert( existing == votes.end(), "producer already registered" );
 
             votes.emplace( producer, [&]( auto& pv ){
                pv.owner       = producer;
@@ -293,13 +293,13 @@ namespace eosiosystem {
 
             account_votes_index_type avotes( SystemAccount, SystemAccount );
 
-            const auto* acv = avotes.find( sv.voter );
-            if( !acv ) {
-               acv = &avotes.emplace( sv.voter, [&]( auto& av ) {
+            auto acv = avotes.find( sv.voter );
+            if( acv == avotes.end() ) {
+               acv = avotes.iterator_to(avotes.emplace( sv.voter, [&]( auto& av ) {
                  av.owner = sv.voter;
                  av.last_update = now();
                  av.proxy = 0;
-               });
+               }));
             }
 
             uint128_t old_weight = acv->staked.quantity;
@@ -318,7 +318,7 @@ namespace eosiosystem {
                av.last_update = now();
                av.staked += sv.amount;
             });
-            
+
             currency::inline_transfer( sv.voter, SystemAccount, sv.amount, "stake for voting" );
          }
 
@@ -354,7 +354,7 @@ namespace eosiosystem {
 
             for( const auto& p : existing.producers )
                producer_vote_changes[p].first = old_weight;
-            for( const auto& p : vp.producers ) 
+            for( const auto& p : vp.producers )
                producer_vote_changes[p].second = new_weight;
 
             producer_votes_index_type votes( SystemAccount, SystemAccount );
@@ -385,9 +385,9 @@ namespace eosiosystem {
 
          static void apply( account_name code, action_name act ) {
 
-            if( !eosio::dispatch<contract, 
-                                 regproducer, regproxy, 
-                                 delegatebw, undelegatebw, 
+            if( !eosio::dispatch<contract,
+                                 regproducer, regproxy,
+                                 delegatebw, undelegatebw,
                                  regproducer, voteproducer, stakevote,
                                  nonce>( code, act) ) {
                if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
@@ -396,8 +396,7 @@ namespace eosiosystem {
                }
             }
 
-         } /// apply 
+         } /// apply
    };
 
-} /// eosiosystem 
-
+} /// eosiosystem

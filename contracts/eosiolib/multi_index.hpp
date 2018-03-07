@@ -556,7 +556,7 @@ class multi_index
         return typename decltype(+res.value())::type(*this);
       }
 
-      const_iterator iterator_to( const T& obj ) {
+      const_iterator iterator_to( const T& obj )const {
          const auto& objitem = static_cast<const item&>(obj);
          eosio_assert( &objitem.__idx == this, "object passed to iterator_to is not in multi_index" );
          return {*this, &objitem};
@@ -634,20 +634,20 @@ class multi_index
 
       const T& get( uint64_t primary )const {
          auto result = find( primary );
-         eosio_assert( result != nullptr, "unable to find key" );
+         eosio_assert( result != end(), "unable to find key" );
          return *result;
       }
 
-      const T* find( uint64_t primary )const {
+      const_iterator find( uint64_t primary )const {
          auto cacheitr = _items_index.find(primary);
          if( cacheitr != _items_index.end() )
-            return &*cacheitr;
+            return iterator_to(*cacheitr);
 
          int itr = db_find_i64( _code, _scope, TableName, primary );
-         if( itr < 0 ) return nullptr;
+         if( itr < 0 ) return end();
 
          const item& i = load_object_by_primary_iterator( itr );
-         return &static_cast<const T&>(i);
+         return iterator_to(static_cast<const T&>(i));
       }
 
       void remove( const T& obj ) {

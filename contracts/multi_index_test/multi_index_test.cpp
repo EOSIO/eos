@@ -118,7 +118,7 @@ struct limit_order {
                      o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
                   });
 
-                  const auto* e = testtable.find( 2 );
+                  auto itr = testtable.find( 2 );
 
                   print("Items sorted by primary key:\n");
                   for( const auto& item : testtable ) {
@@ -133,7 +133,7 @@ struct limit_order {
                   auto lower2 = validx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 50ULL));
                   print("First entry with a val of at least 50 has ID=", lower2->id, ".\n");
 
-                  if( &*lower2 == e ) {
+                  if( testtable.iterator_to(*lower2) == itr ) {
                      print("Previously found entry is the same as the one found earlier with a primary key value of 2.\n");
                   }
 

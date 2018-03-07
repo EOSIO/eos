@@ -244,7 +244,7 @@ namespace identity {
 
          static bool is_trusted_by( account_name trusted, account_name by ) {
             trust_table t( code, by );
-            return t.find( trusted );
+            return t.find( trusted ) != t.end();
          }
 
          static bool is_trusted( account_name acnt ) {
@@ -266,21 +266,21 @@ namespace identity {
             require_recipient( t.trusting );
 
             trust_table table( code, t.trustor );
-            auto ptr = table.find(t.trusting);
-            if (!ptr && t.trust > 0) {
+            auto itr = table.find(t.trusting);
+            if( itr == table.end() && t.trust > 0 ) {
                table.emplace( t.trustor, [&](trustrow& row) {
                      row.account = t.trusting;
                   });
-            } else if (ptr && t.trust == 0) {
-               table.remove(*ptr);
+            } else if( itr != table.end() && t.trust == 0 ) {
+               table.remove(*itr);
             }
          }
 
          static void on( const create& c ) {
             require_auth( c.creator );
             idents_table t( code, code);
-            auto ptr = t.find( c.identity );
-            eosio_assert( !ptr, "identity already exists" );
+            auto itr = t.find( c.identity );
+            eosio_assert( itr == t.end(), "identity already exists" );
             eosio_assert( c.identity != 0, "identity=0 is not allowed" );
             t.emplace(c.creator, [&](identrow& i) {
                   i.identity = c.identity;
@@ -294,8 +294,7 @@ namespace identity {
                require_auth( cert.bill_storage_to );
 
             idents_table t( code, code );
-            auto ptr = t.find( cert.identity );
-            eosio_assert( ptr != nullptr, "identity does not exist" );
+            eosio_assert( t.find( cert.identity ) != t.end(), "identity does not exist" );
 
             /// the table exists in the scope of the identity
             certs_table certs( code, cert.identity );

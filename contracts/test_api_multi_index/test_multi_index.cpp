@@ -85,44 +85,15 @@ namespace _test_multi_index {
 
       auto secondary_index = table.template get_index<N(bysecondary)>();
 
-      /*
-      // struct that can be used to trick iterator_to into thinking it is given a reference to an object in the table cache.
-      struct augmented_record : record
-      {
-         augmented_record( const decltype(table)& midx, uint64_t _id, uint64_t _sec )
-         : multidx(midx)
-         {
-            id = _id;
-            sec = _sec;
-         }
-
-         const decltype(table)& multidx;
-         int primary_itr = -1;
-      };
-      */
-
       // find by primary key
       {
-         auto ptr = table.find(999);
-         eosio_assert(ptr == nullptr, "idx64_general - table.find() of non-existing primary key");
+         auto itr = table.find(999);
+         eosio_assert(itr == table.end(), "idx64_general - table.find() of non-existing primary key");
 
-         ptr = table.find(976);
-         eosio_assert(ptr != nullptr && ptr->sec == N(emily), "idx64_general - table.find() of existing primary key");
-
-         /*
-         multi_index<TableName, record,
-            indexed_by< N(bysecondary), const_mem_fun<record, uint64_t, &record::get_secondary> >
-         > table2( current_receiver(), current_receiver() );
-         augmented_record r{table2, 976, N(emily)};
-         auto itr = table.iterator_to(r); // Attempt to misuse iterator_to in a way that it can catch. This should cause an assertion error.
-         print("Should not see this if iterator_to caught the misuse.\n");
-         */
-         auto itr = table.iterator_to(*ptr);
-         eosio_assert(itr != table.end() && itr->id == 976 && itr->sec == N(emily), "idx64_general - iterator to existing object in primary index");
-
+         itr = table.find(976);
+         eosio_assert(itr != table.end() && itr->sec == N(emily), "idx64_general - table.find() of existing primary key");
 
          ++itr;
-         print("Still okay\n");
          eosio_assert(itr == table.end(), "idx64_general - increment primary iterator to end");
       }
 
@@ -143,10 +114,10 @@ namespace _test_multi_index {
 
       // iterate backward starting with second bob
       {
-         auto ptr = table.find(781);
-         eosio_assert(ptr != nullptr && ptr->sec == N(bob), "idx64_general - table.find() of existing primary key");
+         auto pk_itr = table.find(781);
+         eosio_assert(pk_itr != table.end() && pk_itr->sec == N(bob), "idx64_general - table.find() of existing primary key");
 
-         auto itr = secondary_index.iterator_to(*ptr);
+         auto itr = secondary_index.iterator_to(*pk_itr);
          eosio_assert(itr->id == 781 && itr->sec == N(bob), "idx64_general - iterator to existing object in secondary index");
 
          --itr;
@@ -185,12 +156,12 @@ namespace _test_multi_index {
             r.sec = N(billy);
          });
 
-         auto ptr = table.find(ssn);
-         eosio_assert(ptr != nullptr && ptr->sec == N(billy), "idx64_general - table.update()");
+         auto itr1 = table.find(ssn);
+         eosio_assert(itr1 != table.end() && itr1->sec == N(billy), "idx64_general - table.update()");
 
-         table.remove(*ptr);
-         auto ptr2 = table.find(ssn);
-         eosio_assert( ptr2 == nullptr, "idx64_general - table.remove()");
+         table.remove(*itr1);
+         auto itr2 = table.find(ssn);
+         eosio_assert( itr2 == table.end(), "idx64_general - table.remove()");
       }
    }
 
@@ -240,10 +211,10 @@ void test_multi_index::idx128_autoincrement_test()
       --expected_key;
    }
 
-   auto ptr = table.find(3);
-   eosio_assert( ptr != nullptr, "idx128_autoincrement_test - could not find object with primary key of 3" );
+   auto itr = table.find(3);
+   eosio_assert( itr != table.end(), "idx128_autoincrement_test - could not find object with primary key of 3" );
 
-   table.update(*ptr, payer, [&]( auto& r ) {
+   table.update(*itr, payer, [&]( auto& r ) {
       r.id = 100;
    });
 
@@ -326,10 +297,10 @@ void test_multi_index::idx128_autoincrement_test_part2()
       --expected_key;
    }
 
-   auto ptr = table.find(3);
-   eosio_assert( ptr != nullptr, "idx128_autoincrement_test_part2 - could not find object with primary key of 3" );
+   auto itr = table.find(3);
+   eosio_assert( itr != table.end(), "idx128_autoincrement_test_part2 - could not find object with primary key of 3" );
 
-   table.update(*ptr, payer, [&]( auto& r ) {
+   table.update(*itr, payer, [&]( auto& r ) {
       r.id = 100;
    });
 
@@ -370,7 +341,7 @@ void test_multi_index::idx256_general()
       o.sec = fourtytwo;
    });
 
-   const auto* e = table.find( 2 );
+   auto e = table.find( 2 );
 
    print("Items sorted by primary key:\n");
    for( const auto& item : table ) {
@@ -398,7 +369,7 @@ void test_multi_index::idx256_general()
    print("First entry with a secondary key of at least 50 has ID=", lower2->id, ".\n");
    eosio_assert( lower2->id == 2, "idx256_general - lower_bound" );
 
-   if( &*lower2 == e ) {
+   if( table.iterator_to(*lower2) == e ) {
       print("Previously found entry is the same as the one found earlier with a primary key value of 2.\n");
    }
 

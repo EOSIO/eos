@@ -12,7 +12,7 @@ using eosio::const_mem_fun;
 using eosio::price_ratio;
 using eosio::price;
 
-template<account_name ExchangeAccount, symbol_name ExchangeSymbol, 
+template<account_name ExchangeAccount, symbol_name ExchangeSymbol,
          typename BaseCurrency, typename QuoteCurrency>
 class exchange {
    public:
@@ -52,7 +52,7 @@ class exchange {
          uint128_t by_price()const      { return sell_price; }
 
          static uint128_t get_price( BaseTokenType base, QuoteTokenType quote ) {
-            return (uint128_t( precision ) * base.quantity ) / quote.quantity; 
+            return (uint128_t( precision ) * base.quantity ) / quote.quantity;
          }
 
          static uint128_t get_owner_id( account_name owner, uint32_t id ) { return (uint128_t( owner ) << 64) | id; }
@@ -64,14 +64,14 @@ class exchange {
       typedef eosio::multi_index< N(sellbq), limit_base_quote,
               indexed_by< N(price),   const_mem_fun<limit_base_quote, uint128_t, &limit_base_quote::by_price > >,
               indexed_by< N(ownerid), const_mem_fun<limit_base_quote, uint128_t, &limit_base_quote::by_owner_id> >,
-              indexed_by< N(expire),  const_mem_fun<limit_base_quote, uint64_t,  &limit_base_quote::by_expiration> >  
+              indexed_by< N(expire),  const_mem_fun<limit_base_quote, uint64_t,  &limit_base_quote::by_expiration> >
       > limit_base_quote_index;
 
       typedef limit_order<quote_token_type, base_token_type> limit_quote_base;
       typedef eosio::multi_index< N(sellqb), limit_quote_base,
               indexed_by< N(price),   const_mem_fun<limit_quote_base, uint128_t, &limit_quote_base::by_price > >,
               indexed_by< N(ownerid), const_mem_fun<limit_quote_base, uint128_t, &limit_quote_base::by_owner_id> >,
-              indexed_by< N(expire),  const_mem_fun<limit_quote_base, uint64_t,  &limit_quote_base::by_expiration> > 
+              indexed_by< N(expire),  const_mem_fun<limit_quote_base, uint64_t,  &limit_quote_base::by_expiration> >
       > limit_quote_base_index;
 
 
@@ -99,11 +99,11 @@ class exchange {
       void on( const deposit& d ) {
          require_auth( d.from );
 
-         const account* owner = _accounts.find( d.from );
-         if( !owner ) {
-            owner = &_accounts.emplace( d.from, [&]( auto& a ) {
+         auto owner = _accounts.find( d.from );
+         if( owner == _accounts.end() ) {
+            owner = _accounts.iterator_to(_accounts.emplace( d.from, [&]( auto& a ) {
               a.owner = d.from;
-            });
+            }));
          }
 
          switch( d.amount.symbol ) {
@@ -134,8 +134,8 @@ class exchange {
       void on( const withdraw& w ) {
          require_auth( w.to );
 
-         const account* owner = _accounts.find( w.to );
-         eosio_assert( owner != nullptr, "unknown exchange account" );
+         auto owner = _accounts.find( w.to );
+         eosio_assert( owner != _accounts.end(), "unknown exchange account" );
 
          switch( w.amount.symbol ) {
             case base_token_type::symbol:
@@ -166,7 +166,7 @@ class exchange {
          uint32_t     id;
          asset        amount_to_sell;
          bool         fill_or_kill;
-         uint128_t    sell_price; 
+         uint128_t    sell_price;
          uint32_t     expiration;
 
          EOSLIB_SERIALIZE( neworder, (owner)(id)(amount_to_sell)(fill_or_kill)(sell_price)(expiration) )
@@ -203,7 +203,7 @@ class exchange {
 
          EOSLIB_SERIALIZE( cancelorder, (owner)(id) )
       };
-      
+
       void on( const cancelorder& order ) {
          require_auth( order.owner );
 
@@ -216,12 +216,11 @@ class exchange {
 
 
       static void apply( uint64_t code, uint64_t act ) {
-         if( !eosio::dispatch<exchange, 
-                deposit, withdraw, 
+         if( !eosio::dispatch<exchange,
+                deposit, withdraw,
                 neworder, cancelorder
              >( code, act ) ) {
             exchange::exchange_currency::apply( code, act );
          }
       }
 };
-
