@@ -7,6 +7,7 @@
 #include <tuple>
 #include <boost/hana.hpp>
 #include <functional>
+#include <utility>
 #include <type_traits>
 #include <iterator>
 #include <limits>
@@ -134,7 +135,7 @@ class multi_index
          unset_next_primary_key = static_cast<uint64_t>(-1)
       };
 
-      template<uint64_t IndexName, typename Extractor, uint64_t Number>
+      template<uint64_t IndexName, typename Extractor, uint64_t Number, bool IsConst>
       struct index {
          public:
             typedef Extractor  secondary_extractor_type;
@@ -320,6 +321,24 @@ class multi_index
                return {*this, &objitem};
             }
 
+            template<typename Lambda>
+            void update( const_iterator itr, uint64_t payer, Lambda&& updater ) {
+               eosio_assert( itr != end(), "cannot pass end iterator to update" );
+
+               _multidx.update(_multidx.iterator_to(*itr), payer, std::forward<Lambda&&>(updater));
+            }
+
+            const_iterator remove( const_iterator itr ) {
+               eosio_assert( itr != end(), "cannot pass end iterator to remove" );
+
+               auto pk_itr = _multidx.iterator_to(*itr);
+               ++itr;
+
+               _multidx.remove(pk_itr);
+
+               return itr;
+            }
+
             uint64_t get_code()const  { return _multidx.get_code(); }
             uint64_t get_scope()const { return _multidx.get_scope(); }
 
@@ -355,9 +374,11 @@ class multi_index
 
          private:
             friend class multi_index;
-            index( const multi_index& midx ):_multidx(midx){}
 
-            const multi_index& _multidx;
+            index( typename std::conditional<IsConst, const multi_index&, multi_index&>::type midx )
+            :_multidx(midx){}
+
+            typename std::conditional<IsConst, const multi_index&, multi_index&>::type _multidx;
       }; /// struct multi_index::index
 
       template<uint64_t I>
@@ -373,9 +394,12 @@ class multi_index
          return hana::transform( indices_input_type(), [&]( auto&& idx ){
              typedef typename std::decay<decltype(hana::at_c<0>(idx))>::type num_type;
              typedef typename std::decay<decltype(hana::at_c<1>(idx))>::type idx_type;
-             return hana::type_c<index<idx_type::index_name,
-                          typename idx_type::secondary_extractor_type,
-                          num_type::e::value> >;
+             return hana::make_tuple( hana::type_c<index<idx_type::index_name,
+                                                         typename idx_type::secondary_extractor_type,
+                                                         num_type::e::value, false> >,
+                                      hana::type_c<index<idx_type::index_name,
+                                                         typename idx_type::secondary_extractor_type,
+                                                         num_type::e::value, true> > );
 
          });
       }
@@ -413,7 +437,7 @@ class multi_index
 
             i.__primary_itr = itr;
             boost::hana::for_each( _indices, [&]( auto& idx ) {
-               typedef typename decltype(+idx)::type index_type;
+               typedef typename decltype(+hana::at_c<1>(idx))::type index_type;
 
                i.__iters[ index_type::number() ] = -1;
             });
@@ -546,14 +570,25 @@ class multi_index
       }
 
       template<uint64_t IndexName>
-      auto get_index()const  {
+      auto get_index() {
         auto res = boost::hana::find_if( _indices, []( auto&& in ) {
-            return std::integral_constant<bool, std::decay<typename decltype(+in)::type>::type::index_name == IndexName>();
+            return std::integral_constant<bool, std::decay<typename decltype(+hana::at_c<0>(in))::type>::type::index_name == IndexName>();
         });
 
         static_assert( res != hana::nothing, "name provided is not the name of any secondary index within multi_index" );
 
-        return typename decltype(+res.value())::type(*this);
+        return typename decltype(+hana::at_c<0>(res.value()))::type(*this);
+      }
+
+      template<uint64_t IndexName>
+      auto get_index()const {
+        auto res = boost::hana::find_if( _indices, []( auto&& in ) {
+            return std::integral_constant<bool, std::decay<typename decltype(+hana::at_c<1>(in))::type>::type::index_name == IndexName>();
+        });
+
+        static_assert( res != hana::nothing, "name provided is not the name of any secondary index within multi_index" );
+
+        return typename decltype(+hana::at_c<1>(res.value()))::type(*this);
       }
 
       const_iterator iterator_to( const T& obj )const {
@@ -563,8 +598,8 @@ class multi_index
       }
 
       template<typename Lambda>
-      const T& emplace( uint64_t payer, Lambda&& constructor ) {
-         auto  result  = _items_index.emplace( *this, [&]( auto& i ){
+      const_iterator emplace( uint64_t payer, Lambda&& constructor ) {
+         auto result = _items_index.emplace( *this, [&]( auto& i ){
             T& obj = static_cast<T&>(i);
             constructor( obj );
 
@@ -580,25 +615,28 @@ class multi_index
                _next_primary_key = (pk >= no_available_primary_key) ? no_available_primary_key : (pk + 1);
 
             boost::hana::for_each( _indices, [&]( auto& idx ) {
-               typedef typename decltype(+idx)::type index_type;
+               typedef typename decltype(+hana::at_c<0>(idx))::type index_type;
 
                i.__iters[index_type::number()] = index_type::store( _scope, payer, obj );
             });
          });
 
          /// eosio_assert( result.second, "could not insert object, uniqueness constraint in cache violated" )
-         return static_cast<const T&>(*result.first);
+         return {*this, &*result.first};
       }
 
       template<typename Lambda>
-      void update( const T& obj, uint64_t payer, Lambda&& updater ) {
+      void update( const_iterator itr, uint64_t payer, Lambda&& updater ) {
+         eosio_assert( itr != end(), "cannot pass end iterator to update" );
+
+         const auto& obj = *itr;
          const auto& objitem = static_cast<const item&>(obj);
          auto& mutableitem = const_cast<item&>(objitem);
 
          // eosio_assert( &objitem.__idx == this, "invalid object" );
 
          auto secondary_keys = boost::hana::transform( _indices, [&]( auto&& idx ) {
-            typedef typename decltype(+idx)::type index_type;
+            typedef typename decltype(+hana::at_c<0>(idx))::type index_type;
 
             return index_type::extract_secondary_key( obj );
          });
@@ -618,7 +656,7 @@ class multi_index
             _next_primary_key = (pk >= no_available_primary_key) ? no_available_primary_key : (pk + 1);
 
          boost::hana::for_each( _indices, [&]( auto& idx ) {
-            typedef typename decltype(+idx)::type index_type;
+            typedef typename decltype(+hana::at_c<0>(idx))::type index_type;
 
             auto secondary = index_type::extract_secondary_key( obj );
             if( hana::at_c<index_type::index_number>(secondary_keys) != secondary ) {
@@ -650,15 +688,19 @@ class multi_index
          return iterator_to(static_cast<const T&>(i));
       }
 
-      void remove( const T& obj ) {
-         const auto& objitem = static_cast<const item&>(obj);
+      const_iterator remove( const_iterator itr ) {
+         eosio_assert( itr != end(), "cannot pass end iterator to remove" );
+
+         const auto& objitem = static_cast<const item&>(*itr);
          //auto& mutableitem = const_cast<item&>(objitem);
          // eosio_assert( &objitem.__idx == this, "invalid object" );
+
+         ++itr;
 
          db_remove_i64( objitem.__primary_itr );
 
          boost::hana::for_each( _indices, [&]( auto& idx ) {
-            typedef typename decltype(+idx)::type index_type;
+            typedef typename decltype(+hana::at_c<0>(idx))::type index_type;
 
             auto i = objitem.__iters[index_type::number()];
             if( i < 0 ) {
@@ -669,10 +711,12 @@ class multi_index
               index_type::remove( i );
          });
 
-         auto cacheitr = _items_index.find(obj.primary_key());
+         auto cacheitr = _items_index.find(objitem.primary_key());
          if( cacheitr != _items_index.end() )  {
             _items_index.erase(cacheitr);
          }
+
+         return itr;
       }
 
 };

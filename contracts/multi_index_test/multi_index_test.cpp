@@ -56,13 +56,13 @@ struct limit_order {
                      indexed_by< N(byprice), const_mem_fun<limit_order, uint128_t, &limit_order::get_price> >
                      > orders( N(multitest), N(multitest) );
 
-                  const auto& order1 = orders.emplace( payer, [&]( auto& o ) {
+                  orders.emplace( payer, [&]( auto& o ) {
                     o.id = 1;
                     o.expiration = 300;
                     o.owner = N(dan);
                   });
 
-                  const auto& order2 = orders.emplace( payer, [&]( auto& o ) {
+                  auto order2 = orders.emplace( payer, [&]( auto& o ) {
                      o.id = 2;
                      o.expiration = 200;
                      o.owner = N(alice);
@@ -103,17 +103,17 @@ struct limit_order {
                      indexed_by< N(byval), const_mem_fun<test_k256, key256, &test_k256::get_val> >
                   > testtable( N(multitest), N(exchange) ); // Code must be same as the receiver? Scope doesn't have to be.
 
-                  const auto& entry1 = testtable.emplace( payer, [&]( auto& o ) {
+                  testtable.emplace( payer, [&]( auto& o ) {
                      o.id = 1;
                      o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
                   });
 
-                  const auto& entry2 = testtable.emplace( payer, [&]( auto& o ) {
+                  testtable.emplace( payer, [&]( auto& o ) {
                      o.id = 2;
                      o.val = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL);
                   });
 
-                  const auto& entry3 = testtable.emplace( payer, [&]( auto& o ) {
+                  testtable.emplace( payer, [&]( auto& o ) {
                      o.id = 3;
                      o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
                   });
@@ -148,7 +148,7 @@ struct limit_order {
                   print("First entry with a val greater than 42 has ID=", upper->id, ".\n");
 
                   print("Removed entry with ID=", lower1->id, ".\n");
-                  testtable.remove( *lower1 );
+                  validx.remove( lower1 );
 
                   print("Items sorted by primary key:\n");
                   for( const auto& item : testtable ) {

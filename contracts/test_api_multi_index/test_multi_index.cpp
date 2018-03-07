@@ -159,7 +159,7 @@ namespace _test_multi_index {
          auto itr1 = table.find(ssn);
          eosio_assert(itr1 != table.end() && itr1->sec == N(billy), "idx64_general - table.update()");
 
-         table.remove(*itr1);
+         table.remove(itr1);
          auto itr2 = table.find(ssn);
          eosio_assert( itr2 == table.end(), "idx64_general - table.remove()");
       }
@@ -214,7 +214,7 @@ void test_multi_index::idx128_autoincrement_test()
    auto itr = table.find(3);
    eosio_assert( itr != table.end(), "idx128_autoincrement_test - could not find object with primary key of 3" );
 
-   table.update(*itr, payer, [&]( auto& r ) {
+   table.update(itr, payer, [&]( auto& r ) {
       r.id = 100;
    });
 
@@ -242,7 +242,7 @@ void test_multi_index::idx128_autoincrement_test_part1()
       });
    }
 
-   table.remove(table.get(0));
+   table.remove(table.find(0));
 
    uint64_t expected_key = 2;
    for( const auto& r : table.get_index<N(bysecondary)>() )
@@ -300,7 +300,7 @@ void test_multi_index::idx128_autoincrement_test_part2()
    auto itr = table.find(3);
    eosio_assert( itr != table.end(), "idx128_autoincrement_test_part2 - could not find object with primary key of 3" );
 
-   table.update(*itr, payer, [&]( auto& r ) {
+   table.update(itr, payer, [&]( auto& r ) {
       r.id = 100;
    });
 
@@ -326,17 +326,17 @@ void test_multi_index::idx256_general()
    //auto onetwothreefour = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL);
    auto onetwothreefour = key256{std::array<uint32_t, 8>{{0,1, 0,2, 0,3, 0,4}}};
 
-   const auto& entry1 = table.emplace( payer, [&]( auto& o ) {
+   table.emplace( payer, [&]( auto& o ) {
       o.id = 1;
       o.sec = fourtytwo;
    });
 
-   const auto& entry2 = table.emplace( payer, [&]( auto& o ) {
+   table.emplace( payer, [&]( auto& o ) {
       o.id = 2;
       o.sec = onetwothreefour;
    });
 
-   const auto& entry3 = table.emplace( payer, [&]( auto& o ) {
+   table.emplace( payer, [&]( auto& o ) {
       o.id = 3;
       o.sec = fourtytwo;
    });
@@ -396,7 +396,7 @@ void test_multi_index::idx256_general()
    eosio_assert( upper->id == 2, "idx256_general - upper_bound" );
 
    print("Removed entry with ID=", lower1->id, ".\n");
-   table.remove( *lower1 );
+   secidx.remove( lower1 );
 
    print("Items reverse sorted by primary key:\n");
    for( const auto& item : boost::make_iterator_range(table.rbegin(), table.rend()) ) {

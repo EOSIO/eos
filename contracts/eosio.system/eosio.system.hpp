@@ -184,7 +184,7 @@ namespace eosiosystem {
                });
             }
             else {
-               del_index.update( *itr, del.from, [&]( auto& dbo ){
+               del_index.update( itr, del.from, [&]( auto& dbo ){
                   dbo.net_weight = del.stake_net_quantity;
                   dbo.cpu_weight = del.stake_cpu_quantity;
                });
@@ -192,13 +192,13 @@ namespace eosiosystem {
 
             auto tot_itr = total_index.find( del.receiver );
             if( tot_itr == total_index.end() ) {
-               tot_itr = total_index.iterator_to(total_index.emplace( del.from, [&]( auto& tot ) {
+               tot_itr = total_index.emplace( del.from, [&]( auto& tot ) {
                   tot.owner = del.receiver;
                   tot.total_net_weight += del.stake_net_quantity;
                   tot.total_cpu_weight += del.stake_cpu_quantity;
-               }));
+               });
             } else {
-               total_index.update( *tot_itr, 0, [&]( auto& tot ) {
+               total_index.update( tot_itr, 0, [&]( auto& tot ) {
                   tot.total_net_weight += del.stake_net_quantity;
                   tot.total_cpu_weight += del.stake_cpu_quantity;
                });
@@ -229,14 +229,14 @@ namespace eosiosystem {
             eosio_assert( dbw.net_weight >= del.unstake_net_quantity, "insufficient staked net bandwidth" );
             eosio_assert( dbw.cpu_weight >= del.unstake_cpu_quantity, "insufficient staked cpu bandwidth" );
 
-            del_index.update( dbw, del.from, [&]( auto& dbo ){
+            del_index.update( del_index.iterator_to(dbw), del.from, [&]( auto& dbo ){
                dbo.net_weight -= del.unstake_net_quantity;
                dbo.cpu_weight -= del.unstake_cpu_quantity;
 
             });
 
             const auto& totals = total_index.get( del.receiver );
-            total_index.update( totals, 0, [&]( auto& tot ) {
+            total_index.update( total_index.iterator_to(totals), 0, [&]( auto& tot ) {
                tot.total_net_weight -= del.unstake_net_quantity;
                tot.total_cpu_weight -= del.unstake_cpu_quantity;
             });
@@ -295,11 +295,11 @@ namespace eosiosystem {
 
             auto acv = avotes.find( sv.voter );
             if( acv == avotes.end() ) {
-               acv = avotes.iterator_to(avotes.emplace( sv.voter, [&]( auto& av ) {
+               acv = avotes.emplace( sv.voter, [&]( auto& av ) {
                  av.owner = sv.voter;
                  av.last_update = now();
                  av.proxy = 0;
-               }));
+               });
             }
 
             uint128_t old_weight = acv->staked.quantity;
@@ -308,13 +308,13 @@ namespace eosiosystem {
             producer_votes_index_type votes( SystemAccount, SystemAccount );
 
             for( auto p : acv->producers ) {
-               votes.update( votes.get( p ), 0, [&]( auto& v ) {
+               votes.update( votes.find( p ), 0, [&]( auto& v ) {
                   v.total_votes -= old_weight;
                   v.total_votes += new_weight;
                });
             }
 
-            avotes.update( *acv, 0, [&]( auto av ) {
+            avotes.update( acv, 0, [&]( auto av ) {
                av.last_update = now();
                av.staked += sv.amount;
             });
@@ -361,14 +361,14 @@ namespace eosiosystem {
             for( const auto& delta : producer_vote_changes ) {
                if( delta.second.first != delta.second.second ) {
                   const auto& provote = votes.get( delta.first );
-                  votes.update( provote, 0, [&]( auto& pv ){
+                  votes.update( votes.iterator_to(provote), 0, [&]( auto& pv ){
                      pv.total_votes -= delta.second.first;
                      pv.total_votes += delta.second.second;
                   });
                }
             }
 
-            avotes.update( existing, 0, [&]( auto& av ) {
+            avotes.update( avotes.iterator_to(existing), 0, [&]( auto& av ) {
               av.proxy = vp.proxy;
               av.last_update = now();
               av.producers = vp.producers;

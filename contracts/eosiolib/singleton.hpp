@@ -57,7 +57,7 @@ namespace  eosio {
             table t( Code, scope );
             auto itr = t.find( pk_value );
             if( itr != t.end() ) {
-               t.update(*itr, b, [&](row& r) { r.value = value; });
+               t.update(itr, b, [&](row& r) { r.value = value; });
             } else {
                t.emplace(b, [&](row& r) { r.value = value; });
             }
@@ -67,7 +67,7 @@ namespace  eosio {
             table t( Code, scope );
             auto itr = t.find( pk_value );
             if( itr != t.end() ) {
-               t.remove(*itr);
+               t.remove(itr);
             }
          }
    };
