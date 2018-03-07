@@ -4,13 +4,15 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <eos/chain/block_timestamp.hpp>
+#include <eosio/testing/tester.hpp>
+
+#include <eosio/chain/block_timestamp.hpp>
 #include <fc/time.hpp>
 #include <fc/exception/exception.hpp>
 
 using namespace eosio;
 using namespace chain;
-
+using namespace eosio::testing;
 
 
 BOOST_AUTO_TEST_SUITE(block_timestamp_tests)

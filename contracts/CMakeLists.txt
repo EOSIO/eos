@@ -13,6 +13,7 @@ add_subdirectory(identity)
 add_subdirectory(currency)
 add_subdirectory(stltest)
 add_subdirectory(exchange)
+add_subdirectory(testnet.sys)
 
 #add_subdirectory(bancor)
 #add_subdirectory(eosio.system)
