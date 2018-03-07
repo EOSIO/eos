@@ -468,9 +468,9 @@ class privileged_api : public context_aware_api {
       /// TODO: add inline/deferred with support for arbitrary permissions rather than code/current auth
 };
 
-class checktime_api : public context_aware_api {
+class checktime_api : public context_free_api {
 public:
-   using context_aware_api::context_aware_api;
+   using context_free_api::context_free_api;
 
    void checktime(uint32_t instruction_count) {
       context.checktime(instruction_count);
@@ -574,9 +574,9 @@ class string_api : public context_aware_api {
       }
 };
 
-class system_api : public context_aware_api {
+class system_api : public context_free_api {
    public:
-      using context_aware_api::context_aware_api;
+      using context_free_api::context_free_api;
 
       void abort() {
          edump(("abort() called"));
