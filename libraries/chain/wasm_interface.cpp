@@ -12,7 +12,6 @@
 #include <fc/crypto/sha1.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/utf8.hpp>
-
 #include <Runtime/Runtime.h>
 #include "IR/Module.h"
 #include "Platform/Platform.h"

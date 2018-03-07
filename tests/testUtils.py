@@ -1194,6 +1194,7 @@ class Cluster(object):
             Utils.Print("ERROR: Launcher failed to launch.")
             return False
 
+        self.nodes=range(total_nodes) # placeholder for cleanup purposes only
         nodes=self.discoverLocalNodes(total_nodes)
 
         if total_nodes != len(nodes):
