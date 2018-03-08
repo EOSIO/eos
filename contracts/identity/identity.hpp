@@ -155,7 +155,7 @@ namespace identity {
 
             uint64_t primary_key() const { return account; }
 
-            EOSLIB_SERIALIZE( trustrow, (account) );
+            EOSLIB_SERIALIZE( trustrow, (account) )
          };
 
          typedef eosio::multi_index<N(certs), certrow,

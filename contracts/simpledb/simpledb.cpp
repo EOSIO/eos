@@ -35,7 +35,7 @@ namespace simpledb {
       int16_t   i16;
       int8_t    i8;
 
-      EOSLIB_SERIALIZE( record1, (key)(u128)(u64)(u32)(u16)(u8)(i64)(i32)(i16)(i8) );
+      EOSLIB_SERIALIZE( record1, (key)(u128)(u64)(u32)(u16)(u8)(i64)(i32)(i16)(i8) )
    };
 
    //@abi action insert1
@@ -46,7 +46,7 @@ namespace simpledb {
          store_i64( N(simpledb), N(record1), N(simpledb), b.data(), b.size());
       }
 
-      EOSLIB_SERIALIZE( insert_record1, (r1) );
+      EOSLIB_SERIALIZE( insert_record1, (r1) )
    };
 
    //@abi action remove1
@@ -56,7 +56,7 @@ namespace simpledb {
          remove_i64( N(simpledb), N(record1), (char *)this);
       }
 
-      EOSLIB_SERIALIZE( remove_record1, (key) );
+      EOSLIB_SERIALIZE( remove_record1, (key) )
    };
 
    //@abi table
@@ -64,7 +64,7 @@ namespace simpledb {
       uint128_t key1;
       uint128_t key2;
 
-      EOSLIB_SERIALIZE( record2, (key1)(key2) );
+      EOSLIB_SERIALIZE( record2, (key1)(key2) )
    };
 
    //@abi action insert2
@@ -75,7 +75,7 @@ namespace simpledb {
          store_i128i128( N(simpledb), N(record2), N(simpledb), b.data(), b.size());
       }
 
-      EOSLIB_SERIALIZE( insert_record2, (r2) );
+      EOSLIB_SERIALIZE( insert_record2, (r2) )
    };
 
    //@abi action remove2
@@ -86,7 +86,7 @@ namespace simpledb {
          remove_i128i128( N(simpledb), N(record2), b.data());
       }
 
-      EOSLIB_SERIALIZE( remove_record2, (key) );
+      EOSLIB_SERIALIZE( remove_record2, (key) )
    };
 
    //@abi table
@@ -95,7 +95,7 @@ namespace simpledb {
       uint64_t key2;
       uint64_t key3;
 
-      EOSLIB_SERIALIZE( record3, (key1)(key2)(key3) );
+      EOSLIB_SERIALIZE( record3, (key1)(key2)(key3) )
    };
 
    //@abi action insert3
@@ -106,7 +106,7 @@ namespace simpledb {
          store_i128i128( N(simpledb), N(record3), N(simpledb), b.data(), b.size());
       }
 
-      EOSLIB_SERIALIZE( insert_record3, (r3) );
+      EOSLIB_SERIALIZE( insert_record3, (r3) )
    };
 
    //@abi action remove3
@@ -117,7 +117,7 @@ namespace simpledb {
          remove_i64i64i64( N(simpledb), N(record2), b.data());
       }
 
-      EOSLIB_SERIALIZE( remove_record3, (key) );
+      EOSLIB_SERIALIZE( remove_record3, (key) )
    };
 
    //@abi table
@@ -125,7 +125,7 @@ namespace simpledb {
       std::string key;
       std::string value;
 
-      EOSLIB_SERIALIZE( key_value1, (key)(value) );
+      EOSLIB_SERIALIZE( key_value1, (key)(value) )
    };
 
    //@abi action insertkv1
@@ -137,7 +137,7 @@ namespace simpledb {
          // store_str( N(simpledb), N(keyvalue1), N(simpledb), (char *)kv1.key.data(), kv1.key.size(), b.data(), b.size());
       }
 
-      EOSLIB_SERIALIZE( insert_keyvalue1, (kv1) );
+      EOSLIB_SERIALIZE( insert_keyvalue1, (kv1) )
    };
 
    //@abi action removekv1
@@ -148,14 +148,14 @@ namespace simpledb {
          //remove_str( N(simpledb), N(keyvalue1), (char *)key.data(), key.size() );
       }
 
-      EOSLIB_SERIALIZE( remove_keyvalue1, (key) );
+      EOSLIB_SERIALIZE( remove_keyvalue1, (key) )
    };
 
    struct complex_type {
       std::string name;
       uint64_t age;
 
-      EOSLIB_SERIALIZE( complex_type, (name)(age) );
+      EOSLIB_SERIALIZE( complex_type, (name)(age) )
    };
 
    //@abi table
@@ -163,7 +163,7 @@ namespace simpledb {
       std::string key;
       complex_type value;
 
-      EOSLIB_SERIALIZE( key_value2, (key)(value) );
+      EOSLIB_SERIALIZE( key_value2, (key)(value) )
    };
 
    //@abi action insertkv2
@@ -175,7 +175,7 @@ namespace simpledb {
          // store_str( N(simpledb), N(keyvalue2), N(simpledb), (char *)kv2.key.data(), kv2.key.size(), b.data(), b.size());
       }
 
-      EOSLIB_SERIALIZE( insert_keyvalue2, (kv2) );
+      EOSLIB_SERIALIZE( insert_keyvalue2, (kv2) )
    };
 
    //@abi action removekv2
@@ -185,7 +185,7 @@ namespace simpledb {
          remove_str( N(simpledb), N(keyvalue2), (char *)key.data(), key.size() );
       }
 
-      EOSLIB_SERIALIZE( remove_keyvalue2, (key) );
+      EOSLIB_SERIALIZE( remove_keyvalue2, (key) )
    };
 
    template<typename ...Ts>
