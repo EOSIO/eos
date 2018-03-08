@@ -98,10 +98,17 @@ if [ $lines -eq $total_nodes -a $prodsfound -eq 1 ]; then
 fi
 echo ERROR: $lines reports out of $total_nodes and prods = $prodsfound
 programs/launcher/launcher -k 15
-echo =================================================================
-echo Contents of tn_data_00/config.ini:
-cat tn_data_00/config.ini
-echo =================================================================
-echo Contents of tn_data_00/stderr.txt:
-cat tn_data_00/stderr.txt
+
+count=0
+while [ $count -lt $total_nodes ]; do
+    num=$(printf "%02s" $count)
+    echo =================================================================
+    echo Contents of tn_data_${num}/config.ini:
+    cat tn_data_${num}/config.ini
+    echo =================================================================
+    echo Contents of tn_data_${num}/stderr.txt:
+    cat tn_data_${num}/stderr.txt
+    count=`expr $count + 1`
+done
+
 exit 1
