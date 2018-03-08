@@ -495,7 +495,7 @@ struct globaltype {
 struct instr {
    virtual std::string to_string() { return "instr"; }
    virtual uint8_t get_code() = 0;
-   virtual wasm_return_t visit() = 0;
+   virtual void visit() = 0;
    virtual int skip_ahead() = 0;
    virtual uint32_t unpack( code_vector&, uint32_t ) = 0;
 };
@@ -511,13 +511,14 @@ struct memoryoptype {
 
 template <typename ... Mutators>
 struct instr_base : instr {
-   virtual wasm_return_t visit( ) {//code_iterator start, code_iterator end ) {
-      std::vector<uint8_t> ret_vec = {};
+   virtual void visit( ) {//code_iterator start, code_iterator end ) {
+      //std::vector<uint8_t> ret_vec = {};
       for ( auto m : { Mutators::accept... } ) {
-         std::vector<uint8_t> temp = m(this);
-         ret_vec.insert(ret_vec.end(), temp.begin(), temp.end());
+         m(this);
+//         std::vector<uint8_t> temp = m(this);
+ //        ret_vec.insert(ret_vec.end(), temp.begin(), temp.end());
       }
-      return ret_vec;
+//      return ret_vec;
    } 
 };
 /*
@@ -608,113 +609,66 @@ struct op_types {
 /** 
  * Section for cached ops
  */
-//TODO maybe come back to this
+template <class Op_Types>
+class cached_ops {
+#define GEN_FIELD( r, P, OP ) \
+   static std::unique_ptr<typename Op_Types::BOOST_PP_CAT(OP,_t)> BOOST_PP_CAT(P, OP);
+   BOOST_PP_SEQ_FOR_EACH( GEN_FIELD, cached_, WASM_OP_SEQ )
+#undef GEN_FIELD
+
+   static std::vector<instr*> _cached_ops;
+   public:
+   static std::vector<instr*>* get_cached_ops() {
+#define PUSH_BACK_OP( r, T, OP ) \
+         _cached_ops[BOOST_PP_CAT(OP,_code)] = BOOST_PP_CAT(T, OP).get();
+      if ( _cached_ops.empty() ) {
+         // prefill with error
+         for ( int i=0; i < 0xFF; i++ )
+            _cached_ops.push_back( cached_error.get() );
+         BOOST_PP_SEQ_FOR_EACH( PUSH_BACK_OP, cached_ , WASM_OP_SEQ )
+      }
+#undef PUSH_BACK_OP
+      return &_cached_ops;
+   }
+};
+
 #if 0
+#define WASM_CACHED_SEQ
 
+#define PREPEND_CACHED( r, T, OP )  \
+   BOOST_SEQ_PUSH_BACK( WASM_CACHED_SEQ, BOOST_PP_CAT( T, OP ).get() )
 
-// tuple for flattening for "cached" ops
-template <uint8_t OpCode, class Op_Types>
-struct cached_ops_tuple_impl {
-   static constexpr auto value = std::tuple_cat( std::make_tuple( get_error_instr<Op_Types> ), cached_ops_tuple_impl<OpCode+1, Op_Types>::value );
-};
-
-template <class Op_Types>
-struct cached_ops_tuple_impl<0xFF, Op_Types> {
-   static constexpr auto value = std::make_tuple( get_error_instr<Op_Types> ); 
-};
-
-#define GEN_CACHED_OP_SPECIALIZATIONS( r, T, OP )                                               \
-   template <class Op_Types>                                                                    \
-   struct cached_ops_tuple_impl<wasm_ops::BOOST_PP_CAT(OP,_code), Op_Types> {                   \
-      static constexpr auto value = std::tuple_cat( std::make_tuple( 3 ),                            \
-            cached_ops_tuple_impl<BOOST_PP_CAT(OP,_code)+1, Op_Types>::value );                 \
-            };
-         [](){                                                                                  \
-               static auto ptr = std::make_unique<typename Op_Types::BOOST_PP_CAT(OP,_t)>();    \
-               return *ptr;                                                                     \
-            }),                                                                                 \
-            cached_ops_tuple_impl<BOOST_PP_CAT(OP,_code)+1, Op_Types>::value );                 \
-   };
-
-BOOST_PP_SEQ_FOR_EACH( GEN_CACHED_OP_SPECIALIZATIONS, cached_, BOOST_PP_SEQ_REMOVE(WASM_OP_SEQ, 0) )
-#undef GEN_CACHED_OP_SPECIALIZATIONS
-
-template <typename Func, std::size_t N, typename Ops_Tuple, std::size_t... I>
-constexpr auto cached_ops_flatten_impl( const Ops_Tuple& a, std::index_sequence<I...>) { return std::array<Func, N>{ std::get<I>(a)...}; }
-
-template <typename Head, typename... Rest>
-constexpr auto cached_ops_flatten( const std::tuple<Head, Rest...>& ops ) { 
-   constexpr auto N = sizeof...(Rest)+1;
-   return cached_ops_flatten_impl<Head, N, std::tuple<Head, Rest...>>( ops, std::make_index_sequence<N>());
-}
-
-template <class Op_Types>
-constexpr auto  generate_cached_ops() {
-   return cached_ops_flatten( cached_ops_tuple_impl<0x0, Op_Types>::value );
-}
-
-template <class Op_Types>
-instr* get_error_instr() {
-   static auto ptr = std::make_unique<typename Op_Types::error_t>();
-   return *ptr;
-}
-
-template <uint8_t Op_Code, class Op_Types>
-struct op_instr_func {
-   static constexpr auto value = get_error_instr<Op_Types>;
-};
-
-//base case
-template <class Op_Types>
-struct op_instr_func<0xFF, Op_Types> {
-   static constexpr auto value = get_error_instr<Op_Types>;
-};
-
-#define GEN_OP_INSTR_FUNC_SPECIALIZATION( r, T, OP )                                   \
-   template <class Op_Types>                                                           \
-   struct op_instr_func<BOOST_PP_CAT(OP, _code), Op_Types> {                           \
-      static constexpr std::function<instr*()> value = [](){                                              \
-         static auto ptr = std::make_unique<typename Op_Types::BOOST_PP_CAT(OP,_t)>(); \
-         return *ptr;                                                                  \
-      };                                                                               \
-   };
-
-BOOST_PP_SEQ_FOR_EACH( GEN_OP_INSTR_FUNC_SPECIALIZATION, , BOOST_PP_SEQ_REMOVE(WASM_OP_SEQ, 0) )
-#undef GEN_OP_INSTR_FUNC_SPECIALIZATION
+BOOST_PP_SEQ_FOR_EACH( PREPEND_CACHED, cached_, WASM_OP_SEQ )
 #endif
+
+template <class Op_Types>
+std::vector<instr*> cached_ops<Op_Types>::_cached_ops; // = { BOOST_PP_SEQ_ENUM(WASM_CACHED_SEQ) };
+
+#define INIT_FIELD( r, P, OP ) \
+   template <class Op_Types>   \
+   std::unique_ptr<typename Op_Types::BOOST_PP_CAT(OP,_t)> cached_ops<Op_Types>::BOOST_PP_CAT(P, OP) = std::make_unique<typename Op_Types::BOOST_PP_CAT(OP,_t)>();
+   BOOST_PP_SEQ_FOR_EACH( INIT_FIELD, cached_, WASM_OP_SEQ )
 
 template <class Op_Types>
 std::vector<instr*>* get_cached_ops_vec() {
  #define GEN_FIELD( r, P, OP ) \
-   static typename Op_Types::BOOST_PP_CAT(OP,_t) BOOST_PP_CAT(P, OP);
+   static std::unique_ptr<typename Op_Types::BOOST_PP_CAT(OP,_t)> BOOST_PP_CAT(P, OP) = std::make_unique<typename Op_Types::BOOST_PP_CAT(OP,_t)>();
    BOOST_PP_SEQ_FOR_EACH( GEN_FIELD, cached_, WASM_OP_SEQ )
  #undef GEN_FIELD
    static std::vector<instr*> _cached_ops;
 
 #define PUSH_BACK_OP( r, T, OP ) \
-      _cached_ops.push_back( &BOOST_PP_CAT(T, OP) );
+      _cached_ops[BOOST_PP_CAT(OP,_code)] = BOOST_PP_CAT(T, OP).get();
 
    if ( _cached_ops.empty() ) {
+      // prefill with error
+      for ( int i=0; i < 0xFF; i++ )
+         _cached_ops.push_back( cached_error.get() );
       BOOST_PP_SEQ_FOR_EACH( PUSH_BACK_OP, cached_ , WASM_OP_SEQ )
    }
 #undef PUSH_BACK_OP
    return &_cached_ops;
 }
-
-// simple struct to house a set of instaniated ops that we can take the reference from
-template <class Op_Types>
-struct cached_ops {
-   /*
- #define GEN_FIELD( r, P, OP ) \
-   typename Op_Types::BOOST_PP_CAT(OP,_t) BOOST_PP_CAT(P, OP);
-   BOOST_PP_SEQ_FOR_EACH( GEN_FIELD, cached_, WASM_OP_SEQ )
- #undef GEN_FIELD
- */
-   static std::vector<instr*>* cache;
-};
-
-template <class Op_Types>
-std::vector<instr*>* cached_ops<Op_Types>::cache = get_cached_ops_vec<Op_Types>();
 
 // Decodes an operator from an input stream and dispatches by opcode.
 // This code is from wasm-jit/Include/IR/Operators.h
@@ -726,9 +680,7 @@ struct EOSIO_OperatorDecoderStream
 
 	operator bool() const { return nextByte < end; }
 
-			//	IR::OpcodeAndImm<IR::Imm>* encodedOperator = (IR::OpcodeAndImm<IR::Imm>*)nextByte; \//
-	instr* decodeOp()
-	{
+	instr* decodeOp() {
 		assert(nextByte + sizeof(IR::Opcode) <= end);
       IR::Opcode opcode = *(IR::Opcode*)nextByte;
 		switch(opcode)
@@ -737,49 +689,35 @@ struct EOSIO_OperatorDecoderStream
          case IR::Opcode::name: \
 			{ \
 				assert(nextByte + sizeof(IR::OpcodeAndImm<IR::Imm>) <= end); \
+				IR::OpcodeAndImm<IR::Imm>* encodedOperator = (IR::OpcodeAndImm<IR::Imm>*)nextByte; \
 				nextByte += sizeof(IR::OpcodeAndImm<IR::Imm>); \
-            auto op = _cached_ops.cache->at(BOOST_PP_CAT(name, _code)); \
-				return nullptr;  \
+            auto op = _cached_ops->at(BOOST_PP_CAT(name, _code)); \
+				return op;  \
 			}
 		ENUM_OPERATORS(VISIT_OPCODE)
 		#undef VISIT_OPCODE
 		default:
 			nextByte += sizeof(IR::Opcode);
-			return nullptr; // cached_ops[error_code](); 
+			return _cached_ops->at(error_code); 
 		}
 	}
-	instr* decodeOpWithoutConsume()
-	{
+
+	instr* decodeOpWithoutConsume() {
 		const U8* savedNextByte = nextByte;
 		instr* result = decodeOp();
 		nextByte = savedNextByte;
 		return result;
 	}
+
 private:
    // cached ops to take the address of 
-   //static constexpr auto cached_ops = generate_cached_ops<Op_Types>();
-   //static constexpr auto cached_ops = cached_ops_tuple_impl<0x30, Op_Types>::value;
-   static const cached_ops<Op_Types> _cached_ops;
+   static const std::vector<instr*>* _cached_ops;
 	const U8* nextByte;
 	const U8* end;
 };
 
-/*
-// function to dynamically get the instr pointer we want
 template <class Op_Types>
-instr* get_instr_from_op( uint8_t code ) {
-   static cached_ops<Op_Types> _cached_ops;
-
-#define GEN_CASE( r, P, OP )     \
-   case BOOST_PP_CAT(OP, _code): \
-      return &_cached_ops.BOOST_PP_CAT(P, OP);   
-
-   switch ( code ) {
-   BOOST_PP_SEQ_FOR_EACH( GEN_CASE, cached_, WASM_OP_SEQ )
-   }
-#undef GEN_CASE
-}
-*/
+const std::vector<instr*>* EOSIO_OperatorDecoderStream<Op_Types>::_cached_ops = cached_ops<Op_Types>::get_cached_ops();
 
 }}} // namespace eosio, chain, wasm_ops
 

@@ -48,7 +48,7 @@ namespace eosio { namespace chain { namespace wasm_constraints {
    // simple mutator that doesn't actually mutate anything
    // used to verify that a given instruction is valid for execution on our platform
    struct whitelist_validator {
-      static wasm_ops::wasm_return_t accept( wasm_ops::instr* inst ) {
+      static void accept( wasm_ops::instr* inst ) {
          // just pass
       }
    };
@@ -58,7 +58,7 @@ namespace eosio { namespace chain { namespace wasm_constraints {
    };
 
    struct blacklist_validator {
-      static wasm_ops::wasm_return_t accept( wasm_ops::instr* inst ) {
+      static void accept( wasm_ops::instr* inst ) {
          throw wasm_opcode_no_disposition_exception { inst->to_string() };   
       }
    };
@@ -191,7 +191,10 @@ namespace eosio { namespace chain { namespace wasm_constraints {
             for ( const auto& fd : mod.functions.defs ) {
                wasm_ops::EOSIO_OperatorDecoderStream<op_constrainers> decoder(fd.code);
                while ( decoder ) {
-                  decoder.decodeOp()->visit();
+                  auto op = decoder.decodeOp();
+                  std::cout << typeid(*op).name() << "\n";
+                  op->visit();
+                  //std::cout << op << "\n";
                }
             }
          }
