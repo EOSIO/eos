@@ -60,7 +60,7 @@ chain_plugin::~chain_plugin(){}
 void chain_plugin::set_program_options(options_description& cli, options_description& cfg)
 {
    cfg.add_options()
-         ("genesis-json", bpo::value<boost::filesystem::path>(), "File to read Genesis State from")
+         ("genesis-json", bpo::value<bfs::path>()->default_value("genesis.json"), "File to read Genesis State from")
          ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
          ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the block log (absolute path or relative to application data dir)")
@@ -93,7 +93,11 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
    if(options.count("genesis-json")) {
-      my->genesis_file = options.at("genesis-json").as<bfs::path>();
+      auto genesis = options.at("genesis-json").as<bfs::path>();
+      if(genesis.is_relative())
+         my->genesis_file = app().config_dir() / genesis;
+      else
+         my->genesis_file = genesis;
    }
    if(options.count("genesis-timestamp")) {
      string tstr = options.at("genesis-timestamp").as<string>();

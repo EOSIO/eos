@@ -15,7 +15,7 @@ target_link_libraries( debug_node
 install( TARGETS
    debug_node
 
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
+   RUNTIME DESTINATION usr/bin
+   LIBRARY DESTINATION usr/lib
+   ARCHIVE DESTINATION usr/lib
 )
