@@ -60,6 +60,11 @@
 		OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
 	
 		case $OS_NAME in
+			"Linux Mint")
+				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
+				CXX_COMPILER=clang++-4.0
+				C_COMPILER=clang-4.0
+			;;
 			"Ubuntu")
 				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
 				CXX_COMPILER=clang++-4.0
