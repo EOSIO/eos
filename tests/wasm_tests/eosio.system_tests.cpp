@@ -74,7 +74,7 @@ public:
 
    fc::variant get_producer_info( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(producerinfo), act );
-      return abi_ser.binary_to_variant( "eosio_global_state", data );
+      return abi_ser.binary_to_variant( "producer_info", data );
    }
 
    abi_serializer abi_ser;
@@ -545,16 +545,52 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
       ("inflation_rate", 1051)
       ("storage_reserve_ratio", 1005);
 
+   vector<char> key = fc::raw::pack( fc::crypto::public_key( std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV") ) );
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
-                                               ("producer_key", fc::raw::pack( fc::crypto::public_key( std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV") ) ) )
+                                               ("producer_key", key )
                                                ("prefs", params)
                         )
    );
 
    auto info = get_producer_info( "alice" );
-   BOOST_REQUIRE_EQUAL( true, info.is_object() );
-   REQUIRE_EQUAL_OBJECTS( params, info );
+   BOOST_REQUIRE_EQUAL( N(alice), info["owner"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_uint64() );
+   REQUIRE_EQUAL_OBJECTS( params, info["prefs"] );
+   BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(info["packed_key"]) );
+
+
+   //do regproducer again to change parameters
+   fc::variant params2 = mutable_variant_object()
+      ("target_block_size", 1024 * 1024 + 1)
+      ("max_block_size", 10 * 1024 + 1)
+      ("target_block_acts_per_scope", 1002)
+      ("max_block_acts_per_scope", 10002)
+      ("target_block_acts", 1102)
+      ("max_block_acts", 11002)
+      ("max_storage_size", 2002)
+      ("max_transaction_lifetime", 3602)
+      ("max_transaction_exec_time", 9997)
+      ("max_authority_depth", 7)
+      ("max_inline_depth", 5)
+      ("max_inline_action_size", 4095)
+      ("max_generated_transaction_size", 64*1025)
+      ("inflation_rate", 1052)
+      ("storage_reserve_ratio", 1006);
+
+   vector<char> key2 = fc::raw::pack( fc::crypto::public_key( std::string("EOSR16EPHFSKVYHBjQgxVGQPrwCxTg7BbZ69H9i4gztN9deKTEXYne4") ) );
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproducer), mvo()
+                                               ("producer",  "alice")
+                                               ("producer_key", key2 )
+                                               ("prefs", params2)
+                        )
+   );
+
+   info = get_producer_info( "alice" );
+   BOOST_REQUIRE_EQUAL( N(alice), info["owner"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_uint64() );
+   REQUIRE_EQUAL_OBJECTS( params2, info["prefs"] );
+   BOOST_REQUIRE_EQUAL( string(key2.begin(), key2.end()), to_string(info["packed_key"]) );
 
 } FC_LOG_AND_RETHROW()
 

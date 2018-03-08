@@ -43,11 +43,11 @@ namespace eosiosystem {
          static constexpr uint32_t unstake_payments = 26; // during 26 weeks
 
          struct producer_info {
-            account_name      owner;
-            uint64_t          padding = 0;
-            uint128_t         total_votes = 0;
+            account_name     owner;
+            uint64_t         padding = 0;
+            uint128_t        total_votes = 0;
             eosio_parameters prefs;
-            eosio::bytes      packed_key; /// a packed public key object
+            eosio::bytes     packed_key; /// a packed public key object
 
             uint64_t    primary_key()const { return owner;       }
             uint128_t   by_votes()const    { return total_votes; }
@@ -82,8 +82,8 @@ namespace eosiosystem {
          typedef eosio::multi_index< N(voters), voter_info>  voters_table;
 
          ACTION( SystemAccount, regproducer ) {
-            account_name producer;
-            bytes        producer_key;
+            account_name     producer;
+            bytes            producer_key;
             eosio_parameters prefs;
 
             EOSLIB_SERIALIZE( regproducer, (producer)(producer_key)(prefs) )
@@ -106,6 +106,7 @@ namespace eosiosystem {
             if ( prod ) {
                producers_tbl.update( *prod, reg.producer, [&]( producer_info& info ){
                      info.prefs = reg.prefs;
+                     info.packed_key = reg.producer_key;
                   });
             } else {
                producers_tbl.emplace( reg.producer, [&]( producer_info& info ){
@@ -115,6 +116,24 @@ namespace eosiosystem {
                      info.packed_key  = reg.producer_key;
                   });
             }
+         }
+
+         ACTION( SystemAccount, unregproducer ) {
+            account_name producer;
+
+            EOSLIB_SERIALIZE( unregproducer, (producer) )
+         };
+
+         static void on( const unregproducer& unreg ) {
+            require_auth( unreg.producer );
+
+            producers_table producers_tbl( SystemAccount, SystemAccount );
+            const auto* prod = producers_tbl.find( unreg.producer );
+            eosio_assert( bool(prod), "producer not found" );
+
+            producers_tbl.update( *prod, 0, [&]( producer_info& info ){
+                  info.packed_key.clear();
+               });
          }
 
          ACTION( SystemAccount, stakevote ) {
