@@ -649,8 +649,10 @@ class console_api : public context_aware_api {
          context.console_append(fc::variant(v).get_string());
       }
 
-      void printd( wasm_double val ) {
-         context.console_append(val.str());
+      void printd( uint64_t val ) {
+         // QUESTION: Is there a better way to print the Berkeley softfloats than assuming their representation
+         //           is the same as that of the native side double?
+         context.console_append(*(double*)(&val));
       }
 
       void printn(const name& value) {

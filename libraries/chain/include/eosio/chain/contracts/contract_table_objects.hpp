@@ -166,7 +166,9 @@ namespace eosio { namespace chain { namespace contracts {
 
    struct soft_double_less {
       bool operator()( uint64_t a, uint64_t b )const {
-         return f64_lt(ui64_to_f64(a), ui64_to_f64(b));
+         float64_t x; x.v = a;
+         float64_t y; y.v = b;
+         return f64_lt(x, y);
       }
    };
 

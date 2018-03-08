@@ -100,36 +100,36 @@ struct secondary_iterator<double> {
    static int db_idx_end( uint64_t code, uint64_t scope, uint64_t table ) { return db_idx_double_end( code, scope, table ); }
 };
 int db_idx_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, double secondary ) {
-   uint64_t val = *reinterpret_cast<uint64_t*>(&secondary); // Get uint64_t representation of double secondary
+   uint64_t val = *(uint64_t*)(&secondary); // Get uint64_t representation of double secondary
    return db_idx_double_store( scope, table, payer, id, &val );
 }
 void db_idx_update( int iterator, uint64_t payer, double secondary ) {
-   uint64_t val = *reinterpret_cast<uint64_t*>(&secondary); // Get uint64_t representation of double secondary
+   uint64_t val = *(uint64_t*)(&secondary); // Get uint64_t representation of double secondary
    db_idx_double_update( iterator, payer, &val );
 }
 int db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary, double& secondary ) {
    uint64_t val = 0;
    int itr = db_idx_double_find_primary( code, scope, table, &val, primary );
    if( itr >= 0 )
-      secondary = *reinterpret_cast<double*>(&val); // Store double secondary from uint64_t representation stored in val
+      secondary = *(double*)(&val); // Store double secondary from uint64_t representation stored in val
    return itr;
 }
 int db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, double secondary, uint64_t& primary ) {
-   uint64_t val = *reinterpret_cast<uint64_t*>(&secondary);
+   uint64_t val = *(uint64_t*)(&secondary);
    return db_idx_double_find_secondary( code, scope, table, &val, &primary );
 }
 int db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, double& secondary, uint64_t& primary ) {
-   uint64_t val = *reinterpret_cast<uint64_t*>(&secondary); // Get uint64_t representation of double secondary
+   uint64_t val = *(uint64_t*)(&secondary); // Get uint64_t representation of double secondary
    int itr = db_idx_double_lowerbound( code, scope, table, &val, &primary );
    if( itr >= 0 )
-      secondary = *reinterpret_cast<double*>(&val); // Store double secondary from uint64_t representation stored in val
+      secondary = *(double*)(&val); // Store double secondary from uint64_t representation stored in val
    return itr;
 }
 int db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, double& secondary, uint64_t& primary ) {
-   uint64_t val = *reinterpret_cast<uint64_t*>(&secondary); // Get uint64_t representation of double secondary
+   uint64_t val = *(uint64_t*)(&secondary); // Get uint64_t representation of double secondary
    int itr = db_idx_double_upperbound( code, scope, table, &val, &primary );
    if( itr >= 0 )
-      secondary = *reinterpret_cast<double*>(&val); // Store double secondary from uint64_t representation stored in val
+      secondary = *(double*)(&val); // Store double secondary from uint64_t representation stored in val
    return itr;
 }
 

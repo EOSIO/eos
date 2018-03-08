@@ -677,6 +677,7 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, tester) { try {
 	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test_part1", {});
 	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test_part2", {});
 	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx256_general", {});
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx_double_general", {});
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
