@@ -138,10 +138,17 @@ echo ERROR: $lines reports out of $total_nodes and prods = $prodsfound
 cmd="$launcherPath -k 15"
 echo cmd: $cmd
 eval $cmd
-echo =================================================================
-echo Contents of etc/eosio/node_00/config.ini
-cat etc/eosio/node_00/config.ini
-echo =================================================================
-echo Contents of var/lib/node_00/stderr.txt:
-cat var/lib/node_00/stderr.txt
+
+count=0
+while [ $count -lt $total_nodes ]; do
+    num=$(printf "%02s" $count)
+    echo =================================================================
+    echo Contents of etc/eosio/node_${num}/config.ini:
+    cat etc/eosio/node_${num}/config.ini
+    echo =================================================================
+    echo Contents of var/lib/node_${num}/stderr.txt:
+    cat var/lib/node_${num}/stderr.txt
+    count=`expr $count + 1`
+done
+
 exit 1
