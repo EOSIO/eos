@@ -81,7 +81,7 @@ script:
   - ninja -j4
   - tests/eosd_run_test.py --not-noon --host=localhost --port=8888 --dump-error-details
   - tests/eosd_run_remote_test.py --not-noon --dump-error-details
-  - tests/p2p_tests/sync/test.sh -d 1
+  - tests/p2p_tests/sync/test.sh -p 5
   - tests/p2p_tests/sync/test.sh -p 2 -d 10
   - tests/run_tests.sh
   - tests/eosd_run_test.py --not-noon --mongodb --dump-error-details
