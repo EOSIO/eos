@@ -118,13 +118,13 @@ namespace eosiosystem {
             }
          }
 
-         ACTION( SystemAccount, unregproducer ) {
+         ACTION( SystemAccount, unregprod ) {
             account_name producer;
 
-            EOSLIB_SERIALIZE( unregproducer, (producer) )
+            EOSLIB_SERIALIZE( unregprod, (producer) )
          };
 
-         static void on( const unregproducer& unreg ) {
+         static void on( const unregprod& unreg ) {
             require_auth( unreg.producer );
 
             producers_table producers_tbl( SystemAccount, SystemAccount );
@@ -388,12 +388,12 @@ namespace eosiosystem {
                });
          }
 
-         ACTION( SystemAccount, vote_producer ) {
+         ACTION( SystemAccount, voteproducer ) {
             account_name                voter;
             account_name                proxy;
             std::vector<account_name>   producers;
 
-            EOSLIB_SERIALIZE( vote_producer, (voter)(proxy)(producers) )
+            EOSLIB_SERIALIZE( voteproducer, (voter)(proxy)(producers) )
          };
 
          /**
@@ -403,7 +403,7 @@ namespace eosiosystem {
           *  @pre vp.voter must authorize this action
           *  @pre voter must have previously staked some EOS for voting
           */
-         static void on( const vote_producer& vp ) {
+         static void on( const voteproducer& vp ) {
             require_auth( vp.voter );
 
             //validate input

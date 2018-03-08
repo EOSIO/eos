@@ -120,6 +120,12 @@
         {"name":"prefs",        "type":"eosio_parameters"}
       ]
     },{
+      "name": "unregprod",
+      "base": "",
+      "fields": [
+        {"name":"producer",     "type":"account_name"}
+      ]
+    },{
       "name": "stakevote",
       "base": "",
       "fields": [
@@ -166,6 +172,9 @@
     },{
       "name": "regproducer",
       "type": "regproducer"
+    },{
+      "name": "unregprod",
+      "type": "unregprod"
     },{
       "name": "stakevote",
       "type": "stakevote"

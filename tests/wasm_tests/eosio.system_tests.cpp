@@ -58,6 +58,10 @@ public:
          return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : 0 );
    }
 
+   uint32_t last_block_time() const {
+      return time_point_sec( control->head_block_time() ).sec_since_epoch();
+   }
+
    asset get_balance( const account_name& act ) {
       return get_currency_balance( config::system_account_name, symbol(SY(4,EOS)), act );
    }
@@ -457,6 +461,25 @@ void require_simple_voter(const fc::variant& vi) {
    BOOST_REQUIRE_EQUAL( 0, vi["last_unstake"].as_uint64() );
 }
 
+fc::variant simple_voter( account_name acct, uint64_t vote_stake, uint64_t ts ) {
+   return mutable_variant_object()
+      ("owner", acct)
+      ("proxy", name(0).to_string())
+      ("last_update", ts)
+      ("is_proxy", 0)
+      ("staked", vote_stake)
+      ("unstaking", 0)
+      ("unstake_per_week", 0)
+      ("proxied_votes", 0)
+      ("producers", variants() )
+      ("deferred_trx_id", 0)
+      ("last_unstake", 0);
+}
+
+fc::variant simple_voter( account_name acct, const string& vote_stake, uint64_t ts ) {
+   return simple_voter( acct, asset::from_string( vote_stake ).amount, ts);
+}
+
 BOOST_FIXTURE_TEST_CASE( stake_add_more_partial_unstake, eosio_system_tester ) try {
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
 
@@ -519,32 +542,37 @@ BOOST_FIXTURE_TEST_CASE( stake_add_more_partial_unstake, eosio_system_tester ) t
    );
    vi = get_voter_info( "alice" );
    require_simple_voter( vi );
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "alice", "1000.0000 EOS",  last_block_time()), get_voter_info( "alice" ) );
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, vi["staked"].as_uint64() );
    BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
 
 } FC_LOG_AND_RETHROW()
 
 
+static fc::variant producer_parameters_example(int n) {
+   return mutable_variant_object()
+      ("target_block_size", 1024 * 1024 + n)
+      ("max_block_size", 10 * 1024 + n)
+      ("target_block_acts_per_scope", 1000 + n)
+      ("max_block_acts_per_scope", 10000 + n)
+      ("target_block_acts", 1100 + n)
+      ("max_block_acts", 11000 + n)
+      ("max_storage_size", 2000 + n)
+      ("max_transaction_lifetime", 3600 + n)
+      ("max_transaction_exec_time", 9900 + n)
+      ("max_authority_depth", 6 + n)
+      ("max_inline_depth", 4 + n)
+      ("max_inline_action_size", 4096 + n)
+      ("max_generated_transaction_size", 64*1024 + n)
+      ("inflation_rate", 1050 + n)
+      ("storage_reserve_ratio", 100 + n);
+}
+
+
 BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try {
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
 
-   fc::variant params = mutable_variant_object()
-      ("target_block_size", 1024 * 1024)
-      ("max_block_size", 10 * 1024)
-      ("target_block_acts_per_scope", 1001)
-      ("max_block_acts_per_scope", 10001)
-      ("target_block_acts", 1101)
-      ("max_block_acts", 11001)
-      ("max_storage_size", 2001)
-      ("max_transaction_lifetime", 3601)
-      ("max_transaction_exec_time", 9999)
-      ("max_authority_depth", 6)
-      ("max_inline_depth", 4)
-      ("max_inline_action_size", 4096)
-      ("max_generated_transaction_size", 64*1024)
-      ("inflation_rate", 1051)
-      ("storage_reserve_ratio", 1005);
-
+   fc::variant params = producer_parameters_example(1);
    vector<char> key = fc::raw::pack( fc::crypto::public_key( std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV") ) );
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
@@ -560,23 +588,8 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
    BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(info["packed_key"]) );
 
 
-   //do regproducer again to change parameters
-   fc::variant params2 = mutable_variant_object()
-      ("target_block_size", 1024 * 1024 + 1)
-      ("max_block_size", 10 * 1024 + 1)
-      ("target_block_acts_per_scope", 1002)
-      ("max_block_acts_per_scope", 10002)
-      ("target_block_acts", 1102)
-      ("max_block_acts", 11002)
-      ("max_storage_size", 2002)
-      ("max_transaction_lifetime", 3602)
-      ("max_transaction_exec_time", 9997)
-      ("max_authority_depth", 7)
-      ("max_inline_depth", 5)
-      ("max_inline_action_size", 4095)
-      ("max_generated_transaction_size", 64*1025)
-      ("inflation_rate", 1052)
-      ("storage_reserve_ratio", 1006);
+   //call regproducer again to change parameters
+   fc::variant params2 = producer_parameters_example(2);
 
    vector<char> key2 = fc::raw::pack( fc::crypto::public_key( std::string("EOSR16EPHFSKVYHBjQgxVGQPrwCxTg7BbZ69H9i4gztN9deKTEXYne4") ) );
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproducer), mvo()
@@ -591,6 +604,19 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
    BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_uint64() );
    REQUIRE_EQUAL_OBJECTS( params2, info["prefs"] );
    BOOST_REQUIRE_EQUAL( string(key2.begin(), key2.end()), to_string(info["packed_key"]) );
+
+   //unregister producer
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(unregprod), mvo()
+                                               ("producer",  "alice")
+                        )
+   );
+   info = get_producer_info( "alice" );
+   //key should be empty
+   BOOST_REQUIRE_EQUAL( true, to_string(info["packed_key"]).empty() );
+   //everything else should stay the same
+   BOOST_REQUIRE_EQUAL( N(alice), info["owner"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_uint64() );
+   REQUIRE_EQUAL_OBJECTS( params2, info["prefs"] );
 
 } FC_LOG_AND_RETHROW()
 

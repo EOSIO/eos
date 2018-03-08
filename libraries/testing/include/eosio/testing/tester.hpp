@@ -7,9 +7,9 @@
 
 #include <iosfwd>
 
-#define REQUIRE_EQUAL_OBJECTS(a, b) BOOST_REQUIRE_EQUAL( true, a.is_object() ); \
+#define REQUIRE_EQUAL_OBJECTS(left, right) { auto a = left; auto b = right; BOOST_REQUIRE_EQUAL( true, a.is_object() ); \
    BOOST_REQUIRE_EQUAL( true, b.is_object() ); \
-   BOOST_REQUIRE_EQUAL_COLLECTIONS( a.get_object().begin(), a.get_object().end(), b.get_object().begin(), b.get_object().end() );
+   BOOST_REQUIRE_EQUAL_COLLECTIONS( a.get_object().begin(), a.get_object().end(), b.get_object().begin(), b.get_object().end() ); }
 
 std::ostream& operator<<( std::ostream& osm, const fc::variant& v );
 
