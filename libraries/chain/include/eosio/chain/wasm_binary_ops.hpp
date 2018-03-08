@@ -2,6 +2,7 @@
 
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/seq/subseq.hpp>
+#include <boost/preprocessor/seq/remove.hpp>
 #include <fc/reflect/reflect.hpp>
 
 #include <cstdint>
@@ -36,14 +37,9 @@ struct no_param_op {
 struct block_param_op {
 };
 
-      //FC_ASSERT(start <= block.end(), "Error while unpacking code"); 
-
-
 #define CONSTRUCT_OP( r, DATA, OP )                                  \
 template <typename ... Mutators>                                     \
 struct OP : instr_base<Mutators...> {                                \
-   OP() = default;                                                   \
-   OP( char* block ) {}                                              \
    uint8_t code = BOOST_PP_CAT(OP,_code);                            \
    uint8_t get_code() { return BOOST_PP_CAT(OP,_code); }             \
    int skip_ahead() { return sizeof(code); }                         \
@@ -53,15 +49,10 @@ struct OP : instr_base<Mutators...> {                                \
    }                                                                 \
    std::string to_string() { return BOOST_PP_STRINGIZE(OP); }        \
 };
-//   char* unpack( char* block ) { return ++block; }             \
-//   std::vector<char> pack() { return { code }; }                    \
-//};
 
 #define CONSTRUCT_OP_HAS_DATA( r, DATA, OP )                                        \
 template <typename ... Mutators>                                                    \
 struct OP : instr_base<Mutators...> {                                               \
-   OP() = default;                                                                  \
-   OP( char* block ) { code = *((uint8_t*)(block++)); field = *((DATA*)(block)); }  \
    uint8_t code = BOOST_PP_CAT(OP,_code);                                           \
    DATA field;                                                                      \
    uint8_t get_code() { return BOOST_PP_CAT(OP,_code); }                            \
@@ -70,19 +61,8 @@ struct OP : instr_base<Mutators...> {                                           
       field = *((DATA*)(block.data()+start+sizeof(code)));                          \
       return start + skip_ahead();                                                  \
    }                                                                                \
-   std::string to_string() { return BOOST_PP_STRINGIZE(OP); }                                             \
+   std::string to_string() { return BOOST_PP_STRINGIZE(OP); }                       \
 };
-
-
-/*
-   char* unpack( char* block ) { return block + 1 + sizeof(DATA); }                 \
-   std::vector<char> pack() {                                                            \
-      std::vector<char> ret_vec = { code };                                      \
-      std::vector<char> field_vec = fc::raw::pack(field);                        \
-      return ret_vec.insert( ret_vec.end(), field_vec.begin(), field_vec.end() );   \
-   }                                                                                \
-};
-*/
 
 #define WASM_OP_SEQ  (error)        \
                      (end)          \
@@ -615,23 +595,126 @@ struct nop_mutator {
    static wasm_return_t accept( instr* inst ) {}
 };
 
-#define GEN_TYPE( r, T, OP ) \
-   using BOOST_PP_CAT( OP, _t ) = OP < T , BOOST_PP_CAT(T, s) ...>;
-
 // class to inherit from to attach specific mutators and have default behavior for all specified types
 template < typename Mutator = nop_mutator, typename ... Mutators>
 struct op_types {
+#define GEN_TYPE( r, T, OP ) \
+   using BOOST_PP_CAT( OP, _t ) = OP < T , BOOST_PP_CAT(T, s) ...>;
    BOOST_PP_SEQ_FOR_EACH( GEN_TYPE, Mutator, WASM_OP_SEQ )
+#undef GEN_TYPE
 }; // op_types
+
+
+/** 
+ * Section for cached ops
+ */
+//TODO maybe come back to this
+#if 0
+
+
+// tuple for flattening for "cached" ops
+template <uint8_t OpCode, class Op_Types>
+struct cached_ops_tuple_impl {
+   static constexpr auto value = std::tuple_cat( std::make_tuple( get_error_instr<Op_Types> ), cached_ops_tuple_impl<OpCode+1, Op_Types>::value );
+};
+
+template <class Op_Types>
+struct cached_ops_tuple_impl<0xFF, Op_Types> {
+   static constexpr auto value = std::make_tuple( get_error_instr<Op_Types> ); 
+};
+
+#define GEN_CACHED_OP_SPECIALIZATIONS( r, T, OP )                                               \
+   template <class Op_Types>                                                                    \
+   struct cached_ops_tuple_impl<wasm_ops::BOOST_PP_CAT(OP,_code), Op_Types> {                   \
+      static constexpr auto value = std::tuple_cat( std::make_tuple( 3 ),                            \
+            cached_ops_tuple_impl<BOOST_PP_CAT(OP,_code)+1, Op_Types>::value );                 \
+            };
+         [](){                                                                                  \
+               static auto ptr = std::make_unique<typename Op_Types::BOOST_PP_CAT(OP,_t)>();    \
+               return *ptr;                                                                     \
+            }),                                                                                 \
+            cached_ops_tuple_impl<BOOST_PP_CAT(OP,_code)+1, Op_Types>::value );                 \
+   };
+
+BOOST_PP_SEQ_FOR_EACH( GEN_CACHED_OP_SPECIALIZATIONS, cached_, BOOST_PP_SEQ_REMOVE(WASM_OP_SEQ, 0) )
+#undef GEN_CACHED_OP_SPECIALIZATIONS
+
+template <typename Func, std::size_t N, typename Ops_Tuple, std::size_t... I>
+constexpr auto cached_ops_flatten_impl( const Ops_Tuple& a, std::index_sequence<I...>) { return std::array<Func, N>{ std::get<I>(a)...}; }
+
+template <typename Head, typename... Rest>
+constexpr auto cached_ops_flatten( const std::tuple<Head, Rest...>& ops ) { 
+   constexpr auto N = sizeof...(Rest)+1;
+   return cached_ops_flatten_impl<Head, N, std::tuple<Head, Rest...>>( ops, std::make_index_sequence<N>());
+}
+
+template <class Op_Types>
+constexpr auto  generate_cached_ops() {
+   return cached_ops_flatten( cached_ops_tuple_impl<0x0, Op_Types>::value );
+}
+
+template <class Op_Types>
+instr* get_error_instr() {
+   static auto ptr = std::make_unique<typename Op_Types::error_t>();
+   return *ptr;
+}
+
+template <uint8_t Op_Code, class Op_Types>
+struct op_instr_func {
+   static constexpr auto value = get_error_instr<Op_Types>;
+};
+
+//base case
+template <class Op_Types>
+struct op_instr_func<0xFF, Op_Types> {
+   static constexpr auto value = get_error_instr<Op_Types>;
+};
+
+#define GEN_OP_INSTR_FUNC_SPECIALIZATION( r, T, OP )                                   \
+   template <class Op_Types>                                                           \
+   struct op_instr_func<BOOST_PP_CAT(OP, _code), Op_Types> {                           \
+      static constexpr std::function<instr*()> value = [](){                                              \
+         static auto ptr = std::make_unique<typename Op_Types::BOOST_PP_CAT(OP,_t)>(); \
+         return *ptr;                                                                  \
+      };                                                                               \
+   };
+
+BOOST_PP_SEQ_FOR_EACH( GEN_OP_INSTR_FUNC_SPECIALIZATION, , BOOST_PP_SEQ_REMOVE(WASM_OP_SEQ, 0) )
+#undef GEN_OP_INSTR_FUNC_SPECIALIZATION
+#endif
+
+template <class Op_Types>
+std::vector<instr*>* get_cached_ops_vec() {
+ #define GEN_FIELD( r, P, OP ) \
+   static typename Op_Types::BOOST_PP_CAT(OP,_t) BOOST_PP_CAT(P, OP);
+   BOOST_PP_SEQ_FOR_EACH( GEN_FIELD, cached_, WASM_OP_SEQ )
+ #undef GEN_FIELD
+   static std::vector<instr*> _cached_ops;
+
+#define PUSH_BACK_OP( r, T, OP ) \
+      _cached_ops.push_back( &BOOST_PP_CAT(T, OP) );
+
+   if ( _cached_ops.empty() ) {
+      BOOST_PP_SEQ_FOR_EACH( PUSH_BACK_OP, cached_ , WASM_OP_SEQ )
+   }
+#undef PUSH_BACK_OP
+   return &_cached_ops;
+}
 
 // simple struct to house a set of instaniated ops that we can take the reference from
 template <class Op_Types>
 struct cached_ops {
+   /*
  #define GEN_FIELD( r, P, OP ) \
    typename Op_Types::BOOST_PP_CAT(OP,_t) BOOST_PP_CAT(P, OP);
    BOOST_PP_SEQ_FOR_EACH( GEN_FIELD, cached_, WASM_OP_SEQ )
  #undef GEN_FIELD
+ */
+   static std::vector<instr*>* cache;
 };
+
+template <class Op_Types>
+std::vector<instr*>* cached_ops<Op_Types>::cache = get_cached_ops_vec<Op_Types>();
 
 // Decodes an operator from an input stream and dispatches by opcode.
 // This code is from wasm-jit/Include/IR/Operators.h
@@ -643,6 +726,7 @@ struct EOSIO_OperatorDecoderStream
 
 	operator bool() const { return nextByte < end; }
 
+			//	IR::OpcodeAndImm<IR::Imm>* encodedOperator = (IR::OpcodeAndImm<IR::Imm>*)nextByte; \//
 	instr* decodeOp()
 	{
 		assert(nextByte + sizeof(IR::Opcode) <= end);
@@ -653,19 +737,17 @@ struct EOSIO_OperatorDecoderStream
          case IR::Opcode::name: \
 			{ \
 				assert(nextByte + sizeof(IR::OpcodeAndImm<IR::Imm>) <= end); \
-				IR::OpcodeAndImm<IR::Imm>* encodedOperator = (IR::OpcodeAndImm<IR::Imm>*)nextByte; \
 				nextByte += sizeof(IR::OpcodeAndImm<IR::Imm>); \
-            auto op = &_cached_ops.BOOST_PP_CAT(cached_, name); \
-				return op;  \
+            auto op = _cached_ops.cache->at(BOOST_PP_CAT(name, _code)); \
+				return nullptr;  \
 			}
 		ENUM_OPERATORS(VISIT_OPCODE)
 		#undef VISIT_OPCODE
 		default:
 			nextByte += sizeof(IR::Opcode);
-			return &_cached_ops.cached_error; 
+			return nullptr; // cached_ops[error_code](); 
 		}
 	}
-
 	instr* decodeOpWithoutConsume()
 	{
 		const U8* savedNextByte = nextByte;
@@ -673,9 +755,11 @@ struct EOSIO_OperatorDecoderStream
 		nextByte = savedNextByte;
 		return result;
 	}
-
 private:
-   static cached_ops<Op_Types> _cached_ops;
+   // cached ops to take the address of 
+   //static constexpr auto cached_ops = generate_cached_ops<Op_Types>();
+   //static constexpr auto cached_ops = cached_ops_tuple_impl<0x30, Op_Types>::value;
+   static const cached_ops<Op_Types> _cached_ops;
 	const U8* nextByte;
 	const U8* end;
 };
