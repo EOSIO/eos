@@ -68,6 +68,11 @@
 				C_COMPILER=gcc
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 			;;
+			"Linux Mint")
+				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
+				CXX_COMPILER=clang++-4.0
+				C_COMPILER=clang-4.0
+			;;
 			"CentOS Linux")
 				FILE=${WORK_DIR}/scripts/eosio_build_centos.sh
 				export CMAKE=${HOME}/opt/cmake/bin/cmake
