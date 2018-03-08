@@ -335,9 +335,9 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
    if( buffer_size == 0 ) return s;
 
    if( buffer_size < s )
-      memcpy( buffer, trx_meta.context_free_data.data(), buffer_size );
+      memcpy( buffer, trx_meta.context_free_data[index].data(), buffer_size );
    else
-      memcpy( buffer, trx_meta.context_free_data.data(), s );
+      memcpy( buffer, trx_meta.context_free_data[index].data(), s );
 
    return s;
 }
