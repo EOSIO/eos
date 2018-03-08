@@ -20,7 +20,7 @@ void test_types::types_size() {
    eosio_assert( sizeof(token_name) ==  8, "token_name size !=  8");
    eosio_assert( sizeof(table_name) ==  8, "table_name size !=  8");
    eosio_assert( sizeof(time) ==  4, "time size !=  4");
-   eosio_assert( sizeof(key256) == 32, "key256 size != 32" );
+   eosio_assert( sizeof(eosio::key256) == 32, "key256 size != 32" );
 }
 
 void test_types::char_to_symbol() {
@@ -59,7 +59,7 @@ void test_types::char_to_symbol() {
 
    for(unsigned char i = 0; i<255; i++) {
       if((i >= 'a' && i <= 'z') || (i >= '1' || i <= '5')) continue;
-      eosio_assert( eosio::char_to_symbol(i) == 0, "eosio::char_to_symbol() != 0");
+      eosio_assert( eosio::char_to_symbol((char)i) == 0, "eosio::char_to_symbol() != 0");
    }
 }
 
