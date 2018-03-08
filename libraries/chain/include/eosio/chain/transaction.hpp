@@ -148,14 +148,15 @@ namespace eosio { namespace chain {
       signed_transaction() = default;
 //      signed_transaction( const signed_transaction& ) = default;
 //      signed_transaction( signed_transaction&& ) = default;
-      signed_transaction( transaction&& trx, const vector<signature_type>& signatures)
+      signed_transaction( transaction&& trx, const vector<signature_type>& signatures, const vector<bytes>& context_free_data)
       : transaction(std::forward<transaction>(trx))
       , signatures(signatures)
+      , context_free_data(context_free_data)
       {
       }
 
       vector<signature_type>    signatures;
-      vector<vector<char>>      context_free_data; ///< for each context-free action, there is an entry here
+      vector<bytes>             context_free_data; ///< for each context-free action, there is an entry here
 
       const signature_type&     sign(const private_key_type& key, const chain_id_type& chain_id);
       signature_type            sign(const private_key_type& key, const chain_id_type& chain_id)const;
@@ -177,17 +178,20 @@ namespace eosio { namespace chain {
 
       explicit packed_transaction(const signed_transaction& t, compression_type _compression = none)
       :signatures(t.signatures)
+      ,context_free_data(t.context_free_data)
       {
          set_transaction(t, _compression);
       }
 
       explicit packed_transaction(signed_transaction&& t, compression_type _compression = none)
       :signatures(std::move(t.signatures))
+      ,context_free_data(std::move(t.context_free_data))
       {
          set_transaction(t, _compression);
       }
 
       vector<signature_type>    signatures;
+      vector<bytes>             context_free_data;
       compression_type          compression;
       bytes                     data;
 

@@ -212,6 +212,7 @@ namespace impl {
       static void add(mutable_variant_object &out, const char* name, const packed_transaction& ptrx, Resolver resolver) {
          mutable_variant_object mvo;
          mvo("signatures", ptrx.signatures);
+         mvo("context_free_data", ptrx.context_free_data);
          mvo("compression", ptrx.compression);
          mvo("hex_data", ptrx.data);
 
@@ -339,8 +340,10 @@ namespace impl {
       static void extract( const variant& v, packed_transaction& ptrx, Resolver resolver ) {
          const variant_object& vo = v.get_object();
          FC_ASSERT(vo.contains("signatures"));
+         FC_ASSERT(vo.contains("context_free_data"));
          FC_ASSERT(vo.contains("compression"));
          from_variant(vo["signatures"], ptrx.signatures);
+         from_variant(vo["context_free_data"], ptrx.context_free_data);
          from_variant(vo["compression"], ptrx.compression);
 
          if (vo.contains("hex_data") && vo["hex_data"].is_string() && !vo["hex_data"].as_string().empty()) {
