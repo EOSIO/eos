@@ -441,22 +441,28 @@ class Node(object):
         Utils.Print("Publish eosio.system contract")
         trans=self.publishContract(eosio.name, wastFile, abiFile, waitForTransBlock=True)
         if trans is None:
-           Utils.errorExit("Failed to publish oesio.system.")
+           Utils.errorExit("Failed to publish eosio.system.")
 
-        Utils.Print("push issue action to eosio contract")
-        contract=eosio.name
-        action="issue"
-        data="{\"to\":\"eosio\",\"quantity\":\"1000000000.0000 EOS\"}"
-        opts="--permission eosio@active"
-        trans=self.pushMessage(contract, action, data, opts)
-        transId=Node.getTransId(trans[1])
-        self.waitForTransIdOnNode(transId)
-
-        expectedAmount=10000000000000
-        Utils.Print("Verify eosio issue, Expected: %d" % (expectedAmount))
-        actualAmount=self.getAccountBalance(eosio.name)
-        if expectedAmount != actualAmount:
-            Utils.errorExit("Issue verification failed. Excepted %d, actual: %d" % (expectedAmount, actualAmount))
+        oldAmount = 0 # oldamount might not be retrievable
+        while True:
+            Utils.Print("push issue action to eosio contract")
+            contract=eosio.name
+            action="issue"
+            data="{\"to\":\"eosio\",\"quantity\":\"1000000000.0000 EOS\"}"
+            opts="--permission eosio@active"
+            trans=self.pushMessage(contract, action, data, opts)
+            transId=Node.getTransId(trans[1])
+            self.waitForTransIdOnNode(transId)
+            
+            expectedAmount=10000000000000+oldAmount
+            Utils.Print("Verify eosio issue, Expected: %d" % (expectedAmount))
+            actualAmount=self.getAccountBalance(eosio.name)
+            if expectedAmount == actualAmount:
+                break
+            if expectedAmount != actualAmount and oldAmount > 0:
+                Utils.errorExit("Issue verification failed. Excepted %d, actual: %d" % (expectedAmount, actualAmount))
+            oldAmount = actualAmount
+            Utils.Print("Try issue again with oldAmount: %d" % (oldAmount))
 
         initx = copy.copy(Cluster.initaAccount)
         self.createAccount(Cluster.initaAccount, eosio, 0)
@@ -467,6 +473,8 @@ class Node(object):
         for i in range(0, 21):
             initx.name = "init" + chr(ord('a')+i)
             trans = self.transferFunds(eosio, initx, 10000000000, "init")
+            if trans is None:
+                Utils.errorExit("Stop because transferFund to %s failed" % (initx.name))
         transId=Node.getTransId(trans)
         self.waitForTransIdOnNode(transId)
 
