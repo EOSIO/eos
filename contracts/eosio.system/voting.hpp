@@ -38,22 +38,26 @@ namespace eosiosystem {
          using eosio_parameters = typename common<SystemAccount>::eosio_parameters;
          using global_state_singleton = typename common<SystemAccount>::global_state_singleton;
 
+         static const uint32_t max_inflation_rate = common<SystemAccount>::max_inflation_rate;
          static constexpr uint32_t max_unstake_requests = 10;
          static constexpr uint32_t unstake_pay_period = 7*24*3600; // one per week
          static constexpr uint32_t unstake_payments = 26; // during 26 weeks
+         static constexpr uint32_t blocks_per_year = 52*7*24*2*3600; // half seconds per year
 
          struct producer_info {
             account_name      owner;
             uint64_t          padding = 0;
             uint128_t         total_votes = 0;
-            eosio_parameters prefs;
+            eosio_parameters  prefs;
             eosio::bytes      packed_key; /// a packed public key object
+            system_token_type per_block_payments;
+            time              last_produced_block_time = 0;
 
             uint64_t    primary_key()const { return owner;       }
             uint128_t   by_votes()const    { return total_votes; }
             bool active() const { return packed_key.size() == sizeof(public_key); }
 
-            EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(prefs)(packed_key) )
+            EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(prefs)(packed_key)(per_block_payments)(last_produced_block_time) )
          };
 
          typedef eosio::multi_index< N(producervote), producer_info,
@@ -164,9 +168,20 @@ namespace eosiosystem {
             }
          }
 
+         static system_token_type payment_per_block(uint32_t percent_of_max_inflation_rate) {
+            const system_token_type token_supply = currency::get_total_supply();
+            const auto inflation_rate = max_inflation_rate * percent_of_max_inflation_rate;
+            const auto& inflation_ratio = int_logarithm_one_plus(inflation_rate);
+            return (token_supply * inflation_ratio.first) / (inflation_ratio.second * blocks_per_year);
+         }
+
+         static system_token_type daily_producer_payment() {
+            return system_token_type(0);
+         }
+
          static void update_elected_producers() {
             producers_table producers_tbl( SystemAccount, SystemAccount );
-            auto& idx = producers_tbl.template get<>( N(prototalvote) );
+            auto idx = producers_tbl.template get_index<N(prototalvote)>();
 
             std::array<uint32_t, 21> target_block_size;
             std::array<uint32_t, 21> max_block_size;
@@ -181,21 +196,21 @@ namespace eosiosystem {
             std::array<uint16_t, 21> max_inline_depth;
             std::array<uint32_t, 21> max_inline_action_size;
             std::array<uint32_t, 21> max_generated_transaction_size;
-            std::array<uint32_t, 21> inflation_rate;
+            std::array<uint32_t, 21> percent_of_max_inflation_rate;
             std::array<uint32_t, 21> storage_reserve_ratio;
 
             eosio::producer_schedule schedule;
             schedule.producers.reserve(21);
 
-            auto it = std::prev( idx.end() );
+            auto it = idx.end();
+            --it;
             size_t n = 0;
             while ( n < 21 ) {
                if ( it->active() ) {
                   schedule.producers.emplace_back();
                   schedule.producers.back().producer_name = it->owner;
-                  eosio_assert( sizeof(schedule.producers) == it->packed_key.size(), "size mismatch" );
-                  std::copy(it->packed_key.begin(), it->packed_key.end(),
-                            schedule.producers);
+                  eosio_assert( sizeof(schedule.producers.back().block_signing_key) == it->packed_key.size(), "size mismatch" );
+                  std::copy(it->packed_key.begin(), it->packed_key.end(), schedule.producers.back().block_signing_key.data);
 
                   target_block_size[n] = it->prefs.target_block_size;
                   max_block_size[n] = it->prefs.max_block_size;
@@ -215,7 +230,7 @@ namespace eosiosystem {
                   max_generated_transaction_size[n] = it->prefs.max_generated_transaction_size;
 
                   storage_reserve_ratio[n] = it->prefs.storage_reserve_ratio;
-                  inflation_rate[n] = it->prefs.inflation_rate;
+                  percent_of_max_inflation_rate[n] = it->prefs.percent_of_max_inflation_rate;
                   ++n;
                }
 
@@ -245,7 +260,12 @@ namespace eosiosystem {
             parameters.max_inline_action_size = max_inline_action_size[median];
             parameters.max_generated_transaction_size = max_generated_transaction_size[median];
             parameters.storage_reserve_ratio = storage_reserve_ratio[median];
-            parameters.inflation_rate = inflation_rate[median];
+            parameters.percent_of_max_inflation_rate = percent_of_max_inflation_rate[median];
+
+            // derived parameters
+            parameters.payment_per_block = payment_per_block(parameters.percent_of_max_inflation_rate / 2);
+            parameters.payment_to_leaky_bucket = payment_per_block(parameters.percent_of_max_inflation_rate)
+               - parameters.payment_per_block; 
 
             if ( parameters.max_storage_size < parameters.total_storage_bytes_reserved ) {
                parameters.max_storage_size = parameters.total_storage_bytes_reserved;
@@ -522,10 +542,5 @@ namespace eosiosystem {
                });
          }
 
-         struct block {};
-
-         static void on( const block& ) {
-            update_elected_producers();
-         }
    };
 }
