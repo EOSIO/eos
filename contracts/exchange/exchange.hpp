@@ -12,20 +12,87 @@ using eosio::const_mem_fun;
 using eosio::price_ratio;
 using eosio::price;
 
-template<account_name ExchangeAccount, symbol_name ExchangeSymbol,
-         typename BaseCurrency, typename QuoteCurrency>
+
+
+struct extended_asset {
+   account_name issuer;
+   symbol_name  symbol;
+   int64_t      amount = 0; /// balance for purpose of market making
+
+   EOSLIB_SERIALIZE( extended_asset, (issuer)(symbol)(amount) )
+};
+
+struct global_margin_state {
+   extended_asset lent; /// the total quantity of tokens lent for this collateral type.
+   extended_asset collateral; /// lent * call_price => amount of collateral that must be able to buy back lent
+   double         call_price = 0; ///< the least collateralized position
+   uint16_t       interest_rate = 0; ///< annual interest rate as percent where 10000 = 1% and 1 = .00001% 
+
+   EOSLIB_SERIALIZE( global_margin_state, (lent)(collateral)(call_price)(interest_rate) )
+};
+
+struct exchange_state {
+   symbol_name  symbol;
+   int64_t      supply = 0; /// balance for purpose of market making
+
+   struct connector {
+      account_name issuer;
+      symbol_name  symbol;
+      int64_t      balance; /// balance for purpose of market making
+      int64_t      lendable; ///< total funds available for lending
+      int64_t      lent; ///< total actually lent;
+      int64_t      interest_accumulated; ///< total interest accumulated
+      int128_t     interest_shares; ///< total shares in the accumulated interest, works like VSHARES on steem
+   };
+
+   connector base;
+   connector quote;
+   global_margin_state margin_state[6];
+
+   EOSLIB_SERIALIZE( exchange_state, (symbol)(supply)(base)(quote)(margin_state) )
+};
+
+
+/**
+ *  This is used to log transient side effects of temporary conversions
+ */
+struct pending_state : exchange_state 
+{
+   struct balance_key {
+      account_name owner;
+      account_name issuer;
+      symbol_type  symbol;
+
+      friend bool operator < ( const balance_key& a, const balance_key& b ) {
+         return std::tie( a.owner, a.issuer, a.symbol ) < std::tie( b.owner, b.issuer, b.symbol );
+      }
+      friend bool operator == ( const balance_key& a, const balance_key& b ) {
+         return std::tie( a.owner, a.issuer, a.symbol ) == std::tie( b.owner, b.issuer, b.symbol );
+      }
+   };
+
+   asset convert_to_exchange( connector& con, const extended_asset& input );
+   asset convert_from_exchange( connector& con, const extended_asset& input );
+
+   void transfer( account_name user, extended_asset q ) {
+      output[balance_key{user,q.symbol}] += q.amount;
+   }
+
+   map<balance_key, token_type> output; 
+};
+
+
+
+template<account_name ExchangeAccount, symbol_name ExchangeSymbol>
 class exchange {
    public:
       typedef eosio::generic_currency< eosio::token<ExchangeAccount,ExchangeSymbol> > exchange_currency;
 
-      typedef typename BaseCurrency::token_type          base_token_type;
-      typedef typename QuoteCurrency::token_type         quote_token_type;
-      typedef typename exchange_currency::token_type     ex_token_type;
-
       struct account {
          account_name       owner;
-         base_token_type    base_balance;
-         quote_token_type   quote_balance;
+         extended_asset     base_balance;
+         extended_asset     quote_balance;
+         extended_asset     ex_balance;
 
          uint64_t primary_key()const { return owner; }
 

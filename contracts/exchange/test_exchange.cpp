@@ -23,7 +23,7 @@
 using namespace std;
 
 typedef double real_type;
-typedef int64_t token_type;
+typedef double token_type;
 
 
 /*
@@ -59,7 +59,7 @@ Real Abs(Real Nbr)
 template<typename Real>
 Real sqrt_safe( const Real Nbr)
 {
- //  return sqrt(Nbr);
+  return sqrt(Nbr);
 // cout << " " << Nbr << "\n";;
  Real Number = Nbr / Real(2.0);
  const Real Tolerance = Real(double(1.0e-12));
@@ -185,7 +185,6 @@ void  connector::borrow( exchange_state& ex, account_name user,
 */
 
 asset connector::convert_to_exchange( exchange_state& ex, const asset& input ) {
-
    typedef double real_type;
 
    auto real_issued = real_type(ex.supply) * (sqrt_safe( 1.0 + (real_type(input.amount) / (balance.amount+input.amount))) - 1.0);
@@ -198,28 +197,10 @@ asset connector::convert_to_exchange( exchange_state& ex, const asset& input ) {
 }
 
 asset connector::convert_from_exchange( exchange_state& ex, const asset& input ) {
-
-   //typedef boost::multiprecision::int256_t  i256;
-
-   /*
-   typedef __int128_t i256;
-
-   const uint64_t precision = (1ll<<40); //1000*1000*1000ll;
-   i256 in(input.amount);  in *= precision;  /// 53 + 30 => 83
-   auto b = (in / (ex.supply - input.amount)) + precision;  // 83
-
-   b *= b; // 166
-   b /= precision; // 136
-   b -= precision; // 136
-   b *= balance.amount; // 189
-   b /= precision; // 159
-   */
-
    typedef double real_type;
    real_type base = real_type(1.0) + ( real_type(input.amount) / real_type(ex.supply-input.amount));
    auto out = (balance.amount * ( base*base - real_type(1.0) ));//.getDouble();
 
-//   std::cout << "out: " << int64_t(out.getDouble()) << " vs " << int64_t(b) <<"\n";
    ex.supply -= input.amount;
    balance.amount -= token_type(out);
    return asset{ token_type(out), balance.symbol };

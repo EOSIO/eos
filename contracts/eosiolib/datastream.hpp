@@ -7,6 +7,7 @@
 #include <eosiolib/memory.h>
 #include <eosiolib/vector.hpp>
 #include <eosiolib/varint.hpp>
+#include <array>
 #include <string>
 
 
@@ -414,6 +415,21 @@ DataStream& operator >> ( DataStream& ds, std::string& v ) {
       ds >> i;
    return ds;
 }
+
+template<typename DataStream, typename T, std::size_t N>
+DataStream& operator << ( DataStream& ds, const std::array<T,N>& v ) {
+   for( const auto& i : v )
+      ds << i;
+   return ds;
+}
+
+template<typename DataStream, typename T, std::size_t N>
+DataStream& operator >> ( DataStream& ds, std::array<T,N>& v ) {
+   for( auto& i : v )
+      ds >> i;
+   return ds;
+}
+
 
 template<typename DataStream, typename T>
 DataStream& operator << ( DataStream& ds, const vector<T>& v ) {

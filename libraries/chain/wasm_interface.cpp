@@ -1403,6 +1403,7 @@ REGISTER_INTRINSICS(apply_context,
    (require_read_lock,     void(int64_t, int64_t) )
    (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&)const)
+   (has_authorization,     int(int64_t), "has_auth", void(apply_context::*)(const account_name&)const)
    (is_account,            int(int64_t)           )
 );
 
