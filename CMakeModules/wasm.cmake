@@ -190,6 +190,7 @@ macro(add_wast_executable)
 
   set(extra_target_dependency)
 
+
   if ("${ARG_DEBUG_FLAG}" STREQUAL "true")
     # Add debug library for native contract debugging
     if ("${ARG_SOURCE_FILES}" STREQUAL "")
@@ -208,5 +209,9 @@ macro(add_wast_executable)
 
     install( TARGETS ${debug_target} RUNTIME DESTINATION bin LIBRARY DESTINATION lib ARCHIVE DESTINATION lib )
   endif()
+
+  add_test(NAME "validate_${target}_abi"
+           COMMAND ${CMAKE_BINARY_DIR}/scripts/abi_is_json.py ${ABI_FILES})
+
 
 endmacro(add_wast_executable)
