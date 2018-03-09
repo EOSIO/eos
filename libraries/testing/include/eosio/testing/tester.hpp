@@ -1,9 +1,49 @@
 #pragma once
 #include <eosio/chain/chain_controller.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
+#include <fc/io/json.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/test/unit_test.hpp>
 
-#include <iostream>
+#include <iosfwd>
+
+#define REQUIRE_EQUAL_OBJECTS(left, right) { auto a = left; auto b = right; BOOST_REQUIRE_EQUAL( true, a.is_object() ); \
+   BOOST_REQUIRE_EQUAL( true, b.is_object() ); \
+   BOOST_REQUIRE_EQUAL_COLLECTIONS( a.get_object().begin(), a.get_object().end(), b.get_object().begin(), b.get_object().end() ); }
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant& v );
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant_object& v );
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant_object::entry& e );
+
+namespace boost { namespace test_tools { namespace tt_detail {
+
+   template<>
+   struct print_log_value<fc::variant> {
+      void operator()( std::ostream& osm, const fc::variant& v )
+      {
+         ::operator<<( osm, v );
+      }
+   };                       
+
+   template<>
+   struct print_log_value<fc::variant_object> {
+      void operator()( std::ostream& osm, const fc::variant_object& v )
+      {
+         ::operator<<( osm, v );
+      }
+   };
+
+   template<>
+   struct print_log_value<fc::variant_object::entry> {
+      void operator()( std::ostream& osm, const fc::variant_object::entry& e )
+      {
+         ::operator<<( osm, e );
+      }
+   };
+
+} } }
 
 namespace eosio { namespace testing {
 
@@ -72,6 +112,8 @@ namespace eosio { namespace testing {
                                                              const symbol&       asset_symbol,
                                                              const account_name& account ) const;
 
+        vector<char> get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act );
+
         static vector<uint8_t> to_uint8_vector(const string& s);
 
         static vector<uint8_t> to_uint8_vector(uint64_t x);
@@ -128,5 +170,5 @@ namespace eosio { namespace testing {
       string expected;
    };
 
-
 } } /// eosio::testing
+

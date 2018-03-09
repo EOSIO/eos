@@ -58,40 +58,27 @@ public:
          return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : 0 );
    }
 
+   uint32_t last_block_time() const {
+      return time_point_sec( control->head_block_time() ).sec_since_epoch();
+   }
+
    asset get_balance( const account_name& act ) {
       return get_currency_balance( config::system_account_name, symbol(SY(4,EOS)), act );
    }
 
    fc::variant get_total_stake( const account_name& act ) {
-      const auto& db = control->get_database();
-      const auto* t_id = db.find<table_id_object, by_code_scope_table>( boost::make_tuple( config::system_account_name, act, N(totalband) ));
-      FC_ASSERT(t_id != 0, "object not found");
-
-      const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-
-      auto itr = idx.lower_bound( boost::make_tuple( t_id->id, act ));
-      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
-      BOOST_REQUIRE_EQUAL( act.value, itr->primary_key );
-
-      vector<char> data;
-      read_only::copy_inline_row( *itr, data );
+      vector<char> data = get_row_by_account( config::system_account_name, act, N(totalband), act );
       return abi_ser.binary_to_variant( "total_resources", data );
    }
 
    fc::variant get_voter_info( const account_name& act ) {
-      const auto& db = control->get_database();
-      const auto* t_id = db.find<table_id_object, by_code_scope_table>( boost::make_tuple( config::system_account_name, config::system_account_name, N(voters) ));
-      FC_ASSERT(t_id != 0, "object not found");
-
-      const auto& idx = db.get_index<key_value_index, by_scope_primary>();
-
-      auto itr = idx.lower_bound( boost::make_tuple( t_id->id, act ));
-      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
-      BOOST_REQUIRE_EQUAL( act.value, itr->primary_key );
-
-      vector<char> data;
-      read_only::copy_inline_row( *itr, data );
+      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(voters), act );
       return abi_ser.binary_to_variant( "voter_info", data );
+   }
+
+   fc::variant get_producer_info( const account_name& act ) {
+      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(producerinfo), act );
+      return abi_ser.binary_to_variant( "producer_info", data );
    }
 
    abi_serializer abi_ser;
@@ -474,6 +461,25 @@ void require_simple_voter(const fc::variant& vi) {
    BOOST_REQUIRE_EQUAL( 0, vi["last_unstake"].as_uint64() );
 }
 
+fc::variant simple_voter( account_name acct, uint64_t vote_stake, uint64_t ts ) {
+   return mutable_variant_object()
+      ("owner", acct)
+      ("proxy", name(0).to_string())
+      ("last_update", ts)
+      ("is_proxy", 0)
+      ("staked", vote_stake)
+      ("unstaking", 0)
+      ("unstake_per_week", 0)
+      ("proxied_votes", 0)
+      ("producers", variants() )
+      ("deferred_trx_id", 0)
+      ("last_unstake", 0);
+}
+
+fc::variant simple_voter( account_name acct, const string& vote_stake, uint64_t ts ) {
+   return simple_voter( acct, asset::from_string( vote_stake ).amount, ts);
+}
+
 BOOST_FIXTURE_TEST_CASE( stake_add_more_partial_unstake, eosio_system_tester ) try {
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
 
@@ -536,9 +542,122 @@ BOOST_FIXTURE_TEST_CASE( stake_add_more_partial_unstake, eosio_system_tester ) t
    );
    vi = get_voter_info( "alice" );
    require_simple_voter( vi );
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "alice", "1000.0000 EOS",  last_block_time()), get_voter_info( "alice" ) );
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, vi["staked"].as_uint64() );
    BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
 
+} FC_LOG_AND_RETHROW()
+
+
+static fc::variant producer_parameters_example(int n) {
+   return mutable_variant_object()
+      ("target_block_size", 1024 * 1024 + n)
+      ("max_block_size", 10 * 1024 + n)
+      ("target_block_acts_per_scope", 1000 + n)
+      ("max_block_acts_per_scope", 10000 + n)
+      ("target_block_acts", 1100 + n)
+      ("max_block_acts", 11000 + n)
+      ("max_storage_size", 2000 + n)
+      ("max_transaction_lifetime", 3600 + n)
+      ("max_transaction_exec_time", 9900 + n)
+      ("max_authority_depth", 6 + n)
+      ("max_inline_depth", 4 + n)
+      ("max_inline_action_size", 4096 + n)
+      ("max_generated_transaction_size", 64*1024 + n)
+      ("inflation_rate", 1050 + n)
+      ("storage_reserve_ratio", 100 + n);
+}
+
+
+BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try {
+   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+
+   fc::variant params = producer_parameters_example(1);
+   vector<char> key = fc::raw::pack( fc::crypto::public_key( std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV") ) );
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproducer), mvo()
+                                               ("producer",  "alice")
+                                               ("producer_key", key )
+                                               ("prefs", params)
+                        )
+   );
+
+   auto info = get_producer_info( "alice" );
+   BOOST_REQUIRE_EQUAL( N(alice), info["owner"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_uint64() );
+   REQUIRE_EQUAL_OBJECTS( params, info["prefs"] );
+   BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(info["packed_key"]) );
+
+
+   //call regproducer again to change parameters
+   fc::variant params2 = producer_parameters_example(2);
+
+   vector<char> key2 = fc::raw::pack( fc::crypto::public_key( std::string("EOSR16EPHFSKVYHBjQgxVGQPrwCxTg7BbZ69H9i4gztN9deKTEXYne4") ) );
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproducer), mvo()
+                                               ("producer",  "alice")
+                                               ("producer_key", key2 )
+                                               ("prefs", params2)
+                        )
+   );
+
+   info = get_producer_info( "alice" );
+   BOOST_REQUIRE_EQUAL( N(alice), info["owner"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_uint64() );
+   REQUIRE_EQUAL_OBJECTS( params2, info["prefs"] );
+   BOOST_REQUIRE_EQUAL( string(key2.begin(), key2.end()), to_string(info["packed_key"]) );
+
+   //unregister producer
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(unregprod), mvo()
+                                               ("producer",  "alice")
+                        )
+   );
+   info = get_producer_info( "alice" );
+   //key should be empty
+   BOOST_REQUIRE_EQUAL( true, to_string(info["packed_key"]).empty() );
+   //everything else should stay the same
+   BOOST_REQUIRE_EQUAL( N(alice), info["owner"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_uint64() );
+   REQUIRE_EQUAL_OBJECTS( params2, info["prefs"] );
+
+} FC_LOG_AND_RETHROW()
+
+
+BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
+   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+   fc::variant params = producer_parameters_example(1);
+   vector<char> key = fc::raw::pack( fc::crypto::public_key( std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV") ) );
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproducer), mvo()
+                                               ("producer",  "alice")
+                                               ("producer_key", key )
+                                               ("prefs", params)
+                        )
+   );
+   auto prod_initial = get_producer_info( "alice" );
+   BOOST_REQUIRE_EQUAL( 0, prod_initial["total_votes"].as_uint64() );
+   REQUIRE_EQUAL_OBJECTS( params, prod_initial["prefs"]);
+
+   issue( "bob", "2000.0000 EOS",  config::system_account_name );
+   issue( "carol", "3000.0000 EOS",  config::system_account_name );
+
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(bob), N(stakevote), mvo()
+                                               ("voter",  "bob")
+                                               ("amount", "11.1111 EOS")
+                        )
+   );
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "bob", "11.1111 EOS",  last_block_time() ), get_voter_info( "bob" ) );
+
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(bob), N(voteproducer), mvo()
+                                               ("voter",  "bob")
+                                               ("proxy", name(0).to_string() )
+                                               ("producers", vector<account_name>() )
+                        )
+   );
+   /*
+   auto prod_after_vote = get_producer_info( "alice" );
+   BOOST_REQUIRE_EQUAL( 111111, prod_initial["total_votes"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( prod_initial["owner"].as_uint64(), prod_after_vote["owner"].as_uint64() );
+   REQUIRE_EQUAL_OBJECTS( prod_initial["prefs"], prod_after_vote["prefs"]);
+   BOOST_REQUIRE_EQUAL( to_string(prod_initial["packed_key"]), to_string(prod_after_vote["packed_key"]) );
+   */
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()

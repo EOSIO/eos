@@ -24,7 +24,7 @@ using uint64    = uint_t<64>;
 using fixed_string32 = fc::fixed_string<fc::array<uint64,4>>;
 using fixed_string16 = fc::fixed_string<>;
 using type_name      = fixed_string32;
-using field_name     = fixed_string16;
+using field_name     = fixed_string32;
 using table_name     = name;
 using action_name    = eosio::chain::action_name;
 

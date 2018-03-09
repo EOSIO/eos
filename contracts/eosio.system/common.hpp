@@ -40,8 +40,8 @@ namespace eosiosystem {
             uint64_t total_storage_bytes_reserved = 0;
             system_token_type total_storage_stake;
 
-            EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_storage_bytes_reserved)(total_storage_stake) )
-         };
+            EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (inflation_rate)(storage_reserve_ratio) )
+      };
 
          typedef eosio::singleton<SystemAccount, N(inflation), SystemAccount, eosio_global_state> global_state_singleton;
 

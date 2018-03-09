@@ -748,30 +748,27 @@ string      format_string( const string& format, const variant_object& args )
    void to_variant( unsigned long long int s, variant& v ) { v = variant( uint64_t(s)); }
    #endif
 
-   variant operator == ( const variant& a, const variant& b )
+   bool operator == ( const variant& a, const variant& b )
    {
       if( a.is_string()  || b.is_string() ) return a.as_string() == b.as_string();
       if( a.is_double()  || b.is_double() ) return a.as_double() == b.as_double();
       if( a.is_int64()   || b.is_int64() )  return a.as_int64() == b.as_int64();
       if( a.is_uint64()  || b.is_uint64() ) return a.as_uint64() == b.as_uint64();
+      if( a.is_array()   || b.is_array() )  return a.get_array() == b.get_array();
       return false;
    }
 
-   variant operator != ( const variant& a, const variant& b )
+   bool operator != ( const variant& a, const variant& b )
    {
-      if( a.is_string()  || b.is_string() ) return a.as_string() != b.as_string();
-      if( a.is_double()  || b.is_double() ) return a.as_double() != b.as_double();
-      if( a.is_int64()   || b.is_int64() )  return a.as_int64() != b.as_int64();
-      if( a.is_uint64()  || b.is_uint64() ) return a.as_uint64() != b.as_uint64();
-      return false;
+      return !( a == b );
    }
 
-   variant operator ! ( const variant& a )
+   bool operator ! ( const variant& a )
    {
       return !a.as_bool();
    }
 
-   variant operator < ( const variant& a, const variant& b )
+   bool operator < ( const variant& a, const variant& b )
    {
       if( a.is_string()  || b.is_string() ) return a.as_string() < b.as_string();
       if( a.is_double()  || b.is_double() ) return a.as_double() < b.as_double();
@@ -780,7 +777,7 @@ string      format_string( const string& format, const variant_object& args )
       FC_ASSERT( false, "Invalid operation" );
    }
 
-   variant operator > ( const variant& a, const variant& b )
+   bool operator > ( const variant& a, const variant& b )
    {
       if( a.is_string()  || b.is_string() ) return a.as_string() > b.as_string();
       if( a.is_double()  || b.is_double() ) return a.as_double() > b.as_double();
@@ -789,7 +786,7 @@ string      format_string( const string& format, const variant_object& args )
       FC_ASSERT( false, "Invalid operation" );
    }
 
-   variant operator <= ( const variant& a, const variant& b )
+   bool operator <= ( const variant& a, const variant& b )
    {
       if( a.is_string()  || b.is_string() ) return a.as_string() <= b.as_string();
       if( a.is_double()  || b.is_double() ) return a.as_double() <= b.as_double();

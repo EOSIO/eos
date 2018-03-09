@@ -37,6 +37,13 @@ namespace fc
          void  set( variant v );
 
          variant&       value();
+
+         friend bool operator == (const entry& a, const entry& b) {
+            return a._key == b._key && a._value == b._value;
+         }
+         friend bool operator != (const entry& a, const entry& b) {
+            return !(a == b);
+         }
              
       private:
          string  _key;
