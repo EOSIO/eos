@@ -25,11 +25,42 @@ using namespace chain::contracts;
 
 BOOST_AUTO_TEST_SUITE(abi_tests)
 
-fc::variant verify_round_trip_conversion( const abi_serializer& abis, const type_name& type, const fc::variant& var )
+// verify that round trip conversion, via bytes, reproduces the exact same data
+fc::variant verify_byte_round_trip_conversion( const abi_serializer& abis, const type_name& type, const fc::variant& var )
 {
    auto bytes = abis.variant_to_binary(type, var);
 
    auto var2 = abis.binary_to_variant(type, bytes);
+
+   std::string r = fc::json::to_string(var2);
+
+   std::cout << r << std::endl;
+
+   auto bytes2 = abis.variant_to_binary(type, var2);
+
+   BOOST_TEST( fc::to_hex(bytes) == fc::to_hex(bytes2) );
+
+   return var2;
+}
+
+auto get_resolver(const contracts::abi_def& abi = contracts::abi_def())
+{
+   return [&abi](const account_name &name) -> optional<contracts::abi_serializer> {
+      return abi_serializer(chain_initializer::eos_contract_abi(abi));
+   };
+}
+
+// verify that round trip conversion, via actual class, reproduces the exact same data
+template<typename T>
+fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const type_name& type, const fc::variant& var )
+{
+   auto bytes = abis.variant_to_binary(type, var);
+
+   T obj;
+   abi_serializer::from_variant(var, obj, get_resolver());
+
+   fc::variant var2;
+   abi_serializer::to_variant(obj, var2, get_resolver());
 
    std::string r = fc::json::to_string(var2);
 
@@ -352,7 +383,7 @@ BOOST_AUTO_TEST_CASE(uint_types)
 
 
    auto var = fc::json::from_string(test_data);
-   verify_round_trip_conversion(abi, "transfer", var);
+   verify_byte_round_trip_conversion(abi, "transfer", var);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -1820,7 +1851,7 @@ BOOST_AUTO_TEST_CASE(general)
    )=====";
 
    auto var = fc::json::from_string(my_other);
-   verify_round_trip_conversion(abi, "A", var);
+   verify_byte_round_trip_conversion(abi, "A", var);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -1898,12 +1929,14 @@ BOOST_AUTO_TEST_CASE(linkauth)
    BOOST_TEST("lnkauth.type" == linkauth.type);
    BOOST_TEST("lnkauth.rqm" == linkauth.requirement);
 
-   auto var2 = verify_round_trip_conversion( abis, "linkauth", var );
+   auto var2 = verify_byte_round_trip_conversion( abis, "linkauth", var );
    auto linkauth2 = var2.as<contracts::linkauth>();
    BOOST_TEST(linkauth.account == linkauth2.account);
    BOOST_TEST(linkauth.code == linkauth2.code);
    BOOST_TEST(linkauth.type == linkauth2.type);
    BOOST_TEST(linkauth.requirement == linkauth2.requirement);
+
+   verify_type_round_trip_conversion<contracts::linkauth>( abis, "linkauth", var);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -1928,11 +1961,13 @@ BOOST_AUTO_TEST_CASE(unlinkauth)
    BOOST_TEST("lnkauth.code" == unlinkauth.code);
    BOOST_TEST("lnkauth.type" == unlinkauth.type);
 
-   auto var2 = verify_round_trip_conversion( abis, "unlinkauth", var );
+   auto var2 = verify_byte_round_trip_conversion( abis, "unlinkauth", var );
    auto unlinkauth2 = var2.as<contracts::unlinkauth>();
    BOOST_TEST(unlinkauth.account == unlinkauth2.account);
    BOOST_TEST(unlinkauth.code == unlinkauth2.code);
    BOOST_TEST(unlinkauth.type == unlinkauth2.type);
+
+   verify_type_round_trip_conversion<contracts::unlinkauth>( abis, "unlinkauth", var);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -1979,7 +2014,7 @@ BOOST_AUTO_TEST_CASE(updateauth)
    BOOST_TEST("prm.prm2" == updateauth.data.accounts[1].permission.permission);
    BOOST_TEST(53405u == updateauth.data.accounts[1].weight);
 
-   auto var2 = verify_round_trip_conversion( abis, "updateauth", var );
+   auto var2 = verify_byte_round_trip_conversion( abis, "updateauth", var );
    auto updateauth2 = var2.as<contracts::updateauth>();
    BOOST_TEST(updateauth.account == updateauth2.account);
    BOOST_TEST(updateauth.permission == updateauth2.permission);
@@ -2000,6 +2035,8 @@ BOOST_AUTO_TEST_CASE(updateauth)
    BOOST_TEST(updateauth.data.accounts[1].permission.actor == updateauth2.data.accounts[1].permission.actor);
    BOOST_TEST(updateauth.data.accounts[1].permission.permission == updateauth2.data.accounts[1].permission.permission);
    BOOST_TEST(updateauth.data.accounts[1].weight == updateauth2.data.accounts[1].weight);
+
+   verify_type_round_trip_conversion<contracts::updateauth>( abis, "updateauth", var);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -2022,10 +2059,12 @@ BOOST_AUTO_TEST_CASE(deleteauth)
    BOOST_TEST("delauth.acct" == deleteauth.account);
    BOOST_TEST("delauth.prm" == deleteauth.permission);
 
-   auto var2 = verify_round_trip_conversion( abis, "deleteauth", var );
+   auto var2 = verify_byte_round_trip_conversion( abis, "deleteauth", var );
    auto deleteauth2 = var2.as<contracts::deleteauth>();
    BOOST_TEST(deleteauth.account == deleteauth2.account);
    BOOST_TEST(deleteauth.permission == deleteauth2.permission);
+
+   verify_type_round_trip_conversion<contracts::deleteauth>( abis, "deleteauth", var);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -2117,7 +2156,7 @@ BOOST_AUTO_TEST_CASE(newaccount)
    BOOST_TEST("prm.prm2" == newaccount.recovery.accounts[1].permission.permission);
    BOOST_TEST(53405u == newaccount.recovery.accounts[1].weight);
 
-   auto var2 = verify_round_trip_conversion( abis, "newaccount", var );
+   auto var2 = verify_byte_round_trip_conversion( abis, "newaccount", var );
    auto newaccount2 = var2.as<contracts::newaccount>();
    BOOST_TEST(newaccount.creator == newaccount2.creator);
    BOOST_TEST(newaccount.name == newaccount2.name);
@@ -2170,6 +2209,8 @@ BOOST_AUTO_TEST_CASE(newaccount)
    BOOST_TEST(newaccount.recovery.accounts[1].permission.permission == newaccount2.recovery.accounts[1].permission.permission);
    BOOST_TEST(newaccount.recovery.accounts[1].weight == newaccount2.recovery.accounts[1].weight);
 
+   verify_type_round_trip_conversion<contracts::newaccount>( abis, "newaccount", var);
+
 } FC_LOG_AND_RETHROW() }
 
 
@@ -2195,12 +2236,14 @@ BOOST_AUTO_TEST_CASE(setcode)
    BOOST_TEST(0 == setcode.vmversion);
    BOOST_TEST("0061736d0100000001390a60037e7e7f017f60047e7e7f7f017f60017e0060057e7e7e7f7f" == fc::to_hex(setcode.code.data(), setcode.code.size()));
 
-   auto var2 = verify_round_trip_conversion( abis, "setcode", var );
+   auto var2 = verify_byte_round_trip_conversion( abis, "setcode", var );
    auto setcode2 = var2.as<contracts::setcode>();
    BOOST_TEST(setcode.account == setcode2.account);
    BOOST_TEST(setcode.vmtype == setcode2.vmtype);
    BOOST_TEST(setcode.vmversion == setcode2.vmversion);
    BOOST_TEST(setcode.code == setcode2.code);
+
+   verify_type_round_trip_conversion<contracts::setcode>( abis, "setcode", var);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -2316,7 +2359,7 @@ BOOST_AUTO_TEST_CASE(setabi)
    BOOST_TEST_REQUIRE(1 == setabi.abi.tables[0].key_types.size());
    BOOST_TEST("name" == setabi.abi.tables[0].key_types[0]);
 
-   auto var2 = verify_round_trip_conversion( abis, "setabi", var );
+   auto var2 = verify_byte_round_trip_conversion( abis, "setabi", var );
    auto setabi2 = var2.as<contracts::setabi>();
 
    BOOST_TEST(setabi.account == setabi2.account);
@@ -2365,6 +2408,8 @@ BOOST_AUTO_TEST_CASE(setabi)
    BOOST_TEST_REQUIRE(setabi.abi.tables[0].key_types.size() == setabi2.abi.tables[0].key_types.size());
    BOOST_TEST(setabi.abi.tables[0].key_types[0] == setabi2.abi.tables[0].key_types[0]);
 
+   verify_type_round_trip_conversion<contracts::setabi>( abis, "setabi", var);
+
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(postrecovery)
@@ -2400,7 +2445,7 @@ BOOST_AUTO_TEST_CASE(postrecovery)
    BOOST_TEST(57005u == postrecovery.data.accounts[0].weight);
    BOOST_TEST("postrec.memo" == postrecovery.memo);
 
-   auto var2 = verify_round_trip_conversion( abis, "postrecovery", var );
+   auto var2 = verify_byte_round_trip_conversion( abis, "postrecovery", var );
    auto postrecovery2 = var2.as<contracts::postrecovery>();
    BOOST_TEST(postrecovery.account == postrecovery2.account);
    BOOST_TEST(postrecovery.data.threshold == postrecovery2.data.threshold);
@@ -2414,6 +2459,8 @@ BOOST_AUTO_TEST_CASE(postrecovery)
    BOOST_TEST(postrecovery.data.accounts[0].permission.permission == postrecovery2.data.accounts[0].permission.permission);
    BOOST_TEST(postrecovery.data.accounts[0].weight == postrecovery2.data.accounts[0].weight);
    BOOST_TEST(postrecovery.memo == postrecovery2.memo);
+
+   verify_type_round_trip_conversion<contracts::postrecovery>( abis, "postrecovery", var);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -2433,9 +2480,11 @@ BOOST_AUTO_TEST_CASE(passrecovery)
    auto passrecovery = var.as<contracts::passrecovery>();
    BOOST_TEST("passrec.acc" == passrecovery.account);
 
-   auto var2 = verify_round_trip_conversion( abis, "passrecovery", var );
+   auto var2 = verify_byte_round_trip_conversion( abis, "passrecovery", var );
    auto passrecovery2 = var2.as<contracts::passrecovery>();
    BOOST_TEST(passrecovery.account == passrecovery2.account);
+
+   verify_type_round_trip_conversion<contracts::passrecovery>( abis, "passrecovery", var);
 
 } FC_LOG_AND_RETHROW() }
 
@@ -2455,10 +2504,180 @@ BOOST_AUTO_TEST_CASE(vetorecovery)
    auto vetorecovery = var.as<contracts::vetorecovery>();
    BOOST_TEST("vetorec.acc" == vetorecovery.account);
 
-   auto var2 = verify_round_trip_conversion( abis, "vetorecovery", var );
+   auto var2 = verify_byte_round_trip_conversion( abis, "vetorecovery", var );
    auto vetorecovery2 = var2.as<contracts::vetorecovery>();
    BOOST_TEST(vetorecovery.account == vetorecovery2.account);
 
+   verify_type_round_trip_conversion<contracts::vetorecovery>( abis, "vetorecovery", var);
+
+} FC_LOG_AND_RETHROW() }
+
+struct action1 {
+   action1() = default;
+   action1(uint64_t b1, uint32_t b2, uint8_t b3) : blah1(b1), blah2(b2), blah3(b3) {}
+   uint64_t blah1;
+   uint32_t blah2;
+   uint8_t blah3;
+   static account_name get_account() { return N(acount1); }
+   static account_name get_name() { return N(action1); }
+
+   template<typename Stream>
+   friend Stream& operator<<( Stream& ds, const action1& act ) {
+     ds << act.blah1 << act.blah2 << act.blah3;
+     return ds;
+   }
+
+   template<typename Stream>
+   friend Stream& operator>>( Stream& ds, action1& act ) {
+      ds >> act.blah1 >> act.blah2 >> act.blah3;
+     return ds;
+   }
+};
+
+struct action2 {
+   action2() = default;
+   action2(uint32_t b1, uint64_t b2, uint8_t b3) : blah1(b1), blah2(b2), blah3(b3) {}
+   uint32_t blah1;
+   uint64_t blah2;
+   uint8_t blah3;
+   static account_name get_account() { return N(acount2); }
+   static account_name get_name() { return N(action2); }
+
+   template<typename Stream>
+   friend Stream& operator<<( Stream& ds, const action2& act ) {
+     ds << act.blah1 << act.blah2 << act.blah3;
+     return ds;
+   }
+
+   template<typename Stream>
+   friend Stream& operator>>( Stream& ds, action2& act ) {
+      ds >> act.blah1 >> act.blah2 >> act.blah3;
+     return ds;
+   }
+};
+
+template<typename T>
+void verify_action_equal(const chain::action& exp, const chain::action& act)
+{
+   BOOST_REQUIRE_EQUAL((std::string)exp.account, (std::string)act.account);
+   BOOST_REQUIRE_EQUAL((std::string)exp.name, (std::string)act.name);
+   BOOST_REQUIRE_EQUAL(exp.authorization.size(), act.authorization.size());
+   for(unsigned int i = 0; i < exp.authorization.size(); ++i)
+   {
+      BOOST_REQUIRE_EQUAL((std::string)exp.authorization[i].actor, (std::string)act.authorization[i].actor);
+      BOOST_REQUIRE_EQUAL((std::string)exp.authorization[i].permission, (std::string)act.authorization[i].permission);
+   }
+   BOOST_REQUIRE_EQUAL(exp.data.size(), act.data.size());
+   BOOST_REQUIRE(!memcmp(exp.data.data(), act.data.data(), exp.data.size()));
+}
+
+// This test causes the pack logic performed using the FC_REFLECT defined packing (because of
+// packed_transaction::data), to be combined with the unpack logic performed using the abi_serializer,
+// and thus the abi_def for non-built-in-types.  This test will expose if any of the transaction and
+// its sub-types have different packing/unpacking orders in FC_REFLECT vs. their abi_def
+BOOST_AUTO_TEST_CASE(packed_transaction)
+{ try {
+
+   chain::transaction txn;
+   txn.ref_block_num = 1;
+   txn.ref_block_prefix = 2;
+   txn.expiration.from_iso_string("2021-12-20T15:30");
+   txn.region = 1;
+   txn.context_free_actions.emplace_back(
+         vector<permission_level>{{N(testapi1), config::active_name}},
+         action1{ 3, 17, (uint8_t)5});
+   txn.context_free_actions.emplace_back(
+         vector<permission_level>{{N(testapi2), config::active_name}},
+         action1{ 15, 23, (uint8_t)3});
+   txn.actions.emplace_back(
+         vector<permission_level>{{N(testapi3), config::active_name}},
+         action2{ 42, 67, (uint8_t)1});
+   txn.actions.emplace_back(
+         vector<permission_level>{{N(testapi4), config::active_name}},
+         action2{ 61, 23, (uint8_t)2});
+   txn.packed_bandwidth_words = 15;
+   txn.context_free_cpu_bandwidth = 43;
+
+   // pack the transaction to verify that the var unpacking logic is correct
+   auto packed_txn = chain::packed_transaction(txn);
+
+   const char* packed_transaction_abi = R"=====(
+   {
+       "types": [{
+          "new_type_name": "compression_type",
+          "type": "int64"
+        }],
+       "structs": [{
+          "name": "packed_transaction",
+          "base": "",
+          "fields": [{
+             "name": "signatures",
+             "type": "signature[]"
+          },{
+             "name": "compression",
+             "type": "compression_type"
+          },{
+             "name": "data",
+             "type": "bytes"
+          }]
+       },{
+          "name": "action1",
+          "base": "",
+          "fields": [{
+             "name": "blah1",
+             "type": "uint64"
+          },{
+             "name": "blah2",
+             "type": "uint32"
+          },{
+             "name": "blah3",
+             "type": "uint8"
+          }]
+       },{
+          "name": "action2",
+          "base": "",
+          "fields": [{
+             "name": "blah1",
+             "type": "uint32"
+          },{
+             "name": "blah2",
+             "type": "uint64"
+          },{
+             "name": "blah3",
+             "type": "uint8"
+          }]
+       }]
+       "actions": [{
+           "name": "action1",
+           "type": "action1"
+         },{
+           "name": "action2",
+           "type": "action2"
+         }
+       ],
+       "tables": []
+   }
+   )=====";
+   fc::variant var;
+   abi_serializer::to_variant(packed_txn, var, get_resolver(fc::json::from_string(packed_transaction_abi).as<abi_def>()));
+
+   chain::packed_transaction packed_txn2;
+   abi_serializer::from_variant(var, packed_txn2, get_resolver(fc::json::from_string(packed_transaction_abi).as<abi_def>()));
+
+   const auto txn2 = packed_txn2.get_transaction();
+
+   BOOST_REQUIRE_EQUAL(txn.ref_block_num, txn2.ref_block_num);
+   BOOST_REQUIRE_EQUAL(txn.ref_block_prefix, txn2.ref_block_prefix);
+   BOOST_REQUIRE(txn.expiration == txn2.expiration);
+   BOOST_REQUIRE_EQUAL(txn.region, txn2.region);
+   BOOST_REQUIRE_EQUAL(txn.context_free_actions.size(), txn2.context_free_actions.size());
+   for (unsigned int i = 0; i < txn.context_free_actions.size(); ++i)
+      verify_action_equal<action1>(txn.context_free_actions[i], txn2.context_free_actions[i]);
+   BOOST_REQUIRE_EQUAL(txn.actions.size(), txn2.actions.size());
+   for (unsigned int i = 0; i < txn.actions.size(); ++i)
+      verify_action_equal<action2>(txn.actions[i], txn2.actions[i]);
+   BOOST_REQUIRE_EQUAL(txn.packed_bandwidth_words, txn2.packed_bandwidth_words);
+   BOOST_REQUIRE_EQUAL(txn.context_free_cpu_bandwidth, txn2.context_free_cpu_bandwidth);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(abi_type_repeat)
