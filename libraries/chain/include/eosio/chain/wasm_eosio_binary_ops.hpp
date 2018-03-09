@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "IR/Operators.h"
+#include "IR/Module.h"
 
 namespace eosio { namespace chain { namespace wasm_ops {
 
@@ -469,7 +470,7 @@ struct globaltype {
 struct instr {
    virtual std::string to_string() { return "instr"; }
    virtual uint8_t get_code() = 0;
-   virtual void visit() = 0;
+   virtual void visit( uint32_t index, IR::Module& mod ) = 0;
    virtual int skip_ahead() = 0;
    virtual uint32_t unpack( code_vector&, uint32_t ) = 0;
 };
@@ -485,14 +486,10 @@ struct memoryoptype {
 
 template <typename ... Mutators>
 struct instr_base : instr {
-   virtual void visit( ) {//code_iterator start, code_iterator end ) {
-      //std::vector<uint8_t> ret_vec = {};
+   virtual void visit( uint32_t index, IR::Module& mod ) {
       for ( auto m : { Mutators::accept... } ) {
-         m(this);
-//         std::vector<uint8_t> temp = m(this);
- //        ret_vec.insert(ret_vec.end(), temp.begin(), temp.end());
+         m(this, index, mod);
       }
-//      return ret_vec;
    } 
 };
 
@@ -530,7 +527,7 @@ BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, memoryoptype,   BOOST_PP_SEQ_SUBSE
 #pragma pack (pop)
 
 struct nop_mutator {
-   static wasm_return_t accept( instr* inst ) {}
+   static wasm_return_t accept( instr* inst, uint32_t index, IR::Module& m ) {}
 };
 
 // class to inherit from to attach specific mutators and have default behavior for all specified types
@@ -597,14 +594,59 @@ std::vector<instr*>* get_cached_ops_vec() {
 #undef PUSH_BACK_OP
    return &_cached_ops;
 }
+using namespace IR;
+template<uint8_t A, typename Value>
+std::string to_string( LiteralImm<Value> imm ) {
+   return "literal : "+std::to_string(uint32_t(imm.value));
+}
+template<uint8_t A, bool isGlobal>
+std::string to_string( GetOrSetVariableImm<isGlobal> imm ) {
+   if constexpr (isGlobal)
+      return "get or set global : "+std::to_string(uint32_t(imm.variableIndex));
+   else
+      return "get or set : "+std::to_string(uint32_t(imm.variableIndex));
+}
+template<uint8_t A, Uptr naturalAlignmentLog2>
+std::string to_string( LoadOrStoreImm<naturalAlignmentLog2> imm ) {
+   return "load or store imm : "+std::to_string(uint32_t(imm.alignmentLog2))+", "+std::to_string(uint32_t(imm.offset));
+}
+template<uint8_t A>
+std::string to_string( ControlStructureImm imm ) {
+   return "result type : "+std::to_string(uint32_t(imm.resultType));
+}
 
+template<uint8_t A>
+std::string to_string( BranchImm imm ) {
+   return "branch target : "+std::to_string(uint32_t(imm.targetDepth));
+}
+ // TODO comeback to this
+template<uint8_t A>
+std::string to_string( BranchTableImm imm ) {
+   //return "branch target : "+std::to_string(uint32_t(imm.targetDepth));
+}
+template<uint8_t A>
+std::string to_string( NoImm imm ) {
+   return "no imm";
+}
+template<uint8_t A>
+std::string to_string( MemoryImm imm ) {
+   return "memory imm";
+}
+template<uint8_t A>
+std::string to_string( CallImm imm ) {
+   return "call index : "+std::to_string(uint32_t(imm.functionIndex));
+}
+template<uint8_t A>
+std::string to_string( CallIndirectImm imm ) {
+   return "call indirect type : "+std::to_string(uint32_t(imm.type.index));
+}
 // Decodes an operator from an input stream and dispatches by opcode.
 // This code is from wasm-jit/Include/IR/Operators.h
 template <class Op_Types>
 struct EOSIO_OperatorDecoderStream
 {
 	EOSIO_OperatorDecoderStream(const std::vector<U8>& codeBytes)
-	: nextByte(codeBytes.data()), end(codeBytes.data()+codeBytes.size()) {}
+	: start(codeBytes.data()), nextByte(codeBytes.data()), end(codeBytes.data()+codeBytes.size()) {}
 
 	operator bool() const { return nextByte < end; }
 
@@ -618,6 +660,7 @@ struct EOSIO_OperatorDecoderStream
 			{ \
 				assert(nextByte + sizeof(IR::OpcodeAndImm<IR::Imm>) <= end); \
 				IR::OpcodeAndImm<IR::Imm>* encodedOperator = (IR::OpcodeAndImm<IR::Imm>*)nextByte; \
+            std::cout << to_string<0>(encodedOperator->imm) << "\n"; \
 				nextByte += sizeof(IR::OpcodeAndImm<IR::Imm>); \
             auto op = _cached_ops->at(BOOST_PP_CAT(name, _code)); \
 				return op;  \
@@ -636,10 +679,11 @@ struct EOSIO_OperatorDecoderStream
 		nextByte = savedNextByte;
 		return result;
 	}
-
+   inline uint32_t index() { return nextByte - start; }
 private:
    // cached ops to take the address of 
    static const std::vector<instr*>* _cached_ops;
+   const U8* start;
 	const U8* nextByte;
 	const U8* end;
 };
@@ -648,14 +692,7 @@ template <class Op_Types>
 const std::vector<instr*>* EOSIO_OperatorDecoderStream<Op_Types>::_cached_ops = cached_ops<Op_Types>::get_cached_ops();
 
 }}} // namespace eosio, chain, wasm_ops
-/*
-#define REFLECT_OP( r, FIELD, OP ) \
-FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::OP< T >, (code) )
 
-FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::nop< T >, (code) )
-//BOOST_PP_SEQ_FOR_EACH( REFLECT_OP, , BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 130 ) )
-#undef REFLECT_OP
-*/
 FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::block< T >, (code)(rt) )
 FC_REFLECT( eosio::chain::wasm_ops::memarg, (a)(o) )
 FC_REFLECT( eosio::chain::wasm_ops::blocktype, (result) )

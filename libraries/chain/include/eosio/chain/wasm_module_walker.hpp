@@ -1,7 +1,7 @@
 #pragma once
 
 #include <eosio/chain/wasm_eosio_constraints.hpp>
-#include <eosio/chain/wasm_binary_ops.hpp>
+#include <eosio/chain/wasm_eosio_binary_ops.hpp>
 #include <functional>
 
 

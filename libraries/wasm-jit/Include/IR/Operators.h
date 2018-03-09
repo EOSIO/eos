@@ -11,7 +11,8 @@ namespace IR
 
 	struct NoImm {};
 	struct MemoryImm {};
-
+   
+   
 	struct ControlStructureImm
 	{
 		ResultType resultType;
@@ -28,13 +29,14 @@ namespace IR
 		Uptr branchTableIndex; // An index into the FunctionDef's branchTables array.
 	};
 
+  
 	template<typename Value>
 	struct LiteralImm
 	{
 		Value value;
 	};
 
-	template<bool isGlobal>
+ 	template<bool isGlobal>
 	struct GetOrSetVariableImm
 	{
 		U32 variableIndex;
@@ -44,6 +46,7 @@ namespace IR
 	{
 		U32 functionIndex;
 	};
+
 
 	struct CallIndirectImm
 	{
@@ -56,6 +59,7 @@ namespace IR
 		U8 alignmentLog2;
 		U32 offset;
 	};
+
 
 	#if ENABLE_SIMD_PROTOTYPE
 	template<Uptr numLanes>

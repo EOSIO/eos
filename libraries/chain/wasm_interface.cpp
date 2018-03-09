@@ -9,9 +9,8 @@
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/wasm_eosio_validators.hpp>
+#include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/wasm_module_walker.hpp>
-#include <eosio/chain/wasm_eosio_rewriters.hpp>
-//#include <eosio/chain/wasm_eosio_binops_table.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
@@ -300,11 +299,14 @@ namespace eosio { namespace chain {
                   IR::Module* module = new IR::Module();
                   Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
                   wasm_constraints::wasm_binary_validation::validate( *module );
-                  WASM::serialize(stream, *module);
+                  WASM::serializeWithInjection(stream, *module);
                   Serialization::ArrayOutputStream outstream;
                   WASM::serialize(outstream, *module);
                   std::vector<U8> bytes = outstream.getBytes();
+                  
                   wasm_constraints::wasm_binary_validation::validate( *module );
+                  wasm_injections::wasm_binary_injection::inject( *module );
+
                   wavm = wavm::entry::build((char*)bytes.data(), bytes.size());
                   wavm_info.emplace(*wavm);
 

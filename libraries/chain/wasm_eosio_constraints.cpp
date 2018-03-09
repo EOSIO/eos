@@ -1,6 +1,6 @@
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/wasm_eosio_validators.hpp>
-#include <eosio/chain/wasm_binary_ops.hpp>
+#include <eosio/chain/wasm_eosio_binary_ops.hpp>
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include "IR/Module.h"
@@ -8,31 +8,31 @@
 #include "WASM/WASM.h"
 
 namespace eosio { namespace chain {
-
+/*
 namespace wasm_rewriter {
    uint32_t instruction_counter::icnt = 0;
    int32_t checktime_injector::checktime_idx = -1;
 } // namespace wasm_rewriter
-
+*/
 using namespace IR;
 
 namespace wasm_constraints {
 
-void noop_validation_visitor::validate( Module& m ) {
+void noop_validation_visitor::validate( const Module& m ) {
    // just pass
 }
 
-void blacklist_validation_visitor::validate( Module& m ) {
+void blacklist_validation_visitor::validate( const Module& m ) {
     
 }
 
-void memories_validation_visitor::validate( Module& m ) {
+void memories_validation_visitor::validate( const Module& m ) {
    if ( m.memories.defs.size() && m.memories.defs[0].type.size.min > wasm_constraints::maximum_linear_memory/(64*1024) )
       FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract initial memory size must be less than or equal to ${k}KiB", 
             ("k", wasm_constraints::maximum_linear_memory/1024));
 }
 
-void data_segments_validation_visitor::validate( Module& m ) {
+void data_segments_validation_visitor::validate(const Module& m ) {
    for ( const DataSegment& ds : m.dataSegments ) {
       if ( ds.baseOffset.type != InitializerExpression::Type::i32_const )
          FC_THROW_EXCEPTION( wasm_execution_error, "Smart contract has unexpected memory base offset type" );
@@ -43,13 +43,13 @@ void data_segments_validation_visitor::validate( Module& m ) {
    }
 }
 
-void tables_validation_visitor::validate( Module& m ) {
+void tables_validation_visitor::validate( const Module& m ) {
    if ( m.tables.defs.size() && m.tables.defs[0].type.size.min > wasm_constraints::maximum_table_elements )
       FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract table limited to ${t} elements", 
             ("t", wasm_constraints::maximum_table_elements));
 }
 
-void globals_validation_visitor::validate( Module& m ) {
+void globals_validation_visitor::validate( const Module& m ) {
    unsigned mutable_globals_total_size = 0;
    for(const GlobalDef& global_def : m.globals.defs) {
       if(!global_def.type.isMutable)
@@ -70,11 +70,6 @@ void globals_validation_visitor::validate( Module& m ) {
       FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract has more than ${k} bytes of mutable globals",
             ("k", wasm_constraints::maximum_mutable_globals));
 }
-/*
-struct wasm_opcode_no_disposition_exception {
-   string opcode_name;
-};
-*/
 struct nop_opcode_visitor {
    typedef void Result;
 
@@ -213,75 +208,6 @@ struct eosio_constraints_visitor : public nop_opcode_visitor {
    #undef VISIT_OPCODE
    
 };
-/*
-void check_wasm_opcode_dispositions() {
-   eosio_constraints_visitor visitor;
-   vector<string> opcodes_without_disposition;
-   vector<string> opcodes_allowed;
-   #define VISIT_OPCODE(opcode,name,nameString,Imm,...) \
-         try { \
-         visitor.name(Imm{}); \
-         opcodes_allowed.push_back(nameString); \
-         } \
-         catch(wasm_execution_error& e) {} \
-         catch(wasm_opcode_no_disposition_exception& e) { \
-            opcodes_without_disposition.push_back(e.opcode_name); \
-         }
-   ENUM_OPERATORS(VISIT_OPCODE)
-   #undef VISIT_OPCODE
 
-   if(opcodes_without_disposition.size()) {
-      elog("WASM opcode disposition not defined for opcodes:");
-      for(const string& g : opcodes_without_disposition)
-         elog("  ${p}", ("p", g));
-      FC_THROW("All opcodes must have a constraint");
-   }
-}
-
-void validate_eosio_wasm_constraints(const Module& m) {
-   if(m.memories.defs.size() && m.memories.defs[0].type.size.min > wasm_constraints::maximum_linear_memory/(64*1024))
-      FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract initial memory size must be less than or equal to ${k}KiB", ("k", wasm_constraints::maximum_linear_memory/1024));
-
-   for(const DataSegment& ds : m.dataSegments) {
-      if(ds.baseOffset.type != InitializerExpression::Type::i32_const)
-         FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract has unexpected memory base offset type");
-      if(static_cast<uint32_t>(ds.baseOffset.i32) + ds.data.size() > wasm_constraints::maximum_linear_memory_init)
-         FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract data segments must lie in first ${k}KiB", ("k", wasm_constraints::maximum_linear_memory_init/1024));
-   }
-
-   if(m.tables.defs.size() && m.tables.defs[0].type.size.min > wasm_constraints::maximum_table_elements)
-      FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract table limited to ${t} elements", ("t", wasm_constraints::maximum_table_elements));
-
-   unsigned mutable_globals_total_size = 0;
-   for(const GlobalDef& global_def : m.globals.defs) {
-      if(!global_def.type.isMutable)
-         continue;
-      switch(global_def.type.valueType) {
-         case ValueType::any:
-         case ValueType::num:
-            FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract has unexpected global definition value type");
-         case ValueType::i64:
-         case ValueType::f64:
-            mutable_globals_total_size += 4;
-         case ValueType::i32:
-         case ValueType::f32:
-            mutable_globals_total_size += 4;
-      }
-   }
-   if(mutable_globals_total_size > wasm_constraints::maximum_mutable_globals)
-      FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract has more than ${k} bytes of mutable globals", ("k", wasm_constraints::maximum_mutable_globals));
-
-   //Now check for constraints on each opcode.
-   //Some of the OperatorDecoderStream users inside of WAVM track the control stack and quit parsing from
-   // OperatorDecoderStream when the control stack is empty (since that would indicate unreachable code).
-   // Not doing that here, yet, since it's not clear it's required for the purpose of the validation
-   eosio_constraints_visitor visitor;
-   for(const FunctionDef& fd : m.functions.defs) {
-      OperatorDecoderStream decoder(fd.code);
-      while(decoder) {
-         decoder.decodeOp(visitor);
-      }
-   }
-   */
 }
 }}
