@@ -190,4 +190,7 @@ macro(add_wast_executable)
 
   set(extra_target_dependency)
 
+  add_test(NAME "validate_${target}_abi"
+           COMMAND ${CMAKE_BINARY_DIR}/scripts/abi_is_json.py ${ABI_FILES})
+
 endmacro(add_wast_executable)

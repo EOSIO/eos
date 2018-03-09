@@ -13,7 +13,7 @@
       "name": "set_global_limits",
       "base": "",
       "fields": [
-        {"name":"cpu_usec_per_period",    "type":"int64"},
+        {"name":"cpu_usec_per_period",    "type":"int64"}
       ]
     },{
       "name": "producer_key",
@@ -33,7 +33,7 @@
       "name": "require_auth",
       "base": "",
       "fields": [
-        {"name":"from", "type":"account_name"},
+        {"name":"from", "type":"account_name"}
       ]
     },{
       "name": "nonce",
