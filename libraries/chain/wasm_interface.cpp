@@ -360,8 +360,8 @@ class context_aware_api {
       }
 
    protected:
-      apply_context&             context;
       wasm_cache::entry&         code;
+      apply_context&             context;
       wasm_interface::vm_type    vm;
 
 };
@@ -1273,11 +1273,11 @@ class compiler_builtins : public context_aware_api {
          return 0;
       }
       void __extendsftf2( float128_t& ret, uint32_t f ) { 
-         float32_t in = {{ f }};
+         float32_t in = { f };
          ret = f32_to_f128( in ); 
       }
       void __extenddftf2( float128_t& ret, uint64_t f ) { 
-         float64_t in = {{ f }};
+         float64_t in = { f };
          ret = f64_to_f128( in ); 
       }
       int64_t __fixtfdi( uint64_t l, uint64_t h ) { 
