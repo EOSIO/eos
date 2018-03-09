@@ -51,13 +51,17 @@ namespace eosiosystem {
             eosio_parameters  prefs;
             eosio::bytes      packed_key; /// a packed public key object
             system_token_type per_block_payments;
+            time              last_rewards_claim = 0;
+            time              time_became_active = 0;
             time              last_produced_block_time = 0;
 
             uint64_t    primary_key()const { return owner;       }
             uint128_t   by_votes()const    { return total_votes; }
             bool active() const { return packed_key.size() == sizeof(public_key); }
 
-            EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(prefs)(packed_key)(per_block_payments)(last_produced_block_time) )
+            EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(prefs)(packed_key)
+                              (per_block_payments)(last_rewards_claim)
+                              (time_became_active)(last_produced_block_time) )
          };
 
          typedef eosio::multi_index< N(producervote), producer_info,
@@ -175,11 +179,7 @@ namespace eosiosystem {
             return (token_supply * inflation_ratio.first) / (inflation_ratio.second * blocks_per_year);
          }
 
-         static system_token_type daily_producer_payment() {
-            return system_token_type(0);
-         }
-
-         static void update_elected_producers() {
+         static void update_elected_producers(time cycle_time) {
             producers_table producers_tbl( SystemAccount, SystemAccount );
             auto idx = producers_tbl.template get_index<N(prototalvote)>();
 
@@ -262,10 +262,14 @@ namespace eosiosystem {
             parameters.storage_reserve_ratio = storage_reserve_ratio[median];
             parameters.percent_of_max_inflation_rate = percent_of_max_inflation_rate[median];
 
+            // not voted on
+            parameters.first_block_time_in_cycle = cycle_time;
+
             // derived parameters
-            parameters.payment_per_block = payment_per_block(parameters.percent_of_max_inflation_rate / 2);
-            parameters.payment_to_leaky_bucket = payment_per_block(parameters.percent_of_max_inflation_rate)
-               - parameters.payment_per_block; 
+            auto half_of_percentage = parameters.percent_of_max_inflation_rate / 2;
+            auto other_half_of_percentage = parameters.percent_of_max_inflation_rate - half_of_percentage;
+            parameters.payment_per_block = payment_per_block(half_of_percentage);
+            parameters.payment_to_eos_bucket = payment_per_block(other_half_of_percentage);
 
             if ( parameters.max_storage_size < parameters.total_storage_bytes_reserved ) {
                parameters.max_storage_size = parameters.total_storage_bytes_reserved;
