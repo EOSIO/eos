@@ -100,8 +100,22 @@ auto smatch_to_variant(const std::smatch& smatch) {
 const char* error_advice_3010001 =  "Most likely, the given account/ permission doesn't exist in the blockchain.";
 const char* error_advice_3010002 =  "Most likely, the given account doesn't exist in the blockchain.";
 const char* error_advice_3010003 =  "Most likely, the given table doesnt' exist in the blockchain.";
+const char* error_advice_3010004 =  "Most likely, the given contract doesnt' exist in the blockchain.";
+
+const char* error_advice_3030001 =  R"=====(Ensure that you have the related authority inside your transaction!;
+If you are currently using 'eosioc push action' command, try to add the relevant authority using -p option.)=====";
 
 const char* error_advice_3030002 =  "Ensure that you have the related private keys inside your wallet and you wallet is unlocked.";
+const char* error_advice_3030003 =  "Please remove the unnecessary authority from your action!";
+const char* error_advice_3030004 =  "Please remove the unnecessary signature from your transaction!";
+const char* error_advice_3030011 =  "You can try embedding eosio nonce action inside your transaction to ensure uniqueness.";
+const char* error_advice_3030022 =  "Please increase the expiration time of your transaction!";
+const char* error_advice_3030023 =  "Please decrease the expiration time of your transaction!";
+const char* error_advice_3030024 =  "Ensure that the reference block exist in the blockchain!";
+const char* error_advice_3030025 =  "Ensure that your transaction satisfy the contract's constraint!";
+
+const char* error_advice_3040002 = R"=====(Ensure that your arguments follow the contract abi!
+You can check the contract's abi by using 'eosioc get code' command.)=====";
 
 const char* error_advice_3120001 = R"=====(Name should be less than 13 characters and only contains the following symbol .12345abcdefghijklmnopqrstuvwxyz)=====";
 const char* error_advice_3120002 = R"=====(Public key should be encoded in base58 and starts with EOS prefix)=====";
@@ -186,6 +200,18 @@ e.g.
 })=====";
 const char* error_advice_3120008 =  "Ensure that the block ID is a SHA-256 hexadecimal string!";
 const char* error_advice_3120009 =  "Ensure that the transaction ID is a SHA-256 hexadecimal string!";
+const char* error_advice_3120010 =  R"=====(Ensure that your packed transaction JSON follows the following format!
+{
+  "signatures" : [ "signature" ],
+  "compression" : enum("none", "zlib"),
+  "data" : "bytes"
+}
+e.g.
+{
+  "signatures" : [ "EOSJze4m1ZHQ4UjuHpBcX6uHPN4Xyggv52raQMTBZJghzDLepaPcSGCNYTxaP2NiaF4yRF5RaYwqsQYAwBwFtfuTJr34Z5GJX" ],
+  "compression" : "none",
+  "data" : "6c36a25a00002602626c5e7f0000000000010000001e4d75af460000000000a53176010000000000ea305500000000a8ed3232180000001e4d75af4680969800000000000443555200000000"
+})=====";
 
 const char* error_advice_3130001 =  "Ensure that you have \033[2meosio::chain_api_plugin\033[0m\033[32m added to your node's configuration!";
 const char* error_advice_3130002 =  "Ensure that you have \033[2meosio::wallet_api_plugin\033[0m\033[32m added to your node's configuration!\n"\
@@ -204,8 +230,19 @@ const std::map<int64_t, std::string> error_advice = {
    { 3010001, error_advice_3010001 },
    { 3010002, error_advice_3010002 },
    { 3010003, error_advice_3010003 },
+   { 3010004, error_advice_3010004 },
 
+   { 3030001, error_advice_3030001 },
    { 3030002, error_advice_3030002 },
+   { 3030003, error_advice_3030003 },
+   { 3030004, error_advice_3030004 },
+   { 3030011, error_advice_3030011 },
+   { 3030022, error_advice_3030022 },
+   { 3030023, error_advice_3030023 },
+   { 3030024, error_advice_3030024 },
+   { 3030025, error_advice_3030025 },
+
+   { 3040002, error_advice_3040002 },
 
    { 3120001, error_advice_3120001 },
    { 3120002, error_advice_3120002 },
@@ -215,7 +252,8 @@ const std::map<int64_t, std::string> error_advice = {
    { 3120006, error_advice_3120006 },
    { 3120007, error_advice_3120007 },
    { 3120008, error_advice_3120008 },
-   { 3120009, error_advice_3120008 },
+   { 3120009, error_advice_3120009 },
+   { 3120010, error_advice_3120010 },
 
    { 3130001, error_advice_3130001 },
    { 3130002, error_advice_3130002 },
@@ -246,14 +284,14 @@ bool print_recognized_errors(const fc::exception& e, const bool verbose_errors) 
          // Check if there's a log to display
          if (!log.get_format().empty()) {
             // Localize the message as needed
-            explanation += "\n  " + localized_with_variant(log.get_format().data(), log.get_data());
+            explanation += "\n" + localized_with_variant(log.get_format().data(), log.get_data());
          } else if (log.get_data().size() > 0 && verbose_errors) {
             // Show data-only log only if verbose_errors option is enabled
-            explanation += "\n  " + fc::json::to_string(log.get_data());
+            explanation += "\n" + fc::json::to_string(log.get_data());
          }
          // Check if there's stack trace to be added
          if (!log.get_context().get_method().empty() && verbose_errors) {
-            stack_trace += "\n  " +
+            stack_trace += "\n" +
                            log.get_context().get_file() +  ":" +
                            fc::to_string(log.get_context().get_line_number())  + " " +
                            log.get_context().get_method();

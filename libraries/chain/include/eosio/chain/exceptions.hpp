@@ -27,6 +27,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( permission_query_exception,        eosio::chain::database_query_exception, 3010001, "Permission Query Exception" )
    FC_DECLARE_DERIVED_EXCEPTION( account_query_exception,           eosio::chain::database_query_exception, 3010002, "Account Query Exception" )
    FC_DECLARE_DERIVED_EXCEPTION( contract_table_query_exception,    eosio::chain::database_query_exception, 3010003, "Contract Table Query Exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( contract_query_exception,          eosio::chain::database_query_exception, 3010004, "Contract Query Exception" )
 
    FC_DECLARE_DERIVED_EXCEPTION( block_tx_output_exception,         eosio::chain::block_validate_exception, 3020001, "transaction outputs in block do not match transaction outputs from applying block" )
    FC_DECLARE_DERIVED_EXCEPTION( block_concurrency_exception,       eosio::chain::block_validate_exception, 3020002, "block does not guarantee concurrent exection without conflicts" )
@@ -51,9 +52,14 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( tx_msgs_auth_exceeded,             eosio::chain::transaction_exception, 3030018, "Number of transaction messages per authorized account has been exceeded" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_msgs_code_exceeded,             eosio::chain::transaction_exception, 3030019, "Number of transaction messages per code account has been exceeded" )
    FC_DECLARE_DERIVED_EXCEPTION( wasm_execution_error,              eosio::chain::transaction_exception, 3030020, "Runtime Error Processing WASM" )
-   FC_DECLARE_DERIVED_EXCEPTION( tx_decompression_error,            eosio::chain::transaction_exception, 3030020, "Error decompressing transaction" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_decompression_error,            eosio::chain::transaction_exception, 3030021, "Error decompressing transaction" )
+   FC_DECLARE_DERIVED_EXCEPTION( expired_tx_exception,              eosio::chain::transaction_exception, 3030022, "Expired Transaction" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_exp_too_far_exception,          eosio::chain::transaction_exception, 3030023, "Transaction Expiration Too Far" )
+   FC_DECLARE_DERIVED_EXCEPTION( invalid_ref_block_exception,       eosio::chain::transaction_exception, 3030024, "Invalid Reference Block" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_apply_exception,                eosio::chain::transaction_exception, 3030025, "Transaction Apply Exception" )
 
    FC_DECLARE_DERIVED_EXCEPTION( account_name_exists_exception,     eosio::chain::action_validate_exception, 3040001, "account name already exists" )
+   FC_DECLARE_DERIVED_EXCEPTION( invalid_action_args_exception,       eosio::chain::action_validate_exception, 3040002, "Invalid Action Arguments" )
    FC_DECLARE_DERIVED_EXCEPTION( invalid_pts_address,               eosio::chain::utility_exception, 3060001, "invalid pts address" )
    FC_DECLARE_DERIVED_EXCEPTION( insufficient_feeds,                eosio::chain::chain_exception, 37006, "insufficient feeds" )
 
@@ -68,6 +74,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( abi_type_exception,                eosio::chain::chain_type_exception, 3120007, "Invalid ABI" )
    FC_DECLARE_DERIVED_EXCEPTION( block_id_type_exception,           eosio::chain::chain_type_exception, 3120008, "Invalid block ID" )
    FC_DECLARE_DERIVED_EXCEPTION( transaction_id_type_exception,     eosio::chain::chain_type_exception, 3120009, "Invalid transaction ID" )
+   FC_DECLARE_DERIVED_EXCEPTION( packed_transaction_type_exception, eosio::chain::chain_type_exception, 3120010, "Invalid packed transaction" )
 
    FC_DECLARE_DERIVED_EXCEPTION( asset_type_exception,     eosio::chain::chain_type_exception, 3120011, "Invalid asset" )
 

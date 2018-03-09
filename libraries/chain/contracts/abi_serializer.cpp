@@ -294,7 +294,7 @@ namespace eosio { namespace chain { namespace contracts {
             }
             else {
                /// TODO: default construct field and write it out
-               FC_ASSERT( !"missing field in variant object", "Missing '${f}' in variant object", ("f",field.name) );
+               FC_THROW( "Missing '${f}' in variant object", ("f",field.name) );
             }
          }
       }

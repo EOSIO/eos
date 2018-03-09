@@ -406,7 +406,10 @@ read_write::push_block_results read_write::push_block(const read_write::push_blo
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
    packed_transaction pretty_input;
    auto resolver = make_resolver(this);
-   abi_serializer::from_variant(params, pretty_input, resolver);
+   try {
+      abi_serializer::from_variant(params, pretty_input, resolver);
+   } EOS_CAPTURE_AND_RETHROW(chain::packed_transaction_type_exception, "Invalid packed transaction")
+
    auto result = db.push_transaction(pretty_input, skip_flags);
 #warning TODO: get transaction results asynchronously
    fc::variant pretty_output;
@@ -482,11 +485,17 @@ read_only::get_account_results read_only::get_account( const get_account_params&
 
 read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::abi_json_to_bin_params& params )const try {
    abi_json_to_bin_result result;
-   const auto& code_account = db.get_database().get<account_object,by_name>( params.code );
+   const auto code_account = db.get_database().find<account_object,by_name>( params.code );
+   EOS_ASSERT(code_account != nullptr, contract_query_exception, "Contract can't be found ${contract}", ("contract", params.code));
+
    abi_def abi;
-   if( abi_serializer::to_abi(code_account.abi, abi) ) {
+   if( abi_serializer::to_abi(code_account->abi, abi) ) {
       abi_serializer abis( abi );
-      result.binargs = abis.variant_to_binary( abis.get_action_type( params.action ), params.args );
+      try {
+         result.binargs = abis.variant_to_binary(abis.get_action_type(params.action), params.args);
+      } EOS_CAPTURE_AND_RETHROW(chain::invalid_action_args_exception,
+                                "'${args}' is invalid args for action '${action}' code '${code}'",
+                                ("args", params.args)("action", params.action)("code", params.code))
    }
    return result;
 } FC_CAPTURE_AND_RETHROW( (params.code)(params.action)(params.args) )
