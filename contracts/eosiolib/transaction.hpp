@@ -72,7 +72,7 @@ namespace eosio {
       buf.resize( size );
       size = ::get_action(type, index, &buf[0], size );
       eosio_assert( size > 0, "get_action failed" );
-      return eosio::unpack<eosio::action>(&buf[0], size);
+      return eosio::unpack<eosio::action>(&buf[0], static_cast<size_t>(size));
    }
 
    ///@} transactioncpp api
