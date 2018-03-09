@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include <vector>
 #include <tuple>
 #include <boost/hana.hpp>
 #include <functional>
@@ -11,6 +12,7 @@
 #include <type_traits>
 #include <iterator>
 #include <limits>
+#include <algorithm>
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/mem_fun.hpp>
@@ -28,6 +30,38 @@ namespace eosio {
 
 namespace bmi = boost::multi_index;
 using boost::multi_index::const_mem_fun;
+
+/*
+template<class Class,typename Type,Type (Class::*PtrToMemberFunction)()const>
+struct const_mem_fun
+{
+  typedef typename std::remove_reference<Type>::type result_type;
+
+  template<typename ChainedPtr>
+
+  typename std::enable_if<
+    !std::is_convertible<const ChainedPtr&,const Class&>::value,Type>::type
+  operator()(const ChainedPtr& x)const
+  {
+    return operator()(*x);
+  }
+
+  Type operator()(const Class& x)const
+  {
+    return (x.*PtrToMemberFunction)();
+  }
+
+  Type operator()(const std::reference_wrapper<const Class>& x)const
+  {
+    return operator()(x.get());
+  }
+
+  Type operator()(const std::reference_wrapper<Class>& x)const
+  {
+    return operator()(x.get());
+  }
+};
+*/
 
 namespace hana = boost::hana;
 
@@ -98,6 +132,67 @@ struct indexed_by {
    typedef Extractor secondary_extractor_type;
 };
 
+/*
+
+class table_row {
+   public:
+      virtual ~table_row() {};
+      virtual uint64_t get_primary()const = 0;
+      virtual int* __get_secondary_iterators_start_address()const { return nullptr; };
+
+   private:
+      table_row* __next;
+      table_row* __prev;
+      int        __primary_itr;
+};
+
+template<uint64_t TableName, typename T, typename... Indices>
+class multi_index
+{
+   private:
+
+      static_assert( std::is_base_of<table_row, T>::value, "type T must derive from table_row" );
+
+      static_assert( sizeof...(Indices) <= 16, "multi_index only supports a maximum of 16 secondary indices" );
+
+      constexpr static bool validate_table_name( uint64_t n ) {
+         // Limit table names to 12 characters so that the last character (4 bits) can be used to distinguish between the secondary indices.
+         return (n & 0x000000000000000FULL) == 0;
+      }
+
+      static_assert( validate_table_name(TableName), "multi_index does not support table names with a length greater than 12");
+
+      friend class multi_index_impl;
+
+      struct _item : public T
+      {
+         int __iters[sizeof...(Indices)];
+      }
+
+      struct item : public std::conditional<sizeof...(Indices)==0, T, _item>
+      {
+         public:
+
+
+            virtual
+            typename std::enable_if<sizeof...(Indices)!=0, int*>::type
+            __get_secondary_iterators_start_address()const override
+            {
+               return
+            }
+      }
+
+};
+
+class multi_index_impl
+{
+   private:
+
+
+
+};
+*/
+
 template<uint64_t TableName, typename T, typename... Indices>
 class multi_index
 {
@@ -116,13 +211,13 @@ class multi_index
       {
          template<typename Constructor>
          item( const multi_index& idx, Constructor&& c )
-         :__idx(idx){
+         :__idx(std::cref(idx)){
             c(*this);
          }
 
-         const multi_index& __idx;
-         int                __primary_itr;
-         int                __iters[sizeof...(Indices)+(sizeof...(Indices)==0)];
+         std::reference_wrapper<const multi_index> __idx;
+         int                                       __primary_itr;
+         int                                       __iters[sizeof...(Indices)+(sizeof...(Indices)==0)];
       };
 
       uint64_t _code;
@@ -306,7 +401,7 @@ class multi_index
 
             const_iterator iterator_to( const T& obj ) {
                const auto& objitem = static_cast<const item&>(obj);
-               eosio_assert( &objitem.__idx == &_multidx, "object passed to iterator_to is not in multi_index" );
+               eosio_assert( &objitem.__idx.get() == &_multidx, "object passed to iterator_to is not in multi_index" );
 
                if( objitem.__iters[Number] == -1 ) {
                   secondary_key_type temp_secondary_key;
@@ -411,18 +506,31 @@ class multi_index
       struct by_primary_key;
       struct by_primary_itr;
 
+      /*
       mutable boost::multi_index_container< item,
          bmi::indexed_by<
             bmi::ordered_unique< bmi::tag<by_primary_key>, bmi::const_mem_fun<T, uint64_t, &T::primary_key> >,
             bmi::ordered_unique< bmi::tag<by_primary_itr>, bmi::member<item, int, &item::__primary_itr> >
          >
       > _items_index;
+      */
+
+      mutable std::vector<item> _items_vector;
 
       const item& load_object_by_primary_iterator( int itr )const {
+         auto itr2 = std::find_if(_items_vector.rbegin(), _items_vector.rend(), [&](const item& objitem) {
+            return objitem.__primary_itr == itr;
+         });
+
+         if( itr2 != _items_vector.rend() )
+            return *itr2;
+
+         /*
          const auto& by_pitr = _items_index.template get<by_primary_itr>();
          auto cacheitr = by_pitr.find( itr );
          if( cacheitr != by_pitr.end() )
             return *cacheitr;
+         */
 
          auto size = db_get_i64( itr, nullptr, 0 );
          eosio_assert( size >= 0, "error reading iterator" );
@@ -431,7 +539,8 @@ class multi_index
 
          datastream<const char*> ds(tmp,uint32_t(size));
 
-         auto result = _items_index.emplace( *this, [&]( auto& i ) {
+         //auto result = _items_index.emplace( *this, [&]( auto& i ) {
+         _items_vector.emplace_back( *this, [&]( auto& i ) {
             T& val = static_cast<T&>(i);
             ds >> val;
 
@@ -445,7 +554,8 @@ class multi_index
 
          // eosio_assert( result.second, "failed to insert object, likely a uniqueness constraint was violated" );
 
-         return *result.first;
+         //return *result.first;
+         return _items_vector.back();
       } /// load_object_by_primary_iterator
 
    public:
@@ -593,13 +703,14 @@ class multi_index
 
       const_iterator iterator_to( const T& obj )const {
          const auto& objitem = static_cast<const item&>(obj);
-         eosio_assert( &objitem.__idx == this, "object passed to iterator_to is not in multi_index" );
+         eosio_assert( &objitem.__idx.get() == this, "object passed to iterator_to is not in multi_index" );
          return {*this, &objitem};
       }
 
       template<typename Lambda>
       const_iterator emplace( uint64_t payer, Lambda&& constructor ) {
-         auto result = _items_index.emplace( *this, [&]( auto& i ){
+         //auto result = _items_index.emplace( *this, [&]( auto& i ){
+         _items_vector.emplace_back( *this, [&]( auto& i ){
             T& obj = static_cast<T&>(i);
             constructor( obj );
 
@@ -622,7 +733,8 @@ class multi_index
          });
 
          /// eosio_assert( result.second, "could not insert object, uniqueness constraint in cache violated" )
-         return {*this, &*result.first};
+         //return {*this, &*result.first};
+         return {*this, &_items_vector.back()};
       }
 
       template<typename Lambda>
@@ -681,9 +793,18 @@ class multi_index
       }
 
       const_iterator find( uint64_t primary )const {
+         auto itr2 = std::find_if(_items_vector.rbegin(), _items_vector.rend(), [&](const item& objitem) {
+            return objitem.__primary_itr != -1 && objitem.primary_key() == primary;
+         });
+
+         if( itr2 != _items_vector.rend() )
+            return iterator_to(*itr2);
+
+         /*
          auto cacheitr = _items_index.find(primary);
          if( cacheitr != _items_index.end() )
             return iterator_to(*cacheitr);
+         */
 
          int itr = db_find_i64( _code, _scope, TableName, primary );
          if( itr < 0 ) return end();
@@ -722,10 +843,20 @@ class multi_index
               index_type::remove( i );
          });
 
+         auto pk = objitem.primary_key();
+         auto itr2 = std::find_if(_items_vector.rbegin(), _items_vector.rend(), [&](const item& oi) {
+            return oi.__primary_itr != -1 && oi.primary_key() == pk;
+         });
+
+         if( itr2 != _items_vector.rend() )
+            (--(itr2.base()))->__primary_itr = -1; // Mark item as deleted
+
+         /*
          auto cacheitr = _items_index.find(objitem.primary_key());
          if( cacheitr != _items_index.end() )  {
             _items_index.erase(cacheitr);
          }
+         */
       }
 
 };

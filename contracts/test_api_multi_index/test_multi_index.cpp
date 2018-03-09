@@ -284,7 +284,6 @@ void test_multi_index::idx128_autoincrement_test_part2()
    for( int i = 3; i < 5; ++i ) {
       table.emplace( payer, [&]( auto& r ) {
          auto itr = table.available_primary_key();
-         print(itr, "\n");
          r.id = itr;
          r.sec = 1000 - static_cast<uint128_t>(r.id);
       });
