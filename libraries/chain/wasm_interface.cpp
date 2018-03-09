@@ -378,6 +378,7 @@ class context_free_api : public context_aware_api {
          return context.get_context_free_data( index, buffer, buffer_size );
       }
 };
+
 class privileged_api : public context_aware_api {
    public:
       privileged_api( wasm_interface& wasm )
@@ -470,7 +471,7 @@ class privileged_api : public context_aware_api {
 
 class checktime_api : public context_aware_api {
 public:
-   checktime_api( wasm_interface& wasm )
+   explicit checktime_api( wasm_interface& wasm )
    :context_aware_api(wasm,true){}
 
    void checktime(uint32_t instruction_count) {
@@ -493,7 +494,8 @@ class producer_api : public context_aware_api {
 
 class crypto_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      explicit crypto_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       /**
        * This method can be optimized out during replay as it has
@@ -577,7 +579,7 @@ class string_api : public context_aware_api {
 
 class system_api : public context_aware_api {
    public:
-      system_api( wasm_interface& wasm )
+      explicit system_api( wasm_interface& wasm )
       :context_aware_api(wasm,true){}
 
       void abort() {
@@ -600,7 +602,8 @@ class system_api : public context_aware_api {
 
 class action_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+   action_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       int read_action_data(array_ptr<char> memory, size_t size) {
          FC_ASSERT(size > 0);
@@ -632,7 +635,8 @@ class action_api : public context_aware_api {
 
 class console_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      console_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       void prints(null_terminated_ptr str) {
          context.console_append<const char*>(str);
@@ -1337,8 +1341,8 @@ class compiler_builtins : public context_aware_api {
 
 class math_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
-
+      math_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       void diveq_i128(unsigned __int128* self, const unsigned __int128* other) {
          fc::uint128_t s(*self);
