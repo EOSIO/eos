@@ -620,4 +620,44 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
 
 } FC_LOG_AND_RETHROW()
 
+
+BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
+   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+   fc::variant params = producer_parameters_example(1);
+   vector<char> key = fc::raw::pack( fc::crypto::public_key( std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV") ) );
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproducer), mvo()
+                                               ("producer",  "alice")
+                                               ("producer_key", key )
+                                               ("prefs", params)
+                        )
+   );
+   auto prod_initial = get_producer_info( "alice" );
+   BOOST_REQUIRE_EQUAL( 0, prod_initial["total_votes"].as_uint64() );
+   REQUIRE_EQUAL_OBJECTS( params, prod_initial["prefs"]);
+
+   issue( "bob", "2000.0000 EOS",  config::system_account_name );
+   issue( "carol", "3000.0000 EOS",  config::system_account_name );
+
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(bob), N(stakevote), mvo()
+                                               ("voter",  "bob")
+                                               ("amount", "11.1111 EOS")
+                        )
+   );
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "bob", "11.1111 EOS",  last_block_time() ), get_voter_info( "bob" ) );
+
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(bob), N(voteproducer), mvo()
+                                               ("voter",  "bob")
+                                               ("proxy", name(0).to_string() )
+                                               ("producers", vector<account_name>() )
+                        )
+   );
+   /*
+   auto prod_after_vote = get_producer_info( "alice" );
+   BOOST_REQUIRE_EQUAL( 111111, prod_initial["total_votes"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( prod_initial["owner"].as_uint64(), prod_after_vote["owner"].as_uint64() );
+   REQUIRE_EQUAL_OBJECTS( prod_initial["prefs"], prod_after_vote["prefs"]);
+   BOOST_REQUIRE_EQUAL( to_string(prod_initial["packed_key"]), to_string(prod_after_vote["packed_key"]) );
+   */
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_SUITE_END()

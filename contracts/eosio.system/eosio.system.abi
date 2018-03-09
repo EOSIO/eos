@@ -93,7 +93,7 @@
          {"name":"max_inline_action_size", "type":"uint32"},
          {"name":"max_generated_transaction_size", "type":"uint32"},
          {"name":"inflation_rate", "type":"uint32"},
-         {"name":"storage_reserve_ratio", "type":"uint32"},
+         {"name":"storage_reserve_ratio", "type":"uint32"}
       ]
     },{
       "name": "eosio_global_state",
@@ -140,6 +140,14 @@
         {"name":"amount", "type":"asset"}
       ]
     },{
+      "name": "voteproducer",
+      "base": "",
+      "fields": [
+        {"name":"voter",     "type":"account_name"},
+        {"name":"proxy",     "type":"account_name"},
+        {"name":"producers", "type":"account_name[]"}
+      ]
+    },{
       "name": "voter_info",
       "base": "",
       "fields": [
@@ -181,6 +189,9 @@
     },{
       "name": "unstakevote",
       "type": "unstakevote"
+    },{
+      "name": "voteproducer",
+      "type": "voteproducer"
     }
   ],
   "tables": [
