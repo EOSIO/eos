@@ -1273,10 +1273,12 @@ class compiler_builtins : public context_aware_api {
          return 0;
       }
       void __extendsftf2( float128_t& ret, uint32_t f ) { 
-         ret = f32_to_f128( {{f}} ); 
+         float32_t in = {{ f }};
+         ret = f32_to_f128( in ); 
       }
       void __extenddftf2( float128_t& ret, uint64_t f ) { 
-         ret = f64_to_f128( {{f}} ); 
+         float64_t in = {{ f }};
+         ret = f64_to_f128( in ); 
       }
       int64_t __fixtfdi( uint64_t l, uint64_t h ) { 
          float128_t f = {{ l, h }};
