@@ -65,6 +65,9 @@ extern "C" {
       if ( action == N(dummy_action) ) {
          test_action::test_dummy_action();
          return;
+      } else if ( action == N(cf_action) ) {
+         test_action::test_cf_action();
+         return;
       }
 
       //test_print
