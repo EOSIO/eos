@@ -14,14 +14,6 @@ using eosio::price;
 
 
 
-struct extended_asset {
-   account_name issuer;
-   symbol_name  symbol;
-   int64_t      amount = 0; /// balance for purpose of market making
-
-   EOSLIB_SERIALIZE( extended_asset, (issuer)(symbol)(amount) )
-};
-
 struct global_margin_state {
    extended_asset lent; /// the total quantity of tokens lent for this collateral type.
    extended_asset collateral; /// lent * call_price => amount of collateral that must be able to buy back lent
@@ -83,11 +75,9 @@ struct pending_state : exchange_state
 
 
 
-template<account_name ExchangeAccount, symbol_name ExchangeSymbol>
+//template<account_name ExchangeAccount, symbol_name ExchangeSymbol>
 class exchange {
    public:
-      typedef eosio::generic_currency< eosio::token<ExchangeAccount,ExchangeSymbol> > exchange_currency;
-
       struct account {
          account_name       owner;
          extended_asset     base_balance;
@@ -100,27 +90,21 @@ class exchange {
       };
       typedef eosio::multi_index< N(accounts), account>       account_index_type;
 
-      template<typename BaseTokenType, typename QuoteTokenType>
       struct limit_order {
          typedef eosio::price<BaseTokenType, QuoteTokenType> price_type;
-         static const uint64_t precision = (1000ll * 1000ll * 1000ll * 1000ll);
 
          uint64_t                                   primary;
          account_name                               owner;
          uint32_t                                   id;
          uint32_t                                   expiration;
-         BaseTokenType                              for_sale;
-         price_type                                 sell_price;
+         extended_asset                             for_sale;
+         extended_price                             price;
 
          uint64_t primary_key()const { return primary; }
 
          uint128_t by_owner_id()const   { return get_owner_id( owner, id ); }
          uint64_t  by_expiration()const { return expiration; }
-         uint128_t by_price()const      { return sell_price; }
-
-         static uint128_t get_price( BaseTokenType base, QuoteTokenType quote ) {
-            return (uint128_t( precision ) * base.quantity ) / quote.quantity;
-         }
+         double    by_price()const      { return min_to_receive.amount / double(for_sale.amount); }
 
          static uint128_t get_owner_id( account_name owner, uint32_t id ) { return (uint128_t( owner ) << 64) | id; }
 
@@ -149,10 +133,10 @@ class exchange {
       limit_base_quote_index   _base_quote_orders;
       limit_quote_base_index   _quote_base_orders;
 
-      exchange()
-      :_accounts( ExchangeAccount, ExchangeAccount ),
-       _base_quote_orders( ExchangeAccount, ExchangeAccount ),
-       _quote_base_orders( ExchangeAccount, ExchangeAccount )
+      exchange( account_name contract = current_receiver(), account_name exchange_token_contract, symbol_name symbol )
+      :_accounts( contract, contract )
+       _base_quote_orders( contract, contract ),
+       _quote_base_orders( contract, contract )
       {
       }
 

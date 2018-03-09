@@ -105,4 +105,19 @@ namespace eosio {
       EOSLIB_SERIALIZE( extended_asset, (amount)(symbol)(contract) )
    };
 
+   struct token_identity {
+      symbol_name  symbol;
+      account_name contract;
+
+      EOSLIB_SERIALIZE( token_identity, (symbol)(contract) )
+   };
+
+   struct extended_price {
+      double ratio = 0.0;
+      token_identity base;
+      token_identity quote;
+
+      EOSLIB_SERIALIZE( extended_price, (ratio)(base)(quote) )
+   };
+
 } /// namespace eosio 

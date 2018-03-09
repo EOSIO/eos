@@ -19,12 +19,13 @@ namespace eosio {
          struct create {
             account_name           issuer;
             asset                  maximum_supply;
-            array<char,32>         issuer_agreement_hash;
-            bool                   issuer_can_freeze     = true;
-            bool                   issuer_can_recall     = true;
-            bool                   issuer_can_whitelist  = true;
+           // array<char,32>         issuer_agreement_hash;
+            uint8_t                issuer_can_freeze     = true;
+            uint8_t                issuer_can_recall     = true;
+            uint8_t                issuer_can_whitelist  = true;
 
-            EOSLIB_SERIALIZE( create, (issuer)(maximum_supply)(issuer_agreement_hash)(issuer_can_freeze)(issuer_can_recall) )
+            /*(issuer_agreement_hash)*/
+            EOSLIB_SERIALIZE( create, (issuer)(maximum_supply)(issuer_can_freeze)(issuer_can_recall)(issuer_can_whitelist) )
          };
 
          struct transfer  
@@ -72,7 +73,7 @@ namespace eosio {
             bool           is_frozen     = false;
             bool           is_whitelist  = false;
 
-            uint64_t primary_key() const { return supply.symbol; }
+            uint64_t primary_key() const { return supply.symbol.name(); }
 
             EOSLIB_SERIALIZE( currency_stats, (supply)(max_supply)(issuer)(can_freeze)(can_recall)(can_whitelist)(is_frozen)(is_whitelist) )
          };
@@ -107,10 +108,16 @@ namespace eosio {
 
             switch( act ) {
                case N(issue):
-                 on( current_action<issue>() );
+                 print( "process issue\n" );
+                 on( unpack_action<issue>() );
                  return true;
                case N(transfer):
-                 on( current_action<transfer>() );
+                 print( "process transfer\n" );
+                 on( unpack_action<transfer>() );
+                 return true;
+               case N(create):
+                 print( "process create\n" );
+                 on( unpack_action<create>() );
                  return true;
             }
             return false;
@@ -121,7 +128,7 @@ namespace eosio {
              accounts from_acnts( _contract, owner );
 
              const auto& from = from_acnts.get( value.symbol );
-             eosio_assert( from.balance.amount >= value.amount, "overdawn balance" );
+             eosio_assert( from.balance.amount >= value.amount, "overdrawn balance" );
 
              if( has_auth( owner ) ) {
                 eosio_assert( !st.can_freeze || !from.frozen, "account is frozen by issuer" );
@@ -180,8 +187,11 @@ namespace eosio {
 
           void on( const issue& i ) {
              auto sym = i.quantity.symbol.name();
+             print( uint64_t(sym), "contract: ", name(_contract), "\n" );
+
              stats statstable( _contract, sym );
              const auto& st = statstable.get( sym );
+             print( uint64_t(sym), "contract: ", name(_contract), "\n" );
 
              require_auth( st.issuer );
              eosio_assert( i.quantity.amount > 0, "cannot transfer negative quantity" );
@@ -190,10 +200,15 @@ namespace eosio {
                 s.supply.amount += i.quantity.amount;
              });
 
+             print( "addbal\n" );
              add_balance( st.issuer, i.quantity, st, st.issuer );
+             print( "done addbal\n" );
 
              if( i.to != st.issuer )
+             {
+                print( "inline transfer\n" );
                 inline_transfer( st.issuer, i.to, i.quantity, i.memo );
+             }
           }
 
           void on( const transfer& t ) {

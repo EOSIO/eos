@@ -1081,7 +1081,6 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
             p.configuration = starter.get_chain_start_configuration();
             p.active_producers = starter.get_chain_start_producers();
             p.new_active_producers = starter.get_chain_start_producers();
-            wdump((starter.get_chain_start_producers()));
          });
 
          _db.create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
@@ -1096,8 +1095,6 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
             _db.create<block_summary_object>([&](block_summary_object&) {});
 
          starter.prepare_database(*this, _db);
-
-         ilog( "done initializing chain" );
       });
    }
 } FC_CAPTURE_AND_RETHROW() }

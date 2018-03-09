@@ -22,7 +22,7 @@
 
 using namespace std;
 
-typedef double real_type;
+typedef long double real_type;
 typedef double token_type;
 
 
@@ -116,6 +116,7 @@ struct user_margin {
 struct exchange_state;
 struct connector {
    asset      balance;
+   real_type  weight = 0.5;
    token_type total_lent; /// lent from maker to users
    token_type total_borrowed; /// borrowed from users to maker
    token_type total_available_to_lend; /// amount available to borrow
@@ -143,7 +144,7 @@ struct balance_key {
 real_type fee = 1;//.9995;
 
 
-int64_t maxtrade = 2000000000ll;
+int64_t maxtrade = 20000ll;
 
 struct exchange_state {
    token_type  supply;
@@ -185,10 +186,23 @@ void  connector::borrow( exchange_state& ex, account_name user,
 */
 
 asset connector::convert_to_exchange( exchange_state& ex, const asset& input ) {
-   typedef double real_type;
 
-   auto real_issued = real_type(ex.supply) * (sqrt_safe( 1.0 + (real_type(input.amount) / (balance.amount+input.amount))) - 1.0);
-   token_type issued = real_issued;
+   real_type R(ex.supply);
+   real_type S(balance.amount+input.amount);
+   real_type F(weight);
+   real_type T(input.amount);
+   real_type ONE(1.0);
+
+   auto E = R * (ONE - std::pow( ONE + T / S, F) );
+
+
+   //auto real_issued = real_type(ex.supply) * (sqrt_safe( 1.0 + (real_type(input.amount) / (balance.amount+input.amount))) - 1.0);
+   //auto real_issued = real_type(ex.supply) * (std::pow( 1.0 + (real_type(input.amount) / (balance.amount+input.amount)), weight) - real_type(1.0));
+   //auto real_issued = R * (std::pow( ONE + (T / S), F) - ONE);
+
+   //wdump((double(E))(double(real_issued)));
+   token_type issued = -E; //real_issued;
+   
 
    ex.supply      += issued;
    balance.amount += input.amount;
@@ -197,9 +211,23 @@ asset connector::convert_to_exchange( exchange_state& ex, const asset& input ) {
 }
 
 asset connector::convert_from_exchange( exchange_state& ex, const asset& input ) {
-   typedef double real_type;
+
+   real_type R(ex.supply - input.amount);
+   real_type S(balance.amount);
+   real_type F(weight);
+   real_type E(input.amount);
+   real_type ONE(1.0);
+
+   real_type T = S * (std::pow( ONE + E/R, ONE/F) - ONE);
+
+
+   /*
    real_type base = real_type(1.0) + ( real_type(input.amount) / real_type(ex.supply-input.amount));
-   auto out = (balance.amount * ( base*base - real_type(1.0) ));//.getDouble();
+   auto out = (balance.amount * ( std::pow(base,1.0/weight) - real_type(1.0) ));
+   */
+   auto out = T;
+
+//   edump((double(out-T))(double(out))(double(T)));
 
    ex.supply -= input.amount;
    balance.amount -= token_type(out);
@@ -371,16 +399,18 @@ int main( int argc, char** argv ) {
    //state.base.weight  = state.total_weight / 2.;
    state.base.balance.amount = 100000000;
    state.base.balance.symbol = "USD";
+   state.base.weight = .5;
    //state.quote.weight = state.total_weight / 2.;
    state.quote.balance.amount = state.base.balance.amount;
    state.quote.balance.symbol = "BTC";
+   state.quote.weight = .5;
 
    print_state( state );
 
    //state = convert( state, "dan", asset{ 100, "USD"}, asset{ 0, "BTC" } );
 
    auto start = fc::time_point::now();
-   for( uint32_t i = 0; i < 100000; ++i ) {
+   for( uint32_t i = 0; i < 10; ++i ) {
      if( rand() % 2 == 0 )
         state = convert( state, "dan", asset{ token_type(uint32_t(rand())%maxtrade), "USD"}, asset{ 0, "BTC" } );
      else
