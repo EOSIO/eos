@@ -78,7 +78,7 @@ namespace eosio { namespace chain { namespace wasm_constraints {
       using br_table_t     = wasm_ops::br_table<whitelist_validator>;
       using return_t       = wasm_ops::return_<whitelist_validator>;
       using call_t         = wasm_ops::call<whitelist_validator>;
-      using call_indirect_t =wasm_ops:: call_indirect<whitelist_validator>;
+      using call_indirect_t =wasm_ops::call_indirect<whitelist_validator>;
       using drop_t         = wasm_ops::drop<whitelist_validator>;
       using select_t       = wasm_ops::select<whitelist_validator>;
 
@@ -88,7 +88,31 @@ namespace eosio { namespace chain { namespace wasm_constraints {
       using get_global_t   = wasm_ops::get_global<whitelist_validator>;
       using set_global_t   = wasm_ops::set_global<whitelist_validator>;
 
-      using nop_t          = wasm_ops::nop<whitelist_validator>;
+      using nop_t            = wasm_ops::nop<whitelist_validator>;
+      using i32_load_t       = wasm_ops::i32_load<whitelist_validator>;
+      using i64_load_t       = wasm_ops::i64_load<whitelist_validator>;
+      using f32_load_t       = wasm_ops::f32_load<whitelist_validator>;
+      using f64_load_t       = wasm_ops::f64_load<whitelist_validator>;
+      using i32_load8_s_t    = wasm_ops::i32_load8_s<whitelist_validator>;
+      using i32_load8_u_t    = wasm_ops::i32_load8_u<whitelist_validator>;
+      using i32_load16_s_t   = wasm_ops::i32_load16_s<whitelist_validator>;
+      using i32_load16_u_t   = wasm_ops::i32_load16_u<whitelist_validator>;
+      using i64_load8_s_t    = wasm_ops::i64_load8_s<whitelist_validator>;
+      using i64_load8_u_t    = wasm_ops::i64_load8_u<whitelist_validator>;
+      using i64_load16_s_t   = wasm_ops::i64_load16_s<whitelist_validator>;
+      using i64_load16_u_t   = wasm_ops::i64_load16_u<whitelist_validator>;
+      using i64_load32_s_t   = wasm_ops::i64_load32_s<whitelist_validator>;
+      using i64_load32_u_t   = wasm_ops::i64_load32_u<whitelist_validator>;
+      using i32_store_t      = wasm_ops::i32_store<whitelist_validator>;
+      using i64_store_t      = wasm_ops::i64_store<whitelist_validator>;
+      using f32_store_t      = wasm_ops::f32_store<whitelist_validator>;
+      using f64_store_t      = wasm_ops::f64_store<whitelist_validator>;
+      using i32_store8_t     = wasm_ops::i32_store8<whitelist_validator>;
+      using i32_store16_t    = wasm_ops::i32_store16<whitelist_validator>;
+      using i64_store8_t     = wasm_ops::i64_store8<whitelist_validator>;
+      using i64_store16_t    = wasm_ops::i64_store16<whitelist_validator>;
+      using i64_store32_t    = wasm_ops::i64_store32<whitelist_validator>;
+
       using i32_const_t    = wasm_ops::i32_const<whitelist_validator>;
       using i64_const_t    = wasm_ops::i64_const<whitelist_validator>;
       using f32_const_t    = wasm_ops::f32_const<whitelist_validator>;

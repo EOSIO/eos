@@ -112,107 +112,107 @@ struct OP : instr_base<Mutators...> {                                           
                      (i32_sub)         \
                      (i32_mul)         \
                      (i32_div_s)       \
-                     (i32_div_u)       \
-                     (i32_rem_s)       \
-                     (i32_rem_u)       \
-                     (i32_and)         \
-                     (i32_or)       \
-                     (i32_xor)         \
-                     (i32_shl)         \
-                     (i32_shr_s)       \
-                     (i32_shr_u)       \
-                     (i32_rotl)        \
-                     (i32_rotr)        \
-                     (i64_clz)         \
-                     (i64_ctz)         \
-                     (i64_popcnt)       \
-                     (i64_add)         \
-                     (i64_sub)         \
-                     (i64_mul)         \
-                     (i64_div_s)       \
-                     (i64_div_u)       \
-                     (i64_rem_s)       \
-                     (i64_rem_u)       \
-                     (i64_and)         \
-                     (i64_or)       \
-                     (i64_xor)         \
-                     (i64_shl)         \
-                     (i64_shr_s)       \
-                     (i64_shr_u)       \
-                     (i64_rotl)        \
-                     (i64_rotr)        \
-                     (f32_abs)         \
-                     (f32_neg)         \
-                     (f32_ceil)        \
-                     (f32_floor)       \
-                     (f32_trunc)       \
-                     (f32_nearest)        \
-                     (f32_sqrt)        \
-                     (f32_add)         \
-                     (f32_sub)         \
-                     (f32_mul)         \
-                     (f32_div)         \
-                     (f32_min)         \
-                     (f32_max)         \
-                     (f32_copysign)       \
-                     (f64_abs)         \
-                     (f64_neg)         \
-                     (f64_ceil)        \
-                     (f64_floor)       \
-                     (f64_trunc)       \
-                     (f64_nearest)        \
-                     (f64_sqrt)        \
-                     (f64_add)         \
-                     (f64_sub)         \
-                     (f64_mul)         \
-                     (f64_div)         \
-                     (f64_min)         \
-                     (f64_max)         \
-                     (f64_copysign)       \
-                     (i32_wrap_i64)       \
-                     (i32_trunc_s_f32)       \
-                     (i32_trunc_u_f32)       \
-                     (i32_trunc_s_f64)       \
-                     (i32_trunc_u_f64)       \
-                     (i64_extend_s_i32)         \
-                     (i64_extend_u_i32)         \
-                     (i64_trunc_s_f32)       \
-                     (i64_trunc_u_f32)       \
-                     (i64_trunc_s_f64)       \
-                     (i64_trunc_u_f64)       \
-                     (f32_convert_s_i32)        \
-                     (f32_convert_u_i32)        \
-                     (f32_convert_s_i64)        \
-                     (f32_convert_u_i64)        \
-                     (f32_demote_f64)        \
-                     (f64_convert_s_i32)        \
-                     (f64_convert_u_i32)        \
-                     (f64_convert_s_i64)        \
-                     (f64_convert_u_i64)        \
-                     (f64_promote_f32)       \
-                     (i32_reinterpret_f32)         \
-                     (i64_reinterpret_f64)         \
-                     (f32_reinterpret_i32)         \
-                     (f64_reinterpret_i64)         \
-                     (br_table)     \
-                     (block)        \
-                     (loop)         \
-                     (if_)       \
-                     (else_)      \
-                     (br)           \
-                     (br_if)        \
-                     (call)         \
-                     (get_local)    \
-                     (set_local)    \
-                     (tee_local)    \
-                     (get_global)   \
-                     (set_global)   \
-                     (i32_const)    \
-                     (f32_const)    \
-                     (i32_load)     \
-                     (i64_load)     \
-                     (f32_load)     \
-                     (f64_load)     \
+                     (i32_div_u)               \
+                     (i32_rem_s)               \
+                     (i32_rem_u)               \
+                     (i32_and)                 \
+                     (i32_or)                  \
+                     (i32_xor)                 \
+                     (i32_shl)                 \
+                     (i32_shr_s)               \
+                     (i32_shr_u)               \
+                     (i32_rotl)                \
+                     (i32_rotr)                \
+                     (i64_clz)                 \
+                     (i64_ctz)                 \
+                     (i64_popcnt)              \
+                     (i64_add)                 \
+                     (i64_sub)                 \
+                     (i64_mul)                 \
+                     (i64_div_s)               \
+                     (i64_div_u)               \
+                     (i64_rem_s)               \
+                     (i64_rem_u)               \
+                     (i64_and)                 \
+                     (i64_or)                  \
+                     (i64_xor)                 \
+                     (i64_shl)                 \
+                     (i64_shr_s)               \
+                     (i64_shr_u)               \
+                     (i64_rotl)                \
+                     (i64_rotr)                \
+                     (f32_abs)                 \
+                     (f32_neg)                 \
+                     (f32_ceil)                \
+                     (f32_floor)               \
+                     (f32_trunc)               \
+                     (f32_nearest)             \
+                     (f32_sqrt)                \
+                     (f32_add)                 \
+                     (f32_sub)                 \
+                     (f32_mul)                 \
+                     (f32_div)                 \
+                     (f32_min)                 \
+                     (f32_max)                 \
+                     (f32_copysign)            \
+                     (f64_abs)                 \
+                     (f64_neg)                 \
+                     (f64_ceil)                \
+                     (f64_floor)               \
+                     (f64_trunc)               \
+                     (f64_nearest)             \
+                     (f64_sqrt)                \
+                     (f64_add)                 \
+                     (f64_sub)                 \
+                     (f64_mul)                 \
+                     (f64_div)                 \
+                     (f64_min)                 \
+                     (f64_max)                 \
+                     (f64_copysign)            \
+                     (i32_wrap_i64)            \
+                     (i32_trunc_s_f32)         \
+                     (i32_trunc_u_f32)         \
+                     (i32_trunc_s_f64)         \
+                     (i32_trunc_u_f64)         \
+                     (i64_extend_s_i32)        \
+                     (i64_extend_u_i32)        \
+                     (i64_trunc_s_f32)         \
+                     (i64_trunc_u_f32)         \
+                     (i64_trunc_s_f64)         \
+                     (i64_trunc_u_f64)         \
+                     (f32_convert_s_i32)       \
+                     (f32_convert_u_i32)       \
+                     (f32_convert_s_i64)       \
+                     (f32_convert_u_i64)       \
+                     (f32_demote_f64)          \
+                     (f64_convert_s_i32)       \
+                     (f64_convert_u_i32)       \
+                     (f64_convert_s_i64)       \
+                     (f64_convert_u_i64)       \
+                     (f64_promote_f32)         \
+                     (i32_reinterpret_f32)     \
+                     (i64_reinterpret_f64)     \
+                     (f32_reinterpret_i32)     \
+                     (f64_reinterpret_i64)     \
+                     (br_table)                \
+                     (block)                   \
+                     (loop)                    \
+                     (if_)                     \
+                     (else_)                   \
+                     (br)                      \
+                     (br_if)                   \
+                     (call)                    \
+                     (get_local)               \
+                     (set_local)               \
+                     (tee_local)               \
+                     (get_global)              \
+                     (set_global)              \
+                     (i32_const)               \
+                     (f32_const)               \
+                     (i32_load)                \
+                     (i64_load)                \
+                     (f32_load)                \
+                     (f64_load)                \
                      (i32_load8_s)     \
                      (i32_load8_u)     \
                      (i32_load16_s)     \
@@ -421,32 +421,6 @@ enum valtype {
    f64 = 0x7C
 };
 
-struct leb_buff {
-   uint8_t storage[8] = {0};
-   uint8_t size;
-};
-
-template <unsigned MaxSize, bool Signed>
-struct leb128;
-/*
-template <unsigned MaxSize>
-struct leb128<MaxSize, false> { 
-   leb128( uint8_t* code ) {
-      uint32_t shift = 0;
-      while (true) {
-         
-      }
-   }
-   leb_buff val;
-};
-
-template <unsigned MaxSize>
-struct leb128<MaxSize, true> { 
-   leb128( uint8_t* code ) {
-   }
-   leb_buff val;
-};
-*/
 #pragma pack (push)
 struct memarg {
    uint32_t a;   // align
@@ -521,43 +495,6 @@ struct instr_base : instr {
 //      return ret_vec;
    } 
 };
-/*
-// odd specializations that don't fit anywhere
-// error
-template <typename ... Mutators>
-struct error : instr_base<Mutators...> {
-   uint8_t code = error_code;
-   uint8_t get_code() { return error_code; }
-   std::string to_string() { return "error"; }
-   char* skip_ahead( char* block ) { return block + sizeof(code); }
-};
-
-template <typename ... Mutators>
-struct call_indirect : instr_base<Mutators...> {
-   uint8_t code = call_indirect_code;
-   uint32_t funcidx;
-   uint8_t end = unreachable_code;
-   std::string to_string() { return "call_indirect"; }
-   uint8_t get_code() { return error_code; }
-   char* skip_ahead( char* block ) { return block + sizeof(code)+sizeof(funcidx)+sizeof(end); }
-};
-template <typename ... Mutators>
-struct current_memory : instr_base<Mutators...> {
-   uint8_t code = current_memory_code;
-   uint8_t end = unreachable_code;
-   std::string to_string() { return "current_memory"; }
-   uint8_t get_code() { return current_memory_code; }
-   char* skip_ahead( char* block ) { return block + sizeof(code)+sizeof(end); }
-};
-template <typename ... Mutators>
-struct grow_memory : instr_base<Mutators...>{
-   uint8_t code = grow_memory_code;
-   uint8_t end = unreachable_code;
-   std::string to_string() { return "grow_memory"; }
-   uint8_t get_code() { return grow_memory_code; }
-   char* skip_ahead( char* block ) { return block + sizeof(code)+sizeof(end); }
-};
-*/
 
 // construct the ops
 // special case for br_table
@@ -632,17 +569,8 @@ class cached_ops {
    }
 };
 
-#if 0
-#define WASM_CACHED_SEQ
-
-#define PREPEND_CACHED( r, T, OP )  \
-   BOOST_SEQ_PUSH_BACK( WASM_CACHED_SEQ, BOOST_PP_CAT( T, OP ).get() )
-
-BOOST_PP_SEQ_FOR_EACH( PREPEND_CACHED, cached_, WASM_OP_SEQ )
-#endif
-
 template <class Op_Types>
-std::vector<instr*> cached_ops<Op_Types>::_cached_ops; // = { BOOST_PP_SEQ_ENUM(WASM_CACHED_SEQ) };
+std::vector<instr*> cached_ops<Op_Types>::_cached_ops; 
 
 #define INIT_FIELD( r, P, OP ) \
    template <class Op_Types>   \
@@ -720,13 +648,14 @@ template <class Op_Types>
 const std::vector<instr*>* EOSIO_OperatorDecoderStream<Op_Types>::_cached_ops = cached_ops<Op_Types>::get_cached_ops();
 
 }}} // namespace eosio, chain, wasm_ops
-
+/*
 #define REFLECT_OP( r, FIELD, OP ) \
 FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::OP< T >, (code) )
 
 FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::nop< T >, (code) )
 //BOOST_PP_SEQ_FOR_EACH( REFLECT_OP, , BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 130 ) )
 #undef REFLECT_OP
+*/
 FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::block< T >, (code)(rt) )
 FC_REFLECT( eosio::chain::wasm_ops::memarg, (a)(o) )
 FC_REFLECT( eosio::chain::wasm_ops::blocktype, (result) )
