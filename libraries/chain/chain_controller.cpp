@@ -43,7 +43,7 @@ bool chain_controller::is_start_of_round( block_num_type block_num )const  {
 }
 
 uint32_t chain_controller::blocks_per_round()const {
-  return get_global_properties().active_producers.producers.size()*config::producer_repititions;
+  return get_global_properties().active_producers.producers.size()*config::producer_repetitions;
 }
 
 chain_controller::chain_controller( const chain_controller::controller_config& cfg )
@@ -1365,8 +1365,8 @@ account_name chain_controller::get_scheduled_producer(uint32_t slot_num)const
    uint64_t current_aslot = dpo.current_absolute_slot + slot_num;
    const auto& gpo = _db.get<global_property_object>();
    auto number_of_active_producers = gpo.active_producers.producers.size();
-   auto index = current_aslot % (number_of_active_producers * config::producer_repititions);
-   index /= config::producer_repititions;
+   auto index = current_aslot % (number_of_active_producers * config::producer_repetitions);
+   index /= config::producer_repetitions;
    FC_ASSERT( gpo.active_producers.producers.size() > 0, "no producers defined" );
 
    return gpo.active_producers.producers[index].producer_name;
