@@ -151,10 +151,14 @@ namespace eosiosystem {
             system_token_type rewards = prod->per_block_payments;
             auto idx = producers_tbl.template get_index<N(prototalvote)>();
             auto itr = --idx.end();
-            
-            const system_token_type eos_bucket = global_state_singleton::get_or_default().eos_bucket;
+
+            bool is_among_payed_producers = false;
             uint64_t total_producer_votes = 0;
             for (uint32_t i = 0; i < 121; ++i) {
+               if (!is_among_payed_producers) {
+                  if (itr->owner == cr.owner)
+                     is_among_payed_producers = true;
+               }
                if (itr->active()) {
                   total_producer_votes += itr->total_votes;
                }
@@ -163,12 +167,16 @@ namespace eosiosystem {
                }
                --itr;
             }
-            
-            rewards += (uint64_t(prod->total_votes) * eos_bucket) / total_producer_votes;
+
+            if (is_among_payed_producers) {
+               const system_token_type eos_bucket = global_state_singleton::get_or_default().eos_bucket;
+               rewards += (uint64_t(prod->total_votes) * eos_bucket) / total_producer_votes;
+            }
             producers_tbl.update(*prod, 0, [&](auto& p) {
                   p.last_rewards_claim = ctime;
                   p.per_block_payments = system_token_type();
                });
+            currency::inline_transfer(cr.owner, SystemAccount, rewards, "producer claiming rewards");
          }
 
          static void apply( account_name code, action_name act ) {
