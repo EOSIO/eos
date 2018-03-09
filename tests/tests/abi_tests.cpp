@@ -2571,6 +2571,14 @@ void verify_action_equal(const chain::action& exp, const chain::action& act)
    BOOST_REQUIRE(!memcmp(exp.data.data(), act.data.data(), exp.data.size()));
 }
 
+private_key_type get_private_key( name keyname, string role ) {
+   return private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(string(keyname)+role));
+}
+
+public_key_type  get_public_key( name keyname, string role ) {
+   return get_private_key( keyname, role ).get_public_key();
+}
+
 // This test causes the pack logic performed using the FC_REFLECT defined packing (because of
 // packed_transaction::data), to be combined with the unpack logic performed using the abi_serializer,
 // and thus the abi_def for non-built-in-types.  This test will expose if any of the transaction and
@@ -2583,9 +2591,16 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
    txn.ref_block_prefix = 2;
    txn.expiration.from_iso_string("2021-12-20T15:30");
    txn.region = 1;
+   name a = N(alice);
    txn.context_free_actions.emplace_back(
          vector<permission_level>{{N(testapi1), config::active_name}},
-         action1{ 3, 17, (uint8_t)5});
+         contracts::newaccount{
+               .creator  = config::system_account_name,
+               .name     = a,
+               .owner    = authority( get_public_key( a, "owner" )),
+               .active   = authority( get_public_key( a, "active" ) ),
+               .recovery = authority( get_public_key( a, "recovery" ) ),
+         });
    txn.context_free_actions.emplace_back(
          vector<permission_level>{{N(testapi2), config::active_name}},
          action1{ 15, 23, (uint8_t)3});
