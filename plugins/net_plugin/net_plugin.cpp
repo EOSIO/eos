@@ -379,7 +379,7 @@ namespace eosio {
       time_point   start_time; ///< time request made or received
    };
 
-      struct handshake_initializer {
+   struct handshake_initializer {
       static void populate(handshake_message &hello);
    };
 
