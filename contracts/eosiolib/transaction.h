@@ -97,7 +97,7 @@ extern "C" {
     * @param index - the index of the requested action
     * @param buff - output packed buff of the action
     * @param size - amount of buff read, pass 0 to have size returned
-    * @return the size of the action
+    * @return the size of the action, -1 on failure
     */
    int get_action( uint32_t type, uint32_t index, char* buff, size_t size );
 

@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <eosiolib/serialize.hpp>
+#include <string>
 
 typedef unsigned long long u64;
 typedef unsigned int u32;
@@ -45,6 +46,20 @@ struct dummy_action {
 struct u128_action {
   unsigned __int128  values[3]; //16*3
 };
+
+struct cf_action {
+   static uint64_t get_name() {
+      return N(cf_action);
+   }
+   static uint64_t get_account() {
+      return N(testapi);
+   }
+
+   uint32_t       payload = 100;
+   uint32_t       cfd_idx = 0; // context free data index
+
+   EOSLIB_SERIALIZE( cf_action, (payload)(cfd_idx) )
+};
 #pragma pack(pop)
 
 static_assert( sizeof(dummy_action) == 13 , "unexpected packing" );
@@ -75,6 +90,7 @@ struct test_action {
   static void read_action_to_0();
   static void read_action_to_64k();
   static void test_dummy_action();
+  static void test_cf_action();
   static void require_notice();
   static void require_auth();
   static void assert_false();

@@ -437,8 +437,6 @@ namespace eosiosystem {
             genesis_balance_index_type genesis_balances( system_account, system_account );
             eosio_assert( genesis_balances.begin() == genesis_balances.end(), "setgen already applied." );
 
-            auto pubkeyidx = genesis_balances.template get_index<N(genpubkey)>();
-
             for( const auto& gb : gen.genesis_balances ) {
                key256 key = to_key256( gb.first );
                genesis_balances.emplace( system_account, [&key, &gb]( auto& v ) {
@@ -454,7 +452,7 @@ namespace eosiosystem {
           */
          static void on( const claimgen& cg ) {
             // verify associated keyproof context free action contains same pubkey_hash
-            eosio::action cfa = eosio::get_action ( 0, 0 );
+            eosio::action cfa = eosio::get_action( 0, 0 );
             keyproof kp = cfa.data_as<keyproof>();
             eosio_assert( kp.pubkey_hash == cg.pubkey_hash, "claimgen pubkey_hash not equal to keyproof pubkey_hash" );
 
@@ -467,13 +465,13 @@ namespace eosiosystem {
             currency::inline_transfer( system_account, cg.name, gbitr->balance, "claimed genesis balance" );
 
             // remove genesis balance from claimable table
-            genesis_balances.remove(*gbitr);
+            genesis_balances.remove( *gbitr );
          }
 
          /**
           * Context free action.
           * Verifies associated context free data signature matches provided hashed public key.
-          * @param kp
+          * @param kp the context free action data
           */
          static void on( const keyproof& kp ) {
             signature sig;
