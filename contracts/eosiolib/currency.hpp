@@ -92,15 +92,16 @@ namespace eosio {
             return t.get(symbol).balance;
          }
 
+         static void inline_transfer( account_name from, account_name to, extended_asset amount, string memo = string(), permission_name perm = N(active) ) {
+            action act( permission_level( from, perm ), amount.contract, N(transfer), transfer{from,to,amount,memo} );
+            act.send();
+         }
+
          void inline_transfer( account_name from, account_name to, asset amount, string memo = string(), permission_name perm = N(active) ) {
             action act( permission_level( from, perm ), _contract, N(transfer), transfer{from,to,amount,memo} );
             act.send();
          }
 
-         void inline_transfer( account_name from, account_name to, extended_asset amount, string memo = string(), permission_name perm = N(active) ) {
-            action act( permission_level( from, perm ), amount.contract, N(transfer), transfer{from,to,amount,memo} );
-            act.send();
-         }
 
          bool apply( account_name contract, action_name act ) {
             if( contract != _contract ) 
@@ -108,20 +109,54 @@ namespace eosio {
 
             switch( act ) {
                case N(issue):
-                 print( "process issue\n" );
+                  print( "issue\n");
                  on( unpack_action<issue>() );
                  return true;
                case N(transfer):
-                 print( "process transfer\n" );
+                  print( "transfer\n");
                  on( unpack_action<transfer>() );
                  return true;
                case N(create):
-                 print( "process create\n" );
+                  print( "create\n");
                  on( unpack_action<create>() );
                  return true;
             }
             return false;
          }
+
+          /**
+           * This is factored out so it can be used as a building block 
+           */
+          void create_currency( const create& c ) {
+             auto sym = c.maximum_supply.symbol;
+          //   eosio_assert( sym.is_valid(), "invalid symbol name" );
+
+             stats statstable( _contract, sym.name() );
+             auto existing = statstable.find( sym.name() );
+             eosio_assert( existing == statstable.end(), "token with symbol already exists" );
+
+             statstable.emplace( c.issuer, [&]( auto& s ) {
+                s.supply.symbol = c.maximum_supply.symbol;
+                s.max_supply    = c.maximum_supply;
+                s.issuer        = c.issuer;
+                s.can_freeze    = c.issuer_can_freeze;
+                s.can_recall    = c.issuer_can_recall;
+                s.can_whitelist = c.issuer_can_whitelist;
+             });
+          }
+
+          void issue_currency( const issue& i ) {
+             auto sym = i.quantity.symbol.name();
+             stats statstable( _contract, sym );
+             const auto& st = statstable.get( sym );
+
+             statstable.modify( st, 0, [&]( auto& s ) {
+                s.supply.amount += i.quantity.amount;
+                eosio_assert( s.supply.amount >= 0, "underflow" );
+             });
+
+             add_balance( st.issuer, i.quantity, st, st.issuer );
+          }
 
       private:
           void sub_balance( account_name owner, asset value, const currency_stats& st ) {
@@ -161,21 +196,10 @@ namespace eosio {
              }
           }
 
+
           void on( const create& c ) {
-             auto sym = c.maximum_supply.symbol;
-
-             stats statstable( _contract, sym.name() );
-             auto existing = statstable.find( sym.name() );
-             eosio_assert( existing == statstable.end(), "token with symbol already exists" );
-
-             statstable.emplace( c.issuer, [&]( auto& s ) {
-                s.supply.symbol = c.maximum_supply.symbol;
-                s.max_supply    = c.maximum_supply;
-                s.issuer        = c.issuer;
-                s.can_freeze    = c.issuer_can_freeze;
-                s.can_recall    = c.issuer_can_recall;
-                s.can_whitelist = c.issuer_can_whitelist;
-             });
+             require_auth( c.issuer );
+             create_currency( c );
 
              /*
              auto fee = get_fee_schedule()[c.maximum_supply.name_length()];
@@ -187,11 +211,8 @@ namespace eosio {
 
           void on( const issue& i ) {
              auto sym = i.quantity.symbol.name();
-             print( uint64_t(sym), "contract: ", name(_contract), "\n" );
-
              stats statstable( _contract, sym );
              const auto& st = statstable.get( sym );
-             print( uint64_t(sym), "contract: ", name(_contract), "\n" );
 
              require_auth( st.issuer );
              eosio_assert( i.quantity.amount > 0, "cannot transfer negative quantity" );
@@ -200,13 +221,10 @@ namespace eosio {
                 s.supply.amount += i.quantity.amount;
              });
 
-             print( "addbal\n" );
              add_balance( st.issuer, i.quantity, st, st.issuer );
-             print( "done addbal\n" );
 
              if( i.to != st.issuer )
              {
-                print( "inline transfer\n" );
                 inline_transfer( st.issuer, i.to, i.quantity, i.memo );
              }
           }

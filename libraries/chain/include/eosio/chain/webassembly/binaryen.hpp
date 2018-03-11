@@ -3,6 +3,7 @@
 #include <eosio/chain/webassembly/common.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <wasm-interpreter.h>
+#include <softfloat_types.h>
 
 
 namespace eosio { namespace chain { namespace webassembly { namespace binaryen {
@@ -248,6 +249,12 @@ template<typename T>
 T convert_literal_to_native(Literal& v);
 
 template<>
+inline float64_t convert_literal_to_native<float64_t>(Literal& v) {
+   auto val = v.getf64();
+   return reinterpret_cast<float64_t&>(val);
+}
+
+template<>
 inline int64_t convert_literal_to_native<int64_t>(Literal& v) {
    return v.geti64();
 }
@@ -288,6 +295,10 @@ inline name convert_literal_to_native<name>(Literal& v) {
 template<typename T>
 inline auto convert_native_to_literal(const wasm_interface &, T val) {
    return Literal(val);
+}
+
+inline auto convert_native_to_literal(const wasm_interface &, const float64_t& val) {
+   return Literal( *((double*)(&val)) );
 }
 
 inline auto convert_native_to_literal(const wasm_interface &, const name &val) {

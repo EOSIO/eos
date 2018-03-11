@@ -4,71 +4,116 @@
       "type": "name"
     }
   ],
-  "structs": [{
-      "name": "order_id",
+  "structs": [
+    {
+      "name": "extended_asset",
       "base": "",
       "fields": [
-        {"name":"name", "type":"account_name"},
-        {"name":"id", "type":"uint64"}
+        {"name":"quantity", "type":"asset"},
+        {"name":"contract", "type":"account_name"}
       ]
-    },{
-      "name" : "bid",
+    },
+    {
+      "name": "trade",
       "base": "",
-      "fields" : [
-         {"name":"buyer", "type":"order_id"},
-         {"name":"at_price", "type":"uint128"},
-         {"name":"quantity", "type":"uint64"},
-         {"name":"expiration", "type":"time"}
+      "fields": [
+        {"name":"seller", "type":"account_name"},
+        {"name":"market", "type":"symbol"}
+        {"name":"sell", "type":"extended_asset"}
+        {"name":"min_receive", "type":"extended_asset"}
+        {"name":"expire", "type":"uint32"}
+        {"name":"fill_or_kill", "type":"uint8"}
       ]
-    },{
-      "name" : "ask",
+    },
+    {
+      "name": "createx",
       "base": "",
-      "fields" : [
-         {"name":"seller", "type":"order_id"},
-         {"name":"at_price", "type":"uint128"},
-         {"name":"quantity", "type":"uint64"},
-         {"name":"expiration", "type":"time"}
+      "fields": [
+        {"name":"creator", "type":"account_name"},
+        {"name":"initial_supply", "type":"asset"},
+        {"name":"fee", "type":"uint32"},
+        {"name":"base_deposit", "type":"extended_asset"}
+        {"name":"quote_deposit", "type":"extended_asset"}
       ]
-    },{
-      "name" : "account",
+    },
+    {
+      "name": "transfer",
       "base": "",
-      "fields" : [
-         {"name":"owner", "type":"account_name"},
-         {"name":"eos_balance", "type":"uint64"},
-         {"name":"currency_balance", "type":"uint64"},
-         {"name":"open_orders", "type":"uint32"}
+      "fields": [
+        {"name":"from", "type":"account_name"},
+        {"name":"to", "type":"account_name"},
+        {"name":"quantity", "type":"asset"},
+        {"name":"memo", "type":"string"}
+      ]
+    },
+    {
+      "name": "deposit",
+      "base": "",
+      "fields": [
+        {"name":"from", "type":"account_name"},
+        {"name":"quantity", "type":"extended_asset"},
+      ]
+    },
+    {
+     "name": "create",
+     "base": "",
+     "fields": [
+        {"name":"issuer", "type":"account_name"},
+        {"name":"maximum_supply", "type":"asset"},
+        {"name":"can_freeze", "type":"uint8"}
+        {"name":"can_recall", "type":"uint8"}
+        {"name":"can_whitelist", "type":"uint8"}
+     ]
+  },{
+     "name": "issue",
+     "base": "",
+     "fields": [
+        {"name":"to", "type":"account_name"},
+        {"name":"quantity", "type":"asset"},
+        {"name":"memo", "type":"string"}
+     ]
+  },{
+      "name": "account",
+      "base": "",
+      "fields": [
+        {"name":"currency", "type":"uint64"},
+        {"name":"balance", "type":"uint64"}
       ]
     },{
-      "name" : "buy_order",
-      "base" : "bid",
-      "fields" : [
-         {"name":"fill_or_kill", "type":"uint8"}
-      ]
-    },{
-      "name" : "sell_order",
-      "base" : "ask",
-      "fields" : [
-         {"name":"fill_or_kill", "type":"uint8"}
+      "name": "currency_stats",
+      "base": "",
+      "fields": [
+        {"name":"currency", "type":"uint64"},
+        {"name":"supply", "type":"uint64"}
       ]
     }
   ],
-  "actions": [{
-      "name": "buy",
-      "type": "buy_order"
-    },{
-      "name": "sell",
-      "type": "sell_order"
-    },{
-      "name": "cancelbuy",
-      "type": "order_id"
-    },{
-      "name": "cancelsell",
-      "type": "order_id"
+  "actions": [
+    { "name": "deposit", "type": "deposit" },
+    { "name": "transfer", "type": "transfer" },
+    { "name": "trade", "type": "trade" },
+    { "name": "createx", "type": "createx" },
+    {
+      "name": "issue",
+      "type": "issue"
+    }, {
+      "name": "create",
+      "type": "create"
     }
+
   ],
-  "tables": [
-    {"name":"bids","type":"bid"},
-    {"name":"asks","type":"ask"},
-    {"name":"account","type":"account"}
+  "tables": [{
+      "name": "account",
+      "type": "account",
+      "index_type": "i64",
+      "key_names" : ["currency"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "stat",
+      "type": "currency_stats",
+      "index_type": "i64",
+      "key_names" : ["currency"],
+      "key_types" : ["uint64"]
+    }
   ]
 }

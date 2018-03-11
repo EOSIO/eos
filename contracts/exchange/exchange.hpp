@@ -1,277 +1,353 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
-#include <eosiolib/generic_currency.hpp>
-#include <eosiolib/multi_index.hpp>
+#include <eosiolib/currency.hpp>
+#include <boost/container/flat_map.hpp>
+#include <cmath>
 
-using eosio::asset;
-using eosio::symbol_name;
-using eosio::indexed_by;
-using eosio::const_mem_fun;
-using eosio::price_ratio;
-using eosio::price;
+namespace eosio {
 
+   typedef double real_type;
+   using boost::container::flat_map;
 
+   struct exchange_state {
+      account_name      manager;
+      extended_asset    supply;
+      uint32_t          fee = 0;
 
-struct global_margin_state {
-   extended_asset lent; /// the total quantity of tokens lent for this collateral type.
-   extended_asset collateral; /// lent * call_price => amount of collateral that must be able to buy back lent
-   double         call_price = 0; ///< the least collateralized position
-   uint16_t       interest_rate = 0; ///< annual interest rate as percent where 10000 = 1% and 1 = .00001% 
+      struct connector {
+         extended_asset balance;
+         uint32_t       weight = 500;
 
-   EOSLIB_SERIALIZE( global_margin_state, (lent)(collateral)(call_price)(interest_rate) )
-};
+         EOSLIB_SERIALIZE( connector, (balance)(weight) )
+      };
 
-struct exchange_state {
-   symbol_name  symbol;
-   int64_t      supply = 0; /// balance for purpose of market making
+      connector base;
+      connector quote;
 
-   struct connector {
-      account_name issuer;
-      symbol_name  symbol;
-      int64_t      balance; /// balance for purpose of market making
-      int64_t      lendable; ///< total funds available for lending
-      int64_t      lent; ///< total actually lent;
-      int64_t      interest_accumulated; ///< total interest accumulated
-      int128_t     interest_shares; ///< total shares in the accumulated interest, works like VSHARES on steem
+      extended_asset convert_to_exchange( connector& c, extended_asset in ) {
+         /*
+         print( "initial connector balance: ", c.balance, "\n" );
+         print( "initial ex supply balance: ", supply, "\n" );
+         */
+
+         real_type R(supply.amount);
+         real_type C(c.balance.amount+in.amount);
+         real_type F(c.weight/1000.0);
+         real_type T(in.amount);
+         real_type ONE(1.0);
+
+         /*
+         print( "R: ", R, " \n" );
+         print( "C: ", C, " \n" );
+         print( "F: ", F, " \n" );
+         print( "T: ", T, " \n" );
+         */
+
+         real_type E = -R * (ONE - std::pow( ONE + T / C, F) );
+         int64_t issued = int64_t(E);
+
+         supply.amount += issued;
+         c.balance.amount += in.amount;
+
+         /*
+         print( "final connector balance: ", c.balance, "\n" );
+         print( "final ex supply balance: ", supply, "\n" );
+         print( "----------END FROM CON --------------------\n" );
+         */
+         return extended_asset( issued, supply.get_extended_symbol() );
+      }
+
+      extended_asset convert_from_exchange( connector& c, extended_asset in ) {
+         /*
+         print( "initial connector balance: ", c.balance, "\n" );
+         print( "initial ex supply balance: ", supply, "\n" );
+         */
+         eosio_assert( in.contract == supply.contract, "unexpected asset contract input" );
+         eosio_assert( in.symbol== supply.symbol, "unexpected asset symbol input" );
+
+         real_type R(supply.amount - in.amount);
+         real_type C(c.balance.amount);
+         real_type F(1000.0/c.weight);
+         real_type E(in.amount);
+         real_type ONE(1.0);
+
+         /*
+         print( "R: ", R, " \n" );
+         print( "C: ", C, " \n" );
+         print( "F: ", F, " \n" );
+         print( "E: ", E, " \n" );
+         */
+
+         real_type T = C * (std::pow( ONE + E/R, F) - ONE);
+         int64_t out = int64_t(T);
+
+         supply.amount -= in.amount;
+         c.balance.amount -= out;
+
+         /*
+         print( "final connector balance: ", c.balance, "\n" );
+         print( "final ex supply balance: ", supply, "\n" );
+         print( "---------- END FROM EX-----------------------\n" );
+         */
+         return extended_asset( out, c.balance.get_extended_symbol() );
+      }
+
+      uint64_t primary_key()const { return supply.symbol.name(); }
+
+      EOSLIB_SERIALIZE( exchange_state, (manager)(supply)(fee)(base)(quote) )
    };
+   
 
-   connector base;
-   connector quote;
-   global_margin_state margin_state[6];
+   /**
+    *  This contract enables users to create an exchange between any pair of
+    *  standard currency types. A new exchange is created by funding it with
+    *  an equal value of both sides of the order book and giving the issuer
+    *  the initial shares in that orderbook.
+    *
+    *  To prevent exessive rounding errors, the initial deposit should include
+    *  a sizeable quantity of both the base and quote currencies and the exchange
+    *  shares should have a quantity 100x the quantity of the largest initial
+    *  deposit. 
+    *
+    *  Users must deposit funds into the exchange before they can trade on the
+    *  exchange. 
+    *
+    *  Each time an exchange is created a new currency for that exchanges market
+    *  maker is also created. This currencies supply and symbol must be unique and
+    *  it uses the currency contract's tables to manage it.
+    */  
+   class exchange {
+      private:
+         account_name _this_contract;
+         currency     _excurrencies;
 
-   EOSLIB_SERIALIZE( exchange_state, (symbol)(supply)(base)(quote)(margin_state) )
-};
+      public:
+         exchange( account_name self )
+         :_this_contract(self),_excurrencies(self){}
 
 
-/**
- *  This is used to log transient side effects of temporary conversions
- */
-struct pending_state : exchange_state 
-{
-   struct balance_key {
-      account_name owner;
-      account_name issuer;
-      symbol_type  symbol;
+         typedef eosio::multi_index<N(markets), exchange_state> markets;
 
-      friend bool operator < ( const balance_key& a, const balance_key& b ) {
-         return std::tie( a.owner, a.issuer, a.symbol ) < std::tie( b.owner, b.issuer, b.symbol );
-      }
-      friend bool operator == ( const balance_key& a, const balance_key& b ) {
-         return std::tie( a.owner, a.issuer, a.symbol ) == std::tie( b.owner, b.issuer, b.symbol );
-      }
+         /**
+          *  Create a new exchange between two extended asset types, 
+          *  creator will receive the initial supply of a new token type
+          */
+         struct createx  {
+            account_name    creator;
+            asset           initial_supply;
+            uint32_t        fee;
+            extended_asset  base_deposit;
+            extended_asset  quote_deposit;
+
+            EOSLIB_SERIALIZE( createx, (creator)(initial_supply)(fee)(base_deposit)(quote_deposit) )
+         };
+
+         struct deposit {
+            account_name    from;
+            extended_asset  quantity;
+
+            EOSLIB_SERIALIZE( deposit, (from)(quantity) )
+         };
+
+         void on( const deposit& d ) {
+            currency::inline_transfer( d.from, _this_contract, d.quantity, "deposit" );
+            adjust_balance( d.from, d.quantity, "deposit" );
+         }
+
+         struct withdraw {
+            account_name    from;
+            extended_asset  quantity;
+
+            EOSLIB_SERIALIZE( withdraw, (from)(quantity) )
+         };
+         void on( const withdraw& w ) {
+            require_auth( w.from );
+            eosio_assert( w.quantity.amount >= 0, "cannot withdraw negative balance" );
+            adjust_balance( w.from, -w.quantity );
+            currency::inline_transfer( _this_contract, w.from, w.quantity, "withdraw" );
+         }
+
+         struct trade {
+            account_name    seller;
+            symbol_type     market;
+            extended_asset  sell;
+            extended_asset  min_receive;
+            uint32_t        expire = 0;
+            uint8_t         fill_or_kill = true;
+
+            EOSLIB_SERIALIZE( trade, (seller)(market)(sell)(min_receive)(expire)(fill_or_kill) )
+         };
+
+         extended_asset convert( exchange_state& state, extended_asset from, extended_symbol to ) {
+            auto sell_symbol  = from.get_extended_symbol();
+            auto ex_symbol    = extended_symbol( state.supply.symbol, _this_contract );
+            auto base_symbol  = state.base.balance.get_extended_symbol();
+            auto quote_symbol = state.quote.balance.get_extended_symbol();
+
+            if( sell_symbol != ex_symbol ) {
+               if( sell_symbol == base_symbol ) {
+                  from = state.convert_to_exchange( state.base, from );
+               } else if( sell_symbol == quote_symbol ) {
+                  from = state.convert_to_exchange( state.quote, from );
+               } else { 
+                  eosio_assert( false, "invalid sell" );
+               }
+            } else {
+               if( to == base_symbol ) {
+                  from = state.convert_from_exchange( state.base, from ); 
+               } else if( to == quote_symbol ) {
+                  from = state.convert_from_exchange( state.quote, from ); 
+               } else {
+                  eosio_assert( false, "invalid conversion" );
+               }
+            }
+
+            if( to != from.get_extended_symbol() )
+               return convert( state, from, to );
+
+            return from;
+         }
+
+         void on( const trade& t ) {
+            auto marketid = t.market.name();
+            eosio_assert( t.sell.get_extended_symbol() != t.min_receive.get_extended_symbol(), "invalid conversion" );
+
+            require_auth( t.seller );
+
+            markets market_table( _this_contract, marketid );
+            auto market_state = market_table.find( marketid );
+            eosio_assert( market_state != market_table.end(), "unknown market" );
+
+            auto state = *market_state;
+
+            auto output = convert( state, t.sell, t.min_receive.get_extended_symbol() );
+            print( name(t.seller), "   ", t.sell, "  =>  ", output, "\n" );
+
+            if( t.min_receive.amount != 0 ) {
+               eosio_assert( t.min_receive.amount <= output.amount, "unable to fill" );
+            }
+
+            adjust_balance( t.seller, -t.sell, "sold" );
+            adjust_balance( t.seller, output, "received" );
+
+            if( market_state->supply.amount != state.supply.amount ) {
+               auto delta = state.supply - market_state->supply;
+
+               _excurrencies.issue_currency( { .to = _this_contract,
+                                              .quantity = delta,
+                                              .memo = string("") } );
+            }
+
+            market_table.modify( market_state, 0, [&]( auto& s ) {
+               s = state;
+            });
+         }
+
+         /**
+          *  Each user has their own account with the exchange contract that keeps track
+          *  of how much a user has on deposit for each extended asset type. The assumption
+          *  is that storing a single flat map of all balances for a particular user will
+          *  be more practical than breaking this down into a multi-index table sorted by
+          *  the extended_symbol.  
+          */
+         struct exaccount {
+            account_name                         owner;
+            flat_map<extended_symbol, int64_t>   balances;
+
+            uint64_t primary_key() const { return owner; }
+            EOSLIB_SERIALIZE( exaccount, (owner)(balances) )
+         };
+
+         typedef eosio::multi_index<N(exaccounts), exaccount> exaccounts;
+
+
+         /**
+          *  Keep a cache of all accounts tables we access
+          */
+         flat_map<account_name, exaccounts> exaccounts_cache;
+
+         void adjust_balance( account_name owner, extended_asset delta, const string& reason = string() ) {
+            (void)reason;
+
+            auto table = exaccounts_cache.find( owner );
+            if( table == exaccounts_cache.end() ) {
+               table = exaccounts_cache.emplace( owner, exaccounts(_this_contract, owner )  ).first;
+            }
+            auto useraccounts = table->second.find( owner );
+            if( useraccounts == table->second.end() ) {
+               table->second.emplace( owner, [&]( auto& exa ){
+                 exa.owner = owner;
+                 exa.balances[delta.get_extended_symbol()] = delta.amount;
+                 eosio_assert( delta.amount >= 0, "overdrawn balance 1" );
+               });
+            } else {
+               table->second.modify( useraccounts, 0, [&]( auto& exa ) {
+                 const auto& b = exa.balances[delta.get_extended_symbol()] += delta.amount;
+                 eosio_assert( b >= 0, "overdrawn balance 2" );
+               });
+            }
+         }
+
+
+         void on( const createx& c ) {
+            require_auth( c.creator );
+            eosio_assert( c.initial_supply.symbol.is_valid(), "invalid symbol name" );
+            eosio_assert( c.initial_supply.amount > 0, "initial supply must be positive" );
+            eosio_assert( c.base_deposit.get_extended_symbol() != c.quote_deposit.get_extended_symbol(), 
+                          "must exchange between two different currencies" );
+
+            print( "base: ", c.base_deposit.get_extended_symbol() );
+            print( "quote: ",c.quote_deposit.get_extended_symbol() );
+
+            auto exchange_symbol = c.initial_supply.symbol.name();
+            print( "marketid: ", exchange_symbol, " \n " );
+
+            markets exstates( _this_contract, exchange_symbol );
+            auto existing = exstates.find( exchange_symbol );
+
+            eosio_assert( existing == exstates.end(), "unknown market" );
+            exstates.emplace( c.creator, [&]( auto& s ) {
+                s.manager = c.creator;
+                s.supply  = extended_asset(c.initial_supply, _this_contract);
+                s.base.balance = c.base_deposit;
+                s.quote.balance = c.quote_deposit;
+            });
+
+            _excurrencies.create_currency( { .issuer = _this_contract,
+                                      .maximum_supply = asset( 0, c.initial_supply.symbol ),
+                                      .issuer_can_freeze = false,
+                                      .issuer_can_whitelist = false,
+                                      .issuer_can_recall = false } );
+
+            _excurrencies.issue_currency( { .to = _this_contract,
+                                           .quantity = c.initial_supply,
+                                           .memo = string("initial exchange tokens") } );
+
+            adjust_balance( c.creator, extended_asset( c.initial_supply, _this_contract ), "new exchange issue" );
+            adjust_balance( c.creator, -c.base_deposit, "new exchange deposit" );
+            adjust_balance( c.creator, -c.quote_deposit, "new exchange deposit" );
+         }
+
+         bool apply( account_name contract, account_name act ) {
+
+            if( contract != _this_contract ) 
+               return false;
+
+            switch( act ) {
+               case N(createx):
+                  on( unpack_action<createx>() );
+                  return true;
+               case N(trade):
+                  on( unpack_action<trade>() );
+                  return true;
+               case N(deposit):
+                  on( unpack_action<deposit>() );
+                  return true;
+               case N(withdraw):
+                  on( unpack_action<withdraw>() );
+                  return true;
+               default:
+                  return _excurrencies.apply( contract, act );
+            }
+         }
+
    };
-
-   asset convert_to_exchange( connector& con, const extended_asset& input );
-   asset convert_from_exchange( connector& con, const extended_asset& input );
-
-   void transfer( account_name user, extended_asset q ) {
-      output[balance_key{user,q.symbol}] += q.amount;
-   }
-
-   map<balance_key, token_type> output; 
-};
-
-
-
-//template<account_name ExchangeAccount, symbol_name ExchangeSymbol>
-class exchange {
-   public:
-      struct account {
-         account_name       owner;
-         extended_asset     base_balance;
-         extended_asset     quote_balance;
-         extended_asset     ex_balance;
-
-         uint64_t primary_key()const { return owner; }
-
-         EOSLIB_SERIALIZE( account, (owner)(base_balance)(quote_balance)  )
-      };
-      typedef eosio::multi_index< N(accounts), account>       account_index_type;
-
-      struct limit_order {
-         typedef eosio::price<BaseTokenType, QuoteTokenType> price_type;
-
-         uint64_t                                   primary;
-         account_name                               owner;
-         uint32_t                                   id;
-         uint32_t                                   expiration;
-         extended_asset                             for_sale;
-         extended_price                             price;
-
-         uint64_t primary_key()const { return primary; }
-
-         uint128_t by_owner_id()const   { return get_owner_id( owner, id ); }
-         uint64_t  by_expiration()const { return expiration; }
-         double    by_price()const      { return min_to_receive.amount / double(for_sale.amount); }
-
-         static uint128_t get_owner_id( account_name owner, uint32_t id ) { return (uint128_t( owner ) << 64) | id; }
-
-         EOSLIB_SERIALIZE( limit_order, (primary)(owner)(id)(expiration)(for_sale)(sell_price) )
-      };
-
-      typedef limit_order<base_token_type, quote_token_type> limit_base_quote;
-      typedef eosio::multi_index< N(sellbq), limit_base_quote,
-              indexed_by< N(price),   const_mem_fun<limit_base_quote, uint128_t, &limit_base_quote::by_price > >,
-              indexed_by< N(ownerid), const_mem_fun<limit_base_quote, uint128_t, &limit_base_quote::by_owner_id> >,
-              indexed_by< N(expire),  const_mem_fun<limit_base_quote, uint64_t,  &limit_base_quote::by_expiration> >
-      > limit_base_quote_index;
-
-      typedef limit_order<quote_token_type, base_token_type> limit_quote_base;
-      typedef eosio::multi_index< N(sellqb), limit_quote_base,
-              indexed_by< N(price),   const_mem_fun<limit_quote_base, uint128_t, &limit_quote_base::by_price > >,
-              indexed_by< N(ownerid), const_mem_fun<limit_quote_base, uint128_t, &limit_quote_base::by_owner_id> >,
-              indexed_by< N(expire),  const_mem_fun<limit_quote_base, uint64_t,  &limit_quote_base::by_expiration> >
-      > limit_quote_base_index;
-
-
-
-
-
-      account_index_type       _accounts;
-      limit_base_quote_index   _base_quote_orders;
-      limit_quote_base_index   _quote_base_orders;
-
-      exchange( account_name contract = current_receiver(), account_name exchange_token_contract, symbol_name symbol )
-      :_accounts( contract, contract )
-       _base_quote_orders( contract, contract ),
-       _quote_base_orders( contract, contract )
-      {
-      }
-
-      ACTION( ExchangeAccount, deposit ) {
-         account_name from;
-         asset        amount;
-
-         EOSLIB_SERIALIZE( deposit, (from)(amount) )
-      };
-
-      void on( const deposit& d ) {
-         require_auth( d.from );
-
-         auto owner = _accounts.find( d.from );
-         if( owner == _accounts.end() ) {
-            owner = _accounts.emplace( d.from, [&]( auto& a ) {
-              a.owner = d.from;
-            });
-         }
-
-         switch( d.amount.symbol ) {
-            case base_token_type::symbol:
-               BaseCurrency::inline_transfer( d.from, ExchangeAccount, base_token_type(d.amount.amount) );
-               _accounts.modify( owner, 0, [&]( auto& a ) {
-                  a.base_balance += base_token_type(d.amount);
-               });
-               break;
-            case quote_token_type::symbol:
-               QuoteCurrency::inline_transfer( d.from, ExchangeAccount, quote_token_type(d.amount.amount) );
-               _accounts.modify( owner, 0, [&]( auto& a ) {
-                  a.quote_balance += quote_token_type(d.amount);
-               });
-               break;
-            default:
-               eosio_assert( false, "invalid symbol" );
-         }
-      }
-
-      ACTION( ExchangeAccount, withdraw ) {
-         account_name to;
-         asset        amount;
-
-         EOSLIB_SERIALIZE( withdraw, (to)(amount) )
-      };
-
-      void on( const withdraw& w ) {
-         require_auth( w.to );
-
-         auto owner = _accounts.find( w.to );
-         eosio_assert( owner != _accounts.end(), "unknown exchange account" );
-
-         switch( w.amount.symbol ) {
-            case base_token_type::symbol:
-               eosio_assert( owner->base_balance >= base_token_type(w.amount), "insufficient balance" );
-
-               _accounts.modify( owner, 0, [&]( auto& a ) {
-                  a.base_balance -= base_token_type(w.amount);
-               });
-
-               BaseCurrency::inline_transfer( ExchangeAccount, w.to, base_token_type(w.amount.amount) );
-               break;
-            case quote_token_type::symbol:
-               eosio_assert( owner->quote_balance >= quote_token_type(w.amount), "insufficient balance" );
-
-               _accounts.modify( owner, 0, [&]( auto& a ) {
-                  a.quote_balance -= quote_token_type(w.amount);
-               });
-
-               QuoteCurrency::inline_transfer( ExchangeAccount, w.to, quote_token_type(w.amount.amount) );
-               break;
-            default:
-               eosio_assert( false, "invalid symbol" );
-         }
-      }
-
-      ACTION( ExchangeAccount, neworder ) {
-         account_name owner;
-         uint32_t     id;
-         asset        amount_to_sell;
-         bool         fill_or_kill;
-         uint128_t    sell_price;
-         uint32_t     expiration;
-
-         EOSLIB_SERIALIZE( neworder, (owner)(id)(amount_to_sell)(fill_or_kill)(sell_price)(expiration) )
-      };
-
-      void on( const neworder& order ) {
-         require_auth( order.owner );
-
-         if( order.amount_to_sell.symbol == base_token_type::symbol ) {
-            _base_quote_orders.emplace( order.owner, [&]( auto& o ) {
-               o.primary      = 0;// _base_quote_orders.next_available_id()
-               o.owner        = order.owner;
-               o.id           = order.id;
-               o.expiration   = order.expiration;
-               o.for_sale     = order.amount_to_sell;
-               o.sell_price   = order.sell_price;
-            });
-         }
-         else if( order.amount_to_sell.symbol == quote_token_type::symbol ) {
-            _quote_base_orders.emplace( order.owner, [&]( auto& o ) {
-               o.primary      = 0;// _base_quote_orders.next_available_id()
-               o.owner        = order.owner;
-               o.id           = order.id;
-               o.expiration   = order.expiration;
-               o.for_sale     = order.amount_to_sell;
-               o.sell_price   = order.sell_price;
-            });
-         }
-      }
-
-      ACTION( ExchangeAccount, cancelorder ) {
-         account_name owner;
-         uint32_t     id;
-
-         EOSLIB_SERIALIZE( cancelorder, (owner)(id) )
-      };
-
-      void on( const cancelorder& order ) {
-         require_auth( order.owner );
-
-         auto idx = _base_quote_orders.template get_index<N(ownerid)>();
-         auto itr = idx.find( limit_base_quote::get_owner_id( order.owner, order.id ) );
-         if( itr != idx.end() ) {
-            idx.erase(itr);
-         }
-      }
-
-
-      static void apply( uint64_t code, uint64_t act ) {
-         if( !eosio::dispatch<exchange,
-                deposit, withdraw,
-                neworder, cancelorder
-             >( code, act ) ) {
-            exchange::exchange_currency::apply( code, act );
-         }
-      }
-};
+}

@@ -175,10 +175,20 @@ void apply_context::require_recipient( account_name code ) {
       _notified.push_back(code);
 }
 
-void apply_context::execute_inline( action &&a ) {
-   // todo: rethink this special case
+void apply_context::execute_inline( action&& a ) {
+#warning we should be checking the priviledged flag on receiver, not the name of receiver
    if (receiver != config::system_account_name) {
-      controller.check_authorization({a}, flat_set<public_key_type>(), false, {receiver});
+      flat_set<account_name> auth;
+      for( auto& perm : act.authorization ) {
+         for( const auto& reqperm : a.authorization ) {
+            if( reqperm.actor == perm.actor ) {
+               auth.insert( perm.actor );
+            }
+         }
+      }
+    //  for( const auto& reqperm : a.authorization )
+      auth.insert( receiver );
+      controller.check_authorization({a}, flat_set<public_key_type>(), false, auth ); //);{receiver});
    }
    _inline_actions.emplace_back( move(a) );
 }

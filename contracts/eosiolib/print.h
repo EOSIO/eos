@@ -58,7 +58,8 @@ extern "C" {
     *  printi(1e+18); // Output: 1000000000000000000
     *  @endcode
     */
-   void printi( uint64_t value );
+   void printi( int64_t value );
+   void printui( uint64_t value );
 
    /**
     * Prints value as a 128 bit unsigned integer
@@ -84,7 +85,8 @@ extern "C" {
     *  printd(double_value); // Output: 0.5
     *  @endcode
     */
-   void printd(uint64_t value);
+   void printd(double value);
+   void printdi(int64_t value); 
 
    /**
     * Prints a 64 bit names as base32 encoded string

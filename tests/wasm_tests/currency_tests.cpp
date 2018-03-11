@@ -59,11 +59,12 @@ class currency_tester : public tester {
          );
          wdump((result));
 
-         push_action(N(currency), N(issue), mutable_variant_object()
+         result = push_action(N(currency), N(issue), mutable_variant_object()
                  ("to",       "currency")
                  ("quantity", "1000000.0000 CUR")
                  ("memo", "gggggggggggg")
          );
+         wdump((result));
          produce_block();
       }
 
