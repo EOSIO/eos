@@ -68,11 +68,11 @@ void test_action::test_dummy_action() {
 }
 
 void test_action::read_action_to_0() {
-   read_action_data((void *)0, action_size());
+   read_action_data((void *)0, action_data_size());
 }
 
 void test_action::read_action_to_64k() {
-   read_action_data( (void *)((1<<16)-2), action_size());
+   read_action_data( (void *)((1<<16)-2), action_data_size());
 }
 
 void test_action::test_cf_action() {
