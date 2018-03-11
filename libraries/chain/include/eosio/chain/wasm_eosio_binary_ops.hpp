@@ -31,6 +31,49 @@ using code_vector         = std::vector<uint8_t>;
 using code_iterator       = std::vector<uint8_t>::iterator;
 using wasm_op_generator   = std::function<wasm_instr_ptr(std::vector<uint8_t>, size_t)>;
 
+enum valtype {
+   i32 = 0x7F,
+   i64 = 0x7E,
+   f32 = 0x7D,
+   f64 = 0x7C
+};
+
+#pragma pack (push)
+struct memarg {
+   uint32_t a;   // align
+   uint32_t o;   // offset
+};
+
+struct blocktype {
+   uint8_t result = 0x40; // either null (0x40) or valtype
+};
+
+template <size_t Params, size_t Results>
+struct functype {
+   uint8_t code = 0x60;
+   std::array<uint8_t, Params>  params;
+   std::array<uint8_t, Results> results;
+};
+
+struct mut {
+   uint8_t code = 0x00; // either 0x00 const or 0x01 var
+};
+
+struct globaltype {
+   valtype t;
+   mut     m;
+};
+
+struct callindirecttype {
+   uint32_t funcidx;
+   uint8_t end = 0x00;
+};
+
+struct memoryoptype {
+   uint8_t end = 0x00;
+};
+
+
 struct no_param_op {
    static constexpr bool has_param = false;
 };
@@ -38,38 +81,59 @@ struct no_param_op {
 struct block_param_op {
 };
 
-#define CONSTRUCT_OP( r, DATA, OP )                                  \
-template <typename ... Mutators>                                     \
-struct OP : instr_base<Mutators...> {                                \
-   uint8_t code = BOOST_PP_CAT(OP,_code);                            \
-   uint8_t get_code() { return BOOST_PP_CAT(OP,_code); }             \
-   int skip_ahead() { return sizeof(code); }                         \
-   uint32_t unpack( code_vector& block, uint32_t start )             \
-   {                                                                 \
-      return start + skip_ahead();                                   \
-   }                                                                 \
-   std::string to_string() { return BOOST_PP_STRINGIZE(OP); }        \
-};
 
+std::string to_string( uint32_t field );
+std::string to_string( uint64_t field );
+std::string to_string( blocktype field );
+std::string to_string( memoryoptype field );
+std::string to_string( memarg field );
+std::string to_string( callindirecttype field );
+
+std::vector<U8> pack( uint32_t field );
+std::vector<U8> pack( uint64_t field );
+std::vector<U8> pack( blocktype field );
+std::vector<U8> pack( memoryoptype field );
+std::vector<U8> pack( memarg field );
+std::vector<U8> pack( callindirecttype field );
+
+#define CONSTRUCT_OP( r, DATA, OP )                                           \
+template <typename ... Mutators>                                              \
+struct OP : instr_base<Mutators...> {                                         \
+   uint8_t code = BOOST_PP_CAT(OP,_code);                                     \
+   uint8_t get_code() override { return BOOST_PP_CAT(OP,_code); }             \
+   int skip_ahead() override { return sizeof(code); }                         \
+   void unpack( char* opcode ) override {                                     \
+   }                                                                          \
+   std::vector<U8> pack() override { return { U8(code) }; }                   \
+   std::string to_string() override { return BOOST_PP_STRINGIZE(OP); }        \
+};
+// TODO use fields described above.  WASM-JIT serializer is doing something weird in it's binary representation
 #define CONSTRUCT_OP_HAS_DATA( r, DATA, OP )                                        \
 template <typename ... Mutators>                                                    \
 struct OP : instr_base<Mutators...> {                                               \
    uint8_t code = BOOST_PP_CAT(OP,_code);                                           \
    DATA field;                                                                      \
-   uint8_t get_code() { return BOOST_PP_CAT(OP,_code); }                            \
-   int skip_ahead() { return 1+sizeof(code) + sizeof(field); }                      \
-   uint32_t unpack( code_vector& block, uint32_t start ) {                          \
-      field = *((DATA*)(block.data()+start+sizeof(code)));                          \
-      return start + skip_ahead();                                                  \
+   uint8_t get_code() override { return BOOST_PP_CAT(OP,_code); }                   \
+   int skip_ahead() override { return 1+sizeof(code) + sizeof(field); }             \
+   void unpack( char* opcode ) override {                                           \
+      field = *reinterpret_cast<DATA*>((opcode));                                   \
    }                                                                                \
-   std::string to_string() { return BOOST_PP_STRINGIZE(OP); }                       \
+   std::vector<U8> pack() override {                                                \
+      std::vector<U8> output = { U8(code) };                                        \
+      std::vector<U8> fields = eosio::chain::wasm_ops::pack(field);                 \
+      output.insert( output.end(), fields.begin(), fields.end() );                  \
+      return output;                                                                \
+   }                                                                                \
+   std::string to_string() override { return std::string(BOOST_PP_STRINGIZE(OP))+   \
+      std::string(" ")+eosio::chain::wasm_ops::to_string(field); }                  \
 };
 
 #define WASM_OP_SEQ  (error)        \
                      (end)          \
                      (unreachable)  \
                      (nop)          \
-                     (return_)          \
+                     (else_)        \
+                     (return_)      \
                      (drop)         \
                      (select)       \
                      (i32_eqz)      \
@@ -199,7 +263,6 @@ struct OP : instr_base<Mutators...> {                                           
                      (block)                   \
                      (loop)                    \
                      (if_)                     \
-                     (else_)                   \
                      (br)                      \
                      (br_if)                   \
                      (call)                    \
@@ -415,81 +478,52 @@ enum code {
    error_code               = 0xFF,
 }; // code
 
-enum valtype {
-   i32 = 0x7F,
-   i64 = 0x7E,
-   f32 = 0x7D,
-   f64 = 0x7C
-};
-
-#pragma pack (push)
-struct memarg {
-   uint32_t a;   // align
-   uint32_t o;   // offset
-};
-
-struct blocktype {
-   uint8_t result = 0x40; // either null (0x40) or valtype
-};
-
-template <size_t Params, size_t Results>
-struct functype {
-   uint8_t code = 0x60;
-   std::array<uint8_t, Params>  params;
-   std::array<uint8_t, Results> results;
-};
-
-struct limits {
-   uint8_t code = 0x00; // either 0x00 or 0x01
-   uint32_t min = 0;
-   uint32_t max = -1;   // any size
-};
-
-struct memtype {
-   limits lim;
-};
-
-struct elemtype {
-   uint8_t code = 0x70; // anyfunc
-};
-
-struct tabletype {
-   elemtype et;
-   limits   lim;
-};
-
-struct mut {
-   uint8_t code = 0x00; // either 0x00 const or 0x01 var
-};
-
-struct globaltype {
-   valtype t;
-   mut     m;
+struct visitor_arg {
+   IR::Module*       module;
+   std::vector<U8>*  new_code;
+   IR::FunctionDef*  function_def;
+   uint32_t          code_index;
 };
 
 struct instr {
    virtual std::string to_string() { return "instr"; }
    virtual uint8_t get_code() = 0;
-   virtual void visit( uint32_t index, IR::Module& mod ) = 0;
+   virtual void visit( visitor_arg&& arg ) = 0;
    virtual int skip_ahead() = 0;
-   virtual uint32_t unpack( code_vector&, uint32_t ) = 0;
+   virtual void unpack( char* opcode ) = 0;
+   virtual std::vector<U8> pack() = 0;
 };
 
-struct callindirecttype {
-   uint32_t funcidx;
-   uint8_t end = unreachable_code;
+// base injector and utility classes for encoding if we should reflect the instr to the new code block
+template <typename Mutator, typename ... Mutators>
+struct propagate_should_kill {
+   static constexpr bool value = Mutator::kills || propagate_should_kill<Mutators...>::value;
+};
+template <typename Mutator>
+struct propagate_should_kill<Mutator> {
+   static constexpr bool value = Mutator::kills;
 };
 
-struct memoryoptype {
-   uint8_t end = unreachable_code;
+template <bool Kills>
+struct base_injector {
+   static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+      std::vector<U8> self_code = inst->pack();
+      arg.new_code->insert( arg.new_code->end(), self_code.begin(), self_code.end() );
+   }
+};
+template <>
+struct base_injector<true> {
+   static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+   }
 };
 
 template <typename ... Mutators>
 struct instr_base : instr {
-   virtual void visit( uint32_t index, IR::Module& mod ) {
+   virtual void visit( visitor_arg&& arg ) override {
       for ( auto m : { Mutators::accept... } ) {
-         m(this, index, mod);
+         m(this, arg);
       }
+      base_injector<propagate_should_kill<Mutators...>::value>::accept( this, arg );
    } 
 };
 
@@ -502,20 +536,21 @@ struct br_table : instr_base<Mutators...> {
    uint8_t code = br_table_code;
    std::vector<uint32_t> targets;
    uint32_t else_target;
-   uint8_t get_code() { return br_table_code; }
-   int skip_ahead() { return sizeof(code); }
-   uint32_t unpack( code_vector& block, uint32_t start )
-   {
-      uint8_t* code = (uint8_t*)(block.data() + sizeof(code));  // skip the opcode
-       
-      return start + skip_ahead();
+   uint8_t get_code() override { return br_table_code; }
+   int skip_ahead() override { return sizeof(code); }
+   // TODO fix this
+   void unpack( char* opcode ) override {
+      //uint8_t* code = (uint8_t*)(block.data() + sizeof(code));  // skip the opcode
    }
-   std::string to_string() { return "br_table"; }
+   std::vector<U8> pack() override {
+      return { U8(code) };
+   }
+   std::string to_string() override { return "br_table"; }
 
 };
 
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP, no_param_op ,        BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 130 ) )   // NOTE, this skips past br_table as it is defined above
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, blocktype,  BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 131, 4 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP, no_param_op ,        BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 131 ) )   // NOTE, this skips past br_table as it is defined above
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, blocktype,  BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 132, 3 ) )
 BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, uint32_t,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 135, 10 ) )
 BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, memarg,     BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 145, 23 ) )
 BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, uint64_t,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 168, 2 ) )
@@ -527,7 +562,8 @@ BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, memoryoptype,   BOOST_PP_SEQ_SUBSE
 #pragma pack (pop)
 
 struct nop_mutator {
-   static wasm_return_t accept( instr* inst, uint32_t index, IR::Module& m ) {}
+   static constexpr bool kills = false;
+   static void accept( instr* inst, visitor_arg& arg ) {}
 };
 
 // class to inherit from to attach specific mutators and have default behavior for all specified types
@@ -595,51 +631,7 @@ std::vector<instr*>* get_cached_ops_vec() {
    return &_cached_ops;
 }
 using namespace IR;
-template<uint8_t A, typename Value>
-std::string to_string( LiteralImm<Value> imm ) {
-   return "literal : "+std::to_string(uint32_t(imm.value));
-}
-template<uint8_t A, bool isGlobal>
-std::string to_string( GetOrSetVariableImm<isGlobal> imm ) {
-   if constexpr (isGlobal)
-      return "get or set global : "+std::to_string(uint32_t(imm.variableIndex));
-   else
-      return "get or set : "+std::to_string(uint32_t(imm.variableIndex));
-}
-template<uint8_t A, Uptr naturalAlignmentLog2>
-std::string to_string( LoadOrStoreImm<naturalAlignmentLog2> imm ) {
-   return "load or store imm : "+std::to_string(uint32_t(imm.alignmentLog2))+", "+std::to_string(uint32_t(imm.offset));
-}
-template<uint8_t A>
-std::string to_string( ControlStructureImm imm ) {
-   return "result type : "+std::to_string(uint32_t(imm.resultType));
-}
 
-template<uint8_t A>
-std::string to_string( BranchImm imm ) {
-   return "branch target : "+std::to_string(uint32_t(imm.targetDepth));
-}
- // TODO comeback to this
-template<uint8_t A>
-std::string to_string( BranchTableImm imm ) {
-   //return "branch target : "+std::to_string(uint32_t(imm.targetDepth));
-}
-template<uint8_t A>
-std::string to_string( NoImm imm ) {
-   return "no imm";
-}
-template<uint8_t A>
-std::string to_string( MemoryImm imm ) {
-   return "memory imm";
-}
-template<uint8_t A>
-std::string to_string( CallImm imm ) {
-   return "call index : "+std::to_string(uint32_t(imm.functionIndex));
-}
-template<uint8_t A>
-std::string to_string( CallIndirectImm imm ) {
-   return "call indirect type : "+std::to_string(uint32_t(imm.type.index));
-}
 // Decodes an operator from an input stream and dispatches by opcode.
 // This code is from wasm-jit/Include/IR/Operators.h
 template <class Op_Types>
@@ -660,9 +652,9 @@ struct EOSIO_OperatorDecoderStream
 			{ \
 				assert(nextByte + sizeof(IR::OpcodeAndImm<IR::Imm>) <= end); \
 				IR::OpcodeAndImm<IR::Imm>* encodedOperator = (IR::OpcodeAndImm<IR::Imm>*)nextByte; \
-            std::cout << to_string<0>(encodedOperator->imm) << "\n"; \
 				nextByte += sizeof(IR::OpcodeAndImm<IR::Imm>); \
             auto op = _cached_ops->at(BOOST_PP_CAT(name, _code)); \
+            op->unpack( reinterpret_cast<char*>(&(encodedOperator->imm)) ); \
 				return op;  \
 			}
 		ENUM_OPERATORS(VISIT_OPCODE)

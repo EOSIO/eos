@@ -9,29 +9,14 @@
 
 namespace eosio { namespace chain { namespace wasm_injections {
 using namespace IR;
+/*
 std::string to_string( ControlStructureImm imm ) {
    return "result type : "+std::to_string(uint32_t(imm.resultType));
 }
 std::string to_string( BranchImm imm ) {
    return "branch target : "+std::to_string(uint32_t(imm.targetDepth));
 }
- // TODO comeback to this
-std::string to_string( BranchTableImm imm ) {
-   //return "branch target : "+std::to_string(uint32_t(imm.targetDepth));
-}
-std::string to_string( NoImm imm ) {
-   return "no imm";
-}
-std::string to_string( MemoryImm imm ) {
-   return "memory imm";
-}
-std::string to_string( CallImm imm ) {
-   return "call index : "+std::to_string(uint32_t(imm.functionIndex));
-}
-std::string to_string( CallIndirectImm imm ) {
-   return "call indirect type : "+std::to_string(uint32_t(imm.type.index));
-}
-
+*/
 
 void noop_injection_visitor::inject( Module& m ) { /* just pass */ }
 void noop_injection_visitor::initializer() { /* just pass */ }
@@ -56,6 +41,7 @@ void globals_injection_visitor::inject( Module& m ) {
 }
 void globals_injection_visitor::initializer() {
 }
+
 uint32_t instruction_counter::icnt = 0;
 int32_t  checktime_injector::checktime_idx = -1;
 
