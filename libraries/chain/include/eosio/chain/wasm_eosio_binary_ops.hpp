@@ -3,6 +3,7 @@
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/seq/subseq.hpp>
 #include <boost/preprocessor/seq/remove.hpp>
+#include <boost/preprocessor/seq/push_back.hpp>
 #include <fc/reflect/reflect.hpp>
 
 #include <cstdint>
@@ -14,6 +15,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 #include "IR/Operators.h"
 #include "IR/Module.h"
@@ -31,13 +33,6 @@ using code_vector         = std::vector<uint8_t>;
 using code_iterator       = std::vector<uint8_t>::iterator;
 using wasm_op_generator   = std::function<wasm_instr_ptr(std::vector<uint8_t>, size_t)>;
 
-enum valtype {
-   i32 = 0x7F,
-   i64 = 0x7E,
-   f32 = 0x7D,
-   f64 = 0x7C
-};
-
 #pragma pack (push)
 struct memarg {
    uint32_t a;   // align
@@ -48,434 +43,472 @@ struct blocktype {
    uint8_t result = 0x40; // either null (0x40) or valtype
 };
 
-template <size_t Params, size_t Results>
-struct functype {
-   uint8_t code = 0x60;
-   std::array<uint8_t, Params>  params;
-   std::array<uint8_t, Results> results;
-};
-
-struct mut {
-   uint8_t code = 0x00; // either 0x00 const or 0x01 var
-};
-
-struct globaltype {
-   valtype t;
-   mut     m;
-};
-
-struct callindirecttype {
-   uint32_t funcidx;
-   uint8_t end = 0x00;
-};
-
 struct memoryoptype {
    uint8_t end = 0x00;
 };
-
-
-struct no_param_op {
-   static constexpr bool has_param = false;
+struct branchtabletype {
+   uint64_t target_depth;
+   uint64_t table_index;
 };
 
-struct block_param_op {
+// using for instructions with no fields
+struct voidtype {};
+
+
+inline std::string to_string( uint32_t field ) {
+   return std::string("i32 : ")+std::to_string(field);
+}
+inline std::string to_string( uint64_t field ) {
+   return std::string("i64 : ")+std::to_string(field);
+}
+inline std::string to_string( blocktype field ) {
+   return std::string("blocktype : ")+std::to_string((uint32_t)field.result);
+}
+inline std::string to_string( memoryoptype field ) {
+   return std::string("memoryoptype : ")+std::to_string((uint32_t)field.end);
+}
+inline std::string to_string( memarg field ) {
+   return std::string("memarg : ")+std::to_string(field.a)+std::string(", ")+std::to_string(field.o);
+}
+inline std::string to_string( branchtabletype field ) {
+   return std::string("branchtabletype : ")+std::to_string(field.target_depth)+std::string(", ")+std::to_string(field.table_index);
+}
+
+inline std::vector<U8> pack( uint32_t field ) {
+   return { U8(field), U8(field >> 8), U8(field >> 16), U8(field >> 24) };
+}
+inline std::vector<U8> pack( uint64_t field ) {
+   return { U8(field), U8(field >> 8), U8(field >> 16), U8(field >> 24), 
+            U8(field >> 32), U8(field >> 40), U8(field >> 48), U8(field >> 56) 
+          };
+}
+inline std::vector<U8> pack( blocktype field ) {
+   return { U8(field.result) };
+}
+inline std::vector<U8> pack( memoryoptype field ) {
+   return { U8(field.end) };
+}
+inline std::vector<U8> pack( memarg field ) {
+   return { U8(field.a), U8(field.a >> 8), U8(field.a >> 16), U8(field.a >> 24), 
+            U8(field.o), U8(field.o >> 8), U8(field.o >> 16), U8(field.o >> 24), 
+          };
+
+}
+inline std::vector<U8> pack( branchtabletype field ) {
+   return { U8(field.target_depth), U8(field.target_depth >> 8), U8(field.target_depth >> 16), U8(field.target_depth >> 24), 
+            U8(field.target_depth >> 32), U8(field.target_depth >> 40), U8(field.target_depth >> 48), U8(field.target_depth >> 56), 
+            U8(field.table_index), U8(field.table_index >> 8), U8(field.table_index >> 16), U8(field.table_index >> 24), 
+            U8(field.table_index >> 32), U8(field.table_index >> 40), U8(field.table_index >> 48), U8(field.table_index >> 56) 
+
+          };
+}
+/*
+inline std::string to_string( uint32_t field );
+inline std::string to_string( uint64_t field );
+inline std::string to_string( blocktype field );
+inline std::string to_string( memoryoptype field );
+inline std::string to_string( memarg field );
+inline std::string to_string( branchtabletype field );
+
+inline std::vector<U8> pack( uint32_t field );
+inline std::vector<U8> pack( uint64_t field );
+inline std::vector<U8> pack( blocktype field );
+inline std::vector<U8> pack( memoryoptype field );
+inline std::vector<U8> pack( memarg field );
+inline std::vector<U8> pack( branchtabletype field );
+*/
+
+template <typename Field>
+struct field_specific_params {
+   static constexpr int skip_ahead = sizeof(uint16_t) + sizeof(Field);
+   static auto unpack( char* opcode, Field& f ) { f = *reinterpret_cast<Field*>(opcode); }
+   static auto pack(Field& f) { return eosio::chain::wasm_ops::pack(f); }
+   static auto to_string(Field& f) { return std::string(" ")+
+                                       eosio::chain::wasm_ops::to_string(f); }
+};
+template <>
+struct field_specific_params<voidtype> {
+   static constexpr int skip_ahead = sizeof(uint16_t);
+   static auto unpack( char* opcode, voidtype& f ) {}
+   static auto pack(voidtype& f) { return std::vector<U8>{}; }
+   static auto to_string(voidtype& f) { return ""; }
+}; 
+
+#define CONSTRUCT_OP_HAS_DATA( r, DATA, OP )                                                        \
+template <typename ... Mutators>                                                                    \
+struct OP : instr_base<Mutators...> {                                                               \
+   uint16_t code = BOOST_PP_CAT(OP,_code);                                                          \
+   DATA field;                                                                                      \
+   uint16_t get_code() override { return BOOST_PP_CAT(OP,_code); }                                  \
+   int skip_ahead() override { return field_specific_params<DATA>::skip_ahead; }                    \
+   void unpack( char* opcode ) override {                                                           \
+      field_specific_params<DATA>::unpack( opcode, field );                                         \
+   }                                                                                                \
+   std::vector<U8> pack() override {                                                                \
+      std::vector<U8> output = { U8(code), 0 };                                                     \
+      std::vector<U8> field_pack = field_specific_params<DATA>::pack( field );                      \
+      output.insert( output.end(), field_pack.begin(), field_pack.end() );                          \
+      return output;                                                                                \
+   }                                                                                                \
+   std::string to_string() override {                                                               \
+      return std::string(BOOST_PP_STRINGIZE(OP))+field_specific_params<DATA>::to_string( field );   \
+   }                                                                                                \
 };
 
-
-std::string to_string( uint32_t field );
-std::string to_string( uint64_t field );
-std::string to_string( blocktype field );
-std::string to_string( memoryoptype field );
-std::string to_string( memarg field );
-std::string to_string( callindirecttype field );
-
-std::vector<U8> pack( uint32_t field );
-std::vector<U8> pack( uint64_t field );
-std::vector<U8> pack( blocktype field );
-std::vector<U8> pack( memoryoptype field );
-std::vector<U8> pack( memarg field );
-std::vector<U8> pack( callindirecttype field );
-
-#define CONSTRUCT_OP( r, DATA, OP )                                           \
-template <typename ... Mutators>                                              \
-struct OP : instr_base<Mutators...> {                                         \
-   uint8_t code = BOOST_PP_CAT(OP,_code);                                     \
-   uint8_t get_code() override { return BOOST_PP_CAT(OP,_code); }             \
-   int skip_ahead() override { return sizeof(code); }                         \
-   void unpack( char* opcode ) override {                                     \
-   }                                                                          \
-   std::vector<U8> pack() override { return { U8(code) }; }                   \
-   std::string to_string() override { return BOOST_PP_STRINGIZE(OP); }        \
-};
-// TODO use fields described above.  WASM-JIT serializer is doing something weird in it's binary representation
-#define CONSTRUCT_OP_HAS_DATA( r, DATA, OP )                                        \
-template <typename ... Mutators>                                                    \
-struct OP : instr_base<Mutators...> {                                               \
-   uint8_t code = BOOST_PP_CAT(OP,_code);                                           \
-   DATA field;                                                                      \
-   uint8_t get_code() override { return BOOST_PP_CAT(OP,_code); }                   \
-   int skip_ahead() override { return 1+sizeof(code) + sizeof(field); }             \
-   void unpack( char* opcode ) override {                                           \
-      field = *reinterpret_cast<DATA*>((opcode));                                   \
-   }                                                                                \
-   std::vector<U8> pack() override {                                                \
-      std::vector<U8> output = { U8(code) };                                        \
-      std::vector<U8> fields = eosio::chain::wasm_ops::pack(field);                 \
-      output.insert( output.end(), fields.begin(), fields.end() );                  \
-      return output;                                                                \
-   }                                                                                \
-   std::string to_string() override { return std::string(BOOST_PP_STRINGIZE(OP))+   \
-      std::string(" ")+eosio::chain::wasm_ops::to_string(field); }                  \
-};
-
-#define WASM_OP_SEQ  (error)        \
-                     (end)          \
-                     (unreachable)  \
-                     (nop)          \
-                     (else_)        \
-                     (return_)      \
-                     (drop)         \
-                     (select)       \
-                     (i32_eqz)      \
-                     (i32_eq)       \
-                     (i32_ne)       \
-                     (i32_lt_s)        \
-                     (i32_lt_u)        \
-                     (i32_gt_s)        \
-                     (i32_gt_u)        \
-                     (i32_le_s)        \
-                     (i32_le_u)        \
-                     (i32_ge_s)        \
-                     (i32_ge_u)        \
-                     (i64_eqz)         \
-                     (i64_eq)       \
-                     (i64_ne)       \
-                     (i64_lt_s)        \
-                     (i64_lt_u)        \
-                     (i64_gt_s)        \
-                     (i64_gt_u)        \
-                     (i64_le_s)        \
-                     (i64_le_u)        \
-                     (i64_ge_s)        \
-                     (i64_ge_u)        \
-                     (f32_eq)       \
-                     (f32_ne)       \
-                     (f32_lt)       \
-                     (f32_gt)       \
-                     (f32_le)       \
-                     (f32_ge)       \
-                     (f64_eq)       \
-                     (f64_ne)       \
-                     (f64_lt)       \
-                     (f64_gt)       \
-                     (f64_le)       \
-                     (f64_ge)       \
-                     (i32_clz)         \
-                     (i32_ctz)         \
-                     (i32_popcnt)       \
-                     (i32_add)         \
-                     (i32_sub)         \
-                     (i32_mul)         \
-                     (i32_div_s)       \
-                     (i32_div_u)               \
-                     (i32_rem_s)               \
-                     (i32_rem_u)               \
-                     (i32_and)                 \
-                     (i32_or)                  \
-                     (i32_xor)                 \
-                     (i32_shl)                 \
-                     (i32_shr_s)               \
-                     (i32_shr_u)               \
-                     (i32_rotl)                \
-                     (i32_rotr)                \
-                     (i64_clz)                 \
-                     (i64_ctz)                 \
-                     (i64_popcnt)              \
-                     (i64_add)                 \
-                     (i64_sub)                 \
-                     (i64_mul)                 \
-                     (i64_div_s)               \
-                     (i64_div_u)               \
-                     (i64_rem_s)               \
-                     (i64_rem_u)               \
-                     (i64_and)                 \
-                     (i64_or)                  \
-                     (i64_xor)                 \
-                     (i64_shl)                 \
-                     (i64_shr_s)               \
-                     (i64_shr_u)               \
-                     (i64_rotl)                \
-                     (i64_rotr)                \
-                     (f32_abs)                 \
-                     (f32_neg)                 \
-                     (f32_ceil)                \
-                     (f32_floor)               \
-                     (f32_trunc)               \
-                     (f32_nearest)             \
-                     (f32_sqrt)                \
-                     (f32_add)                 \
-                     (f32_sub)                 \
-                     (f32_mul)                 \
-                     (f32_div)                 \
-                     (f32_min)                 \
-                     (f32_max)                 \
-                     (f32_copysign)            \
-                     (f64_abs)                 \
-                     (f64_neg)                 \
-                     (f64_ceil)                \
-                     (f64_floor)               \
-                     (f64_trunc)               \
-                     (f64_nearest)             \
-                     (f64_sqrt)                \
-                     (f64_add)                 \
-                     (f64_sub)                 \
-                     (f64_mul)                 \
-                     (f64_div)                 \
-                     (f64_min)                 \
-                     (f64_max)                 \
-                     (f64_copysign)            \
-                     (i32_wrap_i64)            \
-                     (i32_trunc_s_f32)         \
-                     (i32_trunc_u_f32)         \
-                     (i32_trunc_s_f64)         \
-                     (i32_trunc_u_f64)         \
-                     (i64_extend_s_i32)        \
-                     (i64_extend_u_i32)        \
-                     (i64_trunc_s_f32)         \
-                     (i64_trunc_u_f32)         \
-                     (i64_trunc_s_f64)         \
-                     (i64_trunc_u_f64)         \
-                     (f32_convert_s_i32)       \
-                     (f32_convert_u_i32)       \
-                     (f32_convert_s_i64)       \
-                     (f32_convert_u_i64)       \
-                     (f32_demote_f64)          \
-                     (f64_convert_s_i32)       \
-                     (f64_convert_u_i32)       \
-                     (f64_convert_s_i64)       \
-                     (f64_convert_u_i64)       \
-                     (f64_promote_f32)         \
-                     (i32_reinterpret_f32)     \
-                     (i64_reinterpret_f64)     \
-                     (f32_reinterpret_i32)     \
-                     (f64_reinterpret_i64)     \
-                     (br_table)                \
-                     (block)                   \
-                     (loop)                    \
-                     (if_)                     \
-                     (br)                      \
-                     (br_if)                   \
-                     (call)                    \
-                     (get_local)               \
-                     (set_local)               \
-                     (tee_local)               \
-                     (get_global)              \
-                     (set_global)              \
-                     (i32_const)               \
-                     (f32_const)               \
-                     (i32_load)                \
-                     (i64_load)                \
-                     (f32_load)                \
-                     (f64_load)                \
-                     (i32_load8_s)     \
-                     (i32_load8_u)     \
-                     (i32_load16_s)     \
-                     (i32_load16_u)     \
-                     (i64_load8_s)     \
-                     (i64_load8_u)     \
-                     (i64_load16_s)     \
-                     (i64_load16_u)     \
-                     (i64_load32_s)     \
-                     (i64_load32_u)     \
-                     (i32_store)     \
-                     (i64_store)     \
-                     (f32_store)     \
-                     (f64_store)     \
-                     (i32_store8)     \
-                     (i32_store16)     \
-                     (i64_store8)     \
-                     (i64_store16)     \
-                     (i64_store32)   \
-                     (i64_const)     \
-                     (f64_const)    \
-                     (call_indirect) \
-                     (grow_memory) \
-                     (current_memory) 
+#define WASM_OP_SEQ  (error)                \
+                     (end)                  \
+                     (unreachable)          \
+                     (nop)                  \
+                     (else_)                \
+                     (return_)              \
+                     (drop)                 \
+                     (select)               \
+                     (i32_eqz)              \
+                     (i32_eq)               \
+                     (i32_ne)               \
+                     (i32_lt_s)             \
+                     (i32_lt_u)             \
+                     (i32_gt_s)             \
+                     (i32_gt_u)             \
+                     (i32_le_s)             \
+                     (i32_le_u)             \
+                     (i32_ge_s)             \
+                     (i32_ge_u)             \
+                     (i64_eqz)              \
+                     (i64_eq)               \
+                     (i64_ne)               \
+                     (i64_lt_s)             \
+                     (i64_lt_u)             \
+                     (i64_gt_s)             \
+                     (i64_gt_u)             \
+                     (i64_le_s)             \
+                     (i64_le_u)             \
+                     (i64_ge_s)             \
+                     (i64_ge_u)             \
+                     (f32_eq)               \
+                     (f32_ne)               \
+                     (f32_lt)               \
+                     (f32_gt)               \
+                     (f32_le)               \
+                     (f32_ge)               \
+                     (f64_eq)               \
+                     (f64_ne)               \
+                     (f64_lt)               \
+                     (f64_gt)               \
+                     (f64_le)               \
+                     (f64_ge)               \
+                     (i32_clz)              \
+                     (i32_ctz)              \
+                     (i32_popcnt)           \
+                     (i32_add)              \
+                     (i32_sub)              \
+                     (i32_mul)              \
+                     (i32_div_s)            \
+                     (i32_div_u)            \
+                     (i32_rem_s)            \
+                     (i32_rem_u)            \
+                     (i32_and)              \
+                     (i32_or)               \
+                     (i32_xor)              \
+                     (i32_shl)              \
+                     (i32_shr_s)            \
+                     (i32_shr_u)            \
+                     (i32_rotl)             \
+                     (i32_rotr)             \
+                     (i64_clz)              \
+                     (i64_ctz)              \
+                     (i64_popcnt)           \
+                     (i64_add)              \
+                     (i64_sub)              \
+                     (i64_mul)              \
+                     (i64_div_s)            \
+                     (i64_div_u)            \
+                     (i64_rem_s)            \
+                     (i64_rem_u)            \
+                     (i64_and)              \
+                     (i64_or)               \
+                     (i64_xor)              \
+                     (i64_shl)              \
+                     (i64_shr_s)            \
+                     (i64_shr_u)            \
+                     (i64_rotl)             \
+                     (i64_rotr)             \
+                     (f32_abs)              \
+                     (f32_neg)              \
+                     (f32_ceil)             \
+                     (f32_floor)            \
+                     (f32_trunc)            \
+                     (f32_nearest)          \
+                     (f32_sqrt)             \
+                     (f32_add)              \
+                     (f32_sub)              \
+                     (f32_mul)              \
+                     (f32_div)              \
+                     (f32_min)              \
+                     (f32_max)              \
+                     (f32_copysign)         \
+                     (f64_abs)              \
+                     (f64_neg)              \
+                     (f64_ceil)             \
+                     (f64_floor)            \
+                     (f64_trunc)            \
+                     (f64_nearest)          \
+                     (f64_sqrt)             \
+                     (f64_add)              \
+                     (f64_sub)              \
+                     (f64_mul)              \
+                     (f64_div)              \
+                     (f64_min)              \
+                     (f64_max)              \
+                     (f64_copysign)         \
+                     (i32_wrap_i64)         \
+                     (i32_trunc_s_f32)      \
+                     (i32_trunc_u_f32)      \
+                     (i32_trunc_s_f64)      \
+                     (i32_trunc_u_f64)      \
+                     (i64_extend_s_i32)     \
+                     (i64_extend_u_i32)     \
+                     (i64_trunc_s_f32)      \
+                     (i64_trunc_u_f32)      \
+                     (i64_trunc_s_f64)      \
+                     (i64_trunc_u_f64)      \
+                     (f32_convert_s_i32)    \
+                     (f32_convert_u_i32)    \
+                     (f32_convert_s_i64)    \
+                     (f32_convert_u_i64)    \
+                     (f32_demote_f64)       \
+                     (f64_convert_s_i32)    \
+                     (f64_convert_u_i32)    \
+                     (f64_convert_s_i64)    \
+                     (f64_convert_u_i64)    \
+                     (f64_promote_f32)      \
+                     (i32_reinterpret_f32)  \
+                     (i64_reinterpret_f64)  \
+                     (f32_reinterpret_i32)  \
+                     (f64_reinterpret_i64)  \
+/* BLOCK TYPE OPS */                        \
+                     (block)                \
+                     (loop)                 \
+                     (if_)                  \
+/* 32bit OPS */                             \
+                     (br)                   \
+                     (br_if)                \
+                     (call)                 \
+                     (call_indirect)        \
+                     (get_local)            \
+                     (set_local)            \
+                     (tee_local)            \
+                     (get_global)           \
+                     (set_global)           \
+                     (i32_const)            \
+                     (f32_const)            \
+/* memarg OPS */                            \
+                     (i32_load)             \
+                     (i64_load)             \
+                     (f32_load)             \
+                     (f64_load)             \
+                     (i32_load8_s)          \
+                     (i32_load8_u)          \
+                     (i32_load16_s)         \
+                     (i32_load16_u)         \
+                     (i64_load8_s)          \
+                     (i64_load8_u)          \
+                     (i64_load16_s)         \
+                     (i64_load16_u)         \
+                     (i64_load32_s)         \
+                     (i64_load32_u)         \
+                     (i32_store)            \
+                     (i64_store)            \
+                     (f32_store)            \
+                     (f64_store)            \
+                     (i32_store8)           \
+                     (i32_store16)          \
+                     (i64_store8)           \
+                     (i64_store16)          \
+                     (i64_store32)          \
+/* 64bit OPS */                             \
+                     (i64_const)            \
+                     (f64_const)            \
+/* memtype OPS */                           \
+                     (grow_memory)          \
+                     (current_memory)       \
+/* branchtable op */                        \
+                     (br_table)             \
 
 enum code {
-   unreachable_code    = 0x00,
-   nop_code            = 0x01,
-   block_code          = 0x02,
-   loop_code           = 0x03,
-   if__code            = 0x04,
-   else__code          = 0x05,
-   end_code            = 0x0B,
-   br_code             = 0x0C,
-   br_if_code          = 0x0D,
-   br_table_code       = 0x0E,
-   return__code        = 0x0F,
-   call_code           = 0x10,
-   call_indirect_code  = 0x11,
-   drop_code           = 0x1A,
-   select_code         = 0x1B,
-   get_local_code      = 0x20,
-   set_local_code      = 0x21,
-   tee_local_code      = 0x22,
-   get_global_code     = 0x23,
-   set_global_code     = 0x24,
-   i32_load_code       = 0x28,
-   i64_load_code       = 0x29,
-   f32_load_code       = 0x2A,
-   f64_load_code       = 0x2B,
-   i32_load8_s_code    = 0x2C,
-   i32_load8_u_code    = 0x2D,
-   i32_load16_s_code   = 0x2E,
-   i32_load16_u_code   = 0x2F,
-   i64_load8_s_code    = 0x30,
-   i64_load8_u_code    = 0x31,
-   i64_load16_s_code   = 0x32,
-   i64_load16_u_code   = 0x33,
-   i64_load32_s_code   = 0x34,
-   i64_load32_u_code   = 0x35,
-   i32_store_code      = 0x36,
-   i64_store_code      = 0x37,
-   f32_store_code      = 0x38,
-   f64_store_code      = 0x39,
-   i32_store8_code     = 0x3A,
-   i32_store16_code    = 0x3B,
-   i64_store8_code     = 0x3C,
-   i64_store16_code    = 0x3D,
-   i64_store32_code    = 0x3E,
-   current_memory_code    = 0x3F,
-   grow_memory_code       = 0x40,
-   i32_const_code      = 0x41,
-   i64_const_code      = 0x42,
-   f32_const_code      = 0x43,
-   f64_const_code      = 0x44,
-   i32_eqz_code        = 0x45,
-   i32_eq_code         = 0x46,
-   i32_ne_code         = 0x47,
-   i32_lt_s_code       = 0x48,
-   i32_lt_u_code       = 0x49,
-   i32_gt_s_code       = 0x4A,
-   i32_gt_u_code       = 0x4B,
-   i32_le_s_code       = 0x4C,
-   i32_le_u_code       = 0x4D,
-   i32_ge_s_code       = 0x4E,
-   i32_ge_u_code       = 0x4F,
-   i64_eqz_code        = 0x50,
-   i64_eq_code         = 0x51,
-   i64_ne_code         = 0x52,
-   i64_lt_s_code       = 0x53,
-   i64_lt_u_code       = 0x54,
-   i64_gt_s_code       = 0x55,
-   i64_gt_u_code       = 0x56,
-   i64_le_s_code       = 0x57,
-   i64_le_u_code       = 0x58,
-   i64_ge_s_code       = 0x59,
-   i64_ge_u_code       = 0x5A,
-   f32_eq_code         = 0x5B,
-   f32_ne_code         = 0x5C,
-   f32_lt_code         = 0x5D,
-   f32_gt_code         = 0x5E,
-   f32_le_code         = 0x5F,
-   f32_ge_code         = 0x60,
-   f64_eq_code         = 0x61,
-   f64_ne_code         = 0x62,
-   f64_lt_code         = 0x63,
-   f64_gt_code         = 0x64,
-   f64_le_code         = 0x65,
-   f64_ge_code         = 0x66,
-   i32_clz_code        = 0x67,
-   i32_ctz_code        = 0x68,
-   i32_popcnt_code     = 0x69,
-   i32_add_code        = 0x6A,
-   i32_sub_code        = 0x6B,
-   i32_mul_code        = 0x6C,
-   i32_div_s_code      = 0x6D,
-   i32_div_u_code      = 0x6E,
-   i32_rem_s_code      = 0x6F,
-   i32_rem_u_code      = 0x70,
-   i32_and_code        = 0x71,
-   i32_or_code         = 0x72,
-   i32_xor_code        = 0x73,
-   i32_shl_code        = 0x74,
-   i32_shr_s_code      = 0x75,
-   i32_shr_u_code      = 0x76,
-   i32_rotl_code       = 0x77,
-   i32_rotr_code       = 0x78,
-   i64_clz_code        = 0x79,
-   i64_ctz_code        = 0x7A,
-   i64_popcnt_code     = 0x7B,
-   i64_add_code        = 0x7C,
-   i64_sub_code        = 0x7D,
-   i64_mul_code        = 0x7E,
-   i64_div_s_code      = 0x7F,
-   i64_div_u_code      = 0x80,
-   i64_rem_s_code      = 0x81,
-   i64_rem_u_code      = 0x82,
-   i64_and_code        = 0x83,
-   i64_or_code         = 0x84,
-   i64_xor_code        = 0x85,
-   i64_shl_code        = 0x86,
-   i64_shr_s_code      = 0x87,
-   i64_shr_u_code      = 0x88,
-   i64_rotl_code       = 0x89,
-   i64_rotr_code       = 0x8A,
-   f32_abs_code        = 0x8B,
-   f32_neg_code        = 0x8C,
-   f32_ceil_code       = 0x8D,
-   f32_floor_code      = 0x8E,
-   f32_trunc_code      = 0x8F,
-   f32_nearest_code    = 0x90,
-   f32_sqrt_code       = 0x91,
-   f32_add_code        = 0x92,
-   f32_sub_code        = 0x93,
-   f32_mul_code        = 0x94,
-   f32_div_code        = 0x95,
-   f32_min_code        = 0x96,
-   f32_max_code        = 0x97,
-   f32_copysign_code   = 0x98,
-   f64_abs_code        = 0x99,
-   f64_neg_code        = 0x9A,
-   f64_ceil_code       = 0x9B,
-   f64_floor_code      = 0x9C,
-   f64_trunc_code      = 0x9D,
-   f64_nearest_code    = 0x9E,
-   f64_sqrt_code       = 0x9F,
-   f64_add_code        = 0xA0,
-   f64_sub_code        = 0xA1,
-   f64_mul_code        = 0xA2,
-   f64_div_code        = 0xA3,
-   f64_min_code        = 0xA4,
-   f64_max_code        = 0xA5,
-   f64_copysign_code   = 0xA6,
-   i32_wrap_i64_code       = 0xA7,
-   i32_trunc_s_f32_code    = 0xA8,
-   i32_trunc_u_f32_code    = 0xA9,
-   i32_trunc_s_f64_code    = 0xAA,
-   i32_trunc_u_f64_code    = 0xAB,
-   i64_extend_s_i32_code   = 0xAC,
-   i64_extend_u_i32_code   = 0xAD,
-   i64_trunc_s_f32_code    = 0xAE,
-   i64_trunc_u_f32_code    = 0xAF,
-   i64_trunc_s_f64_code    = 0xB0,
-   i64_trunc_u_f64_code    = 0xB1,
-   f32_convert_s_i32_code  = 0xB2,
-   f32_convert_u_i32_code  = 0xB3,
-   f32_convert_s_i64_code  = 0xB4,
-   f32_convert_u_i64_code  = 0xB5,
-   f32_demote_f64_code     = 0xB6,
-   f64_convert_s_i32_code  = 0xB7,
-   f64_convert_u_i32_code  = 0xB8,
-   f64_convert_s_i64_code  = 0xB9,
-   f64_convert_u_i64_code  = 0xBA,
-   f64_promote_f32_code    = 0xBB,
-   i32_reinterpret_f32_code = 0xBC,
-   i64_reinterpret_f64_code = 0xBD,
-   f32_reinterpret_i32_code = 0xBE,
-   f64_reinterpret_i64_code = 0xBF,
-   error_code               = 0xFF,
+   unreachable_code           = 0x00,
+   nop_code                   = 0x01,
+   block_code                 = 0x02,
+   loop_code                  = 0x03,
+   if__code                   = 0x04,
+   else__code                 = 0x05,
+   end_code                   = 0x0B,
+   br_code                    = 0x0C,
+   br_if_code                 = 0x0D,
+   br_table_code              = 0x0E,
+   return__code               = 0x0F,
+   call_code                  = 0x10,
+   call_indirect_code         = 0x11,
+   drop_code                  = 0x1A,
+   select_code                = 0x1B,
+   get_local_code             = 0x20,
+   set_local_code             = 0x21,
+   tee_local_code             = 0x22,
+   get_global_code            = 0x23,
+   set_global_code            = 0x24,
+   i32_load_code              = 0x28,
+   i64_load_code              = 0x29,
+   f32_load_code              = 0x2A,
+   f64_load_code              = 0x2B,
+   i32_load8_s_code           = 0x2C,
+   i32_load8_u_code           = 0x2D,
+   i32_load16_s_code          = 0x2E,
+   i32_load16_u_code          = 0x2F,
+   i64_load8_s_code           = 0x30,
+   i64_load8_u_code           = 0x31,
+   i64_load16_s_code          = 0x32,
+   i64_load16_u_code          = 0x33,
+   i64_load32_s_code          = 0x34,
+   i64_load32_u_code          = 0x35,
+   i32_store_code             = 0x36,
+   i64_store_code             = 0x37,
+   f32_store_code             = 0x38,
+   f64_store_code             = 0x39,
+   i32_store8_code            = 0x3A,
+   i32_store16_code           = 0x3B,
+   i64_store8_code            = 0x3C,
+   i64_store16_code           = 0x3D,
+   i64_store32_code           = 0x3E,
+   current_memory_code        = 0x3F,
+   grow_memory_code           = 0x40,
+   i32_const_code             = 0x41,
+   i64_const_code             = 0x42,
+   f32_const_code             = 0x43,
+   f64_const_code             = 0x44,
+   i32_eqz_code               = 0x45,
+   i32_eq_code                = 0x46,
+   i32_ne_code                = 0x47,
+   i32_lt_s_code              = 0x48,
+   i32_lt_u_code              = 0x49,
+   i32_gt_s_code              = 0x4A,
+   i32_gt_u_code              = 0x4B,
+   i32_le_s_code              = 0x4C,
+   i32_le_u_code              = 0x4D,
+   i32_ge_s_code              = 0x4E,
+   i32_ge_u_code              = 0x4F,
+   i64_eqz_code               = 0x50,
+   i64_eq_code                = 0x51,
+   i64_ne_code                = 0x52,
+   i64_lt_s_code              = 0x53,
+   i64_lt_u_code              = 0x54,
+   i64_gt_s_code              = 0x55,
+   i64_gt_u_code              = 0x56,
+   i64_le_s_code              = 0x57,
+   i64_le_u_code              = 0x58,
+   i64_ge_s_code              = 0x59,
+   i64_ge_u_code              = 0x5A,
+   f32_eq_code                = 0x5B,
+   f32_ne_code                = 0x5C,
+   f32_lt_code                = 0x5D,
+   f32_gt_code                = 0x5E,
+   f32_le_code                = 0x5F,
+   f32_ge_code                = 0x60,
+   f64_eq_code                = 0x61,
+   f64_ne_code                = 0x62,
+   f64_lt_code                = 0x63,
+   f64_gt_code                = 0x64,
+   f64_le_code                = 0x65,
+   f64_ge_code                = 0x66,
+   i32_clz_code               = 0x67,
+   i32_ctz_code               = 0x68,
+   i32_popcnt_code            = 0x69,
+   i32_add_code               = 0x6A,
+   i32_sub_code               = 0x6B,
+   i32_mul_code               = 0x6C,
+   i32_div_s_code             = 0x6D,
+   i32_div_u_code             = 0x6E,
+   i32_rem_s_code             = 0x6F,
+   i32_rem_u_code             = 0x70,
+   i32_and_code               = 0x71,
+   i32_or_code                = 0x72,
+   i32_xor_code               = 0x73,
+   i32_shl_code               = 0x74,
+   i32_shr_s_code             = 0x75,
+   i32_shr_u_code             = 0x76,
+   i32_rotl_code              = 0x77,
+   i32_rotr_code              = 0x78,
+   i64_clz_code               = 0x79,
+   i64_ctz_code               = 0x7A,
+   i64_popcnt_code            = 0x7B,
+   i64_add_code               = 0x7C,
+   i64_sub_code               = 0x7D,
+   i64_mul_code               = 0x7E,
+   i64_div_s_code             = 0x7F,
+   i64_div_u_code             = 0x80,
+   i64_rem_s_code             = 0x81,
+   i64_rem_u_code             = 0x82,
+   i64_and_code               = 0x83,
+   i64_or_code                = 0x84,
+   i64_xor_code               = 0x85,
+   i64_shl_code               = 0x86,
+   i64_shr_s_code             = 0x87,
+   i64_shr_u_code             = 0x88,
+   i64_rotl_code              = 0x89,
+   i64_rotr_code              = 0x8A,
+   f32_abs_code               = 0x8B,
+   f32_neg_code               = 0x8C,
+   f32_ceil_code              = 0x8D,
+   f32_floor_code             = 0x8E,
+   f32_trunc_code             = 0x8F,
+   f32_nearest_code           = 0x90,
+   f32_sqrt_code              = 0x91,
+   f32_add_code               = 0x92,
+   f32_sub_code               = 0x93,
+   f32_mul_code               = 0x94,
+   f32_div_code               = 0x95,
+   f32_min_code               = 0x96,
+   f32_max_code               = 0x97,
+   f32_copysign_code          = 0x98,
+   f64_abs_code               = 0x99,
+   f64_neg_code               = 0x9A,
+   f64_ceil_code              = 0x9B,
+   f64_floor_code             = 0x9C,
+   f64_trunc_code             = 0x9D,
+   f64_nearest_code           = 0x9E,
+   f64_sqrt_code              = 0x9F,
+   f64_add_code               = 0xA0,
+   f64_sub_code               = 0xA1,
+   f64_mul_code               = 0xA2,
+   f64_div_code               = 0xA3,
+   f64_min_code               = 0xA4,
+   f64_max_code               = 0xA5,
+   f64_copysign_code          = 0xA6,
+   i32_wrap_i64_code          = 0xA7,
+   i32_trunc_s_f32_code       = 0xA8,
+   i32_trunc_u_f32_code       = 0xA9,
+   i32_trunc_s_f64_code       = 0xAA,
+   i32_trunc_u_f64_code       = 0xAB,
+   i64_extend_s_i32_code      = 0xAC,
+   i64_extend_u_i32_code      = 0xAD,
+   i64_trunc_s_f32_code       = 0xAE,
+   i64_trunc_u_f32_code       = 0xAF,
+   i64_trunc_s_f64_code       = 0xB0,
+   i64_trunc_u_f64_code       = 0xB1,
+   f32_convert_s_i32_code     = 0xB2,
+   f32_convert_u_i32_code     = 0xB3,
+   f32_convert_s_i64_code     = 0xB4,
+   f32_convert_u_i64_code     = 0xB5,
+   f32_demote_f64_code        = 0xB6,
+   f64_convert_s_i32_code     = 0xB7,
+   f64_convert_u_i32_code     = 0xB8,
+   f64_convert_s_i64_code     = 0xB9,
+   f64_convert_u_i64_code     = 0xBA,
+   f64_promote_f32_code       = 0xBB,
+   i32_reinterpret_f32_code   = 0xBC,
+   i64_reinterpret_f64_code   = 0xBD,
+   f32_reinterpret_i32_code   = 0xBE,
+   f64_reinterpret_i64_code   = 0xBF,
+   error_code                 = 0xFF,
 }; // code
 
 struct visitor_arg {
@@ -487,7 +520,7 @@ struct visitor_arg {
 
 struct instr {
    virtual std::string to_string() { return "instr"; }
-   virtual uint8_t get_code() = 0;
+   virtual uint16_t get_code() = 0;
    virtual void visit( visitor_arg&& arg ) = 0;
    virtual int skip_ahead() = 0;
    virtual void unpack( char* opcode ) = 0;
@@ -505,14 +538,14 @@ struct propagate_should_kill<Mutator> {
 };
 
 template <bool Kills>
-struct base_injector {
+struct base_mutator {
    static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
       std::vector<U8> self_code = inst->pack();
       arg.new_code->insert( arg.new_code->end(), self_code.begin(), self_code.end() );
    }
 };
 template <>
-struct base_injector<true> {
+struct base_mutator<true> {
    static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
    }
 };
@@ -523,42 +556,43 @@ struct instr_base : instr {
       for ( auto m : { Mutators::accept... } ) {
          m(this, arg);
       }
-      base_injector<propagate_should_kill<Mutators...>::value>::accept( this, arg );
+      base_mutator<propagate_should_kill<Mutators...>::value>::accept( this, arg );
    } 
 };
-
+/*
 // construct the ops
 // special case for br_table
 template <typename ... Mutators>                                     
 struct br_table : instr_base<Mutators...> {
    br_table() = default;
    br_table( char* block ) {}
-   uint8_t code = br_table_code;
+   uint16_t code = br_table_code;
    std::vector<uint32_t> targets;
    uint32_t else_target;
-   uint8_t get_code() override { return br_table_code; }
+   uint16_t get_code() override { return br_table_code; }
    int skip_ahead() override { return sizeof(code); }
    // TODO fix this
    void unpack( char* opcode ) override {
       //uint8_t* code = (uint8_t*)(block.data() + sizeof(code));  // skip the opcode
    }
    std::vector<U8> pack() override {
-      return { U8(code) };
+      return { U8(code), U8(code >> 8) };
    }
    std::string to_string() override { return "br_table"; }
-
 };
+*/
 
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP, no_param_op ,        BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 131 ) )   // NOTE, this skips past br_table as it is defined above
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, blocktype,  BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 132, 3 ) )
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, uint32_t,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 135, 10 ) )
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, memarg,     BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 145, 23 ) )
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, uint64_t,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 168, 2 ) )
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, callindirecttype,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 170, 1 ) )
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, memoryoptype,   BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 171, 2 ) )
-
-#undef CONSTRUCT_OP
+// construct the instructions
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, voidtype,         BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 131 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, blocktype,        BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 131, 3 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, uint32_t,         BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 134, 11 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, memarg,           BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 145, 23 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, uint64_t,         BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 168, 2 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, memoryoptype,     BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 170, 2 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, branchtabletype,  BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 172, 1 ) )
+// NOTE BRANCH TABLE IS OMITTED
 #undef CONSTRUCT_OP_HAS_DATA
+
 #pragma pack (pop)
 
 struct nop_mutator {
@@ -688,12 +722,4 @@ const std::vector<instr*>* EOSIO_OperatorDecoderStream<Op_Types>::_cached_ops = 
 FC_REFLECT_TEMPLATE( (typename T), eosio::chain::wasm_ops::block< T >, (code)(rt) )
 FC_REFLECT( eosio::chain::wasm_ops::memarg, (a)(o) )
 FC_REFLECT( eosio::chain::wasm_ops::blocktype, (result) )
-//FC_REFLECT( eosio::chain::wasm_ops::functype, (code)(params)(results) )
-FC_REFLECT( eosio::chain::wasm_ops::limits, (code)(min)(max) )
-FC_REFLECT( eosio::chain::wasm_ops::memtype, (lim) )
-FC_REFLECT( eosio::chain::wasm_ops::elemtype, (code) )
-FC_REFLECT( eosio::chain::wasm_ops::tabletype, (et)(lim) )
-FC_REFLECT( eosio::chain::wasm_ops::mut, (code) )
-FC_REFLECT( eosio::chain::wasm_ops::globaltype, (t)(m) )
-FC_REFLECT( eosio::chain::wasm_ops::callindirecttype, (funcidx)(end) )
 FC_REFLECT( eosio::chain::wasm_ops::memoryoptype, (end) )

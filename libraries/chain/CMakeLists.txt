@@ -11,7 +11,6 @@ add_library( eosio_chain
              wasm_interface.cpp
              wasm_eosio_constraints.cpp
              wasm_eosio_injection.cpp
-             wasm_eosio_binary_ops.cpp
              wasm_module_walker.cpp
              apply_context.cpp
              rate_limiting.cpp

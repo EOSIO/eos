@@ -5,95 +5,51 @@
 #include <functional>
 #include <vector>
 #include <iostream>
+#include <map>
 #include "IR/Module.h"
 #include "IR/Operators.h"
 #include "WASM/WASM.h"
 
-namespace eosio { namespace chain { namespace wasm_injections {
 
-   // module validators
-   // effectively do nothing and pass
+namespace eosio { namespace chain { namespace wasm_injections {
+   using namespace IR;
+   // helper functions for injection
+
+   struct injector_utils {
+      //static std::unordered_map<type_slot_pair, uint32_t, tsp_hasher > type_slots;
+      static std::map<std::vector<uint16_t>, uint32_t> type_slots;
+      static void init() { type_slots.clear(); }
+
+      template <ResultType Result, ValueType... Params>
+      static void add_type_slot( Module& mod ) {
+         if ( type_slots.find({FromResultType<Result>::value, FromValueType<Params>::value...}) == type_slots.end() ) {
+            type_slots.emplace( std::vector<uint16_t>{FromResultType<Result>::value, FromValueType<Params>::value...}, mod.types.size() );
+            mod.types.push_back( FunctionType::get( Result, { Params... } ) );
+         }
+      }
+
+      template <ResultType Result, ValueType... Params>
+      static void add_import(Module& module, const char* scope, const char* func_name, int32_t& index ) {
+         if (module.functions.imports.size() == 0 || module.functions.imports.back().exportName.compare(func_name) != 0) {
+            add_type_slot<Result, Params...>( module );
+
+            const uint32_t func_type_index = type_slots[{ FromResultType<Result>::value, FromValueType<Params>::value... }];
+            module.functions.imports.push_back({{func_type_index}, std::move(scope), std::move(func_name)});
+            index = module.functions.imports.size()-1;
+            // shift all exported functions by 1
+            for ( int i=0; i < module.exports.size(); i++ ) {
+               if ( module.exports[i].kind == IR::ObjectKind::function )
+                  module.exports[i].index += 1;
+            }
+         }
+      }
+   };
+
    struct noop_injection_visitor {
       static void inject( IR::Module& m );
       static void initializer();
    };
-   /*
-   static U32 checktimeIndex(const Module& module)
-   {
-      return module.functions.imports.size() - 1;
-   }
-
-   void setTypeSlot(const Module& module, ResultType returnType, const std::vector<ValueType>& parameterTypes)
-   {
-      if (returnType == ResultType::none && parameterTypes.size() == 1 && parameterTypes[0] == ValueType::i32 )
-        typeSlot = module.types.size() - 1;
-   }
-
-   void addTypeSlot(Module& module)
-   {
-      if (typeSlot < 0)
-      {
-         // add a type for void func(void)
-         typeSlot = module.types.size();
-         module.types.push_back(FunctionType::get(ResultType::none, std::vector<ValueType>(1, ValueType::i32)));
-      }
-   }
-
-   void addImport(Module& module)
-   {
-      if (module.functions.imports.size() == 0 || module.functions.imports.back().exportName.compare(u8"checktime") != 0) {
-         if (typeSlot < 0) {
-            addTypeSlot(module);
-         }
-
-         const U32 functionTypeIndex = typeSlot;
-         module.functions.imports.push_back({{functionTypeIndex}, std::move(u8"env"), std::move(u8"checktime")});
-      }
-   }
-
-   void conditionallyAddCall(Opcode opcode, const ControlStructureImm& imm, Module& module, OperatorEncoderStream& operatorEncoderStream, CodeValidationStream& codeValidationStream)
-   {
-      switch(opcode)
-      {
-      case Opcode::loop:
-      case Opcode::block:
-         addCall(module, operatorEncoderStream, codeValidationStream);
-      default:
-         break;
-      };
-   }
-
-   template<typename Imm>
-   void conditionallyAddCall(Opcode , const Imm& , Module& , OperatorEncoderStream& , CodeValidationStream& )
-   {
-   }
-
-   void adjustIfFunctionIndex(Uptr& index, ObjectKind kind)
-   {
-      if (kind == ObjectKind::function)
-         ++index;
-   }
-
-   void adjustExportIndex(Module& module)
-   {
-      // all function exports need to have their index increased to account for inserted definition
-      for (auto& exportDef : module.exports)
-      {
-         adjustIfFunctionIndex(exportDef.index, exportDef.kind);
-      }
-   }
-
-   void adjustCallIndex(const Module& module, CallImm& imm)
-   {
-      if (imm.functionIndex >= checktimeIndex(module))
-         ++imm.functionIndex;
-   }
-
-   template<typename Imm>
-   void adjustCallIndex(const Module& , Imm& )
-   {
-   }
-*/
+   
 
    struct memories_injection_visitor {
       static void inject( IR::Module& m );
@@ -114,7 +70,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void inject( IR::Module& m );
       static void initializer();
    };
-
+   
    struct blacklist_injection_visitor {
       static void inject( IR::Module& m );
       static void initializer();
@@ -138,6 +94,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
 
    struct debug_printer {
       static constexpr bool kills = false;
+      static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          std::cout << "INSTRUCTION : " << inst->to_string() << "\n";
       }
@@ -145,6 +102,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
 
    struct instruction_counter {
       static constexpr bool kills = false;
+      static void init() { icnt = 0; }
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          // maybe change this later to variable weighting for different instruction types
          icnt++;
@@ -154,22 +112,23 @@ namespace eosio { namespace chain { namespace wasm_injections {
 
    struct checktime_injector {
       static constexpr bool kills = false;
+      static void init() { checktime_idx = -1; }
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-//         if (checktime_idx == -1)
-//            FC_THROW("Error, this should be run after module injector");
-         //std::cout << "HIT A BLOCK " <<  " " << index << "\n";
+         // first add the import for checktime
+         injector_utils::add_import<ResultType::none, ValueType::i32>( *(arg.module), u8"env", u8"checktime", checktime_idx );
+
          wasm_ops::op_types<>::i32_const_t cnt; 
          cnt.field = instruction_counter::icnt;
+
          wasm_ops::op_types<>::call_t chktm; 
          chktm.field = checktime_idx;
          instruction_counter::icnt = 0;
+
          // pack the ops for insertion
          std::vector<U8> injected = cnt.pack();
          std::vector<U8> tmp      = chktm.pack();
          injected.insert( injected.end(), tmp.begin(), tmp.end() );
-         //arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
-         //arg.function_def->code.insert( arg.function_def->code.begin()+arg.code_index, 
-         //      injected.begin(), injected.end() );
+         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
       }
       static int32_t checktime_idx;
    };
@@ -327,8 +286,9 @@ namespace eosio { namespace chain { namespace wasm_injections {
          wasm_binary_injection() { 
             _module_injectors.init();
             // initialize static fields of injectors
-            instruction_counter::icnt = 0;
-            checktime_injector::checktime_idx = -1;
+            //injector_utils::init();
+            instruction_counter::init();
+            checktime_injector::init();
          }
 
          static void inject( IR::Module& mod ) {
@@ -338,16 +298,8 @@ namespace eosio { namespace chain { namespace wasm_injections {
                std::vector<U8> new_code;
                while ( decoder ) {
                   auto op = decoder.decodeOp();
-                  std::vector<U8>::iterator decoded_index = (fd.code.begin() + decoder.index());
                   op->visit( { &mod, &new_code, &fd, decoder.index() } );
                }
-
-               for ( int i=0; i < new_code.size(); i++ )
-                  std::cout <<std::hex << uint32_t(new_code[i]) << ", ";
-               std::cout << "\n";
-               for ( int i=0; i < fd.code.size(); i++ )
-                  std::cout << std::hex << uint32_t(fd.code[i]) << ", ";
-               std::cout << "\n";
 
                fd.code = new_code;
             }

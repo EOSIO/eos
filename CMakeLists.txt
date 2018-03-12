@@ -119,7 +119,6 @@ else( WIN32 ) # Apple AND Linux
     #if(NOT READLINE_INCLUDE_DIR OR NOT READLINE_LIBRARIES)
     #  MESSAGE(FATAL_ERROR "Could not find lib readline.")
     #endif()
-
     if( APPLE )
         # Apple Specific Options Here
         message( STATUS "Configuring Eos on OS X" )
@@ -128,7 +127,7 @@ else( WIN32 ) # Apple AND Linux
     else( APPLE )
         # Linux Specific Options Here
         message( STATUS "Configuring Eos on Linux" )
-        set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall" )
+        set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++1z -Wc++1z-extensions -Wall" )
         if ( FULL_STATIC_BUILD )
           set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
         endif ( FULL_STATIC_BUILD )

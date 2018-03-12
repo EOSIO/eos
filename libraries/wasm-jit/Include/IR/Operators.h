@@ -25,6 +25,7 @@ namespace IR
 
 	struct BranchTableImm
 	{
+      static_assert(sizeof(Uptr) == 8, "SIZEE");
 		Uptr defaultTargetDepth;
 		Uptr branchTableIndex; // An index into the FunctionDef's branchTables array.
 	};

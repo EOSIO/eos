@@ -185,128 +185,110 @@ namespace eosio { namespace chain {
                fc::optional<binaryen::info> binaryen_info;
 
                try {
-#if 0
-                  Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
-                  WASM::serializeWithInjection(stream, *module);
-                  validate_eosio_wasm_constraints(*module);
-                  wasm_module_walker<
-                  wasm_constraints::constraints_validators<wasm_constraints::memories_validator,
-                                                           wasm_constraints::data_segments_validator,
-                                                           wasm_constraints::tables_validator,
-                                                           wasm_constraints::globals_validator>, 
-                  wasm_constraints::constraints_validators<wasm_constraints::memories_validator,
-                                                           wasm_constraints::data_segments_validator,
-                                                           wasm_constraints::tables_validator,
-                                                           wasm_constraints::globals_validator>>
-                                                   wmw(*module);
 
-                  wasm_ops::wasm_instr_ptr nopi = std::make_shared< wasm_ops::nop<test_mutator> >();
-                  wasm_ops::wasm_instr_ptr blocki = std::make_shared< wasm_ops::block<test_mutator2> >();
-                  wasm_ops::op_types<test_mutator>::block_t b;
-                  wasm_ops::op_types<test_mutator>::i64_popcount_t ipc;
-                  wasm_ops::nop<test_mutator> n;
-                  wasm_ops::call<test_mutator> br;
-                  br.field = 23;
-                  wasm_rewriter::op_constrainers::f32_add_t f32;
-                  b.visit();
-                  ipc.visit();
-                  wmw.pre_validate();
-                  for (auto def : module->functions.defs) {
-                     char* code = (char*)(def.code.data());
-                     char* code_end = code+def.code.size();
-                     std::cout << "FUNC " << "\n";
-                     uint32_t it = 0; 
-                     /*
-                     while ( it < def.code.size() ) {
-                        std::cout << "OPCODE " << std::hex << (uint32_t)code[it] << "\n";
-                        it++;
-                     }
-                     */
-                     it = 0;
-                     for (FunctionDef& fd : module->functions.defs ) {
-                        OperatorDecoderStream decoder(fd.code);
-                        while (decoder) {
-                           std::cout << "OP " << std::hex << (uint32_t)decoder.decodeOp() << "\n";
-                           wasm_ops::instr* op = wasm_ops::get_instr_from_op<wasm_ops::op_types<>>(*(decoder.index));
-                           std::cout << "OP2 " << op->to_string() << " " << (uint32_t)((wasm_ops::i32_const<test_mutator>*)op)->field << "\n"; 
-                           /*
-                        if ( op->get_code() == 0x41 )
-                        else
-                           std::cout << "OP2 " << std::hex << (uint32_t)op->get_code() << " " << op->to_string() << "\n";
-                           */
-                        }
-                     }
-                     /*
-                     while ( it < def.code.size() ) {
-                        std::cout << "OPCODE " << std::hex << (uint32_t)code[it] << "\n";
-                        wasm_ops::instr* op = wasm_ops::get_instr_from_op<wasm_ops::op_types<>>(code[it]);
-                        it = op->unpack( def.code, it );
-                        if ( op->get_code() == 0x41 )
-                           std::cout << "OP " << op->to_string() << " " << (uint32_t)((wasm_ops::i32_const<test_mutator>*)op)->field << "\n"; 
-                        else if ( op->get_code() == 0x42 )
-                           std::cout << "OP " << op->to_string() << " " << (uint32_t)((wasm_ops::i32_const<test_mutator>*)op)->field << "\n"; 
-                        else
-                           std::cout << "OP " << op->to_string() << "\n"; 
-                     }
-                     */
-                        //std::cout << (int)n << " ";
-                  } 
-                  /*
-                  std::cout << "\n";
-                  uint8_t* buff = new uint8_t[3];
-                  buff[0] = wasm_ops::block_code;
-                  buff[1] = 120;
-                  //buff[2] = wasm_ops::nop_code;
-                  buff[2] = 34;
-                  std::vector<uint8_t> code = {wasm_ops::block_code, 13, wasm_ops::nop_code};
-//                  wasm_ops::instr* block_ = new wasm_ops::wasm_op_table::which_pointer<wasm_ops::op_types<test_mutator2>, wasm_ops::block_code>::instr_t((char*)buff);
-//                  wasm_ops::instr* nop_ = new wasm_ops::wasm_op_table::which_pointer<wasm_ops::op_types<test_mutator2>, wasm_ops::nop_code>::instr_t(block_->skip_ahead((char*)buff));
-                  wasm_ops::instr* block_ = wasm_ops::get_instr_from_op<wasm_ops::op_types<test_mutator2>>(wasm_ops::block_code);
-                  wasm_ops::instr* nop_ = wasm_ops::get_instr_from_op<wasm_ops::op_types<test_mutator2>>(wasm_ops::nop_code);
-
-                  datastream<uint8_t*> ds( code.data(), code.size() );
-
-                  //fc::raw::unpack(ds, *nop_);
-                  block_->visit();
-
-                  std::cout << "FIELD : " <<  (uint64_t)((wasm_ops::block<test_mutator>*)block_)->field.result << "\n";
-                  std::cout << "CODE : " << (int)block_->get_code() << "NAME : " << block_->to_string() << "\n";
-                  std::cout << "CODE : " << (int)nop_->get_code() << "NAME : " << nop_->to_string() << "\n";
-                  */
-                  root_resolver resolver;
-                  LinkResult link_result = linkModule(*module, resolver);
-                  instance = instantiateModule(*module, std::move(link_result.resolvedImports));
-                  FC_ASSERT(instance != nullptr);
-
-                  //populate the module's data segments in to a vector so the initial state can be
-                  // restored on each invocation
-                  //Be Warned, this may need to be revisited when module imports make sense. The
-                  // code won't handle data segments that initalize an imported memory which I think
-                  // is valid.
-                  for(const DataSegment& data_segment : module->dataSegments) {
-                     FC_ASSERT(data_segment.baseOffset.type == InitializerExpression::Type::i32_const);
-                     FC_ASSERT(module->memories.defs.size());
-                     const U32  base_offset = data_segment.baseOffset.i32;
-                     const Uptr memory_size = (module->memories.defs[0].type.size.min << IR::numBytesPerPageLog2);
-                     if(base_offset >= memory_size || base_offset + data_segment.data.size() > memory_size)
-                        FC_THROW_EXCEPTION(wasm_execution_error, "WASM data segment outside of valid memory range");
-                     if(base_offset + data_segment.data.size() > mem_image.size())
-                        mem_image.resize(base_offset + data_segment.data.size(), 0x00);
-                     memcpy(mem_image.data() + base_offset, data_segment.data.data(), data_segment.data.size());
-                  }
-#endif
-                  /// TODO: make validation generic
                   IR::Module* module = new IR::Module();
+                  IR::Module* module2 = new IR::Module();
+
                   Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
-                  wasm_constraints::wasm_binary_validation::validate( *module );
+                  Serialization::MemoryInputStream stream2((const U8 *) wasm_binary, wasm_binary_size);
                   WASM::serialize(stream, *module);
-                  Serialization::ArrayOutputStream outstream;
+                  WASM::serializeWithInjection(stream2, *module2);
+
                   wasm_constraints::wasm_binary_validation::validate( *module );
                   wasm_injections::wasm_binary_injection::inject( *module );
+                  /*
+                  std::cout << "INJECTED\n";
+                  wasm_injections::wasm_binary_injection::inject( *module );
+                  std::cout << "INJECTEDSS\n";
+                  wasm_injections::wasm_binary_injection::inject( *module2 );
 
+                  auto restype = [](IR::ResultType f){ 
+                        if (f == IR::ResultType::none ) return "none"; 
+                        if (f == IR::ResultType::i32 ) return "i32"; 
+                        if (f == IR::ResultType::i64 ) return "i64"; 
+                        if (f == IR::ResultType::f32 ) return "f32"; 
+                        if (f == IR::ResultType::f64 ) return "f64"; 
+                  };
+                  auto valtype = [](IR::ValueType f){ 
+                        if (f == IR::ValueType::any ) return "any"; 
+                        if (f == IR::ValueType::i32 ) return "i32"; 
+                        if (f == IR::ValueType::i64 ) return "i64"; 
+                        if (f == IR::ValueType::f32 ) return "f32"; 
+                        if (f == IR::ValueType::f64 ) return "f64"; 
+                  };
+
+
+                  std::cout << "FUNCTION_Type A \n";
+                  for (auto e : module->types) {
+                     std::cout << "Function ("<< restype(e->ret) << ") (";
+                     for (auto ee : e->parameters) {
+                        std::cout << valtype(ee) << ", ";
+                     }
+                  } 
+                  std::cout << "\n";
+                  std::cout << "FUNCTION_Type B \n";
+                  for (auto e : module->types) {
+                     std::cout << "Function ("<< restype(e->ret) << ") (";
+                     for (auto ee : e->parameters) {
+                        std::cout << valtype(ee) << ", ";
+                     }
+                  } 
+                  std::cout << "\n";
+
+                  std::cout << "FUNCTION_Import A \n";
+                  for (auto e : module->functions.imports)
+                     std::cout << e.exportName << "\n";
+                  std::cout << "\n";
+                  std::cout << "FUNCTION_Import B \n";
+                  for (auto e : module2->functions.imports)
+                     std::cout << e.exportName << "\n";
+
+                  std::cout << "\n";
+                  std::cout << "TABLES_Import A \n";
+                  for (auto e : module->tables.imports)
+                     std::cout << e.exportName << "\n";
+
+                  std::cout << "\n";
+                  std::cout << "TABLES_Import B \n";
+                  for (auto e : module2->tables.imports)
+                     std::cout << e.exportName << "\n";
+                  std::cout << "\n";
+
+                  std::cout << "MEMORIES_Import A \n";
+                  for (auto e : module->memories.imports)
+                     std::cout << e.exportName << "\n";
+
+                  std::cout << "\n";
+                  std::cout << "MEMORIES_Import B \n";
+                  for (auto e : module2->memories.imports)
+                     std::cout << e.exportName << "\n";
+                  std::cout << "\n";
+
+                  std::cout << "GLOBALS_Import A \n";
+                  for (auto e : module->globals.imports)
+                     std::cout << e.exportName << "\n";
+
+                  std::cout << "\n";
+                  std::cout << "GLOBALS_Import B \n";
+                  for (auto e : module2->globals.imports)
+                     std::cout << e.exportName << "\n";
+                  std::cout << "\n";
+
+                  std::cout << "EXPORT A \n";
+                  for (auto e : module->exports)
+                     std::cout << e.name << " " << uint32_t(e.index) << "\n";
+
+                  std::cout << "\n";
+                  std::cout << "EXPORT B \n";
+                  for (auto e : module2->exports)
+                     std::cout << e.name << " " << uint32_t(e.index) << "\n";
+                  std::cout << "\n";
+                  */
+
+                  Serialization::ArrayOutputStream outstream;
                   WASM::serialize(outstream, *module);
                   std::vector<U8> bytes = outstream.getBytes();
-                  
+
                   wavm = wavm::entry::build((char*)bytes.data(), bytes.size());
                   wavm_info.emplace(*wavm);
 
@@ -613,6 +595,7 @@ public:
    using context_aware_api::context_aware_api;
 
    void checktime(uint32_t instruction_count) {
+      std::cout << "CHECKTIME\n";
       context.checktime(instruction_count);
    }
 };

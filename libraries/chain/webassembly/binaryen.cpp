@@ -159,7 +159,7 @@ entry entry::build(const char* wasm_binary, size_t wasm_binary_size) {
       WasmBinaryBuilder builder(*module, code, false);
       builder.read();
 
-      inject_checktime(*module.get());
+      //inject_checktime(*module.get());
 
 
       FC_ASSERT(module->memory.initial * Memory::kPageSize <= wasm_constraints::maximum_linear_memory);

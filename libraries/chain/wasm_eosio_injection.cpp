@@ -9,14 +9,9 @@
 
 namespace eosio { namespace chain { namespace wasm_injections {
 using namespace IR;
-/*
-std::string to_string( ControlStructureImm imm ) {
-   return "result type : "+std::to_string(uint32_t(imm.resultType));
-}
-std::string to_string( BranchImm imm ) {
-   return "branch target : "+std::to_string(uint32_t(imm.targetDepth));
-}
-*/
+
+//std::unordered_map<type_slot_pair, uint32_t, tsp_hasher> injector_utils::type_slots;
+std::map<std::vector<uint16_t>, uint32_t> injector_utils::type_slots;
 
 void noop_injection_visitor::inject( Module& m ) { /* just pass */ }
 void noop_injection_visitor::initializer() { /* just pass */ }
