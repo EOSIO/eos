@@ -166,10 +166,12 @@ class exchange_tester : public tester {
          );
       }
 
-      auto deposit( name contract, name signer, extended_asset amount ) {
-         return push_action( contract, signer, N(deposit), mutable_variant_object()
-                 ("from",     signer ) 
-                 ("quantity", amount )
+      auto deposit( name exchangecontract, name signer, extended_asset amount ) {
+         return push_action( amount.contract, signer, N(transfer), mutable_variant_object()
+            ("from", signer )
+            ("to",  exchangecontract )
+            ("quantity", amount.quantity )
+            ("memo", "deposit")
          );
       }
 

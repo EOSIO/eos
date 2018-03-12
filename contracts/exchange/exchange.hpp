@@ -521,7 +521,22 @@ namespace eosio {
             adjust_balance( c.creator, -c.quote_deposit, "new exchange deposit" );
          }
 
+         void on( const currency::transfer& t, account_name code ) {
+            if( code == _this_contract )
+               _excurrencies.on( t );
+
+            if( t.to == _this_contract ) {
+               eosio_assert( t.memo == "deposit", "received tokens without deposit in memo" );
+               adjust_balance( t.from, extended_asset(t.quantity,code), "deposit" );
+            }
+         }
+
          bool apply( account_name contract, account_name act ) {
+
+            if( act == N(transfer) ) {
+               on( unpack_action<currency::transfer>(), contract );   
+               return true;
+            }
 
             if( contract != _this_contract ) 
                return false;

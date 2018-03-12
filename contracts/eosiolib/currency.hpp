@@ -158,44 +158,6 @@ namespace eosio {
              add_balance( st.issuer, i.quantity, st, st.issuer );
           }
 
-      private:
-          void sub_balance( account_name owner, asset value, const currency_stats& st ) {
-             accounts from_acnts( _contract, owner );
-
-             const auto& from = from_acnts.get( value.symbol );
-             eosio_assert( from.balance.amount >= value.amount, "overdrawn balance" );
-
-             if( has_auth( owner ) ) {
-                eosio_assert( !st.can_freeze || !from.frozen, "account is frozen by issuer" );
-                eosio_assert( !st.is_whitelist || from.whitelist, "account is not white listed" );
-             } else if( has_auth( st.issuer ) ) {
-                eosio_assert( st.can_recall, "issuer may not recall token" );
-             } else {
-                eosio_assert( false, "insufficient authority" );
-             }
-
-             from_acnts.modify( from, owner, [&]( auto& a ) {
-                 a.balance.amount -= value.amount;
-             });
-          }
-
-          void add_balance( account_name owner, asset value, const currency_stats& st, account_name ram_payer )
-          {
-             accounts to_acnts( _contract, owner );
-             auto to    = to_acnts.find( value.symbol );
-             if( to == to_acnts.end() ) {
-                eosio_assert( !st.is_whitelist, "can only transfer to white listed accounts" );
-                to_acnts.emplace( ram_payer, [&]( auto& a ){
-                  a.balance = value;
-                });
-             } else {
-                eosio_assert( !st.is_whitelist || to->whitelist, "receiver requires whitelist by issuer" );
-                to_acnts.modify( to, 0, [&]( auto& a ) {
-                  a.balance.amount += value.amount;
-                });
-             }
-          }
-
 
           void on( const create& c ) {
              require_auth( c.issuer );
@@ -240,6 +202,47 @@ namespace eosio {
              sub_balance( t.from, t.quantity, st );
              add_balance( t.to, t.quantity, st, t.from );
           }
+
+
+      private:
+          void sub_balance( account_name owner, asset value, const currency_stats& st ) {
+             accounts from_acnts( _contract, owner );
+
+             const auto& from = from_acnts.get( value.symbol );
+             eosio_assert( from.balance.amount >= value.amount, "overdrawn balance" );
+
+             if( has_auth( owner ) ) {
+                eosio_assert( !st.can_freeze || !from.frozen, "account is frozen by issuer" );
+                eosio_assert( !st.is_whitelist || from.whitelist, "account is not white listed" );
+             } else if( has_auth( st.issuer ) ) {
+                eosio_assert( st.can_recall, "issuer may not recall token" );
+             } else {
+                eosio_assert( false, "insufficient authority" );
+             }
+
+             from_acnts.modify( from, owner, [&]( auto& a ) {
+                 a.balance.amount -= value.amount;
+             });
+          }
+
+          void add_balance( account_name owner, asset value, const currency_stats& st, account_name ram_payer )
+          {
+             accounts to_acnts( _contract, owner );
+             auto to    = to_acnts.find( value.symbol );
+             if( to == to_acnts.end() ) {
+                eosio_assert( !st.is_whitelist, "can only transfer to white listed accounts" );
+                to_acnts.emplace( ram_payer, [&]( auto& a ){
+                  a.balance = value;
+                });
+             } else {
+                eosio_assert( !st.is_whitelist || to->whitelist, "receiver requires whitelist by issuer" );
+                to_acnts.modify( to, 0, [&]( auto& a ) {
+                  a.balance.amount += value.amount;
+                });
+             }
+          }
+
+
 
 
       private:
