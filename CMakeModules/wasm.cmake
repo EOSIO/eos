@@ -145,6 +145,8 @@ macro(add_wast_executable)
   )
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${target}.s)
 
+  #XXX Until injection
+  set(MAX_MEMORY_PARAM "-m" 34603008)
   if(ARG_MAX_MEMORY)
     set(MAX_MEMORY_PARAM "-m" ${ARG_MAX_MEMORY})
   endif()
