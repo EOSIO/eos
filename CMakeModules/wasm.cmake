@@ -202,7 +202,10 @@ macro(add_wast_executable)
     set(debug_target ${target}_deb)
     add_library( ${debug_target} SHARED ${SOURCE_FILES} )
 
-    target_link_libraries( ${debug_target} fc )
+    target_link_libraries( ${debug_target} fc)
+    if (APPLE)
+      target_link_libraries( ${debug_target} eosio_chain)
+    endif()
     target_include_directories( ${debug_target} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/contracts" )
 
     target_compile_definitions(${debug_target} PRIVATE EOSIO_NATIVE_CONTRACT_COMPILATION)

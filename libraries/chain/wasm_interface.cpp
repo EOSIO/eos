@@ -1754,6 +1754,21 @@ REGISTER_NATIVE_INTRINSICS(database_api,
    (db_idx128_upperbound,     int, (account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t* primary), (code, scope, table, *secondary, *primary))
    (db_idx128_next,           int, (int32_t iter, uint64_t* primary), (iter, *primary))
    (db_idx128_previous,       int, (int32_t iter, uint64_t* primary), (iter, *primary))
+
+   (db_idx256_store,          int, (int64_t scope, int64_t table, int64_t payer, int64_t id, const uint128_t* secondary, uint32_t data_len),
+                              (scope, table, payer, id, array_ptr<const uint128_t>(secondary), data_len))
+   (db_idx256_remove,         void, (int32_t iter), (iter))
+   (db_idx256_update,         void, (int32_t iter, int64_t payer, const uint128_t* secondary, uint32_t data_len), (iter, payer, array_ptr<const uint128_t>(secondary), data_len))
+   (db_idx256_find_primary,   int, (account_name code, account_name scope, table_name table, uint128_t* secondary, uint32_t data_len, uint64_t primary),
+                              (code, scope, table, array_ptr<uint128_t>(secondary), data_len, primary))
+   (db_idx256_find_secondary, int, (account_name code, account_name scope, table_name table, const uint128_t* secondary, uint32_t data_len, uint64_t* primary),
+                              (code, scope, table, array_ptr<const uint128_t>(secondary), data_len, *primary))
+   (db_idx256_lowerbound,     int, (account_name code, account_name scope, table_name table, uint128_t* secondary, uint32_t data_len, uint64_t* primary),
+                              (code, scope, table, array_ptr<uint128_t>(secondary), data_len, *primary))
+   (db_idx256_upperbound,     int, (account_name code, account_name scope, table_name table, uint128_t* secondary, uint32_t data_len, uint64_t* primary),
+                              (code, scope, table, array_ptr<uint128_t>(secondary), data_len, *primary))
+   (db_idx256_next,           int, (int32_t iter, uint64_t* primary), (iter, *primary))
+   (db_idx256_previous,       int, (int32_t iter, uint64_t* primary), (iter, *primary))
 )
 
 REGISTER_NATIVE_INTRINSICS(math_api,
