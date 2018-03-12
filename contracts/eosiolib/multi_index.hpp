@@ -238,6 +238,7 @@ class multi_index
                      return *this;
                   }
 
+                  const_iterator():_item(nullptr){}
                private:
                   friend struct index;
                   const_iterator( const index& idx, const item* i = nullptr )

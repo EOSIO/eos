@@ -399,18 +399,18 @@ int main( int argc, char** argv ) {
    //state.base.weight  = state.total_weight / 2.;
    state.base.balance.amount = 100000000;
    state.base.balance.symbol = "USD";
-   state.base.weight = .5;
+   state.base.weight = .49;
    //state.quote.weight = state.total_weight / 2.;
    state.quote.balance.amount = state.base.balance.amount;
    state.quote.balance.symbol = "BTC";
-   state.quote.weight = .5;
+   state.quote.weight = .51;
 
    print_state( state );
 
    //state = convert( state, "dan", asset{ 100, "USD"}, asset{ 0, "BTC" } );
 
    auto start = fc::time_point::now();
-   for( uint32_t i = 0; i < 10; ++i ) {
+   for( uint32_t i = 0; i < 10000; ++i ) {
      if( rand() % 2 == 0 )
         state = convert( state, "dan", asset{ token_type(uint32_t(rand())%maxtrade), "USD"}, asset{ 0, "BTC" } );
      else
