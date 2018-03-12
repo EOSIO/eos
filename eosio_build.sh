@@ -118,6 +118,7 @@
 		export SOFTFLOAT_ROOT=/usr/local/berkeley-softfloat-3
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
+		BUILD_MONGODB=true
 
 	  . scripts/eosio_build_darwin.sh
 	fi
