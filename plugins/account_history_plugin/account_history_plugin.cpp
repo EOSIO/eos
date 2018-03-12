@@ -75,12 +75,20 @@ private:
    static void remove(chainbase::database& db, const account_name& account_name, const permission_name& permission)
    {
       const auto& idx = db.get_index<MultiIndex, LookupType>();
-      auto& mutatable_idx = db.get_mutable_index<MultiIndex>();
-      auto obj = idx.find( boost::make_tuple( account_name, permission ) );
+      auto& mutable_idx = db.get_mutable_index<MultiIndex>();
+      while(!idx.empty()) {
+         auto key = boost::make_tuple(account_name, permission);
+         const auto& itr = idx.lower_bound(key);
+         if (itr == idx.end()) {
+            break;
+         }
 
-      if (obj != idx.end())
-      {
-         mutatable_idx.remove(*obj);
+         const auto& range_end = idx.upper_bound(key);
+         if (itr == range_end) {
+            break;
+         }
+
+         mutable_idx.remove(*itr);
       }
    }
 

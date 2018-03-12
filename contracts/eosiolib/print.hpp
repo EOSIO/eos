@@ -106,6 +106,10 @@ namespace eosio {
       prints(val?"true":"false");
    }
 
+   inline void print( double val ) {
+      printd( *(uint64_t*)(&val) );
+   }
+
    template<typename T>
    inline void print( T&& t ) {
       t.print();

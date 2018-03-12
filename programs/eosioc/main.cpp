@@ -129,18 +129,13 @@ uint32_t port = 8888;
 string wallet_host = "localhost";
 uint32_t wallet_port = 8888;
 
+auto   tx_expiration = fc::seconds(30);
+bool   tx_force_unique = false;
+bool   tx_dont_broadcast = false;
+bool   tx_skip_sign = false;
+vector<string> tx_permission;
 
-inline std::vector<name> sort_names( const std::vector<name>& names ) {
-   auto results = std::vector<name>(names);
-   std::sort( results.begin(), results.end() );
-   auto itr = std::unique( results.begin(), results.end() );
-   results.erase( itr, results.end() );
-   return results;
-}
-
-auto tx_expiration = fc::seconds(30);
-bool tx_force_unique = false;
-void add_standard_transaction_options(CLI::App* cmd) {
+void add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
    CLI::callback_t parse_exipration = [](CLI::results_t res) -> bool {
       double value_s;
       if (res.size() == 0 || !CLI::detail::lexical_cast(res[0], value_s)) {
@@ -153,6 +148,13 @@ void add_standard_transaction_options(CLI::App* cmd) {
 
    cmd->add_option("-x,--expiration", parse_exipration, localized("set the time in seconds before a transaction expires, defaults to 30s"));
    cmd->add_flag("-f,--force-unique", tx_force_unique, localized("force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"));
+   cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
+   cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("don't broadcast transaction to the network (just print to stdout)"));
+
+   string msg = "An account and permission level to authorize, as in 'account@permission'";
+   if(!default_permission.empty())
+      msg += " (defaults to '" + default_permission + "')";
+   cmd->add_option("-p,--permission", tx_permission, localized(msg.c_str()));
 }
 
 string generate_nonce_value() {
@@ -204,62 +206,114 @@ void sign_transaction(signed_transaction& trx) {
    trx = signed_trx.as<signed_transaction>();
 }
 
-fc::variant push_transaction( signed_transaction& trx, bool skip_sign, packed_transaction::compression_type compression = packed_transaction::none ) {
-    auto info = get_info();
-    trx.expiration = info.head_block_time + tx_expiration;
-    trx.set_reference_block(info.head_block_id);
+fc::variant push_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::none ) {
+   auto info = get_info();
+   trx.expiration = info.head_block_time + tx_expiration;
+   trx.set_reference_block(info.head_block_id);
 
-    if (!skip_sign) {
-       sign_transaction(trx);
-    }
+   if (tx_force_unique) {
+      trx.actions.emplace_back( generate_nonce() );
+   }
 
-    return call( push_txn_func, packed_transaction(trx, compression) );
+   if (!tx_skip_sign) {
+      sign_transaction(trx);
+   }
+
+   if (!tx_dont_broadcast) {
+      return call(push_txn_func, packed_transaction(trx, compression));
+   } else {
+      return fc::variant(trx);
+   }
 }
 
-fc::variant push_actions(std::vector<chain::action>&& actions, bool skip_sign, packed_transaction::compression_type compression = packed_transaction::none ) {
+fc::variant push_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none ) {
    signed_transaction trx;
    trx.actions = std::forward<decltype(actions)>(actions);
 
-   return push_transaction(trx, skip_sign, compression);
+   return push_transaction(trx, compression);
 }
 
-void send_actions(std::vector<chain::action>&& actions, bool skip_sign, packed_transaction::compression_type compression = packed_transaction::none ) {
-   std::cout << fc::json::to_pretty_string(push_actions(std::forward<decltype(actions)>(actions), skip_sign, compression)) << std::endl;
+void send_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none ) {
+   std::cout << fc::json::to_pretty_string(push_actions(std::forward<decltype(actions)>(actions), compression)) << std::endl;
 }
 
-void send_transaction( signed_transaction& trx, bool skip_sign, packed_transaction::compression_type compression = packed_transaction::none  ) {
-   std::cout << fc::json::to_pretty_string(push_transaction(trx, skip_sign, compression)) << std::endl;
+void send_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::none  ) {
+   std::cout << fc::json::to_pretty_string(push_transaction(trx, compression)) << std::endl;
 }
 
-void create_account(name creator, name newaccount, public_key_type owner, public_key_type active, bool skip_sign) {
-      auto owner_auth   = eosio::chain::authority{1, {{owner, 1}}, {}};
-      auto active_auth  = eosio::chain::authority{1, {{active, 1}}, {}};
-      auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
-
-      vector<chain::action> actions;
-      actions.emplace_back( vector<chain::permission_level>{{creator,"active"}},
-                                contracts::newaccount{creator, newaccount, owner_auth, active_auth, recovery_auth});
-
-      send_actions(std::move(actions), skip_sign);
+chain::action create_newaccount(const name& creator, const name& newaccount, public_key_type owner, public_key_type active) {
+   return action {
+      tx_permission.empty() ? vector<chain::permission_level>{{creator,config::active_name}} : get_account_permissions(tx_permission),
+      contracts::newaccount{
+         .creator      = creator, 
+         .name         = newaccount, 
+         .owner        = eosio::chain::authority{1, {{owner, 1}}, {}}, 
+         .active       = eosio::chain::authority{1, {{active, 1}}, {}},
+         .recovery     = eosio::chain::authority{1, {}, {{{creator, config::active_name}, 1}}}
+      }
+   };
 }
 
-chain::action create_updateauth(const name& account, const name& permission, const name& parent, const authority& auth, const name& permissionAuth) {
-   return action { vector<chain::permission_level>{{account,permissionAuth}},
+chain::action create_transfer(const name& sender, const name& recipient, uint64_t amount, const string& memo ) {
+
+   auto transfer = fc::mutable_variant_object
+      ("from", sender)
+      ("to", recipient)
+      ("quantity", asset(amount))
+      ("memo", memo);
+   
+   auto args = fc::mutable_variant_object
+      ("code", name(config::system_account_name))
+      ("action", "transfer")
+      ("args", transfer);
+
+   auto result = call(json_to_bin_func, args);
+
+   return action {
+      tx_permission.empty() ? vector<chain::permission_level>{{sender,config::active_name}} : get_account_permissions(tx_permission),
+      config::system_account_name, "transfer", result.get_object()["binargs"].as<bytes>()
+   };
+}
+
+chain::action create_setabi(const name& account, const contracts::abi_def& abi) {
+   return action { 
+      tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
+      contracts::setabi{
+         .account   = account,
+         .abi       = abi
+      }
+   };
+}
+
+chain::action create_setcode(const name& account, const bytes& code) {
+   return action { 
+      tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
+      contracts::setcode{
+         .account   = account,
+         .vmtype    = 0,
+         .vmversion = 0,
+         .code      = code 
+      }
+   };
+}
+
+chain::action create_updateauth(const name& account, const name& permission, const name& parent, const authority& auth) {
+   return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
                    contracts::updateauth{account, permission, parent, auth}};
 }
 
-chain::action create_deleteauth(const name& account, const name& permission, const name& permissionAuth) {
-   return action { vector<chain::permission_level>{{account,permissionAuth}},
+chain::action create_deleteauth(const name& account, const name& permission) {
+   return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
                    contracts::deleteauth{account, permission}};
 }
 
 chain::action create_linkauth(const name& account, const name& code, const name& type, const name& requirement) {
-   return action { vector<chain::permission_level>{{account,"active"}},
+   return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
                    contracts::linkauth{account, code, type, requirement}};
 }
 
 chain::action create_unlinkauth(const name& account, const name& code, const name& type) {
-   return action { vector<chain::permission_level>{{account,"active"}},
+   return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
                    contracts::unlinkauth{account, code, type}};
 }
 
@@ -268,18 +322,15 @@ struct set_account_permission_subcommand {
    string permissionStr;
    string authorityJsonOrFile;
    string parentStr;
-   string permissionAuth = "active";
-   bool skip_sign;
 
    set_account_permission_subcommand(CLI::App* accountCmd) {
       auto permissions = accountCmd->add_subcommand("permission", localized("set parmaters dealing with account permissions"));
-      permissions->add_option("-p,--permission", permissionAuth,localized("Permission level to authorize, (Defaults to: 'active'"));
       permissions->add_option("account", accountStr, localized("The account to set/delete a permission authority for"))->required();
       permissions->add_option("permission", permissionStr, localized("The permission name to set/delete an authority for"))->required();
       permissions->add_option("authority", authorityJsonOrFile, localized("[delete] NULL, [create/update] JSON string or filename defining the authority"))->required();
       permissions->add_option("parent", parentStr, localized("[create] The permission name of this parents permission (Defaults to: \"Active\")"));
-      permissions->add_flag("-s,--skip-sign", skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
-      add_standard_transaction_options(permissions);
+
+      add_standard_transaction_options(permissions, "account@active");
 
       permissions->set_callback([this] {
          name account = name(accountStr);
@@ -287,7 +338,7 @@ struct set_account_permission_subcommand {
          bool is_delete = boost::iequals(authorityJsonOrFile, "null");
          
          if (is_delete) {
-            send_actions({create_deleteauth(account, permission, name(permissionAuth))}, skip_sign);
+            send_actions({create_deleteauth(account, permission)});
          } else {
             authority auth;
             if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
@@ -323,14 +374,14 @@ struct set_account_permission_subcommand {
                   parent = name((*itr).get_object()["parent"].get_string());
                } else {
                   // if this is a new permission and there is no parent we default to "active"
-                  parent = name("active");
+                  parent = name(config::active_name);
 
                }
             } else {
                parent = name(parentStr);
             }
 
-            send_actions({create_updateauth(account, permission, parent, auth, name(permissionAuth))}, skip_sign);
+            send_actions({create_updateauth(account, permission, parent, auth)});
          }      
       });
    }
@@ -342,7 +393,6 @@ struct set_action_permission_subcommand {
    string codeStr;
    string typeStr;
    string requirementStr;
-   bool skip_sign;
 
    set_action_permission_subcommand(CLI::App* actionRoot) {
       auto permissions = actionRoot->add_subcommand("permission", localized("set parmaters dealing with account permissions"));
@@ -350,8 +400,8 @@ struct set_action_permission_subcommand {
       permissions->add_option("code", codeStr, localized("The account that owns the code for the action"))->required();
       permissions->add_option("type", typeStr, localized("the type of the action"))->required();
       permissions->add_option("requirement", requirementStr, localized("[delete] NULL, [set/update] The permission name require for executing the given action"))->required();
-      permissions->add_flag("-s,--skip-sign", skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
-      add_standard_transaction_options(permissions);
+
+      add_standard_transaction_options(permissions, "account@active");
 
       permissions->set_callback([this] {
          name account = name(accountStr);
@@ -360,10 +410,10 @@ struct set_action_permission_subcommand {
          bool is_delete = boost::iequals(requirementStr, "null");
          
          if (is_delete) {
-            send_actions({create_unlinkauth(account, code, type)}, skip_sign);
+            send_actions({create_unlinkauth(account, code, type)});
          } else {
             name requirement = name(requirementStr);
-            send_actions({create_linkauth(account, code, type, requirement)}, skip_sign);
+            send_actions({create_linkauth(account, code, type, requirement)});
          }      
       });
    }
@@ -414,21 +464,20 @@ int main( int argc, char** argv ) {
    string account_name;
    string owner_key_str;
    string active_key_str;
-   bool skip_sign = false;
+
    auto createAccount = create->add_subcommand("account", localized("Create a new account on the blockchain"), false);
    createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
    createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
    createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
    createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"))->required();
-   createAccount->add_flag("-s,--skip-signature", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
-   add_standard_transaction_options(createAccount);
+   add_standard_transaction_options(createAccount, "creator@active");
    createAccount->set_callback([&] {
       public_key_type owner_key, active_key;
       try {
          owner_key = public_key_type(owner_key_str);
          active_key = public_key_type(active_key_str);
       } EOS_CAPTURE_AND_RETHROW(public_key_type_exception, "Invalid Public Key")
-      create_account(creator, account_name, owner_key, active_key, skip_sign);
+      send_actions({create_newaccount(creator, account_name, owner_key, active_key)});
    });
 
    // Get subcommand
@@ -491,6 +540,7 @@ int main( int argc, char** argv ) {
    string table;
    string lower;
    string upper;
+   string table_key;
    bool binary = false;
    uint32_t limit = 10;
    auto getTable = get->add_subcommand( "table", localized("Retrieve the contents of a database table"), false);
@@ -499,7 +549,7 @@ int main( int argc, char** argv ) {
    getTable->add_option( "table", table, localized("The name of the table as specified by the contract abi") )->required();
    getTable->add_option( "-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON") );
    getTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
-   getTable->add_option( "-k,--key", limit, localized("The name of the key to index by as defined by the abi, defaults to primary key") );
+   getTable->add_option( "-k,--key", table_key, localized("The name of the key to index by as defined by the abi, defaults to primary key") );
    getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
 
@@ -508,6 +558,10 @@ int main( int argc, char** argv ) {
                          ("scope",scope)
                          ("code",code)
                          ("table",table)
+                         ("table_key",table_key)
+                         ("lower_bound",lower)
+                         ("upper_bound",upper)
+                         ("limit",limit)
                          );
 
       std::cout << fc::json::to_pretty_string(result)
@@ -631,8 +685,8 @@ int main( int argc, char** argv ) {
          ->check(CLI::ExistingFile);
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract"))
               ->check(CLI::ExistingFile);
-   contractSubcommand->add_flag("-s,--skip-sign", skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
-   add_standard_transaction_options(contractSubcommand);
+   
+   add_standard_transaction_options(contractSubcommand, "account@active");
    contractSubcommand->set_callback([&] {
       std::string wast;
       std::cout << localized("Reading WAST...") << std::endl;
@@ -649,24 +703,17 @@ int main( int argc, char** argv ) {
          wasm = wast_to_wasm(wast);
       }
 
-      contracts::setcode handler;
-      handler.account = account;
-      handler.code.assign(wasm.begin(), wasm.end());
-
-      vector<chain::action> actions;
-      actions.emplace_back( vector<chain::permission_level>{{account,"active"}}, handler);
+      std::vector<chain::action> actions;
+      actions.emplace_back( create_setcode(account, bytes(wasm.begin(), wasm.end()) ) );
 
       if (abi->count()) {
-         contracts::setabi handler;
-         handler.account = account;
          try {
-            handler.abi = fc::json::from_file(abiPath).as<contracts::abi_def>();
+            actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<contracts::abi_def>()) );
          } EOS_CAPTURE_AND_RETHROW(abi_type_exception,  "Fail to parse ABI JSON")
-         actions.emplace_back( vector<chain::permission_level>{{account,"active"}}, handler);
       }
 
       std::cout << localized("Publishing contract...") << std::endl;
-      send_actions(std::move(actions), skip_sign, packed_transaction::zlib);
+      send_actions(std::move(actions), packed_transaction::zlib);
    });
 
    // set account
@@ -691,30 +738,17 @@ int main( int argc, char** argv ) {
    transfer->add_option("recipient", recipient, localized("The account receiving EOS"))->required();
    transfer->add_option("amount", amount, localized("The amount of EOS to send"))->required();
    transfer->add_option("memo", memo, localized("The memo for the transfer"));
-   transfer->add_flag("-s,--skip-sign", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
-   add_standard_transaction_options(transfer);
+
+   add_standard_transaction_options(transfer, "sender@active");
    transfer->set_callback([&] {
-      auto transfer = fc::mutable_variant_object
-            ("from", sender)
-            ("to", recipient)
-            ("quantity", asset(amount))
-            ("memo", memo);
-      auto args = fc::mutable_variant_object
-            ("code", name(config::system_account_name))
-            ("action", "transfer")
-            ("args", transfer);
-
-      auto result = call(json_to_bin_func, args);
-
-      std::vector<chain::action> actions;
-      actions.emplace_back(vector<chain::permission_level>{{sender,"active"}},
-                               config::system_account_name, "transfer", result.get_object()["binargs"].as<bytes>());
-
-      if (tx_force_unique) {
-         actions.emplace_back( generate_nonce() );
+      signed_transaction trx;
+      if (tx_force_unique && memo.size() == 0) {
+         // use the memo to add a nonce
+         memo = generate_nonce_value();
+         tx_force_unique = false;
       }
-
-      send_actions(std::move(actions), skip_sign);
+      
+      send_actions({create_transfer(sender, recipient, amount, memo)});
    });
 
    // Net subcommand 
@@ -842,6 +876,43 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
+   // sign subcommand
+   string trx_json_to_sign;
+   string str_private_key;
+   bool push_trx = false;
+
+   auto sign = app.add_subcommand("sign", localized("Sign a transaction"), false);
+   sign->add_option("transaction", trx_json_to_sign,
+                                 localized("The JSON of the transaction to sign, or the name of a JSON file containing the transaction"), true)->required();
+   sign->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
+   sign->add_flag( "-p,--push-transaction", push_trx, localized("Push transaction after signing"));
+
+   sign->set_callback([&] {
+      signed_transaction trx;
+      if ( is_regular_file(trx_json_to_sign) ) {
+         trx = fc::json::from_file(trx_json_to_sign).as<signed_transaction>();
+      } else {
+         trx = fc::json::from_string(trx_json_to_sign).as<signed_transaction>();
+      }
+
+      if( str_private_key.size() == 0 ) {
+         std::cerr << localized("private key: ");
+         fc::set_console_echo(false);
+         std::getline( std::cin, str_private_key, '\n' );
+         fc::set_console_echo(true);
+      }
+
+      auto priv_key = fc::crypto::private_key::regenerate(*utilities::wif_to_key(str_private_key));
+      trx.sign(priv_key, chain_id_type{});
+
+      if(push_trx) {
+         auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
+         std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
+      } else {
+         std::cout << fc::json::to_pretty_string(trx) << std::endl;
+      }
+   });
+
    // Push subcommand
    auto push = app.add_subcommand("push", localized("Push arbitrary transactions to the blockchain"), false);
    push->require_subcommand();
@@ -858,9 +929,7 @@ int main( int argc, char** argv ) {
    actionsSubcommand->add_option("action", action, localized("The action to execute on the contract"), true)
          ->required();
    actionsSubcommand->add_option("data", data, localized("The arguments to the contract"))->required();
-   actionsSubcommand->add_option("-p,--permission", permissions,
-                                 localized("An account and permission level to authorize, as in 'account@permission'"));
-   actionsSubcommand->add_flag("-s,--skip-sign", skip_sign, localized("Specify that unlocked wallet keys should not be used to sign transaction"));
+
    add_standard_transaction_options(actionsSubcommand);
    actionsSubcommand->set_callback([&] {
       ilog("Converting argument to binary...");
@@ -875,28 +944,26 @@ int main( int argc, char** argv ) {
                 ("args", action_args_var);
       auto result = call(json_to_bin_func, arg);
 
-      auto accountPermissions = get_account_permissions(permissions);
+      auto accountPermissions = get_account_permissions(tx_permission);
 
-      vector<chain::action> actions;
-      actions.emplace_back(accountPermissions, contract, action, result.get_object()["binargs"].as<bytes>());
-
-      if (tx_force_unique) {
-         actions.emplace_back( generate_nonce() );
-      }                                                      
-
-      send_actions(std::move(actions), skip_sign);
+      send_actions({chain::action{accountPermissions, contract, action, result.get_object()["binargs"].as<bytes>()}});
    });
 
    // push transaction
-   string trxJson;
+   string trx_to_push;
    auto trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
-   trxSubcommand->add_option("transaction", trxJson, localized("The JSON of the transaction to push"))->required();
+   trxSubcommand->add_option("transaction", trx_to_push, localized("The JSON of the transaction to push, or the name of a JSON file containing the transaction"))->required();
+
    trxSubcommand->set_callback([&] {
       fc::variant trx_var;
       try {
-         trx_var = fc::json::from_string(trxJson);
-      } EOS_CAPTURE_AND_RETHROW(transaction_type_exception, "Fail to parse transaction JSON")
-      auto trx_result = call(push_txn_func, trx_var);
+         if ( is_regular_file(trx_to_push) ) {
+            trx_var = fc::json::from_file(trx_to_push);
+         } else {
+            trx_var = fc::json::from_string(trx_to_push);
+         }
+      } EOS_CAPTURE_AND_RETHROW(transaction_type_exception, "Fail to parse transaction JSON")      signed_transaction trx = trx_var.as<signed_transaction>();
+      auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
    });
 

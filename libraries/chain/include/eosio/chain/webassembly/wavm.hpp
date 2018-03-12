@@ -91,7 +91,7 @@ inline null_terminated_ptr null_terminated_ptr_impl(wasm_interface& wasm, U32 pt
    Runtime::causeException(Exception::Cause::accessViolation);
 }
 
-            
+
 /**
  * template that maps native types to WASM VM types
  * @tparam T the native type
@@ -148,10 +148,12 @@ template<>
 struct native_to_wasm<name> {
    using type = I64;
 };
+/*
 template<>
 struct native_to_wasm<wasm_double> {
    using type = I64;
 };
+*/
 template<>
 struct native_to_wasm<const fc::time_point_sec &> {
    using type = I32;
@@ -193,11 +195,6 @@ inline auto convert_native_to_wasm(wasm_interface &wasm, char* ptr) {
 template<typename T>
 inline auto convert_wasm_to_native(native_to_wasm_t<T> val) {
    return T(val);
-}
-
-template<>
-inline auto convert_wasm_to_native<wasm_double>(I64 val) {
-   return wasm_double(*reinterpret_cast<wasm_double *>(&val));
 }
 
 template<typename T>

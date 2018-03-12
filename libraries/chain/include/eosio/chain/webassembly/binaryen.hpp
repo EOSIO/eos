@@ -272,13 +272,6 @@ inline bool convert_literal_to_native<bool>(Literal& v) {
    return v.geti32();
 }
 
-
-template<>
-inline wasm_double convert_literal_to_native<wasm_double>(Literal& v) {
-   int64_t val = v.geti64();
-   return wasm_double(*reinterpret_cast<wasm_double *>(&val));
-}
-
 template<>
 inline name convert_literal_to_native<name>(Literal& v) {
    int64_t val = v.geti64();
