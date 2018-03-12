@@ -21,3 +21,6 @@
 	path = externals/binaryen
 	url = https://github.com/EOSIO/binaryen
 
+[submodule "libraries/softfloat"]
+	path = libraries/softfloat
+	url = https://github.com/larryk85/berkeley-softfloat-3
