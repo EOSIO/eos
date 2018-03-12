@@ -73,7 +73,7 @@ public:
 
    fc::variant get_voter_info( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(voters), act );
-      return abi_ser.binary_to_variant( "voter_info", data );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "voter_info", data );
    }
 
    fc::variant get_producer_info( const account_name& act ) {
@@ -83,6 +83,25 @@ public:
 
    abi_serializer abi_ser;
 };
+
+fc::variant simple_voter( account_name acct, uint64_t vote_stake, uint64_t ts ) {
+   return mutable_variant_object()
+      ("owner", acct)
+      ("proxy", name(0).to_string())
+      ("last_update", ts)
+      ("is_proxy", 0)
+      ("staked", vote_stake)
+      ("unstaking", 0)
+      ("unstake_per_week", 0)
+      ("proxied_votes", 0)
+      ("producers", variants() )
+      ("deferred_trx_id", 0)
+      ("last_unstake", 0);
+}
+
+fc::variant simple_voter( account_name acct, const string& vote_stake, uint64_t ts ) {
+   return simple_voter( acct, asset::from_string( vote_stake ).amount, ts);
+}
 
 BOOST_AUTO_TEST_SUITE(eosio_system_tests)
 
@@ -103,6 +122,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS").amount, stake["net_weight"].as_uint64());
    BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS").amount, stake["cpu_weight"].as_uint64());
    BOOST_REQUIRE_EQUAL( asset::from_string("300.0000 EOS").amount, stake["storage_stake"].as_uint64());
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "alice", "300.00 EOS",  last_block_time() ), get_voter_info( "alice" ) );
 
    auto bytes = stake["storage_bytes"].as_uint64();
    BOOST_REQUIRE_EQUAL( true, 0 < bytes );
@@ -124,6 +144,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, stake["storage_stake"].as_uint64());
    BOOST_REQUIRE_EQUAL( 0, stake["storage_bytes"].as_uint64());
    BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "alice", "0.00 EOS",  last_block_time() ), get_voter_info( "alice" ) );
 
 } FC_LOG_AND_RETHROW()
 
@@ -152,7 +173,7 @@ BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
                                     ,false
                         )
    );
-
+   //REQUIRE_EQUAL_OBJECTS( , get_voter_info( "alice" ) );
 } FC_LOG_AND_RETHROW()
 
 
@@ -461,24 +482,6 @@ void require_simple_voter(const fc::variant& vi) {
    BOOST_REQUIRE_EQUAL( 0, vi["last_unstake"].as_uint64() );
 }
 
-fc::variant simple_voter( account_name acct, uint64_t vote_stake, uint64_t ts ) {
-   return mutable_variant_object()
-      ("owner", acct)
-      ("proxy", name(0).to_string())
-      ("last_update", ts)
-      ("is_proxy", 0)
-      ("staked", vote_stake)
-      ("unstaking", 0)
-      ("unstake_per_week", 0)
-      ("proxied_votes", 0)
-      ("producers", variants() )
-      ("deferred_trx_id", 0)
-      ("last_unstake", 0);
-}
-
-fc::variant simple_voter( account_name acct, const string& vote_stake, uint64_t ts ) {
-   return simple_voter( acct, asset::from_string( vote_stake ).amount, ts);
-}
 /*
 BOOST_FIXTURE_TEST_CASE( stake_add_more_partial_unstake, eosio_system_tester ) try {
    issue( "alice", "1000.0000 EOS",  config::system_account_name );

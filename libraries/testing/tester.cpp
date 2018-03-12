@@ -354,9 +354,13 @@ namespace eosio { namespace testing {
    }
 
    vector<char> base_tester::get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act ) {
+      vector<char> data;
       const auto& db = control->get_database();
       const auto* t_id = db.find<chain::contracts::table_id_object, chain::contracts::by_code_scope_table>( boost::make_tuple( code, scope, table ) );
-      FC_ASSERT( t_id != 0, "object not found" );
+      if ( !t_id ) {
+         return data;
+      }
+      //FC_ASSERT( t_id != 0, "object not found" );
 
       const auto& idx = db.get_index<chain::contracts::key_value_index, chain::contracts::by_scope_primary>();
 
@@ -364,7 +368,6 @@ namespace eosio { namespace testing {
       FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
       BOOST_REQUIRE_EQUAL( act.value, itr->primary_key );
 
-      vector<char> data;
       chain_apis::read_only::copy_inline_row( *itr, data );
       return data;
    }

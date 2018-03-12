@@ -177,11 +177,9 @@ namespace eosiosystem {
             set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, tot_itr->net_weight.quantity, tot_itr->cpu_weight.quantity, 0 );
 
             currency::inline_transfer( del.from, SystemAccount, total_stake, "stake bandwidth" );
-            /* temporarily commented out
-            if ( 0 < del.stake_net_quantity + del.stake_cpu_quantity ) {
-               increase_voting_power( del.from, del.stake_net_quantity + del.stake_cpu_quantity );
+            if ( asset(0) < del.stake_net_quantity + del.stake_cpu_quantity ) {
+               voting<SystemAccount>::increase_voting_power( del.from, del.stake_net_quantity + del.stake_cpu_quantity );
             }
-            */
          } // delegatebw
 
          static void on( const undelegatebw& del ) {
@@ -234,7 +232,11 @@ namespace eosiosystem {
             set_resource_limits( totals.owner, totals.storage_bytes, totals.net_weight.quantity, totals.cpu_weight.quantity, 0 );
 
             /// TODO: implement / enforce time delays on withdrawing
-            currency::inline_transfer( SystemAccount, del.from, asset( static_cast<int64_t>( total_refund.quantity )), "unstake bandwidth" );
+            currency::inline_transfer( SystemAccount, del.from, total_refund, "unstake bandwidth" );
+            if ( asset(0) < del.unstake_net_quantity + del.unstake_cpu_quantity ) {
+               voting<SystemAccount>::decrease_voting_power( del.from, del.unstake_net_quantity + del.unstake_cpu_quantity );
+            }
+
          } // undelegatebw
    };
 }
