@@ -7,7 +7,7 @@
 #include "test_api.hpp"
 
 void test_types::types_size() {
-   
+
    eosio_assert( sizeof(int64_t) == 8, "int64_t size != 8");
    eosio_assert( sizeof(uint64_t) ==  8, "uint64_t size != 8");
    eosio_assert( sizeof(uint32_t) ==  4, "uint32_t size != 4");
@@ -20,11 +20,11 @@ void test_types::types_size() {
    eosio_assert( sizeof(token_name) ==  8, "token_name size !=  8");
    eosio_assert( sizeof(table_name) ==  8, "table_name size !=  8");
    eosio_assert( sizeof(time) ==  4, "time size !=  4");
-   eosio_assert( sizeof(uint256) == 32, "uint256 != 32" );
+   eosio_assert( sizeof(eosio::key256) == 32, "key256 size != 32" );
 }
 
 void test_types::char_to_symbol() {
-   
+
    eosio_assert( eosio::char_to_symbol('1') ==  1, "eosio::char_to_symbol('1') !=  1");
    eosio_assert( eosio::char_to_symbol('2') ==  2, "eosio::char_to_symbol('2') !=  2");
    eosio_assert( eosio::char_to_symbol('3') ==  3, "eosio::char_to_symbol('3') !=  3");
@@ -56,10 +56,10 @@ void test_types::char_to_symbol() {
    eosio_assert( eosio::char_to_symbol('x') == 29, "eosio::char_to_symbol('x') != 29");
    eosio_assert( eosio::char_to_symbol('y') == 30, "eosio::char_to_symbol('y') != 30");
    eosio_assert( eosio::char_to_symbol('z') == 31, "eosio::char_to_symbol('z') != 31");
- 
+
    for(unsigned char i = 0; i<255; i++) {
       if((i >= 'a' && i <= 'z') || (i >= '1' || i <= '5')) continue;
-      eosio_assert( eosio::char_to_symbol(i) == 0, "eosio::char_to_symbol() != 0");
+      eosio_assert( eosio::char_to_symbol((char)i) == 0, "eosio::char_to_symbol() != 0");
    }
 }
 

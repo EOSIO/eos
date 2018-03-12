@@ -24,7 +24,7 @@ static constexpr u64 WASM_TEST_ACTION(const char* cls, const char* method)
      CLASS::METHOD(); \
      return; \
   }
-   
+
 #pragma pack(push, 1)
 struct dummy_action {
   char a; //1
@@ -69,7 +69,7 @@ struct test_action {
   static void assert_false();
   static void assert_true();
   static void now();
-  static void test_abort();
+  static void test_abort() __attribute__ ((noreturn)) ;
   static void test_current_receiver();
   static void test_current_sender();
   static void test_publication_time();
@@ -123,7 +123,7 @@ struct test_db {
    static void key_i64i64i64_under_limit();
    static void key_i64i64i64_available_space_exceed_limit();
    static void key_i64i64i64_another_under_limit();
-     
+
    static void primary_i64_general();
    static void primary_i64_lowerbound();
    static void primary_i64_upperbound();
@@ -131,6 +131,16 @@ struct test_db {
    static void idx64_general();
    static void idx64_lowerbound();
    static void idx64_upperbound();
+};
+
+struct test_multi_index {
+   static void idx64_general();
+   static void idx64_store_only();
+   static void idx64_check_without_storing();
+   static void idx128_autoincrement_test();
+   static void idx128_autoincrement_test_part1();
+   static void idx128_autoincrement_test_part2();
+   static void idx256_general();
 };
 
 struct test_crypto {
@@ -233,4 +243,3 @@ struct test_checktime {
    static void checktime_pass();
    static void checktime_failure();
 };
-

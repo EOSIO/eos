@@ -38,11 +38,11 @@ void test_action::read_action_normal() {
 }
 
 void test_action::read_action_to_0() {
-   uint32_t total = read_action((void *)0, action_size());
+   read_action((void *)0, action_size());
 }
 
 void test_action::read_action_to_64k() {
-   uint32_t total = read_action( (void *)((1<<16)-2), action_size());
+   read_action( (void *)((1<<16)-2), action_size());
 }
 
 void test_action::require_notice() {

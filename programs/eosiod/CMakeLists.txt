@@ -46,7 +46,7 @@ target_link_libraries( eosiod
         PRIVATE -Wl,${whole_archive_flag} account_history_api_plugin -Wl,${no_whole_archive_flag} account_history_plugin
         PRIVATE -Wl,${whole_archive_flag} chain_api_plugin -Wl,${no_whole_archive_flag} producer_plugin chain_plugin
         PRIVATE -Wl,${whole_archive_flag} wallet_api_plugin -Wl,${no_whole_archive_flag}
-        PRIVATE net_plugin net_api_plugin -Wl,${whole_archive_flag} txn_test_gen_plugin -Wl,${no_whole_archive_flag} 
+        PRIVATE net_plugin -Wl,${whole_archive_flag} net_api_plugin txn_test_gen_plugin -Wl,${no_whole_archive_flag} 
         PRIVATE http_plugin -Wl,${whole_archive_flag} faucet_testnet_plugin -Wl,${no_whole_archive_flag}
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
@@ -58,7 +58,27 @@ endif()
 install( TARGETS
    eosiod
 
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
+   RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
+   LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
+   ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
+)
+install(DIRECTORY DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/log/eosio
+        DIRECTORY_PERMISSIONS OWNER_READ
+                              OWNER_WRITE
+                              OWNER_EXECUTE
+                              GROUP_READ
+                              GROUP_WRITE
+                              GROUP_EXECUTE
+                              WORLD_READ
+                              WORLD_EXECUTE
+)
+install(DIRECTORY DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/eosio
+        DIRECTORY_PERMISSIONS OWNER_READ
+                              OWNER_WRITE
+                              OWNER_EXECUTE
+                              GROUP_READ
+                              GROUP_WRITE
+                              GROUP_EXECUTE
+                              WORLD_READ
+                              WORLD_EXECUTE
 )

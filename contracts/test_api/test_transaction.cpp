@@ -19,7 +19,7 @@ struct test_action_action {
       return action_name(NAME);
    }
 
-   vector<char> data;
+   eosio::vector<char> data;
 
    template <typename DataStream>
    friend DataStream& operator << ( DataStream& ds, const test_action_action& a ) {
@@ -35,6 +35,7 @@ struct test_action_action {
    */
 };
 
+
 template <uint64_t ACCOUNT, uint64_t NAME>
 struct test_dummy_action {
    static account_name get_account() {
@@ -49,38 +50,38 @@ struct test_dummy_action {
    int32_t c;
 
    template <typename DataStream>
-   friend DataStream& operator << ( DataStream& ds, const test_dummy_action& a ) {
-      ds << a.a;
-      ds << a.b;
-      ds << a.c;
+   friend DataStream& operator << ( DataStream& ds, const test_dummy_action& da ) {
+      ds << da.a;
+      ds << da.b;
+      ds << da.c;
       return ds;
    }
    
    template <typename DataStream>
-   friend DataStream& operator >> ( DataStream& ds, test_dummy_action& a ) {
-      ds >> a.a;
-      ds >> a.b;
-      ds >> a.c;
+   friend DataStream& operator >> ( DataStream& ds, test_dummy_action& da ) {
+      ds >> da.a;
+      ds >> da.b;
+      ds >> da.c;
       return ds;
    }
 };
 #pragma pack(pop)
 
-void copy_data(char* data, size_t data_len, vector<char>& data_out) {
-   for (int i=0; i < data_len; i++)
+void copy_data(char* data, size_t data_len, eosio::vector<char>& data_out) {
+   for (unsigned int i=0; i < data_len; i++)
       data_out.push_back(data[i]);
 }
 
 void test_transaction::send_action() {
    test_dummy_action<N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal")> test_action = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
-   action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
+   action act(eosio::vector<permission_level>{{N(testapi), N(active)}}, test_action);
    act.send();
 }
 
 void test_transaction::send_action_empty() {
    test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "assert_true")> test_action;
 
-   action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
+   action act(eosio::vector<permission_level>{{N(testapi), N(active)}}, test_action);
 
    act.send();
 }
@@ -102,7 +103,7 @@ void test_transaction::send_action_large() {
  */
 void test_transaction::send_action_recurse() {
    char buffer[1024];
-   uint32_t size = read_action(buffer, 1024);
+   read_action(buffer, 1024);
 
    test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "send_action_recurse")> test_action;
    copy_data(buffer, 1024, test_action.data); 
@@ -139,7 +140,7 @@ void test_transaction::test_read_transaction() {
    checksum256 h;
    transaction t;
    char* p = (char*)&t;
-   uint64_t read = read_transaction( (char*)&t, sizeof(t) );
+   uint32_t read = read_transaction( (char*)&t, sizeof(t) );
    sha256(p, read, &h);
    printhex( &h, sizeof(h) );
 }

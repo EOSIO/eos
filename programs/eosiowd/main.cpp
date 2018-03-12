@@ -13,14 +13,32 @@
 
 #include <boost/exception/diagnostic_information.hpp>
 
+#include <pwd.h>
+
 using namespace appbase;
 using namespace eosio;
+
+bfs::path determine_home_directory()
+{
+   bfs::path home;
+   struct passwd* pwd = getpwuid(getuid());
+   if(pwd) {
+      home = pwd->pw_dir;
+   }
+   else {
+      home = getenv("HOME");
+   }
+   if(home.empty())
+      home = "./";
+   return home;
+}
 
 int main(int argc, char** argv)
 {
    try {
-      app().register_plugin<http_plugin>();
-      app().register_plugin<wallet_plugin>();
+      bfs::path home = determine_home_directory();
+      app().set_default_data_dir(home / "eosio-wallet");
+      app().set_default_config_dir(home / "eosio-wallet");
       app().register_plugin<wallet_api_plugin>();
       if(!app().initialize<wallet_plugin, wallet_api_plugin, http_plugin>(argc, argv))
          return -1;

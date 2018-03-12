@@ -181,14 +181,19 @@ void apply_eosio_updateauth(apply_context& context) {
       if (act_auth.permission == config::owner_name || act_auth.permission == update.permission) {
          return true;
       }
+      const permission_object *current = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
+      // Permission doesn't exist yet, check parent permission
+      if (current == nullptr) current = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.parent));
+      // Ensure either the permission or parent's permission exists
+      EOS_ASSERT(current != nullptr, permission_query_exception,
+                 "Fail to retrieve permission for: {\"actor\": \"${actor}\", \"permission\": \"${permission}\" }",
+                 ("actor", update.account)("permission", update.parent));
 
-      auto current = db.get<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
-      while(current.name != config::owner_name) {
-         if (current.name == act_auth.permission) {
+      while(current->name != config::owner_name) {
+         if (current->name == act_auth.permission) {
             return true;
          }
-
-         current = db.get<permission_object>(current.parent);
+         current = &db.get<permission_object>(current->parent);
       }
 
       return false;
@@ -254,8 +259,7 @@ void apply_eosio_deleteauth(apply_context& context) {
                  "Cannot delete a linked authority. Unlink the authority first");
    }
 
-   if (context.controller.is_applying_block())
-      db.remove(permission);
+   db.remove(permission);
 }
 
 void apply_eosio_linkauth(apply_context& context) {
@@ -275,11 +279,10 @@ void apply_eosio_linkauth(apply_context& context) {
    if (link) {
       EOS_ASSERT(link->required_permission != requirement.requirement, action_validate_exception,
                  "Attempting to update required authority, but new requirement is same as old");
-      if (context.controller.is_applying_block())
-         db.modify(*link, [requirement = requirement.requirement](permission_link_object& link) {
-            link.required_permission = requirement;
-         });
-   } else if (context.controller.is_applying_block()) {
+      db.modify(*link, [requirement = requirement.requirement](permission_link_object& link) {
+          link.required_permission = requirement;
+      });
+   } else {
       db.create<permission_link_object>([&requirement](permission_link_object& link) {
          link.account = requirement.account;
          link.code = requirement.code;
@@ -298,8 +301,7 @@ void apply_eosio_unlinkauth(apply_context& context) {
    auto link_key = boost::make_tuple(unlink.account, unlink.code, unlink.type);
    auto link = db.find<permission_link_object, by_action_name>(link_key);
    EOS_ASSERT(link != nullptr, action_validate_exception, "Attempting to unlink authority, but no link found");
-   if (context.controller.is_applying_block())
-      db.remove(*link);
+   db.remove(*link);
 }
 
 

@@ -7,3 +7,4 @@ cmake,https://cmake.org/files/v3.10/cmake-3.10.1-Darwin-x86_64.tar.gz
 boost,https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.gz
 gmp,https://ftp.gnu.org/gnu/gmp/gmp-6.1.2.tar.bz2
 gettext,https://ftp.gnu.org/pub/gnu/gettext/gettext-latest.tar.gz
+mongod,https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.3.tgz

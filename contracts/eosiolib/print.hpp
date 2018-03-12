@@ -1,4 +1,4 @@
-/**
+/** 
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
@@ -6,6 +6,8 @@
 #include <eosiolib/print.h>
 #include <eosiolib/types.hpp>
 #include <eosiolib/math.hpp>
+#include <eosiolib/fixed_key.hpp>
+#include <utility>
 
 namespace eosio {
 
@@ -47,6 +49,10 @@ namespace eosio {
       printi(uint64_t(num));
    }
 
+   inline void print( long num ) {
+      printi(uint64_t(num));
+   }
+
    /**
     * Prints unsigned integer as a 64 bit unsigned integer
     * @brief Prints unsigned integer
@@ -71,7 +77,20 @@ namespace eosio {
     * @param num to be printed
     */
    inline void print( uint128_t num ) {
-      printi128((uint128_t*)&num);
+      printi128(&num);
+   }
+
+
+   /**
+    * Prints fixed_key as a hexidecimal string
+    * @brief Prints fixed_key as a hexidecimal string
+    * @param val to be printed
+    */
+   template<size_t Size>
+   inline void print( const fixed_key<Size>& val ) {
+      auto arr = val.extract_as_byte_array();
+      prints("0x");
+      printhex(static_cast<const void*>(arr.data()), arr.size());
    }
 
    /**
@@ -96,7 +115,7 @@ namespace eosio {
    inline void print_f( const char* s ) {
       prints(s);
    }
-   
+
    template <typename Arg, typename... Args>
    inline void print_f( const char* s, Arg val, Args... rest ) {
       while ( *s != '\0' ) {
@@ -151,9 +170,9 @@ namespace eosio {
      *  @endcode
      */
    template<typename Arg, typename... Args>
-   void print( Arg a, Args... args ) {
-      print(a);
-      print(args...);
+   void print( Arg&& a, Args&&... args ) {
+      print(std::forward<Arg>(a));
+      print(std::forward<Args>(args)...);
    }
 
    /**

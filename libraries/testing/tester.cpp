@@ -31,7 +31,7 @@ namespace eosio { namespace testing {
    }
 
    public_key_type  base_tester::get_public_key( name keyname, string role ) const {
-      return get_private_key( keyname, role ).get_public_key(); 
+      return get_private_key( keyname, role ).get_public_key();
    }
 
    private_key_type base_tester::get_private_key( name keyname, string role ) const {
@@ -90,7 +90,7 @@ namespace eosio { namespace testing {
          owner_auth =  authority( get_public_key( a, "owner" ) );
       }
 
-      trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}}, 
+      trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
                                 contracts::newaccount{
                                    .creator  = creator,
                                    .name     = a,
@@ -133,23 +133,23 @@ namespace eosio { namespace testing {
       return success();
    }
 
-   transaction_trace base_tester::push_action( const account_name& code, 
-                             const action_name& acttype, 
-                             const account_name& actor, 
+   transaction_trace base_tester::push_action( const account_name& code,
+                             const action_name& acttype,
+                             const account_name& actor,
                              const variant_object& data
-                             ) 
+                             )
    { try {
-      chain::contracts::abi_serializer abis( control->get_database().get<account_object,by_name>(code).get_abi() );    
+      chain::contracts::abi_serializer abis( control->get_database().get<account_object,by_name>(code).get_abi() );
 
       string action_type_name = abis.get_action_type(acttype);
-   
+
       action act;
       act.account = code;
       act.name = acttype;
       act.authorization = vector<permission_level>{{actor, config::active_name}};
       act.data = abis.variant_to_binary(action_type_name, data);
       wdump((act));
-   
+
       signed_transaction trx;
       trx.actions.emplace_back(std::move(act));
       set_tapos(trx);
@@ -261,7 +261,7 @@ namespace eosio { namespace testing {
                                 });
 
       set_tapos( trx );
-      trx.sign( get_private_key( account, "active" ), chain_id_type()  ); 
+      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
       push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account)(perm)(auth)(parent) ) }
 
@@ -318,6 +318,7 @@ namespace eosio { namespace testing {
       if (tbl) {
          const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, asset_symbol.value()));
          if (obj) {
+            //balance is the second field after symbol, so skip the symbol
             fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
             fc::raw::unpack(ds, result);
          }
