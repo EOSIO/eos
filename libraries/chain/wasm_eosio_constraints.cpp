@@ -61,7 +61,7 @@ struct eosio_constraints_visitor : public nop_opcode_visitor {
 #endif
 
    #define VISIT_OPCODE(opcode,name,nameString,Imm,...) \
-      void name(Imm) override { FC_THROW_EXCEPTION(wasm_execution_error, "Smart contracts may not use WASM memory operators"); }
+      void name(Imm) override { }
    ENUM_MEMORY_OPERATORS(VISIT_OPCODE);
    #undef VISIT_OPCODE
 /*

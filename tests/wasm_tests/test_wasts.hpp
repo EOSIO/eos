@@ -71,39 +71,8 @@ static const char mutable_global_wast[] = R"=====(
 )
 )=====";
 
-static const char current_memory_wast[] = R"=====(
-(module
- (table 0 anyfunc)
- (memory $0 1)
- (export "memory" (memory $0))
- (export "apply" (func $apply))
- (func $apply (param $0 i64) (param $1 i64)
-   (drop
-     (current_memory)
-   )
- )
-)
-)=====";
-
-static const char grow_memory_wast[] = R"=====(
-(module
- (table 0 anyfunc)
- (memory $0 1)
- (export "memory" (memory $0))
- (export "apply" (func $apply))
- (func $apply (param $0 i64) (param $1 i64)
-   (drop
-     (grow_memory
-       (i32.const 20)
-     )
-   )
- )
-)
-)=====";
-
 static const char biggest_memory_wast[] = R"=====(
 (module
- (import "env" "sbrk" (func $$sbrk (param i32) (result i32)))
  (import "env" "eosio_assert" (func $$eosio_assert (param i32 i32)))
  (table 0 anyfunc)
  (memory $$0 ${MAX_WASM_PAGES})
@@ -113,9 +82,7 @@ static const char biggest_memory_wast[] = R"=====(
  (func $$apply (param $$0 i64) (param $$1 i64)
   (call $$eosio_assert
    (i32.eq
-     (call $$sbrk
-       (i32.const 1)
-     )
+     (grow_memory (i32.const 1))
      (i32.const -1)
    )
    (i32.const 0)

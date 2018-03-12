@@ -174,7 +174,7 @@ void test_memory::test_memory_hunks_disjoint()
       loop_ptr1[i] = (char*)malloc(64 * 1024 - 28);
       eosio_assert(loop_ptr1[i] != nullptr, "should have allocated a 64K char buf");
 
-      eosio_assert(sbrk(4) != nullptr, "should be able to allocate 8 bytes");
+      eosio_assert(reinterpret_cast<int32_t>(sbrk(4)) != -1, "should be able to allocate 8 bytes");
    }
 
    // the 15th extra heap is reduced in size because of the 14 * 8 bytes allocated by sbrk calls

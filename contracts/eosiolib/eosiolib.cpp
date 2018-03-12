@@ -1,5 +1,41 @@
 #include "memory.hpp"
 
+void* sbrk(size_t num_bytes) {
+      constexpr uint32_t NBPPL2  = 16U;
+      constexpr uint32_t NBBP    = 65536U;
+
+      static bool initialized;
+      static uint32_t sbrk_bytes;
+      if(!initialized) {
+         sbrk_bytes = __builtin_wasm_current_memory() * NBBP;
+         initialized = true;
+      }
+
+      if(num_bytes > INT32_MAX)
+         return reinterpret_cast<void*>(-1);
+
+      //uint32_t num_bytes = (uint32_t)num_bytesI;
+      const uint32_t prev_num_bytes = sbrk_bytes;
+      const uint32_t current_pages = __builtin_wasm_current_memory();
+
+      // round the absolute value of num_bytes to an alignment boundary
+      num_bytes = (num_bytes + 7U) & ~7U;
+
+      // update the number of bytes allocated, and compute the number of pages needed
+      const uint32_t num_desired_pages = (sbrk_bytes + num_bytes + NBBP - 1) >> NBPPL2;
+
+      if(num_desired_pages > current_pages) {
+         //unfortuately clang4 doesn't provide the return code of grow_memory, that's why need
+         //to go back around and double check current_memory to make sure it has actually grown!
+         __builtin_wasm_grow_memory(num_desired_pages - current_pages);
+         if(num_desired_pages != __builtin_wasm_current_memory())
+            return reinterpret_cast<void*>(-1);
+      }
+
+      sbrk_bytes += num_bytes;
+      return reinterpret_cast<void*>(prev_num_bytes);
+}
+
 namespace eosio {
 
    using ::memset;
