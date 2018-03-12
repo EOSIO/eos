@@ -2,6 +2,7 @@
 
 #include <eosio/chain/webassembly/common.hpp>
 #include <eosio/chain/softfloat.hpp>
+#include <eosio/chain/webassembly/runtime_interface.hpp>
 #include "Runtime/Runtime.h"
 #include "IR/Types.h"
 
@@ -13,47 +14,14 @@ using namespace Runtime;
 using namespace fc;
 using namespace eosio::chain::webassembly::common;
 
-struct info;
-class entry {
+class wavm_runtime : public eosio::chain::wasm_runtime_interface {
    public:
-      ModuleInstance* instance;
-      Module* module;
-      uint32_t sbrk_bytes;
-
-      void reset(const info& );
-      void prepare(const info& );
-
-      void call(const string &entry_point, const vector <Value> &args, apply_context &context);
-
-      void call_apply(apply_context&);
-      void call_error(apply_context&);
-
-      int sbrk(int num_bytes);
-
-      static const entry& get(wasm_interface& wasm);
-
-      static entry build(const char* wasm_binary, size_t wasm_binary_size);
+      wavm_runtime();
+      ~wavm_runtime();
+      std::unique_ptr<wasm_instaniated_module_interface> instaniate_module(const shared_vector<char>& code, std::vector<uint8_t> initial_memory) override;
 
    private:
-      entry(ModuleInstance *instance, Module *module, uint32_t sbrk_bytes)
-              : instance(instance), module(module), sbrk_bytes(sbrk_bytes)
-      {
-      }
-
 };
-
-struct info {
-   info( const entry &wavm );
-
-   // a clean image of the memory used to sanitize things on checkin
-   size_t mem_start            = 0;
-   vector<char> mem_image;
-
-   uint32_t default_sbrk_bytes = 0;
-
-};
-
-
 
 /**
  * class to represent an in-wasm-memory array
@@ -65,7 +33,7 @@ struct info {
 template<typename T>
 inline array_ptr<T> array_ptr_impl (wasm_interface& wasm, U32 ptr, size_t length)
 {
-   auto mem = getDefaultMemory(entry::get(wasm).instance);
+   MemoryInstance* mem = nullptr; //getDefaultMemory(entry::get(wasm).instance);
    if(!mem || ptr + length > IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
       Runtime::causeException(Exception::Cause::accessViolation);
 
@@ -77,7 +45,7 @@ inline array_ptr<T> array_ptr_impl (wasm_interface& wasm, U32 ptr, size_t length
  */
 inline null_terminated_ptr null_terminated_ptr_impl(wasm_interface& wasm, U32 ptr)
 {
-   auto mem = getDefaultMemory(entry::get(wasm).instance);
+   MemoryInstance* mem = nullptr; //getDefaultMemory(entry::get(wasm).instance);
    if(!mem)
       Runtime::causeException(Exception::Cause::accessViolation);
 
@@ -180,7 +148,7 @@ inline auto convert_native_to_wasm(const wasm_interface &wasm, const fc::time_po
 }
 
 inline auto convert_native_to_wasm(wasm_interface &wasm, char* ptr) {
-   auto mem = getDefaultMemory(entry::get(wasm).instance);
+   MemoryInstance* mem = nullptr; //getDefaultMemory(entry::get(wasm).instance);
    if(!mem)
       Runtime::causeException(Exception::Cause::accessViolation);
    char* base = (char*)getMemoryBaseAddress(mem);
@@ -329,7 +297,8 @@ struct intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<Translated...>> {
 
    template<next_method_type Method>
    static native_to_wasm_t<Ret> invoke(Translated... translated) {
-      wasm_interface &wasm = wasm_interface::get();
+      //wasm_interface &wasm = wasm_interface::get();
+      wasm_interface wasm(wasm_interface::vm_type::wavm);
       return convert_native_to_wasm(wasm, Method(wasm, translated...));
    }
 
@@ -349,7 +318,8 @@ struct intrinsic_invoker_impl<void_type, std::tuple<>, std::tuple<Translated...>
 
    template<next_method_type Method>
    static void invoke(Translated... translated) {
-      wasm_interface &wasm = wasm_interface::get();
+      //wasm_interface &wasm = wasm_interface::get();
+      wasm_interface wasm(wasm_interface::vm_type::wavm);
       Method(wasm, translated...);
    }
 
@@ -582,7 +552,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Transl
    static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr) {
       // references cannot be created for null pointers
       FC_ASSERT(ptr != 0);
-      auto mem = getDefaultMemory(entry::get(wasm).instance);
+      MemoryInstance* mem = nullptr; //getDefaultMemory(entry::get(wasm).instance);
       if(!mem || ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
          Runtime::causeException(Exception::Cause::accessViolation);
       T &base = *(T*)(getMemoryBaseAddress(mem)+ptr);
@@ -604,7 +574,8 @@ struct intrinsic_function_invoker {
 
    template<MethodSig Method>
    static Ret wrapper(wasm_interface &wasm, Params... params) {
-      return (class_from_wasm<Cls>::value(wasm).*Method)(params...);
+      apply_context** foo = nullptr; //XXX not realisies!
+      return (class_from_wasm<Cls>::value(**foo).*Method)(params...);
    }
 
    template<MethodSig Method>
@@ -622,7 +593,8 @@ struct intrinsic_function_invoker<WasmSig, void, MethodSig, Cls, Params...> {
 
    template<MethodSig Method>
    static void_type wrapper(wasm_interface &wasm, Params... params) {
-      (class_from_wasm<Cls>::value(wasm).*Method)(params...);
+      apply_context** foo = nullptr; //XXX not realisies!
+      (class_from_wasm<Cls>::value(**foo).*Method)(params...);
       return void_type();
    }
 

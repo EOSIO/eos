@@ -19,14 +19,8 @@ void apply_context::exec_one()
          const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
          privileged = a.privileged;
 
-         if (a.code.size() > 0) {
-            // get code from cache
-            auto code = mutable_controller.get_wasm_cache().checkout_scoped(a.code_version, a.code.data(),
-                                                                            a.code.size());
-            // get wasm_interface
-            auto &wasm = wasm_interface::get();
-            wasm.apply(code, *this);
-      }
+         if (a.code.size() > 0)
+            mutable_controller.get_wasm_interface().apply(a.code_version, a.code, *this);
       }
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 

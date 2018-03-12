@@ -116,9 +116,7 @@ void apply_eosio_setcode(apply_context& context) {
 
    auto code_id = fc::sha256::hash( act.code.data(), act.code.size() );
 
-   // TODO: remove this compilation step in favor of validation without compilation
-   auto& code = context.mutable_controller.get_wasm_cache().checkout(code_id, act.code.data(), act.code.size());
-   context.mutable_controller.get_wasm_cache().checkin(code_id, code);
+   wasm_interface::validate(act.code);
 
    const auto& account = db.get<account_object,by_name>(act.account);
 //   wlog( "set code: ${size}", ("size",act.code.size()));

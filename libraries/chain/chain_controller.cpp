@@ -51,6 +51,7 @@ chain_controller::chain_controller( const chain_controller::controller_config& c
       (cfg.read_only ? database::read_only : database::read_write),
       cfg.shared_memory_size),
  _block_log(cfg.block_log_dir),
+ _wasm_interface(cfg.wasm_runtime),
  _limits(cfg.limits)
 {
    _initialize_indexes();

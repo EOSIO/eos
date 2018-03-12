@@ -3,25 +3,54 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/webassembly/wavm.hpp>
 #include <eosio/chain/webassembly/binaryen.hpp>
+#include <eosio/chain/webassembly/runtime_interface.hpp>
+
+#include "IR/Module.h"
+#include "Runtime/Intrinsics.h"
+#include "Platform/Platform.h"
+#include "WAST/WAST.h"
+#include "IR/Validate.h"
 
 using namespace fc;
 using namespace eosio::chain::webassembly;
+using namespace IR;
+using namespace Runtime;
 
 namespace eosio { namespace chain {
 
-   struct wasm_cache::entry {
-      entry(wavm::entry&& wavm, binaryen::entry&& binaryen)
-         : wavm(std::forward<wavm::entry>(wavm))
-         , binaryen(std::forward<binaryen::entry>(binaryen))
-      {
+   struct wasm_interface_impl {
+      wasm_interface_impl(wasm_interface::vm_type vm) {
+         if(vm == wasm_interface::vm_type::wavm)
+            runtime_interface = std::make_unique<webassembly::wavm::wavm_runtime>();
+         else if(vm == wasm_interface::vm_type::binaryen)
+            runtime_interface = std::make_unique<webassembly::binaryen::binaryen_runtime>();
+         else
+            FC_THROW("wasm_interface_impl fall through");
+      }
+      
+      std::vector<uint8_t> parse_initial_memory(const shared_vector<char>& code) {
+         std::vector<uint8_t> mem_image;
+         Module module;
+         Serialization::MemoryInputStream stream((const U8*)code.data(), code.size());
+         WASM::serialize(stream, module);
+
+         for(const DataSegment& data_segment : module.dataSegments) {
+            FC_ASSERT(data_segment.baseOffset.type == InitializerExpression::Type::i32_const);
+            FC_ASSERT(module.memories.defs.size());
+            const U32 base_offset = data_segment.baseOffset.i32;
+            const Uptr memory_size = (module.memories.defs[0].type.size.min << IR::numBytesPerPageLog2);
+            if(base_offset >= memory_size || base_offset + data_segment.data.size() > memory_size)
+               FC_THROW_EXCEPTION(wasm_execution_error, "WASM data segment outside of valid memory range");
+            if(base_offset + data_segment.data.size() > mem_image.size())
+               mem_image.resize(base_offset + data_segment.data.size(), 0x00);
+            memcpy(mem_image.data() + base_offset, data_segment.data.data(), data_segment.data.size());
+         }
+
+         return mem_image;
       }
 
-      wavm::entry wavm;
-      binaryen::entry binaryen;
-   };
-
-   struct wasm_interface_impl {
-      optional<common::wasm_context> current_context;
+      std::unique_ptr<wasm_runtime_interface> runtime_interface;
+      map<digest_type, std::unique_ptr<wasm_instaniated_module_interface>> instantiation_cache;
    };
 
 #define _REGISTER_INTRINSIC_EXPLICIT(CLS, METHOD, WASM_SIG, NAME, SIG)\
