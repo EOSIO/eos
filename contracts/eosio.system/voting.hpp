@@ -144,13 +144,6 @@ namespace eosiosystem {
                });
          }
 
-         ACTION( SystemAccount, stakevote ) {
-            account_name      voter;
-            system_token_type amount;
-
-            EOSLIB_SERIALIZE( stakevote, (voter)(amount) )
-         };
-
          static void increase_voting_power( account_name acnt, system_token_type amount ) {
             voters_table voters_tbl( SystemAccount, SystemAccount );
             const auto* voter = voters_tbl.find( acnt );
@@ -188,6 +181,76 @@ namespace eosiosystem {
                         v.total_votes += amount.quantity;
                      });
                }
+            }
+         }
+
+         static void decrease_voting_power( account_name acnt, system_token_type amount ) {
+            require_auth( acnt );
+            voters_table voters_tbl( SystemAccount, SystemAccount );
+            const auto* voter = voters_tbl.find( acnt );
+            eosio_assert( bool(voter), "stake not found" );
+
+            if ( 0 < amount.quantity ) {
+               eosio_assert( amount <= voter->staked, "cannot unstake more than total stake amount" );
+               /*
+               if (voter->deferred_trx_id) {
+                  //XXX cancel_deferred_transaction(voter->deferred_trx_id);
+               }
+
+               unstake_vote_deferred dt;
+               dt.voter = acnt;
+               uint32_t new_trx_id = 0;//XXX send_deferred(dt);
+
+               avotes.update( *voter, 0, [&](voter_info& a) {
+                     a.staked -= amount;
+                     a.unstaking += a.unstaking + amount;
+                     //round up to guarantee that there will be no unpaid balance after 26 weeks, and we are able refund amount < unstake_payments
+                     a.unstake_per_week = system_token_type( a.unstaking.quantity /unstake_payments + a.unstaking.quantity % unstake_payments );
+                     a.deferred_trx_id = new_trx_id;
+                     a.last_update = now();
+                  });
+               */
+
+               // Temporary code: immediate unstake
+               voters_tbl.update( *voter, 0, [&](voter_info& a) {
+                     a.staked -= amount;
+                     a.last_update = now();
+                  });
+               //currency::inline_transfer( SystemAccount, acnt, amount, "unstake voting" );
+               // end of temporary code
+
+               const std::vector<account_name>* producers = nullptr;
+               if ( voter->proxy ) {
+                  auto proxy = voters_tbl.find( voter->proxy );
+                  voters_tbl.update( *proxy, 0, [&](voter_info& a) { a.proxied_votes -= amount.quantity; } );
+                  if ( proxy->is_proxy ) { //only if proxy is still active. if proxy has been unregistered, we update proxied_votes, but don't propagate to producers
+                     producers = &proxy->producers;
+                  }
+               } else {
+                  producers = &voter->producers;
+               }
+
+               if ( producers ) {
+                  producers_table producers_tbl( SystemAccount, SystemAccount );
+                  for( auto p : *producers ) {
+                     auto prod = producers_tbl.find( p );
+                     eosio_assert( bool(prod), "never existed producer" ); //data corruption
+                     producers_tbl.update( *prod, 0, [&]( auto& v ) {
+                           v.total_votes -= amount.quantity;
+                        });
+                  }
+               }
+            } else {
+               if (voter->deferred_trx_id) {
+                  //XXX cancel_deferred_transaction(voter->deferred_trx_id);
+               }
+               voters_tbl.update( *voter, 0, [&](voter_info& a) {
+                     a.staked += a.unstaking;
+                     a.unstaking.quantity = 0;
+                     a.unstake_per_week.quantity = 0;
+                     a.deferred_trx_id = 0;
+                     a.last_update = now();
+                  });
             }
          }
 
@@ -299,96 +362,11 @@ namespace eosiosystem {
             global_state_singleton::set( parameters );
          }
 
-         static void on( const stakevote& sv ) {
-            eosio_assert( sv.amount.quantity > 0, "must stake some tokens" );
-            require_auth( sv.voter );
-
-            increase_voting_power( sv.voter, sv.amount );
-            currency::inline_transfer( sv.voter, SystemAccount, sv.amount, "stake for voting" );
-         }
-
-         ACTION( SystemAccount, unstakevote ) {
-            account_name      voter;
-            system_token_type amount;
-
-            EOSLIB_SERIALIZE( unstakevote, (voter)(amount) )
-         };
-
          ACTION(  SystemAccount, unstake_vote_deferred ) {
             account_name                voter;
 
             EOSLIB_SERIALIZE( unstake_vote_deferred, (voter) )
          };
-
-         static void on( const unstakevote& usv ) {
-            require_auth( usv.voter );
-            voters_table voters_tbl( SystemAccount, SystemAccount );
-            const auto* voter = voters_tbl.find( usv.voter );
-            eosio_assert( bool(voter), "stake not found" );
-
-            if ( 0 < usv.amount.quantity ) {
-               eosio_assert( usv.amount <= voter->staked, "cannot unstake more than total stake amount" );
-               /*
-               if (voter->deferred_trx_id) {
-                  //XXX cancel_deferred_transaction(voter->deferred_trx_id);
-               }
-
-               unstake_vote_deferred dt;
-               dt.voter = usv.voter;
-               uint32_t new_trx_id = 0;//XXX send_deferred(dt);
-
-               avotes.update( *voter, 0, [&](voter_info& a) {
-                     a.staked -= usv.amount;
-                     a.unstaking += a.unstaking + usv.amount;
-                     //round up to guarantee that there will be no unpaid balance after 26 weeks, and we are able refund amount < unstake_payments
-                     a.unstake_per_week = system_token_type( a.unstaking.quantity /unstake_payments + a.unstaking.quantity % unstake_payments );
-                     a.deferred_trx_id = new_trx_id;
-                     a.last_update = now();
-                  });
-               */
-
-               // Temporary code: immediate unstake
-               voters_tbl.update( *voter, 0, [&](voter_info& a) {
-                     a.staked -= usv.amount;
-                     a.last_update = now();
-                  });
-               currency::inline_transfer( SystemAccount, usv.voter, usv.amount, "unstake voting" );
-               // end of temporary code
-
-               const std::vector<account_name>* producers = nullptr;
-               if ( voter->proxy ) {
-                  auto proxy = voters_tbl.find( voter->proxy );
-                  voters_tbl.update( *proxy, 0, [&](voter_info& a) { a.proxied_votes -= usv.amount.quantity; } );
-                  if ( proxy->is_proxy ) { //only if proxy is still active. if proxy has been unregistered, we update proxied_votes, but don't propagate to producers
-                     producers = &proxy->producers;
-                  }
-               } else {
-                  producers = &voter->producers;
-               }
-
-               if ( producers ) {
-                  producers_table producers_tbl( SystemAccount, SystemAccount );
-                  for( auto p : *producers ) {
-                     auto prod = producers_tbl.find( p );
-                     eosio_assert( bool(prod), "never existed producer" ); //data corruption
-                     producers_tbl.update( *prod, 0, [&]( auto& v ) {
-                           v.total_votes -= usv.amount.quantity;
-                        });
-                  }
-               }
-            } else {
-               if (voter->deferred_trx_id) {
-                  //XXX cancel_deferred_transaction(voter->deferred_trx_id);
-               }
-               voters_tbl.update( *voter, 0, [&](voter_info& a) {
-                     a.staked += a.unstaking;
-                     a.unstaking.quantity = 0;
-                     a.unstake_per_week.quantity = 0;
-                     a.deferred_trx_id = 0;
-                     a.last_update = now();
-                  });
-            }
-         }
 
          static void on( const unstake_vote_deferred& usv) {
             require_auth( usv.voter );

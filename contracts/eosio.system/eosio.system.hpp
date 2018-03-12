@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include "voting.hpp"
+//include "voting.hpp"
 #include "delegate_bandwith.hpp"
 #include <eosiolib/optional.hpp>
 
@@ -39,7 +39,7 @@ namespace eosiosystem {
    };
 
    template<account_name SystemAccount>
-   class contract : public voting<SystemAccount>, public delegate_bandwith<SystemAccount> {
+   class contract : /*public voting<SystemAccount>,*/ public delegate_bandwith<SystemAccount> {
       public:
          using voting<SystemAccount>::on;
          using delegate_bandwith<SystemAccount>::on;
@@ -188,8 +188,6 @@ namespace eosiosystem {
                                  typename voting<SystemAccount>::regproducer,
                                  typename voting<SystemAccount>::unregprod,
                                  typename voting<SystemAccount>::voteproducer,
-                                 typename voting<SystemAccount>::stakevote,
-                                 typename voting<SystemAccount>::unstakevote,
                                  typename voting<SystemAccount>::unstake_vote_deferred,
                                  onblock,
                                  claim_rewards,

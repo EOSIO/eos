@@ -4,6 +4,7 @@
  */
 #pragma once
 #include "common.hpp"
+#include "voting.hpp"
 
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/token.hpp>
@@ -27,7 +28,7 @@ namespace eosiosystem {
    using std::pair;
 
    template<account_name SystemAccount>
-   class delegate_bandwith {
+   class delegate_bandwith : public voting<SystemAccount> {
       public:
          static constexpr account_name system_account = SystemAccount;
          using currency = typename common<SystemAccount>::currency;
@@ -112,21 +113,27 @@ namespace eosiosystem {
             require_auth( del.from );
 
             //eosio_assert( is_account( del.receiver ), "can only delegate resources to an existing account" );
+            uint64_t storage_bytes = 0;
+            if ( 0 < del.stake_storage_quantity.amount ) {
+               auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
+                  : common<SystemAccount>::get_default_parameters();
+               auto token_supply = currency::get_total_supply();//.quantity;
 
-            auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
-               : common<SystemAccount>::get_default_parameters();
-            auto token_supply = currency::get_total_supply();//.quantity;
+               //make sure that there is no posibility of overflow here
+               uint64_t storage_bytes_estimated = ( parameters.max_storage_size - parameters.total_storage_bytes_reserved )
+                  * parameters.storage_reserve_ratio * system_token_type(del.stake_cpu_quantity)
+                  / ( token_supply - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient */;
 
-            //make sure that there is no posibility of overflow here
-            uint64_t storage_bytes_estimated = ( parameters.max_storage_size - parameters.total_storage_bytes_reserved )
-               * parameters.storage_reserve_ratio * system_token_type(del.stake_cpu_quantity)
-               / ( token_supply - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient */;
+               storage_bytes = ( parameters.max_storage_size - parameters.total_storage_bytes_reserved - storage_bytes_estimated )
+                  * parameters.storage_reserve_ratio * system_token_type(del.stake_cpu_quantity)
+                  / ( token_supply - del.stake_storage_quantity - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient */;
 
-            uint64_t storage_bytes = ( parameters.max_storage_size - parameters.total_storage_bytes_reserved - storage_bytes_estimated )
-               * parameters.storage_reserve_ratio * system_token_type(del.stake_cpu_quantity)
-               / ( token_supply - del.stake_storage_quantity - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient */;
+               eosio_assert( 0 < storage_bytes, "stake is too small to increase storage even by 1 byte" );
 
-            eosio_assert( 0 < storage_bytes, "stake is too small to increase storage even by 1 byte" );
+               parameters.total_storage_bytes_reserved += storage_bytes;
+               parameters.total_storage_stake += del.stake_storage_quantity;
+               global_state_singleton::set(parameters);
+            }
 
             del_bandwidth_index_type     del_index( SystemAccount, del.from );
             auto itr = del_index.find( del.receiver );
@@ -171,10 +178,11 @@ namespace eosiosystem {
             set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, tot_itr->net_weight.quantity, tot_itr->cpu_weight.quantity, 0 );
 
             currency::inline_transfer( del.from, SystemAccount, total_stake, "stake bandwidth" );
-
-            parameters.total_storage_bytes_reserved += storage_bytes;
-            parameters.total_storage_stake += del.stake_storage_quantity;
-            global_state_singleton::set(parameters);
+            /* temporarily commented out
+            if ( 0 < del.stake_net_quantity + del.stake_cpu_quantity ) {
+               increase_voting_power( del.from, del.stake_net_quantity + del.stake_cpu_quantity );
+            }
+            */
          } // delegatebw
 
          static void on( const undelegatebw& del ) {
@@ -191,9 +199,17 @@ namespace eosiosystem {
             eosio_assert( dbw.cpu_weight >= del.unstake_cpu_quantity, "insufficient staked cpu bandwidth" );
             eosio_assert( dbw.storage_bytes >= del.unstake_storage_bytes, "insufficient staked storage" );
 
-            system_token_type storage_stake_decrease = 0 < dbw.storage_bytes ?
-               dbw.storage_stake * del.unstake_storage_bytes / dbw.storage_bytes
-               : system_token_type(0);
+            system_token_type storage_stake_decrease = system_token_type(0);
+            if ( 0 < del.unstake_storage_bytes ) {
+               storage_stake_decrease = 0 < dbw.storage_bytes ?
+                                            dbw.storage_stake * del.unstake_storage_bytes / dbw.storage_bytes
+                                            : system_token_type(0);
+
+               auto parameters = global_state_singleton::get();
+               parameters.total_storage_bytes_reserved -= del.unstake_storage_bytes;
+               parameters.total_storage_stake -= storage_stake_decrease;
+               global_state_singleton::set( parameters );
+            }
 
             auto total_refund = system_token_type(del.unstake_cpu_quantity)
                + system_token_type(del.unstake_net_quantity) + storage_stake_decrease;
@@ -220,11 +236,6 @@ namespace eosiosystem {
 
             /// TODO: implement / enforce time delays on withdrawing
             currency::inline_transfer( SystemAccount, del.from, asset( static_cast<int64_t>( total_refund.quantity )), "unstake bandwidth" );
-
-            auto parameters = global_state_singleton::get();
-            parameters.total_storage_bytes_reserved -= del.unstake_storage_bytes;
-            parameters.total_storage_stake -= storage_stake_decrease;
-            global_state_singleton::set( parameters );
          } // undelegatebw
    };
 }
