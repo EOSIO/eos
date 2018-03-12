@@ -69,8 +69,8 @@ namespace eosio {
       std::vector<char> buf;
       int size = ::get_action(type, index, nullptr, 0);
       eosio_assert( size > 0, "get_action size failed" );
-      buf.resize( size );
-      size = ::get_action(type, index, &buf[0], size );
+      buf.resize( static_cast<size_t>(size) );
+      size = ::get_action(type, index, &buf[0], static_cast<size_t>(size) );
       eosio_assert( size > 0, "get_action failed" );
       return eosio::unpack<eosio::action>(&buf[0], static_cast<size_t>(size));
    }
