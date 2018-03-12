@@ -47,7 +47,7 @@
 		exit 1
 	fi
 
-	DEP_ARRAY=(clang-4.0 lldb-4.0 libclang-4.0-dev cmake make libbz2-dev libssl-dev libgmp3-dev autotools-dev build-essential libbz2-dev libicu-dev python-dev autoconf libtool curl)
+	DEP_ARRAY=(clang-4.0 lldb-4.0 libclang-4.0-dev cmake make libbz2-dev libssl-dev libgmp3-dev autotools-dev build-essential libbz2-dev libicu-dev python-dev autoconf libtool curl mongodb)
 	DCOUNT=0
 	COUNT=1
 	DISPLAY=""
@@ -110,6 +110,73 @@
 		rm -f  ${TEMP_DIR}/boost_1.66.0.tar.bz2
 	else
 		printf "\tBoost 1.66 found at ${HOME}/opt/boost_1_66_0\n"
+	fi
+
+	printf "\n\tChecking for MongoDB C++ driver.\n"
+    # install libmongocxx.dylib
+    if [ ! -e /usr/local/lib/libmongocxx.so ]; then
+		printf "\n\tInstalling MongoDB C & C++ drivers.\n"
+		cd ${TEMP_DIR}
+		curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
+		if [ $? -ne 0 ]; then
+			rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz
+			printf "\tUnable to download MondgDB C driver at this time.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		tar xf mongo-c-driver-1.9.3.tar.gz
+		rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz
+		cd mongo-c-driver-1.9.3
+		./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+		if [ $? -ne 0 ]; then
+			printf "\tConfiguring MondgDB C driver has encountered the errors above.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		make -j${CPU_CORE}
+		if [ $? -ne 0 ]; then
+			printf "\tError compiling MondgDB C driver.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		sudo make install
+		if [ $? -ne 0 ]; then
+			printf "\tError installing MondgDB C driver.\nMake sure you have sudo privileges.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		cd ..
+		rm -rf ${TEMP_DIR}/mongo-c-driver-1.9.3
+		cd ${TEMP_DIR}
+		git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
+		if [ $? -ne 0 ]; then
+			printf "\tUnable to clone MondgDB C++ driver at this time.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		cd mongo-cxx-driver/build
+		cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+		if [ $? -ne 0 ]; then
+			printf "\tCmake has encountered the above errors building the MongoDB C++ driver.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		sudo make -j${CPU_CORE}
+		if [ $? -ne 0 ]; then
+			printf "\tError compiling MondgDB C++ driver.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		sudo make install
+		if [ $? -ne 0 ]; then
+			printf "\tError installing MondgDB C++ driver.\nMake sure you have sudo privileges.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		cd ..
+		sudo rm -rf ${TEMP_DIR}/mongo-cxx-driver
+	else
+		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx.so.\n"
 	fi
 
 	printf "\n\tChecking for secp256k1-zkp\n"
