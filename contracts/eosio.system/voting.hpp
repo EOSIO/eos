@@ -285,6 +285,9 @@ namespace eosiosystem {
             schedule.producers.reserve(21);
 
             auto it = idx.end();
+            if (it == idx.begin()) {
+                  return;
+            }
             --it;
             size_t n = 0;
             while ( n < 21 ) {
@@ -326,7 +329,8 @@ namespace eosiosystem {
             set_active_producers( packed_schedule.data(),  packed_schedule.size() );
             size_t median = n/2;
 
-            auto parameters = global_state_singleton::get();
+            auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
+                  : common<SystemAccount>::get_default_parameters();
 
             parameters.target_block_size = target_block_size[median];
             parameters.max_block_size = max_block_size[median];

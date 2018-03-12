@@ -106,8 +106,7 @@ namespace eosiosystem {
             eosio_assert( del.stake_net_quantity.amount >= 0, "must stake a positive amount" );
             eosio_assert( del.stake_storage_quantity.amount >= 0, "must stake a positive amount" );
 
-            system_token_type total_stake = system_token_type(del.stake_cpu_quantity)
-               + system_token_type(del.stake_net_quantity) + system_token_type(del.stake_storage_quantity);
+            system_token_type total_stake = del.stake_cpu_quantity + del.stake_net_quantity + del.stake_storage_quantity;
             eosio_assert( total_stake.quantity > 0, "must stake a positive amount" );
 
             require_auth( del.from );

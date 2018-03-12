@@ -126,20 +126,6 @@
         {"name":"producer",     "type":"account_name"}
       ]
     },{
-      "name": "stakevote",
-      "base": "",
-      "fields": [
-        {"name":"voter", "type":"account_name"},
-        {"name":"amount", "type":"asset"}
-      ]
-    },{
-      "name": "unstakevote",
-      "base": "",
-      "fields": [
-        {"name":"voter", "type":"account_name"},
-        {"name":"amount", "type":"asset"}
-      ]
-    },{
       "name": "voteproducer",
       "base": "",
       "fields": [
@@ -183,12 +169,6 @@
     },{
       "name": "unregprod",
       "type": "unregprod"
-    },{
-      "name": "stakevote",
-      "type": "stakevote"
-    },{
-      "name": "unstakevote",
-      "type": "unstakevote"
     },{
       "name": "voteproducer",
       "type": "voteproducer"

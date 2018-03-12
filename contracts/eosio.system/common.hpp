@@ -26,21 +26,21 @@ namespace eosiosystem {
          struct eosio_parameters : eosio::blockchain_parameters {
             uint32_t          percent_of_max_inflation_rate = 0; // inflation coefficient * 10000 (i.e. inflation in percent * 100)
             uint32_t          storage_reserve_ratio = 1000;      // ratio * 1000
-            system_token_type payment_per_block = system_token_type();
-            system_token_type payment_to_eos_bucket = system_token_type();
-            time              first_block_time_in_cycle = 0;
-            time              last_bucket_fill_time = 0;
-            system_token_type eos_bucket = system_token_type();
                
-            EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (percent_of_max_inflation_rate)(storage_reserve_ratio)
-                                      (payment_per_block)(last_bucket_fill_time)(eos_bucket) )
+            EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (percent_of_max_inflation_rate)(storage_reserve_ratio) )
          };
 
          struct eosio_global_state : eosio_parameters {
             uint64_t total_storage_bytes_reserved = 0;
             system_token_type total_storage_stake;
+            system_token_type payment_per_block = system_token_type();
+            system_token_type payment_to_eos_bucket = system_token_type();
+            time              first_block_time_in_cycle = 0;
+            time              last_bucket_fill_time = 0;
+            system_token_type eos_bucket = system_token_type();
 
-            EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_storage_bytes_reserved)(total_storage_stake)  )
+            EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_storage_bytes_reserved)(total_storage_stake)
+                                      (payment_per_block)(payment_to_eos_bucket)(first_block_time_in_cycle)(last_bucket_fill_time)(eos_bucket) )
       };
 
          typedef eosio::singleton<SystemAccount, N(inflation), SystemAccount, eosio_global_state> global_state_singleton;

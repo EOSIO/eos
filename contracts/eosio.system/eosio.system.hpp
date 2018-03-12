@@ -63,7 +63,8 @@ namespace eosiosystem {
          }
 
          static bool update_cycle(time block_time) {
-            auto parameters = global_state_singleton::get();
+               auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
+                  : common<SystemAccount>::get_default_parameters();
             if (parameters.first_block_time_in_cycle == 0) {
                voting<SystemAccount>::update_elected_producers(block_time);
                return true;
@@ -113,7 +114,8 @@ namespace eosiosystem {
             update_cycle(ob.header.timestamp);
             producers_table producers_tbl(SystemAccount, SystemAccount);
             account_name producer = ob.header.producer;
-            auto parameters = global_state_singleton::get_or_default();
+            auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
+                  : common<SystemAccount>::get_default_parameters();
             const system_token_type block_payment = parameters.payment_per_block;
             const auto* prod = producers_tbl.find(producer);
             // This check is needed when everything works

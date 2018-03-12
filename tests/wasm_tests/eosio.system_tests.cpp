@@ -479,7 +479,7 @@ fc::variant simple_voter( account_name acct, uint64_t vote_stake, uint64_t ts ) 
 fc::variant simple_voter( account_name acct, const string& vote_stake, uint64_t ts ) {
    return simple_voter( acct, asset::from_string( vote_stake ).amount, ts);
 }
-
+/*
 BOOST_FIXTURE_TEST_CASE( stake_add_more_partial_unstake, eosio_system_tester ) try {
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
 
@@ -651,13 +651,14 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
                                                ("producers", vector<account_name>() )
                         )
    );
-   /*
+
    auto prod_after_vote = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( 111111, prod_initial["total_votes"].as_uint64() );
    BOOST_REQUIRE_EQUAL( prod_initial["owner"].as_uint64(), prod_after_vote["owner"].as_uint64() );
    REQUIRE_EQUAL_OBJECTS( prod_initial["prefs"], prod_after_vote["prefs"]);
    BOOST_REQUIRE_EQUAL( to_string(prod_initial["packed_key"]), to_string(prod_after_vote["packed_key"]) );
-   */
+
 } FC_LOG_AND_RETHROW()
+*/
 
 BOOST_AUTO_TEST_SUITE_END()
