@@ -10,4 +10,5 @@ install( FILES ${CMAKE_CURRENT_BINARY_DIR}/eosiocpp DESTINATION ${CMAKE_INSTALL_
 )
 
 add_executable( print_floats print_floats.cpp )
+target_include_directories( print_floats PRIVATE ${Boost_INCLUDE_DIR} )
 target_link_libraries( print_floats PRIVATE ${Boost_LIBRARIES} )
