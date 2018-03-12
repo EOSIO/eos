@@ -455,18 +455,13 @@ void test_multi_index::idx_double_general()
       });
    }
 
-   // Floating point functions were removed from WASM-side standard library. They need to be added back in. Until then...
-   auto fabs = [](double x) {
-      return (x < 0) ? -x : x;
-   };
-
    double expected_product = 1.0 / 1000000;
 
    uint64_t expected_key = 10;
    for( const auto& obj : secidx ) {
       eosio_assert( obj.primary_key() == expected_key, "idx_double_general - unexpected primary key" );
 
-      double prod = fabs(obj.sec * obj.id - expected_product);
+      double prod = std::abs(obj.sec * obj.id - expected_product);
 
       print(" id = ", obj.id, ", sec = ", obj.sec, ", sec * id = ", prod, "\n");
 
@@ -478,10 +473,10 @@ void test_multi_index::idx_double_general()
 
    {
       auto itr = secidx.lower_bound( expected_product / 5.5 );
-      eosio_assert( fabs(1.0 / itr->sec - 5000000.0) <= tolerance, "idx_double_general - lower_bound" );
+      eosio_assert( std::abs(1.0 / itr->sec - 5000000.0) <= tolerance, "idx_double_general - lower_bound" );
 
       itr = secidx.upper_bound( expected_product / 5.0 );
-      eosio_assert( fabs(1.0 / itr->sec - 4000000.0) <= tolerance, "idx_double_general - upper_bound" );
+      eosio_assert( std::abs(1.0 / itr->sec - 4000000.0) <= tolerance, "idx_double_general - upper_bound" );
 
    }
 
