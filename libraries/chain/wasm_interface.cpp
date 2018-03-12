@@ -195,8 +195,9 @@ namespace eosio { namespace chain {
                   WASM::serializeWithInjection(stream2, *module2);
 
                   wasm_constraints::wasm_binary_validation::validate( *module );
+#if 0
                   wasm_injections::wasm_binary_injection::inject( *module );
-                  /*
+
                   std::cout << "INJECTED\n";
                   wasm_injections::wasm_binary_injection::inject( *module );
                   std::cout << "INJECTEDSS\n";
@@ -236,12 +237,12 @@ namespace eosio { namespace chain {
                   std::cout << "\n";
 
                   std::cout << "FUNCTION_Import A \n";
-                  for (auto e : module->functions.imports)
-                     std::cout << e.exportName << "\n";
+                  for (int i=0; i < module->functions.imports.size(); i++)
+                     std::cout << module->functions.imports[i].exportName << " : " << i << "\n";
                   std::cout << "\n";
                   std::cout << "FUNCTION_Import B \n";
-                  for (auto e : module2->functions.imports)
-                     std::cout << e.exportName << "\n";
+                  for (int i=0; i < module->functions.imports.size(); i++)
+                     std::cout << module->functions.imports[i].exportName << " : " << i << "\n";
 
                   std::cout << "\n";
                   std::cout << "TABLES_Import A \n";
@@ -283,7 +284,20 @@ namespace eosio { namespace chain {
                   for (auto e : module2->exports)
                      std::cout << e.name << " " << uint32_t(e.index) << "\n";
                   std::cout << "\n";
-                  */
+                     
+                  std::cout << "DATASEG A \n";
+                  for (auto e : module->dataSegments)
+                     std::cout << e.memoryIndex << "\n";
+
+                  std::cout << "\n";
+                  std::cout << "DATSEG B \n";
+                  for (auto e : module2->dataSegments)
+                     std::cout << e.memoryIndex << "\n";
+                  std::cout << "\n";
+
+                  std::cout << "start index A " << module->startFunctionIndex << "\n";
+                  std::cout << "start index B " << module2->startFunctionIndex << "\n";
+#endif
 
                   Serialization::ArrayOutputStream outstream;
                   WASM::serialize(outstream, *module);
@@ -595,7 +609,6 @@ public:
    using context_aware_api::context_aware_api;
 
    void checktime(uint32_t instruction_count) {
-      std::cout << "CHECKTIME\n";
       context.checktime(instruction_count);
    }
 };

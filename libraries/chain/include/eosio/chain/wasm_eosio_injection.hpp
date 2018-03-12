@@ -28,12 +28,18 @@ namespace eosio { namespace chain { namespace wasm_injections {
          }
       }
 
+      static int last_imported_index( Module& module ) {
+         return module.functions.imports.size() - 1;
+      }
+
       template <ResultType Result, ValueType... Params>
       static void add_import(Module& module, const char* scope, const char* func_name, int32_t& index ) {
          if (module.functions.imports.size() == 0 || module.functions.imports.back().exportName.compare(func_name) != 0) {
             add_type_slot<Result, Params...>( module );
 
             const uint32_t func_type_index = type_slots[{ FromResultType<Result>::value, FromValueType<Params>::value... }];
+            for ( auto e : { FromValueType<Params>::value...} )
+            std::cout << "\n";
             module.functions.imports.push_back({{func_type_index}, std::move(scope), std::move(func_name)});
             index = module.functions.imports.size()-1;
             // shift all exported functions by 1
@@ -132,14 +138,29 @@ namespace eosio { namespace chain { namespace wasm_injections {
       }
       static int32_t checktime_idx;
    };
+   
+   struct increment_call_index {
+      static constexpr bool kills = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         // TODO this is hardcoded for various injections, refactor to allow the system to deduce this
+         wasm_ops::op_types<>::call_t* call_inst = reinterpret_cast<wasm_ops::op_types<>::call_t*>(inst);
+         const int offset = 1;
+         if ( call_inst->field >= injector_utils::last_imported_index( *(arg.module) ) )
+            call_inst->field += offset;
+      }
 
+   };
    // add opcode specific constraints here
    // so far we only black list
    struct op_injectors : wasm_ops::op_types<pass_injector> {
       using block_t           = wasm_ops::block                   <debug_printer, instruction_counter, checktime_injector>;
       using loop_t            = wasm_ops::loop                    <debug_printer, instruction_counter, checktime_injector>;
-      using if__t             = wasm_ops::if_                     <debug_printer, instruction_counter, checktime_injector>;
-      using else__t           = wasm_ops::else_                   <debug_printer, instruction_counter, checktime_injector>;
+      using if__t             = wasm_ops::if_                     <debug_printer, instruction_counter>;
+      using else__t           = wasm_ops::else_                   <debug_printer, instruction_counter>;
+      
+      //using if__t             = wasm_ops::if_                     <debug_printer, instruction_counter, checktime_injector>;
+      //using else__t           = wasm_ops::else_                   <debug_printer, instruction_counter, checktime_injector>;
       
       using end_t             = wasm_ops::end                     <debug_printer, instruction_counter>;
       using unreachable_t     = wasm_ops::unreachable             <debug_printer, instruction_counter>;
@@ -147,7 +168,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using br_if_t           = wasm_ops::br_if                   <debug_printer, instruction_counter>;
       using br_table_t        = wasm_ops::br_table                <debug_printer, instruction_counter>;
       using return__t         = wasm_ops::return_                 <debug_printer, instruction_counter>;
-      using call_t            = wasm_ops::call                    <debug_printer, instruction_counter>;
+      using call_t            = wasm_ops::call                    <debug_printer, instruction_counter, increment_call_index>;
       using call_indirect_t   = wasm_ops::call_indirect           <debug_printer, instruction_counter>;
       using drop_t            = wasm_ops::drop                    <debug_printer, instruction_counter>;
       using select_t          = wasm_ops::select                  <debug_printer, instruction_counter>;
@@ -286,7 +307,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          wasm_binary_injection() { 
             _module_injectors.init();
             // initialize static fields of injectors
-            //injector_utils::init();
+            injector_utils::init();
             instruction_counter::init();
             checktime_injector::init();
          }
@@ -300,7 +321,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
                   auto op = decoder.decodeOp();
                   op->visit( { &mod, &new_code, &fd, decoder.index() } );
                }
-
                fd.code = new_code;
             }
          }

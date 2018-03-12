@@ -1,5 +1,6 @@
 #include <eosio/chain/webassembly/wavm.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
+#include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/apply_context.hpp>
 
 #include "IR/Module.h"
@@ -121,7 +122,7 @@ entry entry::build(const char* wasm_binary, size_t wasm_binary_size) {
    Module* module = new Module();
    Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
    WASM::serialize(stream, *module);
-
+   wasm_injections::wasm_binary_injection::inject( *module );
    root_resolver resolver;
    LinkResult link_result = linkModule(*module, resolver);
    ModuleInstance *instance = instantiateModule(*module, std::move(link_result.resolvedImports));
