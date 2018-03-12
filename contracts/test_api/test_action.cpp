@@ -48,10 +48,10 @@ void test_action::test_dummy_action() {
 
    // get_action
    total = get_action( 1, 0, buffer, 0 );
-   total = get_action( 1, 0, buffer, total );
+   total = get_action( 1, 0, buffer, static_cast<size_t>(total) );
    eosio_assert( total > 0, "get_action failed" );
    eosio::action act = eosio::get_action( 1, 0 );
-   eosio_assert( eosio::pack_size(act) == total, "pack_size does not match get_action size" );
+   eosio_assert( eosio::pack_size(act) == static_cast<size_t>(total), "pack_size does not match get_action size" );
    eosio_assert( act.account == N(testapi), "expected testapi account" );
 
    dummy_action dum13 = act.data_as<dummy_action>();
@@ -84,16 +84,17 @@ void test_action::test_cf_action() {
       // verify read of get_context_free_data, also verifies system api access
       int size = get_context_free_data( cfa.cfd_idx, nullptr, 0 );
       eosio_assert( size > 0, "size determination failed" );
-      eosio::bytes cfd(size);
+      eosio::bytes cfd( static_cast<size_t>(size) );
       size = get_context_free_data( cfa.cfd_idx, &cfd[0], static_cast<size_t>(size) );
-      eosio_assert( size == cfd.size(), "get_context_free_data failed" );
+      eosio_assert(static_cast<size_t>(size) == cfd.size(), "get_context_free_data failed" );
       uint32_t v = eosio::unpack<uint32_t>( &cfd[0], cfd.size() );
       eosio_assert( v == cfa.payload, "invalid value" );
 
       // verify crypto api access
       checksum256 hash;
-      sha256( "test", 4, &hash );
-      assert_sha256( "test", 4, &hash );
+      char test[] = "test";
+      sha256( test, sizeof(test), &hash );
+      assert_sha256( test, sizeof(test), &hash );
       // verify action api access
       action_data_size();
       // verify console api access
