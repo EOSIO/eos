@@ -291,10 +291,11 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, int64_t& d) {
  *  @param d value to serialize
  */
 template<typename Stream>
-inline datastream<Stream>& operator<<(datastream<Stream>& ds, const uint64_t d) {
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const uint64_t& d) {
   ds.write( (const char*)&d, sizeof(d) );
   return ds;
 }
+
 /**
  *  Deserialize a uint64_t from a stream
  *  @brief Deserialize a uint64_t
@@ -303,6 +304,18 @@ inline datastream<Stream>& operator<<(datastream<Stream>& ds, const uint64_t d) 
  */
 template<typename Stream>
 inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint64_t& d) {
+  ds.read((char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const double& d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, double& d) {
   ds.read((char*)&d, sizeof(d) );
   return ds;
 }

@@ -24,6 +24,16 @@ using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 using namespace fc;
 
+struct margin_state {
+   extended_asset total_lendable;
+   extended_asset total_lent;
+   double         least_collateralized = 0;
+
+   extended_asset interest_pool;
+   double         interest_shares = 0;
+};
+FC_REFLECT( margin_state, (total_lendable)(total_lent)(least_collateralized)(interest_pool)(interest_shares) )
+
 struct exchange_state {
    account_name      manager;
    extended_asset    supply;
@@ -32,13 +42,14 @@ struct exchange_state {
    struct connector {
       extended_asset balance;
       uint32_t       weight = 500;
+      margin_state   peer_margin;
    };
 
    connector base;
    connector quote;
 };
 
-FC_REFLECT( exchange_state::connector, (balance)(weight) );
+FC_REFLECT( exchange_state::connector, (balance)(weight)(peer_margin) );
 FC_REFLECT( exchange_state, (manager)(supply)(fee)(base)(quote) );
 
 class exchange_tester : public tester {

@@ -185,6 +185,27 @@ namespace eosio {
          return result;
       }
 
+      friend extended_asset operator - ( const extended_asset& a, const extended_asset& b ) {
+         eosio_assert( a.symbol == b.symbol, "type mismatch" );
+         eosio_assert( a.contract == b.contract, "type mismatch" );
+         extended_asset result( asset(a.amount - b.amount, a.symbol), a.contract );
+
+         if( b.amount > 0 )
+            eosio_assert( a.amount > result.amount, "underflow" );
+         if( b.amount < 0 )
+            eosio_assert( a.amount < result.amount, "overflow" );
+
+         return result;
+      }
+
+      friend extended_asset operator + ( const extended_asset& a, const extended_asset& b ) {
+         eosio_assert( a.symbol == b.symbol, "type mismatch" );
+         eosio_assert( a.contract == b.contract, "type mismatch" );
+         extended_asset result( asset(a.amount + b.amount, a.symbol), a.contract );
+
+         return result;
+      }
+
       EOSLIB_SERIALIZE( extended_asset, (amount)(symbol)(contract) )
    };
 
