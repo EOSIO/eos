@@ -22,6 +22,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_multi_index, idx128_autoincrement_test_part1);
       WASM_TEST_HANDLER(test_multi_index, idx128_autoincrement_test_part2);
       WASM_TEST_HANDLER(test_multi_index, idx256_general);
+      WASM_TEST_HANDLER(test_multi_index, idx_double_general);
 
       //unhandled test call
       eosio_assert(false, "Unknown Test");
