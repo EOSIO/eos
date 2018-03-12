@@ -17,7 +17,7 @@ using namespace Runtime;
 
 namespace eosio { namespace chain { namespace webassembly { namespace wavm {
 
-class wavm_instantiated_module : public wasm_instaniated_module_interface {
+class wavm_instantiated_module : public wasm_instantiated_module_interface {
    public:
       wavm_instantiated_module(ModuleInstance* instance, Module* module, std::vector<uint8_t> initial_mem) :
          _instance(instance),
@@ -86,7 +86,7 @@ wavm_runtime::~wavm_runtime() {
    Runtime::freeUnreferencedObjects({});
 }
 
-std::unique_ptr<wasm_instaniated_module_interface> wavm_runtime::instaniate_module(const shared_vector<char>& c, std::vector<uint8_t> initial_memory) {
+std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_module(const shared_vector<char>& c, std::vector<uint8_t> initial_memory) {
    Module* module = new Module();
    Serialization::MemoryInputStream stream((const U8 *)c.data(), c.size());
    WASM::serialize(stream, *module);

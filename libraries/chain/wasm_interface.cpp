@@ -46,19 +46,19 @@ namespace eosio { namespace chain {
    void wasm_interface::apply( const digest_type& code_id, const shared_vector<char>& code, apply_context& context ) {
       auto it = my->instantiation_cache.find(code_id);
       if(it == my->instantiation_cache.end())
-         it = my->instantiation_cache.emplace(code_id, my->runtime_interface->instaniate_module(code, my->parse_initial_memory(code))).first;
-      ///XXX: Common injection would occur above-- take the code, inject stuff, pass the resulting vector to instaniate_module()
+         it = my->instantiation_cache.emplace(code_id, my->runtime_interface->instantiate_module(code, my->parse_initial_memory(code))).first;
+      ///XXX: Common injection would occur above-- take the code, inject stuff, pass the resulting vector to instantiate_module()
       it->second->apply(context);
             }
 
    void wasm_interface::error( const digest_type& code_id, const shared_vector<char>& code, apply_context& context ) {
-      map<digest_type, std::unique_ptr<wasm_instaniated_module_interface>>::iterator it = my->instantiation_cache.find(code_id);
+      map<digest_type, std::unique_ptr<wasm_instantiated_module_interface>>::iterator it = my->instantiation_cache.find(code_id);
       if(it == my->instantiation_cache.end())
-         it = my->instantiation_cache.emplace(code_id, my->runtime_interface->instaniate_module(code, my->parse_initial_memory(code))).first;
+         it = my->instantiation_cache.emplace(code_id, my->runtime_interface->instantiate_module(code, my->parse_initial_memory(code))).first;
       it->second->error(context);
            }
 
-   wasm_instaniated_module_interface::~wasm_instaniated_module_interface() {}
+   wasm_instantiated_module_interface::~wasm_instantiated_module_interface() {}
    wasm_runtime_interface::~wasm_runtime_interface() {}
 
 #if defined(assert)

@@ -50,7 +50,7 @@ namespace eosio { namespace chain {
       }
 
       std::unique_ptr<wasm_runtime_interface> runtime_interface;
-      map<digest_type, std::unique_ptr<wasm_instaniated_module_interface>> instantiation_cache;
+      map<digest_type, std::unique_ptr<wasm_instantiated_module_interface>> instantiation_cache;
    };
 
 #define _REGISTER_INTRINSIC_EXPLICIT(CLS, METHOD, WASM_SIG, NAME, SIG)\

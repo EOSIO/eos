@@ -6,7 +6,7 @@
 
 namespace eosio { namespace chain { namespace webassembly { namespace binaryen {
 
-class binaryen_instantiated_module : public wasm_instaniated_module_interface {
+class binaryen_instantiated_module : public wasm_instantiated_module_interface {
    public:
       binaryen_instantiated_module(linear_memory_type& shared_linear_memory,
                                    std::vector<uint8_t> initial_memory,
@@ -58,7 +58,7 @@ binaryen_runtime::binaryen_runtime() {
 
 }
 
-std::unique_ptr<wasm_instaniated_module_interface> binaryen_runtime::instaniate_module(const shared_vector<char>& c, std::vector<uint8_t> initial_memory) {
+std::unique_ptr<wasm_instantiated_module_interface> binaryen_runtime::instantiate_module(const shared_vector<char>& c, std::vector<uint8_t> initial_memory) {
    try {
       vector<char> code(c.data(), c.data() + c.size());
       unique_ptr<Module> module(new Module());
