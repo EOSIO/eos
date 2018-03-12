@@ -6,11 +6,12 @@ using namespace eosio;
 
 namespace multi_index_test {
 
-   struct limit_order {
-      uint64_t     id;
-      uint128_t    price;
-      uint64_t     expiration;
-      account_name owner;
+struct limit_order {
+   uint64_t     id;
+   uint64_t     padding = 0;
+   uint128_t    price;
+   uint64_t     expiration;
+   account_name owner;
 
       auto primary_key()const { return id; }
       uint64_t get_expiration()const { return expiration; }
@@ -19,14 +20,14 @@ namespace multi_index_test {
       EOSLIB_SERIALIZE( limit_order, (id)(price)(expiration)(owner) )
    };
 
-   struct test_u256 {
+   struct test_k256 {
       uint64_t     id;
-      uint256      val;
+      key256      val;
 
       auto primary_key()const { return id; }
-      uint256 get_val()const { return val; }
+      key256 get_val()const { return val; }
 
-      EOSLIB_SERIALIZE( test_u256, (id)(val) )
+      EOSLIB_SERIALIZE( test_k256, (id)(val) )
    };
 
    class multi_index_test {
@@ -51,8 +52,8 @@ namespace multi_index_test {
                {
                   print("Testing uint128_t secondary index.\n");
                   eosio::multi_index<N(orders), limit_order,
-                     index_by<0, N(byexp), limit_order, const_mem_fun<limit_order, uint64_t, &limit_order::get_expiration>, N(orders)>,
-                     index_by<1, N(byprice), limit_order, const_mem_fun<limit_order, uint128_t, &limit_order::get_price>, N(orders)>
+                     indexed_by< N(byexp),   const_mem_fun<limit_order, uint64_t, &limit_order::get_expiration> >,
+                     indexed_by< N(byprice), const_mem_fun<limit_order, uint128_t, &limit_order::get_price> >
                      > orders( N(multitest), N(multitest) );
 
                   const auto& order1 = orders.emplace( payer, [&]( auto& o ) {
@@ -95,26 +96,26 @@ namespace multi_index_test {
 
                }
                break;
-               case 1: // Test uint265 secondary index
+               case 1: // Test key265 secondary index
                {
-                  print("Testing uint256 secondary index.\n");
-                  eosio::multi_index<N(test1), test_u256,
-                     index_by<0, N(byval), test_u256, const_mem_fun<test_u256, uint256, &test_u256::get_val>, N(test1)>
+                  print("Testing key256 secondary index.\n");
+                  eosio::multi_index<N(test1), test_k256,
+                     indexed_by< N(byval), const_mem_fun<test_k256, key256, &test_k256::get_val> >
                   > testtable( N(multitest), N(exchange) ); // Code must be same as the receiver? Scope doesn't have to be.
 
                   const auto& entry1 = testtable.emplace( payer, [&]( auto& o ) {
                      o.id = 1;
-                     o.val = uint256{.uint64s = {0, 0, 0, 42}};
+                     o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
                   });
 
                   const auto& entry2 = testtable.emplace( payer, [&]( auto& o ) {
                      o.id = 2;
-                     o.val = uint256{.uint64s = {1, 2, 3, 4}};
+                     o.val = key256::make_from_word_sequence<uint64_t>(1ULL, 2ULL, 3ULL, 4ULL);
                   });
 
                   const auto& entry3 = testtable.emplace( payer, [&]( auto& o ) {
                      o.id = 3;
-                     o.val = uint256{.uint64s = {0, 0, 0, 42}};
+                     o.val = key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL);
                   });
 
                   const auto* e = testtable.find( 2 );
@@ -126,10 +127,10 @@ namespace multi_index_test {
 
                   auto validx = testtable.get_index<N(byval)>();
 
-                  auto lower1 = validx.lower_bound(uint256{.uint64s = {0, 0, 0, 40}});
+                  auto lower1 = validx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 40ULL));
                   print("First entry with a val of at least 40 has ID=", lower1->id, ".\n");
 
-                  auto lower2 = validx.lower_bound(uint256{.uint64s = {0, 0, 0, 50}});
+                  auto lower2 = validx.lower_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 50ULL));
                   print("First entry with a val of at least 50 has ID=", lower2->id, ".\n");
 
                   if( &*lower2 == e ) {
@@ -142,7 +143,7 @@ namespace multi_index_test {
                      cout << item.val << "\n";
                   }
 
-                  auto upper = validx.upper_bound(uint256{.uint64s={0, 0, 0, 42}});
+                  auto upper = validx.upper_bound(key256::make_from_word_sequence<uint64_t>(0ULL, 0ULL, 0ULL, 42ULL));
 
                   print("First entry with a val greater than 42 has ID=", upper->id, ".\n");
 

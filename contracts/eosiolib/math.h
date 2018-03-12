@@ -157,7 +157,7 @@ extern "C" {
    * Convert double (interpreted as 64 bit unsigned  integer) to 64 bit unsigned integer.
    * This function will first reinterpret_cast the input to double (50 decimal digit precision) then convert it to double, then reinterpret_cast it to 64 bit unsigned integer.
    * @brief Convert double to 64 bit unsigned integer
-   * @param self Value in double interpreted as 64 bit unsigned integer
+   * @param a - value in double interpreted as 64 bit unsigned integer
    * @return Result of conversion in 64 bit unsigned integer
    *
    * Example:
@@ -173,7 +173,7 @@ extern "C" {
    * Convert 64 bit unsigned integer to double (interpreted as 64 bit unsigned integer).
    * This function will convert the input to double (50 decimal digit precision) then reinterpret_cast it to 64 bit unsigned integer.
    * @brief Convert 64 bit unsigned integer to double (interpreted as 64 bit unsigned  integer)
-   * @param self Value to be converted
+   * @param a - value to be converted
    * @return Result of conversion in double (interpreted as 64 bit unsigned integer)
    *
    * Example:

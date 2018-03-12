@@ -6,6 +6,7 @@
 #include <eosiolib/print.h>
 #include <eosiolib/types.hpp>
 #include <eosiolib/math.hpp>
+#include <eosiolib/fixed_key.hpp>
 #include <utility>
 
 namespace eosio {
@@ -15,7 +16,7 @@ namespace eosio {
    /**
     *  Prints string
     *  @brief Prints string
-    *  @param cstr - a null terminated string
+    *  @param ptr - a null terminated string
     */
    inline void print( const char* ptr ) {
       prints(ptr);
@@ -24,7 +25,7 @@ namespace eosio {
    /**
     * Prints 64 bit unsigned integer as a 64 bit unsigned integer
     * @brief Prints integer 64 bit unsigned integer
-    * @param Value to be printed
+    * @param num to be printed
     */
    inline void print( uint64_t num ) {
       printi(num);
@@ -33,7 +34,7 @@ namespace eosio {
    /**
     * Prints 32 bit unsigned integer as a 64 bit unsigned integer
     * @brief Prints integer  32 bit unsigned integer
-    * @param Value to be printed
+    * @param num to be printed
     */
    inline void print( uint32_t num ) {
       printi(num);
@@ -42,10 +43,10 @@ namespace eosio {
    /**
     * Prints integer as a 64 bit unsigned integer
     * @brief Prints integer
-    * @param Value to be printed
+    * @param num to be printed
     */
    inline void print( int num ) {
-      printi(num);
+      printi(uint64_t(num));
    }
 
    inline void print( long num ) {
@@ -55,7 +56,7 @@ namespace eosio {
    /**
     * Prints unsigned integer as a 64 bit unsigned integer
     * @brief Prints unsigned integer
-    * @param Value to be printed
+    * @param num to be printed
     */
    inline void print( unsigned int num ) {
       printi(num);
@@ -64,7 +65,7 @@ namespace eosio {
    /**
     * Prints uint128 struct as 128 bit unsigned integer
     * @brief Prints uint128 struct
-    * @param Value to be printed
+    * @param num to be printed
     */
    inline void print( uint128 num ) {
       printi128((uint128_t*)&num);
@@ -73,25 +74,29 @@ namespace eosio {
    /**
     * Prints 128 bit unsigned integer
     * @brief Prints 128 bit unsigned integer
-    * @param Value to be printed
+    * @param num to be printed
     */
    inline void print( uint128_t num ) {
       printi128(&num);
    }
 
+
    /**
-    * Prints a 256 bit unsigned integer as a hexidecimal string
-    * @brief Prints a 256 bit unsigned integer as a hexidecimal string
-    * @param Value of 256 bit integer to be printed
+    * Prints fixed_key as a hexidecimal string
+    * @brief Prints fixed_key as a hexidecimal string
+    * @param val to be printed
     */
-   inline void print( const uint256& num ) {
-      printi256(&num);
+   template<size_t Size>
+   inline void print( const fixed_key<Size>& val ) {
+      auto arr = val.extract_as_byte_array();
+      prints("0x");
+      printhex(static_cast<const void*>(arr.data()), arr.size());
    }
 
    /**
     * Prints a 64 bit names as base32 encoded string
     * @brief Prints a 64 bit names as base32 encoded string
-    * @param Value of 64 bit names to be printed
+    * @param name 64 bit name to be printed
     */
    inline void print( name name ) {
       printn(name.value);
@@ -104,6 +109,24 @@ namespace eosio {
    template<typename T>
    inline void print( T&& t ) {
       t.print();
+   }
+
+
+   inline void print_f( const char* s ) {
+      prints(s);
+   }
+
+   template <typename Arg, typename... Args>
+   inline void print_f( const char* s, Arg val, Args... rest ) {
+      while ( *s != '\0' ) {
+         if ( *s == '%' ) {
+            print( val );
+            print_f( s+1, rest... );
+            return;
+         }
+         prints_l( s, 1 );
+         s++;
+      }
    }
 
 

@@ -1,11 +1,14 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/producer_schedule.hpp>
+#include <eosio/chain/asset.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
+#include <boost/multiprecision/cpp_bin_float.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
-#include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/utf8.hpp>
@@ -28,67 +31,10 @@
 #include <thread>
 #include <condition_variable>
 
-
-
-using namespace IR;
-using namespace Runtime;
-using boost::asio::io_service;
-
-#if 0
-   // account.h/hpp expected account API balance interchange format
-   // must match account.hpp account_balance definition
-   PACKED_STRUCT(
-   struct account_balance
-   {
-      /**
-      * Name of the account who's balance this is
-      */
-      account_name account;
-
-      /**
-      * Balance for this account
-      */
-      asset eos_balance;
-
-      /**
-      * Staked balance for this account
-      */
-      asset staked_balance;
-
-      /**
-      * Unstaking balance for this account
-      */
-      asset unstaking_balance;
-
-      /**
-      * Time at which last unstaking occurred for this account
-      */
-      time last_unstaking_time;
-   })
-#endif
-
 namespace eosio { namespace chain {
    using namespace contracts;
-
-   /**
-    * Integration with the WASM Linker to resolve our intrinsics
-    */
-   struct root_resolver : Runtime::Resolver
-   {
-      bool resolve(const string& mod_name,
-                   const string& export_name,
-                   ObjectType type,
-                   ObjectInstance*& out) override
-      { try {
-         // Try to resolve an intrinsic first.
-         if(IntrinsicResolver::singleton.resolve(mod_name,export_name,type, out)) {
-            return true;
-         }
-
-         FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",mod_name)("export",export_name) );
-         return false;
-      } FC_CAPTURE_AND_RETHROW( (mod_name)(export_name) ) }
-   };
+   using namespace webassembly;
+   using namespace webassembly::common;
 
    /**
     *  Implementation class for the wasm cache
@@ -98,6 +44,7 @@ namespace eosio { namespace chain {
    struct wasm_cache_impl {
       wasm_cache_impl()
       {
+         check_wasm_opcode_dispositions();
          Runtime::init();
       }
 
@@ -109,7 +56,7 @@ namespace eosio { namespace chain {
        * returned before this can be destroyed
        */
       ~wasm_cache_impl() {
-         freeUnreferencedObjects({});
+         Runtime::freeUnreferencedObjects({});
       }
 
       /**
@@ -125,14 +72,14 @@ namespace eosio { namespace chain {
        * the instance handed out to other threads
        */
       struct code_info {
-         code_info( size_t mem_end, vector<char>&& mem_image )
-         :mem_end(mem_end),mem_image(std::forward<vector<char>>(mem_image))
+         explicit code_info(wavm::info&& wavm_info, binaryen::info&& binaryen_info)
+         : wavm_info(std::forward<wavm::info>(wavm_info))
+         , binaryen_info(std::forward<binaryen::info>(binaryen_info))
          {}
 
-         // a clean image of the memory used to sanitize things on checkin
-         size_t mem_start           = 0;
-         size_t mem_end             = 1<<16;
-         vector<char> mem_image;
+
+         wavm::info   wavm_info;
+         binaryen::info binaryen_info;
 
          // all existing instances of this code
          vector<unique_ptr<wasm_cache::entry>> instances;
@@ -213,34 +160,19 @@ namespace eosio { namespace chain {
 
             if (!pending_result) {
                // time to compile a brand new (maybe first) copy of this code
-               Module* module = new Module();
-               ModuleInstance* instance = nullptr;
-               size_t mem_end = 0;
-               vector<char> mem_image;
+
+               fc::optional<wavm::entry> wavm;
+               fc::optional<wavm::info> wavm_info;
+               fc::optional<binaryen::entry> binaryen;
+               fc::optional<binaryen::info> binaryen_info;
 
                try {
-                  Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
-                  WASM::serializeWithInjection(stream, *module);
-                  validate_eosio_wasm_constraints(*module);
+                  /// TODO: make validation generic
+                  wavm = wavm::entry::build(wasm_binary, wasm_binary_size);
+                  wavm_info.emplace(*wavm);
 
-                  root_resolver resolver;
-                  LinkResult link_result = linkModule(*module, resolver);
-                  instance = instantiateModule(*module, std::move(link_result.resolvedImports));
-                  FC_ASSERT(instance != nullptr);
-
-                  MemoryInstance* current_memory = Runtime::getDefaultMemory(instance);
-
-                  if(current_memory) {
-                     char *mem_ptr = &memoryRef<char>(current_memory, 0);
-                     const auto allocated_memory = Runtime::getDefaultMemorySize(instance);
-                     for (uint64_t i = 0; i < allocated_memory; ++i) {
-                        if (mem_ptr[i])
-                           mem_end = i + 1;
-                     }
-                     mem_image.resize(mem_end);
-                     memcpy(mem_image.data(), mem_ptr, mem_end);
-                  }
-
+                  binaryen = binaryen::entry::build(wasm_binary, wasm_binary_size);
+                  binaryen_info.emplace(*binaryen);
                } catch (...) {
                   pending_error = std::current_exception();
                }
@@ -249,9 +181,9 @@ namespace eosio { namespace chain {
                   // grab the lock and put this in the cache as unavailble
                   with_lock(_cache_lock, [&,this]() {
                      // find or create a new entry
-                     auto iter = _cache.emplace(code_id, code_info(mem_end, std::move(mem_image))).first;
+                     auto iter = _cache.emplace(code_id, code_info(std::move(*wavm_info),std::move(*binaryen_info))).first;
 
-                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(instance, module));
+                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(std::move(*wavm), std::move(*binaryen)));
                      pending_result = optional_entry_ref(*iter->second.instances.back().get());
                   });
                }
@@ -284,31 +216,35 @@ namespace eosio { namespace chain {
        * @param entry - the entry to return
        */
       void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
-        // sanitize by reseting the memory that may now be dirty
-        auto& info = (*fetch_info(code_id)).get();
-        if(getDefaultMemory(entry.instance)) {
-           char* memstart = &memoryRef<char>( getDefaultMemory(entry.instance), 0 );
-           memset( memstart + info.mem_end, 0, ((1<<16) - info.mem_end) );
-           memcpy( memstart, info.mem_image.data(), info.mem_end);
-        }
-        resetGlobalInstances(entry.instance);
+         // sanitize by reseting the memory that may now be dirty
+         auto& info = (*fetch_info(code_id)).get();
+         entry.wavm.reset(info.wavm_info);
+         entry.binaryen.reset(info.binaryen_info);
 
-        // under a lock, put this entry back in the available instances side of the instances vector
-        with_lock(_cache_lock, [&,this](){
-           // walk the vector and find this entry
-           auto iter = info.instances.begin();
-           while (iter->get() != &entry) {
-              ++iter;
-           }
+         // under a lock, put this entry back in the available instances side of the instances vector
+         with_lock(_cache_lock, [&,this](){
+            // walk the vector and find this entry
+            auto iter = info.instances.begin();
+            while (iter->get() != &entry) {
+               ++iter;
+            }
 
-           FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
+            FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
 
-           auto first_unavailable = (info.instances.begin() + info.available_instances);
-           if (iter != first_unavailable) {
-              std::swap(iter, first_unavailable);
-           }
-           info.available_instances++;
-        });
+            auto first_unavailable = (info.instances.begin() + info.available_instances);
+            if (iter != first_unavailable) {
+               std::swap(iter, first_unavailable);
+            }
+            info.available_instances++;
+         });
+      }
+
+      //initialize the memory for a cache entry
+      wasm_cache::entry& prepare_wasm_instance(wasm_cache::entry& wasm_cache_entry, const digest_type& code_id) {
+         auto& info = (*fetch_info(code_id)).get();
+         wasm_cache_entry.wavm.prepare(info.wavm_info);
+         wasm_cache_entry.binaryen.prepare(info.binaryen_info);
+         return wasm_cache_entry;
       }
 
       // mapping of digest to an entry for the code
@@ -329,16 +265,14 @@ namespace eosio { namespace chain {
       // see if there is an available entry in the cache
       auto result = _my->try_fetch_entry(code_id);
       if (result) {
-         return (*result).get();
+         wasm_cache::entry& wasm_cache_entry = (*result).get();
+         return _my->prepare_wasm_instance(wasm_cache_entry, code_id);
       }
-      return _my->fetch_entry(code_id, wasm_binary, wasm_binary_size);
+      return _my->prepare_wasm_instance(_my->fetch_entry(code_id, wasm_binary, wasm_binary_size), code_id);
    }
 
 
    void wasm_cache::checkin(const digest_type& code_id, entry& code ) {
-      MemoryInstance* default_mem = Runtime::getDefaultMemory(code.instance);
-      if(default_mem)
-         Runtime::shrinkMemory(default_mem, Runtime::getMemoryNumPages(default_mem) - 1);
       _my->return_entry(code_id, code);
    }
 
@@ -347,10 +281,10 @@ namespace eosio { namespace chain {
     */
    struct scoped_context {
       template<typename ...Args>
-      scoped_context(optional<wasm_context> &context, Args&... args)
+      scoped_context(optional<wasm_context> &context, Args&&... args)
       :context(context)
       {
-         context = wasm_context{ args... };
+         context.emplace( std::forward<Args>(args)... );
       }
 
       ~scoped_context() {
@@ -359,25 +293,6 @@ namespace eosio { namespace chain {
 
       optional<wasm_context>& context;
    };
-
-   void wasm_interface_impl::call(const string& entry_point, const vector<Value>& args, wasm_cache::entry& code, apply_context& context)
-   try {
-      FunctionInstance* call = asFunctionNullable(getInstanceExport(code.instance,entry_point) );
-      if( !call ) {
-         return;
-      }
-
-      FC_ASSERT( getFunctionType(call)->parameters.size() == args.size() );
-
-      auto context_guard = scoped_context(current_context, code, context);
-      runInstanceStartFunc(code.instance);
-      Runtime::invokeFunction(call,args);
-   } catch( const Runtime::Exception& e ) {
-      FC_THROW_EXCEPTION(wasm_execution_error,
-                         "cause: ${cause}\n${callstack}",
-                         ("cause", string(describeExceptionCause(e.cause)))
-                         ("callstack", e.callStack));
-   } FC_CAPTURE_AND_RETHROW()
 
    wasm_interface::wasm_interface()
       :my( new wasm_interface_impl() ) {
@@ -391,15 +306,42 @@ namespace eosio { namespace chain {
       return *single;
    }
 
-   void wasm_interface::apply( wasm_cache::entry& code, apply_context& context ) {
-      vector<Value> args = {Value(uint64_t(context.act.account)),
-                            Value(uint64_t(context.act.name))};
-      my->call("apply", args, code, context);
+   void wasm_interface::apply( wasm_cache::entry& code, apply_context& context, vm_type vm ) {
+      auto context_guard = scoped_context(my->current_context, code, context, vm);
+      switch (vm) {
+         case vm_type::wavm:
+            code.wavm.call_apply(context);
+            break;
+         case vm_type::binaryen:
+            code.binaryen.call_apply(context);
+            break;
+      }
    }
 
-   void wasm_interface::error( wasm_cache::entry& code, apply_context& context ) {
-      vector<Value> args = { /* */ };
-      my->call("error", args, code, context);
+   void wasm_interface::error( wasm_cache::entry& code, apply_context& context, vm_type vm ) {
+      auto context_guard = scoped_context(my->current_context, code, context, vm);
+      switch (vm) {
+         case vm_type::wavm:
+            code.wavm.call_error(context);
+            break;
+         case vm_type::binaryen:
+            code.binaryen.call_error(context);
+            break;
+      }
+   }
+
+   wasm_context& common::intrinsics_accessor::get_context(wasm_interface &wasm) {
+      FC_ASSERT(wasm.my->current_context.valid());
+      return *wasm.my->current_context;
+   }
+
+   const wavm::entry& wavm::entry::get(wasm_interface& wasm) {
+      return common::intrinsics_accessor::get_context(wasm).code.wavm;
+   }
+
+
+   const binaryen::entry& binaryen::entry::get(wasm_interface& wasm) {
+      return common::intrinsics_accessor::get_context(wasm).code.binaryen;
    }
 
 #if defined(assert)
@@ -408,17 +350,35 @@ namespace eosio { namespace chain {
 
 class context_aware_api {
    public:
-      context_aware_api(wasm_interface& wasm)
-      :context(intrinsics_accessor::get_context(wasm).context), code(intrinsics_accessor::get_context(wasm).code),
-       sbrk_bytes(intrinsics_accessor::get_context(wasm).sbrk_bytes)
-      {}
+      context_aware_api(wasm_interface& wasm, bool context_free = false )
+      :code(intrinsics_accessor::get_context(wasm).code),
+       context(intrinsics_accessor::get_context(wasm).context)
+      ,vm(intrinsics_accessor::get_context(wasm).vm)
+      {
+         if( context.context_free )
+            FC_ASSERT( context_free, "only context free api's can be used in this context" );
+         context.used_context_free_api |= !context_free;
+      }
 
    protected:
-      uint32_t&          sbrk_bytes;
-      wasm_cache::entry& code;
-      apply_context&     context;
+      apply_context&             context;
+      wasm_cache::entry&         code;
+      wasm_interface::vm_type    vm;
+
 };
 
+class context_free_api : public context_aware_api {
+   public:
+      context_free_api( wasm_interface& wasm )
+      :context_aware_api(wasm, true) {
+         /* the context_free_data is not available during normal application because it is prunable */
+         FC_ASSERT( context.context_free, "this API may only be called from context_free apply" );
+      }
+
+      int get_context_free_data( uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
+         return context.get_context_free_data( index, buffer, buffer_size );
+      }
+};
 class privileged_api : public context_aware_api {
    public:
       privileged_api( wasm_interface& wasm )
@@ -435,7 +395,7 @@ class privileged_api : public context_aware_api {
        *  Feature name should be base32 encoded name.
        */
       void activate_feature( int64_t feature_name ) {
-         FC_ASSERT( !"Unsupported Harfork Detected" );
+         FC_ASSERT( !"Unsupported Hardfork Detected" );
       }
 
       /**
@@ -452,7 +412,7 @@ class privileged_api : public context_aware_api {
                                 int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight,
                                 int64_t cpu_usec_per_period ) {
          auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
-         FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free to much space" );
+         FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free too much space" );
 
          auto& gdp = context.controller.get_dynamic_global_properties();
          context.mutable_db.modify( gdp, [&]( auto& p ) {
@@ -480,7 +440,6 @@ class privileged_api : public context_aware_api {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          producer_schedule_type psch;
          fc::raw::unpack(ds, psch);
-
          context.mutable_db.modify( context.controller.get_global_properties(),
             [&]( auto& gprops ) {
                  gprops.new_active_producers = psch;
@@ -549,7 +508,7 @@ class crypto_api : public context_aware_api {
          datastream<const char*> pubds( pub, publen );
 
          fc::raw::unpack(ds, s);
-         fc::raw::unpack(ds, p);
+         fc::raw::unpack(pubds, p);
 
          auto check = fc::crypto::public_key( s, digest, false );
          FC_ASSERT( check == p, "Error expected key different than recovered key" );
@@ -571,6 +530,22 @@ class crypto_api : public context_aware_api {
          auto result = fc::sha256::hash( data, datalen );
          FC_ASSERT( result == hash_val, "hash miss match" );
       }
+
+      void assert_sha1(array_ptr<char> data, size_t datalen, const fc::sha1& hash_val) {
+         auto result = fc::sha1::hash( data, datalen );
+         FC_ASSERT( result == hash_val, "hash miss match" );
+      }
+
+      void assert_sha512(array_ptr<char> data, size_t datalen, const fc::sha512& hash_val) {
+         auto result = fc::sha512::hash( data, datalen );
+         FC_ASSERT( result == hash_val, "hash miss match" );
+      }
+
+      void assert_ripemd160(array_ptr<char> data, size_t datalen, const fc::ripemd160& hash_val) {
+         auto result = fc::ripemd160::hash( data, datalen );
+         FC_ASSERT( result == hash_val, "hash miss match" );
+      }
+
 
       void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
          hash_val = fc::sha1::hash( data, datalen );
@@ -675,21 +650,6 @@ class console_api : public context_aware_api {
          context.console_append(fc::variant(v).get_string());
       }
 
-      void printi256(const uint256& num) {
-         // Assumes uint64_t stored in little endian format
-         context.console_append("0x");
-         uint64_t val;
-         for( auto i = 0; i < 4; ++i ) {
-            val = num.words[i];
-            // Reverse order of bytes in val:
-            val = ((val << 8) & 0xFF00FF00FF00FF00ULL) | ((val >> 8) & 0x00FF00FF00FF00FFULL);
-            val = ((val << 16) & 0xFFFF0000FFFF0000ULL) | ((val >> 16) & 0x0000FFFF0000FFFFULL);
-            val = (val << 32) | (val >> 32);
-            // Print next 8 bytes in hexidecimal:
-            context.console_append(fc::to_hex(reinterpret_cast<const char*>(&val), 8));
-         }
-      }
-
       void printd( wasm_double val ) {
          context.console_append(val.str());
       }
@@ -703,7 +663,7 @@ class console_api : public context_aware_api {
       }
 };
 
-#define DB_API_METHOD_WRAPPERS(IDX, TYPE)\
+#define DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(IDX, TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
          return context.IDX.store( scope, table, payer, id, secondary );\
       }\
@@ -734,6 +694,57 @@ class console_api : public context_aware_api {
       int db_##IDX##_previous( int iterator, uint64_t& primary ) {\
          return context.IDX.previous_secondary(iterator, primary);\
       }
+
+#define DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(IDX, ARR_SIZE, ARR_ELEMENT_TYPE)\
+      int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.store(scope, table, payer, id, data.value);\
+      }\
+      void db_##IDX##_update( int iterator, uint64_t payer, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len ) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.update(iterator, payer, data.value);\
+      }\
+      void db_##IDX##_remove( int iterator ) {\
+         return context.IDX.remove(iterator);\
+      }\
+      int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.find_secondary(code, scope, table, data, primary);\
+      }\
+      int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t primary ) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.find_primary(code, scope, table, data.value, primary);\
+      }\
+      int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.lowerbound_secondary(code, scope, table, data.value, primary);\
+      }\
+      int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table, array_ptr<ARR_ELEMENT_TYPE> data, size_t data_len, uint64_t& primary ) {\
+         FC_ASSERT( data_len == ARR_SIZE,\
+                    "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
+                    ("given",data_len)("expected",ARR_SIZE) );\
+         return context.IDX.upperbound_secondary(code, scope, table, data.value, primary);\
+      }\
+      int db_##IDX##_end( uint64_t code, uint64_t scope, uint64_t table ) {\
+         return context.IDX.end_secondary(code, scope, table);\
+      }\
+      int db_##IDX##_next( int iterator, uint64_t& primary  ) {\
+         return context.IDX.next_secondary(iterator, primary);\
+      }\
+      int db_##IDX##_previous( int iterator, uint64_t& primary ) {\
+         return context.IDX.previous_secondary(iterator, primary);\
+      }
+
 
 class database_api : public context_aware_api {
    public:
@@ -770,10 +781,9 @@ class database_api : public context_aware_api {
          return context.db_end_i64( code, scope, table );
       }
 
-      DB_API_METHOD_WRAPPERS(idx64,  uint64_t)
-      DB_API_METHOD_WRAPPERS(idx128, uint128_t)
-      DB_API_METHOD_WRAPPERS(idx256, sha256)
-
+      DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)
+      DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx128, uint128_t)
+      DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(idx256, 2, uint128_t)
 };
 
 
@@ -846,41 +856,47 @@ class db_index_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-      int load(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
-         auto res = call(&apply_context::load_record<IndexType, Scope>, code, scope, table, data, data_len);
-         //ilog("LOAD [${scope},${code},${table}] => ${res} :: ${HEX}", ("scope",scope)("code",code)("table",table)("res",res)("HEX", fc::to_hex(data, data_len)));
+      int load(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::load_record<IndexType, Scope>, scope, code, table, data, data_len);
          return res;
       }
 
-      int front(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::front_record<IndexType, Scope>, code, scope, table, data, data_len);
+      int front(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::front_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return res;
       }
 
-      int back(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::back_record<IndexType, Scope>, code, scope, table, data, data_len);
+      int back(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::back_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return res;
       }
 
-      int next(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::next_record<IndexType, Scope>, code, scope, table, data, data_len);
+      int next(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::next_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return res;
       }
 
-      int previous(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::previous_record<IndexType, Scope>, code, scope, table, data, data_len);
+      int previous(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::previous_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return res;
       }
 
-      int lower_bound(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::lower_bound_record<IndexType, Scope>, code, scope, table, data, data_len);
+      int lower_bound(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::lower_bound_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return res;
       }
 
-      int upper_bound(const account_name& code, const scope_name& scope, const name& table, array_ptr<char> data, size_t data_len) {
-         return call(&apply_context::upper_bound_record<IndexType, Scope>, code, scope, table, data, data_len);
+      int upper_bound(const scope_name& scope, const account_name& code, const name& table, array_ptr<char> data, size_t data_len) {
+         auto res = call(&apply_context::upper_bound_record<IndexType, Scope>, scope, code, table, data, data_len);
+         return res;
       }
 
 };
 
 class memory_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      memory_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
          return (char *)::memcpy(dest, src, length);
@@ -898,44 +914,53 @@ class memory_api : public context_aware_api {
          return (char *)::memset( dest, value, length );
       }
 
-      uint32_t sbrk(int num_bytes) {
-         // TODO: omitted checktime function from previous version of sbrk, may need to be put back in at some point
-         constexpr uint32_t NBPPL2  = IR::numBytesPerPageLog2;
-         constexpr uint32_t MAX_MEM = 1024 * 1024;
-
-         MemoryInstance*  default_mem    = Runtime::getDefaultMemory(code.instance);
-         if(!default_mem)
+      int sbrk(int num_bytes) {
+         // sbrk should only allow for memory to grow
+         if (num_bytes < 0)
             throw eosio::chain::page_memory_error();
 
-         const uint32_t         num_pages      = Runtime::getMemoryNumPages(default_mem);
-         const uint32_t         min_bytes      = (num_pages << NBPPL2) > UINT32_MAX ? UINT32_MAX : num_pages << NBPPL2;
-         const uint32_t         prev_num_bytes = sbrk_bytes; //_num_bytes;
-
-         // round the absolute value of num_bytes to an alignment boundary
-         num_bytes = (num_bytes + 7) & ~7;
-
-         if ((num_bytes > 0) && (prev_num_bytes > (MAX_MEM - num_bytes)))  // test if allocating too much memory (overflowed)
-            throw eosio::chain::page_memory_error();
-         else if ((num_bytes < 0) && (prev_num_bytes < (min_bytes - num_bytes))) // test for underflow
-            throw eosio::chain::page_memory_error();
-
-         // update the number of bytes allocated, and compute the number of pages needed
-         sbrk_bytes += num_bytes;
-         const uint32_t num_desired_pages = (sbrk_bytes + IR::numBytesPerPage - 1) >> NBPPL2;
-
-         // grow or shrink the memory to the desired number of pages
-         if (num_desired_pages > num_pages)
-            Runtime::growMemory(default_mem, num_desired_pages - num_pages);
-         else if (num_desired_pages < num_pages)
-            Runtime::shrinkMemory(default_mem, num_pages - num_desired_pages);
-
-         return prev_num_bytes;
+         switch(vm) {
+            case wasm_interface::vm_type::wavm:
+               return (uint32_t)code.wavm.sbrk(num_bytes);
+            case wasm_interface::vm_type::binaryen:
+               return (uint32_t)code.binaryen.sbrk(num_bytes);
+         }
       }
 };
 
 class transaction_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
+
+      void send_inline( array_ptr<char> data, size_t data_len ) {
+         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
+         FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
+
+         action act;
+         fc::raw::unpack<action>(data, data_len, act);
+         context.execute_inline(std::move(act));
+      }
+
+      void send_deferred( uint32_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
+         try {
+            // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
+            FC_ASSERT(data_len < config::default_max_gen_trx_size, "generated transaction too big");
+
+            deferred_transaction dtrx;
+            fc::raw::unpack<transaction>(data, data_len, dtrx);
+            dtrx.sender = context.receiver;
+            dtrx.sender_id = sender_id;
+            dtrx.execute_after = execute_after;
+            context.execute_deferred(std::move(dtrx));
+         } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
+      }
+};
+
+
+class context_free_transaction_api : public context_aware_api {
+   public:
+      context_free_transaction_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       int read_transaction( array_ptr<char> data, size_t data_len ) {
          bytes trx = context.get_packed_transaction();
@@ -960,42 +985,230 @@ class transaction_api : public context_aware_api {
         return context.trx_meta.trx().ref_block_prefix;
       }
 
-      void send_inline( array_ptr<char> data, size_t data_len ) {
-         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
-         FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
-
-         action act;
-         fc::raw::unpack<action>(data, data_len, act);
-         context.execute_inline(std::move(act));
-      }
-
-
-      void send_deferred( uint32_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
-         try {
-            // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
-            FC_ASSERT(data_len < config::default_max_gen_trx_size, "generated transaction too big");
-
-            deferred_transaction dtrx;
-            fc::raw::unpack<transaction>(data, data_len, dtrx);
-            dtrx.sender = context.receiver;
-            dtrx.sender_id = sender_id;
-            dtrx.execute_after = execute_after;
-            context.execute_deferred(std::move(dtrx));
-         } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
+      int get_action( uint32_t type, uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
+         return context.get_action( type, index, buffer, buffer_size );
       }
 
 };
 
+class compiler_builtins : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+      void __ashlti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
+         fc::uint128_t i(high, low);
+         i <<= shift;
+         ret = (unsigned __int128)i;
+      }
+
+      void __ashrti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
+         // retain the signedness
+         ret = high;
+         ret <<= 64;
+         ret |= low;
+         ret >>= shift;
+      }
+
+      void __lshlti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
+         fc::uint128_t i(high, low);
+         i <<= shift;
+         ret = (unsigned __int128)i;
+      }
+
+      void __lshrti3(__int128& ret, uint64_t low, uint64_t high, uint32_t shift) {
+         fc::uint128_t i(high, low);
+         i >>= shift;
+         ret = (unsigned __int128)i;
+      }
+
+      void __divti3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+         __int128 lhs = ha;
+         __int128 rhs = hb;
+
+         lhs <<= 64;
+         lhs |=  la;
+
+         rhs <<= 64;
+         rhs |=  lb;
+
+         FC_ASSERT(rhs != 0, "divide by zero");
+
+         lhs /= rhs;
+
+         ret = lhs;
+      }
+
+      void __udivti3(unsigned __int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+         unsigned __int128 lhs = ha;
+         unsigned __int128 rhs = hb;
+
+         lhs <<= 64;
+         lhs |=  la;
+
+         rhs <<= 64;
+         rhs |=  lb;
+
+         FC_ASSERT(rhs != 0, "divide by zero");
+
+         lhs /= rhs;
+         ret = lhs;
+      }
+
+      void __multi3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+         __int128 lhs = ha;
+         __int128 rhs = hb;
+
+         lhs <<= 64;
+         lhs |=  la;
+
+         rhs <<= 64;
+         rhs |=  lb;
+
+         lhs *= rhs;
+         ret = lhs;
+      }
+
+      void __modti3(__int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+         __int128 lhs = ha;
+         __int128 rhs = hb;
+
+         lhs <<= 64;
+         lhs |=  la;
+
+         rhs <<= 64;
+         rhs |=  lb;
+
+         FC_ASSERT(rhs != 0, "divide by zero");
+
+         lhs %= rhs;
+         ret = lhs;
+      }
+
+      void __umodti3(unsigned __int128& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb) {
+         unsigned __int128 lhs = ha;
+         unsigned __int128 rhs = hb;
+
+         lhs <<= 64;
+         lhs |=  la;
+
+         rhs <<= 64;
+         rhs |=  lb;
+
+         FC_ASSERT(rhs != 0, "divide by zero");
+
+         lhs %= rhs;
+         ret = lhs;
+      }
+
+      static constexpr uint32_t SHIFT_WIDTH = (sizeof(uint64_t)*8)-1;
+};
+
+class math_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+
+      void diveq_i128(unsigned __int128* self, const unsigned __int128* other) {
+         fc::uint128_t s(*self);
+         const fc::uint128_t o(*other);
+         FC_ASSERT( o != 0, "divide by zero" );
+
+         s = s/o;
+         *self = (unsigned __int128)s;
+      }
+
+      void multeq_i128(unsigned __int128* self, const unsigned __int128* other) {
+         fc::uint128_t s(*self);
+         const fc::uint128_t o(*other);
+         s *= o;
+         *self = (unsigned __int128)s;
+      }
+
+      uint64_t double_add(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
+                  + DOUBLE(*reinterpret_cast<double *>(&b));
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint64_t double_mult(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a))
+                  * DOUBLE(*reinterpret_cast<double *>(&b));
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint64_t double_div(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         DOUBLE divisor = DOUBLE(*reinterpret_cast<double *>(&b));
+         FC_ASSERT(divisor != 0, "divide by zero");
+         DOUBLE c = DOUBLE(*reinterpret_cast<double *>(&a)) / divisor;
+         double res = c.convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+
+      uint32_t double_eq(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) == DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint32_t double_lt(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) < DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint32_t double_gt(uint64_t a, uint64_t b) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&a)) > DOUBLE(*reinterpret_cast<double *>(&b));
+      }
+
+      uint64_t double_to_i64(uint64_t n) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         return DOUBLE(*reinterpret_cast<double *>(&n)).convert_to<int64_t>();
+      }
+
+      uint64_t i64_to_double(int64_t n) {
+         using DOUBLE = boost::multiprecision::cpp_bin_float_50;
+         double res = DOUBLE(n).convert_to<double>();
+         return *reinterpret_cast<uint64_t *>(&res);
+      }
+};
+
+REGISTER_INTRINSICS(math_api,
+   (diveq_i128,    void(int, int)            )
+   (multeq_i128,   void(int, int)            )
+   (double_add,    int64_t(int64_t, int64_t) )
+   (double_mult,   int64_t(int64_t, int64_t) )
+   (double_div,    int64_t(int64_t, int64_t) )
+   (double_eq,     int32_t(int64_t, int64_t) )
+   (double_lt,     int32_t(int64_t, int64_t) )
+   (double_gt,     int32_t(int64_t, int64_t) )
+   (double_to_i64, int64_t(int64_t)          )
+   (i64_to_double, int64_t(int64_t)          )
+);
+
+REGISTER_INTRINSICS(compiler_builtins,
+   (__ashlti3,     void(int, int64_t, int64_t, int)               )
+   (__ashrti3,     void(int, int64_t, int64_t, int)               )
+   (__lshlti3,     void(int, int64_t, int64_t, int)               )
+   (__lshrti3,     void(int, int64_t, int64_t, int)               )
+   (__divti3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__udivti3,     void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__modti3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__umodti3,     void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__multi3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+);
 
 REGISTER_INTRINSICS(privileged_api,
-   (activate_feature,          void(int64_t))
-   (is_feature_active,         int(int64_t))
-   (set_resource_limits,       void(int64_t,int64_t,int64_t,int64_t,int64_t))
-   (set_active_producers,      void(int,int))
-   (is_privileged,             int(int64_t))
-   (set_privileged,            void(int64_t, int))
-   (freeze_account,            void(int64_t, int))
-   (is_frozen,                 int(int64_t))
+   (activate_feature,          void(int64_t)                                 )
+   (is_feature_active,         int(int64_t)                                  )
+   (set_resource_limits,       void(int64_t,int64_t,int64_t,int64_t,int64_t) )
+   (set_active_producers,      void(int,int)                                 )
+   (is_privileged,             int(int64_t)                                  )
+   (set_privileged,            void(int64_t, int)                            )
+   (freeze_account,            void(int64_t, int)                            )
+   (is_frozen,                 int(int64_t)                                  )
 );
 
 REGISTER_INTRINSICS(checktime_api,
@@ -1003,10 +1216,10 @@ REGISTER_INTRINSICS(checktime_api,
 );
 
 REGISTER_INTRINSICS(producer_api,
-   (get_active_producers,      int(int, int))
+   (get_active_producers,      int(int, int) )
 );
 
-#define DB_SECONDARY_INDEX_METHOD_SEQ(IDX) \
+#define DB_SECONDARY_INDEX_METHODS_SIMPLE(IDX) \
    (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int))\
    (db_##IDX##_remove,         void(int))\
    (db_##IDX##_update,         void(int,int64_t,int))\
@@ -1018,6 +1231,18 @@ REGISTER_INTRINSICS(producer_api,
    (db_##IDX##_next,           int(int, int))\
    (db_##IDX##_previous,       int(int, int))
 
+#define DB_SECONDARY_INDEX_METHODS_ARRAY(IDX) \
+      (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int,int))\
+      (db_##IDX##_remove,         void(int))\
+      (db_##IDX##_update,         void(int,int64_t,int,int))\
+      (db_##IDX##_find_primary,   int(int64_t,int64_t,int64_t,int,int,int64_t))\
+      (db_##IDX##_find_secondary, int(int64_t,int64_t,int64_t,int,int,int))\
+      (db_##IDX##_lowerbound,     int(int64_t,int64_t,int64_t,int,int,int))\
+      (db_##IDX##_upperbound,     int(int64_t,int64_t,int64_t,int,int,int))\
+      (db_##IDX##_end,            int(int64_t,int64_t,int64_t))\
+      (db_##IDX##_next,           int(int, int))\
+      (db_##IDX##_previous,       int(int, int))
+
 REGISTER_INTRINSICS( database_api,
    (db_store_i64,        int(int64_t,int64_t,int64_t,int64_t,int,int))
    (db_update_i64,       void(int,int64_t,int,int))
@@ -1028,25 +1253,28 @@ REGISTER_INTRINSICS( database_api,
    (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t))
    (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
    (db_upperbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
-   (db_end_i64,   int(int64_t,int64_t,int64_t))
+   (db_end_i64,          int(int64_t,int64_t,int64_t))
 
-   DB_SECONDARY_INDEX_METHOD_SEQ(idx64)
-   DB_SECONDARY_INDEX_METHOD_SEQ(idx128)
-   DB_SECONDARY_INDEX_METHOD_SEQ(idx256)
+   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
+   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
+   DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
 );
 
 REGISTER_INTRINSICS(crypto_api,
-   (assert_recover_key,  void(int, int, int, int, int))
-   (recover_key,    int(int, int, int, int, int))
-   (assert_sha256,  void(int, int, int))
-   (sha1,           void(int, int, int))
-   (sha256,         void(int, int, int))
-   (sha512,         void(int, int, int))
-   (ripemd160,      void(int, int, int))
+   (assert_recover_key,     void(int, int, int, int, int) )
+   (recover_key,            int(int, int, int, int, int)  )
+   (assert_sha256,          void(int, int, int)           )
+   (assert_sha1,            void(int, int, int)           )
+   (assert_sha512,          void(int, int, int)           )
+   (assert_ripemd160,       void(int, int, int)           )
+   (sha1,                   void(int, int, int)           )
+   (sha256,                 void(int, int, int)           )
+   (sha512,                 void(int, int, int)           )
+   (ripemd160,              void(int, int, int)           )
 );
 
 REGISTER_INTRINSICS(string_api,
-   (assert_is_utf8,  void(int, int, int))
+   (assert_is_utf8,  void(int, int, int) )
 );
 
 REGISTER_INTRINSICS(system_api,
@@ -1064,11 +1292,11 @@ REGISTER_INTRINSICS(action_api,
 );
 
 REGISTER_INTRINSICS(apply_context,
-   (require_write_lock,    void(int64_t)            )
-   (require_read_lock,     void(int64_t, int64_t)   )
-   (require_recipient,     void(int64_t)            )
+   (require_write_lock,    void(int64_t)          )
+   (require_read_lock,     void(int64_t, int64_t) )
+   (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&)const)
-   (is_account,            int(int64_t)             )
+   (is_account,            int(int64_t)           )
 );
 
 REGISTER_INTRINSICS(console_api,
@@ -1076,28 +1304,35 @@ REGISTER_INTRINSICS(console_api,
    (prints_l,              void(int, int)  )
    (printi,                void(int64_t)   )
    (printi128,             void(int)       )
-   (printi256,             void(int)       )
    (printd,                void(int64_t)   )
    (printn,                void(int64_t)   )
    (printhex,              void(int, int)  )
 );
 
-REGISTER_INTRINSICS(transaction_api,
+REGISTER_INTRINSICS(context_free_transaction_api,
    (read_transaction,       int(int, int)            )
    (transaction_size,       int()                    )
    (expiration,             int()                    )
    (tapos_block_prefix,     int()                    )
    (tapos_block_num,        int()                    )
+   (get_action,            int (int, int, int, int)  )
+);
+
+REGISTER_INTRINSICS(transaction_api,
    (send_inline,           void(int, int)            )
    (send_deferred,         void(int, int, int, int)  )
 );
 
+REGISTER_INTRINSICS(context_free_api,
+   (get_context_free_data, int(int, int, int) )
+)
+
 REGISTER_INTRINSICS(memory_api,
-   (memcpy,                 int(int, int, int)   )
-   (memmove,                int(int, int, int)   )
-   (memcmp,                 int(int, int, int)   )
-   (memset,                 int(int, int, int)   )
-   (sbrk,                   int(int)             )
+   (memcpy,                 int(int, int, int)  )
+   (memmove,                int(int, int, int)  )
+   (memcmp,                 int(int, int, int)  )
+   (memset,                 int(int, int, int)  )
+   (sbrk,                   int(int)            )
 );
 
 } } /// eosio::chain

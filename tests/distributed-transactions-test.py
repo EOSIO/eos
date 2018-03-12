@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import testUtils
 
@@ -21,6 +21,7 @@ parser.add_argument("-s", type=str, help="topology", default="mesh")
 parser.add_argument("-v", help="verbose", action='store_true')
 parser.add_argument("--nodes-file", type=str, help="File containing nodes info in JSON format.")
 parser.add_argument("--seed", type=int, help="random seed", default=seed)
+parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
 parser.add_argument("--dump-error-details",
                     help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
                     action='store_true')
@@ -33,6 +34,7 @@ total_nodes = pnodes if args.n == 0 else args.n
 debug=args.v
 nodesFile=args.nodes_file
 seed=args.seed
+amINoon=not args.not_noon
 dumpErrorDetails=args.dump_error_details
 
 killWallet=True
@@ -43,6 +45,9 @@ if nodesFile is not None:
 testUtils.Utils.Debug=debug
 testSuccessful=False
 
+if not amINoon:
+    testUtils.Utils.iAmNotNoon()
+
 random.seed(seed) # Use a fixed seed for repeatability.
 cluster=testUtils.Cluster(walletd=True)
 walletMgr=testUtils.WalletMgr(True)
@@ -52,7 +57,6 @@ try:
 
     Print("Stand up walletd")
     if walletMgr.launch() is False:
-        cmdError("%s" % (WalletdName))
         errorExit("Failed to stand up eos walletd.")
 
     if nodesFile is not None:

@@ -2,8 +2,6 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <stltest/stltest.hpp> /// defines transfer struct (abi)
-
 // include entire libc
 #include <alloca.h>
 #include <assert.h>
@@ -195,7 +193,7 @@ namespace stltest {
           prints("f() called\n");
        }
 
-        static void on(const message& msg) {
+        static void on( const message& ) {
            /* manual initialization of global variable
            new(&std::__start_std_streams)std::ios_base::Init;
            */
@@ -246,7 +244,7 @@ namespace stltest {
 
            std::map<int, long> m;
            m.emplace(0, 1);
-           auto mit = m.lower_bound(2);
+           m.lower_bound(2);
 
            std::set<long> st;
            st.insert(0);
@@ -259,7 +257,7 @@ namespace stltest {
            //hs.insert(0);
 
            sort(dq.begin(), dq.end());
-           auto lit = find_if(l.begin(), l.end(), [](uint32_t f) { return f < 10; });
+           find_if(l.begin(), l.end(), [](uint32_t f) { return f < 10; });
            prints("STL test done.\n");
            //std::cout << "STL test done." << std::endl;
         }

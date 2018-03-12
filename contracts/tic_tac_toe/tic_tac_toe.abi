@@ -3,51 +3,51 @@
   "structs": [{
       "name": "game",
       "base": "",
-      "fields": {
-        "challenger": "account_name",
-        "host": "account_name",
-        "turn": "account_name",
-        "winner": "account_name",
-        "board": "uint8[]"
-      }
+      "fields": [
+        {"name":"challenger", "type":"account_name"},
+        {"name":"host", "type":"account_name"},
+        {"name":"turn", "type":"account_name"},
+        {"name":"winner", "type":"account_name"},
+        {"name":"board", "type":"uint8[]"}
+      ]
     },{
       "name": "create",
       "base": "",
-      "fields": {
-        "challenger": "account_name",
-        "host": "account_name"
-      }
+      "fields": [
+        {"name":"challenger", "type":"account_name"},
+        {"name":"host", "type":"account_name"}
+      ]
     },{
       "name": "restart",
       "base": "",
-      "fields": {
-        "challenger": "account_name",
-        "host": "account_name",
-        "by": "account_name"
-      }
+      "fields": [
+        {"name":"challenger", "type":"account_name"},
+        {"name":"host", "type":"account_name"},
+        {"name":"by", "type":"account_name"}
+      ]
     },{
       "name": "close",
       "base": "",
-      "fields": {
-        "challenger": "account_name",
-        "host": "account_name"
-      }
+      "fields": [
+        {"name":"challenger", "type":"account_name"},
+        {"name":"host", "type":"account_name"}
+      ]
     },{
       "name": "movement",
       "base": "",
-      "fields": {
-        "row": "uint32",
-        "column": "uint32"
-      }
+      "fields": [
+        {"name":"row", "type":"uint32"},
+        {"name":"column", "type":"uint32"}
+      ]
     },{
       "name": "move",
       "base": "",
-      "fields": {
-        "challenger": "account_name",
-        "host": "account_name",
-        "by": "account_name",
-        "movement": "movement"
-      }
+      "fields": [
+        {"name":"challenger", "type":"account_name"},
+        {"name":"host", "type":"account_name"},
+        {"name":"by", "type":"account_name"},
+        {"name":"movement", "type":"movement"}
+      ]
     }
   ],
   "actions": [{

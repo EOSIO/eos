@@ -6,6 +6,10 @@
 
 #include <stdint.h>
 #include <wchar.h>
+/*
+struct checksum_base {
+};
+*/
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,15 +38,23 @@ typedef int64_t share_type;
 #define PACKED(X) __attribute((packed)) X
 
 struct public_key {
-   uint8_t data[33];
+   char data[34];
 };
 
 struct signature {
-   uint8_t data[65];
+   uint8_t data[66];
 };
 
-struct checksum {
-   uint64_t hash[4];
+struct checksum256 {
+   uint8_t hash[32];
+};
+
+struct checksum160 {
+   uint8_t hash[20];
+};
+
+struct checksum512 {
+   uint8_t hash[64];
 };
 
 struct fixed_string16 {
@@ -63,14 +75,6 @@ struct account_permission {
    account_name account;
    permission_name permission;
 };
-
-typedef union {
-   uint8_t   bytes[32];
-   uint16_t  uint16s[16];
-   uint32_t  uint32s[8];
-   uint64_t  uint64s[4];
-   uint128_t uint128s[2];
-} uint256;
 
 #ifdef __cplusplus
 } /// extern "C"

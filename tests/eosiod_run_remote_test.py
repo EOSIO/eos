@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import testUtils
 
@@ -13,12 +13,14 @@ def errorExit(msg="", errorCode=1):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-v", help="verbose", action='store_true')
+parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
 parser.add_argument("--dump-error-details",
                     help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
                     action='store_true')
 
 args = parser.parse_args()
 debug=args.v
+amINoon=not args.not_noon
 dumpErrorDetails=args.dump_error_details
 
 testUtils.Utils.Debug=debug
@@ -29,7 +31,12 @@ delay=1
 pnodes=1
 total_nodes=pnodes
 actualTest="tests/eosiod_run_test.py"
+if not amINoon:
+    actualTest="tests/eosd_run_test.py"
 testSuccessful=False
+
+if not amINoon:
+    testUtils.Utils.iAmNotNoon()
 
 cluster=testUtils.Cluster()
 try:
@@ -48,8 +55,8 @@ try:
     if not cluster.waitOnClusterBlockNumSync(3):
         errorExit("Cluster never stabilized")
 
-    cmd="%s --dont-launch --exit-early %s" % (actualTest, "-v" if debug else "")
-    Print("Starting up eosiod test: %s" % (actualTest))
+    cmd="%s --dont-launch %s %s" % (actualTest, "-v" if debug else "", "" if amINoon else "--not-noon")
+    Print("Starting up %s test: %s" % ("eosiod" if amINoon else "eosd", actualTest))
     Print("cmd: %s\n" % (cmd))
     if 0 != subprocess.call(cmd, shell=True):
         errorExit("failed to run cmd.")

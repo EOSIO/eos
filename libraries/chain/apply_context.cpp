@@ -23,11 +23,10 @@ void apply_context::exec_one()
             // get code from cache
             auto code = mutable_controller.get_wasm_cache().checkout_scoped(a.code_version, a.code.data(),
                                                                             a.code.size());
-
             // get wasm_interface
             auto &wasm = wasm_interface::get();
             wasm.apply(code, *this);
-         }
+      }
       }
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 
@@ -95,14 +94,14 @@ void apply_context::exec_one()
 void apply_context::exec()
 {
    _notified.push_back(act.account);
-
    for( uint32_t i = 0; i < _notified.size(); ++i ) {
       receiver = _notified[i];
       exec_one();
    }
 
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
-      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta);
+      EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
+      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta, recurse_depth + 1 );
       ncontext.exec();
       append_results(move(ncontext.results));
    }
@@ -116,6 +115,7 @@ bool apply_context::is_account( const account_name& account )const {
 void apply_context::require_authorization( const account_name& account )const {
   for( const auto& auth : act.authorization )
      if( auth.actor == account ) return;
+  wdump((act));
   EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}", ("account",account));
 }
 void apply_context::require_authorization(const account_name& account,
@@ -304,6 +304,45 @@ void apply_context::update_db_usage( const account_name& payer, int64_t delta ) 
 }
 
 
+int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const
+{
+   const transaction& trx = trx_meta.trx();
+   const action* act = nullptr;
+   if( type == 0 ) {
+      if( index >= trx.context_free_actions.size() )
+         return -1;
+      act = &trx.context_free_actions[index];
+   }
+   else if( type == 1 ) {
+      if( index >= trx.actions.size() )
+         return -1;
+      act = &trx.actions[index];
+   }
+
+   auto ps = fc::raw::pack_size( *act );
+   if( ps <= buffer_size ) {
+      fc::datastream<char*> ds(buffer, buffer_size);
+      fc::raw::pack( ds, *act );
+   }
+   return ps;
+}
+
+int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const {
+   if( index >= trx_meta.context_free_data.size() ) return -1;
+
+   auto s = trx_meta.context_free_data[index].size();
+
+   if( buffer_size == 0 ) return s;
+
+   if( buffer_size < s )
+      memcpy( buffer, trx_meta.context_free_data.data(), buffer_size );
+   else
+      memcpy( buffer, trx_meta.context_free_data.data(), s );
+
+   return s;
+}
+
+
 int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
    require_write_lock( scope );
    const auto& tab = find_or_create_table( receiver, scope, table );
@@ -376,10 +415,9 @@ int apply_context::db_get_i64( int iterator, char* buffer, size_t buffer_size ) 
 }
 
 int apply_context::db_next_i64( int iterator, uint64_t& primary ) {
-   if( iterator < -1 ) // is end iterator
-      return iterator; // Is ++end() == end() desired behavior?
+   if( iterator < -1 ) return -1; // cannot increment past end iterator of table
 
-   const auto& obj = keyval_cache.get( iterator );
+   const auto& obj = keyval_cache.get( iterator ); // Check for iterator != -1 happens in this call
    const auto& idx = db.get_index<contracts::key_value_index, contracts::by_scope_primary>();
 
    auto itr = idx.iterator_to( obj );
@@ -400,11 +438,11 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
       FC_ASSERT( tab, "not a valid end iterator" );
 
       auto itr = idx.upper_bound(tab->id);
-      if( itr == idx.begin() ) return iterator; // Empty table
+      if( itr == idx.begin() ) return -1; // Empty table
 
       --itr;
 
-      if( itr->t_id != tab->id ) return iterator; // Empty table
+      if( itr->t_id != tab->id ) return -1; // Empty table
 
       primary = itr->primary_key;
       return keyval_cache.add(*itr);
@@ -413,11 +451,11 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
    const auto& obj = keyval_cache.get(iterator);
 
    auto itr = idx.iterator_to(obj);
-   if( itr == idx.begin() ) return keyval_cache.get_end_iterator_by_table_id(obj.t_id);
+   if( itr == idx.begin() ) return -1; // cannot decrement past beginning iterator of table
 
    --itr;
 
-   if( itr->t_id != obj.t_id ) return keyval_cache.get_end_iterator_by_table_id(obj.t_id);
+   if( itr->t_id != obj.t_id ) return -1; // cannot decrement past beginning iterator of table
 
    primary = itr->primary_key;
    return keyval_cache.add(*itr);

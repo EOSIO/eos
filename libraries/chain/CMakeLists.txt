@@ -27,28 +27,24 @@ add_library( eosio_chain
              contracts/genesis_state.cpp
              contracts/abi_serializer.cpp
 
+             webassembly/wavm.cpp
+             webassembly/binaryen.cpp
 
              ${HEADERS}
              transaction_metadata.cpp)
 
-target_link_libraries( eosio_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime )
+target_link_libraries( eosio_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime
+                       wasm asmjs passes cfg ast emscripten-optimizer support
+                     )
 target_include_directories( eosio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
+                                   "${CMAKE_CURRENT_SOURCE_DIR}/../../externals/binaryen/src"
                             )
 
 if(MSVC)
   set_source_files_properties( db_init.cpp db_block.cpp database.cpp block_log.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
 endif(MSVC)
-
-INSTALL( TARGETS
-   eosio_chain
-
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
-)
-INSTALL( FILES ${HEADERS} DESTINATION "include/eosio/chain" )
 
 add_subdirectory(test)
 

@@ -13,7 +13,7 @@ namespace  eosio {
     *  @details Converts a base32 symbol into its binary representation, used by string_to_name()
     *  @ingroup types
     */
-   static constexpr char char_to_symbol( char c ) {
+   static constexpr  char char_to_symbol( char c ) {
       if( c >= 'a' && c <= 'z' )
          return (c - 'a') + 6;
       if( c >= '1' && c <= '5' )
@@ -39,7 +39,7 @@ namespace  eosio {
 
       for( uint32_t i = 0; i <= 12; ++i ) {
          uint64_t c = 0;
-         if( i < len && i <= 12 ) c = char_to_symbol( str[i] );
+         if( i < len && i <= 12 ) c = uint64_t(char_to_symbol( str[i] ));
 
          if( i < 12 ) {
             c &= 0x1f;
@@ -88,14 +88,5 @@ namespace  eosio {
       }
    };
    /// @}
-
-   bool operator==( const uint256& a, const uint256& b ) {
-      return a.uint128s[0] == b.uint128s[0] && a.uint128s[1] == b.uint128s[1];
-   }
-
-   bool operator!=( const uint256& a, const uint256& b ) {
-      return !(a == b);
-   }
-
 
 } // namespace eos

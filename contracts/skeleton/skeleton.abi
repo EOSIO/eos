@@ -7,18 +7,18 @@
   "structs": [{
       "name": "transfer",
       "base": "",
-      "fields": {
-        "from": "account_name",
-        "to": "account_name",
-        "amount": "uint64"
-      }
+      "fields": [
+        {"name":"from", "type":"account_name"},
+        {"name":"to", "type":"account_name"},
+        {"name":"amount", "type":"uint64"}
+      ]
     },{
       "name": "account",
       "base": "",
-      "fields": {
-        "account": "name",
-        "balance": "uint64"
-      }
+      "fields": [
+        {"name":"account", "type":"name"},
+        {"name":"balance", "type":"uint64"}
+      ]
     }
   ],
   "actions": [{

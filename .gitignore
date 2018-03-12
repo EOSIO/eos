@@ -48,12 +48,14 @@ programs/eos-walletd/eos-walletd
 programs/eosiod/eosiod
 programs/eosioc/eosioc
 programs/launcher/launcher
+programs/eosio-abigen/eosio-abigen
 
 tests/app_test
 tests/chain_bench
 tests/chain_test
 tests/intense_test
 tests/performance_test
+tests/tests/config.hpp
 
 doxygen
 
