@@ -101,6 +101,10 @@ void apply_eosio_newaccount(apply_context& context) {
 
    db.create<resource_limits_object>([&]( auto& bu ) { bu.owner = create.name; });
 
+   context.require_recipient()
+
+
+
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
 

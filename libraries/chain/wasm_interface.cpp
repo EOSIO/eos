@@ -436,6 +436,7 @@ class privileged_api : public context_aware_api {
                   pending_limits.ram_bytes = limits.ram_bytes;
                   pending_limits.net_weight = limits.net_weight;
                   pending_limits.cpu_weight = limits.cpu_weight;
+                  pending_limits.pending = true;
                });
             } else {
                return *pending_limits;
@@ -457,11 +458,18 @@ class privileged_api : public context_aware_api {
 
 
       void get_resource_limits( account_name account, int64_t& ram_bytes, int64_t& net_weight, int64_t cpu_weight ) {
-         auto& buo = context.db.get<resource_limits_object,by_owner>( account );
-         ram_bytes = buo.ram_bytes;
-         net_weight = buo.net_weight;
-         cpu_weight = buo.cpu_weight;
+         const auto* pending_buo = context.db.find<resource_limits_object,by_owner>( boost::make_tuple(account, true) );
+         if (pending_buo) {
+            ram_bytes  = pending_buo->ram_bytes;
+            net_weight = pending_buo->net_weight;
+            cpu_weight = pending_buo->cpu_weight;
+         } else {
+            const auto& buo = context.db.get<resource_limits_object,by_owner>( boost::make_tuple( account, false ) );
+            ram_bytes  = buo.ram_bytes;
+            net_weight = buo.net_weight;
+            cpu_weight = buo.cpu_weight;
          }
+      }
 
       void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
          datastream<const char*> ds( packed_producer_schedule, datalen );
