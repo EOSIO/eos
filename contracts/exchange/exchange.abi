@@ -22,6 +22,16 @@
       ]
     },
     {
+      "name": "upmargin",
+      "base": "",
+      "fields": [
+        {"name":"borrower",         "type":"account_name"},
+        {"name":"market",           "type":"symbol"}
+        {"name":"delta_borrow",     "type":"extended_asset"}
+        {"name":"delta_collateral", "type":"extended_asset"}
+      ]
+    },
+    {
       "name": "lend",
       "base": "",
       "fields": [
@@ -123,6 +133,7 @@
     { "name": "issue", "type": "issue" }, 
     { "name": "lend", "type": "lend" }, 
     { "name": "unlend", "type": "unlend" }, 
+    { "name": "upmargin", "type": "upmargin" }, 
     { "name": "create", "type": "create" }
   ],
   "tables": [{

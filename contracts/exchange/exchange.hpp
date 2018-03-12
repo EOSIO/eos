@@ -82,12 +82,12 @@ namespace eosio {
          };
 
          struct upmargin {
-            symbol_type      market;
             account_name     borrower;
+            symbol_type      market;
             extended_asset   delta_borrow;
             extended_asset   delta_collateral;
 
-            EOSLIB_SERIALIZE( upmargin, (market)(borrower)(delta_borrow)(delta_collateral) )
+            EOSLIB_SERIALIZE( upmargin, (borrower)(market)(delta_borrow)(delta_collateral) )
          };
 
          struct trade {
