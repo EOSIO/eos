@@ -7,8 +7,6 @@
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/dispatcher.hpp>
 
-using namespace eosio;
-
 namespace noop {
    using std::string;
 

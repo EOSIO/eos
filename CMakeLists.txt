@@ -1,5 +1,6 @@
 # Defines EOS library target.
 project( EOS )
+
 cmake_minimum_required( VERSION 2.8.12 )
 
 enable_testing()
@@ -7,8 +8,10 @@ enable_testing()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
-INCLUDE( VersionMacros )
-INCLUDE( SetupTargetMacros )
+include( GNUInstallDirs )
+include( VersionMacros )
+include( SetupTargetMacros )
+include( InstallDirectoryPermissions )
 
 set( BLOCKCHAIN_NAME "Eos" )
 set( CMAKE_CXX_STANDARD 14 )
@@ -17,8 +20,8 @@ set(VERSION_MAJOR 3)
 set(VERSION_MINOR 0)
 set(VERSION_PATCH 1)
 
-set( CLI_CLIENT_EXECUTABLE_NAME eos_client )
-set( GUI_CLIENT_EXECUTABLE_NAME eos )
+set( CLI_CLIENT_EXECUTABLE_NAME eosioc )
+set( GUI_CLIENT_EXECUTABLE_NAME eosio )
 set( CUSTOM_URL_SCHEME "gcs" )
 set( INSTALLER_APP_ID "68ad7005-8eee-49c9-95ce-9eed97e5b347" )
 
@@ -44,6 +47,34 @@ set(EOS_EGENESIS_JSON "${CMAKE_CURRENT_SOURCE_DIR}/genesis.json" )
 if (USE_PCH)
   include (cotire)
 endif(USE_PCH)
+
+# add defaults for openssl
+if ("${OPENSSL_ROOT_DIR}" STREQUAL "")
+   if (NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
+      set(OPENSSL_ROOT_DIR $ENV{OPENSSL_ROOT_DIR})
+      set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
+   elseif (APPLE)
+      set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")
+      set(OPENSSL_INCLUDE_DIR "/usr/local/opt/openssl/include")
+   elseif(UNIX AND NOT APPLE)
+      set(OPENSSL_ROOT_DIR "/usr/include/openssl")
+      set(OPENSSL_INCLUDE_DIR "/usr/include/openssl/include")
+   else()
+      message(FATAL_ERROR "openssl not found and don't know where to look, please specify OPENSSL_ROOT_DIR")
+   endif()
+endif()
+
+if ("${OPENSSL_LIBRARIES}" STREQUAL "")
+   if (NOT "$ENV{OPENSSL_LIBRARIES}" STREQUAL "")
+      set(OPENSSL_LIBRARIES $ENV{OPENSSL_LIBRARIES})
+   elseif (APPLE)
+      set(OPENSSL_LIBRARIES "/usr/local/opt/openssl/lib")
+   elseif(UNIX AND NOT APPLE)
+      set(OPENSSL_LIBRARIES "/usr/include/openssl")
+   else()
+      message(FATAL_ERROR "openssl libs not found and don't know where to look, please specify OPENSSL_LIBRARIES")
+   endif()
+endif()
 
 if(UNIX)
   if(APPLE)
@@ -113,12 +144,6 @@ if( WIN32 )
 
 else( WIN32 ) # Apple AND Linux
 
-    find_library(READLINE_LIBRARIES NAMES readline)
-    find_path(READLINE_INCLUDE_DIR readline/readline.h)
-    #if(NOT READLINE_INCLUDE_DIR OR NOT READLINE_LIBRARIES)
-    #  MESSAGE(FATAL_ERROR "Could not find lib readline.")
-    #endif()
-
     if( APPLE )
         # Apple Specific Options Here
         message( STATUS "Configuring Eos on OS X" )
@@ -163,20 +188,25 @@ if(ENABLE_COVERAGE_TESTING)
   find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
+add_subdirectory( externals )
+
 include(wasm)
-include(installer)
 include(softfloat)
 
-add_subdirectory( externals )
-add_subdirectory( contracts )
 add_subdirectory( libraries )
+add_subdirectory( contracts )
 add_subdirectory( plugins )
 add_subdirectory( programs )
 add_subdirectory( scripts )
 add_subdirectory( tests )
 add_subdirectory( tools )
+add_subdirectory( debian )
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis.json ${CMAKE_CURRENT_BINARY_DIR}/genesis.json COPYONLY)
+install(FILES genesis.json DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/node_00)
+install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)
+install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/node_00)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis.json ${CMAKE_CURRENT_BINARY_DIR}/etc/eosio/node_00/genesis.json COPYONLY)
 
+include(installer)
 
 include(doxygen)

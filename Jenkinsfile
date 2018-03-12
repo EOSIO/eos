@@ -46,6 +46,14 @@ pipeline {
                             ctest --output-on-failure
                         '''
                     }
+                    post {
+                        failure {
+                            archiveArtifacts 'build/genesis.json'
+                            archiveArtifacts 'build/tn_data_00/config.ini'
+                            archiveArtifacts 'build/tn_data_00/stderr.txt'
+                            archiveArtifacts 'build/test_walletd_output.log'
+                        }
+                    }
                 }
                 stage('MacOS') {
                     agent { label 'MacOS' }
@@ -59,6 +67,14 @@ pipeline {
                             ctest --output-on-failure
                         '''
                     }
+                    post {
+                        failure {
+                            archiveArtifacts 'build/genesis.json'
+                            archiveArtifacts 'build/tn_data_00/config.ini'
+                            archiveArtifacts 'build/tn_data_00/stderr.txt'
+                            archiveArtifacts 'build/test_walletd_output.log'
+                        }
+                    }
                 }
                 stage('Fedora') {
                     agent { label 'Fedora' }
@@ -71,6 +87,14 @@ pipeline {
                             echo "OK!"
                             ctest --output-on-failure
                         '''
+                    }
+                    post {
+                        failure {
+                            archiveArtifacts 'build/genesis.json'
+                            archiveArtifacts 'build/tn_data_00/config.ini'
+                            archiveArtifacts 'build/tn_data_00/stderr.txt'
+                            archiveArtifacts 'build/test_walletd_output.log'
+                        }
                     }
                 }
             }

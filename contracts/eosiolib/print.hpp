@@ -1,4 +1,4 @@
-/**
+/** 
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
@@ -50,7 +50,7 @@ namespace eosio {
    }
 
    inline void print( long num ) {
-      printi(num);
+      printi(uint64_t(num));
    }
 
    /**

@@ -29,7 +29,20 @@ add_subdirectory(simpledb)
 add_subdirectory(test.system)
 add_subdirectory(noop)
 
-install( DIRECTORY eosiolib DESTINATION include/ )
-install( DIRECTORY musl DESTINATION include/ )
-install( DIRECTORY libc++ DESTINATION include/ )
-install( DIRECTORY skeleton DESTINATION share/ )
+file(GLOB SKELETONS RELATIVE ${CMAKE_SOURCE_DIR}/contracts "skeleton/*")
+
+# Documented multiple output support is broken, so properly setting up the multiple
+# dependencies in the custom target is not possible.  (CMake 3.5)
+add_custom_command(OUTPUT share/eosio/skeleton/skeleton.cpp
+                   COMMAND ${CMAKE_COMMAND} -E make_directory ../share/eosio/skeleton
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/skeleton ../share/eosio/skeleton
+                   DEPENDS ${SKELETONS}
+                   COMMENT Copying skeleton contract...
+                   VERBATIM)
+add_custom_target(copy_skeleton_contract ALL DEPENDS share/eosio/skeleton/skeleton.cpp)
+
+install(DIRECTORY eosiolib DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
+install(DIRECTORY musl DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
+install(DIRECTORY libc++ DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR})
+install(DIRECTORY skeleton DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/eosio)
+install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_DATAROOTDIR}/eosio)

@@ -360,8 +360,8 @@ class context_aware_api {
       }
 
    protected:
-      apply_context&             context;
       wasm_cache::entry&         code;
+      apply_context&             context;
       wasm_interface::vm_type    vm;
 
 };
@@ -408,8 +408,8 @@ class privileged_api : public context_aware_api {
       }
 
       void set_resource_limits( account_name account,
-                                int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight,
-                                int64_t cpu_usec_per_period ) {
+                                uint64_t ram_bytes, int64_t net_weight, int64_t cpu_weight,
+                                int64_t /*cpu_usec_per_period*/ ) {
          auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
          FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free too much space" );
 
@@ -1208,6 +1208,105 @@ class compiler_builtins : public context_aware_api {
          lhs %= rhs;
          ret = lhs;
       }
+      
+      void __addtf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
+         ret = f128_add( a, b ); 
+      }
+      void __subtf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
+         ret = f128_sub( a, b ); 
+      }
+      void __multf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
+         ret = f128_mul( a, b ); 
+      }
+      void __divtf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
+         ret = f128_div( a, b ); 
+      }
+      int __eqtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ la, ha }};
+         return f128_eq( a, b ); 
+      }
+      int __netf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ la, ha }};
+         return !f128_eq( a, b ); 
+      }
+      int __getf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ la, ha }};
+         return !f128_lt( a, b ); 
+      }
+      int __gttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ la, ha }};
+         return !f128_lt( a, b ) && !f128_eq( a, b ); 
+      }
+      int __letf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ la, ha }};
+         return f128_le( a, b ); 
+      }
+      int __lttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ la, ha }};
+         return f128_lt( a, b ); 
+      }
+      int __cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ la, ha }};
+         if ( f128_lt( a, b ) )
+            return -1;
+         if ( f128_eq( a, b ) )
+            return 0;
+         return 1;
+      }
+      int __unordtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ la, ha }};
+         if ( f128_isSignalingNaN( a ) || f128_isSignalingNaN( b ) )
+            return 1;
+         return 0;
+      }
+      void __extendsftf2( float128_t& ret, uint32_t f ) { 
+         float32_t in = { f };
+         ret = f32_to_f128( in ); 
+      }
+      void __extenddftf2( float128_t& ret, uint64_t f ) { 
+         float64_t in = { f };
+         ret = f64_to_f128( in ); 
+      }
+      int64_t __fixtfdi( uint64_t l, uint64_t h ) { 
+         float128_t f = {{ l, h }};
+         return f128_to_i64( f, 0, false ); 
+      } 
+      int32_t __fixtfsi( uint64_t l, uint64_t h ) { 
+         float128_t f = {{ l, h }};
+         return f128_to_i32( f, 0, false ); 
+      } 
+      uint64_t __fixunstfdi( uint64_t l, uint64_t h ) { 
+         float128_t f = {{ l, h }};
+         return f128_to_ui64( f, 0, false ); 
+      } 
+      uint32_t __fixunstfsi( uint64_t l, uint64_t h ) { 
+         float128_t f = {{ l, h }};
+         return f128_to_ui32( f, 0, false ); 
+      } 
+      uint64_t __trunctfdf2( uint64_t l, uint64_t h ) { 
+         float128_t f = {{ l, h }};
+         return f128_to_f64( f ).v; 
+      } 
+      uint32_t __trunctfsf2( uint64_t l, uint64_t h ) { 
+         float128_t f = {{ l, h }};
+         return f128_to_f32( f ).v; 
+      } 
 
       static constexpr uint32_t SHIFT_WIDTH = (sizeof(uint64_t)*8)-1;
 };
@@ -1308,6 +1407,25 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__modti3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
    (__umodti3,     void(int, int64_t, int64_t, int64_t, int64_t)  )
    (__multi3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__addtf3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__subtf3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__multf3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__divtf3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__eqtf2,       int(int64_t, int64_t, int64_t, int64_t)        )
+   (__netf2,       int(int64_t, int64_t, int64_t, int64_t)        )
+   (__getf2,       int(int64_t, int64_t, int64_t, int64_t)        )
+   (__gttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
+   (__lttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
+   (__cmptf2,      int(int64_t, int64_t, int64_t, int64_t)        )
+   (__unordtf2,    int(int64_t, int64_t, int64_t, int64_t)        )
+   (__extendsftf2, void(int, int)                                 )      
+   (__extenddftf2, void(int, int64_t)                             )      
+   (__fixtfdi,     int64_t(int64_t, int64_t)                      )
+   (__fixtfsi,     int(int64_t, int64_t)                          )
+   (__fixunstfdi,  int64_t(int64_t, int64_t)                      )
+   (__fixunstfsi,  int(int64_t, int64_t)                          )
+   (__trunctfdf2,  int64_t(int64_t, int64_t)                      )
+   (__trunctfsf2,  int(int64_t, int64_t)                          )
 );
 
 REGISTER_INTRINSICS(privileged_api,

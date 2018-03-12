@@ -67,12 +67,12 @@ namespace eosio {
           };
 
           struct currency_stats {
-             uint64_t   symbol = token_type::symbol;
              token_type supply;
+             uint64_t   symbol = token_type::symbol;
 
              auto primary_key() const { return symbol; }
 
-             EOSLIB_SERIALIZE( currency_stats, (symbol)(supply) )
+             EOSLIB_SERIALIZE( currency_stats, (supply)(symbol) )
           };
 
           /**
