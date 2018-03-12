@@ -67,13 +67,13 @@ const static uint16_t   max_recursion_depth = 6;
 /**
  *  The number of sequential blocks produced by a single producer
  */
-const static int producer_repititions = 12;
+const static int producer_repetitions = 12;
 
 /**
  * The number of blocks produced per round is based upon all producers having a chance
  * to produce all of their consecutive blocks.
  */
-//const static int blocks_per_round = producer_count * producer_repititions;
+//const static int blocks_per_round = producer_count * producer_repetitions;
 
 const static int irreversible_threshold_percent= 70 * percent_1;
 
