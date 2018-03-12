@@ -458,14 +458,14 @@ namespace eosiosystem {
 
             genesis_balance_index_type genesis_balances( system_account, system_account );
             auto pubkeyidx = genesis_balances.template get_index<N(genpubkey)>();
-            auto gbitr = pubkeyidx.find( to_key256(cg.pubkey_hash));
+            auto gbitr = pubkeyidx.find( to_key256(cg.pubkey_hash) );
 
             eosio_assert( gbitr != pubkeyidx.end(), "unable to find genesis pubkey_hash" );
 
             currency::inline_transfer( system_account, cg.name, gbitr->balance, "claimed genesis balance" );
 
             // remove genesis balance from claimable table
-            genesis_balances.remove( *gbitr );
+            pubkeyidx.erase( gbitr );
          }
 
          /**
