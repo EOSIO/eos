@@ -201,6 +201,7 @@ namespace eosio {
 
       market_state market( _this_contract, w.market, _accounts );
       market.lend( w.lender, w.quantity );
+      market.save();
    }
 
    void exchange::on( const unlend& w ) {
@@ -209,6 +210,7 @@ namespace eosio {
 
       market_state market( _this_contract, w.market, _accounts );
       market.unlend( w.lender, w.interest_shares, w.interest_symbol );
+      market.save();
    }
 
 
@@ -239,6 +241,12 @@ namespace eosio {
             return true;
          case N(trade):
             on( unpack_action<trade>() );
+            return true;
+         case N(lend):
+            on( unpack_action<lend>() );
+            return true;
+         case N(unlend):
+            on( unpack_action<unlend>() );
             return true;
          case N(deposit):
             on( unpack_action<deposit>() );

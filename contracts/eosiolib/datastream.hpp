@@ -156,6 +156,7 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, key256& d) {
   return ds;
 }
 
+
 /**
  *  Serialize a uint128_t into a stream
  *  @brief Serialize a uint128_t

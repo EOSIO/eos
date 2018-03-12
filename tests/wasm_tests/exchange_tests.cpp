@@ -24,15 +24,15 @@ using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 using namespace fc;
 
+#define A(X) asset::from_string( #X )
+
 struct margin_state {
    extended_asset total_lendable;
    extended_asset total_lent;
    double         least_collateralized = 0;
-
-   extended_asset interest_pool;
    double         interest_shares = 0;
 };
-FC_REFLECT( margin_state, (total_lendable)(total_lent)(least_collateralized)(interest_pool)(interest_shares) )
+FC_REFLECT( margin_state, (total_lendable)(total_lent)(least_collateralized)(interest_shares) )
 
 struct exchange_state {
    account_name      manager;
@@ -121,6 +121,32 @@ class exchange_tester : public tester {
          return extended_asset();
       }
 
+      double get_lent_shares( account_name exchange, symbol market, account_name owner, bool base )
+      {
+         const auto& db  = control->get_database();
+
+         auto scope = ((market.value() >> 8) << 4) + (base ? 1 : 2);
+
+         const auto* tbl = db.find<contracts::table_id_object, contracts::by_code_scope_table>(
+                                                             boost::make_tuple(exchange, scope, N(loans)));
+
+         if (tbl) {
+            const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(
+                                                            boost::make_tuple(tbl->id, owner));
+            if( obj ) {
+               fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
+               account_name own;
+               double       interest_shares;
+
+               fc::raw::unpack( ds, own );
+               fc::raw::unpack( ds, interest_shares);
+
+               return interest_shares;
+            }
+         }
+         FC_ASSERT( false, "unable to find loan balance" );
+      }
+
       void deploy_currency( account_name ac ) {
          create_account( ac );
          set_code( ac, currency_wast );
@@ -175,6 +201,22 @@ class exchange_tester : public tester {
          );
       }
 
+      auto lend( name contract, name signer, extended_asset quantity, symbol market ) {
+         return push_action( contract, signer, N(lend), mutable_variant_object()
+             ("lender", signer )
+             ("quantity", quantity )
+             ("market", market )
+         );
+      }
+      auto unlend( name contract, name signer, double interest_shares, extended_symbol interest_symbol, symbol market ) {
+         return push_action( contract, signer, N(unlend), mutable_variant_object()
+             ("lender", signer )
+             ("interest_shares", interest_shares)
+             ("interest_symbol", interest_symbol)
+             ("market", market )
+         );
+      }
+
       auto create_exchange( name contract, name signer,
                             extended_asset base_deposit,
                             extended_asset quote_deposit,
@@ -192,26 +234,26 @@ class exchange_tester : public tester {
       exchange_tester()
       :tester(),abi_ser(json::from_string(exchange_abi).as<abi_def>())
       {
-         /*
-         create_account( N(currency) );
-         set_code( N(currency), currency_wast );
+         create_account( N(dan) );
+         create_account( N(trader) );
 
-         auto result = push_action(N(currency), N(create), mutable_variant_object()
-                 ("issuer",       "currency")
-                 ("maximum_supply", "1000000000.0000 CUR")
-                 ("can_freeze", 0)
-                 ("can_recall", 0)
-                 ("can_whitelist", 0)
-         );
-         wdump((result));
+         deploy_exchange( N(exchange) );
+         deploy_currency( N(currency) );
 
-         result = push_action(N(currency), N(issue), mutable_variant_object()
-                 ("to",       "currency")
-                 ("quantity", "1000000.0000 CUR")
-                 ("memo", "gggggggggggg")
-         );
-         wdump((result));
-         */
+         create_currency( N(currency), N(currency), A(1000000.00 USD) );
+         create_currency( N(currency), N(currency), A(1000000.00 BTC) );
+
+         issue( N(currency), N(currency), N(dan), A(1000.00 USD) );
+         issue( N(currency), N(currency), N(dan), A(1000.00 BTC) );
+
+         deposit( N(exchange), N(dan), extended_asset( A(500.00 USD), N(currency) ) );
+         deposit( N(exchange), N(dan), extended_asset( A(500.00 BTC), N(currency) ) );
+
+         create_exchange( N(exchange), N(dan), 
+                            extended_asset( A(400.00 USD), N(currency) ),
+                            extended_asset( A(400.00 BTC), N(currency) ),
+                            A(10000000.00 EXC) );
+
          produce_block();
       }
 
@@ -223,54 +265,19 @@ BOOST_AUTO_TEST_SUITE(exchange_tests)
 BOOST_AUTO_TEST_CASE( bootstrap ) try {
    auto expected = asset::from_string( "1000000.0000 CUR" );
    exchange_tester t;
-   t.deploy_exchange( N(exchange) );
-   t.deploy_currency( N(currency) );
    t.create_currency( N(currency), N(currency), expected );
    t.issue( N(currency), N(currency), N(currency), expected );
    auto actual = t.get_currency_balance(N(currency), expected.get_symbol(), N(currency));
    BOOST_REQUIRE_EQUAL(expected, actual);
 } FC_LOG_AND_RETHROW() /// test_api_bootstrap
 
-BOOST_AUTO_TEST_CASE( exchange_issue ) try {
-   auto expected = asset::from_string( "1000000.0000 CUR" );
-   exchange_tester t;
-   t.deploy_exchange( N(exchange) );
-   t.deploy_currency( N(currency) );
-   t.create_currency( N(currency), N(currency), expected );
-   t.create_currency( N(exchange), N(exchange), 
-                      asset::from_string( "1000000.000 TEST") );
-   t.issue( N(currency), N(currency), N(currency), expected );
-   t.issue( N(exchange), N(exchange), N(exchange), asset::from_string("1000.000 TEST") );
-   auto actual = t.get_currency_balance(N(currency), expected.get_symbol(), N(currency));
-   BOOST_REQUIRE_EQUAL(expected, actual);
-} FC_LOG_AND_RETHROW() /// test_api_bootstrap
-
-#define A(X) asset::from_string( #X )
 
 BOOST_AUTO_TEST_CASE( exchange_create ) try {
    auto expected = asset::from_string( "1000000.0000 CUR" );
    exchange_tester t;
 
-   t.create_account( N(dan) );
-   t.create_account( N(trader) );
-
-   t.deploy_exchange( N(exchange) );
-   t.deploy_currency( N(currency) );
-
-   t.create_currency( N(currency), N(currency), A(1000000.00 USD) );
-   t.create_currency( N(currency), N(currency), A(1000000.00 BTC) );
-
-   t.issue( N(currency), N(currency), N(dan), A(1000.00 USD) );
-   t.issue( N(currency), N(currency), N(dan), A(1000.00 BTC) );
    t.issue( N(currency), N(currency), N(trader), A(2000.00 BTC) );
    t.issue( N(currency), N(currency), N(trader), A(2000.00 USD) );
-
-   auto dan_usd = t.get_currency_balance(N(currency), symbol(2,"USD"), N(dan));
-   auto dan_btc = t.get_currency_balance(N(currency), symbol(2,"BTC"), N(dan));
-   edump((dan_usd)(dan_btc));
-
-   t.deposit( N(exchange), N(dan), extended_asset( A(500.00 USD), N(currency) ) );
-   t.deposit( N(exchange), N(dan), extended_asset( A(500.00 BTC), N(currency) ) );
 
    t.deposit( N(exchange), N(trader), extended_asset( A(1500.00 USD), N(currency) ) );
    t.deposit( N(exchange), N(trader), extended_asset( A(1500.00 BTC), N(currency) ) );
@@ -279,18 +286,6 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
    auto trader_ex_btc = t.get_exchange_balance( N(exchange), N(currency), symbol(2,"BTC"), N(trader) );
    auto dan_ex_usd    = t.get_exchange_balance( N(exchange), N(currency), symbol(2,"USD"), N(dan) );
    auto dan_ex_btc    = t.get_exchange_balance( N(exchange), N(currency), symbol(2,"BTC"), N(dan) );
-
-   wdump((dan_ex_usd.quantity));
-   wdump((dan_ex_btc.quantity));
-   wdump((trader_ex_btc.quantity));
-   wdump((trader_ex_usd.quantity));
-
-   //t.issue( N(exchange), N(exchange), N(exchange), asset::from_string("1000.000 TEST") );
-
-   auto r = t.create_exchange( N(exchange), N(dan), 
-                      extended_asset( A(400.00 USD), N(currency) ),
-                      extended_asset( A(400.00 BTC), N(currency) ),
-                      A(10000000.00 EXC) );
 
    auto dan_ex_exc = t.get_exchange_balance( N(exchange), N(exchange), symbol(2,"EXC"), N(dan) );
    wdump((dan_ex_exc));
@@ -327,6 +322,47 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
 
    //BOOST_REQUIRE_EQUAL(expected, actual);
 } FC_LOG_AND_RETHROW() /// test_api_bootstrap
+
+
+BOOST_AUTO_TEST_CASE( exchange_lend ) try {
+   exchange_tester t;
+
+   t.create_account( N(lender) );
+   t.issue( N(currency), N(currency), N(lender), A(2000.00 BTC) );
+   t.issue( N(currency), N(currency), N(lender), A(2000.00 USD) );
+
+   t.deposit( N(exchange), N(lender), extended_asset( A(1500.00 USD), N(currency) ) );
+   t.deposit( N(exchange), N(lender), extended_asset( A(1500.00 BTC), N(currency) ) );
+
+   auto lender_ex_usd = t.get_exchange_balance( N(exchange), N(currency), symbol(2,"USD"), N(lender) );
+   auto lender_ex_btc = t.get_exchange_balance( N(exchange), N(currency), symbol(2,"BTC"), N(lender) );
+
+   t.lend( N(exchange), N(lender), extended_asset( A(1000.00 USD), N(currency) ), symbol(2,"EXC") );
+
+   lender_ex_usd = t.get_exchange_balance( N(exchange), N(currency), symbol(2,"USD"), N(lender) );
+   lender_ex_btc = t.get_exchange_balance( N(exchange), N(currency), symbol(2,"BTC"), N(lender) );
+
+   wdump((lender_ex_btc.quantity));
+   wdump((lender_ex_usd.quantity));
+
+   BOOST_REQUIRE_EQUAL( lender_ex_usd.quantity, A(500.00 USD) );
+
+   auto lentshares = t.get_lent_shares( N(exchange), symbol(2,"EXC"), N(lender), true );
+   wdump((lentshares));
+   BOOST_REQUIRE_EQUAL( lentshares, 100000 );
+
+   wdump((t.get_market_state( N(exchange), symbol(2,"EXC") ) ));
+
+   t.unlend( N(exchange), N(lender), lentshares, extended_symbol{ symbol(2,"USD"), N(currency)}, symbol(2,"EXC") );
+
+   lentshares = t.get_lent_shares( N(exchange), symbol(2,"EXC"), N(lender), true );
+   wdump((lentshares));
+
+   wdump((t.get_market_state( N(exchange), symbol(2,"EXC") ) ));
+
+   //BOOST_REQUIRE_EQUAL(expected, actual);
+} FC_LOG_AND_RETHROW() /// test_api_bootstrap
+
 
 
 

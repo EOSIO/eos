@@ -3,13 +3,9 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 
-#include <boost/multiprecision/cpp_dec_float.hpp>
-
 using namespace fc;
 
 namespace eosio { namespace chain { namespace webassembly { namespace common {
-
-   using wasm_double = boost::multiprecision::cpp_dec_float_50;
 
    struct wasm_context {
       wasm_context(wasm_cache::entry &code, apply_context& ctx, wasm_interface::vm_type vm)

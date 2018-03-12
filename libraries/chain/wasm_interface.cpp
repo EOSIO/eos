@@ -656,10 +656,8 @@ class console_api : public context_aware_api {
       void printdi( uint64_t val ) {
          context.console_append(*((double*)&val));
       }
+
       void printd( float64_t val ) {
-         context.console_append( "i: " );
-         context.console_append( f64_to_i64(val,0,false) );
-         context.console_append( " - " );
          context.console_append(*((double*)&val));
       }
 
@@ -793,6 +791,7 @@ class database_api : public context_aware_api {
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx128, uint128_t)
       DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(idx256, 2, uint128_t)
+      DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx_double, uint64_t)
 };
 
 
@@ -1512,6 +1511,7 @@ REGISTER_INTRINSICS( database_api,
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
    DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
+   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_double)
 );
 
 REGISTER_INTRINSICS(crypto_api,

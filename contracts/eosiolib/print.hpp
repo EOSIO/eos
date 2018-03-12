@@ -110,6 +110,7 @@ namespace eosio {
       prints(val?"true":"false");
    }
 
+
    template<typename T>
    inline void print( T&& t ) {
       t.print();

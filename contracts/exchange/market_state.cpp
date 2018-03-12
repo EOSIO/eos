@@ -72,6 +72,8 @@ namespace eosio {
       eosio_assert( ishares > 0, "cannot unlend negative balance" );
       adjust_lend_shares( lender, base_loans, -ishares );
 
+      print( "sym: ", sym );
+
       if( sym == exstate.base.balance.get_extended_symbol() ) {
          extended_asset unlent  = exstate.base.peer_margin.unlend( ishares );
          _accounts.adjust_balance( lender, unlent );

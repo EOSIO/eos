@@ -33,6 +33,7 @@ namespace eosio {
 
       extended_asset unlend( double ishares ) {
          extended_asset result = total_lent;
+         print( "unlend: ", ishares, " existing interest_shares:  ", interest_shares, "\n" ); 
          result.amount  = int64_t( (ishares * total_lendable.amount) / interest_shares );
 
          total_lendable.amount -= result.amount;
