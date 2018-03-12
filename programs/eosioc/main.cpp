@@ -639,7 +639,7 @@ int main( int argc, char** argv ) {
       fc::read_file_contents(wastPath, wast);
 
       vector<uint8_t> wasm;
-      const string binary_wasm_header = "\x00\x61\x73\x6d";
+      const string binary_wasm_header("\x00\x61\x73\x6d", 4);
       if(wast.compare(0, 4, binary_wasm_header) == 0) {
          std::cout << localized("Using already assembled WASM...") << std::endl;
          wasm = vector<uint8_t>(wast.begin(), wast.end());
