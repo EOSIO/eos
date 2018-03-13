@@ -351,6 +351,8 @@ void chain_controller::_start_pending_block()
    _pending_block_trace->region_traces.resize(1);
    _start_pending_cycle();
    _apply_on_block_transaction();
+   _finalize_pending_cycle();
+   _start_pending_cycle();
 }
 
 transaction chain_controller::_get_on_block_transaction()
