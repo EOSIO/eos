@@ -31,7 +31,7 @@ struct root_resolver : Runtime::Resolver
       if(IntrinsicResolver::singleton.resolve(mod_name,export_name,type, out)) {
          return true;
       }
-
+      std::cout << "FUNC " << asString(type) << "\n";
       FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",mod_name)("export",export_name) );
       return false;
    } FC_CAPTURE_AND_RETHROW( (mod_name)(export_name) ) }
@@ -122,7 +122,10 @@ entry entry::build(const char* wasm_binary, size_t wasm_binary_size) {
    Module* module = new Module();
    Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
    WASM::serialize(stream, *module);
-   wasm_injections::wasm_binary_injection::inject( *module );
+   //WASM::serializeWithInjection(stream, *module);
+   //wasm_injections::wasm_binary_injection injector( *module );
+   //injector.inject();
+
    root_resolver resolver;
    LinkResult link_result = linkModule(*module, resolver);
    ModuleInstance *instance = instantiateModule(*module, std::move(link_result.resolvedImports));
