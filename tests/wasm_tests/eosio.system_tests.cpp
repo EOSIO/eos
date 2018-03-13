@@ -58,6 +58,26 @@ public:
          return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : 0 );
    }
 
+   action_result stake(const account_name& acnt, const string& net, const string& cpu, const string& storage) {
+      return push_action( name(acnt), N(delegatebw), mvo()
+                          ("from",     acnt)
+                          ("receiver", acnt)
+                          ("stake_net", net)
+                          ("stake_cpu", cpu)
+                          ("stake_storage", storage)
+      );
+   }
+
+   action_result unstake(const account_name& acnt, const string& net, const string& cpu, uint64_t bytes) {
+      return push_action( name(acnt), N(undelegatebw), mvo()
+                          ("from",     acnt)
+                          ("receiver", acnt)
+                          ("unstake_net", net)
+                          ("unstake_cpu", cpu)
+                          ("unstake_bytes", bytes)
+      );
+   }
+
    uint32_t last_block_time() const {
       return time_point_sec( control->head_block_time() ).sec_since_epoch();
    }
@@ -571,8 +591,8 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
 
    //unregister bob who is not a producer
    BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: producer not found" ),
-                        push_action(N(alice), N(unregprod), mvo()
-                                    ("producer",  "bob")
+                        push_action( N(bob), N(unregprod), mvo()
+                                     ("producer",  "bob")
                         )
    );
 
@@ -707,7 +727,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
 } FC_LOG_AND_RETHROW()
 
 
-BOOST_FIXTURE_TEST_CASE( invalid_producer_voting, eosio_system_tester ) try {
+BOOST_FIXTURE_TEST_CASE( unregistered_producer_voting, eosio_system_tester ) try {
    issue( "bob", "2000.0000 EOS",  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(delegatebw), mvo()
                                                ("from",     "bob")
@@ -755,6 +775,61 @@ BOOST_FIXTURE_TEST_CASE( invalid_producer_voting, eosio_system_tester ) try {
                                     ("producers", vector<account_name>{ N(alice) } )
                         )
    );
+
+} FC_LOG_AND_RETHROW()
+
+
+BOOST_FIXTURE_TEST_CASE( more_than_30_producer_voting, eosio_system_tester ) try {
+   issue( "bob", "2000.0000 EOS",  config::system_account_name );
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(delegatebw), mvo()
+                                               ("from",     "bob")
+                                               ("receiver", "bob")
+                                               ("stake_net", "13.0000 EOS")
+                                               ("stake_cpu", "00.5791 EOS")
+                                               ("stake_storage", "0.0000 EOS")
+                        )
+   );
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "bob", "13.5791 EOS",  last_block_time()-1 ), get_voter_info( "bob" ) );
+
+   //bob should not be able to vote for alice who is not a producer
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: attempt to vote for too many producers" ),
+                        push_action( N(bob), N(voteproducer), mvo()
+                                     ("voter",  "bob")
+                                     ("proxy", name(0).to_string() )
+                                     ("producers", vector<account_name>(31, N(alice)) )
+                        )
+   );
+
+} FC_LOG_AND_RETHROW()
+
+
+BOOST_FIXTURE_TEST_CASE( vote_same_producer_30_times, eosio_system_tester ) try {
+   issue( "bob", "2000.0000 EOS",  config::system_account_name );
+   BOOST_REQUIRE_EQUAL( success(), stake( "bob", "50.0000 EOS", "50.0000 EOS", "0.0000 EOS" ) );
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "bob", "100.0000 EOS",  last_block_time()-1 ), get_voter_info( "bob" ) );
+
+   //alice becomes a producer
+   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+   fc::variant params = producer_parameters_example(1);
+   vector<char> key = fc::raw::pack( get_public_key( N(alice), "active" ) );
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
+                                               ("producer",  "alice")
+                                               ("producer_key", key )
+                                               ("prefs", params)
+                        )
+   );
+
+   //bob should not be able to vote for alice who is not a producer
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: producer votes must be unique and sorted" ),
+                        push_action( N(bob), N(voteproducer), mvo()
+                                     ("voter",  "bob")
+                                     ("proxy", name(0).to_string() )
+                                     ("producers", vector<account_name>(30, N(alice)) )
+                        )
+   );
+
+   auto prod = get_producer_info( "alice" );
+   BOOST_REQUIRE_EQUAL( 0, prod["total_votes"].as_uint64() );
 
 } FC_LOG_AND_RETHROW()
 
@@ -896,6 +971,86 @@ BOOST_FIXTURE_TEST_CASE( proxy_register_unregister, eosio_system_tester ) try {
                         )
    );
    REQUIRE_EQUAL_OBJECTS( simple_voter( "carol", "777.0003 EOS",  last_block_time() ), get_voter_info( "carol" ) );
+
+} FC_LOG_AND_RETHROW()
+
+
+BOOST_FIXTURE_TEST_CASE( proxy_stake_unstake_keeps_proxy_flag, eosio_system_tester ) try {
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproxy), mvo()
+                                               ("proxy",  "alice")
+                        )
+   );
+   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+   REQUIRE_EQUAL_OBJECTS( proxy( "alice", "0.0000 EOS",  last_block_time()-1 ), get_voter_info( "alice" ) );
+
+   //stake
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(delegatebw), mvo()
+                                               ("from",     "alice")
+                                               ("receiver", "alice")
+                                               ("stake_net", "100.0000 EOS")
+                                               ("stake_cpu", "50.0000 EOS")
+                                               ("stake_storage", "80.0000 EOS")
+                        )
+   );
+   //check that account is still a proxy
+   REQUIRE_EQUAL_OBJECTS( proxy( "alice", "150.0000 EOS",  last_block_time() ), get_voter_info( "alice" ) );
+
+   //stake more
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(delegatebw), mvo()
+                                               ("from",     "alice")
+                                               ("receiver", "alice")
+                                               ("stake_net", "30.0000 EOS")
+                                               ("stake_cpu", "20.0000 EOS")
+                                               ("stake_storage", "80.0000 EOS")
+                        )
+   );
+   //check that account is still a proxy
+   REQUIRE_EQUAL_OBJECTS( proxy( "alice", "200.0000 EOS",  last_block_time()-1 ), get_voter_info( "alice" ) );
+
+   //unstake more
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(undelegatebw), mvo()
+                                               ("from",     "alice")
+                                               ("receiver", "alice")
+                                               ("unstake_net", "65.0000 EOS")
+                                               ("unstake_cpu", "35.0000 EOS")
+                                               ("unstake_bytes", 0)
+                        )
+   );
+   REQUIRE_EQUAL_OBJECTS( proxy( "alice", "100.0000 EOS",  last_block_time() ), get_voter_info( "alice" ) );
+
+   //unstake the rest
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(undelegatebw), mvo()
+                                               ("from",     "alice")
+                                               ("receiver", "alice")
+                                               ("unstake_net", "65.0000 EOS")
+                                               ("unstake_cpu", "35.0000 EOS")
+                                               ("unstake_bytes", 0)
+                        )
+   );
+   REQUIRE_EQUAL_OBJECTS( proxy( "alice", "0.0000 EOS",  last_block_time()-1 ), get_voter_info( "alice" ) );
+
+} FC_LOG_AND_RETHROW()
+
+
+BOOST_FIXTURE_TEST_CASE( proxy_multiple_users, eosio_system_tester ) try {
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproxy), mvo()
+                                               ("proxy",  "alice")
+                        )
+   );
+   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+   REQUIRE_EQUAL_OBJECTS( proxy( "alice", "0.0000 EOS",  last_block_time()-1 ), get_voter_info( "alice" ) );
+
+   //stake
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(delegatebw), mvo()
+                                               ("from",     "alice")
+                                               ("receiver", "alice")
+                                               ("stake_net", "100.0000 EOS")
+                                               ("stake_cpu", "50.0000 EOS")
+                                               ("stake_storage", "80.0000 EOS")
+                        )
+   );
+   //check that account is still a proxy
+   REQUIRE_EQUAL_OBJECTS( proxy( "alice", "150.0000 EOS",  last_block_time() ), get_voter_info( "alice" ) );
 
 } FC_LOG_AND_RETHROW()
 

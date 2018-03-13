@@ -418,7 +418,9 @@ namespace eosiosystem {
                require_recipient( vp.proxy );
             } else {
                eosio_assert( vp.producers.size() <= 30, "attempt to vote for too many producers" );
-               eosio_assert( std::is_sorted( vp.producers.begin(), vp.producers.end() ), "producer votes must be sorted" );
+               for( size_t i = 1; i < vp.producers.size(); ++i ) {
+                  eosio_assert( vp.producers[i-1] < vp.producers[i], "producer votes must be unique and sorted" );
+               }
             }
 
             voters_table voters_tbl( SystemAccount, SystemAccount );
