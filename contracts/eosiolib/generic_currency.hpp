@@ -57,20 +57,20 @@ namespace eosio {
              EOSLIB_SERIALIZE_DERIVED( transfer_memo, transfer, (memo) )
           };
 
-          struct account : public table_row {
+          struct account {
              token_type balance;
              uint64_t   symbol = token_type::symbol;
 
-             virtual uint64_t primary_key()const override { return symbol; }
+             auto primary_key() const { return symbol; }
 
              EOSLIB_SERIALIZE( account, (balance)(symbol) )
           };
 
-          struct currency_stats : public table_row {
+          struct currency_stats {
              token_type supply;
              uint64_t   symbol = token_type::symbol;
 
-             virtual uint64_t primary_key()const override { return symbol; }
+             auto primary_key() const { return symbol; }
 
              EOSLIB_SERIALIZE( currency_stats, (supply)(symbol) )
           };

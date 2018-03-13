@@ -11,7 +11,6 @@ using eosio::indexed_by;
 using eosio::const_mem_fun;
 using eosio::price_ratio;
 using eosio::price;
-using eosio::table_row;
 
 template<account_name ExchangeAccount, symbol_name ExchangeSymbol,
          typename BaseCurrency, typename QuoteCurrency>
@@ -23,19 +22,19 @@ class exchange {
       typedef typename QuoteCurrency::token_type         quote_token_type;
       typedef typename exchange_currency::token_type     ex_token_type;
 
-      struct account : public table_row {
+      struct account {
          account_name       owner;
          base_token_type    base_balance;
          quote_token_type   quote_balance;
 
-         virtual uint64_t primary_key()const override { return owner; }
+         uint64_t primary_key()const { return owner; }
 
          EOSLIB_SERIALIZE( account, (owner)(base_balance)(quote_balance)  )
       };
       typedef eosio::multi_index< N(accounts), account>       account_index_type;
 
       template<typename BaseTokenType, typename QuoteTokenType>
-      struct limit_order : public table_row {
+      struct limit_order {
          typedef eosio::price<BaseTokenType, QuoteTokenType> price_type;
          static const uint64_t precision = (1000ll * 1000ll * 1000ll * 1000ll);
 
@@ -46,7 +45,7 @@ class exchange {
          BaseTokenType                              for_sale;
          price_type                                 sell_price;
 
-         virtual uint64_t primary_key()const override { return primary; }
+         uint64_t primary_key()const { return primary; }
 
          uint128_t by_owner_id()const   { return get_owner_id( owner, id ); }
          uint64_t  by_expiration()const { return expiration; }

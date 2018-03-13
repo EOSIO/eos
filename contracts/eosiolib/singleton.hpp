@@ -15,10 +15,10 @@ namespace  eosio {
    class singleton
    {
       constexpr static uint64_t pk_value = SingletonName;
-      struct row : public table_row {
+      struct row {
          T value;
 
-         virtual uint64_t primary_key()const override { return pk_value; }
+         uint64_t primary_key() const { return pk_value; }
 
          EOSLIB_SERIALIZE( row, (value) )
       };

@@ -6,25 +6,25 @@ using namespace eosio;
 
 namespace multi_index_test {
 
-   struct limit_order : public table_row {
-      uint64_t     id;
-      uint64_t     padding = 0;
-      uint128_t    price;
-      uint64_t     expiration;
-      account_name owner;
+struct limit_order {
+   uint64_t     id;
+   uint64_t     padding = 0;
+   uint128_t    price;
+   uint64_t     expiration;
+   account_name owner;
 
-      virtual uint64_t primary_key()const override { return id; }
+      auto primary_key()const { return id; }
       uint64_t get_expiration()const { return expiration; }
       uint128_t get_price()const { return price; }
 
       EOSLIB_SERIALIZE( limit_order, (id)(price)(expiration)(owner) )
    };
 
-   struct test_k256 : public table_row {
+   struct test_k256 {
       uint64_t     id;
       key256      val;
 
-      virtual uint64_t primary_key()const override { return id; }
+      auto primary_key()const { return id; }
       key256 get_val()const { return val; }
 
       EOSLIB_SERIALIZE( test_k256, (id)(val) )
