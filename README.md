@@ -16,7 +16,7 @@ The public testnet described in the [wiki](https://github.com/EOSIO/eos/wiki/Tes
 EOS.IO currently supports the following operating systems:  
 1. Amazon 2017.09 and higher.  
 2. Fedora 25 and higher (Fedora 27 recommended).  
-3. Ubuntu 16.04 and higher (Ubuntu 16.10 recommended).  
+3. Ubuntu 16.04 (Ubuntu 16.10 recommended).  
 4. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
 
 # Resources
@@ -34,8 +34,8 @@ EOS.IO currently supports the following operating systems:
 1. [Getting Started](#gettingstarted)
 2. [Setting up a build/development environment](#setup)
 	1. [Automated build script](#autobuild)
-      1. [Clean install Linux (Amazon, Centos, Fedora, & Ubuntu/Mint) for a local testnet](#autoubuntulocal)
-      2. [Clean install Linux (Amazon, Centos, Fedora, & Ubuntu/Mint) for the public testnet](#autoubuntupublic)
+      1. [Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for a local testnet](#autoubuntulocal)
+      2. [Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for the public testnet](#autoubuntupublic)
       3. [MacOS for a local testnet](#automaclocal)
       4. [MacOS for the public testnet](#automacpublic)
 3. [Building EOS and running a node](#runanode)
@@ -58,8 +58,8 @@ EOS.IO currently supports the following operating systems:
    1. [Clean install Amazon 2017.09 and higher](#manualdepamazon)
    2. [Clean install Centos 7 and higher](#manualdepcentos)
    3. [Clean install Fedora 25 and higher](#manualdepfedora)
-   4. [Clean install Mint 18 and higher](#manualdepubuntu)
-   4. [Clean install Ubuntu 16.04 and higher](#manualdepubuntu)
+   4. [Clean install Mint 18](#manualdepubuntu)
+   4. [Clean install Ubuntu 16](#manualdepubuntu)
    5. [Clean install MacOS Sierra 10.12 and higher](#manualdepmacos)
 
 <a name="gettingstarted"></a>
@@ -76,8 +76,8 @@ Supported Operating Systems:
 1. Amazon 2017.09 and higher.  
 2. Centos 7 and higher.  
 3. Fedora 25 and higher (Fedora 27 recommended).  
-4. Mint 18 and higher.  
-5. Ubuntu 16.04 and higher (Ubuntu 16.10 recommended), Mint 18 and higher.  
+4. Mint 18.  
+5. Ubuntu 16.04 (Ubuntu 16.10 recommended), Mint 18.  
 6. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
 
 For Amazon, Centos, Fedora, Mint, Ubuntu, & MacOS there is an automated build script that can install all dependencies and builds EOS.
@@ -767,7 +767,7 @@ make -j$( nproc ) install
 Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
 
 <a name="manualdepubuntu"></a>
-### Clean install Ubuntu 16.04 & higher or Linux Mint 18 & higher
+### Clean install Ubuntu 16.04 & Linux Mint 18
 
 Install the development toolkit:
 
