@@ -102,21 +102,6 @@ inline std::vector<U8> pack( branchtabletype field ) {
 
           };
 }
-/*
-inline std::string to_string( uint32_t field );
-inline std::string to_string( uint64_t field );
-inline std::string to_string( blocktype field );
-inline std::string to_string( memoryoptype field );
-inline std::string to_string( memarg field );
-inline std::string to_string( branchtabletype field );
-
-inline std::vector<U8> pack( uint32_t field );
-inline std::vector<U8> pack( uint64_t field );
-inline std::vector<U8> pack( blocktype field );
-inline std::vector<U8> pack( memoryoptype field );
-inline std::vector<U8> pack( memarg field );
-inline std::vector<U8> pack( branchtabletype field );
-*/
 
 template <typename Field>
 struct field_specific_params {
@@ -536,16 +521,28 @@ template <typename Mutator>
 struct propagate_should_kill<Mutator> {
    static constexpr bool value = Mutator::kills;
 };
+template <typename Mutator, typename ... Mutators>
+struct propagate_post_injection {
+   static constexpr bool value = Mutator::post || propagate_post_injection<Mutators...>::value;
+};
+template <typename Mutator>
+struct propagate_post_injection<Mutator> {
+   static constexpr bool value = Mutator::post;
+};
 
-template <bool Kills>
+template <bool Kills, bool Post>
 struct base_mutator {
    static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
       std::vector<U8> self_code = inst->pack();
-      arg.new_code->insert( arg.new_code->end(), self_code.begin(), self_code.end() );
+      if constexpr ( Post )
+         arg.new_code->insert( arg.new_code->begin(), self_code.begin(), self_code.end() );
+      else
+         arg.new_code->insert( arg.new_code->end(), self_code.begin(), self_code.end() );
    }
 };
-template <>
-struct base_mutator<true> {
+
+template <bool Post>
+struct base_mutator<true, Post> {
    static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
    }
 };
@@ -556,7 +553,8 @@ struct instr_base : instr {
       for ( auto m : { Mutators::accept... } ) {
          m(this, arg);
       }
-      base_mutator<propagate_should_kill<Mutators...>::value>::accept( this, arg );
+      base_mutator<propagate_should_kill<Mutators...>::value,
+                   propagate_post_injection<Mutators...>::value>::accept( this, arg );
    } 
 };
 /*
@@ -597,6 +595,7 @@ BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, branchtabletype,  BOOST_PP_SEQ_SUB
 
 struct nop_mutator {
    static constexpr bool kills = false;
+   static constexpr bool post = false;
    static void accept( instr* inst, visitor_arg& arg ) {}
 };
 

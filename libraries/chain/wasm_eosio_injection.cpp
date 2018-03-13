@@ -10,8 +10,11 @@
 namespace eosio { namespace chain { namespace wasm_injections {
 using namespace IR;
 
-//std::unordered_map<type_slot_pair, uint32_t, tsp_hasher> injector_utils::type_slots;
 std::map<std::vector<uint16_t>, uint32_t> injector_utils::type_slots;
+std::map<std::string, uint32_t>           injector_utils::registered_injected;
+std::map<uint32_t, uint32_t>              injector_utils::injected_index_mapping;
+uint32_t                                  injector_utils::first_imported_index;
+
 
 void noop_injection_visitor::inject( Module& m ) { /* just pass */ }
 void noop_injection_visitor::initializer() { /* just pass */ }

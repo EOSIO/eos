@@ -193,14 +193,12 @@ namespace eosio { namespace chain {
                   WASM::serialize(stream, *module);
                   WASM::serializeWithInjection(stream2, *module2);
 
-                  wasm_constraints::wasm_binary_validation::validate( *module );
-#if 0
-                  wasm_injections::wasm_binary_injection::inject( *module );
-
-                  std::cout << "INJECTED\n";
-                  wasm_injections::wasm_binary_injection::inject( *module );
-                  std::cout << "INJECTEDSS\n";
-                  wasm_injections::wasm_binary_injection::inject( *module2 );
+                  wasm_constraints::wasm_binary_validation validator( *module );
+                  //validator.validate();
+                  wasm_injections::wasm_binary_injection injector( *module );
+                  injector.inject();
+                  validator.validate();
+#if 1
 
                   auto restype = [](IR::ResultType f){ 
                         if (f == IR::ResultType::none ) return "none"; 
@@ -226,76 +224,37 @@ namespace eosio { namespace chain {
                      }
                   } 
                   std::cout << "\n";
-                  std::cout << "FUNCTION_Type B \n";
-                  for (auto e : module->types) {
-                     std::cout << "Function ("<< restype(e->ret) << ") (";
-                     for (auto ee : e->parameters) {
-                        std::cout << valtype(ee) << ", ";
-                     }
-                  } 
-                  std::cout << "\n";
 
                   std::cout << "FUNCTION_Import A \n";
                   for (int i=0; i < module->functions.imports.size(); i++)
                      std::cout << module->functions.imports[i].exportName << " : " << i << "\n";
                   std::cout << "\n";
-                  std::cout << "FUNCTION_Import B \n";
-                  for (int i=0; i < module->functions.imports.size(); i++)
-                     std::cout << module->functions.imports[i].exportName << " : " << i << "\n";
-
-                  std::cout << "\n";
                   std::cout << "TABLES_Import A \n";
                   for (auto e : module->tables.imports)
                      std::cout << e.exportName << "\n";
-
                   std::cout << "\n";
                   std::cout << "TABLES_Import B \n";
                   for (auto e : module2->tables.imports)
                      std::cout << e.exportName << "\n";
                   std::cout << "\n";
-
                   std::cout << "MEMORIES_Import A \n";
                   for (auto e : module->memories.imports)
                      std::cout << e.exportName << "\n";
-
                   std::cout << "\n";
-                  std::cout << "MEMORIES_Import B \n";
-                  for (auto e : module2->memories.imports)
-                     std::cout << e.exportName << "\n";
-                  std::cout << "\n";
-
                   std::cout << "GLOBALS_Import A \n";
                   for (auto e : module->globals.imports)
                      std::cout << e.exportName << "\n";
-
                   std::cout << "\n";
-                  std::cout << "GLOBALS_Import B \n";
-                  for (auto e : module2->globals.imports)
-                     std::cout << e.exportName << "\n";
-                  std::cout << "\n";
-
                   std::cout << "EXPORT A \n";
                   for (auto e : module->exports)
                      std::cout << e.name << " " << uint32_t(e.index) << "\n";
-
                   std::cout << "\n";
-                  std::cout << "EXPORT B \n";
-                  for (auto e : module2->exports)
-                     std::cout << e.name << " " << uint32_t(e.index) << "\n";
-                  std::cout << "\n";
-                     
                   std::cout << "DATASEG A \n";
                   for (auto e : module->dataSegments)
-                     std::cout << e.memoryIndex << "\n";
-
-                  std::cout << "\n";
-                  std::cout << "DATSEG B \n";
-                  for (auto e : module2->dataSegments)
                      std::cout << e.memoryIndex << "\n";
                   std::cout << "\n";
 
                   std::cout << "start index A " << module->startFunctionIndex << "\n";
-                  std::cout << "start index B " << module2->startFunctionIndex << "\n";
 #endif
 
                   Serialization::ArrayOutputStream outstream;

@@ -143,7 +143,6 @@ namespace IR
 		num,
 		max = num-1,
 	};
-
    template<uint16_t type> struct ToResultType;
 	template<> struct ToResultType<0> { static constexpr ResultType value = ResultType::none; };
 	template<> struct ToResultType<1> { static constexpr ResultType value = ResultType::i32; };
