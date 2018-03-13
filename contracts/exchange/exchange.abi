@@ -32,6 +32,15 @@
       ]
     },
     {
+      "name": "covermargin",
+      "base": "",
+      "fields": [
+        {"name":"borrower",         "type":"account_name"},
+        {"name":"market",           "type":"symbol"}
+        {"name":"cover_amount",     "type":"extended_asset"}
+      ]
+    },
+    {
       "name": "lend",
       "base": "",
       "fields": [
@@ -134,6 +143,7 @@
     { "name": "lend", "type": "lend" }, 
     { "name": "unlend", "type": "unlend" }, 
     { "name": "upmargin", "type": "upmargin" }, 
+    { "name": "covermargin", "type": "covermargin" }, 
     { "name": "create", "type": "create" }
   ],
   "tables": [{

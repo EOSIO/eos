@@ -103,6 +103,117 @@ namespace eosio {
       }
    }
 
+   void market_state::cover_margin( account_name borrower, const extended_asset& delta_debt ) {
+      if( delta_debt.get_extended_symbol() == exstate.base.balance.get_extended_symbol() ) {
+         cover_margin( borrower, base_margins, exstate.base, delta_debt );
+      } else if( delta_debt.get_extended_symbol() == exstate.quote.balance.get_extended_symbol() ) {
+         cover_margin( borrower, quote_margins, exstate.quote, delta_debt );
+      } else {
+         eosio_assert( false, "invalid debt asset" );
+      }
+   }
+
+
+   /**
+    *  This method will use the collateral to buy the borrowed asset from the market
+    *  with collateral to cancel the debt. 
+    */
+   void market_state::cover_margin( account_name borrower, margins& m, exchange_state::connector& c,
+                                    const extended_asset& cover_amount )
+   {
+      auto existing = m.find( borrower );
+      eosio_assert( existing != m.end(), "no known margin position" );
+      eosio_assert( existing->borrowed.amount >= cover_amount.amount, "attempt to cover more than user has" );
+
+      auto tmp = exstate;
+      auto estcol  = tmp.convert( cover_amount, existing->collateral.get_extended_symbol() );
+      auto debpaid = exstate.convert( estcol, cover_amount.get_extended_symbol() );
+      eosio_assert( debpaid.amount >= cover_amount.amount, "unable to cover debt" );
+
+      auto refundcover = debpaid - cover_amount;
+
+      auto refundcol = exstate.convert( refundcover, existing->collateral.get_extended_symbol() );
+      estcol.amount -= refundcol.amount;
+
+      if( existing->borrowed.amount == cover_amount.amount ) {
+         auto freedcollateral = existing->collateral - estcol;
+         m.erase( existing );
+         existing = m.begin();
+         _accounts.adjust_balance( borrower, freedcollateral );
+      }
+      else {
+         m.modify( existing, 0, [&]( auto& obj ) {
+             obj.collateral.amount -= estcol.amount;
+             obj.borrowed.amount -= cover_amount.amount;
+             obj.call_price = double(obj.borrowed.amount) / obj.collateral.amount;
+         });
+      }
+      c.peer_margin.total_lent.amount -= cover_amount.amount;
+
+      if( existing != m.end() ) {
+         if( existing->call_price < c.peer_margin.least_collateralized )
+            c.peer_margin.least_collateralized = existing->call_price;
+      } else {
+         c.peer_margin.least_collateralized = std::numeric_limits<double>::max();
+      }
+   }
+
+   void market_state::update_margin( account_name borrower, const extended_asset& delta_debt, const extended_asset& delta_col )
+   {
+      if( delta_debt.get_extended_symbol() == exstate.base.balance.get_extended_symbol() ) {
+         adjust_margin( borrower, base_margins, exstate.base, delta_debt, delta_col );
+      } else if( delta_debt.get_extended_symbol() == exstate.quote.balance.get_extended_symbol() ) {
+         adjust_margin( borrower, quote_margins, exstate.quote, delta_debt, delta_col );
+      } else {
+         eosio_assert( false, "invalid debt asset" );
+      }
+   }
+
+   void market_state::adjust_margin( account_name borrower, margins& m, exchange_state::connector& c,
+                                     const extended_asset& delta_debt, const extended_asset& delta_col )
+   {
+      auto existing = m.find( borrower );
+      if( existing == m.end() ) {
+         eosio_assert( delta_debt.amount > 0, "cannot borrow neg" );
+         eosio_assert( delta_col.amount > 0, "cannot have neg collat" );
+
+         existing = m.emplace( borrower, [&]( auto& obj ) {
+            obj.owner      = borrower;
+            obj.borrowed   = delta_debt;
+            obj.collateral = delta_col;
+            obj.call_price = double(obj.borrowed.amount) / obj.collateral.amount;
+         });
+      } else {
+         if( existing->borrowed.amount == -delta_debt.amount ) {
+            eosio_assert( existing->collateral.amount == -delta_col.amount, "user failed to claim all collateral" );
+
+            m.erase( existing );
+            existing = m.begin();
+         } else {
+            m.modify( existing, 0, [&]( auto& obj ) {
+               obj.borrowed   += delta_debt;
+               obj.collateral += delta_col;
+               obj.call_price = double(obj.borrowed.amount) / obj.collateral.amount;
+            });
+         }
+      }
+
+      c.peer_margin.total_lent += delta_debt;
+      eosio_assert( c.peer_margin.total_lent.amount <= c.peer_margin.total_lendable.amount, "insufficient funds availalbe to borrow" );
+
+      if( existing != m.end() ) {
+         if( existing->call_price < c.peer_margin.least_collateralized )
+            c.peer_margin.least_collateralized = existing->call_price;
+
+         eosio_assert( !exstate.requires_margin_call( c ), "this update would trigger a margin call" );
+      } else {
+         c.peer_margin.least_collateralized = std::numeric_limits<double>::max();
+      }
+
+   }
+
+
+
    void market_state::save() {
       market_table.modify( market_state_itr, 0, [&]( auto& s ) {
          s = exstate;

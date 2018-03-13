@@ -81,6 +81,14 @@ namespace eosio {
             EOSLIB_SERIALIZE( unlend, (lender)(interest_shares)(interest_symbol)(market) )
          };
 
+         struct covermargin {
+            account_name     borrower;
+            symbol_type      market;
+            extended_asset   cover_amount;
+
+            EOSLIB_SERIALIZE( covermargin, (borrower)(market)(cover_amount) )
+         };
+
          struct upmargin {
             account_name     borrower;
             symbol_type      market;
@@ -108,6 +116,7 @@ namespace eosio {
          void on( const createx& c ); 
          void on( const trade& t    ); 
          void on( const upmargin& b ); 
+         void on( const covermargin& b ); 
          void on( const currency::transfer& t, account_name code ); 
 
 

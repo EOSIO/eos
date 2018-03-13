@@ -61,89 +61,41 @@ namespace eosio {
    }
 
 
+   /**
+    *  This action shall fail if it would result in a margin call
+    */
    void exchange::on( const upmargin& b ) {
       require_auth( b.borrower );
-      auto marketid = b.market.name();
 
-      margins base_margins( _this_contract, marketid );
-      margins quote_margins( _this_contract, marketid << 1 );
-
-      markets market_table( _this_contract, marketid );
-      auto market_state = market_table.find( marketid );
-      eosio_assert( market_state != market_table.end(), "unknown market" );
-
-      auto state = *market_state;
+      market_state market( _this_contract, b.market, _accounts );
 
       eosio_assert( b.delta_borrow.amount != 0 || b.delta_collateral.amount != 0, "no effect" );
       eosio_assert( b.delta_borrow.get_extended_symbol() != b.delta_collateral.get_extended_symbol(), "invalid args" );
-      eosio_assert( state.base.balance.get_extended_symbol() == b.delta_borrow.get_extended_symbol() ||
-                    state.quote.balance.get_extended_symbol() == b.delta_borrow.get_extended_symbol(), 
+      eosio_assert( market.exstate.base.balance.get_extended_symbol() == b.delta_borrow.get_extended_symbol() ||
+                    market.exstate.quote.balance.get_extended_symbol() == b.delta_borrow.get_extended_symbol(), 
                     "invalid asset for market" );
-      eosio_assert( state.base.balance.get_extended_symbol() == b.delta_collateral.get_extended_symbol() ||
-                    state.quote.balance.get_extended_symbol() == b.delta_collateral.get_extended_symbol(), 
+      eosio_assert( market.exstate.base.balance.get_extended_symbol() == b.delta_collateral.get_extended_symbol() ||
+                    market.exstate.quote.balance.get_extended_symbol() == b.delta_collateral.get_extended_symbol(), 
                     "invalid asset for market" );
 
-
-     auto adjust_margin = [&b](  exchange_state::connector& c, margins& mtable ) {
-        margin_position temp_pos;
-        auto existing = mtable.find( b.borrower );
-        if( existing == mtable.end() ) {
-           eosio_assert( b.delta_borrow.amount > 0, "borrow neg" );
-           eosio_assert( b.delta_collateral.amount > 0, "collat neg" );
-           temp_pos.owner      = b.borrower;
-           temp_pos.borrowed   = b.delta_borrow;
-           temp_pos.collateral = b.delta_collateral;
-           temp_pos.call_price = double( temp_pos.collateral.amount ) / temp_pos.borrowed.amount;
-        } else {
-           temp_pos = *existing;
-           temp_pos.borrowed   += b.delta_borrow;
-           temp_pos.collateral += b.delta_borrow;
-           eosio_assert( temp_pos.borrowed.amount > 0, "neg borrowed" );
-           eosio_assert( temp_pos.collateral.amount > 0, "neg collateral" );
-           if( temp_pos.borrowed.amount > 0 )
-              temp_pos.call_price  = double( temp_pos.collateral.amount ) / temp_pos.borrowed.amount;
-           else
-              temp_pos.call_price  = double( uint64_t(-1) );
-        }
-        c.peer_margin.total_lent += b.delta_borrow;
-
-        auto least = mtable.begin();
-        if( least == existing ) ++least;
-
-        if( least != mtable.end() )
-           c.peer_margin.least_collateralized = least->call_price;
-        if( temp_pos.call_price < c.peer_margin.least_collateralized ) 
-           c.peer_margin.least_collateralized = temp_pos.call_price;
-     };
-
-     
-     auto temp_state = state;
-      
-     margins* mt = nullptr;
-     auto baseptr = &exchange_state::base;
-     auto quoteptr = &exchange_state::quote;
-     auto conptr   = quoteptr;
-
-     if( b.delta_borrow.get_extended_symbol() == state.base.balance.get_extended_symbol() ) {
-        mt = &base_margins;
-        conptr = baseptr;
-     } else {
-        mt = &quote_margins;
-     }
-
-     adjust_margin( temp_state.*conptr, *mt );
-     while( temp_state.requires_margin_call() ) {
-     //   margin_call( state );
-        temp_state = state;
-        adjust_margin( temp_state.*conptr, *mt );
-     }
-     adjust_margin( state.*conptr, *mt );
+      market.update_margin( b.borrower, b.delta_borrow, b.delta_collateral );
 
      /// if this succeeds then the borrower will see their balances adjusted accordingly,
      /// if they don't have sufficient balance to either fund the collateral or pay off the
      /// debt then this will fail before we go further.  
      _accounts.adjust_balance( b.borrower, b.delta_borrow, "borrowed" );
      _accounts.adjust_balance( b.borrower, -b.delta_collateral, "collateral" );
+
+     market.save();
+   }
+
+   void exchange::on( const covermargin& c ) {
+      require_auth( c.borrower );
+      market_state market( _this_contract, c.market, _accounts );
+
+      market.cover_margin( c.borrower, c.cover_amount);
+
+      market.save();
    }
 
    void exchange::on( const createx& c ) {
@@ -253,6 +205,12 @@ namespace eosio {
             return true;
          case N(withdraw):
             on( unpack_action<withdraw>() );
+            return true;
+         case N(upmargin):
+            on( unpack_action<upmargin>() );
+            return true;
+         case N(covermargin):
+            on( unpack_action<covermargin>() );
             return true;
          default:
             return _excurrencies.apply( contract, act );

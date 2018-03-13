@@ -9,7 +9,7 @@ namespace eosio {
    struct margin_state {
       extended_asset total_lendable;
       extended_asset total_lent;
-      real_type      least_collateralized = 0;
+      real_type      least_collateralized = std::numeric_limits<double>::max();
 
       /**
        * Total shares allocated to those who have lent, when someone unlends they get
@@ -69,7 +69,6 @@ namespace eosio {
 
       connector base;
       connector quote;
-
 
       uint64_t primary_key()const { return supply.symbol.name(); }
 

@@ -47,6 +47,10 @@ namespace eosio {
       void margin_call( extended_symbol debt_type ); 
       void lend( account_name lender, const extended_asset& debt );
       void unlend( account_name lender, double ishares, const extended_symbol& sym );
+      void update_margin( account_name borrower, const extended_asset& delta_debt,
+                                                 const extended_asset& delta_collateral );
+      void cover_margin( account_name borrower, const extended_asset& delta_debt );
+
       void save();
 
       symbol_name      marketid;
@@ -62,6 +66,10 @@ namespace eosio {
          exchange_accounts&        _accounts;
          markets::const_iterator   market_state_itr;
 
+         void cover_margin( account_name lender, margins& m, exchange_state::connector& c,
+                             const extended_asset& delta_debt );
+         void adjust_margin( account_name lender, margins& m, exchange_state::connector& c,
+                             const extended_asset& delta_debt, const extended_asset& delta_col );
          void adjust_lend_shares( account_name lender, loans& l, double delta );
          void margin_call( exchange_state::connector& c, margins& m );
    };
