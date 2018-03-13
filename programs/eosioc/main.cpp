@@ -212,7 +212,7 @@ fc::variant push_transaction( signed_transaction& trx, packed_transaction::compr
    trx.set_reference_block(info.head_block_id);
 
    if (tx_force_unique) {
-      trx.actions.emplace_back( generate_nonce() );
+      trx.context_free_actions.emplace_back( generate_nonce() );
    }
 
    if (!tx_skip_sign) {
