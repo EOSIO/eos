@@ -137,14 +137,32 @@ namespace eosio { namespace chain {
        * average_block_size > target_block_size, with a cap at 1000x max_block_size
        * and a floor at max_block_size;
        **/
-      uint64_t virtual_net_bandwidth = 0;
+      uint64_t virtual_net_limit = 0;
 
       /**
        *  Increases when average_bloc
        */
-      uint64_t virtual_act_bandwidth = 0;
+      uint64_t virtual_cpu_limit = 0;
 
    };
+
+   class resource_limits_config_object : public chainbase::object<resource_limits_config_object_type, resource_limits_config_object> {
+      OBJECT_CTOR(resource_limits_config_object);
+      id_type id;
+
+      uint32_t  base_per_transaction_net_usage;
+      uint32_t  base_per_transaction_cpu_usage;
+
+      uint32_t  per_signature_cpu_usage;
+   };
+
+   using resource_limits_config_index = chainbase::shared_multi_index_container<
+      resource_limits_config_object,
+      indexed_by<
+         ordered_unique<tag<by_id>, member<resource_limits_object, resource_limits_object::id_type, &resource_limits_object::id>>
+      >
+   >;
+
 
 } } /// eosio::chain
 

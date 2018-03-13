@@ -1615,53 +1615,56 @@ void chain_controller::push_deferred_transactions( bool flush )
  */
 void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_usage )
 {
+   const auto& config = _db.get<resource_limits_config_object>();
+   const auto& state = _db.get<resource_limits_state_object>();
    set<std::pair<account_name, permission_name>> authorizing_accounts;
 
    for( const auto& act : meta.trx().actions )
       for( const auto& auth : act.authorization )
          authorizing_accounts.emplace( auth.actor, auth.permission );
 
-   auto trx_size = meta.bandwidth_usage + config::fixed_bandwidth_overhead_per_transaction;
+   auto net_usage = meta.bandwidth_usage + config.base_per_transaction_net_usage;
+   auto cpu_usage = act_usage + config.base_per_transaction_net_usage;
 
-   const auto& dgpo = get_dynamic_global_properties();
-
+   // charge a system controlled amount for signature verification/recovery
    if( meta.signing_keys ) {
-      act_usage += meta.signing_keys->size();
+      cpu_usage += meta.signing_keys->size() * config.per_signature_cpu_usage;
    }
 
    auto head_time = head_block_time();
    for( const auto& authaccnt : authorizing_accounts ) {
 
-      const auto& buo = _db.get<resource_limits_object,by_owner>( authaccnt.first );
-      _db.modify( buo, [&]( auto& bu ){
-          bu.bytes.add_usage( trx_size, head_time );
-          bu.acts.add_usage( act_usage, head_time );
+      const auto& usage = _db.get<resource_usage_object,by_owner>( authaccnt.first );
+      const auto& limits = _db.get<resource_limits_object,by_owner>( boost::make_tuple(false, authaccnt.first));
+      _db.modify( usage, [&]( auto& bu ){
+          bu.net_usage.add_usage( net_usage, head_time );
+          bu.cpu_usage.add_usage( cpu_usage, head_time );
       });
 
-      uint128_t  used_ubytes        = buo.bytes.value;
-      uint128_t  used_uacts         = buo.acts.value;
-      uint128_t  virtual_max_ubytes = dgpo.virtual_net_bandwidth * config::rate_limiting_precision;
-      uint128_t  virtual_max_uacts  = dgpo.virtual_act_bandwidth * config::rate_limiting_precision;
+      uint128_t  consumed_cpu_ex = usage.cpu_usage.value // this is pre-multiplied by config::rate_limiting_precision
+      uint128_t  capacity_cpu_ex = state.virtual_cpu_limit * config::rate_limiting_precision;
+      EOS_ASSERT( limits.cpu_weight < 0 || (consumed_cpu_ex * state.total_cpu_weight) <= (limits.cpu_weight * capacity_cpu_ex),
+                  tx_resource_exhausted,
+                  "authorizing account '${n}' has insufficient cpu resources for this transaction",
+                  ("n",                    name(authaccnt.first))
+                  ("consumed",             (double)consumed_cpu_ex/(double)config::rate_limiting_precision)
+                  ("cpu_weight",           limits.cpu_weight)
+                  ("virtual_cpu_capacity", (double)state.virtual_cpu_limit/(double)config::rate_limiting_precision )
+                  ("total_cpu_weight",     state.total_cpu_weight)
+      );
 
-      if( !(_skip_flags & genesis_setup) ) {
-         #warning TODO: restore bandwidth checks
-         /* setting of bandwidth currently not implemented
-         FC_ASSERT( (used_ubytes * dgpo.total_net_weight) <=  (buo.net_weight * virtual_max_ubytes), "authorizing account '${n}' has insufficient net bandwidth for this transaction",
-                    ("n",name(authaccnt.first))
-                    ("used_bytes",double(used_ubytes)/1000000.)
-                    ("user_net_weight",buo.net_weight)
-                    ("virtual_max_bytes", double(virtual_max_ubytes)/1000000. )
-                    ("total_net_weight", dgpo.total_net_weight)
-                    );
-         FC_ASSERT( (used_uacts * dgpo.total_cpu_weight)  <=  (buo.cpu_weight* virtual_max_uacts),  "authorizing account '${n}' has insufficient compute bandwidth for this transaction",
-                    ("n",name(authaccnt.first))
-                    ("used_acts",double(used_uacts)/1000000.)
-                    ("user_cpu_weight",buo.cpu_weight)
-                    ("virtual_max_uacts", double(virtual_max_uacts)/1000000. )
-                    ("total_cpu_tokens", dgpo.total_cpu_weight)
-                  );
-         */
-      }
+      uint128_t  consumed_net_ex = usage.net_usage.value // this is pre-multiplied by config::rate_limiting_precision
+      uint128_t  capacity_net_ex = state.virtual_net_limit * config::rate_limiting_precision;
+
+      EOS_ASSERT( limits.net_weight < 0 || (consumed_net_ex * state.total_net_weight) <= (limits.net_weight * capacity_net_ex),
+                  tx_resource_exhausted,
+                  "authorizing account '${n}' has insufficient cpu resources for this transaction",
+                  ("n",                    name(authaccnt.first))
+                  ("consumed",             (double)consumed_net_ex/(double)config::rate_limiting_precision)
+                  ("net_weight",           limits.net_weight)
+                  ("virtual_net_capacity", (double)state.virtual_net_limit/(double)config::rate_limiting_precision )
+                  ("total_net_weight",     state.total_net_weight)
+      );
 
       // for any transaction not sent by code, update the affirmative last time a given permission was used
       if (!meta.sender) {

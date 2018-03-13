@@ -148,6 +148,7 @@ namespace eosio { namespace chain {
       table_id_object_type,
       pending_total_resource_limits_object_type,
       resource_limits_state_object_type,
+      resource_limits_config_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
