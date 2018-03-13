@@ -365,8 +365,9 @@ namespace eosio { namespace testing {
       const auto& idx = db.get_index<chain::contracts::key_value_index, chain::contracts::by_scope_primary>();
 
       auto itr = idx.lower_bound( boost::make_tuple( t_id->id, act ) );
-      FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
-      BOOST_REQUIRE_EQUAL( act.value, itr->primary_key );
+      if ( itr == idx.end() || itr->t_id != t_id->id || act.value != itr->primary_key ) {
+         return data;
+      }
 
       chain_apis::read_only::copy_inline_row( *itr, data );
       return data;

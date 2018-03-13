@@ -68,7 +68,7 @@ public:
 
    fc::variant get_total_stake( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, act, N(totalband), act );
-      return abi_ser.binary_to_variant( "total_resources", data );
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "total_resources", data );
    }
 
    fc::variant get_voter_info( const account_name& act ) {
@@ -348,6 +348,8 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( asset::from_string("620.0000 EOS"), get_balance( "alice" ) );
    //all voting power goes to alice
    REQUIRE_EQUAL_OBJECTS( simple_voter( "alice", "300.0000 EOS",  last_block_time()-1 ), get_voter_info( "alice" ) );
+   //but not to bob
+   BOOST_REQUIRE_EQUAL( true, get_voter_info( "bob" ).is_null() );
 
    //bob should not be able to unstake what was staked by alice
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: unable to find key"),
@@ -418,6 +420,7 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
    //voting power too
    REQUIRE_EQUAL_OBJECTS( simple_voter( "alice", "300.0000 EOS",  last_block_time()-1 ), get_voter_info( "alice" ) );
    REQUIRE_EQUAL_OBJECTS( simple_voter( "carol", "30.0000 EOS",  last_block_time() ), get_voter_info( "carol" ) );
+   BOOST_REQUIRE_EQUAL( true, get_voter_info( "bob" ).is_null() );
 } FC_LOG_AND_RETHROW()
 
 
@@ -435,6 +438,7 @@ BOOST_FIXTURE_TEST_CASE( adding_stake_partial_unstake, eosio_system_tester ) try
 
    auto stake = get_total_stake( "bob" );
    auto bytes0 = stake["storage_bytes"].as_uint64();
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "alice", "300.0000 EOS",  last_block_time()-1 ), get_voter_info( "alice" ) );
 
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(delegatebw), mvo()
                                                ("from",     "alice")
@@ -451,6 +455,7 @@ BOOST_FIXTURE_TEST_CASE( adding_stake_partial_unstake, eosio_system_tester ) try
    BOOST_REQUIRE_EQUAL( asset::from_string("120.0000 EOS").amount, stake["storage_stake"].as_uint64());
    auto bytes = stake["storage_bytes"].as_uint64();
    BOOST_REQUIRE_EQUAL( true, bytes0 < bytes );
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "alice", "450.0000 EOS",  last_block_time() ), get_voter_info( "alice" ) );
    BOOST_REQUIRE_EQUAL( asset::from_string("430.0000 EOS"), get_balance( "alice" ) );
 
    //unstake a share
@@ -469,6 +474,7 @@ BOOST_FIXTURE_TEST_CASE( adding_stake_partial_unstake, eosio_system_tester ) try
    BOOST_REQUIRE_EQUAL( bytes-bytes/2, stake["storage_bytes"].as_uint64() );
    BOOST_REQUIRE_EQUAL( asset::from_string("120.0000 EOS").amount - asset::from_string("120.0000 EOS").amount * (bytes/2)/bytes,
                         stake["storage_stake"].as_uint64());
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "alice", "225.0000 EOS",  last_block_time()-1 ), get_voter_info( "alice" ) );
    BOOST_REQUIRE_EQUAL( asset::from_string("714.9599 EOS"), get_balance( "alice" ) );
 
 } FC_LOG_AND_RETHROW()
