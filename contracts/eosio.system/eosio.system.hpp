@@ -185,8 +185,8 @@ namespace eosiosystem {
             if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                if( !eosio::dispatch<contract, typename delegate_bandwith<SystemAccount>::delegatebw,
                                  typename delegate_bandwith<SystemAccount>::undelegatebw,
-                                 typename voting<SystemAccount>::register_proxy,
-                                 typename voting<SystemAccount>::unregister_proxy,
+                                 typename voting<SystemAccount>::regproxy,
+                                 typename voting<SystemAccount>::unregproxy,
                                  typename voting<SystemAccount>::regproducer,
                                  typename voting<SystemAccount>::unregprod,
                                  typename voting<SystemAccount>::voteproducer,

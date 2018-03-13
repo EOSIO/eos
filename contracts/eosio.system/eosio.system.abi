@@ -126,6 +126,18 @@
         {"name":"producer",     "type":"account_name"}
       ]
     },{
+      "name": "regproxy",
+      "base": "",
+      "fields": [
+        {"name":"proxy",     "type":"account_name"}
+      ]
+    },{
+      "name": "unregproxy",
+      "base": "",
+      "fields": [
+        {"name":"proxy",     "type":"account_name"}
+      ]
+    },{
       "name": "voteproducer",
       "base": "",
       "fields": [
@@ -169,6 +181,12 @@
     },{
       "name": "unregprod",
       "type": "unregprod"
+    },{
+      "name": "regproxy",
+      "type": "regproxy"
+    },{
+      "name": "unregproxy",
+      "type": "unregproxy"
     },{
       "name": "voteproducer",
       "type": "voteproducer"

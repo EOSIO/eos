@@ -473,9 +473,9 @@ namespace eosiosystem {
             auto end_it = std::set_difference( new_producers->begin(), new_producers->end(), old_producers->begin(), old_producers->end(), elected.begin() );
             for ( auto it = elected.begin(); it != end_it; ++it ) {
                auto prod = producers_tbl.find( *it );
-               eosio_assert( bool(prod), "never existed producer" ); //data corruption
+               eosio_assert( bool(prod), "producer is not registered" );
                if ( vp.proxy == 0 ) { //direct voting, in case of proxy voting update total_votes even for inactive producers
-                  eosio_assert( prod->active(), "can vote only for active producers" );
+                  eosio_assert( prod->active(), "producer is not currently registered" );
                }
                producers_tbl.update( *prod, 0, [&]( auto& pi ) { pi.total_votes += voter->staked.quantity; });
             }
@@ -488,17 +488,17 @@ namespace eosiosystem {
                });
          }
 
-         ACTION( SystemAccount, register_proxy ) {
-            account_name proxy_to_register;
+         ACTION( SystemAccount, regproxy ) {
+            account_name proxy;
 
-            EOSLIB_SERIALIZE( register_proxy, (proxy_to_register) )
+            EOSLIB_SERIALIZE( regproxy, (proxy) )
          };
 
-         static void on( const register_proxy& reg ) {
-            require_auth( reg.proxy_to_register );
+         static void on( const regproxy& reg ) {
+            require_auth( reg.proxy );
 
             voters_table voters_tbl( SystemAccount, SystemAccount );
-            auto voter = voters_tbl.find( reg.proxy_to_register );
+            auto voter = voters_tbl.find( reg.proxy );
             if ( voter ) {
                eosio_assert( voter->is_proxy == 0, "account is already a proxy" );
                eosio_assert( voter->proxy == 0, "account that uses a proxy is not allowed to become a proxy" );
@@ -508,8 +508,8 @@ namespace eosiosystem {
                      //a.proxied_votes may be > 0, if the proxy has been unregistered, so we had to keep the value
                   });
             } else {
-               voters_tbl.emplace( reg.proxy_to_register, [&]( voter_info& a ) {
-                     a.owner = reg.proxy_to_register;
+               voters_tbl.emplace( reg.proxy, [&]( voter_info& a ) {
+                     a.owner = reg.proxy;
                      a.last_update = now();
                      a.proxy = 0;
                      a.is_proxy = 1;
@@ -519,17 +519,17 @@ namespace eosiosystem {
             }
          }
 
-         ACTION( SystemAccount, unregister_proxy ) {
-            account_name proxy_to_unregister;
+         ACTION( SystemAccount, unregproxy ) {
+            account_name proxy;
 
-            EOSLIB_SERIALIZE( unregister_proxy, (proxy_to_unregister) )
+            EOSLIB_SERIALIZE( unregproxy, (proxy) )
          };
 
-         static void on( const unregister_proxy& reg ) {
-            require_auth( reg.proxy_to_unregister );
+         static void on( const unregproxy& reg ) {
+            require_auth( reg.proxy );
 
             voters_table voters_tbl( SystemAccount, SystemAccount );
-            auto proxy = voters_tbl.find( reg.proxy_to_unregister );
+            auto proxy = voters_tbl.find( reg.proxy );
             eosio_assert( bool(proxy), "proxy not found" );
             eosio_assert( proxy->is_proxy == 1, "account is already a proxy" );
 
