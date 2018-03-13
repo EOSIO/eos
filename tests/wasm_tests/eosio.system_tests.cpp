@@ -595,6 +595,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
                                                ("stake_storage", "0.0000 EOS")
                         )
    );
+   BOOST_REQUIRE_EQUAL( asset::from_string("1988.8889 EOS"), get_balance( "bob" ) );
    REQUIRE_EQUAL_OBJECTS( simple_voter( "bob", "11.1111 EOS",  last_block_time() ), get_voter_info( "bob" ) );
 
    //bob votes for alice
@@ -621,6 +622,8 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
                                                ("stake_storage", "0.0000 EOS")
                         )
    );
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "carol", "22.2222 EOS",  last_block_time() ), get_voter_info( "carol" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("2977.7778 EOS"), get_balance( "carol" ) );
    //carol votes for alice
    BOOST_REQUIRE_EQUAL( success(), push_action(N(carol), N(voteproducer), mvo()
                                                ("voter",  "carol")
@@ -628,21 +631,22 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
                                                ("producers", vector<account_name>{ N(alice) } )
                         )
    );
-   REQUIRE_EQUAL_OBJECTS( simple_voter( "carol", "22.2222 EOS",  last_block_time()-1 ), get_voter_info( "carol" ) );
-   //new stake should be added to alice's total_votes
+   //new stake votes be added to alice's total_votes
    prod = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( 333333, prod["total_votes"].as_uint64() );
 
-   //bob revokes his vote
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(voteproducer), mvo()
-                                               ("voter",  "bob")
-                                               ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>() )
+   //bob increases his stake
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(delegatebw), mvo()
+                                               ("from",     "bob")
+                                               ("receiver", "bob")
+                                               ("stake_net", "55.0000 EOS")
+                                               ("stake_cpu", "00.5555 EOS")
+                                               ("stake_storage", "0.0000 EOS")
                         )
    );
-   //should decrease alice's total_votes
+   //should increase alice's total_votes
    prod = get_producer_info( "alice" );
-   BOOST_REQUIRE_EQUAL( 222222, prod["total_votes"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( 888888, prod["total_votes"].as_uint64() );
 
    //carol unstakes part of the stake
    BOOST_REQUIRE_EQUAL( success(), push_action(N(carol), N(undelegatebw), mvo()
@@ -653,9 +657,22 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
                                                ("unstake_bytes", 0)
                         )
    );
-   //should decrease alice's total_votes to zero
+   //should decrease alice's total_votes
+   prod = get_producer_info( "alice" );
+   BOOST_REQUIRE_EQUAL( 868886, prod["total_votes"].as_uint64() );
+
+   //bob revokes his vote
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(voteproducer), mvo()
+                                               ("voter",  "bob")
+                                               ("proxy", name(0).to_string() )
+                                               ("producers", vector<account_name>() )
+                        )
+   );
+   //should decrease alice's total_votes
    prod = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( 202220, prod["total_votes"].as_uint64() );
+   //but eos should still be at stake
+   BOOST_REQUIRE_EQUAL( asset::from_string("1933.3334 EOS"), get_balance( "bob" ) );
 
    //carol unstakes rest of eos
    BOOST_REQUIRE_EQUAL( success(), push_action( N(carol), N(undelegatebw), mvo()
@@ -669,8 +686,89 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    //should decrease alice's total_votes to zero
    prod = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( 0, prod["total_votes"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( asset::from_string("3000.0000 EOS"), get_balance( "carol" ) );
+   //check that the producer parameters stay the same after all
+   BOOST_REQUIRE_EQUAL( N(alice), prod["owner"].as_uint64() );
+   REQUIRE_EQUAL_OBJECTS( params, prod["prefs"]);
+   BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
 
 } FC_LOG_AND_RETHROW()
 
+
+BOOST_FIXTURE_TEST_CASE( producer_keep_votes, eosio_system_tester ) try {
+   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+   fc::variant params = producer_parameters_example(1);
+   vector<char> key = fc::raw::pack( get_public_key( N(alice), "active" ) );
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
+                                               ("producer",  "alice")
+                                               ("producer_key", key )
+                                               ("prefs", params)
+                        )
+   );
+
+   issue( "bob", "2000.0000 EOS",  config::system_account_name );
+   //bob makes stake
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(delegatebw), mvo()
+                                               ("from",     "bob")
+                                               ("receiver", "bob")
+                                               ("stake_net", "13.0000 EOS")
+                                               ("stake_cpu", "00.5791 EOS")
+                                               ("stake_storage", "0.0000 EOS")
+                        )
+   );
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "bob", "13.5791 EOS",  last_block_time() ), get_voter_info( "bob" ) );
+
+   //bob votes for alice
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(bob), N(voteproducer), mvo()
+                                               ("voter",  "bob")
+                                               ("proxy", name(0).to_string() )
+                                               ("producers", vector<account_name>{ N(alice) } )
+                        )
+   );
+
+   auto prod = get_producer_info( "alice" );
+   BOOST_REQUIRE_EQUAL( 135791, prod["total_votes"].as_uint64() );
+
+   //unregister producer
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(unregprod), mvo()
+                                               ("producer",  "alice")
+                        )
+   );
+   prod = get_producer_info( "alice" );
+   //key should be empty
+   BOOST_REQUIRE_EQUAL( true, to_string(prod["packed_key"]).empty() );
+   //check parameters just in case
+   REQUIRE_EQUAL_OBJECTS( params, prod["prefs"]);
+   //votes should stay the same
+   BOOST_REQUIRE_EQUAL( 135791, prod["total_votes"].as_uint64() );
+
+   //regtister the same producer again
+   params = producer_parameters_example(2);
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
+                                               ("producer",  "alice")
+                                               ("producer_key", key )
+                                               ("prefs", params)
+                        )
+   );
+   prod = get_producer_info( "alice" );
+   //votes should stay the same
+   BOOST_REQUIRE_EQUAL( 135791, prod["total_votes"].as_uint64() );
+
+   //change parameters
+   params = producer_parameters_example(3);
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
+                                               ("producer",  "alice")
+                                               ("producer_key", key )
+                                               ("prefs", params)
+                        )
+   );
+   prod = get_producer_info( "alice" );
+   //votes should stay the same
+   BOOST_REQUIRE_EQUAL( 135791, prod["total_votes"].as_uint64() );
+   //check parameters just in case
+   REQUIRE_EQUAL_OBJECTS( params, prod["prefs"]);
+   BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
+
+} FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()
