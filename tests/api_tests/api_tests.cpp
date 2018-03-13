@@ -914,6 +914,12 @@ BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
 
 	// test printi
 	CAPTURE_AND_PRE_TEST_PRINT("test_printi");
+	BOOST_CHECK_EQUAL( captured.substr(0,1), "0" );
+	BOOST_CHECK_EQUAL( captured.substr(1,6), "556644" );
+	BOOST_CHECK_EQUAL( captured.substr(7, capture[3].size()), "-1" );
+
+	// test printui
+	CAPTURE_AND_PRE_TEST_PRINT("test_printui");
 	BOOST_CHECK_EQUAL( captured.substr(0,1), U64Str(0) );
 	BOOST_CHECK_EQUAL( captured.substr(1,6), U64Str(556644) );
 	BOOST_CHECK_EQUAL( captured.substr(7, capture[3].size()), U64Str(-1) ); // "18446744073709551615"
