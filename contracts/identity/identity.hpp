@@ -10,6 +10,7 @@ namespace identity {
    using eosio::action_meta;
    using eosio::singleton;
    using eosio::key256;
+   using eosio::table_row;
    using std::string;
    using std::vector;
 
@@ -117,7 +118,7 @@ namespace identity {
             EOSLIB_SERIALIZE( settrust, (trustor)(trusting)(trust) )
          };
 
-         struct certrow {
+         struct certrow : public table_row {
             uint64_t            id;
             property_name       property;
             uint64_t            trusted;
@@ -125,7 +126,7 @@ namespace identity {
             uint8_t             confidence = 0;
             string              type;
             vector<char>        data;
-            uint64_t primary_key() const { return id; }
+            virtual uint64_t primary_key()const override { return id; }
             /* constexpr */ static key256 key(uint64_t property, uint64_t trusted, uint64_t certifier) {
                /*
                key256 key;
@@ -141,19 +142,19 @@ namespace identity {
             EOSLIB_SERIALIZE( certrow , (property)(trusted)(certifier)(confidence)(type)(data)(id) )
          };
 
-         struct identrow {
+         struct identrow : public table_row {
             uint64_t     identity;
             account_name creator;
 
-            uint64_t primary_key() const { return identity; }
+            virtual uint64_t primary_key()const override { return identity; }
 
             EOSLIB_SERIALIZE( identrow , (identity)(creator) )
          };
 
-         struct trustrow {
+         struct trustrow : public  table_row {
             account_name account;
 
-            uint64_t primary_key() const { return account; }
+            virtual uint64_t primary_key()const override { return account; }
 
             EOSLIB_SERIALIZE( trustrow, (account) )
          };

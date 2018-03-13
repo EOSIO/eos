@@ -5,33 +5,43 @@
 
 namespace _test_multi_index {
 
+   using eosio::table_row;
    using eosio::key256;
 
-   struct record_idx64 {
+   struct record_idx64 : public table_row {
       uint64_t id;
       uint64_t sec;
 
-      auto primary_key()const { return id; }
+      record_idx64() : id(), sec() {}
+      record_idx64(uint64_t pk, uint64_t secondary) : id(pk), sec(secondary) {}
+
+      virtual uint64_t primary_key()const override { return id; }
       uint64_t get_secondary()const { return sec; }
 
       EOSLIB_SERIALIZE( record_idx64, (id)(sec) )
    };
 
-   struct record_idx128 {
+   struct record_idx128 : public table_row {
       uint64_t  id;
       uint128_t sec;
 
-      auto primary_key()const { return id; }
+      record_idx128() : id(), sec() {}
+      record_idx128(uint64_t pk, uint128_t secondary) : id(pk), sec(secondary) {}
+
+      virtual uint64_t primary_key()const override { return id; }
       uint128_t get_secondary()const { return sec; }
 
       EOSLIB_SERIALIZE( record_idx128, (id)(sec) )
    };
 
-   struct record_idx256 {
+   struct record_idx256 : public table_row {
       uint64_t id;
       key256   sec;
 
-      auto primary_key()const { return id; }
+      record_idx256() : id(), sec() {}
+      record_idx256(uint64_t pk, const key256& secondary) : id(pk), sec(secondary) {}
+
+      virtual uint64_t primary_key()const override { return id; }
       const key256& get_secondary()const { return sec; }
 
       EOSLIB_SERIALIZE( record_idx256, (id)(sec) )
@@ -44,13 +54,13 @@ namespace _test_multi_index {
 
       typedef record_idx64 record;
 
-      record records[] = {{265, N(alice)},
-                          {781, N(bob)},
-                          {234, N(charlie)},
-                          {650, N(allyson)},
-                          {540, N(bob)},
-                          {976, N(emily)},
-                          {110, N(joe)}
+      record records[] = {record{265, N(alice)},
+                          record{781, N(bob)},
+                          record{234, N(charlie)},
+                          record{650, N(allyson)},
+                          record{540, N(bob)},
+                          record{976, N(emily)},
+                          record{110, N(joe)}
       };
       size_t num_records = sizeof(records)/sizeof(records[0]);
 

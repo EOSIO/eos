@@ -24,6 +24,7 @@ namespace eosiosystem {
    using std::map;
    using std::pair;
    using eosio::print;
+   using eosio::table_row;
 
    template<account_name SystemAccount>
    class contract {
@@ -32,13 +33,13 @@ namespace eosiosystem {
          typedef eosio::generic_currency< eosio::token<system_account,S(4,EOS)> > currency;
          typedef typename currency::token_type system_token_type;
 
-         struct producer_votes {
+         struct producer_votes : public table_row {
             account_name      owner;
             uint64_t          padding = 0;
             uint128_t         total_votes;
 
-            uint64_t    primary_key()const { return owner;       }
-            uint128_t   by_votes()const    { return total_votes; }
+            virtual uint64_t primary_key()const override { return owner;       }
+            uint128_t        by_votes()const             { return total_votes; }
 
             EOSLIB_SERIALIZE( producer_votes, (owner)(total_votes) )
          };
@@ -46,36 +47,36 @@ namespace eosiosystem {
             indexed_by<N(prototalvote), const_mem_fun<producer_votes, uint128_t, &producer_votes::by_votes>  >
          >  producer_votes_index_type;
 
-         struct account_votes {
+         struct account_votes : public table_row {
             account_name                owner;
             account_name                proxy;
             uint32_t                    last_update;
             system_token_type           staked;
             std::vector<account_name>   producers;
 
-            uint64_t primary_key()const { return owner; }
+            virtual uint64_t primary_key()const override { return owner; }
 
             EOSLIB_SERIALIZE( account_votes, (owner)(proxy)(last_update)(staked)(producers) )
          };
          typedef eosio::multi_index< N(accountvotes), account_votes>  account_votes_index_type;
 
 
-         struct producer_config {
+         struct producer_config : public table_row {
             account_name      owner;
             eosio::bytes      packed_key; /// a packed public key object
 
-            uint64_t primary_key()const { return owner;       }
+            virtual uint64_t primary_key()const override { return owner;       }
             EOSLIB_SERIALIZE( producer_config, (owner)(packed_key) )
          };
          typedef eosio::multi_index< N(producercfg), producer_config>  producer_config_index_type;
 
-         struct total_resources {
+         struct total_resources : public table_row {
             account_name owner;
             typename currency::token_type total_net_weight;
             typename currency::token_type total_cpu_weight;
             uint32_t total_ram = 0;
 
-            uint64_t primary_key()const { return owner; }
+            virtual uint64_t primary_key()const override { return owner; }
 
             EOSLIB_SERIALIZE( total_resources, (owner)(total_net_weight)(total_cpu_weight)(total_ram) )
          };
@@ -84,7 +85,7 @@ namespace eosiosystem {
          /**
           *  Every user 'from' has a scope/table that uses every receipient 'to' as the primary key.
           */
-         struct delegated_bandwidth {
+         struct delegated_bandwidth : public table_row {
             account_name from;
             account_name to;
             typename currency::token_type net_weight;
@@ -99,7 +100,7 @@ namespace eosiosystem {
             uint64_t deferred_cpu_withdraw_handler = 0;
 
 
-            uint64_t  primary_key()const { return to; }
+            virtual uint64_t primary_key()const override { return to; }
 
             EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight)
                               (start_pending_net_withdraw)(pending_net_withdraw)(deferred_net_withdraw_handler)
