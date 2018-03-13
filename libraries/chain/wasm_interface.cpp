@@ -355,8 +355,8 @@ namespace eosio { namespace chain {
 class context_aware_api {
    public:
       context_aware_api(wasm_interface& wasm, bool context_free = false )
-      :context(intrinsics_accessor::get_context(wasm).context)
-      ,code(intrinsics_accessor::get_context(wasm).code)
+      :code(intrinsics_accessor::get_context(wasm).code)
+      ,context(intrinsics_accessor::get_context(wasm).context)
       ,vm(intrinsics_accessor::get_context(wasm).vm)
       {
          if( context.context_free )
@@ -1686,7 +1686,7 @@ REGISTER_NATIVE_INTRINSICS(console_api,
    (prints, void, (char* val), (null_terminated_ptr(val)))
    (printi, void, (uint64_t val), (val))
    (printi128, void, (const uint128_t* val), (*val))
-   (printd, void, (uint64_t val), (wasm_double(val)))
+   (printd, void, (uint64_t val), (webassembly::common::wasm_double(val)))
    (printhex, void, (const char* data, uint32_t datalen), (array_ptr<const char>(data), datalen))
    (prints_l, void, (const char* cstr, uint32_t len), (array_ptr<const char>(cstr), len))
 )
