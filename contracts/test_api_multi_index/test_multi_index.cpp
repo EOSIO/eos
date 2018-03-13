@@ -147,7 +147,7 @@ namespace _test_multi_index {
       // modify and erase
       {
          const uint64_t ssn = 421;
-         const auto& new_person = table.emplace( payer, [&]( auto& r ) {
+         auto new_person = table.emplace( payer, [&]( auto& r ) {
             r.id = ssn;
             r.sec = N(bob);
          });
