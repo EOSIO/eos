@@ -616,13 +616,6 @@ class apply_context {
 
       void exec_one();
 
-      void validate_table_key( const table_id_object& t_id, contracts::table_key_type key_type );
-
-      void validate_or_add_table_key( const table_id_object& t_id, contracts::table_key_type key_type );
-
-      template<typename ObjectType>
-      static contracts::table_key_type get_key_type();
-
       vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
       vector<action>                      _inline_actions; ///< queued inline messages
       std::ostringstream                  _pending_console_output;
@@ -797,7 +790,6 @@ using apply_handler = std::function<void(apply_context&)>;
    template <typename ObjectType>
    int32_t apply_context::store_record( const table_id_object& t_id, const account_name& bta, const typename ObjectType::key_type* keys, const char* value, size_t valuelen ) {
       require_write_lock( t_id.scope );
-      validate_or_add_table_key(t_id, get_key_type<ObjectType>());
 
       auto tuple = impl::exact_tuple<ObjectType>::get(t_id, keys);
       const auto* obj = db.find<ObjectType, contracts::by_scope_primary>(tuple);
@@ -820,7 +812,6 @@ using apply_handler = std::function<void(apply_context&)>;
    template <typename ObjectType>
    int32_t apply_context::update_record( const table_id_object& t_id, const account_name& bta, const typename ObjectType::key_type* keys, const char* value, size_t valuelen ) {
       require_write_lock( t_id.scope );
-      validate_or_add_table_key(t_id, get_key_type<ObjectType>());
 
       auto tuple = impl::exact_tuple<ObjectType>::get(t_id, keys);
       const auto* obj = db.find<ObjectType, contracts::by_scope_primary>(tuple);
@@ -842,7 +833,6 @@ using apply_handler = std::function<void(apply_context&)>;
    template <typename ObjectType>
    int32_t apply_context::remove_record( const table_id_object& t_id, const typename ObjectType::key_type* keys ) {
       require_write_lock( t_id.scope );
-      validate_or_add_table_key(t_id, get_key_type<ObjectType>());
 
       auto tuple = impl::exact_tuple<ObjectType>::get(t_id, keys);
       const auto* obj = db.find<ObjectType,  contracts::by_scope_primary>(tuple);
@@ -856,7 +846,6 @@ using apply_handler = std::function<void(apply_context&)>;
    template <typename IndexType, typename Scope>
    int32_t apply_context::load_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
       require_read_lock( t_id.code, t_id.scope );
-      validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
 
       const auto& idx = db.get_index<IndexType, Scope>();
       auto tuple = impl::partial_tuple<IndexType, Scope>::get(t_id, keys);
@@ -881,7 +870,6 @@ using apply_handler = std::function<void(apply_context&)>;
    template <typename IndexType, typename Scope>
    int32_t apply_context::front_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
       require_read_lock( t_id.code, t_id.scope );
-      validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
 
       const auto& idx = db.get_index<IndexType, Scope>();
       auto tuple = impl::front_record_tuple<IndexType, Scope>::get(t_id);
@@ -906,7 +894,6 @@ using apply_handler = std::function<void(apply_context&)>;
    template <typename IndexType, typename Scope>
    int32_t apply_context::back_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
       require_read_lock( t_id.code, t_id.scope );
-      validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
 
       const auto& idx = db.get_index<IndexType, Scope>();
       decltype(t_id.id) next_tid(t_id.id._id + 1);
@@ -935,7 +922,6 @@ using apply_handler = std::function<void(apply_context&)>;
    template <typename IndexType, typename Scope>
    int32_t apply_context::next_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
       require_read_lock( t_id.code, t_id.scope );
-      validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
 
       const auto& pidx = db.get_index<IndexType, contracts::by_scope_primary>();
 
@@ -979,7 +965,6 @@ using apply_handler = std::function<void(apply_context&)>;
    template <typename IndexType, typename Scope>
    int32_t apply_context::previous_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
       require_read_lock( t_id.code, t_id.scope );
-      validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
 
       const auto& pidx = db.get_index<IndexType, contracts::by_scope_primary>();
 
@@ -1019,7 +1004,6 @@ using apply_handler = std::function<void(apply_context&)>;
    template <typename IndexType, typename Scope>
    int32_t apply_context::lower_bound_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
       require_read_lock( t_id.code, t_id.scope );
-      validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
 
       const auto& idx = db.get_index<IndexType, Scope>();
       auto tuple = impl::partial_tuple<IndexType, Scope>::get(t_id, keys);
@@ -1044,7 +1028,6 @@ using apply_handler = std::function<void(apply_context&)>;
    template <typename IndexType, typename Scope>
    int32_t apply_context::upper_bound_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
       require_read_lock( t_id.code, t_id.scope );
-      validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
 
       const auto& idx = db.get_index<IndexType, Scope>();
       auto tuple = impl::partial_tuple<IndexType, Scope>::get(t_id, keys);
