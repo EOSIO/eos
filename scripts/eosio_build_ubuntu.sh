@@ -119,7 +119,7 @@
 		cd ${TEMP_DIR}
 		curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
 		if [ $? -ne 0 ]; then
-			rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz
+			rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz 2>/dev/null
 			printf "\tUnable to download MondgDB C driver at this time.\n"
 			printf "\tExiting now.\n\n"
 			exit;
