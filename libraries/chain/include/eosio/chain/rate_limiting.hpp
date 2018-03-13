@@ -68,8 +68,8 @@ namespace eosio { namespace chain {
          ordered_unique<tag<by_id>, member<resource_limits_object, resource_limits_object::id_type, &resource_limits_object::id>>,
          ordered_unique<tag<by_owner>,
             composite_key<resource_limits_object,
-               BOOST_MULTI_INDEX_MEMBER(resource_limits_object, account_name, owner),
-               BOOST_MULTI_INDEX_MEMBER(resource_limits_object, bool, pending)
+               BOOST_MULTI_INDEX_MEMBER(resource_limits_object, bool, pending),
+               BOOST_MULTI_INDEX_MEMBER(resource_limits_object, account_name, owner)
             >
          >
       >

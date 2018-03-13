@@ -15,6 +15,7 @@
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/authority_checker.hpp>
 #include <eosio/chain/contracts/chain_initializer.hpp>
+#include <eosio/chain/rate_limiting.hpp>
 #include <eosio/chain/scope_sequence_object.hpp>
 #include <eosio/chain/merkle.hpp>
 
@@ -1341,15 +1342,45 @@ void chain_controller::update_last_irreversible_block()
 
 void chain_controller::update_rate_limiting()
 {
-   const auto* ptu = _db.find<pending_total_usage_object>();
-   if (ptu) {
-      auto& gdp = get_dynamic_global_properties();
-      _db.modify( gdp, [&]( dynamic_global_property_object& p ) {
-         p.total_net_weight = ptu->total_net_weight;
-         p.total_cpu_weight = ptu->total_cpu_weight;
-         p.total_db_capacity = ptu->total_db_capacity;
+   auto& resource_limits_index = _db.get_mutable_index<resource_limits_index>();
+   auto& by_owner_index = resource_limits_index.indices().get<by_owner>();
+
+   auto updated_state = _db.get<resource_limits_state_object>();
+
+   while(!by_owner_index.empty()) {
+      const auto& itr = by_owner_index.lower_bound(boost::make_tuple(true));
+      if (itr == by_owner_index.end() || itr->pending!= true) {
+         break;
+      }
+
+      const auto& actual_entry = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, itr->owner));
+      _db.modify(actual_entry, [&](resource_limits_object& rlo){
+         // convenience local lambda to reduce clutter
+         auto update_state_and_value = [](uint64_t &total, int64_t &value, int64_t pending_value, const char* debug_which) -> void {
+            if (value > 0) {
+               EOS_ASSERT(total >= value, rate_limiting_state_inconsistent, "underflow when reverting old value to ${which}", ("which", debug_which));
+               total -= value;
+            }
+
+            if (pending_value > 0) {
+               EOS_ASSERT(UINT64_MAX - total < value, rate_limiting_state_inconsistent, "overflow when applying new value to ${which}", ("which", debug_which));
+               total += pending_value;
+            }
+
+            value = pending_value;
+         };
+
+         update_state_and_value(updated_state.total_ram_bytes,  rlo.ram_bytes,  itr->ram_bytes, "ram_bytes");
+         update_state_and_value(updated_state.total_cpu_weight, rlo.cpu_weight, itr->cpu_weight, "cpu_weight");
+         update_state_and_value(updated_state.total_net_weight, rlo.net_weight, itr->net_weight, "net_wright");
       });
+
+      by_owner_index.remove(*itr);
    }
+
+   _db.modify(updated_state, [&updated_state](resource_limits_state_object rso){
+      rso = updated_state;
+   });
 }
 
 void chain_controller::clear_expired_transactions()

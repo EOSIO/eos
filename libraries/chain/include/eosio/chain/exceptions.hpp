@@ -22,6 +22,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           eosio::chain::chain_exception, 3110000, "unknown block" )
    FC_DECLARE_DERIVED_EXCEPTION( chain_type_exception,              eosio::chain::chain_exception, 3120000, "chain type exception" )
    FC_DECLARE_DERIVED_EXCEPTION( missing_plugin_exception,          eosio::chain::chain_exception, 3130000, "missing plugin exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( rate_limiting_invariant_exception, eosio::chain::chain_exception, 3140000, "rate limiting invariant violated" )
 
    FC_DECLARE_DERIVED_EXCEPTION( permission_query_exception,        eosio::chain::database_query_exception, 3010001, "permission query exception" )
 
@@ -67,6 +68,8 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,                eosio::chain::missing_plugin_exception, 3130002, "Missing Wallet API Plugin" )
    FC_DECLARE_DERIVED_EXCEPTION( missing_account_history_api_plugin_exception,       eosio::chain::missing_plugin_exception, 3130003, "Missing Account History API Plugin" )
    FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,                   eosio::chain::missing_plugin_exception, 3130003, "Missing Net API Plugin" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( rate_limiting_state_inconsistent,  eosio::chain::rate_limiting_invariant_exception, 3140001, "internal state is no longer consistent" )
 
 
    #define EOS_RECODE_EXC( cause_type, effect_type ) \

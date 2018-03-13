@@ -428,9 +428,9 @@ class privileged_api : public context_aware_api {
           * the actual state at the next appropriate boundary.
           */
          auto find_or_create_pending_limits = [&]() -> const resource_limits_object& {
-            const auto* pending_limits = context.db.find<resource_limits_object, by_owner>( boost::make_tuple(account, true) );
+            const auto* pending_limits = context.db.find<resource_limits_object, by_owner>( boost::make_tuple(true, account) );
             if (pending_limits == nullptr) {
-               const auto& limits = context.db.get<resource_limits_object, by_owner>( boost::make_tuple(account, false));
+               const auto& limits = context.db.get<resource_limits_object, by_owner>( boost::make_tuple(false, account));
                return context.mutable_db.create<resource_limits_object>([&](resource_limits_object& pending_limits){
                   pending_limits.owner = limits.owner;
                   pending_limits.ram_bytes = limits.ram_bytes;
@@ -458,13 +458,13 @@ class privileged_api : public context_aware_api {
 
 
       void get_resource_limits( account_name account, int64_t& ram_bytes, int64_t& net_weight, int64_t cpu_weight ) {
-         const auto* pending_buo = context.db.find<resource_limits_object,by_owner>( boost::make_tuple(account, true) );
+         const auto* pending_buo = context.db.find<resource_limits_object,by_owner>( boost::make_tuple(true, account) );
          if (pending_buo) {
             ram_bytes  = pending_buo->ram_bytes;
             net_weight = pending_buo->net_weight;
             cpu_weight = pending_buo->cpu_weight;
          } else {
-            const auto& buo = context.db.get<resource_limits_object,by_owner>( boost::make_tuple( account, false ) );
+            const auto& buo = context.db.get<resource_limits_object,by_owner>( boost::make_tuple( false, account ) );
             ram_bytes  = buo.ram_bytes;
             net_weight = buo.net_weight;
             cpu_weight = buo.cpu_weight;
