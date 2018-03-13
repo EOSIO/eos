@@ -570,8 +570,8 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
 BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
    fc::variant params = producer_parameters_example(1);
-   vector<char> key = fc::raw::pack( fc::crypto::public_key( std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV") ) );
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(regproducer), mvo()
+   vector<char> key = fc::raw::pack( get_public_key( N(alice), "active" ) );
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
                                                ("producer",  "alice")
                                                ("producer_key", key )
                                                ("prefs", params)
@@ -587,7 +587,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    issue( "carol", "3000.0000 EOS",  config::system_account_name );
 
    //bob makes stake
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(bob), N(delegatebw), mvo()
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(delegatebw), mvo()
                                                ("from",     "bob")
                                                ("receiver", "bob")
                                                ("stake_net", "11.0000 EOS")
@@ -605,7 +605,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
                         )
    );
 
-   //check that parameters stay the same after voting
+   //check that producer parameters stay the same after voting
    prod = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( 111111, prod["total_votes"].as_uint64() );
    BOOST_REQUIRE_EQUAL( N(alice), prod["owner"].as_uint64() );
@@ -613,7 +613,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
 
    //carol makes stake
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(carol), N(delegatebw), mvo()
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(carol), N(delegatebw), mvo()
                                                ("from",     "carol")
                                                ("receiver", "carol")
                                                ("stake_net", "22.0000 EOS")
@@ -632,6 +632,43 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    //new stake should be added to alice's total_votes
    prod = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( 333333, prod["total_votes"].as_uint64() );
+
+   //bob revokes his vote
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(voteproducer), mvo()
+                                               ("voter",  "bob")
+                                               ("proxy", name(0).to_string() )
+                                               ("producers", vector<account_name>() )
+                        )
+   );
+   //should decrease alice's total_votes
+   prod = get_producer_info( "alice" );
+   BOOST_REQUIRE_EQUAL( 222222, prod["total_votes"].as_uint64() );
+
+   //carol unstakes part of the stake
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(carol), N(undelegatebw), mvo()
+                                               ("from",     "carol")
+                                               ("receiver", "carol")
+                                               ("unstake_net", "02.0000 EOS")
+                                               ("unstake_cpu", "00.0002 EOS")
+                                               ("unstake_bytes", 0)
+                        )
+   );
+   //should decrease alice's total_votes to zero
+   prod = get_producer_info( "alice" );
+   BOOST_REQUIRE_EQUAL( 202220, prod["total_votes"].as_uint64() );
+
+   //carol unstakes rest of eos
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(carol), N(undelegatebw), mvo()
+                                               ("from",     "carol")
+                                               ("receiver", "carol")
+                                               ("unstake_net", "20.0000 EOS")
+                                               ("unstake_cpu", "00.2220 EOS")
+                                               ("unstake_bytes", 0)
+                        )
+   );
+   //should decrease alice's total_votes to zero
+   prod = get_producer_info( "alice" );
+   BOOST_REQUIRE_EQUAL( 0, prod["total_votes"].as_uint64() );
 
 } FC_LOG_AND_RETHROW()
 
