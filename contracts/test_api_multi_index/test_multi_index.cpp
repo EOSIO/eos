@@ -214,9 +214,18 @@ void test_multi_index::idx128_autoincrement_test()
    auto itr = table.find(3);
    eosio_assert( itr != table.end(), "idx128_autoincrement_test - could not find object with primary key of 3" );
 
+   // The modification below would trigger an error:
+   /*
    table.modify(itr, payer, [&]( auto& r ) {
       r.id = 100;
    });
+   */
+
+   table.emplace( payer, [&]( auto& r) {
+      r.id  = 100;
+      r.sec = itr->sec;
+   });
+   table.erase(itr);
 
    eosio_assert( table.available_primary_key() == 101, "idx128_autoincrement_test - next_primary_key was not correct after record modify" );
 }
@@ -299,9 +308,11 @@ void test_multi_index::idx128_autoincrement_test_part2()
    auto itr = table.find(3);
    eosio_assert( itr != table.end(), "idx128_autoincrement_test_part2 - could not find object with primary key of 3" );
 
-   table.modify(itr, payer, [&]( auto& r ) {
-      r.id = 100;
+   table.emplace( payer, [&]( auto& r) {
+      r.id  = 100;
+      r.sec = itr->sec;
    });
+   table.erase(itr);
 
    eosio_assert( table.available_primary_key() == 101, "idx128_autoincrement_test_part2 - next_primary_key was not correct after record update" );
 }

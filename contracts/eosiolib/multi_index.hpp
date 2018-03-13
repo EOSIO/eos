@@ -620,14 +620,16 @@ class multi_index
             return index_type::extract_secondary_key( obj );
          });
 
+         auto pk = obj.primary_key();
+
          auto& mutableobj = const_cast<T&>(obj); // Do not forget the auto& otherwise it would make a copy and thus not update at all.
          updater( mutableobj );
+
+         eosio_assert( pk == obj.primary_key(), "updater cannot change primary key when modifying an object" );
 
          char tmp[ pack_size( obj ) ];
          datastream<char*> ds( tmp, sizeof(tmp) );
          ds << obj;
-
-         auto pk = obj.primary_key();
 
          db_update_i64( objitem.__primary_itr, payer, tmp, sizeof(tmp) );
 
