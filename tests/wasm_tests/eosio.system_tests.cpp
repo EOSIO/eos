@@ -114,20 +114,20 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
                                                ("receiver", "alice")
                                                ("stake_net", "200.0000 EOS")
                                                ("stake_cpu", "100.0000 EOS")
-                                               ("stake_storage", "300.0000 EOS")
+                                               ("stake_storage", "500.0000 EOS")
                         )
    );
 
    auto stake = get_total_stake( "alice" );
    BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS").amount, stake["net_weight"].as_uint64());
    BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS").amount, stake["cpu_weight"].as_uint64());
-   BOOST_REQUIRE_EQUAL( asset::from_string("300.0000 EOS").amount, stake["storage_stake"].as_uint64());
-   REQUIRE_EQUAL_OBJECTS( simple_voter( "alice", "300.00 EOS",  last_block_time() ), get_voter_info( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("500.0000 EOS").amount, stake["storage_stake"].as_uint64());
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "alice", "300.0000 EOS",  last_block_time()-1 ), get_voter_info( "alice" ) );
 
    auto bytes = stake["storage_bytes"].as_uint64();
    BOOST_REQUIRE_EQUAL( true, 0 < bytes );
 
-   BOOST_REQUIRE_EQUAL( asset::from_string("400.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
 
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(undelegatebw), mvo()
                                                ("from",     "alice")
@@ -216,6 +216,7 @@ BOOST_FIXTURE_TEST_CASE( stake_negative, eosio_system_tester ) try {
                                     ("stake_storage", "0.0000 EOS") )
    );
 
+   BOOST_REQUIRE_EQUAL( true, get_voter_info( "alice" ).is_null() );
 } FC_LOG_AND_RETHROW()
 
 
@@ -225,14 +226,15 @@ BOOST_FIXTURE_TEST_CASE( unstake_negative, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(delegatebw), mvo()
                                                ("from",     "alice")
                                                ("receiver", "bob")
-                                               ("stake_net", "200.0000 EOS")
-                                               ("stake_cpu", "100.0000 EOS")
+                                               ("stake_net", "200.0001 EOS")
+                                               ("stake_cpu", "100.0001 EOS")
                                                ("stake_storage", "300.0000 EOS")
                         )
    );
 
    auto stake = get_total_stake( "bob" );
-   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS").amount, stake["net_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("200.0001 EOS").amount, stake["net_weight"].as_uint64());
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "alice", "300.0002 EOS",  last_block_time()-1 ), get_voter_info( "alice" ) );
 
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: must unstake a positive amount"),
                         push_action(N(alice), N(undelegatebw), mvo()
@@ -272,18 +274,18 @@ BOOST_FIXTURE_TEST_CASE( unstake_more_than_at_stake, eosio_system_tester ) try {
                                                ("receiver", "alice")
                                                ("stake_net", "200.0000 EOS")
                                                ("stake_cpu", "100.0000 EOS")
-                                               ("stake_storage", "300.0000 EOS")
+                                               ("stake_storage", "150.0000 EOS")
                         )
    );
 
    auto stake = get_total_stake( "alice" );
    BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS").amount, stake["net_weight"].as_uint64());
    BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS").amount, stake["cpu_weight"].as_uint64());
-   BOOST_REQUIRE_EQUAL( asset::from_string("300.0000 EOS").amount, stake["storage_stake"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("150.0000 EOS").amount, stake["storage_stake"].as_uint64());
    auto bytes = stake["storage_bytes"].as_uint64();
    BOOST_REQUIRE_EQUAL( true, 0 < bytes );
 
-   BOOST_REQUIRE_EQUAL( asset::from_string("400.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("550.0000 EOS"), get_balance( "alice" ) );
 
    //trying to unstake more net bandwith than at stake
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked net bandwidth"),
@@ -319,9 +321,9 @@ BOOST_FIXTURE_TEST_CASE( unstake_more_than_at_stake, eosio_system_tester ) try {
    stake = get_total_stake( "alice" );
    BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS").amount, stake["net_weight"].as_uint64());
    BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS").amount, stake["cpu_weight"].as_uint64());
-   BOOST_REQUIRE_EQUAL( asset::from_string("300.0000 EOS").amount, stake["storage_stake"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("150.0000 EOS").amount, stake["storage_stake"].as_uint64());
    BOOST_REQUIRE_EQUAL( bytes, stake["storage_bytes"].as_uint64() );
-   BOOST_REQUIRE_EQUAL( asset::from_string("400.0000 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("550.0000 EOS"), get_balance( "alice" ) );
 } FC_LOG_AND_RETHROW()
 
 
@@ -344,6 +346,8 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
    auto bytes = stake["storage_bytes"].as_uint64();
    BOOST_REQUIRE_EQUAL( true, 0 < bytes );
    BOOST_REQUIRE_EQUAL( asset::from_string("620.0000 EOS"), get_balance( "alice" ) );
+   //all voting power goes to alice
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "alice", "300.0000 EOS",  last_block_time()-1 ), get_voter_info( "alice" ) );
 
    //bob should not be able to unstake what was staked by alice
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: unable to find key"),
@@ -371,6 +375,7 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
    auto bytes2 = stake["storage_bytes"].as_uint64();
    BOOST_REQUIRE_EQUAL( true, bytes < bytes2 );
    BOOST_REQUIRE_EQUAL( asset::from_string("962.0000 EOS"), get_balance( "carol" ) );
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "carol", "30.0000 EOS",  last_block_time() ), get_voter_info( "carol" ) );
 
    //alice should not be able to unstake money staked by carol
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked net bandwidth"),
@@ -410,7 +415,9 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( bytes2, stake["storage_bytes"].as_uint64());
    //balance should not change after unsuccessfull attempts to unstake
    BOOST_REQUIRE_EQUAL( asset::from_string("620.0000 EOS"), get_balance( "alice" ) );
-
+   //voting power too
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "alice", "300.0000 EOS",  last_block_time()-1 ), get_voter_info( "alice" ) );
+   REQUIRE_EQUAL_OBJECTS( simple_voter( "carol", "30.0000 EOS",  last_block_time() ), get_voter_info( "carol" ) );
 } FC_LOG_AND_RETHROW()
 
 
