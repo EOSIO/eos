@@ -207,7 +207,7 @@ namespace eosio { namespace testing {
                )
             })
         )
-        // lets also push a context free action just because we used to use nonce for this
+        // lets also push a context free action, the multi chain test will then also include a context free action
         ("context_free_actions", fc::variants({
             fc::mutable_variant_object()
                ("account", name(config::system_account_name))
