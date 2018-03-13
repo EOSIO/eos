@@ -69,7 +69,7 @@ struct test_action {
   static void assert_false();
   static void assert_true();
   static void now();
-  static void test_abort();
+  static void test_abort() __attribute__ ((noreturn)) ;
   static void test_current_receiver();
   static void test_current_sender();
   static void test_publication_time();
@@ -141,6 +141,7 @@ struct test_multi_index {
    static void idx128_autoincrement_test_part1();
    static void idx128_autoincrement_test_part2();
    static void idx256_general();
+   static void idx_double_general();
 };
 
 struct test_crypto {

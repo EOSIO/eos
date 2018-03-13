@@ -43,7 +43,7 @@ bool chain_controller::is_start_of_round( block_num_type block_num )const  {
 }
 
 uint32_t chain_controller::blocks_per_round()const {
-  return get_global_properties().active_producers.producers.size()*config::producer_repititions;
+  return get_global_properties().active_producers.producers.size()*config::producer_repetitions;
 }
 
 chain_controller::chain_controller( const chain_controller::controller_config& cfg )
@@ -1049,7 +1049,8 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<contracts::index64_index>();
    _db.add_index<contracts::index128_index>();
    _db.add_index<contracts::index256_index>();
-
+   _db.add_index<contracts::index_double_index>();
+   
 
    _db.add_index<contracts::keystr_value_index>();
    _db.add_index<contracts::key128x128_value_index>();
@@ -1297,7 +1298,7 @@ void chain_controller::update_last_irreversible_block()
 
    // Write newly irreversible blocks to disk. First, get the number of the last block on disk...
    auto old_last_irreversible_block = _block_log.head();
-   int last_block_on_disk = 0;
+   unsigned last_block_on_disk = 0;
    // If this is null, there are no blocks on disk, so the zero is correct
    if (old_last_irreversible_block)
       last_block_on_disk = old_last_irreversible_block->block_num();
@@ -1365,8 +1366,8 @@ account_name chain_controller::get_scheduled_producer(uint32_t slot_num)const
    uint64_t current_aslot = dpo.current_absolute_slot + slot_num;
    const auto& gpo = _db.get<global_property_object>();
    auto number_of_active_producers = gpo.active_producers.producers.size();
-   auto index = current_aslot % (number_of_active_producers * config::producer_repititions);
-   index /= config::producer_repititions;
+   auto index = current_aslot % (number_of_active_producers * config::producer_repetitions);
+   index /= config::producer_repetitions;
    FC_ASSERT( gpo.active_producers.producers.size() > 0, "no producers defined" );
 
    return gpo.active_producers.producers[index].producer_name;

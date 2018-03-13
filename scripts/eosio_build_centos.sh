@@ -238,7 +238,30 @@
 	else
 		printf "\tBinaryen found at ${HOME}/opt/binaryen\n"
 	fi
-	
+
+	printf "\n\tChecking for SoftFloat\n"
+   if [ ! -d ${HOME}/opt/berkeley-softfloat-3 ]; then
+      # clone the library
+		cd ${TEMP_DIR}
+      mkdir softfloat
+      cd softfloat
+      git clone --depth 1 --single-branch --branch master https://github.com/ucb-bar/berkeley-softfloat-3.git
+      cd berkeley-softfloat-3/build/Linux-x86_64-GCC
+      make -j${CPU_CORE} SPECIALIZE_TYPE="8086-SSE" SOFTFLOAT_OPS="-DSOFTFLOAT_ROUND_EVEN -DINLINE_LEVEL=5 -DSOFTFLOAT_FAST_DIV32TO16 -DSOFTFLOAT_FAST_DIV64TO32"
+      if [ $? -ne 0 ]; then
+         printf "\tError compiling softfloat.\n"
+         printf "\tExiting now.\n\n"
+         exit;
+      fi
+      # no install target defined for this library
+      mkdir -p ${HOME}/opt/berkeley-softfloat-3
+      cp softfloat.a ${HOME}/opt/berkeley-softfloat-3/libsoftfloat.a
+      mv ${TEMP_DIR}/softfloat/berkeley-softfloat-3/source/include ${HOME}/opt/berkeley-softfloat-3/include
+		rm -rf ${TEMP_DIR}/softfloat
+	else
+		printf "\tsoftfloat found at /usr/local/berkeley-softfloat-3/\n"
+   fi
+
 	printf "\n\tChecking for LLVM with WASM support.\n"
 	if [ ! -d ${HOME}/opt/wasm/bin ]; then
 		# Build LLVM and clang with EXPERIMENTAL WASM support:

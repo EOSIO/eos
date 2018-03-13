@@ -1,4 +1,4 @@
-/**
+/** 
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
@@ -50,7 +50,7 @@ namespace eosio {
    }
 
    inline void print( long num ) {
-      printi(num);
+      printi(uint64_t(num));
    }
 
    /**
@@ -104,6 +104,10 @@ namespace eosio {
 
    inline void print( bool val ) {
       prints(val?"true":"false");
+   }
+
+   inline void print( double val ) {
+      printd( *(uint64_t*)(&val) );
    }
 
    template<typename T>

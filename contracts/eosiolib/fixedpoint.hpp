@@ -147,11 +147,11 @@ ope        * fixed_point128<3> b(a);
         */
         uint128_t frac_part() const {
             if(!Q) return 0;
-            return val << (32-Q);
+            return uint128_t(val << (32-Q));
         }
          
         void print() const {
-           uint128_t ip(int_part());
+           uint128_t ip((uint128_t)int_part());
            uint128_t fp(frac_part());
            printi128(&ip);
            prints(".");
@@ -230,7 +230,7 @@ ope        * fixed_point128<3> b(a);
         */
         uint64_t frac_part() const {
             if(!Q) return 0;
-            return val << (32-Q);
+            return uint64_t(val << (32-Q));
         }
 
         void print() const {
@@ -306,7 +306,7 @@ ope        * fixed_point128<3> b(a);
         }
         uint32_t frac_part() const {
             if(!Q) return 0;
-            return val << (32-Q);
+            return uint32_t(val << (32-Q));
         }
 
         void print() const {
@@ -576,7 +576,7 @@ ope        * fixed_point128<3> b(a);
     {
 
         eosio_assert( rhs != 0, "divide by zero" );
-        fixed_point64<Q> result = fixed_point32<0>(lhs) / fixed_point32<0>(rhs);
+        fixed_point64<Q> result = fixed_point32<0>((int32_t)lhs) / fixed_point32<0>((int32_t)rhs);
         return result;
     }
 
@@ -595,7 +595,7 @@ ope        * fixed_point128<3> b(a);
     {
 
         eosio_assert( rhs != 0, "divide by zero" );
-        fixed_point128<Q> result = fixed_point64<0>(lhs) / fixed_point64<0>(rhs);
+        fixed_point128<Q> result = fixed_point64<0>((int32_t)lhs) / fixed_point64<0>((int32_t)rhs);
         return fixed_point128<Q>(result);
     }
 

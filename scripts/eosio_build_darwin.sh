@@ -86,7 +86,6 @@
 		fi
 
 		printf "\tHome Brew installation found.\n\n"
-	# 	DEPS="git automake libtool openssl cmake wget boost llvm@4 gmp gettext"
 		DCOUNT=0
 		COUNT=1
 		PERMISSION_GETTEXT=0
@@ -110,6 +109,10 @@
 			else 
 				let DCOUNT++
 				
+				if [ $pkg = "mongod" ]; then
+					pkg="mongodb"
+				fi
+
 				if [ $pkg = "LLVM" ]; then
 					pkg="llvm@4"
 				fi
@@ -160,6 +163,74 @@
 
 	process_dep
 
+	printf "\n\tChecking for MongoDB C++ driver\n"
+    # install libmongocxx.dylib
+    if [ ! -e /usr/local/lib/libmongocxx.dylib ]; then
+		cd ${TEMP_DIR}
+		brew install --force pkgconfig
+		brew unlink pkgconfig && brew link --force pkgconfig
+		curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
+		if [ $? -ne 0 ]; then
+			rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz
+			printf "\tUnable to download MondgDB C driver at this time.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		tar xf mongo-c-driver-1.9.3.tar.gz
+		rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz
+		cd mongo-c-driver-1.9.3
+		./configure --enable-ssl=darwin --disable-automatic-init-and-cleanup --prefix=/usr/local
+		if [ $? -ne 0 ]; then
+			printf "\tConfiguring MondgDB C driver has encountered the errors above.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		make -j${CPU_CORE}
+		if [ $? -ne 0 ]; then
+			printf "\tError compiling MondgDB C driver.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		sudo make install
+		if [ $? -ne 0 ]; then
+			printf "\tError installing MondgDB C driver.\nMake sure you have sudo privileges.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		cd ..
+		rm -rf ${TEMP_DIR}/mongo-c-driver-1.9.3
+		cd ${TEMP_DIR}
+		git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
+		if [ $? -ne 0 ]; then
+			printf "\tUnable to clone MondgDB C++ driver at this time.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		cd mongo-cxx-driver/build
+		cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+		if [ $? -ne 0 ]; then
+			printf "\tCmake has encountered the above errors building the MongoDB C++ driver.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		make -j${CPU_CORE}
+		if [ $? -ne 0 ]; then
+			printf "\tError compiling MondgDB C++ driver.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		sudo make install
+		if [ $? -ne 0 ]; then
+			printf "\tError installing MondgDB C++ driver.\nMake sure you have sudo privileges.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		cd ..
+		rm -rf ${TEMP_DIR}/mongo-cxx-driver
+	else
+		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx.dylib.\n"
+	fi
+
 	printf "\n\tChecking for secp256k1-zkp\n"
     # install secp256k1-zkp (Cryptonomex branch)
     if [ ! -e /usr/local/lib/libsecp256k1.a ]; then
@@ -184,6 +255,29 @@
 	else
 		printf "\tsecp256k1 found at /usr/local/lib/\n"
 	fi
+   
+   printf "\n\tChecking for SoftFloat\n"
+   if [ ! -d /usr/local/berkeley-softfloat-3 ]; then
+      # clone the library
+		cd ${TEMP_DIR}
+      mkdir softfloat
+      cd softfloat
+      git clone --depth 1 --single-branch --branch master https://github.com/ucb-bar/berkeley-softfloat-3.git
+      cd berkeley-softfloat-3/build/Linux-x86_64-GCC
+      make -j${CPU_CORE} SPECIALIZE_TYPE="8086-SSE" SOFTFLOAT_OPS="-DSOFTFLOAT_ROUND_EVEN -DINLINE_LEVEL=5 -DSOFTFLOAT_FAST_DIV32TO16 -DSOFTFLOAT_FAST_DIV64TO32"
+      if [ $? -ne 0 ]; then
+         printf "\tError compiling softfloat.\n"
+         printf "\tExiting now.\n\n"
+         exit;
+      fi
+      # no install target defined for this library
+      sudo mkdir -p /usr/local/berkeley-softfloat-3
+      sudo cp softfloat.a /usr/local/berkeley-softfloat-3/libsoftfloat.a
+      sudo mv ${TEMP_DIR}/softfloat/berkeley-softfloat-3/source/include /usr/local/berkeley-softfloat-3/include
+		sudo rm -rf ${TEMP_DIR}/softfloat
+	else
+		printf "\tsoftfloat found at /usr/local/berkeley-softfloat-3/\n"
+   fi
 
 	printf "\n\tChecking for WASM\n"
 	if [ ! -d /usr/local/wasm/bin ]; then

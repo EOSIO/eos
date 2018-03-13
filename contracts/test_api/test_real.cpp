@@ -2,7 +2,9 @@
 #include <eosiolib/eosio.hpp>
 
 #include "test_api.hpp"
+
 using namespace eosio;
+
 void test_real::create_instances() {
     real lhs1(5);
     eosio_assert(lhs1.value() == 5, "real instance value is wrong");
@@ -21,6 +23,8 @@ void test_real::test_division_by_0() {
     real lhs1(5);
     real rhs1(0);
     real result1 = lhs1 / rhs1;
+    // in order to get rid of unused parameter warning
+    result1 = 0;
 
     eosio_assert(false, "should've thrown an error");
 }

@@ -2,10 +2,9 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-//#include <eoslib/message.h>
+
 #include <eosiolib/memory.hpp>
 
-using namespace eosio;
 
 void verify_mem(const void* const ptr, const uint32_t val, const uint32_t size)
 {

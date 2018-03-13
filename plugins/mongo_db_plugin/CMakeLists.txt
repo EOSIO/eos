@@ -79,6 +79,8 @@ if(BUILD_MONGO_DB_PLUGIN)
           PUBLIC chain_plugin eosio_chain appbase
           ${EOS_LIBMONGOCXX} ${EOS_LIBBSONCXX}
           )
+
+  set(CPACK_DEBIAN_PACKAGE_DEPENDS "libmongoc-1.0-0 (>= 1.3)" PARENT_SCOPE)
 else()
   message("mongo_db_plugin not selected and will be omitted.")
 endif()

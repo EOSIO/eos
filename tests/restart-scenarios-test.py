@@ -55,11 +55,11 @@ delay=args.d
 chainSyncStrategyStr=args.c
 debug=args.v
 total_nodes = pnodes
-killCount=args.kill-count if args.kill-count > 0 else int(round((DefaultKillPercent/100.0)*total_nodes))
-killSignal=args.kill-sig
-killEosInstances= not args.dont-kill
+killCount=args.kill_count if args.kill_count > 0 else int(round((DefaultKillPercent/100.0)*total_nodes))
+killSignal=args.kill_sig
+killEosInstances= not args.dont_kill
 dumpErrorDetails=args.dump_error_details
-keepLogs=args.keep-logs
+keepLogs=args.keep_logs
 amINoon=not args.not_noon
 
 testUtils.Utils.Debug=debug
