@@ -46,7 +46,8 @@ namespace eosio { namespace testing {
 
          transaction_trace push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys );
          transaction_trace push_reqauth(account_name from, string role, bool multi_sig = false);
-         transaction_trace push_nonce( account_name from, const string& v = "blah" );
+         // use when just want any old non-context free action
+         transaction_trace push_dummy(account_name from, const string& v = "blah");
          transaction_trace transfer( account_name from, account_name to, asset amount, string memo, account_name currency );
          transaction_trace transfer( account_name from, account_name to, string amount, string memo, account_name currency );
 
