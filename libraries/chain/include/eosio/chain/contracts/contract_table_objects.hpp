@@ -6,7 +6,7 @@
 
 #include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/multi_index_includes.hpp>
-#include <eosio/chain/softfloat.hpp>
+#include <softfloat.hpp>
 
 #include <chainbase/chainbase.hpp>
 
