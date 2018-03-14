@@ -101,7 +101,7 @@ constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
 }
 
-string U64Str(uint64_t i)
+string I64Str(int64_t i)
 {
 	std::stringstream ss;
 	ss << i;
