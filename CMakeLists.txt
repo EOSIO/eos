@@ -191,7 +191,6 @@ endif()
 add_subdirectory( externals )
 
 include(wasm)
-include(softfloat)
 
 add_subdirectory( libraries )
 add_subdirectory( contracts )

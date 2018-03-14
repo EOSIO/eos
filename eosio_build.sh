@@ -100,7 +100,6 @@
 		export OPENSSL_ROOT_DIR=/usr/include/openssl
 		export OPENSSL_LIBRARIES=/usr/include/openssl
 		export WASM_ROOT=${HOME}/opt/wasm
-      export SOFTFLOAT_ROOT=${HOME}/opt/berkeley-softfloat-3
 	
 	 . $FILE
 	
@@ -110,7 +109,6 @@
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 		OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
 		export WASM_ROOT=/usr/local/wasm
-      export SOFTFLOAT_ROOT=/usr/local/berkeley-softfloat-3
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
 
@@ -132,7 +130,7 @@
 	fi
 	
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
-	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} -DSOFTFLOAT_ROOT=${SOFTFLOAT_ROOT} \
+	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
 	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} \
 	-DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} ..
 	
