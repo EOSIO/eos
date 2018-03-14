@@ -7,11 +7,11 @@
 
 #include <iosfwd>
 
-#define REQUIRE_EQUAL_OBJECTS(left, right) { auto a = left; auto b = right; BOOST_REQUIRE_EQUAL( true, a.is_object() ); \
+#define REQUIRE_EQUAL_OBJECTS(left, right) { auto a = fc::variant( left ); auto b = fc::variant( right ); BOOST_REQUIRE_EQUAL( true, a.is_object() ); \
    BOOST_REQUIRE_EQUAL( true, b.is_object() ); \
    BOOST_REQUIRE_EQUAL_COLLECTIONS( a.get_object().begin(), a.get_object().end(), b.get_object().begin(), b.get_object().end() ); }
 
-#define REQUIRE_MATCHING_OBJECT(left, right) { auto a = left; auto b = right; BOOST_REQUIRE_EQUAL( true, a.is_object() ); \
+#define REQUIRE_MATCHING_OBJECT(left, right) { auto a = fc::variant( left ); auto b = fc::variant( right ); BOOST_REQUIRE_EQUAL( true, a.is_object() ); \
    BOOST_REQUIRE_EQUAL( true, b.is_object() ); \
    auto filtered = ::eosio::testing::filter_fields( a.get_object(), b.get_object() ); \
    BOOST_REQUIRE_EQUAL_COLLECTIONS( a.get_object().begin(), a.get_object().end(), filtered.begin(), filtered.end() ); }
