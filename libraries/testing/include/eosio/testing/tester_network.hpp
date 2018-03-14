@@ -1,15 +1,11 @@
 #pragma once
 
-#include <eosio/testing/tester.hpp>
-#include <boost/signals2.hpp>
-#include <iostream>
-
-#include <boost/range/algorithm/sort.hpp>
-#include <boost/preprocessor/seq/for_each.hpp>
-#include <boost/preprocessor/facilities/overload.hpp>
+#include "tester.hpp"
+#include <boost/signals2/signal.hpp>
+#include <boost/signals2/shared_connection_block.hpp>
 
 namespace eosio { namespace testing {
-   using boost::signals2::scoped_connection;
+   using namespace boost::signals2;
 
    /**
     * @brief The tester_network class provides a simplistic virtual P2P network connecting testing_blockchains together.
