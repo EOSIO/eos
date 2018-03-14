@@ -164,6 +164,7 @@ namespace eosiosystem {
             const std::vector<account_name>* producers = nullptr;
             if ( voter->proxy ) {
                auto proxy = voters_tbl.find( voter->proxy );
+               eosio_assert( bool(proxy), "selected proxy not found" ); //data corruption
                voters_tbl.update( *proxy, 0, [&](voter_info& a) { a.proxied_votes += amount.quantity; } );
                if ( proxy->is_proxy ) { //only if proxy is still active. if proxy has been unregistered, we update proxied_votes, but don't propagate to producers
                   producers = &proxy->producers;
@@ -438,6 +439,7 @@ namespace eosiosystem {
                   return; // nothing changed
                }
                auto old_proxy = voters_tbl.find( voter->proxy );
+               eosio_assert( bool(old_proxy), "old proxy not found" ); //data corruption
                voters_tbl.update( *old_proxy, 0, [&](auto& a) { a.proxied_votes -= voter->staked.quantity; } );
                if ( old_proxy->is_proxy ) { //if proxy stoped being proxy, the votes were already taken back from producers by on( const unregister_proxy& )
                   old_producers = &old_proxy->producers;
@@ -450,7 +452,7 @@ namespace eosiosystem {
             const std::vector<account_name>* new_producers = nullptr;
             if ( vp.proxy ) {
                auto new_proxy = voters_tbl.find( vp.proxy );
-               eosio_assert( new_proxy->is_proxy, "selected proxy has not elected to be a proxy" );
+               eosio_assert( new_proxy && new_proxy->is_proxy, "proxy not found" );
                voters_tbl.update( *new_proxy, 0, [&](auto& a) { a.proxied_votes += voter->staked.quantity; } );
                new_producers = &new_proxy->producers;
             } else {

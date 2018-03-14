@@ -26,14 +26,12 @@ public:
    eosio_system_tester() {
       produce_blocks( 2 );
 
-      create_accounts( { N(currency), N(alice), N(bob), N(carol) } );
+      create_accounts( { N(alice), N(bob), N(carol), N(donald) } );
       produce_blocks( 1000 );
 
       set_code( config::system_account_name, eosio_system_wast );
       set_abi( config::system_account_name, eosio_system_abi );
 
-      //set_code( N(currency), currency_wast );
-      //set_abi( N(currency), currency_abi );
       produce_blocks();
 
       const auto& accnt = control->get_database().get<account_object,by_name>( config::system_account_name );
@@ -373,7 +371,7 @@ BOOST_FIXTURE_TEST_CASE( adding_stake_partial_unstake, eosio_system_tester ) try
    BOOST_REQUIRE_EQUAL( asset::from_string("120.0000 EOS").amount - asset::from_string("120.0000 EOS").amount * (bytes/2)/bytes,
                         total["storage_stake"].as_uint64());
    REQUIRE_MATCHING_OBJECT( voter( "alice", "225.0000 EOS" ), get_voter_info( "alice" ) );
-   BOOST_REQUIRE_EQUAL( asset::from_string("714.9599 EOS"), get_balance( "alice" ) );
+   BOOST_REQUIRE_EQUAL( asset::from_string("715.0000 EOS"), get_balance( "alice" ) );
 
 } FC_LOG_AND_RETHROW()
 
@@ -866,6 +864,13 @@ BOOST_FIXTURE_TEST_CASE( proxy_users, eosio_system_tester ) try {
    );
    REQUIRE_MATCHING_OBJECT( proxy( "alice" ), get_voter_info( "alice" ) );
 
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(donald), N(regproxy), mvo()
+                                                ("proxy",  "donald")
+                        )
+   );
+   REQUIRE_MATCHING_OBJECT( proxy( "donald" ), get_voter_info( "donald" ) );
+
+   //bob chooses alice as a proxy
    issue( "bob", "1000.0000 EOS",  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "bob", "100.0002 EOS", "50.0001 EOS", "50.0000 EOS" ) );
    BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(voteproducer), mvo()
@@ -876,8 +881,76 @@ BOOST_FIXTURE_TEST_CASE( proxy_users, eosio_system_tester ) try {
    );
    REQUIRE_MATCHING_OBJECT( proxy( "alice" )( "proxied_votes", 1500003 ), get_voter_info( "alice" ) );
 
+   //carol chooses alice as a proxy
    issue( "carol", "1000.0000 EOS",  config::system_account_name );
-   BOOST_REQUIRE_EQUAL( success(), stake( "carol", "246.0002 EOS", "531.0001 EOS", "80.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( "carol", "50.0001 EOS", "20.0001 EOS", "80.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(carol), N(voteproducer), mvo()
+                                                ("voter",  "carol")
+                                                ("proxy", "alice" )
+                                                ("producers", vector<account_name>() )
+                        )
+   );
+   REQUIRE_MATCHING_OBJECT( proxy( "alice" )( "proxied_votes", 2200005 ), get_voter_info( "alice" ) );
+
+   //carol increases stake
+   BOOST_REQUIRE_EQUAL( success(), stake( "carol", "50.0000 EOS", "50.0000 EOS", "0.0000 EOS" ) );
+   REQUIRE_MATCHING_OBJECT( proxy( "alice" )( "proxied_votes", 3200005 ), get_voter_info( "alice" ) );
+
+
+   //bob decreases stake
+   BOOST_REQUIRE_EQUAL( success(), unstake( "bob", "50.0001 EOS", "50.0001 EOS", 0 ) );
+   REQUIRE_MATCHING_OBJECT( proxy( "alice" )( "proxied_votes", 2200003 ), get_voter_info( "alice" ) );
+
+   //carol chooses another proxy
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(carol), N(voteproducer), mvo()
+                                                ("voter",  "carol")
+                                                ("proxy", "donald" )
+                                                ("producers", vector<account_name>() )
+                        )
+   );
+   REQUIRE_MATCHING_OBJECT( proxy( "alice" )( "proxied_votes", 500001 ), get_voter_info( "alice" ) );
+   REQUIRE_MATCHING_OBJECT( proxy( "donald" )( "proxied_votes", 1700002 ), get_voter_info( "donald" ) );
+
+   //bob chooses direct voting
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(voteproducer), mvo()
+                                                ("voter",  "bob")
+                                                ("proxy", "")
+                                                ("producers", vector<account_name>() )
+                        )
+   );
+   REQUIRE_MATCHING_OBJECT( proxy( "alice" )( "proxied_votes", 0 ), get_voter_info( "alice" ) );
+
+} FC_LOG_AND_RETHROW()
+
+
+BOOST_FIXTURE_TEST_CASE( vote_both_proxy_and_producers, eosio_system_tester ) try {
+   //alice becomes a proxy
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproxy), mvo()
+                                                ("proxy",  "alice")
+                        )
+   );
+   REQUIRE_MATCHING_OBJECT( proxy( "alice" ), get_voter_info( "alice" ) );
+
+   //carol becomes a producer
+   fc::variant params = producer_parameters_example(1);
+   vector<char> key = fc::raw::pack( get_public_key( N(alice), "active" ) );
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproducer), mvo()
+                                               ("producer",  "alice")
+                                               ("producer_key", key )
+                                               ("prefs", params)
+                        )
+   );
+
+   //bob chooses alice as a proxy
+   issue( "bob", "1000.0000 EOS",  config::system_account_name );
+   BOOST_REQUIRE_EQUAL( success(), stake( "bob", "100.0002 EOS", "50.0001 EOS", "50.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( error("condition: assertion failed: cannot vote for producers and proxy at same time"),
+                        push_action( N(bob), N(voteproducer), mvo()
+                                     ("voter",  "bob")
+                                     ("proxy", "alice" )
+                                     ("producers", vector<account_name>{ N(carol) } )
+                        )
+   );
 
 } FC_LOG_AND_RETHROW()
 
