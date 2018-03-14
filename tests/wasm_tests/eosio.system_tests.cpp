@@ -161,15 +161,8 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
 
    BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
 
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(undelegatebw), mvo()
-                                               ("from",     "alice")
-                                               ("receiver", "alice")
-                                               ("unstake_net", "200.0000 EOS")
-                                               ("unstake_cpu", "100.0000 EOS")
-                                               ("unstake_bytes", bytes)
-                        )
-   );
-
+   //unstake
+   BOOST_REQUIRE_EQUAL( success(), unstake( "alice", "200.0000 EOS", "100.0000 EOS", bytes ) );
    stake = get_total_stake( "alice" );
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, stake["net_weight"].as_uint64());
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, stake["cpu_weight"].as_uint64());
@@ -294,32 +287,17 @@ BOOST_FIXTURE_TEST_CASE( unstake_more_than_at_stake, eosio_system_tester ) try {
 
    //trying to unstake more net bandwith than at stake
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked net bandwidth"),
-                        push_action( N(alice), N(undelegatebw), mvo()
-                                    ("from",     "alice")
-                                    ("receiver", "alice")
-                                    ("unstake_net", "200.0001 EOS")
-                                    ("unstake_cpu", "0.0000 EOS")
-                                    ("unstake_bytes", 0) )
+                        unstake( "alice", "200.0001 EOS", "0.0000 EOS", 0 )
    );
 
    //trying to unstake more cpu bandwith than at stake
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked cpu bandwidth"),
-                        push_action(N(alice), N(undelegatebw), mvo()
-                                    ("from",     "alice")
-                                    ("receiver", "alice")
-                                    ("unstake_net", "000.0000 EOS")
-                                    ("unstake_cpu", "100.0001 EOS")
-                                    ("unstake_bytes", 0) )
+                        unstake( "alice", "000.0000 EOS", "100.0001 EOS", 0 )
    );
 
    //trying to unstake more storage than at stake
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: insufficient staked storage"),
-                        push_action(N(alice), N(undelegatebw), mvo()
-                                    ("from",     "alice")
-                                    ("receiver", "alice")
-                                    ("unstake_net", "000.0000 EOS")
-                                    ("unstake_cpu", "000.0001 EOS")
-                                    ("unstake_bytes", bytes+1) )
+                        unstake( "alice", "000.0000 EOS", "0.0000 EOS", bytes+1 )
    );
 
    //check that nothing has changed
@@ -358,12 +336,7 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
 
    //bob should not be able to unstake what was staked by alice
    BOOST_REQUIRE_EQUAL( error("condition: assertion failed: unable to find key"),
-                        push_action(N(bob), N(undelegatebw), mvo()
-                                    ("from",     "bob")
-                                    ("receiver", "bob")
-                                    ("unstake_net", "000.0000 EOS")
-                                    ("unstake_cpu", "10.0000 EOS")
-                                    ("unstake_bytes", bytes) )
+                        unstake( "bob", "0.0000 EOS", "10.0000 EOS", bytes )
    );
 
    issue( "carol", "1000.0000 EOS",  config::system_account_name );
@@ -626,14 +599,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( 888888, prod["total_votes"].as_uint64() );
 
    //carol unstakes part of the stake
-   BOOST_REQUIRE_EQUAL( success(), push_action(N(carol), N(undelegatebw), mvo()
-                                               ("from",     "carol")
-                                               ("receiver", "carol")
-                                               ("unstake_net", "02.0000 EOS")
-                                               ("unstake_cpu", "00.0002 EOS")
-                                               ("unstake_bytes", 0)
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), unstake( "carol", "2.0000 EOS", "0.0002 EOS", 0 ) );
    //should decrease alice's total_votes
    prod = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( 868886, prod["total_votes"].as_uint64() );
@@ -652,14 +618,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( asset::from_string("1933.3334 EOS"), get_balance( "bob" ) );
 
    //carol unstakes rest of eos
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(carol), N(undelegatebw), mvo()
-                                               ("from",     "carol")
-                                               ("receiver", "carol")
-                                               ("unstake_net", "20.0000 EOS")
-                                               ("unstake_cpu", "00.2220 EOS")
-                                               ("unstake_bytes", 0)
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), unstake( "carol", "20.0000 EOS", "0.2220 EOS", 0 ) );
    //should decrease alice's total_votes to zero
    prod = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( 0, prod["total_votes"].as_uint64() );
@@ -904,25 +863,11 @@ BOOST_FIXTURE_TEST_CASE( proxy_stake_unstake_keeps_proxy_flag, eosio_system_test
    REQUIRE_EQUAL_OBJECTS( proxy( "alice", "200.0000 EOS",  last_block_time()-1 ), get_voter_info( "alice" ) );
 
    //unstake more
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(undelegatebw), mvo()
-                                               ("from",     "alice")
-                                               ("receiver", "alice")
-                                               ("unstake_net", "65.0000 EOS")
-                                               ("unstake_cpu", "35.0000 EOS")
-                                               ("unstake_bytes", 0)
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), unstake( "alice", "65.0000 EOS", "35.0000 EOS", 0 ) );
    REQUIRE_EQUAL_OBJECTS( proxy( "alice", "100.0000 EOS",  last_block_time() ), get_voter_info( "alice" ) );
 
    //unstake the rest
-   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(undelegatebw), mvo()
-                                               ("from",     "alice")
-                                               ("receiver", "alice")
-                                               ("unstake_net", "65.0000 EOS")
-                                               ("unstake_cpu", "35.0000 EOS")
-                                               ("unstake_bytes", 0)
-                        )
-   );
+   BOOST_REQUIRE_EQUAL( success(), unstake( "alice", "65.0000 EOS", "35.0000 EOS", 0 ) );
    REQUIRE_EQUAL_OBJECTS( proxy( "alice", "0.0000 EOS",  last_block_time()-1 ), get_voter_info( "alice" ) );
 
 } FC_LOG_AND_RETHROW()
