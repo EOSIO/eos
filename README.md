@@ -263,7 +263,7 @@ plugin = eosio::http_plugin
 ```
 
 Now it should be possible to run `eosiod` and see it begin producing blocks.
-You can specify the location of a custom `config.ini` by passing the `--config-dir` to `eosiod`.
+You can specify the location of a custom `config.ini` by passing the `--config-dir` argument to `eosiod`.
 
 When running `eosiod` you should get log messages similar to below. It means the blocks are successfully produced.
 
