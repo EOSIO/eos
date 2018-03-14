@@ -67,15 +67,15 @@ namespace eosio {
             asset          supply;
             asset          max_supply;
             account_name   issuer;
-            bool           can_freeze    = true;
-            bool           can_recall    = true;
-            bool           can_whitelist = true;
-            bool           is_frozen     = false;
-            bool           is_whitelist  = false;
+            bool           can_freeze         = true;
+            bool           can_recall         = true;
+            bool           can_whitelist      = true;
+            bool           is_frozen          = false;
+            bool           enforce_whitelist  = false;
 
             uint64_t primary_key()const { return supply.symbol.name(); }
 
-            EOSLIB_SERIALIZE( currency_stats, (supply)(max_supply)(issuer)(can_freeze)(can_recall)(can_whitelist)(is_frozen)(is_whitelist) )
+            EOSLIB_SERIALIZE( currency_stats, (supply)(max_supply)(issuer)(can_freeze)(can_recall)(can_whitelist)(is_frozen)(enforce_whitelist) )
          };
 
          typedef eosio::multi_index<N(accounts), account> accounts;
@@ -215,7 +215,8 @@ namespace eosio {
 
              if( has_auth( owner ) ) {
                 eosio_assert( !st.can_freeze || !from.frozen, "account is frozen by issuer" );
-                eosio_assert( !st.is_whitelist || from.whitelist, "account is not white listed" );
+                eosio_assert( !st.can_freeze || !st.is_frozen, "all transfers are frozen by issuer" );
+                eosio_assert( !st.enforce_whitelist || from.whitelist, "account is not white listed" );
              } else if( has_auth( st.issuer ) ) {
                 eosio_assert( st.can_recall, "issuer may not recall token" );
              } else {
@@ -230,22 +231,19 @@ namespace eosio {
           void add_balance( account_name owner, asset value, const currency_stats& st, account_name ram_payer )
           {
              accounts to_acnts( _contract, owner );
-             auto to    = to_acnts.find( value.symbol );
+             auto to = to_acnts.find( value.symbol );
              if( to == to_acnts.end() ) {
-                eosio_assert( !st.is_whitelist, "can only transfer to white listed accounts" );
+                eosio_assert( !st.enforce_whitelist, "can only transfer to white listed accounts" );
                 to_acnts.emplace( ram_payer, [&]( auto& a ){
                   a.balance = value;
                 });
              } else {
-                eosio_assert( !st.is_whitelist || to->whitelist, "receiver requires whitelist by issuer" );
+                eosio_assert( !st.enforce_whitelist || to->whitelist, "receiver requires whitelist by issuer" );
                 to_acnts.modify( to, 0, [&]( auto& a ) {
                   a.balance.amount += value.amount;
                 });
              }
           }
-
-
-
 
       private:
          account_name _contract;
