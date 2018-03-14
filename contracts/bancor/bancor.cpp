@@ -14,3 +14,5 @@ extern "C" {
        bancor::example_converter::apply( c, a );
     }
 }
+
+}
