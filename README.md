@@ -847,6 +847,7 @@ macOS additional Dependencies:
 
 * Brew
 * Newest XCode
+* MongoDB C++ driver
 
 Upgrade your XCode to the newest version:
 
@@ -864,8 +865,32 @@ Install the dependencies:
 
 ```bash
 brew update
-brew install git automake libtool boost openssl llvm@4 gmp ninja gettext
+brew install git automake libtool cmake boost openssl@1.0 llvm@4 gmp ninja gettext mongodb
 brew link gettext --force
+```
+Install [mongo-cxx-driver (release/stable)](https://github.com/mongodb/mongo-cxx-driver):
+
+```bash
+cd ~
+brew install --force pkgconfig
+brew unlink pkgconfig && brew link --force pkgconfig
+curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
+tar xf mongo-c-driver-1.9.3.tar.gz
+rm -f mongo-c-driver-1.9.3.tar.gz
+cd mongo-c-driver-1.9.3
+./configure --enable-ssl=darwin --disable-automatic-init-and-cleanup --prefix=/usr/local
+make -j$( sysctl -in machdep.cpu.core_count )
+sudo make install
+cd ..
+rm -rf mongo-c-driver-1.9.3
+
+git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
+cd mongo-cxx-driver/build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+make -j$( sysctl -in machdep.cpu.core_count )
+sudo make install
+cd ..
+rm -rf mongo-cxx-driver
 ```
 
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
