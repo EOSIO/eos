@@ -241,7 +241,6 @@
 		cd ${TEMP_DIR}
 		git clone https://github.com/cryptonomex/secp256k1-zkp.git
 		cd secp256k1-zkp
-		export LT_INIT=$( which libtool )
 		./autogen.sh
 		if [ $? -ne 0 ]; then
 			printf "\tError running autogen\n"
