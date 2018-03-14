@@ -59,7 +59,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
             if ( exp.kind == IR::ObjectKind::function )
                exports++;
 
-         uint32_t next_index = module.functions.imports.size() + exports + registered_injected.size();
+         uint32_t next_index = module.functions.imports.size() + module.functions.defs.size() + exports + registered_injected.size();
          return next_index;
       }
 
@@ -151,6 +151,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static constexpr bool post = true;
       static void init() { checktime_idx = -1; }
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+#if 1
          // first add the import for checktime
          injector_utils::add_import<ResultType::none, ValueType::i32>( *(arg.module), u8"env", u8"checktime", checktime_idx );
 
@@ -166,6 +167,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          std::vector<U8> tmp      = chktm.pack();
          injected.insert( injected.end(), tmp.begin(), tmp.end() );
          arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+#endif
       }
       static int32_t checktime_idx;
    };
@@ -183,8 +185,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
             call_inst->field = mapped_index;
          } 
          else
-            if ( call_inst->field > injector_utils::first_imported_index ) {
-               std::cout << "INDEX " << call_inst->field << "\n";
+            if ( call_inst->field > injector_utils::first_imported_index-1 ) {
                call_inst->field += offset;
             }
       }
