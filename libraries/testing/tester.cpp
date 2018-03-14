@@ -20,6 +20,15 @@
 
 namespace eosio { namespace testing {
 
+   fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value) {
+      fc::mutable_variant_object res;
+      for( auto& entry : filter ) {
+         auto it = value.find(entry.key());
+         res( it->key(), it->value() );
+      }
+      return res;
+   }
+
    base_tester::base_tester(chain_controller::runtime_limits limits) {
       cfg.block_log_dir      = tempdir.path() / "blocklog";
       cfg.shared_memory_dir  = tempdir.path() / "shared";
