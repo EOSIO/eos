@@ -465,10 +465,6 @@ class apply_context {
       void execute_deferred( deferred_transaction &&trx );
       void cancel_deferred( uint32_t sender_id );
 
-      using table_id_object = contracts::table_id_object;
-      const table_id_object* find_table( name code, name scope, name table );
-      const table_id_object& find_or_create_table( name code, name scope, name table );
-
       /**
        * @brief Require @ref account to have approved of this message
        * @param account The account whose approval is required
@@ -583,6 +579,10 @@ class apply_context {
       }
 
       void exec_one();
+
+      using table_id_object = contracts::table_id_object;
+      const table_id_object* find_table( name code, name scope, name table );
+      const table_id_object& find_or_create_table( name code, name scope, name table );
 
       vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
       vector<action>                      _inline_actions; ///< queued inline messages
