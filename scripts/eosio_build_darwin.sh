@@ -98,10 +98,15 @@
 			printf "\tChecking $pkg ... "
 			BIN=$(which $pkg)
 			if [ $? -eq 0 ]; then
-				 printf "\t$pkg found\n"
-				continue
+			
+				if [ $pkg == "libtool" ] && [ $BIN == /usr/bin/libtool ]; then
+					donothing=true
+				else
+					printf "\t$pkg found\n"
+					continue
+				fi
 			fi
-		
+			
 			LIB=$( ls -l /usr/local/lib/lib${pkg}* 2>/dev/null | wc -l)
 			if [ ${LIB} -ne 0 ]; then
 				 printf "\t$pkg found\n"
@@ -139,16 +144,15 @@
 			select yn in "Yes" "No"; do
 				case $yn in
 					[Yy]* ) 
-					if [ $PERMISSION_GETTEXT -eq 1 ]; then
-						sudo chown -R $(whoami) /usr/local/share
-					fi
-
-					$XCODESELECT --install 2>/dev/null;
-					printf "\tUpdating Home Brew.\n"
-					brew update
-					printf "\tInstalling Dependencies.\n"
-					brew install --force $DEP
-					brew unlink $DEP && brew link --force $DEP
+						if [ $PERMISSION_GETTEXT -eq 1 ]; then
+							sudo chown -R $(whoami) /usr/local/share
+						fi
+						$XCODESELECT --install 2>/dev/null;
+						printf "\tUpdating Home Brew.\n"
+						brew update
+						printf "\tInstalling Dependencies.\n"
+						brew install --force $DEP
+						brew unlink $DEP && brew link --force $DEP
 					break;;
 					[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
 					* ) echo "Please type 1 for yes or 2 for no.";;
@@ -237,6 +241,7 @@
 		cd ${TEMP_DIR}
 		git clone https://github.com/cryptonomex/secp256k1-zkp.git
 		cd secp256k1-zkp
+		export LT_INIT=$( which libtool )
 		./autogen.sh
 		if [ $? -ne 0 ]; then
 			printf "\tError running autogen\n"
@@ -250,8 +255,8 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		sudo make -j${CPU_CORE} install
-		sudo rm -rf ${TEMP_DIR}/secp256k1-zkp
+		sudo make install
+		rm -rf ${TEMP_DIR}/secp256k1-zkp
 	else
 		printf "\tsecp256k1 found at /usr/local/lib/\n"
 	fi
