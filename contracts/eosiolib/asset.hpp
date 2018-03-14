@@ -3,6 +3,7 @@
 #include <eosiolib/print.hpp>
 #include <eosiolib/system.h>
 #include <tuple>
+#include <limits>
 
 namespace eosio {
 
@@ -34,7 +35,7 @@ namespace eosio {
          if( !('A' <= c && c <= 'Z')  ) return false;
          sym >>= 8;
          if( !(sym & 0xff) ) {
-            do { 
+            do {
               sym >>= 8;
               if( (sym & 0xff) ) return false;
               ++i;
@@ -85,7 +86,7 @@ namespace eosio {
       EOSLIB_SERIALIZE( symbol_type, (value) )
    };
 
-   struct extended_symbol : public symbol_type 
+   struct extended_symbol : public symbol_type
    {
       extended_symbol( symbol_name s = 0, account_name c = 0 ):symbol_type(s),contract(c){}
 
@@ -110,8 +111,22 @@ namespace eosio {
       int64_t      amount = 0;
       symbol_type  symbol = S(4,EOS);
 
+      static constexpr int64_t max_amount    = (1LL << 62) - 1;
+
       explicit asset( int64_t a = 0, symbol_name s = S(4,EOS))
-      :amount(a),symbol(s){}
+      :amount(a),symbol(s)
+      {
+         eosio_assert( is_amount_within_range(), "magnitude of asset amount must be less than 2^62" );
+         eosio_assert( symbol.is_valid(),        "invalid symbol name" );
+      }
+
+      bool is_amount_within_range()const { return -max_amount <= amount && amount <= max_amount; }
+      bool is_valid()const               { return is_amount_within_range() && symbol.is_valid(); }
+
+      void set_amount( int64_t a ) {
+         amount = a;
+         eosio_assert( is_amount_within_range(), "magnitude of asset amount must be less than 2^62" );
+      }
 
       asset operator-()const {
          asset r = *this;
@@ -121,20 +136,18 @@ namespace eosio {
 
       friend asset operator + ( const asset& a, const asset& b ) {
          eosio_assert( a.symbol == b.symbol, "type mismatch" );
-         asset result( a.amount + b.amount, a.symbol );
-         eosio_assert( result.amount > a.amount && result.amount > b.amount, "overflow" );
-         return result;
+         int64_t sum = a.amount + b.amount;
+         eosio_assert( -max_amount <= sum, "underflow" );
+         eosio_assert( sum <= max_amount,  "overflow" );
+         return asset{sum, a.symbol};
       }
+
       friend asset operator - ( const asset& a, const asset& b ) {
          eosio_assert( a.symbol == b.symbol, "type mismatch" );
-         asset result( a.amount - b.amount, a.symbol );
-
-         if( b.amount > 0 )
-            eosio_assert( a.amount > result.amount, "underflow" );
-         if( b.amount < 0 )
-            eosio_assert( a.amount < result.amount, "overflow" );
-
-         return result;
+         int64_t difference = a.amount - b.amount;
+         eosio_assert( -max_amount <= difference, "underflow" );
+         eosio_assert( difference <= max_amount,  "overflow" );
+         return asset{difference, a.symbol};
       }
 
       void print()const {
@@ -161,7 +174,6 @@ namespace eosio {
       }
 
       asset& operator+=( const asset& a ) {
-         eosio_assert( symbol == a.symbol, "type missmatch" );
          return *this = (*this + a);
       }
 
@@ -169,7 +181,7 @@ namespace eosio {
    };
 
    struct extended_asset : public asset {
-      account_name contract;
+      account_name contract = N(eosio.token);
 
       extended_symbol get_extended_symbol()const { return extended_symbol( symbol, contract ); }
       extended_asset(){}
@@ -182,34 +194,24 @@ namespace eosio {
          printn(contract);
       }
       extended_asset operator-()const {
-         extended_asset result(*this);
-         result.amount = -result.amount;
-         return result;
+         asset r = this->asset::operator-();
+         return {r, contract};
       }
 
       friend extended_asset operator - ( const extended_asset& a, const extended_asset& b ) {
-         eosio_assert( a.symbol == b.symbol, "type mismatch" );
          eosio_assert( a.contract == b.contract, "type mismatch" );
-         extended_asset result( asset(a.amount - b.amount, a.symbol), a.contract );
-
-         if( b.amount > 0 )
-            eosio_assert( a.amount > result.amount, "underflow" );
-         if( b.amount < 0 )
-            eosio_assert( a.amount < result.amount, "overflow" );
-
-         return result;
+         asset r = static_cast<const asset&>(a) - static_cast<const asset&>(b);
+         return {r, a.contract};
       }
 
       friend extended_asset operator + ( const extended_asset& a, const extended_asset& b ) {
-         eosio_assert( a.symbol == b.symbol, "type mismatch" );
          eosio_assert( a.contract == b.contract, "type mismatch" );
-         extended_asset result( asset(a.amount + b.amount, a.symbol), a.contract );
-
-         return result;
+         asset r = static_cast<const asset&>(a) + static_cast<const asset&>(b);
+         return {r, a.contract};
       }
 
       EOSLIB_SERIALIZE( extended_asset, (amount)(symbol)(contract) )
    };
 
 
-} /// namespace eosio 
+} /// namespace eosio
