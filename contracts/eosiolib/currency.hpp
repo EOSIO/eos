@@ -13,7 +13,7 @@ namespace eosio {
    class currency {
       public:
          currency( account_name contract = current_receiver() )
-         :_contract(contract) 
+         :_contract(contract)
          { }
 
          struct create {
@@ -28,7 +28,7 @@ namespace eosio {
             EOSLIB_SERIALIZE( create, (issuer)(maximum_supply)(issuer_can_freeze)(issuer_can_recall)(issuer_can_whitelist) )
          };
 
-         struct transfer  
+         struct transfer
          {
             account_name from;
             account_name to;
@@ -47,7 +47,7 @@ namespace eosio {
          };
 
          struct fee_schedule {
-            auto primary_key() const { return 0; }
+            uint64_t primary_key()const { return 0; }
 
             array<extended_asset,7> fee_per_length;
             EOSLIB_SERIALIZE( fee_schedule, (fee_per_length) )
@@ -58,7 +58,7 @@ namespace eosio {
             bool     frozen    = false;
             bool     whitelist = true;
 
-            uint64_t primary_key() const { return balance.symbol; }
+            uint64_t primary_key()const { return balance.symbol; }
 
             EOSLIB_SERIALIZE( account, (balance)(frozen)(whitelist) )
          };
@@ -73,7 +73,7 @@ namespace eosio {
             bool           is_frozen     = false;
             bool           is_whitelist  = false;
 
-            uint64_t primary_key() const { return supply.symbol.name(); }
+            uint64_t primary_key()const { return supply.symbol.name(); }
 
             EOSLIB_SERIALIZE( currency_stats, (supply)(max_supply)(issuer)(can_freeze)(can_recall)(can_whitelist)(is_frozen)(is_whitelist) )
          };
@@ -104,7 +104,7 @@ namespace eosio {
 
 
          bool apply( account_name contract, action_name act ) {
-            if( contract != _contract ) 
+            if( contract != _contract )
                return false;
 
             switch( act ) {
@@ -125,11 +125,11 @@ namespace eosio {
          }
 
           /**
-           * This is factored out so it can be used as a building block 
+           * This is factored out so it can be used as a building block
            */
           void create_currency( const create& c ) {
-             auto sym = c.maximum_supply.symbol;
-          //   eosio_assert( sym.is_valid(), "invalid symbol name" );
+            auto sym = c.maximum_supply.symbol;
+            eosio_assert( sym.is_valid(), "invalid symbol name" );
 
              stats statstable( _contract, sym.name() );
              auto existing = statstable.find( sym.name() );
@@ -177,7 +177,8 @@ namespace eosio {
              const auto& st = statstable.get( sym );
 
              require_auth( st.issuer );
-             eosio_assert( i.quantity.amount > 0, "cannot transfer negative quantity" );
+             eosio_assert( i.quantity.is_valid(), "invalid quantity" );
+             eosio_assert( i.quantity.amount > 0, "must issue positive quantity" );
 
              statstable.modify( st, 0, [&]( auto& s ) {
                 s.supply.amount += i.quantity.amount;
@@ -198,7 +199,8 @@ namespace eosio {
 
              require_recipient( t.to );
 
-             eosio_assert( t.quantity.amount > 0, "cannot transfer negative quantity" );
+             eosio_assert( t.quantity.is_valid(), "invalid quantity" );
+             eosio_assert( t.quantity.amount > 0, "must transfer positive quantity" );
              sub_balance( t.from, t.quantity, st );
              add_balance( t.to, t.quantity, st, t.from );
           }
