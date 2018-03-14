@@ -367,12 +367,13 @@ struct abi_gen_helper {
   bool generate_abi(const char* source, const char* abi, bool opt_sfs=false) {
 
     std::string include_param = std::string("-I") + eosiolib_path;
+    std::string boost_include_param = std::string("-I") + boost_include_path;
     std::string stdcpp_include_param = std::string("-I") + eosiolib_path + "/libc++/upstream/include";
     std::string stdc_include_param = std::string("-I") + eosiolib_path +  "/musl/upstream/include";
 
      abi_def output;
     bool res = runToolOnCodeWithArgs(new generate_abi_action(false, opt_sfs, "", output), source,
-      {"-fparse-all-comments", "--std=c++14", "--target=wasm32", "-ffreestanding", "-nostdlib", "-nostdlibinc", "-fno-threadsafe-statics", "-fno-rtti",  "-fno-exceptions", include_param, stdcpp_include_param, stdc_include_param });
+      {"-fparse-all-comments", "--std=c++14", "--target=wasm32", "-ffreestanding", "-nostdlib", "-nostdlibinc", "-fno-threadsafe-statics", "-fno-rtti",  "-fno-exceptions", include_param, boost_include_param, stdcpp_include_param, stdc_include_param });
 
     FC_ASSERT(res == true);
     abi_serializer(output).validate();

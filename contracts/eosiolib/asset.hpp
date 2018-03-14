@@ -1,6 +1,8 @@
 #pragma once
 #include <eosiolib/serialize.hpp>
-#include <eosiolib/print.h>
+#include <eosiolib/print.hpp>
+#include <eosiolib/system.h>
+#include <tuple>
 
 namespace eosio {
 

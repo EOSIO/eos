@@ -101,7 +101,7 @@ constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
 }
 
-string U64Str(uint64_t i)
+string I64Str(int64_t i)
 {
 	std::stringstream ss;
 	ss << i;
@@ -914,9 +914,9 @@ BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
 
 	// test printi
 	CAPTURE_AND_PRE_TEST_PRINT("test_printi");
-	BOOST_CHECK_EQUAL( captured.substr(0,1), U64Str(0) );
-	BOOST_CHECK_EQUAL( captured.substr(1,6), U64Str(556644) );
-	BOOST_CHECK_EQUAL( captured.substr(7, capture[3].size()), U64Str(-1) ); // "18446744073709551615"
+	BOOST_CHECK_EQUAL( captured.substr(0,1), I64Str(0) );
+	BOOST_CHECK_EQUAL( captured.substr(1,6), I64Str(556644) );
+	BOOST_CHECK_EQUAL( captured.substr(7, capture[3].size()), I64Str(-1) );
 
 	// test printn
 	CAPTURE_AND_PRE_TEST_PRINT("test_printn");
