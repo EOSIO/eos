@@ -1049,7 +1049,8 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<contracts::index64_index>();
    _db.add_index<contracts::index128_index>();
    _db.add_index<contracts::index256_index>();
-
+   _db.add_index<contracts::index_double_index>();
+   
 
    _db.add_index<contracts::keystr_value_index>();
    _db.add_index<contracts::key128x128_value_index>();

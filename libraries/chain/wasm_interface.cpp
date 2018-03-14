@@ -649,8 +649,10 @@ class console_api : public context_aware_api {
          context.console_append(fc::variant(v).get_string());
       }
 
-      void printd( wasm_double val ) {
-         context.console_append(val.str());
+      void printd( uint64_t val ) {
+         // QUESTION: Is there a better way to print the Berkeley softfloats than assuming their representation
+         //           is the same as that of the native side double?
+         context.console_append(*(double*)(&val));
       }
 
       void printn(const name& value) {
@@ -783,6 +785,7 @@ class database_api : public context_aware_api {
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx128, uint128_t)
       DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(idx256, 2, uint128_t)
+      DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx_double, uint64_t)
 };
 
 
@@ -1483,6 +1486,7 @@ REGISTER_INTRINSICS( database_api,
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
    DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
+   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_double)
 );
 
 REGISTER_INTRINSICS(crypto_api,
