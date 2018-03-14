@@ -193,7 +193,7 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
       FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
 
       // todo: rethink this special case
-      if (receiver != config::system_account_name) {
+      if( !privileged ) {
          controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
       }
 
