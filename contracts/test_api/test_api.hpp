@@ -51,6 +51,7 @@ struct test_print {
   static void test_prints();
   static void test_prints_l();
   static void test_printi();
+  static void test_printui();
   static void test_printi128();
   static void test_printn();
 };

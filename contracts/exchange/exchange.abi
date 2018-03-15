@@ -26,8 +26,8 @@
       "base": "",
       "fields": [
         {"name":"borrower",         "type":"account_name"},
-        {"name":"market",           "type":"symbol"}
-        {"name":"delta_borrow",     "type":"extended_asset"}
+        {"name":"market",           "type":"symbol"},
+        {"name":"delta_borrow",     "type":"extended_asset"},
         {"name":"delta_collateral", "type":"extended_asset"}
       ]
     },
@@ -36,7 +36,7 @@
       "base": "",
       "fields": [
         {"name":"borrower",         "type":"account_name"},
-        {"name":"market",           "type":"symbol"}
+        {"name":"market",           "type":"symbol"},
         {"name":"cover_amount",     "type":"extended_asset"}
       ]
     },
@@ -78,7 +78,7 @@
         {"name":"creator", "type":"account_name"},
         {"name":"initial_supply", "type":"asset"},
         {"name":"fee", "type":"uint32"},
-        {"name":"base_deposit", "type":"extended_asset"}
+        {"name":"base_deposit", "type":"extended_asset"},
         {"name":"quote_deposit", "type":"extended_asset"}
       ]
     },
@@ -97,7 +97,7 @@
       "base": "",
       "fields": [
         {"name":"from", "type":"account_name"},
-        {"name":"quantity", "type":"extended_asset"},
+        {"name":"quantity", "type":"extended_asset"}
       ]
     },
     {
@@ -106,8 +106,8 @@
      "fields": [
         {"name":"issuer", "type":"account_name"},
         {"name":"maximum_supply", "type":"asset"},
-        {"name":"can_freeze", "type":"uint8"}
-        {"name":"can_recall", "type":"uint8"}
+        {"name":"can_freeze", "type":"uint8"},
+        {"name":"can_recall", "type":"uint8"},
         {"name":"can_whitelist", "type":"uint8"}
      ]
   },{

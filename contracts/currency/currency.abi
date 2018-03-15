@@ -19,8 +19,8 @@
      "fields": [
         {"name":"issuer", "type":"account_name"},
         {"name":"maximum_supply", "type":"asset"},
-        {"name":"can_freeze", "type":"uint8"}
-        {"name":"can_recall", "type":"uint8"}
+        {"name":"can_freeze", "type":"uint8"},
+        {"name":"can_recall", "type":"uint8"},
         {"name":"can_whitelist", "type":"uint8"}
      ]
   },{

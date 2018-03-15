@@ -108,6 +108,13 @@ string I64Str(int64_t i)
 	return ss.str();
 }
 
+string U64Str(uint64_t i)
+{
+   std::stringstream ss;
+   ss << i;
+   return ss.str();
+}
+
 string U128Str(unsigned __int128 i)
 {
    return fc::variant(fc::uint128_t(i)).get_string();
@@ -917,6 +924,12 @@ BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
 	BOOST_CHECK_EQUAL( captured.substr(0,1), I64Str(0) );
 	BOOST_CHECK_EQUAL( captured.substr(1,6), I64Str(556644) );
 	BOOST_CHECK_EQUAL( captured.substr(7, capture[3].size()), I64Str(-1) );
+
+	// test printui
+	CAPTURE_AND_PRE_TEST_PRINT("test_printui");
+	BOOST_CHECK_EQUAL( captured.substr(0,1), U64Str(0) );
+	BOOST_CHECK_EQUAL( captured.substr(1,6), U64Str(556644) );
+	BOOST_CHECK_EQUAL( captured.substr(7, capture[3].size()), U64Str(-1) ); // "18446744073709551615"
 
 	// test printn
 	CAPTURE_AND_PRE_TEST_PRINT("test_printn");
