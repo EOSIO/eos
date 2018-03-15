@@ -59,7 +59,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
             if ( exp.kind == IR::ObjectKind::function )
                exports++;
 
-         uint32_t next_index = module.functions.imports.size() + module.functions.defs.size() + exports + registered_injected.size() + 300;
+         uint32_t next_index = module.functions.imports.size() + module.functions.defs.size() + exports + registered_injected.size()-1;
          return next_index;
       }
 
@@ -175,15 +175,16 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static constexpr bool post = false;
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-         // TODO this is hardcoded for various injections, refactor to allow the system to deduce this
          wasm_ops::op_types<>::call_t* call_inst = reinterpret_cast<wasm_ops::op_types<>::call_t*>(inst);
          const int offset = injector_utils::registered_injected.size();
          uint32_t mapped_index = injector_utils::injected_index_mapping[call_inst->field];
          if ( mapped_index > 0 ) {
+            std::cout << "MAPPED " << call_inst->field << " : " << mapped_index << "\n";
             call_inst->field = mapped_index;
          } 
          else
             if ( call_inst->field > injector_utils::first_imported_index - 1 ) {
+               std::cout << "Field " << call_inst->field << " : " << call_inst->field + offset << " " << offset << "\n";
                call_inst->field += offset;
             }
       }
@@ -205,7 +206,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       }
    };
    struct f32_promote_injector {
-      static constexpr bool kills = false;
+      static constexpr bool kills = true;
       static constexpr bool post = false;
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
@@ -336,7 +337,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using i64_rotr_t        = wasm_ops::i64_rotr                <instruction_counter>; 
 
       using f32_add_t         = wasm_ops::f32_add                 <instruction_counter, f32_add_injector>;
-     // using f64_promote_f32_t = wasm_ops::f64_promote_f32         <instruction_counter, f32_promote_injector>;
+      using f64_promote_f32_t = wasm_ops::f64_promote_f32         <instruction_counter, f32_promote_injector>;
 
       using i32_wrap_i64_t    = wasm_ops::i32_wrap_i64            <instruction_counter>;
       using i64_extend_s_i32_t = wasm_ops::i64_extend_s_i32       <instruction_counter>;
@@ -386,14 +387,17 @@ namespace eosio { namespace chain { namespace wasm_injections {
             _module_injectors.inject( *_module );
             for ( auto& fd : _module->functions.defs ) {
                wasm_ops::EOSIO_OperatorDecoderStream<pre_op_injectors> pre_decoder(fd.code);
-               std::vector<U8> pre_code;
+               std::vector<U8> new_code;
                while ( pre_decoder ) {
                   std::vector<U8> new_inst;
                   auto op = pre_decoder.decodeOp();
                   op->visit( { _module, &new_inst, &fd, pre_decoder.index() } );
-                  pre_code.insert( pre_code.end(), new_inst.begin(), new_inst.end() );
+                  new_code.insert( new_code.end(), new_inst.begin(), new_inst.end() );
                }
-               wasm_ops::EOSIO_OperatorDecoderStream<post_op_injectors> post_decoder(pre_code);
+               fd.code = new_code;
+            }
+            for ( auto& fd : _module->functions.defs ) {
+               wasm_ops::EOSIO_OperatorDecoderStream<post_op_injectors> post_decoder(fd.code);
                std::vector<U8> post_code;
                while ( post_decoder ) {
                   std::vector<U8> new_inst;

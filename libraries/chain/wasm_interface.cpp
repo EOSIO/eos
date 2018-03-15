@@ -272,7 +272,7 @@ namespace eosio { namespace chain {
                   WASM::serialize(outstream, *module);
                   std::vector<U8> bytes = outstream.getBytes();
                   static int a = 0;
-                  std::ofstream out_bin( std::string("dump")+std::to_string(a++), std::ios::out | std::ios::binary );
+                  std::ofstream out_bin( std::string("edump")+std::to_string(a++), std::ios::out | std::ios::binary );
                   out_bin.write( (char*)bytes.data(), bytes.size() );
                   out_bin.close();
 

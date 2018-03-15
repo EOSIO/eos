@@ -271,6 +271,8 @@ struct OP : instr_base<Mutators...> {                                           
                      (i64_reinterpret_f64)  \
                      (f32_reinterpret_i32)  \
                      (f64_reinterpret_i64)  \
+                     (grow_memory)          \
+                     (current_memory)       \
 /* BLOCK TYPE OPS */                        \
                      (block)                \
                      (loop)                 \
@@ -314,9 +316,6 @@ struct OP : instr_base<Mutators...> {                                           
 /* 64bit OPS */                             \
                      (i64_const)            \
                      (f64_const)            \
-/* memtype OPS */                           \
-                     (grow_memory)          \
-                     (current_memory)       \
 /* branchtable op */                        \
                      (br_table)             \
 
@@ -581,12 +580,11 @@ struct br_table : instr_base<Mutators...> {
 */
 
 // construct the instructions
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, voidtype,         BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 131 ) )
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, blocktype,        BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 131, 3 ) )
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, uint32_t,         BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 134, 11 ) )
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, memarg,           BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 145, 23 ) )
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, uint64_t,         BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 168, 2 ) )
-BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, memoryoptype,     BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 170, 2 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, voidtype,         BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 133 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, blocktype,        BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 133, 3 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, uint32_t,         BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 136, 11 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, memarg,           BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 147, 23 ) )
+BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, uint64_t,         BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 170, 2 ) )
 BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, branchtabletype,  BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 172, 1 ) )
 // NOTE BRANCH TABLE IS OMITTED
 #undef CONSTRUCT_OP_HAS_DATA

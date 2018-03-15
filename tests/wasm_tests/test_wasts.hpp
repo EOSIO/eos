@@ -2,6 +2,19 @@
 
 // These are handcrafted or otherwise tricky to generate with our tool chain
 
+static const char f32_add_wast[] = R"=====(
+(module
+ (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+ (table 0 anyfunc)
+ (memory $0 1)
+ (export "memory" (memory $0))
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64)
+    (call $eosio_assert (i32.eq (i32.trunc_u/f32 (f32.const 0x3f800000)) (i32.const 0x0)) (i32.const 0))
+  )
+ )
+)=====";
+
 static const char entry_wast[] = R"=====(
 (module
  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
