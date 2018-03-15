@@ -369,6 +369,70 @@ BOOST_FIXTURE_TEST_CASE( delegate_to_another_user, eosio_system_tester ) try {
 } FC_LOG_AND_RETHROW()
 
 
+BOOST_FIXTURE_TEST_CASE( stake_unstake_separate, eosio_system_tester ) try {
+   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
+
+   //everything at once
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice", "10.0000 EOS", "20.0000 EOS", "30.0000 EOS" ) );
+   auto total = get_total_stake( "alice" );
+   BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS").amount, total["net_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("20.0000 EOS").amount, total["cpu_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("30.0000 EOS").amount, total["storage_stake"].as_uint64());
+   auto bytes = total["storage_bytes"].as_uint64();
+   BOOST_REQUIRE_EQUAL( true, 0 < bytes );
+
+   //cpu
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice", "100.0000 EOS", "0.0000 EOS", "0.0000 EOS" ) );
+   total = get_total_stake( "alice" );
+   BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS").amount, total["net_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("20.0000 EOS").amount, total["cpu_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("30.0000 EOS").amount, total["storage_stake"].as_uint64());
+   BOOST_REQUIRE_EQUAL( bytes, total["storage_bytes"].as_uint64() );
+
+   //net
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice", "0.0000 EOS", "200.0000 EOS", "0.0000 EOS" ) );
+   total = get_total_stake( "alice" );
+   BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS").amount, total["net_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("220.0000 EOS").amount, total["cpu_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("30.0000 EOS").amount, total["storage_stake"].as_uint64());
+   BOOST_REQUIRE_EQUAL( bytes, total["storage_bytes"].as_uint64() );
+
+   //storage
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice", "0.0000 EOS", "200.0000 EOS", "300.0000 EOS" ) );
+   total = get_total_stake( "alice" );
+   BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS").amount, total["net_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("220.0000 EOS").amount, total["cpu_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("330.0000 EOS").amount, total["storage_stake"].as_uint64());
+   auto bytes2 = total["storage_bytes"].as_uint64();
+   BOOST_REQUIRE_EQUAL( true, bytes < bytes2 );
+
+   //unstake cpu
+   BOOST_REQUIRE_EQUAL( success(), unstake( "alice", "100.0000 EOS", "0.0000 EOS", 0 ) );
+   total = get_total_stake( "alice" );
+   BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS").amount, total["net_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("220.0000 EOS").amount, total["cpu_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("3300.0000 EOS").amount, total["storage_stake"].as_uint64());
+   BOOST_REQUIRE_EQUAL( bytes2, total["storage_bytes"].as_uint64());
+
+   //unstake net
+   BOOST_REQUIRE_EQUAL( success(), unstake( "alice", "0.0000 EOS", "200.0000 EOS", 0 ) );
+   total = get_total_stake( "alice" );
+   BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS").amount, total["net_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("20.0000 EOS").amount, total["cpu_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("3300.0000 EOS").amount, total["storage_stake"].as_uint64());
+   BOOST_REQUIRE_EQUAL( bytes2, total["storage_bytes"].as_uint64());
+
+   //unstake cpu
+   BOOST_REQUIRE_EQUAL( success(), unstake( "alice", "0.0000 EOS", "0.0000 EOS", bytes2 / 2 ) );
+   total = get_total_stake( "alice" );
+   BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS").amount, total["net_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("20.0000 EOS").amount, total["cpu_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("1650.0000 EOS").amount, total["storage_stake"].as_uint64());
+   BOOST_REQUIRE_EQUAL( bytes2 - bytes2/2, total["storage_bytes"].as_uint64());
+} FC_LOG_AND_RETHROW()
+
+
 BOOST_FIXTURE_TEST_CASE( adding_stake_partial_unstake, eosio_system_tester ) try {
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "alice", "bob", "200.0000 EOS", "100.0000 EOS", "80.0000 EOS" ) );
@@ -1099,7 +1163,7 @@ BOOST_FIXTURE_TEST_CASE( select_invalid_proxy, eosio_system_tester ) try {
 
 
 BOOST_FIXTURE_TEST_CASE( double_register_unregister_proxy_keeps_votes, eosio_system_tester ) try {
-   //alice becomes a producer
+   //alice becomes a proxy
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproxy), mvo()
                                                 ("proxy",  "alice")
                         )
@@ -1144,5 +1208,54 @@ BOOST_FIXTURE_TEST_CASE( double_register_unregister_proxy_keeps_votes, eosio_sys
 
 } FC_LOG_AND_RETHROW()
 
+
+BOOST_FIXTURE_TEST_CASE( proxy_cannot_use_another_proxy, eosio_system_tester ) try {
+   //alice becomes a proxy
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(regproxy), mvo()
+                                                ("proxy",  "alice")
+                        )
+   );
+
+   //bob becomes a proxy
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(regproxy), mvo()
+                                                ("proxy",  "bob")
+                        )
+   );
+   //proxy should not be able to use a proxy
+   issue( "bob", "1000.0000 EOS",  config::system_account_name );
+   BOOST_REQUIRE_EQUAL( success(), stake( "bob", "100.0002 EOS", "50.0001 EOS", "50.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: account registered as a proxy is not allowed to use a proxy" ),
+                        push_action( N(bob), N(voteproducer), mvo()
+                                     ("voter",  "bob")
+                                     ("proxy", "alice" )
+                                     ("producers", vector<account_name>() )
+                        )
+   );
+
+   //voter that uses a proxy should not be allowed to become a proxy
+   issue( "carol", "1000.0000 EOS",  config::system_account_name );
+   BOOST_REQUIRE_EQUAL( success(), stake( "carol", "100.0002 EOS", "50.0001 EOS", "50.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(carol), N(voteproducer), mvo()
+                                                ("voter",  "carol")
+                                                ("proxy", "alice" )
+                                                ("producers", vector<account_name>() )
+                        )
+   );
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: account that uses a proxy is not allowed to become a proxy" ),
+                        push_action( N(carol), N(regproxy), mvo()
+                                     ("proxy",  "carol")
+                        )
+   );
+
+   //proxy should not be able to use itself as a proxy
+   BOOST_REQUIRE_EQUAL( error( "condition: assertion failed: account registered as a proxy is not allowed to use a proxy" ),
+                        push_action( N(bob), N(voteproducer), mvo()
+                                     ("voter",  "bob")
+                                     ("proxy", "bob" )
+                                     ("producers", vector<account_name>() )
+                        )
+   );
+
+} FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()

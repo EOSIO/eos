@@ -429,7 +429,7 @@ namespace eosiosystem {
 
             eosio_assert( bool(voter) && ( 0 < voter->staked.quantity || ( voter->is_proxy && 0 < voter->proxied_votes ) ), "no stake to vote" );
             if ( voter->is_proxy ) {
-               eosio_assert( vp.proxy == 0 , "accounts elected to be proxy are not allowed to use another proxy" );
+               eosio_assert( vp.proxy == 0 , "account registered as a proxy is not allowed to use a proxy" );
             }
 
             //find old producers, update old proxy if needed
