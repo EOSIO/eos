@@ -115,6 +115,8 @@ namespace eosiosystem {
          ACTION( SystemAccount, finishundel ) {
             account_name from;
             account_name to;
+            
+            EOSLIB_SERIALIZE( finishundel, (from)(to) )
          };
 
          ACTION( SystemAccount, regproducer ) {
