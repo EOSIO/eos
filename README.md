@@ -303,7 +303,7 @@ cd ~/eos/build/programs/eosioc/
 ./eosioc wallet create # Outputs a password that you need to save to be able to lock/unlock the wallet
 ```
 
-For the purpose of this walkthrough, import the private key of the `eosio` account, a test account included within genesis.json, so that you're able to issue API commands under authority of an existing account. The private key referenced below is found within your `config.ini` and is provided to you for testing purposes.
+For the purpose of this walkthrough, import the private key of the `eosio` account, a system account included within genesis.json, so that you're able to issue API commands under authority of an existing account. The private key referenced below is found within your `config.ini` and is provided to you for testing purposes.
 
 ```bash
 ./eosioc wallet import 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
