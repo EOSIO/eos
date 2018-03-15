@@ -9,7 +9,8 @@
 #include <eosio/chain/contracts/types.hpp>
 #include <fc/io/json.hpp>
 
-//clashes with something deep in the AST includes
+//clashes with something deep in the AST includes in clang 6 and possibly other versions of clang
+#pragma push_macro("N")
 #undef N
 
 #include "clang/Driver/Options.h"
@@ -228,3 +229,5 @@ namespace eosio {
    };
 
 } //ns eosio
+
+#pragma pop_macro("N")
