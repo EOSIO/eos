@@ -58,9 +58,9 @@ uint32_t calc_exp_last_irr_block_num(const tester& chain, const uint32_t& head_b
    if( max_reversible_rounds == 0) {
       return head_block_num - 1;
    } else {
-      const auto current_round = head_block_num / config::producer_repititions;
+      const auto current_round = head_block_num / config::producer_repetitions;
       const auto irreversible_round = current_round - max_reversible_rounds;
-      return (uint32_t)((irreversible_round + 1) * config::producer_repititions - 1);
+      return (uint32_t)((irreversible_round + 1) * config::producer_repetitions - 1);
    }
 };
 
@@ -228,14 +228,14 @@ BOOST_AUTO_TEST_CASE(missed_blocks)
 
       const auto& ref_block_num = chain.control->head_block_num();
 
-      account_name skipped_producers[3] = {chain.control->get_scheduled_producer(config::producer_repititions),
-                                           chain.control->get_scheduled_producer(2 * config::producer_repititions),
-                                           chain.control->get_scheduled_producer(3 * config::producer_repititions)};
-      auto next_block_time = static_cast<fc::time_point>(chain.control->get_slot_time(4 * config::producer_repititions));
-      auto next_producer = chain.control->get_scheduled_producer(4 * config::producer_repititions);
+      account_name skipped_producers[3] = {chain.control->get_scheduled_producer(config::producer_repetitions),
+                                           chain.control->get_scheduled_producer(2 * config::producer_repetitions),
+                                           chain.control->get_scheduled_producer(3 * config::producer_repetitions)};
+      auto next_block_time = static_cast<fc::time_point>(chain.control->get_slot_time(4 * config::producer_repetitions));
+      auto next_producer = chain.control->get_scheduled_producer(4 * config::producer_repetitions);
 
       BOOST_TEST(chain.control->head_block_num() == ref_block_num);
-      const auto& blocks_to_miss = (config::producer_repititions - 1) + 3 * config::producer_repititions;
+      const auto& blocks_to_miss = (config::producer_repetitions - 1) + 3 * config::producer_repetitions;
       chain.produce_block(fc::microseconds((blocks_to_miss + 1) * config::block_interval_us), 0);
 
       BOOST_TEST(chain.control->head_block_num() == ref_block_num + 1);
@@ -244,7 +244,7 @@ BOOST_AUTO_TEST_CASE(missed_blocks)
       BOOST_TEST(chain.control->get_producer(next_producer).total_missed == 0);
 
       for (auto producer : skipped_producers) {
-         BOOST_TEST(chain.control->get_producer(producer).total_missed == config::producer_repititions);
+         BOOST_TEST(chain.control->get_producer(producer).total_missed == config::producer_repetitions);
       }
    } FC_LOG_AND_RETHROW() }
 

@@ -82,7 +82,7 @@ namespace eosio { namespace testing {
    void base_tester::produce_blocks_until_end_of_round() {
       uint64_t blocks_per_round;
       while(true) {
-         blocks_per_round = control->get_global_properties().active_producers.producers.size() * config::producer_repititions;
+         blocks_per_round = control->get_global_properties().active_producers.producers.size() * config::producer_repetitions;
          produce_block();
          if (control->head_block_num() % blocks_per_round == (blocks_per_round - 1) ) break;
       }
