@@ -48,6 +48,36 @@
       "fields": [
         {"name":"value", "type":"string"}
       ]
+    },{
+      "name": "transfer",
+      "base": "",
+      "fields": [
+        {"name":"from", "type":"account_name"},
+        {"name":"to", "type":"account_name"},
+        {"name":"quantity", "type":"asset"},
+        {"name":"memo", "type":"string"}
+      ]
+    },{
+     "name": "issue",
+     "base": "",
+     "fields": [
+        {"name":"to", "type":"account_name"},
+        {"name":"quantity", "type":"asset"}
+     ]
+  },{
+      "name": "account",
+      "base": "",
+      "fields": [
+        {"name":"currency", "type":"uint64"},
+        {"name":"balance", "type":"uint64"}
+      ]
+    },{
+      "name": "currency_stats",
+      "base": "",
+      "fields": [
+        {"name":"currency", "type":"uint64"},
+        {"name":"supply", "type":"uint64"}
+      ]
     }],
   "actions": [{
       "name": "setalimits",
@@ -67,7 +97,25 @@
     },{
       "name": "nonce",
       "type": "nonce"
+    },{
+      "name": "transfer",
+      "type": "transfer"
+    },{
+      "name": "issue",
+      "type": "issue"
     }
   ],
-  "tables": []
+  "tables": [{
+      "name": "account",
+      "type": "account",
+      "index_type": "i64",
+      "key_names" : ["currency"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "stat",
+      "type": "currency_stats",
+      "index_type": "i64",
+      "key_names" : ["currency"],
+      "key_types" : ["uint64"]
+    }]
 }
