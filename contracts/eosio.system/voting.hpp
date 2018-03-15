@@ -427,7 +427,7 @@ namespace eosiosystem {
             voters_table voters_tbl( SystemAccount, SystemAccount );
             auto voter = voters_tbl.find( vp.voter );
 
-            eosio_assert( bool(voter), "no stake to vote" );
+            eosio_assert( bool(voter) && ( 0 < voter->staked.quantity || ( voter->is_proxy && 0 < voter->proxied_votes ) ), "no stake to vote" );
             if ( voter->is_proxy ) {
                eosio_assert( vp.proxy == 0 , "accounts elected to be proxy are not allowed to use another proxy" );
             }
@@ -460,6 +460,10 @@ namespace eosiosystem {
             }
 
             producers_table producers_tbl( SystemAccount, SystemAccount );
+            uint128_t votes = voter->staked.quantity;
+            if ( voter->is_proxy ) {
+               votes += voter->proxied_votes;
+            }
 
             if ( old_producers ) { //old_producers == 0 if proxy has stoped being a proxy and votes were taken back from producers at that moment
                //revoke votes only from no longer elected
@@ -468,7 +472,7 @@ namespace eosiosystem {
                for ( auto it = revoked.begin(); it != end_it; ++it ) {
                   auto prod = producers_tbl.find( *it );
                   eosio_assert( bool(prod), "never existed producer" ); //data corruption
-                  producers_tbl.update( *prod, 0, [&]( auto& pi ) { pi.total_votes -= voter->staked.quantity; });
+                  producers_tbl.update( *prod, 0, [&]( auto& pi ) { pi.total_votes -= votes; } );
                }
             }
 
@@ -481,7 +485,7 @@ namespace eosiosystem {
                if ( vp.proxy == 0 ) { //direct voting, in case of proxy voting update total_votes even for inactive producers
                   eosio_assert( prod->active(), "producer is not currently registered" );
                }
-               producers_tbl.update( *prod, 0, [&]( auto& pi ) { pi.total_votes += voter->staked.quantity; });
+               producers_tbl.update( *prod, 0, [&]( auto& pi ) { pi.total_votes += votes; } );
             }
 
             // save new values to the account itself
@@ -502,15 +506,23 @@ namespace eosiosystem {
             require_auth( reg.proxy );
 
             voters_table voters_tbl( SystemAccount, SystemAccount );
-            auto voter = voters_tbl.find( reg.proxy );
-            if ( voter ) {
-               eosio_assert( voter->is_proxy == 0, "account is already a proxy" );
-               eosio_assert( voter->proxy == 0, "account that uses a proxy is not allowed to become a proxy" );
-               voters_tbl.update( *voter, 0, [&](voter_info& a) {
+            auto proxy = voters_tbl.find( reg.proxy );
+            if ( proxy ) {
+               eosio_assert( proxy->is_proxy == 0, "account is already a proxy" );
+               eosio_assert( proxy->proxy == 0, "account that uses a proxy is not allowed to become a proxy" );
+               voters_tbl.update( *proxy, 0, [&](voter_info& a) {
                      a.is_proxy = 1;
                      a.last_update = now();
                      //a.proxied_votes may be > 0, if the proxy has been unregistered, so we had to keep the value
                   });
+               if ( 0 < proxy->proxied_votes ) {
+                  producers_table producers_tbl( SystemAccount, SystemAccount );
+                  for ( auto p : proxy->producers ) {
+                     auto prod = producers_tbl.find( p );
+                     eosio_assert( bool(prod), "never existed producer" ); //data corruption
+                     producers_tbl.update( *prod, 0, [&]( auto& pi ) { pi.total_votes += proxy->proxied_votes; });
+                  }
+               }
             } else {
                voters_tbl.emplace( reg.proxy, [&]( voter_info& a ) {
                      a.owner = reg.proxy;
@@ -537,18 +549,20 @@ namespace eosiosystem {
             eosio_assert( bool(proxy), "proxy not found" );
             eosio_assert( proxy->is_proxy == 1, "account is already a proxy" );
 
-            producers_table producers_tbl( SystemAccount, SystemAccount );
-            for ( auto p : proxy->producers ) {
-               auto prod = producers_tbl.find( p );
-               eosio_assert( bool(prod), "never existed producer" ); //data corruption
-               producers_tbl.update( *prod, 0, [&]( auto& pi ) { pi.total_votes -= proxy->proxied_votes; });
-            }
-
             voters_tbl.update( *proxy, 0, [&](voter_info& a) {
                      a.is_proxy = 0;
                      a.last_update = now();
                      //a.proxied_votes should be kept in order to be able to reenable this proxy in the future
                });
+
+            if ( 0 < proxy->proxied_votes ) {
+               producers_table producers_tbl( SystemAccount, SystemAccount );
+               for ( auto p : proxy->producers ) {
+                  auto prod = producers_tbl.find( p );
+                  eosio_assert( bool(prod), "never existed producer" ); //data corruption
+                  producers_tbl.update( *prod, 0, [&]( auto& pi ) { pi.total_votes -= proxy->proxied_votes; });
+               }
+            }
          }
 
    };

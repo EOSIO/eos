@@ -106,7 +106,7 @@
       "name": "producer_info",
       "base": "",
       "fields": [
-         {"name":"owner",       "type":"uint64"},
+         {"name":"owner",       "type":"account_name"},
          {"name":"total_votes", "type":"uint128"},
          {"name":"prefs",       "type":"eosio_parameters"},
          {"name":"packed_key",  "type":"uint8[]"}
