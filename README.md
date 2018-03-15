@@ -15,9 +15,11 @@ The public testnet described in the [wiki](https://github.com/EOSIO/eos/wiki/Tes
 ### Supported Operating Systems
 EOS.IO currently supports the following operating systems:  
 1. Amazon 2017.09 and higher.  
-2. Fedora 25 and higher (Fedora 27 recommended).  
-3. Ubuntu 16.04 (Ubuntu 16.10 recommended).  
-4. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
+2. Centos 7.  
+3. Fedora 25 and higher (Fedora 27 recommended).  
+4. Mint 18.  
+5. Ubuntu 16.04 (Ubuntu 16.10 recommended).  
+6. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
 
 # Resources
 1. [EOS.IO Website](https://eos.io)
@@ -74,10 +76,10 @@ The following instructions detail the process of getting the software, building 
 
 Supported Operating Systems:  
 1. Amazon 2017.09 and higher.  
-2. Centos 7 and higher.  
+2. Centos 7.  
 3. Fedora 25 and higher (Fedora 27 recommended).  
 4. Mint 18.  
-5. Ubuntu 16.04 (Ubuntu 16.10 recommended), Mint 18.  
+5. Ubuntu 16.04 (Ubuntu 16.10 recommended).  
 6. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
 
 For Amazon, Centos, Fedora, Mint, Ubuntu, & MacOS there is an automated build script that can install all dependencies and builds EOS.
@@ -848,6 +850,7 @@ macOS additional Dependencies:
 
 * Brew
 * Newest XCode
+* MongoDB C++ driver
 
 Upgrade your XCode to the newest version:
 
@@ -865,8 +868,32 @@ Install the dependencies:
 
 ```bash
 brew update
-brew install git automake libtool boost openssl llvm@4 gmp ninja gettext
+brew install git automake libtool cmake boost openssl@1.0 llvm@4 gmp ninja gettext mongodb
 brew link gettext --force
+```
+Install [mongo-cxx-driver (release/stable)](https://github.com/mongodb/mongo-cxx-driver):
+
+```bash
+cd ~
+brew install --force pkgconfig
+brew unlink pkgconfig && brew link --force pkgconfig
+curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
+tar xf mongo-c-driver-1.9.3.tar.gz
+rm -f mongo-c-driver-1.9.3.tar.gz
+cd mongo-c-driver-1.9.3
+./configure --enable-ssl=darwin --disable-automatic-init-and-cleanup --prefix=/usr/local
+make -j$( sysctl -in machdep.cpu.core_count )
+sudo make install
+cd ..
+rm -rf mongo-c-driver-1.9.3
+
+git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
+cd mongo-cxx-driver/build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+make -j$( sysctl -in machdep.cpu.core_count )
+sudo make install
+cd ..
+rm -rf mongo-cxx-driver
 ```
 
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
