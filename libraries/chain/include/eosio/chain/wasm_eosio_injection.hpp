@@ -59,7 +59,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
             if ( exp.kind == IR::ObjectKind::function )
                exports++;
 
-         uint32_t next_index = module.functions.imports.size() + module.functions.defs.size() + exports + registered_injected.size();
+         uint32_t next_index = module.functions.imports.size() + module.functions.defs.size() + exports + registered_injected.size() + 300;
          return next_index;
       }
 
@@ -183,7 +183,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
             call_inst->field = mapped_index;
          } 
          else
-            if ( call_inst->field > injector_utils::first_imported_index-1 ) {
+            if ( call_inst->field > injector_utils::first_imported_index - 1 ) {
                call_inst->field += offset;
             }
       }
@@ -203,8 +203,21 @@ namespace eosio { namespace chain { namespace wasm_injections {
          std::vector<U8> injected = f32add.pack();
          arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
       }
-
    };
+   struct f32_promote_injector {
+      static constexpr bool kills = false;
+      static constexpr bool post = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         int32_t idx;
+         injector_utils::add_import<ResultType::f64, ValueType::f32>( *(arg.module), u8"env", u8"_eosio_f32_promote", idx );
+         wasm_ops::op_types<>::call_t f32promote;
+         f32promote.field = idx;
+         std::vector<U8> injected = f32promote.pack();
+         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+      }
+   };
+
    struct pre_op_injectors : wasm_ops::op_types<pass_injector> {
       using block_t           = wasm_ops::block                   <instruction_counter, checktime_injector>;
       using loop_t            = wasm_ops::loop                    <instruction_counter, checktime_injector>;
@@ -323,6 +336,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using i64_rotr_t        = wasm_ops::i64_rotr                <instruction_counter>; 
 
       using f32_add_t         = wasm_ops::f32_add                 <instruction_counter, f32_add_injector>;
+     // using f64_promote_f32_t = wasm_ops::f64_promote_f32         <instruction_counter, f32_promote_injector>;
 
       using i32_wrap_i64_t    = wasm_ops::i32_wrap_i64            <instruction_counter>;
       using i64_extend_s_i32_t = wasm_ops::i64_extend_s_i32       <instruction_counter>;

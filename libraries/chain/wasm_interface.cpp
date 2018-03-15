@@ -29,6 +29,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <fstream>
 
 #include <mutex>
 #include <thread>
@@ -189,16 +190,19 @@ namespace eosio { namespace chain {
                   IR::Module* module2 = new IR::Module();
 
                   Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
+                  Serialization::MemoryInputStream stream2((const U8 *) wasm_binary, wasm_binary_size);
                   WASM::serialize(stream, *module);
-                  //WASM::serializeWithInjection(stream, *module);
+                  WASM::serialize(stream2, *module2);
 
                   wasm_constraints::wasm_binary_validation validator( *module );
                   //validator.validate();
                   wasm_injections::wasm_binary_injection injector( *module );
                   injector.inject();
                   validator.validate();
+                  std::cout << "MOD2!!!\n";
+                  wasm_constraints::wasm_binary_validation validator2( *module2 );
+//                  validator2.validate();
 #if 1
-
                   auto restype = [](IR::ResultType f){ 
                         if (f == IR::ResultType::none ) return "none"; 
                         if (f == IR::ResultType::i32 ) return "i32"; 
@@ -228,14 +232,21 @@ namespace eosio { namespace chain {
                   for (int i=0; i < module->functions.imports.size(); i++)
                      std::cout << module->functions.imports[i].exportName << " : " << i << "\n";
                   std::cout << "\n";
+                 std::cout << "FUNCTION_Import B \n";
+                  for (int i=0; i < module2->functions.imports.size(); i++)
+                     std::cout << module2->functions.imports[i].exportName << " : " << i << "\n";
+                  std::cout << "\n";
+
                   std::cout << "TABLES_Import A \n";
                   for (auto e : module->tables.imports)
                      std::cout << e.exportName << "\n";
                   std::cout << "\n";
+                  /*
                   std::cout << "TABLES_Import B \n";
                   for (auto e : module2->tables.imports)
                      std::cout << e.exportName << "\n";
                   std::cout << "\n";
+                  */
                   std::cout << "MEMORIES_Import A \n";
                   for (auto e : module->memories.imports)
                      std::cout << e.exportName << "\n";
@@ -248,17 +259,22 @@ namespace eosio { namespace chain {
                   for (auto e : module->exports)
                      std::cout << e.name << " " << uint32_t(e.index) << "\n";
                   std::cout << "\n";
+                  /*
                   std::cout << "DATASEG A \n";
                   for (auto e : module->dataSegments)
                      std::cout << e.memoryIndex << "\n";
                   std::cout << "\n";
-
+                  */
                   std::cout << "start index A " << module->startFunctionIndex << "\n";
 #endif
 
                   Serialization::ArrayOutputStream outstream;
                   WASM::serialize(outstream, *module);
                   std::vector<U8> bytes = outstream.getBytes();
+                  static int a = 0;
+                  std::ofstream out_bin( std::string("dump")+std::to_string(a++), std::ios::out | std::ios::binary );
+                  out_bin.write( (char*)bytes.data(), bytes.size() );
+                  out_bin.close();
 
                   wavm = wavm::entry::build((char*)bytes.data(), bytes.size());
                   wavm_info.emplace(*wavm);

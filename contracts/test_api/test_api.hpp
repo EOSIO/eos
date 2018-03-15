@@ -244,3 +244,7 @@ struct test_checktime {
    static void checktime_pass();
    static void checktime_failure();
 };
+
+struct test_softfloat {
+   static void test_f32();
+};

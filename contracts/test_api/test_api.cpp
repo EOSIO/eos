@@ -16,6 +16,8 @@
 #include "test_chain.cpp"
 #include "test_transaction.cpp"
 #include "test_checktime.cpp"
+#include "test_softfloat.cpp"
+
 extern "C" {
 
     void init()  {
@@ -133,7 +135,9 @@ extern "C" {
       // test checktime
       WASM_TEST_HANDLER(test_checktime, checktime_pass);
       WASM_TEST_HANDLER(test_checktime, checktime_failure);
-
+      
+      // test softfloat
+      WASM_TEST_HANDLER(test_softfloat, test_f32);
       //unhandled test call
       eosio_assert(false, "Unknown Test");
 

@@ -360,6 +360,22 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
+ * softfloat_tests test case
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(softfloat_tests, tester) { try {
+	produce_blocks(2);
+	create_account( N(testapi) );
+	produce_blocks(1000);
+	set_code( N(testapi), test_api_wast );
+	produce_blocks(1);
+
+   // test f32 operations 
+   CALL_TEST_FUNCTION( *this, "test_softfloat", "test_f32", {});
+
+} FC_LOG_AND_RETHROW() }
+
+
+/*************************************************************************************
  * checktime_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(checktime_pass_tests, tester) { try {
