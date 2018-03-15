@@ -45,8 +45,8 @@
       "base": "",
       "fields": [
         {"name":"lender", "type":"account_name"},
-        {"name":"quantity", "type":"extended_asset"},
-        {"name":"market", "type":"symbol"}
+        {"name":"market", "type":"symbol"},
+        {"name":"quantity", "type":"extended_asset"}
       ]
     },
     {
@@ -54,9 +54,9 @@
       "base": "",
       "fields": [
         {"name":"lender", "type":"account_name"},
+        {"name":"market", "type":"symbol"},
         {"name":"interest_shares", "type":"float64"},
-        {"name":"interest_symbol", "type":"extended_symbol"},
-        {"name":"market", "type":"symbol"}
+        {"name":"interest_symbol", "type":"extended_symbol"}
       ]
     },
     {
@@ -139,11 +139,11 @@
     { "name": "transfer", "type": "transfer" },
     { "name": "trade", "type": "trade" },
     { "name": "createx", "type": "createx" },
-    { "name": "issue", "type": "issue" }, 
-    { "name": "lend", "type": "lend" }, 
-    { "name": "unlend", "type": "unlend" }, 
-    { "name": "upmargin", "type": "upmargin" }, 
-    { "name": "covermargin", "type": "covermargin" }, 
+    { "name": "issue", "type": "issue" },
+    { "name": "lend", "type": "lend" },
+    { "name": "unlend", "type": "unlend" },
+    { "name": "upmargin", "type": "upmargin" },
+    { "name": "covermargin", "type": "covermargin" },
     { "name": "create", "type": "create" }
   ],
   "tables": [{

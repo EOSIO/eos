@@ -14,15 +14,15 @@ namespace eosio {
     *  To prevent exessive rounding errors, the initial deposit should include
     *  a sizeable quantity of both the base and quote currencies and the exchange
     *  shares should have a quantity 100x the quantity of the largest initial
-    *  deposit. 
+    *  deposit.
     *
     *  Users must deposit funds into the exchange before they can trade on the
-    *  exchange. 
+    *  exchange.
     *
     *  Each time an exchange is created a new currency for that exchanges market
     *  maker is also created. This currencies supply and symbol must be unique and
     *  it uses the currency contract's tables to manage it.
-    */  
+    */
    class exchange {
       private:
          account_name      _this_contract;
@@ -37,7 +37,7 @@ namespace eosio {
          {}
 
          /**
-          *  Create a new exchange between two extended asset types, 
+          *  Create a new exchange between two extended asset types,
           *  creator will receive the initial supply of a new token type
           */
          struct createx  {
@@ -66,19 +66,19 @@ namespace eosio {
 
          struct lend {
             account_name     lender;
-            extended_asset   quantity;
             symbol_type      market;
+            extended_asset   quantity;
 
-            EOSLIB_SERIALIZE( lend, (lender)(quantity)(market) )
+            EOSLIB_SERIALIZE( lend, (lender)(market)(quantity) )
          };
 
          struct unlend {
             account_name     lender;
+            symbol_type      market;
             double           interest_shares;
             extended_symbol  interest_symbol;
-            symbol_type      market;
 
-            EOSLIB_SERIALIZE( unlend, (lender)(interest_shares)(interest_symbol)(market) )
+            EOSLIB_SERIALIZE( unlend, (lender)(market)(interest_shares)(interest_symbol) )
          };
 
          struct covermargin {
@@ -109,15 +109,17 @@ namespace eosio {
             EOSLIB_SERIALIZE( trade, (seller)(market)(sell)(min_receive)(expire)(fill_or_kill) )
          };
 
+         // TODO: Need ability to cancel trades in order book.
+
          void on( const deposit& d  );
          void on( const withdraw& w );
          void on( const lend& w );
          void on( const unlend& w );
-         void on( const createx& c ); 
-         void on( const trade& t    ); 
-         void on( const upmargin& b ); 
-         void on( const covermargin& b ); 
-         void on( const currency::transfer& t, account_name code ); 
+         void on( const createx& c );
+         void on( const trade& t    );
+         void on( const upmargin& b );
+         void on( const covermargin& b );
+         void on( const currency::transfer& t, account_name code );
 
 
          bool apply( account_name contract, account_name act );

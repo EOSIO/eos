@@ -27,7 +27,7 @@ namespace eosio {
    void market_state::margin_call( exchange_state::connector& c, margins& marginstable ) {
       auto price_idx = marginstable.get_index<N(callprice)>();
       auto pos = price_idx.begin();
-      if( pos == price_idx.end() ) 
+      if( pos == price_idx.end() )
          return;
 
       auto receipt = exstate.convert( pos->collateral, pos->borrowed.get_extended_symbol() );
@@ -103,11 +103,11 @@ namespace eosio {
       }
    }
 
-   void market_state::cover_margin( account_name borrower, const extended_asset& delta_debt ) {
-      if( delta_debt.get_extended_symbol() == exstate.base.balance.get_extended_symbol() ) {
-         cover_margin( borrower, base_margins, exstate.base, delta_debt );
-      } else if( delta_debt.get_extended_symbol() == exstate.quote.balance.get_extended_symbol() ) {
-         cover_margin( borrower, quote_margins, exstate.quote, delta_debt );
+   void market_state::cover_margin( account_name borrower, const extended_asset& cover_amount ) {
+      if( cover_amount.get_extended_symbol() == exstate.base.balance.get_extended_symbol() ) {
+         cover_margin( borrower, base_margins, exstate.base, cover_amount );
+      } else if( cover_amount.get_extended_symbol() == exstate.quote.balance.get_extended_symbol() ) {
+         cover_margin( borrower, quote_margins, exstate.quote, cover_amount );
       } else {
          eosio_assert( false, "invalid debt asset" );
       }
@@ -116,7 +116,7 @@ namespace eosio {
 
    /**
     *  This method will use the collateral to buy the borrowed asset from the market
-    *  with collateral to cancel the debt. 
+    *  with collateral to cancel the debt.
     */
    void market_state::cover_margin( account_name borrower, margins& m, exchange_state::connector& c,
                                     const extended_asset& cover_amount )

@@ -55,8 +55,8 @@ FC_REFLECT( exchange_state, (manager)(supply)(fee)(base)(quote) );
 class exchange_tester : public tester {
    public:
 
-      auto push_action(account_name contract, 
-                       const account_name& signer, 
+      auto push_action(account_name contract,
+                       const account_name& signer,
                        const action_name &name, const variant_object &data ) {
          string action_type_name = abi_ser.get_action_type(name);
 
@@ -169,21 +169,21 @@ class exchange_tester : public tester {
 
       void issue( name contract, name signer, name to, asset amount ) {
          push_action( contract, signer, N(issue), mutable_variant_object()
-                 ("to",      to ) 
+                 ("to",      to )
                  ("quantity", amount )
                  ("memo", "")
          );
       }
 
       auto trade( name ex_contract, name signer, symbol market,
-                  extended_asset sell, extended_asset min_receive ) 
+                  extended_asset sell, extended_asset min_receive )
       {
          wdump((market)(sell)(min_receive));
          wdump((market.to_string()));
          wdump((fc::variant(market).as_string()));
          wdump((fc::variant(market).as<symbol>()));
          return push_action( ex_contract, signer, N(trade), mutable_variant_object()
-                 ("seller",  signer ) 
+                 ("seller",  signer )
                  ("market",  market )
                  ("sell", sell)
                  ("min_receive", min_receive)
@@ -204,16 +204,16 @@ class exchange_tester : public tester {
       auto lend( name contract, name signer, extended_asset quantity, symbol market ) {
          return push_action( contract, signer, N(lend), mutable_variant_object()
              ("lender", signer )
-             ("quantity", quantity )
              ("market", market )
+             ("quantity", quantity )
          );
       }
       auto unlend( name contract, name signer, double interest_shares, extended_symbol interest_symbol, symbol market ) {
          return push_action( contract, signer, N(unlend), mutable_variant_object()
              ("lender", signer )
+             ("market", market )
              ("interest_shares", interest_shares)
              ("interest_symbol", interest_symbol)
-             ("market", market )
          );
       }
 
@@ -221,7 +221,7 @@ class exchange_tester : public tester {
                             extended_asset base_deposit,
                             extended_asset quote_deposit,
                             asset exchange_supply ) {
-         return push_action( contract, signer, N(createx), mutable_variant_object() 
+         return push_action( contract, signer, N(createx), mutable_variant_object()
                         ("creator", signer)
                         ("initial_supply", exchange_supply)
                         ("fee", 0)
@@ -249,7 +249,7 @@ class exchange_tester : public tester {
          deposit( N(exchange), N(dan), extended_asset( A(500.00 USD), N(currency) ) );
          deposit( N(exchange), N(dan), extended_asset( A(500.00 BTC), N(currency) ) );
 
-         create_exchange( N(exchange), N(dan), 
+         create_exchange( N(exchange), N(dan),
                             extended_asset( A(400.00 USD), N(currency) ),
                             extended_asset( A(400.00 BTC), N(currency) ),
                             A(10000000.00 EXC) );
@@ -290,7 +290,7 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
    auto dan_ex_exc = t.get_exchange_balance( N(exchange), N(exchange), symbol(2,"EXC"), N(dan) );
    wdump((dan_ex_exc));
 
-   auto result = t.trade( N(exchange), N(trader), symbol(2,"EXC"), 
+   auto result = t.trade( N(exchange), N(trader), symbol(2,"EXC"),
                           extended_asset( A(10.00 BTC), N(currency) ),
                           extended_asset( A(0.01 USD), N(currency) ) );
 
@@ -302,7 +302,7 @@ BOOST_AUTO_TEST_CASE( exchange_create ) try {
    wdump((trader_ex_btc.quantity));
    wdump((trader_ex_usd.quantity));
 
-   result = t.trade( N(exchange), N(trader), symbol(2,"EXC"), 
+   result = t.trade( N(exchange), N(trader), symbol(2,"EXC"),
                           extended_asset( A(9.75 USD), N(currency) ),
                           extended_asset( A(0.01 BTC), N(currency) ) );
 
