@@ -378,6 +378,7 @@ class context_free_api : public context_aware_api {
          return context.get_context_free_data( index, buffer, buffer_size );
       }
 };
+
 class privileged_api : public context_aware_api {
    public:
       privileged_api( wasm_interface& wasm )
@@ -470,7 +471,8 @@ class privileged_api : public context_aware_api {
 
 class checktime_api : public context_aware_api {
 public:
-   using context_aware_api::context_aware_api;
+   explicit checktime_api( wasm_interface& wasm )
+   :context_aware_api(wasm,true){}
 
    void checktime(uint32_t instruction_count) {
       context.checktime(instruction_count);
@@ -492,13 +494,14 @@ class producer_api : public context_aware_api {
 
 class crypto_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      explicit crypto_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       /**
        * This method can be optimized out during replay as it has
        * no possible side effects other than "passing".
        */
-      void assert_recover_key( fc::sha256& digest,
+      void assert_recover_key( const fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
          fc::crypto::signature s;
@@ -513,7 +516,7 @@ class crypto_api : public context_aware_api {
          FC_ASSERT( check == p, "Error expected key different than recovered key" );
       }
 
-      int recover_key( fc::sha256& digest,
+      int recover_key( const fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
          fc::crypto::signature s;
@@ -576,7 +579,8 @@ class string_api : public context_aware_api {
 
 class system_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      explicit system_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       void abort() {
          edump(("abort() called"));
@@ -598,16 +602,17 @@ class system_api : public context_aware_api {
 
 class action_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+   action_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
-      int read_action(array_ptr<char> memory, size_t size) {
+      int read_action_data(array_ptr<char> memory, size_t size) {
          FC_ASSERT(size > 0);
          int minlen = std::min<size_t>(context.act.data.size(), size);
          memcpy((void *)memory, context.act.data.data(), minlen);
          return minlen;
       }
 
-      int action_size() {
+      int action_data_size() {
          return context.act.data.size();
       }
 
@@ -630,7 +635,8 @@ class action_api : public context_aware_api {
 
 class console_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      console_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       void prints(null_terminated_ptr str) {
          context.console_append<const char*>(str);
@@ -1335,8 +1341,8 @@ class compiler_builtins : public context_aware_api {
 
 class math_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
-
+      math_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       void diveq_i128(unsigned __int128* self, const unsigned __int128* other) {
          fc::uint128_t s(*self);
@@ -1538,8 +1544,8 @@ REGISTER_INTRINSICS(system_api,
 );
 
 REGISTER_INTRINSICS(action_api,
-   (read_action,            int(int, int)  )
-   (action_size,            int()          )
+   (read_action_data,       int(int, int)  )
+   (action_data_size,       int()          )
    (current_receiver,   int64_t()          )
    (publication_time,   int32_t()          )
    (current_sender,     int64_t()          )
