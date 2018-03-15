@@ -214,9 +214,9 @@ namespace eosio {
 
     /*
      *  Reads size bytes from the buffer chain starting at the supplied index.
-     *  The read pointer is not advanced.
+     *  The supplied index is advanced, but the read pointer is unaffected.
      */
-    bool peek(void* s, uint32_t size, index_t index) {
+    bool peek(void* s, uint32_t size, index_t& index) {
       if (bytes_to_read() < size) {
         return false;
       }
