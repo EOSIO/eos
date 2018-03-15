@@ -176,7 +176,7 @@
 		else
 			printf "\n\tMongoDB is running PID=${MONGODB_PID}.\n"
 		fi
-		
+		printf "\tBeginning test suite.\n"
 		make test
 	fi
 
