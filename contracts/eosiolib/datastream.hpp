@@ -469,28 +469,6 @@ DataStream& operator >> ( DataStream& ds, std::array<T,N>& v ) {
    return ds;
 }
 
-template<typename DataStream, typename K, typename V>
-DataStream& operator<<( DataStream& ds, const boost::container::flat_map<K,V>& m ) {
-   ds << unsigned_int( m.size() );
-   for( const auto& i : m ) 
-      ds << i.first << i.second;
-   return ds;
-}
-template<typename DataStream, typename K, typename V>
-DataStream& operator>>( DataStream& ds, boost::container::flat_map<K,V>& m ) {
-   m.clear();
-   unsigned_int s; ds >> s;
-
-   for( uint32_t i = 0; i < s.value; ++i ) {
-      K k; V v;
-      ds >> k >> v;
-      m.emplace( std::move(k), std::move(v) );
-   }
-   return ds;
-}
-
-
-
 template<typename DataStream, typename T>
 DataStream& operator << ( DataStream& ds, const vector<T>& v ) {
    ds << unsigned_int( v.size() );
@@ -509,24 +487,45 @@ DataStream& operator >> ( DataStream& ds, vector<T>& v ) {
    return ds;
 }
 
-template<typename DataStream, typename T, typename U>
-DataStream& operator << ( DataStream& ds, const std::map<T,U>& v ) {
-   ds << unsigned_int( v.size() );
-   for( const auto& i : v ) {
-      ds << i.first;
-      ds << i.second;
+template<typename DataStream, typename K, typename V>
+DataStream& operator << ( DataStream& ds, const std::map<K,V>& m ) {
+   ds << unsigned_int( m.size() );
+   for( const auto& i : m ) {
+      ds << i.first << i.second;
    }
    return ds;
 }
 
-template<typename DataStream, typename T, typename U>
-DataStream& operator >> ( DataStream& ds, std::map<T,U>& v ) {
-   unsigned_int s;
-   ds >> s;
-   for (uint32_t i = 0; i < s; ++i) {
-      T t;
-      ds >> t;
-      ds >> v[t];
+template<typename DataStream, typename K, typename V>
+DataStream& operator >> ( DataStream& ds, std::map<K,V>& m ) {
+   m.clear();
+   unsigned_int s; ds >> s;
+
+   for (uint32_t i = 0; i < s.value; ++i) {
+      K k; V v;
+      ds >> k >> v;
+      m.emplace( std::move(k), std::move(v) );
+   }
+   return ds;
+}
+
+template<typename DataStream, typename K, typename V>
+DataStream& operator<<( DataStream& ds, const boost::container::flat_map<K,V>& m ) {
+   ds << unsigned_int( m.size() );
+   for( const auto& i : m )
+      ds << i.first << i.second;
+   return ds;
+}
+
+template<typename DataStream, typename K, typename V>
+DataStream& operator>>( DataStream& ds, boost::container::flat_map<K,V>& m ) {
+   m.clear();
+   unsigned_int s; ds >> s;
+
+   for( uint32_t i = 0; i < s.value; ++i ) {
+      K k; V v;
+      ds >> k >> v;
+      m.emplace( std::move(k), std::move(v) );
    }
    return ds;
 }
