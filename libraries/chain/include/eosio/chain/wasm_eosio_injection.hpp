@@ -58,7 +58,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
             if ( exp.kind == IR::ObjectKind::function )
                exports++;
 
-         uint32_t next_index = module.functions.imports.size() + module.functions.defs.size() + exports + registered_injected.size() + 300;
+         uint32_t next_index = module.functions.imports.size() + module.functions.defs.size() + exports + registered_injected.size();
          return next_index;
       }
 

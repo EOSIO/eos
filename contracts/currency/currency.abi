@@ -14,11 +14,22 @@
         {"name":"memo", "type":"string"}
       ]
     },{
+     "name": "create",
+     "base": "",
+     "fields": [
+        {"name":"issuer", "type":"account_name"},
+        {"name":"maximum_supply", "type":"asset"},
+        {"name":"can_freeze", "type":"uint8"},
+        {"name":"can_recall", "type":"uint8"},
+        {"name":"can_whitelist", "type":"uint8"}
+     ]
+  },{
      "name": "issue",
      "base": "",
      "fields": [
         {"name":"to", "type":"account_name"},
-        {"name":"quantity", "type":"asset"}
+        {"name":"quantity", "type":"asset"},
+        {"name":"memo", "type":"string"}
      ]
   },{
       "name": "account",
@@ -42,7 +53,11 @@
     },{
       "name": "issue",
       "type": "issue"
+    }, {
+      "name": "create",
+      "type": "create"
     }
+
   ],
   "tables": [{
       "name": "account",
