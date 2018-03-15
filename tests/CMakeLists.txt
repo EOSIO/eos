@@ -30,14 +30,8 @@ add_dependencies(chain_test asserter test_api currency proxy identity identity_t
 
 
 # WASM only tests
-#file(GLOB SLOW_TESTS "slow_tests/*.cpp")
-#add_executable( slow_test ${SLOW_TESTS} ${COMMON_SOURCES} )
-#target_link_libraries( slow_test eos_native_contract eosio_chain chainbase eos_utilities eos_egenesis_none chain_plugin producer_plugin fc ${PLATFORM_SPECIFIC_LIBS} )
-#target_include_directories( slow_test PUBLIC ${CMAKE_BINARY_DIR}/contracts )
-#add_dependencies(slow_test currency exchange)
 #add_subdirectory(api_tests/memory_test)
 #add_subdirectory(api_tests/extended_memory_test)
-#add_subdirectory(api_tests/table_abi_test)
 #file(GLOB API_TESTS "api_tests/*.cpp")
 #add_executable( api_test ${API_TESTS} ${COMMON_SOURCES} )
 #target_link_libraries( api_test eos_native_contract eosio_chain chainbase eos_utilities eos_egenesis_none chain_plugin producer_plugin fc ${PLATFORM_SPECIFIC_LIBS} )
