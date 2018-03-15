@@ -19,7 +19,7 @@ namespace eosio {
     *
     * @note There are some methods from the @ref transactioncapi that can be used directly from C++
     *
-    * @{ 
+    * @{
     */
 
    class transaction {
@@ -66,16 +66,14 @@ namespace eosio {
     * @return the indicated action
     */
    action get_action( uint32_t type, uint32_t index ) {
-      std::vector<char> buf;
-      int size = ::get_action(type, index, nullptr, 0);
+      auto size = ::get_action(type, index, nullptr, 0);
       eosio_assert( size > 0, "get_action size failed" );
-      buf.resize( static_cast<size_t>(size) );
-      size = ::get_action(type, index, &buf[0], static_cast<size_t>(size) );
-      eosio_assert( size > 0, "get_action failed" );
+      char buf[size];
+      auto size2 = ::get_action(type, index, &buf[0], static_cast<size_t>(size) );
+      eosio_assert( size == size2, "get_action failed" );
       return eosio::unpack<eosio::action>(&buf[0], static_cast<size_t>(size));
    }
 
    ///@} transactioncpp api
 
 } // namespace eos
-
