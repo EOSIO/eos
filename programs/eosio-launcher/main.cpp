@@ -21,6 +21,8 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
+#include <fc/crypto/private_key.hpp>
+#include <fc/crypto/public_key.hpp>
 #include <fc/io/json.hpp>
 #include <fc/network/ip.hpp>
 #include <fc/reflect/variant.hpp>
@@ -40,6 +42,8 @@ using boost::asio::ip::tcp;
 using boost::asio::ip::host_name;
 using bpo::options_description;
 using bpo::variables_map;
+using public_key_type = fc::crypto::public_key;
+using private_key_type = fc::crypto::private_key;
 
 const string block_dir = "blocks";
 const string shared_mem_dir = "shared_mem";
@@ -107,26 +111,15 @@ struct local_identity {
 
 } local_id;
 
-
-struct keypair {
-  string public_key;
-  string wif_private_key;
-
-  keypair ()
-    : public_key("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"),
-      wif_private_key("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3")
-  {}
-};
-
 class eosd_def;
 
 class host_def {
 public:
   host_def ()
-    : genesis("./genesis.json"),
+    : genesis("genesis.json"),
       ssh_identity (""),
       ssh_args (""),
-      eos_root_dir(),
+      eosio_home(),
       host_name("127.0.0.1"),
       public_name("localhost"),
       listen_addr("0.0.0.0"),
@@ -142,7 +135,7 @@ public:
   string           genesis;
   string           ssh_identity;
   string           ssh_args;
-  string           eos_root_dir;
+  string           eosio_home;
   string           host_name;
   string           public_name;
   string           listen_addr;
@@ -157,6 +150,14 @@ public:
 
   uint16_t http_port() {
     return base_http_port + http_count++;
+  }
+
+  uint16_t p2p_bios_port() {
+    return base_p2p_port - 100;
+  }
+
+  uint16_t http_bios_port() {
+     return base_http_port - 100;
   }
 
   bool is_local( ) {
@@ -194,7 +195,8 @@ class tn_node_def;
 class eosd_def {
 public:
   eosd_def()
-    : data_dir (),
+    : config_dir_name (),
+      data_dir_name (),
       p2p_port(),
       http_port(),
       file_size(),
@@ -205,7 +207,9 @@ public:
       p2p_endpoint() {}
 
 
-  string       data_dir;
+
+  string       config_dir_name;
+  string       data_dir_name;
   uint16_t     p2p_port;
   uint16_t     http_port;
   uint16_t     file_size;
@@ -215,6 +219,7 @@ public:
   string       host;
   string       p2p_endpoint;
 
+  void set_bios_host (host_def* h);
   void set_host (host_def* h);
   void mk_dot_label ();
   const string &dot_label () {
@@ -231,7 +236,7 @@ private:
 class tn_node_def {
 public:
   string          name;
-  vector<keypair> keys;
+  vector<private_key_type> keys;
   vector<string>  peers;
   vector<string>  producers;
   eosd_def*       instance;
@@ -257,6 +262,15 @@ eosd_def::mk_dot_label () {
 }
 
 void
+eosd_def::set_bios_host( host_def* h) {
+   host = h->host_name;
+   p2p_port = h->p2p_bios_port();
+   http_port = h->http_bios_port();
+   file_size = h->def_file_size;
+   p2p_endpoint = h->public_name + ":" + boost::lexical_cast<string, uint16_t>(p2p_port);
+}
+
+void
 eosd_def::set_host( host_def* h ) {
   host = h->host_name;
   p2p_port = h->p2p_port();
@@ -276,22 +290,34 @@ struct remote_deploy {
 struct testnet_def {
   string name;
   remote_deploy ssh_helper;
+  tn_node_def bios;
   map <string,tn_node_def> nodes;
 };
 
+struct prodkey_def {
+  string producer_name;
+  public_key_type signing_key;
+};
+
+struct producer_set_def {
+  uint32_t version;
+  vector<prodkey_def> producers;
+};
 
 struct server_name_def {
   string ipaddr;
   string name;
+  string eosio_home;
   uint16_t instances;
   server_name_def () : ipaddr(), name(), instances(1) {}
 };
 
 struct server_identities {
+  server_name_def bios;
   vector<server_name_def> producer;
   vector<server_name_def> observer;
   vector<string> db;
-  string remote_eos_root;
+  string default_eosio_home;
   remote_deploy ssh;
 };
 
@@ -324,9 +350,9 @@ enum allowed_connection : char {
 
 struct launcher_def {
   bool force_overwrite;
-  size_t producers;
   size_t total_nodes;
   size_t prod_nodes;
+  size_t producers;
   size_t next_node;
   string shape;
   allowed_connection allowed_connections = PC_NONE;
@@ -337,7 +363,8 @@ struct launcher_def {
   bf::path stage;
 
   string erd;
-  string data_dir_base;
+  bf::path config_dir_base;
+  bf::path data_dir_base;
   bool skip_transaction_signatures = false;
   string eosd_extra_args;
   testnet_def network;
@@ -353,6 +380,7 @@ struct launcher_def {
   string launch_name;
   string launch_time;
   server_identities servers;
+  producer_set_def producer_set;
 
   void assign_name (eosd_def &node);
 
@@ -370,6 +398,8 @@ struct launcher_def {
   void write_config_file (tn_node_def &node);
   void write_logging_config_file (tn_node_def &node);
   void write_genesis_file (tn_node_def &node);
+  void write_setprods_file ();
+  void write_boot_script ();
   void make_ring ();
   void make_star ();
   void make_mesh ();
@@ -389,14 +419,15 @@ struct launcher_def {
 };
 
 void
-launcher_def::set_options (bpo::options_description &cli) {
-  cli.add_options()
+launcher_def::set_options (bpo::options_description &cfg) {
+  cfg.add_options()
     ("force,f", bpo::bool_switch(&force_overwrite)->default_value(false), "Force overwrite of existing configuration files and erase blockchain")
     ("nodes,n",bpo::value<size_t>(&total_nodes)->default_value(1),"total number of nodes to configure and launch")
-    ("pnodes,p",bpo::value<size_t>(&prod_nodes)->default_value(1),"number of nodes that are producers")
+    ("pnodes,p",bpo::value<size_t>(&prod_nodes)->default_value(1),"number of nodes that contain one or more producers")
+    ("producers",bpo::value<size_t>(&producers)->default_value(21),"total number of non-bios producer instances in this network")
     ("mode,m",bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"),"connection mode, combination of \"any\", \"producers\", \"specified\", \"none\"")
     ("shape,s",bpo::value<string>(&shape)->default_value("star"),"network topology, use \"star\" \"mesh\" or give a filename for custom")
-    ("genesis,g",bpo::value<bf::path>(&genesis)->default_value("./genesis.json"),"set the path to genesis.json")
+    ("genesis,g",bpo::value<bf::path>(&genesis)->default_value("genesis.json"),"set the path to genesis.json")
     ("output,o",bpo::value<bf::path>(&output),"save a copy of the generated topology in this file")
     ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), "EOSD does not require transaction signatures.")
     ("eosiod", bpo::value<string>(&eosd_extra_args), "forward eosiod command line argument(s) to each instance of eosiod, enclose arg in quotes")
@@ -437,7 +468,7 @@ launcher_def::initialize (const variables_map &vmap) {
         exit (-1);
       }
     }
-    add_enable_stale_production = true;
+    //    add_enable_stale_production = true;
   }
 
   using namespace std::chrono;
@@ -470,8 +501,8 @@ launcher_def::initialize (const variables_map &vmap) {
     }
   }
 
-  producers = 1; // TODO: for now we are restricted to the one eosio producer
-  data_dir_base = "tn_data_";
+  config_dir_base = "etc/eosio";
+  data_dir_base = "var/lib";
   next_node = 0;
 
   load_servers ();
@@ -481,7 +512,7 @@ launcher_def::initialize (const variables_map &vmap) {
   if (prod_nodes > total_nodes)
     total_nodes = prod_nodes;
 
-  char* erd_env_var = getenv ("EOS_ROOT_DIR");
+  char* erd_env_var = getenv ("EOSIO_HOME");
   if (erd_env_var == nullptr || std::string(erd_env_var).empty()) {
      erd_env_var = getenv ("PWD");
   }
@@ -498,8 +529,9 @@ launcher_def::initialize (const variables_map &vmap) {
     exit (-1);
   }
   stage /= bf::path("staging");
-  bf::create_directory (stage);
-
+  bf::create_directories (stage);
+  network.bios.instance = new eosd_def;
+  network.bios.instance->node = &network.bios;
   if (bindings.empty()) {
     define_network ();
   }
@@ -535,10 +567,21 @@ launcher_def::load_servers () {
 
 void
 launcher_def::assign_name (eosd_def &node) {
-  string dex = next_node < 10 ? "0":"";
-  dex += boost::lexical_cast<string,int>(next_node++);
-  node.name = network.name + dex;
-  node.data_dir = data_dir_base + dex;
+   bool normal = (&node != network.bios.instance);
+   string node_cfg_name;
+
+   if (normal) {
+      string dex = next_node < 10 ? "0":"";
+      dex += boost::lexical_cast<string,int>(next_node++);
+      node.name = network.name + dex;
+      node_cfg_name = "node_" + dex;
+   }
+   else {
+      node.name = network.name + "bios";
+      node_cfg_name = "eosio_bios";
+   }
+  node.config_dir_name = (config_dir_base / node_cfg_name).string();
+  node.data_dir_name = (data_dir_base / node_cfg_name).string();
 }
 
 bool
@@ -558,11 +601,16 @@ launcher_def::generate () {
   }
 
   if( !nogen ) {
-    for (auto &node : network.nodes) {
-      write_config_file(node.second);
-      write_logging_config_file(node.second);
-      write_genesis_file(node.second);
-    }
+     write_setprods_file();
+     write_boot_script();
+     write_config_file(network.bios);
+     write_logging_config_file(network.bios);
+     write_genesis_file(network.bios);
+     for (auto &node : network.nodes) {
+        write_config_file(node.second);
+        write_logging_config_file(node.second);
+        write_genesis_file(node.second);
+     }
   }
   write_dot_file ();
 
@@ -612,9 +660,10 @@ launcher_def::define_network () {
 
   if (per_host == 0) {
     host_def local_host;
-    local_host.eos_root_dir = erd;
+    local_host.eosio_home = erd;
     local_host.genesis = genesis.string();
-
+    assign_name(*network.bios.instance);
+    network.bios.instance->set_bios_host (&local_host);
     for (size_t i = 0; i < total_nodes; i++) {
       eosd_def eosd;
 
@@ -657,10 +706,11 @@ launcher_def::define_network () {
           lhost->public_name = lhost->host_name;
           ph_count = 1;
         }
-        lhost->eos_root_dir =
-          (local_id.contains (lhost->host_name) || servers.remote_eos_root.empty()) ?
-          erd : servers.remote_eos_root;
-
+        lhost->eosio_home =
+          (local_id.contains (lhost->host_name) || servers.default_eosio_home.empty()) ?
+          erd : servers.default_eosio_home;
+        network.bios.instance->set_bios_host(lhost);
+        assign_name(*network.bios.instance);
         host_ndx++;
       }
       eosd_def eosd;
@@ -691,27 +741,34 @@ void
 launcher_def::bind_nodes () {
   int per_node = producers / prod_nodes;
   int extra = producers % prod_nodes;
+  producer_set.version = 1;
   unsigned int i = 0;
+  network.bios.producers.push_back("eosio");
+  private_key_type bkey (string("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"));
+  network.bios.keys.emplace_back(move(bkey));
+
   for (auto &h : bindings) {
     for (auto &inst : h.instances) {
         tn_node_def node;
         node.name = inst.name;
         node.instance = &inst;
-        keypair kp;
+        auto kp = private_key_type::generate();
+        auto pubkey = kp.get_public_key();
         node.keys.emplace_back (move(kp));
         if (i < prod_nodes) {
-          int count = per_node;
-          if (extra) {
-            ++count;
-            --extra;
-          }
-          char ext = 'a' + i;
-          string pname = "init";
-          while (count--) {
-            // TODO: for now we are restricted to the one eosio producer
-            node.producers.push_back("eosio");//pname + ext);
-            ext += prod_nodes;
-          }
+           int count = per_node;
+           if (extra) {
+              ++count;
+              --extra;
+           }
+           char ext = 'a' + i;
+           string pname = "init";
+           while (count--) {
+              string prodname = pname+ext;
+              node.producers.push_back(prodname);
+              producer_set.producers.push_back({prodname,pubkey});
+              ext += prod_nodes;
+           }
         }
         node.gelf_endpoint = gelf_endpoint;
         network.nodes[node.name] = move(node);
@@ -761,12 +818,22 @@ launcher_def::deploy_config_files (tn_node_def &node) {
   eosd_def &instance = *node.instance;
   host_def *host = find_host (instance.host);
 
-  bf::path source = stage / instance.data_dir / "config.ini";
-  bf::path logging_source = stage / instance.data_dir / "logging.json";
-  bf::path genesis_source = stage / instance.data_dir / "genesis.json";
+  bf::path source = stage / instance.config_dir_name / "config.ini";
+  bf::path logging_source = stage / instance.config_dir_name / "logging.json";
+  bf::path genesis_source = bf::current_path() / "etc"/ "eosio" / "node_00" / "genesis.json";
+
   if (host->is_local()) {
-    bf::path dd = bf::path(host->eos_root_dir) / instance.data_dir;
-    if (bf::exists (dd)) {
+    bf::path cfgdir = bf::path(host->eosio_home) / instance.config_dir_name;
+    bf::path dd = bf::path(host->eosio_home) / instance.data_dir_name;
+    try {
+       bf::create_directories(dd);
+    }
+    catch (const bf::filesystem_error &ex) {
+        cerr << "deploy_config_files threw " << ex.what() << endl;
+        exit (-1);
+    }
+
+    if (bf::exists (cfgdir)) {
       if (force_overwrite) {
         int64_t count =  bf::remove_all (dd / block_dir, ec);
         if (ec.value() != 0) {
@@ -782,24 +849,25 @@ launcher_def::deploy_config_files (tn_node_def &node) {
         }
       }
       else {
-        cerr << dd << " already exists.  Use -f/--force to overwrite configuration and erase blockchain" << endl;
+        cerr << cfgdir << " already exists.  Use -f/--force to overwrite configuration and erase blockchain" << endl;
         exit (-1);
       }
-    } else if (!bf::create_directory (instance.data_dir, ec) && ec.value()) {
-      cerr << "could not create new directory: " << instance.data_dir
-           << " errno " << ec.value() << " " << strerror(ec.value()) << endl;
-      exit (-1);
+    } else if (!bf::create_directories (cfgdir, ec) && ec.value()) {
+       cerr << "could not create new directory: " << instance.config_dir_name
+            << " errno " << ec.value() << " " << strerror(ec.value()) << endl;
+       exit (-1);
     }
-    bf::copy_file (genesis_source, dd / "genesis.json", bf::copy_option::overwrite_if_exists);
-    bf::copy_file (logging_source, dd / "logging.json", bf::copy_option::overwrite_if_exists);
-    bf::copy_file (source, dd / "config.ini", bf::copy_option::overwrite_if_exists);
+    if (!bf::equivalent(genesis_source, cfgdir / "genesis.json")) {
+       bf::copy_file (genesis_source, cfgdir / "genesis.json", bf::copy_option::overwrite_if_exists);
+    }
+    bf::copy_file (logging_source, cfgdir / "logging.json", bf::copy_option::overwrite_if_exists);
+    bf::copy_file (source, cfgdir / "config.ini", bf::copy_option::overwrite_if_exists);
   }
   else {
     prep_remote_config_dir (instance, host);
 
-    bf::path dpath = bf::path (host->eos_root_dir) / instance.data_dir / "config.ini";
-
-    auto scp_cmd_line = compose_scp_command(*host, source, dpath);
+    bf::path rfile = bf::path (host->eosio_home) / instance.config_dir_name / "config.ini";
+    auto scp_cmd_line = compose_scp_command(*host, source, rfile);
 
     cerr << "cmdline = " << scp_cmd_line << endl;
     int res = boost::process::system (scp_cmd_line);
@@ -808,9 +876,9 @@ launcher_def::deploy_config_files (tn_node_def &node) {
       exit(-1);
     }
 
-    dpath = bf::path (host->eos_root_dir) / instance.data_dir / "logging.json";
+    rfile = bf::path (host->eosio_home) / instance.config_dir_name / "logging.json";
 
-    scp_cmd_line = compose_scp_command(*host, logging_source, dpath);
+    scp_cmd_line = compose_scp_command(*host, logging_source, rfile);
 
     res = boost::process::system (scp_cmd_line);
     if (res != 0) {
@@ -818,9 +886,9 @@ launcher_def::deploy_config_files (tn_node_def &node) {
       exit(-1);
     }
 
-    dpath = bf::path (host->eos_root_dir) / instance.data_dir / "genesis.json";
+    rfile = bf::path (host->eosio_home) / instance.config_dir_name / "genesis.json";
 
-    scp_cmd_line = compose_scp_command(*host, genesis_source, dpath);
+    scp_cmd_line = compose_scp_command(*host, genesis_source, rfile);
 
     res = boost::process::system (scp_cmd_line);
     if (res != 0) {
@@ -852,30 +920,41 @@ launcher_def::compose_scp_command (const host_def& host, const bf::path& source,
 
 void
 launcher_def::write_config_file (tn_node_def &node) {
-  bf::path filename;
-  eosd_def &instance = *node.instance;
-  host_def *host = find_host (instance.host);
+   bool is_bios = (&node == &network.bios);
+   bf::path filename;
+   eosd_def &instance = *node.instance;
+   host_def *host = find_host (instance.host);
 
-  bf::path dd = stage / instance.data_dir;
-  if (!bf::exists(dd)) {
-    bf::create_directory(dd);
+   bf::path dd = stage / instance.config_dir_name;
+   if (!bf::exists(dd)) {
+      try {
+         bf::create_directories (dd);
+      } catch (const bf::filesystem_error &ex) {
+         cerr << "write_config_files threw " << ex.what() << endl;
+         exit (-1);
+      }
+   }
+
+   filename = dd / "config.ini";
+
+   bf::ofstream cfg(filename);
+   if (!cfg.good()) {
+      cerr << "unable to open " << filename << " " << strerror(errno) << "\n";
+      exit (-1);
+   }
+
+   cfg << "genesis-json = " << host->genesis << "\n";
+  cfg << "block-log-dir = " << block_dir << "\n";
+      cfg << "readonly = 0\n";
+      cfg << "send-whole-blocks = true\n";
+      cfg << "http-server-address = " << host->host_name << ":" << instance.http_port << "\n";
+      cfg << "p2p-listen-endpoint = " << host->listen_addr << ":" << instance.p2p_port << "\n";
+
+      cfg << "p2p-server-address = " << host->public_name << ":" << instance.p2p_port << "\n";
+
+  if (is_bios) {
+    cfg << "enable-stale-production = true\n";
   }
-
-  filename = dd / "config.ini";
-
-  bf::ofstream cfg(filename);
-  if (!cfg.good()) {
-    cerr << "unable to open " << filename << " " << strerror(errno) << "\n";
-    exit (-1);
-  }
-
-  cfg << "genesis-json = " << host->genesis << "\n"
-      << "block-log-dir = " << block_dir << "\n"
-      << "readonly = 0\n"
-      << "send-whole-blocks = true\n"
-      << "http-server-address = " << host->host_name << ":" << instance.http_port << "\n"
-      << "p2p-listen-endpoint = " << host->listen_addr << ":" << instance.p2p_port << "\n"
-      << "p2p-server-address = " << host->public_name << ":" << instance.p2p_port << "\n";
   if (allowed_connections & PC_ANY) {
     cfg << "allowed-connection = any\n";
   }
@@ -889,10 +968,14 @@ launcher_def::write_config_file (tn_node_def &node) {
     }
     if (allowed_connections & PC_SPECIFIED) {
       cfg << "allowed-connection = specified\n";
-      cfg << "peer-key = \"" << node.keys.begin()->public_key << "\"\n";
-      cfg << "peer-private-key = [\"" << node.keys.begin()->public_key
-          << "\",\"" << node.keys.begin()->wif_private_key << "\"]\n";
+      cfg << "peer-key = \"" << string(node.keys.begin()->get_public_key()) << "\"\n";
+      cfg << "peer-private-key = [\"" << string(node.keys.begin()->get_public_key())
+          << "\",\"" << string(*node.keys.begin()) << "\"]\n";
     }
+  }
+
+  if(!is_bios) {
+    cfg << "p2p-peer-address = " << network.bios.instance->p2p_endpoint<< "\n";
   }
   for (const auto &p : node.peers) {
     cfg << "p2p-peer-address = " << network.nodes.find(p)->second.instance->p2p_endpoint << "\n";
@@ -900,8 +983,8 @@ launcher_def::write_config_file (tn_node_def &node) {
   if (instance.has_db || node.producers.size()) {
     cfg << "required-participation = true\n";
     for (const auto &kp : node.keys ) {
-      cfg << "private-key = [\"" << kp.public_key
-          << "\",\"" << kp.wif_private_key << "\"]\n";
+       cfg << "private-key = [\"" << string(kp.get_public_key())
+           << "\",\"" << string(kp) << "\"]\n";
     }
     for (auto &p : node.producers) {
       cfg << "producer-name = " << p << "\n";
@@ -921,9 +1004,9 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
   bf::path filename;
   eosd_def &instance = *node.instance;
 
-  bf::path dd = stage / instance.data_dir;
+  bf::path dd = stage / instance.config_dir_name;
   if (!bf::exists(dd)) {
-    bf::create_directory(dd);
+    bf::create_directories(dd);
   }
 
   filename = dd / "logging.json";
@@ -955,15 +1038,73 @@ launcher_def::write_genesis_file(tn_node_def &node) {
   bf::path filename;
   eosd_def &instance = *node.instance;
 
-  bf::path dd = stage / instance.data_dir;
+  bf::path dd = stage / instance.config_dir_name;
   if (!bf::exists(dd)) {
-    bf::create_directory(dd);
+    bf::create_directories(dd);
   }
 
   filename = dd / "genesis.json";
 
   bf::path genesis_source = bf::current_path() / "etc"/ "eosio" / "node_00" / "genesis.json";
-  bf::copy_file(genesis_source, filename, bf::copy_option::overwrite_if_exists);
+  if (filename != genesis_source) {
+     bf::copy_file(genesis_source, filename, bf::copy_option::overwrite_if_exists);
+  }
+}
+
+void
+launcher_def::write_setprods_file() {
+   bf::path filename = bf::current_path() / "setprods.json";
+   bf::ofstream psfile (filename);
+   if(!psfile.good()) {
+      cerr << "unable to open " << filename << " " << strerror(errno) << "\n";
+    exit (9);
+  }
+
+  auto str = fc::json::to_pretty_string( producer_set, fc::json::stringify_large_ints_and_doubles );
+  psfile.write( str.c_str(), str.size() );
+  psfile.close();
+}
+
+void
+launcher_def::write_boot_script () {
+   bf::path filename = bf::current_path() / "boot.sh";
+   bf::ofstream psfile (filename);
+   if(!psfile.good()) {
+      cerr << "unable to open " << filename << " " << strerror(errno) << "\n";
+    exit (9);
+  }
+
+   psfile << "#! /bin/bash\n";
+   psfile << "#wallet must be open and unlocked\n"
+          << "\n#override wallet acces values here\n"
+          << "wdhost=127.0.0.1\n"
+          << "wdport=8899\n\n";
+   psfile << "contract_dir=contracts/test.system\n"
+          << "sys=test.system\n";
+   ostringstream csm;
+   csm << "programs/eosioc/eosioc --wallet-port $wdport --wallet-host $wdhost --port "
+       << network.bios.instance->http_port;
+   string cmd = csm.str();
+   psfile << "\n#import private keys into wallet\n";
+   psfile << cmd << " wallet import " << string(network.bios.keys[0]) << "\n";
+   for (size_t i = 0; i < total_nodes; i++) {
+      auto &n = network.nodes[aliases[i]];
+      if (n.keys.size()) {
+         psfile << "#" << cmd << " wallet import " << string(n.keys[0]) << "\n";
+      }
+   }
+   psfile << "\n#create accounts for appointed producers\n";
+   for (auto &p : producer_set.producers) {
+      psfile << cmd << " create account eosio " << p.producer_name
+             << " " << string(p.signing_key) << " " << string(p.signing_key) << "\n";
+   }
+   string setprods = "$(cat setprods.json)";
+   //      fc::json::to_string( producer_set, fc::json::stringify_large_ints_and_doubles );
+
+   psfile << "\n# load the bootstrap contract and run it\n"
+          << cmd << " set contract eosio $contract_dir/$sys.wast $contract_dir/$sys.abi\n"
+          << cmd << " push action eosio setprods \"" << setprods  << "\" -p eosio@active\n\n";
+   psfile.close();
 }
 
 void
@@ -983,11 +1124,11 @@ launcher_def::make_ring () {
 
 void
 launcher_def::make_star () {
-  bind_nodes();
   if (total_nodes < 4) {
     make_ring ();
     return;
   }
+  bind_nodes();
 
   size_t links = 3;
   if (total_nodes > 12) {
@@ -1064,6 +1205,9 @@ void
 launcher_def::make_custom () {
   bf::path source = shape;
   fc::json::from_file(source).as<testnet_def>(network);
+  if (network.bios.instance == nullptr) {
+     network.bios.instance = new eosd_def;
+  }
   for (auto &h : bindings) {
     for (auto &inst : h.instances) {
       tn_node_def *node = &network.nodes[inst.name];
@@ -1099,11 +1243,11 @@ launcher_def::do_ssh (const string &cmd, const string &host_name) {
 
 void
 launcher_def::prep_remote_config_dir (eosd_def &node, host_def *host) {
-  bf::path abs_data_dir = bf::path(host->eos_root_dir) / node.data_dir;
-  string add = abs_data_dir.string();
-  string cmd = "cd " + host->eos_root_dir;
+  bf::path abs_config_dir = bf::path(host->eosio_home) / node.config_dir_name;
+  string add = abs_config_dir.string();
+  string cmd = "cd " + host->eosio_home;
   if (!do_ssh(cmd, host->host_name)) {
-    cerr << "Unable to switch to path " << host->eos_root_dir
+    cerr << "Unable to switch to path " << host->eosio_home
          << " on host " <<  host->host_name << endl;
     exit (-1);
   }
@@ -1135,14 +1279,20 @@ launcher_def::prep_remote_config_dir (eosd_def &node, host_def *host) {
 
 void
 launcher_def::launch (eosd_def &instance, string &gts) {
-  bf::path dd = instance.data_dir;
+  bf::path dd = instance.data_dir_name;
   bf::path reout = dd / "stdout.txt";
   bf::path reerr_sl = dd / "stderr.txt";
   bf::path reerr_base = bf::path("stderr." + launch_time + ".txt");
   bf::path reerr = dd / reerr_base;
   bf::path pidf  = dd / "eosiod.pid";
+  host_def* host;
+  try {
+     host = deploy_config_files (*instance.node);
+  } catch (const bf::filesystem_error &ex) {
+     cerr << "deploy_config_files threw " << ex.what() << endl;
+     exit (-1);
+  }
 
-  host_def* host = deploy_config_files (*instance.node);
   node_rt_info info;
   info.remote = !host->is_local();
 
@@ -1159,15 +1309,14 @@ launcher_def::launch (eosd_def &instance, string &gts) {
     add_enable_stale_production = false;
   }
 
-  eosdcmd += "--data-dir " + instance.data_dir;
-  eosdcmd += " --config-dir " + instance.data_dir;
+  eosdcmd += " --config-dir " + instance.config_dir_name + " --data-dir " + instance.data_dir_name;
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
   }
 
   if (!host->is_local()) {
     string cmdl ("cd ");
-    cmdl += host->eos_root_dir + "; nohup " + eosdcmd + " > "
+    cmdl += host->eosio_home + "; nohup " + eosdcmd + " > "
       + reout.string() + " 2> " + reerr.string() + "& echo $! > " + pidf.string()
       + "; rm -f " + reerr_sl.string()
       + "; ln -s " + reerr_base.string() + " " + reerr_sl.string();
@@ -1177,7 +1326,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
       exit (-1);
     }
 
-    string cmd = "cd " + host->eos_root_dir + "; kill -9 `cat " + pidf.string() + "`";
+    string cmd = "cd " + host->eosio_home + "; kill -15 $(cat " + pidf.string() + ")";
     format_ssh (cmd, host->host_name, info.kill_cmd);
   }
   else {
@@ -1305,8 +1454,8 @@ launcher_def::bounce (const string& node_numbers) {
       const host_def& host = node_pair.first;
       const eosd_def& node = node_pair.second;
       string node_num = node.name.substr( node.name.length() - 2 );
-      string cmd = "cd " + host.eos_root_dir + "; "
-                 + "export EOSIO_HOME=" + host.eos_root_dir + string("; ")
+      string cmd = "cd " + host.eosio_home + "; "
+                 + "export EOSIO_HOME=" + host.eosio_home + string("; ")
                  + "export EOSIO_TN_NODE=" + node_num + "; "
                  + "./scripts/eosio-tn_bounce.sh";
       cout << "Bouncing " << node.name << endl;
@@ -1324,10 +1473,10 @@ launcher_def::down (const string& node_numbers) {
       const host_def& host = node_pair.first;
       const eosd_def& node = node_pair.second;
       string node_num = node.name.substr( node.name.length() - 2 );
-      string cmd = "cd " + host.eos_root_dir + "; "
-                 + "export EOSIO_HOME=" + host.eos_root_dir + "; "
+      string cmd = "cd " + host.eosio_home + "; "
+                 + "export EOSIO_HOME=" + host.eosio_home + "; "
                  + "export EOSIO_TN_NODE=" + node_num + "; "
-                 + "export EOSIO_TN_RESTART_DATA_DIR=" + node.data_dir + "; "
+         + "export EOSIO_TN_RESTART_CONFIG_DIR=" + node.config_dir_name + "; "
                  + "./scripts/eosio-tn_down.sh";
       cout << "Taking down " << node.name << endl;
       if (!do_ssh(cmd, host.host_name)) {
@@ -1344,8 +1493,8 @@ launcher_def::roll (const string& host_names) {
    for (string host_name: hosts) {
       cout << "Rolling " << host_name << endl;
       auto host = find_host_by_name_or_address(host_name);
-      string cmd = "cd " + host->eos_root_dir + "; "
-                 + "export EOSIO_HOME=" + host->eos_root_dir + "; "
+      string cmd = "cd " + host->eosio_home + "; "
+                 + "export EOSIO_HOME=" + host->eosio_home + "; "
                  + "./scripts/eosio-tn_roll.sh";
       if (!do_ssh(cmd, host_name)) {
          cerr << "Unable to roll " << host << endl;
@@ -1380,6 +1529,17 @@ launcher_def::start_all (string &gts, launch_modes mode) {
   case LM_ALL:
   case LM_REMOTE:
   case LM_LOCAL: {
+     try {
+        launch (*network.bios.instance, gts);
+     } catch (fc::exception& fce) {
+        cerr << "unable to launch bios fc::exception=" << fce.to_detail_string() << endl;
+     } catch (std::exception& stde) {
+        cerr << "unable to launch bios std::exception=" << stde.what() << endl;
+     } catch (...) {
+        cerr << "unable to launch bios" << endl;
+     }
+     sleep (start_delay);
+
     for (auto &h : bindings ) {
       if (mode == LM_ALL ||
           (h.is_local() ? mode == LM_LOCAL : mode == LM_REMOTE)) {
@@ -1409,10 +1569,56 @@ launcher_def::start_all (string &gts, launch_modes mode) {
 
 //------------------------------------------------------------
 
+void write_default_config(const bf::path& cfg_file, const options_description &cfg ) {
+   bf::path parent = cfg_file.parent_path();
+   if (parent.empty()) {
+      parent = ".";
+   }
+   if(!bf::exists(parent)) {
+      try {
+         bf::create_directories(parent);
+      } catch (bf::filesystem_error &ex) {
+         cerr << "could not create new directory: " << cfg_file.parent_path()
+              << " caught " << ex.what() << endl;
+         exit (-1);
+      }
+   }
+
+   std::ofstream out_cfg( bf::path(cfg_file).make_preferred().string());
+   for(const boost::shared_ptr<bpo::option_description> od : cfg.options())
+   {
+      if(!od->description().empty()) {
+         out_cfg << "# " << od->description();
+         std::map<std::string, std::string>::iterator it;
+            out_cfg << " (" << it->second << ")";
+         out_cfg << std::endl;
+      }
+      boost::any store;
+      if(!od->semantic()->apply_default(store))
+         out_cfg << "# " << od->long_name() << " = " << std::endl;
+      else {
+         auto example = od->format_parameter();
+         if(example.empty())
+            // This is a boolean switch
+            out_cfg << od->long_name() << " = " << "false" << std::endl;
+         else {
+            // The string is formatted "arg (=<interesting part>)"
+            example.erase(0, 6);
+            example.erase(example.length()-1);
+            out_cfg << od->long_name() << " = " << example << std::endl;
+         }
+      }
+      out_cfg << std::endl;
+   }
+   out_cfg.close();
+}
+
+
 int main (int argc, char *argv[]) {
 
   variables_map vmap;
-  options_description opts ("Testnet launcher options");
+  options_description cfg ("Testnet launcher config options");
+  options_description cli ("launcher command line options");
   launcher_def top;
   string gts;
   launch_modes mode;
@@ -1420,11 +1626,13 @@ int main (int argc, char *argv[]) {
   string bounce_nodes;
   string down_nodes;
   string roll_nodes;
+  bf::path config_dir;
+  bf::path config_file;
 
   local_id.initialize();
-  top.set_options(opts);
+  top.set_options(cfg);
 
-  opts.add_options()
+  cli.add_options()
     ("timestamp,i",bpo::value<string>(&gts),"set the timestamp for the first block. Use \"now\" to indicate the current time")
     ("launch,l",bpo::value<string>(), "select a subset of nodes to launch. Currently may be \"all\", \"none\", or \"local\". If not set, the default is to launch all unless an output file is named, in which case it starts none.")
     ("kill,k", bpo::value<string>(&kill_arg),"The launcher retrieves the previously started process ids and issues a kill to each.")
@@ -1432,23 +1640,53 @@ int main (int argc, char *argv[]) {
     ("bounce", bpo::value<string>(&bounce_nodes),"comma-separated list of node numbers that will be restarted using the eosio-tn_bounce.sh script")
     ("roll", bpo::value<string>(&roll_nodes),"comma-separated list of host names where the nodes should be rolled to a new version using the eosio-tn_roll.sh script")
     ("version,v", "print version information")
-    ("help,h","print this list");
+    ("help,h","print this list")
+    ("config-dir", bpo::value<bf::path>(), "Directory containing configuration files such as config.ini")
+    ("config,c", bpo::value<bf::path>()->default_value( "config.ini" ), "Configuration file name relative to config-dir");
 
+  cli.add(cfg);
 
   try {
-    bpo::store(bpo::parse_command_line(argc, argv, opts), vmap);
+    bpo::store(bpo::parse_command_line(argc, argv, cli), vmap);
     bpo::notify(vmap);
 
     top.initialize(vmap);
 
     if (vmap.count("help") > 0) {
-      opts.print(cerr);
+      cli.print(cerr);
       return 0;
     }
     if (vmap.count("version") > 0) {
       cout << eosio::launcher::config::version_str << endl;
       return 0;
     }
+
+    if( vmap.count( "config-dir" ) ) {
+      config_dir = vmap["config-dir"].as<bf::path>();
+      if( config_dir.is_relative() )
+         config_dir = bf::current_path() / config_dir;
+    }
+
+   bf::path config_file_name = config_dir / "config.ini";
+   if( vmap.count( "config" ) ) {
+      config_file_name = vmap["config"].as<bf::path>();
+      if( config_file_name.is_relative() )
+         config_file_name = config_dir / config_file_name;
+   }
+
+   if(!bf::exists(config_file_name)) {
+      if(config_file_name.compare(config_dir / "config.ini") != 0)
+      {
+         cout << "Config file " << config_file_name << " missing." << std::endl;
+         return -1;
+      }
+      write_default_config(config_file_name, cfg);
+   }
+
+
+   bpo::store(bpo::parse_config_file<char>(config_file_name.make_preferred().string().c_str(),
+                                           cfg, true), vmap);
+
 
     if (vmap.count("launch")) {
       string l = vmap["launch"].as<string>();
@@ -1493,7 +1731,7 @@ int main (int argc, char *argv[]) {
     }
   } catch (bpo::unknown_option &ex) {
     cerr << ex.what() << endl;
-    opts.print (cerr);
+    cli.print (cerr);
   }
   return 0;
 }
@@ -1501,29 +1739,32 @@ int main (int argc, char *argv[]) {
 
 //-------------------------------------------------------------
 
-
-FC_REFLECT( keypair, (public_key)(wif_private_key) )
-
 FC_REFLECT( remote_deploy,
             (ssh_cmd)(scp_cmd)(ssh_identity)(ssh_args) )
 
+FC_REFLECT( prodkey_def,
+            (producer_name)(signing_key))
+
+FC_REFLECT( producer_set_def,
+            (version)(producers))
+
 FC_REFLECT( host_def,
-            (genesis)(ssh_identity)(ssh_args)(eos_root_dir)
+            (genesis)(ssh_identity)(ssh_args)(eosio_home)
             (host_name)(public_name)
             (base_p2p_port)(base_http_port)(def_file_size)
             (instances) )
 
 FC_REFLECT( eosd_def,
-            (name)(data_dir)(has_db)
+            (name)(config_dir_name)(has_db)
             (p2p_port)(http_port)(file_size) )
 
 FC_REFLECT( tn_node_def, (name)(keys)(peers)(producers) )
 
-FC_REFLECT( testnet_def, (name)(ssh_helper)(nodes) )
+FC_REFLECT( testnet_def, (name)(ssh_helper)(bios)(nodes) )
 
-FC_REFLECT( server_name_def, (ipaddr) (name) (instances) )
+FC_REFLECT( server_name_def, (ipaddr) (name) (eosio_home) (instances) )
 
-FC_REFLECT( server_identities, (producer) (observer) (db) (remote_eos_root) (ssh) )
+FC_REFLECT( server_identities, (bios) (producer) (observer) (db) (default_eosio_home) (ssh) )
 
 FC_REFLECT( node_rt_info, (remote)(pid_file)(kill_cmd) )
 

@@ -965,7 +965,7 @@ namespace eosio {
    }
 
    void connection::enqueue( const net_message &m, bool trigger_send ) {
-      bool close_after_send = false;
+      go_away_reason close_after_send = no_reason;
       if(m.contains<sync_request_message>()) {
          sync_wait( );
       }
@@ -974,7 +974,9 @@ namespace eosio {
          fetch_wait( );
       }
       else {
-         close_after_send = m.contains<go_away_message>();
+         if (m.contains<go_away_message>()) {
+            close_after_send = m.get<go_away_message>().reason;
+         }
       }
 
       uint32_t payload_size = fc::raw::pack_size( m );
@@ -991,8 +993,8 @@ namespace eosio {
       queue_write(send_buffer,trigger_send,
                   [this, close_after_send](boost::system::error_code ec, std::size_t ) {
                      write_depth--;
-                     if(close_after_send) {
-                        elog ("sent a go away message, closing connection to ${p}",("p",peer_name()));
+                     if(close_after_send != no_reason) {
+                        elog ("sent a go away message: ${r}, closing connection to ${p}",("r",reason_str(close_after_send))("p",peer_name()));
                         my_impl->close(shared_from_this());
                         return;
                      }
