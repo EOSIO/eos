@@ -196,9 +196,6 @@ endif()
 add_subdirectory( externals )
 
 include(wasm)
-include(installer)
-include(softfloat)
-#find_library( SOFTFLOAT_LIB softfloat.a PATHS ${SOFTFLOAT_ROOT}/build/Linux_x86_64-GCC )
 
 add_subdirectory( libraries )
 add_subdirectory( contracts )
