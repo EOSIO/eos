@@ -7,38 +7,57 @@
 
 namespace eosio { namespace chain {
 
+   template<typename T>
+   struct ratio {
+      T numerator;
+      T denominator;
+   };
+
+   template<typename T>
+   ratio<T> make_ratio(T n, T d) {
+      return ratio<T>{n, d};
+   }
+
+   template<typename T>
+   T operator* (T value, const ratio<T>& r) {
+      return (value * r.numerator) / r.denominator;
+   }
+
    /**
     *  This class accumulates an average value taking periodic inputs.
     *
-    *  The average value returns to 0 after WindowMS without any updates and
-    *  decays linerally if updates occur in the middle of a window before adding
-    *  the new value.
-    *
     *  The value stored is Precision times the sum of the inputs.
     */
-   template<uint32_t WindowMs, uint64_t Precision = config::rate_limiting_precision>
+   template<uint64_t Precision = config::rate_limiting_precision>
    struct average_accumulator
    {
-      time_point last_update;
-      uint64_t   value = 0;
+      average_accumulator(uint32_t window_blocks)
+      : window_blocks(window_blocks)
+      , last_head_block_num()
+      , value(0)
+      {
+      }
+
+      uint32_t   window_blocks;
+      uint32_t   last_head_block_num;
+      uint64_t   value;
 
       /**
        * return the average value in rate_limiting_precision
        */
-      uint64_t average()const { return value / WindowMs; }
+      uint64_t average()const { return value / window_blocks; }
 
-      void add_usage( uint64_t units, time_point now )
+      void add_usage( uint64_t units, uint32_t head_block_num )
       {
-         if( now != last_update ) {
-            auto elapsed = now - last_update;
-            if( elapsed > fc::milliseconds(WindowMs) ) {
-               value  = 0;
-            } else if( elapsed > fc::days(0) ) {
-               value *= (fc::milliseconds(WindowMs) - elapsed).count();
-               value /=  fc::milliseconds(WindowMs).count();
-            }
-            last_update    = now;
+         if( head_block_num != last_head_block_num ) {
+            const auto decay = make_ratio(
+               (uint64_t) window_blocks - 1,
+               (uint64_t) window_blocks
+            );
+
+            value = value * decay;
          }
+
          value += units * Precision;
       }
    };
@@ -94,6 +113,29 @@ namespace eosio { namespace chain {
       >
    >;
 
+   struct elastic_limit_parameters {
+      uint64_t target;           // the desired usage
+      uint64_t max;              // the maximum usage
+      uint32_t periods;          // the number of aggregation periods that contribute to the average usage
+
+      uint32_t max_multiplier;   // the multiplier by which virtual space can oversell usage when uncongested
+      ratio    contract_rate;    // the rate at which a congested resource contracts its limit
+      ratio    expand_rate;       // the rate at which an uncongested resource expands its limits
+   };
+
+   class resource_limits_config_object : public chainbase::object<resource_limits_config_object_type, resource_limits_config_object> {
+      OBJECT_CTOR(resource_limits_config_object);
+      id_type id;
+
+      uint32_t  base_per_transaction_net_usage;
+      uint32_t  base_per_transaction_cpu_usage;
+
+      uint32_t  per_signature_cpu_usage;
+
+      elastic_limit_parameters cpu_limit_parameters;
+      elastic_limit_parameters net_limit_parameters;
+   };
+
    class resource_limits_state_object : public chainbase::object<resource_limits_state_object_type, resource_limits_state_object> {
       OBJECT_CTOR(resource_limits_state_object);
 
@@ -101,16 +143,16 @@ namespace eosio { namespace chain {
        * Track the average blocksize over the past 60 seconds and use it to adjust the
        * reserve ratio for bandwidth rate limiting calclations.
        */
-      average_accumulator<config::blocksize_average_window_ms> average_block_size;
+      average_accumulator<config::blocksize_average_window_ms> average_block_net_usage;
 
       /**
        * Track the average actions per block over the past 60 seconds and use it to
        * adjust hte reserve ration for action rate limiting calculations
        */
-      average_accumulator<config::blocksize_average_window_ms> average_block_acts;
+      average_accumulator<config::blocksize_average_window_ms> average_block_cpu_usage;
 
-      void update_virtual_net_bandwidth( const chain_config& cfg );
-      void update_virtual_act_bandwidth( const chain_config& cfg );
+      void update_virtual_net_limit( const resource_limits_config_object& cfg );
+      void update_virtual_cpu_limit( const resource_limits_config_object& cfg );
 
       uint64_t total_net_weight = 0;
       uint64_t total_cpu_weight = 0;
@@ -144,16 +186,6 @@ namespace eosio { namespace chain {
        */
       uint64_t virtual_cpu_limit = 0;
 
-   };
-
-   class resource_limits_config_object : public chainbase::object<resource_limits_config_object_type, resource_limits_config_object> {
-      OBJECT_CTOR(resource_limits_config_object);
-      id_type id;
-
-      uint32_t  base_per_transaction_net_usage;
-      uint32_t  base_per_transaction_cpu_usage;
-
-      uint32_t  per_signature_cpu_usage;
    };
 
    using resource_limits_config_index = chainbase::shared_multi_index_container<

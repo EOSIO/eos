@@ -1683,10 +1683,9 @@ void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_us
       }
    }
 
-   _db.modify( dgpo, [&]( auto& props ) {
-      props.average_block_acts.add_usage( act_usage, head_time );
+   _db.modify( state, [&]( rate_limiting_state_object& rls ) {
+      rls.average_block_cpu_usage.add_usage( cpu_usage, head_time );
    });
-
 }
 
 const apply_handler* chain_controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const
