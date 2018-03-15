@@ -547,7 +547,7 @@ namespace eosiosystem {
             voters_table voters_tbl( SystemAccount, SystemAccount );
             auto proxy = voters_tbl.find( reg.proxy );
             eosio_assert( bool(proxy), "proxy not found" );
-            eosio_assert( proxy->is_proxy == 1, "account is already a proxy" );
+            eosio_assert( proxy->is_proxy == 1, "account is not a proxy" );
 
             voters_tbl.update( *proxy, 0, [&](voter_info& a) {
                      a.is_proxy = 0;
