@@ -151,7 +151,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static constexpr bool post = true;
       static void init() { checktime_idx = -1; }
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-#if 1
          // first add the import for checktime
          injector_utils::add_import<ResultType::none, ValueType::i32>( *(arg.module), u8"env", u8"checktime", checktime_idx );
 
@@ -167,7 +166,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
          std::vector<U8> tmp      = chktm.pack();
          injected.insert( injected.end(), tmp.begin(), tmp.end() );
          arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
-#endif
       }
       static int32_t checktime_idx;
    };
@@ -191,7 +189,22 @@ namespace eosio { namespace chain { namespace wasm_injections {
       }
 
    };
+   
+   // float injections
+   struct f32_add_injector {
+      static constexpr bool kills = true;
+      static constexpr bool post = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         int32_t idx;
+         injector_utils::add_import<ResultType::f32, ValueType::f32, ValueType::f32>( *(arg.module), u8"env", u8"f32_add", idx );
+         wasm_ops::op_types<>::call_t f32add;
+         f32add.field = idx;
+         std::vector<U8> injected = f32add.pack();
+         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+      }
 
+   };
    struct pre_op_injectors : wasm_ops::op_types<pass_injector> {
       using block_t           = wasm_ops::block                   <instruction_counter, checktime_injector>;
       using loop_t            = wasm_ops::loop                    <instruction_counter, checktime_injector>;
@@ -308,6 +321,8 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using i64_shr_u_t       = wasm_ops::i64_shr_u               <instruction_counter>; 
       using i64_rotl_t        = wasm_ops::i64_rotl                <instruction_counter>; 
       using i64_rotr_t        = wasm_ops::i64_rotr                <instruction_counter>; 
+
+      using f32_add_t         = wasm_ops::f32_add                 <instruction_counter, f32_add_injector>;
 
       using i32_wrap_i64_t    = wasm_ops::i32_wrap_i64            <instruction_counter>;
       using i64_extend_s_i32_t = wasm_ops::i64_extend_s_i32       <instruction_counter>;

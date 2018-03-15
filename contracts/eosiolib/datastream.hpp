@@ -155,6 +155,33 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, key256& d) {
 }
 
 /**
+ *  Serialize a float into a stream
+ *  @brief Serialize a float 
+ *  @param ds stream to write
+ *  @param d value to serialize
+ */
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, float d) {
+   uint32_t val = *(uint32_t*)(&d);
+   ds.write( (const char*)&val, sizeof(val) );
+   return ds;
+}
+/**
+ *  Deserialize a float from a stream
+ *  @brief Deserialize a float
+ *  @param ds stream to read
+ *  @param d destination for deserialized value
+ */
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, float& d) {
+   uint32_t val = 0;
+   ds.read((char*)&val, sizeof(val) );
+   d = *(float*)(&val);
+   return ds;
+}
+
+
+/**
  *  Serialize a double into a stream
  *  @brief Serialize a double
  *  @param ds stream to write

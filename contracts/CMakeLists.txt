@@ -28,6 +28,7 @@ add_subdirectory(simpledb)
 #add_subdirectory(social)
 add_subdirectory(test.system)
 add_subdirectory(noop)
+add_subdirectory(floattest)
 
 file(GLOB SKELETONS RELATIVE ${CMAKE_SOURCE_DIR}/contracts "skeleton/*")
 
