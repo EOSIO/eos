@@ -19,6 +19,9 @@
 
 #include "config.hpp"
 
+// abi_generator.hpp undef N(), redefine so we can use in these tests
+#define N(X) eosio::chain::string_to_name(#X)
+
 using namespace eosio;
 using namespace chain;
 using namespace chain::contracts;
