@@ -6,8 +6,10 @@
 #include <eosiolib/system.h>
 #include <eosiolib/memory.h>
 #include <eosiolib/vector.hpp>
+#include <boost/container/flat_map.hpp>
 #include <eosiolib/varint.hpp>
 #include <map>
+#include <array>
 #include <string>
 
 
@@ -155,31 +157,6 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, key256& d) {
   return ds;
 }
 
-/**
- *  Serialize a double into a stream
- *  @brief Serialize a double
- *  @param ds stream to write
- *  @param d value to serialize
- */
-template<typename Stream>
-inline datastream<Stream>& operator<<(datastream<Stream>& ds, double d) {
-   uint64_t val = *(uint64_t*)(&d);
-   ds.write( (const char*)&val, sizeof(val) );
-   return ds;
-}
-/**
- *  Deserialize a double from a stream
- *  @brief Deserialize a double
- *  @param ds stream to read
- *  @param d destination for deserialized value
- */
-template<typename Stream>
-inline datastream<Stream>& operator>>(datastream<Stream>& ds, double& d) {
-   uint64_t val = 0;
-   ds.read((char*)&val, sizeof(val) );
-   d = *(double*)(&val);
-   return ds;
-}
 
 /**
  *  Serialize a uint128_t into a stream
@@ -316,10 +293,11 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, int64_t& d) {
  *  @param d value to serialize
  */
 template<typename Stream>
-inline datastream<Stream>& operator<<(datastream<Stream>& ds, const uint64_t d) {
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const uint64_t& d) {
   ds.write( (const char*)&d, sizeof(d) );
   return ds;
 }
+
 /**
  *  Deserialize a uint64_t from a stream
  *  @brief Deserialize a uint64_t
@@ -328,6 +306,18 @@ inline datastream<Stream>& operator<<(datastream<Stream>& ds, const uint64_t d) 
  */
 template<typename Stream>
 inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint64_t& d) {
+  ds.read((char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const double& d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, double& d) {
   ds.read((char*)&d, sizeof(d) );
   return ds;
 }
@@ -464,6 +454,42 @@ DataStream& operator >> ( DataStream& ds, std::string& v ) {
       ds >> i;
    return ds;
 }
+
+template<typename DataStream, typename T, std::size_t N>
+DataStream& operator << ( DataStream& ds, const std::array<T,N>& v ) {
+   for( const auto& i : v )
+      ds << i;
+   return ds;
+}
+
+template<typename DataStream, typename T, std::size_t N>
+DataStream& operator >> ( DataStream& ds, std::array<T,N>& v ) {
+   for( auto& i : v )
+      ds >> i;
+   return ds;
+}
+
+template<typename DataStream, typename K, typename V>
+DataStream& operator<<( DataStream& ds, const boost::container::flat_map<K,V>& m ) {
+   ds << unsigned_int( m.size() );
+   for( const auto& i : m )
+      ds << i.first << i.second;
+   return ds;
+}
+template<typename DataStream, typename K, typename V>
+DataStream& operator>>( DataStream& ds, boost::container::flat_map<K,V>& m ) {
+   m.clear();
+   unsigned_int s; ds >> s;
+
+   for( uint32_t i = 0; i < s.value; ++i ) {
+      K k; V v;
+      ds >> k >> v;
+      m.emplace( std::move(k), std::move(v) );
+   }
+   return ds;
+}
+
+
 
 template<typename DataStream, typename T>
 DataStream& operator << ( DataStream& ds, const vector<T>& v ) {

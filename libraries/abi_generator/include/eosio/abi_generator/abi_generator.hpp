@@ -5,6 +5,14 @@
 #include <algorithm>
 #include <memory>
 
+#include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/contracts/types.hpp>
+#include <fc/io/json.hpp>
+
+//clashes with something deep in the AST includes in clang 6 and possibly other versions of clang
+#pragma push_macro("N")
+#undef N
+
 #include "clang/Driver/Options.h"
 #include "clang/AST/AST.h"
 #include "clang/AST/ASTContext.h"
@@ -22,10 +30,6 @@
 #include "clang/Tooling/Core/QualTypeNames.h"
 #include "llvm/Support/raw_ostream.h"
 #include <boost/algorithm/string.hpp>
-
-#include <eosio/chain/contracts/abi_serializer.hpp>
-#include <eosio/chain/contracts/types.hpp>
-#include <fc/io/json.hpp>
 
 using namespace clang;
 using namespace std;
@@ -225,3 +229,5 @@ namespace eosio {
    };
 
 } //ns eosio
+
+#pragma pop_macro("N")

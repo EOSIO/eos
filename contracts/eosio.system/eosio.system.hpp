@@ -131,9 +131,11 @@ namespace eosiosystem {
          > genesis_balance_index_type;
 
 
-         ACTION( SystemAccount, finshundel ) {
+         ACTION( SystemAccount, finishundel ) {
             account_name from;
             account_name to;
+
+            EOSLIB_SERIALIZE( finishundel, (from)(to) )
          };
 
          ACTION( SystemAccount, regproducer ) {
@@ -294,7 +296,7 @@ namespace eosiosystem {
 
 
          /**
-          *  This method will create a producr_config and producer_votes object for 'producer'
+          *  This method will create a producer_config and producer_votes object for 'producer'
           *
           *  @pre producer is not already registered
           *  @pre producer to register is an account
@@ -487,12 +489,15 @@ namespace eosiosystem {
          static void on( const nonce& ) {
          }
 
+         static void on( const finishundel& ) {
+         }
+
          static void apply( account_name code, action_name act ) {
 
             if( !eosio::dispatch<contract,
                                  regproducer, regproxy,
                                  delegatebw, undelegatebw,
-                                 regproducer, voteproducer, stakevote,
+                                 finishundel, voteproducer, stakevote,
                                  setgen, claimgen, keyproof,
                                  nonce>( code, act) ) {
                if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {

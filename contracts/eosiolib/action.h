@@ -102,6 +102,7 @@ extern "C" {
     *  @param name - name of the account to be verified
     */
    void require_auth( account_name name );
+   bool has_auth( account_name name );
 
    /**
     *  Get the account which specifies the code that is being run

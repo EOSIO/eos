@@ -28,8 +28,12 @@ namespace eosio {
     * @param num to be printed
     */
    inline void print( uint64_t num ) {
+      printui(num);
+   }
+   inline void print( int64_t num ) {
       printi(num);
    }
+   inline void print( double d ) { printdi( *((int64_t*)&d) ); }
 
    /**
     * Prints 32 bit unsigned integer as a 64 bit unsigned integer
@@ -46,11 +50,11 @@ namespace eosio {
     * @param num to be printed
     */
    inline void print( int num ) {
-      printi(uint64_t(num));
+      printi(num);
    }
 
    inline void print( long num ) {
-      printi(uint64_t(num));
+      printi(num);
    }
 
    /**
@@ -106,9 +110,6 @@ namespace eosio {
       prints(val?"true":"false");
    }
 
-   inline void print( double val ) {
-      printd( *(uint64_t*)(&val) );
-   }
 
    template<typename T>
    inline void print( T&& t ) {
