@@ -15,9 +15,11 @@ The public testnet described in the [wiki](https://github.com/EOSIO/eos/wiki/Tes
 ### Supported Operating Systems
 EOS.IO currently supports the following operating systems:  
 1. Amazon 2017.09 and higher.  
-2. Fedora 25 and higher (Fedora 27 recommended).  
-3. Ubuntu 16.04 (Ubuntu 16.10 recommended).  
-4. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
+2. Centos 7.  
+3. Fedora 25 and higher (Fedora 27 recommended).  
+4. Mint 18.  
+5. Ubuntu 16.04 (Ubuntu 16.10 recommended).  
+6. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
 
 # Resources
 1. [EOS.IO Website](https://eos.io)
@@ -74,10 +76,10 @@ The following instructions detail the process of getting the software, building 
 
 Supported Operating Systems:  
 1. Amazon 2017.09 and higher.  
-2. Centos 7 and higher.  
+2. Centos 7.  
 3. Fedora 25 and higher (Fedora 27 recommended).  
 4. Mint 18.  
-5. Ubuntu 16.04 (Ubuntu 16.10 recommended), Mint 18.  
+5. Ubuntu 16.04 (Ubuntu 16.10 recommended).  
 6. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
 
 For Amazon, Centos, Fedora, Mint, Ubuntu, & MacOS there is an automated build script that can install all dependencies and builds EOS.
