@@ -7,8 +7,7 @@
 #include <boost/core/ignore_unused.hpp>
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
-#include <eosio/chain/wasm_eosio_constraints.hpp>
-#include <eosio/chain/wasm_eosio_validators.hpp>
+#include <eosio/chain/wasm_eosio_validation.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/wasm_module_walker.hpp>
 #include <fc/exception/exception.hpp>
@@ -187,94 +186,18 @@ namespace eosio { namespace chain {
                try {
 
                   IR::Module* module = new IR::Module();
-                  IR::Module* module2 = new IR::Module();
 
                   Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
-                  Serialization::MemoryInputStream stream2((const U8 *) wasm_binary, wasm_binary_size);
                   WASM::serialize(stream, *module);
-                  WASM::serialize(stream2, *module2);
 
-                  wasm_constraints::wasm_binary_validation validator( *module );
-                  //validator.validate();
+                  wasm_validations::wasm_binary_validation validator( *module );
                   wasm_injections::wasm_binary_injection injector( *module );
+
                   injector.inject();
                   validator.validate();
-                  std::cout << "MOD2!!!\n";
-                  wasm_constraints::wasm_binary_validation validator2( *module2 );
-//                  validator2.validate();
-#if 1
-                  auto restype = [](IR::ResultType f){ 
-                        if (f == IR::ResultType::none ) return "none"; 
-                        if (f == IR::ResultType::i32 ) return "i32"; 
-                        if (f == IR::ResultType::i64 ) return "i64"; 
-                        if (f == IR::ResultType::f32 ) return "f32"; 
-                        if (f == IR::ResultType::f64 ) return "f64"; 
-                  };
-                  auto valtype = [](IR::ValueType f){ 
-                        if (f == IR::ValueType::any ) return "any"; 
-                        if (f == IR::ValueType::i32 ) return "i32"; 
-                        if (f == IR::ValueType::i64 ) return "i64"; 
-                        if (f == IR::ValueType::f32 ) return "f32"; 
-                        if (f == IR::ValueType::f64 ) return "f64"; 
-                  };
-
-
-                  std::cout << "FUNCTION_Type A \n";
-                  for (auto e : module->types) {
-                     std::cout << "Function ("<< restype(e->ret) << ") (";
-                     for (auto ee : e->parameters) {
-                        std::cout << valtype(ee) << ", ";
-                     }
-                  } 
-                  std::cout << "\n";
-
-                  std::cout << "FUNCTION_Import A \n";
-                  for (int i=0; i < module->functions.imports.size(); i++)
-                     std::cout << module->functions.imports[i].exportName << " : " << i << "\n";
-                  std::cout << "\n";
-                 std::cout << "FUNCTION_Import B \n";
-                  for (int i=0; i < module2->functions.imports.size(); i++)
-                     std::cout << module2->functions.imports[i].exportName << " : " << i << "\n";
-                  std::cout << "\n";
-
-                  std::cout << "TABLES_Import A \n";
-                  for (auto e : module->tables.imports)
-                     std::cout << e.exportName << "\n";
-                  std::cout << "\n";
-                  /*
-                  std::cout << "TABLES_Import B \n";
-                  for (auto e : module2->tables.imports)
-                     std::cout << e.exportName << "\n";
-                  std::cout << "\n";
-                  */
-                  std::cout << "MEMORIES_Import A \n";
-                  for (auto e : module->memories.imports)
-                     std::cout << e.exportName << "\n";
-                  std::cout << "\n";
-                  std::cout << "GLOBALS_Import A \n";
-                  for (auto e : module->globals.imports)
-                     std::cout << e.exportName << "\n";
-                  std::cout << "\n";
-                  std::cout << "EXPORT A \n";
-                  for (auto e : module->exports)
-                     std::cout << e.name << " " << uint32_t(e.index) << "\n";
-                  std::cout << "\n";
-                  /*
-                  std::cout << "DATASEG A \n";
-                  for (auto e : module->dataSegments)
-                     std::cout << e.memoryIndex << "\n";
-                  std::cout << "\n";
-                  */
-                  std::cout << "start index A " << module->startFunctionIndex << "\n";
-#endif
-
                   Serialization::ArrayOutputStream outstream;
                   WASM::serialize(outstream, *module);
                   std::vector<U8> bytes = outstream.getBytes();
-                  static int a = 0;
-                  std::ofstream out_bin( std::string("dump")+std::to_string(a++), std::ios::out | std::ios::binary );
-                  out_bin.write( (char*)bytes.data(), bytes.size() );
-                  out_bin.close();
 
                   wavm = wavm::entry::build((char*)bytes.data(), bytes.size());
                   wavm_info.emplace(*wavm);

@@ -4,7 +4,6 @@
 #include <fc/exception/exception.hpp>
 #include <functional>
 #include <vector>
-#include <iostream>
 #include <map>
 #include <unordered_set>
 #include "IR/Module.h"
@@ -335,9 +334,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using i64_rotl_t        = wasm_ops::i64_rotl                <instruction_counter>; 
       using i64_rotr_t        = wasm_ops::i64_rotr                <instruction_counter>; 
 
-      using f32_add_t         = wasm_ops::f32_add                 <instruction_counter, f32_add_injector>;
-     // using f64_promote_f32_t = wasm_ops::f64_promote_f32         <instruction_counter, f32_promote_injector>;
-
       using i32_wrap_i64_t    = wasm_ops::i32_wrap_i64            <instruction_counter>;
       using i64_extend_s_i32_t = wasm_ops::i64_extend_s_i32       <instruction_counter>;
       using i64_extend_u_i32_t = wasm_ops::i64_extend_u_i32       <instruction_counter>;
@@ -349,10 +345,9 @@ namespace eosio { namespace chain { namespace wasm_injections {
 
    }; // pre_op_injectors
 
-
    struct post_op_injectors : wasm_ops::op_types<pass_injector> {
       using call_t   = wasm_ops::call        <fix_call_index>;
-   };
+   }; // post_op_injectors
 
    template <typename ... Visitors>
    struct module_injectors {

@@ -9,9 +9,8 @@ add_library( eosio_chain
              block.cpp
              wast_to_wasm.cpp
              wasm_interface.cpp
-             wasm_eosio_constraints.cpp
+             wasm_eosio_validation.cpp
              wasm_eosio_injection.cpp
-             wasm_module_walker.cpp
              apply_context.cpp
              rate_limiting.cpp
 

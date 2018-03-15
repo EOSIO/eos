@@ -10,7 +10,7 @@
 #include "IR/Operators.h"
 #include "WASM/WASM.h"
 
-namespace eosio { namespace chain { namespace wasm_constraints {
+namespace eosio { namespace chain { namespace wasm_validations {
 
    // module validators
    // effectively do nothing and pass
@@ -31,10 +31,6 @@ namespace eosio { namespace chain { namespace wasm_constraints {
    };
 
    struct globals_validation_visitor {
-      static void validate( const IR::Module& m );
-   };
-
-   struct blacklist_validation_visitor {
       static void validate( const IR::Module& m );
    };
 
@@ -93,7 +89,7 @@ namespace eosio { namespace chain { namespace wasm_constraints {
             ("op", inst->to_string()));
       }
    };
-
+   
    // add opcode specific constraints here
    // so far we only black list
    struct op_constrainers : wasm_ops::op_types<blacklist_validator> {
