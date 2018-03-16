@@ -737,9 +737,9 @@ flat_set<public_key_type> chain_controller::get_required_keys(const transaction&
 }
 
 void chain_controller::check_authorization( const vector<action>& actions,
-                                            flat_set<public_key_type> provided_keys,
+                                            const flat_set<public_key_type>& provided_keys,
                                             bool allow_unused_signatures,
-                                            flat_set<account_name>    provided_accounts  )const
+                                            flat_set<account_name> provided_accounts )const
 {
    auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
                                      get_global_properties().configuration.max_authority_depth,
@@ -1082,7 +1082,6 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
             p.configuration = starter.get_chain_start_configuration();
             p.active_producers = starter.get_chain_start_producers();
             p.new_active_producers = starter.get_chain_start_producers();
-            wdump((starter.get_chain_start_producers()));
          });
 
          _db.create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
@@ -1097,8 +1096,6 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
             _db.create<block_summary_object>([&](block_summary_object&) {});
 
          starter.prepare_database(*this, _db);
-
-         ilog( "done initializing chain" );
       });
    }
 } FC_CAPTURE_AND_RETHROW() }

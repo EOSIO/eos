@@ -5,16 +5,18 @@
 	CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 )
 
-	DISK_TOTAL=`df -h / | grep /dev | tr -s ' ' | cut -d\  -f2 | sed 's/[^0-9]//'`
-	DISK_AVAIL=`df -h / | grep /dev | tr -s ' ' | cut -d\  -f4 | sed 's/[^0-9]//'`
+	DISK_INSTALL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f1`
+	DISK_TOTAL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f2 | sed 's/[^0-9\.]//g'`
+	DISK_AVAIL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f4 | sed 's/[^0-9\.]//g'`
 
 	printf "\n\tOS name: $OS_NAME\n"
 	printf "\tOS Version: ${OS_VER}\n"
 	printf "\tCPU speed: ${CPU_SPEED}Mhz\n"
 	printf "\tCPU cores: $CPU_CORE\n"
 	printf "\tPhysical Memory: $MEM_MEG Mgb\n"
-	printf "\tDisk space total: ${DISK_TOTAL}G\n"
-	printf "\tDisk space available: ${DISK_AVAIL}G\n"
+	printf "\tDisk install: ${DISK_INSTALL}\n"
+	printf "\tDisk space total: ${DISK_TOTAL%.*}G\n"
+	printf "\tDisk space available: ${DISK_AVAIL%.*}G\n"
 
 	if [ $MEM_MEG -lt 4000 ]; then
 		echo "Your system must have 4 or more Gigabytes of physical memory installed."
@@ -28,7 +30,7 @@
 		exit 1
 	fi
 
-	if [ $DISK_AVAIL -lt $DISK_MIN ]; then
+	if [ ${DISK_AVAIL%.*} -lt $DISK_MIN ]; then
 		echo "You must have at least ${DISK_MIN}GB of available storage to install EOSIO."
 		echo "exiting now"
 		exit 1

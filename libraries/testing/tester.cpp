@@ -190,17 +190,28 @@ namespace eosio { namespace testing {
         }
     }
 
-   transaction_trace base_tester::push_nonce(account_name from, const string& v) {
+   transaction_trace base_tester::push_dummy(account_name from, const string& v) {
+      // use reqauth for a normal action, this could be anything
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
                ("account", name(config::system_account_name))
-               ("name", "nonce")
+               ("name", "reqauth")
                ("authorization", fc::variants({
                   fc::mutable_variant_object()
                      ("actor", from)
                      ("permission", name(config::active_name))
                }))
+               ("data", fc::mutable_variant_object()
+                  ("from", from)
+               )
+            })
+        )
+        // lets also push a context free action, the multi chain test will then also include a context free action
+        ("context_free_actions", fc::variants({
+            fc::mutable_variant_object()
+               ("account", name(config::system_account_name))
+               ("name", "nonce")
                ("data", fc::mutable_variant_object()
                   ("value", v)
                )
@@ -311,7 +322,7 @@ namespace eosio { namespace testing {
                                        const symbol&       asset_symbol,
                                        const account_name& account ) const {
       const auto& db  = control->get_database();
-      const auto* tbl = db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, account, N(account)));
+      const auto* tbl = db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, account, N(accounts)));
       share_type result = 0;
 
       // the balance is implied to be 0 if either the table or row does not exist
