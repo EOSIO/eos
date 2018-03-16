@@ -84,7 +84,7 @@ FC_REFLECT_TEMPLATE((uint64_t T), test_chain_action<T>, BOOST_PP_SEQ_NIL);
 
 
 bool expect_assert_message(const fc::exception& ex, string expected) {
-   BOOST_TEST_MESSAGE("LOG : " << ex.get_log().at(0).get_message());
+   BOOST_TEST_MESSAGE("LOG : " << "expected: " << expected << ", actual: " << ex.get_log().at(0).get_message());
    return (ex.get_log().at(0).get_message().find(expected) != std::string::npos);
 }
 
@@ -120,6 +120,25 @@ string U128Str(unsigned __int128 i)
    return fc::variant(fc::uint128_t(i)).get_string();
 }
 
+template <typename T>
+void CallAction(tester& test, T ac, const vector<account_name>& scope = {N(testapi)}) {
+   signed_transaction trx;
+
+   auto pl = vector<permission_level>{{scope[0], config::active_name}};
+   if (scope.size() > 1)
+      for (int i = 1; i < scope.size(); i++)
+         pl.push_back({scope[i], config::active_name});
+
+   action act(pl, ac);
+   trx.actions.push_back(act);
+
+   test.set_tapos(trx);
+   auto sigs = trx.sign(test.get_private_key(scope[0], "active"), chain_id_type());
+   trx.get_signature_keys(chain_id_type());
+   auto res = test.push_transaction(trx);
+   BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
+   test.produce_block();
+}
 
 template <typename T>
 void CallFunction(tester& test, T ac, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}) {
@@ -364,6 +383,89 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
          }
       );
 
+   dummy_action da = { DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C };
+   CallAction(*this, da);
+  
+} FC_LOG_AND_RETHROW() }
+
+/*************************************************************************************
+ * context free action tests
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
+      produce_blocks(2);
+      create_account( N(testapi) );
+      produce_blocks(1000);
+      set_code( N(testapi), test_api_wast );
+      produce_blocks(1);
+
+      cf_action cfa;
+      signed_transaction trx;
+      action act({}, cfa);
+      trx.context_free_actions.push_back(act);
+      trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100)); // verify payload matches context free data
+      trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(200));
+      set_tapos(trx);
+
+      // signing a transaction with only context_free_actions should not be allowed
+      auto sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
+      BOOST_CHECK_EXCEPTION(push_transaction(trx), tx_irrelevant_sig,
+                            [](const fc::assert_exception& e) {
+                               return expect_assert_message(e, "signatures");
+                            }
+      );
+
+      // clear signatures, so should now pass
+      trx.signatures.clear();
+      auto res = push_transaction(trx);
+      BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
+
+      // add a normal action along with cfa
+      dummy_action da = { DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C };
+      auto pl = vector<permission_level>{{N(testapi), config::active_name}};
+      action act1(pl, da);
+      trx.actions.push_back(act1);
+      // run normal passing case
+      sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
+      res = push_transaction(trx);
+      BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
+
+      // attempt to access context free api in non context free action
+      da = { DUMMY_ACTION_DEFAULT_A, 200, DUMMY_ACTION_DEFAULT_C };
+      action act2(pl, da);
+      trx.signatures.clear();
+      trx.actions.clear();
+      trx.actions.push_back(act2);
+      // run normal passing case
+      sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
+      BOOST_CHECK_EXCEPTION(push_transaction(trx), fc::assert_exception,
+                            [](const fc::assert_exception& e) {
+                               return expect_assert_message(e, "may only be called from context_free");
+                            }
+      );
+
+      // back to normal action
+      trx.signatures.clear();
+      trx.actions.clear();
+      trx.actions.push_back(act1);
+
+      // attempt to access non context free api
+      for (uint32_t i = 200; i <= 204; ++i) {
+         trx.context_free_actions.clear();
+         trx.context_free_data.clear();
+         cfa.payload = i;
+         cfa.cfd_idx = 1;
+         action cfa_act({}, cfa);
+         trx.context_free_actions.emplace_back(cfa_act);
+         trx.signatures.clear();
+         sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
+         BOOST_CHECK_EXCEPTION(push_transaction(trx), fc::assert_exception,
+              [](const fc::assert_exception& e) {
+                 return expect_assert_message(e, "context_free: only context free api's can be used in this context");
+              }
+         );
+      }
+
+      produce_block();
 
 } FC_LOG_AND_RETHROW() }
 
@@ -485,7 +587,8 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
    // test send_action_large
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), fc::assert_exception,
          [](const fc::assert_exception& e) {
-            return expect_assert_message(e, "data_len < config::default_max_inline_action_size: inline action too big");
+            return expect_assert_message(e, "abort()");
+            //return expect_assert_message(e, "data_len < config::default_max_inline_action_size: inline action too big");
          }
       );
 
@@ -674,19 +777,22 @@ BOOST_FIXTURE_TEST_CASE(db_tests, tester) { try {
  * multi_index_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(multi_index_tests, tester) { try {
-	produce_blocks(1);
-	create_account( N(testapi) );
-	produce_blocks(1);
-	set_code( N(testapi), test_api_multi_index_wast );
-	produce_blocks(1);
+   produce_blocks(1);
+   create_account( N(testapi) );
+   produce_blocks(1);
+   set_code( N(testapi), test_api_multi_index_wast );
+   produce_blocks(1);
 
-	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_general", {});
-	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_store_only", {});
-	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_check_without_storing", {});
-	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test", {});
-	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test_part1", {});
-	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test_part2", {});
-	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx256_general", {});
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_general", {});
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_store_only", {});
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_check_without_storing", {});
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_general", {});
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_store_only", {});
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_check_without_storing", {});
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test", {});
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test_part1", {});
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test_part2", {});
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx256_general", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx_double_general", {});
 } FC_LOG_AND_RETHROW() }
 

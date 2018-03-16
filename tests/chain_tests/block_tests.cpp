@@ -46,7 +46,7 @@ BOOST_AUTO_TEST_CASE( push_block ) { try {
    test1.create_account(N(alice));
    test2.control->push_block(test1.produce_block());
 
-   test1.push_nonce(N(alice), "Foo!");
+   test1.push_dummy(N(alice), "Foo!");
    test2.control->push_block(test1.produce_block());
 } FC_LOG_AND_RETHROW() }/// schedule_test
 
