@@ -468,7 +468,7 @@ namespace eosio { namespace testing {
                                        const symbol&       asset_symbol,
                                        const account_name& account ) const {
       const auto& db  = control->get_database();
-      const auto* tbl = db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, account, N(accounts)));
+      const auto* tbl = db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, account, N(account)));
       share_type result = 0;
 
       // the balance is implied to be 0 if either the table or row does not exist
