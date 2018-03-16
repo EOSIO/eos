@@ -73,13 +73,13 @@ extern "C" {
     */
 
    /**
-    *  Copy up to @ref len bytes of current action to the specified location
-    *  @brief Copy current action to the specified location
-    *  @param msg - a pointer where up to @ref len bytes of the current action will be copied
-    *  @param len - len of the current action to be copied
+    *  Copy up to @ref len bytes of current action data to the specified location
+    *  @brief Copy current action data to the specified location
+    *  @param msg - a pointer where up to @ref len bytes of the current action data will be copied
+    *  @param len - len of the current action data to be copied
     *  @return the number of bytes copied to msg
     */
-   uint32_t read_action( void* msg, uint32_t len );
+   uint32_t read_action_data( void* msg, uint32_t len );
 
    /**
     * Get the length of the current action's data field
@@ -87,7 +87,7 @@ extern "C" {
     * @brief Get the length of current action's data field
     * @return the length of the current action's data field
     */
-   uint32_t action_size();
+   uint32_t action_data_size();
 
    /**
     *  Add the specified account to set of accounts to be notified
