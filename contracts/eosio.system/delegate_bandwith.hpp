@@ -116,15 +116,15 @@ namespace eosiosystem {
             if ( 0 < del.stake_storage_quantity.amount ) {
                auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
                   : common<SystemAccount>::get_default_parameters();
-               auto token_supply = currency::get_total_supply();//.quantity;
+               auto token_supply = currency::get_total_supply();
 
                //make sure that there is no posibility of overflow here
                uint64_t storage_bytes_estimated = ( parameters.max_storage_size - parameters.total_storage_bytes_reserved )
-                  * parameters.storage_reserve_ratio * system_token_type(del.stake_cpu_quantity)
+                  * parameters.storage_reserve_ratio * system_token_type(del.stake_storage_quantity)
                   / ( token_supply - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient */;
 
                storage_bytes = ( parameters.max_storage_size - parameters.total_storage_bytes_reserved - storage_bytes_estimated )
-                  * parameters.storage_reserve_ratio * system_token_type(del.stake_cpu_quantity)
+                  * parameters.storage_reserve_ratio * system_token_type(del.stake_storage_quantity)
                   / ( token_supply - del.stake_storage_quantity - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient */;
 
                eosio_assert( 0 < storage_bytes, "stake is too small to increase storage even by 1 byte" );

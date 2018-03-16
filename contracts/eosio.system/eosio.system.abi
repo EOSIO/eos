@@ -107,7 +107,7 @@
       "name": "producer_info",
       "base": "",
       "fields": [
-         {"name":"owner",              "type":"uint64"},
+         {"name":"owner",              "type":"account_name"},
          {"name":"total_votes",        "type":"uint128"},
          {"name":"prefs",              "type":"eosio_parameters"},
          {"name":"packed_key",         "type":"uint8[]"},
@@ -129,6 +129,18 @@
         {"name":"producer",     "type":"account_name"}
       ]
     },{
+      "name": "regproxy",
+      "base": "",
+      "fields": [
+        {"name":"proxy",     "type":"account_name"}
+      ]
+    },{
+      "name": "unregproxy",
+      "base": "",
+      "fields": [
+        {"name":"proxy",     "type":"account_name"}
+      ]
+    },{
       "name": "voteproducer",
       "base": "",
       "fields": [
@@ -144,9 +156,9 @@
         {"name":"proxy",             "type":"account_name"},
         {"name":"last_update",       "type":"uint32"},
         {"name":"is_proxy",          "type":"uint32"},
-        {"name":"staked",            "type":"uint32"},
-        {"name":"unstaking",         "type":"uint32"},
-        {"name":"unstake_per_week",  "type":"uint32"},
+        {"name":"staked",            "type":"uint64"},
+        {"name":"unstaking",         "type":"uint64"},
+        {"name":"unstake_per_week",  "type":"uint64"},
         {"name":"proxied_votes",     "type":"uint128"},
         {"name":"producers",         "type":"account_name[]"},
         {"name":"deferred_trx_id",   "type":"uint32"},
@@ -178,6 +190,12 @@
     },{
       "name": "unregprod",
       "type": "unregprod"
+    },{
+      "name": "regproxy",
+      "type": "regproxy"
+    },{
+      "name": "unregproxy",
+      "type": "unregproxy"
     },{
       "name": "voteproducer",
       "type": "voteproducer"
