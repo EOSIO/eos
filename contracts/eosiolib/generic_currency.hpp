@@ -21,6 +21,9 @@ namespace eosio {
 
           ACTION( code, issue ) {
              typedef action_meta<code,N(issue)> meta;
+             
+             issue() { }
+             issue(account_name a, asset q): to(a), quantity(q) { } 
              account_name to;
              asset        quantity;
 
@@ -133,6 +136,12 @@ namespace eosio {
              action act( permission_level(from,N(active)), transfer_memo( from, to, asset(quantity), move(memo) ));
              act.send();
           }
+
+         static void inline_issue(account_name to, token_type quantity)
+         {
+            action act(permission_level(code, N(active)), issue(to, asset(quantity)));
+            act.send();
+         }
 
           static token_type get_total_supply() {
              stats t( code, code );

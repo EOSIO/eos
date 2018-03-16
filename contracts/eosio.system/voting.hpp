@@ -40,6 +40,7 @@ namespace eosiosystem {
          using global_state_singleton = typename common<SystemAccount>::global_state_singleton;
 
          static const uint32_t max_inflation_rate = common<SystemAccount>::max_inflation_rate;
+         //         static const uint32_t blocks_per_cycle = common<SystemAccount>::blocks_per_cycle;
          static constexpr uint32_t max_unstake_requests = 10;
          static constexpr uint32_t unstake_pay_period = 7*24*3600; // one per week
          static constexpr uint32_t unstake_payments = 26; // during 26 weeks
@@ -258,8 +259,21 @@ namespace eosiosystem {
 
          static system_token_type payment_per_block(uint32_t percent_of_max_inflation_rate) {
             const system_token_type token_supply = currency::get_total_supply();
+            /*
+            prints("token_supply\n");
+            printi(token_supply.quantity);
+            prints("\ntoken_supply\n");
+            */
             const auto inflation_rate = max_inflation_rate * percent_of_max_inflation_rate;
             const auto& inflation_ratio = int_logarithm_one_plus(inflation_rate);
+            /*
+            printi(inflation_rate);
+            prints("\n");
+            printi(inflation_ratio.first);
+            prints("/");
+            printi(inflation_ratio.second);
+            prints("\n");
+            */
             return (token_supply * inflation_ratio.first) / (inflation_ratio.second * blocks_per_year);
          }
 
@@ -386,14 +400,16 @@ namespace eosiosystem {
             auto other_half_of_percentage = parameters.percent_of_max_inflation_rate - half_of_percentage;
             parameters.payment_per_block = payment_per_block(half_of_percentage);
             parameters.payment_to_eos_bucket = payment_per_block(other_half_of_percentage);
+            parameters.blocks_per_cycle = 6 * schedule.producers.size();
 
             if ( parameters.max_storage_size < parameters.total_storage_bytes_reserved ) {
                parameters.max_storage_size = parameters.total_storage_bytes_reserved;
             }
-
+            
+            auto issue_quantity = parameters.blocks_per_cycle * (parameters.payment_per_block + parameters.payment_to_eos_bucket);
+            currency::inline_issue(SystemAccount, issue_quantity);
             set_blockchain_parameters(&parameters);
-
-            global_state_singleton::set( parameters );
+            global_state_singleton::set(parameters);
          }
 
          ACTION(  SystemAccount, unstake_vote_deferred ) {

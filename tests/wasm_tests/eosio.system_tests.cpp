@@ -99,7 +99,7 @@ public:
          ("max_inline_depth", 4 + n)
          ("max_inline_action_size", 4096 + n)
          ("max_generated_transaction_size", 64*1024 + n)
-         ("inflation_rate", 1050 + n)
+         ("percent_of_max_inflation_rate", 50 + n)
          ("storage_reserve_ratio", 100 + n);
    }
 
@@ -1007,6 +1007,64 @@ BOOST_FIXTURE_TEST_CASE( proxy_actions_affect_producers, eosio_system_tester ) t
    BOOST_REQUIRE_EQUAL( 1800003, get_producer_info( "producer3" )["total_votes"].as_uint64() );
 
 } FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
+   issue( "alice", "100000.0000 EOS",  config::system_account_name );
+   fc::variant params = producer_parameters_example(50);
+   vector<char> key = fc::raw::pack(get_public_key(N(alice), "active"));
+
+   // 1 block produced
+   BOOST_REQUIRE_EQUAL(success(), push_action(N(alice), N(regproducer), mvo()
+                                              ("producer",  "alice")
+                                              ("producer_key", key )
+                                              ("prefs", params)
+                                              )
+                       );
+
+   auto prod = get_producer_info( "alice" );
+   BOOST_REQUIRE_EQUAL("alice", prod["owner"].as_string());
+   BOOST_REQUIRE_EQUAL(0, prod["total_votes"].as_uint64());
+   REQUIRE_EQUAL_OBJECTS(params, prod["prefs"]);
+   BOOST_REQUIRE_EQUAL(string(key.begin(), key.end()), to_string(prod["packed_key"]));
+
+   issue("bob", "2000.0000 EOS", config::system_account_name);
+
+   // bob makes stake
+   // 1 block produced 
+   BOOST_REQUIRE_EQUAL(success(), push_action(N(bob), N(delegatebw), mvo()
+                                              ("from",     "bob")
+                                              ("receiver", "bob")
+                                              ("stake_net", "11.0000 EOS")
+                                              ("stake_cpu", "00.1111 EOS")
+                                              ("stake_storage", "0.0000 EOS")
+                                              )
+                       );
+
+   // bob votes for alice
+   // 1 block produced
+   BOOST_REQUIRE_EQUAL(success(), push_action(N(bob), N(voteproducer), mvo()
+                                              ("voter",  "bob")
+                                              ("proxy", name(0).to_string())
+                                              ("producers", vector<account_name>{ N(alice) })
+                                              )
+                       );
+   
+   produce_blocks(10);
+   prod = get_producer_info("alice");
+   BOOST_REQUIRE(prod["per_block_payments"].as_uint64() > 0);
+
+   //   BOOST_REQUIRE_EQUAL(6 * 3925, prod["per_block_payments"].as_uint64());
+
+   BOOST_REQUIRE_EQUAL(success(), push_action(N(alice), N(claimrewards), mvo()
+                                              ("owner",     "alice")
+                                              )
+                       );
+
+   prod = get_producer_info("alice");
+   BOOST_REQUIRE_EQUAL(0, prod["per_block_payments"].as_uint64());
+
+ } FC_LOG_AND_RETHROW()
+
 
 
 BOOST_FIXTURE_TEST_CASE( voters_actions_affect_proxy_and_producers, eosio_system_tester ) try {
