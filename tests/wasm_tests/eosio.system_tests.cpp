@@ -1022,7 +1022,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
                        );
 
    auto prod = get_producer_info( "alice" );
-   BOOST_REQUIRE_EQUAL(N(alice), prod["owner"].as_uint64());
+   BOOST_REQUIRE_EQUAL("alice", prod["owner"].as_string());
    BOOST_REQUIRE_EQUAL(0, prod["total_votes"].as_uint64());
    REQUIRE_EQUAL_OBJECTS(params, prod["prefs"]);
    BOOST_REQUIRE_EQUAL(string(key.begin(), key.end()), to_string(prod["packed_key"]));
@@ -1039,7 +1039,6 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
                                               ("stake_storage", "0.0000 EOS")
                                               )
                        );
-   REQUIRE_EQUAL_OBJECTS(simple_voter("bob", "11.1111 EOS", last_block_time()), get_voter_info("bob"));
 
    // bob votes for alice
    // 1 block produced
