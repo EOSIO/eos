@@ -120,7 +120,7 @@ struct field_specific_params<voidtype> {
 
 #define CONSTRUCT_OP_HAS_DATA( r, DATA, OP )                                                        \
 template <typename ... Mutators>                                                                    \
-struct OP : instr_base<Mutators...> {                                                               \
+struct OP final : instr_base<Mutators...> {                                                         \
    uint16_t code = BOOST_PP_CAT(OP,_code);                                                          \
    DATA field;                                                                                      \
    uint16_t get_code() override { return BOOST_PP_CAT(OP,_code); }                                  \
