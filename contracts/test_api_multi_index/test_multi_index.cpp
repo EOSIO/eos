@@ -178,6 +178,68 @@ namespace _test_multi_index {
       }
    }
 
+   template<uint64_t TableName>
+   void idx128_store_only()
+   {
+      using namespace eosio;
+
+      typedef record_idx128 record;
+
+
+      // Construct and fill table using multi_index
+      multi_index<TableName, record,
+         indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> >
+      > table( current_receiver(), current_receiver() );
+
+      auto payer = current_receiver();
+
+      for (uint64_t i = 0; i < 5; ++i) {
+         table.emplace( payer, [&]( auto& r ) {
+            r.id = i;
+            r.sec = static_cast<uint128_t>(1ULL << 63) * i;
+         });
+      }
+   }
+
+   template<uint64_t TableName>
+   void idx128_check_without_storing()
+   {
+      using namespace eosio;
+
+      typedef record_idx128 record;
+
+      // Load table using multi_index
+      multi_index<TableName, record,
+         indexed_by< N(bysecondary), const_mem_fun<record, uint128_t, &record::get_secondary> >
+      > table( current_receiver(), current_receiver() );
+
+      auto payer = current_receiver();
+
+      auto secondary_index = table.template get_index<N(bysecondary)>();
+
+      table.modify(table.get(3), payer, [&]( auto& r ) {
+         r.sec *= 2;
+      });
+
+      {
+         uint128_t multiplier = 1ULL << 63;
+
+         auto itr = secondary_index.begin();
+         eosio_assert( itr->primary_key() == 0 && itr->get_secondary() == multiplier*0, "idx128_general - secondary key sort" );
+         ++itr;
+         eosio_assert( itr->primary_key() == 1 && itr->get_secondary() == multiplier*1, "idx128_general - secondary key sort" );
+         ++itr;
+         eosio_assert( itr->primary_key() == 2 && itr->get_secondary() == multiplier*2, "idx128_general - secondary key sort" );
+         ++itr;
+         eosio_assert( itr->primary_key() == 4 && itr->get_secondary() == multiplier*4, "idx128_general - secondary key sort" );
+         ++itr;
+         eosio_assert( itr->primary_key() == 3 && itr->get_secondary() == multiplier*6, "idx128_general - secondary key sort" );
+         ++itr;
+         eosio_assert( itr == secondary_index.end(), "idx256_general - secondary key sort" );
+      }
+
+   }
+
 } /// _test_multi_index
 
 void test_multi_index::idx64_store_only()
@@ -196,6 +258,22 @@ void test_multi_index::idx64_general()
    _test_multi_index::idx64_check_without_storing<N(indextable2)>();
 }
 
+void test_multi_index::idx128_store_only()
+{
+   _test_multi_index::idx128_store_only<N(indextable3)>();
+}
+
+void test_multi_index::idx128_check_without_storing()
+{
+   _test_multi_index::idx128_check_without_storing<N(indextable3)>();
+}
+
+void test_multi_index::idx128_general()
+{
+   _test_multi_index::idx128_store_only<N(indextable4)>();
+   _test_multi_index::idx128_check_without_storing<N(indextable4)>();
+}
+
 void test_multi_index::idx128_autoincrement_test()
 {
    using namespace eosio;
@@ -203,7 +281,7 @@ void test_multi_index::idx128_autoincrement_test()
 
    typedef record_idx128 record;
 
-   const uint64_t table_name = N(indextable3);
+   const uint64_t table_name = N(autoinctbl1);
    auto payer = current_receiver();
 
    multi_index<table_name, record,
@@ -251,7 +329,7 @@ void test_multi_index::idx128_autoincrement_test_part1()
 
    typedef record_idx128 record;
 
-   const uint64_t table_name = N(indextable4);
+   const uint64_t table_name = N(autoinctbl2);
    auto payer = current_receiver();
 
    multi_index<table_name, record,
@@ -284,7 +362,7 @@ void test_multi_index::idx128_autoincrement_test_part2()
 
    typedef record_idx128 record;
 
-   const uint64_t table_name = N(indextable4);
+   const uint64_t table_name = N(autoinctbl2);
    auto payer = current_receiver();
 
    {
