@@ -138,6 +138,9 @@ struct test_multi_index {
    static void idx64_general();
    static void idx64_store_only();
    static void idx64_check_without_storing();
+   static void idx128_general();
+   static void idx128_store_only();
+   static void idx128_check_without_storing();
    static void idx128_autoincrement_test();
    static void idx128_autoincrement_test_part1();
    static void idx128_autoincrement_test_part2();
