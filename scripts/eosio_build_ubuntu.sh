@@ -175,7 +175,7 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		cd ..
+		cd
 		sudo rm -rf ${TEMP_DIR}/mongo-cxx-driver
 	else
 		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx.so.\n"
