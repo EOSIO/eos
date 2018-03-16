@@ -1,5 +1,6 @@
 #include <eosio/chain/webassembly/wavm.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
+#include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/apply_context.hpp>
 
 #include "IR/Module.h"
@@ -30,7 +31,6 @@ struct root_resolver : Runtime::Resolver
       if(IntrinsicResolver::singleton.resolve(mod_name,export_name,type, out)) {
          return true;
       }
-
       FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",mod_name)("export",export_name) );
       return false;
    } FC_CAPTURE_AND_RETHROW( (mod_name)(export_name) ) }
@@ -120,8 +120,7 @@ void entry::prepare( const info& base_info ) {
 entry entry::build(const char* wasm_binary, size_t wasm_binary_size) {
    Module* module = new Module();
    Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
-   WASM::serializeWithInjection(stream, *module);
-   validate_eosio_wasm_constraints(*module);
+   WASM::serialize(stream, *module);
 
    root_resolver resolver;
    LinkResult link_result = linkModule(*module, resolver);

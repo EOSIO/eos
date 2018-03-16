@@ -3,8 +3,8 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosiolib/eosio.hpp>
-#include "test_api.hpp"
 
+#include "test_api.hpp"
 #include "test_action.cpp"
 #include "test_print.cpp"
 #include "test_types.cpp"
@@ -145,8 +145,9 @@ extern "C" {
       // test checktime
       WASM_TEST_HANDLER(test_checktime, checktime_pass);
       WASM_TEST_HANDLER(test_checktime, checktime_failure);
-
+      
       //unhandled test call
       eosio_assert(false, "Unknown Test");
+
    }
 }

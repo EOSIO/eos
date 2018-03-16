@@ -157,6 +157,58 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, key256& d) {
   return ds;
 }
 
+/**
+ *  Serialize a float into a stream
+ *  @brief Serialize a float 
+ *  @param ds stream to write
+ *  @param d value to serialize
+ */
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, float d) {
+   uint32_t val = *(uint32_t*)(&d);
+   ds.write( (const char*)&val, sizeof(val) );
+   return ds;
+}
+/**
+ *  Deserialize a float from a stream
+ *  @brief Deserialize a float
+ *  @param ds stream to read
+ *  @param d destination for deserialized value
+ */
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, float& d) {
+   uint32_t val = 0;
+   ds.read((char*)&val, sizeof(val) );
+   d = *(float*)(&val);
+   return ds;
+}
+
+
+/**
+ *  Serialize a double into a stream
+ *  @brief Serialize a double
+ *  @param ds stream to write
+ *  @param d value to serialize
+ */
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, double d) {
+   uint64_t val = *(uint64_t*)(&d);
+   ds.write( (const char*)&val, sizeof(val) );
+   return ds;
+}
+/**
+ *  Deserialize a double from a stream
+ *  @brief Deserialize a double
+ *  @param ds stream to read
+ *  @param d destination for deserialized value
+ */
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, double& d) {
+   uint64_t val = 0;
+   ds.read((char*)&val, sizeof(val) );
+   d = *(double*)(&val);
+   return ds;
+}
 
 /**
  *  Serialize a uint128_t into a stream
@@ -306,18 +358,6 @@ inline datastream<Stream>& operator<<(datastream<Stream>& ds, const uint64_t& d)
  */
 template<typename Stream>
 inline datastream<Stream>& operator>>(datastream<Stream>& ds, uint64_t& d) {
-  ds.read((char*)&d, sizeof(d) );
-  return ds;
-}
-
-template<typename Stream>
-inline datastream<Stream>& operator<<(datastream<Stream>& ds, const double& d) {
-  ds.write( (const char*)&d, sizeof(d) );
-  return ds;
-}
-
-template<typename Stream>
-inline datastream<Stream>& operator>>(datastream<Stream>& ds, double& d) {
   ds.read((char*)&d, sizeof(d) );
   return ds;
 }

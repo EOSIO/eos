@@ -24,17 +24,19 @@ namespace IR
 
 	struct BranchTableImm
 	{
+      static_assert(sizeof(Uptr) == 8, "SIZEE");
 		Uptr defaultTargetDepth;
 		Uptr branchTableIndex; // An index into the FunctionDef's branchTables array.
 	};
 
+  
 	template<typename Value>
 	struct LiteralImm
 	{
 		Value value;
 	};
 
-	template<bool isGlobal>
+ 	template<bool isGlobal>
 	struct GetOrSetVariableImm
 	{
 		U32 variableIndex;
@@ -44,6 +46,7 @@ namespace IR
 	{
 		U32 functionIndex;
 	};
+
 
 	struct CallIndirectImm
 	{
@@ -56,6 +59,7 @@ namespace IR
 		U8 alignmentLog2;
 		U32 offset;
 	};
+
 
 	#if ENABLE_SIMD_PROTOTYPE
 	template<Uptr numLanes>
@@ -682,7 +686,7 @@ namespace IR
 			nextByte = savedNextByte;
 			return result;
 		}
-
+  
 	private:
 
 		const U8* nextByte;
