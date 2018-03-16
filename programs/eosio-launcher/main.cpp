@@ -1054,8 +1054,13 @@ launcher_def::write_setprods_file() {
       cerr << "unable to open " << filename << " " << strerror(errno) << "\n";
     exit (9);
   }
-
-  auto str = fc::json::to_pretty_string( producer_set, fc::json::stringify_large_ints_and_doubles );
+   producer_set_def no_bios;
+   for (auto &p : producer_set.producers) {
+      if (p.producer_name != "eosio")
+         no_bios.producers.push_back(p);
+   }
+   no_bios.version = 1;
+  auto str = fc::json::to_pretty_string( no_bios, fc::json::stringify_large_ints_and_doubles );
   psfile.write( str.c_str(), str.size() );
   psfile.close();
 }
@@ -1231,10 +1236,13 @@ void
 launcher_def::make_custom () {
   bf::path source = shape;
   fc::json::from_file(source).as<testnet_def>(network);
-
+  producer_set.version = 1;
   for (auto &h : bindings) {
     for (auto &inst : h.instances) {
       tn_node_def *node = &network.nodes[inst.name];
+      for (auto &p : node->producers) {
+         producer_set.producers.push_back({p,node->keys[0].get_public_key()});
+      }
       node->instance = &inst;
       inst.node = node;
     }
