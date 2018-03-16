@@ -27,7 +27,6 @@ chain_config chain_initializer::get_chain_start_configuration() {
 producer_schedule_type  chain_initializer::get_chain_start_producers() {
    producer_schedule_type result;
    result.producers.push_back( {config::system_account_name, genesis.initial_key} );
-   idump((result));
    return result;
 }
 

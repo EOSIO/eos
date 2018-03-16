@@ -122,6 +122,18 @@ namespace eosio {
          data          = pack(value);
       }
 
+      /**
+       *  @tparam Action - a type derived from action_meta<Scope,Name>
+       *  @param value - will be serialized via pack into data
+       */
+      template<typename Action>
+      action( const permission_level& auth, account_name a, action_name n, const Action& value )
+      :authorization(1,auth) {
+         account       = a;
+         name          = n;
+         data          = pack(value);
+      }
+
       EOSLIB_SERIALIZE( action, (account)(name)(authorization)(data) )
 
       void send() const {

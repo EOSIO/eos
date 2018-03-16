@@ -81,6 +81,7 @@ namespace eosio { namespace chain { namespace contracts {
       built_in_types.emplace("int16",                     pack_unpack<int16_t>());
       built_in_types.emplace("int32",                     pack_unpack<int32_t>());
       built_in_types.emplace("int64",                     pack_unpack<int64_t>());
+      built_in_types.emplace("float64",                   pack_unpack<double>());
       built_in_types.emplace("name",                      pack_unpack<name>());
       built_in_types.emplace("account_name",              pack_unpack<account_name>());
       built_in_types.emplace("permission_name",           pack_unpack<permission_name>());
