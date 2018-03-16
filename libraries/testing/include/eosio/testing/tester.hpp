@@ -18,15 +18,17 @@ namespace eosio { namespace testing {
          typedef string action_result;
 
          base_tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
+         explicit base_tester(chain_controller::controller_config config);
 
          void              close();
          void              open();
 
-         signed_block      produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) );
+         signed_block      produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty );
          void              produce_blocks( uint32_t n = 1 );
+         void              produce_blocks_until_end_of_round();
 
-         transaction_trace push_transaction( packed_transaction& trx );
-         transaction_trace push_transaction( signed_transaction& trx );
+         transaction_trace push_transaction( packed_transaction& trx, uint32_t skip_flag = skip_nothing  );
+         transaction_trace push_transaction( signed_transaction& trx, uint32_t skip_flag = skip_nothing  );
          action_result     push_action(action&& cert_act, uint64_t authorizer);
 
          transaction_trace push_action( const account_name& code, const action_name& act, const account_name& signer, const variant_object &data );
@@ -112,6 +114,7 @@ namespace eosio { namespace testing {
            };
         }
 
+       void sync_with(base_tester& other);
 
    private:
          fc::temp_directory                            tempdir;
@@ -123,8 +126,10 @@ namespace eosio { namespace testing {
    class tester : public base_tester {
    public:
       tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
+      tester(chain_controller::controller_config config);
 
       void              push_genesis_block();
+      void              set_producers(const vector<account_name>& producer_names);
    };
 
    /**

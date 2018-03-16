@@ -30,6 +30,11 @@ namespace eosio { namespace testing {
       open();
    }
 
+   base_tester::base_tester(chain_controller::controller_config config) {
+      cfg = config;
+      open();
+   }
+
    public_key_type  base_tester::get_public_key( name keyname, string role ) const {
       return get_private_key( keyname, role ).get_public_key();
    }
@@ -59,19 +64,28 @@ namespace eosio { namespace testing {
       });
    }
 
-   signed_block base_tester::produce_block( fc::microseconds skip_time ) {
+   signed_block base_tester::produce_block( fc::microseconds skip_time, uint32_t skip_flag) {
       auto head_time = control->head_block_time();
       auto next_time = head_time + skip_time;
       uint32_t slot  = control->get_slot_at_time( next_time );
       auto sch_pro   = control->get_scheduled_producer(slot);
       auto priv_key  = get_private_key( sch_pro, "active" );
 
-      return control->generate_block( next_time, sch_pro, priv_key, skip_missed_block_penalty );
+      return control->generate_block( next_time, sch_pro, priv_key, skip_flag );
    }
 
    void base_tester::produce_blocks( uint32_t n ) {
       for( uint32_t i = 0; i < n; ++i )
          produce_block();
+   }
+
+   void base_tester::produce_blocks_until_end_of_round() {
+      uint64_t blocks_per_round;
+      while(true) {
+         blocks_per_round = control->get_global_properties().active_producers.producers.size() * config::producer_repetitions;
+         produce_block();
+         if (control->head_block_num() % blocks_per_round == (blocks_per_round - 1) ) break;
+      }
    }
 
   void base_tester::set_tapos( signed_transaction& trx ) const {
@@ -104,13 +118,13 @@ namespace eosio { namespace testing {
       push_transaction( trx );
    }
 
-   transaction_trace base_tester::push_transaction( packed_transaction& trx ) {
-      return control->push_transaction( trx );
+   transaction_trace base_tester::push_transaction( packed_transaction& trx, uint32_t skip_flag ) {
+      return control->push_transaction( trx, skip_flag );
    }
 
-   transaction_trace base_tester::push_transaction( signed_transaction& trx ) {
+   transaction_trace base_tester::push_transaction( signed_transaction& trx, uint32_t skip_flag ) {
       auto ptrx = packed_transaction(trx);
-      return push_transaction( ptrx );
+      return push_transaction( ptrx, skip_flag );
    }
 
    base_tester::action_result base_tester::push_action(action&& cert_act, uint64_t authorizer) {
@@ -421,14 +435,58 @@ namespace eosio { namespace testing {
       return s;
    }
 
+   void base_tester::sync_with(base_tester& other) {
+      // Already in sync?
+      if (control->head_block_id() == other.control->head_block_id())
+         return;
+      // If other has a longer chain than we do, sync it to us first
+      if (control->head_block_num() < other.control->head_block_num())
+         return other.sync_with(*this);
+
+      auto sync_dbs = [](base_tester& a, base_tester& b) {
+         for (int i = 1; i <= a.control->head_block_num(); ++i) {
+            auto block = a.control->fetch_block_by_number(i);
+            if (block && !b.control->is_known_block(block->id())) {
+               b.control->push_block(*block, eosio::chain::validation_steps::created_block);
+            }
+         }
+      };
+
+      sync_dbs(*this, other);
+      sync_dbs(other, *this);
+   }
+
+
    tester::tester(chain_controller::runtime_limits limits)
       : base_tester(limits) {
       push_genesis_block();
    }
 
+   tester::tester(chain_controller::controller_config config): base_tester(config) {};
+
    void tester::push_genesis_block() {
       set_code(config::system_account_name, test_system_wast);
       set_abi(config::system_account_name, test_system_abi);
+   }
+
+   void tester::set_producers(const vector<account_name>& producer_names) {
+      // Create producer accounts, if it does not exist yet
+      for (auto& producer_name: producer_names) {
+        create_account(producer_name);
+      }
+
+      // Construct the param for setprods action
+      vector<fc::mutable_variant_object> producer_keys;
+      for (auto& producer_name: producer_names) {
+         producer_keys.emplace_back( fc::mutable_variant_object()
+                                             ("producer_name", producer_name)
+                                             ("signing_key", get_public_key( producer_name, "active" )));
+      }
+      // Send setprods action
+      static uint32_t version = 1;
+      push_action(N(eosio), N(setprods), N(eosio), fc::mutable_variant_object()
+                                                        ("version", version++)
+                                                        ("producers", producer_keys));
    }
 
 } }  /// eosio::test
