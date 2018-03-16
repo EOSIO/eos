@@ -1077,7 +1077,7 @@ class transaction_api : public context_aware_api {
          } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
       }
 
-      bool check_trx_permission(  array_ptr<const char> data, size_t data_len,
+      void assert_trx_permission(  array_ptr<const char> data, size_t data_len,
                                   array_ptr<const char> perms, size_t perm_len, 
                                   array_ptr<const char> pubkeys, size_t pubkeys_len ) {
          transaction trx;
@@ -1096,10 +1096,7 @@ class transaction_api : public context_aware_api {
             fc::raw::unpack( ds, publickeys);
          }
 
-         try {
-            context.controller.check_authorization(trx.actions, publickeys, false, flat_set<account_name>(), grants );
-            return true;
-         } catch ( ... ) { return false; }
+         context.controller.check_authorization(trx.actions, publickeys, false, flat_set<account_name>(), grants );
       }
 };
 
@@ -1609,7 +1606,7 @@ REGISTER_INTRINSICS(context_free_transaction_api,
 REGISTER_INTRINSICS(transaction_api,
    (send_inline,           void(int, int)            )
    (send_deferred,         void(int, int, int, int)  )
-   (check_trx_permission,  int(int, int, int, int, int, int)   )
+   (assert_trx_permission, void(int, int, int, int, int, int)   )
 );
 
 REGISTER_INTRINSICS(context_free_api,

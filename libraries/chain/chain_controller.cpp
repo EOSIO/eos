@@ -253,7 +253,7 @@ transaction_trace chain_controller::push_transaction(const packed_transaction& t
          return _push_transaction(trx);
       });
    });
-} FC_CAPTURE_AND_RETHROW((trx)) }
+} FC_CAPTURE_AND_RETHROW() }
 
 transaction_trace chain_controller::_push_transaction(const packed_transaction& trx) {
    transaction_metadata   mtrx( trx, get_chain_id(), head_block_time());

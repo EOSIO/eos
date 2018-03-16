@@ -348,7 +348,7 @@ namespace eosio { namespace testing {
       set_tapos( trx );
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
       push_transaction( trx );
-   } FC_CAPTURE_AND_RETHROW( (account)(wast) )
+   } FC_CAPTURE_AND_RETHROW( (account) )
 
    void base_tester::set_abi( account_name account, const char* abi_json) {
       auto abi = fc::json::from_string(abi_json).template as<contracts::abi_def>();

@@ -66,9 +66,9 @@ extern "C" {
     *  This method will return true if the provided set of keys and/or permission levels
     *  are sufficient to authorize a given transaction. Otherwise false.
     */
-   bool check_trx_permission( const char* packed_transaction, size_t packed_transaction_size,
-                              const char* packed_pubkey_set, size_t packed_pubkey_set_size,
-                              const char* packed_permlevel_set, size_t packed_permlevel_set_size );
+   void assert_trx_permission( const char* packed_transaction, size_t packed_transaction_size,
+                               const char* packed_pubkey_set, size_t packed_pubkey_set_size,
+                               const char* packed_permlevel_set, size_t packed_permlevel_set_size );
 
    /**
     * access a copy of the currently executing transaction

@@ -81,9 +81,8 @@ namespace eosio {
 
      eosio_assert( !prop.pending_trx_id, "transaction already dispatched" );
 
-     eosio_assert( check_trx_permission( prop.packedtrx.data(), prop.packedtrx.size(), 
-                                         0, 0, 
-                                         prop.grants.data(), prop.grants.size() ), "insufficient authority granted" );
+     assert_trx_permission( prop.packedtrx.data(), prop.packedtrx.size(), 0, 0, 
+                           prop.grants.data(), prop.grants.size() );
 
      send_deferred( (uint32_t)prop.id, 
                     prop.effective_after, 
