@@ -284,14 +284,19 @@ namespace eosiosystem {
 
             eosio::producer_schedule schedule;
             schedule.producers.reserve(21);
-
+            /*
+            for (auto it = idx.begin(); it != idx.end(); ++it) {
+               print( it->total_votes, ", " );
+            }
+            print ("\n");
+            */
             auto it = idx.end();
             if (it == idx.begin()) {
-                  return;
+               return;
             }
             --it;
             size_t n = 0;
-            while ( n < 21 ) {
+            while ( n < 21 && 0 < it->total_votes ) {
                if ( it->active() ) {
                   schedule.producers.emplace_back();
                   schedule.producers.back().producer_name = it->owner;
@@ -324,6 +329,9 @@ namespace eosiosystem {
                   break;
                }
                --it;
+            }
+            if ( n == 0 ) { //no active producers with votes > 0
+               return;
             }
             // should use producer_schedule_type from libraries/chain/include/eosio/chain/producer_schedule.hpp
             bytes packed_schedule = pack(schedule);
@@ -465,7 +473,7 @@ namespace eosiosystem {
                votes += voter->proxied_votes;
             }
 
-            if ( old_producers ) { //old_producers == 0 if proxy has stoped being a proxy and votes were taken back from producers at that moment
+            if ( old_producers ) { //old_producers == 0 if proxy has stoped being a proxy and votes were taken back from the producers at that moment
                //revoke votes only from no longer elected
                std::vector<account_name> revoked( old_producers->size() );
                auto end_it = std::set_difference( old_producers->begin(), old_producers->end(), new_producers->begin(), new_producers->end(), revoked.begin() );

@@ -399,7 +399,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_separate, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( bytes, total["storage_bytes"].as_uint64() );
 
    //storage
-   BOOST_REQUIRE_EQUAL( success(), stake( "alice", "0.0000 EOS", "200.0000 EOS", "300.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice", "0.0000 EOS", "0.0000 EOS", "300.0000 EOS" ) );
    total = get_total_stake( "alice" );
    BOOST_REQUIRE_EQUAL( asset::from_string("110.0000 EOS").amount, total["net_weight"].as_uint64());
    BOOST_REQUIRE_EQUAL( asset::from_string("220.0000 EOS").amount, total["cpu_weight"].as_uint64());
@@ -412,7 +412,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_separate, eosio_system_tester ) try {
    total = get_total_stake( "alice" );
    BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS").amount, total["net_weight"].as_uint64());
    BOOST_REQUIRE_EQUAL( asset::from_string("220.0000 EOS").amount, total["cpu_weight"].as_uint64());
-   BOOST_REQUIRE_EQUAL( asset::from_string("3300.0000 EOS").amount, total["storage_stake"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("330.0000 EOS").amount, total["storage_stake"].as_uint64());
    BOOST_REQUIRE_EQUAL( bytes2, total["storage_bytes"].as_uint64());
 
    //unstake net
@@ -420,15 +420,16 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake_separate, eosio_system_tester ) try {
    total = get_total_stake( "alice" );
    BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS").amount, total["net_weight"].as_uint64());
    BOOST_REQUIRE_EQUAL( asset::from_string("20.0000 EOS").amount, total["cpu_weight"].as_uint64());
-   BOOST_REQUIRE_EQUAL( asset::from_string("3300.0000 EOS").amount, total["storage_stake"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("330.0000 EOS").amount, total["storage_stake"].as_uint64());
    BOOST_REQUIRE_EQUAL( bytes2, total["storage_bytes"].as_uint64());
 
    //unstake cpu
    BOOST_REQUIRE_EQUAL( success(), unstake( "alice", "0.0000 EOS", "0.0000 EOS", bytes2 / 2 ) );
    total = get_total_stake( "alice" );
+   auto storage_left = M("330.0000 EOS") - M("330.0000 EOS") * (bytes2 / 2) / bytes2;
    BOOST_REQUIRE_EQUAL( asset::from_string("10.0000 EOS").amount, total["net_weight"].as_uint64());
    BOOST_REQUIRE_EQUAL( asset::from_string("20.0000 EOS").amount, total["cpu_weight"].as_uint64());
-   BOOST_REQUIRE_EQUAL( asset::from_string("1650.0000 EOS").amount, total["storage_stake"].as_uint64());
+   BOOST_REQUIRE_EQUAL( storage_left, total["storage_stake"].as_uint64());
    BOOST_REQUIRE_EQUAL( bytes2 - bytes2/2, total["storage_bytes"].as_uint64());
 } FC_LOG_AND_RETHROW()
 
@@ -481,7 +482,7 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
    );
 
    auto info = get_producer_info( "alice" );
-   BOOST_REQUIRE_EQUAL( N(alice), info["owner"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "alice", info["owner"].as_string() );
    BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_uint64() );
    REQUIRE_MATCHING_OBJECT( params, info["prefs"] );
    BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(info["packed_key"]) );
@@ -499,7 +500,7 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
    );
 
    info = get_producer_info( "alice" );
-   BOOST_REQUIRE_EQUAL( N(alice), info["owner"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "alice", info["owner"].as_string() );
    BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_uint64() );
    REQUIRE_MATCHING_OBJECT( params2, info["prefs"] );
    BOOST_REQUIRE_EQUAL( string(key2.begin(), key2.end()), to_string(info["packed_key"]) );
@@ -513,7 +514,7 @@ BOOST_FIXTURE_TEST_CASE( producer_register_unregister, eosio_system_tester ) try
    //key should be empty
    BOOST_REQUIRE_EQUAL( true, to_string(info["packed_key"]).empty() );
    //everything else should stay the same
-   BOOST_REQUIRE_EQUAL( N(alice), info["owner"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "alice", info["owner"].as_string() );
    BOOST_REQUIRE_EQUAL( 0, info["total_votes"].as_uint64() );
    REQUIRE_MATCHING_OBJECT( params2, info["prefs"] );
 
@@ -538,7 +539,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
                         )
    );
    auto prod = get_producer_info( "alice" );
-   BOOST_REQUIRE_EQUAL( N(alice), prod["owner"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "alice", prod["owner"].as_string() );
    BOOST_REQUIRE_EQUAL( 0, prod["total_votes"].as_uint64() );
    REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
    BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
@@ -562,7 +563,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    //check that producer parameters stay the same after voting
    prod = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( 111111, prod["total_votes"].as_uint64() );
-   BOOST_REQUIRE_EQUAL( N(alice), prod["owner"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "alice", prod["owner"].as_string() );
    REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
    BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
 
@@ -613,7 +614,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( 0, prod["total_votes"].as_uint64() );
    BOOST_REQUIRE_EQUAL( asset::from_string("3000.0000 EOS"), get_balance( "carol" ) );
    //check that the producer parameters stay the same after all
-   BOOST_REQUIRE_EQUAL( N(alice), prod["owner"].as_uint64() );
+   BOOST_REQUIRE_EQUAL( "alice", prod["owner"].as_string() );
    REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
    BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
 
@@ -1255,6 +1256,48 @@ BOOST_FIXTURE_TEST_CASE( proxy_cannot_use_another_proxy, eosio_system_tester ) t
                                      ("producers", vector<account_name>() )
                         )
    );
+
+} FC_LOG_AND_RETHROW()
+
+
+BOOST_FIXTURE_TEST_CASE( elect_poducers_and_parameters, eosio_system_tester ) try {
+   create_accounts( {  N(producer1), N(producer2), N(producer3) } );
+   BOOST_REQUIRE_EQUAL( success(), regproducer( "producer1", 1) );
+   BOOST_REQUIRE_EQUAL( success(), regproducer( "producer2", 3) );
+   BOOST_REQUIRE_EQUAL( success(), regproducer( "producer3", 5) );
+   /*
+   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+   BOOST_REQUIRE_EQUAL( success(), stake( "alice", "100.0000 EOS", "50.0000 EOS", "50.0000 EOS" ) );
+   //vote for producers
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(alice), N(voteproducer), mvo()
+                                               ("voter",  "alice")
+                                               ("proxy", name(0).to_string() )
+                                               ("producers", vector<account_name>{ N(producer1) } )
+                        )
+   );
+   produce_blocks(100);
+   auto producer_keys = control->get_global_properties().active_producers.producers;
+   BOOST_REQUIRE_EQUAL( 1, producer_keys.size() );
+   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
+*/
+   issue( "bob", "1000.0000 EOS",  config::system_account_name );
+   BOOST_REQUIRE_EQUAL( success(), stake( "bob", "200.0000 EOS", "100.0000 EOS", "50.0000 EOS" ) );
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(bob), N(voteproducer), mvo()
+                                               ("voter",  "bob")
+                                               ("proxy", name(0).to_string() )
+                                               ("producers", vector<account_name>{ N(producer1), N(producer2) } )
+                        )
+   );
+   std::cout << "after push block" << std::endl;
+   produce_blocks(200);
+   auto producer_keys = control->get_global_properties().active_producers.producers;
+   std::cout << "producers: " << std::endl;
+   for (auto& x : producer_keys) {
+      std::cout << x.producer_name << std::endl;
+   }
+   BOOST_REQUIRE_EQUAL( 2, producer_keys.size() );
+   BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[0].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[1].producer_name );
 
 } FC_LOG_AND_RETHROW()
 
