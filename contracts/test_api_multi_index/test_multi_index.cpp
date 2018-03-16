@@ -235,7 +235,7 @@ namespace _test_multi_index {
          ++itr;
          eosio_assert( itr->primary_key() == 3 && itr->get_secondary() == multiplier*6, "idx128_general - secondary key sort" );
          ++itr;
-         eosio_assert( itr == secondary_index.end(), "idx256_general - secondary key sort" );
+         eosio_assert( itr == secondary_index.end(), "idx128_general - secondary key sort" );
       }
 
    }
