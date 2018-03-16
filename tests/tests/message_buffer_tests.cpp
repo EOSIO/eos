@@ -11,6 +11,22 @@
 namespace eosio {
 using namespace std;
 
+size_t mb_size(boost::asio::mutable_buffer& mb) {
+#if BOOST_VERSION >= 106600
+   return mb.size();
+#else
+   return boost::asio::detail::buffer_size_helper(mb);
+#endif
+}
+
+void* mb_data(boost::asio::mutable_buffer& mb) {
+#if BOOST_VERSION >= 106600
+   return mb.data();
+#else
+   return boost::asio::detail::buffer_cast_helper(mb);
+#endif
+}
+
 BOOST_AUTO_TEST_SUITE(message_buffer_tests)
 
 constexpr auto     def_buffer_size_mb = 4;
@@ -28,8 +44,8 @@ BOOST_AUTO_TEST_CASE(message_buffer_construction)
 
     auto mbs = mb.get_buffer_sequence_for_boost_async_read();
     auto mbsi = mbs.begin();
-    BOOST_CHECK_EQUAL(mbsi->size(), def_buffer_size);
-    BOOST_CHECK_EQUAL(mbsi->data(), mb.write_ptr());
+    BOOST_CHECK_EQUAL(mb_size(*mbsi), def_buffer_size);
+    BOOST_CHECK_EQUAL(mb_data(*mbsi), mb.write_ptr());
     mbsi++;
     BOOST_CHECK(mbsi == mbs.end());
   }
@@ -50,12 +66,12 @@ BOOST_AUTO_TEST_CASE(message_buffer_growth)
     {
       auto mbs = mb.get_buffer_sequence_for_boost_async_read();
       auto mbsi = mbs.begin();
-      BOOST_CHECK_EQUAL(mbsi->size(), def_buffer_size);
-      BOOST_CHECK_EQUAL(mbsi->data(), mb.write_ptr());
+      BOOST_CHECK_EQUAL(mb_size(*mbsi), def_buffer_size);
+      BOOST_CHECK_EQUAL(mb_data(*mbsi), mb.write_ptr());
       mbsi++;
       BOOST_CHECK(mbsi != mbs.end());
-      BOOST_CHECK_EQUAL(mbsi->size(), def_buffer_size);
-      BOOST_CHECK_NE(mbsi->data(), nullptr);
+      BOOST_CHECK_EQUAL(mb_size(*mbsi), def_buffer_size);
+      BOOST_CHECK_NE(mb_data(*mbsi), nullptr);
       mbsi++;
       BOOST_CHECK(mbsi == mbs.end());
     }
@@ -71,12 +87,12 @@ BOOST_AUTO_TEST_CASE(message_buffer_growth)
     {
       auto mbs = mb.get_buffer_sequence_for_boost_async_read();
       auto mbsi = mbs.begin();
-      BOOST_CHECK_EQUAL(mbsi->size(), def_buffer_size - 100);
-      BOOST_CHECK_EQUAL(mbsi->data(), mb.write_ptr());
+      BOOST_CHECK_EQUAL(mb_size(*mbsi), def_buffer_size - 100);
+      BOOST_CHECK_EQUAL(mb_data(*mbsi), mb.write_ptr());
       mbsi++;
       BOOST_CHECK(mbsi != mbs.end());
-      BOOST_CHECK_EQUAL(mbsi->size(), def_buffer_size);
-      BOOST_CHECK_NE(mbsi->data(), nullptr);
+      BOOST_CHECK_EQUAL(mb_size(*mbsi), def_buffer_size);
+      BOOST_CHECK_NE(mb_data(*mbsi), nullptr);
       mbsi++;
       BOOST_CHECK(mbsi == mbs.end());
     }
@@ -228,8 +244,8 @@ BOOST_AUTO_TEST_CASE(message_buffer_write_ptr_to_end)
 
       auto mbs = mb.get_buffer_sequence_for_boost_async_read();
       auto mbsi = mbs.begin();
-      BOOST_CHECK_EQUAL(mbsi->size(), small);
-      BOOST_CHECK_EQUAL(mbsi->data(), mb.write_ptr());
+      BOOST_CHECK_EQUAL(mb_size(*mbsi), small);
+      BOOST_CHECK_EQUAL(mb_data(*mbsi), mb.write_ptr());
       BOOST_CHECK_EQUAL(mb.read_ptr()+small, mb.write_ptr());
       mbsi++;
       BOOST_CHECK(mbsi == mbs.end());
