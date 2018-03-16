@@ -174,7 +174,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static constexpr bool post = false;
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-         // TODO this is hardcoded for various injections, refactor to allow the system to deduce this
          wasm_ops::op_types<>::call_t* call_inst = reinterpret_cast<wasm_ops::op_types<>::call_t*>(inst);
          const int offset = injector_utils::registered_injected.size();
          uint32_t mapped_index = injector_utils::injected_index_mapping[call_inst->field];
@@ -381,14 +380,17 @@ namespace eosio { namespace chain { namespace wasm_injections {
             _module_injectors.inject( *_module );
             for ( auto& fd : _module->functions.defs ) {
                wasm_ops::EOSIO_OperatorDecoderStream<pre_op_injectors> pre_decoder(fd.code);
-               std::vector<U8> pre_code;
+               std::vector<U8> new_code;
                while ( pre_decoder ) {
                   std::vector<U8> new_inst;
                   auto op = pre_decoder.decodeOp();
                   op->visit( { _module, &new_inst, &fd, pre_decoder.index() } );
-                  pre_code.insert( pre_code.end(), new_inst.begin(), new_inst.end() );
+                  new_code.insert( new_code.end(), new_inst.begin(), new_inst.end() );
                }
-               wasm_ops::EOSIO_OperatorDecoderStream<post_op_injectors> post_decoder(pre_code);
+               fd.code = new_code;
+            }
+            for ( auto& fd : _module->functions.defs ) {
+               wasm_ops::EOSIO_OperatorDecoderStream<post_op_injectors> post_decoder(fd.code);
                std::vector<U8> post_code;
                while ( post_decoder ) {
                   std::vector<U8> new_inst;
