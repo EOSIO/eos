@@ -5,7 +5,7 @@
 #include <proxy/proxy.hpp>
 #include <eosio.system/eosio.system.hpp>
 #include <eosiolib/transaction.hpp>
-#include <currency/currency.hpp>
+#include <eosiolib/currency.hpp>
 
 namespace proxy {
    using namespace eosio;
@@ -51,7 +51,7 @@ namespace proxy {
          configs::store(code_config, self);
 
          transaction out;
-         out.actions.emplace_back(vector<permission_level>{{self, N(active)}}, new_transfer);
+         out.actions.emplace_back(permission_level{self, N(active)}, N(currency), N(transfer), new_transfer);
          out.send(id, now() + code_config.delay);
       }
    }
@@ -92,15 +92,15 @@ extern "C" {
           if (action == N(onerror)) {
              apply_onerror(deferred_transaction::from_current_action());
           } if( action == N(transfer) ) {
-             apply_transfer(code, unpack_action<eosiosystem::contract<N(eosio.system)>::currency::transfer_memo>());
+             apply_transfer(code, unpack_action_data<eosiosystem::contract<N(eosio.system)>::currency::transfer_memo>());
           }
        } else if ( code == N(currency) ) {
           if( action == N(transfer) ) {
-             apply_transfer(code, unpack_action<currency::contract::transfer_memo>());
+             apply_transfer(code, unpack_action_data<eosio::currency::transfer>());
           }
        } else if (code == current_receiver() ) {
           if ( action == N(setowner)) {
-             apply_setowner(current_action<set_owner>());
+             apply_setowner(current_action_data<set_owner>());
           }
        }
     }

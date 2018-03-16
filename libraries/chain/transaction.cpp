@@ -204,7 +204,7 @@ transaction packed_transaction::get_transaction()const
 
 signed_transaction packed_transaction::get_signed_transaction() const
 {
-   return signed_transaction(get_transaction(), signatures);
+   return signed_transaction(get_transaction(), signatures, context_free_data);
 }
 
 void packed_transaction::set_transaction(const transaction& t, packed_transaction::compression_type _compression)

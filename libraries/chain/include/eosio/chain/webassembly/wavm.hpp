@@ -1,7 +1,7 @@
 #pragma once
 
 #include <eosio/chain/webassembly/common.hpp>
-#include <eosio/chain/softfloat.hpp>
+#include <softfloat.hpp>
 #include "Runtime/Runtime.h"
 #include "IR/Types.h"
 
@@ -91,7 +91,7 @@ inline null_terminated_ptr null_terminated_ptr_impl(wasm_interface& wasm, U32 pt
    Runtime::causeException(Exception::Cause::accessViolation);
 }
 
-            
+
 /**
  * template that maps native types to WASM VM types
  * @tparam T the native type
@@ -114,11 +114,11 @@ struct native_to_wasm<T *> {
  */
 template<>
 struct native_to_wasm<float32_t> {
-   using type = F32;
+   using type = float32_t; //F32;
 };
 template<>
 struct native_to_wasm<float64_t> {
-   using type = F64;
+   using type = float64_t; //F64;
 };
 template<>
 struct native_to_wasm<int32_t> {
@@ -148,10 +148,12 @@ template<>
 struct native_to_wasm<name> {
    using type = I64;
 };
+/*
 template<>
 struct native_to_wasm<wasm_double> {
    using type = I64;
 };
+*/
 template<>
 struct native_to_wasm<const fc::time_point_sec &> {
    using type = I32;
@@ -195,11 +197,6 @@ inline auto convert_wasm_to_native(native_to_wasm_t<T> val) {
    return T(val);
 }
 
-template<>
-inline auto convert_wasm_to_native<wasm_double>(I64 val) {
-   return wasm_double(*reinterpret_cast<wasm_double *>(&val));
-}
-
 template<typename T>
 struct wasm_to_value_type;
 
@@ -207,6 +204,12 @@ template<>
 struct wasm_to_value_type<F32> {
    static constexpr auto value = ValueType::f32;
 };
+
+template<>
+struct wasm_to_value_type<float64_t> {
+   static constexpr auto value = ValueType::f64;
+};
+
 template<>
 struct wasm_to_value_type<F64> {
    static constexpr auto value = ValueType::f64;
@@ -229,6 +232,11 @@ template<>
 struct wasm_to_rvalue_type<F32> {
    static constexpr auto value = ResultType::f32;
 };
+template<>
+struct wasm_to_rvalue_type<float64_t> {
+   static constexpr auto value = ResultType::f64;
+};
+
 template<>
 struct wasm_to_rvalue_type<F64> {
    static constexpr auto value = ResultType::f64;

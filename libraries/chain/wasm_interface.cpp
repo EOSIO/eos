@@ -360,8 +360,8 @@ class context_aware_api {
       }
 
    protected:
-      apply_context&             context;
       wasm_cache::entry&         code;
+      apply_context&             context;
       wasm_interface::vm_type    vm;
 
 };
@@ -378,6 +378,7 @@ class context_free_api : public context_aware_api {
          return context.get_context_free_data( index, buffer, buffer_size );
       }
 };
+
 class privileged_api : public context_aware_api {
    public:
       privileged_api( wasm_interface& wasm )
@@ -470,7 +471,8 @@ class privileged_api : public context_aware_api {
 
 class checktime_api : public context_aware_api {
 public:
-   using context_aware_api::context_aware_api;
+   explicit checktime_api( wasm_interface& wasm )
+   :context_aware_api(wasm,true){}
 
    void checktime(uint32_t instruction_count) {
       context.checktime(instruction_count);
@@ -492,13 +494,14 @@ class producer_api : public context_aware_api {
 
 class crypto_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      explicit crypto_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       /**
        * This method can be optimized out during replay as it has
        * no possible side effects other than "passing".
        */
-      void assert_recover_key( fc::sha256& digest,
+      void assert_recover_key( const fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
          fc::crypto::signature s;
@@ -513,7 +516,7 @@ class crypto_api : public context_aware_api {
          FC_ASSERT( check == p, "Error expected key different than recovered key" );
       }
 
-      int recover_key( fc::sha256& digest,
+      int recover_key( const fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
          fc::crypto::signature s;
@@ -576,7 +579,8 @@ class string_api : public context_aware_api {
 
 class system_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      explicit system_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       void abort() {
          edump(("abort() called"));
@@ -598,16 +602,17 @@ class system_api : public context_aware_api {
 
 class action_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+   action_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
-      int read_action(array_ptr<char> memory, size_t size) {
+      int read_action_data(array_ptr<char> memory, size_t size) {
          FC_ASSERT(size > 0);
          int minlen = std::min<size_t>(context.act.data.size(), size);
          memcpy((void *)memory, context.act.data.data(), minlen);
          return minlen;
       }
 
-      int action_size() {
+      int action_data_size() {
          return context.act.data.size();
       }
 
@@ -630,7 +635,8 @@ class action_api : public context_aware_api {
 
 class console_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      console_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       void prints(null_terminated_ptr str) {
          context.console_append<const char*>(str);
@@ -640,7 +646,11 @@ class console_api : public context_aware_api {
          context.console_append(string(str, str_len));
       }
 
-      void printi(uint64_t val) {
+      void printui(uint64_t val) {
+         context.console_append(val);
+      }
+
+      void printi(int64_t val) {
          context.console_append(val);
       }
 
@@ -649,8 +659,12 @@ class console_api : public context_aware_api {
          context.console_append(fc::variant(v).get_string());
       }
 
-      void printd( wasm_double val ) {
-         context.console_append(val.str());
+      void printdi( uint64_t val ) {
+         context.console_append(*((double*)&val));
+      }
+
+      void printd( float64_t val ) {
+         context.console_append(*((double*)&val));
       }
 
       void printn(const name& value) {
@@ -783,6 +797,7 @@ class database_api : public context_aware_api {
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx128, uint128_t)
       DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(idx256, 2, uint128_t)
+      DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx_double, uint64_t)
 };
 
 
@@ -1205,14 +1220,129 @@ class compiler_builtins : public context_aware_api {
          lhs %= rhs;
          ret = lhs;
       }
+      
+      void __addtf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
+         ret = f128_add( a, b ); 
+      }
+      void __subtf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
+         ret = f128_sub( a, b ); 
+      }
+      void __multf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
+         ret = f128_mul( a, b ); 
+      }
+      void __divtf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
+         ret = f128_div( a, b ); 
+      }
+      int __eqtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ la, ha }};
+         return f128_eq( a, b ); 
+      }
+      int __netf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ la, ha }};
+         return !f128_eq( a, b ); 
+      }
+      int __getf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ la, ha }};
+         return !f128_lt( a, b ); 
+      }
+      int __gttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ la, ha }};
+         return !f128_lt( a, b ) && !f128_eq( a, b ); 
+      }
+      int __letf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ la, ha }};
+         return f128_le( a, b ); 
+      }
+      int __lttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ la, ha }};
+         return f128_lt( a, b ); 
+      }
+      int __cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ la, ha }};
+         if ( f128_lt( a, b ) )
+            return -1;
+         if ( f128_eq( a, b ) )
+            return 0;
+         return 1;
+      }
+      int __unordtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+         float128_t a = {{ la, ha }};
+         float128_t b = {{ la, ha }};
+         if ( f128_isSignalingNaN( a ) || f128_isSignalingNaN( b ) )
+            return 1;
+         return 0;
+      }
+      float64_t __floatsidf( int32_t i ) {
+         edump((i)( "warning returning float64") );
+         return i32_to_f64(i);
+      }
+      void __floatsitf( float128_t& ret, int32_t i ) {
+         ret = i32_to_f128(i); /// TODO: should be 128
+      }
+      void __floatunsitf( float128_t& ret, uint32_t i ) {
+         ret = ui32_to_f128(i); /// TODO: should be 128
+      }
+      /*
+      float128_t __floatsit( int32_t i ) {
+         return i32_to_f128(i);
+      }
+      */
+      void __extendsftf2( float128_t& ret, uint32_t f ) { 
+         float32_t in = { f };
+         ret = f32_to_f128( in ); 
+      }
+      void __extenddftf2( float128_t& ret, float64_t in ) { 
+         edump(("warning in flaot64..." ));
+//         float64_t in = { f };
+         ret = f64_to_f128( in ); 
+      }
+      int64_t __fixtfdi( uint64_t l, uint64_t h ) { 
+         float128_t f = {{ l, h }};
+         return f128_to_i64( f, 0, false ); 
+      } 
+      int32_t __fixtfsi( uint64_t l, uint64_t h ) { 
+         float128_t f = {{ l, h }};
+         return f128_to_i32( f, 0, false ); 
+      } 
+      uint64_t __fixunstfdi( uint64_t l, uint64_t h ) { 
+         float128_t f = {{ l, h }};
+         return f128_to_ui64( f, 0, false ); 
+      } 
+      uint32_t __fixunstfsi( uint64_t l, uint64_t h ) { 
+         float128_t f = {{ l, h }};
+         return f128_to_ui32( f, 0, false ); 
+      } 
+      uint64_t __trunctfdf2( uint64_t l, uint64_t h ) { 
+         float128_t f = {{ l, h }};
+         return f128_to_f64( f ).v; 
+      } 
+      uint32_t __trunctfsf2( uint64_t l, uint64_t h ) { 
+         float128_t f = {{ l, h }};
+         return f128_to_f32( f ).v; 
+      } 
 
       static constexpr uint32_t SHIFT_WIDTH = (sizeof(uint64_t)*8)-1;
 };
 
 class math_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
-
+      math_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       void diveq_i128(unsigned __int128* self, const unsigned __int128* other) {
          fc::uint128_t s(*self);
@@ -1305,6 +1435,28 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__modti3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
    (__umodti3,     void(int, int64_t, int64_t, int64_t, int64_t)  )
    (__multi3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__addtf3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__subtf3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__multf3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__divtf3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
+   (__eqtf2,       int(int64_t, int64_t, int64_t, int64_t)        )
+   (__netf2,       int(int64_t, int64_t, int64_t, int64_t)        )
+   (__getf2,       int(int64_t, int64_t, int64_t, int64_t)        )
+   (__gttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
+   (__lttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
+   (__cmptf2,      int(int64_t, int64_t, int64_t, int64_t)        )
+   (__unordtf2,    int(int64_t, int64_t, int64_t, int64_t)        )
+   (__floatsitf,   void (int, int)                                )
+   (__floatunsitf, void (int, int)                                )
+   (__floatsidf,   float64_t(int)                                 )
+   (__extendsftf2, void(int, int)                                 )      
+   (__extenddftf2, void(int, float64_t)                           )      
+   (__fixtfdi,     int64_t(int64_t, int64_t)                      )
+   (__fixtfsi,     int(int64_t, int64_t)                          )
+   (__fixunstfdi,  int64_t(int64_t, int64_t)                      )
+   (__fixunstfsi,  int(int64_t, int64_t)                          )
+   (__trunctfdf2,  int64_t(int64_t, int64_t)                      )
+   (__trunctfsf2,  int(int64_t, int64_t)                          )
 );
 
 REGISTER_INTRINSICS(privileged_api,
@@ -1365,6 +1517,7 @@ REGISTER_INTRINSICS( database_api,
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
    DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
+   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_double)
 );
 
 REGISTER_INTRINSICS(crypto_api,
@@ -1391,8 +1544,8 @@ REGISTER_INTRINSICS(system_api,
 );
 
 REGISTER_INTRINSICS(action_api,
-   (read_action,            int(int, int)  )
-   (action_size,            int()          )
+   (read_action_data,       int(int, int)  )
+   (action_data_size,       int()          )
    (current_receiver,   int64_t()          )
    (publication_time,   int32_t()          )
    (current_sender,     int64_t()          )
@@ -1403,15 +1556,18 @@ REGISTER_INTRINSICS(apply_context,
    (require_read_lock,     void(int64_t, int64_t) )
    (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&)const)
+   (has_authorization,     int(int64_t), "has_auth", bool(apply_context::*)(const account_name&)const)
    (is_account,            int(int64_t)           )
 );
 
 REGISTER_INTRINSICS(console_api,
    (prints,                void(int)       )
    (prints_l,              void(int, int)  )
+   (printui,               void(int64_t)   )
    (printi,                void(int64_t)   )
    (printi128,             void(int)       )
-   (printd,                void(int64_t)   )
+   (printd,                void(float64_t) )
+   (printdi,               void(int64_t)   )
    (printn,                void(int64_t)   )
    (printhex,              void(int, int)  )
 );

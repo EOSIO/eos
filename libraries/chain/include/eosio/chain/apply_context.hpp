@@ -455,6 +455,7 @@ class apply_context {
        idx64(*this),
        idx128(*this),
        idx256(*this),
+       idx_double(*this),
        recurse_depth(depth)
        {}
 
@@ -510,6 +511,7 @@ class apply_context {
        * @throws tx_missing_auth If no sufficient permission was found
        */
       void require_authorization(const account_name& account)const;
+      bool has_authorization(const account_name& account)const;
       void require_authorization(const account_name& account, const permission_name& permission)const;
       void require_write_lock(const scope_name& scope);
       void require_read_lock(const account_name& account, const scope_name& scope);
@@ -597,6 +599,7 @@ class apply_context {
       generic_index<contracts::index64_object>    idx64;
       generic_index<contracts::index128_object>   idx128;
       generic_index<contracts::index256_object, uint128_t*, const uint128_t*>   idx256;
+      generic_index<contracts::index_double_object> idx_double;
 
       uint32_t                                    recurse_depth;  // how deep inline actions can recurse
 

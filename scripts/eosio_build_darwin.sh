@@ -98,10 +98,15 @@
 			printf "\tChecking $pkg ... "
 			BIN=$(which $pkg)
 			if [ $? -eq 0 ]; then
-				 printf "\t$pkg found\n"
-				continue
+			
+				if [ $pkg == "libtool" ] && [ $BIN == /usr/bin/libtool ]; then
+					donothing=true
+				else
+					printf "\t$pkg found\n"
+					continue
+				fi
 			fi
-		
+			
 			LIB=$( ls -l /usr/local/lib/lib${pkg}* 2>/dev/null | wc -l)
 			if [ ${LIB} -ne 0 ]; then
 				 printf "\t$pkg found\n"
@@ -117,9 +122,9 @@
 					pkg="llvm@4"
 				fi
 
-				if [ $pkg = "openssl" ]; then
-					pkg="openssl@1.0"
-				fi
+# 				if [ $pkg = "openssl" ]; then
+# 					pkg="openssl@1.0"
+# 				fi
 
 				if [ $pkg = "gettext" ]; then
 					PERMISSION_GETTEXT=1
@@ -139,16 +144,15 @@
 			select yn in "Yes" "No"; do
 				case $yn in
 					[Yy]* ) 
-					if [ $PERMISSION_GETTEXT -eq 1 ]; then
-						sudo chown -R $(whoami) /usr/local/share
-					fi
-
-					$XCODESELECT --install 2>/dev/null;
-					printf "\tUpdating Home Brew.\n"
-					brew update
-					printf "\tInstalling Dependencies.\n"
-					brew install --force $DEP
-					brew unlink $DEP && brew link --force $DEP
+						if [ $PERMISSION_GETTEXT -eq 1 ]; then
+							sudo chown -R $(whoami) /usr/local/share
+						fi
+						$XCODESELECT --install 2>/dev/null;
+						printf "\tUpdating Home Brew.\n"
+						brew update
+						printf "\tInstalling Dependencies.\n"
+						brew install --force $DEP
+						brew unlink $DEP && brew link --force $DEP
 					break;;
 					[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
 					* ) echo "Please type 1 for yes or 2 for no.";;
@@ -225,7 +229,7 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		cd ..
+		cd
 		rm -rf ${TEMP_DIR}/mongo-cxx-driver
 	else
 		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx.dylib.\n"
@@ -250,35 +254,12 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		sudo make -j${CPU_CORE} install
-		sudo rm -rf ${TEMP_DIR}/secp256k1-zkp
+		sudo make install
+		rm -rf ${TEMP_DIR}/secp256k1-zkp
 	else
 		printf "\tsecp256k1 found at /usr/local/lib/\n"
 	fi
-   
-   printf "\n\tChecking for SoftFloat\n"
-   if [ ! -d /usr/local/berkeley-softfloat-3 ]; then
-      # clone the library
-		cd ${TEMP_DIR}
-      mkdir softfloat
-      cd softfloat
-      git clone --depth 1 --single-branch --branch master https://github.com/ucb-bar/berkeley-softfloat-3.git
-      cd berkeley-softfloat-3/build/Linux-x86_64-GCC
-      make -j${CPU_CORE} SPECIALIZE_TYPE="8086-SSE" SOFTFLOAT_OPS="-DSOFTFLOAT_ROUND_EVEN -DINLINE_LEVEL=5 -DSOFTFLOAT_FAST_DIV32TO16 -DSOFTFLOAT_FAST_DIV64TO32"
-      if [ $? -ne 0 ]; then
-         printf "\tError compiling softfloat.\n"
-         printf "\tExiting now.\n\n"
-         exit;
-      fi
-      # no install target defined for this library
-      sudo mkdir -p /usr/local/berkeley-softfloat-3
-      sudo cp softfloat.a /usr/local/berkeley-softfloat-3/libsoftfloat.a
-      sudo mv ${TEMP_DIR}/softfloat/berkeley-softfloat-3/source/include /usr/local/berkeley-softfloat-3/include
-		sudo rm -rf ${TEMP_DIR}/softfloat
-	else
-		printf "\tsoftfloat found at /usr/local/berkeley-softfloat-3/\n"
-   fi
-
+  
 	printf "\n\tChecking for WASM\n"
 	if [ ! -d /usr/local/wasm/bin ]; then
 		# Build LLVM and clang for WASM:
