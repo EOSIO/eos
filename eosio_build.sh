@@ -86,8 +86,8 @@
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
-				BUILD_MONGO_DB_PLUGIN=false
-				MONGOD_CONF=""
+				BUILD_MONGO_DB_PLUGIN=true
+				MONGOD_CONF=/etc/mongod.conf
 			;;
 			"Linux Mint")
 				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
