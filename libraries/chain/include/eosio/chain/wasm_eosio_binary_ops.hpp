@@ -24,7 +24,7 @@ namespace eosio { namespace chain { namespace wasm_ops {
 // forward declaration
 struct instr;
 using namespace fc;
-using wasm_op_ptr	  = std::unique_ptr<instr>;
+using wasm_op_ptr   = std::unique_ptr<instr>;
 using wasm_instr_ptr      = std::shared_ptr<instr>;
 using wasm_return_t       = std::vector<uint8_t>; 
 using wasm_instr_callback = std::function<std::vector<wasm_instr_ptr>(uint8_t)>;
@@ -653,47 +653,47 @@ using namespace IR;
 template <class Op_Types>
 struct EOSIO_OperatorDecoderStream
 {
-	EOSIO_OperatorDecoderStream(const std::vector<U8>& codeBytes)
-	: start(codeBytes.data()), nextByte(codeBytes.data()), end(codeBytes.data()+codeBytes.size()) {}
+   EOSIO_OperatorDecoderStream(const std::vector<U8>& codeBytes)
+   : start(codeBytes.data()), nextByte(codeBytes.data()), end(codeBytes.data()+codeBytes.size()) {}
 
-	operator bool() const { return nextByte < end; }
+   operator bool() const { return nextByte < end; }
 
-	instr* decodeOp() {
-		assert(nextByte + sizeof(IR::Opcode) <= end);
-      IR::Opcode opcode = *(IR::Opcode*)nextByte;
-		switch(opcode)
-		{
-		#define VISIT_OPCODE(opcode,name,nameString,Imm,...) \
+   instr* decodeOp() {
+      assert(nextByte + sizeof(IR::Opcode) <= end);
+      IR::Opcode opcode = *(IR::Opcode*)nextByte;  
+      switch(opcode)
+      {
+      #define VISIT_OPCODE(opcode,name,nameString,Imm,...) \
          case IR::Opcode::name: \
-			{ \
-				assert(nextByte + sizeof(IR::OpcodeAndImm<IR::Imm>) <= end); \
-				IR::OpcodeAndImm<IR::Imm>* encodedOperator = (IR::OpcodeAndImm<IR::Imm>*)nextByte; \
-				nextByte += sizeof(IR::OpcodeAndImm<IR::Imm>); \
+         { \
+            assert(nextByte + sizeof(IR::OpcodeAndImm<IR::Imm>) <= end); \
+            IR::OpcodeAndImm<IR::Imm>* encodedOperator = (IR::OpcodeAndImm<IR::Imm>*)nextByte; \
+            nextByte += sizeof(IR::OpcodeAndImm<IR::Imm>); \
             auto op = _cached_ops->at(BOOST_PP_CAT(name, _code)); \
             op->unpack( reinterpret_cast<char*>(&(encodedOperator->imm)) ); \
-				return op;  \
-			}
-		ENUM_OPERATORS(VISIT_OPCODE)
-		#undef VISIT_OPCODE
-		default:
-			nextByte += sizeof(IR::Opcode);
-			return _cached_ops->at(error_code); 
-		}
-	}
+            return op;  \
+         }
+      ENUM_OPERATORS(VISIT_OPCODE)
+      #undef VISIT_OPCODE
+      default:
+         nextByte += sizeof(IR::Opcode);
+         return _cached_ops->at(error_code); 
+      }
+   }
 
-	instr* decodeOpWithoutConsume() {
-		const U8* savedNextByte = nextByte;
-		instr* result = decodeOp();
-		nextByte = savedNextByte;
-		return result;
-	}
+   instr* decodeOpWithoutConsume() {
+      const U8* savedNextByte = nextByte;
+      instr* result = decodeOp();
+      nextByte = savedNextByte;
+      return result;
+   }
    inline uint32_t index() { return nextByte - start; }
 private:
    // cached ops to take the address of 
    static const std::vector<instr*>* _cached_ops;
    const U8* start;
-	const U8* nextByte;
-	const U8* end;
+   const U8* nextByte;
+   const U8* end;
 };
 
 template <class Op_Types>
