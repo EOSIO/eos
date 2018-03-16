@@ -2,7 +2,7 @@
 
 import testUtils
 import p2p_test_peers
-import impaird_network
+import impaired_network
 import lossy_network
 import p2p_stress
 
@@ -11,6 +11,7 @@ import decimal
 import argparse
 import random
 import re
+import time
 
 Remote = p2p_test_peers.P2PTestPeers
 
@@ -22,7 +23,6 @@ DEFAULT_HOST=hosts[0]
 DEFAULT_PORT=ports[0]
 
 parser = argparse.ArgumentParser(add_help=False)
-walletMgr=testUtils.WalletMgr(True)
 Print=testUtils.Utils.Print
 errorExit=testUtils.Utils.errorExit
 
@@ -34,9 +34,12 @@ parser.add_argument("--inita_prvt_key", type=str, help="Inita private key.",
                     default=testUtils.Cluster.initaAccount.ownerPrivateKey)
 parser.add_argument("--initb_prvt_key", type=str, help="Initb private key.",
                     default=testUtils.Cluster.initbAccount.ownerPrivateKey)
+parser.add_argument("--wallet_host", type=str, help="wallet host", default="localhost")
+parser.add_argument("--wallet_port", type=int, help="wallet port", default=8899)
 parser.add_argument("--impaired_network", help="test impaired network", action='store_true')
 parser.add_argument("--lossy_network", help="test lossy network", action='store_true')
 parser.add_argument("--stress_network", help="test load/stress network", action='store_true')
+parser.add_argument("--not_kill_wallet", help="not killing walletd", action='store_true')
 
 args = parser.parse_args()
 testOutputFile=args.output
@@ -44,21 +47,23 @@ enableMongo=False
 initaPrvtKey=args.inita_prvt_key
 initbPrvtKey=args.initb_prvt_key
 
-if args.impaired_network is True:
-    module = impaird_network.ImpairedNetwork()
-elif args.lossy_network is True:
+walletMgr=testUtils.WalletMgr(True, port=args.wallet_port, host=args.wallet_host)
+
+if args.impaired_network:
+    module = impaired_network.ImpairedNetwork()
+elif args.lossy_network:
     module = lossy_network.LossyNetwork()
-elif args.stress_network is True:
+elif args.stress_network:
     module = p2p_stress.StressNetwork()
 else:
-    errorExit("one of impaird_network & lossy_network must be set. Please also check peer configs in p2p_test_peers.py.")
+    errorExit("one of impaired_network, lossy_network or stress_network must be set. Please also check peer configs in p2p_test_peers.py.")
 
-cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, initaPrvtKey=initaPrvtKey, initbPrvtKey=initbPrvtKey)
+cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, initaPrvtKey=initaPrvtKey, initbPrvtKey=initbPrvtKey, walletHost=args.wallet_host, walletPort=args.wallet_port)
 
 print("BEGIN")
 print("TEST_OUTPUT: %s" % (testOutputFile))
 
-print("list of hosts:")
+print("number of hosts: %d, list of hosts:" % (len(hosts)))
 for i in range(len(hosts)):
     Print("%s:%d" % (hosts[i], ports[i]))
 
@@ -69,11 +74,13 @@ for i in range(len(hosts)):
     init_str=init_str+'{"host":"' + hosts[i] + '", "port":'+str(ports[i])+'}'
 init_str=init_str+']}'
 
-Print('init nodes with json str %s',(init_str))
+#Print('init nodes with json str %s',(init_str))
 cluster.initializeNodesFromJson(init_str);
 
-print('killing all wallets')
-walletMgr.killall()
+if args.not_kill_wallet == False:
+    print('killing all wallets')
+    walletMgr.killall()
+
 walletMgr.cleanup()
 
 print('creating account keys')
@@ -141,19 +148,51 @@ if node0 is None:
 eosio = copy.copy(initaAccount)
 eosio.name = "eosio"
 
+Print("Info of each node:")
+for i in range(len(hosts)):
+    node = cluster.getNode(0)
+    cmd="%s %s get info" % (testUtils.Utils.EosClientPath, node.endpointArgs)
+    trans = node.runCmdReturnJson(cmd)
+    Print("host %s: %s" % (hosts[i], trans))
+
+
+wastFile="contracts/eosio.system/eosio.system.wast"
+abiFile="contracts/eosio.system/eosio.system.abi"
+Print("\nPush system contract %s %s" % (wastFile, abiFile))
+trans=node0.publishContract(eosio.name, wastFile, abiFile, waitForTransBlock=True)
+if trans is None:
+    Utils.errorExit("Failed to publish eosio.system.")
+else:
+    Print("transaction id %s" % (node0.getTransId(trans)))
+
+time.sleep(3.0)
+
 try:
+
     maxIndex = module.maxIndex()
     for cmdInd in range(maxIndex):
-        transIdList = module.execute(cmdInd, node0, testeraAccount, eosio)
-        if len(transIdList) == 0:
-            errorExit("no transaction returned")
-        Print("got %d transaction(s)" % (len(transIdList)))
+        (transIdList, checkacct, expBal) = module.execute(cmdInd, node0, testeraAccount, eosio)
+
+        if len(transIdList) == 0 and len(checkacct) == 0:
+            errorExit("nothing returned")
+
+        time.sleep(3.0)
+
         for i in range(len(hosts)):
+            if len(checkacct) > 0:
+                actBal = cluster.getNode(i).getAccountBalance(checkacct)
+                if expBal == actBal:
+                    Print("acct balance verified in host %s" % (hosts[i]))
+                else:
+                    Print("acct balance check failed in host %s, expect %d actual %d" % (hosts[i], expBal, actBal))
+            okcount = 0
+            failedcount = 0
             for j in range(len(transIdList)):
-                trans = cluster.getNode(i).getTransaction(transIdList[j])
-            if trans is None:
-                errorExit("Failed to retrieve transId %s in host %s" % (transIdList[j], hosts[i]))
-        Print("%d transaction(s) verified in %d hosts" % (len(transIdList), len(hosts)))
+                if cluster.getNode(i).getTransaction(transIdList[j]) is None:
+                    failedcount = failedcount + 1
+                else:
+                    okcount = okcount + 1
+            Print("%d transaction(s) verified in host %s, %d transaction(s) failed" % (okcount, hosts[i], failedcount))
 finally:
     Print("\nfinally: restore everything")
     module.on_exit()
