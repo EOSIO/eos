@@ -38,9 +38,14 @@ namespace eosio { namespace testing {
             for( auto n : names ) create_account(n, config::system_account_name, multisig );
          }
 
-
+         void link_authority( account_name account, account_name code,  permission_name req, action_name type = "" );
+         void unlink_authority( account_name account, account_name code, action_name type = "" );
+         void set_authority( account_name account, permission_name perm, authority auth,
+                                     permission_name parent, const vector<permission_level>& auths, const vector<private_key_type>& keys );
          void set_authority( account_name account, permission_name perm, authority auth,
                                      permission_name parent = config::owner_name );
+         void delete_authority( account_name account, permission_name perm,  const vector<permission_level>& auths, const vector<private_key_type>& keys );
+         void delete_authority( account_name account, permission_name perm );
 
          void              create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
 
@@ -51,9 +56,19 @@ namespace eosio { namespace testing {
          transaction_trace transfer( account_name from, account_name to, asset amount, string memo, account_name currency );
          transaction_trace transfer( account_name from, account_name to, string amount, string memo, account_name currency );
 
+         template<typename ObjectType>
+         const auto& get(const chainbase::oid< ObjectType >& key) {
+            return control->get_database().get<ObjectType>(key);
+         }
+
          template<typename ObjectType, typename IndexBy, typename... Args>
          const auto& get( Args&&... args ) {
             return control->get_database().get<ObjectType,IndexBy>( forward<Args>(args)... );
+         }
+
+         template<typename ObjectType, typename IndexBy, typename... Args>
+         const auto* find( Args&&... args ) {
+            return control->get_database().find<ObjectType,IndexBy>( forward<Args>(args)... );
          }
 
          public_key_type   get_public_key( name keyname, string role = "owner" ) const;
