@@ -23,6 +23,13 @@ namespace eosio { namespace chain {
       checksum256_type                 block_mroot;
 
       account_name                  producer;
+
+      /** The producer schedule version that should validate this block, this is used to
+       * indicate that the prior block which included new_producers->version has been marked
+       * irreversible and that it the new producer schedule takes effect this block.
+       */
+      uint32_t                      schedule_version = 0;
+
       /**
        * The changes in the round of producers after this block
        *
@@ -161,7 +168,7 @@ namespace eosio { namespace chain {
 
 FC_REFLECT(eosio::chain::block_header, (previous)(timestamp)
            (transaction_mroot)(action_mroot)(block_mroot)
-           (producer)(new_producers))
+           (producer)(schedule_version)(new_producers))
 
 FC_REFLECT_DERIVED(eosio::chain::signed_block_header, (eosio::chain::block_header), (producer_signature))
 FC_REFLECT( eosio::chain::shard_lock, (account)(scope))

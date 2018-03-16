@@ -495,7 +495,9 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
          auto latest_producer_schedule = _calculate_producer_schedule();
          if( latest_producer_schedule != _head_producer_schedule() )
             _pending_block->new_producers = latest_producer_schedule;
+
       }
+      _pending_block->schedule_version = get_global_properties().active_producers.version;
 
       if( !(skip & skip_producer_signature) )
          _pending_block->sign( block_signing_key );
@@ -888,6 +890,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
            ("bi", config::block_interval_ms)("t", (time_point(next_block.timestamp) - head_block_time()).count() / 1000));
    }
 
+
    if( !is_start_of_round( next_block.block_num() ) )  {
       EOS_ASSERT(!next_block.new_producers, block_validate_exception,
                  "Producer changes may only occur at the end of a round.");
@@ -906,7 +909,8 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
                  ("block producer",next_block.producer)("scheduled producer",producer.owner));
    }
 
-
+   EOS_ASSERT( next_block.schedule_version == get_global_properties().active_producers.version, block_validate_exception, "wrong producer schedule version specified" );
+      
    return producer;
 }
 
