@@ -46,7 +46,7 @@ struct signature {
 };
 
 struct checksum256 {
-   uint8_t hash[32];
+   uint64_t hash[4];
 };
 
 struct checksum160 {

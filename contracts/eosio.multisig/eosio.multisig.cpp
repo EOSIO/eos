@@ -1,12 +1,18 @@
-#include <eosio.multisig/multisig.hpp>
+#include <eosio.multisig/eosio.multisig.hpp>
+#include <eosiolib/crypto.h>
+#include <eosiolib/transaction.hpp>
+#include <eosiolib/action.hpp>
 
 namespace eosio {
 
-   flat_set<permission_level> proposal::get_grants()const {
-      return unpack<flat_set<permission_level>>( grants );
+   flat_set<permission_level> multisig::proposal::get_grants()const {
+      datastream<const char*> ds( grants.data(), grants.size() );
+      flat_set<permission_level> result;
+      ds >> result;
+      return result;
    }
 
-   void proposal::set_grants( const flat_set& grant ) {
+   void multisig::proposal::set_grants( const flat_set<permission_level>& grant ) {
       datastream<char*> ds( grants.data(), grants.size() );
       ds << grant;
    }
@@ -24,7 +30,7 @@ namespace eosio {
 
      proposals table( _this_contract, p.proposer );
      table.emplace( p.proposer, [&]( auto& newprop ) {
-        newprop.id              = hash[0];
+        newprop.id              = hash.hash[0];
         newprop.proposer        = p.proposer;
         newprop.packedtrx       = move(p.packedtrx);
         newprop.effective_after = p.effective_after;
@@ -38,7 +44,9 @@ namespace eosio {
       const auto& prop = table.get( p.proposalid );
       table.modify( prop, 0, [&]( auto& pr ) {
         auto g = pr.get_grants();
-        g.erase( prop );
+        auto itr = g.find( p.perm  );
+        eosio_assert( itr != g.end(), "unknown permission" );
+        g.erase( itr );
         pr.set_grants( g );
       });
    }
@@ -50,7 +58,7 @@ namespace eosio {
      const auto& prop = table.get( p.proposalid );
      auto g = prop.get_grants();
      table.modify( prop, 0, [&]( auto& pr ) {
-       g.insert( prop );
+       g.insert( p.perm );
        pr.set_grants( g );
      });
    }
@@ -68,35 +76,46 @@ namespace eosio {
    }
 
    void multisig::on( const exec& e ) {
-     require_auth( p.proposer );
-     proposals table( _this_contract, p.proposer );
+     proposals table( _this_contract, e.proposer );
+     const auto& prop = table.get( e.proposalid );
 
-     const auto& prop = table.get( p.proposalid );
+     eosio_assert( !prop.pending_trx_id, "transaction already dispatched" );
+
+     eosio_assert( check_trx_permission( prop.packedtrx.data(), prop.packedtrx.size(), 
+                                         0, 0, 
+                                         prop.grants.data(), prop.grants.size() ), "insufficient authority granted" );
+
+     send_deferred( (uint32_t)prop.id, 
+                    prop.effective_after, 
+                    prop.packedtrx.data(), 
+                    prop.packedtrx.size() );
+
      table.modify( prop, 0, [&]( auto& pr ) {
-        
+        pr.pending_trx_id = (uint32_t)prop.id;
      });
-
-     send_deferred_with_permission( prop.proposalid, 
-                                    prop.effective_after, 
-                                    prop.packedtrx.data(), 
-                                    prop.packedtrx.size(),
-                                    prop.grants.data(), prop.grants.size() );
    }
 
-   bool apply( account_name code, action_name act ) {
+   bool multisig::apply( account_name code, action_name act ) {
       if( code == _this_contract ) {
          if( act == N(propose) ) {
-            on( unpack_action<propose>() );
+            on( unpack_action_data<propose>() );
          } else if( act == N(reject) ) {
-            on( unpack_action<reject>() );
+            on( unpack_action_data<reject>() );
          } else if( act == N(accept) ) {
-            on( unpack_action<accept>() );
+            on( unpack_action_data<accept>() );
          } else if( act == N(cancel) ) {
-            on( unpack_action<cancel>() );
+            on( unpack_action_data<cancel>() );
+         } else if( act == N(exec) ) {
+            on( unpack_action_data<exec>() );
          }
       }
       return false;
    }
 
+} /// namespace eosio
 
+extern "C" {
+   void apply( account_name code, action_name act ) {
+      eosio::multisig(current_receiver()).apply( code, act );
+   }
 }

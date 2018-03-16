@@ -1,0 +1,163 @@
+{
+  "types": [{
+      "new_type_name": "account_name",
+      "type": "name"
+    }
+  ],
+  "structs": [
+    {
+      "name": "extended_symbol",
+      "base": "",
+      "fields": [
+        {"name":"sym",      "type":"symbol"},
+        {"name":"contract", "type":"account_name"}
+      ]
+    },
+    {
+      "name": "extended_asset",
+      "base": "",
+      "fields": [
+        {"name":"quantity", "type":"asset"},
+        {"name":"contract", "type":"account_name"}
+      ]
+    },
+    {
+      "name": "upmargin",
+      "base": "",
+      "fields": [
+        {"name":"borrower",         "type":"account_name"},
+        {"name":"market",           "type":"symbol"},
+        {"name":"delta_borrow",     "type":"extended_asset"},
+        {"name":"delta_collateral", "type":"extended_asset"}
+      ]
+    },
+    {
+      "name": "covermargin",
+      "base": "",
+      "fields": [
+        {"name":"borrower",         "type":"account_name"},
+        {"name":"market",           "type":"symbol"},
+        {"name":"cover_amount",     "type":"extended_asset"}
+      ]
+    },
+    {
+      "name": "lend",
+      "base": "",
+      "fields": [
+        {"name":"lender", "type":"account_name"},
+        {"name":"market", "type":"symbol"},
+        {"name":"quantity", "type":"extended_asset"}
+      ]
+    },
+    {
+      "name": "unlend",
+      "base": "",
+      "fields": [
+        {"name":"lender", "type":"account_name"},
+        {"name":"market", "type":"symbol"},
+        {"name":"interest_shares", "type":"float64"},
+        {"name":"interest_symbol", "type":"extended_symbol"}
+      ]
+    },
+    {
+      "name": "trade",
+      "base": "",
+      "fields": [
+        {"name":"seller", "type":"account_name"},
+        {"name":"market", "type":"symbol"},
+        {"name":"sell", "type":"extended_asset"},
+        {"name":"min_receive", "type":"extended_asset"},
+        {"name":"expire", "type":"uint32"},
+        {"name":"fill_or_kill", "type":"uint8"}
+      ]
+    },
+    {
+      "name": "createx",
+      "base": "",
+      "fields": [
+        {"name":"creator", "type":"account_name"},
+        {"name":"initial_supply", "type":"asset"},
+        {"name":"fee", "type":"uint32"},
+        {"name":"base_deposit", "type":"extended_asset"},
+        {"name":"quote_deposit", "type":"extended_asset"}
+      ]
+    },
+    {
+      "name": "transfer",
+      "base": "",
+      "fields": [
+        {"name":"from", "type":"account_name"},
+        {"name":"to", "type":"account_name"},
+        {"name":"quantity", "type":"asset"},
+        {"name":"memo", "type":"string"}
+      ]
+    },
+    {
+      "name": "deposit",
+      "base": "",
+      "fields": [
+        {"name":"from", "type":"account_name"},
+        {"name":"quantity", "type":"extended_asset"}
+      ]
+    },
+    {
+     "name": "create",
+     "base": "",
+     "fields": [
+        {"name":"issuer", "type":"account_name"},
+        {"name":"maximum_supply", "type":"asset"},
+        {"name":"can_freeze", "type":"uint8"},
+        {"name":"can_recall", "type":"uint8"},
+        {"name":"can_whitelist", "type":"uint8"}
+     ]
+  },{
+     "name": "issue",
+     "base": "",
+     "fields": [
+        {"name":"to", "type":"account_name"},
+        {"name":"quantity", "type":"asset"},
+        {"name":"memo", "type":"string"}
+     ]
+  },{
+      "name": "account",
+      "base": "",
+      "fields": [
+        {"name":"currency", "type":"uint64"},
+        {"name":"balance", "type":"uint64"}
+      ]
+    },{
+      "name": "currency_stats",
+      "base": "",
+      "fields": [
+        {"name":"currency", "type":"uint64"},
+        {"name":"supply", "type":"uint64"}
+      ]
+    }
+  ],
+  "actions": [
+    { "name": "deposit", "type": "deposit" },
+    { "name": "transfer", "type": "transfer" },
+    { "name": "trade", "type": "trade" },
+    { "name": "createx", "type": "createx" },
+    { "name": "issue", "type": "issue" },
+    { "name": "lend", "type": "lend" },
+    { "name": "unlend", "type": "unlend" },
+    { "name": "upmargin", "type": "upmargin" },
+    { "name": "covermargin", "type": "covermargin" },
+    { "name": "create", "type": "create" }
+  ],
+  "tables": [{
+      "name": "account",
+      "type": "account",
+      "index_type": "i64",
+      "key_names" : ["currency"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "stat",
+      "type": "currency_stats",
+      "index_type": "i64",
+      "key_names" : ["currency"],
+      "key_types" : ["uint64"]
+    }
+  ]
+}

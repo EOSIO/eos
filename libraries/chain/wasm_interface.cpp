@@ -1084,15 +1084,22 @@ class transaction_api : public context_aware_api {
          fc::raw::unpack<transaction>(data, data_len, trx);
 
          flat_set<permission_level> grants;
-         flat_set<permission_level> publickeys;
+         flat_set<public_key_type> publickeys;
 
-         {datastream<const char*> ds(perms,perm_len);
-         fc::raw::unpack( ds, grants );}
+         if( perm_len ) {
+            {datastream<const char*> ds(perms,perm_len);
+            fc::raw::unpack( ds, grants );}
+         }
 
-         datastream<const char*> ds(pubkeys,perm_len);
-         fc::raw::unpack( ds, publickeys);
-         // controller.check_authorization(trx.actions, publickeys, false, grants );
-         return false;
+         if( pubkeys_len ) {
+            datastream<const char*> ds(pubkeys,pubkeys_len);
+            fc::raw::unpack( ds, publickeys);
+         }
+
+         try {
+            context.controller.check_authorization(trx.actions, publickeys, false, flat_set<account_name>(), grants );
+            return true;
+         } catch ( ... ) { return false; }
       }
 };
 

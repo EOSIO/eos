@@ -57,6 +57,7 @@ namespace detail {
          uint16_t                   recursion_depth_limit;
          vector<public_key_type>    signing_keys;
          flat_set<account_name>     _provided_auths; /// accounts which have authorized the transaction at owner level
+         flat_set<permission_level> _provided_levels; /// accounts which have authorized the transaction at owner level
          vector<bool>               _used_keys;
 
          struct weight_tally_visitor {
@@ -88,6 +89,10 @@ namespace detail {
             }
          };
 
+         bool has_permission_level( permission_level l )const {
+            return _provided_levels.find(l) != _provided_levels.end() || has_permission( l.actor );
+         }
+
          bool has_permission( account_name n )const {
             return _provided_auths.find(n) != _provided_auths.end();
          }
@@ -95,7 +100,8 @@ namespace detail {
       public:
          authority_checker( PermissionToAuthorityFunc permission_to_authority, 
                             uint16_t recursion_depth_limit, const flat_set<public_key_type>& signing_keys,
-                            flat_set<account_name> provided_auths = flat_set<account_name>() )
+                            flat_set<account_name> provided_auths = flat_set<account_name>(),
+                            flat_set<permission_level> provided_levels = flat_set<permission_level>() )
             : permission_to_authority(permission_to_authority),
               recursion_depth_limit(recursion_depth_limit),
               signing_keys(signing_keys.begin(), signing_keys.end()),
@@ -104,7 +110,7 @@ namespace detail {
          {}
 
          bool satisfied(const permission_level& permission, uint16_t depth = 0) {
-            return has_permission( permission.actor ) ||
+            return has_permission_level( permission ) ||
                    satisfied(permission_to_authority(permission), depth);
          }
 
@@ -152,8 +158,9 @@ namespace detail {
    auto make_auth_checker(PermissionToAuthorityFunc&& pta, 
                           uint16_t recursion_depth_limit, 
                           const flat_set<public_key_type>& signing_keys,
-                          const flat_set<account_name>& accounts = flat_set<account_name>() ) {
-      return authority_checker<PermissionToAuthorityFunc>(std::forward<PermissionToAuthorityFunc>(pta), recursion_depth_limit, signing_keys, accounts);
+                          const flat_set<account_name>& accounts = flat_set<account_name>(), 
+                          const flat_set<permission_level>& levels = flat_set<permission_level>() ) {
+      return authority_checker<PermissionToAuthorityFunc>(std::forward<PermissionToAuthorityFunc>(pta), recursion_depth_limit, signing_keys, accounts, levels);
    }
 
 } } // namespace eosio::chain
