@@ -81,26 +81,12 @@ namespace eosio { namespace chain { namespace contracts {
       built_in_types.emplace("int16",                     pack_unpack<int16_t>());
       built_in_types.emplace("int32",                     pack_unpack<int32_t>());
       built_in_types.emplace("int64",                     pack_unpack<int64_t>());
+      built_in_types.emplace("float64",                   pack_unpack<double>());
       built_in_types.emplace("name",                      pack_unpack<name>());
-      built_in_types.emplace("field",                     pack_unpack<field_def>());
-      built_in_types.emplace("struct_def",                pack_unpack<struct_def>());
-      built_in_types.emplace("fields",                    pack_unpack<vector<field_def>>());
       built_in_types.emplace("account_name",              pack_unpack<account_name>());
       built_in_types.emplace("permission_name",           pack_unpack<permission_name>());
       built_in_types.emplace("action_name",               pack_unpack<action_name>());
       built_in_types.emplace("scope_name",                pack_unpack<scope_name>());
-      built_in_types.emplace("permission_level",          pack_unpack<permission_level>());
-      built_in_types.emplace("action",                    pack_unpack<action>());
-      built_in_types.emplace("permission_level_weight",   pack_unpack<permission_level_weight>());
-      built_in_types.emplace("transaction",               pack_unpack<transaction>());
-      built_in_types.emplace("signed_transaction",        pack_unpack<signed_transaction>());
-      built_in_types.emplace("key_weight",                pack_unpack<key_weight>());
-      built_in_types.emplace("authority",                 pack_unpack<authority>());
-      built_in_types.emplace("chain_config",              pack_unpack<chain_config>());
-      built_in_types.emplace("type_def",                  pack_unpack<type_def>());
-      built_in_types.emplace("action_def",                pack_unpack<action_def>());
-      built_in_types.emplace("table_def",                 pack_unpack<table_def>());
-      built_in_types.emplace("abi_def",                   pack_unpack<abi_def>());
    }
 
    void abi_serializer::set_abi(const abi_def& abi) {

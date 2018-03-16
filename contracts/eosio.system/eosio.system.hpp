@@ -163,6 +163,9 @@ namespace eosiosystem {
             
             currency::inline_transfer(cr.owner, SystemAccount, rewards, "producer claiming rewards");
          }
+         
+         static void on( const finishundel& ) {            
+         }
 
          static void apply( account_name code, action_name act ) {
             if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
@@ -182,8 +185,7 @@ namespace eosiosystem {
                }
             }
 
-         } /// apply 
+         } /// apply
    };
 
-} /// eosiosystem 
-
+} /// eosiosystem

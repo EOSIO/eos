@@ -10,7 +10,10 @@
 #include <sstream>
 #include <numeric>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <boost/test/unit_test.hpp>
+#pragma GCC diagnostic pop
 #include <boost/iostreams/concepts.hpp>
 #include <boost/iostreams/stream_buffer.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -98,11 +101,18 @@ constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
 }
 
-string U64Str(uint64_t i)
+string I64Str(int64_t i)
 {
 	std::stringstream ss;
 	ss << i;
 	return ss.str();
+}
+
+string U64Str(uint64_t i)
+{
+   std::stringstream ss;
+   ss << i;
+   return ss.str();
 }
 
 string U128Str(unsigned __int128 i)
@@ -118,7 +128,7 @@ void CallFunction(tester& test, T ac, const vector<char>& data, const vector<acc
 
       auto pl = vector<permission_level>{{scope[0], config::active_name}};
       if (scope.size() > 1)
-         for (int i=1; i < scope.size(); i++)
+         for (unsigned int i=1; i < scope.size(); i++)
             pl.push_back({scope[i], config::active_name});
 
       action act(pl, ac);
@@ -309,7 +319,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
       auto tm = test_api_action<TEST_METHOD("test_action", "require_auth")>{};
       auto pl = a3a4;
       if (a3a4_scope.size() > 1)
-         for (int i=1; i < a3a4_scope.size(); i++)
+         for (unsigned int i=1; i < a3a4_scope.size(); i++)
             pl.push_back({a3a4_scope[i], config::active_name});
 
       action act(pl, tm);
@@ -460,20 +470,22 @@ BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, tester) { try {
  * transaction_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
-	produce_blocks(2);
-	create_account( N(testapi) );
-	produce_blocks(100);
-	set_code( N(testapi), test_api_wast );
-	produce_blocks(1);
+   produce_blocks(2);
+   create_account( N(testapi) );
+   produce_blocks(100);
+   set_code( N(testapi), test_api_wast );
+   produce_blocks(1);
 
    // test send_action
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_action", {});
 
    // test send_action_empty
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_empty", {});
+
+   // test send_action_large
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), fc::assert_exception,
          [](const fc::assert_exception& e) {
-            return expect_assert_message(e, "false: abort() called");
+            return expect_assert_message(e, "data_len < config::default_max_inline_action_size: inline action too big");
          }
       );
 
@@ -610,7 +622,7 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, tester) { try {
 	produce_blocks(100);
    auto& gpo = control->get_global_properties();
    std::vector<account_name> prods(gpo.active_producers.producers.size());
-   for ( int i=0; i < gpo.active_producers.producers.size(); i++ ) {
+   for ( unsigned int i=0; i < gpo.active_producers.producers.size(); i++ ) {
       prods[i] = gpo.active_producers.producers[i].producer_name;
    }
 
@@ -675,6 +687,7 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, tester) { try {
 	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test_part1", {});
 	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test_part2", {});
 	CALL_TEST_FUNCTION( *this, "test_multi_index", "idx256_general", {});
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx_double_general", {});
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
@@ -908,6 +921,12 @@ BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
 
 	// test printi
 	CAPTURE_AND_PRE_TEST_PRINT("test_printi");
+	BOOST_CHECK_EQUAL( captured.substr(0,1), I64Str(0) );
+	BOOST_CHECK_EQUAL( captured.substr(1,6), I64Str(556644) );
+	BOOST_CHECK_EQUAL( captured.substr(7, capture[3].size()), I64Str(-1) );
+
+	// test printui
+	CAPTURE_AND_PRE_TEST_PRINT("test_printui");
 	BOOST_CHECK_EQUAL( captured.substr(0,1), U64Str(0) );
 	BOOST_CHECK_EQUAL( captured.substr(1,6), U64Str(556644) );
 	BOOST_CHECK_EQUAL( captured.substr(7, capture[3].size()), U64Str(-1) ); // "18446744073709551615"

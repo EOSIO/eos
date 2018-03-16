@@ -40,64 +40,15 @@ namespace eosio {
          template<bool... bs>
          using all_true = std::is_same< bool_pack<bs..., true>, bool_pack<true, bs...> >;
 
-      public:
-
-         typedef uint128_t word_t;
-
-         static constexpr size_t num_words() { return (Size + sizeof(word_t) - 1) / sizeof(word_t); }
-         static constexpr size_t padded_bytes() { return num_words() * sizeof(word_t) - Size; }
-
-         /**
-         * @brief Default constructor to fixed_key object
-         *
-         * @details Default constructor to fixed_key object which initializes all bytes to zero
-         */
-         fixed_key() : _data() {}
-
-         /**
-         * @brief Constructor to fixed_key object from array of num_words() words
-         *
-         * @details Constructor to fixed_key object from array of num_words() words
-         * @param arr    data
-         */
-         fixed_key(const word_t (&arr)[num_words()])
+         template<typename Word, size_t NumWords>
+         static void set_from_word_sequence(const std::array<Word, NumWords>& arr, fixed_key<Size>& key)
          {
-           std::copy(arr, arr + num_words(), _data.begin());
-         }
-
-         /**
-         * @brief Constructor to fixed_key object from std::array of num_words() words
-         *
-         * @details Constructor to fixed_key object from std::array of num_words() words
-         * @param arr    data
-         */
-         fixed_key(const std::array<word_t, num_words()>& arr)
-         {
-           std::copy(arr.begin(), arr.end(), _data.begin());
-         }
-
-         template<typename FirstWord, typename... Rest>
-         static
-         fixed_key<Size>
-         make_from_word_sequence(typename std::enable_if<std::is_integral<FirstWord>::value &&
-                                                          !std::is_same<FirstWord, bool>::value &&
-                                                          sizeof(FirstWord) <= sizeof(word_t) &&
-                                                          all_true<(std::is_same<FirstWord, Rest>::value)...>::value,
-                                                         FirstWord>::type first_word,
-                                 Rest... rest)
-         {
-            static_assert( sizeof(word_t) == (sizeof(word_t)/sizeof(FirstWord)) * sizeof(FirstWord),
-                           "size of the backing word size is not divisble by the size of the words supplied as arguments" );
-            static_assert( sizeof(FirstWord) * (1 + sizeof...(Rest)) <= Size, "too many words supplied to fixed_key constructor" );
-
-            fixed_key<Size> key;
-
             auto itr = key._data.begin();
             word_t temp_word = 0;
-            const size_t sub_word_shift = 8 * sizeof(FirstWord);
-            const size_t num_sub_words = sizeof(word_t) / sizeof(FirstWord);
+            const size_t sub_word_shift = 8 * sizeof(Word);
+            const size_t num_sub_words = sizeof(word_t) / sizeof(Word);
             auto sub_words_left = num_sub_words;
-            for( auto&& w : { first_word, rest... } ) {
+            for( auto&& w : arr ) {
                if( sub_words_left > 1 ) {
                    temp_word |= static_cast<word_t>(w);
                    temp_word <<= sub_word_shift;
@@ -118,7 +69,62 @@ namespace eosio {
                   temp_word <<= 8 * (sub_words_left-1);
                *itr = temp_word;
             }
+         }
 
+      public:
+
+         typedef uint128_t word_t;
+
+         static constexpr size_t num_words() { return (Size + sizeof(word_t) - 1) / sizeof(word_t); }
+         static constexpr size_t padded_bytes() { return num_words() * sizeof(word_t) - Size; }
+
+         /**
+         * @brief Default constructor to fixed_key object
+         *
+         * @details Default constructor to fixed_key object which initializes all bytes to zero
+         */
+         fixed_key() : _data() {}
+
+         /**
+         * @brief Constructor to fixed_key object from std::array of num_words() words
+         *
+         * @details Constructor to fixed_key object from std::array of num_words() words
+         * @param arr    data
+         */
+         fixed_key(const std::array<word_t, num_words()>& arr)
+         {
+           std::copy(arr.begin(), arr.end(), _data.begin());
+         }
+
+         template<typename Word, size_t NumWords,
+                  typename Enable = typename std::enable_if<std::is_integral<Word>::value &&
+                                                             !std::is_same<Word, bool>::value &&
+                                                             sizeof(Word) < sizeof(word_t)>::type >
+         fixed_key(const std::array<Word, NumWords>& arr)
+         {
+            static_assert( sizeof(word_t) == (sizeof(word_t)/sizeof(Word)) * sizeof(Word),
+                           "size of the backing word size is not divisible by the size of the array element" );
+            static_assert( sizeof(Word) * NumWords <= Size, "too many words supplied to fixed_key constructor" );
+
+            set_from_word_sequence(arr, *this);
+         }
+
+         template<typename FirstWord, typename... Rest>
+         static
+         fixed_key<Size>
+         make_from_word_sequence(typename std::enable_if<std::is_integral<FirstWord>::value &&
+                                                          !std::is_same<FirstWord, bool>::value &&
+                                                          sizeof(FirstWord) <= sizeof(word_t) &&
+                                                          all_true<(std::is_same<FirstWord, Rest>::value)...>::value,
+                                                         FirstWord>::type first_word,
+                                 Rest... rest)
+         {
+            static_assert( sizeof(word_t) == (sizeof(word_t)/sizeof(FirstWord)) * sizeof(FirstWord),
+                           "size of the backing word size is not divisible by the size of the words supplied as arguments" );
+            static_assert( sizeof(FirstWord) * (1 + sizeof...(Rest)) <= Size, "too many words supplied to make_from_word_sequence" );
+
+            fixed_key<Size> key;
+            set_from_word_sequence(std::array<FirstWord, 1+sizeof...(Rest)>{{ first_word, rest... }}, key);
             return key;
          }
 

@@ -116,19 +116,6 @@ namespace eosio { namespace chain {
 
 
 
-
-
-
-
-
-
-
-
-         /**
-          * @brief Check whether the controller is currently applying a block or not
-          * @return True if the controller is now applying a block; false otherwise
-          */
-         bool is_applying_block()const { return _currently_applying_block; }
          bool is_start_of_round( block_num_type n )const;
          uint32_t blocks_per_round()const;
 
@@ -357,7 +344,7 @@ namespace eosio { namespace chain {
 
          /**
           * This method performs some consistency checks on a transaction.
-          * @thow transaction_exception if the transaction is invalid
+          * @throw transaction_exception if the transaction is invalid
           */
          template<typename T>
          void validate_transaction(const T& trx) const {

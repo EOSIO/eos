@@ -12,7 +12,10 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/program_options.hpp>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
 #include <boost/process/child.hpp>
+#pragma GCC diagnostic pop
 #include <boost/process/system.hpp>
 #include <boost/process/io.hpp>
 #include <boost/lexical_cast.hpp>
@@ -366,6 +369,7 @@ struct launcher_def {
                               const bf::path &destination);
   void write_config_file (tn_node_def &node);
   void write_logging_config_file (tn_node_def &node);
+  void write_genesis_file (tn_node_def &node);
   void make_ring ();
   void make_star ();
   void make_mesh ();
@@ -557,6 +561,7 @@ launcher_def::generate () {
     for (auto &node : network.nodes) {
       write_config_file(node.second);
       write_logging_config_file(node.second);
+      write_genesis_file(node.second);
     }
   }
   write_dot_file ();
@@ -758,6 +763,7 @@ launcher_def::deploy_config_files (tn_node_def &node) {
 
   bf::path source = stage / instance.data_dir / "config.ini";
   bf::path logging_source = stage / instance.data_dir / "logging.json";
+  bf::path genesis_source = stage / instance.data_dir / "genesis.json";
   if (host->is_local()) {
     bf::path dd = bf::path(host->eos_root_dir) / instance.data_dir;
     if (bf::exists (dd)) {
@@ -784,6 +790,7 @@ launcher_def::deploy_config_files (tn_node_def &node) {
            << " errno " << ec.value() << " " << strerror(ec.value()) << endl;
       exit (-1);
     }
+    bf::copy_file (genesis_source, dd / "genesis.json", bf::copy_option::overwrite_if_exists);
     bf::copy_file (logging_source, dd / "logging.json", bf::copy_option::overwrite_if_exists);
     bf::copy_file (source, dd / "config.ini", bf::copy_option::overwrite_if_exists);
   }
@@ -809,6 +816,16 @@ launcher_def::deploy_config_files (tn_node_def &node) {
     if (res != 0) {
       cerr << "unable to scp logging config file to host " << host->host_name << endl;
       exit(-1);
+    }
+
+    dpath = bf::path (host->eos_root_dir) / instance.data_dir / "genesis.json";
+
+    scp_cmd_line = compose_scp_command(*host, genesis_source, dpath);
+
+    res = boost::process::system (scp_cmd_line);
+    if (res != 0) {
+       cerr << "unable to scp genesis.json file to host " << host->host_name << endl;
+       exit(-1);
     }
   }
   return host;
@@ -904,7 +921,7 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
   bf::path filename;
   eosd_def &instance = *node.instance;
 
-  bf::path dd = stage/ instance.data_dir;
+  bf::path dd = stage / instance.data_dir;
   if (!bf::exists(dd)) {
     bf::create_directory(dd);
   }
@@ -931,6 +948,22 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
   auto str = fc::json::to_pretty_string( log_config, fc::json::stringify_large_ints_and_doubles );
   cfg.write( str.c_str(), str.size() );
   cfg.close();
+}
+
+void
+launcher_def::write_genesis_file(tn_node_def &node) {
+  bf::path filename;
+  eosd_def &instance = *node.instance;
+
+  bf::path dd = stage / instance.data_dir;
+  if (!bf::exists(dd)) {
+    bf::create_directory(dd);
+  }
+
+  filename = dd / "genesis.json";
+
+  bf::path genesis_source = bf::current_path() / "etc"/ "eosio" / "node_00" / "genesis.json";
+  bf::copy_file(genesis_source, filename, bf::copy_option::overwrite_if_exists);
 }
 
 void
@@ -1127,6 +1160,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   }
 
   eosdcmd += "--data-dir " + instance.data_dir;
+  eosdcmd += " --config-dir " + instance.data_dir;
   if (gts.length()) {
     eosdcmd += " --genesis-timestamp " + gts;
   }

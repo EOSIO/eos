@@ -62,7 +62,7 @@ struct TestModel3xi64_V2 : TestModel3xi64 {
 extern "C" {
   void my_memset(void *vptr, unsigned char val, unsigned int size) {
     char *ptr = (char *)vptr;
-    while(size--) { *(ptr++)=val; }
+    while(size--) { *(ptr++)=(char)val; }
   }
   uint32_t my_strlen(const char *str) {
      uint32_t len = 0;
@@ -187,7 +187,7 @@ void test_db::key_str_general() {
   const char* atr[]  = { "atr", "atr", "atr", "atr" };
   const char* ztr[]  = { "ztr", "ztr", "ztr", "ztr" };
 
-  uint32_t res=0;
+  int32_t res=0;
 
   //fill some data in contiguous tables
   for(int i=0; i < 4; ++i) {
@@ -214,46 +214,46 @@ void test_db::key_str_general() {
 
 
   res = load_str(current_receiver(), current_receiver(),  N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  eosio_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "load alice");
+  eosio_assert(uint32_t(res) == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, uint32_t(res)), "load alice");
 
   res = load_str(current_receiver(), current_receiver(),  N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
-  eosio_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "load bob");
+  eosio_assert(uint32_t(res) == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, uint32_t(res)), "load bob");
 
   res = load_str(current_receiver(), current_receiver(),  N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
-  eosio_assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "load carol");
+  eosio_assert(uint32_t(res) == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, uint32_t(res)), "load carol");
 
   res = load_str(current_receiver(), current_receiver(),  N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  eosio_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "load dave");
+  eosio_assert(uint32_t(res) == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, uint32_t(res)), "load dave");
 
   res = previous_str(current_receiver(), current_receiver(), N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  eosio_assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "back carol");
+  eosio_assert(uint32_t(res) == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, uint32_t(res)), "back carol");
 
   res = previous_str(current_receiver(), current_receiver(), N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
-  eosio_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "back dave");
+  eosio_assert(uint32_t(res) == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, uint32_t(res)), "back dave");
 
   res = previous_str(current_receiver(), current_receiver(), N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
-  eosio_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "back alice");
+  eosio_assert(uint32_t(res) == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, uint32_t(res)), "back alice");
 
   res = previous_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
   eosio_assert(res == 0, "no prev");
 
   res = next_str(current_receiver(), current_receiver(),  N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  eosio_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "next bob");
+  eosio_assert(uint32_t(res) == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, uint32_t(res)), "next bob");
 
   res = next_str(current_receiver(), current_receiver(),  N(str), (char *)keys[1], STRLEN(keys[1]), tmp, 64);
-  eosio_assert(res == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, res), "next carol");
+  eosio_assert(uint32_t(res) == STRLEN(vals[2]) && my_memcmp((void *)vals[2], (void *)tmp, uint32_t(res)), "next carol");
 
   res = next_str(current_receiver(), current_receiver(),  N(str), (char *)keys[2], STRLEN(keys[2]), tmp, 64);
-  eosio_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "next dave");
+  eosio_assert(uint32_t(res) == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, uint32_t(res)), "next dave");
 
   res = lower_bound_str(current_receiver(), current_receiver(), N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  eosio_assert(res == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, res), "lowerbound alice");
+  eosio_assert(uint32_t(res) == STRLEN(vals[0]) && my_memcmp((void *)vals[0], (void *)tmp, uint32_t(res)), "lowerbound alice");
 
   res = upper_bound_str(current_receiver(), current_receiver(),  N(str), (char *)keys[0], STRLEN(keys[0]), tmp, 64);
-  eosio_assert(res == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, res), "upperbound bob");
+  eosio_assert(uint32_t(res) == STRLEN(vals[1]) && my_memcmp((void *)vals[1], (void *)tmp, uint32_t(res)), "upperbound bob");
 
   res = lower_bound_str(current_receiver(), current_receiver(),  N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
-  eosio_assert(res == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, res), "upperbound dave");
+  eosio_assert(uint32_t(res) == STRLEN(vals[3]) && my_memcmp((void *)vals[3], (void *)tmp, uint32_t(res)), "upperbound dave");
 
   res = upper_bound_str(current_receiver(), current_receiver(),  N(str), (char *)keys[3], STRLEN(keys[3]), tmp, 64);
   eosio_assert(res == 0, "no upper_bound");
@@ -262,7 +262,7 @@ void test_db::key_str_general() {
   eosio_assert(res != 0, "store dave" );
 
   res = load_str(current_receiver(),  current_receiver(), N(str), (char*)keys[3], STRLEN(keys[3]), tmp, 64 );
-  eosio_assert(res == STRLEN(vals[2]) && my_memcmp((void*)vals[2], (void*)tmp, res), "load updated carol" );
+  eosio_assert(uint32_t(res) == STRLEN(vals[2]) && my_memcmp((void*)vals[2], (void*)tmp, uint32_t(res)), "load updated carol" );
 }
 
 #if 0
@@ -1564,12 +1564,12 @@ void test_db::primary_i64_general()
    {
       int itr = db_find_i64(current_receiver(), current_receiver(), table1, N(bob));
       eosio_assert(itr >= 0, "");
-      int buffer_len = 5;
+      uint32_t buffer_len = 5;
       char value[50];
       auto len = db_get_i64(itr, value, buffer_len);
       value[buffer_len] = '\0';
       std::string s(value);
-      eosio_assert(len == strlen("bob's info"), "primary_i64_general - db_get_i64");
+      eosio_assert(uint32_t(len) == strlen("bob's info"), "primary_i64_general - db_get_i64");
       eosio_assert(s == "bob's", "primary_i64_general - db_get_i64");
 
       buffer_len = 20;
@@ -1584,10 +1584,10 @@ void test_db::primary_i64_general()
       int itr = db_find_i64(current_receiver(), current_receiver(), table1, N(bob));
       eosio_assert(itr >= 0, "");
       const char* new_value = "bob's new info";
-      int new_value_len = strlen(new_value);
+      uint32_t new_value_len = strlen(new_value);
       db_update_i64(itr, current_receiver(), new_value, new_value_len);
       char ret_value[50];
-      auto len = db_get_i64(itr, ret_value, new_value_len);
+      db_get_i64(itr, ret_value, new_value_len);
       ret_value[new_value_len] = '\0';
       std::string sret(ret_value);
       eosio_assert(sret == "bob's new info", "primary_i64_general - db_update_i64");
@@ -1674,7 +1674,7 @@ void test_db::idx64_general()
                        {110, N(joe)}
    };
 
-   for (int i = 0; i < sizeof(records)/sizeof(records[0]); ++i) {
+   for (uint32_t i = 0; i < sizeof(records)/sizeof(records[0]); ++i) {
       db_idx64_store(current_receiver(), table, current_receiver(), records[i].ssn, &records[i].name);
    }
 
@@ -1818,7 +1818,7 @@ void test_db::idx64_upperbound()
    {
       secondary_type ub_sec = N(alice);
       uint64_t ub_prim = 0;
-      const uint64_t alice_ssn = 265, allyson_ssn = 650;
+      const uint64_t allyson_ssn = 650;
       int ub = db_idx64_upperbound(current_receiver(), current_receiver(), table, &ub_sec, &ub_prim);
       eosio_assert(ub_prim == allyson_ssn && ub_sec == N(allyson), "");
       eosio_assert(ub == db_idx64_find_primary(current_receiver(), current_receiver(), table, &ub_sec, allyson_ssn), err.c_str());
@@ -1834,7 +1834,6 @@ void test_db::idx64_upperbound()
    {
       secondary_type ub_sec = N(joe);
       uint64_t ub_prim = 0;
-      const uint64_t ssn = 110;
       int ub = db_idx64_upperbound(current_receiver(), current_receiver(), table, &ub_sec, &ub_prim);
       eosio_assert(ub_prim == 0 && ub_sec == N(joe), err.c_str());
       eosio_assert(ub < 0, err.c_str());

@@ -1,6 +1,6 @@
 #!/bin/bash
 ##########################################################################
-# This is EOS bootstrapper script for Linux and OS X.
+# This is the EOSIO automated install script for Linux and Mac OS.
 # This file was downloaded from https://github.com/EOSIO/eos
 #
 # Copyright (c) 2017, Respective Authors all rights reserved.
@@ -49,33 +49,59 @@
 	if [ $ARCH == "Linux" ]; then
 		
 		if [ ! -e /etc/os-release ]; then
-			printf "EOSIO currently supports Ubuntu, Red Hat & Fedora Linux only.\n"
-			printf "Please install on the latest version of one of these Linux distributions.\n"
-			printf "https://www.ubuntu.com/\n"
-			printf "https://start.fedoraproject.org/en/\n"
-			printf "Exiting now.\n"
+			printf "\n\tEOSIO currently supports Amazon, Centos, Fedora, Mint & Ubuntu Linux only.\n"
+			printf "\tPlease install on the latest version of one of these Linux distributions.\n"
+			printf "\thttps://aws.amazon.com/amazon-linux-ami/\n"
+			printf "\thttps://www.centos.org/\n"
+			printf "\thttps://start.fedoraproject.org/\n"
+			printf "\thttps://linuxmint.com/\n"
+			printf "\thttps://www.ubuntu.com/\n"
+			printf "\tExiting now.\n"
 			exit 1
 		fi
 	
 		OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
 	
 		case $OS_NAME in
-			"Ubuntu")
-				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
-				CXX_COMPILER=clang++-4.0
-				C_COMPILER=clang-4.0
+			"Amazon Linux AMI")
+				FILE=${WORK_DIR}/scripts/eosio_build_amazon.sh
+				export CMAKE=${HOME}/opt/cmake/bin/cmake
+				CXX_COMPILER=g++
+				C_COMPILER=gcc
+				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
+				BUILD_MONGO_DB_PLUGIN=false
+				MONGOD_CONF=""
+			;;
+			"CentOS Linux")
+				FILE=${WORK_DIR}/scripts/eosio_build_centos.sh
+				export CMAKE=${HOME}/opt/cmake/bin/cmake
+				CXX_COMPILER=g++
+				C_COMPILER=gcc
+				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
+				BUILD_MONGO_DB_PLUGIN=false
+				MONGOD_CONF=""
 			;;
 			"Fedora")
 				FILE=${WORK_DIR}/scripts/eosio_build_fedora.sh
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
-			;;
-			"Amazon Linux AMI")
-				FILE=${WORK_DIR}/scripts/eosio_build_amazon.sh
-				CMAKE=${HOME}/opt/cmake/bin/cmake
-				CXX_COMPILER=g++
-				C_COMPILER=gcc
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
+				BUILD_MONGO_DB_PLUGIN=false
+				MONGOD_CONF=""
+			;;
+			"Linux Mint")
+				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
+				CXX_COMPILER=clang++-4.0
+				C_COMPILER=clang-4.0
+				BUILD_MONGO_DB_PLUGIN=true
+				MONGOD_CONF=/etc/mongod.conf
+			;;
+			"Ubuntu")
+				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
+				CXX_COMPILER=clang++-4.0
+				C_COMPILER=clang-4.0
+				BUILD_MONGO_DB_PLUGIN=true
+				MONGOD_CONF=/etc/mongod.conf
 			;;
 			*)
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
@@ -85,7 +111,7 @@
 		export BOOST_ROOT=${HOME}/opt/boost_1_66_0
 		export OPENSSL_ROOT_DIR=/usr/include/openssl
 		export OPENSSL_LIBRARIES=/usr/include/openssl
-                export WASM_ROOT=${HOME}/opt/wasm
+		export WASM_ROOT=${HOME}/opt/wasm
 	
 	 . $FILE
 	
@@ -97,20 +123,18 @@
 		export WASM_ROOT=/usr/local/wasm
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
+		BUILD_MONGO_DB_PLUGIN=true
+		MONGOD_CONF=/usr/local/etc/mongod.conf
 
 	  . scripts/eosio_build_darwin.sh
 	fi
 
 	printf "\n\n>>>>>>>> ALL dependencies sucessfully found or installed . Installing EOS.IO\n\n"
 
-	# Debug flags
 	COMPILE_EOS=1
 	COMPILE_CONTRACTS=1
-
-	# Define default arguments.
 	CMAKE_BUILD_TYPE=RelWithDebugInfo
 
-	# Create the build dir
 	cd ${WORK_DIR}
 	mkdir -p ${BUILD_DIR}
 	cd ${BUILD_DIR}
@@ -119,11 +143,11 @@
 		CMAKE=$( which cmake )
 	fi
 	
-	# Build EOS
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
-  -DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
-  -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} \
+	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
+	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DBUILD_MONGO_DB_PLUGIN=${BUILD_MONGO_DB_PLUGIN} \
 	-DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} ..
+	
 	if [ $? -ne 0 ]; then
 		printf "\n\t>>>>>>>>>>>>>>>>>>>> CMAKE building EOSIO has exited with the above error.\n\n"
 		exit -1
@@ -136,4 +160,42 @@
 		exit -1
 	fi
 
-	printf "\n\t>>>>>>>>>>>>>>>>>>>> EOSIO has been successfully installed.\n\n"
+	printf "\n\t>>>>>>>>>>>>>>>>>>>> EOSIO has been successfully built.\n\n"
+
+	if [ $BUILD_MONGO_DB_PLUGIN == true ]; then
+		printf "\n\tChecking if MongoDB is running.\n"
+		MONGODB_PID=$( pgrep -x mongod )
+		if [ -z $MONGODB_PID ]; then
+			printf "\n\tStarting MongoDB.\n"
+			sudo mongod -f ${MONGOD_CONF} &
+			if [ $? -ne 0 ]; then
+				printf "\n\tUnable to start MongoDB.\nExiting now.\n\n"
+				exit -1
+			fi
+			printf "\n\tSuccessfully started MongoDB.\n"
+		else
+			printf "\n\tMongoDB is running PID=${MONGODB_PID}.\n"
+		fi
+	fi
+
+   if [ "x${EOSIO_BUILD_PACKAGE}" != "x" ]; then
+      # Build eos.io package
+      $CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
+      -DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
+      -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} \
+      -DCMAKE_INSTALL_PREFIX=/usr ..
+
+      if [ $? -ne 0 ]; then
+         printf "\n\t>>>>>>>>>>>>>>>>>>>> CMAKE building eos.io package has exited with the above error.\n\n"
+         exit -1
+      fi
+
+      make -j${CPU_CORE} VERBOSE=0 package
+
+      if [ $? -ne 0 ]; then
+         printf "\n\t>>>>>>>>>>>>>>>>>>>> MAKE building eos.io package has exited with the above error.\n\n"
+         exit -1
+      fi
+
+      printf "\n\t>>>>>>>>>>>>>>>>>>>> eos.io package has been successfully built.\n\n"
+   fi
