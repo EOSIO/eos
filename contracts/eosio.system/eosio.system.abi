@@ -92,7 +92,7 @@
          {"name":"max_inline_depth", "type":"uint16"},
          {"name":"max_inline_action_size", "type":"uint32"},
          {"name":"max_generated_transaction_size", "type":"uint32"},
-         {"name":"inflation_rate", "type":"uint32"},
+         {"name":"percent_of_max_inflation_rate", "type":"uint32"},
          {"name":"storage_reserve_ratio", "type":"uint32"}
       ]
     },{
@@ -100,16 +100,19 @@
       "base": "eosio_parameters",
       "fields": [
          {"name":"total_storage_bytes_reserved", "type":"uint64"},
-         {"name":"total_storage_stake", "type":"uint64"}
+         {"name":"total_storage_stake", "type":"uint64"},
+         {"name":"payment_per_block", "type":"uint64"}
       ]
     },{
       "name": "producer_info",
       "base": "",
       "fields": [
-         {"name":"owner",       "type":"uint64"},
-         {"name":"total_votes", "type":"uint128"},
-         {"name":"prefs",       "type":"eosio_parameters"},
-         {"name":"packed_key",  "type":"uint8[]"}
+         {"name":"owner",              "type":"uint64"},
+         {"name":"total_votes",        "type":"uint128"},
+         {"name":"prefs",              "type":"eosio_parameters"},
+         {"name":"packed_key",         "type":"uint8[]"},
+         {"name":"per_block_payments", "type":"uint64"},
+         {"name":"last_claim_time",    "type":"uint32"}
       ]
     },{
       "name": "regproducer",
@@ -149,6 +152,12 @@
         {"name":"deferred_trx_id",   "type":"uint32"},
         {"name":"last_unstake",      "type":"uint32"}
       ]
+    },{
+      "name": "claimrewards",
+      "base": "",
+      "fields": [
+        {"name":"owner",   "type":"account_name"}
+      ]
     }
   ],
   "actions": [{
@@ -172,6 +181,9 @@
     },{
       "name": "voteproducer",
       "type": "voteproducer"
+    },{
+      "name": "claimrewards",
+      "type": "claimrewards"
     }
   ],
   "tables": [
