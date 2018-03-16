@@ -198,7 +198,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::f32, ValueType::f32, ValueType::f32>( *(arg.module), u8"env", u8"f32_add", idx );
+         injector_utils::add_import<ResultType::f32, ValueType::f32, ValueType::f32>( *(arg.module), u8"env", u8"_eosio_f32_add", idx );
          wasm_ops::op_types<>::call_t f32add;
          f32add.field = idx;
          std::vector<U8> injected = f32add.pack();

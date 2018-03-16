@@ -201,7 +201,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
    BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
 
 } FC_LOG_AND_RETHROW() /// prove_mem_reset
-
+/*
 BOOST_FIXTURE_TEST_CASE( f32_add, tester ) try {
    produce_blocks(2);
 
@@ -226,7 +226,7 @@ BOOST_FIXTURE_TEST_CASE( f32_add, tester ) try {
    const auto& receipt = get_transaction_receipt(trx.id());
 
 } FC_LOG_AND_RETHROW()
-
+*/
 /**
  * Make sure WASM "start" method is used correctly
  */

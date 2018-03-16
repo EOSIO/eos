@@ -370,7 +370,8 @@ BOOST_FIXTURE_TEST_CASE(softfloat_tests, tester) { try {
 	produce_blocks(1);
 
    // test f32 operations 
-   CALL_TEST_FUNCTION( *this, "test_softfloat", "test_f32", {});
+   float values[] = { 0.3, 1.1, 1.4 };
+   CALL_TEST_FUNCTION( *this, "test_softfloat", "test_f32", fc::raw::pack( values ) );
 
 } FC_LOG_AND_RETHROW() }
 

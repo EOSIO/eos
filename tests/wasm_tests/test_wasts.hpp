@@ -1,7 +1,7 @@
 #pragma once
 
 // These are handcrafted or otherwise tricky to generate with our tool chain
-
+/*
 static const char f32_add_wast[] = R"=====(
 (module
  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
@@ -14,7 +14,7 @@ static const char f32_add_wast[] = R"=====(
   )
  )
 )=====";
-
+*/
 static const char entry_wast[] = R"=====(
 (module
  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))

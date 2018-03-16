@@ -556,28 +556,6 @@ struct instr_base : instr {
                    propagate_post_injection<Mutators...>::value>::accept( this, arg );
    } 
 };
-/*
-// construct the ops
-// special case for br_table
-template <typename ... Mutators>                                     
-struct br_table : instr_base<Mutators...> {
-   br_table() = default;
-   br_table( char* block ) {}
-   uint16_t code = br_table_code;
-   std::vector<uint32_t> targets;
-   uint32_t else_target;
-   uint16_t get_code() override { return br_table_code; }
-   int skip_ahead() override { return sizeof(code); }
-   // TODO fix this
-   void unpack( char* opcode ) override {
-      //uint8_t* code = (uint8_t*)(block.data() + sizeof(code));  // skip the opcode
-   }
-   std::vector<U8> pack() override {
-      return { U8(code), U8(code >> 8) };
-   }
-   std::string to_string() override { return "br_table"; }
-};
-*/
 
 // construct the instructions
 BOOST_PP_SEQ_FOR_EACH( CONSTRUCT_OP_HAS_DATA, voidtype,         BOOST_PP_SEQ_SUBSEQ( WASM_OP_SEQ, 0, 133 ) )
