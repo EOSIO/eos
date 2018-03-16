@@ -17,6 +17,7 @@
 #include <eosiolib/singleton.hpp>
 #include <eosiolib/transaction.hpp>
 
+#include <algorithm>
 #include <array>
 
 namespace eosiosystem {
@@ -285,16 +286,17 @@ namespace eosiosystem {
             eosio::producer_schedule schedule;
             schedule.producers.reserve(21);
             /*
+            print ("Producers: ");
             for (auto it = idx.begin(); it != idx.end(); ++it) {
-               print( it->total_votes, ", " );
+               print( it->owner, " (", it->total_votes, "), " );
             }
             print ("\n");
             */
-            auto it = idx.end();
-            if (it == idx.begin()) {
+            auto it = idx.begin();
+            if (it == idx.end()) {
                return;
             }
-            --it;
+            //++it;
             size_t n = 0;
             while ( n < 21 && 0 < it->total_votes ) {
                if ( it->active() ) {
@@ -325,16 +327,35 @@ namespace eosiosystem {
                   ++n;
                }
 
-               if (it == idx.begin()) {
+               ++it;
+               if (it == idx.end()) {
                   break;
                }
-               --it;
             }
             if ( n == 0 ) { //no active producers with votes > 0
                return;
             }
+            if ( 1 < n ) {
+               std::sort( target_block_size.begin(), target_block_size.begin()+n );
+               std::sort( max_block_size.begin(), max_block_size.begin()+n );
+               std::sort( target_block_acts_per_scope.begin(), target_block_acts_per_scope.begin()+n );
+               std::sort( max_block_acts_per_scope.begin(), max_block_acts_per_scope.begin()+n );
+               std::sort( target_block_acts.begin(), target_block_acts.begin()+n );
+               std::sort( max_block_acts.begin(), max_block_acts.begin()+n );
+               std::sort( max_storage_size.begin(), max_storage_size.begin()+n );
+               std::sort( max_transaction_lifetime.begin(), max_transaction_lifetime.begin()+n );
+               std::sort( max_transaction_exec_time.begin(), max_transaction_exec_time.begin()+n );
+               std::sort( max_authority_depth.begin(), max_authority_depth.begin()+n );
+               std::sort( max_inline_depth.begin(), max_inline_depth.begin()+n );
+               std::sort( max_generated_transaction_size.begin(), max_generated_transaction_size.begin()+n );
+               std::sort( storage_reserve_ratio.begin(), storage_reserve_ratio.begin()+n );
+               std::sort( percent_of_max_inflation_rate.begin(), percent_of_max_inflation_rate.begin()+n );
+            }
+
             // should use producer_schedule_type from libraries/chain/include/eosio/chain/producer_schedule.hpp
             bytes packed_schedule = pack(schedule);
+            //print( "schedule size = ", schedule.producers.size(), "\n" );
+            //print( "set_active_producers( ... ,  ", packed_schedule.size(), " );\n" );
             set_active_producers( packed_schedule.data(),  packed_schedule.size() );
             size_t median = n/2;
 

@@ -65,7 +65,7 @@ namespace eosiosystem {
          static bool update_cycle(time block_time) {
                auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
                   : common<SystemAccount>::get_default_parameters();
-            if (parameters.first_block_time_in_cycle == 0) {
+               if (1/*parameters.first_block_time_in_cycle == 0*/) {
                voting<SystemAccount>::update_elected_producers(block_time);
                return true;
             }

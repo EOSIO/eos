@@ -84,7 +84,7 @@ public:
       return unstake( acnt, acnt, net, cpu, bytes );
    }
 
-   static fc::variant producer_parameters_example( int n ) {
+   static fc::variant_object producer_parameters_example( int n ) {
       return mutable_variant_object()
          ("target_block_size", 1024 * 1024 + n)
          ("max_block_size", 10 * 1024 + n)
@@ -1259,13 +1259,29 @@ BOOST_FIXTURE_TEST_CASE( proxy_cannot_use_another_proxy, eosio_system_tester ) t
 
 } FC_LOG_AND_RETHROW()
 
+fc::mutable_variant_object config_to_variant( const eosio::chain::chain_config& config ) {
+   return mutable_variant_object()
+      ( "target_block_size", config.target_block_size )
+      ( "max_block_size", config.max_block_size )
+      ( "target_block_acts_per_scope", config.target_block_acts_per_scope )
+      ( "max_block_acts_per_scope", config.max_block_acts_per_scope )
+      ( "target_block_acts", config.target_block_acts )
+      ( "max_block_acts", config.max_block_acts )
+      ( "max_storage_size", config.max_storage_size )
+      ( "max_transaction_lifetime", config.max_transaction_lifetime )
+      ( "max_transaction_exec_time", config.max_transaction_exec_time )
+      ( "max_authority_depth", config.max_authority_depth )
+      ( "max_inline_depth", config.max_inline_depth )
+      ( "max_inline_action_size", config.max_inline_action_size )
+      ( "max_generated_transaction_size", config.max_generated_transaction_size );
+}
 
 BOOST_FIXTURE_TEST_CASE( elect_poducers_and_parameters, eosio_system_tester ) try {
    create_accounts( {  N(producer1), N(producer2), N(producer3) } );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer1", 1) );
-   BOOST_REQUIRE_EQUAL( success(), regproducer( "producer2", 3) );
-   BOOST_REQUIRE_EQUAL( success(), regproducer( "producer3", 5) );
-   /*
+   BOOST_REQUIRE_EQUAL( success(), regproducer( "producer2", 2) );
+   BOOST_REQUIRE_EQUAL( success(), regproducer( "producer3", 3) );
+
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "alice", "100.0000 EOS", "50.0000 EOS", "50.0000 EOS" ) );
    //vote for producers
@@ -1275,29 +1291,63 @@ BOOST_FIXTURE_TEST_CASE( elect_poducers_and_parameters, eosio_system_tester ) tr
                                                ("producers", vector<account_name>{ N(producer1) } )
                         )
    );
-   produce_blocks(100);
+   produce_blocks(50);
    auto producer_keys = control->get_global_properties().active_producers.producers;
    BOOST_REQUIRE_EQUAL( 1, producer_keys.size() );
    BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
-*/
+
+   auto config = config_to_variant( control->get_global_properties().configuration );
+   auto prod1_config = testing::filter_fields( config, producer_parameters_example( 1 ) );
+   REQUIRE_EQUAL_OBJECTS(prod1_config, config);
+
+   // elect 2 producers
    issue( "bob", "1000.0000 EOS",  config::system_account_name );
    BOOST_REQUIRE_EQUAL( success(), stake( "bob", "200.0000 EOS", "100.0000 EOS", "50.0000 EOS" ) );
    BOOST_REQUIRE_EQUAL( success(), push_action(N(bob), N(voteproducer), mvo()
                                                ("voter",  "bob")
                                                ("proxy", name(0).to_string() )
-                                               ("producers", vector<account_name>{ N(producer1), N(producer2) } )
+                                               ("producers", vector<account_name>{ N(producer2) } )
                         )
    );
-   std::cout << "after push block" << std::endl;
-   produce_blocks(200);
-   auto producer_keys = control->get_global_properties().active_producers.producers;
-   std::cout << "producers: " << std::endl;
-   for (auto& x : producer_keys) {
-      std::cout << x.producer_name << std::endl;
-   }
+   produce_blocks(50);
+   producer_keys = control->get_global_properties().active_producers.producers;
    BOOST_REQUIRE_EQUAL( 2, producer_keys.size() );
-   BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[0].producer_name );
-   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[1].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[1].producer_name );
+   config = config_to_variant( control->get_global_properties().configuration );
+   auto prod2_config = testing::filter_fields( config, producer_parameters_example( 2 ) );
+   REQUIRE_EQUAL_OBJECTS(prod2_config, config);
+
+   // elect 3 producers
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(bob), N(voteproducer), mvo()
+                                               ("voter",  "bob")
+                                               ("proxy", name(0).to_string() )
+                                               ("producers", vector<account_name>{ N(producer2), N(producer3) } )
+                        )
+   );
+   produce_blocks(50);
+   producer_keys = control->get_global_properties().active_producers.producers;
+   BOOST_REQUIRE_EQUAL( 3, producer_keys.size() );
+   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[1].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[2].producer_name );
+   config = config_to_variant( control->get_global_properties().configuration );
+   REQUIRE_EQUAL_OBJECTS(prod2_config, config);
+
+   //back to 2 producers
+   BOOST_REQUIRE_EQUAL( success(), push_action(N(bob), N(voteproducer), mvo()
+                                               ("voter",  "bob")
+                                               ("proxy", name(0).to_string() )
+                                               ("producers", vector<account_name>{ N(producer3) } )
+                        )
+   );
+   produce_blocks(50);
+   producer_keys = control->get_global_properties().active_producers.producers;
+   BOOST_REQUIRE_EQUAL( 2, producer_keys.size() );
+   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[1].producer_name );
+   config = config_to_variant( control->get_global_properties().configuration );
+   REQUIRE_EQUAL_OBJECTS(prod2_config, config);
 
 } FC_LOG_AND_RETHROW()
 
