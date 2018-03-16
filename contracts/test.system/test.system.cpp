@@ -41,6 +41,18 @@ namespace testsystem {
       EOSLIB_SERIALIZE( set_global_limits, (cpu_usec_per_period) )
    };
 
+   struct set_trusted: dispatchable<N(settrusted)> {
+      account_name account;
+      bool         state;
+
+      static void process(const set_trusted& a ) {
+         set_privileged( a.account, a.state );
+      }
+
+      EOSLIB_SERIALIZE( set_trusted, (account)(state) )
+   };
+
+
    struct producer_key {
       account_name          account;
       std::string           public_key;

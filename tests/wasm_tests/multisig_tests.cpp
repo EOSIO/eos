@@ -42,4 +42,39 @@ BOOST_AUTO_TEST_CASE( bootstrap ) try {
    multisig_tester t;
 } FC_LOG_AND_RETHROW() /// test_api_bootstrap
 
+
+
+/**
+ *  This test will simply assume a proposed transaction for a non-multisig account
+ *
+ *  0. create users A and B
+ *  1. create a token and issue to user A 
+ *  2. B proposes that A transfer token to B
+ *  3. A accepts proposal
+ *  4. B executes proposal
+ *  5. check that B has the funds
+ */
+BOOST_AUTO_TEST_CASE( basic ) try {
+   multisig_tester t;
+} FC_LOG_AND_RETHROW() /// test_api_bootstrap
+
+
+/**
+ *  This test will simply assume a proposed transaction for a non-multisig account
+ *
+ *  0. create users A and B
+ *  1. create a token and issue to user A 
+ *  2. A creates a new "token" permission level and assigns it to currency::transfer action
+ *  2. B proposes that A transfer token to B using A@token permission
+ *  3. A accepts proposal using A@token permission
+ *  4. B executes proposal
+ *  5. check that B has the funds
+ *  
+ *  It is important in this test that A never use his active or owner key.
+ */
+BOOST_AUTO_TEST_CASE( basic_sub_permission ) try {
+   multisig_tester t;
+} FC_LOG_AND_RETHROW() /// test_api_bootstrap
+
+
 BOOST_AUTO_TEST_SUITE_END()
