@@ -980,7 +980,11 @@ class console_api : public context_aware_api {
          context.console_append(string(str, str_len));
       }
 
-      void printi(uint64_t val) {
+      void printui(uint64_t val) {
+         context.console_append(val);
+      }
+
+      void printi(int64_t val) {
          context.console_append(val);
       }
 
@@ -989,10 +993,12 @@ class console_api : public context_aware_api {
          context.console_append(fc::variant(v).get_string());
       }
 
-      void printd( uint64_t val ) {
-         // QUESTION: Is there a better way to print the Berkeley softfloats than assuming their representation
-         //           is the same as that of the native side double?
-         context.console_append(*(double*)(&val));
+      void printdi( uint64_t val ) {
+         context.console_append(*((double*)&val));
+      }
+
+      void printd( float64_t val ) {
+         context.console_append(*((double*)&val));
       }
 
       void printn(const name& value) {
@@ -1615,12 +1621,28 @@ class compiler_builtins : public context_aware_api {
             return 1;
          return 0;
       }
+      float64_t __floatsidf( int32_t i ) {
+         edump((i)( "warning returning float64") );
+         return i32_to_f64(i);
+      }
+      void __floatsitf( float128_t& ret, int32_t i ) {
+         ret = i32_to_f128(i); /// TODO: should be 128
+      }
+      void __floatunsitf( float128_t& ret, uint32_t i ) {
+         ret = ui32_to_f128(i); /// TODO: should be 128
+      }
+      /*
+      float128_t __floatsit( int32_t i ) {
+         return i32_to_f128(i);
+      }
+      */
       void __extendsftf2( float128_t& ret, uint32_t f ) { 
          float32_t in = { f };
          ret = f32_to_f128( in ); 
       }
-      void __extenddftf2( float128_t& ret, uint64_t f ) { 
-         float64_t in = { f };
+      void __extenddftf2( float128_t& ret, float64_t in ) { 
+         edump(("warning in flaot64..." ));
+//         float64_t in = { f };
          ret = f64_to_f128( in ); 
       }
       int64_t __fixtfdi( uint64_t l, uint64_t h ) { 
@@ -1758,8 +1780,11 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__lttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
    (__cmptf2,      int(int64_t, int64_t, int64_t, int64_t)        )
    (__unordtf2,    int(int64_t, int64_t, int64_t, int64_t)        )
+   (__floatsitf,   void (int, int)                                )
+   (__floatunsitf, void (int, int)                                )
+   (__floatsidf,   float64_t(int)                                 )
    (__extendsftf2, void(int, int)                                 )      
-   (__extenddftf2, void(int, int64_t)                             )      
+   (__extenddftf2, void(int, float64_t)                           )      
    (__fixtfdi,     int64_t(int64_t, int64_t)                      )
    (__fixtfsi,     int(int64_t, int64_t)                          )
    (__fixunstfdi,  int64_t(int64_t, int64_t)                      )
@@ -1865,15 +1890,18 @@ REGISTER_INTRINSICS(apply_context,
    (require_read_lock,     void(int64_t, int64_t) )
    (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&)const)
+   (has_authorization,     int(int64_t), "has_auth", bool(apply_context::*)(const account_name&)const)
    (is_account,            int(int64_t)           )
 );
 
 REGISTER_INTRINSICS(console_api,
    (prints,                void(int)       )
    (prints_l,              void(int, int)  )
+   (printui,               void(int64_t)   )
    (printi,                void(int64_t)   )
    (printi128,             void(int)       )
-   (printd,                void(int64_t)   )
+   (printd,                void(float64_t) )
+   (printdi,               void(int64_t)   )
    (printn,                void(int64_t)   )
    (printhex,              void(int, int)  )
 );

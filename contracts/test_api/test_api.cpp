@@ -65,6 +65,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_print, test_prints);
       WASM_TEST_HANDLER(test_print, test_prints_l);
       WASM_TEST_HANDLER(test_print, test_printi);
+      WASM_TEST_HANDLER(test_print, test_printui);
       WASM_TEST_HANDLER(test_print, test_printi128);
       WASM_TEST_HANDLER(test_print, test_printn);
 
