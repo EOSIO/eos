@@ -117,7 +117,7 @@ git clone https://github.com/eosio/eos --recursive
 
 cd eos
 
-git checkout DAWN-2018-02-14
+git checkout DAWN-2018-02-14 --recurse-submodules
 ./eosio_build.sh
 ```
 
@@ -165,7 +165,7 @@ git clone https://github.com/eosio/eos --recursive
 
 cd eos
 
-git checkout DAWN-2018-02-14
+git checkout DAWN-2018-02-14 --recurse-submodules
 ./eosio_build.sh
 ```
 
@@ -265,7 +265,7 @@ plugin = eosio::http_plugin
 ```
 
 Now it should be possible to run `eosiod` and see it begin producing blocks.
-You can specify the location of a custom `config.ini` by passing the `--config-dir` argument to `eosiod`.
+You can specify the location of a custom `config.ini` by passing the `--config-dir` argument to `eosiod`.
 
 When running `eosiod` you should get log messages similar to below. It means the blocks are successfully produced.
 
