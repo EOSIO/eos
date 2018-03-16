@@ -12,13 +12,13 @@ namespace eosio { namespace chain {
 void apply_context::exec_one()
 {
    try {
+      const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
+      privileged = a.privileged;
+
       auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
       if (native) {
          (*native)(*this);
       } else {
-         const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
-         privileged = a.privileged;
-
          if (a.code.size() > 0) {
             // get code from cache
             auto code = mutable_controller.get_wasm_cache().checkout_scoped(a.code_version, a.code.data(),
@@ -113,11 +113,14 @@ bool apply_context::is_account( const account_name& account )const {
 }
 
 void apply_context::require_authorization( const account_name& account )const {
-  for( const auto& auth : act.authorization )
-     if( auth.actor == account ) return;
-  wdump((act));
-  EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}", ("account",account));
+  EOS_ASSERT( has_authorization(account), tx_missing_auth, "missing authority of ${account}", ("account",account));
 }
+bool apply_context::has_authorization( const account_name& account )const {
+  for( const auto& auth : act.authorization )
+     if( auth.actor == account ) return true;
+  return false;
+}
+
 void apply_context::require_authorization(const account_name& account,
                                           const permission_name& permission)const {
   for( const auto& auth : act.authorization )
@@ -172,10 +175,25 @@ void apply_context::require_recipient( account_name code ) {
       _notified.push_back(code);
 }
 
-void apply_context::execute_inline( action &&a ) {
-   // todo: rethink this special case
-   if (receiver != config::system_account_name) {
-      controller.check_authorization({a}, flat_set<public_key_type>(), false, {receiver});
+
+/**
+ *  This will execute an action after checking the authorization. Inline transactions are 
+ *  implicitly authorized by the current receiver (running code). This method has significant
+ *  security considerations and several options have been considered:
+ *
+ *  1. priviledged accounts (those marked as such by block producers) can authorize any action
+ *  2. all other actions are only authorized by 'receiver' which means the following:
+ *         a. the user must set permissions on their account to allow the 'receiver' to act on their behalf
+ *  
+ *  Discarded Implemenation:  at one point we allowed any account that authorized the current transaction
+ *   to implicitly authorize an inline transaction. This approach would allow privelege escalation and
+ *   make it unsafe for users to interact with certain contracts.  We opted instead to have applications
+ *   ask the user for permission to take certain actions rather than making it implicit. This way users
+ *   can better understand the security risk.
+ */
+void apply_context::execute_inline( action&& a ) {
+   if ( !privileged ) { 
+      controller.check_authorization({a}, flat_set<public_key_type>(), false, {receiver}); 
    }
    _inline_actions.emplace_back( move(a) );
 }
@@ -335,9 +353,9 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
    if( buffer_size == 0 ) return s;
 
    if( buffer_size < s )
-      memcpy( buffer, trx_meta.context_free_data.data(), buffer_size );
+      memcpy( buffer, trx_meta.context_free_data[index].data(), buffer_size );
    else
-      memcpy( buffer, trx_meta.context_free_data.data(), s );
+      memcpy( buffer, trx_meta.context_free_data[index].data(), s );
 
    return s;
 }

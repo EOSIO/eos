@@ -162,7 +162,12 @@ class Node(object):
         jStr=Node.filterJsonObject(retStr)
         trace and Utils.Print ("RAW > %s"% retStr)
         trace and Utils.Print ("JSON> %s"% jStr)
-        jsonData=json.loads(jStr)
+        try:
+            jsonData=json.loads(jStr)
+        except json.decoder.JSONDecodeError as ex:
+            Utils.Print ("RAW > %s"% retStr)
+            Utils.Print ("JSON> %s"% jStr)
+
         return jsonData
 
     @staticmethod

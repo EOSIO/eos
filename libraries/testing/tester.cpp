@@ -136,8 +136,8 @@ namespace eosio { namespace testing {
    transaction_trace base_tester::push_action( const account_name& code,
                              const action_name& acttype,
                              const account_name& actor,
-                             const variant_object& data
-                             )
+                             const variant_object& data )
+
    { try {
       chain::contracts::abi_serializer abis( control->get_database().get<account_object,by_name>(code).get_abi() );
 
@@ -190,17 +190,28 @@ namespace eosio { namespace testing {
         }
     }
 
-   transaction_trace base_tester::push_nonce(account_name from, const string& v) {
+   transaction_trace base_tester::push_dummy(account_name from, const string& v) {
+      // use reqauth for a normal action, this could be anything
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
                ("account", name(config::system_account_name))
-               ("name", "nonce")
+               ("name", "reqauth")
                ("authorization", fc::variants({
                   fc::mutable_variant_object()
                      ("actor", from)
                      ("permission", name(config::active_name))
                }))
+               ("data", fc::mutable_variant_object()
+                  ("from", from)
+               )
+            })
+        )
+        // lets also push a context free action, the multi chain test will then also include a context free action
+        ("context_free_actions", fc::variants({
+            fc::mutable_variant_object()
+               ("account", name(config::system_account_name))
+               ("name", "nonce")
                ("data", fc::mutable_variant_object()
                   ("value", v)
                )
@@ -247,12 +258,37 @@ namespace eosio { namespace testing {
       return push_transaction( trx );
    }
 
+   void base_tester::link_authority( account_name account, account_name code, permission_name req, action_name type ) {
+      signed_transaction trx;
+
+      trx.actions.emplace_back( vector<permission_level>{{account, config::active_name}},
+                                contracts::linkauth(account, code, type, req));
+      set_tapos( trx );
+      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+
+      push_transaction( trx );
+   }
+
+   void base_tester::unlink_authority( account_name account, account_name code, action_name type ) {
+      signed_transaction trx;
+
+      trx.actions.emplace_back( vector<permission_level>{{account, config::active_name}},
+                                contracts::unlinkauth(account, code, type ));
+      set_tapos( trx );
+      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+
+      push_transaction( trx );
+   }
+
    void base_tester::set_authority( account_name account,
                                permission_name perm,
                                authority auth,
-                               permission_name parent ) { try {
+                               permission_name parent,
+                               const vector<permission_level>& auths,
+                               const vector<private_key_type>& keys) { try {
       signed_transaction trx;
-      trx.actions.emplace_back( vector<permission_level>{{account,perm}},
+
+      trx.actions.emplace_back( auths,
                                 contracts::updateauth{
                                    .account    = account,
                                    .permission = perm,
@@ -261,9 +297,41 @@ namespace eosio { namespace testing {
                                 });
 
       set_tapos( trx );
-      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+      for (const auto& key: keys) {
+         trx.sign( key, chain_id_type()  );
+      }
+
       push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account)(perm)(auth)(parent) ) }
+
+   void base_tester::set_authority( account_name account,
+                                    permission_name perm,
+                                    authority auth,
+                                    permission_name parent) {
+      set_authority(account, perm, auth, parent, { { account, config::owner_name } }, { get_private_key( account, "owner" ) });
+   }
+
+
+   void base_tester::delete_authority( account_name account,
+                                    permission_name perm,
+                                    const vector<permission_level>& auths,
+                                    const vector<private_key_type>& keys ) { try {
+         signed_transaction trx;
+         trx.actions.emplace_back( auths,
+                                   contracts::deleteauth(account, perm) );
+
+         set_tapos( trx );
+         for (const auto& key: keys) {
+            trx.sign( key, chain_id_type()  );
+         }
+
+         push_transaction( trx );
+      } FC_CAPTURE_AND_RETHROW( (account)(perm) ) }
+
+   void base_tester::delete_authority( account_name account,
+                                       permission_name perm ) {
+      delete_authority(account, perm, { permission_level{ account, config::owner_name } }, { get_private_key( account, "owner" ) });
+   }
 
    void base_tester::set_code( account_name account, const char* wast ) try {
       auto wasm = wast_to_wasm(wast);
@@ -311,7 +379,7 @@ namespace eosio { namespace testing {
                                        const symbol&       asset_symbol,
                                        const account_name& account ) const {
       const auto& db  = control->get_database();
-      const auto* tbl = db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, account, N(account)));
+      const auto* tbl = db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, account, N(accounts)));
       share_type result = 0;
 
       // the balance is implied to be 0 if either the table or row does not exist

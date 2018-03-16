@@ -113,7 +113,7 @@ namespace eosio {
                 t.emplace(code, [&](currency_stats& s) { s.supply = act.quantity; });
              }
 
-             set_balance( code, get_balance( code ) + act.quantity, code, 0 );
+             set_balance( code, get_balance( code ) + token_type(act.quantity), code, 0 );
 
              inline_transfer( code, act.to, act.quantity );
           }
@@ -123,8 +123,8 @@ namespace eosio {
              require_auth( act.from );
              require_recipient(act.to,act.from);
 
-             set_balance( act.from, get_balance( act.from ) - act.quantity, act.from, act.from );
-             set_balance( act.to, get_balance( act.to ) + act.quantity, act.from, 0 );
+             set_balance( act.from, get_balance( act.from ) - token_type(act.quantity), act.from, act.from );
+             set_balance( act.to, get_balance( act.to ) + token_type(act.quantity), act.from, 0 );
           }
 
           static void inline_transfer( account_name from, account_name to, token_type quantity,
