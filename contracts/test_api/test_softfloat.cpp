@@ -7,16 +7,19 @@
 #include <iostream>
 #include "test_api.hpp"
 
-#define FORCE_EVALF(x) do { \
-   volatile float __x;      \
-   __x = (x);               \
-} while(0);                 \
-
-float test_softfloat::test_f32() {
+void test_softfloat::test_f32() {
+#if 1
    float values[3];
    read_action((char*)values, sizeof(values));
+   /*
    float c = values[0] + values[1];
-   return c;
-   //eosio_assert(true, "hello");
+   prints("HELLO : \n");
+   printi(*(uint32_t*)&c);
+   printd(c);
+   prints("\n");
+   */
+   //return values[0];
+   eosio_assert(values[0] == 0.3f, "hello");
    //std::cout << "f1 " << float(a) << "f2 " << float(b) << " " << float(c) << "\n";
+#endif
 }

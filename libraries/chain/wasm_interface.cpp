@@ -677,9 +677,9 @@ class softfloat_api : public context_aware_api {
          if (e >= 0x7f+23)
             return a;
          if (s)
-            y = f32_add( f32_sub( a, inv_float_eps ), inv_float_eps );
+            y = f32_add( f32_sub( a, float32_t{inv_float_eps} ), float32_t{inv_float_eps} );
          else
-            y = f32_sub( f32_add( a, inv_float_eps ), inv_float_eps );
+            y = f32_sub( f32_add( a, float32_t{inv_float_eps} ), float32_t{inv_float_eps} );
          if (f32_eq( y, {0} ) )
             return s ? float32_t{0x80000000} : float32_t{0}; // return either -0.0 or 0.0f
          return y;
@@ -727,9 +727,9 @@ class softfloat_api : public context_aware_api {
          return a;
          /* y = int(x) - x, where int(x) is an integer neighbor of x */
          if (a.v >> 63)
-            y = f64_sub( f64_add( f64_sub( a, inv_double_eps ), inv_double_eps ), a );
+            y = f64_sub( f64_add( f64_sub( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
          else
-            y = f64_sub( f64_sub( f64_add( a, inv_double_eps ), inv_double_eps ), a );
+            y = f64_sub( f64_sub( f64_add( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
          /* special case because of non-nearest rounding modes */
          if (e <= 0x3ff-1) {
             return a.v >> 63 ? float64_t{0x8000000000000000} : float64_t{0xBE99999A3F800000}; //either -0.0 or 1
@@ -744,9 +744,9 @@ class softfloat_api : public context_aware_api {
          if (e >= 0x3FF+52 || a.v == 0)
             return a;
          if (a.v >> 63)
-            y = f64_sub( f64_add( f64_sub( a, inv_double_eps ), inv_double_eps ), a );
+            y = f64_sub( f64_add( f64_sub( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
          else
-            y = f64_sub( f64_sub( f64_add( a, inv_double_eps ), inv_double_eps ), a );
+            y = f64_sub( f64_sub( f64_add( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
          if (e <= 0x3FF-1) {
             return a.v>>63 ? float64_t{0xBFF0000000000000} : float64_t{0}; // -1 or 0
          }
@@ -775,9 +775,9 @@ class softfloat_api : public context_aware_api {
          if ( e >= 0x3FF+52 )
             return a;
          if ( s )
-            y = f64_add( f64_sub( a, inv_double_eps ), inv_double_eps );
+            y = f64_add( f64_sub( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} );
          else
-            y = f64_sub( f64_add( a, inv_double_eps ), inv_double_eps );
+            y = f64_sub( f64_add( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} );
          if ( f64_eq( y, float64_t{0} ) )
             return s ? float64_t{8000000000000000} : float64_t{0};   // -0.0 or 0.0
          return y;
@@ -814,8 +814,8 @@ class softfloat_api : public context_aware_api {
 
 
    private:
-      static constexpr float32_t inv_float_eps = { 0x4B000000 }; 
-      static constexpr float64_t inv_double_eps = { 0x4330000000000000 };
+      static constexpr uint32_t inv_float_eps = 0x4B000000; 
+      static constexpr uint64_t inv_double_eps = 0x4330000000000000;
 };
 class producer_api : public context_aware_api {
    public:
@@ -1933,60 +1933,64 @@ REGISTER_INTRINSICS(memory_api,
 );
 
 REGISTER_INTRINSICS(softfloat_api,
-      (_eosio_f32_add,       float(float, float) )
-      (_eosio_f32_sub,       float(float, float) )
-      (_eosio_f32_mul,       float(float, float) )
-      (_eosio_f32_div,       float(float, float) )
-      (_eosio_f32_min,       float(float, float) )
-      (_eosio_f32_max,       float(float, float) )
-      (_eosio_f32_copysign,  float(float, float) )
-      (_eosio_f32_abs,       float(int32_t)          )
-      (_eosio_f32_neg,       float(int32_t)          )
-      (_eosio_f32_floor,     float(int32_t)          )
-      (_eosio_f32_trunc,     float(int32_t)          )
-      (_eosio_f32_nearest,   float(int32_t)          )
-      (_eosio_f32_eq,        float(int32_t, int32_t) )
-      (_eosio_f32_ne,        float(int32_t, int32_t) )
-      (_eosio_f32_lt,        float(int32_t, int32_t) )
-      (_eosio_f32_le,        float(int32_t, int32_t) )
-      (_eosio_f32_gt,        float(int32_t, int32_t) )
-      (_eosio_f32_ge,        float(int32_t, int32_t) )
-      (_eosio_f64_add,       int64_t(int64_t, int64_t) )
-      (_eosio_f64_sub,       int64_t(int64_t, int64_t) )
-      (_eosio_f64_mul,       int64_t(int64_t, int64_t) )
-      (_eosio_f64_div,       int64_t(int64_t, int64_t) )
-      (_eosio_f64_min,       int64_t(int64_t, int64_t) )
-      (_eosio_f64_max,       int64_t(int64_t, int64_t) )
-      (_eosio_f64_copysign,  int64_t(int64_t, int64_t) )
-      (_eosio_f64_abs,       int64_t(int64_t)          )
-      (_eosio_f64_neg,       int64_t(int64_t)          )
-      (_eosio_f64_floor,     int64_t(int64_t)          )
-      (_eosio_f64_trunc,     int64_t(int64_t)          )
-      (_eosio_f64_nearest,   int64_t(int64_t)          )
-      (_eosio_f64_eq,        int32_t(int64_t, int64_t) )
-      (_eosio_f64_ne,        int32_t(int64_t, int64_t) )
-      (_eosio_f64_lt,        int32_t(int64_t, int64_t) )
-      (_eosio_f64_le,        int32_t(int64_t, int64_t) )
-      (_eosio_f64_gt,        int32_t(int64_t, int64_t) )
-      (_eosio_f64_ge,        int32_t(int64_t, int64_t) )
-      (_eosio_f32_promote,    int64_t(int32_t)          )
-      (_eosio_f64_demote,     int32_t(int64_t)          )
-      (_eosio_f32_trunc_i32s, int32_t(int32_t)          )
-      (_eosio_f64_trunc_i32s, int32_t(int64_t)          )
-      (_eosio_f32_trunc_i32u, int32_t(int32_t)          )
-      (_eosio_f64_trunc_i32s, int32_t(int64_t)          )
-      (_eosio_f32_trunc_i64s, int64_t(int32_t)          )
-      (_eosio_f64_trunc_i64s, int64_t(int64_t)          )
-      (_eosio_f32_trunc_i64u, int64_t(int32_t)          )
-      (_eosio_f64_trunc_i64u, int64_t(int64_t)          )
-      (_eosio_i32_to_f32,     int32_t(int32_t)          )
-      (_eosio_i64_to_f32,     int32_t(int64_t)          )
-      (_eosio_ui32_to_f32,    int32_t(int32_t)          )
-      (_eosio_ui64_to_f32,    int32_t(int64_t)          )
-      (_eosio_i32_to_f64,     int64_t(int32_t)          )
-      (_eosio_i64_to_f64,     int64_t(int64_t)          )
-      (_eosio_ui32_to_f64,    int64_t(int32_t)          )
-      (_eosio_ui64_to_f64,    int64_t(int64_t)          )
+      (_eosio_f32_add,       float32_t(float32_t, float32_t) )
+      (_eosio_f32_sub,       float32_t(float32_t, float32_t) )
+      (_eosio_f32_mul,       float32_t(float32_t, float32_t) )
+      (_eosio_f32_div,       float32_t(float32_t, float32_t) )
+      (_eosio_f32_min,       float32_t(float32_t, float32_t) )
+      (_eosio_f32_max,       float32_t(float32_t, float32_t) )
+      (_eosio_f32_copysign,  float32_t(float32_t, float32_t) )
+      (_eosio_f32_abs,       float32_t(float32_t)          )
+      (_eosio_f32_neg,       float32_t(float32_t)          )
+      (_eosio_f32_sqrt,      float32_t(float32_t)          )
+      (_eosio_f32_ceil,      float32_t(float32_t)          )
+      (_eosio_f32_floor,     float32_t(float32_t)          )
+      (_eosio_f32_trunc,     float32_t(float32_t)          )
+      (_eosio_f32_nearest,   float32_t(float32_t)          )
+      (_eosio_f32_eq,        int(float32_t, float32_t) )
+      (_eosio_f32_ne,        int(float32_t, float32_t) )
+      (_eosio_f32_lt,        int(float32_t, float32_t) )
+      (_eosio_f32_le,        int(float32_t, float32_t) )
+      (_eosio_f32_gt,        int(float32_t, float32_t) )
+      (_eosio_f32_ge,        int(float32_t, float32_t) )
+      (_eosio_f64_add,       float64_t(float64_t, float64_t) )
+      (_eosio_f64_sub,       float64_t(float64_t, float64_t) )
+      (_eosio_f64_mul,       float64_t(float64_t, float64_t) )
+      (_eosio_f64_div,       float64_t(float64_t, float64_t) )
+      (_eosio_f64_min,       float64_t(float64_t, float64_t) )
+      (_eosio_f64_max,       float64_t(float64_t, float64_t) )
+      (_eosio_f64_copysign,  float64_t(float64_t, float64_t) )
+      (_eosio_f64_abs,       float64_t(float64_t)          )
+      (_eosio_f64_neg,       float64_t(float64_t)          )
+      (_eosio_f64_sqrt,      float64_t(float64_t)          )
+      (_eosio_f64_ceil,      float64_t(float64_t)          )
+      (_eosio_f64_floor,     float64_t(float64_t)          )
+      (_eosio_f64_trunc,     float64_t(float64_t)          )
+      (_eosio_f64_nearest,   float64_t(float64_t)          )
+      (_eosio_f64_eq,        int(float64_t, float64_t) )
+      (_eosio_f64_ne,        int(float64_t, float64_t) )
+      (_eosio_f64_lt,        int(float64_t, float64_t) )
+      (_eosio_f64_le,        int(float64_t, float64_t) )
+      (_eosio_f64_gt,        int(float64_t, float64_t) )
+      (_eosio_f64_ge,        int(float64_t, float64_t) )
+      (_eosio_f32_promote,    float64_t(float32_t)          )
+      (_eosio_f64_demote,     float32_t(float64_t)          )
+      (_eosio_f32_trunc_i32s, int(float32_t)          )
+      (_eosio_f64_trunc_i32s, int(float64_t)          )
+      (_eosio_f32_trunc_i32u, int(float32_t)          )
+      (_eosio_f64_trunc_i32u, int(float64_t)          )
+      (_eosio_f32_trunc_i64s, int64_t(float32_t)          )
+      (_eosio_f64_trunc_i64s, int64_t(float64_t)          )
+      (_eosio_f32_trunc_i64u, int64_t(float32_t)          )
+      (_eosio_f64_trunc_i64u, int64_t(float64_t)          )
+      (_eosio_i32_to_f32,     float32_t(int32_t)          )
+      (_eosio_i64_to_f32,     float32_t(int64_t)          )
+      (_eosio_ui32_to_f32,    float32_t(int32_t)          )
+      (_eosio_ui64_to_f32,    float32_t(int64_t)          )
+      (_eosio_i32_to_f64,     float64_t(int32_t)          )
+      (_eosio_i64_to_f64,     float64_t(int64_t)          )
+      (_eosio_ui32_to_f64,    float64_t(int32_t)          )
+      (_eosio_ui64_to_f64,    float64_t(int64_t)          )
 );
 
 #define DB_METHOD_SEQ(SUFFIX) \

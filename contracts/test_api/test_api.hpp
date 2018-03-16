@@ -247,5 +247,5 @@ struct test_checktime {
 };
 
 struct test_softfloat {
-   static float test_f32();
+   static void test_f32();
 };

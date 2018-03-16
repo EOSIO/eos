@@ -96,7 +96,7 @@ namespace eosio { namespace chain { namespace wasm_constraints {
 
    // add opcode specific constraints here
    // so far we only black list
-   struct op_constrainers : wasm_ops::op_types<blacklist_validator> {
+   struct op_constrainers : wasm_ops::op_types<debug_printer> {
       using block_t           = wasm_ops::block                   <debug_printer, whitelist_validator>;
       using loop_t            = wasm_ops::loop                    <debug_printer, whitelist_validator>;
       using if__t             = wasm_ops::if_                     <debug_printer, whitelist_validator>;

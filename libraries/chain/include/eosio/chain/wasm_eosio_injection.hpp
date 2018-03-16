@@ -67,7 +67,10 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void add_import(Module& module, const char* scope, const char* func_name, int32_t& index ) {
          if (module.functions.imports.size() == 0 || registered_injected.find(func_name) == registered_injected.end() ) {
             add_type_slot<Result, Params...>( module );
-
+            std::cout << "FUNCTION " << FromResultType<Result>::value << " (";
+            for ( auto param : { FromValueType<Params>::value... } )
+               std::cout << param << ", ";
+            std::cout <<"\n";
             const uint32_t func_type_index = type_slots[{ FromResultType<Result>::value, FromValueType<Params>::value... }];
             uint32_t next_index = get_next_index( module );
             registered_injected.emplace( func_name, next_index );
@@ -80,6 +83,9 @@ namespace eosio { namespace chain { namespace wasm_injections {
                if ( module.exports[i].kind == IR::ObjectKind::function )
                   module.exports[i].index += 1;
             }
+         }
+         else {
+            index = registered_injected[func_name];
          }
       }
    };
@@ -179,12 +185,10 @@ namespace eosio { namespace chain { namespace wasm_injections {
          const int offset = injector_utils::registered_injected.size();
          uint32_t mapped_index = injector_utils::injected_index_mapping[call_inst->field];
          if ( mapped_index > 0 ) {
-            std::cout << "MAPPED " << call_inst->field << " : " << mapped_index << "\n";
             call_inst->field = mapped_index;
          } 
          else
             if ( call_inst->field > injector_utils::first_imported_index - 1 ) {
-               std::cout << "Field " << call_inst->field << " : " << call_inst->field + offset << " " << offset << "\n";
                call_inst->field += offset;
             }
       }
@@ -192,6 +196,36 @@ namespace eosio { namespace chain { namespace wasm_injections {
    };
    
    // float injections
+   constexpr const char* inject_which_op( uint16_t opcode ) {
+      switch ( opcode ) {
+         case wasm_ops::f32_add_code:
+            return u8"_eosio_f32_add";
+         case wasm_ops::f32_sub_code:
+            return u8"_eosio_f32_sub";
+         case wasm_ops::f32_eq_code:
+            return u8"_eosio_f32_eq";
+         case wasm_ops::f64_promote_f32_code:
+            return u8"_eosio_f32_promote";
+         default:
+            return "";
+            //FC_THROW_EXCEPTION( wasm_execution_error, "Error, unknown opcode in injection ${op}", ("op", opcode));
+      }
+   }
+   template <uint16_t Opcode>
+   struct f32_op_injector {
+      static constexpr bool kills = true;
+      static constexpr bool post = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         int32_t idx;
+         injector_utils::add_import<ResultType::f32, ValueType::f32, ValueType::f32>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         wasm_ops::op_types<>::call_t f32op;
+         f32op.field = idx;
+         std::vector<U8> injected = f32op.pack();
+         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+   }
+
+   };
    struct f32_add_injector {
       static constexpr bool kills = true;
       static constexpr bool post = false;
@@ -199,12 +233,27 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
          injector_utils::add_import<ResultType::f32, ValueType::f32, ValueType::f32>( *(arg.module), u8"env", u8"_eosio_f32_add", idx );
-         wasm_ops::op_types<>::call_t f32add;
-         f32add.field = idx;
-         std::vector<U8> injected = f32add.pack();
+         wasm_ops::op_types<>::call_t f32op;
+         f32op.field = idx;
+         std::vector<U8> injected = f32op.pack();
          arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
       }
    };
+   struct f32_eq_injector {
+      static constexpr bool kills = true;
+      static constexpr bool post = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         int32_t idx;
+         injector_utils::add_import<ResultType::f32, ValueType::f32, ValueType::f32>( *(arg.module), u8"env", u8"_eosio_f32_eq", idx );
+         std::cout << "FOUND AN EQ " << idx << "\n";
+         wasm_ops::op_types<>::call_t f32op;
+         f32op.field = idx;
+         std::vector<U8> injected = f32op.pack();
+         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+      }
+   };
+
    struct f32_promote_injector {
       static constexpr bool kills = true;
       static constexpr bool post = false;
@@ -335,9 +384,10 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using i64_shr_u_t       = wasm_ops::i64_shr_u               <instruction_counter>; 
       using i64_rotl_t        = wasm_ops::i64_rotl                <instruction_counter>; 
       using i64_rotr_t        = wasm_ops::i64_rotr                <instruction_counter>; 
-
-      using f32_add_t         = wasm_ops::f32_add                 <instruction_counter, f32_add_injector>;
-      using f64_promote_f32_t = wasm_ops::f64_promote_f32         <instruction_counter, f32_promote_injector>;
+      
+      //using f32_eq_t          = wasm_ops::f32_eq                  <instruction_counter, f32_eq_injector>;
+      using f32_add_t         = wasm_ops::f32_add                 <instruction_counter, f32_op_injector<wasm_ops::f32_add_code>>;
+      using f64_promote_f32_t = wasm_ops::f64_promote_f32         <instruction_counter, f32_op_injector<wasm_ops::f64_promote_f32_code>>;
 
       using i32_wrap_i64_t    = wasm_ops::i32_wrap_i64            <instruction_counter>;
       using i64_extend_s_i32_t = wasm_ops::i64_extend_s_i32       <instruction_counter>;
