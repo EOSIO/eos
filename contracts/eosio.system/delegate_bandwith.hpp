@@ -136,7 +136,7 @@ namespace eosiosystem {
 
             del_bandwidth_index_type     del_index( SystemAccount, del.from );
             auto itr = del_index.find( del.receiver );
-            if( itr == nullptr ) {
+            if( itr == del_index.end() ) {
                del_index.emplace( del.from, [&]( auto& dbo ){
                   dbo.from          = del.from;
                   dbo.to            = del.receiver;
@@ -147,7 +147,7 @@ namespace eosiosystem {
                });
             }
             else {
-               del_index.update( *itr, del.from, [&]( auto& dbo ){
+               del_index.modify( itr, del.from, [&]( auto& dbo ){
                   dbo.net_weight    += del.stake_net_quantity;
                   dbo.cpu_weight    += del.stake_cpu_quantity;
                   dbo.storage_stake += del.stake_storage_quantity;
@@ -157,8 +157,8 @@ namespace eosiosystem {
 
             total_resources_index_type   total_index( SystemAccount, del.receiver );
             auto tot_itr = total_index.find( del.receiver );
-            if( tot_itr == nullptr ) {
-               tot_itr = &total_index.emplace( del.from, [&]( auto& tot ) {
+            if( tot_itr ==  total_index.end() ) {
+               tot_itr = total_index.emplace( del.from, [&]( auto& tot ) {
                   tot.owner = del.receiver;
                   tot.net_weight    = del.stake_net_quantity;
                   tot.cpu_weight    = del.stake_cpu_quantity;
@@ -166,7 +166,7 @@ namespace eosiosystem {
                   tot.storage_bytes = storage_bytes;
                });
             } else {
-               total_index.update( *tot_itr, del.from == del.receiver ? del.from : 0, [&]( auto& tot ) {
+               total_index.modify( tot_itr, del.from == del.receiver ? del.from : 0, [&]( auto& tot ) {
                   tot.net_weight    += del.stake_net_quantity;
                   tot.cpu_weight    += del.stake_cpu_quantity;
                   tot.storage_stake += del.stake_storage_quantity;
@@ -213,7 +213,7 @@ namespace eosiosystem {
 
             eosio_assert( total_refund.quantity > 0, "must unstake a positive amount" );
 
-            del_index.update( dbw, del.from, [&]( auto& dbo ){
+            del_index.modify( dbw, del.from, [&]( auto& dbo ){
                dbo.net_weight -= del.unstake_net_quantity;
                dbo.cpu_weight -= del.unstake_cpu_quantity;
                dbo.storage_stake -= storage_stake_decrease;
@@ -222,7 +222,7 @@ namespace eosiosystem {
 
             total_resources_index_type   total_index( SystemAccount, del.receiver );
             const auto& totals = total_index.get( del.receiver );
-            total_index.update( totals, 0, [&]( auto& tot ) {
+            total_index.modify( totals, 0, [&]( auto& tot ) {
                tot.net_weight -= del.unstake_net_quantity;
                tot.cpu_weight -= del.unstake_cpu_quantity;
                tot.storage_stake -= storage_stake_decrease;

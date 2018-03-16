@@ -84,12 +84,12 @@ namespace eosiosystem {
             auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
                   : common<SystemAccount>::get_default_parameters();
             const system_token_type block_payment = parameters.payment_per_block;
-            const auto* prod = producers_tbl.find(producer);
+            auto prod = producers_tbl.find(producer);
             // This check is needed when everything works
             //            eosio_assert(prod != nullptr, "something wrong here");
-            if (prod != nullptr) {
+            if ( prod != producers_tbl.end() ) {
                //               prints("Producer found\n");
-               producers_tbl.update(*prod, 0, [&](auto& p) {
+               producers_tbl.modify( prod, 0, [&](auto& p) {
                      //                     printi((uint64_t)p.per_block_payments.quantity);
                      //                     prints("\n");
                      p.per_block_payments += block_payment;
@@ -119,8 +119,8 @@ namespace eosiosystem {
             require_auth(cr.owner);
             eosio_assert(current_sender() == account_name(), "claimrewards can not be part of a deferred transaction");
             producers_table producers_tbl(SystemAccount, SystemAccount);
-            const auto* prod = producers_tbl.find(cr.owner);
-            eosio_assert(prod != nullptr, "account name not producer list");
+            auto prod = producers_tbl.find(cr.owner);
+            eosio_assert(prod != producers_tbl.end(), "account name not producer list");
             eosio_assert(prod->active(), "producer is not active");
             if (prod->last_rewards_claim > 0) {
                eosio_assert(now() >= prod->last_rewards_claim + seconds_per_day, "already claimed rewards within a day");
@@ -156,7 +156,7 @@ namespace eosiosystem {
                   global_state_singleton::set(parameters);
                }
             }
-            producers_tbl.update(*prod, 0, [&](auto& p) {
+            producers_tbl.modify( prod, 0, [&](auto& p) {
                   p.last_rewards_claim = now();
                   p.per_block_payments.quantity = 0;
                });
@@ -164,9 +164,6 @@ namespace eosiosystem {
             currency::inline_transfer(cr.owner, SystemAccount, rewards, "producer claiming rewards");
          }
          
-         static void on( const finishundel& ) {            
-         }
-
          static void apply( account_name code, action_name act ) {
             if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                if( !eosio::dispatch<contract, typename delegate_bandwith<SystemAccount>::delegatebw,

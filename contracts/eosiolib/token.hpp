@@ -46,7 +46,7 @@ namespace eosio {
     template<typename Base, typename Quote>
     friend price<Base,Quote> operator / ( const Base& b, const Quote& q );
 
-    operator asset()const { return asset( int64_t(quantity), Symbol ); }
+    explicit operator asset()const { return asset( int64_t(quantity), Symbol ); }
 
     token( const asset& a ):quantity(NumberType(a.amount)) {
        eosio_assert( a.symbol == Symbol, "attempt to construct token from asset with different symbol" );

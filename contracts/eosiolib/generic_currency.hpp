@@ -146,7 +146,7 @@ namespace eosio {
           static token_type get_total_supply() {
              stats t( code, code );
              auto ptr = t.find( symbol );
-             return ptr ? ptr->supply : token_type(0);
+             return ptr != t.end() ? ptr->supply : token_type(0);
           }
 
          static void apply( account_name c, action_name act) {
