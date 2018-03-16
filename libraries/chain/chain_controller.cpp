@@ -497,7 +497,7 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
             _pending_block->new_producers = latest_producer_schedule;
 
       }
-      _pending_block->schedule_version = _head_producer_schedule().version;
+      _pending_block->schedule_version = get_global_properties().active_producers.version;
 
       if( !(skip & skip_producer_signature) )
          _pending_block->sign( block_signing_key );
@@ -909,8 +909,8 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
                  ("block producer",next_block.producer)("scheduled producer",producer.owner));
    }
 
-   EOS_ASSERT( next_block.schedule_version == _head_producer_schedule().version, block_validate_exception, "wrong producer schedule version specified" );
-
+   EOS_ASSERT( next_block.schedule_version == get_global_properties().active_producers.version, block_validate_exception, "wrong producer schedule version specified" );
+      
    return producer;
 }
 
