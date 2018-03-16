@@ -277,15 +277,17 @@ namespace eosio { namespace chain {
 
 
          /**
+          * @param actions - the actions to check authorization across
           * @param provided_keys - the set of public keys which have authorized the transaction
+          * @param allow_unused_signatures - true if method should not assert on unused signatures
           * @param provided_accounts - the set of accounts which have authorized the transaction (presumed to be owner)
           *
           * @return true if the provided keys and accounts are sufficient to authorize actions of the transaction
           */
          void check_authorization( const vector<action>& actions,
-                                   flat_set<public_key_type> provided_keys,
-                                   bool                      allow_unused_signatures = false,
-                                   flat_set<account_name>    provided_accounts = flat_set<account_name>()
+                                   const flat_set<public_key_type>& provided_keys,
+                                   bool                             allow_unused_signatures = false,
+                                   flat_set<account_name>           provided_accounts = flat_set<account_name>()
                                    )const;
 
 

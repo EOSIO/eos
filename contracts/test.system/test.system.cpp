@@ -50,8 +50,8 @@ namespace testsystem {
 
    struct set_producers : dispatchable<N(setprods)> {
       static void process(const set_producers&) {
-         char buffer[action_size()];
-         read_action( buffer, sizeof(buffer) );
+         char buffer[action_data_size()];
+         read_action_data( buffer, sizeof(buffer) );
          set_active_producers(buffer, sizeof(buffer));
       }
    };
@@ -71,7 +71,7 @@ namespace testsystem {
    struct dispatcher_impl<T> {
       static bool dispatch(uint64_t action) {
          if (action == T::action_name) {
-            T::process(current_action<T>());
+            T::process(current_action_data<T>());
             return true;
          }
 

@@ -114,11 +114,11 @@ struct native_to_wasm<T *> {
  */
 template<>
 struct native_to_wasm<float32_t> {
-   using type = F32;
+   using type = float32_t; //F32;
 };
 template<>
 struct native_to_wasm<float64_t> {
-   using type = F64;
+   using type = float64_t; //F64;
 };
 template<>
 struct native_to_wasm<int32_t> {
@@ -204,6 +204,12 @@ template<>
 struct wasm_to_value_type<F32> {
    static constexpr auto value = ValueType::f32;
 };
+
+template<>
+struct wasm_to_value_type<float64_t> {
+   static constexpr auto value = ValueType::f64;
+};
+
 template<>
 struct wasm_to_value_type<F64> {
    static constexpr auto value = ValueType::f64;
@@ -226,6 +232,11 @@ template<>
 struct wasm_to_rvalue_type<F32> {
    static constexpr auto value = ResultType::f32;
 };
+template<>
+struct wasm_to_rvalue_type<float64_t> {
+   static constexpr auto value = ResultType::f64;
+};
+
 template<>
 struct wasm_to_rvalue_type<F64> {
    static constexpr auto value = ResultType::f64;
