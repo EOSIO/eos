@@ -116,7 +116,23 @@ public:
    }
 
    asset get_balance( const account_name& act ) {
-      return get_currency_balance( config::system_account_name, symbol(SY(4,EOS)), act );
+      //return get_currency_balance( config::system_account_name, symbol(SY(4,EOS)), act );
+      //temporary code. current get_currency_balancy uses table name N(accounts) from currency.h
+      //generic_currency table name is N(account).
+      const auto& db  = control->get_database();
+      const auto* tbl = db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(config::system_account_name, act, N(account)));
+      share_type result = 0;
+
+      // the balance is implied to be 0 if either the table or row does not exist
+      if (tbl) {
+         const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, symbol(SY(4,EOS)).value()));
+         if (obj) {
+            //balance is the second field after symbol, so skip the symbol
+            fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
+            fc::raw::unpack(ds, result);
+         }
+      }
+      return asset( result, symbol(SY(4,EOS)) );
    }
 
    fc::variant get_total_stake( const account_name& act ) {
@@ -166,7 +182,7 @@ inline uint64_t M( const string& eos_str ) {
 BOOST_AUTO_TEST_SUITE(eosio_system_tests)
 
 BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
-   issue( "alice", "1000.0000 EOS",  config::system_account_name );
+   issue( "alice", "1000.0000 EOS", config::system_account_name );
    BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
 
    BOOST_REQUIRE_EQUAL( success(), stake( "alice", "200.0000 EOS", "100.0000 EOS", "500.0000 EOS" ) );
