@@ -110,15 +110,15 @@ namespace eosio {
             switch( act ) {
                case N(issue):
                   print( "issue\n");
-                 on( unpack_action<issue>() );
+                 on( unpack_action_data<issue>() );
                  return true;
                case N(transfer):
                   print( "transfer\n");
-                 on( unpack_action<transfer>() );
+                 on( unpack_action_data<transfer>() );
                  return true;
                case N(create):
                   print( "create\n");
-                 on( unpack_action<create>() );
+                 on( unpack_action_data<create>() );
                  return true;
             }
             return false;

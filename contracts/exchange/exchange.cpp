@@ -201,7 +201,7 @@ namespace eosio {
    bool exchange::apply( account_name contract, account_name act ) {
 
       if( act == N(transfer) ) {
-         on( unpack_action<currency::transfer>(), contract );
+         on( unpack_action_data<currency::transfer>(), contract );
          return true;
       }
 
@@ -210,28 +210,28 @@ namespace eosio {
 
       switch( act ) {
          case N(createx):
-            on( unpack_action<createx>() );
+            on( unpack_action_data<createx>() );
             return true;
          case N(trade):
-            on( unpack_action<trade>() );
+            on( unpack_action_data<trade>() );
             return true;
          case N(lend):
-            on( unpack_action<lend>() );
+            on( unpack_action_data<lend>() );
             return true;
          case N(unlend):
-            on( unpack_action<unlend>() );
+            on( unpack_action_data<unlend>() );
             return true;
          case N(deposit):
-            on( unpack_action<deposit>() );
+            on( unpack_action_data<deposit>() );
             return true;
          case N(withdraw):
-            on( unpack_action<withdraw>() );
+            on( unpack_action_data<withdraw>() );
             return true;
          case N(upmargin):
-            on( unpack_action<upmargin>() );
+            on( unpack_action_data<upmargin>() );
             return true;
          case N(covermargin):
-            on( unpack_action<covermargin>() );
+            on( unpack_action_data<covermargin>() );
             return true;
          default:
             return _excurrencies.apply( contract, act );
