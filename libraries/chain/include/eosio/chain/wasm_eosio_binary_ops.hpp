@@ -529,19 +529,27 @@ struct propagate_post_injection<Mutator> {
 };
 
 template <bool Kills, bool Post>
-struct base_mutator {
-   static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-      std::vector<U8> self_code = inst->pack();
-      if constexpr ( Post )
-         arg.new_code->insert( arg.new_code->begin(), self_code.begin(), self_code.end() );
-      else
-         arg.new_code->insert( arg.new_code->end(), self_code.begin(), self_code.end() );
-   }
-};
+struct base_mutator;
 
 template <bool Post>
 struct base_mutator<true, Post> {
    static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+   }
+};
+
+template<>
+struct base_mutator<false, true> {
+   static void accept(wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+      std::vector<U8> self_code = inst->pack();
+      arg.new_code->insert( arg.new_code->begin(), self_code.begin(), self_code.end() );
+   }
+};
+
+template<>
+struct base_mutator<false, false> {
+   static void accept(wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+      std::vector<U8> self_code = inst->pack();
+      arg.new_code->insert( arg.new_code->end(), self_code.begin(), self_code.end() );
    }
 };
 
