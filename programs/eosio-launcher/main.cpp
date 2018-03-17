@@ -1778,7 +1778,7 @@ FC_REFLECT( host_def,
             (instances) )
 
 FC_REFLECT( eosd_def,
-            (name)(config_dir_name)(has_db)
+            (name)(config_dir_name)(data_dir_name)(has_db)
             (p2p_port)(http_port)(file_size) )
 
 FC_REFLECT( tn_node_def, (name)(keys)(peers)(producers) )
