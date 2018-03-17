@@ -828,10 +828,28 @@ launcher_def::deploy_config_files (tn_node_def &node) {
         exit (-1);
     }
 
-    if (bf::exists (cfgdir)) {
-      if (force_overwrite) {
-        int64_t count =  bf::remove_all (dd / block_dir, ec);
-        if (ec.value() != 0) {
+    if (!bf::exists (cfgdir)) {
+       if (!bf::create_directories (cfgdir, ec) && ec.value()) {
+          cerr << "could not create new directory: " << instance.config_dir_name
+               << " errno " << ec.value() << " " << strerror(ec.value()) << endl;
+          exit (-1);
+       }
+    }
+    else if (bf::exists (cfgdir / "config.ini") && !force_overwrite) {
+       cerr << cfgdir << " exists. Use -f|--force to pverwrite configuration\n";
+       exit (-1);
+    }
+
+    if (!bf::exists (dd)) {
+       if (!bf::create_directories (dd, ec) && ec.value()) {
+          cerr << "could not create new directory: " << instance.config_dir_name
+               << " errno " << ec.value() << " " << strerror(ec.value()) << endl;
+          exit (-1);
+       }
+    }
+    else if (force_overwrite) {
+       int64_t count =  bf::remove_all (dd / block_dir, ec);
+       if (ec.value() != 0) {
           cerr << "count = " << count << " could not remove old directory: " << dd
                << " " << strerror(ec.value()) << endl;
           exit (-1);
@@ -842,16 +860,12 @@ launcher_def::deploy_config_files (tn_node_def &node) {
                << " " << strerror(ec.value()) << endl;
           exit (-1);
         }
-      }
-      else {
-        cerr << cfgdir << " already exists.  Use -f/--force to overwrite configuration and erase blockchain" << endl;
-        exit (-1);
-      }
-    } else if (!bf::create_directories (cfgdir, ec) && ec.value()) {
-       cerr << "could not create new directory: " << instance.config_dir_name
-            << " errno " << ec.value() << " " << strerror(ec.value()) << endl;
-       exit (-1);
     }
+    else {
+       cerr << dd << " exists. Use -f|--force to erase blockchain data" << endl;
+        exit (-1);
+    }
+
     if (!bf::equivalent(genesis_source, cfgdir / "genesis.json")) {
        bf::copy_file (genesis_source, cfgdir / "genesis.json", bf::copy_option::overwrite_if_exists);
     }
@@ -1276,12 +1290,26 @@ launcher_def::do_ssh (const string &cmd, const string &host_name) {
 void
 launcher_def::prep_remote_config_dir (eosd_def &node, host_def *host) {
   bf::path abs_config_dir = bf::path(host->eosio_home) / node.config_dir_name;
-  string add = abs_config_dir.string();
+  bf::path abs_data_dir = bf::path(host->eosio_home) / node.data_dir_name;
+
+  string acd = abs_config_dir.string();
+  string add = abs_data_dir.string();
   string cmd = "cd " + host->eosio_home;
+
+  cmd = "cd " + host->eosio_home;
   if (!do_ssh(cmd, host->host_name)) {
     cerr << "Unable to switch to path " << host->eosio_home
          << " on host " <<  host->host_name << endl;
     exit (-1);
+  }
+
+  cmd = "cd " + acd;
+  if (!do_ssh(cmd,host->host_name)) {
+     cmd = "mkdir -p " + acd;
+     if (!do_ssh (cmd, host->host_name)) {
+        cerr << "Unable to invoke " << cmd << " on host " << host->host_name << endl;
+        exit (01);
+     }
   }
   cmd = "cd " + add;
   if (do_ssh(cmd,host->host_name)) {
@@ -1300,7 +1328,7 @@ launcher_def::prep_remote_config_dir (eosd_def &node, host_def *host) {
     }
   }
   else {
-    cmd = "mkdir " + add;
+    cmd = "mkdir -p " + add;
     if (!do_ssh (cmd, host->host_name)) {
       cerr << "Unable to invoke " << cmd << " on host "
            << host->host_name << endl;
