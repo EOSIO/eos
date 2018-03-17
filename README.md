@@ -118,7 +118,7 @@ git clone https://github.com/eosio/eos --recursive
 cd eos
 
 git checkout DAWN-2018-02-14 --recurse-submodules
-./eosio_build.sh
+./build.sh
 ```
 
 For ease of contract development, one further step is required:
