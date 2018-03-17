@@ -1,13 +1,6 @@
 # Pegged Derivative Currency Design
 
-A currency is designed to be a fungible and non-callable asset. 
-
-> **fungible**: mutually interchangeable.
-> **non-callable** :security that **cannot be redeemed early by the issuer** except with the payment of a penalty.
-
-A pegged Derivative currency, such as BitUSD, is backed by a cryptocurrency held as collateral. The "issuer" is "short" the dollar and extra-long the cryptocurrency. The buyer is simply long the dollar.  
-
-> **collateral**: security for repayment of a loan, to be forfeited in the event of a default
+A currency is designed to be a fungible and non-callable asset. A pegged Derivative currency, such as BitUSD, is backed by a cryptocurrency held as collateral. The "issuer" is "short" the dollar and extra-long the cryptocurrency. The buyer is simply long the dollar.  
 
 
 
@@ -86,14 +79,10 @@ situations that can occur:
        - stop attempting adjusting maker ratio to defend the price feed and let the price rise until above +1%
    ```
 
-Value of E = C - D  where D == all in circulation, so E->C conversions should always assume all outstanding
-D was **settled at current maker price**. The result of such a conversion will **raise the collateral ratio**, unless they are forced
-to buy and retire some D at the current ratio. The algorithm must ensure the individual selling E doesn't leave those holding E
-worse-off from a D/E perspective (doesnot reduce D to a large extent).  An individual buying E will create new D to maintain the same D/E ratio.
+Value of E = C - D  where D == all in circulation, so E->C conversions should always assume all outstanding D was **settled at current maker price**. The result of such a conversion will **raise the collateral ratio**, unless they are forced to buy and retire some D at the current ratio. The algorithm must ensure the individual selling E doesn't leave those holding E worse-off from a D/E perspective (doesnot reduce D to a large extent).  An individual buying E will create new D to maintain the same D/E ratio.
 
 This implies that when value of all outstanding D is greater than all C that E cannot be sold until the network
-generates **enough in trading fees** to recaptialize the market. This is like a company with more debt than equity not allowing buybacks. In fact, **E should**
-**not be sellable any time the collateral ratio falls below 1.5:1**. 
+generates **enough in trading fees** to recaptialize the market. This is like a company with more debt than equity not allowing buybacks. In fact, **E should not be sellable any time the collateral ratio falls below 1.5:1**. 
 
 BitShares is typical **margin call** territory, but holders of E have a chance at future liquidity if the situation improves. While E is not sellable,
 E can be purchased at a 10% discount to its theoretical value, this will dilute existing holders of E but will raise capital and hopefully move E holders closer to eventual liquidity. 
@@ -101,10 +90,8 @@ E can be purchased at a 10% discount to its theoretical value, this will dilute 
 
 Adjusting Bancor Ratios by Price Feed
 -------------------------------------
-The price feed informs the algorithm of significant deviations between the Bancor effective price and the target peg. The price feed
-is necessarily a lagging indicator and may also factor in natural spreads between different exchanges. Therefore, the price
-feed shall have no impact unless there is a significant deviation (5%). When such a deviation occurs, the ratio is automatically adjusted to 4%.
-
+The price feed informs the algorithm of significant deviations between the Bancor effective price and the target peg. The price feed is necessarily a lagging indicator and may also factor in natural spreads between different exchanges. Therefore, the price feed shall have no impact unless there is a significant deviation (5%). When such a deviation occurs, the ratio is automatically adjusted to 4%.
+    
 In other words, the price feed keeps the maker in the "channel" but does not attempt to set the real-time prices. If there is a sudden change and the price feed differs from maker by 50% then after the adjustment it will still differ by 4%.  
 
 > Effective Price = Connected Tokens exchanges / Smart Tokens exchanged
