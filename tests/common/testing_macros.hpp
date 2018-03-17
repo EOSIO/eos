@@ -206,7 +206,7 @@
  */
 #define Delete_Authority(...) BOOST_PP_OVERLOAD(DELAUTH, __VA_ARGS__)(__VA_ARGS__)
 /**
- * @brief Shorthand way to link named authority with a contract/message type
+ * @brief Shorthand way to link named authority with a contract/action type
  *
  * @code{.cpp}
  * // Link alice's "money" authority with eosio::transfer
@@ -217,7 +217,7 @@
  */
 #define Link_Authority(...) BOOST_PP_OVERLOAD(LINKAUTH, __VA_ARGS__)(__VA_ARGS__)
 /**
- * @brief Shorthand way to unlink named authority from a contract/message type
+ * @brief Shorthand way to unlink named authority from a contract/action type
  *
  * @code{.cpp}
  * // Unlink alice's authority for eosio::transfer
