@@ -94,7 +94,7 @@ The price feed informs the algorithm of significant deviations between the Banco
     
 In other words, the price feed keeps the maker in the "channel" but does not attempt to set the real-time prices. If there is a sudden change and the price feed differs from maker by 50% then after the adjustment it will still differ by 4%.  
 
-> Effective Price = Connected Tokens exchanges / Smart Tokens exchanged
+> Effective Price = Connected Tokens exchanged / Smart Tokens exchanged
 
 Summary
 -------
