@@ -496,7 +496,9 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
          auto latest_producer_schedule = _calculate_producer_schedule();
          if( latest_producer_schedule != _head_producer_schedule() )
             _pending_block->new_producers = latest_producer_schedule;
+
       }
+      _pending_block->schedule_version = get_global_properties().active_producers.version;
 
       if( !(skip & skip_producer_signature) )
          _pending_block->sign( block_signing_key );
@@ -738,9 +740,9 @@ flat_set<public_key_type> chain_controller::get_required_keys(const transaction&
 }
 
 void chain_controller::check_authorization( const vector<action>& actions,
-                                            flat_set<public_key_type> provided_keys,
+                                            const flat_set<public_key_type>& provided_keys,
                                             bool allow_unused_signatures,
-                                            flat_set<account_name>    provided_accounts  )const
+                                            flat_set<account_name> provided_accounts )const
 {
    auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
                                      get_global_properties().configuration.max_authority_depth,
@@ -889,6 +891,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
            ("bi", config::block_interval_ms)("t", (time_point(next_block.timestamp) - head_block_time()).count() / 1000));
    }
 
+
    if( !is_start_of_round( next_block.block_num() ) )  {
       EOS_ASSERT(!next_block.new_producers, block_validate_exception,
                  "Producer changes may only occur at the end of a round.");
@@ -907,7 +910,8 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
                  ("block producer",next_block.producer)("scheduled producer",producer.owner));
    }
 
-
+   EOS_ASSERT( next_block.schedule_version == get_global_properties().active_producers.version, block_validate_exception, "wrong producer schedule version specified" );
+      
    return producer;
 }
 
@@ -1050,7 +1054,8 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<contracts::index64_index>();
    _db.add_index<contracts::index128_index>();
    _db.add_index<contracts::index256_index>();
-
+   _db.add_index<contracts::index_double_index>();
+   
 
    _db.add_index<contracts::keystr_value_index>();
    _db.add_index<contracts::key128x128_value_index>();
@@ -1082,7 +1087,6 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
             p.configuration = starter.get_chain_start_configuration();
             p.active_producers = starter.get_chain_start_producers();
             p.new_active_producers = starter.get_chain_start_producers();
-            wdump((starter.get_chain_start_producers()));
          });
 
          _db.create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
@@ -1097,8 +1101,6 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
             _db.create<block_summary_object>([&](block_summary_object&) {});
 
          starter.prepare_database(*this, _db);
-
-         ilog( "done initializing chain" );
       });
    }
 } FC_CAPTURE_AND_RETHROW() }

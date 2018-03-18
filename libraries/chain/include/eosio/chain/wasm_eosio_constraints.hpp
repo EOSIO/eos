@@ -1,12 +1,13 @@
 #pragma once
 
+#include <functional>
+#include <vector>
+
 namespace IR {
-    struct Module;
-};
+   struct Module;
+}
 
-namespace eosio { namespace chain {
-
-namespace wasm_constraints {
+namespace eosio { namespace chain { namespace wasm_constraints {
    constexpr unsigned maximum_linear_memory      = 33*1024*1024;//bytes
    constexpr unsigned maximum_mutable_globals    = 1024;        //bytes
    constexpr unsigned maximum_table_elements     = 1024;        //elements
@@ -18,8 +19,6 @@ namespace wasm_constraints {
    static_assert(maximum_mutable_globals%4                 == 0, "maximum_mutable_globals must be mulitple of 4");
    static_assert(maximum_table_elements*8%4096             == 0, "maximum_table_elements*8 must be mulitple of 4096");
    static_assert(maximum_linear_memory_init%wasm_page_size == 0, "maximum_linear_memory_init must be mulitple of wasm page size");
-}
+} // namespace  wasm_constraints
 
-//Throws if something in the module violates
-void validate_eosio_wasm_constraints(const IR::Module& m);
-}}
+}} // namespace eosio, chain

@@ -11,6 +11,7 @@ BOOST_AUTO_TEST_SUITE(limits_tests)
 
 #if 0
 BOOST_AUTO_TEST_CASE(infinite_loop) {
+#if 0
    try {
       // set up runtime limits
       tester t({fc::milliseconds(1), fc::milliseconds(1)});
@@ -34,6 +35,7 @@ BOOST_AUTO_TEST_CASE(infinite_loop) {
          BOOST_REQUIRE_THROW(t.push_transaction(trx), checktime_exceeded);
       }
    } FC_LOG_AND_RETHROW();
+#endif
 }
 #endif
 

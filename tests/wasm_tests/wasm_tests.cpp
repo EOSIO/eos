@@ -11,6 +11,7 @@
 
 #include <noop/noop.wast.hpp>
 #include <noop/noop.abi.hpp>
+
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
 
@@ -496,6 +497,7 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
    }
 
 } FC_LOG_AND_RETHROW()
+
 
 BOOST_FIXTURE_TEST_CASE(noop, tester) try {
    produce_blocks(2);

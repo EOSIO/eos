@@ -3,18 +3,11 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 
-#include <boost/multiprecision/cpp_dec_float.hpp>
-
 using namespace fc;
 
 namespace eosio { namespace chain { 
 
-   using wasm_double = boost::multiprecision::cpp_dec_float_50;
-
    class apply_context;
-
-namespace webassembly { namespace common {
-
 
    template<typename T>
    struct class_from_wasm {

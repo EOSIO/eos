@@ -10,6 +10,7 @@ pipeline {
                             . $HOME/.bash_profile
                             echo 1 | ./eosio_build.sh
                         '''
+                        stash includes: 'build/**/*', name: 'buildUbuntu'
                     }
                 }
                 stage('MacOS') {
@@ -19,6 +20,7 @@ pipeline {
                             . $HOME/.bash_profile
                             echo 1 | ./eosio_build.sh 
                         ''' 
+                        stash includes: 'build/**/*', name: 'buildMacOS'
                     }
                 }
                 stage('Fedora') {
@@ -27,7 +29,8 @@ pipeline {
                         sh '''
                             . $HOME/.bash_profile
                             echo 1 | ./eosio_build.sh 
-                        ''' 
+                        '''
+                        stash includes: 'build/**/*', name: 'buildFedora'
                     }
                 }
             }
@@ -37,6 +40,7 @@ pipeline {
                 stage('Ubuntu') {
                     agent { label 'Ubuntu' }
                     steps {
+                        unstash 'buildUbuntu'
                         sh '''
                             . $HOME/.bash_profile
                             cd build
@@ -58,6 +62,7 @@ pipeline {
                 stage('MacOS') {
                     agent { label 'MacOS' }
                     steps {
+                        unstash 'buildMacOS'
                         sh '''
                             . $HOME/.bash_profile
                             cd build
@@ -79,6 +84,7 @@ pipeline {
                 stage('Fedora') {
                     agent { label 'Fedora' }
                     steps {
+                        unstash 'buildFedora'
                         sh '''
                             . $HOME/.bash_profile
                             cd build

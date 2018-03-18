@@ -4,6 +4,7 @@
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <wasm-interpreter.h>
+#include <softfloat_types.h>
 
 
 namespace eosio { namespace chain { namespace webassembly { namespace binaryen {
@@ -196,6 +197,12 @@ template<typename T>
 T convert_literal_to_native(Literal& v);
 
 template<>
+inline float64_t convert_literal_to_native<float64_t>(Literal& v) {
+   auto val = v.getf64();
+   return reinterpret_cast<float64_t&>(val);
+}
+
+template<>
 inline int64_t convert_literal_to_native<int64_t>(Literal& v) {
    return v.geti64();
 }
@@ -220,13 +227,6 @@ inline bool convert_literal_to_native<bool>(Literal& v) {
    return v.geti32();
 }
 
-
-template<>
-inline wasm_double convert_literal_to_native<wasm_double>(Literal& v) {
-   int64_t val = v.geti64();
-   return wasm_double(*reinterpret_cast<wasm_double *>(&val));
-}
-
 template<>
 inline name convert_literal_to_native<name>(Literal& v) {
    int64_t val = v.geti64();
@@ -238,7 +238,11 @@ inline auto convert_native_to_literal(const interpreter_interface*, T val) {
    return Literal(val);
 }
 
-inline auto convert_native_to_literal(const interpreter_interface*, const name &val) {
+inline auto convert_native_to_literal(const wasm_interface &, const float64_t& val) {
+   return Literal( *((double*)(&val)) );
+}
+
+inline auto convert_native_to_literal(const wasm_interface &, const name &val) {
    return Literal(val.value);
 }
 
