@@ -1118,6 +1118,9 @@ namespace eosio {
       state = newstate;
       string ns = state == in_sync ? "in sync" : state == lib_catchup ? "lib catchup" : "head catchup";
       fc_dlog(logger, "old state ${os} becoming ${ns}",("os",os)("ns",ns));
+      if (state == in_sync) {
+         source.reset();
+      }
    }
 
    bool sync_manager::is_active(connection_ptr c) {
@@ -1132,7 +1135,7 @@ namespace eosio {
 
    void sync_manager::reset_lib_num() {
       sync_known_lib_num = chain_plug->chain().last_irreversible_block_num();
-      sync_last_requested_num = chain_plug->chain().head_block_num();
+      sync_last_requested_num = state == in_sync ? sync_known_lib_num : chain_plug->chain().head_block_num();
 
       for (auto& c : my_impl->connections) {
          if( c->last_handshake_recv.last_irreversible_block_num > sync_known_lib_num) {
