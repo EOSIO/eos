@@ -26,22 +26,30 @@ BOOST_FIXTURE_TEST_CASE( eosio_system_load, tester ) try {
 
    create_accounts( {N(dan),N(brendan)} );
 
+   push_action(N(eosio), N(create), N(eosio), mvo()
+           ("issuer",         "eosio")
+           ("maximum_supply", "1000000000.0000 EOS")
+           ("can_freeze",     "0")
+           ("can_recall",     "0")
+           ("can_whitelist",  "0")
+   );
    push_action(N(eosio), N(issue), N(eosio), mvo()
            ("to",       "eosio")
            ("quantity", "1000000.0000 EOS")
+           ("memo",     "")
    );
    push_action(N(eosio), N(transfer), N(eosio), mvo()
        ("from", "eosio")
        ("to", "dan")
        ("quantity", "100.0000 EOS")
-       ("memo", "hi" ) 
+       ("memo", "hi" )
    );
 
    push_action(N(eosio), N(transfer), N(dan), mvo()
        ("from", "dan")
        ("to", "brendan")
        ("quantity", "50.0000 EOS")
-       ("memo", "hi" ) 
+       ("memo", "hi" )
    );
 
    wlog( "reg producer" );
@@ -57,12 +65,12 @@ BOOST_FIXTURE_TEST_CASE( eosio_system_load, tester ) try {
        ("from", "dan")
        ("to", "brendan")
        ("quantity", "5.0000 EOS")
-       ("memo", "hi" ) 
+       ("memo", "hi" )
    );
 
    /*
    permission_level_weight plw{ permission_level{N(eosio),N(active)}, 1};;
-   set_authority( N(dan), N(active), 
+   set_authority( N(dan), N(active),
                   authority( 1,
                    vector<key_weight>({ {get_public_key(N(dan),"active"),1 } }),
                    vector<permission_level_weight>({plw}) ) );
@@ -72,7 +80,7 @@ BOOST_FIXTURE_TEST_CASE( eosio_system_load, tester ) try {
    wlog( "stake vote" );
    auto trace = push_action(N(eosio), N(stakevote), N(dan), mvo()
        ("voter", "dan")
-       ("amount", "5.0000 EOS")
+       ("amount", "50000")
    );
 
    wdump((trace));
@@ -90,6 +98,6 @@ BOOST_FIXTURE_TEST_CASE( eosio_system_load, tester ) try {
    produce_blocks(1);
    */
 
-} FC_LOG_AND_RETHROW() 
+} FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -19,22 +19,22 @@ namespace eosio {
        */
       real_type      interest_shares = 0;
 
-      real_type lend( int64_t new_lendable ) {
+      real_type lend( safe_quantity<int64_t> new_lendable ) {
          if( total_lendable.amount > 0 ) {
             real_type new_shares =  (interest_shares * new_lendable) / total_lendable.amount;
             interest_shares += new_shares;
             total_lendable.amount += new_lendable;
          } else {
             interest_shares += new_lendable;
-            total_lendable.amount  += new_lendable;
+            total_lendable.amount += new_lendable;
          }
-         return new_lendable;
+         return static_cast<real_type>(new_lendable);
       }
 
       extended_asset unlend( double ishares ) {
          extended_asset result = total_lent;
-         print( "unlend: ", ishares, " existing interest_shares:  ", interest_shares, "\n" ); 
-         result.amount  = int64_t( (ishares * total_lendable.amount) / interest_shares );
+         print( "unlend: ", ishares, " existing interest_shares:  ", interest_shares, "\n" );
+         result.amount = make_safe<int64_t>(static_cast<int64_t>( (ishares * total_lendable.amount.get_quantity()) / interest_shares ) );
 
          total_lendable.amount -= result.amount;
          interest_shares -= ishares;
@@ -70,9 +70,9 @@ namespace eosio {
       connector base;
       connector quote;
 
-      uint64_t primary_key()const { return supply.symbol.name(); }
+      uint64_t primary_key()const { return supply.get_symbol().name(); }
 
-      extended_asset convert_to_exchange( connector& c, extended_asset in ); 
+      extended_asset convert_to_exchange( connector& c, extended_asset in );
       extended_asset convert_from_exchange( connector& c, extended_asset in );
       extended_asset convert( extended_asset from, extended_symbol to );
 

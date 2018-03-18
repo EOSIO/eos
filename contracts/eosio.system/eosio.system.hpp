@@ -3,12 +3,15 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosiolib/eosio.hpp>
-#include <eosiolib/token.hpp>
+//#include <eosiolib/token.hpp>
+#include <eosiolib/asset.hpp>
 #include <eosiolib/db.hpp>
 #include <eosiolib/reflect.hpp>
 #include <eosiolib/print.hpp>
 
-#include <eosiolib/generic_currency.hpp>
+//#include <eosiolib/generic_currency.hpp>
+#include <eosiolib/currency.hpp>
+#include <eosiolib/dispatcher.hpp>
 #include <eosiolib/datastream.hpp>
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/multi_index.hpp>
@@ -24,13 +27,20 @@ namespace eosiosystem {
    using std::map;
    using std::pair;
    using eosio::print;
+   using eosio::safe_quantity;
+   using eosio::extended_symbol;
+   using eosio::extended_asset;
+   using eosio::currency;
 
    template<account_name SystemAccount>
    class contract {
       public:
-         static const account_name system_account = SystemAccount;
-         typedef eosio::generic_currency< eosio::token<system_account,S(4,EOS)> > currency;
-         typedef typename currency::token_type system_token_type;
+         static constexpr account_name    system_account = SystemAccount;
+         static constexpr extended_symbol system_token{S(4,EOS), SystemAccount};
+         typedef safe_quantity<int64_t, static_cast<uint128_t>(system_token)> system_token_quantity;
+
+         //typedef eosio::generic_currency< eosio::token<system_account,S(4,EOS)> > currency;
+         //typedef typename currency::token_type system_token_type;
 
          struct producer_votes {
             account_name      owner;
@@ -50,7 +60,7 @@ namespace eosiosystem {
             account_name                owner;
             account_name                proxy;
             uint32_t                    last_update;
-            system_token_type           staked;
+            system_token_quantity       staked;
             std::vector<account_name>   producers;
 
             uint64_t primary_key()const { return owner; }
@@ -71,8 +81,8 @@ namespace eosiosystem {
 
          struct total_resources {
             account_name owner;
-            typename currency::token_type total_net_weight;
-            typename currency::token_type total_cpu_weight;
+            system_token_quantity total_net_weight;
+            system_token_quantity total_cpu_weight;
             uint32_t total_ram = 0;
 
             uint64_t primary_key()const { return owner; }
@@ -87,15 +97,15 @@ namespace eosiosystem {
          struct delegated_bandwidth {
             account_name from;
             account_name to;
-            typename currency::token_type net_weight;
-            typename currency::token_type cpu_weight;
+            system_token_quantity net_weight;
+            system_token_quantity cpu_weight;
 
             uint32_t start_pending_net_withdraw = 0;
-            typename currency::token_type pending_net_withdraw;
+            system_token_quantity pending_net_withdraw;
             uint64_t deferred_net_withdraw_handler = 0;
 
             uint32_t start_pending_cpu_withdraw = 0;
-            typename currency::token_type pending_cpu_withdraw;
+            system_token_quantity pending_cpu_withdraw;
             uint64_t deferred_cpu_withdraw_handler = 0;
 
 
@@ -115,7 +125,7 @@ namespace eosiosystem {
          ACTION( SystemAccount, finishundel ) {
             account_name from;
             account_name to;
-            
+
             EOSLIB_SERIALIZE( finishundel, (from)(to) )
          };
 
@@ -133,26 +143,26 @@ namespace eosiosystem {
          };
 
          ACTION( SystemAccount, delegatebw ) {
-            account_name                    from;
-            account_name                    receiver;
-            typename currency::token_type   stake_net_quantity;
-            typename currency::token_type   stake_cpu_quantity;
+            account_name            from;
+            account_name            receiver;
+            system_token_quantity   stake_net_quantity;
+            system_token_quantity   stake_cpu_quantity;
 
 
             EOSLIB_SERIALIZE( delegatebw, (from)(receiver)(stake_net_quantity)(stake_cpu_quantity) )
          };
 
          ACTION( SystemAccount, undelegatebw ) {
-            account_name                    from;
-            account_name                    receiver;
-            typename currency::token_type   unstake_net_quantity;
-            typename currency::token_type   unstake_cpu_quantity;
+            account_name            from;
+            account_name            receiver;
+            system_token_quantity   unstake_net_quantity;
+            system_token_quantity   unstake_cpu_quantity;
 
             EOSLIB_SERIALIZE( undelegatebw, (from)(receiver)(unstake_net_quantity)(unstake_cpu_quantity) )
          };
 
          ACTION( SystemAccount, nonce ) {
-            eosio::string                   value;
+            std::string             value;
 
             EOSLIB_SERIALIZE( nonce, (value) )
          };
@@ -162,11 +172,11 @@ namespace eosiosystem {
          //  2. incrementing count  (key=> tablename
 
          static void on( const delegatebw& del ) {
-            eosio_assert( del.stake_cpu_quantity.quantity >= 0, "must stake a positive amount" );
-            eosio_assert( del.stake_net_quantity.quantity >= 0, "must stake a positive amount" );
+            eosio_assert( del.stake_cpu_quantity >= 0, "must stake a positive amount" );
+            eosio_assert( del.stake_net_quantity >= 0, "must stake a positive amount" );
 
             auto total_stake = del.stake_cpu_quantity + del.stake_net_quantity;
-            eosio_assert( total_stake.quantity >= 0, "must stake a positive amount" );
+            eosio_assert( total_stake >= 0, "must stake a positive amount" );
 
 
             require_auth( del.from );
@@ -206,19 +216,22 @@ namespace eosiosystem {
                });
             }
 
-            set_resource_limits( tot_itr->owner, tot_itr->total_ram, tot_itr->total_net_weight.quantity, tot_itr->total_cpu_weight.quantity, 0 );
+            set_resource_limits( tot_itr->owner, tot_itr->total_ram,
+                                 static_cast<uint64_t>(tot_itr->total_net_weight),
+                                 static_cast<uint64_t>(tot_itr->total_cpu_weight), 0 );
 
-            currency::inline_transfer( del.from, SystemAccount, total_stake, "stake bandwidth" );
+            currency::inline_transfer( del.from, SystemAccount, extended_asset(total_stake, system_token), "stake bandwidth" );
+            // Avoid using inline_transfer and just transfer directly since eosio.system is a privileged contract?
          } // delegatebw
 
 
 
          static void on( const undelegatebw& del ) {
-            eosio_assert( del.unstake_cpu_quantity.quantity >= 0, "must stake a positive amount" );
-            eosio_assert( del.unstake_net_quantity.quantity >= 0, "must stake a positive amount" );
+            eosio_assert( del.unstake_cpu_quantity >= 0, "must stake a positive amount" );
+            eosio_assert( del.unstake_net_quantity >= 0, "must stake a positive amount" );
 
             auto total_stake = del.unstake_cpu_quantity + del.unstake_net_quantity;
-            eosio_assert( total_stake.quantity >= 0, "must stake a positive amount" );
+            eosio_assert( total_stake >= 0, "must stake a positive amount" );
 
             require_auth( del.from );
 
@@ -243,10 +256,12 @@ namespace eosiosystem {
                tot.total_cpu_weight -= del.unstake_cpu_quantity;
             });
 
-            set_resource_limits( totals.owner, totals.total_ram, totals.total_net_weight.quantity, totals.total_cpu_weight.quantity, 0 );
+            set_resource_limits( totals.owner, totals.total_ram,
+                                 static_cast<uint64_t>(totals.total_net_weight),
+                                 static_cast<uint64_t>(totals.total_cpu_weight), 0 );
 
             /// TODO: implement / enforce time delays on withdrawing
-            currency::inline_transfer( SystemAccount, del.from, total_stake, "unstake bandwidth" );
+            currency::inline_transfer( SystemAccount, del.from, extended_asset(total_stake, system_token), "unstake bandwidth" );
          } // undelegatebw
 
 
@@ -282,15 +297,15 @@ namespace eosiosystem {
          }
 
          ACTION( SystemAccount, stakevote ) {
-            account_name      voter;
-            system_token_type amount;
+            account_name          voter;
+            system_token_quantity amount;
 
             EOSLIB_SERIALIZE( stakevote, (voter)(amount) )
          };
 
          static void on( const stakevote& sv ) {
             print( "on stake vote\n" );
-            eosio_assert( sv.amount.quantity > 0, "must stake some tokens" );
+            eosio_assert( sv.amount > 0, "must stake some tokens" );
             require_auth( sv.voter );
 
             account_votes_index_type avotes( SystemAccount, SystemAccount );
@@ -304,8 +319,8 @@ namespace eosiosystem {
                });
             }
 
-            uint128_t old_weight = acv->staked.quantity;
-            uint128_t new_weight = old_weight + sv.amount.quantity;
+            uint128_t old_weight = static_cast<uint64_t>(acv->staked);
+            uint128_t new_weight = old_weight + static_cast<uint64_t>(sv.amount);
 
             producer_votes_index_type votes( SystemAccount, SystemAccount );
 
@@ -321,7 +336,7 @@ namespace eosiosystem {
                av.staked += sv.amount;
             });
 
-            currency::inline_transfer( sv.voter, SystemAccount, sv.amount, "stake for voting" );
+            currency::inline_transfer( sv.voter, SystemAccount, extended_asset(sv.amount, system_token), "stake for voting" );
          }
 
          ACTION( SystemAccount, voteproducer ) {
@@ -351,7 +366,7 @@ namespace eosiosystem {
 
             std::map<account_name, pair<uint128_t, uint128_t> > producer_vote_changes;
 
-            uint128_t old_weight = existing.staked.quantity; /// old time
+            uint128_t old_weight = static_cast<uint64_t>(existing.staked); /// old time
             uint128_t new_weight = old_weight; /// TODO: update for current weight
 
             for( const auto& p : existing.producers )
@@ -384,24 +399,24 @@ namespace eosiosystem {
 
          static void on( const nonce& ) {
          }
-         
-         static void on( const finishundel& ) {            
+
+         static void on( const finishundel& ) {
          }
 
-         static void apply( account_name code, action_name act ) {
-
+         static bool apply( account_name code, action_name act ) {
             if( !eosio::dispatch<contract,
                                  regproducer, regproxy,
                                  delegatebw, undelegatebw,
                                  finishundel, voteproducer, stakevote,
                                  nonce>( code, act) ) {
-               if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
-                  eosio::print("Unexpected action: ", eosio::name(act), "\n");
-                  eosio_assert( false, "received unexpected action");
-               }
+               return currency().apply( code, act );
             }
 
+            return true;
          } /// apply
    };
+
+   template<account_name SystemAccount>
+   constexpr extended_symbol contract<SystemAccount>::system_token;
 
 } /// eosiosystem

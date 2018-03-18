@@ -10,7 +10,7 @@ namespace eosio {
       real_type ONE(1.0);
 
       real_type E = -R * (ONE - std::pow( ONE + T / C, F) );
-      int64_t issued = int64_t(E);
+      auto issued = make_safe<int64_t>(static_cast<int64_t>(E));
 
       supply.amount += issued;
       c.balance.amount += in.amount;
@@ -20,7 +20,7 @@ namespace eosio {
 
    extended_asset exchange_state::convert_from_exchange( connector& c, extended_asset in ) {
       eosio_assert( in.contract == supply.contract, "unexpected asset contract input" );
-      eosio_assert( in.symbol== supply.symbol, "unexpected asset symbol input" );
+      eosio_assert( in.get_symbol() == supply.get_symbol(), "unexpected asset symbol input" );
 
       real_type R(supply.amount - in.amount);
       real_type C(c.balance.amount);
@@ -30,7 +30,7 @@ namespace eosio {
 
 
       real_type T = C * (std::pow( ONE + E/R, F) - ONE);
-      int64_t out = int64_t(T);
+      auto out = make_safe<int64_t>(static_cast<int64_t>(T));
 
       supply.amount -= in.amount;
       c.balance.amount -= out;
@@ -46,17 +46,17 @@ namespace eosio {
 
       if( sell_symbol != ex_symbol ) {
          if( sell_symbol == base_symbol ) {
-            from = convert_to_exchange( base, from );
+            from.reset_to( convert_to_exchange( base, from ) );
          } else if( sell_symbol == quote_symbol ) {
-            from = convert_to_exchange( quote, from );
-         } else { 
+            from.reset_to( convert_to_exchange( quote, from ) );
+         } else {
             eosio_assert( false, "invalid sell" );
          }
       } else {
          if( to == base_symbol ) {
-            from = convert_from_exchange( base, from ); 
+            from.reset_to( convert_from_exchange( base, from ) );
          } else if( to == quote_symbol ) {
-            from = convert_from_exchange( quote, from ); 
+            from.reset_to( convert_from_exchange( quote, from ) );
          } else {
             eosio_assert( false, "invalid conversion" );
          }
@@ -71,9 +71,9 @@ namespace eosio {
    bool exchange_state::requires_margin_call(  const exchange_state::connector& con )const {
       if( con.peer_margin.total_lent.amount > 0  ) {
          auto tmp = *this;
-         auto base_total_col = int64_t(con.peer_margin.total_lent.amount * con.peer_margin.least_collateralized);
+         auto base_total_col = static_cast<int64_t>(con.peer_margin.total_lent.amount * con.peer_margin.least_collateralized);
          auto covered = tmp.convert( extended_asset( base_total_col, con.balance.get_extended_symbol()), con.peer_margin.total_lent.get_extended_symbol() );
-         if( covered.amount <= con.peer_margin.total_lent.amount ) 
+         if( covered.amount <= con.peer_margin.total_lent.amount )
             return true;
       }
       return false;

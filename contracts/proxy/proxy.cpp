@@ -92,7 +92,7 @@ extern "C" {
           if (action == N(onerror)) {
              apply_onerror(deferred_transaction::from_current_action());
           } if( action == N(transfer) ) {
-             apply_transfer(code, unpack_action_data<eosiosystem::contract<N(eosio.system)>::currency::transfer_memo>());
+             apply_transfer(code, unpack_action_data<eosio::currency::transfer>());
           }
        } else if ( code == N(currency) ) {
           if( action == N(transfer) ) {

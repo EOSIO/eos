@@ -448,10 +448,19 @@ class Node(object):
         if trans is None:
            Utils.errorExit("Failed to publish eosio.system.")
 
+        Utils.Print("push create action to eosio contract")
+        contract=eosio.name
+        action="create"
+        data="{\"issuer\":\"eosio\",\"maximum_supply\":\"1000000000.0000 EOS\",\"can_freeze\":\"0\",\"can_recall\":\"0\",\"can_whitelist\":\"0\"}"
+        opts="--permission eosio@active"
+        trans=self.pushMessage(contract, action, data, opts)
+        transId=Node.getTransId(trans[1])
+        self.waitForTransIdOnNode(transId)
+
         Utils.Print("push issue action to eosio contract")
         contract=eosio.name
         action="issue"
-        data="{\"to\":\"eosio\",\"quantity\":\"1000000000.0000 EOS\"}"
+        data="{\"to\":\"eosio\",\"quantity\":\"1000000000.0000 EOS\",\"memo\":\"\"}"
         opts="--permission eosio@active"
         trans=self.pushMessage(contract, action, data, opts)
         transId=Node.getTransId(trans[1])
@@ -555,7 +564,7 @@ class Node(object):
             Utils.Print("ERROR: Exception during get currency balance. %s" % (msg))
             return None
 
-    def getCurrencyStats(self, contract, symbol=""):
+    def getCurrencyStats(self, contract, symbol):
         cmd="%s %s get currency stats %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, symbol)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         try:

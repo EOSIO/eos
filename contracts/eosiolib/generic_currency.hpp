@@ -1,6 +1,6 @@
 #pragma once
 #include <eosiolib/multi_index.hpp>
-#include <eosiolib/token.hpp>
+//#include <eosiolib/token.hpp>
 #include <eosiolib/asset.hpp>
 #include <eosiolib/dispatcher.hpp>
 #include <eosiolib/serialize.hpp>

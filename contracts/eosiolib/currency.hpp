@@ -1,3 +1,9 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
+#pragma once
+
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/asset.hpp>
 #include <eosiolib/multi_index.hpp>
@@ -58,7 +64,7 @@ namespace eosio {
             bool     frozen    = false;
             bool     whitelist = true;
 
-            uint64_t primary_key()const { return balance.symbol; }
+            uint64_t primary_key()const { return balance.get_symbol(); }
 
             EOSLIB_SERIALIZE( account, (balance)(frozen)(whitelist) )
          };
@@ -73,7 +79,7 @@ namespace eosio {
             bool           is_frozen          = false;
             bool           enforce_whitelist  = false;
 
-            uint64_t primary_key()const { return supply.symbol.name(); }
+            uint64_t primary_key()const { return supply.get_symbol().name(); }
 
             EOSLIB_SERIALIZE( currency_stats, (supply)(max_supply)(issuer)(can_freeze)(can_recall)(can_whitelist)(is_frozen)(enforce_whitelist) )
          };
@@ -88,8 +94,9 @@ namespace eosio {
          }
 
          asset get_supply( symbol_name symbol )const {
-            accounts t( _contract, symbol );
-            return t.get(symbol).balance;
+            auto sym = symbol_type(symbol).name();
+            stats statstable( _contract, sym );
+            return statstable.get( sym ).supply;
          }
 
          static void inline_transfer( account_name from, account_name to, extended_asset amount, string memo = string(), permission_name perm = N(active) ) {
@@ -128,15 +135,15 @@ namespace eosio {
            * This is factored out so it can be used as a building block
            */
           void create_currency( const create& c ) {
-            auto sym = c.maximum_supply.symbol;
-            eosio_assert( sym.is_valid(), "invalid symbol name" );
+            auto sym = c.maximum_supply.get_symbol();
 
              stats statstable( _contract, sym.name() );
              auto existing = statstable.find( sym.name() );
              eosio_assert( existing == statstable.end(), "token with symbol already exists" );
 
              statstable.emplace( c.issuer, [&]( auto& s ) {
-                s.supply.symbol = c.maximum_supply.symbol;
+                s.supply.set_symbol(c.maximum_supply.get_symbol());
+                s.max_supply.set_symbol(c.maximum_supply.get_symbol());
                 s.max_supply    = c.maximum_supply;
                 s.issuer        = c.issuer;
                 s.can_freeze    = c.issuer_can_freeze;
@@ -146,7 +153,7 @@ namespace eosio {
           }
 
           void issue_currency( const issue& i ) {
-             auto sym = i.quantity.symbol.name();
+             auto sym = i.quantity.get_symbol().name();
              stats statstable( _contract, sym );
              const auto& st = statstable.get( sym );
 
@@ -172,12 +179,11 @@ namespace eosio {
           }
 
           void on( const issue& i ) {
-             auto sym = i.quantity.symbol.name();
+             auto sym = i.quantity.get_symbol().name();
              stats statstable( _contract, sym );
              const auto& st = statstable.get( sym );
 
              require_auth( st.issuer );
-             eosio_assert( i.quantity.is_valid(), "invalid quantity" );
              eosio_assert( i.quantity.amount > 0, "must issue positive quantity" );
 
              statstable.modify( st, 0, [&]( auto& s ) {
@@ -193,13 +199,12 @@ namespace eosio {
           }
 
           void on( const transfer& t ) {
-             auto sym = t.quantity.symbol.name();
+             auto sym = t.quantity.get_symbol().name();
              stats statstable( _contract, sym );
              const auto& st = statstable.get( sym );
 
              require_recipient( t.to );
 
-             eosio_assert( t.quantity.is_valid(), "invalid quantity" );
              eosio_assert( t.quantity.amount > 0, "must transfer positive quantity" );
              sub_balance( t.from, t.quantity, st );
              add_balance( t.to, t.quantity, st, t.from );
@@ -210,7 +215,7 @@ namespace eosio {
           void sub_balance( account_name owner, asset value, const currency_stats& st ) {
              accounts from_acnts( _contract, owner );
 
-             const auto& from = from_acnts.get( value.symbol );
+             const auto& from = from_acnts.get( value.get_symbol() );
              eosio_assert( from.balance.amount >= value.amount, "overdrawn balance" );
 
              if( has_auth( owner ) ) {
@@ -231,10 +236,11 @@ namespace eosio {
           void add_balance( account_name owner, asset value, const currency_stats& st, account_name ram_payer )
           {
              accounts to_acnts( _contract, owner );
-             auto to = to_acnts.find( value.symbol );
+             auto to = to_acnts.find( value.get_symbol() );
              if( to == to_acnts.end() ) {
                 eosio_assert( !st.enforce_whitelist, "can only transfer to white listed accounts" );
                 to_acnts.emplace( ram_payer, [&]( auto& a ){
+                  a.balance.set_symbol(value.get_symbol());
                   a.balance = value;
                 });
              } else {

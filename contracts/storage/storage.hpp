@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosiolib/eos.hpp>
-#include <eosiolib/token.hpp>
+//#include <eosiolib/token.hpp>
 #include <eosiolib/db.hpp>
 
 /**
@@ -89,7 +89,7 @@ namespace TOKEN_NAME {
 
    /**
    Assert statement to verify structure packing for account
-   **/ 
+   **/
    static_assert( sizeof(account) == sizeof(uint64_t)+sizeof(storage_tokens)+sizeof(uint64_t), "unexpected packing" );
 
    /**
@@ -140,7 +140,7 @@ namespace TOKEN_NAME {
       * eos path
       **/
       char* eospath;
-      
+
       /**
       * ipfs file path
       **/

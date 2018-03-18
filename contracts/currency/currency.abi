@@ -60,7 +60,7 @@
 
   ],
   "tables": [{
-      "name": "account",
+      "name": "accounts",
       "type": "account",
       "index_type": "i64",
       "key_names" : ["currency"],

@@ -7,16 +7,13 @@
 
 namespace eosio {
 
-
    void exchange::on( const deposit& d ) {
-      eosio_assert( d.quantity.is_valid(), "invalid quantity" );
       currency::inline_transfer( d.from, _this_contract, d.quantity, "deposit" );
       _accounts.adjust_balance( d.from, d.quantity, "deposit" );
    }
 
    void exchange::on( const withdraw& w ) {
       require_auth( w.from );
-      eosio_assert( w.quantity.is_valid(), "invalid quantity" );
       eosio_assert( w.quantity.amount >= 0, "cannot withdraw negative balance" ); // Redundant? inline_transfer will fail if w.quantity is not positive.
       _accounts.adjust_balance( w.from, -w.quantity );
       currency::inline_transfer( _this_contract, w.from, w.quantity, "withdraw" );
@@ -24,9 +21,7 @@ namespace eosio {
 
    void exchange::on( const trade& t ) {
       require_auth( t.seller );
-      eosio_assert( t.sell.is_valid(), "invalid sell amount" );
       eosio_assert( t.sell.amount > 0, "sell amount must be positive" );
-      eosio_assert( t.min_receive.is_valid(), "invalid min receive amount" );
       eosio_assert( t.min_receive.amount >= 0, "min receive amount cannot be negative" );
 
       auto receive_symbol = t.min_receive.get_extended_symbol();
@@ -72,8 +67,6 @@ namespace eosio {
     */
    void exchange::on( const upmargin& b ) {
       require_auth( b.borrower );
-      eosio_assert( b.delta_borrow.is_valid(), "invalid borrow delta" );
-      eosio_assert( b.delta_collateral.is_valid(), "invalid collateral delta" );
 
       market_state market( _this_contract, b.market, _accounts );
 
@@ -99,7 +92,6 @@ namespace eosio {
 
    void exchange::on( const covermargin& c ) {
       require_auth( c.borrower );
-      eosio_assert( c.cover_amount.is_valid(), "invalid cover amount" );
       eosio_assert( c.cover_amount.amount > 0, "cover amount must be positive" );
 
       market_state market( _this_contract, c.market, _accounts );
@@ -111,11 +103,8 @@ namespace eosio {
 
    void exchange::on( const createx& c ) {
       require_auth( c.creator );
-      eosio_assert( c.initial_supply.is_valid(), "invalid initial supply" );
       eosio_assert( c.initial_supply.amount > 0, "initial supply must be positive" );
-      eosio_assert( c.base_deposit.is_valid(), "invalid base deposit" );
       eosio_assert( c.base_deposit.amount > 0, "base deposit must be positive" );
-      eosio_assert( c.quote_deposit.is_valid(), "invalid quote deposit" );
       eosio_assert( c.quote_deposit.amount > 0, "quote deposit must be positive" );
       eosio_assert( c.base_deposit.get_extended_symbol() != c.quote_deposit.get_extended_symbol(),
                     "must exchange between two different currencies" );
@@ -123,7 +112,7 @@ namespace eosio {
       print( "base: ", c.base_deposit.get_extended_symbol() );
       print( "quote: ",c.quote_deposit.get_extended_symbol() );
 
-      auto exchange_symbol = c.initial_supply.symbol.name();
+      auto exchange_symbol = c.initial_supply.get_symbol().name();
       print( "marketid: ", exchange_symbol, " \n " );
 
       markets exstates( _this_contract, exchange_symbol );
@@ -136,20 +125,16 @@ namespace eosio {
           s.base.balance = c.base_deposit;
           s.quote.balance = c.quote_deposit;
 
-          s.base.peer_margin.total_lent.symbol          = c.base_deposit.symbol;
-          s.base.peer_margin.total_lent.contract        = c.base_deposit.contract;
-          s.base.peer_margin.total_lendable.symbol      = c.base_deposit.symbol;
-          s.base.peer_margin.total_lendable.contract    = c.base_deposit.contract;
+          s.base.peer_margin.total_lent.set_extended_symbol(c.base_deposit.get_extended_symbol());
+          s.base.peer_margin.total_lendable.set_extended_symbol(c.base_deposit.get_extended_symbol());
 
-          s.quote.peer_margin.total_lent.symbol         = c.quote_deposit.symbol;
-          s.quote.peer_margin.total_lent.contract       = c.quote_deposit.contract;
-          s.quote.peer_margin.total_lendable.symbol     = c.quote_deposit.symbol;
-          s.quote.peer_margin.total_lendable.contract   = c.quote_deposit.contract;
+          s.quote.peer_margin.total_lent.set_extended_symbol(c.quote_deposit.get_extended_symbol());
+          s.quote.peer_margin.total_lendable.set_extended_symbol(c.quote_deposit.get_extended_symbol());
       });
 
       _excurrencies.create_currency( { .issuer = _this_contract,
                                  // TODO: After currency contract respects maximum supply limits, the maximum supply here needs to be set appropriately.
-                                .maximum_supply = asset( 0, c.initial_supply.symbol ),
+                                .maximum_supply = asset( 0, c.initial_supply.get_symbol() ),
                                 .issuer_can_freeze = false,
                                 .issuer_can_whitelist = false,
                                 .issuer_can_recall = false } );
@@ -165,7 +150,6 @@ namespace eosio {
 
    void exchange::on( const lend& w ) {
       require_auth( w.lender );
-      eosio_assert( w.quantity.is_valid(), "invalid quantity" );
       eosio_assert( w.quantity.amount > 0, "must lend a positive amount" );
 
       market_state market( _this_contract, w.market, _accounts );
@@ -189,7 +173,6 @@ namespace eosio {
 
       if( t.to == _this_contract ) {
          auto a = extended_asset(t.quantity, code);
-         eosio_assert( a.is_valid(), "invalid quantity in transfer" );
          eosio_assert( a.amount != 0, "zero quantity is disallowed in transfer");
          eosio_assert( a.amount > 0 || t.memo == "withdraw", "withdrew tokens without withdraw in memo");
          eosio_assert( a.amount < 0 || t.memo == "deposit", "received tokens without deposit in memo" );

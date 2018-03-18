@@ -328,14 +328,16 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
 
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
    vector<asset> results;
-   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.account, N(account), [&](const contracts::key_value_object& obj){
+   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.account, N(accounts), [&](const contracts::key_value_object& obj){
       share_type balance;
+      uint64_t   symbol_value;
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
       fc::raw::unpack(ds, balance);
-      auto cursor = asset(balance, symbol(obj.primary_key));
+      fc::raw::unpack(ds, symbol_value);
+      auto cursor = asset(balance, symbol(symbol_value));
 
       if( !p.symbol || cursor.symbol_name().compare(*p.symbol) == 0 ) {
-         results.emplace_back(balance, symbol(obj.primary_key));
+         results.emplace_back(balance, symbol(symbol_value));
       }
 
       // return false if we are looking for one and found it, true otherwise
@@ -347,11 +349,14 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
 
 fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_params& p )const {
    fc::mutable_variant_object results;
-   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.code, N(stat), [&](const contracts::key_value_object& obj){
+   uint64_t scope = symbol(0, p.symbol.c_str()).value() >> 8;
+   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, scope, N(stat), [&](const contracts::key_value_object& obj){
       share_type balance;
+      uint64_t   symbol_value;
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
       fc::raw::unpack(ds, balance);
-      auto cursor = asset(balance, symbol(obj.primary_key));
+      fc::raw::unpack(ds, symbol_value);
+      auto cursor = asset(balance, symbol(symbol_value));
 
       read_only::get_currency_stats_result result;
       result.supply = cursor;

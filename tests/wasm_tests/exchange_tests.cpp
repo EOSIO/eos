@@ -159,7 +159,7 @@ class exchange_tester : public tester {
 
       void create_currency( name contract, name signer, asset maxsupply ) {
          push_action(contract, signer, N(create), mutable_variant_object()
-                 ("issuer",       contract )
+                 ("issuer", signer )
                  ("maximum_supply", maxsupply )
                  ("can_freeze", 0)
                  ("can_recall", 0)
@@ -263,7 +263,7 @@ class exchange_tester : public tester {
 BOOST_AUTO_TEST_SUITE(exchange_tests)
 
 BOOST_AUTO_TEST_CASE( bootstrap ) try {
-   auto expected = asset::from_string( "1000000.0000 CUR" );
+   auto expected = A(1000000.0000 CUR);
    exchange_tester t;
    t.create_currency( N(currency), N(currency), expected );
    t.issue( N(currency), N(currency), N(currency), expected );
@@ -273,7 +273,7 @@ BOOST_AUTO_TEST_CASE( bootstrap ) try {
 
 
 BOOST_AUTO_TEST_CASE( exchange_create ) try {
-   auto expected = asset::from_string( "1000000.0000 CUR" );
+   auto expected = A(1000000.0000 CUR);
    exchange_tester t;
 
    t.issue( N(currency), N(currency), N(trader), A(2000.00 BTC) );
