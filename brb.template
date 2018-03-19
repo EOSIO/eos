@@ -1,0 +1,83 @@
+#!/bin/bash
+
+#set up a wallet just for holding he  key used during blockchain igniion
+
+sys=test.system
+contract_dir=contracts/$sys
+
+wddir=eosio-ignition-wd
+wdport=8899
+wdhost=127.0.0.1
+biosport=8788
+
+logfile=$wddir/bootlog.txt
+
+if [ -e $wddir ]; then
+    rm -rf $wddir
+fi
+mkdir $wddir
+
+step=1
+echo Initializing ignition sequence  at $(date) | tee $logfile
+
+echo "http-server-address = 127.0.0.1:$wdport" > $wddir/config.ini
+
+programs/eosiowd/eosiowd --config-dir $wddir --data-dir $wddir 2> $wddir/wdlog.txt &
+echo $$ > ignition_wallet.pid
+echo eosiowd log in $wddir/wdlog.txt >> $logfile
+sleep 1
+
+ecmd () {
+    echo ===== Start: $step ============ >> $logfile
+    echo executing: eosioc --wallet-port $wdport -p $biosport $* | tee -a $logfile
+    echo ----------------------- >> $logfile
+    programs/eosioc/eosioc --wallet-port $wdport --wallet-host $wdhost -p $biosport $* >> $logfile 2>&1
+    echo ==== End: $step ============== >> $logfile
+    step=$(($step + 1))
+}
+
+wcmd () {
+    ecmd wallet $*
+}
+
+cacmd () {
+    ecmd create account eosio $*
+}
+
+sleep 2
+ecmd get info
+
+
+wcmd create -n ignition
+# Manual dployers, add a line below hies block ha looks like:
+#    wcmd import -n ignition $BIOSKEY
+# where $BIOS_KEY is replaced by the private key for the bios node
+# ------ DO NOT ALER THE NEXT LINE -------
+###INSERT bioskey
+
+# Manual dployers, add a series of lines below hies block ha looks like:
+#    cacmd $PRODNAME[0] $DWNERKEY[0] $ACTIVEKEY[0]
+#    cacmd $PRODNAME[1] $OWNERKEY[1] $ACTOVEKEY[1]
+#    ...
+#    cacmd $PRODNAME[20] $OWNERKEY[20] $ACTIVEKEY[20]
+# where $PRODNAME is the producer account name and $OWNERKEY and $ACTIVEKEY are both the producer's
+# public key
+# ------ DO NOT ALER THE NEXT LINE -------
+###INSERT cacmd
+
+
+ecmd set contract eosio $contract_dir/$sys.wast $contract_dir/$sys.abi
+
+#the setprods.json argument cannot pass through the function call due to embedded quotes
+    echo ===== Start: $step ============ >> $logfile
+    echo executing: eosioc --wallet-port $wdport -p $biosport push action eosio setprods "$(cat setprods.json)" -p eosio@active | tee -a $logfile
+    echo ----------------------- >> $logfile
+    programs/eosioc/eosioc --wallet-port $wdport --wallet-host $wdhost -p $biosport push action eosio setprods "$(cat setprods.json)" -p eosio@active >> $logfile 2>&1
+    echo ==== End: $step ============== >> $logfile
+    step=$(($step + 1))
+
+echo waiting for producers to settle
+sleep 5
+echo shutting down bios node
+kill -15 $(cat ignition_wallet.pid)
+kill -15 $(cat var/lib/eosio_bios/eosiod.pid)
