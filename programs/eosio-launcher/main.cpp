@@ -834,7 +834,7 @@ launcher_def::deploy_config_files (tn_node_def &node) {
        }
     }
     else if (bf::exists (cfgdir / "config.ini") && !force_overwrite) {
-       cerr << cfgdir << " exists. Use -f|--force to pverwrite configuration\n";
+       cerr << cfgdir / "config.ini" << " exists. Use -f|--force to overwrite configuration\n";
        exit (-1);
     }
 
@@ -1162,8 +1162,11 @@ bool launcher_def::next_ndx(size_t &ndx) {
 
 size_t launcher_def::skip_ndx (size_t from, size_t offset) {
    size_t ndx = (from + offset) % total_nodes;
-   while (is_bios_ndx(ndx) || ndx == from) {
-      next_ndx(ndx);
+   if (total_nodes > 2) {
+      size_t attempts = total_nodes - 1;
+      while (--attempts && (is_bios_ndx(ndx) || ndx == from)) {
+         next_ndx(ndx);
+      }
    }
    return ndx;
 }
@@ -1241,6 +1244,10 @@ launcher_def::make_star () {
 
 void
 launcher_def::make_mesh () {
+   if (total_nodes < 5) {
+      make_star();
+      return;
+   }
   bind_nodes();
   // use to prevent duplicates since all connections are bidirectional
   std::map <string, std::set<string>> peers_to_from;
