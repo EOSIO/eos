@@ -15,7 +15,7 @@
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/authority_checker.hpp>
 #include <eosio/chain/contracts/chain_initializer.hpp>
-#include <eosio/chain/rate_limiting.hpp>
+#include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/scope_sequence_object.hpp>
 #include <eosio/chain/merkle.hpp>
 

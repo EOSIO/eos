@@ -1,4 +1,4 @@
-#include <eosio/chain/rate_limiting.hpp>
+#include <eosio/chain/resource_limits.hpp>
 #include <algorithm>
 
 namespace eosio { namespace chain {

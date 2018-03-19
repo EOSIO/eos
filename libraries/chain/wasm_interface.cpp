@@ -29,7 +29,7 @@
 #include <mutex>
 #include <thread>
 #include <condition_variable>
-#include <eosio/chain/rate_limiting.hpp>
+#include <eosio/chain/resource_limits.hpp>
 
 namespace eosio { namespace chain {
    using namespace contracts;

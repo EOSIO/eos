@@ -21,7 +21,7 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 
-#include <eosio/chain/rate_limiting.hpp>
+#include <eosio/chain/resource_limits.hpp>
 
 namespace eosio { namespace chain { namespace contracts {
 

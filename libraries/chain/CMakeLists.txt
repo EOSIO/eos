@@ -11,7 +11,7 @@ add_library( eosio_chain
              wasm_interface.cpp
              wasm_eosio_constraints.cpp
              apply_context.cpp
-             rate_limiting.cpp
+             resource_limits.cpp
 
              fork_database.cpp
              get_config.cpp
