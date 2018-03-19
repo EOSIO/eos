@@ -47,7 +47,6 @@ namespace eosio { namespace chain {
 
          //Calls apply or error on a given code
          void apply(const digest_type& code_id, const shared_vector<char>& code, apply_context& context);
-         void error(const digest_type& code_id, const shared_vector<char>& code, apply_context& context);
 
       private:
          wasm_interface();

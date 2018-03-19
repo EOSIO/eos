@@ -27,11 +27,6 @@ class binaryen_instantiated_module : public wasm_instantiated_module_interface {
          call("apply", args, context);
       }
 
-      void error(apply_context& context) override {
-         LiteralList args = {/* */};
-         call("error", args, context);
-      }
-
    private:
       linear_memory_type&        _shared_linear_memory;      
       std::vector<uint8_t>       _initial_memory;

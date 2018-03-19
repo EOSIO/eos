@@ -50,10 +50,6 @@ namespace eosio { namespace chain {
       my->get_instantiated_module(code_id, code)->apply(context);
    }
 
-   void wasm_interface::error( const digest_type& code_id, const shared_vector<char>& code, apply_context& context ) {
-      my->get_instantiated_module(code_id, code)->error(context);
-   }
-
    wasm_instantiated_module_interface::~wasm_instantiated_module_interface() {}
    wasm_runtime_interface::~wasm_runtime_interface() {}
 

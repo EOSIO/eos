@@ -33,11 +33,6 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
          call("apply", args, context);
       }
 
-      void error(apply_context& context) override {
-         vector<Value> args = {/* */};
-         call("error", args, context);
-      }
-
       ~wavm_instantiated_module() {
          delete _instance;
          delete _module;
