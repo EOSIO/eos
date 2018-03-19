@@ -1384,8 +1384,8 @@ BOOST_FIXTURE_TEST_CASE( elect_poducers_and_parameters, eosio_system_tester ) tr
    produce_blocks(50);
    producer_keys = control->get_global_properties().active_producers.producers;
    BOOST_REQUIRE_EQUAL( 2, producer_keys.size() );
-   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
-   BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[1].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[0].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[1].producer_name );
    config = config_to_variant( control->get_global_properties().configuration );
    auto prod2_config = testing::filter_fields( config, producer_parameters_example( 2 ) );
    REQUIRE_EQUAL_OBJECTS(prod2_config, config);
@@ -1400,9 +1400,9 @@ BOOST_FIXTURE_TEST_CASE( elect_poducers_and_parameters, eosio_system_tester ) tr
    produce_blocks(50);
    producer_keys = control->get_global_properties().active_producers.producers;
    BOOST_REQUIRE_EQUAL( 3, producer_keys.size() );
-   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[0].producer_name );
    BOOST_REQUIRE_EQUAL( name("producer2"), producer_keys[1].producer_name );
-   BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[2].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[2].producer_name );
    config = config_to_variant( control->get_global_properties().configuration );
    REQUIRE_EQUAL_OBJECTS(prod2_config, config);
 
@@ -1416,10 +1416,11 @@ BOOST_FIXTURE_TEST_CASE( elect_poducers_and_parameters, eosio_system_tester ) tr
    produce_blocks(50);
    producer_keys = control->get_global_properties().active_producers.producers;
    BOOST_REQUIRE_EQUAL( 2, producer_keys.size() );
-   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[0].producer_name );
-   BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[1].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[0].producer_name );
+   BOOST_REQUIRE_EQUAL( name("producer1"), producer_keys[1].producer_name );
    config = config_to_variant( control->get_global_properties().configuration );
-   REQUIRE_EQUAL_OBJECTS(prod2_config, config);
+   auto prod3_config = testing::filter_fields( config, producer_parameters_example( 3 ) );
+   REQUIRE_EQUAL_OBJECTS(prod3_config, config);
 
 } FC_LOG_AND_RETHROW()
 

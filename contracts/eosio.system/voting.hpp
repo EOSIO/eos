@@ -285,25 +285,13 @@ namespace eosiosystem {
 
             eosio::producer_schedule schedule;
             schedule.producers.reserve(21);
-            /*
-            print ("Producers: ");
-            for (auto it = idx.begin(); it != idx.end(); ++it) {
-               print( it->owner, " (", it->total_votes, "), " );
-            }
-            print ("\n");
-            */
-            auto it = idx.begin();
-            if (it == idx.end()) {
-               return;
-            }
-            //++it;
             size_t n = 0;
-            while ( n < 21 && 0 < it->total_votes ) {
+            for ( auto it = idx.crbegin(); it != idx.crend() && n < 21 && 0 < it->total_votes; ++it ) {
                if ( it->active() ) {
                   schedule.producers.emplace_back();
                   schedule.producers.back().producer_name = it->owner;
                   eosio_assert( sizeof(schedule.producers.back().block_signing_key) == it->packed_key.size(), "size mismatch" );
-                  std::copy(it->packed_key.begin(), it->packed_key.end(), schedule.producers.back().block_signing_key.data);
+                  std::copy( it->packed_key.begin(), it->packed_key.end(), schedule.producers.back().block_signing_key.data );
 
                   target_block_size[n] = it->prefs.target_block_size;
                   max_block_size[n] = it->prefs.max_block_size;
@@ -326,11 +314,6 @@ namespace eosiosystem {
                   percent_of_max_inflation_rate[n] = it->prefs.percent_of_max_inflation_rate;
                   ++n;
                }
-
-               ++it;
-               if (it == idx.end()) {
-                  break;
-               }
             }
             if ( n == 0 ) { //no active producers with votes > 0
                return;
@@ -347,6 +330,7 @@ namespace eosiosystem {
                std::sort( max_transaction_exec_time.begin(), max_transaction_exec_time.begin()+n );
                std::sort( max_authority_depth.begin(), max_authority_depth.begin()+n );
                std::sort( max_inline_depth.begin(), max_inline_depth.begin()+n );
+               std::sort( max_inline_action_size.begin(), max_inline_action_size.begin()+n );
                std::sort( max_generated_transaction_size.begin(), max_generated_transaction_size.begin()+n );
                std::sort( storage_reserve_ratio.begin(), storage_reserve_ratio.begin()+n );
                std::sort( percent_of_max_inflation_rate.begin(), percent_of_max_inflation_rate.begin()+n );
@@ -354,8 +338,6 @@ namespace eosiosystem {
 
             // should use producer_schedule_type from libraries/chain/include/eosio/chain/producer_schedule.hpp
             bytes packed_schedule = pack(schedule);
-            //print( "schedule size = ", schedule.producers.size(), "\n" );
-            //print( "set_active_producers( ... ,  ", packed_schedule.size(), " );\n" );
             set_active_producers( packed_schedule.data(),  packed_schedule.size() );
             size_t median = n/2;
 
