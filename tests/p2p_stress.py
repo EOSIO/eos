@@ -32,16 +32,20 @@ class StressNetwork:
         ta.name = self.randAcctName()
         acc1 = copy.copy(ta)
         print("creating new account %s" % (ta.name))
-        tr = node.createAccount(ta, eosio, stakedDeposit=0, waitForTransBlock=False)
-        print("transaction id %s" % (node.getTransId(tr)))
+        tr = node.createAccount(ta, eosio, stakedDeposit=0, waitForTransBlock=True)
+        trid = node.getTransId(tr)
+        if trid is None:
+            return ([], "", 0.0, "failed to create account")
+        print("transaction id %s" % (trid))
 
         ta.name = self.randAcctName()
         acc2 = copy.copy(ta)
         print("creating new account %s" % (ta.name))
-        tr = node.createAccount(ta, eosio, stakedDeposit=0, waitForTransBlock=False)
-        print("transaction id %s" % (node.getTransId(tr)))
-
-        time.sleep(1.0)
+        tr = node.createAccount(ta, eosio, stakedDeposit=0, waitForTransBlock=True)
+        trid = node.getTransId(tr)
+        if trid is None:
+            return ([], "", 0.0, "failed to create account")
+        print("transaction id %s" % (trid))
 
         print("issue currency into %s" % (acc1.name))
         contract="eosio"
@@ -49,9 +53,11 @@ class StressNetwork:
         data="{\"to\":\"" + acc1.name + "\",\"quantity\":\"1000000.0000 EOS\"}"
         opts="--permission eosio@active"
         tr=node.pushMessage(contract, action, data, opts)
-        print("transaction id %s" % (node.getTransId(tr[1])))
-
-        time.sleep(1.0)
+        trid = node.getTransId(tr[1])
+        if trid is None:
+            return ([], "", 0.0, "failed to issue currency")
+        print("transaction id %s" % (trid))
+        node.waitForTransIdOnNode(trid)
 
         self.trList = []
         expBal = 0
@@ -73,8 +79,8 @@ class StressNetwork:
                 th = threading.Thread(target = self._transfer,args = (node, acc1, acc2, amount, m, k))
                 th.start()
                 threadList.append(th)
-            for m in range(len(threadList)):
-                threadList[m].join()
+            for th in threadList:
+                th.join()
             expBal = expBal + amount * nthreads
             t1 = time.time()
             if (t1-t0 < delay):
@@ -86,9 +92,11 @@ class StressNetwork:
         print("account %s: expect Balance:%d, actual Balance %d" % (acc2.name, expBal, actBal))
 
         transIdlist = []
-        for k in range(len(self.trList)):
-            transIdlist.append(node.getTransId(self.trList[k]))
-        return (transIdlist, acc2.name, expBal)
+        for tr in self.trList:
+            trid = node.getTransId(tr)
+            transIdlist.append(trid)
+            node.waitForTransIdOnNode(trid)
+        return (transIdlist, acc2.name, expBal, "")
     
     def on_exit(self):
         print("end of network stress tests")

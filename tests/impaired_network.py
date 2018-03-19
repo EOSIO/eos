@@ -23,8 +23,10 @@ class ImpairedNetwork:
         transIdlist = []
         print("==== creating account %s ====" % (s))
         trans = node.createAccount(testerAccount, eosio, stakedDeposit=0, waitForTransBlock=True)
+        if trans is None:
+            return ([], "", 0.0, "failed to create account")
         transIdlist.append(node.getTransId(trans))
-        return (transIdlist, "", 0.0)
+        return (transIdlist, "", 0.0, "")
     
     def on_exit(self):
         RemoteCmd.exec(self.resetcmd)

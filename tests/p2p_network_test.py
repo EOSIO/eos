@@ -171,28 +171,36 @@ try:
 
     maxIndex = module.maxIndex()
     for cmdInd in range(maxIndex):
-        (transIdList, checkacct, expBal) = module.execute(cmdInd, node0, testeraAccount, eosio)
+        (transIdList, checkacct, expBal, errmsg) = module.execute(cmdInd, node0, testeraAccount, eosio)
 
         if len(transIdList) == 0 and len(checkacct) == 0:
-            errorExit("nothing returned")
+            errorExit("failed to execute command in host %s:%s" % (hosts[0], errmsg))
 
-        time.sleep(3.0)
-
-        for i in range(len(hosts)):
-            if len(checkacct) > 0:
-                actBal = cluster.getNode(i).getAccountBalance(checkacct)
-                if expBal == actBal:
-                    Print("acct balance verified in host %s" % (hosts[i]))
-                else:
-                    Print("acct balance check failed in host %s, expect %d actual %d" % (hosts[i], expBal, actBal))
-            okcount = 0
-            failedcount = 0
-            for j in range(len(transIdList)):
-                if cluster.getNode(i).getTransaction(transIdList[j]) is None:
-                    failedcount = failedcount + 1
-                else:
-                    okcount = okcount + 1
-            Print("%d transaction(s) verified in host %s, %d transaction(s) failed" % (okcount, hosts[i], failedcount))
+        successhosts = []
+        attempts = 2
+        while attempts > 0 and len(successhosts) < len(hosts):
+            attempts = attempts - 1
+            for i in range(len(hosts)):
+                host = hosts[i]
+                if host in successhosts:
+                    continue
+                if len(checkacct) > 0:
+                    actBal = cluster.getNode(i).getAccountBalance(checkacct)
+                    if expBal == actBal:
+                        Print("acct balance verified in host %s" % (host))
+                    else:
+                        Print("acct balance check failed in host %s, expect %d actual %d" % (host, expBal, actBal))
+                okcount = 0
+                failedcount = 0
+                for j in range(len(transIdList)):
+                    if cluster.getNode(i).getTransaction(transIdList[j]) is None:
+                        failedcount = failedcount + 1
+                    else:
+                        okcount = okcount + 1
+                Print("%d transaction(s) verified in host %s, %d transaction(s) failed" % (okcount, host, failedcount))
+                if failedcount == 0:
+                    successhosts.append(host)
+        Print("%d host(s) passed, %d host(s) failed" % (len(successhosts), len(hosts) - len(successhosts)))
 finally:
     Print("\nfinally: restore everything")
     module.on_exit()
