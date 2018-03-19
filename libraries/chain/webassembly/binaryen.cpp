@@ -58,9 +58,9 @@ binaryen_runtime::binaryen_runtime() {
 
 }
 
-std::unique_ptr<wasm_instantiated_module_interface> binaryen_runtime::instantiate_module(const shared_vector<char>& c, std::vector<uint8_t> initial_memory) {
+std::unique_ptr<wasm_instantiated_module_interface> binaryen_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) {
    try {
-      vector<char> code(c.data(), c.data() + c.size());
+      vector<char> code(code_bytes, code_bytes + code_size);
       unique_ptr<Module> module(new Module());
       WasmBinaryBuilder builder(*module, code, false);
       builder.read();

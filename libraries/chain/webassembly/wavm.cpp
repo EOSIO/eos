@@ -87,9 +87,9 @@ wavm_runtime::~wavm_runtime() {
    Runtime::freeUnreferencedObjects({});
 }
 
-std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_module(const shared_vector<char>& c, std::vector<uint8_t> initial_memory) {
+std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) {
    Module* module = new Module();
-   Serialization::MemoryInputStream stream((const U8 *)c.data(), c.size());
+   Serialization::MemoryInputStream stream((const U8 *)code_bytes, code_size);
    WASM::serialize(stream, *module);
 
    eosio::chain::webassembly::common::root_resolver resolver;

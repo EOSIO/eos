@@ -71,7 +71,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Limits the maximum time (in milliseconds) that a reversible block is allowed to run before being considered invalid")
          ("max-pending-transaction-time", bpo::value<int32_t>()->default_value(-1),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
-         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>(), "Override default WASM runtime; not supported")
+         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>(), "Override default WASM runtime")
 #warning TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
           "The time frame, in seconds, that the per-authorized-account-transaction-msg-rate-limit is imposed over.")

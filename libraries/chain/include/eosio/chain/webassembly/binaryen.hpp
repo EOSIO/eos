@@ -140,7 +140,7 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
 class binaryen_runtime : public eosio::chain::wasm_runtime_interface {
    public:
       binaryen_runtime();
-      std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const shared_vector<char>& code, std::vector<uint8_t> initial_memory) override;
+      std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) override;
 
    private:
       linear_memory_type                  _memory;
@@ -238,11 +238,11 @@ inline auto convert_native_to_literal(const interpreter_interface*, T val) {
    return Literal(val);
 }
 
-inline auto convert_native_to_literal(const wasm_interface &, const float64_t& val) {
+inline auto convert_native_to_literal(const interpreter_interface*, const float64_t& val) {
    return Literal( *((double*)(&val)) );
 }
 
-inline auto convert_native_to_literal(const wasm_interface &, const name &val) {
+inline auto convert_native_to_literal(const interpreter_interface*, const name &val) {
    return Literal(val.value);
 }
 

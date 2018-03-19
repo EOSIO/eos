@@ -115,6 +115,9 @@ namespace eosio { namespace chain { namespace wasm_validations {
       using get_global_t      = wasm_ops::get_global              <whitelist_validator>;
       using set_global_t      = wasm_ops::set_global              <whitelist_validator>;
 
+      using grow_memory_t     = wasm_ops::grow_memory             <whitelist_validator>;
+      using current_memory_t  = wasm_ops::current_memory          <whitelist_validator>;
+
       using nop_t             = wasm_ops::nop                     <whitelist_validator>;
       using i32_load_t        = wasm_ops::i32_load                <large_offset_validator, whitelist_validator>;
       using i64_load_t        = wasm_ops::i64_load                <large_offset_validator, whitelist_validator>;

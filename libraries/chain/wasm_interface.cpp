@@ -32,33 +32,26 @@ namespace eosio { namespace chain {
       :my( new wasm_interface_impl(vm) ) {
       }
 
-   wasm_interface::~wasm_interface() {
-
-            }
+   wasm_interface::~wasm_interface() {}
 
    void wasm_interface::validate(const bytes& code) {
       Module module;
       Serialization::MemoryInputStream stream((U8*)code.data(), code.size());
       WASM::serialize(stream, module);
+
       wasm_validations::wasm_binary_validation validator(module);
+      validator.validate();
 
       root_resolver resolver;
       LinkResult link_result = linkModule(module, resolver);
    }
 
    void wasm_interface::apply( const digest_type& code_id, const shared_vector<char>& code, apply_context& context ) {
-      auto it = my->instantiation_cache.find(code_id);
-      if(it == my->instantiation_cache.end())
-         it = my->instantiation_cache.emplace(code_id, my->runtime_interface->instantiate_module(code, my->parse_initial_memory(code))).first;
-      ///XXX: Common injection would occur above-- take the code, inject stuff, pass the resulting vector to instantiate_module()
-      it->second->apply(context);
+      my->get_instantiated_module(code_id, code)->apply(context);
    }
 
    void wasm_interface::error( const digest_type& code_id, const shared_vector<char>& code, apply_context& context ) {
-      map<digest_type, std::unique_ptr<wasm_instantiated_module_interface>>::iterator it = my->instantiation_cache.find(code_id);
-      if(it == my->instantiation_cache.end())
-         it = my->instantiation_cache.emplace(code_id, my->runtime_interface->instantiate_module(code, my->parse_initial_memory(code))).first;
-      it->second->error(context);
+      my->get_instantiated_module(code_id, code)->error(context);
    }
 
    wasm_instantiated_module_interface::~wasm_instantiated_module_interface() {}
@@ -188,8 +181,8 @@ class privileged_api : public context_aware_api {
 
 class checktime_api : public context_aware_api {
 public:
-   explicit checktime_api( wasm_interface& wasm )
-   :context_aware_api(wasm,true){}
+   explicit checktime_api( apply_context& ctx )
+   :context_aware_api(ctx,true){}
 
    void checktime(uint32_t instruction_count) {
       context.checktime(instruction_count);
@@ -403,8 +396,8 @@ class producer_api : public context_aware_api {
 
 class crypto_api : public context_aware_api {
    public:
-      explicit crypto_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+      explicit crypto_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       /**
        * This method can be optimized out during replay as it has
@@ -488,8 +481,8 @@ class string_api : public context_aware_api {
 
 class system_api : public context_aware_api {
    public:
-      explicit system_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+      explicit system_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       void abort() {
          edump(("abort() called"));
@@ -511,8 +504,8 @@ class system_api : public context_aware_api {
 
 class action_api : public context_aware_api {
    public:
-   action_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+   action_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       int read_action_data(array_ptr<char> memory, size_t size) {
          FC_ASSERT(size > 0);
@@ -544,8 +537,8 @@ class action_api : public context_aware_api {
 
 class console_api : public context_aware_api {
    public:
-      console_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+      console_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       void prints(null_terminated_ptr str) {
          context.console_append<const char*>(str);
@@ -926,7 +919,8 @@ class db_index_api<keystr_value_index, by_scope_primary> : public context_aware_
 
 class memory_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      memory_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
          return (char *)::memcpy(dest, src, length);
@@ -976,7 +970,8 @@ class transaction_api : public context_aware_api {
 
 class context_free_transaction_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      context_free_transaction_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       int read_transaction( array_ptr<char> data, size_t data_len ) {
          bytes trx = context.get_packed_transaction();
@@ -1235,8 +1230,8 @@ class compiler_builtins : public context_aware_api {
 
 class math_api : public context_aware_api {
    public:
-      math_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+      math_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       void diveq_i128(unsigned __int128* self, const unsigned __int128* other) {
          fc::uint128_t s(*self);

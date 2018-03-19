@@ -4,6 +4,7 @@
 #include <eosio/chain/webassembly/wavm.hpp>
 #include <eosio/chain/webassembly/binaryen.hpp>
 #include <eosio/chain/webassembly/runtime_interface.hpp>
+#include <eosio/chain/wasm_eosio_injection.hpp>
 
 #include "IR/Module.h"
 #include "Runtime/Intrinsics.h"
@@ -47,6 +48,25 @@ namespace eosio { namespace chain {
          }
 
          return mem_image;
+      }
+
+      std::unique_ptr<wasm_instantiated_module_interface>& get_instantiated_module(const digest_type& code_id, const shared_vector<char>& code) {
+         auto it = instantiation_cache.find(code_id);
+         if(it == instantiation_cache.end()) {
+            IR::Module module;
+            Serialization::MemoryInputStream stream((const U8 *)code.data(), code.size());
+            WASM::serialize(stream, module);
+
+            wasm_injections::wasm_binary_injection injector(module);
+            injector.inject();
+
+            Serialization::ArrayOutputStream outstream;
+            WASM::serialize(outstream, module);
+            std::vector<U8> bytes = outstream.getBytes();
+
+            it = instantiation_cache.emplace(code_id, runtime_interface->instantiate_module(code.data(), code.size(), parse_initial_memory(code))).first;
+         }
+         return it->second;
       }
 
       std::unique_ptr<wasm_runtime_interface> runtime_interface;
