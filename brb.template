@@ -8,7 +8,7 @@ contract_dir=contracts/$sys
 wddir=eosio-ignition-wd
 wdport=8899
 wdhost=127.0.0.1
-# Manual deployers, add a line below hies block ha looks like:
+# Manual deployers, add a line below this block that looks like:
 #    bioshost=$BIOS_HOSTNAME
 #    biosport=$BIOS_HTTP_PORT
 # where $BIOS_HOSTNAME is replaced by the hostname portion of the http-server-address configured
@@ -55,13 +55,13 @@ ecmd get info
 
 
 wcmd create -n ignition
-# Manual deployers, add a line below hies block ha looks like:
+# Manual deployers, add a line below this block that looks like:
 #    wcmd import -n ignition $BIOSKEY
 # where $BIOSKEY is replaced by the private key for the bios node
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT bioskey
 
-# Manual deployers, add a series of lines below hies block ha looks like:
+# Manual deployers, add a series of lines below this block that looks like:
 #    cacmd $PRODNAME[0] $DWNERKEY[0] $ACTIVEKEY[0]
 #    cacmd $PRODNAME[1] $OWNERKEY[1] $ACTOVEKEY[1]
 #    ...
