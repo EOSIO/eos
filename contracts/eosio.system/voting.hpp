@@ -194,32 +194,10 @@ namespace eosiosystem {
 
             if ( 0 < amount.quantity ) {
                eosio_assert( amount <= voter->staked, "cannot unstake more than total stake amount" );
-               /*
-               if (voter->deferred_trx_id) {
-                  //XXX cancel_deferred_transaction(voter->deferred_trx_id);
-               }
-
-               unstake_vote_deferred dt;
-               dt.voter = acnt;
-               uint32_t new_trx_id = 0;//XXX send_deferred(dt);
-
-               avotes.modify( voter, 0, [&](voter_info& a) {
-                     a.staked -= amount;
-                     a.unstaking += a.unstaking + amount;
-                     //round up to guarantee that there will be no unpaid balance after 26 weeks, and we are able refund amount < unstake_payments
-                     a.unstake_per_week = system_token_type( a.unstaking.quantity /unstake_payments + a.unstaking.quantity % unstake_payments );
-                     a.deferred_trx_id = new_trx_id;
-                     a.last_update = now();
-                  });
-               */
-
-               // Temporary code: immediate unstake
                voters_tbl.modify( voter, 0, [&](voter_info& a) {
                      a.staked -= amount;
                      a.last_update = now();
                   });
-               //currency::inline_transfer( SystemAccount, acnt, amount, "unstake voting" );
-               // end of temporary code
 
                const std::vector<account_name>* producers = nullptr;
                if ( voter->proxy ) {
