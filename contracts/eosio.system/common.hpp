@@ -16,7 +16,6 @@ namespace eosiosystem {
          typedef typename currency::token_type                                    system_token_type;
 
          static constexpr uint64_t   currency_symbol = currency::symbol;            // S(4,EOS)
-         static constexpr uint8_t    currency_decimals = currency_symbol & 0xFF;    // 4
          static const uint32_t       max_inflation_rate = 5;                        // 5% annual inflation
 
          static const uint32_t       blocks_per_producer = 6;
@@ -36,7 +35,7 @@ namespace eosiosystem {
             system_token_type    payment_per_block = system_token_type();
             system_token_type    payment_to_eos_bucket = system_token_type();
             time                 first_block_time_in_cycle = 0;
-            uint32_t             blocks_per_cycle = 0; //6 * 21;
+            uint32_t             blocks_per_cycle = 0;
             time                 last_bucket_fill_time = 0;
             system_token_type    eos_bucket = system_token_type();
 

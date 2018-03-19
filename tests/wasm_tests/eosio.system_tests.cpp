@@ -1069,8 +1069,6 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
    prod = get_producer_info("alice");
    BOOST_REQUIRE(prod["per_block_payments"].as_uint64() > 0);
 
-   //   BOOST_REQUIRE_EQUAL(6 * 3925, prod["per_block_payments"].as_uint64());
-
    BOOST_REQUIRE_EQUAL(success(), push_action(N(alice), N(claimrewards), mvo()
                                               ("owner",     "alice")
                                               )

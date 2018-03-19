@@ -38,7 +38,6 @@ namespace eosiosystem {
          static const uint32_t max_inflation_rate = common<SystemAccount>::max_inflation_rate;
          static const uint32_t seconds_per_day = common<SystemAccount>::seconds_per_day;
          static const uint32_t num_of_payed_producers = 121;
-         static const uint32_t slot = 1;
 
          ACTION( SystemAccount, nonce ) {
             eosio::string                   value;
@@ -76,34 +75,23 @@ namespace eosiosystem {
 
          static void on(const onblock& ob) {
             // update parameters if it's a new cycle
-            if (update_cycle(ob.header.timestamp)) {
-               //               prints("\nNew Cycle!\n\n");
-            }
+            update_cycle(ob.header.timestamp);
+
             producers_table producers_tbl(SystemAccount, SystemAccount);
             account_name producer = ob.header.producer;
             auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
                   : common<SystemAccount>::get_default_parameters();
             const system_token_type block_payment = parameters.payment_per_block;
             auto prod = producers_tbl.find(producer);
-            // This check is needed when everything works
-            //            eosio_assert(prod != nullptr, "something wrong here");
             if ( prod != producers_tbl.end() ) {
-               //               prints("Producer found\n");
                producers_tbl.modify( prod, 0, [&](auto& p) {
-                     //                     printi((uint64_t)p.per_block_payments.quantity);
-                     //                     prints("\n");
                      p.per_block_payments += block_payment;
-                     //                     printi((uint64_t)p.per_block_payments.quantity);
-                     //                     prints("\n");
                      p.last_produced_block_time = ob.header.timestamp;
                   });
             }
 
-            //            prints("payments to eos bucket\n");
             const uint32_t num_of_payments = ob.header.timestamp - parameters.last_bucket_fill_time;
             const system_token_type to_eos_bucket = num_of_payments * parameters.payment_to_eos_bucket;
-            //            printi(to_eos_bucket.quantity);
-            //            prints("\n");
             parameters.last_bucket_fill_time = ob.header.timestamp;
             parameters.eos_bucket += to_eos_bucket;
             global_state_singleton::set(parameters);
