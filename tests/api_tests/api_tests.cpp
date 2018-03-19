@@ -471,7 +471,6 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
 /*************************************************************************************
  * checktime_tests test case
  *************************************************************************************/
-#if 0
 BOOST_FIXTURE_TEST_CASE(checktime_pass_tests, tester) { try {
 	produce_blocks(2);
 	create_account( N(testapi) );
@@ -511,7 +510,6 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) {
 
    } FC_LOG_AND_RETHROW();
 }
-#endif
 /*************************************************************************************
  * compiler_builtins_tests test case
  *************************************************************************************/

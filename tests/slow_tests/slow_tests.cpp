@@ -1115,7 +1115,7 @@ R"(
         // empty throw expected, since
       }
 } FC_LOG_AND_RETHROW() }
-#if 0
+
 //Test account script float rejection
 BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
 { try {
@@ -1166,5 +1166,5 @@ BOOST_FIXTURE_TEST_CASE(create_script_w_loop, testing_fixture)
          }
       }
 } FC_LOG_AND_RETHROW() }
-#endif
+
 BOOST_AUTO_TEST_SUITE_END()
