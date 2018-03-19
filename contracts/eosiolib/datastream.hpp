@@ -620,18 +620,6 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum160& cs) {
 }
 
 template<typename Stream>
-inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum256& cs) {
-   ds.write((const char*)&cs, sizeof(cs));
-   return ds;
-}
-   
-template<typename Stream>
-inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum256& cs) {
-   ds.read((char*)&cs, sizeof(cs));
-   return ds;
-}
-
-template<typename Stream>
 inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum512& cs) {
    ds.write((const char*)&cs, sizeof(cs));
    return ds;
