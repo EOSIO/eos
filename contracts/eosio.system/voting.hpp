@@ -352,8 +352,6 @@ namespace eosiosystem {
 
             // should use producer_schedule_type from libraries/chain/include/eosio/chain/producer_schedule.hpp
             bytes packed_schedule = pack(schedule);
-            //print( "schedule size = ", schedule.producers.size(), "\n" );
-            //print( "set_active_producers( ... ,  ", packed_schedule.size(), " );\n" );
             set_active_producers( packed_schedule.data(),  packed_schedule.size() );
             size_t median = n/2;
 
