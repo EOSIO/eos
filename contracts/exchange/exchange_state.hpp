@@ -19,7 +19,7 @@ namespace eosio {
        */
       real_type      interest_shares = 0;
 
-      real_type lend( safe_quantity<int64_t> new_lendable ) {
+      real_type lend( safe_number<int64_t> new_lendable ) {
          if( total_lendable.amount > 0 ) {
             real_type new_shares =  (interest_shares * new_lendable) / total_lendable.amount;
             interest_shares += new_shares;
@@ -34,7 +34,7 @@ namespace eosio {
       extended_asset unlend( double ishares ) {
          extended_asset result = total_lent;
          print( "unlend: ", ishares, " existing interest_shares:  ", interest_shares, "\n" );
-         result.amount = make_safe<int64_t>(static_cast<int64_t>( (ishares * total_lendable.amount.get_quantity()) / interest_shares ) );
+         result.amount = make_safe<int64_t>(static_cast<int64_t>( (ishares * total_lendable.amount) / interest_shares ) );
 
          total_lendable.amount -= result.amount;
          interest_shares -= ishares;

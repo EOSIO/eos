@@ -2,7 +2,7 @@
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/print.hpp>
 #include <eosiolib/system.h>
-#include <eosiolib/safe_quantity.hpp>
+#include <eosiolib/safe_number.hpp>
 #include <tuple>
 
 namespace eosio {
@@ -190,9 +190,9 @@ namespace eosio {
    template<typename NumberType = int64_t>
    struct token {
    public:
-      safe_quantity<NumberType> amount;
+      safe_number<NumberType> amount;
    protected:
-      symbol_type               symbol;
+      symbol_type             symbol;
 
       void validate_token()const {
          eosio_assert( symbol.is_valid(), "invalid symbol name" );
@@ -217,18 +217,18 @@ namespace eosio {
          validate_token();
       }
 
-      explicit token( const safe_quantity<NumberType, 0>& q, symbol_name s = symbol_type::default_symbol_name )
+      explicit token( const safe_number<NumberType, 0>& q, symbol_name s = symbol_type::default_symbol_name )
       : amount(q), symbol(s)
       {
          validate_token();
       }
 
       template<uint128_t Unit>
-      explicit token( const safe_quantity<NumberType, Unit>& q,
+      explicit token( const safe_number<NumberType, Unit>& q,
                       typename std::enable_if<Unit != 0, symbol_name>::type s )
-      : amount(q.get_quantity()), symbol(s)
+      : amount(q.get_number()), symbol(s)
       {
-         eosio_assert( static_cast<symbol_name>(Unit) == s, "mismatch between the symbol and the Unit of safe_quantity" );
+         eosio_assert( static_cast<symbol_name>(Unit) == s, "mismatch between the symbol and the Unit of safe_number" );
          validate_token();
       }
 
@@ -338,7 +338,7 @@ namespace eosio {
                                      ( std::is_floating_point<T>::value ||
                                        (std::is_signed<T>::value && std::is_convertible<T, int64_t>::value) ||
                                        (std::is_unsigned<T>::value && std::is_convertible<T, uint64_t>::value) )>::type* = nullptr)const {
-         _token_detail::print( static_cast<int64_t>(amount.get_quantity()), symbol);
+         _token_detail::print( static_cast<int64_t>(amount.get_number()), symbol);
       }
 
    };
@@ -363,15 +363,15 @@ namespace eosio {
       explicit extended_token( const NumberType& v, extended_symbol s = extended_symbol() )
       : base_token_type(v,s), contract(s.contract) {}
 
-      explicit extended_token( const safe_quantity<int64_t, 0>& q, extended_symbol s = extended_symbol() )
+      explicit extended_token( const safe_number<int64_t, 0>& q, extended_symbol s = extended_symbol() )
       : base_token_type(q,s), contract(s.contract) {}
 
       template<uint128_t Unit>
-      explicit extended_token( const safe_quantity<int64_t, Unit>& q,
+      explicit extended_token( const safe_number<int64_t, Unit>& q,
                                typename std::enable_if<Unit != 0, extended_symbol>::type s = extended_symbol(Unit) )
       : base_token_type(q,s), contract(s.contract)
       {
-         eosio_assert( Unit == static_cast<uint128_t>(s), "mismatch between the extended_symbol and the Unit of safe_quantity" );
+         eosio_assert( Unit == static_cast<uint128_t>(s), "mismatch between the extended_symbol and the Unit of safe_number" );
       }
 
       extended_token( const extended_token& ) = default;

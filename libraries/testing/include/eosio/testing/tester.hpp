@@ -5,6 +5,11 @@
 
 #include <iostream>
 
+//#pragma GCC diagnostic push
+//#pragma GCC diagnostic ignored "-Wsign-compare"
+#include <boost/test/unit_test.hpp>
+//#pragma GCC diagnostic pop
+
 namespace eosio { namespace testing {
 
    using namespace eosio::chain;
@@ -133,16 +138,138 @@ namespace eosio { namespace testing {
    };
 
    /**
-    * Utility predicate to check whether an FC_ASSERT message ends with a given string
+    * Utility predicate to check whether an fc::exception message is equivalent to a given string
     */
-   struct assert_message_is {
-      assert_message_is(string expected)
-         :expected(expected)
-      {}
+    struct fc_exception_message_is {
+      fc_exception_message_is(const string& msg)
+      :expected(msg) {}
+
+      bool operator()( const fc::exception& ex ) {
+         auto message = ex.get_log().at(0).get_message();
+         bool match = (message == expected);
+         if( !match ) {
+            BOOST_TEST_MESSAGE("LOG: expected: " << expected << ", actual: " << message);
+         }
+         return match;
+      }
+
+      string expected;
+   };
+
+   /**
+    * Utility predicate to check whether an fc::exception message starts with a given string
+    */
+   struct fc_exception_message_starts_with {
+     fc_exception_message_starts_with(const string& msg)
+     :expected(msg) {}
+
+     bool operator()( const fc::exception& ex ) {
+        auto message = ex.get_log().at(0).get_message();
+        bool match = boost::algorithm::starts_with(message, expected);
+        if( !match ) {
+           BOOST_TEST_MESSAGE("LOG: expected: " << expected << ", actual: " << message);
+        }
+        return match;
+     }
+
+     string expected;
+   };
+
+   /**
+    * Utility predicate to check whether an fc::assert_exception message is equivalent to a given string
+    */
+    struct fc_assert_exception_message_is {
+      fc_assert_exception_message_is(const string& msg)
+      :expected(msg) {}
 
       bool operator()( const fc::assert_exception& ex ) {
          auto message = ex.get_log().at(0).get_message();
-         return boost::algorithm::ends_with(message, expected);
+         bool match = false;
+         auto pos = message.find(": ");
+         if( pos != std::string::npos ) {
+            message = message.substr(pos+2);
+            match = (message == expected);
+         }
+         if( !match ) {
+            BOOST_TEST_MESSAGE("LOG: expected: " << expected << ", actual: " << message);
+         }
+         return match;
+      }
+
+      string expected;
+   };
+
+   /**
+    * Utility predicate to check whether an fc::assert_exception message starts with a given string
+    */
+   struct fc_assert_exception_message_starts_with {
+     fc_assert_exception_message_starts_with(const string& msg)
+     :expected(msg) {}
+
+      bool operator()( const fc::assert_exception& ex ) {
+         auto message = ex.get_log().at(0).get_message();
+         bool match = false;
+         auto pos = message.find(": ");
+         if( pos != std::string::npos ) {
+           message = message.substr(pos+2);
+           match = boost::algorithm::starts_with(message, expected);
+         }
+         if( !match ) {
+           BOOST_TEST_MESSAGE("LOG: expected: " << expected << ", actual: " << message);
+         }
+         return match;
+     }
+
+     string expected;
+   };
+
+   /**
+    * Utility predicate to check whether an eosio_assert message is equivalent to a given string
+    */
+   struct eosio_assert_message_is {
+      eosio_assert_message_is(const string& msg)
+      :expected("assertion failed: ") {
+         expected.append(msg);
+      }
+
+      bool operator()( const fc::assert_exception& ex ) {
+         auto message = ex.get_log().at(0).get_message();
+         bool match = false;
+         auto pos = message.find(": ");
+         if( pos != std::string::npos ) {
+            message = message.substr(pos+2);
+            match = (message == expected);
+         }
+         if( !match ) {
+            BOOST_TEST_MESSAGE("LOG: expected: " << expected << ", actual: " << message);
+         }
+         return match;
+      }
+
+      string expected;
+   };
+
+   /**
+    * Utility predicate to check whether an eosio_assert message starts with a given string
+    */
+   struct eosio_assert_message_starts_with {
+      eosio_assert_message_starts_with(const string& msg)
+      :expected("assertion failed: ") {
+         expected.append(msg);
+      }
+
+      bool operator()( const fc::assert_exception& ex ) {
+         auto message = ex.get_log().at(0).get_message();
+         bool match = false;
+         auto pos = message.find(": ");
+         if( pos != std::string::npos ) {
+            message = message.substr(pos+2);
+            match = boost::algorithm::starts_with(message, expected);
+         }
+         if( !match ) {
+            BOOST_TEST_MESSAGE("LOG: expected: " << expected << ", actual: " << message);
+         }
+         return match;
       }
 
       string expected;

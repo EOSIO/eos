@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosiolib/eosio.hpp>
+#include <eosiolib/safe_number.hpp>
 
 #include "test_api.hpp"
 
@@ -97,4 +98,102 @@ void test_types::name_class() {
 
    uint64_t tmp = eosio::name(eosio::string_to_name("11bbcccdd"));
    eosio_assert(N(11bbcccdd) == tmp, "N(11bbcccdd) == tmp");
+}
+
+void test_types::safe_number_general() {
+   using eosio::make_safe;
+
+   auto a = make_safe<int64_t>(1);
+   auto b = make_safe<int64_t>(2);
+   auto c = a + b;
+   eosio_assert( c == 3, "add" );
+   a += c;
+   eosio_assert( a == 4 && c == 3, "add to" );
+   c -= a;
+   eosio_assert( c == -1 && a == 4, "subtract from" );
+   eosio_assert( c == -make_safe<int64_t>(1), "negation" );
+   eosio_assert( c < a, "less than" );
+   uint64_t d = static_cast<uint64_t>(b); // Explicit cast to uint64_t which checks to make sure value is non-negative.
+   d *= static_cast<uint64_t>(1 + a); // Implicit cast to int64_t within parentheses.
+   eosio_assert( d == 10, "implicit cast failures" );
+   c.set_number(static_cast<int64_t>(d) + a); // Implicit cast of a to int64_t for sum then set sum to safe_number c.
+   eosio_assert( c == 14, "implicit cast and/or setting value failures" );
+   eosio_assert( c == make_safe<int64_t>(14), "comparing two safe_quantities" );
+
+   c = a * b;
+   eosio_assert( c == 8, "multiply" );
+   c /= make_safe<int64_t>(3);
+   eosio_assert( c == 2, "divide" );
+
+}
+
+void test_types::safe_number_overflow() {
+   using eosio::make_safe;
+
+   auto a = make_safe<int64_t>(1LL << 61);
+   auto b = make_safe<int64_t>(1LL << 61);
+   auto c = b - make_safe<int64_t>(1);
+
+   auto d = a + c;
+
+   eosio_assert( d == ((1LL << 62) - 1), "correctly reached limit without overflow" );
+
+   auto e = a + b;
+   (void)e;
+   eosio_assert( false, "did not overflow");
+}
+
+void test_types::safe_number_underflow() {
+   using eosio::make_safe;
+
+   auto a = -make_safe<int64_t>(1LL << 61);
+   auto b = make_safe<int64_t>(1LL << 61);
+   auto c = b - make_safe<int64_t>(1);
+
+   auto d = a - c;
+
+   eosio_assert( d == (-((1LL << 62) - 1)), "correctly reached limit without underflow" );
+
+   auto e = a - b;
+   (void)e;
+   eosio_assert( false, "did not underflow");
+}
+
+void test_types::safe_number_multiply_overflow1() {
+   using eosio::make_safe;
+
+   auto a = make_safe<int64_t>(1LL << 31);
+   auto b = make_safe<int64_t>(1LL << 30);
+
+   auto c = a * b;
+   eosio_assert( c == (1LL << 61), "correct multiplication without overflow" );
+
+   auto d = a * a;
+   (void)d;
+   eosio_assert( false, "did not overflow");
+}
+
+void test_types::safe_number_multiply_overflow2() {
+   using eosio::make_safe;
+
+   auto a = -make_safe<int64_t>(1LL << 40);
+   auto b = -make_safe<int64_t>(1LL << 20);
+
+   auto c = a * b;
+   eosio_assert( c == (1LL << 60), "correct multiplication without overflow" );
+
+   auto d = a * a;
+   (void)d;
+   eosio_assert( false, "did not overflow");
+}
+
+
+void test_types::safe_number_divide_by_zero() {
+   using eosio::make_safe;
+
+   auto a = make_safe<int64_t>(10);
+   auto b = make_safe<int64_t>(0);
+   auto c = a/b;
+   (void)c;
+   eosio_assert( false, "division by zero not caught");
 }

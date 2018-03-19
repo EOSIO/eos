@@ -1,6 +1,5 @@
-#include <boost/test/unit_test.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 
 #include <currency/currency.wast.hpp>
@@ -161,7 +160,7 @@ BOOST_FIXTURE_TEST_CASE( test_overspend, currency_tester ) try {
          ("quantity", "101.0000 CUR")
          ("memo", "overspend! Alice");
 
-      BOOST_CHECK_EXCEPTION(push_action(N(alice), N(transfer), data), fc::assert_exception, assert_message_is("overdrawn balance"));
+      BOOST_CHECK_EXCEPTION(push_action(N(alice), N(transfer), data), fc::assert_exception, eosio_assert_message_is("overdrawn balance"));
       produce_block();
 
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ));
@@ -242,21 +241,21 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
    // from empty string
    {
       BOOST_CHECK_EXCEPTION(symbol::from_string(""),
-                            fc::assert_exception, assert_message_is("creating symbol from empty string"));
+                            fc::assert_exception, fc_assert_exception_message_is("creating symbol from empty string"));
    }
 
-   
+
    // precision part missing
    {
       BOOST_CHECK_EXCEPTION(symbol::from_string("RND"),
-                            fc::assert_exception, assert_message_is("missing comma in symbol"));
+                            fc::assert_exception, fc_assert_exception_message_is("missing comma in symbol"));
    }
 
 
    // precision part missing
    {
       BOOST_CHECK_EXCEPTION(symbol::from_string("0,EURO"),
-                            fc::assert_exception, assert_message_is("zero decimals in symbol"));
+                            fc::assert_exception, fc_assert_exception_message_is("zero decimals in symbol"));
    }
 
    // invalid - contains lower case characters, no validation
@@ -267,16 +266,16 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
       BOOST_REQUIRE_EQUAL(6, malformed.decimals());
    }
 
-   // invalid - contains lower case characters, exception thrown 
+   // invalid - contains lower case characters, exception thrown
    {
       BOOST_CHECK_EXCEPTION(symbol(5,"EoS"),
-                            fc::assert_exception, assert_message_is("invalid character in symbol name"));
+                            fc::assert_exception, fc_assert_exception_message_is("invalid character in symbol name"));
    }
 
    // invalid - missing decimal point
    {
       BOOST_CHECK_EXCEPTION(asset::from_string("10 CUR"),
-                            fc::assert_exception, assert_message_is("dot missing in asset from string"));
+                            fc::assert_exception, fc_assert_exception_message_is("dot missing in asset from string"));
    }
 
 } FC_LOG_AND_RETHROW() /// test_symbol

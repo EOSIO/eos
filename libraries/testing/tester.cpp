@@ -1,4 +1,3 @@
-#include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/asset.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>

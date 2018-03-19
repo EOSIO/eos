@@ -1,6 +1,5 @@
-#include <boost/test/unit_test.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 #include <eosio/chain/symbol.hpp>
 

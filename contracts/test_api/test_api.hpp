@@ -70,6 +70,12 @@ struct test_types {
   static void char_to_symbol();
   static void string_to_name();
   static void name_class();
+  static void safe_number_general();
+  static void safe_number_overflow();
+  static void safe_number_underflow();
+  static void safe_number_multiply_overflow1();
+  static void safe_number_multiply_overflow2();
+  static void safe_number_divide_by_zero();
 };
 
 struct test_print {

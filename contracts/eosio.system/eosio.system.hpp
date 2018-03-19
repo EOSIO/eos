@@ -27,7 +27,7 @@ namespace eosiosystem {
    using std::map;
    using std::pair;
    using eosio::print;
-   using eosio::safe_quantity;
+   using eosio::safe_number;
    using eosio::extended_symbol;
    using eosio::extended_asset;
    using eosio::currency;
@@ -37,7 +37,7 @@ namespace eosiosystem {
       public:
          static constexpr account_name    system_account = SystemAccount;
          static constexpr extended_symbol system_token{S(4,EOS), SystemAccount};
-         typedef safe_quantity<int64_t, static_cast<uint128_t>(system_token)> system_token_quantity;
+         typedef safe_number<int64_t, static_cast<uint128_t>(system_token)> system_token_quantity;
 
          //typedef eosio::generic_currency< eosio::token<system_account,S(4,EOS)> > currency;
          //typedef typename currency::token_type system_token_type;

@@ -1,4 +1,3 @@
-#include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/merkle.hpp>
 #include <fc/io/json.hpp>

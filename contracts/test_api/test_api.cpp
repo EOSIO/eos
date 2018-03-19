@@ -30,6 +30,12 @@ extern "C" {
       WASM_TEST_HANDLER(test_types, char_to_symbol);
       WASM_TEST_HANDLER(test_types, string_to_name);
       WASM_TEST_HANDLER(test_types, name_class);
+      WASM_TEST_HANDLER(test_types, safe_number_general);
+      WASM_TEST_HANDLER(test_types, safe_number_overflow);
+      WASM_TEST_HANDLER(test_types, safe_number_underflow);
+      WASM_TEST_HANDLER(test_types, safe_number_multiply_overflow1);
+      WASM_TEST_HANDLER(test_types, safe_number_multiply_overflow2);
+      WASM_TEST_HANDLER(test_types, safe_number_divide_by_zero);
 
       //test_compiler_builtins
       WASM_TEST_HANDLER(test_compiler_builtins, test_multi3);
