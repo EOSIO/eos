@@ -3,6 +3,8 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
+#include <eosiolib/serialize.hpp>
+#include <string>
 
 typedef unsigned long long u64;
 typedef unsigned int u32;
@@ -27,13 +29,36 @@ static constexpr u64 WASM_TEST_ACTION(const char* cls, const char* method)
 
 #pragma pack(push, 1)
 struct dummy_action {
+   static uint64_t get_name() {
+      return N(dummy_action);
+   }
+   static uint64_t get_account() {
+      return N(testapi);
+   }
+
   char a; //1
-  unsigned long long b; //8
-  int  c; //4
+  uint64_t b; //8
+  int32_t  c; //4
+
+  EOSLIB_SERIALIZE( dummy_action, (a)(b)(c) )
 };
 
 struct u128_action {
   unsigned __int128  values[3]; //16*3
+};
+
+struct cf_action {
+   static uint64_t get_name() {
+      return N(cf_action);
+   }
+   static uint64_t get_account() {
+      return N(testapi);
+   }
+
+   uint32_t       payload = 100;
+   uint32_t       cfd_idx = 0; // context free data index
+
+   EOSLIB_SERIALIZE( cf_action, (payload)(cfd_idx) )
 };
 #pragma pack(pop)
 
@@ -65,6 +90,8 @@ struct test_action {
   static void read_action_normal();
   static void read_action_to_0();
   static void read_action_to_64k();
+  static void test_dummy_action();
+  static void test_cf_action();
   static void require_notice();
   static void require_auth();
   static void assert_false();
@@ -138,6 +165,9 @@ struct test_multi_index {
    static void idx64_general();
    static void idx64_store_only();
    static void idx64_check_without_storing();
+   static void idx128_general();
+   static void idx128_store_only();
+   static void idx128_check_without_storing();
    static void idx128_autoincrement_test();
    static void idx128_autoincrement_test_part1();
    static void idx128_autoincrement_test_part2();

@@ -690,8 +690,10 @@ class multi_index
             if( hana::at_c<index_type::index_number>(secondary_keys) != secondary ) {
                auto indexitr = mutableitem.__iters[index_type::number()];
 
-               if( indexitr < 0 )
-                  indexitr = mutableitem.__iters[index_type::number()] = db_idx_find_primary( _code, _scope, index_type::name(), pk,  secondary );
+               if( indexitr < 0 ) {
+                  typename index_type::secondary_key_type temp_secondary_key;
+                  indexitr = mutableitem.__iters[index_type::number()] = db_idx_find_primary( _code, _scope, index_type::name(), pk,  temp_secondary_key );
+               }
 
                db_idx_update( indexitr, payer, secondary );
             }
