@@ -33,7 +33,8 @@ namespace eosio {
    inline void print( int64_t num ) {
       printi(num);
    }
-   inline void print( double d ) { printdi( *((int64_t*)&d) ); }
+   inline void print( double d ) { printdf( d ); }
+   inline void print( float f ) { printff( f ); }
 
    /**
     * Prints 32 bit unsigned integer as a 64 bit unsigned integer

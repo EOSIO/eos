@@ -261,6 +261,16 @@ inline float32_t convert_literal_to_native<float32_t>(Literal& v) {
 }
 
 template<>
+inline double convert_literal_to_native<double>(Literal& v) {
+   return v.getf64();
+}
+
+template<>
+inline float convert_literal_to_native<float>(Literal& v) {
+   return v.getf32();
+}
+
+template<>
 inline int64_t convert_literal_to_native<int64_t>(Literal& v) {
    return v.geti64();
 }

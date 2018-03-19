@@ -112,13 +112,23 @@ struct native_to_wasm<T *> {
 /**
  * Mappings for native types
  */
+/*
 template<>
 struct native_to_wasm<float32_t> {
-   using type = float32_t; //F32;
+   using type = F32; 
 };
 template<>
 struct native_to_wasm<float64_t> {
-   using type = float64_t; //F64;
+   using type = F64;
+};
+*/
+template<>
+struct native_to_wasm<float> {
+   using type = F32; 
+};
+template<>
+struct native_to_wasm<double> {
+   using type = F64;
 };
 template<>
 struct native_to_wasm<int32_t> {
@@ -148,12 +158,6 @@ template<>
 struct native_to_wasm<name> {
    using type = I64;
 };
-/*
-template<>
-struct native_to_wasm<wasm_double> {
-   using type = I64;
-};
-*/
 template<>
 struct native_to_wasm<const fc::time_point_sec &> {
    using type = I32;
@@ -198,8 +202,22 @@ inline auto convert_wasm_to_native(native_to_wasm_t<T> val) {
 }
 /*
 template<>
+inline auto convert_wasm_to_native<float>(native_to_wasm_t<float> val) {
+   // ensure implicit casting doesn't occur
+   std::cout << "OOP1 " << *(float*)&val << "\n";
+   float32_t ret = { *(uint32_t*)&val };
+   return ret;
+}
+template<>
+inline auto convert_wasm_to_native<double>(native_to_wasm_t<double> val) {
+   // ensure implicit casting doesn't occur
+   float64_t ret = { *(uint64_t*)&val };
+   return ret;
+}
+template<>
 inline auto convert_wasm_to_native<float32_t>(native_to_wasm_t<float32_t> val) {
    // ensure implicit casting doesn't occur
+   std::cout << "OOP1 " << *(float*)&val << "\n";
    float32_t ret = { *(uint32_t*)&val };
    return ret;
 }

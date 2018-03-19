@@ -202,17 +202,68 @@ namespace eosio { namespace chain { namespace wasm_injections {
             return u8"_eosio_f32_add";
          case wasm_ops::f32_sub_code:
             return u8"_eosio_f32_sub";
+         case wasm_ops::f32_mul_code:
+            return u8"_eosio_f32_mul";
+         case wasm_ops::f32_div_code:
+            return u8"_eosio_f32_div";
+         case wasm_ops::f32_min_code:
+            return u8"_eosio_f32_min";
+         case wasm_ops::f32_max_code:
+            return u8"_eosio_f32_max";
+         case wasm_ops::f32_copysign_code:
+            return u8"_eosio_f32_copysign";
+         case wasm_ops::f32_abs_code:
+            return u8"_eosio_f32_abs";
+         case wasm_ops::f32_neg_code:
+            return u8"_eosio_f32_neg";
+         case wasm_ops::f32_sqrt_code:
+            return u8"_eosio_f32_sqrt";
+         case wasm_ops::f32_ceil_code:
+            return u8"_eosio_f32_ceil";
+         case wasm_ops::f32_floor_code:
+            return u8"_eosio_f32_floor";
+         case wasm_ops::f32_trunc_code:
+            return u8"_eosio_f32_trunc";
+         case wasm_ops::f32_nearest_code:
+            return u8"_eosio_f32_nearest";
          case wasm_ops::f32_eq_code:
             return u8"_eosio_f32_eq";
+         case wasm_ops::f32_ne_code:
+            return u8"_eosio_f32_ne";
+         case wasm_ops::f32_lt_code:
+            return u8"_eosio_f32_lt";
+         case wasm_ops::f32_le_code:
+            return u8"_eosio_f32_le";
+         case wasm_ops::f32_gt_code:
+            return u8"_eosio_f32_gt";
+         case wasm_ops::f32_ge_code:
+            return u8"_eosio_f32_ge";
          case wasm_ops::f64_promote_f32_code:
             return u8"_eosio_f32_promote";
+         case wasm_ops::i32_trunc_u_f32_code:
+            return u8"_eosio_f32_trunc_i32u";
+         case wasm_ops::i32_trunc_s_f32_code:
+            return u8"_eosio_f32_trunc_i32s";
+         case wasm_ops::i32_trunc_u_f64_code:
+            return u8"_eosio_f64_trunc_i32u";
+         case wasm_ops::i32_trunc_s_f64_code:
+            return u8"_eosio_f64_trunc_i32s";
+         case wasm_ops::i64_trunc_u_f32_code:
+            return u8"_eosio_f32_trunc_i64u";
+         case wasm_ops::i64_trunc_s_f32_code:
+            return u8"_eosio_f32_trunc_i64s";
+         case wasm_ops::i64_trunc_u_f64_code:
+            return u8"_eosio_f64_trunc_i64u";
+         case wasm_ops::i64_trunc_s_f64_code:
+            return u8"_eosio_f64_trunc_i64s";
+
          default:
             return "";
             //FC_THROW_EXCEPTION( wasm_execution_error, "Error, unknown opcode in injection ${op}", ("op", opcode));
       }
    }
    template <uint16_t Opcode>
-   struct f32_op_injector {
+   struct f32_binop_injector {
       static constexpr bool kills = true;
       static constexpr bool post = false;
       static void init() {}
@@ -223,30 +274,88 @@ namespace eosio { namespace chain { namespace wasm_injections {
          f32op.field = idx;
          std::vector<U8> injected = f32op.pack();
          arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
-   }
-
+      }
    };
-   struct f32_add_injector {
+
+   template <uint16_t Opcode>
+   struct f32_unop_injector {
       static constexpr bool kills = true;
       static constexpr bool post = false;
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::f32, ValueType::f32, ValueType::f32>( *(arg.module), u8"env", u8"_eosio_f32_add", idx );
+         injector_utils::add_import<ResultType::f32, ValueType::f32>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
          std::vector<U8> injected = f32op.pack();
          arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
       }
    };
-   struct f32_eq_injector {
+
+   template <uint16_t Opcode>
+   struct f32_relop_injector {
       static constexpr bool kills = true;
       static constexpr bool post = false;
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::f32, ValueType::f32, ValueType::f32>( *(arg.module), u8"env", u8"_eosio_f32_eq", idx );
-         std::cout << "FOUND AN EQ " << idx << "\n";
+         injector_utils::add_import<ResultType::i32, ValueType::f32, ValueType::f32>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         wasm_ops::op_types<>::call_t f32op;
+         f32op.field = idx;
+         std::vector<U8> injected = f32op.pack();
+         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+      }
+   };
+   template <uint16_t Opcode>
+   struct f32_trunc_i32_injector {
+      static constexpr bool kills = true;
+      static constexpr bool post = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         int32_t idx;
+         injector_utils::add_import<ResultType::i32, ValueType::f32>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         wasm_ops::op_types<>::call_t f32op;
+         f32op.field = idx;
+         std::vector<U8> injected = f32op.pack();
+         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+      }
+   };
+   template <uint16_t Opcode>
+   struct f32_trunc_i64_injector {
+      static constexpr bool kills = true;
+      static constexpr bool post = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         int32_t idx;
+         injector_utils::add_import<ResultType::i64, ValueType::f32>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         wasm_ops::op_types<>::call_t f32op;
+         f32op.field = idx;
+         std::vector<U8> injected = f32op.pack();
+         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+      }
+   };
+   template <uint16_t Opcode>
+   struct f64_trunc_i32_injector {
+      static constexpr bool kills = true;
+      static constexpr bool post = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         int32_t idx;
+         injector_utils::add_import<ResultType::i32, ValueType::f64>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         wasm_ops::op_types<>::call_t f32op;
+         f32op.field = idx;
+         std::vector<U8> injected = f32op.pack();
+         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+      }
+   };
+   template <uint16_t Opcode>
+   struct f64_trunc_i64_injector {
+      static constexpr bool kills = true;
+      static constexpr bool post = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         int32_t idx;
+         injector_utils::add_import<ResultType::i64, ValueType::f64>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
          std::vector<U8> injected = f32op.pack();
@@ -266,6 +375,20 @@ namespace eosio { namespace chain { namespace wasm_injections {
          std::vector<U8> injected = f32promote.pack();
          arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
       }
+   };
+   
+   struct f64_demote_injector {
+      static constexpr bool kills = true;
+      static constexpr bool post = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         int32_t idx;
+         injector_utils::add_import<ResultType::f32, ValueType::f64>( *(arg.module), u8"env", u8"_eosio_f64_demote", idx );
+         wasm_ops::op_types<>::call_t f32promote;
+         f32promote.field = idx;
+         std::vector<U8> injected = f32promote.pack();
+         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+    
    };
 
    struct pre_op_injectors : wasm_ops::op_types<pass_injector> {
@@ -385,14 +508,56 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using i64_rotl_t        = wasm_ops::i64_rotl                <instruction_counter>; 
       using i64_rotr_t        = wasm_ops::i64_rotr                <instruction_counter>; 
       
-      //using f32_eq_t          = wasm_ops::f32_eq                  <instruction_counter, f32_eq_injector>;
-      using f32_add_t         = wasm_ops::f32_add                 <instruction_counter, f32_op_injector<wasm_ops::f32_add_code>>;
-      using f64_promote_f32_t = wasm_ops::f64_promote_f32         <instruction_counter, f32_op_injector<wasm_ops::f64_promote_f32_code>>;
+      // float binops 
+      using f32_add_t         = wasm_ops::f32_add                 <instruction_counter, f32_binop_injector<wasm_ops::f32_add_code>>;
+      using f32_sub_t         = wasm_ops::f32_sub                 <instruction_counter, f32_binop_injector<wasm_ops::f32_sub_code>>;
+      using f32_div_t         = wasm_ops::f32_div                 <instruction_counter, f32_binop_injector<wasm_ops::f32_div_code>>;
+      using f32_mul_t         = wasm_ops::f32_mul                 <instruction_counter, f32_binop_injector<wasm_ops::f32_mul_code>>;
+      using f32_min_t         = wasm_ops::f32_min                 <instruction_counter, f32_binop_injector<wasm_ops::f32_min_code>>;
+      using f32_max_t         = wasm_ops::f32_max                 <instruction_counter, f32_binop_injector<wasm_ops::f32_max_code>>;
+      using f32_copysign_t    = wasm_ops::f32_copysign            <instruction_counter, f32_binop_injector<wasm_ops::f32_copysign_code>>;
+      // float unops
+      using f32_abs_t         = wasm_ops::f32_abs                 <instruction_counter, f32_unop_injector<wasm_ops::f32_abs_code>>;
+      using f32_neg_t         = wasm_ops::f32_neg                 <instruction_counter, f32_unop_injector<wasm_ops::f32_neg_code>>;
+      using f32_sqrt_t        = wasm_ops::f32_sqrt                <instruction_counter, f32_unop_injector<wasm_ops::f32_sqrt_code>>;
+      using f32_floor_t       = wasm_ops::f32_floor               <instruction_counter, f32_unop_injector<wasm_ops::f32_floor_code>>;
+      using f32_ceil_t        = wasm_ops::f32_ceil                <instruction_counter, f32_unop_injector<wasm_ops::f32_ceil_code>>;
+      using f32_trunc_t       = wasm_ops::f32_trunc               <instruction_counter, f32_unop_injector<wasm_ops::f32_trunc_code>>;
+      using f32_nearest_t     = wasm_ops::f32_nearest             <instruction_counter, f32_unop_injector<wasm_ops::f32_nearest_code>>;
+      // float relops
+      using f32_eq_t          = wasm_ops::f32_eq                  <instruction_counter, f32_relop_injector<wasm_ops::f32_eq_code>>;
+      using f32_ne_t          = wasm_ops::f32_ne                  <instruction_counter, f32_relop_injector<wasm_ops::f32_ne_code>>;
+      using f32_lt_t          = wasm_ops::f32_lt                  <instruction_counter, f32_relop_injector<wasm_ops::f32_lt_code>>;
+      using f32_le_t          = wasm_ops::f32_le                  <instruction_counter, f32_relop_injector<wasm_ops::f32_le_code>>;
+      using f32_gt_t          = wasm_ops::f32_gt                  <instruction_counter, f32_relop_injector<wasm_ops::f32_gt_code>>;
+      using f32_ge_t          = wasm_ops::f32_ge                  <instruction_counter, f32_relop_injector<wasm_ops::f32_ge_code>>;
 
-      using i32_wrap_i64_t    = wasm_ops::i32_wrap_i64            <instruction_counter>;
+      using f64_promote_f32_t = wasm_ops::f64_promote_f32         <instruction_counter, f32_promote_injector>;
+      using f32_promote_f64_t = wasm_ops::f32_promote_f64         <instruction_counter, f64_demote_injector>;
+      using i32_trunc_s_f32_t = wasm_ops::i32_trunc_s_f32         <instruction_counter, f32_trunc_i32_injector<wasm_ops::i32_trunc_s_f32_code>>;
+      using i32_trunc_u_f32_t = wasm_ops::i32_trunc_u_f32         <instruction_counter, f32_trunc_i32_injector<wasm_ops::i32_trunc_u_f32_code>>;
+      using i32_trunc_s_f64_t = wasm_ops::i32_trunc_s_f64         <instruction_counter, f64_trunc_i32_injector<wasm_ops::i32_trunc_s_f64_code>>;
+      using i32_trunc_u_f64_t = wasm_ops::i32_trunc_u_f64         <instruction_counter, f64_trunc_i32_injector<wasm_ops::i32_trunc_u_f64_code>>;
+      using i64_trunc_s_f32_t = wasm_ops::i64_trunc_s_f32         <instruction_counter, f32_trunc_i64_injector<wasm_ops::i64_trunc_s_f32_code>>;
+      using i64_trunc_u_f32_t = wasm_ops::i64_trunc_u_f32         <instruction_counter, f32_trunc_i64_injector<wasm_ops::i64_trunc_u_f32_code>>;
+      using i64_trunc_s_f64_t = wasm_ops::i64_trunc_s_f64         <instruction_counter, f64_trunc_i64_injector<wasm_ops::i64_trunc_s_f64_code>>;
+      using i64_trunc_u_f64_t = wasm_ops::i64_trunc_u_f64         <instruction_counter, f64_trunc_i64_injector<wasm_ops::i64_trunc_u_f64_code>>;
+
+
+      float _eosio_i32_to_f32( int32_t a ) { return i32_to_f32( a ); }
+      float _eosio_i64_to_f32( int64_t a ) { return i64_to_f32( a ); }
+      float _eosio_ui32_to_f32( uint32_t a ) { return ui32_to_f32( a ); }
+      float _eosio_ui64_to_f32( uint64_t a ) { return ui64_to_f32( a ); }
+      double _eosio_i32_to_f64( int32_t a ) { return i32_to_f64( a ); }
+      double _eosio_i64_to_f64( int64_t a ) { return i64_to_f64( a ); }
+      double _eosio_ui32_to_f64( uint32_t a ) { return ui32_to_f64( a ); }
+      double _eosio_ui64_to_f64( uint64_t a ) { return ui64_to_f64( a ); }
+
+
+      using i32_wrap_i64_t     = wasm_ops::i32_wrap_i64           <instruction_counter>;
       using i64_extend_s_i32_t = wasm_ops::i64_extend_s_i32       <instruction_counter>;
       using i64_extend_u_i32_t = wasm_ops::i64_extend_u_i32       <instruction_counter>;
-      // todo, make sure these are just pointer reinterprets
+
       using i32_reinterpret_f32_t = wasm_ops::i32_reinterpret_f32 <instruction_counter>;
       using f32_reinterpret_i32_t = wasm_ops::f32_reinterpret_i32 <instruction_counter>;
       using i64_reinterpret_f64_t = wasm_ops::i64_reinterpret_f64 <instruction_counter>;

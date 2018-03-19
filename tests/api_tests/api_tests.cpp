@@ -377,8 +377,101 @@ BOOST_FIXTURE_TEST_CASE(softfloat_tests, tester) { try {
 	produce_blocks(1);
 
    // test f32 operations 
-   float values[] = { 0.3, 1.1, 1.4 };
-   CALL_TEST_FUNCTION( *this, "test_softfloat", "test_f32", fc::raw::pack( values ) );
+   float f32_add_values[] = { 0.3f, 1.1f, 0.3f+1.1f,
+                      0.5f, 0.25f, 0.75f,
+                     -0.0f, -0.0f, -0.0f,
+                      0.0f, 0.0f, 0.0f,
+                     -0.0f, 0.0f, -0.0f,
+                      nanf(""), nanf(""), nanf(""),
+                      0.5f, nanf(""), nanf(""),
+                      nanf(""), 0.5f, nanf(""),
+                      1.0f/0.0f, -1.0f/0.0f, nanf(""),
+                      1.0f/0.0f, 1.0f/0.0f, 1.0f/0.0f,
+                      -1.0f/0.0f, -1.0f/0.0f, -1.0f/0.0f,
+                      1.0f/0.0f, 0.5f, 1.0f/0.0f,
+                      0.5f, 1.0f/0.0f, 1.0f/0.0f,
+                      0.5f, 0.0f, 0.5f,
+                      0.0f, 0.1f, 0.1f,
+                      0.5f, -0.5f, 0.0f};
+   CALL_TEST_FUNCTION( *this, "test_softfloat", "test_f32_add", fc::raw::pack( f32_add_values ) );
+
+   float f32_sub_values[] = { 0.3f, 1.1f, (0.3f-1.1f),
+                      0.5f, 0.25f, 0.25f,
+                     -0.0f, -0.0f, 0.0f,
+                      0.0f, 0.0f, 0.0f,
+                     -0.0f, 0.0f, -0.0f,
+                     0.0f, -0.0f, 0.0f,
+                      nanf(""), nanf(""), nanf(""),
+                      0.5f, nanf(""), nanf(""),
+                      nanf(""), 0.5f, nanf(""),
+                      1.0f/0.0f, 1.0f/0.0f, nanf(""),
+                      1.0f/0.0f, -1.0f/0.0f, 1.0f/0.0f,
+                      -1.0f/0.0f, 1.0f/0.0f, -1.0f/0.0f,
+                      1.0f/0.0f, 0.5f, 1.0f/0.0f,
+                      0.5f, 1.0f/0.0f, 1.0f/0.0f,
+                      0.5f, 0.0f, 0.5f,
+                      0.0f, 0.1f, 0.0f-0.1f,
+                      -0.5f, -0.5f, 0.0f,
+                      0.0f, 0.5f, -0.5f};
+   CALL_TEST_FUNCTION( *this, "test_softfloat", "test_f32_sub", fc::raw::pack( f32_sub_values ) );
+
+   float f32_mul_values[] = { 0.3f, 1.1f, (0.3f*1.1f),
+                      0.5f, 0.25f, (0.5f*0.25f),
+                     -0.0f, -0.0f, 0.0f,
+                      0.0f, 0.0f, 0.0f,
+                     -0.0f, 0.0f, -0.0f,
+                     0.0f, -0.0f, 0.0f,
+                      nanf(""), nanf(""), nanf(""),
+                      0.5f, nanf(""), nanf(""),
+                      nanf(""), 0.5f, nanf(""),
+                      0.0f, 1.0f/0.0f, nanf(""),
+                      1.0f/0.0f, -1.0f/0.0f, 1.0f/0.0f,
+                      -1.0f/0.0f, 1.0f/0.0f, -1.0f/0.0f,
+                      1.0f/0.0f, 0.5f, 1.0f/0.0f,
+                      0.5f, -1.0f/0.0f, -1.0f/0.0f,
+                      0.5f, 1.0f, 0.5f,
+                      1.0f, -0.1f, 0.0f-0.1f,
+                      0.5f, 1.0f/0.5f, 1.0f};
+   CALL_TEST_FUNCTION( *this, "test_softfloat", "test_f32_mul", fc::raw::pack( f32_mul_values ) );
+
+   float f32_div_values[] = { 0.3f, 1.1f, (0.3f/1.1f),
+                      0.5f, 0.25f, 2.0f,
+                     -0.0f, -0.0f, nanf(""),
+                      0.0f, 0.0f, nanf(""),
+                     -0.0f, 0.0f, nanf(""),
+                     0.0f, -0.0f, nanf(""),
+                      nanf(""), nanf(""), nanf(""),
+                      0.5f, nanf(""), nanf(""),
+                      nanf(""), 0.5f, nanf(""),
+                      0.0f, 1.0f/0.0f, nanf(""),
+                      1.0f/0.0f, 1.0f/0.0f, nanf(""),
+                      -1.0f/0.0f, 1.0f/0.0f, nanf(""),
+                      1.0f/0.0f, 0.5f, 1.0f/0.0f,
+                      0.5f, -1.0f/0.0f, -1.0f/0.0f,
+                      0.5f, 1.0f, 0.5f,
+                      -0.1f, -1.0f, 0.1f,
+                      0.5f, 0.5f, 1.0f};
+   CALL_TEST_FUNCTION( *this, "test_softfloat", "test_f32_div", fc::raw::pack( f32_div_values ) );
+
+   float f32_min_values[] = { 0.3f, 1.1f, 0.3f,
+                      0.5f, 0.25f, 2.0f,
+                     -0.0f, -0.0f, nanf(""),
+                      0.0f, 0.0f, nanf(""),
+                     -0.0f, 0.0f, nanf(""),
+                     0.0f, -0.0f, nanf(""),
+                      nanf(""), nanf(""), nanf(""),
+                      0.5f, nanf(""), nanf(""),
+                      nanf(""), 0.5f, nanf(""),
+                      0.0f, 1.0f/0.0f, nanf(""),
+                      1.0f/0.0f, 1.0f/0.0f, nanf(""),
+                      -1.0f/0.0f, 1.0f/0.0f, nanf(""),
+                      1.0f/0.0f, 0.5f, 1.0f/0.0f,
+                      0.5f, -1.0f/0.0f, -1.0f/0.0f,
+                      0.5f, 1.0f, 0.5f,
+                      -0.1f, -1.0f, 0.1f,
+                      0.5f, 0.5f, 1.0f};
+   CALL_TEST_FUNCTION( *this, "test_softfloat", "test_f32_min", fc::raw::pack( f32_min_values ) );
+
 
 } FC_LOG_AND_RETHROW() }
 
