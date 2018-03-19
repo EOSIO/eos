@@ -1,7 +1,7 @@
+cmake_minimum_required( VERSION 3.5 )
+
 # Defines EOS library target.
 project( EOS )
-
-cmake_minimum_required( VERSION 2.8.12 )
 
 enable_testing()
 
@@ -15,6 +15,8 @@ include( InstallDirectoryPermissions )
 
 set( BLOCKCHAIN_NAME "Eos" )
 set( CMAKE_CXX_STANDARD 14 )
+set( CMAKE_CXX_EXTENSIONS ON )
+set( CXX_STANDARD_REQUIRED ON)
 
 set(VERSION_MAJOR 3)
 set(VERSION_MINOR 0)
@@ -144,20 +146,14 @@ if( WIN32 )
 
 else( WIN32 ) # Apple AND Linux
 
-    find_library(READLINE_LIBRARIES NAMES readline)
-    find_path(READLINE_INCLUDE_DIR readline/readline.h)
-    #if(NOT READLINE_INCLUDE_DIR OR NOT READLINE_LIBRARIES)
-    #  MESSAGE(FATAL_ERROR "Could not find lib readline.")
-    #endif()
     if( APPLE )
         # Apple Specific Options Here
         message( STATUS "Configuring Eos on OS X" )
-#set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++14 -Wall -Wno-invalid-partial-specialization -Wno-deprecated-declarations" )
-        set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++1z -Wc++1z-extensions -Wall -Wno-deprecated-declarations" )
+        set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-deprecated-declarations" )
     else( APPLE )
         # Linux Specific Options Here
         message( STATUS "Configuring Eos on Linux" )
-        set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++1z -Wc++1z-extensions -Wall" )
+        set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall" )
         if ( FULL_STATIC_BUILD )
           set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
         endif ( FULL_STATIC_BUILD )

@@ -117,7 +117,7 @@ git clone https://github.com/eosio/eos --recursive
 
 cd eos
 
-git checkout DAWN-2018-02-14
+git checkout DAWN-2018-02-14 --recurse-submodules
 ./eosio_build.sh
 ```
 
@@ -165,7 +165,7 @@ git clone https://github.com/eosio/eos --recursive
 
 cd eos
 
-git checkout DAWN-2018-02-14
+git checkout DAWN-2018-02-14 --recurse-submodules
 ./eosio_build.sh
 ```
 
@@ -265,7 +265,7 @@ plugin = eosio::http_plugin
 ```
 
 Now it should be possible to run `eosiod` and see it begin producing blocks.
-You can specify the location of a custom `config.ini` by passing the `--config-dir` argument to `eosiod`.
+You can specify the location of a custom `config.ini` by passing the `--config-dir` argument to `eosiod`.
 
 When running `eosiod` you should get log messages similar to below. It means the blocks are successfully produced.
 
@@ -723,7 +723,8 @@ sudo yum update
 sudo yum install git gcc.x86_64 gcc-c++.x86_64 autoconf automake libtool make cmake.x86_64 \
 				 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 \
 				 libstdc++-devel.x86_64 python3-devel.x86_64 libedit.x86_64 \
-				 ncurses-devel.x86_64 swig.x86_64 gettext-devel.x86_64
+				 mongodb.x86_64 mongodb-server.x86_64 ncurses-devel.x86_64 \
+				 swig.x86_64 gettext-devel.x86_64
 
 ```
 
@@ -738,6 +739,21 @@ source ~/.bash_profile
 cd boost_1_66_0/
 ./bootstrap.sh "--prefix=$BOOST_ROOT"
 ./b2 install
+```
+Install [mongo-cxx-driver (release/stable)](https://github.com/mongodb/mongo-cxx-driver):
+
+```bash
+cd ~
+curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
+tar xf mongo-c-driver-1.9.3.tar.gz
+cd mongo-c-driver-1.9.3
+./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+make -j$( nproc )
+sudo make install
+git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
+cd mongo-cxx-driver/build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+sudo make -j$( nproc )
 ```
 
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
@@ -798,7 +814,7 @@ source ~/.bash_profile
 source ~/.bash_profile
 ```
 
-Install MongoDB C++ driver:
+Install [mongo-cxx-driver (release/stable)](https://github.com/mongodb/mongo-cxx-driver):
 
 ```bash
 cd ~

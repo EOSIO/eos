@@ -11,8 +11,7 @@ namespace IR
 
 	struct NoImm {};
 	struct MemoryImm {};
-   
-   
+
 	struct ControlStructureImm
 	{
 		ResultType resultType;

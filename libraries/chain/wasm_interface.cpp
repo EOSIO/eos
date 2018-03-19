@@ -7,10 +7,8 @@
 #include <boost/core/ignore_unused.hpp>
 #include <boost/multiprecision/cpp_bin_float.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
-#include <eosio/chain/wasm_eosio_constraints.hpp>
-#include <eosio/chain/wasm_eosio_validators.hpp>
+#include <eosio/chain/wasm_eosio_validation.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
-#include <eosio/chain/wasm_module_walker.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
@@ -26,6 +24,8 @@
 #include "Runtime/Runtime.h"
 #include "Runtime/Linker.h"
 #include "Runtime/Intrinsics.h"
+
+#include <softfloat.hpp>
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
@@ -187,94 +187,18 @@ namespace eosio { namespace chain {
                try {
 
                   IR::Module* module = new IR::Module();
-                  IR::Module* module2 = new IR::Module();
 
                   Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
-                  Serialization::MemoryInputStream stream2((const U8 *) wasm_binary, wasm_binary_size);
                   WASM::serialize(stream, *module);
-                  WASM::serialize(stream2, *module2);
 
-                  wasm_constraints::wasm_binary_validation validator( *module );
-                  //validator.validate();
+                  wasm_validations::wasm_binary_validation validator( *module );
                   wasm_injections::wasm_binary_injection injector( *module );
+
                   injector.inject();
                   validator.validate();
-                  std::cout << "MOD2!!!\n";
-                  wasm_constraints::wasm_binary_validation validator2( *module2 );
-//                  validator2.validate();
-#if 1
-                  auto restype = [](IR::ResultType f){ 
-                        if (f == IR::ResultType::none ) return "none"; 
-                        if (f == IR::ResultType::i32 ) return "i32"; 
-                        if (f == IR::ResultType::i64 ) return "i64"; 
-                        if (f == IR::ResultType::f32 ) return "f32"; 
-                        if (f == IR::ResultType::f64 ) return "f64"; 
-                  };
-                  auto valtype = [](IR::ValueType f){ 
-                        if (f == IR::ValueType::any ) return "any"; 
-                        if (f == IR::ValueType::i32 ) return "i32"; 
-                        if (f == IR::ValueType::i64 ) return "i64"; 
-                        if (f == IR::ValueType::f32 ) return "f32"; 
-                        if (f == IR::ValueType::f64 ) return "f64"; 
-                  };
-
-
-                  std::cout << "FUNCTION_Type A \n";
-                  for (auto e : module->types) {
-                     std::cout << "Function ("<< restype(e->ret) << ") (";
-                     for (auto ee : e->parameters) {
-                        std::cout << valtype(ee) << ", ";
-                     }
-                  } 
-                  std::cout << "\n";
-
-                  std::cout << "FUNCTION_Import A \n";
-                  for (int i=0; i < module->functions.imports.size(); i++)
-                     std::cout << module->functions.imports[i].exportName << " : " << i << "\n";
-                  std::cout << "\n";
-                 std::cout << "FUNCTION_Import B \n";
-                  for (int i=0; i < module2->functions.imports.size(); i++)
-                     std::cout << module2->functions.imports[i].exportName << " : " << i << "\n";
-                  std::cout << "\n";
-
-                  std::cout << "TABLES_Import A \n";
-                  for (auto e : module->tables.imports)
-                     std::cout << e.exportName << "\n";
-                  std::cout << "\n";
-                  /*
-                  std::cout << "TABLES_Import B \n";
-                  for (auto e : module2->tables.imports)
-                     std::cout << e.exportName << "\n";
-                  std::cout << "\n";
-                  */
-                  std::cout << "MEMORIES_Import A \n";
-                  for (auto e : module->memories.imports)
-                     std::cout << e.exportName << "\n";
-                  std::cout << "\n";
-                  std::cout << "GLOBALS_Import A \n";
-                  for (auto e : module->globals.imports)
-                     std::cout << e.exportName << "\n";
-                  std::cout << "\n";
-                  std::cout << "EXPORT A \n";
-                  for (auto e : module->exports)
-                     std::cout << e.name << " " << uint32_t(e.index) << "\n";
-                  std::cout << "\n";
-                  /*
-                  std::cout << "DATASEG A \n";
-                  for (auto e : module->dataSegments)
-                     std::cout << e.memoryIndex << "\n";
-                  std::cout << "\n";
-                  */
-                  std::cout << "start index A " << module->startFunctionIndex << "\n";
-#endif
-
                   Serialization::ArrayOutputStream outstream;
                   WASM::serialize(outstream, *module);
                   std::vector<U8> bytes = outstream.getBytes();
-                  static int a = 0;
-                  std::ofstream out_bin( std::string("edump")+std::to_string(a++), std::ios::out | std::ios::binary );
-                  out_bin.write( (char*)bytes.data(), bytes.size() );
-                  out_bin.close();
 
                   wavm = wavm::entry::build((char*)bytes.data(), bytes.size());
                   wavm_info.emplace(*wavm);
@@ -487,6 +411,7 @@ class context_free_api : public context_aware_api {
          return context.get_context_free_data( index, buffer, buffer_size );
       }
 };
+
 class privileged_api : public context_aware_api {
    public:
       privileged_api( wasm_interface& wasm )
@@ -579,7 +504,8 @@ class privileged_api : public context_aware_api {
 
 class checktime_api : public context_aware_api {
 public:
-   using context_aware_api::context_aware_api;
+   explicit checktime_api( wasm_interface& wasm )
+   :context_aware_api(wasm,true){}
 
    void checktime(uint32_t instruction_count) {
       context.checktime(instruction_count);
@@ -607,7 +533,19 @@ class softfloat_api : public context_aware_api {
          float32_t ret = f32_mul( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
-      float _eosio_f32_min( float a, float b ) { return f32_lt( to_softfloat32(a), to_softfloat32(b) ) ? a : b; }
+      float _eosio_f32_min( float a, float b ) { 
+         std::cout << std::hex << "A " << a << " " << *(uint32_t*)&a << " B " << b << " " << *(uint32_t*)&b <<  " " << f32_lt( to_softfloat32(a), to_softfloat32(b) )<< "\n";
+         // special case min(-0,0)
+         if (*(uint32_t*)&a == 0x80000000) {
+            if (*(uint32_t*)&b == 0)
+               return a;
+         }
+         else if (*(uint32_t*)&b == 0x80000000) {
+            if (*(uint32_t*)&a == 0)
+               return b;
+         }
+         return f32_lt( to_softfloat32(a), to_softfloat32(b) ) ? a : b; 
+      }
       float _eosio_f32_max( float a, float b ) { return f32_lt( to_softfloat32(a), to_softfloat32(b) ) ? b : a; }
       float _eosio_f32_copysign( float af, float bf ) { 
          float32_t a = to_softfloat32(af);
@@ -847,34 +785,39 @@ class softfloat_api : public context_aware_api {
 
 
       // float and double conversions
-      double _eosio_f32_promote( float a ) { return f32_to_f64( to_softfloat64(a) ); }
-      float _eosio_f64_demote( double a ) { return f64_to_f32( to_softfloat32(a) ); }
-      int32_t _eosio_f32_trunc_i32s( float a ) { return f32_to_i32( _eosio_f32_trunc( to_softfloat32(a) ), 0, false ); }
-      int32_t _eosio_f64_trunc_i32s( double a ) { return f64_to_i32( _eosio_f64_trunc( to_softfloat64(a) ), 0, false ); }
-      uint32_t _eosio_f32_trunc_i32u( float a ) { return f32_to_ui32( _eosio_f32_trunc( to_softfloat32(a) ), 0, false ); }
-      uint32_t _eosio_f64_trunc_i32u( double a ) { return f64_to_ui32( _eosio_f64_trunc( to_softfloat64(a) ), 0, false ); }
-      int64_t _eosio_f32_trunc_i64s( float a ) { return f32_to_i64( _eosio_f32_trunc( to_softfloat32(a) ), 0, false ); }
-      int64_t _eosio_f64_trunc_i64s( double a ) { return f64_to_i64( _eosio_f64_trunc( to_softfloat64(a) ), 0, false ); }
-      uint64_t _eosio_f32_trunc_i64u( float a ) { return f32_to_ui64( _eosio_f32_trunc( to_softfloat32(a) ), 0, false ); }
-      uint64_t _eosio_f64_trunc_i64u( double a ) { return f64_to_ui64( _eosio_f64_trunc( to_softfloat64(a) ), 0, false ); }
-      float _eosio_i32_to_f32( int32_t a ) { return i32_to_f32( a ); }
-      float _eosio_i64_to_f32( int64_t a ) { return i64_to_f32( a ); }
-      float _eosio_ui32_to_f32( uint32_t a ) { return ui32_to_f32( a ); }
-      float _eosio_ui64_to_f32( uint64_t a ) { return ui64_to_f32( a ); }
-      double _eosio_i32_to_f64( int32_t a ) { return i32_to_f64( a ); }
-      double _eosio_i64_to_f64( int64_t a ) { return i64_to_f64( a ); }
-      double _eosio_ui32_to_f64( uint32_t a ) { return ui32_to_f64( a ); }
-      double _eosio_ui64_to_f64( uint64_t a ) { return ui64_to_f64( a ); }
+      double _eosio_f32_promote( float a ) { return from_softfloat64(f32_to_f64( to_softfloat32(a)) ); }
+      float _eosio_f64_demote( double a ) { return from_softfloat32(f64_to_f32( to_softfloat64(a)) ); }
+      int32_t _eosio_f32_trunc_i32s( float a ) { return f32_to_i32( to_softfloat32(_eosio_f32_trunc( a )), 0, false ); }
+      int32_t _eosio_f64_trunc_i32s( double a ) { return f64_to_i32( to_softfloat64(_eosio_f64_trunc( a )), 0, false ); }
+      uint32_t _eosio_f32_trunc_i32u( float a ) { return f32_to_ui32( to_softfloat32(_eosio_f32_trunc( a )), 0, false ); }
+      uint32_t _eosio_f64_trunc_i32u( double a ) { return f64_to_ui32( to_softfloat64(_eosio_f64_trunc( a )), 0, false ); }
+      int64_t _eosio_f32_trunc_i64s( float a ) { return f32_to_i64( to_softfloat32(_eosio_f32_trunc( a )), 0, false ); }
+      int64_t _eosio_f64_trunc_i64s( double a ) { return f64_to_i64( to_softfloat64(_eosio_f64_trunc( a )), 0, false ); }
+      uint64_t _eosio_f32_trunc_i64u( float a ) { return f32_to_ui64( to_softfloat32(_eosio_f32_trunc( a )), 0, false ); }
+      uint64_t _eosio_f64_trunc_i64u( double a ) { return f64_to_ui64( to_softfloat64(_eosio_f64_trunc( a )), 0, false ); }
+      float _eosio_i32_to_f32( int32_t a ) { return from_softfloat32(i32_to_f32( a )); }
+      float _eosio_i64_to_f32( int64_t a ) { return from_softfloat32(i64_to_f32( a )); }
+      float _eosio_ui32_to_f32( uint32_t a ) { return from_softfloat32(ui32_to_f32( a )); }
+      float _eosio_ui64_to_f32( uint64_t a ) { return from_softfloat32(ui64_to_f32( a )); }
+      double _eosio_i32_to_f64( int32_t a ) { return from_softfloat64(i32_to_f64( a )); }
+      double _eosio_i64_to_f64( int64_t a ) { return from_softfloat64(i64_to_f64( a )); }
+      double _eosio_ui32_to_f64( uint32_t a ) { return from_softfloat64(ui32_to_f64( a )); }
+      double _eosio_ui64_to_f64( uint64_t a ) { return from_softfloat64(ui64_to_f64( a )); }
 
 
    private:
       inline float32_t to_softfloat32( float f ) {
-         return float32_t{*(uint32_t*)&f};
+         return *reinterpret_cast<float32_t*>(&f);
       }
-      inline float64_t to_softfloat64( double f ) {
-         return float64_t{*(uint64_t*)&f};
+      inline float64_t to_softfloat64( double d ) {
+         return *reinterpret_cast<float64_t*>(&d);
       }
- 
+      inline float from_softfloat32( float32_t f ) {
+         return *reinterpret_cast<float*>(&f);
+      }
+      inline double from_softfloat64( float64_t d ) {
+         return *reinterpret_cast<double*>(&d);
+      }
       static constexpr uint32_t inv_float_eps = 0x4B000000; 
       static constexpr uint64_t inv_double_eps = 0x4330000000000000;
 };
@@ -893,13 +836,14 @@ class producer_api : public context_aware_api {
 
 class crypto_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      explicit crypto_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       /**
        * This method can be optimized out during replay as it has
        * no possible side effects other than "passing".
        */
-      void assert_recover_key( fc::sha256& digest,
+      void assert_recover_key( const fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
          fc::crypto::signature s;
@@ -914,7 +858,7 @@ class crypto_api : public context_aware_api {
          FC_ASSERT( check == p, "Error expected key different than recovered key" );
       }
 
-      int recover_key( fc::sha256& digest,
+      int recover_key( const fc::sha256& digest,
                         array_ptr<char> sig, size_t siglen,
                         array_ptr<char> pub, size_t publen ) {
          fc::crypto::signature s;
@@ -977,7 +921,8 @@ class string_api : public context_aware_api {
 
 class system_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      explicit system_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       void abort() {
          edump(("abort() called"));
@@ -999,16 +944,17 @@ class system_api : public context_aware_api {
 
 class action_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+   action_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
-      int read_action(array_ptr<char> memory, size_t size) {
+      int read_action_data(array_ptr<char> memory, size_t size) {
          FC_ASSERT(size > 0);
          int minlen = std::min<size_t>(context.act.data.size(), size);
          memcpy((void *)memory, context.act.data.data(), minlen);
          return minlen;
       }
 
-      int action_size() {
+      int action_data_size() {
          return context.act.data.size();
       }
 
@@ -1031,7 +977,8 @@ class action_api : public context_aware_api {
 
 class console_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
+      console_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       void prints(null_terminated_ptr str) {
          context.console_append<const char*>(str);
@@ -1737,8 +1684,8 @@ class compiler_builtins : public context_aware_api {
 
 class math_api : public context_aware_api {
    public:
-      using context_aware_api::context_aware_api;
-
+      math_api( wasm_interface& wasm )
+      :context_aware_api(wasm,true){}
 
       void diveq_i128(unsigned __int128* self, const unsigned __int128* other) {
          fc::uint128_t s(*self);
@@ -1940,8 +1887,8 @@ REGISTER_INTRINSICS(system_api,
 );
 
 REGISTER_INTRINSICS(action_api,
-   (read_action,            int(int, int)  )
-   (action_size,            int()          )
+   (read_action_data,       int(int, int)  )
+   (action_data_size,       int()          )
    (current_receiver,   int64_t()          )
    (publication_time,   int32_t()          )
    (current_sender,     int64_t()          )

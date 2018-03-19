@@ -16,7 +16,6 @@
 #include "test_chain.cpp"
 #include "test_transaction.cpp"
 #include "test_checktime.cpp"
-#include "test_softfloat.cpp"
 
 extern "C" {
 
@@ -60,6 +59,16 @@ extern "C" {
       WASM_TEST_HANDLER(test_action, test_current_receiver);
       WASM_TEST_HANDLER(test_action, test_current_sender);
       WASM_TEST_HANDLER(test_action, test_publication_time);
+
+      // test named actions
+      // We enforce action name matches action data type name, so name mangling will not work for these tests.
+      if ( action == N(dummy_action) ) {
+         test_action::test_dummy_action();
+         return;
+      } else if ( action == N(cf_action) ) {
+         test_action::test_cf_action();
+         return;
+      }
 
       //test_print
       WASM_TEST_HANDLER(test_print, test_prints);
@@ -136,13 +145,14 @@ extern "C" {
       // test checktime
       WASM_TEST_HANDLER(test_checktime, checktime_pass);
       WASM_TEST_HANDLER(test_checktime, checktime_failure);
-      
+/*      
       // test softfloat
       WASM_TEST_HANDLER(test_softfloat, test_f32_add);
       WASM_TEST_HANDLER(test_softfloat, test_f32_sub);
       WASM_TEST_HANDLER(test_softfloat, test_f32_mul);
       WASM_TEST_HANDLER(test_softfloat, test_f32_div);
       WASM_TEST_HANDLER(test_softfloat, test_f32_min);
+*/
 
       //unhandled test call
       eosio_assert(false, "Unknown Test");

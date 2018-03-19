@@ -21,6 +21,7 @@
 #include <fc/io/json.hpp>
 
 #include "test_wasts.hpp"
+#include "test_softfloat_wasts.hpp"
 
 #include <array>
 #include <utility>
@@ -201,32 +202,32 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
    BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
 
 } FC_LOG_AND_RETHROW() /// prove_mem_reset
-/*
-BOOST_FIXTURE_TEST_CASE( f32_add, tester ) try {
+
+BOOST_FIXTURE_TEST_CASE( f32_tests, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(f32_add)} );
+   create_accounts( {N(f32_tests)} );
    produce_block();
 
-   set_code(N(f32_add), f32_add_wast);
+   set_code(N(f32_tests), f32_test_wast);
    produce_blocks(10);
 
    signed_transaction trx;
    action act;
-   act.account = N(f32_add);
+   act.account = N(f32_tests);
    act.name = N();
-   act.authorization = vector<permission_level>{{N(f32_add),config::active_name}};
+   act.authorization = vector<permission_level>{{N(f32_tests),config::active_name}};
    trx.actions.push_back(act);
 
    set_tapos(trx);
-   trx.sign(get_private_key( N(f32_add), "active" ), chain_id_type());
+   trx.sign(get_private_key( N(f32_tests), "active" ), chain_id_type());
    push_transaction(trx);
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    const auto& receipt = get_transaction_receipt(trx.id());
 
 } FC_LOG_AND_RETHROW()
-*/
+
 /**
  * Make sure WASM "start" method is used correctly
  */

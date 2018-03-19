@@ -15,7 +15,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <iostream>
 
 #include "IR/Operators.h"
 #include "IR/Module.h"
@@ -25,7 +24,7 @@ namespace eosio { namespace chain { namespace wasm_ops {
 // forward declaration
 struct instr;
 using namespace fc;
-using wasm_op_ptr	  = std::unique_ptr<instr>;
+using wasm_op_ptr   = std::unique_ptr<instr>;
 using wasm_instr_ptr      = std::shared_ptr<instr>;
 using wasm_return_t       = std::vector<uint8_t>; 
 using wasm_instr_callback = std::function<std::vector<wasm_instr_ptr>(uint8_t)>;
@@ -121,7 +120,7 @@ struct field_specific_params<voidtype> {
 
 #define CONSTRUCT_OP_HAS_DATA( r, DATA, OP )                                                        \
 template <typename ... Mutators>                                                                    \
-struct OP : instr_base<Mutators...> {                                                               \
+struct OP final : instr_base<Mutators...> {                                                         \
    uint16_t code = BOOST_PP_CAT(OP,_code);                                                          \
    DATA field;                                                                                      \
    uint16_t get_code() override { return BOOST_PP_CAT(OP,_code); }                                  \
@@ -530,19 +529,27 @@ struct propagate_post_injection<Mutator> {
 };
 
 template <bool Kills, bool Post>
-struct base_mutator {
-   static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
-      std::vector<U8> self_code = inst->pack();
-      if constexpr ( Post )
-         arg.new_code->insert( arg.new_code->begin(), self_code.begin(), self_code.end() );
-      else
-         arg.new_code->insert( arg.new_code->end(), self_code.begin(), self_code.end() );
-   }
-};
+struct base_mutator;
 
 template <bool Post>
 struct base_mutator<true, Post> {
    static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+   }
+};
+
+template<>
+struct base_mutator<false, true> {
+   static void accept(wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+      std::vector<U8> self_code = inst->pack();
+      arg.new_code->insert( arg.new_code->begin(), self_code.begin(), self_code.end() );
+   }
+};
+
+template<>
+struct base_mutator<false, false> {
+   static void accept(wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+      std::vector<U8> self_code = inst->pack();
+      arg.new_code->insert( arg.new_code->end(), self_code.begin(), self_code.end() );
    }
 };
 
@@ -646,51 +653,54 @@ using namespace IR;
 template <class Op_Types>
 struct EOSIO_OperatorDecoderStream
 {
-	EOSIO_OperatorDecoderStream(const std::vector<U8>& codeBytes)
-	: start(codeBytes.data()), nextByte(codeBytes.data()), end(codeBytes.data()+codeBytes.size()) {}
+   EOSIO_OperatorDecoderStream(const std::vector<U8>& codeBytes)
+   : start(codeBytes.data()), nextByte(codeBytes.data()), end(codeBytes.data()+codeBytes.size()) {
+     if(!_cached_ops)
+        _cached_ops = cached_ops<Op_Types>::get_cached_ops();
+   }
 
-	operator bool() const { return nextByte < end; }
+   operator bool() const { return nextByte < end; }
 
-	instr* decodeOp() {
-		assert(nextByte + sizeof(IR::Opcode) <= end);
-      IR::Opcode opcode = *(IR::Opcode*)nextByte;
-		switch(opcode)
-		{
-		#define VISIT_OPCODE(opcode,name,nameString,Imm,...) \
+   instr* decodeOp() {
+      assert(nextByte + sizeof(IR::Opcode) <= end);
+      IR::Opcode opcode = *(IR::Opcode*)nextByte;  
+      switch(opcode)
+      {
+      #define VISIT_OPCODE(opcode,name,nameString,Imm,...) \
          case IR::Opcode::name: \
-			{ \
-				assert(nextByte + sizeof(IR::OpcodeAndImm<IR::Imm>) <= end); \
-				IR::OpcodeAndImm<IR::Imm>* encodedOperator = (IR::OpcodeAndImm<IR::Imm>*)nextByte; \
-				nextByte += sizeof(IR::OpcodeAndImm<IR::Imm>); \
+         { \
+            assert(nextByte + sizeof(IR::OpcodeAndImm<IR::Imm>) <= end); \
+            IR::OpcodeAndImm<IR::Imm>* encodedOperator = (IR::OpcodeAndImm<IR::Imm>*)nextByte; \
+            nextByte += sizeof(IR::OpcodeAndImm<IR::Imm>); \
             auto op = _cached_ops->at(BOOST_PP_CAT(name, _code)); \
             op->unpack( reinterpret_cast<char*>(&(encodedOperator->imm)) ); \
-				return op;  \
-			}
-		ENUM_OPERATORS(VISIT_OPCODE)
-		#undef VISIT_OPCODE
-		default:
-			nextByte += sizeof(IR::Opcode);
-			return _cached_ops->at(error_code); 
-		}
-	}
+            return op;  \
+         }
+      ENUM_OPERATORS(VISIT_OPCODE)
+      #undef VISIT_OPCODE
+      default:
+         nextByte += sizeof(IR::Opcode);
+         return _cached_ops->at(error_code); 
+      }
+   }
 
-	instr* decodeOpWithoutConsume() {
-		const U8* savedNextByte = nextByte;
-		instr* result = decodeOp();
-		nextByte = savedNextByte;
-		return result;
-	}
+   instr* decodeOpWithoutConsume() {
+      const U8* savedNextByte = nextByte;
+      instr* result = decodeOp();
+      nextByte = savedNextByte;
+      return result;
+   }
    inline uint32_t index() { return nextByte - start; }
 private:
    // cached ops to take the address of 
    static const std::vector<instr*>* _cached_ops;
    const U8* start;
-	const U8* nextByte;
-	const U8* end;
+   const U8* nextByte;
+   const U8* end;
 };
 
 template <class Op_Types>
-const std::vector<instr*>* EOSIO_OperatorDecoderStream<Op_Types>::_cached_ops = cached_ops<Op_Types>::get_cached_ops();
+const std::vector<instr*>* EOSIO_OperatorDecoderStream<Op_Types>::_cached_ops;
 
 }}} // namespace eosio, chain, wasm_ops
 

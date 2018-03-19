@@ -67,10 +67,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void add_import(Module& module, const char* scope, const char* func_name, int32_t& index ) {
          if (module.functions.imports.size() == 0 || registered_injected.find(func_name) == registered_injected.end() ) {
             add_type_slot<Result, Params...>( module );
-            std::cout << "FUNCTION " << FromResultType<Result>::value << " (";
-            for ( auto param : { FromValueType<Params>::value... } )
-               std::cout << param << ", ";
-            std::cout <<"\n";
             const uint32_t func_type_index = type_slots[{ FromResultType<Result>::value, FromValueType<Params>::value... }];
             uint32_t next_index = get_next_index( module );
             registered_injected.emplace( func_name, next_index );
@@ -240,6 +236,8 @@ namespace eosio { namespace chain { namespace wasm_injections {
             return u8"_eosio_f32_ge";
          case wasm_ops::f64_promote_f32_code:
             return u8"_eosio_f32_promote";
+         case wasm_ops::f32_demote_f64_code:
+            return u8"_eosio_f64_demote";
          case wasm_ops::i32_trunc_u_f32_code:
             return u8"_eosio_f32_trunc_i32u";
          case wasm_ops::i32_trunc_s_f32_code:
@@ -262,6 +260,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
             //FC_THROW_EXCEPTION( wasm_execution_error, "Error, unknown opcode in injection ${op}", ("op", opcode));
       }
    }
+
    template <uint16_t Opcode>
    struct f32_binop_injector {
       static constexpr bool kills = true;
@@ -388,7 +387,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          f32promote.field = idx;
          std::vector<U8> injected = f32promote.pack();
          arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
-    
+      }
    };
 
    struct pre_op_injectors : wasm_ops::op_types<pass_injector> {
@@ -533,7 +532,9 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using f32_ge_t          = wasm_ops::f32_ge                  <instruction_counter, f32_relop_injector<wasm_ops::f32_ge_code>>;
 
       using f64_promote_f32_t = wasm_ops::f64_promote_f32         <instruction_counter, f32_promote_injector>;
-      using f32_promote_f64_t = wasm_ops::f32_promote_f64         <instruction_counter, f64_demote_injector>;
+      using f32_demote_f64_t  = wasm_ops::f32_demote_f64          <instruction_counter, f64_demote_injector>;
+
+/*
       using i32_trunc_s_f32_t = wasm_ops::i32_trunc_s_f32         <instruction_counter, f32_trunc_i32_injector<wasm_ops::i32_trunc_s_f32_code>>;
       using i32_trunc_u_f32_t = wasm_ops::i32_trunc_u_f32         <instruction_counter, f32_trunc_i32_injector<wasm_ops::i32_trunc_u_f32_code>>;
       using i32_trunc_s_f64_t = wasm_ops::i32_trunc_s_f64         <instruction_counter, f64_trunc_i32_injector<wasm_ops::i32_trunc_s_f64_code>>;
@@ -543,7 +544,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using i64_trunc_s_f64_t = wasm_ops::i64_trunc_s_f64         <instruction_counter, f64_trunc_i64_injector<wasm_ops::i64_trunc_s_f64_code>>;
       using i64_trunc_u_f64_t = wasm_ops::i64_trunc_u_f64         <instruction_counter, f64_trunc_i64_injector<wasm_ops::i64_trunc_u_f64_code>>;
 
-
       float _eosio_i32_to_f32( int32_t a ) { return i32_to_f32( a ); }
       float _eosio_i64_to_f32( int64_t a ) { return i64_to_f32( a ); }
       float _eosio_ui32_to_f32( uint32_t a ) { return ui32_to_f32( a ); }
@@ -552,7 +552,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       double _eosio_i64_to_f64( int64_t a ) { return i64_to_f64( a ); }
       double _eosio_ui32_to_f64( uint32_t a ) { return ui32_to_f64( a ); }
       double _eosio_ui64_to_f64( uint64_t a ) { return ui64_to_f64( a ); }
-
+*/
 
       using i32_wrap_i64_t     = wasm_ops::i32_wrap_i64           <instruction_counter>;
       using i64_extend_s_i32_t = wasm_ops::i64_extend_s_i32       <instruction_counter>;
