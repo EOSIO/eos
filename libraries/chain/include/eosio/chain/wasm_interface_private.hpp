@@ -29,11 +29,8 @@ namespace eosio { namespace chain {
             FC_THROW("wasm_interface_impl fall through");
       }
       
-      std::vector<uint8_t> parse_initial_memory(const shared_vector<char>& code) {
+      std::vector<uint8_t> parse_initial_memory(const Module& module) {
          std::vector<uint8_t> mem_image;
-         Module module;
-         Serialization::MemoryInputStream stream((const U8*)code.data(), code.size());
-         WASM::serialize(stream, module);
 
          for(const DataSegment& data_segment : module.dataSegments) {
             FC_ASSERT(data_segment.baseOffset.type == InitializerExpression::Type::i32_const);
@@ -64,7 +61,7 @@ namespace eosio { namespace chain {
             WASM::serialize(outstream, module);
             std::vector<U8> bytes = outstream.getBytes();
 
-            it = instantiation_cache.emplace(code_id, runtime_interface->instantiate_module(code.data(), code.size(), parse_initial_memory(code))).first;
+            it = instantiation_cache.emplace(code_id, runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module))).first;
          }
          return it->second;
       }
