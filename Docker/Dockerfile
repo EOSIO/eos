@@ -13,6 +13,7 @@ FROM ubuntu:16.04
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/eosio /opt/eosio
+COPY --from=builder /contracts /contracts
 COPY start_eosiod.sh /opt/eosio/bin/
 COPY config.ini /
 COPY genesis.json /
