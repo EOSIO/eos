@@ -12,14 +12,14 @@
 namespace eosiosystem {
 
    struct PACKED(block_header) {
-      checksum256                        previous;
-      time                               timestamp;
-      checksum256                        transaction_mroot;
-      checksum256                        action_mroot;
-      checksum256                        block_mroot;
-      account_name                       producer;
-      uint32_t                           schedule_version;
-      eosio::optional<producer_schedule> new_producers;
+      checksum256                               previous;
+      time                                      timestamp;
+      checksum256                               transaction_mroot;
+      checksum256                               action_mroot;
+      checksum256                               block_mroot;
+      account_name                              producer;
+      uint32_t                                  schedule_version;
+      eosio::optional<eosio::producer_schedule> new_producers;
       
       EOSLIB_SERIALIZE(block_header, (previous)(timestamp)(transaction_mroot)(action_mroot)(block_mroot)
                                      (producer)(schedule_version)(new_producers))
