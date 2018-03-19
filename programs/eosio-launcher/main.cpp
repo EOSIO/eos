@@ -1113,13 +1113,19 @@ launcher_def::write_bigredbutton () {
   }
 
    auto &bios_node = network.nodes["bios"];
+   uint16_t biosport = bios_node.instance->http_port;
+   string bhost = bios_node.instance->host;
    string line;
    string prefix = "###INSERT ";
    size_t len = prefix.length();
    while (getline(src,line)) {
       if (line.substr(0,len) == prefix) {
-         string key = line.substr(len,5);
-         if (key == "biosk") {
+         string key = line.substr(len);
+         if (key == "bioshost") {
+            brb << "bioshost=" << bhost << "\nbiosport=" << biosport << "\n";
+            continue;
+         }
+         if (key == "bioskey") {
             brb << "wcmd import -n ignition " << string(bios_node.keys[0]) << "\n";
             continue;
          }
