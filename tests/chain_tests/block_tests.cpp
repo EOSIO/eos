@@ -485,7 +485,7 @@ BOOST_AUTO_TEST_CASE(sleepy_db)
       net.connect_blockchain(producer);
 
       producer.produce_blocks(20);
-      return;
+
       // The new node, sleepy, joins, syncs, disconnects
       tester sleepy;
       net.connect_blockchain(sleepy);
