@@ -170,6 +170,24 @@
       "fields": [
         {"name":"owner",   "type":"account_name"}
       ]
+    },{
+      "name": "block_header",
+      "base": "",
+      "fields": [
+        {"name":"previous",          "type":"uint8[]"},
+        {"name":"timestamp",         "type":"uint32"},
+        {"name":"transaction_mroot", "type":"uint8[]"},
+        {"name":"action_mroot",      "type":"uint8[]"},
+        {"name":"block_mroot",       "type":"uint8[]"},
+        {"name":"producer",          "type":"account_name"},
+        {"name":"schedule_version",  "type":"uint32"}
+      ]
+    },{
+      "name": "onblock",
+      "base": "",
+      "fields": [
+        {"name":"header",       "type":"block_header"}
+      ]
     }
   ],
   "actions": [{
@@ -202,6 +220,9 @@
     },{
       "name": "claimrewards",
       "type": "claimrewards"
+    },{
+      "name": "onblock",
+      "type": "onblock"
     }
   ],
   "tables": [
