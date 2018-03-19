@@ -100,14 +100,14 @@ bfs::path determine_root_directory()
 int main(int argc, char** argv)
 {
    try {
-      app().set_version(eosio::eosiod::config::version);
+      app().set_version(eosio::nodeos::config::version);
       bfs::path root = determine_root_directory();
       app().set_default_data_dir(root / "var/lib/eosio/node_00");
       app().set_default_config_dir(root / "etc/eosio/node_00");
       if(!app().initialize<chain_plugin, http_plugin, net_plugin>(argc, argv))
          return -1;
       initialize_logging();
-      ilog("eosiod version ${ver}", ("ver", eosio::eosiod::config::itoh(static_cast<uint32_t>(app().version()))));
+      ilog("nodeos version ${ver}", ("ver", eosio::nodeos::config::itoh(static_cast<uint32_t>(app().version()))));
       ilog("eosio root is ${root}", ("root", root.string()));
       app().startup();
       app().exec();

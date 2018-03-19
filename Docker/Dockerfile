@@ -11,15 +11,13 @@ RUN git clone -b master --depth 1 https://github.com/EOSIO/eos.git --recursive \
 FROM ubuntu:16.04
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl && rm -rf /var/lib/apt/lists/*
-
-COPY --from=builder /opt/eosio /opt/eosio
-COPY --from=builder /contracts /contracts
-COPY start_eosiod.sh /opt/eosio/bin/
-COPY config.ini /
-COPY genesis.json /
-
+COPY --from=builder /usr/local/lib/* /usr/local/lib/
+COPY --from=builder /tmp/build/bin /opt/eosio/bin
+COPY --from=builder /tmp/build/contracts /contracts
+COPY --from=builder /eos/Docker/config.ini /eos/genesis.json /
+COPY start_eosiod.sh /opt/eosio/bin/start_eosiod.sh
 ENV EOSIO_ROOT=/opt/eosio
-RUN chmod +x /opt/eosio/bin/start_eosiod.sh
+RUN chmod +x /opt/eosio/bin/start_nodeos.sh
 ENV LD_LIBRARY_PATH /usr/local/lib
 VOLUME /opt/eosio/bin/data-dir
 ENV PATH /opt/eosio/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

@@ -15,7 +15,7 @@ import signal
 # -d <delay between nodes startup>
 # -v <verbose logging>
 # --kill-sig <kill signal [term|kill]>
-# --kill-count <Eosiod instances to kill>
+# --kill-count <nodeos instances to kill>
 # --dont-kill <Leave cluster running after test finishes>
 # --dump-error-details <Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout>
 # --keep-logs <Don't delete tn_data_* folders upon test completion>
@@ -38,7 +38,7 @@ parser.add_argument("-c", type=str, help="chain strategy[%s|%s|%s]" %
                     default=testUtils.Utils.SyncResyncTag)
 parser.add_argument("--kill-sig", type=str, help="kill signal[%s|%s]" %
                     (testUtils.Utils.SigKillTag, testUtils.Utils.SigTermTag), default=testUtils.Utils.SigKillTag)
-parser.add_argument("--kill-count", type=int, help="eosiod instances to kill", default=-1)
+parser.add_argument("--kill-count", type=int, help="nodeos instances to kill", default=-1)
 parser.add_argument("-v", help="verbose logging", action='store_true')
 parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
 parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
@@ -120,7 +120,7 @@ try:
     Print("Kill %d cluster node instances." % (killCount))
     if cluster.killSomeEosInstances(killCount, killSignal) is False:
         errorExit("Failed to kill Eos instances")
-    Print("Eosiod instances killed.")
+    Print("nodeos instances killed.")
 
     Print("Spread funds and validate")
     if not cluster.spreadFundsAndValidate(10):
@@ -133,7 +133,7 @@ try:
     Print ("Relaunch dead cluster nodes instances.")
     if cluster.relaunchEosInstances() is False:
         errorExit("Failed to relaunch Eos instances")
-    Print("Eosiod instances relaunched.")
+    Print("nodeos instances relaunched.")
 
     Print ("Resyncing cluster nodes.")
     if not cluster.waitOnClusterSync():
