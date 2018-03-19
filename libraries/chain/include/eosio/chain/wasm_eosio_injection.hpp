@@ -87,29 +87,8 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void inject( IR::Module& m );
       static void initializer();
    };
-   
 
-   struct memories_injection_visitor {
-      static void inject( IR::Module& m );
-      static void initializer();
-   };
-
-   struct data_segments_injection_visitor {
-      static void inject( IR::Module& m );
-      static void initializer();
-   };
-
-   struct tables_injection_visitor {
-      static void inject( IR::Module& m );
-      static void initializer();
-   };
-
-   struct globals_injection_visitor {
-      static void inject( IR::Module& m );
-      static void initializer();
-   };
-   
-   struct blacklist_injection_visitor {
+   struct max_memory_injection_visitor {
       static void inject( IR::Module& m );
       static void initializer();
    };
@@ -365,7 +344,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
  
    // inherit from this class and define your own injectors 
    class wasm_binary_injection {
-      using standard_module_injectors = module_injectors< noop_injection_visitor >;
+      using standard_module_injectors = module_injectors< noop_injection_visitor, max_memory_injection_visitor >;
 
       public:
          wasm_binary_injection( IR::Module& mod )  : _module( &mod ) { 
