@@ -56,7 +56,9 @@ total_nodes="${total_nodes:-`echo $pnodes`}"
 launcherPath="programs/eosio-launcher/eosio-launcher"
 clientPath="programs/eosioc/eosioc"
 
-rm -rf tn_data_*
+rm -rf etc/eosio/eosio_bios etc/eosio/node_* var/lib/* stage
+ls -l etc/eosio var/lib
+
 debugArg=""
 if [ "$debug" == true ]; then
    debugArg="--eosiod \"--log-level-net-plugin debug\""
@@ -137,9 +139,9 @@ cmd="$launcherPath -k 15"
 echo cmd: $cmd
 eval $cmd
 echo =================================================================
-echo Contents of tn_data_00/config.ini:
-cat tn_data_00/config.ini
+echo Contents of etc/eosio/node_00/config.ini
+cat etc/eosio/node_00/config.ini
 echo =================================================================
-echo Contents of tn_data_00/stderr.txt:
-cat tn_data_00/stderr.txt
+echo Contents of var/lib/node_00/stderr.txt:
+cat var/lib/node_00/stderr.txt
 exit 1
