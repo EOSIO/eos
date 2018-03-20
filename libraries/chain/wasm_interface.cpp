@@ -1388,196 +1388,232 @@ class math_api : public context_aware_api {
 };
 
 REGISTER_INTRINSICS(math_api,
-   (diveq_i128,    void(int, int)            )
-   (multeq_i128,   void(int, int)            )
-   (double_add,    int64_t(int64_t, int64_t) )
-   (double_mult,   int64_t(int64_t, int64_t) )
-   (double_div,    int64_t(int64_t, int64_t) )
-   (double_eq,     int32_t(int64_t, int64_t) )
-   (double_lt,     int32_t(int64_t, int64_t) )
-   (double_gt,     int32_t(int64_t, int64_t) )
-   (double_to_i64, int64_t(int64_t)          )
-   (i64_to_double, int64_t(int64_t)          )
+   (diveq_i128,    void(int, int),            (void, (uint64_t val1, uint64_t val2), ((unsigned __int128*) val1, (unsigned __int128*) val2)))
+   (multeq_i128,   void(int, int),            (void, (uint64_t val1, uint64_t val2), ((unsigned __int128*) val1, (unsigned __int128*) val2)))
+   (double_add,    int64_t(int64_t, int64_t), (uint64_t, (uint64_t val1, uint64_t val2), (val1, val2)))
+   (double_mult,   int64_t(int64_t, int64_t), (uint64_t, (uint64_t val1, uint64_t val2), (val1, val2)))
+   (double_div,    int64_t(int64_t, int64_t), (uint64_t, (uint64_t val1, uint64_t val2), (val1, val2)))
+   (double_eq,     int32_t(int64_t, int64_t), (uint32_t, (uint64_t val1, uint64_t val2), (val1, val2)))
+   (double_lt,     int32_t(int64_t, int64_t), (uint32_t, (uint64_t val1, uint64_t val2), (val1, val2)))
+   (double_gt,     int32_t(int64_t, int64_t), (uint32_t, (uint64_t val1, uint64_t val2), (val1, val2)))
+   (double_to_i64, int64_t(int64_t),          (uint64_t, (uint64_t val), (val)))
+   (i64_to_double, int64_t(int64_t),          (uint64_t, (uint64_t val), (val)))
 );
 
+// Note: Some of these are not defined for native contracts because they conflict with built-in compiler-defined functions.
 REGISTER_INTRINSICS(compiler_builtins,
-   (__ashlti3,     void(int, int64_t, int64_t, int)               )
-   (__ashrti3,     void(int, int64_t, int64_t, int)               )
-   (__lshlti3,     void(int, int64_t, int64_t, int)               )
-   (__lshrti3,     void(int, int64_t, int64_t, int)               )
-   (__divti3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__udivti3,     void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__modti3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__umodti3,     void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__multi3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__addtf3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__subtf3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__multf3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__divtf3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__eqtf2,       int(int64_t, int64_t, int64_t, int64_t)        )
-   (__netf2,       int(int64_t, int64_t, int64_t, int64_t)        )
-   (__getf2,       int(int64_t, int64_t, int64_t, int64_t)        )
-   (__gttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
-   (__lttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
-   (__cmptf2,      int(int64_t, int64_t, int64_t, int64_t)        )
-   (__unordtf2,    int(int64_t, int64_t, int64_t, int64_t)        )
-   (__extendsftf2, void(int, int)                                 )      
-   (__extenddftf2, void(int, int64_t)                             )      
-   (__fixtfdi,     int64_t(int64_t, int64_t)                      )
-   (__fixtfsi,     int(int64_t, int64_t)                          )
-   (__fixunstfdi,  int64_t(int64_t, int64_t)                      )
-   (__fixunstfsi,  int(int64_t, int64_t)                          )
-   (__trunctfdf2,  int64_t(int64_t, int64_t)                      )
-   (__trunctfsf2,  int(int64_t, int64_t)                          )
+   (__ashlti3,     void(int, int64_t, int64_t, int),              (void, (__int128* res, int64_t lo, int64_t hi, uint32_t shift), (*res, lo, hi, shift)))
+   (__ashrti3,     void(int, int64_t, int64_t, int),              (void, (__int128* res, int64_t lo, int64_t hi, uint32_t shift), (*res, lo, hi, shift)))
+   (__lshlti3,     void(int, int64_t, int64_t, int),              (void, (__int128* res, int64_t lo, int64_t hi, uint32_t shift), (*res, lo, hi, shift)))
+   (__lshrti3,     void(int, int64_t, int64_t, int),              (void, (__int128* res, int64_t lo, int64_t hi, uint32_t shift), (*res, lo, hi, shift)))
+   (__divti3,      void(int, int64_t, int64_t, int64_t, int64_t), () ) //(void, (__int128* res, int64_t la, int64_t ha, int64_t lb, int64_t hb), (*res, la, ha, lb, hb)))
+   (__udivti3,     void(int, int64_t, int64_t, int64_t, int64_t), () ) //(void, (unsigned __int128* res, int64_t la, int64_t ha, int64_t lb, int64_t hb), (*res, la, ha, lb, hb)))
+   (__modti3,      void(int, int64_t, int64_t, int64_t, int64_t), () ) //(void, (__int128* res, int64_t la, int64_t ha, int64_t lb, int64_t hb), (*res, la, ha, lb, hb)))
+   (__umodti3,     void(int, int64_t, int64_t, int64_t, int64_t), () ) //(void, (unsigned __int128* res, int64_t la, int64_t ha, int64_t lb, int64_t hb), (*res, la, ha, lb, hb)))
+   (__multi3,      void(int, int64_t, int64_t, int64_t, int64_t), (void, (__int128* res, int64_t la, int64_t ha, int64_t lb, int64_t hb), (*res, la, ha, lb, hb)))
+   (__addtf3,      void(int, int64_t, int64_t, int64_t, int64_t), (void, (float128_t* ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb), (*ret, la, ha, lb, hb)))
+   (__subtf3,      void(int, int64_t, int64_t, int64_t, int64_t), (void, (float128_t* ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb), (*ret, la, ha, lb, hb)))
+   (__multf3,      void(int, int64_t, int64_t, int64_t, int64_t), (void, (float128_t* ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb), (*ret, la, ha, lb, hb)))
+   (__divtf3,      void(int, int64_t, int64_t, int64_t, int64_t), (void, (float128_t* ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb), (*ret, la, ha, lb, hb)))
+   (__eqtf2,       int(int64_t, int64_t, int64_t, int64_t),       (int, (uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb), (la, ha, lb, hb)))
+   (__netf2,       int(int64_t, int64_t, int64_t, int64_t),       (int, (uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb), (la, ha, lb, hb)))
+   (__getf2,       int(int64_t, int64_t, int64_t, int64_t),       (int, (uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb), (la, ha, lb, hb)))
+   (__gttf2,       int(int64_t, int64_t, int64_t, int64_t),       (int, (uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb), (la, ha, lb, hb)))
+   (__letf2,       int(int64_t, int64_t, int64_t, int64_t),       (int, (uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb), (la, ha, lb, hb)))
+   (__lttf2,       int(int64_t, int64_t, int64_t, int64_t),       (int, (uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb), (la, ha, lb, hb)))
+   (__cmptf2,      int(int64_t, int64_t, int64_t, int64_t),       (int, (uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb), (la, ha, lb, hb)))
+   (__unordtf2,    int(int64_t, int64_t, int64_t, int64_t),       (int, (uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb), (la, ha, lb, hb)))
+   (__extendsftf2, void(int, int),                                (void, (float128_t* ret, float f), (*ret, f)))
+   (__extenddftf2, void(int, int64_t),                            (void, (float128_t* ret, double f), (*ret, f)))
+   (__fixtfdi,     int64_t(int64_t, int64_t),                     (int64_t, (uint64_t l, uint64_t h), (l, h)))
+   (__fixtfsi,     int(int64_t, int64_t),                         (int32_t, (uint64_t l, uint64_t h), (l, h)))
+   (__fixunstfdi,  int64_t(int64_t, int64_t),                     (uint64_t, (uint64_t l, uint64_t h), (l, h)))
+   (__fixunstfsi,  int(int64_t, int64_t),                         (uint32_t, (uint64_t l, uint64_t h), (l, h)))
+   (__trunctfdf2,  int64_t(int64_t, int64_t),                     (double, (uint64_t l, uint64_t h), (l, h)))
+   (__trunctfsf2,  int(int64_t, int64_t),                         (float, (uint64_t l, uint64_t h), (l, h)))
 );
 
 REGISTER_INTRINSICS(privileged_api,
-   (activate_feature,          void(int64_t)                                 )
-   (is_feature_active,         int(int64_t)                                  )
-   (set_resource_limits,       void(int64_t,int64_t,int64_t,int64_t,int64_t) )
-   (set_active_producers,      void(int,int)                                 )
-   (is_privileged,             int(int64_t)                                  )
-   (set_privileged,            void(int64_t, int)                            )
-   (freeze_account,            void(int64_t, int)                            )
-   (is_frozen,                 int(int64_t)                                  )
+   (activate_feature,     void(int64_t),                                 (void, (int64_t val), (val)))
+   (is_feature_active,    int(int64_t),                                  (bool, (int64_t val), (val)))
+   (set_resource_limits,  void(int64_t,int64_t,int64_t,int64_t,int64_t), (void, (uint64_t account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight, int64_t ignored),
+                                                                                (account, ram_bytes, net_weight, cpu_weight, ignored)))
+   (set_active_producers, void(int,int),                                 (void, (char* producer_data, size_t producer_data_size), (array_ptr<char>(producer_data), producer_data_size)))
+   (is_privileged,        int(int64_t),                                  (bool, (int64_t val), (val)))
+   (set_privileged,       void(int64_t, int),                            (void, (int64_t val1, bool val2), (val1, val2)))
+   (freeze_account,       void(int64_t, int),                            (void, (int64_t val1, bool val2), (val1, val2)))
+   (is_frozen,            int(int64_t),                                  (bool, (int64_t val), (val)))
 );
 
 REGISTER_INTRINSICS(checktime_api,
-   (checktime,      void(int))
+   (checktime,      void(int), (void, (uint32_t val), (val)))
 );
 
 REGISTER_INTRINSICS(producer_api,
-   (get_active_producers,      int(int, int) )
+   (get_active_producers,      int(int, int), (uint32_t, (chain::account_name* producers, uint32_t datalen), (array_ptr<chain::account_name>(producers), datalen)))
 );
 
-#define DB_SECONDARY_INDEX_METHODS_SIMPLE(IDX) \
-   (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int))\
-   (db_##IDX##_remove,         void(int))\
-   (db_##IDX##_update,         void(int,int64_t,int))\
-   (db_##IDX##_find_primary,   int(int64_t,int64_t,int64_t,int,int64_t))\
-   (db_##IDX##_find_secondary, int(int64_t,int64_t,int64_t,int,int))\
-   (db_##IDX##_lowerbound,     int(int64_t,int64_t,int64_t,int,int))\
-   (db_##IDX##_upperbound,     int(int64_t,int64_t,int64_t,int,int))\
-   (db_##IDX##_end,            int(int64_t,int64_t,int64_t))\
-   (db_##IDX##_next,           int(int, int))\
-   (db_##IDX##_previous,       int(int, int))
+
+#define DB_SECONDARY_INDEX_METHODS_SIMPLE(IDX, TYPE) \
+   (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int), (int, (int64_t scope, int64_t table, int64_t payer, int64_t id, TYPE* secondary),\
+                                                                               (scope, table, payer, id, *secondary)))\
+   (db_##IDX##_remove,         void(int),                                (void, (int32_t iter), (iter)))\
+   (db_##IDX##_update,         void(int,int64_t,int),                    (void, (int32_t iter, int64_t payer, const TYPE* secondary), (iter, payer, *secondary)))\
+   (db_##IDX##_find_primary,   int(int64_t,int64_t,int64_t,int,int64_t), (int, (int64_t code, int64_t scope, int64_t table, TYPE* secondary, uint64_t primary),\
+                                                                               (code, scope, table, *secondary, primary)))\
+   (db_##IDX##_find_secondary, int(int64_t,int64_t,int64_t,int,int),     (int, (int64_t code, int64_t scope, int64_t table, TYPE* secondary, uint64_t* primary),\
+                                                                               (code, scope, table, *secondary, *primary)))\
+   (db_##IDX##_lowerbound,     int(int64_t,int64_t,int64_t,int,int),     (int, (int64_t code, int64_t scope, int64_t table, TYPE* secondary, uint64_t* primary),\
+                                                                               (code, scope, table, *secondary, *primary)))\
+   (db_##IDX##_upperbound,     int(int64_t,int64_t,int64_t,int,int),     (int, (int64_t code, int64_t scope, int64_t table, TYPE* secondary, uint64_t* primary),\
+                                                                               (code, scope, table, *secondary, *primary)))\
+   (db_##IDX##_end,            int(int64_t,int64_t,int64_t),             (int, (uint64_t code, uint64_t scope, uint64_t table), (code, scope, table)))\
+   (db_##IDX##_next,           int(int, int),                            (int, (int32_t iter, uint64_t* primary), (iter, *primary)))\
+   (db_##IDX##_previous,       int(int, int),                            (int, (int32_t iter, uint64_t* primary), (iter, *primary)))
 
 #define DB_SECONDARY_INDEX_METHODS_ARRAY(IDX) \
-      (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int,int))\
-      (db_##IDX##_remove,         void(int))\
-      (db_##IDX##_update,         void(int,int64_t,int,int))\
-      (db_##IDX##_find_primary,   int(int64_t,int64_t,int64_t,int,int,int64_t))\
-      (db_##IDX##_find_secondary, int(int64_t,int64_t,int64_t,int,int,int))\
-      (db_##IDX##_lowerbound,     int(int64_t,int64_t,int64_t,int,int,int))\
-      (db_##IDX##_upperbound,     int(int64_t,int64_t,int64_t,int,int,int))\
-      (db_##IDX##_end,            int(int64_t,int64_t,int64_t))\
-      (db_##IDX##_next,           int(int, int))\
-      (db_##IDX##_previous,       int(int, int))
+      (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int,int),\
+                                  (int, (int64_t scope, int64_t table, int64_t payer, int64_t id, const uint128_t* secondary, uint32_t data_len),\
+                                        (scope, table, payer, id, array_ptr<const uint128_t>(secondary), data_len)))\
+      (db_##IDX##_remove,         void(int),                                    (void, (int32_t iter), (iter)))\
+      (db_##IDX##_update,         void(int,int64_t,int,int),                    (void, (int32_t iter, int64_t payer, const uint128_t* secondary, uint32_t data_len),\
+                                                                                       (iter, payer, array_ptr<const uint128_t>(secondary), data_len)))\
+      (db_##IDX##_find_primary,   int(int64_t,int64_t,int64_t,int,int,int64_t),\
+                                  (int, (int64_t code, int64_t scope, int64_t table, uint128_t* secondary, uint32_t data_len, uint64_t primary),\
+                                        (code, scope, table, array_ptr<uint128_t>(secondary), data_len, primary)))\
+      (db_##IDX##_find_secondary, int(int64_t,int64_t,int64_t,int,int,int),\
+                                  (int, (int64_t code, int64_t scope, int64_t table, const uint128_t* secondary, uint32_t data_len, uint64_t* primary),\
+                                        (code, scope, table, array_ptr<const uint128_t>(secondary), data_len, *primary)))\
+      (db_##IDX##_lowerbound,     int(int64_t,int64_t,int64_t,int,int,int),\
+                                  (int, (int64_t code, int64_t scope, int64_t table, uint128_t* secondary, uint32_t data_len, uint64_t* primary),\
+                                        (code, scope, table, array_ptr<uint128_t>(secondary), data_len, *primary)))\
+      (db_##IDX##_upperbound,     int(int64_t,int64_t,int64_t,int,int,int),\
+                                  (int, (int64_t code, int64_t scope, int64_t table, uint128_t* secondary, uint32_t data_len, uint64_t* primary),\
+                                        (code, scope, table, array_ptr<uint128_t>(secondary), data_len, *primary)))\
+      (db_##IDX##_end,            int(int64_t,int64_t,int64_t),                 (int, (uint64_t code, uint64_t scope, uint64_t table), (code, scope, table)))\
+      (db_##IDX##_next,           int(int, int),                                (int, (int32_t iter, uint64_t* primary), (iter, *primary)))\
+      (db_##IDX##_previous,       int(int, int),                               (int, (int32_t iter, uint64_t* primary), (iter, *primary)))
+
 
 REGISTER_INTRINSICS( database_api,
-   (db_store_i64,        int(int64_t,int64_t,int64_t,int64_t,int,int))
-   (db_update_i64,       void(int,int64_t,int,int))
-   (db_remove_i64,       void(int))
-   (db_get_i64,          int(int, int, int))
-   (db_next_i64,         int(int, int))
-   (db_previous_i64,     int(int, int))
-   (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t))
-   (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
-   (db_upperbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
-   (db_end_i64,          int(int64_t,int64_t,int64_t))
+   (db_store_i64,        int(int64_t,int64_t,int64_t,int64_t,int,int), (int, (int64_t scope, int64_t table, int64_t payer, int64_t id, const char* data, uint32_t length),
+                                                                             (scope, table, payer, id, array_ptr<const char>(data), length)))
+   (db_update_i64,       void(int,int64_t,int,int),                    (void, (int32_t iter, int64_t payer, const char* data, uint32_t length),
+                                                                              (iter, payer, array_ptr<const char>(data), length)))
+   (db_remove_i64,       void(int),                                    (void, (int32_t iter), (iter)))
+   (db_get_i64,          int(int, int, int),                           (int, (int32_t iter, char* data, uint32_t length), (iter, array_ptr<char>(data), length)))
+   (db_next_i64,         int(int, int),                                (int, (int32_t iter, uint64_t* primary), (iter, *primary)))
+   (db_previous_i64,     int(int, int),                                (int, (int32_t iter, uint64_t* primary), (iter, *primary)))
+   (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t),         (int, (int64_t code, int64_t scope, int64_t table, int64_t id), (code, scope, table, id)))
+   (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t),         (int, (int64_t code, int64_t scope, int64_t table, int64_t id), (code, scope, table, id)))
+   (db_upperbound_i64,   int(int64_t,int64_t,int64_t,int64_t),         (int, (int64_t code, int64_t scope, int64_t table, int64_t id), (code, scope, table, id)))
+   (db_end_i64,          int(int64_t,int64_t,int64_t),                 (int, (uint64_t code, uint64_t scope, uint64_t table), (code, scope, table)))
 
-   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
-   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
+   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64, uint64_t)
+   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128, uint128_t)
    DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
 );
 
 REGISTER_INTRINSICS(crypto_api,
-   (assert_recover_key,     void(int, int, int, int, int) )
-   (recover_key,            int(int, int, int, int, int)  )
-   (assert_sha256,          void(int, int, int)           )
-   (assert_sha1,            void(int, int, int)           )
-   (assert_sha512,          void(int, int, int)           )
-   (assert_ripemd160,       void(int, int, int)           )
-   (sha1,                   void(int, int, int)           )
-   (sha256,                 void(int, int, int)           )
-   (sha512,                 void(int, int, int)           )
-   (ripemd160,              void(int, int, int)           )
+   (assert_recover_key,     void(int, int, int, int, int), (void, (fc::sha256* digest, char* sig, size_t siglen, char* pub, size_t publen),
+                                                                  (*digest, array_ptr<char>(sig), siglen, array_ptr<char>(pub), publen)))
+   (recover_key,            int(int, int, int, int, int),  (int, (fc::sha256* digest, char* sig, size_t siglen, char* pub, size_t publen),
+                                                                 (*digest, array_ptr<char>(sig), siglen, array_ptr<char>(pub), publen)))
+   (assert_sha256,          void(int, int, int),           (void, (char* data, uint32_t length, fc::sha256* hash), (array_ptr<char>(data), length, *hash)))
+   (assert_sha1,            void(int, int, int),           (void, (char* data, uint32_t length, fc::sha1* hash), (array_ptr<char>(data), length, *hash)))
+   (assert_sha512,          void(int, int, int),           (void, (char* data, uint32_t length, fc::sha512* hash), (array_ptr<char>(data), length, *hash)))
+   (assert_ripemd160,       void(int, int, int),           (void, (char* data, uint32_t length, fc::ripemd160* hash), (array_ptr<char>(data), length, *hash)))
+   (sha1,                   void(int, int, int),           (void, (char* data, uint32_t length, fc::sha1* hash), (array_ptr<char>(data), length, *hash)))
+   (sha256,                 void(int, int, int),           (void, (char* data, uint32_t length, fc::sha256* hash), (array_ptr<char>(data), length, *hash)))
+   (sha512,                 void(int, int, int),           (void, (char* data, uint32_t length, fc::sha512* hash), (array_ptr<char>(data), length, *hash)))
+   (ripemd160,              void(int, int, int),           (void, (char* data, uint32_t length, fc::ripemd160* hash), (array_ptr<char>(data), length, *hash)))
 );
 
 REGISTER_INTRINSICS(string_api,
-   (assert_is_utf8,  void(int, int, int) )
+   (assert_is_utf8,  void(int, int, int), (void, (array_ptr<const char> str, size_t datalen, null_terminated_ptr msg), (str, datalen, msg) ))
 );
 
 REGISTER_INTRINSICS(system_api,
-   (abort,        void())
-   (eosio_assert, void(int, int))
-   (now,          int())
+   (abort,  void(), () ) // Native intrinsic not defined; system abort() will be used
+   (eosio_assert, void(int, int), (void, (bool condition, null_terminated_ptr str), (condition, str)))
+   (now,          int(),          (uint32_t, (), ().sec_since_epoch()))
 );
 
 REGISTER_INTRINSICS(action_api,
-   (read_action,            int(int, int)  )
-   (action_size,            int()          )
-   (current_receiver,   int64_t()          )
-   (publication_time,   int32_t()          )
-   (current_sender,     int64_t()          )
-);
+   (read_action,        int(int, int), (int, (char* memory, size_t size), (array_ptr<char>(memory), size)))
+   (action_size,        int(),         (int, (), ()))
+   (current_receiver,   int64_t(),     (uint64_t, (), ()))
+   (publication_time,   int32_t(),     (uint32_t, (), ().sec_since_epoch()))
+   (current_sender,     int64_t(),     (uint64_t, (), ()))
+)
+
 
 REGISTER_INTRINSICS(apply_context,
-   (require_write_lock,    void(int64_t)          )
-   (require_read_lock,     void(int64_t, int64_t) )
-   (require_recipient,     void(int64_t)          )
-   (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&)const)
-   (is_account,            int(int64_t)           )
+   (require_write_lock,    void(int64_t),          (void, (int64_t val), (val)))
+   (require_read_lock,     void(int64_t, int64_t), (void, (int64_t val1, int64_t val2), (val1, val2)))
+   (require_recipient,     void(int64_t),          (void, (int64_t val), (val)))
+   (require_authorization, void(int64_t),          (void, (int64_t val), (val)), require_auth, void(apply_context::*)(const account_name&)const)
+   (is_account,            int(int64_t),           (int, (int64_t val), (val)))
 );
 
 REGISTER_INTRINSICS(console_api,
-   (prints,                void(int)       )
-   (prints_l,              void(int, int)  )
-   (printi,                void(int64_t)   )
-   (printi128,             void(int)       )
-   (printd,                void(int64_t)   )
-   (printn,                void(int64_t)   )
-   (printhex,              void(int, int)  )
+   (prints,    void(int),      (void, (char* val),                          (null_terminated_ptr(val))              ) )
+   (prints_l,  void(int, int), (void, (const char* cstr, uint32_t len),     (array_ptr<const char>(cstr), len)      ) )
+   (printi,    void(int64_t),  (void, (uint64_t val),                       (val)                                   ) )
+   (printi128, void(int),      (void, (const uint128_t* val),               (*val)                                  ) )
+   (printd,    void(int64_t),  (void, (uint64_t val),                       (webassembly::common::wasm_double(val)) ) )
+   (printn,    void(int64_t),  (void, (uint64_t val),                       (val)                                   ) )
+   (printhex,  void(int, int), (void, (const char* data, uint32_t datalen), (array_ptr<const char>(data), datalen)  ) )
 );
 
+
 REGISTER_INTRINSICS(context_free_transaction_api,
-   (read_transaction,       int(int, int)            )
-   (transaction_size,       int()                    )
-   (expiration,             int()                    )
-   (tapos_block_prefix,     int()                    )
-   (tapos_block_num,        int()                    )
-   (get_action,            int (int, int, int, int)  )
+   (read_transaction,   int(int, int),            (size_t, (char* buffer, size_t size), (array_ptr<char>(buffer), size)))
+   (transaction_size,   int(),                    (size_t, (), ()))
+   (expiration,         int(),                    (int, (), ()))
+   (tapos_block_prefix, int(),                    (int, (), ()))
+   (tapos_block_num,    int(),                    (int, (), ()))
+   (get_action,         int (int, int, int, int), (int, (uint32_t type, uint32_t index, char* buffer, size_t length), (type, index, array_ptr<char>(buffer), length)))
 );
 
 REGISTER_INTRINSICS(transaction_api,
-   (send_inline,           void(int, int)            )
-   (send_deferred,         void(int, int, int, int)  )
+   (send_inline,           void(int, int),           (void, (char* data, size_t data_len), (array_ptr<char>(data), data_len)))
+   (send_deferred,         void(int, int, int, int), (void, (uint32_t sender_id, fc::time_point_sec delay, char* data, size_t len), (sender_id, delay, array_ptr<char>(data), len)))
 );
 
 REGISTER_INTRINSICS(context_free_api,
-   (get_context_free_data, int(int, int, int) )
+   (get_context_free_data, int(int, int, int), (int, (uint32_t index, array_ptr<char> buffer, size_t buffer_size), (index, buffer, buffer_size)))
 )
 
+// Native intrinsics not defined; use system-defined versions
 REGISTER_INTRINSICS(memory_api,
-   (memcpy,                 int(int, int, int)  )
-   (memmove,                int(int, int, int)  )
-   (memcmp,                 int(int, int, int)  )
-   (memset,                 int(int, int, int)  )
-   (sbrk,                   int(int)            )
+   (memcpy,                 int(int, int, int), ()  )
+   (memmove,                int(int, int, int), ()  )
+   (memcmp,                 int(int, int, int), ()  )
+   (memset,                 int(int, int, int), ()  )
+   (sbrk,                   int(int),           ()  )
 );
 
-#define DB_METHOD_SEQ(SUFFIX) \
-   (store,        int32_t(int64_t, int64_t, int64_t, int, int),   "store_"#SUFFIX ) \
-   (update,       int32_t(int64_t, int64_t, int64_t, int, int),   "update_"#SUFFIX ) \
-   (remove,       int32_t(int64_t, int64_t, int),                 "remove_"#SUFFIX )
+#define DB_METHOD_SEQ(SUFFIX, CLASS)\
+   (store,  int32_t(int64_t, int64_t, int64_t, int, int), (int32_t, (int64_t scope, int64_t table, int64_t bta, const char* data, uint32_t len),\
+                                                          (scope, table, bta, array_ptr<const char>(data), len)), store_##SUFFIX )\
+   (update, int32_t(int64_t, int64_t, int64_t, int, int), (int32_t, (int64_t scope, int64_t table, int64_t bta, const char* data, uint32_t len),\
+                                                          (scope, table, bta, array_ptr<const char>(data), len)), update_##SUFFIX )\
+   (remove, int32_t(int64_t, int64_t, int), (int32_t, (int64_t scope, int64_t table, CLASS::KeyParamType keys), (scope, table, keys)), remove_##SUFFIX )
 
 #define DB_INDEX_METHOD_SEQ(SUFFIX)\
-   (load,         int32_t(int64_t, int64_t, int64_t, int, int),   "load_"#SUFFIX )\
-   (front,        int32_t(int64_t, int64_t, int64_t, int, int),   "front_"#SUFFIX )\
-   (back,         int32_t(int64_t, int64_t, int64_t, int, int),   "back_"#SUFFIX )\
-   (previous,     int32_t(int64_t, int64_t, int64_t, int, int),   "previous_"#SUFFIX )\
-   (lower_bound,  int32_t(int64_t, int64_t, int64_t, int, int),   "lower_bound_"#SUFFIX )\
-   (upper_bound,  int32_t(int64_t, int64_t, int64_t, int, int),   "upper_bound_"#SUFFIX )\
+   (load,        int32_t(int64_t, int64_t, int64_t, int, int), (int32_t, (int64_t code, int64_t scope, int64_t table, char* data, uint32_t len),\
+                                                                         (code, scope, table, array_ptr<char>(data), len)), load_##SUFFIX )\
+   (front,       int32_t(int64_t, int64_t, int64_t, int, int), (int32_t, (int64_t code, int64_t scope, int64_t table, char* data, uint32_t len),\
+                                                                         (code, scope, table, array_ptr<char>(data), len)), front_##SUFFIX )\
+   (back,        int32_t(int64_t, int64_t, int64_t, int, int), (int32_t, (int64_t code, int64_t scope, int64_t table, char* data, uint32_t len),\
+                                                                         (code, scope, table, array_ptr<char>(data), len)), back_##SUFFIX )\
+   (previous,    int32_t(int64_t, int64_t, int64_t, int, int), (int32_t, (int64_t code, int64_t scope, int64_t table, char* data, uint32_t len),\
+                                                                         (code, scope, table, array_ptr<char>(data), len)), previous_##SUFFIX )\
+   (lower_bound, int32_t(int64_t, int64_t, int64_t, int, int), (int32_t, (int64_t code, int64_t scope, int64_t table, char* data, uint32_t len),\
+                                                                         (code, scope, table, array_ptr<char>(data), len)), lower_bound_##SUFFIX )\
+   (upper_bound, int32_t(int64_t, int64_t, int64_t, int, int), (int32_t, (int64_t code, int64_t scope, int64_t table, char* data, uint32_t len),\
+                                                                         (code, scope, table, array_ptr<char>(data), len)), upper_bound_##SUFFIX )
 
 using db_api_key_value_object                                 = db_api<key_value_object>;
 using db_api_keystr_value_object                              = db_api<keystr_value_object>;
@@ -1594,24 +1630,38 @@ using db_index_api_key64x64x64_value_index_by_scope_primary   = db_index_api<key
 using db_index_api_key64x64x64_value_index_by_scope_secondary = db_index_api<key64x64x64_value_index,by_scope_secondary>;
 using db_index_api_key64x64x64_value_index_by_scope_tertiary  = db_index_api<key64x64x64_value_index,by_scope_tertiary>;
 
-REGISTER_INTRINSICS(db_api_key_value_object,         DB_METHOD_SEQ(i64));
-REGISTER_INTRINSICS(db_api_key128x128_value_object,  DB_METHOD_SEQ(i128i128));
-REGISTER_INTRINSICS(db_api_key64x64_value_object,    DB_METHOD_SEQ(i64i64));
-REGISTER_INTRINSICS(db_api_key64x64x64_value_object, DB_METHOD_SEQ(i64i64i64));
+REGISTER_INTRINSICS(db_api_key_value_object,         DB_METHOD_SEQ(i64, db_api_key_value_object));
+REGISTER_INTRINSICS(db_api_key128x128_value_object,  DB_METHOD_SEQ(i128i128, db_api_key128x128_value_object));
+REGISTER_INTRINSICS(db_api_key64x64_value_object,    DB_METHOD_SEQ(i64i64, db_api_key64x64_value_object));
+REGISTER_INTRINSICS(db_api_key64x64x64_value_object, DB_METHOD_SEQ(i64i64i64, db_api_key64x64x64_value_object));
+
 REGISTER_INTRINSICS(db_api_keystr_value_object,
-   (store_str,                int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
-   (update_str,               int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
-   (remove_str,               int32_t(int64_t, int64_t, int, int)  ));
+   (store_str,  int32_t(int64_t, int64_t, int64_t, int, int, int, int), (int32_t, (int64_t scope, int64_t table, int64_t bta, char* key, uint32_t keylen, char* value, uint32_t len),
+                                                                                  (scope, table, bta, null_terminated_ptr(key), keylen, array_ptr<const char>(value), len)))
+   (update_str, int32_t(int64_t, int64_t, int64_t, int, int, int, int), (int32_t, (int64_t scope, int64_t table, int64_t bta, char* key, uint32_t keylen, char* value, uint32_t len),
+                                                                                  (scope, table, bta, null_terminated_ptr(key), keylen, array_ptr<const char>(value), len)))
+   (remove_str, int32_t(int64_t, int64_t, int, int),                    (int32_t, (int64_t scope, int64_t table, char* key, uint32_t keylen),
+                                                                                  (scope, table, array_ptr<const char>(key), keylen)))
+);
 
 REGISTER_INTRINSICS(db_index_api_key_value_index_by_scope_primary,           DB_INDEX_METHOD_SEQ(i64));
+
 REGISTER_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,
-   (load_str,            int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
-   (front_str,           int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
-   (back_str,            int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
-   (next_str,            int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
-   (previous_str,        int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
-   (lower_bound_str,     int32_t(int64_t, int64_t, int64_t, int, int, int, int)  )
-   (upper_bound_str,     int32_t(int64_t, int64_t, int64_t, int, int, int, int)  ));
+   (load_str,        int32_t(int64_t, int64_t, int64_t, int, int, int, int), (int32_t, (int64_t code, int64_t scope, int64_t table, char* key, uint32_t keylen, char* value, uint32_t len),
+                                                                                       (code, scope, table, array_ptr<char>(key), keylen, array_ptr<char>(value), len)))
+   (front_str,       int32_t(int64_t, int64_t, int64_t, int, int, int, int), (int32_t, (int64_t code, int64_t scope, int64_t table, char* key, uint32_t keylen, char* value, uint32_t len),
+                                                                                       (code, scope, table, array_ptr<char>(key), keylen, array_ptr<char>(value), len)))
+   (back_str,        int32_t(int64_t, int64_t, int64_t, int, int, int, int), (int32_t, (int64_t code, int64_t scope, int64_t table, char* key, uint32_t keylen, char* value, uint32_t len),
+                                                                                       (code, scope, table, array_ptr<char>(key), keylen, array_ptr<char>(value), len)))
+   (next_str,        int32_t(int64_t, int64_t, int64_t, int, int, int, int), (int32_t, (int64_t code, int64_t scope, int64_t table, char* key, uint32_t keylen, char* value, uint32_t len),
+                                                                                       (code, scope, table, array_ptr<char>(key), keylen, array_ptr<char>(value), len)))
+   (previous_str,    int32_t(int64_t, int64_t, int64_t, int, int, int, int), (int32_t, (int64_t code, int64_t scope, int64_t table, char* key, uint32_t keylen, char* value, uint32_t len),
+                                                                                       (code, scope, table, array_ptr<char>(key), keylen, array_ptr<char>(value), len)))
+   (lower_bound_str, int32_t(int64_t, int64_t, int64_t, int, int, int, int), (int32_t, (int64_t code, int64_t scope, int64_t table, char* key, uint32_t keylen, char* value, uint32_t len),
+                                                                                       (code, scope, table, array_ptr<char>(key), keylen, array_ptr<char>(value), len)))
+   (upper_bound_str, int32_t(int64_t, int64_t, int64_t, int, int, int, int), (int32_t, (int64_t code, int64_t scope, int64_t table, char* key, uint32_t keylen, char* value, uint32_t len),
+                                                                                       (code, scope, table, array_ptr<char>(key), keylen, array_ptr<char>(value), len)))
+);
 
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_primary,    DB_INDEX_METHOD_SEQ(primary_i128i128));
 REGISTER_INTRINSICS(db_index_api_key128x128_value_index_by_scope_secondary,  DB_INDEX_METHOD_SEQ(secondary_i128i128));
@@ -1621,280 +1671,5 @@ REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_primary,   DB_
 REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_secondary, DB_INDEX_METHOD_SEQ(secondary_i64i64i64));
 REGISTER_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_tertiary,  DB_INDEX_METHOD_SEQ(tertiary_i64i64i64));
 
-extern "C" {
-
-#define _REGISTER_NATIVE_INTRINSIC_EXPLICIT(API, INTRINSIC_NAME, RETURN, PARAM_LIST, ARGS, FUNC_NAME) \
-RETURN INTRINSIC_NAME PARAM_LIST {      \
-   API api(wasm_interface::get());      \
-   return api.FUNC_NAME ARGS;           \
-}
-
-#define _REGISTER_NATIVE_INTRINSIC5(CLS, INTRINSIC_NAME, RETURN, PARAM_LIST, ARGS, FUNC_NAME)\
-   _REGISTER_NATIVE_INTRINSIC_EXPLICIT(CLS, INTRINSIC_NAME, RETURN, PARAM_LIST, ARGS, FUNC_NAME )
-
-#define _REGISTER_NATIVE_INTRINSIC4(CLS, INTRINSIC_NAME, RETURN, PARAM_LIST, ARGS)\
-   _REGISTER_NATIVE_INTRINSIC_EXPLICIT(CLS, INTRINSIC_NAME, RETURN, PARAM_LIST, ARGS, INTRINSIC_NAME )
-
-#define _REGISTER_NATIVE_INTRINSIC3(CLS, INTRINSIC_NAME, RETURN, NAME)\
-   static_assert(false, "Cannot register " BOOST_PP_STRINGIZE(CLS) ":" BOOST_PP_STRINGIZE(INTRINSIC_NAME) " without a full set of parameters");
-
-#define _REGISTER_NATIVE_INTRINSIC2(CLS, INTRINSIC_NAME, RETURN)\
-   static_assert(false, "Cannot register " BOOST_PP_STRINGIZE(CLS) ":" BOOST_PP_STRINGIZE(INTRINSIC_NAME) " without a full set of parameters");
-
-#define _REGISTER_NATIVE_INTRINSIC1(CLS, INTRINSIC_NAME)\
-   static_assert(false, "Cannot register " BOOST_PP_STRINGIZE(CLS) ":" BOOST_PP_STRINGIZE(INTRINSIC_NAME) " without a full set of parameters");
-
-#define _REGISTER_NATIVE_INTRINSIC0(CLS, INTRINSIC_NAME)\
-   static_assert(false, "Cannot register " BOOST_PP_STRINGIZE(CLS) ":<unknown> without a method name, return value and signature");
-
-#define _REGISTER_NATIVE_INTRINSIC(R, CLS, INFO)\
-   BOOST_PP_CAT(BOOST_PP_OVERLOAD(_REGISTER_NATIVE_INTRINSIC, _UNWRAP_SEQ INFO) _EXPAND_ARGS(CLS, INFO), BOOST_PP_EMPTY())
-
-#define REGISTER_NATIVE_INTRINSICS(CLS, MEMBERS)\
-   BOOST_PP_SEQ_FOR_EACH(_REGISTER_NATIVE_INTRINSIC, CLS, _WRAPPED_SEQ(MEMBERS))
-
-REGISTER_NATIVE_INTRINSICS(action_api,
-   (action_size, int, (), ())
-   (read_action, int, (char* memory, size_t size), (array_ptr<char>(memory), size))
-   (current_receiver, uint64_t, (), ())
-   (current_sender, uint64_t, (), ())
-   (publication_time, uint32_t, (), ().sec_since_epoch())
-)
-
-/*
-// Note: No version of checktime found in eosiolib
-REGISTER_INTRINSICS(checktime_api,
-   (checktime,      void(int))
-);
-*/
-
-REGISTER_NATIVE_INTRINSICS(compiler_builtins,
-   (__ashlti3,     void, (void* res, int64_t lo, int64_t hi, uint32_t shift), (*(__int128*)res, lo, hi, shift))
-   (__ashrti3,     void, (void* res, int64_t lo, int64_t hi, uint32_t shift), (*(__int128*)res, lo, hi, shift))
-   (__lshlti3,     void, (void* res, int64_t lo, int64_t hi, uint32_t shift), (*(__int128*)res, lo, hi, shift))
-   (__lshrti3,     void, (void* res, int64_t lo, int64_t hi, uint32_t shift), (*(__int128*)res, lo, hi, shift))
-   // Note: Commented out because these appear to conflict with built-in compiler-defined functions. Intrinsics should probably be renamed.
-   //(__divti3,      void, (void* res, int64_t la, int64_t ha, int64_t lb, int64_t hb), (*(__int128*)res, la, ha, lb, hb))
-   //(__udivti3,     void, (void* res, int64_t la, int64_t ha, int64_t lb, int64_t hb), (*(unsigned __int128*)res, la, ha, lb, hb))
-   //(__modti3,      void, (void* res, int64_t la, int64_t ha, int64_t lb, int64_t hb), (*(__int128*)res, la, ha, lb, hb))
-   //(__umodti3,     void, (void* res, int64_t la, int64_t ha, int64_t lb, int64_t hb), (*(unsigned __int128*)res, la, ha, lb, hb))
-   (__multi3,      void, (void* res, int64_t la, int64_t ha, int64_t lb, int64_t hb), (*(__int128*)res, la, ha, lb, hb))
-)
-
-REGISTER_NATIVE_INTRINSICS(console_api,
-   (printn, void, (uint64_t val), (val))
-   (prints, void, (char* val), (null_terminated_ptr(val)))
-   (printi, void, (uint64_t val), (val))
-   (printi128, void, (const uint128_t* val), (*val))
-   (printd, void, (uint64_t val), (webassembly::common::wasm_double(val)))
-   (printhex, void, (const char* data, uint32_t datalen), (array_ptr<const char>(data), datalen))
-   (prints_l, void, (const char* cstr, uint32_t len), (array_ptr<const char>(cstr), len))
-)
-
-/*
-// Note: No version of get_context_free_data found in eosiolib
-REGISTER_INTRINSICS(context_free_api,
-   (get_context_free_data, int(int, int, int) )
-)
-*/
-
-REGISTER_NATIVE_INTRINSICS(context_free_transaction_api,
-   (read_transaction,       size_t, (char* buffer, size_t size), (array_ptr<char>(buffer), size))
-   (transaction_size,       size_t, (), ())
-   (expiration,             int, (), ())
-   (tapos_block_prefix,     int, (), ())
-   (tapos_block_num,        int, (), ())
-   // Note: No declaration of get_action found in eosiolib
-   (get_action,             int, (uint32_t type, uint32_t index, char* buffer, size_t length), (type, index, array_ptr<char>(buffer), length))
-)
-
-REGISTER_NATIVE_INTRINSICS(crypto_api,
-   (assert_recover_key,     void, (uint64_t digest, char* sig, size_t siglen, char* pub, size_t publen), \
-                          (*(fc::sha256*)digest, array_ptr<char>(sig), siglen, array_ptr<char>(pub), publen))
-   (recover_key,            int, (uint64_t digest, char* sig, size_t siglen, char* pub, size_t publen), \
-                          (*(fc::sha256*)digest, array_ptr<char>(sig), siglen, array_ptr<char>(pub), publen))
-   (assert_sha256,          void, (char* data, uint32_t length, void* hash), (array_ptr<char>(data), length, *(fc::sha256*)hash))
-   (assert_sha1,            void, (char* data, uint32_t length, void* hash), (array_ptr<char>(data), length, *(fc::sha1*)hash))
-   (assert_sha512,          void, (char* data, uint32_t length, void* hash), (array_ptr<char>(data), length, *(fc::sha512*)hash))
-   (assert_ripemd160,       void, (char* data, uint32_t length, void* hash), (array_ptr<char>(data), length, *(fc::ripemd160*)hash))
-   (sha1,                   void, (char* data, uint32_t length, void* hash), (array_ptr<char>(data), length, *(fc::sha1*)hash))
-   (sha256,                 void, (char* data, uint32_t length, void* hash), (array_ptr<char>(data), length, *(fc::sha256*)hash))
-   (sha512,                 void, (char* data, uint32_t length, void* hash), (array_ptr<char>(data), length, *(fc::sha512*)hash))
-   (ripemd160,              void, (char* data, uint32_t length, void* hash), (array_ptr<char>(data), length, *(fc::ripemd160*)hash))
-)
-
-REGISTER_NATIVE_INTRINSICS(database_api,
-   (db_store_i64,        int, (int64_t scope, int64_t table, int64_t payer, int64_t id, const char* data, uint32_t length),
-                          (scope, table, payer, id, array_ptr<const char>(data), length))
-   (db_update_i64,       void, (int32_t iter, int64_t payer, const char* data, uint32_t length), (iter, payer, array_ptr<const char>(data), length))
-   (db_remove_i64,       void, (int32_t iter), (iter))
-   (db_get_i64,          int, (int32_t iter, char* data, uint32_t length), (iter, array_ptr<char>(data), length))
-   (db_next_i64,         int, (int32_t iter, uint64_t* primary), (iter, *primary))
-   (db_previous_i64,     int, (int32_t iter, uint64_t* primary), (iter, *primary))
-   (db_find_i64,         int, (int64_t code, int64_t scope, int64_t table, int64_t id), (code, scope, table, id))
-   (db_lowerbound_i64,   int, (int64_t code, int64_t scope, int64_t table, int64_t id), (code, scope, table, id))
-   (db_upperbound_i64,   int, (int64_t code, int64_t scope, int64_t table, int64_t id), (code, scope, table, id))
-
-   (db_idx64_store,          int, (int64_t scope, int64_t table, int64_t payer, int64_t id, uint64_t* secondary), (scope, table, payer, id, *secondary))
-   (db_idx64_remove,         void, (int32_t iter), (iter))
-   (db_idx64_update,         void, (int32_t iter, int64_t payer, const uint64_t* secondary), (iter, payer, *secondary))
-   (db_idx64_find_primary,   int, (int64_t code, int64_t scope, int64_t table, uint64_t* secondary, uint64_t primary), (code, scope, table, *secondary, primary))
-   (db_idx64_find_secondary, int, (int64_t code, int64_t scope, int64_t table, uint64_t* secondary, uint64_t* primary), (code, scope, table, *secondary, *primary))
-   (db_idx64_lowerbound,     int, (int64_t code, int64_t scope, int64_t table, uint64_t* secondary, uint64_t* primary), (code, scope, table, *secondary, *primary))
-   (db_idx64_upperbound,     int, (int64_t code, int64_t scope, int64_t table, uint64_t* secondary, uint64_t* primary), (code, scope, table, *secondary, *primary))
-   (db_idx64_next,           int, (int32_t iter, uint64_t* primary), (iter, *primary))
-   (db_idx64_previous,       int, (int32_t iter, uint64_t* primary), (iter, *primary))
-
-   (db_idx128_store,          int, (int64_t scope, int64_t table, int64_t payer, int64_t id, uint128_t* secondary), (scope, table, payer, id, *secondary))
-   (db_idx128_remove,         void, (int32_t iter), (iter))
-   (db_idx128_update,         void, (int32_t iter, int64_t payer, const uint128_t* secondary), (iter, payer, *secondary))
-   (db_idx128_find_primary,   int, (account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t primary), (code, scope, table, *secondary, primary))
-   (db_idx128_find_secondary, int, (account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t* primary), (code, scope, table, *secondary, *primary))
-   (db_idx128_lowerbound,     int, (account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t* primary), (code, scope, table, *secondary, *primary))
-   (db_idx128_upperbound,     int, (account_name code, account_name scope, table_name table, uint128_t* secondary, uint64_t* primary), (code, scope, table, *secondary, *primary))
-   (db_idx128_next,           int, (int32_t iter, uint64_t* primary), (iter, *primary))
-   (db_idx128_previous,       int, (int32_t iter, uint64_t* primary), (iter, *primary))
-
-   (db_idx256_store,          int, (int64_t scope, int64_t table, int64_t payer, int64_t id, const uint128_t* secondary, uint32_t data_len),
-                              (scope, table, payer, id, array_ptr<const uint128_t>(secondary), data_len))
-   (db_idx256_remove,         void, (int32_t iter), (iter))
-   (db_idx256_update,         void, (int32_t iter, int64_t payer, const uint128_t* secondary, uint32_t data_len), (iter, payer, array_ptr<const uint128_t>(secondary), data_len))
-   (db_idx256_find_primary,   int, (account_name code, account_name scope, table_name table, uint128_t* secondary, uint32_t data_len, uint64_t primary),
-                              (code, scope, table, array_ptr<uint128_t>(secondary), data_len, primary))
-   (db_idx256_find_secondary, int, (account_name code, account_name scope, table_name table, const uint128_t* secondary, uint32_t data_len, uint64_t* primary),
-                              (code, scope, table, array_ptr<const uint128_t>(secondary), data_len, *primary))
-   (db_idx256_lowerbound,     int, (account_name code, account_name scope, table_name table, uint128_t* secondary, uint32_t data_len, uint64_t* primary),
-                              (code, scope, table, array_ptr<uint128_t>(secondary), data_len, *primary))
-   (db_idx256_upperbound,     int, (account_name code, account_name scope, table_name table, uint128_t* secondary, uint32_t data_len, uint64_t* primary),
-                              (code, scope, table, array_ptr<uint128_t>(secondary), data_len, *primary))
-   (db_idx256_next,           int, (int32_t iter, uint64_t* primary), (iter, *primary))
-   (db_idx256_previous,       int, (int32_t iter, uint64_t* primary), (iter, *primary))
-)
-
-REGISTER_NATIVE_INTRINSICS(math_api,
-   (diveq_i128,    void, (uint64_t val1, uint64_t val2), ((unsigned __int128*) val1, (unsigned __int128*) val2))
-   (multeq_i128,   void, (uint64_t val1, uint64_t val2), ((unsigned __int128*) val1, (unsigned __int128*) val2))
-   (double_add,    uint64_t, (uint64_t val1, uint64_t val2), (val1, val2))
-   (double_mult,   uint64_t, (uint64_t val1, uint64_t val2), (val1, val2))
-   (double_div,    uint64_t, (uint64_t val1, uint64_t val2), (val1, val2))
-   (double_eq,     uint32_t, (uint64_t val1, uint64_t val2), (val1, val2))
-   (double_lt,     uint32_t, (uint64_t val1, uint64_t val2), (val1, val2))
-   (double_gt,     uint32_t, (uint64_t val1, uint64_t val2), (val1, val2))
-   (double_to_i64, uint64_t, (uint64_t val), (val))
-   (i64_to_double, uint64_t, (uint64_t val), (val))
-)
-
-/*
-// Note: I don't think we need to implement these as we are OK using the native methods
-REGISTER_NATIVE_INTRINSICS(memory_api,
-   (memcpy,  int, (int, int, int), ())
-   (memmove, int, (int, int, int), ())
-   (memcmp,  int, (int, int, int), ())
-   (memset,  int, (int, int, int), ())
-   (sbrk,    int, (int), ())
-)
-*/
-
-REGISTER_NATIVE_INTRINSICS(privileged_api,
-   // Note: None of the following functions were found in eosiolib
-   // (activate_feature,     void, (int64_t), ())
-   // (is_feature_active,    int,  (int64_t), ())
-   // (set_privileged,       void, (int64_t, int), ())
-   // (freeze_account,       void, (int64_t, int), ())
-   // (is_frozen,            int,  (int64_t), ())
-   (set_resource_limits,  void, (uint64_t account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight, int64_t ignored), (account, ram_bytes, net_weight, cpu_weight, ignored))
-   (set_active_producers, void, (char* producer_data, size_t producer_data_size), (array_ptr<char>(producer_data), producer_data_size))
-   (is_privileged,        bool,  (uint64_t account), (account))
-)
-
-REGISTER_NATIVE_INTRINSICS(producer_api,
-   (get_active_producers, uint32_t, (chain::account_name* producers, uint32_t datalen), (array_ptr<chain::account_name>(producers), datalen))
-)
-
-/*
-// Note: Not found in eosiolib
-REGISTER_INTRINSICS(string_api,
-   (assert_is_utf8,  void(int, int, int) )
-);
-*/
-
-REGISTER_NATIVE_INTRINSICS(system_api,
-   (eosio_assert, void, (bool condition, null_terminated_ptr str), (condition, str))
-   // Note: Abort is problematic, because if I define a global abort() function it conflicts with the system's abort()
-   // (abort,        void, (), ())
-   (now,          uint32_t, (), ().sec_since_epoch())
-)
-
-REGISTER_NATIVE_INTRINSICS(transaction_api,
-   (send_inline,   void, (char* data, size_t data_len), (array_ptr<char>(data), data_len))
-   (send_deferred, void, (uint32_t sender_id, fc::time_point_sec delay_until, char* data, size_t data_len), (sender_id, delay_until, array_ptr<char>(data), data_len))
-)
-
-#define REGISTER_NATIVE_APPLY_CONTEXT_INTRINSIC(INTRINSIC_NAME, RETURN, PARAM_LIST, ARGS, FUNC_NAME) \
-RETURN INTRINSIC_NAME PARAM_LIST {         \
-   return common::intrinsics_accessor::get_context(wasm_interface::get()).context.FUNC_NAME ARGS;  \
-}
-
-REGISTER_NATIVE_APPLY_CONTEXT_INTRINSIC(require_auth, void, (int64_t val), (val), require_authorization)
-REGISTER_NATIVE_APPLY_CONTEXT_INTRINSIC(require_recipient, void, (int64_t val), (val), require_recipient)
-REGISTER_NATIVE_APPLY_CONTEXT_INTRINSIC(require_write_lock, void, (int64_t val), (val), require_write_lock)
-REGISTER_NATIVE_APPLY_CONTEXT_INTRINSIC(require_read_lock, void, (int64_t val1, int64_t val2), (val1, val2), require_read_lock)
-REGISTER_NATIVE_APPLY_CONTEXT_INTRINSIC(is_account, int, (int64_t val), (val), is_account)
-
-#define DB_NATIVE_METHOD_SEQ(SUFFIX, CLASS) \
-   (store_##SUFFIX,  int32_t, (int64_t scope, int64_t table, int64_t bta, const char* data, uint32_t len), (scope, table, bta, array_ptr<const char>(data), len), store) \
-   (update_##SUFFIX, int32_t, (int64_t scope, int64_t table, int64_t bta, const char* data, uint32_t len), (scope, table, bta, array_ptr<const char>(data), len), update) \
-   (remove_##SUFFIX, int32_t, (int64_t scope, int64_t table, CLASS::KeyParamType keys), (scope, table, keys), remove)
-
-#define DB_NATIVE_INDEX_METHOD_SEQ(SUFFIX) \
-   (load_##SUFFIX,         int32_t, (int64_t code, int64_t scope, int64_t table, char* data, uint32_t len), (code, scope, table, array_ptr<char>(data), len), load) \
-   (front_##SUFFIX,        int32_t, (int64_t code, int64_t scope, int64_t table, char* data, uint32_t len), (code, scope, table, array_ptr<char>(data), len), front) \
-   (back_##SUFFIX,         int32_t, (int64_t code, int64_t scope, int64_t table, char* data, uint32_t len), (code, scope, table, array_ptr<char>(data), len), back) \
-   (previous_##SUFFIX,     int32_t, (int64_t code, int64_t scope, int64_t table, char* data, uint32_t len), (code, scope, table, array_ptr<char>(data), len), previous) \
-   (lower_bound_##SUFFIX,  int32_t, (int64_t code, int64_t scope, int64_t table, char* data, uint32_t len), (code, scope, table, array_ptr<char>(data), len), lower_bound) \
-   (upper_bound_##SUFFIX,  int32_t, (int64_t code, int64_t scope, int64_t table, char* data, uint32_t len), (code, scope, table, array_ptr<char>(data), len), upper_bound)
-
-REGISTER_NATIVE_INTRINSICS(db_api_key_value_object,         DB_NATIVE_METHOD_SEQ(i64, db_api_key_value_object))
-REGISTER_NATIVE_INTRINSICS(db_api_key128x128_value_object,  DB_NATIVE_METHOD_SEQ(i128i128, db_api_key128x128_value_object))
-REGISTER_NATIVE_INTRINSICS(db_api_key64x64_value_object,    DB_NATIVE_METHOD_SEQ(i64i64, db_api_key64x64_value_object))
-REGISTER_NATIVE_INTRINSICS(db_api_key64x64x64_value_object, DB_NATIVE_METHOD_SEQ(i64i64i64, db_api_key64x64x64_value_object))
-
-REGISTER_NATIVE_INTRINSICS(db_index_api_key_value_index_by_scope_primary,           DB_NATIVE_INDEX_METHOD_SEQ(i64))
-REGISTER_NATIVE_INTRINSICS(db_index_api_key128x128_value_index_by_scope_primary,    DB_NATIVE_INDEX_METHOD_SEQ(primary_i128i128))
-REGISTER_NATIVE_INTRINSICS(db_index_api_key128x128_value_index_by_scope_secondary,  DB_NATIVE_INDEX_METHOD_SEQ(secondary_i128i128))
-REGISTER_NATIVE_INTRINSICS(db_index_api_key64x64_value_index_by_scope_primary,      DB_NATIVE_INDEX_METHOD_SEQ(primary_i64i64))
-REGISTER_NATIVE_INTRINSICS(db_index_api_key64x64_value_index_by_scope_secondary,    DB_NATIVE_INDEX_METHOD_SEQ(secondary_i64i64))
-REGISTER_NATIVE_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_primary,   DB_NATIVE_INDEX_METHOD_SEQ(primary_i64i64i64))
-REGISTER_NATIVE_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_secondary, DB_NATIVE_INDEX_METHOD_SEQ(secondary_i64i64i64))
-REGISTER_NATIVE_INTRINSICS(db_index_api_key64x64x64_value_index_by_scope_tertiary,  DB_NATIVE_INDEX_METHOD_SEQ(tertiary_i64i64i64))
-
-REGISTER_NATIVE_INTRINSICS(db_api_keystr_value_object,
-   (store_str,  int32_t, (int64_t scope, int64_t table, int64_t bta, char* key, uint32_t keylen, char* value, uint32_t len),
-                (scope, table, bta, null_terminated_ptr(key), keylen, array_ptr<const char>(value), len))
-   (update_str, int32_t, (int64_t scope, int64_t table, int64_t bta, char* key, uint32_t keylen, char* value, uint32_t len),
-                (scope, table, bta, null_terminated_ptr(key), keylen, array_ptr<const char>(value), len))
-   (remove_str, int32_t, (int64_t scope, int64_t table, char* key, uint32_t keylen), (scope, table, array_ptr<const char>(key), keylen))
-)
-
-// Note: front_str and back_str have fewer parameters in db.h
-REGISTER_NATIVE_INTRINSICS(db_index_api_keystr_value_index_by_scope_primary,
-   (load_str,        int32_t, (int64_t code, int64_t scope, int64_t table, char* key, uint32_t keylen, char* value, uint32_t len),
-                     (code, scope, table, array_ptr<char>(key), keylen, array_ptr<char>(value), len))
-   (front_str,       int32_t, (int64_t code, int64_t scope, int64_t table, char* key, uint32_t keylen, char* value, uint32_t len),
-                     (code, scope, table, array_ptr<char>(key), keylen, array_ptr<char>(value), len))
-   (back_str,        int32_t, (int64_t code, int64_t scope, int64_t table, char* key, uint32_t keylen, char* value, uint32_t len),
-                     (code, scope, table, array_ptr<char>(key), keylen, array_ptr<char>(value), len))
-   (next_str,        int32_t, (int64_t code, int64_t scope, int64_t table, char* key, uint32_t keylen, char* value, uint32_t len),
-                     (code, scope, table, array_ptr<char>(key), keylen, array_ptr<char>(value), len))
-   (previous_str,    int32_t, (int64_t code, int64_t scope, int64_t table, char* key, uint32_t keylen, char* value, uint32_t len),
-                     (code, scope, table, array_ptr<char>(key), keylen, array_ptr<char>(value), len))
-   (lower_bound_str, int32_t, (int64_t code, int64_t scope, int64_t table, char* key, uint32_t keylen, char* value, uint32_t len),
-                     (code, scope, table, array_ptr<char>(key), keylen, array_ptr<char>(value), len))
-   (upper_bound_str, int32_t, (int64_t code, int64_t scope, int64_t table, char* key, uint32_t keylen, char* value, uint32_t len),
-                     (code, scope, table, array_ptr<char>(key), keylen, array_ptr<char>(value), len))
-)
-
-} // extern "C"
-
-
 } } /// eosio::chain
+
