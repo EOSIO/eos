@@ -165,10 +165,7 @@ if trans is None:
 else:
     Print("transaction id %s" % (node0.getTransId(trans)))
 
-time.sleep(3.0)
-
 try:
-
     maxIndex = module.maxIndex()
     for cmdInd in range(maxIndex):
         (transIdList, checkacct, expBal, errmsg) = module.execute(cmdInd, node0, testeraAccount, eosio)
