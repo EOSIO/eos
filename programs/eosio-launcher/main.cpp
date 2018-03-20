@@ -373,6 +373,8 @@ struct launcher_def {
   server_identities servers;
   producer_set_def producer_set;
    vector<string> genesis_block;
+   string start_temp;
+   string start_script;
 
    void assign_name (eosd_def &node, bool is_bios);
 
@@ -392,7 +394,7 @@ struct launcher_def {
   void write_logging_config_file (tn_node_def &node);
   void write_genesis_file (tn_node_def &node);
   void write_setprods_file ();
-  void write_bigredbutton ();
+   void write_bios_boot ();
 
    bool   is_bios_ndx (size_t ndx);
    size_t start_ndx();
@@ -439,6 +441,8 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("network-name",bpo::value<string>(&network.name)->default_value("testnet_"),"network name prefix used in GELF logging source")
     ("enable-gelf-logging",bpo::value<bool>(&gelf_enabled)->default_value(true),"enable gelf logging appender in logging configuration file")
     ("gelf-endpoint",bpo::value<string>(&gelf_endpoint)->default_value("10.160.11.21:12201"),"hostname:port or ip:port of GELF endpoint")
+     ("template",bpo::value<string>(&start_temp)->default_value("testnet.template"),"the startup script template")
+     ("script",bpo::value<string>(&start_script)->default_value("bios_boot.sh"),"the generated startup script name")
         ;
 }
 
@@ -505,7 +509,9 @@ launcher_def::initialize (const variables_map &vmap) {
   config_dir_base = "etc/eosio";
   data_dir_base = "var/lib";
   next_node = 0;
-  prod_nodes += 1;
+  prod_nodes += 1; // add one for the bios node
+  total_nodes += 1;
+
   load_servers ();
 
   if (prod_nodes > producers)
@@ -542,17 +548,16 @@ launcher_def::load_servers () {
   if (!server_ident_file.empty()) {
     try {
       fc::json::from_file(server_ident_file).as<server_identities>(servers);
-      size_t nodes = 0;
+      prod_nodes = 1; // start with the bios node
       for (auto &s : servers.producer) {
-        nodes += s.instances;
-      }
-      prod_nodes = nodes;
-      nodes = 0;
-      for (auto &s : servers.nonprod) {
-        nodes += s.instances;
+         prod_nodes += s.instances;
       }
 
-      total_nodes = prod_nodes + nodes;
+      total_nodes = prod_nodes;
+      for (auto &s : servers.nonprod) {
+         total_nodes += s.instances;
+      }
+
       per_host = 1;
       network.ssh_helper = servers.ssh;
     }
@@ -570,7 +575,7 @@ launcher_def::assign_name (eosd_def &node, bool is_bios) {
 
    if (is_bios) {
       node.name = "bios";
-      node_cfg_name = "eosio_bios";
+      node_cfg_name = "node_bios";
    }
    else {
       string dex = next_node < 10 ? "0":"";
@@ -600,7 +605,7 @@ launcher_def::generate () {
 
   if( !nogen ) {
      write_setprods_file();
-     write_bigredbutton();
+     write_bios_boot();
      init_genesis();
      for (auto &node : network.nodes) {
         write_config_file(node.second);
@@ -657,7 +662,7 @@ launcher_def::define_network () {
     host_def local_host;
     local_host.eosio_home = erd;
     local_host.genesis = genesis.string();
-    for (size_t i = 0; i < total_nodes; i++) {
+    for (size_t i = 0; i < (total_nodes); i++) {
       eosd_def eosd;
       assign_name(eosd, i == 0);
       aliases.push_back(eosd.name);
@@ -733,8 +738,13 @@ launcher_def::define_network () {
 
 void
 launcher_def::bind_nodes () {
-  int per_node = producers / prod_nodes;
-  int extra = producers % prod_nodes;
+   if (prod_nodes < 2) {
+      cerr << "Unable to allocate producers due to insufficient prod_nodes = " << prod_nodes << "\n";
+      exit (10);
+   }
+   int non_bios = prod_nodes - 1;
+   int per_node = producers / non_bios;
+  int extra = producers % non_bios;
   producer_set.version = 1;
   unsigned int i = 0;
   for (auto &h : bindings) {
@@ -754,7 +764,7 @@ launcher_def::bind_nodes () {
            producer_set.producers.push_back({prodname,pubkey});
         }
         else {
-           if (i < prod_nodes) {
+           if (i < non_bios) {
               int count = per_node;
               if (extra ) {
                  ++count;
@@ -766,7 +776,7 @@ launcher_def::bind_nodes () {
                  string prodname = pname+ext;
                  node.producers.push_back(prodname);
                  producer_set.producers.push_back({prodname,pubkey});
-                 ext += prod_nodes;
+                 ext += non_bios;
               }
            }
         }
@@ -1099,16 +1109,16 @@ launcher_def::write_setprods_file() {
 }
 
 void
-launcher_def::write_bigredbutton () {
-   bf::ifstream src(bf::path(config_dir_base) / "launcher/brb.template");
+launcher_def::write_bios_boot () {
+   bf::ifstream src(bf::path(config_dir_base) / "launcher" / start_temp);
    if(!src.good()) {
-      cerr << "unable to open " << config_dir_base << "launcher/brb.template " << strerror(errno) << "\n";
+      cerr << "unable to open " << config_dir_base << "launcher/" << start_temp << " " << strerror(errno) << "\n";
     exit (9);
   }
 
-   bf::ofstream brb (bf::current_path() / "brb.sh");
+   bf::ofstream brb (bf::current_path() / start_script);
    if(!brb.good()) {
-      cerr << "unable to open " << bf::current_path() << "/brb.sh  " << strerror(errno) << "\n";
+      cerr << "unable to open " << bf::current_path() << "/" << start_script << " " << strerror(errno) << "\n";
     exit (9);
   }
 
@@ -1121,9 +1131,8 @@ launcher_def::write_bigredbutton () {
    while (getline(src,line)) {
       if (line.substr(0,len) == prefix) {
          string key = line.substr(len);
-         if (key == "bioshost") {
+         if (key == "envars") {
             brb << "bioshost=" << bhost << "\nbiosport=" << biosport << "\n";
-            continue;
          }
          if (key == "bioskey") {
             brb << "wcmd import -n ignition " << string(bios_node.keys[0]) << "\n";
@@ -1596,8 +1605,8 @@ launcher_def::roll (const string& host_names) {
 void
 launcher_def::ignite() {
    if (!rehearse) {
-      cerr << "Pressing the big red button\n";
-      string script("bash brb.sh");
+      cerr << "Invoking the blockchain boot script, " << start_script << "\n";
+      string script("bash " + start_script);
       bp::child c(script);
       try {
          boost::system::error_code ec;
@@ -1611,7 +1620,7 @@ launcher_def::ignite() {
       }
    } else {
       cerr << "**********************************************************************\n"
-           << "run 'bash brb.sh' to press the big red button for blockchain ignition!\n"
+           << "run 'bash " << start_script << "' to kick off delegated block production\n"
            << "**********************************************************************\n";
    }
 

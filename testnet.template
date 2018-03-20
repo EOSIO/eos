@@ -2,8 +2,15 @@
 
 #set up a wallet just for holding he  key used during blockchain igniion
 
-sys=test.system
-contract_dir=contracts/$sys
+bioshost=$BIOS_HOSTNAME
+if [ -z "$bioshost" ]; then
+   bioshost=localhost
+fi
+
+biosport=$BIOS_HTTP_PORT
+if [ -z "$biosport" ]; then
+    biosport=9776
+fi
 
 wddir=eosio-ignition-wd
 wdport=8899
@@ -11,10 +18,12 @@ wdhost=127.0.0.1
 # Manual deployers, add a line below this block that looks like:
 #    bioshost=$BIOS_HOSTNAME
 #    biosport=$BIOS_HTTP_PORT
+#    cnt_dir=$CONTRACT_DIR
+#    sys=$SYS_CONTRACT
 # where $BIOS_HOSTNAME is replaced by the hostname portion of the http-server-address configured
 # for the eosiod instance running to bios producer
 # ------ DO NOT ALTER THE NEXT LINE -------
-###INSERT bioshost
+###INSERT envars
 
 logfile=$wddir/bootlog.txt
 
@@ -72,7 +81,7 @@ wcmd create -n ignition
 ###INSERT cacmd
 
 
-ecmd set contract eosio $contract_dir/$sys.wast $contract_dir/$sys.abi
+ecmd set contract eosio contracts/test.system/test.system.wast contracts/test.system/test.system.abi
 
 #the setprods.json argument cannot pass through the function call due to embedded quotes
     echo ===== Start: $step ============ >> $logfile
@@ -86,4 +95,4 @@ echo waiting for producers to settle
 sleep 5
 echo shutting down ignition wallet and bios node
 pkill -15 eosiowd
-kill -15 $(cat var/lib/eosio_bios/eosiod.pid)
+kill -15 $(cat var/lib/node_bios/eosiod.pid)

@@ -1126,6 +1126,9 @@ namespace eosio {
       state = newstate;
       string ns = state == in_sync ? "in sync" : state == lib_catchup ? "lib catchup" : "head catchup";
       fc_dlog(logger, "old state ${os} becoming ${ns}",("os",os)("ns",ns));
+      if (state == in_sync) {
+         source.reset();
+      }
    }
 
    bool sync_manager::is_active(connection_ptr c) {
@@ -1139,12 +1142,16 @@ namespace eosio {
    }
 
    void sync_manager::reset_lib_num(connection_ptr c) {
+      if(state == in_sync) {
+         sync_last_requested_num = chain_plug->chain().last_irreversible_block_num();
+         source.reset();
+      }
       if( c->current() ) {
          if( c->last_handshake_recv.last_irreversible_block_num > sync_known_lib_num) {
             sync_known_lib_num =c->last_handshake_recv.last_irreversible_block_num;
          }
       } else if( c == source ) {
-         sync_last_requested_num = chain_plug->chain().head_block_num();
+         sync_last_requested_num = chain_plug->chain().last_irreversible_block_num();
          request_next_chunk();
       }
    }
@@ -1214,10 +1221,8 @@ namespace eosio {
 
       if (!source) {
          elog("Unable to continue syncing at this time");
-         sync_last_requested_num = chain_plug->chain().head_block_num();
          sync_known_lib_num = chain_plug->chain().last_irreversible_block_num();
-         fc_ilog(logger, "resetting request, our last req is ${cc}, peer ${p}",
-                 ( "cc",sync_last_requested_num)("p",source->peer_name()));
+         sync_last_requested_num = sync_known_lib_num;
          return;
       }
 
