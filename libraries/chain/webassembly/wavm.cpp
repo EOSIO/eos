@@ -18,12 +18,14 @@ using namespace Runtime;
 
 namespace eosio { namespace chain { namespace webassembly { namespace wavm {
 
+running_instance_context the_running_instance_context;
+
 class wavm_instantiated_module : public wasm_instantiated_module_interface {
    public:
       wavm_instantiated_module(ModuleInstance* instance, Module* module, std::vector<uint8_t> initial_mem) :
+         _initial_memory(initial_mem),
          _instance(instance),
-         _module(module),
-         _initial_memory(initial_mem)
+         _module(module)
       {}
 
       void apply(apply_context& context) override {
@@ -34,8 +36,8 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
       }
 
       ~wavm_instantiated_module() {
-         delete _instance;
          delete _module;
+         //_instance is deleted via WAVM's object garbage collection when wavm_rutime is deleted
       }
 
    private:
@@ -59,6 +61,9 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
                memcpy(memstart, _initial_memory.data(), _initial_memory.size());
             }
 
+            the_running_instance_context.memory = default_mem;
+            the_running_instance_context.apply_context = &context;
+
             resetGlobalInstances(_instance);
             runInstanceStartFunc(_instance);
             Runtime::invokeFunction(call,args);
@@ -76,7 +81,9 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
       Module*              _module;
 };
 
-wavm_runtime::wavm_runtime() {}
+wavm_runtime::wavm_runtime() {
+   Runtime::init();
+}
 
 wavm_runtime::~wavm_runtime() {
    Runtime::freeUnreferencedObjects({});
