@@ -23,6 +23,9 @@ static int ECDSA_SIG_recover_key_GFp(EC_KEY *eckey, ECDSA_SIG *ecsig, const unsi
     int n = 0;
     int i = recid / 2;
 
+    const BIGNUM *r, *s;
+    ECDSA_SIG_get0(ecsig, &r, &s);
+
     const EC_GROUP *group = EC_KEY_get0_group(eckey);
     if ((ctx = BN_CTX_new()) == NULL) { ret = -1; goto err; }
     BN_CTX_start(ctx);
@@ -31,7 +34,7 @@ static int ECDSA_SIG_recover_key_GFp(EC_KEY *eckey, ECDSA_SIG *ecsig, const unsi
     x = BN_CTX_get(ctx);
     if (!BN_copy(x, order)) { ret=-1; goto err; }
     if (!BN_mul_word(x, i)) { ret=-1; goto err; }
-    if (!BN_add(x, x, ecsig->r)) { ret=-1; goto err; }
+    if (!BN_add(x, x, r)) { ret=-1; goto err; }
     field = BN_CTX_get(ctx);
     if (!EC_GROUP_get_curve_GFp(group, field, NULL, NULL, ctx)) { ret=-2; goto err; }
     if (BN_cmp(x, field) >= 0) { ret=0; goto err; }
@@ -52,9 +55,9 @@ static int ECDSA_SIG_recover_key_GFp(EC_KEY *eckey, ECDSA_SIG *ecsig, const unsi
     if (!BN_zero(zero)) { ret=-1; goto err; }
     if (!BN_mod_sub(e, zero, e, order, ctx)) { ret=-1; goto err; }
     rr = BN_CTX_get(ctx);
-    if (!BN_mod_inverse(rr, ecsig->r, order, ctx)) { ret=-1; goto err; }
+    if (!BN_mod_inverse(rr, r, order, ctx)) { ret=-1; goto err; }
     sor = BN_CTX_get(ctx);
-    if (!BN_mod_mul(sor, ecsig->s, rr, order, ctx)) { ret=-1; goto err; }
+    if (!BN_mod_mul(sor, s, rr, order, ctx)) { ret=-1; goto err; }
     eor = BN_CTX_get(ctx);
     if (!BN_mod_mul(eor, e, rr, order, ctx)) { ret=-1; goto err; }
     if (!EC_POINT_mul(group, Q, eor, R, sor, ctx)) { ret=-2; goto err; }
@@ -79,18 +82,27 @@ fc::crypto::r1::compact_signature compact_r1(fc::crypto::r1::public_key_data& pu
    fc::crypto::r1::compact_signature csig;
    ec_key key = EC_KEY_new_by_curve_name( NID_X9_62_prime256v1 );
 
+   //We can't use ssl_bignum here; _get0() does not transfer ownership to us; _set0() does transfer ownership to fc::ecdsa_sig
+   const BIGNUM *sig_r, *sig_s;
+   BIGNUM *r = BN_new(), *s = BN_new();
+   ECDSA_SIG_get0(sig, &sig_r, &sig_s);
+   BN_copy(r, sig_r);
+   BN_copy(s, sig_s);
+
    //want to always use the low S value
    const EC_GROUP* group = EC_KEY_get0_group(key);
    ssl_bignum order, halforder;
    EC_GROUP_get_order(group, order, nullptr);
    BN_rshift1(halforder, order);
-   if(BN_cmp(sig->s, halforder) > 0)
-       BN_sub(sig->s, order, sig->s);
+   if(BN_cmp(s, halforder) > 0)
+       BN_sub(s, order, s);
 
-   int nBitsR = BN_num_bits(sig->r);
-   int nBitsS = BN_num_bits(sig->s);
+   int nBitsR = BN_num_bits(r);
+   int nBitsS = BN_num_bits(s);
    if(nBitsR > 256 || nBitsS > 256)
       FC_THROW_EXCEPTION( exception, "Unable to sign" );
+
+   ECDSA_SIG_set0(sig, r, s);
 
    int nRecId = -1;
    for (int i=0; i<4; i++)
@@ -113,8 +125,8 @@ fc::crypto::r1::compact_signature compact_r1(fc::crypto::r1::public_key_data& pu
    if (nRecId == -1)
       FC_THROW_EXCEPTION( exception, "unable to construct recoverable key");
 
-   BN_bn2bin(sig->r,&csig.data[33-(nBitsR+7)/8]);
-   BN_bn2bin(sig->s,&csig.data[65-(nBitsS+7)/8]);
+   BN_bn2bin(r,&csig.data[33-(nBitsR+7)/8]);
+   BN_bn2bin(s,&csig.data[65-(nBitsS+7)/8]);
    csig.data[0] = nRecId+27+4;
 
    return csig;

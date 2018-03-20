@@ -54,7 +54,7 @@ macro(compile_wast)
     endif()
 
     set(WASM_COMMAND ${WASM_CLANG} -emit-llvm -O3 ${STDFLAG} --target=wasm32 -ffreestanding
-              -nostdlib -nostdlibinc -fno-threadsafe-statics -fno-rtti -fno-exceptions
+              -nostdlib -nostdlibinc -fno-threadsafe-statics -fno-rtti -fno-exceptions 
               -c ${infile} -o ${outfile}.bc
     )
     if (${ARG_NOWARNINGS})
@@ -189,5 +189,8 @@ macro(add_wast_executable)
   set_property(TARGET ${target} PROPERTY INCLUDE_DIRECTORIES ${ARG_INCLUDE_FOLDERS})
 
   set(extra_target_dependency)
+
+  add_test(NAME "validate_${target}_abi"
+           COMMAND ${CMAKE_BINARY_DIR}/scripts/abi_is_json.py ${ABI_FILES})
 
 endmacro(add_wast_executable)

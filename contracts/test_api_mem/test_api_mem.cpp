@@ -14,7 +14,7 @@ extern "C" {
 
     }
 
-   void apply( unsigned long long code, unsigned long long action ) {
+   void apply( unsigned long long, unsigned long long action ) {
 
       //eosio::print("==> CONTRACT: ", code, " ", action, "\n");
 

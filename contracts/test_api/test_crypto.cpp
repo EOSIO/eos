@@ -193,24 +193,23 @@ struct sig_hash_key {
 
 void test_crypto::test_recover_key_assert_true() {
    sig_hash_key sh;
-   int read = read_action( (char*)&sh, sizeof(sh) );
-   public_key public_key;
+   read_action_data( (char*)&sh, sizeof(sh) );
    assert_recover_key( &sh.hash, (const char*)&sh.sig, sizeof(sh.sig), (const char*)&sh.pk, sizeof(sh.pk) );
 }
 
 void test_crypto::test_recover_key_assert_false() {
    sig_hash_key sh;
-   int read = read_action( (char*)&sh, sizeof(sh) );
+   read_action_data( (char*)&sh, sizeof(sh) );
    assert_recover_key( &sh.hash, (const char*)&sh.sig, sizeof(sh.sig), (const char*)&sh.pk, sizeof(sh.pk) );
    eosio_assert( false, "should have thrown an error" );
 }
 
 void test_crypto::test_recover_key() {
    sig_hash_key sh;
-   int read = read_action( (char*)&sh, sizeof(sh) );
+   read_action_data( (char*)&sh, sizeof(sh) );
    public_key pk;
-   int recovered = recover_key( &sh.hash, (const char*)&sh.sig, sizeof(sh.sig), pk.data, sizeof(pk) );
-   for ( int i=0; i < sizeof(pk); i++ )
+   recover_key( &sh.hash, (const char*)&sh.sig, sizeof(sh.sig), pk.data, sizeof(pk) );
+   for ( uint32_t i=0; i < sizeof(pk); i++ )
       if ( pk.data[i] != sh.pk.data[i] )
          eosio_assert( false, "public key does not match" );
 }
@@ -284,8 +283,6 @@ void test_crypto::test_ripemd160() {
 
 void test_crypto::sha256_null() {
    checksum256 tmp;
-   int a = 3;
-   int* b = &a;
    sha256(nullptr, 100, &tmp);
    //eosio_assert(false, "should've thrown an error");
 }

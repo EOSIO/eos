@@ -4,7 +4,6 @@
  */
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/token.hpp>
-#include <eosiolib/db.hpp>
 #include <eosiolib/reflect.hpp>
 #include <eosiolib/print.hpp>
 
@@ -71,8 +70,8 @@ namespace eosiosystem {
 
          struct total_resources {
             account_name owner;
-            typename currency::token_type total_net_weight; 
-            typename currency::token_type total_cpu_weight; 
+            typename currency::token_type total_net_weight;
+            typename currency::token_type total_cpu_weight;
             uint32_t total_ram = 0;
 
             uint64_t primary_key()const { return owner; }
@@ -87,8 +86,8 @@ namespace eosiosystem {
          struct delegated_bandwidth {
             account_name from;
             account_name to;
-            typename currency::token_type net_weight; 
-            typename currency::token_type cpu_weight; 
+            typename currency::token_type net_weight;
+            typename currency::token_type cpu_weight;
 
             uint32_t start_pending_net_withdraw = 0;
             typename currency::token_type pending_net_withdraw;
@@ -98,7 +97,7 @@ namespace eosiosystem {
             typename currency::token_type pending_cpu_withdraw;
             uint64_t deferred_cpu_withdraw_handler = 0;
 
-            
+
             uint64_t  primary_key()const { return to; }
 
             EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight)
@@ -112,9 +111,11 @@ namespace eosiosystem {
          typedef eosio::multi_index< N(delband), delegated_bandwidth> del_bandwidth_index_type;
 
 
-         ACTION( SystemAccount, finshundel ) {
+         ACTION( SystemAccount, finishundel ) {
             account_name from;
             account_name to;
+            
+            EOSLIB_SERIALIZE( finishundel, (from)(to) )
          };
 
          ACTION( SystemAccount, regproducer ) {
@@ -156,8 +157,8 @@ namespace eosiosystem {
          };
 
          /// new id options:
-         //  1. hash + collision 
-         //  2. incrementing count  (key=> tablename 
+         //  1. hash + collision
+         //  2. incrementing count  (key=> tablename
 
          static void on( const delegatebw& del ) {
             eosio_assert( del.stake_cpu_quantity.quantity >= 0, "must stake a positive amount" );
@@ -175,30 +176,30 @@ namespace eosiosystem {
             //eosio_assert( is_account( del.receiver ), "can only delegate resources to an existing account" );
 
             auto itr = del_index.find( del.receiver);
-            if( itr != nullptr ) {
+            if( itr != del_index.end() ) {
                del_index.emplace( del.from, [&]( auto& dbo ){
-                  dbo.from       = del.from;      
-                  dbo.to         = del.receiver;      
+                  dbo.from       = del.from;
+                  dbo.to         = del.receiver;
                   dbo.net_weight = del.stake_net_quantity;
                   dbo.cpu_weight = del.stake_cpu_quantity;
                });
             }
             else {
-               del_index.update( *itr, del.from, [&]( auto& dbo ){
+               del_index.modify( itr, del.from, [&]( auto& dbo ){
                   dbo.net_weight = del.stake_net_quantity;
                   dbo.cpu_weight = del.stake_cpu_quantity;
                });
             }
 
             auto tot_itr = total_index.find( del.receiver );
-            if( tot_itr == nullptr ) {
-               tot_itr = &total_index.emplace( del.from, [&]( auto& tot ) {
+            if( tot_itr == total_index.end() ) {
+               tot_itr = total_index.emplace( del.from, [&]( auto& tot ) {
                   tot.owner = del.receiver;
                   tot.total_net_weight += del.stake_net_quantity;
                   tot.total_cpu_weight += del.stake_cpu_quantity;
                });
             } else {
-               total_index.update( *tot_itr, 0, [&]( auto& tot ) {
+               total_index.modify( tot_itr, 0, [&]( auto& tot ) {
                   tot.total_net_weight += del.stake_net_quantity;
                   tot.total_cpu_weight += del.stake_cpu_quantity;
                });
@@ -229,14 +230,14 @@ namespace eosiosystem {
             eosio_assert( dbw.net_weight >= del.unstake_net_quantity, "insufficient staked net bandwidth" );
             eosio_assert( dbw.cpu_weight >= del.unstake_cpu_quantity, "insufficient staked cpu bandwidth" );
 
-            del_index.update( dbw, del.from, [&]( auto& dbo ){
+            del_index.modify( dbw, del.from, [&]( auto& dbo ){
                dbo.net_weight -= del.unstake_net_quantity;
                dbo.cpu_weight -= del.unstake_cpu_quantity;
 
             });
 
             const auto& totals = total_index.get( del.receiver );
-            total_index.update( totals, 0, [&]( auto& tot ) {
+            total_index.modify( totals, 0, [&]( auto& tot ) {
                tot.total_net_weight -= del.unstake_net_quantity;
                tot.total_cpu_weight -= del.unstake_cpu_quantity;
             });
@@ -252,20 +253,20 @@ namespace eosiosystem {
 
 
          /**
-          *  This method will create a producr_config and producer_votes object for 'producer' 
+          *  This method will create a producer_config and producer_votes object for 'producer'
           *
           *  @pre producer is not already registered
           *  @pre producer to register is an account
-          *  @pre authority of producer to register 
-          *  
+          *  @pre authority of producer to register
+          *
           */
          static void on( const regproducer& reg ) {
             auto producer = reg.producer;
             require_auth( producer );
 
             producer_votes_index_type votes( SystemAccount, SystemAccount );
-            const auto* existing = votes.find( producer );
-            eosio_assert( !existing, "producer already registered" );
+            auto existing = votes.find( producer );
+            eosio_assert( existing == votes.end(), "producer already registered" );
 
             votes.emplace( producer, [&]( auto& pv ){
                pv.owner       = producer;
@@ -293,9 +294,9 @@ namespace eosiosystem {
 
             account_votes_index_type avotes( SystemAccount, SystemAccount );
 
-            const auto* acv = avotes.find( sv.voter );
-            if( !acv ) {
-               acv = &avotes.emplace( sv.voter, [&]( auto& av ) {
+            auto acv = avotes.find( sv.voter );
+            if( acv == avotes.end() ) {
+               acv = avotes.emplace( sv.voter, [&]( auto& av ) {
                  av.owner = sv.voter;
                  av.last_update = now();
                  av.proxy = 0;
@@ -308,17 +309,17 @@ namespace eosiosystem {
             producer_votes_index_type votes( SystemAccount, SystemAccount );
 
             for( auto p : acv->producers ) {
-               votes.update( votes.get( p ), 0, [&]( auto& v ) {
+               votes.modify( votes.get( p ), 0, [&]( auto& v ) {
                   v.total_votes -= old_weight;
                   v.total_votes += new_weight;
                });
             }
 
-            avotes.update( *acv, 0, [&]( auto av ) {
+            avotes.modify( acv, 0, [&]( auto av ) {
                av.last_update = now();
                av.staked += sv.amount;
             });
-            
+
             currency::inline_transfer( sv.voter, SystemAccount, sv.amount, "stake for voting" );
          }
 
@@ -354,21 +355,21 @@ namespace eosiosystem {
 
             for( const auto& p : existing.producers )
                producer_vote_changes[p].first = old_weight;
-            for( const auto& p : vp.producers ) 
+            for( const auto& p : vp.producers )
                producer_vote_changes[p].second = new_weight;
 
             producer_votes_index_type votes( SystemAccount, SystemAccount );
             for( const auto& delta : producer_vote_changes ) {
                if( delta.second.first != delta.second.second ) {
                   const auto& provote = votes.get( delta.first );
-                  votes.update( provote, 0, [&]( auto& pv ){
+                  votes.modify( provote, 0, [&]( auto& pv ){
                      pv.total_votes -= delta.second.first;
                      pv.total_votes += delta.second.second;
                   });
                }
             }
 
-            avotes.update( existing, 0, [&]( auto& av ) {
+            avotes.modify( existing, 0, [&]( auto& av ) {
               av.proxy = vp.proxy;
               av.last_update = now();
               av.producers = vp.producers;
@@ -382,13 +383,16 @@ namespace eosiosystem {
 
          static void on( const nonce& ) {
          }
+         
+         static void on( const finishundel& ) {            
+         }
 
          static void apply( account_name code, action_name act ) {
 
-            if( !eosio::dispatch<contract, 
-                                 regproducer, regproxy, 
-                                 delegatebw, undelegatebw, 
-                                 regproducer, voteproducer, stakevote,
+            if( !eosio::dispatch<contract,
+                                 regproducer, regproxy,
+                                 delegatebw, undelegatebw,
+                                 finishundel, voteproducer, stakevote,
                                  nonce>( code, act) ) {
                if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                   eosio::print("Unexpected action: ", eosio::name(act), "\n");
@@ -396,8 +400,7 @@ namespace eosiosystem {
                }
             }
 
-         } /// apply 
+         } /// apply
    };
 
-} /// eosiosystem 
-
+} /// eosiosystem

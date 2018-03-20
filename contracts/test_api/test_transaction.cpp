@@ -19,7 +19,7 @@ struct test_action_action {
       return action_name(NAME);
    }
 
-   vector<char> data;
+   eosio::vector<char> data;
 
    template <typename DataStream>
    friend DataStream& operator << ( DataStream& ds, const test_action_action& a ) {
@@ -35,6 +35,7 @@ struct test_action_action {
    */
 };
 
+
 template <uint64_t ACCOUNT, uint64_t NAME>
 struct test_dummy_action {
    static account_name get_account() {
@@ -49,38 +50,38 @@ struct test_dummy_action {
    int32_t c;
 
    template <typename DataStream>
-   friend DataStream& operator << ( DataStream& ds, const test_dummy_action& a ) {
-      ds << a.a;
-      ds << a.b;
-      ds << a.c;
+   friend DataStream& operator << ( DataStream& ds, const test_dummy_action& da ) {
+      ds << da.a;
+      ds << da.b;
+      ds << da.c;
       return ds;
    }
    
    template <typename DataStream>
-   friend DataStream& operator >> ( DataStream& ds, test_dummy_action& a ) {
-      ds >> a.a;
-      ds >> a.b;
-      ds >> a.c;
+   friend DataStream& operator >> ( DataStream& ds, test_dummy_action& da ) {
+      ds >> da.a;
+      ds >> da.b;
+      ds >> da.c;
       return ds;
    }
 };
 #pragma pack(pop)
 
-void copy_data(char* data, size_t data_len, vector<char>& data_out) {
-   for (int i=0; i < data_len; i++)
+void copy_data(char* data, size_t data_len, eosio::vector<char>& data_out) {
+   for (unsigned int i=0; i < data_len; i++)
       data_out.push_back(data[i]);
 }
 
 void test_transaction::send_action() {
    test_dummy_action<N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal")> test_action = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
-   action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
+   action act(eosio::vector<permission_level>{{N(testapi), N(active)}}, test_action);
    act.send();
 }
 
 void test_transaction::send_action_empty() {
    test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "assert_true")> test_action;
 
-   action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
+   action act(eosio::vector<permission_level>{{N(testapi), N(active)}}, test_action);
 
    act.send();
 }
@@ -102,7 +103,7 @@ void test_transaction::send_action_large() {
  */
 void test_transaction::send_action_recurse() {
    char buffer[1024];
-   uint32_t size = read_action(buffer, 1024);
+   read_action_data(buffer, 1024);
 
    test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "send_action_recurse")> test_action;
    copy_data(buffer, 1024, test_action.data); 
@@ -124,13 +125,13 @@ void test_transaction::send_action_inline_fail() {
 
 void test_transaction::test_tapos_block_prefix() {
    int tbp;
-   read_action( (char*)&tbp, sizeof(int) );
+   read_action_data( (char*)&tbp, sizeof(int) );
    eosio_assert( tbp == tapos_block_prefix(), "tapos_block_prefix does not match" );
 }
 
 void test_transaction::test_tapos_block_num() {
    int tbn;
-   read_action( (char*)&tbn, sizeof(int) );
+   read_action_data( (char*)&tbn, sizeof(int) );
    eosio_assert( tbn == tapos_block_num(), "tapos_block_num does not match" );
 }
 
@@ -139,14 +140,14 @@ void test_transaction::test_read_transaction() {
    checksum256 h;
    transaction t;
    char* p = (char*)&t;
-   uint64_t read = read_transaction( (char*)&t, sizeof(t) );
+   uint32_t read = read_transaction( (char*)&t, sizeof(t) );
    sha256(p, read, &h);
    printhex( &h, sizeof(h) );
 }
 
 void test_transaction::test_transaction_size() {
    uint32_t trans_size = 0;
-   read_action( (char*)&trans_size, sizeof(uint32_t) );
+   read_action_data( (char*)&trans_size, sizeof(uint32_t) );
    eosio_assert( trans_size == transaction_size(), "transaction size does not match" );
 }
 
@@ -163,7 +164,7 @@ void test_transaction::send_transaction() {
 
 void test_transaction::send_action_sender() {
    account_name cur_send;
-   read_action( &cur_send, sizeof(account_name) );
+   read_action_data( &cur_send, sizeof(account_name) );
    test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "test_current_sender")> test_action;
    copy_data((char*)&cur_send, sizeof(account_name), test_action.data);
 

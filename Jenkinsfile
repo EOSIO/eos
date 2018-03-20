@@ -10,6 +10,7 @@ pipeline {
                             . $HOME/.bash_profile
                             echo 1 | ./eosio_build.sh
                         '''
+                        stash includes: 'build/**/*', name: 'buildUbuntu'
                     }
                 }
                 stage('MacOS') {
@@ -19,6 +20,7 @@ pipeline {
                             . $HOME/.bash_profile
                             echo 1 | ./eosio_build.sh 
                         ''' 
+                        stash includes: 'build/**/*', name: 'buildMacOS'
                     }
                 }
                 stage('Fedora') {
@@ -27,7 +29,8 @@ pipeline {
                         sh '''
                             . $HOME/.bash_profile
                             echo 1 | ./eosio_build.sh 
-                        ''' 
+                        '''
+                        stash includes: 'build/**/*', name: 'buildFedora'
                     }
                 }
             }
@@ -37,6 +40,7 @@ pipeline {
                 stage('Ubuntu') {
                     agent { label 'Ubuntu' }
                     steps {
+                        unstash 'buildUbuntu'
                         sh '''
                             . $HOME/.bash_profile
                             cd build
@@ -45,11 +49,20 @@ pipeline {
                             echo "OK!"
                             ctest --output-on-failure
                         '''
+                    }
+                    post {
+                        failure {
+                            archiveArtifacts 'build/genesis.json'
+                            archiveArtifacts 'build/tn_data_00/config.ini'
+                            archiveArtifacts 'build/tn_data_00/stderr.txt'
+                            archiveArtifacts 'build/test_walletd_output.log'
+                        }
                     }
                 }
                 stage('MacOS') {
                     agent { label 'MacOS' }
                     steps {
+                        unstash 'buildMacOS'
                         sh '''
                             . $HOME/.bash_profile
                             cd build
@@ -59,10 +72,19 @@ pipeline {
                             ctest --output-on-failure
                         '''
                     }
+                    post {
+                        failure {
+                            archiveArtifacts 'build/genesis.json'
+                            archiveArtifacts 'build/tn_data_00/config.ini'
+                            archiveArtifacts 'build/tn_data_00/stderr.txt'
+                            archiveArtifacts 'build/test_walletd_output.log'
+                        }
+                    }
                 }
                 stage('Fedora') {
                     agent { label 'Fedora' }
                     steps {
+                        unstash 'buildFedora'
                         sh '''
                             . $HOME/.bash_profile
                             cd build
@@ -71,6 +93,14 @@ pipeline {
                             echo "OK!"
                             ctest --output-on-failure
                         '''
+                    }
+                    post {
+                        failure {
+                            archiveArtifacts 'build/genesis.json'
+                            archiveArtifacts 'build/tn_data_00/config.ini'
+                            archiveArtifacts 'build/tn_data_00/stderr.txt'
+                            archiveArtifacts 'build/test_walletd_output.log'
+                        }
                     }
                 }
             }

@@ -2,7 +2,7 @@
 #include <eosiolib/memory.hpp>
 #include "../test_api/test_api.hpp"
 
-using namespace eosio;
+//using namespace eosio;
 
 void verify( const void* const ptr, const uint32_t val, const uint32_t size) {
 	const char* char_ptr = (const char*)ptr;
@@ -90,8 +90,8 @@ void test_extended_memory::test_page_memory_exceeded() {
 }
 
 void test_extended_memory::test_page_memory_negative_bytes() {
-	sbrk(-1);
-	eosio_assert(0, "Should have thrown exception for trying to remove memory");
+   sbrk((uint32_t)-1);
+   eosio_assert(0, "Should have thrown exception for trying to remove memory");
 }
 
 void test_extended_memory::test_initial_buffer() {

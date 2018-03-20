@@ -6,7 +6,6 @@
 
 #include <eosiolib/eos.hpp>
 #include <eosiolib/token.hpp>
-#include <eosiolib/db.hpp>
 #include <eosiolib/reflect.hpp>
 #include <eosiolib/generic_currency.hpp>
 
