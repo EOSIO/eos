@@ -12,6 +12,7 @@
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/multi_index.hpp>
 #include <eosiolib/privileged.h>
+#include <eosiolib/optional.hpp>
 
 #include <algorithm>
 #include <map>
@@ -23,6 +24,34 @@ namespace eosiosystem {
    using std::map;
    using std::pair;
    using eosio::print;
+
+   struct PACKED(producer_key) {
+      account_name producer_name;
+      public_key block_signing_key;
+
+      EOSLIB_SERIALIZE(producer_key, (producer_name)(block_signing_key))
+   };
+
+   struct PACKED(producer_schedule) {
+      uint32_t version;
+      std::vector<producer_key> producers;
+
+      EOSLIB_SERIALIZE(producer_schedule, (version)(producers))
+   };
+
+   struct PACKED(block_header) {
+      checksum256                        previous;
+      time                               timestamp;
+      checksum256                        transaction_mroot;
+      checksum256                        action_mroot;
+      checksum256                        block_mroot;
+      account_name                       producer;
+      uint32_t                           schedule_version;
+      eosio::optional<producer_schedule> new_producers;
+      
+      EOSLIB_SERIALIZE(block_header, (previous)(timestamp)(transaction_mroot)(action_mroot)(block_mroot)
+                                     (producer)(schedule_version)(new_producers))
+   };
 
    template<account_name SystemAccount>
    class contract {
@@ -387,13 +416,22 @@ namespace eosiosystem {
          static void on( const finishundel& ) {            
          }
 
+         ACTION(SystemAccount, onblock) {
+            block_header header;
+
+            EOSLIB_SERIALIZE(onblock, (header))
+         };
+
+         static void on(const onblock& ob) {
+         }
+
          static void apply( account_name code, action_name act ) {
 
             if( !eosio::dispatch<contract,
                                  regproducer, regproxy,
                                  delegatebw, undelegatebw,
                                  finishundel, voteproducer, stakevote,
-                                 nonce>( code, act) ) {
+                                 onblock, nonce>( code, act) ) {
                if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                   eosio::print("Unexpected action: ", eosio::name(act), "\n");
                   eosio_assert( false, "received unexpected action");
