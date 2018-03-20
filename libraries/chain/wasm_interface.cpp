@@ -151,19 +151,6 @@ namespace eosio { namespace chain {
        * @param wasm_binary_size - the size of the binary
        * @return reference to a usable cache entry
        */
-      struct test_mutator {
-         static std::vector<uint8_t> accept( wasm_ops::instr* inst ) {
-            std::cout << "ACCEPTING\n";
-            return {};
-         }
-      };
-      struct test_mutator2 {
-         static std::vector<uint8_t> accept( wasm_ops::instr* inst ) {
-            std::cout << "ACCEPTING2\n";
-            return {};
-         }
-      };
-
       wasm_cache::entry& fetch_entry(const digest_type& code_id, const char* wasm_binary, size_t wasm_binary_size) {
          std::condition_variable condition;
          optional_entry_ref result;
@@ -519,6 +506,7 @@ class softfloat_api : public context_aware_api {
       // float binops
       float _eosio_f32_add( float a, float b ) { 
          float32_t ret = f32_add( to_softfloat32(a), to_softfloat32(b) );
+         std::cout << "A " << a << " " << std::hex << *(uint32_t*)&a << " B " << b << " " << *(uint32_t*)&b << " C= " << (a + b) << " " << from_softfloat32(f32_add(to_softfloat32(a),to_softfloat32(b))) << "\n";
          return *reinterpret_cast<float*>(&ret);
       }
       float _eosio_f32_sub( float a, float b ) { 
@@ -533,20 +521,39 @@ class softfloat_api : public context_aware_api {
          float32_t ret = f32_mul( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
-      float _eosio_f32_min( float a, float b ) { 
-         std::cout << std::hex << "A " << a << " " << *(uint32_t*)&a << " B " << b << " " << *(uint32_t*)&b <<  " " << f32_lt( to_softfloat32(a), to_softfloat32(b) )<< "\n";
-         // special case min(-0,0)
-         if (*(uint32_t*)&a == 0x80000000) {
-            if (*(uint32_t*)&b == 0)
-               return a;
+      float _eosio_f32_min( float af, float bf ) { 
+         float32_t a = to_softfloat32(af);
+         float32_t b = to_softfloat32(bf);
+         std::cout << "A " << af << " " << std::hex << a.v << " B " << bf << " " << b.v << " C= " << (af < bf) << " " << f32_lt(a,b) << "\n";
+         if (is_nan32(a)) {
+         std::cout << "A NAN " << b.v << "\n";
+            return af;
+         } 
+         if (is_nan32(b)) {
+         std::cout << "B NAN " << b.v << "\n";
+            return bf;
          }
-         else if (*(uint32_t*)&b == 0x80000000) {
-            if (*(uint32_t*)&a == 0)
-               return b;
+         if ( sign_bit32(a) != sign_bit32(b) ) {
+         std::cout << "SIGNED " << b.v << "\n";
+            return sign_bit32(a) ? af : bf;
          }
-         return f32_lt( to_softfloat32(a), to_softfloat32(b) ) ? a : b; 
+         std::cout << "MADE IT " << b.v << "\n";
+         return f32_lt(a,b) ? af : bf; 
       }
-      float _eosio_f32_max( float a, float b ) { return f32_lt( to_softfloat32(a), to_softfloat32(b) ) ? b : a; }
+      float _eosio_f32_max( float af, float bf ) { 
+         float32_t a = to_softfloat32(af);
+         float32_t b = to_softfloat32(bf);
+         if (is_nan32(a)) {
+            return bf;
+         } 
+         if (is_nan32(b)) {
+            return af;
+         }
+         if ( sign_bit32(a) != sign_bit32(b) ) {
+            return sign_bit32(a) ? bf : af;
+         }
+         return f32_lt( a, b ) ? bf : af; 
+      }
       float _eosio_f32_copysign( float af, float bf ) { 
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
@@ -820,6 +827,11 @@ class softfloat_api : public context_aware_api {
       }
       static constexpr uint32_t inv_float_eps = 0x4B000000; 
       static constexpr uint64_t inv_double_eps = 0x4330000000000000;
+      inline bool sign_bit32( float32_t f ) { return f.v >> 31; }
+      inline bool is_nan32( float32_t f ) {
+         // mask the sign bit
+         return ((f.v & 0xFFFFFFF) > 0x7F800000);
+      }
 };
 class producer_api : public context_aware_api {
    public:
