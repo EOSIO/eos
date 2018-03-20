@@ -9,8 +9,8 @@
 #ifndef CONFIG_HPP_IN
 #define CONFIG_HPP_IN
 
-namespace eosio { namespace eosiod { namespace config {
-  constexpr uint64_t version = 0x${eosiod_BUILD_VERSION};
+namespace eosio { namespace nodeos { namespace config {
+  constexpr uint64_t version = 0x${nodeos_BUILD_VERSION};
 
   template<typename I>
   std::string itoh(I n, size_t hlen = sizeof(I)<<1) {
