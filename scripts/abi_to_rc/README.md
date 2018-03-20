@@ -1,5 +1,5 @@
 # Purpose
-Processes a contract's .abi file in order to fill out a Ricardian Contract template. The finished product is a Ricardian Contract that specifies a contract's action(s), input(s), and input type(s).
+The `abi_to_rc.py` script processes a contract's .abi file in order to generate an overview Ricardian Contract and a Ricardian Contract for each action. The overview Ricardian Contract provides a description of the contract's purpose and also specifies the contract's action(s), input(s), and input type(s). The action Ricardian Contract provides a description of the action's purpose and also specifies the action's input(s), and input type(s).
 
 ## How to run
 `python abi_to_rc.py ${{smart-contract.abi}} rc-overview-template.md rc-action-template.md`
