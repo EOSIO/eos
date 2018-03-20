@@ -741,7 +741,6 @@ BOOST_FIXTURE_TEST_CASE(db_tests, tester) { try {
 	set_code( N(testapi), test_api_db_wast );
 	produce_blocks(1);
 
-	CALL_TEST_FUNCTION( *this, "test_db", "key_str_general", {});
 	CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_general", {});
 	CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_lowerbound", {});
 	CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_upperbound", {});
