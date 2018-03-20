@@ -59,7 +59,7 @@ extern "C" {
     * @{
     */
 
-   void send_deferred(uint32_t sender_id, time delay_until, char *serialized_transaction, size_t size);
+   void send_deferred(uint32_t sender_id, eosio_time delay_until, char *serialized_transaction, size_t size);
 
    /**
     * access a copy of the currently executing transaction
@@ -89,7 +89,7 @@ extern "C" {
    /**
     * get the expiration of the currently executing transaction
     */
-   time expiration();
+   eosio_time expiration();
 
    /**
     * Retrieve the indicated action from the active transaction.

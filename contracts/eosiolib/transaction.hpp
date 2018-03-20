@@ -24,16 +24,16 @@ namespace eosio {
 
    class transaction {
    public:
-      transaction(time exp = now() + 60, region_id r = 0)
+      transaction(eosio_time exp = now() + 60, region_id r = 0)
       :expiration(exp),region(r)
       {}
 
-      void send(uint32_t sender_id, time delay_until = 0) const {
+      void send(uint32_t sender_id, eosio_time delay_until = 0) const {
          auto serialize = pack(*this);
          send_deferred(sender_id, delay_until, serialize.data(), serialize.size());
       }
 
-      time            expiration;
+      eosio_time      expiration;
       region_id       region;
       uint16_t        ref_block_num;
       uint32_t        ref_block_prefix;
@@ -50,7 +50,7 @@ namespace eosio {
       public:
          uint32_t     sender_id;
          account_name sender;
-         time         delay_until;
+         eosio_time   delay_until;
 
          static deferred_transaction from_current_action() {
             return unpack_action_data<deferred_transaction>();

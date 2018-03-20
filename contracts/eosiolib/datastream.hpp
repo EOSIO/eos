@@ -442,6 +442,33 @@ inline datastream<Stream>& operator<<(datastream<Stream>& ds, const uint8_t d) {
   ds.write( (const char*)&d, sizeof(d) );
   return ds;
 }
+
+#ifdef EOSIO_NATIVE_CONTRACT_COMPILATION
+/**
+ *  Deserialize a char from a stream
+ *  @brief Deserialize a char
+ *  @param ds stream to read
+ *  @param d destination for deserialized value
+ */
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, char& d) {
+  ds.read(&d, sizeof(d) );
+  return ds;
+}
+
+/**
+ *  Serialize a char into a stream
+ *  @brief Serialize a char
+ *  @param ds stream to write
+ *  @param d value to serialize
+ */
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const char d) {
+  ds.write( (const char*)&d, sizeof(d) );
+  return ds;
+}
+#endif
+
 /**
  *  Deserialize a uint8_t from a stream
  *  @brief Deserialize a uint8_t

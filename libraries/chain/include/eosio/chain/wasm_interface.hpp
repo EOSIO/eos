@@ -116,6 +116,10 @@ namespace eosio { namespace chain {
           */
          void error( wasm_cache::entry& code, apply_context& context, vm_type vm = vm_type::wavm  );
 
+         /**
+          */
+         void apply_native_debug( wasm_cache::entry& code, apply_context& context, void (*apply_function)(uint64_t, uint64_t) );
+
       private:
          wasm_interface();
          unique_ptr<struct wasm_interface_impl> my;
