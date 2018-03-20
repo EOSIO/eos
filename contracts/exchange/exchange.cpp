@@ -236,7 +236,6 @@ namespace eosio {
          default:
             return _excurrencies.apply( contract, act );
       }
-      eosio_exit(0);
    }
 
 } /// namespace eosio
@@ -245,6 +244,8 @@ namespace eosio {
 
 extern "C" {
    void apply( uint64_t code, uint64_t action ) {
-       eosio::exchange( current_receiver() ).apply( code, action );
+      eosio::exchange  ex( current_receiver() );
+      ex.apply( code, action );
+      eosio_exit(0);
    }
 }

@@ -38,9 +38,6 @@ namespace eosio { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
 
-   struct wasm_exit {
-      int32_t code = 0;
-   };
 
    /**
     *  Implementation class for the wasm cache

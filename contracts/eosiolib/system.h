@@ -35,7 +35,7 @@ extern "C" {
     * This method will abort execution of wasm without failing the contract. This
     * is used to bypass all cleanup / destructors that would normally be called.
     */
-   void  eosio_exit( int32_t code );
+   [[noreturn]] void  eosio_exit( int32_t code );
 
    /**
     *  Returns the time in seconds from 1970 of the last accepted block (not the block including this action)
