@@ -157,12 +157,12 @@ namespace eosiosystem {
             if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                if( !eosio::dispatch<contract, typename delegate_bandwith<SystemAccount>::delegatebw,
                                  typename delegate_bandwith<SystemAccount>::undelegatebw,
+                                 typename delegate_bandwith<SystemAccount>::refund,
                                  typename voting<SystemAccount>::regproxy,
                                  typename voting<SystemAccount>::unregproxy,
                                  typename voting<SystemAccount>::regproducer,
                                  typename voting<SystemAccount>::unregprod,
                                  typename voting<SystemAccount>::voteproducer,
-                                 typename voting<SystemAccount>::unstake_vote_deferred,
                                  onblock,
                                  claimrewards,
                                  nonce>( code, act) ) {

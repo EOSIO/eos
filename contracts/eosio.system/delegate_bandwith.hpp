@@ -15,6 +15,7 @@
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/multi_index.hpp>
 #include <eosiolib/privileged.h>
+#include <eosiolib/transaction.hpp>
 
 #include <map>
 
@@ -24,6 +25,7 @@ namespace eosiosystem {
    using eosio::const_mem_fun;
    using eosio::bytes;
    using eosio::print;
+   using eosio::permission_level;
    using std::map;
    using std::pair;
 
@@ -31,6 +33,8 @@ namespace eosiosystem {
    class delegate_bandwith : public voting<SystemAccount> {
       public:
          static constexpr account_name system_account = SystemAccount;
+         static constexpr time refund_delay = 3*24*3600;
+         static constexpr time refund_expiration_time = 3600;
          using currency = typename common<SystemAccount>::currency;
          using system_token_type = typename common<SystemAccount>::system_token_type;
          using eosio_parameters = typename common<SystemAccount>::eosio_parameters;
@@ -59,26 +63,26 @@ namespace eosiosystem {
             typename currency::token_type cpu_weight;
             typename currency::token_type storage_stake;
             uint64_t storage_bytes = 0;
-            /*
-            uint32_t start_pending_net_withdraw = 0;
-            typename currency::token_type pending_net_withdraw;
-            uint64_t deferred_net_withdraw_handler = 0;
-
-            uint32_t start_pending_cpu_withdraw = 0;
-            typename currency::token_type pending_cpu_withdraw;
-            uint64_t deferred_cpu_withdraw_handler = 0;
-            */
             
             uint64_t  primary_key()const { return to; }
 
-            EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight)(storage_stake)(storage_bytes)
-                              /* (start_pending_net_withdraw)(pending_net_withdraw)(deferred_net_withdraw_handler)
-                                 (start_pending_cpu_withdraw)(pending_cpu_withdraw)(deferred_cpu_withdraw_handler)*/ )
+            EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight)(storage_stake)(storage_bytes) )
 
          };
 
-         typedef eosio::multi_index< N(totalband), total_resources>  total_resources_index_type;
-         typedef eosio::multi_index< N(delband), delegated_bandwidth> del_bandwidth_index_type;
+         struct refund_request {
+            account_name owner;
+            time request_time;
+            typename currency::token_type amount;
+
+            uint64_t  primary_key()const { return owner; }
+
+            EOSLIB_SERIALIZE( refund_request, (owner)(request_time)(amount) )
+         };
+
+         typedef eosio::multi_index< N(totalband), total_resources>   total_resources_table;
+         typedef eosio::multi_index< N(delband), delegated_bandwidth> del_bandwidth_table;
+         typedef eosio::multi_index< N(refunds), refund_request>      refunds_table;
 
          ACTION( SystemAccount, delegatebw ) {
             account_name from;
@@ -99,6 +103,12 @@ namespace eosiosystem {
             uint64_t     unstake_storage_bytes;
 
             EOSLIB_SERIALIZE( undelegatebw, (from)(receiver)(unstake_net_quantity)(unstake_cpu_quantity)(unstake_storage_bytes) )
+         };
+
+         ACTION( SystemAccount, refund ) {
+            account_name owner;
+
+            EOSLIB_SERIALIZE( refund, (owner) )
          };
 
          static void on( const delegatebw& del ) {
@@ -134,10 +144,10 @@ namespace eosiosystem {
                global_state_singleton::set(parameters);
             }
 
-            del_bandwidth_index_type     del_index( SystemAccount, del.from );
-            auto itr = del_index.find( del.receiver );
-            if( itr == del_index.end() ) {
-               del_index.emplace( del.from, [&]( auto& dbo ){
+            del_bandwidth_table     del_tbl( SystemAccount, del.from );
+            auto itr = del_tbl.find( del.receiver );
+            if( itr == del_tbl.end() ) {
+               del_tbl.emplace( del.from, [&]( auto& dbo ){
                   dbo.from          = del.from;
                   dbo.to            = del.receiver;
                   dbo.net_weight    = del.stake_net_quantity;
@@ -147,7 +157,7 @@ namespace eosiosystem {
                });
             }
             else {
-               del_index.modify( itr, del.from, [&]( auto& dbo ){
+               del_tbl.modify( itr, del.from, [&]( auto& dbo ){
                   dbo.net_weight    += del.stake_net_quantity;
                   dbo.cpu_weight    += del.stake_cpu_quantity;
                   dbo.storage_stake += del.stake_storage_quantity;
@@ -155,10 +165,10 @@ namespace eosiosystem {
                });
             }
 
-            total_resources_index_type   total_index( SystemAccount, del.receiver );
-            auto tot_itr = total_index.find( del.receiver );
-            if( tot_itr ==  total_index.end() ) {
-               tot_itr = total_index.emplace( del.from, [&]( auto& tot ) {
+            total_resources_table   totals_tbl( SystemAccount, del.receiver );
+            auto tot_itr = totals_tbl.find( del.receiver );
+            if( tot_itr ==  totals_tbl.end() ) {
+               tot_itr = totals_tbl.emplace( del.from, [&]( auto& tot ) {
                   tot.owner = del.receiver;
                   tot.net_weight    = del.stake_net_quantity;
                   tot.cpu_weight    = del.stake_cpu_quantity;
@@ -166,7 +176,7 @@ namespace eosiosystem {
                   tot.storage_bytes = storage_bytes;
                });
             } else {
-               total_index.modify( tot_itr, del.from == del.receiver ? del.from : 0, [&]( auto& tot ) {
+               totals_tbl.modify( tot_itr, del.from == del.receiver ? del.from : 0, [&]( auto& tot ) {
                   tot.net_weight    += del.stake_net_quantity;
                   tot.cpu_weight    += del.stake_cpu_quantity;
                   tot.storage_stake += del.stake_storage_quantity;
@@ -190,8 +200,8 @@ namespace eosiosystem {
 
             //eosio_assert( is_account( del.receiver ), "can only delegate resources to an existing account" );
 
-            del_bandwidth_index_type     del_index( SystemAccount, del.from );
-            const auto& dbw = del_index.get( del.receiver );
+            del_bandwidth_table     del_tbl( SystemAccount, del.from );
+            const auto& dbw = del_tbl.get( del.receiver );
             eosio_assert( dbw.net_weight >= del.unstake_net_quantity, "insufficient staked net bandwidth" );
             eosio_assert( dbw.cpu_weight >= del.unstake_cpu_quantity, "insufficient staked cpu bandwidth" );
             eosio_assert( dbw.storage_bytes >= del.unstake_storage_bytes, "insufficient staked storage" );
@@ -213,16 +223,16 @@ namespace eosiosystem {
 
             eosio_assert( total_refund.quantity > 0, "must unstake a positive amount" );
 
-            del_index.modify( dbw, del.from, [&]( auto& dbo ){
+            del_tbl.modify( dbw, del.from, [&]( auto& dbo ){
                dbo.net_weight -= del.unstake_net_quantity;
                dbo.cpu_weight -= del.unstake_cpu_quantity;
                dbo.storage_stake -= storage_stake_decrease;
                dbo.storage_bytes -= del.unstake_storage_bytes;
             });
 
-            total_resources_index_type   total_index( SystemAccount, del.receiver );
-            const auto& totals = total_index.get( del.receiver );
-            total_index.modify( totals, 0, [&]( auto& tot ) {
+            total_resources_table totals_tbl( SystemAccount, del.receiver );
+            const auto& totals = totals_tbl.get( del.receiver );
+            totals_tbl.modify( totals, 0, [&]( auto& tot ) {
                tot.net_weight -= del.unstake_net_quantity;
                tot.cpu_weight -= del.unstake_cpu_quantity;
                tot.storage_stake -= storage_stake_decrease;
@@ -231,12 +241,45 @@ namespace eosiosystem {
 
             set_resource_limits( totals.owner, totals.storage_bytes, totals.net_weight.quantity, totals.cpu_weight.quantity, 0 );
 
-            /// TODO: implement / enforce time delays on withdrawing
-            currency::inline_transfer( SystemAccount, del.from, total_refund, "unstake bandwidth" );
+            refunds_table refunds_tbl( SystemAccount, del.from );
+            //create refund request
+            auto req = refunds_tbl.find( del.from );
+            if ( req != refunds_tbl.end() ) {
+               refunds_tbl.modify( req, 0, [&]( refund_request& r ) {
+                     r.amount += del.unstake_net_quantity + del.unstake_cpu_quantity + storage_stake_decrease;
+                     r.request_time = now();
+                  });
+            } else {
+               refunds_tbl.emplace( del.from, [&]( refund_request& r ) {
+                     r.amount = del.unstake_net_quantity + del.unstake_cpu_quantity + storage_stake_decrease;
+                     r.request_time = now();
+                  });
+            }
+            //cancel previous deferred transaction if we have one
+            cancel_deferred( del.from );
+
+            //create new deferred transaction
+            const auto self = current_receiver();
+            refund act;
+            act.owner = del.from;
+            transaction out( now() + refund_delay + refund_expiration_time );
+            out.actions.emplace_back( permission_level{ self, N(active) }, self, N(refund), act );
+            out.send( del.from, now() + refund_delay );
+
             if ( asset(0) < del.unstake_net_quantity + del.unstake_cpu_quantity ) {
                voting<SystemAccount>::decrease_voting_power( del.from, del.unstake_net_quantity + del.unstake_cpu_quantity );
             }
 
          } // undelegatebw
+
+         static void on( const refund& r ) {
+            refunds_table refunds_tbl( SystemAccount, r.owner );
+            auto req = refunds_tbl.find( r.owner );
+            eosio_assert( req != refunds_tbl.end(), "refund request not found" );
+            eosio_assert( req->request_time + refund_delay <= now(), "refund is not available yet" );
+
+            currency::inline_transfer( SystemAccount, req->owner, req->amount, "unstake" );
+            refunds_tbl.erase( req );
+         }
    };
 }
