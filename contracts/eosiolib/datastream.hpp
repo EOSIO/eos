@@ -1,5 +1,5 @@
 /**
- *  @file db.h
+ *  @file datastream.hpp
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
