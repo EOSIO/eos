@@ -62,7 +62,7 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
             }
 
             the_running_instance_context.memory = default_mem;
-            the_running_instance_context.apply_context = &context;
+            the_running_instance_context.apply_ctx = &context;
 
             resetGlobalInstances(_instance);
             runInstanceStartFunc(_instance);

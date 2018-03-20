@@ -26,7 +26,7 @@ class wavm_runtime : public eosio::chain::wasm_runtime_interface {
 //This is a temporary hack for the single threaded implementation
 struct running_instance_context {
    MemoryInstance* memory;
-   apply_context*  apply_context;
+   apply_context*  apply_ctx;
 };
 extern running_instance_context the_running_instance_context;
 
@@ -598,7 +598,7 @@ struct intrinsic_function_invoker {
 
    template<MethodSig Method>
    static Ret wrapper(running_instance_context& ctx, Params... params) {
-      return (class_from_wasm<Cls>::value(*ctx.apply_context).*Method)(params...);
+      return (class_from_wasm<Cls>::value(*ctx.apply_ctx).*Method)(params...);
    }
 
    template<MethodSig Method>
@@ -616,7 +616,7 @@ struct intrinsic_function_invoker<WasmSig, void, MethodSig, Cls, Params...> {
 
    template<MethodSig Method>
    static void_type wrapper(running_instance_context& ctx, Params... params) {
-      (class_from_wasm<Cls>::value(*ctx.apply_context).*Method)(params...);
+      (class_from_wasm<Cls>::value(*ctx.apply_ctx).*Method)(params...);
       return void_type();
    }
 
