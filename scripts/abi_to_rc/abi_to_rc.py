@@ -54,7 +54,7 @@ def validate_input_arguments():
         print("$ python abi_to_rc.py ${{smart-contract.abi}} rc-overview-template.md rc-action-template.md")
         sys.exit(0)
 
-# gets actions_name, inputs and input types from abi file
+# gets actions, inputs and input types from abi file
 def get_actions_inputs_types():
     abi_file_name = sys.argv[1]
     abi_file = open(abi_file_name,'r')
