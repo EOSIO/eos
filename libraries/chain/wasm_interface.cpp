@@ -497,6 +497,10 @@ class system_api : public context_aware_api {
          }
       }
 
+      void eosio_exit(int32_t code) {
+         throw wasm_exit{code};
+      }
+
       fc::time_point_sec now() {
          return context.controller.head_block_time();
       }
@@ -1214,6 +1218,7 @@ REGISTER_INTRINSICS(string_api,
 REGISTER_INTRINSICS(system_api,
    (abort,        void())
    (eosio_assert, void(int, int))
+   (eosio_exit,   void(int ))
    (now,          int())
 );
 

@@ -67,6 +67,7 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
             resetGlobalInstances(_instance);
             runInstanceStartFunc(_instance);
             Runtime::invokeFunction(call,args);
+         } catch( const wasm_exit& e ) {
          } catch( const Runtime::Exception& e ) {
              FC_THROW_EXCEPTION(wasm_execution_error,
                          "cause: ${cause}\n${callstack}",

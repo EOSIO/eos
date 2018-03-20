@@ -40,8 +40,8 @@ case "$1" in
     chown ${USER}:${GROUP} /var/lib/${PACKAGE}
     chown ${USER}:${GROUP} /etc/${PACKAGE}
     chown ${USER}:${GROUP} /etc/${PACKAGE}/node_00
-    chown ${USER} /usr/bin/eosiod
-    chmod u+s /usr/bin/eosiod
+    chown ${USER} /usr/bin/nodeos
+    chmod u+s /usr/bin/nodeos
   ;;
 
   abort-upgrade|abort-remove|abort-deconfigure)
