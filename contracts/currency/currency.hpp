@@ -4,4 +4,3 @@
  */
 
 #include <eosiolib/eosio.hpp>
-#include <eosiolib/db.hpp>
