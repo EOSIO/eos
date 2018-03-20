@@ -44,6 +44,10 @@ namespace eosio { namespace chain {
 
       root_resolver resolver;
       LinkResult link_result = linkModule(module, resolver);
+
+      //there are a couple opportunties for improvement here--
+      //Easy: Cache the Module created here so it can be reused for instantiaion
+      //Hard: Kick off instantiation in a separate thread at this location
    }
 
    void wasm_interface::apply( const digest_type& code_id, const shared_vector<char>& code, apply_context& context ) {
