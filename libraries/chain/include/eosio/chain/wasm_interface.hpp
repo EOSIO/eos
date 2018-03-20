@@ -8,12 +8,12 @@ namespace eosio { namespace chain {
    class apply_context;
    class wasm_runtime_interface;
 
+   struct wasm_exit {
+      int32_t code = 0;
+   };
+
    namespace webassembly { namespace common {
       class intrinsics_accessor;
-
-      struct wasm_exit {
-         int32_t code = 0;
-      };
 
       struct root_resolver : Runtime::Resolver {
          bool resolve(const string& mod_name,

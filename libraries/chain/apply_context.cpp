@@ -20,9 +20,8 @@ void apply_context::exec_one()
          (*native)(*this);
       } 
       else if (a.code.size() > 0) {
-         // get code from cache
-         auto code = mutable_controller.get_wasm_cache().checkout_scoped(a.code_version, a.code.data(),
-                                                                         a.code.size());
+         const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
+         
          try {
             mutable_controller.get_wasm_interface().apply(a.code_version, a.code, *this);
          } catch ( const wasm_exit& ){}
