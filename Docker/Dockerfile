@@ -15,7 +15,7 @@ COPY --from=builder /usr/local/lib/* /usr/local/lib/
 COPY --from=builder /tmp/build/bin /opt/eosio/bin
 COPY --from=builder /tmp/build/contracts /contracts
 COPY --from=builder /eos/Docker/config.ini /eos/genesis.json /
-COPY start_eosiod.sh /opt/eosio/bin/start_eosiod.sh
+COPY start_nodeos.sh /opt/eosio/bin/start_nodeos.sh
 ENV EOSIO_ROOT=/opt/eosio
 RUN chmod +x /opt/eosio/bin/start_nodeos.sh
 ENV LD_LIBRARY_PATH /usr/local/lib
