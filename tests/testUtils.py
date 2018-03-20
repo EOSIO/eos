@@ -1114,6 +1114,7 @@ class Cluster(object):
             Utils.Print("ERROR: Launcher failed to launch.")
             return False
 
+        self.nodes=range(total_nodes) # placeholder for cleanup purposes only
         nodes=self.discoverLocalNodes(total_nodes)
 
         if total_nodes != len(nodes):
@@ -1424,7 +1425,11 @@ class Cluster(object):
         nodes=[]
 
         try:
-            cmd="pgrep -a %s" % (Utils.EosServerName)
+            pgrepOpts="-a"
+            if sys.platform == "darwin":
+                pgrepOpts="-fl"
+
+            cmd="pgrep %s %s" % (pgrepOpts, Utils.EosServerName)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))
             psOut=subprocess.check_output(cmd.split()).decode("utf-8")
             #Utils.Print("psOut: <%s>" % psOut)
