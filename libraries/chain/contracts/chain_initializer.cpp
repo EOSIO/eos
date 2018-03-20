@@ -257,25 +257,6 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    });
 
    eos_abi.structs.emplace_back( struct_def {
-      "chain_config", "", {
-         {"target_block_size", "uint32"},
-         {"max_block_size", "uint32"},
-         {"target_block_acts_per_scope", "uint32"},
-         {"max_block_acts_per_scope", "uint32"},
-         {"target_block_acts", "uint32"},
-         {"max_block_acts", "uint32"},
-         {"real_threads", "uint64"},
-         {"max_storage_size", "uint64"},
-         {"max_transaction_lifetime", "uint32"},
-         {"max_authority_depth", "uint16"},
-         {"max_transaction_exec_time", "uint32"},
-         {"max_inline_depth", "uint16"},
-         {"max_inline_action_size", "uint32"},
-         {"max_generated_transaction_size", "uint32"}
-      }
-   });
-
-   eos_abi.structs.emplace_back( struct_def {
       "type_def", "", {
          {"new_type_name", "type_name"},
          {"type", "type_name"}

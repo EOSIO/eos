@@ -117,7 +117,7 @@ namespace eosio { namespace chain { namespace contracts {
        *  The ABI vector may contain duplicates which would make it
        *  an invalid ABI
        */
-      //FC_ASSERT( typedefs.size() == abi.types.size() );
+      FC_ASSERT( typedefs.size() == abi.types.size() );
       FC_ASSERT( structs.size() == abi.structs.size() );
       FC_ASSERT( actions.size() == abi.actions.size() );
       FC_ASSERT( tables.size() == abi.tables.size() );
