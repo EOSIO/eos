@@ -10,9 +10,6 @@ using namespace eosio::testing;
 
 BOOST_AUTO_TEST_SUITE(block_tests)
 
-// disable block_tests temporarily
-#if 0
-
 BOOST_AUTO_TEST_CASE( schedule_test ) { try {
   tester test;
 
@@ -581,7 +578,6 @@ BOOST_AUTO_TEST_CASE(wipe)
       }
 
    } FC_LOG_AND_RETHROW() }
-
 BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
    try {
       tester chain;
@@ -619,6 +615,5 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
    } FC_LOG_AND_RETHROW()
 }
 
-#endif
 
 BOOST_AUTO_TEST_SUITE_END()

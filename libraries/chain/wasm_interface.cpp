@@ -38,6 +38,22 @@ namespace eosio { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
 
+   struct runtime_guard {
+      runtime_guard() {
+         // TODO clean this up
+         //check_wasm_opcode_dispositions();
+         Runtime::init();
+      }
+
+      ~runtime_guard() {
+         Runtime::freeUnreferencedObjects({});
+      }
+
+   };
+
+   static weak_ptr<runtime_guard> __runtime_guard_ptr;
+   static std::mutex __runtime_guard_lock;
+
    /**
     *  Implementation class for the wasm cache
     *  it is responsible for compiling and storing instances of wasm code for use
@@ -46,9 +62,13 @@ namespace eosio { namespace chain {
    struct wasm_cache_impl {
       wasm_cache_impl()
       {
-         // TODO clean this up
-         //check_wasm_opcode_dispositions();
-         Runtime::init();
+         std::lock_guard<std::mutex> l(__runtime_guard_lock);
+         if (__runtime_guard_ptr.use_count() == 0) {
+            _runtime_guard = std::make_shared<runtime_guard>();
+            __runtime_guard_ptr = _runtime_guard;
+         } else {
+            _runtime_guard = __runtime_guard_ptr.lock();
+         }
       }
 
       /**
@@ -59,7 +79,6 @@ namespace eosio { namespace chain {
        * returned before this can be destroyed
        */
       ~wasm_cache_impl() {
-         Runtime::freeUnreferencedObjects({});
       }
 
       /**
@@ -283,6 +302,8 @@ namespace eosio { namespace chain {
 
       // compilation lock
       std::mutex _compile_lock;
+
+      std::shared_ptr<runtime_guard> _runtime_guard;
    };
 
    wasm_cache::wasm_cache()

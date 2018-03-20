@@ -54,8 +54,7 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::close() {
-      //temporary fix for sleepy_db/block_test. it seems like sleepy_db/block_test (or this functions) should better simulate disconnected node
-      //control.reset();
+      control.reset();
       chain_transactions.clear();
    }
 
