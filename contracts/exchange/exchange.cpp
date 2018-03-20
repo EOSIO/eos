@@ -236,6 +236,7 @@ namespace eosio {
          default:
             return _excurrencies.apply( contract, act );
       }
+      eosio_exit(0);
    }
 
 } /// namespace eosio
