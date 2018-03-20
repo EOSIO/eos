@@ -78,8 +78,9 @@
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
-				BUILD_MONGO_DB_PLUGIN=false
-				MONGOD_CONF=""
+				BUILD_MONGO_DB_PLUGIN=true
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"Fedora")
 				FILE=${WORK_DIR}/scripts/eosio_build_fedora.sh
@@ -112,7 +113,7 @@
 		export OPENSSL_ROOT_DIR=/usr/include/openssl
 		export OPENSSL_LIBRARIES=/usr/include/openssl
 		export WASM_ROOT=${HOME}/opt/wasm
-	
+
 	 . $FILE
 	
 	fi
@@ -163,19 +164,21 @@
 	printf "\n\t>>>>>>>>>>>>>>>>>>>> EOSIO has been successfully built.\n\n"
 
 	if [ $BUILD_MONGO_DB_PLUGIN == true ]; then
-		printf "\n\tChecking if MongoDB is running.\n"
+		printf "\n\tVerifying MongoDB is running.\n"
 		MONGODB_PID=$( pgrep -x mongod )
 		if [ -z $MONGODB_PID ]; then
 			printf "\n\tStarting MongoDB.\n"
-			sudo mongod -f ${MONGOD_CONF} &
+			${HOME}/opt/mongodb/bin/mongod -f ${MONGOD_CONF} &
 			if [ $? -ne 0 ]; then
 				printf "\n\tUnable to start MongoDB.\nExiting now.\n\n"
 				exit -1
 			fi
-			printf "\n\tSuccessfully started MongoDB.\n"
+			MONGODB_PID=$( pgrep -x mongod )
+			printf "\n\tSuccessfully started MongoDB PID = ${MONGODB_PID}.\n"
 		else
 			printf "\n\tMongoDB is running PID=${MONGODB_PID}.\n"
 		fi
+		make test
 	fi
 
    if [ "x${EOSIO_BUILD_PACKAGE}" != "x" ]; then
