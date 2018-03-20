@@ -72,7 +72,6 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.actions.push_back( action_def{name("passrecovery"), "passrecovery"} );
    eos_abi.actions.push_back( action_def{name("vetorecovery"), "vetorecovery"} );
    eos_abi.actions.push_back( action_def{name("onerror"), "onerror"} );
-   eos_abi.actions.push_back( action_def{name("onblock"), "onblock"} );
 
    // ACTION PAYLOADS
 
@@ -299,12 +298,6 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"producer", "account_name"},
          {"schedule_version", "uint32"},
          {"new_producers", "producer_schedule?"}   
-      }
-   });
-
-   eos_abi.structs.emplace_back( struct_def {
-      "onblock", "", {
-         {"header", "block_header"},
       }
    });
 
