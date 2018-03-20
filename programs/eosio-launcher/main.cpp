@@ -33,7 +33,7 @@
 #include "config.hpp"
 
 using namespace std;
-namespace bf = boost::filesystem;
+namespace bfs = boost::filesystem;
 namespace bp = boost::process;
 namespace bpo = boost::program_options;
 using boost::asio::ip::tcp;
