@@ -297,7 +297,8 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"action_mroot", "checksum256"},
          {"block_mroot", "checksum256"},
          {"producer", "account_name"},
-         {"schedule_version", "uint32"}
+         {"schedule_version", "uint32"},
+         {"new_producers", "producer_schedule?"}   
       }
    });
 
