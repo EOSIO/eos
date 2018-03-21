@@ -32,14 +32,11 @@
 
 	VERSION=1.1
 	ULIMIT=$( ulimit -u )
-
-	# Define directories.
 	WORK_DIR=$PWD
 	BUILD_DIR=${WORK_DIR}/build
 	TEMP_DIR=/tmp
 	ARCH=$( uname )
 	DISK_MIN=20
-	BUILD_MONGO_DB_PLUGIN=false
 	
 	txtbld=$(tput bold)
 	bldred=${txtbld}$(tput setaf 1)
@@ -138,13 +135,9 @@
 		CMAKE=$( which cmake )
 	fi
 	
-	if [ -f ${MONGOD_CONF} ]; then
-		BUILD_MONGO_DB_PLUGIN=true
-	fi
-
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
 	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
-	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DBUILD_MONGO_DB_PLUGIN=${BUILD_MONGO_DB_PLUGIN} \
+	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DBUILD_MONGO_DB_PLUGIN=true \
 	-DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} ..
 	
 	if [ $? -ne 0 ]; then
@@ -161,25 +154,23 @@
 
 	printf "\n\t>>>>>>>>>>>>>>>>>>>> EOSIO has been successfully built.\n\n"
 
-	if [ $BUILD_MONGO_DB_PLUGIN == true ]; then
-		printf "\n\tVerifying MongoDB is running.\n"
-		MONGODB_PID=$( pgrep -x mongod )
-		if [ -z $MONGODB_PID ]; then
-			printf "\tMongoDB is not currently running.\n"
-			printf "\tStarting MongoDB.\n"
-			mongod -f ${MONGOD_CONF} &
-			if [ $? -ne 0 ]; then
-				printf "\n\tUnable to start MongoDB.\nExiting now.\n\n"
-				exit -1
-			fi
-			MONGODB_PID=$( pgrep -x mongod )
-			printf "\n\tSuccessfully started MongoDB PID = ${MONGODB_PID}.\n"
-		else
-			printf "\n\tMongoDB is running PID=${MONGODB_PID}.\n"
+	printf "\n\tVerifying MongoDB is running.\n"
+	MONGODB_PID=$( pgrep -x mongod )
+	if [ -z $MONGODB_PID ]; then
+		printf "\tMongoDB is not currently running.\n"
+		printf "\tStarting MongoDB.\n"
+		mongod -f ${MONGOD_CONF} &
+		if [ $? -ne 0 ]; then
+			printf "\n\tUnable to start MongoDB.\nExiting now.\n\n"
+			exit -1
 		fi
-		
-		make test
+		MONGODB_PID=$( pgrep -x mongod )
+		printf "\n\tSuccessfully started MongoDB PID = ${MONGODB_PID}.\n"
+	else
+		printf "\n\tMongoDB is running PID=${MONGODB_PID}.\n"
 	fi
+	
+	make test
 
    if [ "x${EOSIO_BUILD_PACKAGE}" != "x" ]; then
       # Build eos.io package
