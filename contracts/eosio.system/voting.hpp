@@ -24,7 +24,6 @@
 namespace eosiosystem {
    using eosio::indexed_by;
    using eosio::const_mem_fun;
-   using eosio::member;
    using eosio::bytes;
    using eosio::print;
    using eosio::singleton;
@@ -45,7 +44,6 @@ namespace eosiosystem {
 
          struct producer_info {
             account_name      owner;
-            uint64_t          padding = 0;
             uint128_t         total_votes = 0;
             eosio_parameters  prefs;
             eosio::bytes      packed_key; /// a packed public key object
@@ -71,7 +69,7 @@ namespace eosiosystem {
          struct voter_info {
             account_name                owner = 0;
             account_name                proxy = 0;
-            uint32_t                    last_update = 0;
+            time                        last_update = 0;
             uint32_t                    is_proxy = 0;
             system_token_type           staked;
             system_token_type           unstaking;
@@ -97,12 +95,12 @@ namespace eosiosystem {
          };
 
          /**
-          *  This method will create a producer_config and producer_info object for 'producer' 
+          *  This method will create a producer_config and producer_info object for 'producer'
           *
           *  @pre producer is not already registered
           *  @pre producer to register is an account
-          *  @pre authority of producer to register 
-          *  
+          *  @pre authority of producer to register
+          *
           */
          static void on( const regproducer& reg ) {
             require_auth( reg.producer );
@@ -350,7 +348,7 @@ namespace eosiosystem {
             if ( parameters.max_storage_size < parameters.total_storage_bytes_reserved ) {
                parameters.max_storage_size = parameters.total_storage_bytes_reserved;
             }
-            
+
             auto issue_quantity = parameters.blocks_per_cycle * (parameters.payment_per_block + parameters.payment_to_eos_bucket);
             currency::inline_issue(SystemAccount, issue_quantity);
             set_blockchain_parameters(&parameters);

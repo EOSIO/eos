@@ -30,7 +30,7 @@ namespace eosiosystem {
    using std::pair;
 
    template<account_name SystemAccount>
-   class delegate_bandwith : public voting<SystemAccount> {
+   class delegate_bandwidth : public voting<SystemAccount> {
       public:
          static constexpr account_name system_account = SystemAccount;
          static constexpr time refund_delay = 3*24*3600;
@@ -59,11 +59,11 @@ namespace eosiosystem {
          struct delegated_bandwidth {
             account_name from;
             account_name to;
-            typename currency::token_type net_weight; 
+            typename currency::token_type net_weight;
             typename currency::token_type cpu_weight;
             typename currency::token_type storage_stake;
             uint64_t storage_bytes = 0;
-            
+
             uint64_t  primary_key()const { return to; }
 
             EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight)(storage_stake)(storage_bytes) )

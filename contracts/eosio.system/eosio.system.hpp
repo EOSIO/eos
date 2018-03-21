@@ -4,14 +4,14 @@
  */
 #pragma once
 
-#include "delegate_bandwith.hpp"
+#include "delegate_bandwidth.hpp"
 #include <eosiolib/optional.hpp>
 
 #include <eosiolib/generic_currency.hpp>
 
 namespace eosiosystem {
 
-   struct PACKED(block_header) {
+   struct block_header {
       checksum256                               previous;
       time                                      timestamp;
       checksum256                               transaction_mroot;
@@ -20,18 +20,18 @@ namespace eosiosystem {
       account_name                              producer;
       uint32_t                                  schedule_version;
       eosio::optional<eosio::producer_schedule> new_producers;
-      
+
       EOSLIB_SERIALIZE(block_header, (previous)(timestamp)(transaction_mroot)(action_mroot)(block_mroot)
                                      (producer)(schedule_version)(new_producers))
    };
 
    template<account_name SystemAccount>
-   class contract : public delegate_bandwith<SystemAccount> {
+   class contract : public delegate_bandwidth<SystemAccount> {
       public:
          using voting<SystemAccount>::on;
-         using delegate_bandwith<SystemAccount>::on;
+         using delegate_bandwidth<SystemAccount>::on;
          using pe = voting<SystemAccount>;
-         using db = delegate_bandwith<SystemAccount>;
+         using db = delegate_bandwidth<SystemAccount>;
          using currency = typename common<SystemAccount>::currency;
          using system_token_type = typename common<SystemAccount>::system_token_type;
          using producers_table = typename pe::producers_table;
@@ -56,7 +56,7 @@ namespace eosiosystem {
                voting<SystemAccount>::update_elected_producers(block_time);
                return true;
             }
-            
+
             static const uint32_t slots_per_cycle = parameters.blocks_per_cycle;
             const uint32_t time_slots = block_time - parameters.first_block_time_in_cycle;
             if (time_slots >= slots_per_cycle) {
@@ -149,15 +149,15 @@ namespace eosiosystem {
                   p.last_rewards_claim = now();
                   p.per_block_payments.quantity = 0;
                });
-            
+
             currency::inline_transfer(cr.owner, SystemAccount, rewards, "producer claiming rewards");
          }
-         
+
          static void apply( account_name code, action_name act ) {
             if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
-               if( !eosio::dispatch<contract, typename delegate_bandwith<SystemAccount>::delegatebw,
-                                 typename delegate_bandwith<SystemAccount>::undelegatebw,
-                                 typename delegate_bandwith<SystemAccount>::refund,
+               if( !eosio::dispatch<contract, typename delegate_bandwidth<SystemAccount>::delegatebw,
+                                 typename delegate_bandwidth<SystemAccount>::undelegatebw,
+                                 typename delegate_bandwidth<SystemAccount>::refund,
                                  typename voting<SystemAccount>::regproxy,
                                  typename voting<SystemAccount>::unregproxy,
                                  typename voting<SystemAccount>::regproducer,
