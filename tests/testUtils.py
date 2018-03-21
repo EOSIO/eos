@@ -6,6 +6,7 @@ import glob
 import shutil
 import time
 import os
+import platform
 from collections import namedtuple
 import re
 import string
@@ -1532,9 +1533,11 @@ class Cluster(object):
         nodes=[]
 
         try:
-            pgrepOpts="-a"
-            if sys.platform == "darwin":
-                pgrepOpts="-fl"
+            pgrepOpts="-fl"
+            if platform.linux_distribution()[0] == "Ubuntu":
+                pgrepOpts="-a"
+            elif platform.linux_distribution()[0] == "LinuxMint":
+                pgrepOpts="-a"
 
             cmd="pgrep %s %s" % (pgrepOpts, Utils.EosServerName)
             Utils.Debug and Utils.Print("cmd: %s" % (cmd))

@@ -5,18 +5,16 @@
 	CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 )
 
-	DISK_INSTALL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f1`
-	DISK_TOTAL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f2 | sed 's/[^0-9\.]//g'`
-	DISK_AVAIL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f4 | sed 's/[^0-9\.]//g'`
+	DISK_TOTAL=`df -h / | grep /dev | tr -s ' ' | cut -d\  -f2 | sed 's/[^0-9]//'`
+	DISK_AVAIL=`df -h / | grep /dev | tr -s ' ' | cut -d\  -f4 | sed 's/[^0-9]//'`
 
 	printf "\n\tOS name: $OS_NAME\n"
 	printf "\tOS Version: ${OS_VER}\n"
 	printf "\tCPU speed: ${CPU_SPEED}Mhz\n"
 	printf "\tCPU cores: $CPU_CORE\n"
 	printf "\tPhysical Memory: $MEM_MEG Mgb\n"
-	printf "\tDisk install: ${DISK_INSTALL}\n"
-	printf "\tDisk space total: ${DISK_TOTAL%.*}G\n"
-	printf "\tDisk space available: ${DISK_AVAIL%.*}G\n"
+	printf "\tDisk space total: ${DISK_TOTAL}G\n"
+	printf "\tDisk space available: ${DISK_AVAIL}G\n"
 
 	if [ $MEM_MEG -lt 4000 ]; then
 		printf "\tYour system must have 4 or more Gigabytes of physical memory installed.\n"
@@ -30,7 +28,7 @@
 		exit 1
 	fi
 
-	if [ ${DISK_AVAIL%.*} -lt $DISK_MIN ]; then
+	if [ $DISK_AVAIL -lt $DISK_MIN ]; then
 		printf "\tYou must have at least ${DISK_MIN}GB of available storage to install EOSIO.\n"
 		printf "\texiting now.\n"
 		exit 1
@@ -55,8 +53,7 @@
 	fi
 	
 	printf "\t${UPDATE}\n"
-# 	DEP_ARRAY=(clang-4.0 lldb-4.0 libclang-4.0-dev cmake make libbz2-dev libssl-dev libgmp3-dev autotools-dev build-essential libicu-dev python-dev autoconf libtool)
-	DEP_ARRAY=( git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 bzip2-devel.x86_64 openssl-devel.x86_64 gmp.x86_64 gmp-devel.x86_64 libstdc++72.x86_64 python27-devel.x86_64 libedit-devel.x86_64 ncurses-devel.x86_64 swig.x86_64 )
+	DEP_ARRAY=( git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 bzip2-devel.x86_64 openssl-devel.x86_64 gmp.x86_64 gmp-devel.x86_64 libstdc++72.x86_64 python36-devel.x86_64 libedit-devel.x86_64 ncurses-devel.x86_64 swig.x86_64 )
 	DCOUNT=0
 	COUNT=1
 	DISPLAY=""
@@ -148,6 +145,106 @@
 		printf "\tBoost 1.66 found at ${HOME}/opt/boost_1_66_0\n"
 	fi
 
+	printf "\n\tChecking for MongoDB installation.\n"
+    if [ ! -e ${MONGOD_CONF} ]; then
+		printf "\n\tInstalling MongoDB 3.6.3.\n"
+		cd ${HOME}/opt
+		curl -OL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.tgz
+		if [ $? -ne 0 ]; then
+			printf "\tUnable to download MongoDB at this time.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		tar xf mongodb-linux-x86_64-amazon-3.6.3.tgz
+		rm -f mongodb-linux-x86_64-amazon-3.6.3.tgz
+		ln -s mongodb-linux-x86_64-amazon-3.6.3/ mongodb
+		mkdir ${HOME}/opt/mongodb/data
+		mkdir ${HOME}/opt/mongodb/log
+		touch ${HOME}/opt/mongodb/log/mongodb.log
+		
+tee > /dev/null ${MONGOD_CONF} <<mongodconf
+systemLog:
+ destination: file
+ path: ${HOME}/opt/mongodb/log/mongod.log
+ logAppend: true
+ logRotate: reopen
+net:
+ bindIp: 127.0.0.1,::1
+ ipv6: true
+storage:
+ dbPath: ${HOME}/opt/mongodb/data
+mongodconf
+
+	else
+		printf "\tMongoDB configuration found at ${MONGOD_CONF}.\n"
+	fi
+	
+	printf "\n\tChecking for MongoDB C++ driver.\n"
+    # install libmongocxx.dylib
+    if [ ! -e /usr/local/lib/libmongocxx.so ]; then
+		cd ${TEMP_DIR}
+		curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
+		if [ $? -ne 0 ]; then
+			rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz
+			printf "\tUnable to download MondgDB C driver at this time.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		tar xf mongo-c-driver-1.9.3.tar.gz
+		rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz
+		cd mongo-c-driver-1.9.3
+		./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+		if [ $? -ne 0 ]; then
+			printf "\tConfiguring MondgDB C driver has encountered the errors above.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		make -j${CPU_CORE}
+		if [ $? -ne 0 ]; then
+			printf "\tError compiling MondgDB C driver.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		sudo make install
+		if [ $? -ne 0 ]; then
+			printf "\tError installing MondgDB C driver.\nMake sure you have sudo privileges.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		cd ..
+		rm -rf ${TEMP_DIR}/mongo-c-driver-1.9.3
+		cd ${TEMP_DIR}
+		git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
+		if [ $? -ne 0 ]; then
+			printf "\tUnable to clone MondgDB C++ driver at this time.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		cd mongo-cxx-driver/build
+		${CMAKE} -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+		if [ $? -ne 0 ]; then
+			printf "\tCmake has encountered the above errors building the MongoDB C++ driver.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		sudo make -j${CPU_CORE}
+		if [ $? -ne 0 ]; then
+			printf "\tError compiling MondgDB C++ driver.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		sudo make install
+		if [ $? -ne 0 ]; then
+			printf "\tError installing MondgDB C++ driver.\nMake sure you have sudo privileges.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		cd ..
+		sudo rm -rf ${TEMP_DIR}/mongo-cxx-driver
+	else
+		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx.so.\n"
+	fi
+
 	printf "\n\tChecking for secp256k1-zkp\n"
     # install secp256k1-zkp (Cryptonomex branch)
     if [ ! -e /usr/local/lib/libsecp256k1.a ]; then
@@ -173,6 +270,29 @@
 	else
 		printf "\tsecp256k1 found\n"
 	fi
+
+   printf "\n\tChecking for SoftFloat\n"
+   if [ ! -d ${HOME}/opt/berkeley-softfloat-3 ]; then
+      # clone the library
+		cd ${TEMP_DIR}
+      mkdir softfloat
+      cd softfloat
+      git clone --depth 1 --single-branch --branch master https://github.com/ucb-bar/berkeley-softfloat-3.git
+      cd berkeley-softfloat-3/build/Linux-x86_64-GCC
+      make -j${CPU_CORE} SPECIALIZE_TYPE="8086-SSE" SOFTFLOAT_OPS="-DSOFTFLOAT_ROUND_EVEN -DINLINE_LEVEL=5 -DSOFTFLOAT_FAST_DIV32TO16 -DSOFTFLOAT_FAST_DIV64TO32"
+      if [ $? -ne 0 ]; then
+         printf "\tError compiling softfloat.\n"
+         printf "\tExiting now.\n\n"
+         exit;
+      fi
+      # no install target defined for this library
+      mkdir -p ${HOME}/opt/berkeley-softfloat-3
+      cp softfloat.a ${HOME}/opt/berkeley-softfloat-3/libsoftfloat.a
+      mv ${TEMP_DIR}/softfloat/berkeley-softfloat-3/source/include ${HOME}/opt/berkeley-softfloat-3/include
+		rm -rf ${TEMP_DIR}/softfloat
+	else
+		printf "\tsoftfloat found at /usr/local/berkeley-softfloat-3/\n"
+   fi
 
 	printf "\n\tChecking for LLVM with WASM support.\n"
 	if [ ! -d ${HOME}/opt/wasm/bin ]; then

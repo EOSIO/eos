@@ -37,7 +37,7 @@
 	WORK_DIR=$PWD
 	BUILD_DIR=${WORK_DIR}/build
 	TEMP_DIR=/tmp
-	ARCH=$(uname)
+	ARCH=$( uname )
 	DISK_MIN=20
 	BUILD_MONGO_DB_PLUGIN=false
 	
@@ -70,7 +70,7 @@
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
-				MONGOD_CONF=""
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 			;;
 			"CentOS Linux")
 				FILE=${WORK_DIR}/scripts/eosio_build_centos.sh
@@ -177,6 +177,8 @@
 		else
 			printf "\n\tMongoDB is running PID=${MONGODB_PID}.\n"
 		fi
+		
+		make test
 	fi
 
    if [ "x${EOSIO_BUILD_PACKAGE}" != "x" ]; then
