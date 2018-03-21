@@ -21,7 +21,7 @@ wdhost=127.0.0.1
 #    cnt_dir=$CONTRACT_DIR
 #    sys=$SYS_CONTRACT
 # where $BIOS_HOSTNAME is replaced by the hostname portion of the http-server-address configured
-# for the eosiod instance running to bios producer
+# for the nodeos instance running to bios producer
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT envars
 
@@ -44,9 +44,9 @@ sleep 1
 
 ecmd () {
     echo ===== Start: $step ============ >> $logfile
-    echo executing: eosioc --wallet-port $wdport -p $biosport  -H $bioshost $* | tee -a $logfile
+    echo executing: cleos --wallet-port $wdport -p $biosport  -H $bioshost $* | tee -a $logfile
     echo ----------------------- >> $logfile
-    programs/eosioc/eosioc --wallet-port $wdport --wallet-host $wdhost -p $biosport  -H $bioshost $* >> $logfile 2>&1
+    programs/cleos/cleos --wallet-port $wdport --wallet-host $wdhost -p $biosport  -H $bioshost $* >> $logfile 2>&1
     echo ==== End: $step ============== >> $logfile
     step=$(($step + 1))
 }
@@ -85,9 +85,9 @@ ecmd set contract eosio contracts/test.system/test.system.wast contracts/test.sy
 
 #the setprods.json argument cannot pass through the function call due to embedded quotes
     echo ===== Start: $step ============ >> $logfile
-    echo executing: eosioc --wallet-port $wdport -p $biosport -H $bioshost push action eosio setprods "$(cat setprods.json)" -p eosio@active | tee -a $logfile
+    echo executing: cleos --wallet-port $wdport -p $biosport -H $bioshost push action eosio setprods "$(cat setprods.json)" -p eosio@active | tee -a $logfile
     echo ----------------------- >> $logfile
-    programs/eosioc/eosioc --wallet-port $wdport --wallet-host $wdhost -p $biosport -H $bioshost push action eosio setprods "$(cat setprods.json)" -p eosio@active >> $logfile 2>&1
+    programs/cleos/cleos --wallet-port $wdport --wallet-host $wdhost -p $biosport -H $bioshost push action eosio setprods "$(cat setprods.json)" -p eosio@active >> $logfile 2>&1
     echo ==== End: $step ============== >> $logfile
     step=$(($step + 1))
 
