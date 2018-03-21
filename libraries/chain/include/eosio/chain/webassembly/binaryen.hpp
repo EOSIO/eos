@@ -156,7 +156,7 @@ class binaryen_runtime : public eosio::chain::wasm_runtime_interface {
 template<typename T>
 inline array_ptr<T> array_ptr_impl (interpreter_interface* interface, uint32_t ptr, size_t length)
 {
-   return array_ptr<T>((T*)(interface->get_validated_pointer(ptr, length)));
+   return array_ptr<T>((T*)(interface->get_validated_pointer(ptr, length * sizeof(T))));
 }
 
 /**
@@ -403,6 +403,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
       uint32_t ptr_t = args.at(offset - 2).geti32();
       uint32_t ptr_u = args.at(offset - 1).geti32();
       size_t length = args.at(offset).geti32();
+      assert(sizeof(T) == sizeof(U));
       return Then(interface, array_ptr_impl<T>(interface, ptr_t, length), array_ptr_impl<U>(interface, ptr_u, length), length, args, offset - 3);
    };
 
@@ -453,7 +454,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
    template<then_type Then>
    static Ret translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) {
       uint32_t ptr = args.at(offset).geti32();
-      T* base = array_ptr_impl<T>(interface, ptr, sizeof(T));
+      T* base = array_ptr_impl<T>(interface, ptr, 1);
       return Then(interface, base, rest..., args, offset - 1);
    };
 
@@ -534,7 +535,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
       // references cannot be created for null pointers
       uint32_t ptr = args.at(offset).geti32();
       FC_ASSERT(ptr != 0);
-      T* base = array_ptr_impl<T>(interface, ptr, sizeof(T));
+      T* base = array_ptr_impl<T>(interface, ptr, 1);
       return Then(interface, *base, rest..., args, offset - 1);
    }
 

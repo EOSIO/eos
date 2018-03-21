@@ -33,7 +33,7 @@ extern running_instance_context the_running_instance_context;
 /**
  * class to represent an in-wasm-memory array
  * it is a hint to the transcriber that the next parameter will
- * be a size (data bytes length) and that the pair are validated together
+ * be a size (in Ts) and that the pair are validated together
  * This triggers the template specialization of intrinsic_invoker_impl
  * @tparam T
  */
@@ -41,7 +41,7 @@ template<typename T>
 inline array_ptr<T> array_ptr_impl (running_instance_context& ctx, U32 ptr, size_t length)
 {
    MemoryInstance* mem = ctx.memory;
-   if(!mem || ptr + length > IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
+   if(!mem || ptr + (length * sizeof(T)) > IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
       Runtime::causeException(Exception::Cause::accessViolation);
 
    return array_ptr<T>((T*)(getMemoryBaseAddress(mem) + ptr));
@@ -446,6 +446,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
    template<then_type Then>
    static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr_t, I32 ptr_u, I32 size) {
       const auto length = size_t(size);
+      assert(sizeof(T)==sizeof(U));
       return Then(ctx, array_ptr_impl<T>(ctx, ptr_t, length), array_ptr_impl<U>(ctx, ptr_u, length), length, rest..., translated...);
    };
 
@@ -495,7 +496,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Transl
 
    template<then_type Then>
    static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) {
-      T* base = array_ptr_impl<T>(ctx, ptr, sizeof(T));
+      T* base = array_ptr_impl<T>(ctx, ptr, 1);
       return Then(ctx, base, rest..., translated...);
    };
 
