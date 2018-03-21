@@ -413,7 +413,7 @@ void apply_eosio_postrecovery(apply_context& context) {
    auto data = get_abi_serializer().variant_to_binary("pending_recovery", record_data);
    const uint64_t id = account;
    const uint64_t table = N(recovery);
-   const auto payer = config::system_account_name;
+   const auto payer = account;
    const auto iter = context.db_find_i64(config::system_account_name, account, table, id);
    if (iter == -1) {
       context.db_store_i64(account, table, payer, id, (const char*)data.data(), data.size());
