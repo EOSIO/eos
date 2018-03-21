@@ -39,6 +39,7 @@
 	TEMP_DIR=/tmp
 	ARCH=$(uname)
 	DISK_MIN=20
+	BUILD_MONGO_DB_PLUGIN=false
 	
 	txtbld=$(tput bold)
 	bldred=${txtbld}$(tput setaf 1)
@@ -69,7 +70,6 @@
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
-				BUILD_MONGO_DB_PLUGIN=false
 				MONGOD_CONF=""
 			;;
 			"CentOS Linux")
@@ -78,7 +78,6 @@
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
-				BUILD_MONGO_DB_PLUGIN=true
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
@@ -87,35 +86,31 @@
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
-				BUILD_MONGO_DB_PLUGIN=true
 				MONGOD_CONF=/etc/mongod.conf
 			;;
 			"Linux Mint")
 				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
-				BUILD_MONGO_DB_PLUGIN=true
 				MONGOD_CONF=/etc/mongod.conf
 			;;
 			"Ubuntu")
 				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
-				BUILD_MONGO_DB_PLUGIN=true
 				MONGOD_CONF=/etc/mongod.conf
 			;;
 			*)
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
 				exit 1
 		esac
-			
+		
 		export BOOST_ROOT=${HOME}/opt/boost_1_66_0
 		export OPENSSL_ROOT_DIR=/usr/include/openssl
 		export OPENSSL_LIBRARIES=/usr/include/openssl
 		export WASM_ROOT=${HOME}/opt/wasm
 
 	 . $FILE
-	
 	fi
 
 	if [ $ARCH == "Darwin" ]; then
@@ -124,7 +119,6 @@
 		export WASM_ROOT=/usr/local/wasm
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
-		BUILD_MONGO_DB_PLUGIN=true
 		MONGOD_CONF=/usr/local/etc/mongod.conf
 
 	  . scripts/eosio_build_darwin.sh
@@ -144,6 +138,10 @@
 		CMAKE=$( which cmake )
 	fi
 	
+	if [ -f ${MONGOD_CONF} ]; then
+		BUILD_MONGO_DB_PLUGIN=true
+	fi
+
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
 	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
 	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DBUILD_MONGO_DB_PLUGIN=${BUILD_MONGO_DB_PLUGIN} \
@@ -168,7 +166,7 @@
 		MONGODB_PID=$( pgrep -x mongod )
 		if [ -z $MONGODB_PID ]; then
 			printf "\n\tStarting MongoDB.\n"
-			${HOME}/opt/mongodb/bin/mongod -f ${MONGOD_CONF} &
+			mongod -f ${MONGOD_CONF} &
 			if [ $? -ne 0 ]; then
 				printf "\n\tUnable to start MongoDB.\nExiting now.\n\n"
 				exit -1
