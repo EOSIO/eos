@@ -180,11 +180,11 @@ def stageScenario(stagedNodeInfos):
     os.makedirs(stagingDir)
     count=0
     for stagedNodeInfo in stagedNodeInfos:
-        dataPath=os.path.join(stagingDir, "tn_data_%02d" % (count))
-        os.makedirs(dataPath)
-        with open(os.path.join(dataPath, "config.ini"), "w") as textFile:
+        configPath=os.path.join(stagingDir, "etc/eosio/node_%02d" % (count))
+        os.makedirs(configPath)
+        with open(os.path.join(configPath, "config.ini"), "w") as textFile:
             print(stagedNodeInfo.config,file=textFile)
-        with open(os.path.join(dataPath, "logging.json"), "w") as textFile:
+        with open(os.path.join(configPath, "logging.json"), "w") as textFile:
             print(stagedNodeInfo.logging,file=textFile)
         count += 1
     return
@@ -199,7 +199,7 @@ def errorExit(msg="", errorCode=1):
 
 def error(msg="", errorCode=1):
     Print("ERROR:", msg)
-    
+
 parser = argparse.ArgumentParser()
 tests=[1,2,3]
 
@@ -207,9 +207,9 @@ parser.add_argument("-t", "--tests", type=str, help="1|2|3 1=run no malicious pr
 parser.add_argument("-w", type=int, help="system wait time", default=testUtils.Utils.systemWaitTimeout)
 parser.add_argument("-v", help="verbose logging", action='store_true')
 parser.add_argument("--dump-error-details",
-                    help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
+                    help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
                     action='store_true')
-parser.add_argument("--keep-logs", help="Don't delete tn_data_* folders upon test completion",
+parser.add_argument("--keep-logs", help="Don't delete var/lib/node_* folders upon test completion",
                     action='store_true')
 parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
 parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
@@ -291,7 +291,7 @@ def myTest(transWillEnterBlock):
         if not walletMgr.importKey(initaAccount, testWallet):
             error("Failed to import key for account %s" % (initaAccount.name))
             return False
-    
+
         Print("Create new account %s via %s" % (currencyAccount.name, initaAccount.name))
         transId=node.createAccount(currencyAccount, initaAccount, stakedDeposit=5000, waitForTransBlock=True)
         if transId is None:
@@ -344,7 +344,7 @@ def myTest(transWillEnterBlock):
             blockNum=int(transaction["transaction"]["ref_block_num"])
             blockNum += 1
             Print("Our transaction is in block %d" % (blockNum))
-        
+
             block=node2.getBlock(blockNum)
             cycles=block["cycles"]
             if len(cycles) > 0:
@@ -352,7 +352,7 @@ def myTest(transWillEnterBlock):
                 # Print("Transaction signature: %s\nBlock transaction signature: %s" %
                 #       (signature, blockTransSignature))
                 transInBlock=(signature == blockTransSignature)
-        
+
         if transWillEnterBlock:
             if not transInBlock:
                 error("Transaction did not enter the chain.")
@@ -393,7 +393,7 @@ try:
         if not myTest(True):
             exit(1)
 
-    if 2 in tests:    
+    if 2 in tests:
         Print("\nCluster with minority(1) malicious nodes. Majority producers expected to approve transaction. Hence transaction is expected to enter the chain.")
         cleanStaging()
         stageScenario(getMinorityMaliciousProducerStagedNodesInfo())
@@ -409,6 +409,5 @@ try:
 
 finally:
     cleanStaging()
-    
-exit(0)
 
+exit(0)

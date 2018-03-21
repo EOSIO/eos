@@ -9,8 +9,8 @@ import re
 
 ###############################################################
 # nodeos_run_test
-# --dump-error-details <Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout>
-# --keep-logs <Don't delete tn_data_* folders upon test completion>
+# --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
+# --keep-logs <Don't delete var/lib/node_* folders upon test completion>
 ###############################################################
 
 Print=testUtils.Utils.Print
@@ -43,11 +43,11 @@ parser.add_argument("--initb_prvt_key", type=str, help="Initb private key.",
                     default=testUtils.Cluster.initbAccount.ownerPrivateKey)
 parser.add_argument("--mongodb", help="Configure a MongoDb instance", action='store_true')
 parser.add_argument("--dump-error-details",
-                    help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
+                    help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
                     action='store_true')
 parser.add_argument("--dont-launch", help="Don't launch own node. Assume node is already running.",
                     action='store_true')
-parser.add_argument("--keep-logs", help="Don't delete tn_data_* folders upon test completion",
+parser.add_argument("--keep-logs", help="Don't delete var/lib/node_* folders upon test completion",
                     action='store_true')
 parser.add_argument("-v", help="verbose logging", action='store_true')
 parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
@@ -634,11 +634,11 @@ try:
 
     if localTest:
         p = re.compile('Assert')
-        errFileName="tn_data_00/stderr.txt"
+        errFileName="var/lib/node_00/stderr.txt"
         with open(errFileName) as errFile:
             for line in errFile:
                 if p.search(line):
-                   errorExit("FAILURE - Assert in tn_data_00/stderr.txt")
+                   errorExit("FAILURE - Assert in var/lib/node_00/stderr.txt")
 
     testSuccessful=True
     Print("END")

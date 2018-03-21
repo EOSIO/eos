@@ -95,4 +95,4 @@ echo waiting for producers to settle
 sleep 10
 echo shutting down ignition wallet and bios node
 pkill -15 eosiowd
-kill -15 $(cat var/lib/node_bios/eosiod.pid)
+kill -15 $(cat var/lib/node_bios/nodeos.pid)

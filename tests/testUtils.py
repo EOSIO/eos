@@ -1542,7 +1542,7 @@ class Cluster(object):
             #Utils.Print("psOut: <%s>" % psOut)
 
             for i in range(0, totalNodes):
-                pattern="[\n]?(\d+) (.* --data-dir tn_data_%02d)" % (i)
+                pattern="[\n]?(\d+) (.* --data-dir var/lib/node_%02d)" % (i)
                 m=re.search(pattern, psOut, re.MULTILINE)
                 if m is None:
                     Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
@@ -1597,7 +1597,7 @@ class Cluster(object):
                 running=False
 
             if running is False:
-                dataDir="tn_data_%02d" % (i)
+                dataDir="var/lib/node_%02d" % (i)
                 dt = datetime.datetime.now()
                 dateStr="%d_%02d_%02d_%02d_%02d_%02d" % (
                     dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
@@ -1611,14 +1611,18 @@ class Cluster(object):
 
         return self.updateNodesStatus()
 
+    def dumpErrorDEtailImpl(self,fileName):
+        Utils.Print("=================================================================")
+        Utils.Print("Contents of %s:" % (fileName))
+        with open(fileName, "r") as f:
+            shutil.copyfileobj(f, sys.stdout)
+
     def dumpErrorDetails(self):
         for i in range(0, len(self.nodes)):
-            for f in ("config.ini", "stderr.txt"):
-                Utils.Print("=================================================================")
-                fileName="tn_data_%02d/%s" % (i, f)
-                Utils.Print("Contents of %s:" % (fileName))
-                with open(fileName, "r") as f:
-                    shutil.copyfileobj(f, sys.stdout)
+            fileName="etc/eosio/node_$02d/config.ini" % (i)
+            dumpErrorDetailImpl(filenme)
+            fileName="var/lib/node_%02d/stderr.txt" % (i)
+            dumpErrorDetailImpl(filenme)
 
     def killall(self):
         cmd="%s -k 15" % (Utils.EosLauncherPath)
@@ -1639,7 +1643,9 @@ class Cluster(object):
         return node.waitForNextBlock(timeout)
 
     def cleanup(self):
-        for f in glob.glob("tn_data_*"):
+        for f in glob.glob("var/lib/node_*"):
+            shutil.rmtree(f)
+        for f in glob.glob("etc/eosio/node_*"):
             shutil.rmtree(f)
 
         if self.enableMongo:

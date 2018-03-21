@@ -246,22 +246,22 @@ read -d '' logging02 << EOF
 EOF
 
 rm -rf staging
-rm -rf tn_data_*
-
+rm -rf etc/eosio/node_*
+rm -rf var/lib
 cName=config.ini
 lName=logging.json
 
-path=staging/tn_data_00
+path=staging/etc/eosio/node_00
 mkdir -p $path
 echo "$config00" > $path/$cName
 echo "$logging00" > $path/$lName
 
-path=staging/tn_data_01
+path=staging/etc/eosio/node_01
 mkdir -p $path
 echo "$config01" > $path/$cName
 echo "$logging01" > $path/$lName
 
-path=staging/tn_data_02
+path=staging/etc/eosio/node_02
 mkdir -p $path
 echo "$config02" > $path/$cName
 echo "$logging02" > $path/$lName
@@ -270,7 +270,7 @@ echo "$logging02" > $path/$lName
 programs/launcher/launcher -p $pnodes -n $total_nodes --nogen -d $delay
 
 sleep 1
-res=$(grep "reason = duplicate" tn_data_0*/stderr.txt | wc -l)
+res=$(grep "reason = duplicate" var/lib/node_0*/stderr.txt | wc -l)
 
 if [ $res -ne 0 ]; then
     echo FAILURE: got a \"duplicate\" message
@@ -280,5 +280,6 @@ fi
 
 programs/launcher/launcher -k 15
 rm -rf staging
-rm -rf tn_data_*
+rm -rf var/lib/node_*
+rm -rf etc/eosio/node_*
 exit $res

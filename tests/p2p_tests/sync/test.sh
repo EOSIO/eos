@@ -56,7 +56,7 @@ total_nodes="${total_nodes:-`echo $pnodes`}"
 launcherPath="programs/eosio-launcher/eosio-launcher"
 clientPath="programs/cleos/cleos"
 
-rm -rf etc/eosio/eosio_bios etc/eosio/node_* var/lib/* stage
+rm -rf etc/eosio/node_* var/lib/* stage
 ls -l etc/eosio var/lib
 
 debugArg=""
@@ -77,7 +77,7 @@ port=8888
 endport=`expr $port + $total_nodes`
 echo endport = $endport
 while [ $port  -ne $endport ]; do
-    cmd="$clientPath --port $port get block 1 >> test.out 2>&1;"
+    cmd="$clientPath --port $port get block 20 >> test.out 2>&1;"
     echo cmd: $cmd
     eval $cmd
     port=`expr $port + 1`
@@ -98,19 +98,19 @@ fi
 
 echo $lines reports out of $total_nodes and prods = $prodsfound
 sleep 18
-cmd="$clientPath --port 8888 get block 5"
+cmd="$clientPath --port 8888 get block 25"
 echo cmd: $cmd
 eval $cmd
 sleep 15
-cmd="$clientPath --port 8888 get block 10"
+cmd="$clientPath --port 8888 get block 30"
 echo cmd: $cmd
 eval $cmd
 sleep 15
-cmd="$clientPath --port 8888 get block 15"
+cmd="$clientPath --port 8888 get block 35"
 echo cmd: $cmd
 eval $cmd
 sleep 15
-cmd="$clientPath --port 8888 get block 20"
+cmd="$clientPath --port 8888 get block 40"
 echo cmd: $cmd
 eval $cmd
 sleep 15
