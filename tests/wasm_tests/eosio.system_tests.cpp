@@ -205,8 +205,19 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, total["cpu_weight"].as_uint64());
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, total["storage_stake"].as_uint64());
    BOOST_REQUIRE_EQUAL( 0, total["storage_bytes"].as_uint64());
-   BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
    REQUIRE_MATCHING_OBJECT( voter( "alice", "0.00 EOS" ), get_voter_info( "alice" ) );
+   control->push_deferred_transactions(true);
+   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
+
+   //after 2 days balance should not be available yet
+   produce_block( fc::hours(3*24-1) );
+   control->push_deferred_transactions(true);
+   BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
+
+   //after 3 days funds should be released
+   produce_block( fc::hours(1) );
+   control->push_deferred_transactions(true);
+   BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
 
 } FC_LOG_AND_RETHROW()
 
@@ -479,7 +490,22 @@ BOOST_FIXTURE_TEST_CASE( adding_stake_partial_unstake, eosio_system_tester ) try
    BOOST_REQUIRE_EQUAL( asset::from_string("120.0000 EOS").amount - asset::from_string("120.0000 EOS").amount * (bytes/2)/bytes,
                         total["storage_stake"].as_uint64());
    REQUIRE_MATCHING_OBJECT( voter( "alice", "225.0000 EOS" ), get_voter_info( "alice" ) );
-   BOOST_REQUIRE_EQUAL( asset::from_string("715.0000 EOS"), get_balance( "alice" ) );
+
+   //unstake more
+   BOOST_REQUIRE_EQUAL( success(), unstake( "alice", "bob", "50.0000 EOS", "25.0000 EOS", 0 ) );
+   total = get_total_stake( "bob" );
+   BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS").amount, total["net_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( asset::from_string("50.0000 EOS").amount, total["cpu_weight"].as_uint64());
+   BOOST_REQUIRE_EQUAL( bytes-bytes/2, total["storage_bytes"].as_uint64() );
+   REQUIRE_MATCHING_OBJECT( voter( "alice", "150.0000 EOS" ), get_voter_info( "alice" ) );
+
+   //combined amount should be available only in 3 days
+   produce_block( fc::days(2) );
+   control->push_deferred_transactions(true);
+   BOOST_REQUIRE_EQUAL( asset::from_string("430.0000 EOS"), get_balance( "alice" ) );
+   produce_block( fc::days(1) );
+   control->push_deferred_transactions(true);
+   BOOST_REQUIRE_EQUAL( asset::from_string("790.0000 EOS"), get_balance( "alice" ) );
 
 } FC_LOG_AND_RETHROW()
 
@@ -628,11 +654,14 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    //should decrease alice's total_votes to zero
    prod = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL( 0, prod["total_votes"].as_uint64() );
-   BOOST_REQUIRE_EQUAL( asset::from_string("3000.0000 EOS"), get_balance( "carol" ) );
    //check that the producer parameters stay the same after all
    BOOST_REQUIRE_EQUAL( "alice", prod["owner"].as_string() );
    REQUIRE_MATCHING_OBJECT( params, prod["prefs"]);
    BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
+   //carol should receive funds in 3 days
+   produce_block( fc::days(3) );
+   control->push_deferred_transactions(true);
+   BOOST_REQUIRE_EQUAL( asset::from_string("3000.0000 EOS"), get_balance( "carol" ) );
 
 } FC_LOG_AND_RETHROW()
 

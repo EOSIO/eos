@@ -16,10 +16,10 @@ namespace eosiosystem {
          typedef typename currency::token_type                                    system_token_type;
 
          static constexpr uint64_t   currency_symbol = currency::symbol;            // S(4,EOS)
-         static const uint32_t       max_inflation_rate = 5;                        // 5% annual inflation
+         static constexpr uint32_t   max_inflation_rate = 5;                        // 5% annual inflation
 
-         static const uint32_t       blocks_per_producer = 6;
-         static const uint32_t       seconds_per_day = 24 * 3600;
+         static constexpr uint32_t   blocks_per_producer = 6;
+         static constexpr uint32_t   seconds_per_day = 24 * 3600;
          static constexpr uint32_t   days_per_4years = 1461;
          
          struct eosio_parameters : eosio::blockchain_parameters {
@@ -42,7 +42,7 @@ namespace eosiosystem {
             EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio_parameters, (total_storage_bytes_reserved)(total_storage_stake)
                                       (payment_per_block)(payment_to_eos_bucket)(first_block_time_in_cycle)(blocks_per_cycle)
                                       (last_bucket_fill_time)(eos_bucket) )
-      };
+         };
 
          typedef eosio::singleton<SystemAccount, N(inflation), SystemAccount, eosio_global_state> global_state_singleton;
 

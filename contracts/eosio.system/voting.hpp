@@ -39,10 +39,7 @@ namespace eosiosystem {
          using eosio_parameters = typename common<SystemAccount>::eosio_parameters;
          using global_state_singleton = typename common<SystemAccount>::global_state_singleton;
 
-         static const uint32_t max_inflation_rate = common<SystemAccount>::max_inflation_rate;
-         static constexpr uint32_t max_unstake_requests = 10;
-         static constexpr uint32_t unstake_pay_period = 7*24*3600; // one per week
-         static constexpr uint32_t unstake_payments = 26; // during 26 weeks
+         static constexpr uint32_t max_inflation_rate = common<SystemAccount>::max_inflation_rate;
          static constexpr uint32_t blocks_per_year = 52*7*24*2*3600; // half seconds per year
 
          struct producer_info {
@@ -356,34 +353,6 @@ namespace eosiosystem {
             currency::inline_issue(SystemAccount, issue_quantity);
             set_blockchain_parameters(&parameters);
             global_state_singleton::set(parameters);
-         }
-
-         ACTION(  SystemAccount, unstake_vote_deferred ) {
-            account_name                voter;
-
-            EOSLIB_SERIALIZE( unstake_vote_deferred, (voter) )
-         };
-
-         static void on( const unstake_vote_deferred& usv) {
-            require_auth( usv.voter );
-            voters_table voters_tbl( SystemAccount, SystemAccount );
-            auto voter = voters_tbl.find( usv.voter );
-            eosio_assert( voter != voters_tbl.end(), "stake not found" );
-
-            auto weeks = (now() - voter->last_unstake_time) / unstake_pay_period;
-            eosio_assert( 0 == weeks, "less than one week passed since last transfer or unstake request" );
-            eosio_assert( 0 < voter->unstaking.quantity, "no unstaking money to transfer" );
-
-            auto unstake_amount = std::min(weeks * voter->unstake_per_week, voter->unstaking);
-            uint32_t new_trx_id = unstake_amount < voter->unstaking ? /* XXX send_deferred() */ 0 : 0;
-
-            currency::inline_transfer( SystemAccount, usv.voter, unstake_amount, "unstake voting" );
-
-            voters_tbl.modify( voter, 0, [&](voter_info& a) {
-                  a.unstaking -= unstake_amount;
-                  a.deferred_trx_id = new_trx_id;
-                  a.last_unstake_time = a.last_unstake_time + weeks * unstake_pay_period;
-               });
          }
 
          ACTION( SystemAccount, voteproducer ) {
