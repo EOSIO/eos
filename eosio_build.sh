@@ -68,6 +68,7 @@
 				C_COMPILER=gcc
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"CentOS Linux")
 				FILE=${WORK_DIR}/scripts/eosio_build_centos.sh
