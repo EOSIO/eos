@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-v", help="verbose", action='store_true')
 parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
 parser.add_argument("--dump-error-details",
-                    Shelp="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
+                    help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
                     action='store_true')
 
 args = parser.parse_args()
