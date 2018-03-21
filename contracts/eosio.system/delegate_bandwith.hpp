@@ -251,12 +251,16 @@ namespace eosiosystem {
                   });
             } else {
                refunds_tbl.emplace( del.from, [&]( refund_request& r ) {
+                     r.owner = del.from;
                      r.amount = del.unstake_net_quantity + del.unstake_cpu_quantity + storage_stake_decrease;
                      r.request_time = now();
                   });
             }
             //cancel previous deferred transaction if we have one
-            cancel_deferred( del.from );
+            //because of an implementation bug currently it would cancel transaction
+            //that will be created later in this action
+            //commenting out for now
+            //cancel_deferred( del.from );
 
             //create new deferred transaction
             const auto self = current_receiver();
