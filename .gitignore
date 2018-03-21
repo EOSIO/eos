@@ -74,6 +74,7 @@ object_database/*
 build/*
 build-debug/*
 
-tn_data_*
+etc/eosio/node_*
+var/lib/node_*
 .vscode
 .DS_Store

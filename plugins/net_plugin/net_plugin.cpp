@@ -965,7 +965,7 @@ namespace eosio {
    }
 
    void connection::enqueue( const net_message &m, bool trigger_send ) {
-      bool close_after_send = false;
+      go_away_reason close_after_send = no_reason;
       if(m.contains<sync_request_message>()) {
          sync_wait( );
       }
@@ -974,7 +974,9 @@ namespace eosio {
          fetch_wait( );
       }
       else {
-         close_after_send = m.contains<go_away_message>();
+         if (m.contains<go_away_message>()) {
+            close_after_send = m.get<go_away_message>().reason;
+         }
       }
 
       uint32_t payload_size = fc::raw::pack_size( m );
@@ -991,8 +993,8 @@ namespace eosio {
       queue_write(send_buffer,trigger_send,
                   [this, close_after_send](boost::system::error_code ec, std::size_t ) {
                      write_depth--;
-                     if(close_after_send) {
-                        elog ("sent a go away message, closing connection to ${p}",("p",peer_name()));
+                     if(close_after_send != no_reason) {
+                        elog ("sent a go away message: ${r}, closing connection to ${p}",("r",reason_str(close_after_send))("p",peer_name()));
                         my_impl->close(shared_from_this());
                         return;
                      }
@@ -1124,6 +1126,9 @@ namespace eosio {
       state = newstate;
       string ns = state == in_sync ? "in sync" : state == lib_catchup ? "lib catchup" : "head catchup";
       fc_dlog(logger, "old state ${os} becoming ${ns}",("os",os)("ns",ns));
+      if (state == in_sync) {
+         source.reset();
+      }
    }
 
    bool sync_manager::is_active(connection_ptr c) {
@@ -1137,12 +1142,16 @@ namespace eosio {
    }
 
    void sync_manager::reset_lib_num(connection_ptr c) {
+      if(state == in_sync) {
+         sync_last_requested_num = chain_plug->chain().last_irreversible_block_num();
+         source.reset();
+      }
       if( c->current() ) {
          if( c->last_handshake_recv.last_irreversible_block_num > sync_known_lib_num) {
             sync_known_lib_num =c->last_handshake_recv.last_irreversible_block_num;
          }
       } else if( c == source ) {
-         sync_last_requested_num = chain_plug->chain().head_block_num();
+         sync_last_requested_num = chain_plug->chain().last_irreversible_block_num();
          request_next_chunk();
       }
    }
@@ -1212,10 +1221,8 @@ namespace eosio {
 
       if (!source) {
          elog("Unable to continue syncing at this time");
-         sync_last_requested_num = chain_plug->chain().head_block_num();
          sync_known_lib_num = chain_plug->chain().last_irreversible_block_num();
-         fc_ilog(logger, "resetting request, our last req is ${cc}, peer ${p}",
-                 ( "cc",sync_last_requested_num)("p",source->peer_name()));
+         sync_last_requested_num = sync_known_lib_num;
          return;
       }
 
