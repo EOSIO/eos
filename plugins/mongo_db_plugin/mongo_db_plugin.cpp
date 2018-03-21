@@ -478,7 +478,7 @@ void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_bl
                for (const auto& trx : trx_trace.deferred_transactions) {
                   auto doc = process_trx(trx);
                   doc.append(kvp("type", "deferred"),
-                             kvp("sender_id", b_int64{trx.sender_id}),
+                             kvp("sender_id", b_int64{static_cast<int64_t>(trx.sender_id)}),
                              kvp("sender", trx.sender.to_string()),
                              kvp("execute_after", b_date{std::chrono::milliseconds{
                                    std::chrono::seconds{trx.execute_after.sec_since_epoch()}}}));
