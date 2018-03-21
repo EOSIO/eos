@@ -1112,7 +1112,7 @@ class transaction_api : public context_aware_api {
          context.execute_inline(std::move(act));
       }
 
-      void send_deferred( uint32_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
+      void send_deferred( uint64_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
          try {
             // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
             FC_ASSERT(data_len < config::default_max_gen_trx_size, "generated transaction too big");
@@ -1124,6 +1124,10 @@ class transaction_api : public context_aware_api {
             dtrx.execute_after = execute_after;
             context.execute_deferred(std::move(dtrx));
          } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
+      }
+
+      void cancel_deferred( uint64_t sender_id ) {
+         context.cancel_deferred( sender_id );
       }
 };
 
@@ -1633,8 +1637,9 @@ REGISTER_INTRINSICS(context_free_transaction_api,
 );
 
 REGISTER_INTRINSICS(transaction_api,
-   (send_inline,           void(int, int)            )
-   (send_deferred,         void(int, int, int, int)  )
+   (send_inline,           void(int, int)               )
+   (send_deferred,         void(int64_t, int, int, int) )
+   (cancel_deferred,       void(int64_t)                )
 );
 
 REGISTER_INTRINSICS(context_free_api,

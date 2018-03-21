@@ -51,6 +51,12 @@
          {"name":"unstake_bytes", "type":"uint64"}
       ]
     },{
+      "name": "refund",
+      "base": "",
+      "fields": [
+         {"name":"owner", "type":"account_name"}
+      ]
+    },{
       "name": "delegated_bandwidth",
       "base": "",
       "fields": [
@@ -180,6 +186,9 @@
     },{
       "name": "undelegatebw",
       "type": "undelegatebw"
+    },{
+      "name": "refund",
+      "type": "refund"
     },{
       "name": "regproducer",
       "type": "regproducer"
