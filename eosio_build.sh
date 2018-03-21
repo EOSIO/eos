@@ -45,7 +45,7 @@
 	bldred=${txtbld}$(tput setaf 1)
 	txtrst=$(tput sgr0)
 
-	printf "\n\tARCHITECTURE ${ARCH}\n"
+	printf "\n\tARCHITECTURE: ${ARCH}\n"
 
 	if [ $ARCH == "Linux" ]; then
 		
@@ -165,7 +165,8 @@
 		printf "\n\tVerifying MongoDB is running.\n"
 		MONGODB_PID=$( pgrep -x mongod )
 		if [ -z $MONGODB_PID ]; then
-			printf "\n\tStarting MongoDB.\n"
+			printf "\tMongoDB is not currently running.\n"
+			printf "\tStarting MongoDB.\n"
 			mongod -f ${MONGOD_CONF} &
 			if [ $? -ne 0 ]; then
 				printf "\n\tUnable to start MongoDB.\nExiting now.\n\n"
