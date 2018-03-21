@@ -43,12 +43,8 @@ namespace LLVMJIT
 		, llvmModule(new llvm::Module("",context))
 		, diBuilder(*llvmModule)
 		{
-			diModuleScope = diBuilder.createFile("debug.info",".");
-#ifdef _DEBUG
-			diCompileUnit = diBuilder.createCompileUnit(llvm::dwarf::DW_LANG_C, diModuleScope,"WAVM",0,"",0);
-#else
+			diModuleScope = diBuilder.createFile("unknown","unknown");
 			diCompileUnit = diBuilder.createCompileUnit(0xffff,diModuleScope,"WAVM",true,"",0);
-#endif
 
 			diValueTypes[(Uptr)ValueType::any] = nullptr;
 			diValueTypes[(Uptr)ValueType::i32] = diBuilder.createBasicType("i32",32,llvm::dwarf::DW_ATE_signed);
