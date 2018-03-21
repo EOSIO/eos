@@ -6,8 +6,8 @@
 #include <eosio/chain/contracts/eos_contract.hpp>
 #include <eosio/chain/contracts/contract_table_objects.hpp>
 
-#include <test.system/test.system.wast.hpp>
-#include <test.system/test.system.abi.hpp>
+#include <eosio.bios/eosio.bios.wast.hpp>
+#include <eosio.bios/eosio.bios.abi.hpp>
 
 #include <fc/utility.hpp>
 #include <fc/io/json.hpp>
@@ -465,8 +465,8 @@ namespace eosio { namespace testing {
    tester::tester(chain_controller::controller_config config): base_tester(config) {};
 
    void tester::push_genesis_block() {
-      set_code(config::system_account_name, test_system_wast);
-      set_abi(config::system_account_name, test_system_abi);
+      set_code(config::system_account_name, eosio_bios_wast);
+      set_abi(config::system_account_name, eosio_bios_abi);
    }
 
    void tester::set_producers(const vector<account_name>& producer_names) {

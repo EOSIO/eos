@@ -22,5 +22,9 @@ extern "C" {
 
    bool is_privileged( account_name account );
 
+   void set_privileged( account_name account, bool is_priv );
+
+
+
    ///@ } privilegedcapi
 }

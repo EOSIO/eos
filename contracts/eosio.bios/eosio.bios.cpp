@@ -12,7 +12,7 @@
 
 using namespace eosio;
 
-namespace testsystem {
+namespace eosiobios {
    template<uint64_t Val>
    struct dispatchable {
       constexpr static uint64_t action_name = Val;
@@ -31,7 +31,19 @@ namespace testsystem {
       EOSLIB_SERIALIZE( set_account_limits, (account)(ram_bytes)(net_weight)(cpu_weight) )
    };
 
-   struct set_global_limits : dispatchable<N(setglimits)> {
+    struct set_priv : dispatchable<N(setprivileged)> {
+        account_name      account;
+        bool              is_priv;
+
+        static void process(const set_priv& priv) {
+            set_privileged(priv.account, priv.is_priv);
+        }
+
+        EOSLIB_SERIALIZE( set_priv, (account)(is_priv) )
+    };
+
+
+    struct set_global_limits : dispatchable<N(setglimits)> {
       int64_t          cpu_usec_per_period;
 
       static void process(const set_global_limits& ) {
@@ -86,7 +98,7 @@ namespace testsystem {
       }
    };
 
-   using dispatcher = dispatcher_impl<set_account_limits, set_global_limits, set_producers, require_auth>;
+   using dispatcher = dispatcher_impl<set_account_limits, set_priv,  set_producers, require_auth>;
 };
 
 extern "C" {
@@ -94,7 +106,7 @@ extern "C" {
 /// The apply method implements the dispatch of events to this contract
 void apply( uint64_t code, uint64_t act ) {
    if (code == current_receiver()) {
-      testsystem::dispatcher::dispatch(act);
+      eosiobios::dispatcher::dispatch(act);
    }
 }
 
