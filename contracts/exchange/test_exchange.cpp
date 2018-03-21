@@ -18,12 +18,32 @@
 #include <fc/time.hpp>
 #include <fc/log/logger.hpp>
 
+#include <boost/fusion/functional/invocation/invoke.hpp>
+#include <boost/fusion/adapted/std_tuple.hpp>
+#include <boost/fusion/include/std_tuple.hpp>
+
+
+
 //#include "bfp/lib/posit.h"
 
 using namespace std;
 
 typedef long double real_type;
 typedef double token_type;
+
+
+   template<typename T, typename... Args>
+   void call( T* obj, void (T::*func)(Args...)  ) {
+      std::tuple<Args...> args;
+      auto f2 = [&]( auto... a ){  (obj->*func)( a... ); };
+      boost::fusion::invoke( f2, args );
+   }
+
+   struct test {
+      void run( int a, char b ) {
+         cout << a << " " << b << "\n";
+      }
+   };
 
 
 /*
@@ -393,6 +413,11 @@ void print_state( const exchange_state& e ) {
 int main( int argc, char** argv ) {
  //  std::cerr << "root: " << double(root.numerator())/root.denominator() << "\n";
 
+   test t;
+   t.run(3, 'a');
+   call( &t, &test::run );
+
+   return 0;
 
    exchange_state state;
    state.supply = 100000000000ll;

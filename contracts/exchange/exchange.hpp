@@ -50,6 +50,13 @@ namespace eosio {
             EOSLIB_SERIALIZE( createx, (creator)(initial_supply)(fee)(base_deposit)(quote_deposit) )
          };
 
+         void createx( account_name    creator,
+                       asset           initial_supply,
+                       uint32_t        fee,
+                       extended_asset  base_deposit,
+                       extended_asset  quote_deposit
+                     );
+
          struct deposit {
             account_name    from;
             extended_asset  quantity;
@@ -115,7 +122,7 @@ namespace eosio {
          void on( const withdraw& w );
          void on( const lend& w );
          void on( const unlend& w );
-         void on( const createx& c );
+         //void on( const createx& c );
          void on( const trade& t    );
          void on( const upmargin& b );
          void on( const covermargin& b );

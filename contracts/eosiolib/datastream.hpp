@@ -11,6 +11,7 @@
 #include <array>
 #include <map>
 #include <string>
+#include <tuple>
 
 
 namespace eosio {
