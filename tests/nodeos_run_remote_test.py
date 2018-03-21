@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-v", help="verbose", action='store_true')
 parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
 parser.add_argument("--dump-error-details",
-                    help="Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout",
+                    help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
                     action='store_true')
 
 args = parser.parse_args()
@@ -49,7 +49,7 @@ try:
     Print("Stand up cluster")
     if cluster.launch(pnodes, total_nodes, topo, delay) is False:
         errorExit("Failed to stand up eos cluster.")
-    
+
     Print ("Wait for Cluster stabilization")
     # wait for cluster to start producing blocks
     if not cluster.waitOnClusterBlockNumSync(3):
@@ -72,5 +72,5 @@ finally:
         Print("Shut down the cluster and cleanup.")
         cluster.killall()
         cluster.cleanup()
-    
+
 exit(0)
