@@ -10,6 +10,10 @@ namespace eosio { namespace chain {
       class intrinsics_accessor;
    } }
 
+   struct wasm_exit {
+      int32_t code = 0;
+   };
+
    /**
     * @class wasm_cache
     *

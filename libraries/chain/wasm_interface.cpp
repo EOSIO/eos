@@ -358,27 +358,31 @@ namespace eosio { namespace chain {
    }
 
    void wasm_interface::apply( wasm_cache::entry& code, apply_context& context, vm_type vm ) {
-      auto context_guard = scoped_context(my->current_context, code, context, vm);
-      switch (vm) {
-         case vm_type::wavm:
-            code.wavm.call_apply(context);
-            break;
-         case vm_type::binaryen:
-            code.binaryen.call_apply(context);
-            break;
-      }
+      try {
+         auto context_guard = scoped_context(my->current_context, code, context, vm);
+         switch (vm) {
+            case vm_type::wavm:
+               code.wavm.call_apply(context);
+               break;
+            case vm_type::binaryen:
+               code.binaryen.call_apply(context);
+               break;
+         }
+      } catch ( const wasm_exit& ){}
    }
 
    void wasm_interface::error( wasm_cache::entry& code, apply_context& context, vm_type vm ) {
-      auto context_guard = scoped_context(my->current_context, code, context, vm);
-      switch (vm) {
-         case vm_type::wavm:
-            code.wavm.call_error(context);
-            break;
-         case vm_type::binaryen:
-            code.binaryen.call_error(context);
-            break;
-      }
+      try {
+         auto context_guard = scoped_context(my->current_context, code, context, vm);
+         switch (vm) {
+            case vm_type::wavm:
+               code.wavm.call_error(context);
+               break;
+            case vm_type::binaryen:
+               code.binaryen.call_error(context);
+               break;
+         }
+      } catch ( const wasm_exit& ){}
    }
 
    wasm_context& common::intrinsics_accessor::get_context(wasm_interface &wasm) {
@@ -857,6 +861,10 @@ class system_api : public context_aware_api {
             edump((message));
             FC_ASSERT( condition, "assertion failed: ${s}", ("s",message));
          }
+      }
+
+      void eosio_exit(int32_t code) {
+         throw wasm_exit{code};
       }
 
       fc::time_point_sec now() {
@@ -1595,6 +1603,7 @@ REGISTER_INTRINSICS(string_api,
 REGISTER_INTRINSICS(system_api,
    (abort,        void())
    (eosio_assert, void(int, int))
+   (eosio_exit,   void(int ))
    (now,          int())
 );
 

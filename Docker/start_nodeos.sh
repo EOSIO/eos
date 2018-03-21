@@ -36,4 +36,4 @@ else
     CONFIG_DIR=""
 fi
 
-exec /opt/eosio/bin/eosiod $CONFIG_DIR $@
+exec /opt/eosio/bin/nodeos $CONFIG_DIR $@

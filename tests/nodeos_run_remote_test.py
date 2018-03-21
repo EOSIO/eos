@@ -30,7 +30,7 @@ topo="mesh"
 delay=1
 pnodes=1
 total_nodes=pnodes
-actualTest="tests/eosiod_run_test.py"
+actualTest="tests/nodeos_run_test.py"
 if not amINoon:
     actualTest="tests/eosd_run_test.py"
 testSuccessful=False
@@ -56,7 +56,7 @@ try:
         errorExit("Cluster never stabilized")
 
     cmd="%s --dont-launch %s %s" % (actualTest, "-v" if debug else "", "" if amINoon else "--not-noon")
-    Print("Starting up %s test: %s" % ("eosiod" if amINoon else "eosd", actualTest))
+    Print("Starting up %s test: %s" % ("nodeos" if amINoon else "eosd", actualTest))
     Print("cmd: %s\n" % (cmd))
     if 0 != subprocess.call(cmd, shell=True):
         errorExit("failed to run cmd.")

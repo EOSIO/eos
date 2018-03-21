@@ -1,11 +1,11 @@
-add_executable( eosiod main.cpp )
+add_executable( nodeos main.cpp )
 if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
 
 find_package( Gperftools QUIET )
 if( GPERFTOOLS_FOUND )
-    message( STATUS "Found gperftools; compiling eosiod with TCMalloc")
+    message( STATUS "Found gperftools; compiling nodeos with TCMalloc")
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
@@ -15,18 +15,20 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../.git)
     execute_process(
       COMMAND ${GIT_EXECUTABLE} rev-parse --short=8 HEAD
       WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../.."
-      OUTPUT_VARIABLE "eosiod_BUILD_VERSION"
+      OUTPUT_VARIABLE "nodeos_BUILD_VERSION"
       ERROR_QUIET
       OUTPUT_STRIP_TRAILING_WHITESPACE)
-    message(STATUS "Git commit revision: ${eosiod_BUILD_VERSION}")
+    message(STATUS "Git commit revision: ${nodeos_BUILD_VERSION}")
   else()
-    set(eosiod_BUILD_VERSION 0)
+    set(nodeos_BUILD_VERSION 0)
   endif()
+else()
+  set(nodeos_BUILD_VERSION 0)
 endif()
 
 configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 
-target_include_directories(eosiod PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(nodeos PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 if(UNIX)
   if(APPLE)
@@ -41,7 +43,7 @@ else()
   set(no_whole_archive_flag "--no-whole-archive")
 endif()
 
-target_link_libraries( eosiod
+target_link_libraries( nodeos
         PRIVATE appbase
         PRIVATE -Wl,${whole_archive_flag} account_history_api_plugin -Wl,${no_whole_archive_flag} account_history_plugin
         PRIVATE -Wl,${whole_archive_flag} chain_api_plugin -Wl,${no_whole_archive_flag} producer_plugin chain_plugin
@@ -51,12 +53,12 @@ target_link_libraries( eosiod
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 if(BUILD_MONGO_DB_PLUGIN)
-  target_link_libraries( eosiod
+  target_link_libraries( nodeos
     PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} )
 endif()
 
 install( TARGETS
-   eosiod
+   nodeos
 
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
    LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
