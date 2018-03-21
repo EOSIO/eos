@@ -76,7 +76,7 @@
       "base": "",
       "fields": [
         {"name":"creator", "type":"account_name"},
-        {"name":"initial_supply", "type":"extended_asset"},
+        {"name":"initial_supply", "type":"asset"},
         {"name":"fee", "type":"uint32"},
         {"name":"base_deposit", "type":"extended_asset"},
         {"name":"quote_deposit", "type":"extended_asset"}
@@ -105,7 +105,7 @@
      "base": "",
      "fields": [
         {"name":"issuer", "type":"account_name"},
-        {"name":"maximum_supply", "type":"extended_asset"},
+        {"name":"maximum_supply", "type":"asset"},
         {"name":"can_freeze", "type":"uint8"},
         {"name":"can_recall", "type":"uint8"},
         {"name":"can_whitelist", "type":"uint8"}
