@@ -96,7 +96,6 @@ We strongly recommend following the instructions for building the public testnet
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
-
 cd eos
 ./eosio_build.sh
 ```
@@ -114,11 +113,10 @@ Now you can proceed to the next step - [Creating and launching a single-node tes
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
-
 cd eos
-
-git checkout DAWN-2018-02-14 --recurse-submodules
-./eosio_build.sh
+git checkout DAWN-2018-02-14
+git submodule update --recursive
+./build.sh
 ```
 
 For ease of contract development, one further step is required:
@@ -139,7 +137,6 @@ Then clone the EOS repository recursively and run eosio_build.sh in the root `eo
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
-
 cd eos
 ./eosio_build.sh
 ```
@@ -163,11 +160,10 @@ Then clone the EOS repository recursively, checkout the branch that is compatibl
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
-
 cd eos
-
-git checkout DAWN-2018-02-14 --recurse-submodules
-./eosio_build.sh
+git checkout DAWN-2018-02-14
+git submodule update --recursive
+./build.sh
 ```
 
 For ease of contract development, one further step is required:
@@ -218,15 +214,15 @@ To run the test suite after building, run the `chain_test` executable in the `te
 
 EOS comes with a number of programs you can find in `~/eos/build/programs`. They are listed below:
 
-* eosiod - server-side blockchain node component
-* eosioc - command line interface to interact with the blockchain
+* nodeos - server-side blockchain node component
+* cleos - command line interface to interact with the blockchain
 * eosiowd - EOS wallet
 * eosio-launcher - application for nodes network composing and deployment; [more on eosio-launcher](https://github.com/EOSIO/eos/blob/master/testnet.md)
 
 <a name="singlenode"></a>
 ### Creating and launching a single-node testnet
 
-After successfully building the project, the `eosiod` binary should be present in the `build/programs/eosiod` directory. Run `eosiod` -- it will probably exit with an error, but if not, close it immediately with <kbd>Ctrl-C</kbd>. If it exited with an error, note that `eosiod` created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `eosiod`.  These instructions will continue to use the default directory.
+After successfully building the project, the `nodeos` binary should be present in the `build/programs/nodeos` directory. Run `nodeos` -- it will probably exit with an error, but if not, close it immediately with <kbd>Ctrl-C</kbd>. If it exited with an error, note that `nodeos` created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `nodeos`.  These instructions will continue to use the default directory.
 
 Edit the `config.ini` file, adding/updating the following settings to the defaults already in place:
 
@@ -266,10 +262,10 @@ plugin = eosio::chain_api_plugin
 plugin = eosio::http_plugin
 ```
 
-Now it should be possible to run `eosiod` and see it begin producing blocks.
-You can specify the location of a custom `config.ini` by passing the `--config-dir` argument to `eosiod`.
+Now it should be possible to run `nodeos` and see it begin producing blocks.
+You can specify the location of a custom `config.ini` by passing the `--config-dir` argument to `nodeos`.
 
-When running `eosiod` you should get log messages similar to below. It means the blocks are successfully produced.
+When running `nodeos` you should get log messages similar to below. It means the blocks are successfully produced.
 
 ```
 1575001ms thread-0   chain_controller.cpp:235      _push_block          ] initm #1 @2017-09-04T04:26:15  | 0 trx, 0 pending, exectime_ms=0
@@ -294,24 +290,24 @@ EOS comes with example contracts that can be uploaded and run for testing purpos
 First, run the node
 
 ```bash
-cd ~/eos/build/programs/eosiod/
-./eosiod
+cd ~/eos/build/programs/nodeos/
+./nodeos
 ```
 
 <a name="walletimport"></a>
 ### Setting up a wallet and importing account key
 
-As you've previously added `plugin = eosio::wallet_api_plugin` into `config.ini`, EOS wallet will be running as a part of `eosiod` process. Every contract requires an associated account, so first, create a wallet.
+As you've previously added `plugin = eosio::wallet_api_plugin` into `config.ini`, EOS wallet will be running as a part of `nodeos` process. Every contract requires an associated account, so first, create a wallet.
 
 ```bash
-cd ~/eos/build/programs/eosioc/
-./eosioc wallet create # Outputs a password that you need to save to be able to lock/unlock the wallet
+cd ~/eos/build/programs/cleos/
+./cleos wallet create # Outputs a password that you need to save to be able to lock/unlock the wallet
 ```
 
 For the purpose of this walkthrough, import the private key of the `eosio` account, a system account included within genesis.json, so that you're able to issue API commands under authority of an existing account. The private key referenced below is found within your `config.ini` and is provided to you for testing purposes.
 
 ```bash
-./eosioc wallet import 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
+./cleos wallet import 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
 ```
 
 <a name="createaccounts"></a>
@@ -320,9 +316,9 @@ For the purpose of this walkthrough, import the private key of the `eosio` accou
 First, generate some public/private key pairs that will be later assigned as `owner_key` and `active_key`.
 
 ```bash
-cd ~/eos/build/programs/eosioc/
-./eosioc create key # owner_key
-./eosioc create key # active_key
+cd ~/eos/build/programs/cleos/
+./cleos create key # owner_key
+./cleos create key # active_key
 ```
 
 This will output two pairs of public and private keys
@@ -338,7 +334,7 @@ Save the values for future reference.
 Run the `create` command where `eosio` is the account authorizing the creation of the `currency` account and `PUBLIC_KEY_1` and `PUBLIC_KEY_2` are the values generated by the `create key` command
 
 ```bash
-./eosioc create account eosio currency PUBLIC_KEY_1 PUBLIC_KEY_2
+./cleos create account eosio currency PUBLIC_KEY_1 PUBLIC_KEY_2
 ```
 
 You should then get a JSON response back with a transaction ID confirming it was executed successfully.
@@ -346,7 +342,7 @@ You should then get a JSON response back with a transaction ID confirming it was
 Go ahead and check that the account was successfully created
 
 ```bash
-./eosioc get account currency
+./cleos get account currency
 ```
 
 If all went well, you will receive output similar to the following:
@@ -364,7 +360,7 @@ If all went well, you will receive output similar to the following:
 Now import the active private key generated previously in the wallet:
 
 ```bash
-./eosioc wallet import XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+./cleos wallet import XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 
 <a name="uploadsmartcontract"></a>
@@ -373,14 +369,14 @@ Now import the active private key generated previously in the wallet:
 Before uploading a contract, verify that there is no current contract:
 
 ```bash
-./eosioc get code currency
+./cleos get code currency
 code hash: 0000000000000000000000000000000000000000000000000000000000000000
 ```
 
 With an account for a contract created, upload a sample contract:
 
 ```bash
-./eosioc set contract currency ../../contracts/currency/currency.wast ../../contracts/currency/currency.abi
+./cleos set contract currency ../../contracts/currency/currency.wast ../../contracts/currency/currency.abi
 ```
 
 As a response you should get a JSON with a `transaction_id` field. Your contract was successfully uploaded!
@@ -388,7 +384,7 @@ As a response you should get a JSON with a `transaction_id` field. Your contract
 You can also verify that the code has been set with the following command:
 
 ```bash
-./eosioc get code currency
+./cleos get code currency
 ```
 
 It will return something like:
@@ -399,13 +395,13 @@ code hash: 9b9db1a7940503a88535517049e64467a6e8f4e9e03af15e9968ec89dd794975
 Before using the currency contract, you must issue the currency.
 
 ```bash
-./eosioc push action currency issue '{"to":"currency","quantity":"1000.0000 CUR"}' --permission currency@active
+./cleos push action currency issue '{"to":"currency","quantity":"1000.0000 CUR"}' --permission currency@active
 ```
 
 Next verify the currency contract has the proper initial balance:
 
 ```bash
-./eosioc get table currency currency account
+./cleos get table currency currency account
 {
   "rows": [{
      "currency": 1381319428,
@@ -424,13 +420,13 @@ Anyone can send any message to any contract at any time, but the contracts may r
 The content of the message is `'{"from":"currency","to":"eosio","quantity":"20.0000 CUR","memo":"any string"}'`. In this case we are asking the currency contract to transfer funds from itself to someone else. This requires the permission of the currency contract.
 
 ```bash
-./eosioc push action currency transfer '{"from":"currency","to":"eosio","quantity":"20.0000 CUR","memo":"my first transfer"}' --permission currency@active
+./cleos push action currency transfer '{"from":"currency","to":"eosio","quantity":"20.0000 CUR","memo":"my first transfer"}' --permission currency@active
 ```
 
 Below is a generalization that shows the `currency` account is only referenced once, to specify which contract to deliver the `transfer` message to.
 
 ```bash
-./eosioc push action currency transfer '{"from":"${usera}","to":"${userb}","quantity":"20.0000 CUR","memo":""}' --permission ${usera}@active
+./cleos push action currency transfer '{"from":"${usera}","to":"${userb}","quantity":"20.0000 CUR","memo":""}' --permission ${usera}@active
 ```
 
 As confirmation of a successfully submitted transaction, you will receive JSON output that includes a `transaction_id` field.
@@ -441,7 +437,7 @@ As confirmation of a successfully submitted transaction, you will receive JSON o
 So now check the state of both of the accounts involved in the previous transaction.
 
 ```bash
-./eosioc get table eosio currency account
+./cleos get table eosio currency account
 {
   "rows": [{
       "currency": 1381319428,
@@ -450,7 +446,7 @@ So now check the state of both of the accounts involved in the previous transact
     ],
   "more": false
 }
-./eosioc get table currency currency account
+./cleos get table currency currency account
 {
   "rows": [{
       "currency": 1381319428,
@@ -481,15 +477,15 @@ This command will generate two data folders for each instance of the node: `tn_d
 You should see the following response:
 
 ```bash
-spawning child, programs/eosiod/eosiod --skip-transaction-signatures --data-dir tn_data_0
-spawning child, programs/eosiod/eosiod --skip-transaction-signatures --data-dir tn_data_1
+spawning child, programs/nodeos/nodeos --skip-transaction-signatures --data-dir tn_data_0
+spawning child, programs/nodeos/nodeos --skip-transaction-signatures --data-dir tn_data_1
 ```
 
-To confirm the nodes are running, run the following `eosioc` commands:
+To confirm the nodes are running, run the following `cleos` commands:
 ```bash
-~/eos/build/programs/eosioc
-./eosioc -p 8888 get info
-./eosioc -p 8889 get info
+~/eos/build/programs/cleos
+./cleos -p 8888 get info
+./cleos -p 8889 get info
 ```
 
 For each command, you should get a JSON response with blockchain information.

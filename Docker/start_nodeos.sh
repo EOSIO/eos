@@ -19,4 +19,21 @@ if [ -d '/opt/eosio/bin/data-dir/contracts' ]; then
     cp -r /contracts /opt/eosio/bin/data-dir
 fi
 
-exec /opt/eosio/bin/eosiod $@
+while :; do
+    case $1 in
+        --config-dir=?*)
+            CONFIG_DIR=${1#*=}
+            ;;
+        *)
+            break
+    esac
+    shift
+done
+
+if [ ! "$CONFIG_DIR" ]; then
+    CONFIG_DIR="--config-dir=/opt/eosio/bin/data-dir"
+else
+    CONFIG_DIR=""
+fi
+
+exec /opt/eosio/bin/nodeos $CONFIG_DIR $@

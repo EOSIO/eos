@@ -23,13 +23,13 @@ class Utils:
     Debug=False
     FNull = open(os.devnull, 'w')
 
-    EosClientPath="programs/eosioc/eosioc"
+    EosClientPath="programs/cleos/cleos"
 
     EosWalletName="eosiowd"
     EosWalletPath="programs/eosiowd/"+ EosWalletName
 
-    EosServerName="eosiod"
-    EosServerPath="programs/eosiod/"+ EosServerName
+    EosServerName="nodeos"
+    EosServerPath="programs/nodeos/"+ EosServerName
 
     EosLauncherPath="programs/eosio-launcher/eosio-launcher"
     MongoPath="mongo"
@@ -52,7 +52,7 @@ class Utils:
 
     systemWaitTimeout=60
 
-    # mongoSyncTime: eosiod mongodb plugin seems to sync with a 10-15 seconds delay. This will inject
+    # mongoSyncTime: nodeos mongodb plugin seems to sync with a 10-15 seconds delay. This will inject
     #  a wait period before the 2nd DB check (if first check fails)
     mongoSyncTime=25
     amINoon=True
@@ -971,15 +971,15 @@ class WalletMgr(object):
     __walletDataDir="test_wallet_0"
 
     # walletd [True|False] Will wallet me in a standalone process
-    def __init__(self, walletd, eosiodPort=8888, eosiodHost="localhost", port=8899, host="localhost"):
+    def __init__(self, walletd, nodeosPort=8888, nodeosHost="localhost", port=8899, host="localhost"):
         self.walletd=walletd
-        self.eosiodPort=eosiodPort
-        self.eosiodHost=eosiodHost
+        self.nodeosPort=nodeosPort
+        self.nodeosHost=nodeosHost
         self.port=port
         self.host=host
         self.wallets={}
         self.__walletPid=None
-        self.endpointArgs="--host %s --port %d" % (self.eosiodHost, self.eosiodPort)
+        self.endpointArgs="--host %s --port %d" % (self.nodeosHost, self.nodeosPort)
         if self.walletd:
             self.endpointArgs += " --wallet-host %s --wallet-port %d" % (self.host, self.port)
 
@@ -1206,7 +1206,7 @@ class Cluster(object):
             cmdArr.append("--nogen")
         if not self.walletd or self.enableMongo:
             if Utils.amINoon:
-                cmdArr.append("--eosiod")
+                cmdArr.append("--nodeos")
             else:
                 cmdArr.append("--eosd")
             if not self.walletd:
@@ -1557,7 +1557,7 @@ class Cluster(object):
 
         return nodes
 
-    # Check state of running eosiod process and update EosInstanceInfos
+    # Check state of running nodeos process and update EosInstanceInfos
     #def updateEosInstanceInfos(eosInstanceInfos):
     def updateNodesStatus(self):
         for node in self.nodes:

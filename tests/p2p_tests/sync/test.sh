@@ -54,12 +54,12 @@ fi
 
 total_nodes="${total_nodes:-`echo $pnodes`}"
 launcherPath="programs/eosio-launcher/eosio-launcher"
-clientPath="programs/eosioc/eosioc"
+clientPath="programs/cleos/cleos"
 
 rm -rf tn_data_*
 debugArg=""
 if [ "$debug" == true ]; then
-   debugArg="--eosiod \"--log-level-net-plugin debug\""
+   debugArg="--nodeos \"--log-level-net-plugin debug\""
 fi
 
 cmd="$launcherPath -p $pnodes -n $total_nodes -s $topo -d $delay $debugArg"

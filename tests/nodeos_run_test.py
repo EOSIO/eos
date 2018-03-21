@@ -8,7 +8,7 @@ import random
 import re
 
 ###############################################################
-# eosiod_run_test
+# nodeos_run_test
 # --dump-error-details <Upon error print tn_data_*/config.ini and tn_data_*/stderr.log to stdout>
 # --keep-logs <Don't delete tn_data_* folders upon test completion>
 ###############################################################
@@ -81,7 +81,7 @@ ClientName="eosc"
 
 if amINoon:
     WalletdName="eosio-walletd"
-    ClientName="eosioc"
+    ClientName="cleos"
     # noon branch requires longer mongo sync time.
     testUtils.Utils.setMongoSyncTime(50)
 else:
@@ -446,7 +446,7 @@ try:
         opts="--permission currency@active"
         trans=node.pushMessage(contract, action, data, opts)
 
-    # TODO need to update eosio.system contract to use new currency and update eosioc and chain_plugin for interaction
+    # TODO need to update eosio.system contract to use new currency and update cleos and chain_plugin for interaction
     # Print("Verify currency contract has proper initial balance (via get table)")
     # contract="currency"
     # table="accounts"
@@ -500,7 +500,7 @@ try:
         cmdError("%s get transaction trans_id" % (ClientName))
         errorExit("Failed to verify push message transaction id.")
 
-    # TODO need to update eosio.system contract to use new currency and update eosioc and chain_plugin for interaction
+    # TODO need to update eosio.system contract to use new currency and update cleos and chain_plugin for interaction
     # Print("read current contract balance")
     # contract="currency"
     # table="accounts"
@@ -581,8 +581,8 @@ try:
 
     # TODO: Approving producers currently not supported
     # approve producer
-    # INFO="$(programs/eosioc/eosioc --host $SERVER --port $PORT --wallet-port 8899 set producer inita testera approve)"
-    # verifyErrorCode "eosioc approve producer"
+    # INFO="$(programs/cleos/cleos --host $SERVER --port $PORT --wallet-port 8899 set producer inita testera approve)"
+    # verifyErrorCode "cleos approve producer"
 
     Print("Get account inita")
     account=node.getEosAccount(initaAccount.name)
@@ -592,8 +592,8 @@ try:
 
     # TODO: Unapproving producers currently not supported
     # unapprove producer
-    # INFO="$(programs/eosioc/eosioc --host $SERVER --port $PORT --wallet-port 8899 set producer inita testera unapprove)"
-    # verifyErrorCode "eosioc unapprove producer"
+    # INFO="$(programs/cleos/cleos --host $SERVER --port $PORT --wallet-port 8899 set producer inita testera unapprove)"
+    # verifyErrorCode "cleos unapprove producer"
 
     #
     # Proxy
