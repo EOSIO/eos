@@ -96,7 +96,6 @@ We strongly recommend following the instructions for building the public testnet
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
-
 cd eos
 ./eosio_build.sh
 ```
@@ -114,11 +113,10 @@ Now you can proceed to the next step - [Creating and launching a single-node tes
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
-
 cd eos
-
-git checkout DAWN-2018-02-14 --recurse-submodules
-./eosio_build.sh
+git checkout DAWN-2018-02-14
+git submodule update --recursive
+./build.sh
 ```
 
 For ease of contract development, one further step is required:
@@ -139,7 +137,6 @@ Then clone the EOS repository recursively and run eosio_build.sh in the root `eo
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
-
 cd eos
 ./eosio_build.sh
 ```
@@ -162,11 +159,10 @@ Then clone the EOS repository recursively, checkout the branch that is compatibl
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
-
 cd eos
-
-git checkout DAWN-2018-02-14 --recurse-submodules
-./eosio_build.sh
+git checkout DAWN-2018-02-14
+git submodule update --recursive
+./build.sh
 ```
 
 For ease of contract development, one further step is required:
