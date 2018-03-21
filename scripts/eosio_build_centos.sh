@@ -1,4 +1,5 @@
-	OS_VER=$( cat /etc/os-release | grep VERSION_ID | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' | cut -d'.' -f1 )
+	OS_VER=$( cat /etc/os-release | grep VERSION_ID | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' \
+	| cut -d'.' -f1 )
 
 	MEM_MEG=$( free -m | grep Mem | tr -s ' ' | cut -d\  -f2 )
 
@@ -49,8 +50,8 @@
 	
 	SCL=$( which scl 2>/dev/null )
 	if [ -z $SCL ]; then
-		printf "\n\tThe Centos Software Collections Repository and devtoolset-7 are required to install EOSIO.\n"
-		printf "\tDo you wish to install and enable this repository and devtoolset package?\n"
+		printf "\n\tThe Centos Software Collections Repository, devtoolset-7 and Python3 are required to install EOSIO.\n"
+		printf "\tDo you wish to install and enable this repository, devtoolset-7 and Python3 packages?\n"
 		select yn in "Yes" "No"; do
 			case $yn in
 				[Yy]* ) 
@@ -72,6 +73,15 @@
 					else
 						printf "\n\tCentos devtoolset installed successfully.\n"
 					fi
+					printf "\n\n\tInstalling Python3.\n\n"
+					sudo yum install -y python33.x86_64 2>/dev/null
+					if [ $? -ne 0 ]; then
+						printf "\n\tCentos Python3 installation failed.\n"
+						printf "\n\tExiting now.\n"
+						exit 1
+					else
+						printf "\n\tCentos Python3 installed successfully.\n"
+					fi
 				break;;
 				[Nn]* ) echo "User aborting installation of required Centos Software Collections Repository, Exiting now."; exit;;
 				* ) echo "Please type 1 for yes or 2 for no.";;
@@ -89,6 +99,15 @@
 		exit 1
 	fi
 	printf "\n\tCentos devtoolset-7 successfully enabled.\n"
+
+	printf "\n\tEnabling Centos python3 installation.\n"
+	source /opt/rh/python33/enable
+	if [ $? -ne 0 ]; then
+		printf "\n\tUnable to enable Centos python3 at this time.\n"
+		printf "\n\tExiting now.\n"
+		exit 1
+	fi
+	printf "\n\tCentos python3 successfully enabled.\n"
 	
 	printf "\n\tUpdating YUM repository.\n"
 
@@ -180,7 +199,6 @@
 
 	printf "\n\tChecking for boost libraries\n"
 	if [ ! -d ${HOME}/opt/boost_1_66_0 ]; then
-		# install boost
 		printf "\tInstalling boost libraries\n"
 		cd ${TEMP_DIR}
 		curl -L https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2 > boost_1.66.0.tar.bz2
@@ -194,8 +212,106 @@
 		printf "\tBoost 1.66 found at ${HOME}/opt/boost_1_66_0\n"
 	fi
 
+	printf "\n\tChecking for MongoDB installation.\n"
+    if [ ! -e ${MONGOD_CONF} ]; then
+		printf "\n\tInstalling MongoDB 3.6.3.\n"
+		cd ${HOME}/opt
+		curl -OL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.tgz
+		if [ $? -ne 0 ]; then
+			printf "\tUnable to download MongoDB at this time.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		tar xf mongodb-linux-x86_64-amazon-3.6.3.tgz
+		rm -f mongodb-linux-x86_64-amazon-3.6.3.tgz
+		ln -s ${HOME}/opt/mongodb-linux-x86_64-amazon-3.6.3/ ${HOME}/opt/mongodb
+		mkdir ${HOME}/opt/mongodb/data
+		mkdir ${HOME}/opt/mongodb/log
+		touch ${HOME}/opt/mongodb/log/mongod.log
+		
+tee > /dev/null ${MONGOD_CONF} <<mongodconf
+systemLog:
+ destination: file
+ path: ${HOME}/opt/mongodb/log/mongod.log
+ logAppend: true
+ logRotate: reopen
+net:
+ bindIp: 127.0.0.1,::1
+ ipv6: true
+storage:
+ dbPath: ${HOME}/opt/mongodb/data
+mongodconf
+
+	else
+		printf "\tMongoDB config found at ${MONGOD_CONF}.\n"
+	fi
+
+	printf "\n\tChecking for MongoDB C++ driver.\n"
+    if [ ! -e /usr/local/lib/libmongocxx.so ]; then
+		printf "\n\tInstalling MongoDB C & C++ drivers.\n"
+		cd ${TEMP_DIR}
+		curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
+		if [ $? -ne 0 ]; then
+			rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz 2>/dev/null
+			printf "\tUnable to download MondgDB C driver at this time.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		tar xf mongo-c-driver-1.9.3.tar.gz
+		rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz
+		cd mongo-c-driver-1.9.3
+		./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+		if [ $? -ne 0 ]; then
+			printf "\tConfiguring MondgDB C driver has encountered the errors above.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		make -j${CPU_CORE}
+		if [ $? -ne 0 ]; then
+			printf "\tError compiling MondgDB C driver.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		sudo make install
+		if [ $? -ne 0 ]; then
+			printf "\tError installing MondgDB C driver.\nMake sure you have sudo privileges.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		cd ..
+		rm -rf ${TEMP_DIR}/mongo-c-driver-1.9.3
+		cd ${TEMP_DIR}
+		git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
+		if [ $? -ne 0 ]; then
+			printf "\tUnable to clone MondgDB C++ driver at this time.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		cd mongo-cxx-driver/build
+		${CMAKE} -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+		if [ $? -ne 0 ]; then
+			printf "\tCmake has encountered the above errors building the MongoDB C++ driver.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		sudo make -j${CPU_CORE}
+		if [ $? -ne 0 ]; then
+			printf "\tError compiling MondgDB C++ driver.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		sudo make install
+		if [ $? -ne 0 ]; then
+			printf "\tError installing MondgDB C++ driver.\nMake sure you have sudo privileges.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		cd
+		sudo rm -rf ${TEMP_DIR}/mongo-cxx-driver
+	else
+		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx.so.\n"
+	fi	
 	printf "\n\tChecking for secp256k1-zkp\n"
-    # install secp256k1-zkp (Cryptonomex branch)
     if [ ! -e /usr/local/lib/libsecp256k1.a ]; then
 		printf "\tInstalling secp256k1-zkp (Cryptonomex branch)\n"
 		cd ${TEMP_DIR}
@@ -222,7 +338,6 @@
 	
 	printf "\n\tChecking for binaryen\n"
 	if [ ! -d ${HOME}/opt/binaryen ]; then
-		# Install binaryen v1.37.14:
 		printf "\tInstalling binaryen v1.37.14:\n"
 		cd ${TEMP_DIR}
 		git clone https://github.com/EOSIO/binaryen
@@ -243,7 +358,6 @@
 
 	printf "\n\tChecking for LLVM with WASM support.\n"
 	if [ ! -d ${HOME}/opt/wasm/bin ]; then
-		# Build LLVM and clang with EXPERIMENTAL WASM support:
 		printf "\tInstalling LLVM & WASM\n"
 		cd ${TEMP_DIR}
 		mkdir llvm-compiler  2>/dev/null
