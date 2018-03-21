@@ -35,23 +35,23 @@ EOS.IO currently supports the following operating systems:
 
 1. [Getting Started](#gettingstarted)
 2. [Setting up a build/development environment](#setup)
-	1. [Automated build script](#autobuild)
+  1. [Automated build script](#autobuild)
       1. [Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for a local testnet](#autoubuntulocal)
       2. [Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for the public testnet](#autoubuntupublic)
       3. [MacOS for a local testnet](#automaclocal)
       4. [MacOS for the public testnet](#automacpublic)
 3. [Building EOS and running a node](#runanode)
-	1. [Getting the code](#getcode)
-	2. [Building from source code](#build)
-	3. [Creating and launching a single-node testnet](#singlenode)
+  1. [Getting the code](#getcode)
+  2. [Building from source code](#build)
+  3. [Creating and launching a single-node testnet](#singlenode)
   4. [Next steps](#nextsteps)
 4. [Example Currency Contract Walkthrough](#smartcontracts)
-	1. [Example Contracts](#smartcontractexample)
-	2. [Setting up a wallet and importing account key](#walletimport)
-	3. [Creating accounts for your smart contracts](#createaccounts)
-	4. [Upload sample contract to blockchain](#uploadsmartcontract)
-	5. [Pushing a message to a sample contract](#pushamessage)
-	6. [Reading Currency Contract Balance](#readingcontract)
+  1. [Example Contracts](#smartcontractexample)
+  2. [Setting up a wallet and importing account key](#walletimport)
+  3. [Creating accounts for your smart contracts](#createaccounts)
+  4. [Upload sample contract to blockchain](#uploadsmartcontract)
+  5. [Pushing a message to a sample contract](#pushamessage)
+  6. [Reading Currency Contract Balance](#readingcontract)
 5. [Running local testnet](#localtestnet)
 6. [Running a node on the public testnet](#publictestnet)
 7. [Doxygen documentation](#doxygen)
@@ -61,8 +61,8 @@ EOS.IO currently supports the following operating systems:
    2. [Clean install Centos 7 and higher](#manualdepcentos)
    3. [Clean install Fedora 25 and higher](#manualdepfedora)
    4. [Clean install Mint 18](#manualdepubuntu)
-   4. [Clean install Ubuntu 16](#manualdepubuntu)
-   5. [Clean install MacOS Sierra 10.12 and higher](#manualdepmacos)
+   5. [Clean install Ubuntu 16](#manualdepubuntu)
+   6. [Clean install MacOS Sierra 10.12 and higher](#manualdepmacos)
 
 <a name="gettingstarted"></a>
 ## Getting Started
@@ -147,7 +147,8 @@ cd eos
 For ease of contract development, one further step is required:
 
 ```bash
-make install
+cd build
+sudo make install
 ```
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
@@ -172,7 +173,8 @@ git checkout DAWN-2018-02-14 --recurse-submodules
 For ease of contract development, one further step is required:
 
 ```bash
-make install
+cd build
+sudo make install
 ```
 
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
@@ -643,8 +645,8 @@ Your environment is set up. Now you can <a href="#runanode">build EOS and run a 
 
 Install the development toolkit:
 * Installation on Centos requires installing/enabling the Centos Software Collections
-Repository.
-[Centos SCL](https://wiki.centos.org/AdditionalResources/Repositories/SCL):
+  Repository.
+  [Centos SCL](https://wiki.centos.org/AdditionalResources/Repositories/SCL):
 
 ```bash
 sudo yum --enablerepo=extras install centos-release-scl
