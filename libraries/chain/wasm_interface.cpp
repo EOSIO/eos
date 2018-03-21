@@ -26,7 +26,8 @@
 #include "Runtime/Intrinsics.h"
 
 #include <softfloat.hpp>
-
+// TODO DELETE THIS AFTER TESTING SOFTFLOAT
+#include <cmath>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <fstream>
@@ -506,7 +507,6 @@ class softfloat_api : public context_aware_api {
       // float binops
       float _eosio_f32_add( float a, float b ) { 
          float32_t ret = f32_add( to_softfloat32(a), to_softfloat32(b) );
-         std::cout << "A " << a << " " << std::hex << *(uint32_t*)&a << " B " << b << " " << *(uint32_t*)&b << " C= " << (a + b) << " " << from_softfloat32(f32_add(to_softfloat32(a),to_softfloat32(b))) << "\n";
          return *reinterpret_cast<float*>(&ret);
       }
       float _eosio_f32_sub( float a, float b ) { 
@@ -524,33 +524,28 @@ class softfloat_api : public context_aware_api {
       float _eosio_f32_min( float af, float bf ) { 
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
-         std::cout << "A " << af << " " << std::hex << a.v << " B " << bf << " " << b.v << " C= " << (af < bf) << " " << f32_lt(a,b) << "\n";
-         if (is_nan32(a)) {
-         std::cout << "A NAN " << b.v << "\n";
+         if (is_nan(a)) {
             return af;
          } 
-         if (is_nan32(b)) {
-         std::cout << "B NAN " << b.v << "\n";
+         if (is_nan(b)) {
             return bf;
          }
-         if ( sign_bit32(a) != sign_bit32(b) ) {
-         std::cout << "SIGNED " << b.v << "\n";
-            return sign_bit32(a) ? af : bf;
+         if ( sign_bit(a) != sign_bit(b) ) {
+            return sign_bit(a) ? af : bf;
          }
-         std::cout << "MADE IT " << b.v << "\n";
          return f32_lt(a,b) ? af : bf; 
       }
       float _eosio_f32_max( float af, float bf ) { 
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
-         if (is_nan32(a)) {
-            return bf;
-         } 
-         if (is_nan32(b)) {
+         if (is_nan(a)) {
             return af;
+         } 
+         if (is_nan(b)) {
+            return bf;
          }
-         if ( sign_bit32(a) != sign_bit32(b) ) {
-            return sign_bit32(a) ? bf : af;
+         if ( sign_bit(a) != sign_bit(b) ) {
+            return sign_bit(a) ? bf : af;
          }
          return f32_lt( a, b ) ? bf : af; 
       }
@@ -561,36 +556,36 @@ class softfloat_api : public context_aware_api {
          uint32_t sign_of_b = b.v >> 31;
          a.v &= ~(1 << 31);             // clear the sign bit
          a.v = a.v | (sign_of_b << 31); // add the sign of b
-         return *reinterpret_cast<float*>(&a);
+         return from_softfloat32(a);
       }
       // float unops
       float _eosio_f32_abs( float af ) { 
          float32_t a = to_softfloat32(af);
          a.v &= ~(1 << 31);  
-         return *reinterpret_cast<float*>(&a); 
+         return from_softfloat32(a); 
       }
       float _eosio_f32_neg( float af ) { 
          float32_t a = to_softfloat32(af);
          uint32_t sign = a.v >> 31;
          a.v &= ~(1 << 31);  
          a.v |= (!sign << 31);
-         return *reinterpret_cast<float*>(&a); 
+         return from_softfloat32(a); 
       }
       float _eosio_f32_sqrt( float a ) { 
          float32_t ret = f32_sqrt( to_softfloat32(a) ); 
-         return *reinterpret_cast<float*>(&ret); 
+         return from_softfloat32(ret); 
       }
       // ceil, floor, trunc and nearest are lifted from libc
       float _eosio_f32_ceil( float af ) {
          float32_t a = to_softfloat32(af);
-         int e = (int)(a.v >> 23 & 0xff) - 0x7f;
+         int e = (int)(a.v >> 23 & 0xFF) - 0X7F;
          uint32_t m;
          if (e >= 23)
-            return *reinterpret_cast<float*>(&a); 
+            return af; 
          if (e >= 0) {
-            m = 0x007fffff >> e;
+            m = 0x007FFFFF >> e;
             if ((a.v & m) == 0)
-               return *reinterpret_cast<float*>(&a); 
+               return af; 
             if (a.v >> 31 == 0)
                a.v += m;
             a.v &= ~m;
@@ -600,18 +595,19 @@ class softfloat_api : public context_aware_api {
             else if (a.v << 1)
                a.v = 0x3F800000; // return 1.0f
          }
-         return *reinterpret_cast<float*>(&a); 
+
+         return from_softfloat32(a); 
       }
       float _eosio_f32_floor( float af ) {
          float32_t a = to_softfloat32(af);
-         int e = (int)(a.v >> 23 & 0xff) - 0x7f;
+         int e = (int)(a.v >> 23 & 0xFF) - 0X7F;
          uint32_t m;
          if (e >= 23)
-            return *reinterpret_cast<float*>(&a); 
+            return af; 
          if (e >= 0) {
-            m = 0x007fffff >> e;
+            m = 0x007FFFFF >> e;
             if ((a.v & m) == 0)
-               return *reinterpret_cast<float*>(&a); 
+               return af; 
             if (a.v >> 31)
                a.v += m;
             a.v &= ~m;
@@ -619,23 +615,23 @@ class softfloat_api : public context_aware_api {
             if (a.v >> 31 == 0)
                a.v = 0;
             else if (a.v << 1)
-               a.v = 0x3F800000; // return 1.0f
+               a.v = 0xBF800000; // return -1.0f
          }
-         return *reinterpret_cast<float*>(&a); 
+         return from_softfloat32(a); 
       }
       float _eosio_f32_trunc( float af ) {
          float32_t a = to_softfloat32(af);
          int e = (int)(a.v >> 23 & 0xff) - 0x7f + 9;
          uint32_t m;
          if (e >= 23 + 9)
-            return *reinterpret_cast<float*>(&a); 
+            return af; 
          if (e < 9)
             e = 1;
          m = -1U >> e;
          if ((a.v & m) == 0)
-            return *reinterpret_cast<float*>(&a); 
+            return af; 
          a.v &= ~m;
-         return *reinterpret_cast<float*>(&a); 
+         return from_softfloat32(a); 
       }
       float _eosio_f32_nearest( float af ) {
          float32_t a = to_softfloat32(af);
@@ -643,42 +639,79 @@ class softfloat_api : public context_aware_api {
          int s = a.v>>31;
          float32_t y;
          if (e >= 0x7f+23)
-            return *reinterpret_cast<float*>(&a); 
+            return af; 
          if (s)
             y = f32_add( f32_sub( a, float32_t{inv_float_eps} ), float32_t{inv_float_eps} );
          else
             y = f32_sub( f32_add( a, float32_t{inv_float_eps} ), float32_t{inv_float_eps} );
          if (f32_eq( y, {0} ) )
-            return s ? -0.0f : 0.0f; //float32_t{0x80000000} : float32_t{0}; // return either -0.0 or 0.0f
-         return *reinterpret_cast<float*>(&y); 
+            return s ? -0.0f : 0.0f; 
+         return from_softfloat32(y); 
       }
+
       // float relops
-      bool _eosio_f32_eq( float a, float b ) { return f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
+      bool _eosio_f32_eq( float a, float b ) {  return f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
       bool _eosio_f32_ne( float a, float b ) { return !f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
       bool _eosio_f32_lt( float a, float b ) { return f32_lt( to_softfloat32(a), to_softfloat32(b) ); }
       bool _eosio_f32_le( float a, float b ) { return f32_le( to_softfloat32(a), to_softfloat32(b) ); }
-      bool _eosio_f32_gt( float a, float b ) { return !f32_le( to_softfloat32(a), to_softfloat32(b) ); }
-      bool _eosio_f32_ge( float a, float b ) { return !f32_lt( to_softfloat32(a), to_softfloat32(b) ); }
+      bool _eosio_f32_gt( float af, float bf ) {  
+         float32_t a = to_softfloat32(af);
+         float32_t b = to_softfloat32(bf);
+         if (is_nan(a))
+            return false;
+         if (is_nan(b))
+            return false;
+         return !f32_le( a, b ); 
+      }
+      bool _eosio_f32_ge( float af, float bf ) {
+         float32_t a = to_softfloat32(af);
+         float32_t b = to_softfloat32(bf);
+         if (is_nan(a))
+            return false;
+         if (is_nan(b))
+            return false;
+         return !f32_lt( a, b ); 
+      }
 
       // double binops
       double _eosio_f64_add( double a, double b ) { 
          float64_t ret = f64_add( to_softfloat64(a), to_softfloat64(b) ); 
-         return *reinterpret_cast<double*>(&ret); 
+         return from_softfloat64(ret); 
       }
       double _eosio_f64_sub( double a, double b ) { 
          float64_t ret = f64_sub( to_softfloat64(a), to_softfloat64(b) ); 
-         return *reinterpret_cast<double*>(&ret); 
+         return from_softfloat64(ret); 
       }
       double _eosio_f64_div( double a, double b ) { 
          float64_t ret = f64_div( to_softfloat64(a), to_softfloat64(b) ); 
-         return *reinterpret_cast<double*>(&ret); 
+         return from_softfloat64(ret); 
       }
       double _eosio_f64_mul( double a, double b ) { 
          float64_t ret = f64_mul( to_softfloat64(a), to_softfloat64(b) ); 
-         return *reinterpret_cast<double*>(&ret); 
+         return from_softfloat64(ret); 
       }
-      double _eosio_f64_min( double a, double b ) { return f64_lt( to_softfloat64(a), to_softfloat64(b) ) ? a : b;} 
-      double _eosio_f64_max( double a, double b ) { return f64_lt( to_softfloat64(a), to_softfloat64(b) ) ? b : a;}
+      double _eosio_f64_min( double af, double bf ) { 
+         float64_t a = to_softfloat64(af);
+         float64_t b = to_softfloat64(bf);
+         if (is_nan(a))
+            return af;
+         if (is_nan(b))
+            return bf;
+         if (sign_bit(a) != sign_bit(b))
+            return sign_bit(a) ? af : bf;
+         return f64_lt( a, b ) ? af : bf;
+      } 
+      double _eosio_f64_max( double af, double bf ) { 
+         float64_t a = to_softfloat64(af);
+         float64_t b = to_softfloat64(bf);
+         if (is_nan(a))
+            return af;
+         if (is_nan(b))
+            return bf;
+         if (sign_bit(a) != sign_bit(b))
+            return sign_bit(a) ? bf : af;
+         return f64_lt( a, b ) ? bf : af;
+      }
       double _eosio_f64_copysign( double af, double bf ) {
          float64_t a = to_softfloat64(af);
          float64_t b = to_softfloat64(bf);
@@ -686,25 +719,25 @@ class softfloat_api : public context_aware_api {
          uint64_t sign_of_b = b.v >> 63;
          a.v &= ~(uint64_t(1) << 63);             // clear the sign bit
          a.v = a.v | (sign_of_b << 63); // add the sign of b
-         return *reinterpret_cast<double*>(&a); 
+         return from_softfloat64(a); 
       }
 
       // double unops
       double _eosio_f64_abs( double af ) { 
          float64_t a = to_softfloat64(af);
          a.v &= ~(uint64_t(1) << 63);  
-         return *reinterpret_cast<double*>(&a); 
+         return from_softfloat64(a); 
       }
       double _eosio_f64_neg( double af ) { 
          float64_t a = to_softfloat64(af);
          uint64_t sign = a.v >> 63;
          a.v &= ~(uint64_t(1) << 63);  
          a.v |= (uint64_t(!sign) << 63);
-         return *reinterpret_cast<double*>(&a); 
+         return from_softfloat64(a); 
       }
       double _eosio_f64_sqrt( double a ) { 
          float64_t ret = f64_sqrt( to_softfloat64(a) );
-         return *reinterpret_cast<double*>(&ret); 
+         return from_softfloat64(ret); 
       }
       // ceil, floor, trunc and nearest are lifted from libc
       double _eosio_f64_ceil( double af ) {
@@ -723,20 +756,26 @@ class softfloat_api : public context_aware_api {
          if (e <= 0x3ff-1) {
             return a.v >> 63 ? -0.0 : 1.0; //float64_t{0x8000000000000000} : float64_t{0xBE99999A3F800000}; //either -0.0 or 1
          }
-         if (f64_lt( y, { 0 } )) {
-            ret = f64_add( f64_add( a, y ), { 0xBE99999A3F800000 } ); // plus 1
-            return *reinterpret_cast<double*>(&ret); 
+         if (f64_lt( y, to_softfloat64(0) )) {
+            std::cout << "A3 " << af << " C " << floor(af) << " Y "<< *(double*)&ret << "\n";
+            ret = f64_add( f64_add( a, y ), to_softfloat64(1) ); // 0xBE99999A3F800000 } ); // plus 1
+            return from_softfloat64(ret); 
          }
          ret = f64_add( a, y );
-         return *reinterpret_cast<double*>(&ret); 
+         return from_softfloat64(ret); 
       }
       double _eosio_f64_floor( double af ) {
          float64_t a = to_softfloat64( af ); 
          float64_t ret;
          int e = a.v >> 52 & 0x7FF;
          float64_t y;
-         if (e >= 0x3FF+52 || a.v == 0)
+         double de = 1/DBL_EPSILON;
+         if ( a.v == 0x8000000000000000) {
             return af;
+         }
+         if (e >= 0x3FF+52 || a.v == 0) {
+            return af;
+         }
          if (a.v >> 63)
             y = f64_sub( f64_add( f64_sub( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
          else
@@ -745,11 +784,11 @@ class softfloat_api : public context_aware_api {
             return a.v>>63 ? -1.0 : 0.0; //float64_t{0xBFF0000000000000} : float64_t{0}; // -1 or 0
          }
          if ( !f64_le( y, float64_t{0} ) ) {
-            ret = f64_sub( f64_add( a, y ), float64_t{1} );
-            return *reinterpret_cast<double*>(&ret); 
+            ret = f64_sub( f64_add(a,y), to_softfloat64(1.0));
+            return from_softfloat64(ret); 
          }
          ret = f64_add( a, y );
-         return *reinterpret_cast<double*>(&ret); 
+         return from_softfloat64(ret); 
       }
       double _eosio_f64_trunc( double af ) {
          float64_t a = to_softfloat64( af ); 
@@ -763,7 +802,7 @@ class softfloat_api : public context_aware_api {
          if ((a.v & m) == 0)
             return af;
          a.v &= ~m;
-         return *reinterpret_cast<double*>(&a); 
+         return from_softfloat64(a); 
       }
 
       double _eosio_f64_nearest( double af ) {
@@ -778,8 +817,8 @@ class softfloat_api : public context_aware_api {
          else
             y = f64_sub( f64_add( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} );
          if ( f64_eq( y, float64_t{0} ) )
-            return s ? -0.0 : 0.0; //float64_t{8000000000000000} : float64_t{0};   // -0.0 or 0.0
-         return *reinterpret_cast<double*>(&y); 
+            return s ? -0.0 : 0.0;
+         return from_softfloat64(y); 
       }
 
       // double relops
@@ -787,9 +826,24 @@ class softfloat_api : public context_aware_api {
       bool _eosio_f64_ne( double a, double b ) { return !f64_eq( to_softfloat64(a), to_softfloat64(b) ); }
       bool _eosio_f64_lt( double a, double b ) { return f64_lt( to_softfloat64(a), to_softfloat64(b) ); }
       bool _eosio_f64_le( double a, double b ) { return f64_le( to_softfloat64(a), to_softfloat64(b) ); }
-      bool _eosio_f64_gt( double a, double b ) { return !f64_le( to_softfloat64(a), to_softfloat64(b) ); }
-      bool _eosio_f64_ge( double a, double b ) { return !f64_lt( to_softfloat64(a), to_softfloat64(b) ); }
-
+      bool _eosio_f64_gt( double af, double bf ) {  
+         float64_t a = to_softfloat64(af);
+         float64_t b = to_softfloat64(bf);
+         if (is_nan(a))
+            return false;
+         if (is_nan(b))
+            return false;
+         return !f64_le( a, b ); 
+      }
+      bool _eosio_f64_ge( double af, double bf ) {
+         float64_t a = to_softfloat64(af);
+         float64_t b = to_softfloat64(bf);
+         if (is_nan(a))
+            return false;
+         if (is_nan(b))
+            return false;
+         return !f64_lt( a, b ); 
+      }
 
       // float and double conversions
       double _eosio_f32_promote( float a ) { return from_softfloat64(f32_to_f64( to_softfloat32(a)) ); }
@@ -827,11 +881,16 @@ class softfloat_api : public context_aware_api {
       }
       static constexpr uint32_t inv_float_eps = 0x4B000000; 
       static constexpr uint64_t inv_double_eps = 0x4330000000000000;
-      inline bool sign_bit32( float32_t f ) { return f.v >> 31; }
-      inline bool is_nan32( float32_t f ) {
-         // mask the sign bit
-         return ((f.v & 0xFFFFFFF) > 0x7F800000);
+
+      inline bool sign_bit( float32_t f ) { return f.v >> 31; }
+      inline bool sign_bit( float64_t f ) { return f.v >> 63; }
+      inline bool is_nan( float32_t f ) {
+         return ((f.v & 0x7FFFFFFF) > 0x7F800000);
       }
+      inline bool is_nan( float64_t f ) {
+         return ((f.v & 0x7FFFFFFFFFFFFFFF) > 0x7FF0000000000000);
+      }
+
 };
 class producer_api : public context_aware_api {
    public:

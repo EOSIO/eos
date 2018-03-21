@@ -203,29 +203,154 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, tester ) try {
 
 } FC_LOG_AND_RETHROW() /// prove_mem_reset
 
+// test softfloat 32 bit operations
 BOOST_FIXTURE_TEST_CASE( f32_tests, tester ) try {
    produce_blocks(2);
 
    create_accounts( {N(f32_tests)} );
    produce_block();
+   {
+      set_code(N(f32_tests), f32_test_wast);
+      produce_blocks(10);
 
-   set_code(N(f32_tests), f32_test_wast);
-   produce_blocks(10);
+      signed_transaction trx;
+      action act;
+      act.account = N(f32_tests);
+      act.name = N();
+      act.authorization = vector<permission_level>{{N(f32_tests),config::active_name}};
+      trx.actions.push_back(act);
 
-   signed_transaction trx;
-   action act;
-   act.account = N(f32_tests);
-   act.name = N();
-   act.authorization = vector<permission_level>{{N(f32_tests),config::active_name}};
-   trx.actions.push_back(act);
+      set_tapos(trx);
+      trx.sign(get_private_key( N(f32_tests), "active" ), chain_id_type());
+      push_transaction(trx);
+      produce_blocks(1);
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+      const auto& receipt = get_transaction_receipt(trx.id());
+   }
+   {
+      set_code(N(f32_tests), f32_bitwise_test_wast);
+      produce_blocks(10);
 
-   set_tapos(trx);
-   trx.sign(get_private_key( N(f32_tests), "active" ), chain_id_type());
-   push_transaction(trx);
-   produce_blocks(1);
-   BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-   const auto& receipt = get_transaction_receipt(trx.id());
+      signed_transaction trx;
+      action act;
+      act.account = N(f32_tests);
+      act.name = N();
+      act.authorization = vector<permission_level>{{N(f32_tests),config::active_name}};
+      trx.actions.push_back(act);
 
+      set_tapos(trx);
+      trx.sign(get_private_key( N(f32_tests), "active" ), chain_id_type());
+      push_transaction(trx);
+      produce_blocks(1);
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+      const auto& receipt = get_transaction_receipt(trx.id());
+   }
+   {
+      set_code(N(f32_tests), f32_cmp_test_wast);
+      produce_blocks(10);
+
+      signed_transaction trx;
+      action act;
+      act.account = N(f32_tests);
+      act.name = N();
+      act.authorization = vector<permission_level>{{N(f32_tests),config::active_name}};
+      trx.actions.push_back(act);
+
+      set_tapos(trx);
+      trx.sign(get_private_key( N(f32_tests), "active" ), chain_id_type());
+      push_transaction(trx);
+      produce_blocks(1);
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+      const auto& receipt = get_transaction_receipt(trx.id());
+   }
+} FC_LOG_AND_RETHROW()
+
+// test softfloat 64 bit operations
+BOOST_FIXTURE_TEST_CASE( f64_tests, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(f_tests)} );
+   produce_block();
+   {
+      set_code(N(f_tests), f64_test_wast);
+      produce_blocks(10);
+
+      signed_transaction trx;
+      action act;
+      act.account = N(f_tests);
+      act.name = N();
+      act.authorization = vector<permission_level>{{N(f_tests),config::active_name}};
+      trx.actions.push_back(act);
+
+      set_tapos(trx);
+      trx.sign(get_private_key( N(f_tests), "active" ), chain_id_type());
+      push_transaction(trx);
+      produce_blocks(1);
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+      const auto& receipt = get_transaction_receipt(trx.id());
+   }
+   {
+      set_code(N(f_tests), f64_bitwise_test_wast);
+      produce_blocks(10);
+
+      signed_transaction trx;
+      action act;
+      act.account = N(f_tests);
+      act.name = N();
+      act.authorization = vector<permission_level>{{N(f_tests),config::active_name}};
+      trx.actions.push_back(act);
+
+      set_tapos(trx);
+      trx.sign(get_private_key( N(f_tests), "active" ), chain_id_type());
+      push_transaction(trx);
+      produce_blocks(1);
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+      const auto& receipt = get_transaction_receipt(trx.id());
+   }
+   {
+      set_code(N(f_tests), f64_cmp_test_wast);
+      produce_blocks(10);
+
+      signed_transaction trx;
+      action act;
+      act.account = N(f_tests);
+      act.name = N();
+      act.authorization = vector<permission_level>{{N(f_tests),config::active_name}};
+      trx.actions.push_back(act);
+
+      set_tapos(trx);
+      trx.sign(get_private_key( N(f_tests), "active" ), chain_id_type());
+      push_transaction(trx);
+      produce_blocks(1);
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+      const auto& receipt = get_transaction_receipt(trx.id());
+   }
+} FC_LOG_AND_RETHROW()
+
+// test softfloat conversion operations
+BOOST_FIXTURE_TEST_CASE( f32_f64_conversion_tests, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(f_tests)} );
+   produce_block();
+   {
+      set_code(N(f_tests), f_conv_wast);
+      produce_blocks(10);
+
+      signed_transaction trx;
+      action act;
+      act.account = N(f_tests);
+      act.name = N();
+      act.authorization = vector<permission_level>{{N(f_tests),config::active_name}};
+      trx.actions.push_back(act);
+
+      set_tapos(trx);
+      trx.sign(get_private_key( N(f_tests), "active" ), chain_id_type());
+      push_transaction(trx);
+      produce_blocks(1);
+      BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+      const auto& receipt = get_transaction_receipt(trx.id());
+   }
 } FC_LOG_AND_RETHROW()
 
 /**
@@ -647,8 +772,6 @@ BOOST_FIXTURE_TEST_CASE(eosio_abi, tester) try {
 BOOST_FIXTURE_TEST_CASE( test_table_key_validation, tester ) try {
 } FC_LOG_AND_RETHROW()
 
-//busted because of checktime, disable for now
-#if 0
 BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
    produce_blocks(2);
 
@@ -657,7 +780,6 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
 
    set_code(N(tbl), table_checker_wast);
    produce_blocks(1);
-
    {
    signed_transaction trx;
    action act;
@@ -777,7 +899,6 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
    trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
    push_transaction(trx);
    }
-
    set_code(N(tbl), table_checker_small_wast);
    produce_blocks(1);
 
@@ -792,10 +913,9 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
    trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
 
    //an element that is out of range and has no mmap access permission either (should be a trapped segv)
-   BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_execution_error);
+   BOOST_CHECK_EXCEPTION(push_transaction(trx), eosio::chain::wasm_execution_error, [](const eosio::chain::wasm_execution_error &e) {return true;});
    }
 
 } FC_LOG_AND_RETHROW()
-#endif
 
 BOOST_AUTO_TEST_SUITE_END()
