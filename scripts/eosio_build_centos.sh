@@ -1,4 +1,5 @@
-	OS_VER=$( cat /etc/os-release | grep VERSION_ID | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' | cut -d'.' -f1 )
+	OS_VER=$( cat /etc/os-release | grep VERSION_ID | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' \
+	| cut -d'.' -f1 )
 
 	MEM_MEG=$( free -m | grep Mem | tr -s ' ' | cut -d\  -f2 )
 
@@ -49,8 +50,8 @@
 	
 	SCL=$( which scl 2>/dev/null )
 	if [ -z $SCL ]; then
-		printf "\n\tThe Centos Software Collections Repository and devtoolset-7 are required to install EOSIO.\n"
-		printf "\tDo you wish to install and enable this repository and devtoolset-7 and Python3 packages?\n"
+		printf "\n\tThe Centos Software Collections Repository, devtoolset-7 and Python3 are required to install EOSIO.\n"
+		printf "\tDo you wish to install and enable this repository, devtoolset-7 and Python3 packages?\n"
 		select yn in "Yes" "No"; do
 			case $yn in
 				[Yy]* ) 
@@ -198,7 +199,6 @@
 
 	printf "\n\tChecking for boost libraries\n"
 	if [ ! -d ${HOME}/opt/boost_1_66_0 ]; then
-		# install boost
 		printf "\tInstalling boost libraries\n"
 		cd ${TEMP_DIR}
 		curl -L https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2 > boost_1.66.0.tar.bz2
@@ -213,7 +213,6 @@
 	fi
 
 	printf "\n\tChecking for MongoDB installation.\n"
-    # install MongoDB 3.6.3
     if [ ! -e ${MONGOD_CONF} ]; then
 		printf "\n\tInstalling MongoDB 3.6.3.\n"
 		cd ${HOME}/opt
@@ -233,14 +232,14 @@
 tee > /dev/null ${MONGOD_CONF} <<mongodconf
 systemLog:
  destination: file
- path: /home/bhamilton/opt/mongodb/log/mongod.log
+ path: ${HOME}/opt/mongodb/log/mongod.log
  logAppend: true
  logRotate: reopen
 net:
  bindIp: 127.0.0.1,::1
  ipv6: true
 storage:
- dbPath: /home/bhamilton/opt/mongodb/data
+ dbPath: ${HOME}/opt/mongodb/data
 mongodconf
 
 	else
@@ -248,7 +247,6 @@ mongodconf
 	fi
 
 	printf "\n\tChecking for MongoDB C++ driver.\n"
-    # install libmongocxx.dylib
     if [ ! -e /usr/local/lib/libmongocxx.so ]; then
 		printf "\n\tInstalling MongoDB C & C++ drivers.\n"
 		cd ${TEMP_DIR}
@@ -314,7 +312,6 @@ mongodconf
 		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx.so.\n"
 	fi	
 	printf "\n\tChecking for secp256k1-zkp\n"
-    # install secp256k1-zkp (Cryptonomex branch)
     if [ ! -e /usr/local/lib/libsecp256k1.a ]; then
 		printf "\tInstalling secp256k1-zkp (Cryptonomex branch)\n"
 		cd ${TEMP_DIR}
@@ -341,7 +338,6 @@ mongodconf
 	
 	printf "\n\tChecking for binaryen\n"
 	if [ ! -d ${HOME}/opt/binaryen ]; then
-		# Install binaryen v1.37.14:
 		printf "\tInstalling binaryen v1.37.14:\n"
 		cd ${TEMP_DIR}
 		git clone https://github.com/EOSIO/binaryen
@@ -362,7 +358,6 @@ mongodconf
 
 	printf "\n\tChecking for LLVM with WASM support.\n"
 	if [ ! -d ${HOME}/opt/wasm/bin ]; then
-		# Build LLVM and clang with EXPERIMENTAL WASM support:
 		printf "\tInstalling LLVM & WASM\n"
 		cd ${TEMP_DIR}
 		mkdir llvm-compiler  2>/dev/null
