@@ -17,8 +17,8 @@ pipeline {
                     steps {
                         sh '''
                             . $HOME/.bash_profile
-                            echo 1 | ./eosio_build.sh 
-                        ''' 
+                            echo 1 | ./eosio_build.sh
+                        '''
                     }
                 }
                 stage('Fedora') {
@@ -26,8 +26,8 @@ pipeline {
                     steps {
                         sh '''
                             . $HOME/.bash_profile
-                            echo 1 | ./eosio_build.sh 
-                        ''' 
+                            echo 1 | ./eosio_build.sh
+                        '''
                     }
                 }
             }
@@ -49,8 +49,8 @@ pipeline {
                     post {
                         failure {
                             archiveArtifacts 'build/genesis.json'
-                            archiveArtifacts 'build/tn_data_00/config.ini'
-                            archiveArtifacts 'build/tn_data_00/stderr.txt'
+                            archiveArtifacts 'build/etc/eosio/node_00/config.ini'
+                            archiveArtifacts 'build/var/lib/node_00/stderr.txt'
                             archiveArtifacts 'build/test_walletd_output.log'
                         }
                     }
@@ -70,8 +70,8 @@ pipeline {
                     post {
                         failure {
                             archiveArtifacts 'build/genesis.json'
-                            archiveArtifacts 'build/tn_data_00/config.ini'
-                            archiveArtifacts 'build/tn_data_00/stderr.txt'
+                            archiveArtifacts 'build/etc/eosio/node_00/config.ini'
+                            archiveArtifacts 'build/var/lib/node_00/stderr.txt'
                             archiveArtifacts 'build/test_walletd_output.log'
                         }
                     }
@@ -91,8 +91,8 @@ pipeline {
                     post {
                         failure {
                             archiveArtifacts 'build/genesis.json'
-                            archiveArtifacts 'build/tn_data_00/config.ini'
-                            archiveArtifacts 'build/tn_data_00/stderr.txt'
+                            archiveArtifacts 'build/etc/eosio/node_00/config.ini'
+                            archiveArtifacts 'build/var/lib/node_00/stderr.txt'
                             archiveArtifacts 'build/test_walletd_output.log'
                         }
                     }
@@ -100,12 +100,12 @@ pipeline {
             }
         }
     }
-    post { 
-        always { 
+    post {
+        always {
             node('Ubuntu') {
                 cleanWs()
             }
-            
+
             node('MacOS') {
                 cleanWs()
             }

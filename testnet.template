@@ -92,7 +92,7 @@ ecmd set contract eosio contracts/test.system/test.system.wast contracts/test.sy
     step=$(($step + 1))
 
 echo waiting for producers to settle
-sleep 5
+sleep 10
 echo shutting down ignition wallet and bios node
 pkill -15 eosiowd
 kill -15 $(cat var/lib/node_bios/eosiod.pid)

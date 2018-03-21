@@ -1189,7 +1189,8 @@ size_t launcher_def::skip_ndx (size_t from, size_t offset) {
 void
 launcher_def::make_ring () {
   bind_nodes();
-  if (total_nodes > 3) {
+  size_t non_bios = total_nodes - 1;
+  if (non_bios > 2) {
      bool loop = false;
      for (size_t i = start_ndx(); !loop; loop = next_ndx(i)) {
         size_t front = i;
@@ -1197,7 +1198,7 @@ launcher_def::make_ring () {
         network.nodes.find(aliases[i])->second.peers.push_back (aliases[front]);
      }
   }
-  else if (total_nodes == 3) {
+  else if (non_bios == 2) {
      size_t n0 = start_ndx();
      size_t n1 = n0;
      next_ndx(n1);
@@ -1208,30 +1209,31 @@ launcher_def::make_ring () {
 
 void
 launcher_def::make_star () {
-  if (total_nodes < 5) {
+  size_t non_bios = total_nodes - 1;
+  if (non_bios < 4) {
     make_ring ();
     return;
   }
   bind_nodes();
 
   size_t links = 3;
-  if (total_nodes > 12) {
-    links = static_cast<size_t>(sqrt(total_nodes)) + 2;
+  if (non_bios > 12) {
+    links = static_cast<size_t>(sqrt(non_bios)) + 2;
   }
-  size_t gap = total_nodes > 6 ? 3 : (total_nodes - links)/2 +1;
-  while (total_nodes % gap == 0) {
+  size_t gap = non_bios > 6 ? 3 : (non_bios - links)/2 +1;
+  while (non_bios % gap == 0) {
     ++gap;
   }
   // use to prevent duplicates since all connections are bidirectional
   std::map <string, std::set<string>> peers_to_from;
   bool loop = false;
   for (size_t i = start_ndx(); !loop; loop = next_ndx(i)) {
-    const auto& iter = network.nodes.find(aliases[i]);
+     const auto& iter = network.nodes.find(aliases[i]);
     auto &current = iter->second;
     const auto& current_name = iter->first;
+    size_t ndx = i;
     for (size_t l = 1; l <= links; l++) {
-       size_t ndx = skip_ndx(i, l * gap);
-
+       ndx = skip_ndx(ndx, l * gap);
        auto &peer = aliases[ndx];
       for (bool found = true; found; ) {
         found = false;
@@ -1259,10 +1261,7 @@ launcher_def::make_star () {
 
 void
 launcher_def::make_mesh () {
-   if (total_nodes < 5) {
-      make_star();
-      return;
-   }
+  size_t non_bios = total_nodes - 1;
   bind_nodes();
   // use to prevent duplicates since all connections are bidirectional
   std::map <string, std::set<string>> peers_to_from;
@@ -1272,7 +1271,7 @@ launcher_def::make_mesh () {
     auto &current = iter->second;
     const auto& current_name = iter->first;
 
-    for (size_t j = 1; j < total_nodes; j++) {
+    for (size_t j = 1; j < non_bios; j++) {
        size_t ndx = skip_ndx(i,j);
       const auto& peer = aliases[ndx];
       // if already established, don't add to list
