@@ -177,7 +177,6 @@
 		else
 			printf "\n\tMongoDB is running PID=${MONGODB_PID}.\n"
 		fi
-		make test
 	fi
 
    if [ "x${EOSIO_BUILD_PACKAGE}" != "x" ]; then
