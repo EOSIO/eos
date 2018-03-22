@@ -85,7 +85,8 @@ extern "C" {
     *  printd(*(uint64_t*)(&double_value)); // Output: 0.5
     *  @endcode
     */
-   void printd(double value);
+   void printdf(double value);
+   void printff(float value);
    void printdi(int64_t value); 
 
    /**

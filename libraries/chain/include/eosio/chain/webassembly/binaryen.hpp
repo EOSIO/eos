@@ -255,6 +255,22 @@ inline float64_t convert_literal_to_native<float64_t>(Literal& v) {
 }
 
 template<>
+inline float32_t convert_literal_to_native<float32_t>(Literal& v) {
+   auto val = v.getf32();
+   return reinterpret_cast<float32_t&>(val);
+}
+
+template<>
+inline double convert_literal_to_native<double>(Literal& v) {
+   return v.getf64();
+}
+
+template<>
+inline float convert_literal_to_native<float>(Literal& v) {
+   return v.getf32();
+}
+
+template<>
 inline int64_t convert_literal_to_native<int64_t>(Literal& v) {
    return v.geti64();
 }
@@ -293,6 +309,11 @@ inline auto convert_native_to_literal(const wasm_interface &, T val) {
 inline auto convert_native_to_literal(const wasm_interface &, const float64_t& val) {
    return Literal( *((double*)(&val)) );
 }
+
+inline auto convert_native_to_literal(const wasm_interface &, const float32_t& val) {
+   return Literal( *((float*)(&val)) );
+}
+
 
 inline auto convert_native_to_literal(const wasm_interface &, const name &val) {
    return Literal(val.value);
