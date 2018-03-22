@@ -772,4 +772,39 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
 } FC_LOG_AND_RETHROW()
 #endif
 
+BOOST_FIXTURE_TEST_CASE( protected_globals, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(gob)} );
+   produce_block();
+
+   BOOST_CHECK_THROW(set_code(N(gob), global_protection_none_get_wast), fc::exception);
+   produce_blocks(1);
+
+   BOOST_CHECK_THROW(set_code(N(gob), global_protection_some_get_wast), fc::exception);
+   produce_blocks(1);
+
+   BOOST_CHECK_THROW(set_code(N(gob), global_protection_none_set_wast), fc::exception);
+   produce_blocks(1);
+
+   BOOST_CHECK_THROW(set_code(N(gob), global_protection_some_set_wast), fc::exception);
+   produce_blocks(1);
+
+   //sanity to make sure I got general binary construction okay
+   set_code(N(gob), global_protection_okay_get_wasm);
+   produce_blocks(1);
+
+   BOOST_CHECK_THROW(set_code(N(gob), global_protection_none_get_wasm), fc::exception);
+   produce_blocks(1);
+
+   BOOST_CHECK_THROW(set_code(N(gob), global_protection_some_get_wasm), fc::exception);
+   produce_blocks(1);
+
+   set_code(N(gob), global_protection_okay_set_wasm);
+   produce_blocks(1);
+
+   BOOST_CHECK_THROW(set_code(N(gob), global_protection_some_set_wasm), fc::exception);
+   produce_blocks(1);
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_SUITE_END()
