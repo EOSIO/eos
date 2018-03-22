@@ -53,6 +53,9 @@ namespace eosiosystem {
             auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
                : common<SystemAccount>::get_default_parameters();
             if (parameters.first_block_time_in_cycle == 0) {
+               // This is the first time onblock is called in the blockchain.
+               parameters.last_bucket_fill_time = block_time;
+               global_state_singleton::set(parameters);
                voting<SystemAccount>::update_elected_producers(block_time);
                return true;
             }
@@ -109,9 +112,9 @@ namespace eosiosystem {
             eosio_assert(current_sender() == account_name(), "claimrewards can not be part of a deferred transaction");
             producers_table producers_tbl(SystemAccount, SystemAccount);
             auto prod = producers_tbl.find(cr.owner);
-            eosio_assert(prod != producers_tbl.end(), "account name not producer list");
-            eosio_assert(prod->active(), "producer is not active");
-            if (prod->last_rewards_claim > 0) {
+            eosio_assert(prod != producers_tbl.end(), "account name is not in producer list");
+            eosio_assert(prod->active(), "producer is not active"); // QUESTION: Why do we want to prevent inactive producers from claiming their earned rewards?
+            if( prod->last_rewards_claim > 0 ) {
                eosio_assert(now() >= prod->last_rewards_claim + seconds_per_day, "already claimed rewards within a day");
             }
             system_token_type rewards = prod->per_block_payments;
@@ -119,32 +122,35 @@ namespace eosiosystem {
             auto itr = --idx.end();
 
             bool is_among_payed_producers = false;
-            uint64_t total_producer_votes = 0;
+            uint128_t total_producer_votes = 0;
             uint32_t n = 0;
-            while (n < num_of_payed_producers) {
-               if (!is_among_payed_producers) {
-                  if (itr->owner == cr.owner)
+            while( n < num_of_payed_producers ) {
+               if( !is_among_payed_producers ) {
+                  if( itr->owner == cr.owner )
                      is_among_payed_producers = true;
                }
-               if (itr->active()) {
+               if( itr->active() ) {
                   total_producer_votes += itr->total_votes;
                   ++n;
                }
-               if (itr == idx.begin()) {
+               if( itr == idx.begin() ) {
                   break;
                }
                --itr;
             }
 
             if (is_among_payed_producers && total_producer_votes > 0) {
-               if (global_state_singleton::exists()) {
+               if( global_state_singleton::exists() ) {
                   auto parameters = global_state_singleton::get();
-                  auto share_of_eos_bucket = (uint64_t(prod->total_votes) * parameters.eos_bucket) / total_producer_votes;
+                  auto share_of_eos_bucket = system_token_type( static_cast<uint64_t>( (prod->total_votes * parameters.eos_bucket.quantity) / total_producer_votes ) ); // This will be improved in the future when total_votes becomes a double type.
                   rewards += share_of_eos_bucket;
                   parameters.eos_bucket -= share_of_eos_bucket;
                   global_state_singleton::set(parameters);
                }
             }
+
+            eosio_assert( rewards > system_token_type(), "no rewards available to claim" );
+
             producers_tbl.modify( prod, 0, [&](auto& p) {
                   p.last_rewards_claim = now();
                   p.per_block_payments.quantity = 0;
