@@ -1,15 +1,14 @@
-# ${{ action_name }} Action
+# Action - `$action`
 
 This Contract is legally binding and can be used in the event of a dispute. Disputes shall be settled through the standard arbitration process established by EOS.IO.
 
 ### Description
 
-The `${{ action_name }}` action... 
+The `$action` action... 
 
-### Input(s) and Input Type(s)
+### $input_header and Input $type_header
 
-The `${{ action_name }}` action requires the following `input(s)` and `input type(s)`:
+The `$action` action requires the following `$input` and `input $type`:
 
 | Action | Input | Input Type |
 |:--|:--|:--|
-| `${{ action }}` | `${{ input }}` | `${{ type }}` |

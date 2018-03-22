@@ -3,61 +3,43 @@
 # By: Jon-Eric Cook
 # Github: @joneric
 
+from string import Template
+import argparse
+import json
 import sys
 import os
-import json
+import re
+
+# argument parser
+parser = argparse.ArgumentParser(description="The `abi_to_rc.py` script processes a smart contract's .abi file in order to generate an overview Ricardian Contract and a Ricardian Contract for each action. The overview Ricardian Contract provides a description of the smart contract's purpose and also specifies the contract's action(s), input(s), and input type(s). The action Ricardian Contract provides a description of the action's purpose and also specifies the action's input(s), and input type(s).")
+parser.add_argument("path_to_abi_file", help="path to the smart contract's .abi file")
+args = parser.parse_args()
 
 # global variables
+_RC_OVERVIEW = "rc-overview-template.md"
+_RC_ACTION = "rc-action-template.md"
+_PATH_TO_ABI = ""
 actions = []
 inputs = {}
 types = {}
 
-# validates passed in arguments
-def validate_input_arguments():
-    # exit if less than 4 arguments are given
-    if len(sys.argv) < 4:
-        print("ERROR: missing arguments")
-        print("-- Expected format --")
-        print("$ python abi_to_rc.py ${{smart-contract.abi}} rc-overview-template.md rc-action-template.md")
-        sys.exit(0)
-
-    # exit if arguments are ordered incorrectly
-    # exit if passed in files can't be found
-    elif len(sys.argv) == 4:
-        if ".abi" not in sys.argv[1]:
-            print("ERROR: first argument should be a .abi file")
-            print("-- Expected format --")
-            print("$ python abi_to_rc.py ${{smart-contract.abi}} rc-overview-template.md rc-action-template.md")
-            sys.exit(0)
-        elif not os.path.isfile(sys.argv[1]):
-            print("ERROR: %s could not be found" % sys.argv[1])
-            sys.exit(0)
-        elif "rc-overview-template.md" != sys.argv[2]:
-            print("ERROR: second argument should be the 'rc-overview-template.md' file")
-            print("-- Expected format --")
-            print("$ python abi_to_rc.py ${{smart-contract.abi}} rc-overview-template.md rc-action-template.md")
-            sys.exit(0)
-        elif not os.path.isfile(sys.argv[2]):
-            print("ERROR: %s could not be found" % sys.argv[2])
-            sys.exit(0)
-        elif "rc-action-template.md" != sys.argv[3]:
-            print("ERROR: third argument should be the 'rc-action-template.md' file")
-            print("-- Expected format --")
-            print("$ python abi_to_rc.py ${{smart-contract.abi}} rc-overview-template.md rc-action-template.md")
-            sys.exit(0)
-        elif not os.path.isfile(sys.argv[3]):
-            print("ERROR: %s could not be found" % sys.argv[3])
-            sys.exit(0)
-    else:
-        print("ERROR: too many arguments")
-        print("-- Expected format --")
-        print("$ python abi_to_rc.py ${{smart-contract.abi}} rc-overview-template.md rc-action-template.md")
-        sys.exit(0)
+# checks for abi and template files
+def check_for_files():
+    if not os.path.isfile(args.path_to_abi_file):
+        abi_filename = os.path.split(args.path_to_abi_file)[1]
+        print("ERROR: %s could not be found" % abi_filename)
+        sys.exit(1)
+    if not os.path.isfile(os.path.join(os.path.dirname(sys.argv[0]), _RC_OVERVIEW)):
+        print("ERROR: %s could not be found" % _RC_OVERVIEW)
+        sys.exit(1)
+    if not os.path.isfile(os.path.join(os.path.dirname(sys.argv[0]), _RC_ACTION)):
+        print("ERROR: %s could not be found" % _RC_ACTION)
+        sys.exit(1)
+    dirname = os.path.split(args.path_to_abi_file)[0]
 
 # gets actions, inputs and input types from abi file
 def get_actions_inputs_types():
-    abi_file_name = sys.argv[1]
-    abi_file = open(abi_file_name,'r')
+    abi_file = open(args.path_to_abi_file,'r')
     abi_text = abi_file.read()
     abi_file.close()
     abi_json = json.loads(abi_text)
@@ -78,80 +60,83 @@ def get_actions_inputs_types():
 # builds rows for the table
 def build_table_rows():
     table_rows = []
-    row = "| `${{ action }}` | `${{ input }}` | `${{ type }}` |"
     for action in actions:
-        temp_row = row
-        temp_row = temp_row.replace("${{ action }}",action['name'])
-        if len(inputs[action['name']]) > 1:
-            input_string = ""
+        action_string = "`" + action['name'] + "`"
+        input_string = ""
+        input_list = []
+        type_string = ""
+        type_list =[]
+
+        if len(inputs[action['name']]) >= 1:
             for name in inputs[action['name']]:
-                input_string = input_string + "`" + name + "`" + "<br/>"
-            temp_row = temp_row.replace("`${{ input }}`",input_string)
-        elif len(inputs[action['name']]) == 1:
-            temp_row = temp_row.replace("${{ input }}",inputs[action['name']][0])
+                input_list.append("`" + name + "`")
+            input_string = '<br/>'.join(input_list)
         else:
-            temp_row = temp_row.replace("${{ input }}",action['type'])
+            input_string = "`" + action['type'] + "`"
 
-        if len(types[action['name']]) > 1:
-            type_string = ""
+        if len(types[action['name']]) >= 1:
             for name in types[action['name']]:
-                type_string = type_string + "`" + name + "`" + "<br/>"
-            temp_row = temp_row.replace("`${{ type }}`",type_string)
-        elif len(types[action['name']]) == 1:
-            temp_row = temp_row.replace("${{ type }}",types[action['name']][0])
+                type_list.append("`" + name + "`")
+            type_string = '<br/>'.join(type_list)
         else:
-            temp_row = temp_row.replace("${{ type }}",action['type'])
+            type_string = "`" + action['type'] + "`"
 
-        table_rows.append(temp_row)
+        table_rows.append('| ' + action_string + ' | ' + input_string + ' | ' + type_string + ' |')
     return table_rows
 
 # generates an overview ricardian contract from the overview template
 def generate_rc_overview_file():
     tr = build_table_rows()
-    rc_overview_template_file_name = sys.argv[2]
-    abi_file_name = sys.argv[1]
-    contract_name = abi_file_name[:-4]
+    plural = {  'action': 'actions' if len(actions) > 1 else 'action',
+                'input': 'inputs' if len(inputs) > 1 else 'input',
+                'type': 'types' if len(types) > 1 else 'type'      }
+    abi_file_name = os.path.split(args.path_to_abi_file)[1]
+    contract_name = os.path.splitext(abi_file_name)[0]
     rc_file_name = contract_name + '-rc.md'
-    rc_file = open(rc_file_name,"w+")
-    with open(rc_overview_template_file_name) as fp:
-        for line in fp:
-            if "${{ contract }}" in line:
-                rc_file.write(line.replace("${{ contract }}", contract_name))
-            elif "${{ action }}" in line:
-                for row in tr:
-                    rc_file.write(row + "\n")
-            else:
-                rc_file.write(line)
+    dirname = os.path.split(args.path_to_abi_file)[0]
+    rc_file = open(os.path.join(dirname, rc_file_name),"w+")
+    with open(os.path.join(os.path.dirname(sys.argv[0]), _RC_OVERVIEW)) as fp:
+        overview_template = Template(fp.read())
+        rc_file.write(overview_template.substitute( contract=contract_name,
+                                                    action=plural['action'],
+                                                    input=plural['input'],
+                                                    type=plural['type'],
+                                                    action_header=plural['action'].title(),
+                                                    input_header=plural['input'].title(),
+                                                    type_header=plural['type'].title()       ))
+        rc_file.write('\n'.join(tr))
     rc_file.close()
 
 # generates a ricardian contract for each action from the action template
 def generate_rc_action_files():
     tr = build_table_rows()
-    rc_action_template_file_name = sys.argv[3]
-    abi_file_name = sys.argv[1]
-    contract_name = abi_file_name[:-4]
+    abi_filename = os.path.split(args.path_to_abi_file)[1]
+    contract_name = os.path.splitext(abi_filename)[0]
+    dirname = os.path.split(args.path_to_abi_file)[0]
     for action in actions:
+        plural = {  'input': 'inputs' if len(inputs[action['name']]) > 1 else 'input',
+                    'type': 'types' if len(types[action['name']]) > 1 else 'type'      }
         rc_action_file_name = contract_name + "-" + action['name'] + '-rc.md'
-        rc_file = open(rc_action_file_name,"w+")
-        with open(rc_action_template_file_name) as fp:
-            for line in fp:
-                if "${{ action_name }}" in line:
-                    rc_file.write(line.replace("${{ action_name }}", action['name']))
-                elif "${{ action }}" in line:
-                    for row in tr:
-                        if action['name'] in row:
-                            rc_file.write(row + "\n")
-                else:
-                    rc_file.write(line)
+        rc_file = open(os.path.join(dirname, rc_action_file_name),"w+")
+        with open(os.path.join(os.path.dirname(sys.argv[0]), _RC_ACTION)) as fp:
+            action_template = Template(fp.read())
+            rc_file.write(action_template.substitute(   action=action['name'],
+                                                        input=plural['input'],
+                                                        type=plural['type'],
+                                                        input_header=plural['input'].title(),
+                                                        type_header=plural['type'].title()     ))
+            for row in tr:
+                if re.search("\\b" + action['name'] + "\\b", row):
+                    rc_file.write(row + "\n")
         rc_file.close()
 
 # main program
 def main():
-    validate_input_arguments()
+    check_for_files()
     get_actions_inputs_types()
     generate_rc_overview_file()
     generate_rc_action_files()
 
 # runs main
 if __name__== "__main__":
-  main()
+    main()
