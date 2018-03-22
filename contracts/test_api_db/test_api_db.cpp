@@ -22,8 +22,6 @@ extern "C" {
       WASM_TEST_HANDLER(test_db, idx64_lowerbound);
       WASM_TEST_HANDLER(test_db, idx64_upperbound);
 
-      WASM_TEST_HANDLER(test_db, key_str_general);
-
       //unhandled test call
       eosio_assert(false, "Unknown Test");
    }

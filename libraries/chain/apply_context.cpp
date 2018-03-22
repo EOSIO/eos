@@ -18,15 +18,16 @@ void apply_context::exec_one()
       auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
       if (native) {
          (*native)(*this);
-      } else {
-         if (a.code.size() > 0) {
-            // get code from cache
-            auto code = mutable_controller.get_wasm_cache().checkout_scoped(a.code_version, a.code.data(),
-                                                                            a.code.size());
+      } 
+      else if (a.code.size() > 0) {
+         // get code from cache
+         auto code = mutable_controller.get_wasm_cache().checkout_scoped(a.code_version, a.code.data(),
+                                                                         a.code.size());
+         try {
             // get wasm_interface
             auto &wasm = wasm_interface::get();
             wasm.apply(code, *this);
-      }
+         } catch ( const wasm_exit& ){}
       }
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 

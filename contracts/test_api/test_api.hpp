@@ -125,7 +125,6 @@ struct test_db {
 
    static void key_i128i128_general();
    static void key_i64i64i64_general();
-   static void key_str_general();
    static void key_str_table();
 
    static void key_str_setup_limit();

@@ -13,9 +13,26 @@
 
 cd $EOSIO_HOME
 
-prog=eosd
-if [ ! \( -f programs/$prog/$prog \) ]; then
-    prog=eosiod
+prog=""
+RD=""
+for p in eosd eosiod nodeos; do
+    prog=$p
+    RD=bin
+    if [ -f $RD/$prog ]; then
+        break;
+    else
+        RD=programs/$prog
+        if [ -f $RD/$prog ]; then
+            break;
+        fi
+    fi
+    prog=""
+    RD=""
+done
+
+if [ \( -z "$prog" \) -o \( -z "$RD" \) ]; then
+    echo unable to locate binary for eosd or eosiod or nodeos
+    exit 1
 fi
 
 if [ -z "$EOSIO_TN_NODE" ]; then

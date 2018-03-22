@@ -4,7 +4,6 @@
  */
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/token.hpp>
-#include <eosiolib/db.hpp>
 #include <eosiolib/reflect.hpp>
 #include <eosiolib/print.hpp>
 

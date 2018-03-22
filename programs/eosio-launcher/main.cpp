@@ -399,12 +399,12 @@ launcher_def::set_options (bpo::options_description &cli) {
     ("genesis,g",bpo::value<bf::path>(&genesis)->default_value("./genesis.json"),"set the path to genesis.json")
     ("output,o",bpo::value<bf::path>(&output),"save a copy of the generated topology in this file")
     ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), "EOSD does not require transaction signatures.")
-    ("eosiod", bpo::value<string>(&eosd_extra_args), "forward eosiod command line argument(s) to each instance of eosiod, enclose arg in quotes")
+    ("nodeos", bpo::value<string>(&eosd_extra_args), "forward nodeos command line argument(s) to each instance of nodeos, enclose arg in quotes")
     ("delay,d",bpo::value<int>(&start_delay)->default_value(0),"seconds delay before starting each node after the first")
     ("nogen",bpo::bool_switch(&nogen)->default_value(false),"launch nodes without writing new config files")
     ("host-map",bpo::value<bf::path>(&host_map_file)->default_value(""),"a file containing mapping specific nodes to hosts. Used to enhance the custom shape argument")
     ("servers",bpo::value<bf::path>(&server_ident_file)->default_value(""),"a file containing ip addresses and names of individual servers to deploy as producers or observers ")
-    ("per-host",bpo::value<int>(&per_host)->default_value(0),"specifies how many eosiod instances will run on a single host. Use 0 to indicate all on one.")
+    ("per-host",bpo::value<int>(&per_host)->default_value(0),"specifies how many nodeos instances will run on a single host. Use 0 to indicate all on one.")
     ("network-name",bpo::value<string>(&network.name)->default_value("testnet_"),"network name prefix used in GELF logging source")
     ("enable-gelf-logging",bpo::value<bool>(&gelf_enabled)->default_value(true),"enable gelf logging appender in logging configuration file")
     ("gelf-endpoint",bpo::value<string>(&gelf_endpoint)->default_value("10.160.11.21:12201"),"hostname:port or ip:port of GELF endpoint")
@@ -1140,13 +1140,13 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   bf::path reerr_sl = dd / "stderr.txt";
   bf::path reerr_base = bf::path("stderr." + launch_time + ".txt");
   bf::path reerr = dd / reerr_base;
-  bf::path pidf  = dd / "eosiod.pid";
+  bf::path pidf  = dd / "nodeos.pid";
 
   host_def* host = deploy_config_files (*instance.node);
   node_rt_info info;
   info.remote = !host->is_local();
 
-  string eosdcmd = "programs/eosiod/eosiod ";
+  string eosdcmd = "programs/nodeos/nodeos ";
   if (skip_transaction_signatures) {
     eosdcmd += "--skip-transaction-signatures ";
   }

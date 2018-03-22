@@ -48,6 +48,7 @@ void entry::call(const string &entry_point, const vector <Value> &args, apply_co
 
       runInstanceStartFunc(instance);
       Runtime::invokeFunction(call,args);
+   } catch( const wasm_exit& e ) {
    } catch( const Runtime::Exception& e ) {
       FC_THROW_EXCEPTION(wasm_execution_error,
                          "cause: ${cause}\n${callstack}",

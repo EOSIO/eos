@@ -327,6 +327,7 @@ BOOST_FIXTURE_TEST_CASE( f64_tests, tester ) try {
    }
 } FC_LOG_AND_RETHROW()
 
+#if 0
 // test softfloat conversion operations
 BOOST_FIXTURE_TEST_CASE( f32_f64_conversion_tests, tester ) try {
    produce_blocks(2);
@@ -352,6 +353,7 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_conversion_tests, tester ) try {
       const auto& receipt = get_transaction_receipt(trx.id());
    }
 } FC_LOG_AND_RETHROW()
+#endif
 
 /**
  * Make sure WASM "start" method is used correctly
@@ -887,7 +889,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
    }
 
    produce_blocks(1);
-
+#if 0
    {
    signed_transaction trx;
    action act;
@@ -915,6 +917,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
    //an element that is out of range and has no mmap access permission either (should be a trapped segv)
    BOOST_CHECK_EXCEPTION(push_transaction(trx), eosio::chain::wasm_execution_error, [](const eosio::chain::wasm_execution_error &e) {return true;});
    }
+#endif
 
 } FC_LOG_AND_RETHROW()
 
