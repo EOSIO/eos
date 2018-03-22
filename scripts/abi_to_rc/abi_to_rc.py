@@ -10,36 +10,52 @@ import sys
 import os
 import re
 
+# purpose of abi_to_rc.py
+purpose =   '''purpose:\n  The abi_to_rc.py script processes a contract's .abi file in order to generate 
+  an overview Ricardian Contract and a Ricardian Contract for each action. The 
+  overview Ricardian Contract provides a description of the contract's purpose 
+  and also specifies the contract's action(s), input(s), and input type(s). The 
+  action Ricardian Contract provides a description of the action's purpose and 
+  also specifies the action's input(s), and input type(s).'''
+
+## how to run abi_to_rc.py
+how_to =    '''\n \nhow to run:\n  $ python abi_to_rc.py /path/to/smart-contract.abi'''
+
+## example of how to run abi_to_rc.py
+example =   '''\n \nexample:\n  $ python abi_to_rc.py ../../contracts/currency/currency.abi'''
+
 # argument parser
-parser = argparse.ArgumentParser(description="The `abi_to_rc.py` script processes a smart contract's .abi file in order to generate an overview Ricardian Contract and a Ricardian Contract for each action. The overview Ricardian Contract provides a description of the smart contract's purpose and also specifies the contract's action(s), input(s), and input type(s). The action Ricardian Contract provides a description of the action's purpose and also specifies the action's input(s), and input type(s).")
-parser.add_argument("path_to_abi_file", help="path to the smart contract's .abi file")
+parser = argparse.ArgumentParser(
+    prog="abi_to_rc.py",
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    description=purpose + how_to + example,
+    usage="\n  $ python %(prog)s [-h] abi_file")
+parser.add_argument("abi_file", help="path to smart contract's .abi file")
 args = parser.parse_args()
 
 # global variables
 _RC_OVERVIEW = "rc-overview-template.md"
 _RC_ACTION = "rc-action-template.md"
-_PATH_TO_ABI = ""
 actions = []
 inputs = {}
 types = {}
 
 # checks for abi and template files
 def check_for_files():
-    if not os.path.isfile(args.path_to_abi_file):
-        abi_filename = os.path.split(args.path_to_abi_file)[1]
+    if not os.path.isfile(args.abi_file):
+        abi_filename = os.path.split(args.abi_file)[1]
         print("ERROR: %s could not be found" % abi_filename)
-        sys.exit(1)
+        exit(1)
     if not os.path.isfile(os.path.join(os.path.dirname(sys.argv[0]), _RC_OVERVIEW)):
         print("ERROR: %s could not be found" % _RC_OVERVIEW)
-        sys.exit(1)
+        exit(1)
     if not os.path.isfile(os.path.join(os.path.dirname(sys.argv[0]), _RC_ACTION)):
         print("ERROR: %s could not be found" % _RC_ACTION)
-        sys.exit(1)
-    dirname = os.path.split(args.path_to_abi_file)[0]
+        exit(1)
 
 # gets actions, inputs and input types from abi file
 def get_actions_inputs_types():
-    abi_file = open(args.path_to_abi_file,'r')
+    abi_file = open(args.abi_file,'r')
     abi_text = abi_file.read()
     abi_file.close()
     abi_json = json.loads(abi_text)
@@ -66,21 +82,18 @@ def build_table_rows():
         input_list = []
         type_string = ""
         type_list =[]
-
         if len(inputs[action['name']]) >= 1:
             for name in inputs[action['name']]:
                 input_list.append("`" + name + "`")
             input_string = '<br/>'.join(input_list)
         else:
             input_string = "`" + action['type'] + "`"
-
         if len(types[action['name']]) >= 1:
             for name in types[action['name']]:
                 type_list.append("`" + name + "`")
             type_string = '<br/>'.join(type_list)
         else:
             type_string = "`" + action['type'] + "`"
-
         table_rows.append('| ' + action_string + ' | ' + input_string + ' | ' + type_string + ' |')
     return table_rows
 
@@ -90,10 +103,10 @@ def generate_rc_overview_file():
     plural = {  'action': 'actions' if len(actions) > 1 else 'action',
                 'input': 'inputs' if len(inputs) > 1 else 'input',
                 'type': 'types' if len(types) > 1 else 'type'      }
-    abi_file_name = os.path.split(args.path_to_abi_file)[1]
+    abi_file_name = os.path.split(args.abi_file)[1]
     contract_name = os.path.splitext(abi_file_name)[0]
     rc_file_name = contract_name + '-rc.md'
-    dirname = os.path.split(args.path_to_abi_file)[0]
+    dirname = os.path.split(args.abi_file)[0]
     rc_file = open(os.path.join(dirname, rc_file_name),"w+")
     with open(os.path.join(os.path.dirname(sys.argv[0]), _RC_OVERVIEW)) as fp:
         overview_template = Template(fp.read())
@@ -110,9 +123,9 @@ def generate_rc_overview_file():
 # generates a ricardian contract for each action from the action template
 def generate_rc_action_files():
     tr = build_table_rows()
-    abi_filename = os.path.split(args.path_to_abi_file)[1]
+    abi_filename = os.path.split(args.abi_file)[1]
     contract_name = os.path.splitext(abi_filename)[0]
-    dirname = os.path.split(args.path_to_abi_file)[0]
+    dirname = os.path.split(args.abi_file)[0]
     for action in actions:
         plural = {  'input': 'inputs' if len(inputs[action['name']]) > 1 else 'input',
                     'type': 'types' if len(types[action['name']]) > 1 else 'type'      }
