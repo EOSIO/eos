@@ -30,7 +30,8 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
       {}
 
       void apply(apply_context& context) override {
-         vector<Value> args = {Value(uint64_t(context.act.account)),
+         vector<Value> args = {Value(uint64_t(context.receiver)),
+	                       Value(uint64_t(context.act.account)),
                                Value(uint64_t(context.act.name))};
 
          call("apply", args, context);
@@ -77,11 +78,13 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
          } FC_CAPTURE_AND_RETHROW()
       }
 
+
       std::vector<uint8_t> _initial_memory;
       //naked pointers because ModuleInstance is opaque
       ModuleInstance*      _instance;
       Module*              _module;
 };
+
 
 wavm_runtime::runtime_guard::runtime_guard() {
    // TODO clean this up
