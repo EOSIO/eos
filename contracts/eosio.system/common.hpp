@@ -53,20 +53,4 @@ namespace eosiosystem {
          }
    };
 
-   std::pair<uint64_t, uint64_t> int_logarithm_one_plus(uint32_t x) {
-      static const uint64_t denom = 10000;
-      uint64_t ret = 0;
-      uint64_t x_power = x;
-      const uint64_t n = 4;
-      static const uint64_t ten_power = denom * denom * denom * denom;
-      for (uint64_t i = 0, p = ten_power; i < n; ++i) {
-         uint64_t factor = x_power * p / (i+1);
-         ret += factor;
-         ret -= 2 * (i % 2) * factor;
-         x_power *= x;
-         p /= denom;
-      }
-      return std::make_pair(ret / (denom * denom * denom), denom);
-   }
-
 }

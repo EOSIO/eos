@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 
 namespace eosiosystem {
    using eosio::indexed_by;
@@ -233,9 +234,10 @@ namespace eosiosystem {
 
          static system_token_type payment_per_block(uint32_t percent_of_max_inflation_rate) {
             const system_token_type token_supply = currency::get_total_supply();
-            const auto inflation_rate = max_inflation_rate * percent_of_max_inflation_rate;
-            const auto& inflation_ratio = int_logarithm_one_plus(inflation_rate);
-            return (token_supply * inflation_ratio.first) / (inflation_ratio.second * blocks_per_year);
+            const double annual_rate = double(max_inflation_rate * percent_of_max_inflation_rate) / double(10000);
+            double continuous_rate = std::log1p(annual_rate);
+            uint64_t payment = static_cast<uint64_t>((continuous_rate * double(token_supply.quantity)) / double(blocks_per_year));
+            return (system_token_type(payment));
          }
 
          static void update_elected_producers(time cycle_time) {
