@@ -334,7 +334,7 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_conversion_tests, tester ) try {
    create_accounts( {N(f_tests)} );
    produce_block();
    {
-      set_code(N(f_tests), f_conv_wast);
+      set_code(N(f_tests), f32_f64_conv_wast);
       produce_blocks(10);
 
       signed_transaction trx;

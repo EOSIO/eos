@@ -846,24 +846,60 @@ class softfloat_api : public context_aware_api {
       }
 
       // float and double conversions
-      double _eosio_f32_promote( float a ) { return from_softfloat64(f32_to_f64( to_softfloat32(a)) ); }
-      float _eosio_f64_demote( double a ) { return from_softfloat32(f64_to_f32( to_softfloat64(a)) ); }
-      int32_t _eosio_f32_trunc_i32s( float a ) { return f32_to_i32( to_softfloat32(_eosio_f32_trunc( a )), 0, false ); }
-      int32_t _eosio_f64_trunc_i32s( double a ) { return f64_to_i32( to_softfloat64(_eosio_f64_trunc( a )), 0, false ); }
-      uint32_t _eosio_f32_trunc_i32u( float a ) { return f32_to_ui32( to_softfloat32(_eosio_f32_trunc( a )), 0, false ); }
-      uint32_t _eosio_f64_trunc_i32u( double a ) { return f64_to_ui32( to_softfloat64(_eosio_f64_trunc( a )), 0, false ); }
-      int64_t _eosio_f32_trunc_i64s( float a ) { return f32_to_i64( to_softfloat32(_eosio_f32_trunc( a )), 0, false ); }
-      int64_t _eosio_f64_trunc_i64s( double a ) { return f64_to_i64( to_softfloat64(_eosio_f64_trunc( a )), 0, false ); }
-      uint64_t _eosio_f32_trunc_i64u( float a ) { return f32_to_ui64( to_softfloat32(_eosio_f32_trunc( a )), 0, false ); }
-      uint64_t _eosio_f64_trunc_i64u( double a ) { return f64_to_ui64( to_softfloat64(_eosio_f64_trunc( a )), 0, false ); }
-      float _eosio_i32_to_f32( int32_t a ) { return from_softfloat32(i32_to_f32( a )); }
-      float _eosio_i64_to_f32( int64_t a ) { return from_softfloat32(i64_to_f32( a )); }
-      float _eosio_ui32_to_f32( uint32_t a ) { return from_softfloat32(ui32_to_f32( a )); }
-      float _eosio_ui64_to_f32( uint64_t a ) { return from_softfloat32(ui64_to_f32( a )); }
-      double _eosio_i32_to_f64( int32_t a ) { return from_softfloat64(i32_to_f64( a )); }
-      double _eosio_i64_to_f64( int64_t a ) { return from_softfloat64(i64_to_f64( a )); }
-      double _eosio_ui32_to_f64( uint32_t a ) { return from_softfloat64(ui32_to_f64( a )); }
-      double _eosio_ui64_to_f64( uint64_t a ) { return from_softfloat64(ui64_to_f64( a )); }
+      double _eosio_f32_promote( float a ) { 
+         return from_softfloat64(f32_to_f64( to_softfloat32(a)) ); 
+      }
+      float _eosio_f64_demote( double a ) { 
+         return from_softfloat32(f64_to_f32( to_softfloat64(a)) ); 
+      }
+      int32_t _eosio_f32_trunc_i32s( float a ) { 
+         return f32_to_i32( to_softfloat32(_eosio_f32_trunc( a )), 0, false ); 
+      }
+      int32_t _eosio_f64_trunc_i32s( double a ) { 
+         return f64_to_i32( to_softfloat64(_eosio_f64_trunc( a )), 0, false ); 
+      }
+      uint32_t _eosio_f32_trunc_i32u( float a ) { 
+         return f32_to_ui32( to_softfloat32(_eosio_f32_trunc( a )), 0, false ); 
+      }
+      uint32_t _eosio_f64_trunc_i32u( double a ) { 
+         return f64_to_ui32( to_softfloat64(_eosio_f64_trunc( a )), 0, false ); 
+      }
+      int64_t _eosio_f32_trunc_i64s( float a ) { 
+         return f32_to_i64( to_softfloat32(_eosio_f32_trunc( a )), 0, false ); 
+      }
+      int64_t _eosio_f64_trunc_i64s( double a ) { 
+         return f64_to_i64( to_softfloat64(_eosio_f64_trunc( a )), 0, false ); 
+      }
+      uint64_t _eosio_f32_trunc_i64u( float a ) { 
+         return f32_to_ui64( to_softfloat32(_eosio_f32_trunc( a )), 0, false ); 
+      }
+      uint64_t _eosio_f64_trunc_i64u( double a ) { 
+         return f64_to_ui64( to_softfloat64(_eosio_f64_trunc( a )), 0, false ); 
+      }
+      float _eosio_i32_to_f32( int32_t a )  { 
+         return from_softfloat32(i32_to_f32( a )); 
+      }
+      float _eosio_i64_to_f32( int64_t a ) { 
+         return from_softfloat32(i64_to_f32( a )); 
+      }
+      float _eosio_ui32_to_f32( uint32_t a ) { 
+         return from_softfloat32(ui32_to_f32( a )); 
+      }
+      float _eosio_ui64_to_f32( uint64_t a ) { 
+         return from_softfloat32(ui64_to_f32( a )); 
+      }
+      double _eosio_i32_to_f64( int32_t a ) { 
+         return from_softfloat64(i32_to_f64( a )); 
+      }
+      double _eosio_i64_to_f64( int64_t a ) { 
+         return from_softfloat64(i64_to_f64( a )); 
+      }
+      double _eosio_ui32_to_f64( uint32_t a ) { 
+         return from_softfloat64(ui32_to_f64( a )); 
+      }
+      double _eosio_ui64_to_f64( uint64_t a ) {
+         return from_softfloat64(ui64_to_f64( a )); 
+      }
 
 
    private:

@@ -476,10 +476,8 @@ namespace eosio { namespace chain { namespace wasm_injections {
    };
 
    struct pre_op_injectors : wasm_ops::op_types<pass_injector> {
-      //using block_t           = wasm_ops::block                   <instruction_counter, checktime_injector>;
-      using block_t           = wasm_ops::block                   <instruction_counter>;
-      //using loop_t            = wasm_ops::loop                    <instruction_counter, checktime_injector>;
-      using loop_t            = wasm_ops::loop                    <instruction_counter>;
+      using block_t           = wasm_ops::block                   <instruction_counter, checktime_injector>;
+      using loop_t            = wasm_ops::loop                    <instruction_counter, checktime_injector>;
       using if__t             = wasm_ops::if_                     <instruction_counter>;
       using else__t           = wasm_ops::else_                   <instruction_counter>;
       

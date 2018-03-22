@@ -21230,7 +21230,7 @@ static const char f64_cmp_test_wast[] = R"=====(
     (call $assert_return (call $ge (f64.const nan:0x4000000000000) (f64.const nan:0x4000000000000)) (i32.const 0) (i32.const 9616))
 ))
 )=====";
-static const char f64_test_wast[] = R"=====(
+static const char f32_f64_conv_wast[] = R"=====(
 (module
   (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
    (table 0 anyfunc)
