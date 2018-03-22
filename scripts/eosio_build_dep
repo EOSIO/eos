@@ -1,5 +1,5 @@
 automake,-x,/usr/local/bin/automake,automake,http://ftp.gnu.org/gnu/automake/automake-1.15.tar.gz
-Libtool,-x,/usr/local/bin/libtool,libtool,http://gnu.askapache.com/libtool/libtool-2.4.6.tar.gz
+Libtool,-x,/usr/local/bin/glibtool,libtool,http://gnu.askapache.com/libtool/libtool-2.4.6.tar.gz
 OpenSSL,-f,/usr/local/opt/openssl/lib/libssl.a,openssl,https://www.openssl.org/source/openssl-1.0.2n.tar.gz
 llvm,-x,/usr/local/opt/llvm@4/bin/clang-4.0,llvm@4,http://releases.llvm.org/5.0.1/llvm-5.0.1.src.tar.xz
 wget,-x,/usr/local/bin/wget,wget,https://ftp.gnu.org/gnu/wget/wget-1.19.2.tar.gz
