@@ -351,7 +351,7 @@ namespace eosiosystem {
 
             auto issue_quantity = parameters.blocks_per_cycle * (parameters.payment_per_block + parameters.payment_to_eos_bucket);
             currency::inline_issue(SystemAccount, issue_quantity);
-            set_blockchain_parameters(&parameters);
+            set_blockchain_parameters(parameters);
             global_state_singleton::set(parameters);
          }
 

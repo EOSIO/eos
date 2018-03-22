@@ -21,11 +21,11 @@ namespace eosiosystem {
          static constexpr uint32_t   blocks_per_producer = 6;
          static constexpr uint32_t   seconds_per_day = 24 * 3600;
          static constexpr uint32_t   days_per_4years = 1461;
-         
+
          struct eosio_parameters : eosio::blockchain_parameters {
             uint32_t          percent_of_max_inflation_rate = 0;
             uint32_t          storage_reserve_ratio = 1000;      // ratio * 1000
-               
+
             EOSLIB_SERIALIZE_DERIVED( eosio_parameters, eosio::blockchain_parameters, (percent_of_max_inflation_rate)(storage_reserve_ratio) )
          };
 
@@ -48,7 +48,7 @@ namespace eosiosystem {
 
          static eosio_global_state& get_default_parameters() {
             static eosio_global_state dp;
-            get_blockchain_parameters(&dp);
+            get_blockchain_parameters(dp);
             return dp;
          }
    };
