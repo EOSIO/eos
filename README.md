@@ -572,7 +572,7 @@ Install the development toolkit:
 sudo yum update
 sudo yum install git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 \
 				 bzip2-devel.x86_64 openssl-devel.x86_64 gmp.x86_64 gmp-devel.x86_64 \
-				 libstdc++72.x86_64 python27-devel.x86_64 libedit-devel.x86_64 \
+				 libstdc++72.x86_64 python36-devel.x86_64 libedit-devel.x86_64 \
 				 ncurses-devel.x86_64 swig.x86_64 gettext-devel.x86_64
 
 ```
@@ -602,6 +602,50 @@ source ~/.bash_profile
 cd boost_1_66_0/
 ./bootstrap.sh "--prefix=$BOOST_ROOT"
 ./b2 install
+```
+Install [MongoDB (mongodb.org)](https://www.mongodb.com):
+
+```bash
+mkdir ${HOME}/opt
+cd ${HOME}/opt
+curl -OL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.tgz
+tar xf mongodb-linux-x86_64-amazon-3.6.3.tgz
+rm -f mongodb-linux-x86_64-amazon-3.6.3.tgz
+ln -s ${HOME}/opt/mongodb-linux-x86_64-amazon-3.6.3/ ${HOME}/opt/mongodb
+mkdir ${HOME}/opt/mongodb/data
+mkdir ${HOME}/opt/mongodb/log
+touch ${HOME}/opt/mongodb/log/mongod.log
+		
+tee > /dev/null ${HOME}/opt/mongodb/mongod.conf <<mongodconf
+systemLog:
+ destination: file
+ path: ${HOME}/opt/mongodb/log/mongod.log
+ logAppend: true
+ logRotate: reopen
+net:
+ bindIp: 127.0.0.1,::1
+ ipv6: true
+storage:
+ dbPath: ${HOME}/opt/mongodb/data
+mongodconf
+
+export PATH=${HOME}/opt/mongodb/bin:$PATH
+mongod -f ${HOME}/opt/mongodb/mongod.conf
+```
+Install [mongo-cxx-driver (release/stable)](https://github.com/mongodb/mongo-cxx-driver):
+
+```bash
+cd ~
+curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
+tar xf mongo-c-driver-1.9.3.tar.gz
+cd mongo-c-driver-1.9.3
+./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+make -j$( nproc )
+sudo make install
+git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
+cd mongo-cxx-driver/build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+sudo make -j$( nproc )
 ```
 
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
