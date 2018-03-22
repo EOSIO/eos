@@ -484,13 +484,13 @@ BOOST_FIXTURE_TEST_CASE( stl_test, tester ) try {
 BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
    produce_blocks(2);
 
-   create_accounts( {N(current_memory)} );
+   create_accounts( {N(curmen)} );
    produce_block();
 
-   BOOST_CHECK_THROW(set_code(N(current_memory), current_memory_wast), eosio::chain::wasm_execution_error);
+   BOOST_CHECK_THROW(set_code(N(curmen), current_memory_wast), eosio::chain::wasm_execution_error);
    produce_blocks(1);
 
-   BOOST_CHECK_THROW(set_code(N(current_memory), grow_memory_wast), eosio::chain::wasm_execution_error);
+   BOOST_CHECK_THROW(set_code(N(curmen), grow_memory_wast), eosio::chain::wasm_execution_error);
    produce_blocks(1);
 
 } FC_LOG_AND_RETHROW()
