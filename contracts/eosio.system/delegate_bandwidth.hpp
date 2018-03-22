@@ -267,7 +267,7 @@ namespace eosiosystem {
             refund act;
             act.owner = del.from;
             transaction out( now() + refund_delay + refund_expiration_time );
-            out.actions.emplace_back( permission_level{ self, N(active) }, self, N(refund), act );
+            out.actions.emplace_back( permission_level{ del.from, N(active) }, self, N(refund), act );
             out.send( del.from, now() + refund_delay );
 
             if ( asset(0) < del.unstake_net_quantity + del.unstake_cpu_quantity ) {
@@ -277,10 +277,15 @@ namespace eosiosystem {
          } // undelegatebw
 
          static void on( const refund& r ) {
+            require_auth( r.owner );
+
             refunds_table refunds_tbl( SystemAccount, r.owner );
             auto req = refunds_tbl.find( r.owner );
             eosio_assert( req != refunds_tbl.end(), "refund request not found" );
             eosio_assert( req->request_time + refund_delay <= now(), "refund is not available yet" );
+            // Until now() becomes NOW, the fact that now() is the timestamp of the previous block could in theory
+            // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
+            // consecutive missed blocks.
 
             currency::inline_transfer( SystemAccount, req->owner, req->amount, "unstake" );
             refunds_tbl.erase( req );
