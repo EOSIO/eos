@@ -21,7 +21,7 @@ namespace eosio { namespace chain {
 
    block_id_type signed_block_header::id()const
    {
-      block_id_type result = fc::sha256::hash(*this);
+      block_id_type result = fc::sha256::hash( static_cast<const block_header&>(*this) );
       result._hash[0] &= 0xffffffff00000000;
       result._hash[0] += fc::endian_reverse_u32(block_num()); // store the block num in the ID, 160 bits is plenty for the hash
       return result;
