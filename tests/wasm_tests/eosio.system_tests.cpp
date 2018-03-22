@@ -1075,7 +1075,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
    issue("bob", "2000.0000 EOS", config::system_account_name);
 
    // bob makes stake
-   // 1 block produced 
+   // 1 block produced
    BOOST_REQUIRE_EQUAL(success(), push_action(N(bob), N(delegatebw), mvo()
                                               ("from",     "bob")
                                               ("receiver", "bob")
@@ -1093,7 +1093,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
                                               ("producers", vector<account_name>{ N(alice) })
                                               )
                        );
-   
+
    produce_blocks(10);
    prod = get_producer_info("alice");
    BOOST_REQUIRE(prod["per_block_payments"].as_uint64() > 0);

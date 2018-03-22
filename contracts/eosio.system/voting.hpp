@@ -343,7 +343,7 @@ namespace eosiosystem {
             auto other_half_of_percentage = parameters.percent_of_max_inflation_rate - half_of_percentage;
             parameters.payment_per_block = payment_per_block(half_of_percentage);
             parameters.payment_to_eos_bucket = payment_per_block(other_half_of_percentage);
-            parameters.blocks_per_cycle = 6 * schedule.producers.size();
+            parameters.blocks_per_cycle = common<SystemAccount>::blocks_per_producer * schedule.producers.size();
 
             if ( parameters.max_storage_size < parameters.total_storage_bytes_reserved ) {
                parameters.max_storage_size = parameters.total_storage_bytes_reserved;
