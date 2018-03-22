@@ -146,7 +146,7 @@
 		exit -1
 	fi
 
-	make -j${CPU_CORE} VERBOSE=0
+	make -j${CPU_CORE}
 
 	if [ $? -ne 0 ]; then
 		printf "\n\t>>>>>>>>>>>>>>>>>>>> MAKE building EOSIO has exited with the above error.\n\n"
@@ -171,8 +171,6 @@
 		printf "\n\tMongoDB is running PID=${MONGODB_PID}.\n"
 	fi
 	
-	make test
-
    if [ "x${EOSIO_BUILD_PACKAGE}" != "x" ]; then
       # Build eos.io package
       $CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \

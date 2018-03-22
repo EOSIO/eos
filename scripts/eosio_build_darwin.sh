@@ -93,50 +93,26 @@
 		DEP=""
 	
 		printf "\tChecking dependencies.\n"
-		for line in `cat ${WORK_DIR}/scripts/eosio_build_dep`; do
-			pkg=$( echo "${line}" | cut -d',' -f1 )
-			printf "\tChecking $pkg ... "
-			BIN=$(which $pkg)
-			if [ $? -eq 0 ]; then
-			
-				if [ $pkg == "libtool" ] && [ $BIN == /usr/bin/libtool ]; then
-					donothing=true
-				else
-					printf "\t$pkg found\n"
-					continue
-				fi
-			fi
-			
-			LIB=$( ls -l /usr/local/lib/lib${pkg}* 2>/dev/null | wc -l)
-			if [ ${LIB} -ne 0 ]; then
-				 printf "\t$pkg found\n"
+		var_ifs=${IFS}
+		IFS=','
+		while read -r name tester testee brewname uri
+		do
+			printf "\tChecking $name ... "
+			if [ ${tester} ${testee} ]; then
+				printf '\t\t %s found\n' "$name"
 				continue
-			else 
-				let DCOUNT++
-				
-				if [ $pkg = "mongod" ]; then
-					pkg="mongodb"
-				fi
-
-				if [ $pkg = "LLVM" ]; then
-					pkg="llvm@4"
-				fi
-
-# 				if [ $pkg = "openssl" ]; then
-# 					pkg="openssl@1.0"
-# 				fi
-
-				if [ $pkg = "gettext" ]; then
-					PERMISSION_GETTEXT=1
-				fi
-				
-				DEP=$DEP" ${pkg} "
-				DISPLAY="${DISPLAY}${COUNT}. ${pkg}\n\t"
-				printf "\tPackage ${pkg} ${bldred}NOT${txtrst} found.\n"
-				let COUNT++
 			fi
-		done
-
+			let DCOUNT++
+			if [ $brewname = "gettext" ]; then
+				PERMISSION_GETTEXT=1
+			fi
+			DEP=$DEP"${brewname} "
+			DISPLAY="${DISPLAY}${COUNT}. ${name}\n\t"
+			printf "\t\t ${name} ${bldred}NOT${txtrst} found.\n"
+			let COUNT++
+		done < scripts/eosio_build_dep
+		IFS=${var_ifs}
+		
 		if [ $DCOUNT -ne 0 ]; then
 			printf "\n\tThe following dependencies are required to install EOSIO.\n"
 			printf "\n\t$DISPLAY\n\n"
