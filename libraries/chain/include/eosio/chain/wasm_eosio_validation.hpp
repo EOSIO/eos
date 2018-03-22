@@ -34,6 +34,10 @@ namespace eosio { namespace chain { namespace wasm_validations {
       static void validate( const IR::Module& m );
    };
 
+   struct maximum_function_stack_visitor {
+      static void validate( const IR::Module& m );
+   };
+
    using wasm_validate_func = std::function<void(IR::Module&)>;
 
   
@@ -295,7 +299,8 @@ namespace eosio { namespace chain { namespace wasm_validations {
       using standard_module_constraints_validators = constraints_validators< memories_validation_visitor,
                                                                              data_segments_validation_visitor,
                                                                              tables_validation_visitor,
-                                                                             globals_validation_visitor>;
+                                                                             globals_validation_visitor,
+                                                                             maximum_function_stack_visitor>;
       public:
          wasm_binary_validation( IR::Module& mod ) : _module( &mod ) {
             // initialize validators here
