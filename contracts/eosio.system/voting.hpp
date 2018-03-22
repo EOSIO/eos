@@ -425,7 +425,7 @@ namespace eosiosystem {
                votes += voter->proxied_votes;
             }
 
-            if ( old_producers ) { //old_producers == 0 if proxy has stoped being a proxy and votes were taken back from the producers at that moment
+            if ( old_producers ) { //old_producers == nullptr if proxy has stopped being a proxy and votes were taken back from the producers at that moment
                //revoke votes only from no longer elected
                std::vector<account_name> revoked( old_producers->size() );
                auto end_it = std::set_difference( old_producers->begin(), old_producers->end(), new_producers->begin(), new_producers->end(), revoked.begin() );
@@ -438,7 +438,12 @@ namespace eosiosystem {
 
             //update newly elected
             std::vector<account_name> elected( new_producers->size() );
-            auto end_it = std::set_difference( new_producers->begin(), new_producers->end(), old_producers->begin(), old_producers->end(), elected.begin() );
+            auto end_it = elected.begin();
+            if( old_producers ) {
+               end_it = std::set_difference( new_producers->begin(), new_producers->end(), old_producers->begin(), old_producers->end(), elected.begin() );
+            } else {
+               end_it = std::copy( new_producers->begin(), new_producers->end(), elected.begin() );
+            }
             for ( auto it = elected.begin(); it != end_it; ++it ) {
                auto prod = producers_tbl.find( *it );
                eosio_assert( prod != producers_tbl.end(), "producer is not registered" );
