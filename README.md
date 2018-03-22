@@ -116,7 +116,7 @@ git clone https://github.com/eosio/eos --recursive
 cd eos
 git checkout DAWN-2018-02-14
 git submodule update --recursive
-./build.sh
+./build.sh ubuntu
 ```
 
 For ease of contract development, one further step is required:
@@ -163,7 +163,7 @@ git clone https://github.com/eosio/eos --recursive
 cd eos
 git checkout DAWN-2018-02-14
 git submodule update --recursive
-./build.sh
+./build.sh darwin
 ```
 
 For ease of contract development, one further step is required:
