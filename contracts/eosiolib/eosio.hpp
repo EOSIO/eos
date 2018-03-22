@@ -7,7 +7,12 @@
 #include <eosiolib/action.hpp>
 #include <eosiolib/print.hpp>
 #include <eosiolib/math.hpp>
+#include <eosiolib/multi_index.hpp>
 
+struct contract {
+   contract( account_name n ):_self(n){}
+   account_name _self;
+};
 
 
 
