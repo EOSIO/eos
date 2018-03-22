@@ -149,22 +149,16 @@ class apply_context {
             static constexpr size_t N = array_size<SecondaryKey>::size;
 
             static void set(secondary_key_type& sk_in_table, secondary_key_proxy_const_type sk_from_wasm) {
-               // optimized builds will sometimes turn copy/memcpy into fast paths that require aligned pointers based
-               // on the type of pointers passed in.  WebAssembly is not guaranteeing alignment
-               //std::copy(sk_from_wasm, sk_from_wasm + N, sk_in_table.begin());
-               memcpy(reinterpret_cast<char*>(sk_in_table.begin()), reinterpret_cast<const char*>(sk_from_wasm), sizeof(SecondaryKey));
+               std::copy(sk_from_wasm, sk_from_wasm + N, sk_in_table.begin());
             }
 
             static void get(secondary_key_proxy_type sk_from_wasm, const secondary_key_type& sk_in_table) {
-               //std::copy(sk_in_table.begin(), sk_in_table.end(), sk_from_wasm);
-               memcpy(reinterpret_cast<char*>(sk_from_wasm), reinterpret_cast<const char*>(sk_in_table.begin()), sizeof(SecondaryKey));
-
+               std::copy(sk_in_table.begin(), sk_in_table.end(), sk_from_wasm);
             }
 
             static auto create_tuple(const contracts::table_id_object& tab, secondary_key_proxy_const_type sk_from_wasm) {
                secondary_key_type secondary;
-               //std::copy(sk_from_wasm, sk_from_wasm + N, secondary.begin());
-               memcpy(reinterpret_cast<char*>(secondary.begin()), reinterpret_cast<const char*>(sk_from_wasm), sizeof(SecondaryKey));
+               std::copy(sk_from_wasm, sk_from_wasm + N, secondary.begin());
                return boost::make_tuple( tab.id, secondary );
             }
       };
