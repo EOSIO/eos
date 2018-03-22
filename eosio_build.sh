@@ -32,19 +32,17 @@
 
 	VERSION=1.1
 	ULIMIT=$( ulimit -u )
-
-	# Define directories.
 	WORK_DIR=$PWD
 	BUILD_DIR=${WORK_DIR}/build
 	TEMP_DIR=/tmp
-	ARCH=$(uname)
+	ARCH=$( uname )
 	DISK_MIN=20
 	
 	txtbld=$(tput bold)
 	bldred=${txtbld}$(tput setaf 1)
 	txtrst=$(tput sgr0)
 
-	printf "\n\tARCHITECTURE ${ARCH}\n"
+	printf "\n\tARCHITECTURE: ${ARCH}\n"
 
 	if [ $ARCH == "Linux" ]; then
 		
@@ -69,8 +67,8 @@
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
-				BUILD_MONGO_DB_PLUGIN=false
-				MONGOD_CONF=""
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"CentOS Linux")
 				FILE=${WORK_DIR}/scripts/eosio_build_centos.sh
@@ -78,43 +76,39 @@
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
-				BUILD_MONGO_DB_PLUGIN=false
-				MONGOD_CONF=""
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"Fedora")
 				FILE=${WORK_DIR}/scripts/eosio_build_fedora.sh
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
 				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
-				BUILD_MONGO_DB_PLUGIN=true
 				MONGOD_CONF=/etc/mongod.conf
 			;;
 			"Linux Mint")
 				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
-				BUILD_MONGO_DB_PLUGIN=true
 				MONGOD_CONF=/etc/mongod.conf
 			;;
 			"Ubuntu")
 				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
-				BUILD_MONGO_DB_PLUGIN=true
 				MONGOD_CONF=/etc/mongod.conf
 			;;
 			*)
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
 				exit 1
 		esac
-			
+		
 		export BOOST_ROOT=${HOME}/opt/boost_1_66_0
 		export OPENSSL_ROOT_DIR=/usr/include/openssl
 		export OPENSSL_LIBRARIES=/usr/include/openssl
 		export WASM_ROOT=${HOME}/opt/wasm
-	
+
 	 . $FILE
-	
 	fi
 
 	if [ $ARCH == "Darwin" ]; then
@@ -123,7 +117,6 @@
 		export WASM_ROOT=/usr/local/wasm
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
-		BUILD_MONGO_DB_PLUGIN=true
 		MONGOD_CONF=/usr/local/etc/mongod.conf
 
 	  . scripts/eosio_build_darwin.sh
@@ -145,7 +138,7 @@
 	
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
 	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
-	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DBUILD_MONGO_DB_PLUGIN=${BUILD_MONGO_DB_PLUGIN} \
+	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DBUILD_MONGO_DB_PLUGIN=true \
 	-DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} ..
 	
 	if [ $? -ne 0 ]; then
@@ -162,21 +155,23 @@
 
 	printf "\n\t>>>>>>>>>>>>>>>>>>>> EOSIO has been successfully built.\n\n"
 
-	if [ $BUILD_MONGO_DB_PLUGIN == true ]; then
-		printf "\n\tChecking if MongoDB is running.\n"
-		MONGODB_PID=$( pgrep -x mongod )
-		if [ -z $MONGODB_PID ]; then
-			printf "\n\tStarting MongoDB.\n"
-			sudo mongod -f ${MONGOD_CONF} &
-			if [ $? -ne 0 ]; then
-				printf "\n\tUnable to start MongoDB.\nExiting now.\n\n"
-				exit -1
-			fi
-			printf "\n\tSuccessfully started MongoDB.\n"
-		else
-			printf "\n\tMongoDB is running PID=${MONGODB_PID}.\n"
+	printf "\n\tVerifying MongoDB is running.\n"
+	MONGODB_PID=$( pgrep -x mongod )
+	if [ -z $MONGODB_PID ]; then
+		printf "\tMongoDB is not currently running.\n"
+		printf "\tStarting MongoDB.\n"
+		mongod -f ${MONGOD_CONF} &
+		if [ $? -ne 0 ]; then
+			printf "\n\tUnable to start MongoDB.\nExiting now.\n\n"
+			exit -1
 		fi
+		MONGODB_PID=$( pgrep -x mongod )
+		printf "\n\tSuccessfully started MongoDB PID = ${MONGODB_PID}.\n"
+	else
+		printf "\n\tMongoDB is running PID=${MONGODB_PID}.\n"
 	fi
+	
+	make test
 
    if [ "x${EOSIO_BUILD_PACKAGE}" != "x" ]; then
       # Build eos.io package

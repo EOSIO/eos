@@ -35,23 +35,23 @@ EOS.IO currently supports the following operating systems:
 
 1. [Getting Started](#gettingstarted)
 2. [Setting up a build/development environment](#setup)
-	1. [Automated build script](#autobuild)
+  1. [Automated build script](#autobuild)
       1. [Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for a local testnet](#autoubuntulocal)
       2. [Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for the public testnet](#autoubuntupublic)
       3. [MacOS for a local testnet](#automaclocal)
       4. [MacOS for the public testnet](#automacpublic)
 3. [Building EOS and running a node](#runanode)
-	1. [Getting the code](#getcode)
-	2. [Building from source code](#build)
-	3. [Creating and launching a single-node testnet](#singlenode)
+  1. [Getting the code](#getcode)
+  2. [Building from source code](#build)
+  3. [Creating and launching a single-node testnet](#singlenode)
   4. [Next steps](#nextsteps)
 4. [Example Currency Contract Walkthrough](#smartcontracts)
-	1. [Example Contracts](#smartcontractexample)
-	2. [Setting up a wallet and importing account key](#walletimport)
-	3. [Creating accounts for your smart contracts](#createaccounts)
-	4. [Upload sample contract to blockchain](#uploadsmartcontract)
-	5. [Pushing a message to a sample contract](#pushamessage)
-	6. [Reading Currency Contract Balance](#readingcontract)
+  1. [Example Contracts](#smartcontractexample)
+  2. [Setting up a wallet and importing account key](#walletimport)
+  3. [Creating accounts for your smart contracts](#createaccounts)
+  4. [Upload sample contract to blockchain](#uploadsmartcontract)
+  5. [Pushing a message to a sample contract](#pushamessage)
+  6. [Reading Currency Contract Balance](#readingcontract)
 5. [Running local testnet](#localtestnet)
 6. [Running a node on the public testnet](#publictestnet)
 7. [Doxygen documentation](#doxygen)
@@ -61,8 +61,8 @@ EOS.IO currently supports the following operating systems:
    2. [Clean install Centos 7 and higher](#manualdepcentos)
    3. [Clean install Fedora 25 and higher](#manualdepfedora)
    4. [Clean install Mint 18](#manualdepubuntu)
-   4. [Clean install Ubuntu 16](#manualdepubuntu)
-   5. [Clean install MacOS Sierra 10.12 and higher](#manualdepmacos)
+   5. [Clean install Ubuntu 16](#manualdepubuntu)
+   6. [Clean install MacOS Sierra 10.12 and higher](#manualdepmacos)
 
 <a name="gettingstarted"></a>
 ## Getting Started
@@ -89,7 +89,7 @@ Choose whether you will be building for a local testnet or for the public testne
 
 :warning: **As of February 2018, `master` is under heavy development and is not suitable for experimentation.** :warning:
 
-We strongly recommend following the instructions for building the public testnet version for [Ubuntu](#autoubuntupublic) or [Mac OS X](#automacpublic). `master` is in pieces on the garage floor while we rebuild this hotrod. This notice will be removed when `master` is usable again. Your patience is appreciated.
+We strongly recommend following the instructions for building the public testnet version for [Linux](#autoubuntupublic) or [Mac OS X](#automacpublic). `master` is in pieces on the garage floor while we rebuild this hotrod. This notice will be removed when `master` is usable again. Your patience is appreciated.
 
 <a name="autoubuntulocal"></a>
 #### :no_entry: Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for a local testnet :no_entry:
@@ -116,7 +116,7 @@ git clone https://github.com/eosio/eos --recursive
 cd eos
 git checkout DAWN-2018-02-14
 git submodule update --recursive
-./build.sh
+./build.sh ubuntu
 ```
 
 For ease of contract development, one further step is required:
@@ -144,7 +144,8 @@ cd eos
 For ease of contract development, one further step is required:
 
 ```bash
-make install
+cd build
+sudo make install
 ```
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
@@ -162,13 +163,14 @@ git clone https://github.com/eosio/eos --recursive
 cd eos
 git checkout DAWN-2018-02-14
 git submodule update --recursive
-./build.sh
+./build.sh darwin
 ```
 
 For ease of contract development, one further step is required:
 
 ```bash
-make install
+cd build
+sudo make install
 ```
 
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
@@ -572,7 +574,7 @@ Install the development toolkit:
 sudo yum update
 sudo yum install git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 \
 				 bzip2-devel.x86_64 openssl-devel.x86_64 gmp.x86_64 gmp-devel.x86_64 \
-				 libstdc++72.x86_64 python27-devel.x86_64 libedit-devel.x86_64 \
+				 libstdc++72.x86_64 python36-devel.x86_64 libedit-devel.x86_64 \
 				 ncurses-devel.x86_64 swig.x86_64 gettext-devel.x86_64
 
 ```
@@ -602,6 +604,50 @@ source ~/.bash_profile
 cd boost_1_66_0/
 ./bootstrap.sh "--prefix=$BOOST_ROOT"
 ./b2 install
+```
+Install [MongoDB (mongodb.org)](https://www.mongodb.com):
+
+```bash
+mkdir ${HOME}/opt
+cd ${HOME}/opt
+curl -OL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.tgz
+tar xf mongodb-linux-x86_64-amazon-3.6.3.tgz
+rm -f mongodb-linux-x86_64-amazon-3.6.3.tgz
+ln -s ${HOME}/opt/mongodb-linux-x86_64-amazon-3.6.3/ ${HOME}/opt/mongodb
+mkdir ${HOME}/opt/mongodb/data
+mkdir ${HOME}/opt/mongodb/log
+touch ${HOME}/opt/mongodb/log/mongod.log
+		
+tee > /dev/null ${HOME}/opt/mongodb/mongod.conf <<mongodconf
+systemLog:
+ destination: file
+ path: ${HOME}/opt/mongodb/log/mongod.log
+ logAppend: true
+ logRotate: reopen
+net:
+ bindIp: 127.0.0.1,::1
+ ipv6: true
+storage:
+ dbPath: ${HOME}/opt/mongodb/data
+mongodconf
+
+export PATH=${HOME}/opt/mongodb/bin:$PATH
+mongod -f ${HOME}/opt/mongodb/mongod.conf
+```
+Install [mongo-cxx-driver (release/stable)](https://github.com/mongodb/mongo-cxx-driver):
+
+```bash
+cd ~
+curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
+tar xf mongo-c-driver-1.9.3.tar.gz
+cd mongo-c-driver-1.9.3
+./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+make -j$( nproc )
+sudo make install
+git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
+cd mongo-cxx-driver/build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+sudo make -j$( nproc )
 ```
 
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
@@ -639,17 +685,19 @@ Your environment is set up. Now you can <a href="#runanode">build EOS and run a 
 
 Install the development toolkit:
 * Installation on Centos requires installing/enabling the Centos Software Collections
-Repository.
-[Centos SCL](https://wiki.centos.org/AdditionalResources/Repositories/SCL):
+  Repository.
+  [Centos SCL](https://wiki.centos.org/AdditionalResources/Repositories/SCL):
 
 ```bash
 sudo yum --enablerepo=extras install centos-release-scl
 sudo yum update
 sudo yum install -y devtoolset-7
 scl enable devtoolset-7 bash
+sudo yum install -y python33.x86_64
+scl enable python33 bash
 sudo yum install git autoconf automake libtool make bzip2 \
 				 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 \
-				 ocaml.x86_64 doxygen libicu-devel.x86_64 python27-devel.x86_64 \
+				 ocaml.x86_64 doxygen libicu-devel.x86_64 python-devel.x86_64 \
 				 gettext-devel.x86_64
 
 ```
@@ -679,6 +727,52 @@ cd boost_1_66_0/
 ./b2 install
 ```
 
+Install [MongoDB (mongodb.org)](https://www.mongodb.com):
+
+```bash
+mkdir ${HOME}/opt
+cd ${HOME}/opt
+curl -OL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.tgz
+tar xf mongodb-linux-x86_64-amazon-3.6.3.tgz
+rm -f mongodb-linux-x86_64-amazon-3.6.3.tgz
+ln -s ${HOME}/opt/mongodb-linux-x86_64-amazon-3.6.3/ ${HOME}/opt/mongodb
+mkdir ${HOME}/opt/mongodb/data
+mkdir ${HOME}/opt/mongodb/log
+touch ${HOME}/opt/mongodb/log/mongod.log
+		
+tee > /dev/null ${HOME}/opt/mongodb/mongod.conf <<mongodconf
+systemLog:
+ destination: file
+ path: ${HOME}/opt/mongodb/log/mongod.log
+ logAppend: true
+ logRotate: reopen
+net:
+ bindIp: 127.0.0.1,::1
+ ipv6: true
+storage:
+ dbPath: ${HOME}/opt/mongodb/data
+mongodconf
+
+export PATH=${HOME}/opt/mongodb/bin:$PATH
+mongod -f ${HOME}/opt/mongodb/mongod.conf
+```
+
+Install [mongo-cxx-driver (release/stable)](https://github.com/mongodb/mongo-cxx-driver):
+
+```bash
+cd ~
+curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
+tar xf mongo-c-driver-1.9.3.tar.gz
+cd mongo-c-driver-1.9.3
+./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+make -j$( nproc )
+sudo make install
+git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
+cd mongo-cxx-driver/build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+sudo make -j$( nproc )
+```
+
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
 
 ```bash
@@ -702,7 +796,8 @@ git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-
 cd ..
 mkdir build
 cd build
-cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly 
+-DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release ../
 make -j$( nproc ) 
 make install
 ```
