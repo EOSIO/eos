@@ -26,8 +26,6 @@
 #include "Runtime/Intrinsics.h"
 
 #include <softfloat.hpp>
-// TODO DELETE THIS AFTER TESTING SOFTFLOAT
-#include <cmath>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <fstream>
