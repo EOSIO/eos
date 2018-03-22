@@ -57,6 +57,7 @@ wcmd () {
 
 cacmd () {
     ecmd create account eosio $*
+    ecmd transfer eosio $1 1000000.000 "init"
 }
 
 sleep 2
