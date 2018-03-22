@@ -156,13 +156,7 @@ namespace stltest {
          prints("~MSTR");
       }
    };
-
-   /*
-   std::string s = "abcdef";
-   eosio::string s2 = "abcdef";;
-   MSTR global;
-   */
-
+    
     class contract {
     public:
         typedef eosio::token<N(mycurrency),S(4,MYCUR)> token_type;
@@ -176,7 +170,7 @@ namespace stltest {
             account_name to;
            //string msg;
 
-            static uint64_t get_account() { return current_receiver(); }
+            static uint64_t get_account() { return N(stltest); }
             static uint64_t get_name()  { return N(message); }
 
             template<typename DataStream>
@@ -272,7 +266,8 @@ namespace stltest {
 
 extern "C" {
 /// The apply method implements the dispatch of events to this contract
-void apply( uint64_t code, uint64_t action ) {
+void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
+    (void)receiver;
     stltest::contract::apply( code, action );
 }
 }

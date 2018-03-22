@@ -19,11 +19,7 @@
 
 extern "C" {
 
-    void init()  {
-
-    }
-
-   void apply( unsigned long long, unsigned long long action ) {
+   void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
       //eosio::print("==> CONTRACT: ", code, " ", action, "\n");
       //test_types
       WASM_TEST_HANDLER(test_types, types_size);
@@ -50,13 +46,13 @@ extern "C" {
       WASM_TEST_HANDLER(test_action, read_action_normal);
       WASM_TEST_HANDLER(test_action, read_action_to_0);
       WASM_TEST_HANDLER(test_action, read_action_to_64k);
-      WASM_TEST_HANDLER(test_action, require_notice);
+      WASM_TEST_HANDLER_EX(test_action, require_notice);
       WASM_TEST_HANDLER(test_action, require_auth);
       WASM_TEST_HANDLER(test_action, assert_false);
       WASM_TEST_HANDLER(test_action, assert_true);
       WASM_TEST_HANDLER(test_action, now);
       WASM_TEST_HANDLER(test_action, test_abort);
-      WASM_TEST_HANDLER(test_action, test_current_receiver);
+      WASM_TEST_HANDLER_EX(test_action, test_current_receiver);
       WASM_TEST_HANDLER(test_action, test_current_sender);
       WASM_TEST_HANDLER(test_action, test_publication_time);
 

@@ -242,8 +242,8 @@ namespace eosio {
 
 
 extern "C" {
-   void apply( uint64_t code, uint64_t action ) {
-      eosio::exchange  ex( current_receiver() );
+   void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
+      eosio::exchange  ex( receiver );
       ex.apply( code, action );
       eosio_exit(0);
    }

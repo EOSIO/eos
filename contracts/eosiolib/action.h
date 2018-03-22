@@ -58,12 +58,6 @@ extern "C" {
     * require_auth(N(inita)); // Do nothing since inita exists in the auth list
     * require_auth(N(initb)); // Throws an exception
     *
-    * account_name code = current_receiver();
-    * print(Name(code)); // Output: eos
-    *
-    * eosio_assert(Name(current_receiver()) === "eos", "This action expects to be received by eos"); // Do nothing
-    * eosio_assert(Name(current_receiver()) === "inita", "This action expects to be received by inita"); // Throws exception and roll back transfer transaction
-    *
     * print(now()); // Output: timestamp of last accepted block
     *
     * @endcode
@@ -103,13 +97,6 @@ extern "C" {
     */
    void require_auth( account_name name );
    bool has_auth( account_name name );
-
-   /**
-    *  Get the account which specifies the code that is being run
-    *  @brief Get the account which specifies the code that is being run
-    *  @return the account which specifies the code that is being run
-    */
-   account_name current_receiver();
 
    /**
     *  Send an inline action in the context of this action's parent transaction
