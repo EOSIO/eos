@@ -348,8 +348,10 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::set_code( account_name account, const char* wast ) try {
-      auto wasm = wast_to_wasm(wast);
+      set_code(account, wast_to_wasm(wast));
+   } FC_CAPTURE_AND_RETHROW( (account)(wast) )
 
+   void base_tester::set_code( account_name account, const vector<uint8_t> wasm ) try {
       signed_transaction trx;
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
                                 contracts::setcode{
@@ -362,7 +364,7 @@ namespace eosio { namespace testing {
       set_tapos( trx );
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
       push_transaction( trx );
-   } FC_CAPTURE_AND_RETHROW( (account)(wast) )
+   } FC_CAPTURE_AND_RETHROW( (account) )
 
    void base_tester::set_abi( account_name account, const char* abi_json) {
       auto abi = fc::json::from_string(abi_json).template as<contracts::abi_def>();
