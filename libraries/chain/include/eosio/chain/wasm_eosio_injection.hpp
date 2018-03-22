@@ -295,6 +295,22 @@ namespace eosio { namespace chain { namespace wasm_injections {
             return u8"_eosio_f64_trunc_i64u";
          case wasm_ops::i64_trunc_s_f64_code:
             return u8"_eosio_f64_trunc_i64s";
+         case wasm_ops::f32_convert_s_i32_code:
+            return u8"_eosio_i32_to_f32";
+         case wasm_ops::f32_convert_u_i32_code:
+            return u8"_eosio_ui32_to_f32";
+         case wasm_ops::f32_convert_s_i64_code:
+            return u8"_eosio_i64_f32";
+         case wasm_ops::f32_convert_u_i64_code:
+            return u8"_eosio_ui64_to_f32";
+         case wasm_ops::f64_convert_s_i32_code:
+            return u8"_eosio_i32_to_f64";
+         case wasm_ops::f64_convert_u_i32_code:
+            return u8"_eosio_ui32_to_f64";
+         case wasm_ops::f64_convert_s_i64_code:
+            return u8"_eosio_i64_to_f64";
+         case wasm_ops::f64_convert_u_i64_code:
+            return u8"_eosio_ui64_to_f64";
 
          default:
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, unknown opcode in injection ${op}", ("op", opcode));
@@ -443,6 +459,62 @@ namespace eosio { namespace chain { namespace wasm_injections {
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
          std::vector<U8> injected = f32op.pack();
+         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+      }
+   };
+   template <uint64_t Opcode>
+   struct i32_convert_f32_injector {
+      static constexpr bool kills = true;
+      static constexpr bool post = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         int32_t idx;
+         injector_utils::add_import<ResultType::f32, ValueType::i32>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         wasm_ops::op_types<>::call_t f32op;
+         f32op.field = idx;
+         std::vector<U8> injected = f32op.pack();
+         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+      }
+   };
+   template <uint64_t Opcode>
+   struct i64_convert_f32_injector {
+      static constexpr bool kills = true;
+      static constexpr bool post = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         int32_t idx;
+         injector_utils::add_import<ResultType::f32, ValueType::i64>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         wasm_ops::op_types<>::call_t f32op;
+         f32op.field = idx;
+         std::vector<U8> injected = f32op.pack();
+         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+      }
+   };
+   template <uint64_t Opcode>
+   struct i32_convert_f64_injector {
+      static constexpr bool kills = true;
+      static constexpr bool post = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         int32_t idx;
+         injector_utils::add_import<ResultType::f64, ValueType::i32>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         wasm_ops::op_types<>::call_t f64op;
+         f64op.field = idx;
+         std::vector<U8> injected = f64op.pack();
+         arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+      }
+   };
+   template <uint64_t Opcode>
+   struct i64_convert_f64_injector {
+      static constexpr bool kills = true;
+      static constexpr bool post = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         int32_t idx;
+         injector_utils::add_import<ResultType::f64, ValueType::i64>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         wasm_ops::op_types<>::call_t f64op;
+         f64op.field = idx;
+         std::vector<U8> injected = f64op.pack();
          arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
       }
    };
@@ -645,7 +717,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using f32_demote_f64_t  = wasm_ops::f32_demote_f64          <instruction_counter, f64_demote_injector>;
 
       
-/*
       using i32_trunc_s_f32_t = wasm_ops::i32_trunc_s_f32         <instruction_counter, f32_trunc_i32_injector<wasm_ops::i32_trunc_s_f32_code>>;
       using i32_trunc_u_f32_t = wasm_ops::i32_trunc_u_f32         <instruction_counter, f32_trunc_i32_injector<wasm_ops::i32_trunc_u_f32_code>>;
       using i32_trunc_s_f64_t = wasm_ops::i32_trunc_s_f64         <instruction_counter, f64_trunc_i32_injector<wasm_ops::i32_trunc_s_f64_code>>;
@@ -654,16 +725,15 @@ namespace eosio { namespace chain { namespace wasm_injections {
       using i64_trunc_u_f32_t = wasm_ops::i64_trunc_u_f32         <instruction_counter, f32_trunc_i64_injector<wasm_ops::i64_trunc_u_f32_code>>;
       using i64_trunc_s_f64_t = wasm_ops::i64_trunc_s_f64         <instruction_counter, f64_trunc_i64_injector<wasm_ops::i64_trunc_s_f64_code>>;
       using i64_trunc_u_f64_t = wasm_ops::i64_trunc_u_f64         <instruction_counter, f64_trunc_i64_injector<wasm_ops::i64_trunc_u_f64_code>>;
-
-      float _eosio_i32_to_f32( int32_t a ) { return i32_to_f32( a ); }
-      float _eosio_i64_to_f32( int64_t a ) { return i64_to_f32( a ); }
-      float _eosio_ui32_to_f32( uint32_t a ) { return ui32_to_f32( a ); }
-      float _eosio_ui64_to_f32( uint64_t a ) { return ui64_to_f32( a ); }
-      double _eosio_i32_to_f64( int32_t a ) { return i32_to_f64( a ); }
-      double _eosio_i64_to_f64( int64_t a ) { return i64_to_f64( a ); }
-      double _eosio_ui32_to_f64( uint32_t a ) { return ui32_to_f64( a ); }
-      double _eosio_ui64_to_f64( uint64_t a ) { return ui64_to_f64( a ); }
-*/
+   
+      using f32_convert_s_i32 = wasm_ops::f32_convert_s_i32       <instruction_counter, i32_convert_f32_injector<wasm_ops::f32_convert_s_i32_code>>;
+      using f32_convert_s_i64 = wasm_ops::f32_convert_s_i64       <instruction_counter, i64_convert_f32_injector<wasm_ops::f32_convert_s_i64_code>>;
+      using f32_convert_u_i32 = wasm_ops::f32_convert_u_i32       <instruction_counter, i32_convert_f32_injector<wasm_ops::f32_convert_u_i32_code>>;
+      using f32_convert_u_i64 = wasm_ops::f32_convert_u_i64       <instruction_counter, i64_convert_f32_injector<wasm_ops::f32_convert_u_i64_code>>;
+      using f64_convert_s_i32 = wasm_ops::f64_convert_s_i32       <instruction_counter, i32_convert_f64_injector<wasm_ops::f64_convert_s_i32_code>>;
+      using f64_convert_s_i64 = wasm_ops::f64_convert_s_i64       <instruction_counter, i64_convert_f64_injector<wasm_ops::f64_convert_s_i64_code>>;
+      using f64_convert_u_i32 = wasm_ops::f64_convert_u_i32       <instruction_counter, i32_convert_f64_injector<wasm_ops::f64_convert_u_i32_code>>;
+      using f64_convert_u_i64 = wasm_ops::f64_convert_u_i64       <instruction_counter, i64_convert_f64_injector<wasm_ops::f64_convert_u_i64_code>>;
 
       using i32_wrap_i64_t     = wasm_ops::i32_wrap_i64           <instruction_counter>;
       using i64_extend_s_i32_t = wasm_ops::i64_extend_s_i32       <instruction_counter>;
