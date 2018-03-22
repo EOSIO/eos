@@ -160,6 +160,7 @@ namespace eosio { namespace chain {
 
       const signed_block&     block;
       vector<region_trace>    region_traces;
+      vector<transaction>     implicit_transactions;
       digest_type             calculate_action_merkle_root()const;
    };
 

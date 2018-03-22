@@ -371,8 +371,8 @@ transaction chain_controller::_get_on_block_transaction()
 
 void chain_controller::_apply_on_block_transaction()
 {
-   auto trx = _get_on_block_transaction();
-   transaction_metadata mtrx(packed_transaction(trx), get_chain_id(), head_block_time());
+   _pending_block_trace->implicit_transactions.emplace_back(_get_on_block_transaction());
+   transaction_metadata mtrx(packed_transaction(_pending_block_trace->implicit_transactions.back()), get_chain_id(), head_block_time());
    _push_transaction(std::move(mtrx));
 }
 
@@ -637,14 +637,15 @@ void chain_controller::__apply_block(const signed_block& next_block)
    for( uint32_t i = 1; i < next_block.regions.size(); ++i )
       FC_ASSERT( next_block.regions[i-1].region < next_block.regions[i].region );
 
+   block_trace next_block_trace(next_block);
 
    /// cache the input tranasction ids so that they can be looked up when executing the
    /// summary
    vector<transaction_metadata> input_metas;
    input_metas.reserve(next_block.input_transactions.size() + 1);
    {
-      auto trx = _get_on_block_transaction();
-      input_metas.emplace_back(packed_transaction(trx), get_chain_id(), head_block_time());
+      next_block_trace.implicit_transactions.emplace_back(_get_on_block_transaction());
+      input_metas.emplace_back(packed_transaction(next_block_trace.implicit_transactions.back()), get_chain_id(), head_block_time());
    }
    map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
@@ -652,7 +653,6 @@ void chain_controller::__apply_block(const signed_block& next_block)
       trx_index[input_metas.back().id] =  input_metas.size() - 1;
    }
 
-   block_trace next_block_trace(next_block);
    next_block_trace.region_traces.reserve(next_block.regions.size());
 
    for( const auto& r : next_block.regions ) {

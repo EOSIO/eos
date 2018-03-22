@@ -522,6 +522,14 @@ void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_bl
       ++trx_num;
    }
 
+   for (const auto& implicit_trx : bt.implicit_transactions ){
+      auto doc = process_trx(implicit_trx);
+      doc.append(kvp("type", "implicit"));
+      mongocxx::model::insert_one insert_op{doc.view()};
+      bulk_trans.append(insert_op);
+      ++trx_num;
+   }
+
    if (actions_to_write) {
       auto result = msgs.bulk_write(bulk_msgs);
       if (!result) {
