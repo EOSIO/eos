@@ -304,7 +304,8 @@ static optional<variant> get_pending_recovery(apply_context& context, account_na
       const auto buffer_size = context.db_get_i64(iter, nullptr, 0);
       bytes value(buffer_size);
 
-      assert(context.db_get_i64(iter, value.data(), buffer_size) == buffer_size);
+      const auto written_size = context.db_get_i64(iter, value.data(), buffer_size);
+      assert(written_size == buffer_size);
 
       return get_abi_serializer().binary_to_variant("pending_recovery", value);
    }
