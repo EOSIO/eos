@@ -38,6 +38,10 @@ namespace eosio { namespace chain { namespace wasm_validations {
       static void validate( const IR::Module& m );
    };
 
+   struct ensure_apply_exported_visitor {
+      static void validate( const IR::Module& m );
+   };
+
    using wasm_validate_func = std::function<void(IR::Module&)>;
 
   
@@ -303,7 +307,8 @@ namespace eosio { namespace chain { namespace wasm_validations {
                                                                              data_segments_validation_visitor,
                                                                              tables_validation_visitor,
                                                                              globals_validation_visitor,
-                                                                             maximum_function_stack_visitor>;
+                                                                             maximum_function_stack_visitor,
+                                                                             ensure_apply_exported_visitor>;
       public:
          wasm_binary_validation( IR::Module& mod ) : _module( &mod ) {
             // initialize validators here

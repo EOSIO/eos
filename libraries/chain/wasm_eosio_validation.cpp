@@ -71,7 +71,22 @@ void maximum_function_stack_visitor::validate( const IR::Module& m ) {
          FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract function has more than ${k} bytes of stack usage",
             ("k", wasm_constraints::maximum_func_local_bytes));
    }
+}
 
+void ensure_apply_exported_visitor::validate( const IR::Module& m ) {
+   bool found_it = false;
+
+   for(const Export& exprt : m.exports) {
+      if(exprt.name != "apply" && exprt.kind != ObjectKind::function)
+         continue;
+      if(m.types[m.functions.getType(exprt.index).index] == FunctionType::get(ResultType::none, {ValueType::i64, ValueType::i64})) {
+         found_it = true;
+         break;
+      }
+   }
+
+   if(!found_it)
+      FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract's apply function not exported; non-existent; or wrong type");
 }
 
 }}} // namespace eosio chain validation
