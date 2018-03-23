@@ -67,9 +67,9 @@ dontKill=args.dont_kill
 
 testUtils.Utils.Debug=debug
 localTest=True if server == LOCAL_HOST else False
-cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, initaPrvtKey=initaPrvtKey, initbPrvtKey=initbPrvtKey)
-walletMgr=testUtils.WalletMgr(True)
-
+# launcher launched bios node listens on port DEFAULT_PORT-100
+cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, initaPrvtKey=initaPrvtKey, initbPrvtKey=initbPrvtKey, port=DEFAULT_PORT-100)
+walletMgr=testUtils.WalletMgr(True, nodeosPort=DEFAULT_PORT-100)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill
@@ -90,7 +90,7 @@ try:
     print("TEST_OUTPUT: %s" % (testOutputFile))
     print("SERVER: %s" % (server))
     print("PORT: %d" % (port))
-
+    
     if localTest and not dontLaunch:
         cluster.killall()
         cluster.cleanup()
@@ -160,6 +160,18 @@ try:
     if not walletMgr.importKey(initaAccount, initaWallet):
         cmdError("%s wallet import" % (ClientName))
         errorExit("Failed to import key for account %s" % (initaAccount.name))
+
+    producerKeys=cluster.producerKeys;
+    for name, keys in producerKeys.items():
+        Print("name: %s, keys: %s" % (name, str(keys)))
+        account=None
+        account=testUtils.Account(name)
+        account.ownerPrivateKey=keys[1]
+        account.ownerPublicKey=keys[0]
+        account.activePrivateKey=keys[1]
+        account.activePublicKey=keys[0]
+        walletMgr.importKey(account, initaWallet)
+    cluster.nodes[0].createInitAccounts(cluster.producerKeys)
 
     Print("Locking wallet \"%s\"." % (testWallet.name))
     if not walletMgr.lockWallet(testWallet):
@@ -232,9 +244,6 @@ try:
     Print("Verify account %s" % (testeraAccount))
     if not node.verifyAccount(testeraAccount):
         errorExit("FAILURE - account creation failed.", raw=True)
-
-    # Exiting early as transfer funds is failing in a multi-producer setup.
-    exit(0)
 
     transferAmount=975321
     Print("Transfer funds %d from account %s to %s" % (transferAmount, initaAccount.name, testeraAccount.name))
@@ -351,7 +360,6 @@ try:
 
     node.waitForTransIdOnNode(transId)
 
-    Print("Get transaction details %s" % (transId))
     transaction=None
     if not enableMongo:
         transaction=node.getTransaction(transId)
@@ -443,11 +451,17 @@ try:
         data="{\"issuer\":\"currency\",\"maximum_supply\":\"100000.0000 CUR\",\"can_freeze\":\"0\",\"can_recall\":\"0\",\"can_whitelist\":\"0\"}"
         opts="--permission currency@active"
         trans=node.pushMessage(contract, action, data, opts)
+        # Print("create action to currency contracttrans: %s" % str(trans))
+        if trans is None or not trans[0]:
+            errorExit("FAILURE - create action to currency contract failed", raw=True)
+
         Print("push issue action to currency contract")
         action="issue"
         data="{\"to\":\"currency\",\"quantity\":\"100000.0000 CUR\",\"memo\":\"issue\"}"
         opts="--permission currency@active"
         trans=node.pushMessage(contract, action, data, opts)
+        if trans is None or not trans[0]:
+            errorExit("FAILURE - issue action to currency contract failed", raw=True)
 
     # TODO need to update eosio.system contract to use new currency and update cleos and chain_plugin for interaction
     # Print("Verify currency contract has proper initial balance (via get table)")
@@ -493,7 +507,7 @@ try:
     if not amINoon:
         opts += " --scope currency,inita"
     trans=node.pushMessage(contract, action, data, opts)
-    if not trans[0]:
+    if trans is None or not trans[0]:
         cmdError("%s push message currency transfer" % (ClientName))
         errorExit("Failed to push message to currency contract")
     transId=testUtils.Node.getTransId(trans[1])
