@@ -14,7 +14,7 @@
         "base": "",
         "fields": [
           {"name":"account",    "type":"account_name"},
-          {"name":"is_priv",    "type":"bool"}
+          {"name":"is_priv",    "type":"int8"}
         ]
       },{
       "name": "set_global_limits",
