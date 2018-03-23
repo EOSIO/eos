@@ -41,132 +41,108 @@
 		exit 1
 	fi
 
-	process_dep()
-	{
-		printf "\tChecking XCode installation\n"
-		XCODESELECT=$(which xcode-select)
-		if [ $? -ne 0 ]; then
-			printf "\n\tXCode must be installed in order to proceed.\n\n"
-			printf "\texiting now.\n"
-			exit 1
-		fi
+	printf "\tChecking XCode installation\n"
+	XCODESELECT=$(which xcode-select)
+	if [ $? -ne 0 ]; then
+		printf "\n\tXCode must be installed in order to proceed.\n\n"
+		printf "\texiting now.\n"
+		exit 1
+	fi
 
-		printf "\tXCode installation found.\n\n"
+	printf "\tXCode installation found.\n\n"
+
+	printf "\tChecking Ruby installation\n"
+	RUBY=$(which ruby)
+	if [ $? -ne 0 ]; then
+		printf "\nRuby must be installed in order to proceed.\n\n"
+		printf "\texiting now.\n"
+		exit 1
+	fi
+
+	printf "\tRuby installation found.\n\n"
 	
-		printf "\tChecking Ruby installation\n"
-		RUBY=$(which ruby)
-		if [ $? -ne 0 ]; then
-			printf "\nRuby must be installed in order to proceed.\n\n"
-			printf "\texiting now.\n"
-			exit 1
-		fi
-
-		printf "\tRuby installation found.\n\n"
-		
-		printf "\tChecking Home Brew installation\n"
-		BREW=$(which brew)
-		if [ $? -ne 0 ]; then
-			printf "\tHomebrew must be installed to compile EOS.IO\n\n"
-			printf "\tDo you wish to install Home Brew?\n"
-			select yn in "Yes" "No"; do
-				case $yn in
-					[Yy]* ) 
-					$XCODESELECT --install 2>/dev/null;
-					$RUBY -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-					if [ $? -ne 0 ]; then
-						echo "Unable to install homebrew at this time. Exiting now."
-						exit 0;
-					fi
-					break;;
-					[Nn]* ) echo "User aborted homebrew installation. Exiting now.";
-							exit;;
-					* ) echo "Please enter 1 for yes or 2 for no.";;
-				esac
-			done
-		fi
-
-		printf "\tHome Brew installation found.\n\n"
-		DCOUNT=0
-		COUNT=1
-		PERMISSION_GETTEXT=0
-		DISPLAY=""
-		DEP=""
-	
-		printf "\tChecking dependencies.\n"
-		for line in `cat ${WORK_DIR}/scripts/eosio_build_dep`; do
-			pkg=$( echo "${line}" | cut -d',' -f1 )
-			printf "\tChecking $pkg ... "
-			BIN=$(which $pkg)
-			if [ $? -eq 0 ]; then
-			
-				if [ $pkg == "libtool" ] && [ $BIN == /usr/bin/libtool ]; then
-					donothing=true
-				else
-					printf "\t$pkg found\n"
-					continue
+	printf "\tChecking Home Brew installation\n"
+	BREW=$(which brew)
+	if [ $? -ne 0 ]; then
+		printf "\tHomebrew must be installed to compile EOS.IO\n\n"
+		printf "\tDo you wish to install Home Brew?\n"
+		select yn in "Yes" "No"; do
+			case $yn in
+				[Yy]* ) 
+				$XCODESELECT --install 2>/dev/null;
+				$RUBY -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+				if [ $? -ne 0 ]; then
+					echo "Unable to install homebrew at this time. Exiting now."
+					exit 0;
 				fi
-			fi
-			
-			LIB=$( ls -l /usr/local/lib/lib${pkg}* 2>/dev/null | wc -l)
-			if [ ${LIB} -ne 0 ]; then
-				 printf "\t$pkg found\n"
-				continue
-			else 
-				let DCOUNT++
-				
-				if [ $pkg = "mongod" ]; then
-					pkg="mongodb"
-				fi
-
-				if [ $pkg = "LLVM" ]; then
-					pkg="llvm@4"
-				fi
-
-# 				if [ $pkg = "openssl" ]; then
-# 					pkg="openssl@1.0"
-# 				fi
-
-				if [ $pkg = "gettext" ]; then
-					PERMISSION_GETTEXT=1
-				fi
-				
-				DEP=$DEP" ${pkg} "
-				DISPLAY="${DISPLAY}${COUNT}. ${pkg}\n\t"
-				printf "\tPackage ${pkg} ${bldred}NOT${txtrst} found.\n"
-				let COUNT++
-			fi
+				break;;
+				[Nn]* ) echo "User aborted homebrew installation. Exiting now.";
+						exit;;
+				* ) echo "Please enter 1 for yes or 2 for no.";;
+			esac
 		done
+	fi
 
-		if [ $DCOUNT -ne 0 ]; then
-			printf "\n\tThe following dependencies are required to install EOSIO.\n"
-			printf "\n\t$DISPLAY\n\n"
-			echo "Do you wish to install these packages?"
-			select yn in "Yes" "No"; do
-				case $yn in
-					[Yy]* ) 
-						if [ $PERMISSION_GETTEXT -eq 1 ]; then
-							sudo chown -R $(whoami) /usr/local/share
-						fi
-						$XCODESELECT --install 2>/dev/null;
-						printf "\tUpdating Home Brew.\n"
-						brew update
-						printf "\tInstalling Dependencies.\n"
-						brew install --force $DEP
-						brew unlink $DEP && brew link --force $DEP
-					break;;
-					[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
-					* ) echo "Please type 1 for yes or 2 for no.";;
-				esac
-			done
-		else 
-			printf "\n\tNo required Home Brew dependencies to install.\n"
+	printf "\tHome Brew installation found.\n\n"
+	DCOUNT=0
+	COUNT=1
+	PERMISSION_GETTEXT=0
+	DISPLAY=""
+	DEP=""
+
+	printf "\tChecking dependencies.\n"
+	var_ifs=${IFS}
+	IFS=','
+	while read -r name tester testee brewname uri
+	do
+		printf "\tChecking $name ... "
+		if [ ${tester} ${testee} ]; then
+			printf '\t\t %s found\n' "$name"
+			continue
 		fi
+		# resolve conflict with homebrew glibtool and apples install of libtool
+		if [ ${testee} == "/usr/local/bin/glibtool" ]; then
+			if [ ${tester} "/usr/local/bin/libtool" ]; then
+				printf '\t\t %s found\n' "$name"
+				continue
+			fi
+		fi
+		let DCOUNT++
+		if [ $brewname = "gettext" ]; then
+			PERMISSION_GETTEXT=1
+		fi
+		DEP=$DEP"${brewname} "
+		DISPLAY="${DISPLAY}${COUNT}. ${name}\n\t"
+		printf "\t\t ${name} ${bldred}NOT${txtrst} found.\n"
+		let COUNT++
+	done < scripts/eosio_build_dep
+	IFS=${var_ifs}
+
+	if [ $DCOUNT -ne 0 ]; then
+		printf "\n\tThe following dependencies are required to install EOSIO.\n"
+		printf "\n\t$DISPLAY\n\n"
+		echo "Do you wish to install these packages?"
+		select yn in "Yes" "No"; do
+			case $yn in
+				[Yy]* ) 
+					if [ $PERMISSION_GETTEXT -eq 1 ]; then
+						sudo chown -R $(whoami) /usr/local/share
+					fi
+					$XCODESELECT --install 2>/dev/null;
+					printf "\tUpdating Home Brew.\n"
+					brew update
+					printf "\tInstalling Dependencies.\n"
+					brew install --force $DEP
+					brew unlink $DEP && brew link --force $DEP
+				break;;
+				[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
+				* ) echo "Please type 1 for yes or 2 for no.";;
+			esac
+		done
+	else 
+		printf "\n\tNo required Home Brew dependencies to install.\n"
+	fi
 		
-	return 0
-	}
-
-	process_dep
-
 	printf "\n\tChecking for MongoDB C++ driver\n"
     # install libmongocxx.dylib
     if [ ! -e /usr/local/lib/libmongocxx.dylib ]; then
