@@ -5,15 +5,6 @@
 #include "RuntimePrivate.h"
 
 #ifdef _DEBUG
-#include <cctype>
-#include <cstdio>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#endif
-
-#ifdef _DEBUG
 	// This needs to be 1 to allow debuggers such as Visual Studio to place breakpoints and step through the JITed code.
 	#define USE_WRITEABLE_JIT_CODE_PAGES 1
 
@@ -748,31 +739,6 @@ namespace LLVMJIT
 
 		return reinterpret_cast<InvokeFunctionPointer>(jitUnit->symbol->baseAddress);
 	}
-
-#ifdef _DEBUG
-   int isDebuggerPresent()
-   {
-      char buff[1024];
-      int debuggerPresent = 0;
-      int status_fd = open("/proc/self/status", O_RDONLY);
-      if (status_fd == -1)
-         return 0;
-
-      ssize_t num_read = read(status_fd, buff, sizeof(buff));
-
-      if (num_read > 0) {
-         static const char tracerPID[] = "TracerPID:";
-         char *tracer_pid;
-         buff[num_read] = 0;
-         tracer_pid = strstr(buff, tracerPID);
-
-         if (tracer_pid)
-            debuggerPresent = !!atoi(tracer_pid + sizeof(tracerPID) -1 );
-      }
-
-      return debuggerPresent;
-   }   
-#endif
 
 	void init()
 	{

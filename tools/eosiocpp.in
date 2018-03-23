@@ -71,7 +71,7 @@ function generate_abi {
         exit 1
     fi
     
-    context_folder=$(realpath $(dirname $1))
+    context_folder=$(cd "$(dirname "$1")" ; pwd -P)
     
     ${ABIGEN} -extra-arg=-c -extra-arg=--std=c++14 -extra-arg=--target=wasm32 \
         -extra-arg=-nostdinc -extra-arg=-nostdinc++ -extra-arg=-DABIGEN \

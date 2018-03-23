@@ -8,6 +8,7 @@ RUN git clone -b master --depth 1 https://github.com/EOSIO/eos.git --recursive \
     && mkdir -p /opt/eosio/ && cp -r /tmp/build/bin /opt/eosio/bin && cp -r /tmp/build/contracts /contracts \
     && rm -rf /tmp/build && rm -rf /eos
 
+
 FROM ubuntu:16.04
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl && rm -rf /var/lib/apt/lists/*
