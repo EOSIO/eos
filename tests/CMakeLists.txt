@@ -49,9 +49,9 @@ add_test(NAME chain_test_wavm COMMAND chain_test --report_level=detailed --color
 add_test(NAME nodeos_run_test COMMAND tests/nodeos_run_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # add_test(NAME nodeos_run_remote_test COMMAND tests/nodeos_run_remote_test.py --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_test(NAME p2p_dawn515_test COMMAND tests/p2p_tests/dawn_515/test.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-# if(BUILD_MONGO_DB_PLUGIN)
-#    add_test(NAME nodeos_run_test-mongodb COMMAND tests/nodeos_run_test.py --mongodb --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-# endif()
+if(BUILD_MONGO_DB_PLUGIN)
+   add_test(NAME nodeos_run_test-mongodb COMMAND tests/nodeos_run_test.py --mongodb --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+endif()
 
 # TODO: Tests removed until working again on master.
 # TODO: add_test(NAME p2p_sync_test COMMAND tests/p2p_tests/sync/test.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
