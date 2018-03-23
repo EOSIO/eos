@@ -43,6 +43,7 @@ pipeline {
                         unstash 'buildUbuntu'
                         sh '''
                             . $HOME/.bash_profile
+                            mongod -f /etc/mongod.conf > /dev/null 2>&1 &
                             cd build
                             printf "Waiting for testing to be available..."
                             while /usr/bin/pgrep -x ctest > /dev/null; do sleep 1; done
@@ -56,6 +57,11 @@ pipeline {
                             archiveArtifacts 'build/tn_data_00/config.ini'
                             archiveArtifacts 'build/tn_data_00/stderr.txt'
                             archiveArtifacts 'build/test_walletd_output.log'
+                        }
+                        always {
+                            sh '''
+                                mongod --shutdown
+                            '''
                         }
                     }
                 }
@@ -65,6 +71,32 @@ pipeline {
                         unstash 'buildMacOS'
                         sh '''
                             . $HOME/.bash_profile
+                            mongod -f /usr/local/etc/mongod.conf > /dev/null 2>&1 &
+                            cd build
+                            ctest --output-on-failure
+                        '''
+                    }
+                    post {
+                        failure {
+                            archiveArtifacts 'build/genesis.json'
+                            archiveArtifacts 'build/tn_data_00/config.ini'
+                            archiveArtifacts 'build/tn_data_00/stderr.txt'
+                            archiveArtifacts 'build/test_walletd_output.log'
+                        }
+                        always {
+                            sh '''
+                                mongod --shutdown
+                            '''
+                        }
+                    }
+                }
+                stage('Fedora') {
+                    agent { label 'Fedora' }
+                    steps {
+                        unstash 'buildFedora'
+                        sh '''
+                            . $HOME/.bash_profile
+                            mongod -f /etc/mongod.conf > /dev/null 2>&1 &
                             cd build
                             printf "Waiting for testing to be available..."
                             while /usr/bin/pgrep -x ctest > /dev/null; do sleep 1; done
@@ -79,27 +111,10 @@ pipeline {
                             archiveArtifacts 'build/tn_data_00/stderr.txt'
                             archiveArtifacts 'build/test_walletd_output.log'
                         }
-                    }
-                }
-                stage('Fedora') {
-                    agent { label 'Fedora' }
-                    steps {
-                        unstash 'buildFedora'
-                        sh '''
-                            . $HOME/.bash_profile
-                            cd build
-                            printf "Waiting for testing to be available..."
-                            while /usr/bin/pgrep -x ctest > /dev/null; do sleep 1; done
-                            echo "OK!"
-                            ctest --output-on-failure
-                        '''
-                    }
-                    post {
-                        failure {
-                            archiveArtifacts 'build/genesis.json'
-                            archiveArtifacts 'build/tn_data_00/config.ini'
-                            archiveArtifacts 'build/tn_data_00/stderr.txt'
-                            archiveArtifacts 'build/test_walletd_output.log'
+                        always {
+                            sh '''
+                                mongod --shutdown
+                            '''
                         }
                     }
                 }
