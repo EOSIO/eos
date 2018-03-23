@@ -18,7 +18,7 @@ namespace eosiosystem {
          static constexpr uint64_t   currency_symbol = currency::symbol;            // S(4,EOS)
          static constexpr uint32_t   max_inflation_rate = 5;                        // 5% annual inflation
 
-         static constexpr uint32_t   blocks_per_producer = 6;
+         static constexpr uint32_t   blocks_per_producer = 12;
          static constexpr uint32_t   seconds_per_day = 24 * 3600;
          static constexpr uint32_t   days_per_4years = 1461;
 

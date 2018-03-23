@@ -1377,7 +1377,7 @@ fc::mutable_variant_object config_to_variant( const eosio::chain::chain_config& 
       ( "max_generated_transaction_size", config.max_generated_transaction_size );
 }
 
-BOOST_FIXTURE_TEST_CASE( elect_poducers_and_parameters, eosio_system_tester ) try {
+BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) try {
    create_accounts( {  N(producer1), N(producer2), N(producer3) } );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer1", 1) );
    BOOST_REQUIRE_EQUAL( success(), regproducer( "producer2", 2) );
@@ -1442,7 +1442,7 @@ BOOST_FIXTURE_TEST_CASE( elect_poducers_and_parameters, eosio_system_tester ) tr
                                                ("producers", vector<account_name>{ N(producer3) } )
                         )
    );
-   produce_blocks(50);
+   produce_blocks(100);
    producer_keys = control->get_global_properties().active_producers.producers;
    BOOST_REQUIRE_EQUAL( 2, producer_keys.size() );
    BOOST_REQUIRE_EQUAL( name("producer3"), producer_keys[0].producer_name );
