@@ -166,6 +166,14 @@ void CallFunction(tester& test, T ac, const vector<char>& data, const vector<acc
 #define CALL_TEST_FUNCTION(TESTER, CLS, MTH, DATA) CallFunction(TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA)
 #define CALL_TEST_FUNCTION_SYSTEM(TESTER, CLS, MTH, DATA) CallFunction(TESTER, test_chain_action<TEST_METHOD(CLS, MTH)>{}, DATA, {N(eosio)} )
 #define CALL_TEST_FUNCTION_SCOPE(TESTER, CLS, MTH, DATA, ACCOUNT) CallFunction(TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA, ACCOUNT)
+#define CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION(TESTER, CLS, MTH, DATA, EXC, EXC_MESSAGE) \
+BOOST_CHECK_EXCEPTION( \
+   CALL_TEST_FUNCTION( TESTER, CLS, MTH, DATA), \
+                       EXC, \
+                       [](const EXC& e) { \
+                          return expect_assert_message(e, EXC_MESSAGE); \
+                     } \
+);
 
 bool is_access_violation(fc::unhandled_exception const & e) {
    try {
@@ -770,6 +778,37 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, tester) { try {
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx128_autoincrement_test_part2", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx256_general", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx_double_general", {});
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pk_iterator_exceed_end", {},
+                                           fc::assert_exception, "cannot increment end iterator");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_sk_iterator_exceed_end", {},
+                                           fc::assert_exception, "cannot increment end iterator");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pk_iterator_exceed_begin", {},
+                                           fc::assert_exception, "cannot decrement iterator at beginning of table");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_sk_iterator_exceed_begin", {},
+                                           fc::assert_exception, "cannot decrement iterator at beginning of index");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_pk_ref_to_other_table", {},
+                                           fc::assert_exception, "object passed to iterator_to is not in multi_index");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_sk_ref_to_other_table", {},
+                                           fc::assert_exception, "object passed to iterator_to is not in multi_index");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_pk_end_itr_to_iterator_to", {},
+                                           fc::assert_exception, "object passed to iterator_to is not in multi_index");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_pk_end_itr_to_modify", {},
+                                           fc::assert_exception, "cannot pass end iterator to modify");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_pk_end_itr_to_erase", {},
+                                           fc::assert_exception, "cannot pass end iterator to erase");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_sk_end_itr_to_iterator_to", {},
+                                           fc::assert_exception, "object passed to iterator_to is not in multi_index");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_sk_end_itr_to_modify", {},
+                                           fc::assert_exception, "cannot pass end iterator to modify");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_pass_sk_end_itr_to_erase", {},
+                                           fc::assert_exception, "cannot pass end iterator to erase");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_modify_primary_key", {},
+                                           fc::assert_exception, "updater cannot change primary key when modifying an object");
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_multi_index", "idx64_run_out_of_avl_pk", {},
+                                           fc::assert_exception, "next primary key in table is at autoincrement limit");
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_sk_cache_pk_lookup", {});
+   CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_pk_cache_sk_lookup", {});
+
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************

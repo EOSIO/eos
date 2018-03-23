@@ -240,6 +240,18 @@ namespace _test_multi_index {
 
    }
 
+   template<uint64_t TableName, uint64_t SecondaryIndex>
+   auto idx64_table()
+   {
+      using namespace eosio;
+      typedef record_idx64 record;
+      // Load table using multi_index
+      multi_index<TableName, record,
+              indexed_by<SecondaryIndex, const_mem_fun<record, uint64_t, &record::get_secondary> >
+          > table( current_receiver(), current_receiver() );
+      return table;
+   }
+
 } /// _test_multi_index
 
 void test_multi_index::idx64_store_only()
@@ -570,3 +582,187 @@ void test_multi_index::idx_double_general()
    }
 
 }
+
+void test_multi_index::idx64_pk_iterator_exceed_end()
+{
+   auto table = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>();
+   auto end_itr = table.end();
+   // Should fail
+   ++end_itr;
+}
+
+void test_multi_index::idx64_sk_iterator_exceed_end()
+{
+   auto table = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>();
+   auto end_itr = table.get_index<N(bysecondary)>().end();
+   // Should fail
+   ++end_itr;
+}
+
+void test_multi_index::idx64_pk_iterator_exceed_begin()
+{
+   auto table = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>();
+   auto begin_itr = table.begin();
+   // Should fail
+   --begin_itr;
+}
+
+void test_multi_index::idx64_sk_iterator_exceed_begin()
+{
+   auto table = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>();
+   auto begin_itr = table.get_index<N(bysecondary)>().begin();
+   // Should fail
+   --begin_itr;
+}
+
+void test_multi_index::idx64_pass_pk_ref_to_other_table()
+{
+   auto table1 = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>();
+   auto table2 = _test_multi_index::idx64_table<N(indextable2), N(bysecondary)>();
+
+   auto table1_pk_itr = table1.find(781);
+   eosio_assert(table1_pk_itr != table1.end() && table1_pk_itr->sec == N(bob), "idx64_pass_pk_ref_to_other_table - table.find() of existing primary key");
+
+   // Should fail
+   table2.iterator_to(*table1_pk_itr);
+}
+
+void test_multi_index::idx64_pass_sk_ref_to_other_table()
+{
+   auto table1 = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>();
+   auto table2 = _test_multi_index::idx64_table<N(indextable2), N(bysecondary)>();
+
+   auto table1_pk_itr = table1.find(781);
+   eosio_assert(table1_pk_itr != table1.end() && table1_pk_itr->sec == N(bob), "idx64_pass_sk_ref_to_other_table - table.find() of existing primary key");
+
+   auto table2_sec_index = table2.get_index<N(bysecondary)>();
+   // Should fail
+   table2_sec_index.iterator_to(*table1_pk_itr);
+}
+
+void test_multi_index::idx64_pass_pk_end_itr_to_iterator_to()
+{
+   auto table = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>();
+   auto end_itr = table.end();
+   // Should fail
+   table.iterator_to(*end_itr);
+}
+
+void test_multi_index::idx64_pass_pk_end_itr_to_modify()
+{
+   auto table = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>();
+   auto end_itr = table.end();
+
+   auto payer = current_receiver();
+   // Should fail
+   table.modify(end_itr, payer, [](auto&){});
+}
+
+
+void test_multi_index::idx64_pass_pk_end_itr_to_erase()
+{
+   auto table = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>();
+   auto end_itr = table.end();
+
+   // Should fail
+   table.erase(end_itr);
+}
+
+void test_multi_index::idx64_pass_sk_end_itr_to_iterator_to()
+{
+   auto table = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>();
+   auto sec_index = table.get_index<N(bysecondary)>();
+   auto end_itr = sec_index.end();
+
+   // Should fail
+   sec_index.iterator_to(*end_itr);
+}
+
+void test_multi_index::idx64_pass_sk_end_itr_to_modify()
+{
+   auto table = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>();
+   auto sec_index = table.get_index<N(bysecondary)>();
+   auto end_itr = sec_index.end();
+
+   auto payer = current_receiver();
+   // Should fail
+   sec_index.modify(end_itr, payer, [](auto&){});
+}
+
+
+void test_multi_index::idx64_pass_sk_end_itr_to_erase()
+{
+   auto table = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>();
+   auto sec_index = table.get_index<N(bysecondary)>();
+   auto end_itr = sec_index.end();
+
+   // Should fail
+   sec_index.erase(end_itr);
+}
+
+void test_multi_index::idx64_modify_primary_key()
+{
+   auto table = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>();
+
+   auto pk_itr = table.find(781);
+   eosio_assert(pk_itr != table.end() && pk_itr->sec == N(bob), "idx64_modify_primary_key - table.find() of existing primary key");
+
+   auto payer = current_receiver();
+
+   // Should fail
+   table.modify(pk_itr, payer, [](auto& r){
+      r.id = 1100;
+   });
+}
+
+void test_multi_index::idx64_run_out_of_avl_pk()
+{
+   auto table = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>();
+
+   auto pk_itr = table.find(781);
+   eosio_assert(pk_itr != table.end() && pk_itr->sec == N(bob), "idx64_modify_primary_key - table.find() of existing primary key");
+
+   auto payer = current_receiver();
+
+   table.emplace( payer, [&]( auto& r ) {
+      r.id = static_cast<uint64_t>(-4);
+      r.sec = N(alice);
+   });
+   eosio_assert(table.available_primary_key() == static_cast<uint64_t>(-3), "idx64_run_out_of_avl_pk - incorrect available primary key");
+
+   table.emplace( payer, [&]( auto& r ) {
+      r.id = table.available_primary_key();
+      r.sec = N(bob);
+   });
+
+   // Should fail
+   table.available_primary_key();
+}
+
+void test_multi_index::idx64_sk_cache_pk_lookup()
+{
+   auto table = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>();
+
+   auto sec_index = table.get_index<N(bysecondary)>();
+   auto sk_itr = sec_index.find(N(bob));
+   eosio_assert(sk_itr != sec_index.end() && sk_itr->id == 540, "idx64_sk_cache_pk_lookup - sec_index.find() of existing secondary key");
+
+   auto pk_itr = table.iterator_to(*sk_itr);
+   auto prev_itr = --pk_itr;
+   eosio_assert(prev_itr->id == 265 && prev_itr->sec == N(alice), "idx64_sk_cache_pk_lookup - previous record");
+}
+
+void test_multi_index::idx64_pk_cache_sk_lookup()
+{
+   auto table = _test_multi_index::idx64_table<N(indextable1), N(bysecondary)>();
+
+
+   auto pk_itr = table.find(540);
+   eosio_assert(pk_itr != table.end() && pk_itr->sec == N(bob), "idx64_pk_cache_sk_lookup - table.find() of existing primary key");
+
+   auto sec_index = table.get_index<N(bysecondary)>();
+   auto sk_itr = sec_index.iterator_to(*pk_itr);
+   auto next_itr = ++sk_itr;
+   eosio_assert(next_itr->id == 781 && next_itr->sec == N(bob), "idx64_pk_cache_sk_lookup - next record");
+}
+
