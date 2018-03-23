@@ -178,7 +178,6 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
 
         auto expected = asset::from_string("1000000000.0000 EOS");
-#if _READY
         // Create EOS tokens in eosio.token, set its manager as eosio.system
         create_currency(N(eosio.token), config::system_account_name, expected);
         // Issue the genesis supply of 1 billion EOS tokens to eosio.system
@@ -186,7 +185,6 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         issue(N(eosio.token), config::system_account_name, config::system_account_name, expected);
         auto actual = get_balance(config::system_account_name);
         BOOST_REQUIRE_EQUAL(expected, actual);
-#endif
 
         // Create a few genesis accounts
         std::vector<account_name> gen_accounts{N(inita), N(initb), N(initc)};
