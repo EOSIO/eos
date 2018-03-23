@@ -326,6 +326,7 @@ BOOST_AUTO_TEST_CASE(forked_network)
    } FC_LOG_AND_RETHROW() }
 
 
+#if 0
 // Check that the recent_slots_filled bitmap is being updated correctly
 BOOST_AUTO_TEST_CASE( rsf_missed_blocks )
 { try {
@@ -448,6 +449,7 @@ BOOST_AUTO_TEST_CASE( rsf_missed_blocks )
       );
       BOOST_TEST( chain.control->producer_participation_rate() == pct(1) );
    } FC_LOG_AND_RETHROW() }
+#endif
 
 // Check that a db rewinds to the LIB after being closed and reopened
 BOOST_AUTO_TEST_CASE(restart_db)
