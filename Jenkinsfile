@@ -43,7 +43,7 @@ pipeline {
                         unstash 'buildUbuntu'
                         sh '''
                             . $HOME/.bash_profile
-                            if ! /usr/bin/pgrep mongod &>/dev/null;
+                            if ! /usr/bin/pgrep mongod &>/dev/null; then
                                 /usr/bin/mongod -f /etc/mongod.conf > /dev/null 2>&1 &
                             fi
                             cd build
@@ -73,8 +73,8 @@ pipeline {
                         unstash 'buildMacOS'
                         sh '''
                             . $HOME/.bash_profile
-                            if ! /usr/bin/pgrep mongod &>/dev/null;
-                                /usr/bin/mongod -f /etc/mongod.conf > /dev/null 2>&1 &
+                            if ! /usr/bin/pgrep mongod &>/dev/null; then
+                                /usr/local/bin/mongod -f /usr/local/etc/mongod.conf > /dev/null 2>&1 &
                             fi
                             cd build
                             ctest --output-on-failure
@@ -89,7 +89,7 @@ pipeline {
                         }
                         always {
                             sh '''
-                                /usr/bin/mongod --shutdown
+                                /usr/local/bin/mongod --shutdown
                             '''
                         }
                     }
@@ -100,7 +100,7 @@ pipeline {
                         unstash 'buildFedora'
                         sh '''
                             . $HOME/.bash_profile
-                            if ! /usr/bin/pgrep mongod &>/dev/null;
+                            if ! /usr/bin/pgrep mongod &>/dev/null; then
                                 /usr/bin/mongod -f /etc/mongod.conf > /dev/null 2>&1 &
                             fi
                             cd build
