@@ -24,7 +24,7 @@ add_subdirectory(test_api_mem)
 add_subdirectory(test_api_db)
 add_subdirectory(test_api_multi_index)
 #add_subdirectory(social)
-add_subdirectory(test.system)
+add_subdirectory(eosio.bios)
 add_subdirectory(noop)
 
 file(GLOB SKELETONS RELATIVE ${CMAKE_SOURCE_DIR}/contracts "skeleton/*")
