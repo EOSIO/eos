@@ -43,7 +43,9 @@ pipeline {
                         unstash 'buildUbuntu'
                         sh '''
                             . $HOME/.bash_profile
-                            mongod -f /etc/mongod.conf > /dev/null 2>&1 &
+                            if ! pgrep mongod &>/dev/null;
+                                mongod -f /etc/mongod.conf > /dev/null 2>&1 &
+                            fi
                             cd build
                             printf "Waiting for testing to be available..."
                             while /usr/bin/pgrep -x ctest > /dev/null; do sleep 1; done
@@ -71,7 +73,9 @@ pipeline {
                         unstash 'buildMacOS'
                         sh '''
                             . $HOME/.bash_profile
-                            mongod -f /usr/local/etc/mongod.conf > /dev/null 2>&1 &
+                            if ! pgrep mongod &>/dev/null;
+                                mongod -f /etc/mongod.conf > /dev/null 2>&1 &
+                            fi
                             cd build
                             ctest --output-on-failure
                         '''
@@ -96,7 +100,9 @@ pipeline {
                         unstash 'buildFedora'
                         sh '''
                             . $HOME/.bash_profile
-                            mongod -f /etc/mongod.conf > /dev/null 2>&1 &
+                            if ! pgrep mongod &>/dev/null;
+                                mongod -f /etc/mongod.conf > /dev/null 2>&1 &
+                            fi
                             cd build
                             printf "Waiting for testing to be available..."
                             while /usr/bin/pgrep -x ctest > /dev/null; do sleep 1; done
