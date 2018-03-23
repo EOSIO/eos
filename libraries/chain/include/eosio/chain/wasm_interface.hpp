@@ -1,102 +1,39 @@
 #pragma once
-#include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/types.hpp>
+#include "Runtime/Linker.h"
+#include "Runtime/Runtime.h"
 
 namespace eosio { namespace chain {
 
    class apply_context;
-
-   namespace webassembly { namespace common {
-      class intrinsics_accessor;
-   } }
+   class wasm_runtime_interface;
 
    struct wasm_exit {
       int32_t code = 0;
    };
 
-   /**
-    * @class wasm_cache
-    *
-    * This class manages compilation, re-use and memory sanitation for WASM contracts
-    * As the same code can be running on many threads in parallel, some contracts will have multiple
-    * copies.
-    */
-   class wasm_cache {
-      public:
-         wasm_cache();
-         ~wasm_cache();
+   namespace webassembly { namespace common {
+      class intrinsics_accessor;
 
-         /**
-          * an opaque code entry used in the wasm_interface class
-          */
-         struct entry;
-
-         /**
-          * Checkout the desired code from the cache.  Code is idenfied via a digest of the wasm binary
-          *
-          * @param code_id - a digest of the wasm_binary bytes
-          * @param wasm_binary - a pointer to the wasm_binary bytes
-          * @param wasm_binary_size - the size of the wasm_binary bytes array
-          * @return an entry which can be immediately used by the wasm_interface to execute contract code
-          */
-         entry &checkout( const digest_type& code_id, const char* wasm_binary, size_t wasm_binary_size );
-
-         /**
-          * Return an entry to the cache so that future checkouts may retrieve it
-          *
-          * @param code_id - a digest of the wasm_binary bytes
-          * @param code - the entry which should be considered invalid post-call
-          */
-         void checkin( const digest_type& code_id, entry& code );
-
-         /**
-          * RAII wrapper to make sure that the cache entries are returned regardless of exceptions etc
-          */
-         struct scoped_entry {
-            explicit scoped_entry(const digest_type& code_id, entry& code, wasm_cache& cache)
-            :code_id(code_id)
-            ,code(code)
-            ,cache(cache)
-            {}
-
-            ~scoped_entry() {
-               cache.checkin(code_id, code);
-            }
-
-            operator entry&() {
-               return code;
-            }
-
-            digest_type code_id;
-            entry&      code;
-            wasm_cache& cache;
-         };
-
-         /**
-          * Checkout the desired code from the cache.  Code is idenfied via a digest of the wasm binary
-          * this method will wrap the code in an RAII construct so that it will automatically
-          * return to the cache when it falls out of scope
-          *
-          * @param code_id - a digest of the wasm_binary bytes
-          * @param wasm_binary - a pointer to the wasm_binary bytes
-          * @param wasm_binary_size - the size of the wasm_binary bytes array
-          * @return an entry which can be immediately used by the wasm_interface to execute contract code
-          */
-         scoped_entry checkout_scoped(const digest_type& code_id, const char* wasm_binary, size_t wasm_binary_size) {
-            return scoped_entry(code_id, checkout(code_id, wasm_binary, wasm_binary_size), *this);
+      struct root_resolver : Runtime::Resolver {
+         bool resolve(const string& mod_name,
+                      const string& export_name,
+                      IR::ObjectType type,
+                      Runtime::ObjectInstance*& out) override { 
+      try {
+         // Try to resolve an intrinsic first.
+         if(Runtime::IntrinsicResolver::singleton.resolve(mod_name,export_name,type, out)) {
+            return true;
          }
 
-
-      private:
-         unique_ptr<struct wasm_cache_impl> _my;
-   };
+         FC_ASSERT( !"unresolvable", "${module}.${export}", ("module",mod_name)("export",export_name) );
+         return false;
+      } FC_CAPTURE_AND_RETHROW( (mod_name)(export_name) ) }
+      };
+   } }
 
    /**
     * @class wasm_interface
-    *
-    * EOS.IO uses the wasm-jit library to evaluate web assembly code. This library relies
-    * upon a singlton thread-local interface which means there can be only one instance 
-    * per thread. 
     *
     */
    class wasm_interface {
@@ -106,19 +43,14 @@ namespace eosio { namespace chain {
             binaryen,
          };
 
-         static wasm_interface& get();
+         wasm_interface(vm_type vm);
+         ~wasm_interface();
 
-         /**
-          * Calls the apply an action through the given code
-          *
-          * @param context - the interface by which the contract can interact
-          * with blockchain state.
-          */
-         void apply( wasm_cache::entry& code, apply_context& context, vm_type vm = vm_type::wavm );
+         //validates code -- does a WASM validation pass and checks the wasm against EOSIO specific constraints
+         static void validate(const bytes& code);
 
-         /**
-          */
-         void error( wasm_cache::entry& code, apply_context& context, vm_type vm = vm_type::wavm  );
+         //Calls apply or error on a given code
+         void apply(const digest_type& code_id, const shared_vector<char>& code, apply_context& context);
 
       private:
          wasm_interface();
@@ -127,3 +59,7 @@ namespace eosio { namespace chain {
    };
 
 } } // eosio::chain
+
+namespace eosio{ namespace chain {
+   std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime);
+}}

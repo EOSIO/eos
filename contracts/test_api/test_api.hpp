@@ -172,6 +172,22 @@ struct test_multi_index {
    static void idx128_autoincrement_test_part2();
    static void idx256_general();
    static void idx_double_general();
+   static void idx64_pk_iterator_exceed_end();
+   static void idx64_sk_iterator_exceed_end();
+   static void idx64_pk_iterator_exceed_begin();
+   static void idx64_sk_iterator_exceed_begin();
+   static void idx64_pass_pk_ref_to_other_table();
+   static void idx64_pass_sk_ref_to_other_table();
+   static void idx64_pass_pk_end_itr_to_iterator_to();
+   static void idx64_pass_pk_end_itr_to_modify();
+   static void idx64_pass_pk_end_itr_to_erase();
+   static void idx64_pass_sk_end_itr_to_iterator_to();
+   static void idx64_pass_sk_end_itr_to_modify();
+   static void idx64_pass_sk_end_itr_to_erase();
+   static void idx64_modify_primary_key();
+   static void idx64_run_out_of_avl_pk();
+   static void idx64_sk_cache_pk_lookup();
+   static void idx64_pk_cache_sk_lookup();
 };
 
 struct test_crypto {
@@ -274,3 +290,12 @@ struct test_checktime {
    static void checktime_pass();
    static void checktime_failure();
 };
+/*
+struct test_softfloat {
+   static void test_f32_add();
+   static void test_f32_sub();
+   static void test_f32_mul();
+   static void test_f32_div();
+   static void test_f32_min();
+};
+*/

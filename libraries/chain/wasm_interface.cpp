@@ -14,17 +14,8 @@
 #include <fc/crypto/sha1.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/utf8.hpp>
-#include <Runtime/Runtime.h>
-#include "IR/Module.h"
-#include "Platform/Platform.h"
-#include "WAST/WAST.h"
-#include "IR/Operators.h"
-#include "IR/Validate.h"
-#include "IR/Types.h"
-#include "Runtime/Runtime.h"
-#include "Runtime/Linker.h"
-#include "Runtime/Intrinsics.h"
 
+#include <softfloat.hpp>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <fstream>
@@ -38,346 +29,34 @@ namespace eosio { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
 
-
-   /**
-    *  Implementation class for the wasm cache
-    *  it is responsible for compiling and storing instances of wasm code for use
-    *
-    */
-   struct wasm_cache_impl {
-      wasm_cache_impl()
-      {
-         // TODO clean this up
-         //check_wasm_opcode_dispositions();
-         Runtime::init();
+   wasm_interface::wasm_interface(vm_type vm)
+      :my( new wasm_interface_impl(vm) ) {
       }
 
-      /**
-       * this must wait for all work to be done otherwise it may destroy memory
-       * referenced by other threads
-       *
-       * Expectations on wasm_cache dictate that all available code has been
-       * returned before this can be destroyed
-       */
-      ~wasm_cache_impl() {
-         Runtime::freeUnreferencedObjects({});
-      }
+   wasm_interface::~wasm_interface() {}
 
-      /**
-       * internal tracking structure which deduplicates memory images
-       * and tracks available vs in-use entries.
-       *
-       * The instances array has two sections, "available" instances
-       * are in the front of the vector and anything at an index of
-       * available_instances or greater is considered "in use"
-       *
-       * instances are stored as pointers so that their positions
-       * in the array can be moved without invaliding references to
-       * the instance handed out to other threads
-       */
-      struct code_info {
-         explicit code_info(wavm::info&& wavm_info, binaryen::info&& binaryen_info)
-         : wavm_info(std::forward<wavm::info>(wavm_info))
-         , binaryen_info(std::forward<binaryen::info>(binaryen_info))
-         {}
+   void wasm_interface::validate(const bytes& code) {
+      Module module;
+      Serialization::MemoryInputStream stream((U8*)code.data(), code.size());
+      WASM::serialize(stream, module);
 
+      wasm_validations::wasm_binary_validation validator(module);
+      validator.validate();
 
-         wavm::info   wavm_info;
-         binaryen::info binaryen_info;
+      root_resolver resolver;
+      LinkResult link_result = linkModule(module, resolver);
 
-         // all existing instances of this code
-         vector<unique_ptr<wasm_cache::entry>> instances;
-         size_t available_instances = 0;
-      };
-
-      using optional_info_ref = optional<std::reference_wrapper<code_info>>;
-      using optional_entry_ref = optional<std::reference_wrapper<wasm_cache::entry>>;
-
-      /**
-       * Convenience method for running code with the _cache_lock and releaseint that lock
-       * when the code completes
-       *
-       * @param f - lambda to execute
-       * @return - varies depending on the signature of the lambda
-       */
-      template<typename F>
-      auto with_lock(std::mutex &l, F f) {
-         std::lock_guard<std::mutex> lock(l);
-         return f();
-      };
-
-      /**
-       * Fetch the tracking struct given a code_id if it exists
-       *
-       * @param code_id
-       * @return
-       */
-      optional_info_ref fetch_info(const digest_type& code_id) {
-         return with_lock(_cache_lock, [&,this](){
-            auto iter = _cache.find(code_id);
-            if (iter != _cache.end()) {
-               return optional_info_ref(iter->second);
-            }
-
-            return optional_info_ref();
-         });
-      }
-
-      /**
-       * Opportunistically fetch an available instance of the code;
-       * @param code_id - the id of the code to fetch
-       * @return - reference to the entry when one is available
-       */
-      optional_entry_ref try_fetch_entry(const digest_type& code_id) {
-         return with_lock(_cache_lock, [&,this](){
-            auto iter = _cache.find(code_id);
-            if (iter != _cache.end() && iter->second.available_instances > 0) {
-               auto &ptr = iter->second.instances.at(--(iter->second.available_instances));
-               return optional_entry_ref(*ptr);
-            }
-
-            return optional_entry_ref();
-         });
-      }
-
-      /**
-       * Fetch a copy of the code, this is guaranteed to return an entry IF the code is compilable.
-       * In order to do that in safe way this code may cause the calling thread to sleep while a new
-       * version of the code is compiled and inserted into the cache
-       *
-       * @param code_id - the id of the code to fetch
-       * @param wasm_binary - the binary for the wasm
-       * @param wasm_binary_size - the size of the binary
-       * @return reference to a usable cache entry
-       */
-      struct test_mutator {
-         static std::vector<uint8_t> accept( wasm_ops::instr* inst ) {
-            std::cout << "ACCEPTING\n";
-            return {};
-         }
-      };
-      struct test_mutator2 {
-         static std::vector<uint8_t> accept( wasm_ops::instr* inst ) {
-            std::cout << "ACCEPTING2\n";
-            return {};
-         }
-      };
-
-      wasm_cache::entry& fetch_entry(const digest_type& code_id, const char* wasm_binary, size_t wasm_binary_size) {
-         std::condition_variable condition;
-         optional_entry_ref result;
-         std::exception_ptr error;
-
-         // compilation is not thread safe, so we dispatch it to a io_service running on a single thread to
-         // queue up and synchronize compilations
-         with_lock(_compile_lock, [&,this](){
-            // check to see if someone returned what we need before making a new one
-            auto pending_result = try_fetch_entry(code_id);
-            std::exception_ptr pending_error;
-
-            if (!pending_result) {
-               // time to compile a brand new (maybe first) copy of this code
-
-               fc::optional<wavm::entry> wavm;
-               fc::optional<wavm::info> wavm_info;
-               fc::optional<binaryen::entry> binaryen;
-               fc::optional<binaryen::info> binaryen_info;
-
-               try {
-
-                  IR::Module* module = new IR::Module();
-
-                  Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
-                  WASM::serialize(stream, *module);
-
-                  wasm_validations::wasm_binary_validation validator( *module );
-                  wasm_injections::wasm_binary_injection injector( *module );
-
-                  injector.inject();
-                  validator.validate();
-                  Serialization::ArrayOutputStream outstream;
-                  WASM::serialize(outstream, *module);
-                  std::vector<U8> bytes = outstream.getBytes();
-
-                  wavm = wavm::entry::build((char*)bytes.data(), bytes.size());
-                  wavm_info.emplace(*wavm);
-
-                  binaryen = binaryen::entry::build((char*)bytes.data(), bytes.size());
-                  binaryen_info.emplace(*binaryen);
-               } catch (...) {
-                  pending_error = std::current_exception();
-               }
-
-               if (pending_error == nullptr) {
-                  // grab the lock and put this in the cache as unavailble
-                  with_lock(_cache_lock, [&,this]() {
-                     // find or create a new entry
-                     auto iter = _cache.emplace(code_id, code_info(std::move(*wavm_info),std::move(*binaryen_info))).first;
-
-                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(std::move(*wavm), std::move(*binaryen)));
-                     pending_result = optional_entry_ref(*iter->second.instances.back().get());
-                  });
-               }
-            }
-
-           if (pending_error != nullptr) {
-              error = pending_error;
-           } else {
-              result = pending_result;
-           }
-
-         });
-
-
-         try {
-            if (error != nullptr) {
-               std::rethrow_exception(error);
-            } else {
-               return (*result).get();
-            }
-         } FC_RETHROW_EXCEPTIONS(error, "error compiling WASM for code with hash: ${code_id}", ("code_id", code_id));
-      }
-
-      /**
-       * return an entry to the cache.  The entry is presumed to come back in a "dirty" state and must be
-       * sanitized before returning to the "available" state.  This sanitization is done asynchronously so
-       * as not to delay the current executing thread.
-       *
-       * @param code_id - the code Id associated with the instance
-       * @param entry - the entry to return
-       */
-      void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
-         // sanitize by reseting the memory that may now be dirty
-         auto& info = (*fetch_info(code_id)).get();
-         entry.wavm.reset(info.wavm_info);
-         entry.binaryen.reset(info.binaryen_info);
-
-         // under a lock, put this entry back in the available instances side of the instances vector
-         with_lock(_cache_lock, [&,this](){
-            // walk the vector and find this entry
-            auto iter = info.instances.begin();
-            while (iter->get() != &entry) {
-               ++iter;
-            }
-
-            FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
-
-            auto first_unavailable = (info.instances.begin() + info.available_instances);
-            if (iter != first_unavailable) {
-               std::swap(iter, first_unavailable);
-            }
-            info.available_instances++;
-         });
-      }
-
-      //initialize the memory for a cache entry
-      wasm_cache::entry& prepare_wasm_instance(wasm_cache::entry& wasm_cache_entry, const digest_type& code_id) {
-         auto& info = (*fetch_info(code_id)).get();
-         wasm_cache_entry.wavm.prepare(info.wavm_info);
-         wasm_cache_entry.binaryen.prepare(info.binaryen_info);
-         return wasm_cache_entry;
-      }
-
-      // mapping of digest to an entry for the code
-      map<digest_type, code_info> _cache;
-      std::mutex _cache_lock;
-
-      // compilation lock
-      std::mutex _compile_lock;
-   };
-
-   wasm_cache::wasm_cache()
-      :_my( new wasm_cache_impl() ) {
+      //there are a couple opportunties for improvement here--
+      //Easy: Cache the Module created here so it can be reused for instantiaion
+      //Hard: Kick off instantiation in a separate thread at this location
    }
 
-   wasm_cache::~wasm_cache() = default;
-
-   wasm_cache::entry &wasm_cache::checkout( const digest_type& code_id, const char* wasm_binary, size_t wasm_binary_size ) {
-      // see if there is an available entry in the cache
-      auto result = _my->try_fetch_entry(code_id);
-      if (result) {
-         wasm_cache::entry& wasm_cache_entry = (*result).get();
-         return _my->prepare_wasm_instance(wasm_cache_entry, code_id);
-      }
-      return _my->prepare_wasm_instance(_my->fetch_entry(code_id, wasm_binary, wasm_binary_size), code_id);
+   void wasm_interface::apply( const digest_type& code_id, const shared_vector<char>& code, apply_context& context ) {
+      my->get_instantiated_module(code_id, code)->apply(context);
    }
 
-
-   void wasm_cache::checkin(const digest_type& code_id, entry& code ) {
-      _my->return_entry(code_id, code);
-   }
-
-   /**
-    * RAII wrapper to make sure that the context is cleaned up on exception
-    */
-   struct scoped_context {
-      template<typename ...Args>
-      scoped_context(optional<wasm_context> &context, Args&&... args)
-      :context(context)
-      {
-         context.emplace( std::forward<Args>(args)... );
-      }
-
-      ~scoped_context() {
-         context.reset();
-      }
-
-      optional<wasm_context>& context;
-   };
-
-   wasm_interface::wasm_interface()
-      :my( new wasm_interface_impl() ) {
-   }
-
-   wasm_interface& wasm_interface::get() {
-      thread_local wasm_interface* single = nullptr;
-      if( !single ) {
-         single = new wasm_interface();
-      }
-      return *single;
-   }
-
-   void wasm_interface::apply( wasm_cache::entry& code, apply_context& context, vm_type vm ) {
-      try {
-         auto context_guard = scoped_context(my->current_context, code, context, vm);
-         switch (vm) {
-            case vm_type::wavm:
-               code.wavm.call_apply(context);
-               break;
-            case vm_type::binaryen:
-               code.binaryen.call_apply(context);
-               break;
-         }
-      } catch ( const wasm_exit& ){}
-   }
-
-   void wasm_interface::error( wasm_cache::entry& code, apply_context& context, vm_type vm ) {
-      try {
-         auto context_guard = scoped_context(my->current_context, code, context, vm);
-         switch (vm) {
-            case vm_type::wavm:
-               code.wavm.call_error(context);
-               break;
-            case vm_type::binaryen:
-               code.binaryen.call_error(context);
-               break;
-         }
-      } catch ( const wasm_exit& ){}
-   }
-
-   wasm_context& common::intrinsics_accessor::get_context(wasm_interface &wasm) {
-      FC_ASSERT(wasm.my->current_context.valid());
-      return *wasm.my->current_context;
-   }
-
-   const wavm::entry& wavm::entry::get(wasm_interface& wasm) {
-      return common::intrinsics_accessor::get_context(wasm).code.wavm;
-   }
-
-
-   const binaryen::entry& binaryen::entry::get(wasm_interface& wasm) {
-      return common::intrinsics_accessor::get_context(wasm).code.binaryen;
-   }
+   wasm_instantiated_module_interface::~wasm_instantiated_module_interface() {}
+   wasm_runtime_interface::~wasm_runtime_interface() {}
 
 #if defined(assert)
    #undef assert
@@ -385,10 +64,8 @@ namespace eosio { namespace chain {
 
 class context_aware_api {
    public:
-      context_aware_api(wasm_interface& wasm, bool context_free = false )
-      :code(intrinsics_accessor::get_context(wasm).code),
-       context(intrinsics_accessor::get_context(wasm).context)
-      ,vm(intrinsics_accessor::get_context(wasm).vm)
+      context_aware_api(apply_context& ctx, bool context_free = false )
+      :context(ctx)
       {
          if( context.context_free )
             FC_ASSERT( context_free, "only context free api's can be used in this context" );
@@ -396,16 +73,14 @@ class context_aware_api {
       }
 
    protected:
-      wasm_cache::entry&         code;
       apply_context&             context;
-      wasm_interface::vm_type    vm;
 
 };
 
 class context_free_api : public context_aware_api {
    public:
-      context_free_api( wasm_interface& wasm )
-      :context_aware_api(wasm, true) {
+      context_free_api( apply_context& ctx )
+      :context_aware_api(ctx, true) {
          /* the context_free_data is not available during normal application because it is prunable */
          FC_ASSERT( context.context_free, "this API may only be called from context_free apply" );
       }
@@ -417,8 +92,8 @@ class context_free_api : public context_aware_api {
 
 class privileged_api : public context_aware_api {
    public:
-      privileged_api( wasm_interface& wasm )
-      :context_aware_api(wasm)
+      privileged_api( apply_context& ctx )
+      :context_aware_api(ctx)
       {
          FC_ASSERT( context.privileged, "${code} does not have permission to call this API", ("code",context.receiver) );
       }
@@ -507,8 +182,8 @@ class privileged_api : public context_aware_api {
 
 class checktime_api : public context_aware_api {
 public:
-   explicit checktime_api( wasm_interface& wasm )
-   :context_aware_api(wasm,true){}
+   explicit checktime_api( apply_context& ctx )
+   :context_aware_api(ctx,true){}
 
    void checktime(uint32_t instruction_count) {
       context.checktime(instruction_count);
@@ -520,41 +195,87 @@ class softfloat_api : public context_aware_api {
       // TODO add traps on truncations for special cases (NaN or outside the range which rounds to an integer)
       using context_aware_api::context_aware_api;
       // float binops
-      float32_t _eosio_f32_add( float32_t a, float32_t b ) { return f32_add( a, b ); }
-      float32_t _eosio_f32_sub( float32_t a, float32_t b ) { return f32_sub( a, b ); }
-      float32_t _eosio_f32_div( float32_t a, float32_t b ) { return f32_div( a, b ); }
-      float32_t _eosio_f32_mul( float32_t a, float32_t b ) { return f32_mul( a, b ); }
-      float32_t _eosio_f32_min( float32_t a, float32_t b ) { return f32_lt( a, b ) ? a : b; }
-      float32_t _eosio_f32_max( float32_t a, float32_t b ) { return f32_lt( a, b ) ? b : a; }
-      float32_t _eosio_f32_copysign( float32_t a, float32_t b ) {
+      float _eosio_f32_add( float a, float b ) { 
+         float32_t ret = f32_add( to_softfloat32(a), to_softfloat32(b) );
+         return *reinterpret_cast<float*>(&ret);
+      }
+      float _eosio_f32_sub( float a, float b ) { 
+         float32_t ret = f32_sub( to_softfloat32(a), to_softfloat32(b) );
+         return *reinterpret_cast<float*>(&ret);
+      }
+      float _eosio_f32_div( float a, float b ) { 
+         float32_t ret = f32_div( to_softfloat32(a), to_softfloat32(b) );
+         return *reinterpret_cast<float*>(&ret);
+      }
+      float _eosio_f32_mul( float a, float b ) { 
+         float32_t ret = f32_mul( to_softfloat32(a), to_softfloat32(b) );
+         return *reinterpret_cast<float*>(&ret);
+      }
+      float _eosio_f32_min( float af, float bf ) { 
+         float32_t a = to_softfloat32(af);
+         float32_t b = to_softfloat32(bf);
+         if (is_nan(a)) {
+            return af;
+         } 
+         if (is_nan(b)) {
+            return bf;
+         }
+         if ( sign_bit(a) != sign_bit(b) ) {
+            return sign_bit(a) ? af : bf;
+         }
+         return f32_lt(a,b) ? af : bf; 
+      }
+      float _eosio_f32_max( float af, float bf ) { 
+         float32_t a = to_softfloat32(af);
+         float32_t b = to_softfloat32(bf);
+         if (is_nan(a)) {
+            return af;
+         } 
+         if (is_nan(b)) {
+            return bf;
+         }
+         if ( sign_bit(a) != sign_bit(b) ) {
+            return sign_bit(a) ? bf : af;
+         }
+         return f32_lt( a, b ) ? bf : af; 
+      }
+      float _eosio_f32_copysign( float af, float bf ) { 
+         float32_t a = to_softfloat32(af);
+         float32_t b = to_softfloat32(bf);
          uint32_t sign_of_a = a.v >> 31;
          uint32_t sign_of_b = b.v >> 31;
          a.v &= ~(1 << 31);             // clear the sign bit
          a.v = a.v | (sign_of_b << 31); // add the sign of b
-         return a;
+         return from_softfloat32(a);
       }
       // float unops
-      float32_t _eosio_f32_abs( float32_t a ) { 
+      float _eosio_f32_abs( float af ) { 
+         float32_t a = to_softfloat32(af);
          a.v &= ~(1 << 31);  
-         return a; 
+         return from_softfloat32(a); 
       }
-      float32_t _eosio_f32_neg( float32_t a ) { 
+      float _eosio_f32_neg( float af ) { 
+         float32_t a = to_softfloat32(af);
          uint32_t sign = a.v >> 31;
          a.v &= ~(1 << 31);  
          a.v |= (!sign << 31);
-         return a; 
+         return from_softfloat32(a); 
       }
-      float32_t _eosio_f32_sqrt( float32_t a ) { return f32_sqrt( a ); }
+      float _eosio_f32_sqrt( float a ) { 
+         float32_t ret = f32_sqrt( to_softfloat32(a) ); 
+         return from_softfloat32(ret); 
+      }
       // ceil, floor, trunc and nearest are lifted from libc
-      float32_t _eosio_f32_ceil( float32_t a ) {
-         int e = (int)(a.v >> 23 & 0xff) - 0x7f;
+      float _eosio_f32_ceil( float af ) {
+         float32_t a = to_softfloat32(af);
+         int e = (int)(a.v >> 23 & 0xFF) - 0X7F;
          uint32_t m;
          if (e >= 23)
-            return a;
+            return af; 
          if (e >= 0) {
-            m = 0x007fffff >> e;
+            m = 0x007FFFFF >> e;
             if ((a.v & m) == 0)
-               return a;
+               return af; 
             if (a.v >> 31 == 0)
                a.v += m;
             a.v &= ~m;
@@ -564,17 +285,19 @@ class softfloat_api : public context_aware_api {
             else if (a.v << 1)
                a.v = 0x3F800000; // return 1.0f
          }
-         return a;
+
+         return from_softfloat32(a); 
       }
-      float32_t _eosio_f32_floor( float32_t a ) {
-         int e = (int)(a.v >> 23 & 0xff) - 0x7f;
+      float _eosio_f32_floor( float af ) {
+         float32_t a = to_softfloat32(af);
+         int e = (int)(a.v >> 23 & 0xFF) - 0X7F;
          uint32_t m;
          if (e >= 23)
-            return a;
+            return af; 
          if (e >= 0) {
-            m = 0x007fffff >> e;
+            m = 0x007FFFFF >> e;
             if ((a.v & m) == 0)
-               return a;
+               return af; 
             if (a.v >> 31)
                a.v += m;
             a.v &= ~m;
@@ -582,130 +305,359 @@ class softfloat_api : public context_aware_api {
             if (a.v >> 31 == 0)
                a.v = 0;
             else if (a.v << 1)
-               a.v = 0x3F800000; // return 1.0f
+               a.v = 0xBF800000; // return -1.0f
          }
-         return a;
+         return from_softfloat32(a); 
       }
-      float32_t _eosio_f32_trunc( float32_t a ) {
+      float _eosio_f32_trunc( float af ) {
+         float32_t a = to_softfloat32(af);
          int e = (int)(a.v >> 23 & 0xff) - 0x7f + 9;
          uint32_t m;
          if (e >= 23 + 9)
-            return a;
+            return af; 
          if (e < 9)
             e = 1;
          m = -1U >> e;
          if ((a.v & m) == 0)
-            return a;
+            return af; 
          a.v &= ~m;
-         return a;
+         return from_softfloat32(a); 
       }
-      float32_t _eosio_f32_nearest( float32_t a ) {
+      float _eosio_f32_nearest( float af ) {
+         float32_t a = to_softfloat32(af);
          int e = a.v>>23 & 0xff;
          int s = a.v>>31;
          float32_t y;
          if (e >= 0x7f+23)
-            return a;
+            return af; 
          if (s)
-            y = f32_add( f32_sub( a, inv_float_eps ), inv_float_eps );
+            y = f32_add( f32_sub( a, float32_t{inv_float_eps} ), float32_t{inv_float_eps} );
          else
-            y = f32_sub( f32_add( a, inv_float_eps ), inv_float_eps );
+            y = f32_sub( f32_add( a, float32_t{inv_float_eps} ), float32_t{inv_float_eps} );
          if (f32_eq( y, {0} ) )
-            return s ? float32_t{0x80000000} : float32_t{0}; // return either -0.0 or 0.0f
-         return y;
+            return s ? -0.0f : 0.0f; 
+         return from_softfloat32(y); 
       }
+
       // float relops
-      bool _eosio_f32_eq( float32_t a, float32_t b ) { return f32_eq( a, b ); }
-      bool _eosio_f32_ne( float32_t a, float32_t b ) { return !f32_eq( a, b ); }
-      bool _eosio_f32_lt( float32_t a, float32_t b ) { return f32_lt( a, b ); }
-      bool _eosio_f32_le( float32_t a, float32_t b ) { return f32_le( a, b ); }
-      bool _eosio_f32_gt( float32_t a, float32_t b ) { return !f32_le( a, b ); }
-      bool _eosio_f32_ge( float32_t a, float32_t b ) { return !f32_lt( a, b ); }
+      bool _eosio_f32_eq( float a, float b ) {  return f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
+      bool _eosio_f32_ne( float a, float b ) { return !f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
+      bool _eosio_f32_lt( float a, float b ) { return f32_lt( to_softfloat32(a), to_softfloat32(b) ); }
+      bool _eosio_f32_le( float a, float b ) { return f32_le( to_softfloat32(a), to_softfloat32(b) ); }
+      bool _eosio_f32_gt( float af, float bf ) {  
+         float32_t a = to_softfloat32(af);
+         float32_t b = to_softfloat32(bf);
+         if (is_nan(a))
+            return false;
+         if (is_nan(b))
+            return false;
+         return !f32_le( a, b ); 
+      }
+      bool _eosio_f32_ge( float af, float bf ) {
+         float32_t a = to_softfloat32(af);
+         float32_t b = to_softfloat32(bf);
+         if (is_nan(a))
+            return false;
+         if (is_nan(b))
+            return false;
+         return !f32_lt( a, b ); 
+      }
 
       // double binops
-      float64_t _eosio_f64_add( float64_t a, float64_t b ) { return f64_add( a, b ); }
-      float64_t _eosio_f64_sub( float64_t a, float64_t b ) { return f64_sub( a, b ); }
-      float64_t _eosio_f64_div( float64_t a, float64_t b ) { return f64_div( a, b ); }
-      float64_t _eosio_f64_mul( float64_t a, float64_t b ) { return f64_mul( a, b ); }
-      float64_t _eosio_f64_min( float64_t a, float64_t b ) { return f64_lt( a, b ) ? a : b; }
-      float64_t _eosio_f64_max( float64_t a, float64_t b ) { return f64_lt( a, b ) ? b : a; }
-      float64_t _eosio_f64_copysign( float64_t a, float64_t b ) {
+      double _eosio_f64_add( double a, double b ) { 
+         float64_t ret = f64_add( to_softfloat64(a), to_softfloat64(b) ); 
+         return from_softfloat64(ret); 
+      }
+      double _eosio_f64_sub( double a, double b ) { 
+         float64_t ret = f64_sub( to_softfloat64(a), to_softfloat64(b) ); 
+         return from_softfloat64(ret); 
+      }
+      double _eosio_f64_div( double a, double b ) { 
+         float64_t ret = f64_div( to_softfloat64(a), to_softfloat64(b) ); 
+         return from_softfloat64(ret); 
+      }
+      double _eosio_f64_mul( double a, double b ) { 
+         float64_t ret = f64_mul( to_softfloat64(a), to_softfloat64(b) ); 
+         return from_softfloat64(ret); 
+      }
+      double _eosio_f64_min( double af, double bf ) { 
+         float64_t a = to_softfloat64(af);
+         float64_t b = to_softfloat64(bf);
+         if (is_nan(a))
+            return af;
+         if (is_nan(b))
+            return bf;
+         if (sign_bit(a) != sign_bit(b))
+            return sign_bit(a) ? af : bf;
+         return f64_lt( a, b ) ? af : bf;
+      } 
+      double _eosio_f64_max( double af, double bf ) { 
+         float64_t a = to_softfloat64(af);
+         float64_t b = to_softfloat64(bf);
+         if (is_nan(a))
+            return af;
+         if (is_nan(b))
+            return bf;
+         if (sign_bit(a) != sign_bit(b))
+            return sign_bit(a) ? bf : af;
+         return f64_lt( a, b ) ? bf : af;
+      }
+      double _eosio_f64_copysign( double af, double bf ) {
+         float64_t a = to_softfloat64(af);
+         float64_t b = to_softfloat64(bf);
          uint64_t sign_of_a = a.v >> 63;
          uint64_t sign_of_b = b.v >> 63;
          a.v &= ~(uint64_t(1) << 63);             // clear the sign bit
          a.v = a.v | (sign_of_b << 63); // add the sign of b
-         return a;
+         return from_softfloat64(a); 
       }
 
       // double unops
-      float64_t _eosio_f64_abs( float64_t a ) { 
+      double _eosio_f64_abs( double af ) { 
+         float64_t a = to_softfloat64(af);
          a.v &= ~(uint64_t(1) << 63);  
-         return a; 
+         return from_softfloat64(a); 
       }
-      float64_t _eosio_f64_neg( float64_t a ) { 
+      double _eosio_f64_neg( double af ) { 
+         float64_t a = to_softfloat64(af);
          uint64_t sign = a.v >> 63;
          a.v &= ~(uint64_t(1) << 63);  
          a.v |= (uint64_t(!sign) << 63);
-         return a; 
+         return from_softfloat64(a); 
       }
-      float64_t _eosio_f64_sqrt( float64_t a ) { return f64_sqrt( a ); }
+      double _eosio_f64_sqrt( double a ) { 
+         float64_t ret = f64_sqrt( to_softfloat64(a) );
+         return from_softfloat64(ret); 
+      }
       // ceil, floor, trunc and nearest are lifted from libc
-      float64_t _eosio_f64_ceil( float64_t a ) {
+      double _eosio_f64_ceil( double af ) {
+         float64_t a = to_softfloat64( af ); 
+         float64_t ret;
          int e = a.v >> 52 & 0x7ff;
          float64_t y;
          if (e >= 0x3ff+52 || f64_eq( a, { 0 } ))
-         return a;
+            return af;
          /* y = int(x) - x, where int(x) is an integer neighbor of x */
          if (a.v >> 63)
-            y = f64_sub( f64_add( f64_sub( a, inv_double_eps ), inv_double_eps ), a );
+            y = f64_sub( f64_add( f64_sub( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
          else
-            y = f64_sub( f64_sub( f64_add( a, inv_double_eps ), inv_double_eps ), a );
+            y = f64_sub( f64_sub( f64_add( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
          /* special case because of non-nearest rounding modes */
          if (e <= 0x3ff-1) {
-            return a.v >> 63 ? float64_t{0x8000000000000000} : float64_t{0xBE99999A3F800000}; //either -0.0 or 1
+            return a.v >> 63 ? -0.0 : 1.0; //float64_t{0x8000000000000000} : float64_t{0xBE99999A3F800000}; //either -0.0 or 1
          }
-         if (f64_lt( y, { 0 } ))
-            return f64_add( f64_add( a, y ), { 0xBE99999A3F800000 } ); // plus 1
-         return f64_add( a, y );
+         if (f64_lt( y, to_softfloat64(0) )) {
+            std::cout << "A3 " << af << " C " << floor(af) << " Y "<< *(double*)&ret << "\n";
+            ret = f64_add( f64_add( a, y ), to_softfloat64(1) ); // 0xBE99999A3F800000 } ); // plus 1
+            return from_softfloat64(ret); 
+         }
+         ret = f64_add( a, y );
+         return from_softfloat64(ret); 
       }
-
-      float64_t _eosio_f64_trunc( float64_t a ) {
+      double _eosio_f64_floor( double af ) {
+         float64_t a = to_softfloat64( af ); 
+         float64_t ret;
+         int e = a.v >> 52 & 0x7FF;
+         float64_t y;
+         double de = 1/DBL_EPSILON;
+         if ( a.v == 0x8000000000000000) {
+            return af;
+         }
+         if (e >= 0x3FF+52 || a.v == 0) {
+            return af;
+         }
+         if (a.v >> 63)
+            y = f64_sub( f64_add( f64_sub( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
+         else
+            y = f64_sub( f64_sub( f64_add( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
+         if (e <= 0x3FF-1) {
+            return a.v>>63 ? -1.0 : 0.0; //float64_t{0xBFF0000000000000} : float64_t{0}; // -1 or 0
+         }
+         if ( !f64_le( y, float64_t{0} ) ) {
+            ret = f64_sub( f64_add(a,y), to_softfloat64(1.0));
+            return from_softfloat64(ret); 
+         }
+         ret = f64_add( a, y );
+         return from_softfloat64(ret); 
+      }
+      double _eosio_f64_trunc( double af ) {
+         float64_t a = to_softfloat64( af ); 
          int e = (int)(a.v >> 52 & 0x7ff) - 0x3ff + 12;
          uint64_t m;
          if (e >= 52 + 12)
-            return a;
+            return af;
          if (e < 12)
             e = 1;
          m = -1ULL >> e;
          if ((a.v & m) == 0)
-            return a;
+            return af;
          a.v &= ~m;
-         return a;
+         return from_softfloat64(a); 
+      }
+
+      double _eosio_f64_nearest( double af ) {
+         float64_t a = to_softfloat64( af ); 
+         int e = (a.v >> 52 & 0x7FF);
+         int s = a.v >> 63;
+         float64_t y;
+         if ( e >= 0x3FF+52 )
+            return af;
+         if ( s )
+            y = f64_add( f64_sub( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} );
+         else
+            y = f64_sub( f64_add( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} );
+         if ( f64_eq( y, float64_t{0} ) )
+            return s ? -0.0 : 0.0;
+         return from_softfloat64(y); 
+      }
+
+      // double relops
+      bool _eosio_f64_eq( double a, double b ) { return f64_eq( to_softfloat64(a), to_softfloat64(b) ); }
+      bool _eosio_f64_ne( double a, double b ) { return !f64_eq( to_softfloat64(a), to_softfloat64(b) ); }
+      bool _eosio_f64_lt( double a, double b ) { return f64_lt( to_softfloat64(a), to_softfloat64(b) ); }
+      bool _eosio_f64_le( double a, double b ) { return f64_le( to_softfloat64(a), to_softfloat64(b) ); }
+      bool _eosio_f64_gt( double af, double bf ) {  
+         float64_t a = to_softfloat64(af);
+         float64_t b = to_softfloat64(bf);
+         if (is_nan(a))
+            return false;
+         if (is_nan(b))
+            return false;
+         return !f64_le( a, b ); 
+      }
+      bool _eosio_f64_ge( double af, double bf ) {
+         float64_t a = to_softfloat64(af);
+         float64_t b = to_softfloat64(bf);
+         if (is_nan(a))
+            return false;
+         if (is_nan(b))
+            return false;
+         return !f64_lt( a, b ); 
       }
 
       // float and double conversions
-      float64_t _eosio_f32_promote( float32_t a ) { return f32_to_f64( a ); }
-      float32_t _eosio_f64_demote( float64_t a ) { return f64_to_f32( a ); }
-      int32_t _eosio_f32_trunc_i32s( float32_t a ) { return f32_to_i32( _eosio_f32_trunc( a ), 0, false ); }
-      int32_t _eosio_f64_trunc_i32s( float64_t a ) { return f64_to_i32( _eosio_f64_trunc( a ), 0, false ); }
-      uint32_t _eosio_f32_trunc_i32u( float32_t a ) { return f32_to_ui32( _eosio_f32_trunc( a ), 0, false ); }
-      uint32_t _eosio_f64_trunc_i32u( float64_t a ) { return f64_to_ui32( _eosio_f64_trunc( a ), 0, false ); }
-      int64_t _eosio_f32_trunc_i64s( float32_t a ) { return f32_to_i64( _eosio_f32_trunc( a ), 0, false ); }
-      int64_t _eosio_f64_trunc_i64s( float64_t a ) { return f64_to_i64( _eosio_f64_trunc( a ), 0, false ); }
-      uint64_t _eosio_f32_trunc_i64u( float32_t a ) { return f32_to_ui64( _eosio_f32_trunc( a ), 0, false ); }
-      uint64_t _eosio_f64_trunc_i64u( float64_t a ) { return f64_to_ui64( _eosio_f64_trunc( a ), 0, false ); }
-      float32_t _eosio_i32_to_f32( int32_t a ) { return i32_to_f32( a ); }
-      float32_t _eosio_i64_to_f32( int64_t a ) { return i64_to_f32( a ); }
-      float32_t _eosio_ui32_to_f32( uint32_t a ) { return ui32_to_f32( a ); }
-      float32_t _eosio_ui64_to_f32( uint64_t a ) { return ui64_to_f32( a ); }
-      float64_t _eosio_i32_to_f64( int32_t a ) { return i32_to_f64( a ); }
-      float64_t _eosio_i64_to_f64( int64_t a ) { return i64_to_f64( a ); }
-      float64_t _eosio_ui32_to_f64( uint32_t a ) { return ui32_to_f64( a ); }
-      float64_t _eosio_ui64_to_f64( uint64_t a ) { return ui64_to_f64( a ); }
+      double _eosio_f32_promote( float a ) { 
+         return from_softfloat64(f32_to_f64( to_softfloat32(a)) ); 
+      }
+      float _eosio_f64_demote( double a ) { 
+         return from_softfloat32(f64_to_f32( to_softfloat64(a)) ); 
+      }
+      int32_t _eosio_f32_trunc_i32s( float af ) { 
+         float32_t a = to_softfloat32(af);
+         if (a.v == 0x4F000000 || a.v == 0xCF000001 || a.v == 0x7F800000 || a.v == 0xFF800000)
+            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow");
+         if (is_nan(a))
+            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
+         return f32_to_i32( to_softfloat32(_eosio_f32_trunc( af )), 0, false ); 
+      }
+      int32_t _eosio_f64_trunc_i32s( double af ) { 
+         float64_t a = to_softfloat64(af);
+         if (a.v == 0x41E0000000000000 || a.v == 0xC1E0000000200000 || a.v == 0x7FF0000000000000 || a.v == 0xFFF0000000000000)
+            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i32 overflow");
+         if (is_nan(a))
+            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i32 unrepresentable");
+         return f64_to_i32( to_softfloat64(_eosio_f64_trunc( af )), 0, false ); 
+      }
+      uint32_t _eosio_f32_trunc_i32u( float af ) { 
+         float32_t a = to_softfloat32(af);
+         if (a.v == 0x4F000000 || a.v == 0xCF000001 || a.v == 0x7F800000 || a.v == 0xFF800000)
+            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow");
+         if (is_nan(a))
+            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
+         return f32_to_ui32( to_softfloat32(_eosio_f32_trunc( af )), 0, false ); 
+      }
+      uint32_t _eosio_f64_trunc_i32u( double af ) { 
+         float64_t a = to_softfloat64(af);
+         if (a.v == 0x41E0000000000000 || a.v == 0xC1E0000000200000 || a.v == 0x7FF0000000000000 || a.v == 0xFFF0000000000000)
+            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i32 overflow");
+         if (is_nan(a))
+            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i32 unrepresentable");
+         return f64_to_ui32( to_softfloat64(_eosio_f64_trunc( af )), 0, false ); 
+      }
+      int64_t _eosio_f32_trunc_i64s( float af ) { 
+         float32_t a = to_softfloat32(af);
+         if (a.v ==  0x5F000000 || a.v ==  0xDF000001|| a.v == 0x7F800000 || a.v == 0xFF800000)
+            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow");
+         if (is_nan(a))
+            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
+         return f32_to_i64( to_softfloat32(_eosio_f32_trunc( af )), 0, false ); 
+      }
+      int64_t _eosio_f64_trunc_i64s( double af ) { 
+         float64_t a = to_softfloat64(af);
+         if (a.v == 0x43E0000000000000 || a.v ==  0xC3E0000020000000 || a.v == 0x7FF0000000000000 || a.v == 0xFFF0000000000000)
+            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow");
+         if (is_nan(a))
+            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
+ 
+         return f64_to_i64( to_softfloat64(_eosio_f64_trunc( af )), 0, false ); 
+      }
+      uint64_t _eosio_f32_trunc_i64u( float af ) { 
+         float32_t a = to_softfloat32(af);
+         if (a.v ==  0x5F000000 || a.v ==  0xDF000001|| a.v == 0x7F800000 || a.v == 0xFF800000)
+            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow");
+         if (is_nan(a))
+            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
+         return f32_to_ui64( to_softfloat32(_eosio_f32_trunc( af )), 0, false ); 
+      }
+      uint64_t _eosio_f64_trunc_i64u( double af ) { 
+         float64_t a = to_softfloat64(af);
+         if (a.v == 0x43E0000000000000 || a.v ==  0xC3E0000020000000 || a.v == 0x7FF0000000000000 || a.v == 0xFFF0000000000000)
+            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow");
+         if (is_nan(a))
+            FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
+         return f64_to_ui64( to_softfloat64(_eosio_f64_trunc( af )), 0, false ); 
+      }
+      float _eosio_i32_to_f32( int32_t a )  { 
+         return from_softfloat32(i32_to_f32( a )); 
+      }
+      float _eosio_i64_to_f32( int64_t a ) { 
+         return from_softfloat32(i64_to_f32( a )); 
+      }
+      float _eosio_ui32_to_f32( uint32_t a ) { 
+         return from_softfloat32(ui32_to_f32( a )); 
+      }
+      float _eosio_ui64_to_f32( uint64_t a ) { 
+         return from_softfloat32(ui64_to_f32( a )); 
+      }
+      double _eosio_i32_to_f64( int32_t a ) { 
+         return from_softfloat64(i32_to_f64( a )); 
+      }
+      double _eosio_i64_to_f64( int64_t a ) { 
+         return from_softfloat64(i64_to_f64( a )); 
+      }
+      double _eosio_ui32_to_f64( uint32_t a ) { 
+         return from_softfloat64(ui32_to_f64( a )); 
+      }
+      double _eosio_ui64_to_f64( uint64_t a ) {
+         return from_softfloat64(ui64_to_f64( a )); 
+      }
 
 
    private:
-      static constexpr float32_t inv_float_eps = { 0x4B000000 }; 
-      static constexpr float64_t inv_double_eps = { 0x4330000000000000 };
+      inline float32_t to_softfloat32( float f ) {
+         return *reinterpret_cast<float32_t*>(&f);
+      }
+      inline float64_t to_softfloat64( double d ) {
+         return *reinterpret_cast<float64_t*>(&d);
+      }
+      inline float from_softfloat32( float32_t f ) {
+         return *reinterpret_cast<float*>(&f);
+      }
+      inline double from_softfloat64( float64_t d ) {
+         return *reinterpret_cast<double*>(&d);
+      }
+      static constexpr uint32_t inv_float_eps = 0x4B000000; 
+      static constexpr uint64_t inv_double_eps = 0x4330000000000000;
+
+      inline bool sign_bit( float32_t f ) { return f.v >> 31; }
+      inline bool sign_bit( float64_t f ) { return f.v >> 63; }
+      inline bool is_nan( float32_t f ) {
+         return ((f.v & 0x7FFFFFFF) > 0x7F800000);
+      }
+      inline bool is_nan( float64_t f ) {
+         return ((f.v & 0x7FFFFFFFFFFFFFFF) > 0x7FF0000000000000);
+      }
+
 };
 class producer_api : public context_aware_api {
    public:
@@ -722,8 +674,8 @@ class producer_api : public context_aware_api {
 
 class crypto_api : public context_aware_api {
    public:
-      explicit crypto_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+      explicit crypto_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       /**
        * This method can be optimized out during replay as it has
@@ -807,8 +759,8 @@ class string_api : public context_aware_api {
 
 class system_api : public context_aware_api {
    public:
-      explicit system_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+      explicit system_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       void abort() {
          edump(("abort() called"));
@@ -834,8 +786,8 @@ class system_api : public context_aware_api {
 
 class action_api : public context_aware_api {
    public:
-   action_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+   action_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       int read_action_data(array_ptr<char> memory, size_t size) {
          FC_ASSERT(size > 0);
@@ -867,8 +819,8 @@ class action_api : public context_aware_api {
 
 class console_api : public context_aware_api {
    public:
-      console_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+      console_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       void prints(null_terminated_ptr str) {
          context.console_append<const char*>(str);
@@ -891,12 +843,12 @@ class console_api : public context_aware_api {
          context.console_append(fc::variant(v).get_string());
       }
 
-      void printdi( uint64_t val ) {
-         context.console_append(*((double*)&val));
+      void printdf( double val ) {
+         context.console_append(val);
       }
 
-      void printd( float64_t val ) {
-         context.console_append(*((double*)&val));
+      void printff( float val ) {
+         context.console_append(val);
       }
 
       void printn(const name& value) {
@@ -1034,8 +986,8 @@ class database_api : public context_aware_api {
 
 class memory_api : public context_aware_api {
    public:
-      memory_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+      memory_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
          return (char *)::memcpy(dest, src, length);
@@ -1051,19 +1003,6 @@ class memory_api : public context_aware_api {
 
       char* memset( array_ptr<char> dest, int value, size_t length ) {
          return (char *)::memset( dest, value, length );
-      }
-
-      int sbrk(int num_bytes) {
-         // sbrk should only allow for memory to grow
-         if (num_bytes < 0)
-            throw eosio::chain::page_memory_error();
-
-         switch(vm) {
-            case wasm_interface::vm_type::wavm:
-               return (uint32_t)code.wavm.sbrk(num_bytes);
-            case wasm_interface::vm_type::binaryen:
-               return (uint32_t)code.binaryen.sbrk(num_bytes);
-         }
       }
 };
 
@@ -1098,8 +1037,8 @@ class transaction_api : public context_aware_api {
 
 class context_free_transaction_api : public context_aware_api {
    public:
-      context_free_transaction_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+      context_free_transaction_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       int read_transaction( array_ptr<char> data, size_t data_len ) {
          bytes trx = context.get_packed_transaction();
@@ -1304,9 +1243,10 @@ class compiler_builtins : public context_aware_api {
             return 1;
          return 0;
       }
-      float64_t __floatsidf( int32_t i ) {
+      double __floatsidf( int32_t i ) {
          edump((i)( "warning returning float64") );
-         return i32_to_f64(i);
+         float64_t ret = i32_to_f64(i); 
+         return *reinterpret_cast<double*>(&ret);
       }
       void __floatsitf( float128_t& ret, int32_t i ) {
          ret = i32_to_f128(i); /// TODO: should be 128
@@ -1314,19 +1254,13 @@ class compiler_builtins : public context_aware_api {
       void __floatunsitf( float128_t& ret, uint32_t i ) {
          ret = ui32_to_f128(i); /// TODO: should be 128
       }
-      /*
-      float128_t __floatsit( int32_t i ) {
-         return i32_to_f128(i);
-      }
-      */
       void __extendsftf2( float128_t& ret, uint32_t f ) { 
          float32_t in = { f };
          ret = f32_to_f128( in ); 
       }
-      void __extenddftf2( float128_t& ret, float64_t in ) { 
+      void __extenddftf2( float128_t& ret, double in ) { 
          edump(("warning in flaot64..." ));
-//         float64_t in = { f };
-         ret = f64_to_f128( in ); 
+         ret = f64_to_f128( float64_t{*(uint64_t*)&in} ); 
       }
       int64_t __fixtfdi( uint64_t l, uint64_t h ) { 
          float128_t f = {{ l, h }};
@@ -1358,8 +1292,8 @@ class compiler_builtins : public context_aware_api {
 
 class math_api : public context_aware_api {
    public:
-      math_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+      math_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       void diveq_i128(unsigned __int128* self, const unsigned __int128* other) {
          fc::uint128_t s(*self);
@@ -1465,9 +1399,9 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__unordtf2,    int(int64_t, int64_t, int64_t, int64_t)        )
    (__floatsitf,   void (int, int)                                )
    (__floatunsitf, void (int, int)                                )
-   (__floatsidf,   float64_t(int)                                 )
+   (__floatsidf,   double(int)                                 )
    (__extendsftf2, void(int, int)                                 )      
-   (__extenddftf2, void(int, float64_t)                           )      
+   (__extenddftf2, void(int, double)                           )      
    (__fixtfdi,     int64_t(int64_t, int64_t)                      )
    (__fixtfsi,     int(int64_t, int64_t)                          )
    (__fixunstfdi,  int64_t(int64_t, int64_t)                      )
@@ -1578,14 +1512,15 @@ REGISTER_INTRINSICS(apply_context,
    (is_account,            int(int64_t)           )
 );
 
+   //(printdi,               void(int64_t)   )
 REGISTER_INTRINSICS(console_api,
    (prints,                void(int)       )
    (prints_l,              void(int, int)  )
    (printui,               void(int64_t)   )
    (printi,                void(int64_t)   )
    (printi128,             void(int)       )
-   (printd,                void(float64_t) )
-   (printdi,               void(int64_t)   )
+   (printdf,               void(double)    )
+   (printff,               void(float)     )
    (printn,                void(int64_t)   )
    (printhex,              void(int, int)  )
 );
@@ -1613,7 +1548,79 @@ REGISTER_INTRINSICS(memory_api,
    (memmove,                int(int, int, int)  )
    (memcmp,                 int(int, int, int)  )
    (memset,                 int(int, int, int)  )
-   (sbrk,                   int(int)            )
 );
+
+REGISTER_INTRINSICS(softfloat_api,
+      (_eosio_f32_add,       float(float, float)    )
+      (_eosio_f32_sub,       float(float, float)    )
+      (_eosio_f32_mul,       float(float, float)    )
+      (_eosio_f32_div,       float(float, float)    )
+      (_eosio_f32_min,       float(float, float)    )
+      (_eosio_f32_max,       float(float, float)    )
+      (_eosio_f32_copysign,  float(float, float)    )
+      (_eosio_f32_abs,       float(float)           )
+      (_eosio_f32_neg,       float(float)           )
+      (_eosio_f32_sqrt,      float(float)           )
+      (_eosio_f32_ceil,      float(float)           )
+      (_eosio_f32_floor,     float(float)           )
+      (_eosio_f32_trunc,     float(float)           )
+      (_eosio_f32_nearest,   float(float)           )
+      (_eosio_f32_eq,        int(float, float)      )
+      (_eosio_f32_ne,        int(float, float)      )
+      (_eosio_f32_lt,        int(float, float)      )
+      (_eosio_f32_le,        int(float, float)      )
+      (_eosio_f32_gt,        int(float, float)      )
+      (_eosio_f32_ge,        int(float, float)      )
+      (_eosio_f64_add,       double(double, double) )
+      (_eosio_f64_sub,       double(double, double) )
+      (_eosio_f64_mul,       double(double, double) )
+      (_eosio_f64_div,       double(double, double) )
+      (_eosio_f64_min,       double(double, double) )
+      (_eosio_f64_max,       double(double, double) )
+      (_eosio_f64_copysign,  double(double, double) )
+      (_eosio_f64_abs,       double(double)         )
+      (_eosio_f64_neg,       double(double)         )
+      (_eosio_f64_sqrt,      double(double)         )
+      (_eosio_f64_ceil,      double(double)         )
+      (_eosio_f64_floor,     double(double)         )
+      (_eosio_f64_trunc,     double(double)         )
+      (_eosio_f64_nearest,   double(double)         )
+      (_eosio_f64_eq,        int(double, double)    )
+      (_eosio_f64_ne,        int(double, double)    )
+      (_eosio_f64_lt,        int(double, double)    )
+      (_eosio_f64_le,        int(double, double)    )
+      (_eosio_f64_gt,        int(double, double)    )
+      (_eosio_f64_ge,        int(double, double)    )
+      (_eosio_f32_promote,    double(float)         )
+      (_eosio_f64_demote,     float(double)         )
+      (_eosio_f32_trunc_i32s, int(float)            )
+      (_eosio_f64_trunc_i32s, int(double)           )
+      (_eosio_f32_trunc_i32u, int(float)            )
+      (_eosio_f64_trunc_i32u, int(double)           )
+      (_eosio_f32_trunc_i64s, int64_t(float)        )
+      (_eosio_f64_trunc_i64s, int64_t(double)       )
+      (_eosio_f32_trunc_i64u, int64_t(float)        )
+      (_eosio_f64_trunc_i64u, int64_t(double)       )
+      (_eosio_i32_to_f32,     float(int32_t)        )
+      (_eosio_i64_to_f32,     float(int64_t)        )
+      (_eosio_ui32_to_f32,    float(int32_t)        )
+      (_eosio_ui64_to_f32,    float(int64_t)        )
+      (_eosio_i32_to_f64,     double(int32_t)       )
+      (_eosio_i64_to_f64,     double(int64_t)       )
+      (_eosio_ui32_to_f64,    double(int32_t)       )
+      (_eosio_ui64_to_f64,    double(int64_t)       )
+);
+
+std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
+   std::string s;
+   in >> s;
+   if (s == "wavm")
+      runtime = eosio::chain::wasm_interface::vm_type::wavm;
+   else if (s == "binaryen")
+      runtime = eosio::chain::wasm_interface::vm_type::binaryen;
+   else
+      in.setstate(std::ios_base::failbit);
+   return in;
+}
 
 } } /// eosio::chain

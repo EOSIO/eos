@@ -13,8 +13,6 @@ using namespace boost::multiprecision;
 
 template<size_t Size>
 using uint_t = number<cpp_int_backend<Size, Size, unsigned_magnitude, unchecked, void> >;
-template<size_t Size>
-using int_t = number<cpp_int_backend<Size, Size, signed_magnitude, unchecked, void> >;
 
 using uint8     = uint_t<8>;
 using uint16    = uint_t<16>;
