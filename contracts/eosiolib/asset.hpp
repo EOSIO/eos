@@ -57,7 +57,6 @@ namespace eosio {
    }
 
    struct symbol_type {
-      symbol_type( symbol_name v = S(4,EOS) ):value(v){}
       symbol_name value;
 
       bool     is_valid()const  { return is_valid_symbol( value ); }
@@ -88,7 +87,7 @@ namespace eosio {
 
    struct extended_symbol : public symbol_type
    {
-      extended_symbol( symbol_name s = 0, account_name c = 0 ):symbol_type(s),contract(c){}
+      extended_symbol( symbol_name s = 0, account_name c = 0 ):symbol_type{s},contract(c){}
 
       account_name contract;
 
@@ -108,13 +107,13 @@ namespace eosio {
    };
 
    struct asset {
-      int64_t      amount = 0;
-      symbol_type  symbol = S(4,EOS);
+      int64_t      amount;
+      symbol_type  symbol;
 
       static constexpr int64_t max_amount    = (1LL << 62) - 1;
 
       explicit asset( int64_t a = 0, symbol_name s = S(4,EOS))
-      :amount(a),symbol(s)
+      :amount(a),symbol{s}
       {
          eosio_assert( is_amount_within_range(), "magnitude of asset amount must be less than 2^62" );
          eosio_assert( symbol.is_valid(),        "invalid symbol name" );
@@ -181,10 +180,10 @@ namespace eosio {
    };
 
    struct extended_asset : public asset {
-      account_name contract = N(eosio.token);
+      account_name contract;
 
       extended_symbol get_extended_symbol()const { return extended_symbol( symbol, contract ); }
-      extended_asset(){}
+      extended_asset() = default;
       extended_asset( int64_t v, extended_symbol s ):asset(v,s),contract(s.contract){}
       extended_asset( asset a, account_name c ):asset(a),contract(c){}
 

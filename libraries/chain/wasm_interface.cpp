@@ -447,7 +447,6 @@ class softfloat_api : public context_aware_api {
             return a.v >> 63 ? -0.0 : 1.0; //float64_t{0x8000000000000000} : float64_t{0xBE99999A3F800000}; //either -0.0 or 1
          }
          if (f64_lt( y, to_softfloat64(0) )) {
-            std::cout << "A3 " << af << " C " << floor(af) << " Y "<< *(double*)&ret << "\n";
             ret = f64_add( f64_add( a, y ), to_softfloat64(1) ); // 0xBE99999A3F800000 } ); // plus 1
             return from_softfloat64(ret); 
          }

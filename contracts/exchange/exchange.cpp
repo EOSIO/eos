@@ -5,21 +5,22 @@
 #include "exchange_accounts.cpp"
 #include "market_state.cpp"
 
+#include <eosiolib/dispatcher.hpp>
+
 namespace eosio {
 
-
-   void exchange::on( const deposit& d ) {
-      eosio_assert( d.quantity.is_valid(), "invalid quantity" );
-      currency::inline_transfer( d.from, _this_contract, d.quantity, "deposit" );
-      _accounts.adjust_balance( d.from, d.quantity, "deposit" );
+   void exchange::deposit( account_name from, extended_asset quantity ) {
+      eosio_assert( quantity.is_valid(), "invalid quantity" );
+      currency::inline_transfer( from, _this_contract, quantity, "deposit" );
+      _accounts.adjust_balance( from, quantity, "deposit" );
    }
 
-   void exchange::on( const withdraw& w ) {
-      require_auth( w.from );
-      eosio_assert( w.quantity.is_valid(), "invalid quantity" );
-      eosio_assert( w.quantity.amount >= 0, "cannot withdraw negative balance" ); // Redundant? inline_transfer will fail if w.quantity is not positive.
-      _accounts.adjust_balance( w.from, -w.quantity );
-      currency::inline_transfer( _this_contract, w.from, w.quantity, "withdraw" );
+   void exchange::withdraw( account_name from, extended_asset quantity ) {
+      require_auth( from );
+      eosio_assert( quantity.is_valid(), "invalid quantity" );
+      eosio_assert( quantity.amount >= 0, "cannot withdraw negative balance" ); // Redundant? inline_transfer will fail if quantity is not positive.
+      _accounts.adjust_balance( from, -quantity );
+      currency::inline_transfer( _this_contract, from, quantity, "withdraw" );
    }
 
    void exchange::on( const trade& t ) {
@@ -109,77 +110,82 @@ namespace eosio {
       market.save();
    }
 
-   void exchange::on( const createx& c ) {
-      require_auth( c.creator );
-      eosio_assert( c.initial_supply.is_valid(), "invalid initial supply" );
-      eosio_assert( c.initial_supply.amount > 0, "initial supply must be positive" );
-      eosio_assert( c.base_deposit.is_valid(), "invalid base deposit" );
-      eosio_assert( c.base_deposit.amount > 0, "base deposit must be positive" );
-      eosio_assert( c.quote_deposit.is_valid(), "invalid quote deposit" );
-      eosio_assert( c.quote_deposit.amount > 0, "quote deposit must be positive" );
-      eosio_assert( c.base_deposit.get_extended_symbol() != c.quote_deposit.get_extended_symbol(),
+   void exchange::createx( account_name    creator,
+                 asset           initial_supply,
+                 uint32_t        fee,
+                 extended_asset  base_deposit,
+                 extended_asset  quote_deposit
+               ) {
+      require_auth( creator );
+      eosio_assert( initial_supply.is_valid(), "invalid initial supply" );
+      eosio_assert( initial_supply.amount > 0, "initial supply must be positive" );
+      eosio_assert( base_deposit.is_valid(), "invalid base deposit" );
+      eosio_assert( base_deposit.amount > 0, "base deposit must be positive" );
+      eosio_assert( quote_deposit.is_valid(), "invalid quote deposit" );
+      eosio_assert( quote_deposit.amount > 0, "quote deposit must be positive" );
+      eosio_assert( base_deposit.get_extended_symbol() != quote_deposit.get_extended_symbol(),
                     "must exchange between two different currencies" );
 
-      print( "base: ", c.base_deposit.get_extended_symbol() );
-      print( "quote: ",c.quote_deposit.get_extended_symbol() );
+      print( "base: ", base_deposit.get_extended_symbol() );
+      print( "quote: ",quote_deposit.get_extended_symbol() );
 
-      auto exchange_symbol = c.initial_supply.symbol.name();
+      auto exchange_symbol = initial_supply.symbol.name();
       print( "marketid: ", exchange_symbol, " \n " );
 
       markets exstates( _this_contract, exchange_symbol );
       auto existing = exstates.find( exchange_symbol );
 
       eosio_assert( existing == exstates.end(), "market already exists" );
-      exstates.emplace( c.creator, [&]( auto& s ) {
-          s.manager = c.creator;
-          s.supply  = extended_asset(c.initial_supply, _this_contract);
-          s.base.balance = c.base_deposit;
-          s.quote.balance = c.quote_deposit;
+      exstates.emplace( creator, [&]( auto& s ) {
+          s.manager = creator;
+          s.supply  = extended_asset(initial_supply, _this_contract);
+          s.base.balance = base_deposit;
+          s.quote.balance = quote_deposit;
 
-          s.base.peer_margin.total_lent.symbol          = c.base_deposit.symbol;
-          s.base.peer_margin.total_lent.contract        = c.base_deposit.contract;
-          s.base.peer_margin.total_lendable.symbol      = c.base_deposit.symbol;
-          s.base.peer_margin.total_lendable.contract    = c.base_deposit.contract;
+          s.base.peer_margin.total_lent.symbol          = base_deposit.symbol;
+          s.base.peer_margin.total_lent.contract        = base_deposit.contract;
+          s.base.peer_margin.total_lendable.symbol      = base_deposit.symbol;
+          s.base.peer_margin.total_lendable.contract    = base_deposit.contract;
 
-          s.quote.peer_margin.total_lent.symbol         = c.quote_deposit.symbol;
-          s.quote.peer_margin.total_lent.contract       = c.quote_deposit.contract;
-          s.quote.peer_margin.total_lendable.symbol     = c.quote_deposit.symbol;
-          s.quote.peer_margin.total_lendable.contract   = c.quote_deposit.contract;
+          s.quote.peer_margin.total_lent.symbol         = quote_deposit.symbol;
+          s.quote.peer_margin.total_lent.contract       = quote_deposit.contract;
+          s.quote.peer_margin.total_lendable.symbol     = quote_deposit.symbol;
+          s.quote.peer_margin.total_lendable.contract   = quote_deposit.contract;
       });
 
       _excurrencies.create_currency( { .issuer = _this_contract,
                                  // TODO: After currency contract respects maximum supply limits, the maximum supply here needs to be set appropriately.
-                                .maximum_supply = asset( 0, c.initial_supply.symbol ),
+                                .maximum_supply = asset( 0, initial_supply.symbol ),
                                 .issuer_can_freeze = false,
                                 .issuer_can_whitelist = false,
                                 .issuer_can_recall = false } );
 
       _excurrencies.issue_currency( { .to = _this_contract,
-                                     .quantity = c.initial_supply,
+                                     .quantity = initial_supply,
                                      .memo = string("initial exchange tokens") } );
 
-      _accounts.adjust_balance( c.creator, extended_asset( c.initial_supply, _this_contract ), "new exchange issue" );
-      _accounts.adjust_balance( c.creator, -c.base_deposit, "new exchange deposit" );
-      _accounts.adjust_balance( c.creator, -c.quote_deposit, "new exchange deposit" );
+      _accounts.adjust_balance( creator, extended_asset( initial_supply, _this_contract ), "new exchange issue" );
+      _accounts.adjust_balance( creator, -base_deposit, "new exchange deposit" );
+      _accounts.adjust_balance( creator, -quote_deposit, "new exchange deposit" );
    }
 
-   void exchange::on( const lend& w ) {
-      require_auth( w.lender );
-      eosio_assert( w.quantity.is_valid(), "invalid quantity" );
-      eosio_assert( w.quantity.amount > 0, "must lend a positive amount" );
+   void exchange::lend( account_name lender, symbol_type market, extended_asset quantity ) {
+      require_auth( lender );
+      eosio_assert( quantity.is_valid(), "invalid quantity" );
+      eosio_assert( quantity.amount > 0, "must lend a positive amount" );
 
-      market_state market( _this_contract, w.market, _accounts );
-      market.lend( w.lender, w.quantity );
-      market.save();
+      market_state m( _this_contract, market, _accounts );
+      m.lend( lender, quantity );
+      m.save();
    }
 
-   void exchange::on( const unlend& w ) {
-      require_auth( w.lender );
-      eosio_assert( w.interest_shares > 0, "must unlend a positive amount" );
+   void exchange::unlend( account_name lender, symbol_type market, double interest_shares, extended_symbol interest_symbol ) {
+      require_auth( lender );
+      eosio_assert( interest_shares > 0, "must unlend a positive amount" );
 
-      market_state market( _this_contract, w.market, _accounts );
-      market.unlend( w.lender, w.interest_shares, w.interest_symbol );
-      market.save();
+      market_state m( _this_contract, market, _accounts );
+      m.unlend( lender, interest_shares, interest_symbol );
+      m.save();
    }
 
 
@@ -198,43 +204,36 @@ namespace eosio {
    }
 
 
-   bool exchange::apply( account_name contract, account_name act ) {
+   #define N(X) ::eosio::string_to_name(#X)
+
+   void exchange::apply( account_name contract, account_name act ) {
 
       if( act == N(transfer) ) {
          on( unpack_action_data<currency::transfer>(), contract );
-         return true;
+         return;
       }
 
       if( contract != _this_contract )
-         return false;
+         return;
+
+      auto& thiscontract = *this;
+      switch( act ) {
+         EOSIO_API( exchange, (createx)(deposit)(withdraw)(lend)(unlend) )
+      };
 
       switch( act ) {
-         case N(createx):
-            on( unpack_action_data<createx>() );
-            return true;
          case N(trade):
             on( unpack_action_data<trade>() );
-            return true;
-         case N(lend):
-            on( unpack_action_data<lend>() );
-            return true;
-         case N(unlend):
-            on( unpack_action_data<unlend>() );
-            return true;
-         case N(deposit):
-            on( unpack_action_data<deposit>() );
-            return true;
-         case N(withdraw):
-            on( unpack_action_data<withdraw>() );
-            return true;
+            return;
          case N(upmargin):
             on( unpack_action_data<upmargin>() );
-            return true;
+            return;
          case N(covermargin):
             on( unpack_action_data<covermargin>() );
-            return true;
+            return;
          default:
-            return _excurrencies.apply( contract, act );
+            _excurrencies.apply( contract, act ); 
+            return;
       }
    }
 
@@ -248,4 +247,7 @@ extern "C" {
       ex.apply( code, action );
       eosio_exit(0);
    }
+}
+
+void main() {
 }
