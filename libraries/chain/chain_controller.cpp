@@ -375,37 +375,45 @@ void chain_controller::_finalize_pending_cycle()
 
 void chain_controller::_apply_cycle_trace( const cycle_trace& res )
 {
+   auto &generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
+   const auto &generated_index = generated_transaction_idx.indices().get<by_sender_id>();
+
    for (const auto&st: res.shard_traces) {
       for (const auto &tr: st.transaction_traces) {
-         for (const auto &dt: tr.deferred_transactions) {
-            _db.create<generated_transaction_object>([&](generated_transaction_object &obj) {
-               obj.trx_id = dt.id();
-               obj.sender = dt.sender;
-               obj.sender_id = dt.sender_id;
-               obj.expiration = dt.expiration;
-               obj.delay_until = dt.execute_after;
-               obj.published = head_block_time();
-               obj.packed_trx.resize(fc::raw::pack_size(dt));
-               fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
-               fc::raw::pack(ds, dt);
-            });
-         }
-
-         if (tr.canceled_deferred.size() > 0 ) {
-            auto &generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
-            const auto &generated_index = generated_transaction_idx.indices().get<by_sender_id>();
-            for (const auto &dr: tr.canceled_deferred) {
-               while(!generated_index.empty()) {
-                  const auto& itr = generated_index.lower_bound(boost::make_tuple(dr.sender, dr.sender_id));
-                  if (itr == generated_index.end() || itr->sender != dr.sender || itr->sender_id != dr.sender_id ) {
-                     break;
-                  }
-
+         for (const auto &req: tr.deferred_transaction_requests) {
+            if ( req.contains<deferred_transaction>() ) {
+               const auto& dt = req.get<deferred_transaction>();
+               const auto itr = generated_index.lower_bound(boost::make_tuple(dt.sender, dt.sender_id));
+               if ( itr != generated_index.end() && itr->sender == dt.sender && itr->sender_id == dt.sender_id ) {
+                  _db.modify<generated_transaction_object>( *itr, [&](generated_transaction_object &obj) {
+                        obj.expiration = dt.expiration;
+                        obj.delay_until = dt.execute_after;
+                        obj.published = head_block_time();
+                        obj.packed_trx.resize(fc::raw::pack_size(dt));
+                        fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
+                        fc::raw::pack(ds, dt);
+                     });
+               } else {
+                  _db.create<generated_transaction_object>([&](generated_transaction_object &obj) {
+                        obj.trx_id = dt.id();
+                        obj.sender = dt.sender;
+                        obj.sender_id = dt.sender_id;
+                        obj.expiration = dt.expiration;
+                        obj.delay_until = dt.execute_after;
+                        obj.published = head_block_time();
+                        obj.packed_trx.resize(fc::raw::pack_size(dt));
+                        fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
+                        fc::raw::pack(ds, dt);
+                     });
+               }
+            } else if ( req.contains<deferred_reference>() ) {
+               const auto& dr = req.get<deferred_reference>();
+               const auto itr = generated_index.lower_bound(boost::make_tuple(dr.sender, dr.sender_id));
+               if ( itr != generated_index.end() && itr->sender == dr.sender && itr->sender_id == dr.sender_id ) {
                   generated_transaction_idx.remove(*itr);
                }
             }
          }
-
          ///TODO: hook this up as a signal handler in a de-coupled "logger" that may just silently drop them
          for (const auto &ar : tr.action_traces) {
             if (!ar.console.empty()) {
@@ -1429,8 +1437,7 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
       context.context_free = true;
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
-      FC_ASSERT( result.deferred_transactions.size() == 0 );
-      FC_ASSERT( result.canceled_deferred.size() == 0 );
+      FC_ASSERT( result.deferred_transaction_requests.size() == 0 );
    }
 
    for (const auto &act : meta.trx().actions) {
@@ -1440,8 +1447,7 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
 
       FC_ASSERT( context.used_context_free_api, "action did not reference database state, it should be moved to context_free_actions", ("act",act) );
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
-      fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
-      fc::move_append(result.canceled_deferred, std::move(context.results.canceled_deferred));
+      fc::move_append(result.deferred_transaction_requests, std::move(context.results.deferred_transaction_requests));
    }
 
    uint32_t act_usage = result.action_traces.size();
@@ -1493,7 +1499,7 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
       apply_context context(*this, _db, etrx.actions.front(), meta);
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
-      fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
+      fc::move_append(result.deferred_transaction_requests, std::move(context.results.deferred_transaction_requests));
 
       uint32_t act_usage = result.action_traces.size();
 
@@ -1528,12 +1534,15 @@ void chain_controller::push_deferred_transactions( bool flush )
       auto maybe_start_new_cycle = [&]() {
          for (const auto &st: _pending_cycle_trace->shard_traces) {
             for (const auto &tr: st.transaction_traces) {
-               for (const auto &dt: tr.deferred_transactions) {
-                  if (fc::time_point(dt.execute_after) <= head_block_time()) {
-                     // force a new cycle and break out
-                     _finalize_pending_cycle();
-                     _start_pending_cycle();
-                     return;
+               for (const auto &req: tr.deferred_transaction_requests) {
+                  if ( req.contains<deferred_transaction>() ) {
+                     const auto& dt = req.get<deferred_transaction>();
+                     if ( fc::time_point(dt.execute_after) <= head_block_time() ) {
+                        // force a new cycle and break out
+                        _finalize_pending_cycle();
+                        _start_pending_cycle();
+                        return;
+                     }
                   }
                }
             }

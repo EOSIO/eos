@@ -253,8 +253,7 @@ namespace eosio { namespace chain {
       using transaction_receipt::transaction_receipt;
 
       vector<action_trace>          action_traces;
-      vector<deferred_transaction>  deferred_transactions;
-      vector<deferred_reference>    canceled_deferred;
+      vector<fc::static_variant<deferred_transaction, deferred_reference>> deferred_transaction_requests;
    };
 } } // eosio::chain
 
@@ -266,12 +265,13 @@ FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction
 FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
 FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(data) )
 FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(execute_after) )
+FC_REFLECT( eosio::chain::deferred_reference, (sender_id)(sender) )
 FC_REFLECT_ENUM( eosio::chain::data_access_info::access_type, (read)(write))
 FC_REFLECT( eosio::chain::data_access_info, (type)(code)(scope)(sequence))
 FC_REFLECT( eosio::chain::action_trace, (receiver)(act)(console)(region_id)(cycle_index)(data_access) )
 FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
 FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail))
-FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transactions) )
+FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transaction_requests) )
 
 
 

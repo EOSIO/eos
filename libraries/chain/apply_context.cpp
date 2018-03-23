@@ -202,7 +202,7 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
       FC_ASSERT( trx.execute_after < trx.expiration, "transaction expires before it can execute" );
 
       /// TODO: make default_max_gen_trx_count a producer parameter
-      FC_ASSERT( results.generated_transactions.size() < config::default_max_gen_trx_count );
+      //XXX FC_ASSERT( results.generated_transactions.size() < config::default_max_gen_trx_count );
 
       FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
 
@@ -214,13 +214,12 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
       trx.sender = receiver; //  "Attempting to send from another account"
       trx.set_reference_block(controller.head_block_id());
 
-      /// TODO: make sure there isn't already a deferred transaction with this ID or senderID?
-      results.generated_transactions.emplace_back(move(trx));
+      results.deferred_transaction_requests.push_back(move(trx));
    } FC_CAPTURE_AND_RETHROW((trx));
 }
 
 void apply_context::cancel_deferred( uint32_t sender_id ) {
-   results.canceled_deferred.emplace_back(receiver, sender_id);
+   results.deferred_transaction_requests.push_back(deferred_reference(receiver, sender_id));
 }
 
 const contracts::table_id_object* apply_context::find_table( name code, name scope, name table ) {
