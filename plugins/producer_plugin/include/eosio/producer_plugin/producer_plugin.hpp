@@ -21,8 +21,7 @@ namespace block_production_condition {
       no_private_key = 4,
       low_participation = 5,
       lag = 6,
-      consecutive = 7,
-      exception_producing_block = 8
+      exception_producing_block = 7
    };
 }
 

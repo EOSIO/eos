@@ -55,7 +55,7 @@ public:
    static const string PRIMARY;
    static const string SECONDARY;
    static const string TERTIARY;
-   
+
    read_only(const chain_controller& db)
       : db(db) {}
 
@@ -68,8 +68,8 @@ public:
       chain::block_id_type    head_block_id;
       fc::time_point_sec      head_block_time;
       account_name            head_block_producer;
-      string                  recent_slots;
-      double                  participation_rate = 0;
+      //string                  recent_slots;
+      //double                  participation_rate = 0;
    };
    get_info_results get_info(const get_info_params&) const;
 
@@ -113,7 +113,7 @@ public:
       vector<name>   required_scope;
       vector<name>   required_auth;
    };
-      
+
    abi_json_to_bin_result abi_json_to_bin( const abi_json_to_bin_params& params )const;
 
 
@@ -127,7 +127,7 @@ public:
       vector<name>   required_scope;
       vector<name>   required_auth;
    };
-      
+
    abi_bin_to_json_result abi_bin_to_json( const abi_bin_to_json_params& params )const;
 
 
@@ -161,7 +161,7 @@ public:
     };
 
    struct get_table_rows_result {
-      vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object 
+      vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object
       bool                more = false; ///< true if last element in data is not the end and sizeof data() < limit
    };
 
@@ -243,7 +243,7 @@ public:
          }
       }
    }
- 
+
    template <typename IndexType, typename Scope>
    read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p, const abi_def& abi )const {
       read_only::get_table_rows_result result;
@@ -364,12 +364,11 @@ private:
 FC_REFLECT( eosio::chain_apis::permission, (perm_name)(parent)(required_auth) )
 FC_REFLECT(eosio::chain_apis::empty, )
 FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
-  (server_version)(head_block_num)(last_irreversible_block_num)(head_block_id)(head_block_time)(head_block_producer)
-  (recent_slots)(participation_rate))
+  (server_version)(head_block_num)(last_irreversible_block_num)(head_block_id)(head_block_time)(head_block_producer) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
-  
+
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
-  
+
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 

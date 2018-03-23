@@ -898,7 +898,7 @@ launcher_def::write_config_file (tn_node_def &node) {
     cfg << "p2p-peer-address = " << network.nodes.find(p)->second.instance->p2p_endpoint << "\n";
   }
   if (instance.has_db || node.producers.size()) {
-    cfg << "required-participation = true\n";
+    cfg << "required-participation = 33\n";
     for (const auto &kp : node.keys ) {
       cfg << "private-key = [\"" << kp.public_key
           << "\",\"" << kp.wif_private_key << "\"]\n";
