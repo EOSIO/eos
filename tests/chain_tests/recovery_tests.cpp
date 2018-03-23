@@ -52,8 +52,8 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_multisig_owner, tester ) try {
     {
         signed_transaction trx = make_postrecovery(*this, N(alice), "owner.recov");
         auto trace = push_transaction(trx);
-        BOOST_REQUIRE_EQUAL(trace.deferred_transactions.size(), 1);
-        recovery_txid = trace.deferred_transactions.front().id();
+        BOOST_REQUIRE_EQUAL(trace.deferred_transaction_requests.size(), 1);
+        recovery_txid = trace.deferred_transaction_requests.front().get<deferred_transaction>().id();
         produce_block();
         BOOST_REQUIRE_EQUAL(chain_has_transaction(trx.id()), true);
     }
@@ -84,8 +84,8 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_owner, tester ) try {
    {
       signed_transaction trx = make_postrecovery(*this, N(alice), "owner.recov");
       auto trace = push_transaction(trx);
-      BOOST_REQUIRE_EQUAL(trace.deferred_transactions.size(), 1);
-      recovery_txid = trace.deferred_transactions.front().id();
+      BOOST_REQUIRE_EQUAL(trace.deferred_transaction_requests.size(), 1);
+      recovery_txid = trace.deferred_transaction_requests.front().get<deferred_transaction>().id();
       produce_block();
       BOOST_REQUIRE_EQUAL(chain_has_transaction(trx.id()), true);
    }
@@ -117,8 +117,8 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_owner_veto, tester ) try {
    {
       signed_transaction trx = make_postrecovery(*this, N(alice), "owner.recov");
       auto trace = push_transaction(trx);
-      BOOST_REQUIRE_EQUAL(trace.deferred_transactions.size(), 1);
-      recovery_txid = trace.deferred_transactions.front().id();
+      BOOST_REQUIRE_EQUAL(trace.deferred_transaction_requests.size(), 1);
+      recovery_txid = trace.deferred_transaction_requests.front().get<deferred_transaction>().id();
       produce_block();
       BOOST_REQUIRE_EQUAL(chain_has_transaction(trx.id()), true);
    }
@@ -159,8 +159,8 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_bad_creator, tester ) try {
    {
       signed_transaction trx = make_postrecovery(*this, N(alice), "owner");
       auto trace = push_transaction(trx);
-      BOOST_REQUIRE_EQUAL(trace.deferred_transactions.size(), 1);
-      recovery_txid = trace.deferred_transactions.front().id();
+      BOOST_REQUIRE_EQUAL(trace.deferred_transaction_requests.size(), 1);
+      recovery_txid = trace.deferred_transaction_requests.front().get<deferred_transaction>().id();
       produce_block();
       BOOST_REQUIRE_EQUAL(chain_has_transaction(trx.id()), true);
    }

@@ -202,7 +202,7 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
       FC_ASSERT( trx.execute_after < trx.expiration, "transaction expires before it can execute" );
 
       /// TODO: make default_max_gen_trx_count a producer parameter
-      FC_ASSERT( results.generated_transactions.size() < config::default_max_gen_trx_count );
+      //XXX FC_ASSERT( results.generated_transactions.size() < config::default_max_gen_trx_count );
 
       FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
 
@@ -214,13 +214,36 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
       trx.sender = receiver; //  "Attempting to send from another account"
       trx.set_reference_block(controller.head_block_id());
 
+      results.deferred_transaction_requests.push_back(move(trx));
       /// TODO: make sure there isn't already a deferred transaction with this ID or senderID?
-      results.generated_transactions.emplace_back(move(trx));
+      //results.generated_transactions.emplace_back(move(trx));
+      /*
+      mutable_controller.get_mutable_database().create<generated_transaction_object>([&](generated_transaction_object &obj) {
+               obj.trx_id = trx.id();
+               obj.sender = trx.sender;
+               obj.sender_id = trx.sender_id;
+               obj.expiration = trx.expiration;
+               obj.delay_until = trx.execute_after;
+               obj.published = controller.head_block_time();
+               obj.packed_trx.resize(fc::raw::pack_size(trx));
+               fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
+               fc::raw::pack(ds, trx);
+            });
+      */
    } FC_CAPTURE_AND_RETHROW((trx));
 }
 
 void apply_context::cancel_deferred( uint32_t sender_id ) {
-   results.canceled_deferred.emplace_back(receiver, sender_id);
+   results.deferred_transaction_requests.push_back(deferred_reference(receiver, sender_id));
+   //results.canceled_deferred.emplace_back(receiver, sender_id);
+   /*
+   auto &generated_transaction_idx = mutable_controller.get_mutable_database().get_mutable_index<generated_transaction_multi_index>();
+   const auto &generated_index = generated_transaction_idx.indices().get<by_sender_id>();
+   const auto& itr = generated_index.lower_bound(boost::make_tuple(receiver, sender_id));
+   if (itr != generated_index.end() && itr->sender == receiver && itr->sender_id == sender_id ) {
+      generated_transaction_idx.remove(*itr);
+   }
+   */
 }
 
 const contracts::table_id_object* apply_context::find_table( name code, name scope, name table ) {

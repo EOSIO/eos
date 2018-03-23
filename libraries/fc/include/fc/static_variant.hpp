@@ -14,6 +14,7 @@
 #include <typeinfo>
 #include <fc/exception/exception.hpp>
 #include <boost/core/typeinfo.hpp>
+#include "reflect/reflect.hpp"
 
 namespace fc {
 
@@ -406,4 +407,13 @@ struct visitor {
    }
 
   template<typename... T> struct get_typename { static const char* name()   { return BOOST_CORE_TYPEID(static_variant<T...>).name();   } };
+
+  template<class... Args> struct reflector<static_variant<Args...> > {
+     //typedef std::index_sequence_for<Args...> seq;
+     typedef fc::true_type is_defined;
+     typedef fc::true_type is_enum;
+
+     template< typename Visitor > static void visit( const Visitor& v ) {
+     }
+  };
 } // namespace fc
