@@ -747,30 +747,8 @@ BOOST_FIXTURE_TEST_CASE(db_tests, tester) { try {
 	CALL_TEST_FUNCTION( *this, "test_db", "idx64_general", {});
 	CALL_TEST_FUNCTION( *this, "test_db", "idx64_lowerbound", {});
 	CALL_TEST_FUNCTION( *this, "test_db", "idx64_upperbound", {});
-   /*
-	CALL_TEST_FUNCTION( *this, "test_db", "key_i64_general", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "key_i64_remove_all", {});
-	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_db", "key_i64_small_load", {}), fc::assert_exception,
-         [](const fc::assert_exception& e) {
-            return expect_assert_message(e, "Data is not long enough to contain keys");
-         }
-      );
-
-	BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_db", "key_i64_small_store", {}), fc::assert_exception,
-         [](const fc::assert_exception& e) {
-            return expect_assert_message(e, "Data is not long enough to contain keys");
-         }
-      );
-
-	CALL_TEST_FUNCTION( *this, "test_db", "key_i64_store_scope", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "key_i64_remove_scope", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "key_i64_not_found", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "key_i64_front_back", {});
-	//CALL_TEST_FUNCTION( *this, "test_db", "key_i64i64i64_general", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "key_i128i128_general", {});
-   */
+   
 } FC_LOG_AND_RETHROW() }
-
 /*************************************************************************************
  * multi_index_tests test case
  *************************************************************************************/

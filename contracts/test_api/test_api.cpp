@@ -145,7 +145,15 @@ extern "C" {
       // test checktime
       WASM_TEST_HANDLER(test_checktime, checktime_pass);
       WASM_TEST_HANDLER(test_checktime, checktime_failure);
-      
+/*      
+      // test softfloat
+      WASM_TEST_HANDLER(test_softfloat, test_f32_add);
+      WASM_TEST_HANDLER(test_softfloat, test_f32_sub);
+      WASM_TEST_HANDLER(test_softfloat, test_f32_mul);
+      WASM_TEST_HANDLER(test_softfloat, test_f32_div);
+      WASM_TEST_HANDLER(test_softfloat, test_f32_min);
+*/
+
       //unhandled test call
       eosio_assert(false, "Unknown Test");
 
