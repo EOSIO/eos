@@ -27,6 +27,14 @@ namespace eosio { namespace testing {
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
       cfg.limits = limits;
+
+      for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
+         if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--binaryen"))
+            cfg.wasm_runtime = chain::wasm_interface::vm_type::binaryen;
+         else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
+            cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
+      }
+
       open();
    }
 
@@ -348,8 +356,10 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::set_code( account_name account, const char* wast ) try {
-      auto wasm = wast_to_wasm(wast);
+      set_code(account, wast_to_wasm(wast));
+   } FC_CAPTURE_AND_RETHROW( (account)(wast) )
 
+   void base_tester::set_code( account_name account, const vector<uint8_t> wasm ) try {
       signed_transaction trx;
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
                                 contracts::setcode{
@@ -362,7 +372,7 @@ namespace eosio { namespace testing {
       set_tapos( trx );
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
       push_transaction( trx );
-   } FC_CAPTURE_AND_RETHROW( (account)(wast) )
+   } FC_CAPTURE_AND_RETHROW( (account) )
 
    void base_tester::set_abi( account_name account, const char* abi_json) {
       auto abi = fc::json::from_string(abi_json).template as<contracts::abi_def>();

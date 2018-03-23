@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/webassembly/common.hpp>
+#include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <softfloat.hpp>
 #include "Runtime/Runtime.h"
 #include "IR/Types.h"
@@ -13,60 +14,34 @@ using namespace Runtime;
 using namespace fc;
 using namespace eosio::chain::webassembly::common;
 
-struct info;
-class entry {
+class wavm_runtime : public eosio::chain::wasm_runtime_interface {
    public:
-      ModuleInstance* instance;
-      Module* module;
-      uint32_t sbrk_bytes;
-
-      void reset(const info& );
-      void prepare(const info& );
-
-      void call(const string &entry_point, const vector <Value> &args, apply_context &context);
-
-      void call_apply(apply_context&);
-      void call_error(apply_context&);
-
-      int sbrk(int num_bytes);
-
-      static const entry& get(wasm_interface& wasm);
-
-      static entry build(const char* wasm_binary, size_t wasm_binary_size);
+      wavm_runtime();
+      ~wavm_runtime();
+      std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) override;
 
    private:
-      entry(ModuleInstance *instance, Module *module, uint32_t sbrk_bytes)
-              : instance(instance), module(module), sbrk_bytes(sbrk_bytes)
-      {
-      }
-
 };
 
-struct info {
-   info( const entry &wavm );
-
-   // a clean image of the memory used to sanitize things on checkin
-   size_t mem_start            = 0;
-   vector<char> mem_image;
-
-   uint32_t default_sbrk_bytes = 0;
-
+//This is a temporary hack for the single threaded implementation
+struct running_instance_context {
+   MemoryInstance* memory;
+   apply_context*  apply_ctx;
 };
-
-
+extern running_instance_context the_running_instance_context;
 
 /**
  * class to represent an in-wasm-memory array
  * it is a hint to the transcriber that the next parameter will
- * be a size (data bytes length) and that the pair are validated together
+ * be a size (in Ts) and that the pair are validated together
  * This triggers the template specialization of intrinsic_invoker_impl
  * @tparam T
  */
 template<typename T>
-inline array_ptr<T> array_ptr_impl (wasm_interface& wasm, U32 ptr, size_t length)
+inline array_ptr<T> array_ptr_impl (running_instance_context& ctx, U32 ptr, size_t length)
 {
-   auto mem = getDefaultMemory(entry::get(wasm).instance);
-   if(!mem || ptr + length > IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
+   MemoryInstance* mem = ctx.memory;
+   if(!mem || ptr + (length * sizeof(T)) > IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
       Runtime::causeException(Exception::Cause::accessViolation);
 
    return array_ptr<T>((T*)(getMemoryBaseAddress(mem) + ptr));
@@ -75,13 +50,13 @@ inline array_ptr<T> array_ptr_impl (wasm_interface& wasm, U32 ptr, size_t length
 /**
  * class to represent an in-wasm-memory char array that must be null terminated
  */
-inline null_terminated_ptr null_terminated_ptr_impl(wasm_interface& wasm, U32 ptr)
+inline null_terminated_ptr null_terminated_ptr_impl(running_instance_context& ctx, U32 ptr)
 {
-   auto mem = getDefaultMemory(entry::get(wasm).instance);
+   MemoryInstance* mem = ctx.memory;
    if(!mem)
       Runtime::causeException(Exception::Cause::accessViolation);
 
-   char *value                           = (char*)(getMemoryBaseAddress(mem) + ptr);
+   char *value                     = (char*)(getMemoryBaseAddress(mem) + ptr);
    const char* p                   = value;
    const char* const top_of_memory = (char*)(getMemoryBaseAddress(mem) + IR::numBytesPerPage*Runtime::getMemoryNumPages(mem));
    while(p < top_of_memory)
@@ -112,13 +87,23 @@ struct native_to_wasm<T *> {
 /**
  * Mappings for native types
  */
+/*
 template<>
 struct native_to_wasm<float32_t> {
-   using type = float32_t; //F32;
+   using type = F32; 
 };
 template<>
 struct native_to_wasm<float64_t> {
-   using type = float64_t; //F64;
+   using type = F64;
+};
+*/
+template<>
+struct native_to_wasm<float> {
+   using type = F32; 
+};
+template<>
+struct native_to_wasm<double> {
+   using type = F64;
 };
 template<>
 struct native_to_wasm<int32_t> {
@@ -148,12 +133,6 @@ template<>
 struct native_to_wasm<name> {
    using type = I64;
 };
-/*
-template<>
-struct native_to_wasm<wasm_double> {
-   using type = I64;
-};
-*/
 template<>
 struct native_to_wasm<const fc::time_point_sec &> {
    using type = I32;
@@ -169,20 +148,20 @@ template<typename T>
 using native_to_wasm_t = typename native_to_wasm<T>::type;
 
 template<typename T>
-inline auto convert_native_to_wasm(const wasm_interface &wasm, T val) {
+inline auto convert_native_to_wasm(const running_instance_context& ctx, T val) {
    return native_to_wasm_t<T>(val);
 }
 
-inline auto convert_native_to_wasm(const wasm_interface &wasm, const name &val) {
+inline auto convert_native_to_wasm(const running_instance_context& ctx, const name &val) {
    return native_to_wasm_t<const name &>(val.value);
 }
 
-inline auto convert_native_to_wasm(const wasm_interface &wasm, const fc::time_point_sec &val) {
+inline auto convert_native_to_wasm(const running_instance_context& ctx, const fc::time_point_sec& val) {
    return native_to_wasm_t<const fc::time_point_sec &>(val.sec_since_epoch());
 }
 
-inline auto convert_native_to_wasm(wasm_interface &wasm, char* ptr) {
-   auto mem = getDefaultMemory(entry::get(wasm).instance);
+inline auto convert_native_to_wasm(running_instance_context& ctx, char* ptr) {
+   MemoryInstance* mem = ctx.memory;
    if(!mem)
       Runtime::causeException(Exception::Cause::accessViolation);
    char* base = (char*)getMemoryBaseAddress(mem);
@@ -196,10 +175,24 @@ template<typename T>
 inline auto convert_wasm_to_native(native_to_wasm_t<T> val) {
    return T(val);
 }
-
+/*
+template<>
+inline auto convert_wasm_to_native<float>(native_to_wasm_t<float> val) {
+   // ensure implicit casting doesn't occur
+   std::cout << "OOP1 " << *(float*)&val << "\n";
+   float32_t ret = { *(uint32_t*)&val };
+   return ret;
+}
+template<>
+inline auto convert_wasm_to_native<double>(native_to_wasm_t<double> val) {
+   // ensure implicit casting doesn't occur
+   float64_t ret = { *(uint64_t*)&val };
+   return ret;
+}
 template<>
 inline auto convert_wasm_to_native<float32_t>(native_to_wasm_t<float32_t> val) {
    // ensure implicit casting doesn't occur
+   std::cout << "OOP1 " << *(float*)&val << "\n";
    float32_t ret = { *(uint32_t*)&val };
    return ret;
 }
@@ -209,9 +202,14 @@ inline auto convert_wasm_to_native<float64_t>(native_to_wasm_t<float64_t> val) {
    float64_t ret = { *(uint64_t*)&val };
    return ret;
 }
-
+*/
 template<typename T>
 struct wasm_to_value_type;
+
+template<>
+struct wasm_to_value_type<float32_t> {
+   static constexpr auto value = ValueType::f32;
+};
 
 template<>
 struct wasm_to_value_type<F32> {
@@ -243,6 +241,10 @@ template<typename T>
 struct wasm_to_rvalue_type;
 template<>
 struct wasm_to_rvalue_type<F32> {
+   static constexpr auto value = ResultType::f32;
+};
+template<>
+struct wasm_to_rvalue_type<float32_t> {
    static constexpr auto value = ResultType::f32;
 };
 template<>
@@ -346,12 +348,11 @@ struct intrinsic_invoker_impl;
  */
 template<typename Ret, typename ...Translated>
 struct intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<Translated...>> {
-   using next_method_type        = Ret (*)(wasm_interface &, Translated...);
+   using next_method_type        = Ret (*)(running_instance_context &, Translated...);
 
    template<next_method_type Method>
    static native_to_wasm_t<Ret> invoke(Translated... translated) {
-      wasm_interface &wasm = wasm_interface::get();
-      return convert_native_to_wasm(wasm, Method(wasm, translated...));
+      return convert_native_to_wasm(the_running_instance_context, Method(the_running_instance_context, translated...));
    }
 
    template<next_method_type Method>
@@ -366,12 +367,11 @@ struct intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<Translated...>> {
  */
 template<typename ...Translated>
 struct intrinsic_invoker_impl<void_type, std::tuple<>, std::tuple<Translated...>> {
-   using next_method_type        = void_type (*)(wasm_interface &, Translated...);
+   using next_method_type        = void_type (*)(running_instance_context &, Translated...);
 
    template<next_method_type Method>
    static void invoke(Translated... translated) {
-      wasm_interface &wasm = wasm_interface::get();
-      Method(wasm, translated...);
+      Method(the_running_instance_context, translated...);
    }
 
    template<next_method_type Method>
@@ -391,12 +391,12 @@ template<typename Ret, typename Input, typename... Inputs, typename... Translate
 struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>, std::tuple<Translated...>> {
    using translated_type = native_to_wasm_t<Input>;
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., translated_type>>;
-   using then_type = Ret (*)(wasm_interface &, Input, Inputs..., Translated...);
+   using then_type = Ret (*)(running_instance_context &, Input, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, translated_type last) {
+   static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, translated_type last) {
       auto native = convert_wasm_to_native<Input>(last);
-      return Then(wasm, native, rest..., translated...);
+      return Then(ctx, native, rest..., translated...);
    };
 
    template<then_type Then>
@@ -417,12 +417,12 @@ struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>, std::tuple<Tran
 template<typename T, typename Ret, typename... Inputs, typename ...Translated>
 struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32>>;
-   using then_type = Ret(*)(wasm_interface &, array_ptr<T>, size_t, Inputs..., Translated...);
+   using then_type = Ret(*)(running_instance_context&, array_ptr<T>, size_t, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr, I32 size) {
+   static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr, I32 size) {
       const auto length = size_t(size);
-      return Then(wasm, array_ptr_impl<T>(wasm, ptr, length), length, rest..., translated...);
+      return Then(ctx, array_ptr_impl<T>(ctx, ptr, length), length, rest..., translated...);
    };
 
    template<then_type Then>
@@ -443,11 +443,11 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
 template<typename Ret, typename... Inputs, typename ...Translated>
 struct intrinsic_invoker_impl<Ret, std::tuple<null_terminated_ptr, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
-   using then_type = Ret(*)(wasm_interface &, null_terminated_ptr, Inputs..., Translated...);
+   using then_type = Ret(*)(running_instance_context&, null_terminated_ptr, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr) {
-      return Then(wasm, null_terminated_ptr_impl(wasm, ptr), rest..., translated...);
+   static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) {
+      return Then(ctx, null_terminated_ptr_impl(ctx, ptr), rest..., translated...);
    };
 
    template<then_type Then>
@@ -468,12 +468,13 @@ struct intrinsic_invoker_impl<Ret, std::tuple<null_terminated_ptr, Inputs...>, s
 template<typename T, typename U, typename Ret, typename... Inputs, typename ...Translated>
 struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32, I32>>;
-   using then_type = Ret(*)(wasm_interface &, array_ptr<T>, array_ptr<U>, size_t, Inputs..., Translated...);
+   using then_type = Ret(*)(running_instance_context&, array_ptr<T>, array_ptr<U>, size_t, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr_t, I32 ptr_u, I32 size) {
+   static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr_t, I32 ptr_u, I32 size) {
       const auto length = size_t(size);
-      return Then(wasm, array_ptr_impl<T>(wasm, ptr_t, length), array_ptr_impl<U>(wasm, ptr_u, length), length, rest..., translated...);
+      assert(sizeof(T)==sizeof(U));
+      return Then(ctx, array_ptr_impl<T>(ctx, ptr_t, length), array_ptr_impl<U>(ctx, ptr_u, length), length, rest..., translated...);
    };
 
    template<then_type Then>
@@ -492,12 +493,12 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
 template<typename Ret>
 struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>, std::tuple<>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<I32, I32, I32>>;
-   using then_type = Ret(*)(wasm_interface &, array_ptr<char>, int, size_t);
+   using then_type = Ret(*)(running_instance_context&, array_ptr<char>, int, size_t);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, I32 ptr, I32 value, I32 size) {
+   static Ret translate_one(running_instance_context& ctx, I32 ptr, I32 value, I32 size) {
       const auto length = size_t(size);
-      return Then(wasm, array_ptr_impl<char>(wasm, ptr, length), value, length);
+      return Then(ctx, array_ptr_impl<char>(ctx, ptr, length), value, length);
    };
 
    template<then_type Then>
@@ -518,12 +519,12 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>, std
 template<typename T, typename Ret, typename... Inputs, typename ...Translated>
 struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
-   using then_type = Ret (*)(wasm_interface &, T *, Inputs..., Translated...);
+   using then_type = Ret (*)(running_instance_context&, T *, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr) {
-      T* base = array_ptr_impl<T>(wasm, ptr, sizeof(T));
-      return Then(wasm, base, rest..., translated...);
+   static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) {
+      T* base = array_ptr_impl<T>(ctx, ptr, 1);
+      return Then(ctx, base, rest..., translated...);
    };
 
    template<then_type Then>
@@ -544,12 +545,12 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Transl
 template<typename Ret, typename... Inputs, typename ...Translated>
 struct intrinsic_invoker_impl<Ret, std::tuple<const name&, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., native_to_wasm_t<const name&> >>;
-   using then_type = Ret (*)(wasm_interface &, const name&, Inputs..., Translated...);
+   using then_type = Ret (*)(running_instance_context&, const name&, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, native_to_wasm_t<const name&> wasm_value) {
+   static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, native_to_wasm_t<const name&> wasm_value) {
       auto value = name(wasm_value);
-      return Then(wasm, value, rest..., translated...);
+      return Then(ctx, value, rest..., translated...);
    }
 
    template<then_type Then>
@@ -570,12 +571,12 @@ struct intrinsic_invoker_impl<Ret, std::tuple<const name&, Inputs...>, std::tupl
 template<typename Ret, typename... Inputs, typename ...Translated>
 struct intrinsic_invoker_impl<Ret, std::tuple<const fc::time_point_sec&, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., native_to_wasm_t<const fc::time_point_sec&> >>;
-   using then_type = Ret (*)(wasm_interface &, const fc::time_point_sec&, Inputs..., Translated...);
+   using then_type = Ret (*)(running_instance_context&, const fc::time_point_sec&, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, native_to_wasm_t<const fc::time_point_sec&> wasm_value) {
+   static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, native_to_wasm_t<const fc::time_point_sec&> wasm_value) {
       auto value = fc::time_point_sec(wasm_value);
-      return Then(wasm, value, rest..., translated...);
+      return Then(ctx, value, rest..., translated...);
    }
 
    template<then_type Then>
@@ -597,17 +598,17 @@ struct intrinsic_invoker_impl<Ret, std::tuple<const fc::time_point_sec&, Inputs.
 template<typename T, typename Ret, typename... Inputs, typename ...Translated>
 struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
-   using then_type = Ret (*)(wasm_interface &, T &, Inputs..., Translated...);
+   using then_type = Ret (*)(running_instance_context &, T &, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, Translated... translated, I32 ptr) {
+   static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) {
       // references cannot be created for null pointers
       FC_ASSERT(ptr != 0);
-      auto mem = getDefaultMemory(entry::get(wasm).instance);
+      MemoryInstance* mem = ctx.memory;
       if(!mem || ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
          Runtime::causeException(Exception::Cause::accessViolation);
       T &base = *(T*)(getMemoryBaseAddress(mem)+ptr);
-      return Then(wasm, base, rest..., translated...);
+      return Then(ctx, base, rest..., translated...);
    }
 
    template<then_type Then>
@@ -624,8 +625,8 @@ struct intrinsic_function_invoker {
    using impl = intrinsic_invoker_impl<Ret, std::tuple<Params...>, std::tuple<>>;
 
    template<MethodSig Method>
-   static Ret wrapper(wasm_interface &wasm, Params... params) {
-      return (class_from_wasm<Cls>::value(wasm).*Method)(params...);
+   static Ret wrapper(running_instance_context& ctx, Params... params) {
+      return (class_from_wasm<Cls>::value(*ctx.apply_ctx).*Method)(params...);
    }
 
    template<MethodSig Method>
@@ -642,8 +643,8 @@ struct intrinsic_function_invoker<WasmSig, void, MethodSig, Cls, Params...> {
    using impl = intrinsic_invoker_impl<void_type, std::tuple<Params...>, std::tuple<>>;
 
    template<MethodSig Method>
-   static void_type wrapper(wasm_interface &wasm, Params... params) {
-      (class_from_wasm<Cls>::value(wasm).*Method)(params...);
+   static void_type wrapper(running_instance_context& ctx, Params... params) {
+      (class_from_wasm<Cls>::value(*ctx.apply_ctx).*Method)(params...);
       return void_type();
    }
 

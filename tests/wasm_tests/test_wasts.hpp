@@ -1,7 +1,20 @@
 #pragma once
 
 // These are handcrafted or otherwise tricky to generate with our tool chain
-
+/*
+static const char f32_add_wast[] = R"=====(
+(module
+ (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+ (table 0 anyfunc)
+ (memory $0 1)
+ (export "memory" (memory $0))
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64)
+    (call $eosio_assert (i32.eq (i32.trunc_u/f32 (f32.const 0x3f800000)) (i32.const 0x0)) (i32.const 0))
+  )
+ )
+)=====";
+*/
 static const char entry_wast[] = R"=====(
 (module
  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
@@ -57,50 +70,22 @@ static const char mutable_global_wast[] = R"=====(
  (export "memory" (memory $0))
  (export "apply" (func $apply))
  (func $apply (param $0 i64) (param $1 i64)
-  (if (i64.eq (get_local $1) (i64.const 0))
+  (if (i64.eq (get_local $1) (i64.const 0)) (then
     (set_global $g0 (i64.const 444))
-  )
-  (if (i64.eq (get_local $1) (i64.const 1))
+    (return)
+  ))
+  (if (i64.eq (get_local $1) (i64.const 1)) (then
     (call $eosio_assert (i64.eq (get_global $g0) (i64.const 2)) (i32.const 0))
-  )
+    (return)
+  ))
+  (call $eosio_assert (i32.const 0) (i32.const 0))
  )
  (global $g0 (mut i64) (i64.const 2))
 )
 )=====";
 
-static const char current_memory_wast[] = R"=====(
-(module
- (table 0 anyfunc)
- (memory $0 1)
- (export "memory" (memory $0))
- (export "apply" (func $apply))
- (func $apply (param $0 i64) (param $1 i64)
-   (drop
-     (current_memory)
-   )
- )
-)
-)=====";
-
-static const char grow_memory_wast[] = R"=====(
-(module
- (table 0 anyfunc)
- (memory $0 1)
- (export "memory" (memory $0))
- (export "apply" (func $apply))
- (func $apply (param $0 i64) (param $1 i64)
-   (drop
-     (grow_memory
-       (i32.const 20)
-     )
-   )
- )
-)
-)=====";
-
 static const char biggest_memory_wast[] = R"=====(
 (module
- (import "env" "sbrk" (func $$sbrk (param i32) (result i32)))
  (import "env" "eosio_assert" (func $$eosio_assert (param i32 i32)))
  (table 0 anyfunc)
  (memory $$0 ${MAX_WASM_PAGES})
@@ -110,9 +95,7 @@ static const char biggest_memory_wast[] = R"=====(
  (func $$apply (param $$0 i64) (param $$1 i64)
   (call $$eosio_assert
    (i32.eq
-     (call $$sbrk
-       (i32.const 1)
-     )
+     (grow_memory (i32.const 1))
      (i32.const -1)
    )
    (i32.const 0)
@@ -134,6 +117,7 @@ static const char too_big_memory_wast[] = R"=====(
 static const char valid_sparse_table[] = R"=====(
 (module
  (table 1024 anyfunc)
+ (export "apply" (func $apply))
  (func $apply (param $0 i64) (param $1 i64))
  (elem (i32.const 0) $apply)
  (elem (i32.const 1022) $apply $apply)
@@ -143,6 +127,7 @@ static const char valid_sparse_table[] = R"=====(
 static const char too_big_table[] = R"=====(
 (module
  (table 1025 anyfunc)
+ (export "apply" (func $apply))
  (func $apply (param $0 i64) (param $1 i64))
  (elem (i32.const 0) $apply)
  (elem (i32.const 1022) $apply $apply)
@@ -152,6 +137,8 @@ static const char too_big_table[] = R"=====(
 static const char memory_init_borderline[] = R"=====(
 (module
  (memory $0 16)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64))
  (data (i32.const 65532) "sup!")
 )
 )=====";
@@ -159,6 +146,8 @@ static const char memory_init_borderline[] = R"=====(
 static const char memory_init_toolong[] = R"=====(
 (module
  (memory $0 16)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64))
  (data (i32.const 65533) "sup!")
 )
 )=====";
@@ -166,6 +155,8 @@ static const char memory_init_toolong[] = R"=====(
 static const char memory_init_negative[] = R"=====(
 (module
  (memory $0 16)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64))
  (data (i32.const -1) "sup!")
 )
 )=====";
@@ -174,6 +165,8 @@ static const char memory_table_import[] = R"=====(
 (module
  (table  (import "foo" "table") 10 anyfunc)
  (memory (import "nom" "memory") 0)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64))
 )
 )=====";
 
@@ -290,5 +283,132 @@ static const char table_checker_small_wast[] = R"=====(
    )
  )
  (elem (i32.const 0) $apple)
+)
+)=====";
+
+static const char global_protection_none_get_wast[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64)
+   (drop (get_global 0))
+ )
+)
+)=====";
+
+static const char global_protection_some_get_wast[] = R"=====(
+(module
+ (global i32 (i32.const -11))
+ (global i32 (i32.const 56))
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64)
+   (drop (get_global 1))
+   (drop (get_global 2))
+ )
+)
+)=====";
+
+static const char global_protection_none_set_wast[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64)
+   (set_global 0 (get_local 0))
+ )
+)
+)=====";
+
+static const char global_protection_some_set_wast[] = R"=====(
+(module
+ (global i64 (i64.const -11))
+ (global i64 (i64.const 56))
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64)
+   (set_global 2 (get_local 0))
+ )
+)
+)=====";
+
+static const std::vector<uint8_t> global_protection_okay_get_wasm{
+   0x00, 'a', 's', 'm', 0x01, 0x00, 0x00, 0x00,
+   0x01, 0x06, 0x01, 0x60, 0x02, 0x7e, 0x7e, 0x00,                  //type section containing a function as void(i64,i64)
+   0x03, 0x02, 0x01, 0x00,                                          //a function
+
+   0x06, 0x06, 0x01, 0x7f, 0x00, 0x41, 0x75, 0x0b,                  //global
+
+   0x07, 0x09, 0x01, 0x05, 'a', 'p', 'p', 'l', 'y', 0x00, 0x00,     //export function 0 as "apply"
+   0x0a, 0x07, 0x01,                                                //code section
+   0x05, 0x00,                                                      //function body start with length 5; no locals
+   0x23, 0x00,                                                      //get global 0
+   0x1a,                                                            //drop
+   0x0b                                                             //end
+};
+
+static const std::vector<uint8_t> global_protection_none_get_wasm{
+   0x00, 'a', 's', 'm', 0x01, 0x00, 0x00, 0x00,
+   0x01, 0x06, 0x01, 0x60, 0x02, 0x7e, 0x7e, 0x00,                  //type section containing a function as void(i64,i64)
+   0x03, 0x02, 0x01, 0x00,                                          //a function
+
+   0x07, 0x09, 0x01, 0x05, 'a', 'p', 'p', 'l', 'y', 0x00, 0x00,     //export function 0 as "apply"
+   0x0a, 0x07, 0x01,                                                //code section
+   0x05, 0x00,                                                      //function body start with length 5; no locals
+   0x23, 0x00,                                                      //get global 0
+   0x1a,                                                            //drop
+   0x0b                                                             //end
+};
+
+static const std::vector<uint8_t> global_protection_some_get_wasm{
+   0x00, 'a', 's', 'm', 0x01, 0x00, 0x00, 0x00,
+   0x01, 0x06, 0x01, 0x60, 0x02, 0x7e, 0x7e, 0x00,                  //type section containing a function as void(i64,i64)
+   0x03, 0x02, 0x01, 0x00,                                          //a function
+
+   0x06, 0x06, 0x01, 0x7f, 0x00, 0x41, 0x75, 0x0b,                  //global
+
+   0x07, 0x09, 0x01, 0x05, 'a', 'p', 'p', 'l', 'y', 0x00, 0x00,     //export function 0 as "apply"
+   0x0a, 0x07, 0x01,                                                //code section
+   0x05, 0x00,                                                      //function body start with length 5; no locals
+   0x23, 0x01,                                                      //get global 1
+   0x1a,                                                            //drop
+   0x0b                                                             //end
+};
+
+static const std::vector<uint8_t> global_protection_okay_set_wasm{
+   0x00, 'a', 's', 'm', 0x01, 0x00, 0x00, 0x00,
+   0x01, 0x06, 0x01, 0x60, 0x02, 0x7e, 0x7e, 0x00,                  //type section containing a function as void(i64,i64)
+   0x03, 0x02, 0x01, 0x00,                                          //a function
+
+   0x06, 0x06, 0x01, 0x7e, 0x01, 0x42, 0x75, 0x0b,                  //global.. this time with i64 & global mutablity
+
+   0x07, 0x09, 0x01, 0x05, 'a', 'p', 'p', 'l', 'y', 0x00, 0x00,     //export function 0 as "apply"
+   0x0a, 0x08, 0x01,                                                //code section
+   0x06, 0x00,                                                      //function body start with length 6; no locals
+   0x20, 0x00,                                                      //get local 0
+   0x24, 0x00,                                                      //set global 0
+   0x0b                                                             //end
+};
+
+static const std::vector<uint8_t> global_protection_some_set_wasm{
+   0x00, 'a', 's', 'm', 0x01, 0x00, 0x00, 0x00,
+   0x01, 0x06, 0x01, 0x60, 0x02, 0x7e, 0x7e, 0x00,                  //type section containing a function as void(i64,i64)
+   0x03, 0x02, 0x01, 0x00,                                          //a function
+
+   0x06, 0x06, 0x01, 0x7e, 0x01, 0x42, 0x75, 0x0b,                  //global.. this time with i64 & global mutablity
+
+   0x07, 0x09, 0x01, 0x05, 'a', 'p', 'p', 'l', 'y', 0x00, 0x00,     //export function 0 as "apply"
+   0x0a, 0x08, 0x01,                                                //code section
+   0x06, 0x00,                                                      //function body start with length 6; no locals
+   0x20, 0x00,                                                      //get local 0
+   0x24, 0x01,                                                      //set global 1
+   0x0b                                                             //end
+};
+
+static const char no_apply_wast[] = R"=====(
+(module
+ (func $apply (param $0 i64) (param $1 i64))
+)
+)=====";
+
+static const char apply_wrong_signature_wast[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 f64))
 )
 )=====";

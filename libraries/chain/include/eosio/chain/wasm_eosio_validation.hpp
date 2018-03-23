@@ -34,6 +34,14 @@ namespace eosio { namespace chain { namespace wasm_validations {
       static void validate( const IR::Module& m );
    };
 
+   struct maximum_function_stack_visitor {
+      static void validate( const IR::Module& m );
+   };
+
+   struct ensure_apply_exported_visitor {
+      static void validate( const IR::Module& m );
+   };
+
    using wasm_validate_func = std::function<void(IR::Module&)>;
 
   
@@ -114,6 +122,9 @@ namespace eosio { namespace chain { namespace wasm_validations {
       using tee_local_t       = wasm_ops::tee_local               <whitelist_validator>;
       using get_global_t      = wasm_ops::get_global              <whitelist_validator>;
       using set_global_t      = wasm_ops::set_global              <whitelist_validator>;
+
+      using grow_memory_t     = wasm_ops::grow_memory             <whitelist_validator>;
+      using current_memory_t  = wasm_ops::current_memory          <whitelist_validator>;
 
       using nop_t             = wasm_ops::nop                     <whitelist_validator>;
       using i32_load_t        = wasm_ops::i32_load                <large_offset_validator, whitelist_validator>;
@@ -295,7 +306,9 @@ namespace eosio { namespace chain { namespace wasm_validations {
       using standard_module_constraints_validators = constraints_validators< memories_validation_visitor,
                                                                              data_segments_validation_visitor,
                                                                              tables_validation_visitor,
-                                                                             globals_validation_visitor>;
+                                                                             globals_validation_visitor,
+                                                                             maximum_function_stack_visitor,
+                                                                             ensure_apply_exported_visitor>;
       public:
          wasm_binary_validation( IR::Module& mod ) : _module( &mod ) {
             // initialize validators here
