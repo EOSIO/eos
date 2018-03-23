@@ -415,9 +415,9 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
                      ("a", ar.act.account)
                      ("n", ar.act.name)
                      ("r", ar.receiver));
-               std::cerr << prefix << ": CONSOLE OUTPUT BEGIN =====================" << std::endl;
-               std::cerr << ar.console;
-               std::cerr << prefix << ": CONSOLE OUTPUT END   =====================" << std::endl;
+               ilog(prefix + ": CONSOLE OUTPUT BEGIN =====================");
+               ilog(ar.console);
+               ilog(prefix + ": CONSOLE OUTPUT END   =====================");
             }
          }
       }
