@@ -121,7 +121,7 @@ string U128Str(unsigned __int128 i)
 }
 
 template <typename T>
-void CallAction(tester& test, T ac, const vector<account_name>& scope = {N(testapi)}) {
+transaction_trace CallAction(tester& test, T ac, const vector<account_name>& scope = {N(testapi)}) {
    signed_transaction trx;
 
    auto pl = vector<permission_level>{{scope[0], config::active_name}};
@@ -138,10 +138,11 @@ void CallAction(tester& test, T ac, const vector<account_name>& scope = {N(testa
    auto res = test.push_transaction(trx);
    BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
    test.produce_block();
+   return res;
 }
 
 template <typename T>
-void CallFunction(tester& test, T ac, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}) {
+transaction_trace CallFunction(tester& test, T ac, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}) {
 	{
 		signed_transaction trx;
 
@@ -160,6 +161,7 @@ void CallFunction(tester& test, T ac, const vector<char>& data, const vector<acc
 		auto res = test.push_transaction(trx);
 		BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
 		test.produce_block();
+      return res;
 	}
 }
 
@@ -222,23 +224,6 @@ struct MySink : public bio::sink
    }
 };
 uint32_t last_fnc_err = 0;
-
-#define CAPTURE(STREAM, EXEC) \
-   {\
-      capture.clear(); \
-      bio::stream_buffer<MySink> sb; sb.open(MySink()); \
-      std::streambuf *oldbuf = std::STREAM.rdbuf(&sb); \
-      EXEC; \
-      std::STREAM.rdbuf(oldbuf); \
-   }
-
-#define CAPTURE_AND_PRE_TEST_PRINT(METHOD) \
-	{ \
-		BOOST_TEST_MESSAGE( "Running test_print::" << METHOD ); \
-		CAPTURE( cerr, CALL_TEST_FUNCTION( *this, "test_print", METHOD, {} ) ); \
-		BOOST_CHECK_EQUAL( capture.size(), 7 ); \
-		captured = capture[3]; \
-	}
 
 /*************************************************************************************
  * action_tests test case
@@ -625,10 +610,9 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
 
    // test test_read_transaction
    // this is a bit rough, but I couldn't figure out a better way to compare the hashes
-   CAPTURE( cerr, CALL_TEST_FUNCTION( *this, "test_transaction", "test_read_transaction", {} ) );
-   BOOST_CHECK_EQUAL( capture.size(), 7 );
+   auto tx_trace = CALL_TEST_FUNCTION( *this, "test_transaction", "test_read_transaction", {} );
    string sha_expect = "bdeb5b58dda272e4b23ee7d2a5f0ff034820c156364893b758892e06fa39e7fe";
-   BOOST_CHECK_EQUAL(capture[3] == sha_expect, true);
+   BOOST_CHECK_EQUAL(tx_trace.action_traces.front().console == sha_expect, true);
    // test test_tapos_block_num
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_num", fc::raw::pack(control->head_block_num()) );
 
@@ -755,7 +739,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, tester) { try {
 	CALL_TEST_FUNCTION( *this, "test_db", "idx64_general", {});
 	CALL_TEST_FUNCTION( *this, "test_db", "idx64_lowerbound", {});
 	CALL_TEST_FUNCTION( *this, "test_db", "idx64_upperbound", {});
-   
+
 } FC_LOG_AND_RETHROW() }
 /*************************************************************************************
  * multi_index_tests test case
@@ -1032,41 +1016,48 @@ BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
 	string captured = "";
 
 	// test prints
-	CAPTURE_AND_PRE_TEST_PRINT("test_prints");
-	BOOST_CHECK_EQUAL(captured == "abcefg", true);
+   auto tx1_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_prints", {} );
+   auto tx1_act_cnsl = tx1_trace.action_traces.front().console;
+   BOOST_CHECK_EQUAL(tx1_act_cnsl == "abcefg", true);
 
-	// test prints_l
-	CAPTURE_AND_PRE_TEST_PRINT("test_prints_l");
-	BOOST_CHECK_EQUAL(captured == "abatest", true);
+   // test prints_l
+   auto tx2_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_prints_l", {} );
+   auto tx2_act_cnsl = tx2_trace.action_traces.front().console;
+   BOOST_CHECK_EQUAL(tx2_act_cnsl == "abatest", true);
 
-	// test printi
-	CAPTURE_AND_PRE_TEST_PRINT("test_printi");
-	BOOST_CHECK_EQUAL( captured.substr(0,1), I64Str(0) );
-	BOOST_CHECK_EQUAL( captured.substr(1,6), I64Str(556644) );
-	BOOST_CHECK_EQUAL( captured.substr(7, capture[3].size()), I64Str(-1) );
 
-	// test printui
-	CAPTURE_AND_PRE_TEST_PRINT("test_printui");
-	BOOST_CHECK_EQUAL( captured.substr(0,1), U64Str(0) );
-	BOOST_CHECK_EQUAL( captured.substr(1,6), U64Str(556644) );
-	BOOST_CHECK_EQUAL( captured.substr(7, capture[3].size()), U64Str(-1) ); // "18446744073709551615"
+   // test printi
+   auto tx3_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printi", {} );
+   auto tx3_act_cnsl = tx3_trace.action_traces.front().console;
+   BOOST_CHECK_EQUAL( tx3_act_cnsl.substr(0,1), I64Str(0) );
+   BOOST_CHECK_EQUAL( tx3_act_cnsl.substr(1,6), I64Str(556644) );
+   BOOST_CHECK_EQUAL( tx3_act_cnsl.substr(7, std::string::npos), I64Str(-1) );
 
-	// test printn
-	CAPTURE_AND_PRE_TEST_PRINT("test_printn");
-	BOOST_CHECK_EQUAL( captured.substr(0,5), "abcde" );
-	BOOST_CHECK_EQUAL( captured.substr(5, 5), "ab.de" );
-	BOOST_CHECK_EQUAL( captured.substr(10, 6), "1q1q1q");
-	BOOST_CHECK_EQUAL( captured.substr(16, 11), "abcdefghijk");
-	BOOST_CHECK_EQUAL( captured.substr(27, 12), "abcdefghijkl");
-	BOOST_CHECK_EQUAL( captured.substr(39, 13), "abcdefghijkl1");
-	BOOST_CHECK_EQUAL( captured.substr(52, 13), "abcdefghijkl1");
-	BOOST_CHECK_EQUAL( captured.substr(65, 13), "abcdefghijkl1");
+   // test printui
+   auto tx4_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printui", {} );
+   auto tx4_act_cnsl = tx4_trace.action_traces.front().console;
+   BOOST_CHECK_EQUAL( tx4_act_cnsl.substr(0,1), U64Str(0) );
+   BOOST_CHECK_EQUAL( tx4_act_cnsl.substr(1,6), U64Str(556644) );
+   BOOST_CHECK_EQUAL( tx4_act_cnsl.substr(7, std::string::npos), U64Str(-1) ); // "18446744073709551615"
 
-	// test printi128
-	CAPTURE_AND_PRE_TEST_PRINT("test_printi128");
-	BOOST_CHECK_EQUAL( captured.substr(0, 39), U128Str(-1) );
-	BOOST_CHECK_EQUAL( captured.substr(39, 1), U128Str(0) );
-	BOOST_CHECK_EQUAL( captured.substr(40, 11), U128Str(87654323456) );
+   // test printn
+   auto tx5_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printn", {} );
+   auto tx5_act_cnsl = tx5_trace.action_traces.front().console;
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(0,5), "abcde" );
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(5, 5), "ab.de" );
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(10, 6), "1q1q1q");
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(16, 11), "abcdefghijk");
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(27, 12), "abcdefghijkl");
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(39, 13), "abcdefghijkl1");
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(52, 13), "abcdefghijkl1");
+   BOOST_CHECK_EQUAL( tx5_act_cnsl.substr(65, 13), "abcdefghijkl1");
+
+   // test printi128
+   auto tx6_trace = CALL_TEST_FUNCTION( *this, "test_print", "test_printi128", {} );
+   auto tx6_act_cnsl = tx6_trace.action_traces.front().console;
+   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(0, 39), U128Str(-1) );
+   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(39, 1), U128Str(0) );
+   BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(40, 11), U128Str(87654323456) );
 
 } FC_LOG_AND_RETHROW() }
 

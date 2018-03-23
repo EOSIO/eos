@@ -12,13 +12,14 @@
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/log/logger.hpp>
 
 #include <eosio/chain/contracts/chain_initializer.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 #include <eosio/abi_generator/abi_generator.hpp>
 
 #include "config.hpp"
-
+#include <boost/test/framework.hpp>
 using namespace eosio;
 using namespace chain;
 using namespace chain::contracts;
@@ -33,8 +34,6 @@ fc::variant verify_byte_round_trip_conversion( const abi_serializer& abis, const
    auto var2 = abis.binary_to_variant(type, bytes);
 
    std::string r = fc::json::to_string(var2);
-
-   std::cout << r << std::endl;
 
    auto bytes2 = abis.variant_to_binary(type, var2);
 
@@ -64,7 +63,6 @@ fc::variant verify_type_round_trip_conversion( const abi_serializer& abis, const
 
    std::string r = fc::json::to_string(var2);
 
-   std::cout << r << std::endl;
 
    auto bytes2 = abis.variant_to_binary(type, var2);
 
@@ -414,8 +412,9 @@ struct abi_gen_helper {
     auto e = fc::to_hex(fc::raw::pack(abi1)) == fc::to_hex(fc::raw::pack(output));
 
     if(!e) {
-      std::cout << "expected: " <<  std::endl << fc::json::to_pretty_string(abi1) << std::endl << std::endl;
-      std::cout << "generated: " <<  std::endl << fc::json::to_pretty_string(output) << std::endl << std::endl;
+      BOOST_TEST_MESSAGE("Generate ABI:\n" <<
+                        "expected: \n" << fc::json::to_pretty_string(abi1) << "\n" <<
+                        "generated: \n" << fc::json::to_pretty_string(output));
     }
 
     return e;
@@ -1898,7 +1897,9 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
    auto abi = chain_initializer::eos_contract_abi(fc::json::from_string(typedef_cycle_abi).as<abi_def>());
    abi_serializer abis(abi);
 
-   auto is_assert_exception = [](fc::assert_exception const & e) -> bool { std::cout << e.to_string() << std::endl; return true; };
+   auto is_assert_exception = [](fc::assert_exception const & e) -> bool {
+      wlog(e.to_string()); return true;
+   };
    BOOST_CHECK_EXCEPTION( abis.validate(), fc::assert_exception, is_assert_exception );
 
    abi = fc::json::from_string(struct_cycle_abi).as<abi_def>();
