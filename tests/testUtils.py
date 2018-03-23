@@ -1207,7 +1207,7 @@ class Cluster(object):
         if len(self.nodes) > 0:
             raise RuntimeError("Cluster already running.")
 
-        cmd="%s -p %s -n %s -s %s -d %s -f --rehearse" % (
+        cmd="%s -p %s -n %s -s %s -d %s -f" % (
             Utils.EosLauncherPath, pnodes, total_nodes, topo, delay)
         cmdArr=cmd.split()
         if self.staging:

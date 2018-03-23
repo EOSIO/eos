@@ -35,7 +35,7 @@
 #include "config.hpp"
 
 using namespace std;
-namespace bf = boost::filesystem;
+namespace bfs = boost::filesystem;
 namespace bp = boost::process;
 namespace bpo = boost::program_options;
 using boost::asio::ip::tcp;
@@ -274,7 +274,7 @@ struct remote_deploy {
   string scp_cmd = "/usr/bin/scp";
   string ssh_identity;
   string ssh_args;
-  bf::path local_config_file = "temp_config";
+  bfs::path local_config_file = "temp_config";
 };
 
 struct testnet_def {
@@ -346,15 +346,15 @@ struct launcher_def {
   size_t next_node;
   string shape;
   allowed_connection allowed_connections = PC_NONE;
-  bf::path genesis;
-  bf::path output;
-  bf::path host_map_file;
-  bf::path server_ident_file;
-  bf::path stage;
+  bfs::path genesis;
+  bfs::path output;
+  bfs::path host_map_file;
+  bfs::path server_ident_file;
+  bfs::path stage;
 
   string erd;
-  bf::path config_dir_base;
-  bf::path data_dir_base;
+  bfs::path config_dir_base;
+  bfs::path data_dir_base;
   bool skip_transaction_signatures = false;
   string eosd_extra_args;
   testnet_def network;
@@ -388,8 +388,8 @@ struct launcher_def {
   host_def *find_host (const string &name);
   host_def *find_host_by_name_or_address (const string &name);
   host_def *deploy_config_files (tn_node_def &node);
-  string compose_scp_command (const host_def &host, const bf::path &source,
-                              const bf::path &destination);
+  string compose_scp_command (const host_def &host, const bfs::path &source,
+                              const bfs::path &destination);
   void write_config_file (tn_node_def &node);
   void write_logging_config_file (tn_node_def &node);
   void write_genesis_file (tn_node_def &node);
@@ -429,15 +429,15 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("producers",bpo::value<size_t>(&producers)->default_value(21),"total number of non-bios producer instances in this network")
     ("mode,m",bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"),"connection mode, combination of \"any\", \"producers\", \"specified\", \"none\"")
     ("shape,s",bpo::value<string>(&shape)->default_value("star"),"network topology, use \"star\" \"mesh\" or give a filename for custom")
-    ("genesis,g",bpo::value<bf::path>(&genesis)->default_value("./genesis.json"),"set the path to genesis.json")
-    ("output,o",bpo::value<bf::path>(&output),"save a copy of the generated topology in this file")
+    ("genesis,g",bpo::value<bfs::path>(&genesis)->default_value("./genesis.json"),"set the path to genesis.json")
+    ("output,o",bpo::value<bfs::path>(&output),"save a copy of the generated topology in this file")
     ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), "nodeos does not require transaction signatures.")
     ("nodeos", bpo::value<string>(&eosd_extra_args), "forward nodeos command line argument(s) to each instance of nodeos, enclose arg in quotes")
     ("delay,d",bpo::value<int>(&start_delay)->default_value(0),"seconds delay before starting each node after the first")
     ("boot",bpo::bool_switch(&boot)->default_value(false),"After deploying the nodes and generating a boot script, invoke it.")
     ("nogen",bpo::bool_switch(&nogen)->default_value(false),"launch nodes without writing new config files")
-    ("host-map",bpo::value<bf::path>(&host_map_file)->default_value(""),"a file containing mapping specific nodes to hosts. Used to enhance the custom shape argument")
-    ("servers",bpo::value<bf::path>(&server_ident_file)->default_value(""),"a file containing ip addresses and names of individual servers to deploy as producers or non-producers ")
+    ("host-map",bpo::value<bfs::path>(&host_map_file)->default_value(""),"a file containing mapping specific nodes to hosts. Used to enhance the custom shape argument")
+    ("servers",bpo::value<bfs::path>(&server_ident_file)->default_value(""),"a file containing ip addresses and names of individual servers to deploy as producers or non-producers ")
     ("per-host",bpo::value<int>(&per_host)->default_value(0),"specifies how many nodeos instances will run on a single host. Use 0 to indicate all on one.")
     ("network-name",bpo::value<string>(&network.name)->default_value("testnet_"),"network name prefix used in GELF logging source")
     ("enable-gelf-logging",bpo::value<bool>(&gelf_enabled)->default_value(true),"enable gelf logging appender in logging configuration file")
@@ -488,7 +488,7 @@ launcher_def::initialize (const variables_map &vmap) {
           boost::iequals( shape, "star" ) ||
           boost::iequals( shape, "mesh" )) &&
        host_map_file.empty()) {
-    bf::path src = shape;
+    bfs::path src = shape;
     host_map_file = src.stem().string() + "_hosts.json";
   }
 
@@ -531,13 +531,13 @@ launcher_def::initialize (const variables_map &vmap) {
      erd.clear();
   }
 
-  stage = bf::path(erd);
-  if (!bf::exists(stage)) {
+  stage = bfs::path(erd);
+  if (!bfs::exists(stage)) {
     cerr << erd << " is not a valid path" << endl;
     exit (-1);
   }
-  stage /= bf::path("staging");
-  bf::create_directories (stage);
+  stage /= bfs::path("staging");
+  bfs::create_directories (stage);
   if (bindings.empty()) {
     define_network ();
   }
@@ -617,21 +617,21 @@ launcher_def::generate () {
   write_dot_file ();
 
   if (!output.empty()) {
-   bf::path savefile = output;
+   bfs::path savefile = output;
     {
-      bf::ofstream sf (savefile);
+      bfs::ofstream sf (savefile);
       sf << fc::json::to_pretty_string (network) << endl;
       sf.close();
     }
     if (host_map_file.empty()) {
-      savefile = bf::path (output.stem().string() + "_hosts.json");
+      savefile = bfs::path (output.stem().string() + "_hosts.json");
     }
     else {
-      savefile = bf::path (host_map_file);
+      savefile = bfs::path (host_map_file);
     }
 
     {
-      bf::ofstream sf (savefile);
+      bfs::ofstream sf (savefile);
 
       sf << fc::json::to_pretty_string (bindings) << endl;
       sf.close();
@@ -643,7 +643,7 @@ launcher_def::generate () {
 
 void
 launcher_def::write_dot_file () {
-  bf::ofstream df ("testnet.dot");
+  bfs::ofstream df ("testnet.dot");
   df << "digraph G\n{\nlayout=\"circo\";\n";
   for (auto &node : network.nodes) {
     for (const auto &p : node.second.peers) {
@@ -829,61 +829,61 @@ launcher_def::deploy_config_files (tn_node_def &node) {
   eosd_def &instance = *node.instance;
   host_def *host = find_host (instance.host);
 
-  bf::path source = stage / instance.config_dir_name / "config.ini";
-  bf::path logging_source = stage / instance.config_dir_name / "logging.json";
-  bf::path genesis_source = stage / instance.config_dir_name / "genesis.json";
+  bfs::path source = stage / instance.config_dir_name / "config.ini";
+  bfs::path logging_source = stage / instance.config_dir_name / "logging.json";
+  bfs::path genesis_source = stage / instance.config_dir_name / "genesis.json";
 
   if (host->is_local()) {
-    bf::path cfgdir = bf::path(host->eosio_home) / instance.config_dir_name;
-    bf::path dd = bf::path(host->eosio_home) / instance.data_dir_name;
+    bfs::path cfgdir = bfs::path(host->eosio_home) / instance.config_dir_name;
+    bfs::path dd = bfs::path(host->eosio_home) / instance.data_dir_name;
 
-    if (!bf::exists (cfgdir)) {
-       if (!bf::create_directories (cfgdir, ec) && ec.value()) {
+    if (!bfs::exists (cfgdir)) {
+       if (!bfs::create_directories (cfgdir, ec) && ec.value()) {
           cerr << "could not create new directory: " << instance.config_dir_name
                << " errno " << ec.value() << " " << strerror(ec.value()) << endl;
           exit (-1);
        }
     }
-    else if (bf::exists (cfgdir / "config.ini") && !force_overwrite) {
+    else if (bfs::exists (cfgdir / "config.ini") && !force_overwrite) {
        cerr << cfgdir / "config.ini" << " exists. Use -f|--force to overwrite configuration\n";
        exit (-1);
     }
 
-    if (!bf::exists (dd)) {
-       if (!bf::create_directories (dd, ec) && ec.value()) {
+    if (!bfs::exists (dd)) {
+       if (!bfs::create_directories (dd, ec) && ec.value()) {
           cerr << "could not create new directory: " << instance.config_dir_name
                << " errno " << ec.value() << " " << strerror(ec.value()) << endl;
           exit (-1);
        }
     }
     else if (force_overwrite) {
-       int64_t count =  bf::remove_all (dd / block_dir, ec);
+       int64_t count =  bfs::remove_all (dd / block_dir, ec);
        if (ec.value() != 0) {
           cerr << "count = " << count << " could not remove old directory: " << dd
                << " " << strerror(ec.value()) << endl;
           exit (-1);
         }
-        count = bf::remove_all (dd / shared_mem_dir, ec);
+        count = bfs::remove_all (dd / shared_mem_dir, ec);
         if (ec.value() != 0) {
           cerr << "count = " << count << " could not remove old directory: " << dd
                << " " << strerror(ec.value()) << endl;
           exit (-1);
         }
     }
-    else if (bf::exists (dd/ block_dir) || bf::exists (dd / shared_mem_dir)) {
+    else if (bfs::exists (dd/ block_dir) || bfs::exists (dd / shared_mem_dir)) {
        cerr << "either " << block_dir << " or " << shared_mem_dir << " exist in \n";
        cerr << dd << ". Use -f|--force to erase blockchain data" << endl;
         exit (-1);
     }
 
-    bf::copy_file (genesis_source, cfgdir / "genesis.json", bf::copy_option::overwrite_if_exists);
-    bf::copy_file (logging_source, cfgdir / "logging.json", bf::copy_option::overwrite_if_exists);
-    bf::copy_file (source, cfgdir / "config.ini", bf::copy_option::overwrite_if_exists);
+    bfs::copy_file (genesis_source, cfgdir / "genesis.json", bfs::copy_option::overwrite_if_exists);
+    bfs::copy_file (logging_source, cfgdir / "logging.json", bfs::copy_option::overwrite_if_exists);
+    bfs::copy_file (source, cfgdir / "config.ini", bfs::copy_option::overwrite_if_exists);
   }
   else {
     prep_remote_config_dir (instance, host);
 
-    bf::path rfile = bf::path (host->eosio_home) / instance.config_dir_name / "config.ini";
+    bfs::path rfile = bfs::path (host->eosio_home) / instance.config_dir_name / "config.ini";
     auto scp_cmd_line = compose_scp_command(*host, source, rfile);
 
     cerr << "cmdline = " << scp_cmd_line << endl;
@@ -893,7 +893,7 @@ launcher_def::deploy_config_files (tn_node_def &node) {
       exit(-1);
     }
 
-    rfile = bf::path (host->eosio_home) / instance.config_dir_name / "logging.json";
+    rfile = bfs::path (host->eosio_home) / instance.config_dir_name / "logging.json";
 
     scp_cmd_line = compose_scp_command(*host, logging_source, rfile);
 
@@ -903,7 +903,7 @@ launcher_def::deploy_config_files (tn_node_def &node) {
       exit(-1);
     }
 
-    rfile = bf::path (host->eosio_home) / instance.config_dir_name / "genesis.json";
+    rfile = bfs::path (host->eosio_home) / instance.config_dir_name / "genesis.json";
 
     scp_cmd_line = compose_scp_command(*host, genesis_source, rfile);
 
@@ -917,7 +917,7 @@ launcher_def::deploy_config_files (tn_node_def &node) {
 }
 
 string
-launcher_def::compose_scp_command (const host_def& host, const bf::path& source, const bf::path& destination) {
+launcher_def::compose_scp_command (const host_def& host, const bfs::path& source, const bfs::path& destination) {
   string scp_cmd_line = network.ssh_helper.scp_cmd + " ";
   const string &args = host.ssh_args.length() ? host.ssh_args : network.ssh_helper.ssh_args;
   if (args.length()) {
@@ -938,15 +938,15 @@ launcher_def::compose_scp_command (const host_def& host, const bf::path& source,
 void
 launcher_def::write_config_file (tn_node_def &node) {
    bool is_bios = (node.name == "bios");
-   bf::path filename;
+   bfs::path filename;
    eosd_def &instance = *node.instance;
    host_def *host = find_host (instance.host);
 
-   bf::path dd = stage / instance.config_dir_name;
-   if (!bf::exists(dd)) {
+   bfs::path dd = stage / instance.config_dir_name;
+   if (!bfs::exists(dd)) {
       try {
-         bf::create_directories (dd);
-      } catch (const bf::filesystem_error &ex) {
+         bfs::create_directories (dd);
+      } catch (const bfs::filesystem_error &ex) {
          cerr << "write_config_files threw " << ex.what() << endl;
          exit (-1);
       }
@@ -954,7 +954,7 @@ launcher_def::write_config_file (tn_node_def &node) {
 
    filename = dd / "config.ini";
 
-   bf::ofstream cfg(filename);
+   bfs::ofstream cfg(filename);
    if (!cfg.good()) {
       cerr << "unable to open " << filename << " " << strerror(errno) << "\n";
       exit (-1);
@@ -1018,17 +1018,17 @@ launcher_def::write_config_file (tn_node_def &node) {
 
 void
 launcher_def::write_logging_config_file(tn_node_def &node) {
-  bf::path filename;
+  bfs::path filename;
   eosd_def &instance = *node.instance;
 
-  bf::path dd = stage / instance.config_dir_name;
-  if (!bf::exists(dd)) {
-    bf::create_directories(dd);
+  bfs::path dd = stage / instance.config_dir_name;
+  if (!bfs::exists(dd)) {
+    bfs::create_directories(dd);
   }
 
   filename = dd / "logging.json";
 
-  bf::ofstream cfg(filename);
+  bfs::ofstream cfg(filename);
   if (!cfg.good()) {
     cerr << "unable to open " << filename << " " << strerror(errno) << "\n";
     exit (9);
@@ -1052,8 +1052,8 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
 
 void
 launcher_def::init_genesis () {
-  bf::path genesis_path = bf::current_path() / "genesis.json";
-   bf::ifstream src(genesis_path);
+  bfs::path genesis_path = bfs::current_path() / "genesis.json";
+   bfs::ifstream src(genesis_path);
    if (!src.good()) {
       cerr << "unable to open " << genesis_path << "\n";
       exit(9);
@@ -1075,16 +1075,16 @@ launcher_def::init_genesis () {
 
 void
 launcher_def::write_genesis_file(tn_node_def &node) {
-  bf::path filename;
+  bfs::path filename;
   eosd_def &instance = *node.instance;
 
-  bf::path dd = stage / instance.config_dir_name;
-  if (!bf::exists(dd)) {
-    bf::create_directories(dd);
+  bfs::path dd = stage / instance.config_dir_name;
+  if (!bfs::exists(dd)) {
+    bfs::create_directories(dd);
   }
 
   filename = dd / "genesis.json";
-  bf::ofstream gf ( dd / "genesis.json");
+  bfs::ofstream gf ( dd / "genesis.json");
   for (auto &line : genesis_block) {
      gf << line << "\n";
   }
@@ -1092,8 +1092,8 @@ launcher_def::write_genesis_file(tn_node_def &node) {
 
 void
 launcher_def::write_setprods_file() {
-   bf::path filename = bf::current_path() / "setprods.json";
-   bf::ofstream psfile (filename);
+   bfs::path filename = bfs::current_path() / "setprods.json";
+   bfs::ofstream psfile (filename);
    if(!psfile.good()) {
       cerr << "unable to open " << filename << " " << strerror(errno) << "\n";
     exit (9);
@@ -1111,15 +1111,15 @@ launcher_def::write_setprods_file() {
 
 void
 launcher_def::write_bios_boot () {
-   bf::ifstream src(bf::path(config_dir_base) / "launcher" / start_temp);
+   bfs::ifstream src(bfs::path(config_dir_base) / "launcher" / start_temp);
    if(!src.good()) {
       cerr << "unable to open " << config_dir_base << "launcher/" << start_temp << " " << strerror(errno) << "\n";
     exit (9);
   }
 
-   bf::ofstream brb (bf::current_path() / start_script);
+   bfs::ofstream brb (bfs::current_path() / start_script);
    if(!brb.good()) {
-      cerr << "unable to open " << bf::current_path() << "/" << start_script << " " << strerror(errno) << "\n";
+      cerr << "unable to open " << bfs::current_path() << "/" << start_script << " " << strerror(errno) << "\n";
     exit (9);
   }
 
@@ -1287,7 +1287,7 @@ launcher_def::make_mesh () {
 
 void
 launcher_def::make_custom () {
-  bf::path source = shape;
+  bfs::path source = shape;
   fc::json::from_file(source).as<testnet_def>(network);
   producer_set.version = 1;
   for (auto &h : bindings) {
@@ -1328,8 +1328,8 @@ launcher_def::do_ssh (const string &cmd, const string &host_name) {
 
 void
 launcher_def::prep_remote_config_dir (eosd_def &node, host_def *host) {
-  bf::path abs_config_dir = bf::path(host->eosio_home) / node.config_dir_name;
-  bf::path abs_data_dir = bf::path(host->eosio_home) / node.data_dir_name;
+  bfs::path abs_config_dir = bfs::path(host->eosio_home) / node.config_dir_name;
+  bfs::path abs_data_dir = bfs::path(host->eosio_home) / node.data_dir_name;
 
   string acd = abs_config_dir.string();
   string add = abs_data_dir.string();
@@ -1378,16 +1378,16 @@ launcher_def::prep_remote_config_dir (eosd_def &node, host_def *host) {
 
 void
 launcher_def::launch (eosd_def &instance, string &gts) {
-  bf::path dd = instance.data_dir_name;
-  bf::path reout = dd / "stdout.txt";
-  bf::path reerr_sl = dd / "stderr.txt";
-  bf::path reerr_base = bf::path("stderr." + launch_time + ".txt");
-  bf::path reerr = dd / reerr_base;
-  bf::path pidf  = dd / "nodeos.pid";
+  bfs::path dd = instance.data_dir_name;
+  bfs::path reout = dd / "stdout.txt";
+  bfs::path reerr_sl = dd / "stderr.txt";
+  bfs::path reerr_base = bfs::path("stderr." + launch_time + ".txt");
+  bfs::path reerr = dd / reerr_base;
+  bfs::path pidf  = dd / "nodeos.pid";
   host_def* host;
   try {
      host = deploy_config_files (*instance.node);
-  } catch (const bf::filesystem_error &ex) {
+  } catch (const bfs::filesystem_error &ex) {
      cerr << "deploy_config_files threw " << ex.what() << endl;
      exit (-1);
   }
@@ -1432,10 +1432,10 @@ launcher_def::launch (eosd_def &instance, string &gts) {
     cerr << "spawning child, " << eosdcmd << endl;
 
     bp::child c(eosdcmd, bp::std_out > reout, bp::std_err > reerr );
-    bf::remove(reerr_sl);
-    bf::create_symlink (reerr_base, reerr_sl);
+    bfs::remove(reerr_sl);
+    bfs::create_symlink (reerr_base, reerr_sl);
 
-    bf::ofstream pidout (pidf);
+    bfs::ofstream pidout (pidf);
     pidout << c.id() << flush;
     pidout.close();
 
@@ -1478,7 +1478,7 @@ launcher_def::kill (launch_modes mode, string sig_opt) {
   case LM_ALL:
   case LM_LOCAL:
   case LM_REMOTE : {
-    bf::path source = "last_run.json";
+    bfs::path source = "last_run.json";
     fc::json::from_file(source).as<last_run_def>(last_run);
     for (auto &info : last_run.running_nodes) {
       if (mode == LM_ALL || (info.remote && mode == LM_REMOTE) ||
@@ -1612,7 +1612,7 @@ launcher_def::ignite() {
          boost::system::error_code ec;
          cerr << "waiting for script completion\n";
          c.wait();
-      } catch (bf::filesystem_error &ex) {
+      } catch (bfs::filesystem_error &ex) {
          cerr << "wait threw error " << ex.what() << "\n";
       }
       catch (...) {
@@ -1674,8 +1674,8 @@ launcher_def::start_all (string &gts, launch_modes mode) {
     break;
   }
   }
-  bf::path savefile = "last_run.json";
-  bf::ofstream sf (savefile);
+  bfs::path savefile = "last_run.json";
+  bfs::ofstream sf (savefile);
 
   sf << fc::json::to_pretty_string (last_run) << endl;
   sf.close();
@@ -1683,22 +1683,22 @@ launcher_def::start_all (string &gts, launch_modes mode) {
 
 //------------------------------------------------------------
 
-void write_default_config(const bf::path& cfg_file, const options_description &cfg ) {
-   bf::path parent = cfg_file.parent_path();
+void write_default_config(const bfs::path& cfg_file, const options_description &cfg ) {
+   bfs::path parent = cfg_file.parent_path();
    if (parent.empty()) {
       parent = ".";
    }
-   if(!bf::exists(parent)) {
+   if(!bfs::exists(parent)) {
       try {
-         bf::create_directories(parent);
-      } catch (bf::filesystem_error &ex) {
+         bfs::create_directories(parent);
+      } catch (bfs::filesystem_error &ex) {
          cerr << "could not create new directory: " << cfg_file.parent_path()
               << " caught " << ex.what() << endl;
          exit (-1);
       }
    }
 
-   std::ofstream out_cfg( bf::path(cfg_file).make_preferred().string());
+   std::ofstream out_cfg( bfs::path(cfg_file).make_preferred().string());
    for(const boost::shared_ptr<bpo::option_description> od : cfg.options())
    {
       if(!od->description().empty()) {
@@ -1740,8 +1740,8 @@ int main (int argc, char *argv[]) {
   string bounce_nodes;
   string down_nodes;
   string roll_nodes;
-  bf::path config_dir;
-  bf::path config_file;
+  bfs::path config_dir;
+  bfs::path config_file;
 
   local_id.initialize();
   top.set_options(cfg);
@@ -1749,15 +1749,15 @@ int main (int argc, char *argv[]) {
   cli.add_options()
     ("timestamp,i",bpo::value<string>(&gts),"set the timestamp for the first block. Use \"now\" to indicate the current time")
     ("launch,l",bpo::value<string>(), "select a subset of nodes to launch. Currently may be \"all\", \"none\", or \"local\". If not set, the default is to launch all unless an output file is named, in which case it starts none.")
-    ("output,o",bpo::value<bf::path>(&top.output),"save a copy of the generated topology in this file")
+    ("output,o",bpo::value<bfs::path>(&top.output),"save a copy of the generated topology in this file")
     ("kill,k", bpo::value<string>(&kill_arg),"The launcher retrieves the previously started process ids and issues a kill to each.")
     ("down", bpo::value<string>(&down_nodes),"comma-separated list of node numbers that will be taken down using the eosio-tn_down.sh script")
     ("bounce", bpo::value<string>(&bounce_nodes),"comma-separated list of node numbers that will be restarted using the eosio-tn_bounce.sh script")
     ("roll", bpo::value<string>(&roll_nodes),"comma-separated list of host names where the nodes should be rolled to a new version using the eosio-tn_roll.sh script")
     ("version,v", "print version information")
     ("help,h","print this list")
-    ("config-dir", bpo::value<bf::path>(), "Directory containing configuration files such as config.ini")
-    ("config,c", bpo::value<bf::path>()->default_value( "config.ini" ), "Configuration file name relative to config-dir");
+    ("config-dir", bpo::value<bfs::path>(), "Directory containing configuration files such as config.ini")
+    ("config,c", bpo::value<bfs::path>()->default_value( "config.ini" ), "Configuration file name relative to config-dir");
 
   cli.add(cfg);
 
@@ -1777,19 +1777,19 @@ int main (int argc, char *argv[]) {
     }
 
     if( vmap.count( "config-dir" ) ) {
-      config_dir = vmap["config-dir"].as<bf::path>();
+      config_dir = vmap["config-dir"].as<bfs::path>();
       if( config_dir.is_relative() )
-         config_dir = bf::current_path() / config_dir;
+         config_dir = bfs::current_path() / config_dir;
     }
 
-   bf::path config_file_name = config_dir / "config.ini";
+   bfs::path config_file_name = config_dir / "config.ini";
    if( vmap.count( "config" ) ) {
-      config_file_name = vmap["config"].as<bf::path>();
+      config_file_name = vmap["config"].as<bfs::path>();
       if( config_file_name.is_relative() )
          config_file_name = config_dir / config_file_name;
    }
 
-   if(!bf::exists(config_file_name)) {
+   if(!bfs::exists(config_file_name)) {
       if(config_file_name.compare(config_dir / "config.ini") != 0)
       {
          cout << "Config file " << config_file_name << " missing." << std::endl;
