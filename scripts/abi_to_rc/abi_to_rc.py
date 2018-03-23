@@ -10,26 +10,12 @@ import sys
 import os
 import re
 
-# purpose of abi_to_rc.py
-purpose =   '''purpose:\n  The abi_to_rc.py script processes a contract's .abi file in order to generate 
-  an overview Ricardian Contract and a Ricardian Contract for each action. The 
-  overview Ricardian Contract provides a description of the contract's purpose 
-  and also specifies the contract's action(s), input(s), and input type(s). The 
-  action Ricardian Contract provides a description of the action's purpose and 
-  also specifies the action's input(s), and input type(s).'''
-
-## how to run abi_to_rc.py
-how_to =    '''\n \nhow to run:\n  $ python abi_to_rc.py /path/to/smart-contract.abi'''
-
-## example of how to run abi_to_rc.py
-example =   '''\n \nexample:\n  $ python abi_to_rc.py ../../contracts/currency/currency.abi'''
-
 # argument parser
 parser = argparse.ArgumentParser(
     prog="abi_to_rc.py",
-    formatter_class=argparse.RawDescriptionHelpFormatter,
-    description=purpose + how_to + example,
-    usage="\n  $ python %(prog)s [-h] abi_file")
+    description="The abi_to_rc.py script processes a contract's .abi file in order to generate an overview Ricardian Contract and a Ricardian Contract for each action. The overview Ricardian Contract provides a description of the contract's purpose and also specifies the contract's action(s), input(s), and input type(s). The action Ricardian Contract provides a description of the action's purpose and also specifies the action's input(s), and input type(s).",
+    epilog="example: $ python abi_to_rc.py ../../contracts/currency/currency.abi",
+    usage="$ python %(prog)s [-h] abi_file")
 parser.add_argument("abi_file", help="path to smart contract's .abi file")
 args = parser.parse_args()
 
@@ -100,23 +86,19 @@ def build_table_rows():
 # generates an overview ricardian contract from the overview template
 def generate_rc_overview_file():
     tr = build_table_rows()
-    plural = {  'action': 'actions' if len(actions) > 1 else 'action',
-                'input': 'inputs' if len(inputs) > 1 else 'input',
-                'type': 'types' if len(types) > 1 else 'type'      }
     abi_file_name = os.path.split(args.abi_file)[1]
     contract_name = os.path.splitext(abi_file_name)[0]
     rc_file_name = contract_name + '-rc.md'
     dirname = os.path.split(args.abi_file)[0]
+    subs = {'contract': contract_name,
+            'action': 'actions' if len(actions) > 1 else 'action',
+            'input': 'inputs' if len(inputs) > 1 else 'input',
+            'type': 'types' if len(types) > 1 else 'type'}
+    subs.update([(k+'_header',v.title()) for k,v in subs.copy().items()])
     rc_file = open(os.path.join(dirname, rc_file_name),"w+")
     with open(os.path.join(os.path.dirname(sys.argv[0]), _RC_OVERVIEW)) as fp:
         overview_template = Template(fp.read())
-        rc_file.write(overview_template.substitute( contract=contract_name,
-                                                    action=plural['action'],
-                                                    input=plural['input'],
-                                                    type=plural['type'],
-                                                    action_header=plural['action'].title(),
-                                                    input_header=plural['input'].title(),
-                                                    type_header=plural['type'].title()       ))
+        rc_file.write(overview_template.substitute(subs))
         rc_file.write('\n'.join(tr))
     rc_file.close()
 
@@ -127,17 +109,15 @@ def generate_rc_action_files():
     contract_name = os.path.splitext(abi_filename)[0]
     dirname = os.path.split(args.abi_file)[0]
     for action in actions:
-        plural = {  'input': 'inputs' if len(inputs[action['name']]) > 1 else 'input',
-                    'type': 'types' if len(types[action['name']]) > 1 else 'type'      }
+        subs = {'action': action['name'],
+                'input': 'inputs' if len(inputs[action['name']]) > 1 else 'input',
+                'type': 'types' if len(types[action['name']]) > 1 else 'type'}
+        subs.update([(k+'_header',v.title()) for k,v in subs.copy().items()])
         rc_action_file_name = contract_name + "-" + action['name'] + '-rc.md'
         rc_file = open(os.path.join(dirname, rc_action_file_name),"w+")
         with open(os.path.join(os.path.dirname(sys.argv[0]), _RC_ACTION)) as fp:
             action_template = Template(fp.read())
-            rc_file.write(action_template.substitute(   action=action['name'],
-                                                        input=plural['input'],
-                                                        type=plural['type'],
-                                                        input_header=plural['input'].title(),
-                                                        type_header=plural['type'].title()     ))
+            rc_file.write(action_template.substitute(subs))
             for row in tr:
                 if re.search("\\b" + action['name'] + "\\b", row):
                     rc_file.write(row + "\n")
