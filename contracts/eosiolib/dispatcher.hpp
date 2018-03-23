@@ -66,7 +66,7 @@ extern "C" { \
       if( code == current_receiver() ) { \
          TYPE thiscontract( current_receiver() ); \
          switch( action ) { \
-            EOSIO_API( TYPE, (transfer)(issue) ) \
+            EOSIO_API( TYPE, MEMBERS ) \
          } \
          eosio_exit(0); \
       } \
