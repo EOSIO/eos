@@ -43,8 +43,8 @@ pipeline {
                         unstash 'buildUbuntu'
                         sh '''
                             . $HOME/.bash_profile
-                            if ! pgrep mongod &>/dev/null;
-                                mongod -f /etc/mongod.conf > /dev/null 2>&1 &
+                            if ! /usr/bin/pgrep mongod &>/dev/null;
+                                /usr/bin/mongod -f /etc/mongod.conf > /dev/null 2>&1 &
                             fi
                             cd build
                             printf "Waiting for testing to be available..."
@@ -62,7 +62,7 @@ pipeline {
                         }
                         always {
                             sh '''
-                                mongod --shutdown
+                                /usr/bin/mongod --shutdown
                             '''
                         }
                     }
@@ -73,8 +73,8 @@ pipeline {
                         unstash 'buildMacOS'
                         sh '''
                             . $HOME/.bash_profile
-                            if ! pgrep mongod &>/dev/null;
-                                mongod -f /etc/mongod.conf > /dev/null 2>&1 &
+                            if ! /usr/bin/pgrep mongod &>/dev/null;
+                                /usr/bin/mongod -f /etc/mongod.conf > /dev/null 2>&1 &
                             fi
                             cd build
                             ctest --output-on-failure
@@ -89,7 +89,7 @@ pipeline {
                         }
                         always {
                             sh '''
-                                mongod --shutdown
+                                /usr/bin/mongod --shutdown
                             '''
                         }
                     }
@@ -100,8 +100,8 @@ pipeline {
                         unstash 'buildFedora'
                         sh '''
                             . $HOME/.bash_profile
-                            if ! pgrep mongod &>/dev/null;
-                                mongod -f /etc/mongod.conf > /dev/null 2>&1 &
+                            if ! /usr/bin/pgrep mongod &>/dev/null;
+                                /usr/bin/mongod -f /etc/mongod.conf > /dev/null 2>&1 &
                             fi
                             cd build
                             printf "Waiting for testing to be available..."
@@ -119,7 +119,7 @@ pipeline {
                         }
                         always {
                             sh '''
-                                mongod --shutdown
+                                /usr/bin/mongod --shutdown
                             '''
                         }
                     }
