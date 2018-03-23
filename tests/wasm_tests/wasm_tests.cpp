@@ -565,7 +565,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_globals, tester ) try {
    produce_block();
 
    std::stringstream ss;
-   ss << "(module ";
+   ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64))";
    for(unsigned int i = 0; i < 85; ++i)
       ss << "(global $g" << i << " (mut i32) (i32.const 0))" << "(global $g" << i+100 << " (mut i64) (i64.const 0))";
    //that gives us 1020 bytes of mutable globals
@@ -593,17 +593,16 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
    create_accounts( {N(offsets)} );
    produce_block();
 
-   //floats not tested since they are blocked in the serializer before eosio_constraints
    vector<string> loadops = {
-      "i32.load", "i64.load", /* "f32.load", "f64.load",*/ "i32.load8_s", "i32.load8_u",
+      "i32.load", "i64.load", "f32.load", "f64.load", "i32.load8_s", "i32.load8_u",
       "i32.load16_s", "i32.load16_u", "i64.load8_s", "i64.load8_u", "i64.load16_s",
       "i64.load16_u", "i64.load32_s", "i64.load32_u"
    };
    vector<vector<string>> storeops = {
       {"i32.store",   "i32"},
       {"i64.store",   "i64"},
-    /*{"f32.store",   "f32"},
-      {"f64.store",   "f64"},*/
+      {"f32.store",   "f32"},
+      {"f64.store",   "f64"},
       {"i32.store8",  "i32"},
       {"i32.store16", "i32"},
       {"i64.store8",  "i64"},
@@ -615,7 +614,7 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
       std::stringstream ss;
       ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
       ss << "(drop (" << s << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory-2 << " (i32.const 0)))";
-      ss << "))";
+      ss << ") (export \"apply\" (func $apply)) )";
 
       set_code(N(offsets), ss.str().c_str());
       produce_block();
@@ -624,7 +623,7 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
       std::stringstream ss;
       ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
       ss << "(" << o[0] << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory-2 << " (i32.const 0) (" << o[1] << ".const 0))";
-      ss << "))";
+      ss << ") (export \"apply\" (func $apply)) )";
 
       set_code(N(offsets), ss.str().c_str());
       produce_block();
@@ -634,7 +633,7 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
       std::stringstream ss;
       ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
       ss << "(drop (" << s << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory+4 << " (i32.const 0)))";
-      ss << "))";
+      ss << ") (export \"apply\" (func $apply)) )";
 
       BOOST_CHECK_THROW(set_code(N(offsets), ss.str().c_str()), eosio::chain::wasm_execution_error);
       produce_block();
@@ -643,7 +642,7 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
       std::stringstream ss;
       ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
       ss << "(" << o[0] << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory+4 << " (i32.const 0) (" << o[1] << ".const 0))";
-      ss << "))";
+      ss << ") (export \"apply\" (func $apply)) )";
 
       BOOST_CHECK_THROW(set_code(N(offsets), ss.str().c_str()), eosio::chain::wasm_execution_error);
       produce_block();
@@ -950,6 +949,8 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
    {
    std::stringstream ss;
    ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64) (param $1 i64))";
    ss << "  (func ";
    for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i+=4)
       ss << "(local i32)";
@@ -961,6 +962,8 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
    {
    std::stringstream ss;
    ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64) (param $1 i64))";
    ss << "  (func ";
    for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i+=8)
       ss << "(local f64)";
@@ -990,6 +993,8 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
    {
    std::stringstream ss;
    ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64) (param $1 i64))";
    ss << "  (func ";
    for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes+4; i+=4)
       ss << "(local i32)";
@@ -1003,6 +1008,8 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
    {
    std::stringstream ss;
    ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64) (param $1 i64))";
    ss << "  (func ";
    for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i+=4)
       ss << "(param i32)";
@@ -1029,6 +1036,8 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
    {
    std::stringstream ss;
    ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64) (param $1 i64))";
    ss << "  (func ";
    for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes+4; i+=4)
       ss << "(param i32)";
@@ -1042,6 +1051,8 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
    {
    std::stringstream ss;
    ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64) (param $1 i64))";
    ss << "  (func (param i64) (param f32) ";
    for(unsigned int i = 12; i < wasm_constraints::maximum_func_local_bytes; i+=4)
       ss << "(local i32)";
@@ -1053,6 +1064,8 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
    {
    std::stringstream ss;
    ss << "(module ";
+   ss << "(export \"apply\" (func $apply))";
+   ss << "  (func $apply  (param $0 i64) (param $1 i64))";
    ss << "  (func (param i64) (param f32) ";
    for(unsigned int i = 12; i < wasm_constraints::maximum_func_local_bytes+4; i+=4)
       ss << "(local f32)";
@@ -1063,6 +1076,19 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
    }
 
 
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( apply_export_and_signature, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(bbb)} );
+   produce_block();
+
+   BOOST_CHECK_THROW(set_code(N(bbb), no_apply_wast), fc::exception);
+   produce_blocks(1);
+
+   BOOST_CHECK_THROW(set_code(N(bbb), apply_wrong_signature_wast), fc::exception);
+   produce_blocks(1);
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()
