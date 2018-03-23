@@ -1,6 +1,6 @@
 FROM ubuntu:16.04
 
-LABEL maintainer="Huang-Ming Huang <huangh@objectcomputing.com>" version="0.1.1" \
+LABEL author="xiaobo <peterwillcn@gmail.com>" maintainer="Xiaobo <peterwillcn@gmail.com> Huang-Ming Huang <huangh@objectcomputing.com>" version="0.1.1" \
   description="This is a base image for building eosio/eos"
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \

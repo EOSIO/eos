@@ -14,16 +14,6 @@
 #include <fc/crypto/sha1.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/utf8.hpp>
-#include <Runtime/Runtime.h>
-#include "IR/Module.h"
-#include "Platform/Platform.h"
-#include "WAST/WAST.h"
-#include "IR/Operators.h"
-#include "IR/Validate.h"
-#include "IR/Types.h"
-#include "Runtime/Runtime.h"
-#include "Runtime/Linker.h"
-#include "Runtime/Intrinsics.h"
 
 #include <softfloat.hpp>
 #include <boost/asio.hpp>
@@ -39,353 +29,32 @@ namespace eosio { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
 
-   struct runtime_guard {
-      runtime_guard() {
-         // TODO clean this up
-         //check_wasm_opcode_dispositions();
-         Runtime::init();
-      }
+   wasm_interface::wasm_interface(vm_type vm) : my( new wasm_interface_impl(vm) ) {}
 
-      ~runtime_guard() {
-         Runtime::freeUnreferencedObjects({});
-      }
+   wasm_interface::~wasm_interface() {}
 
-   };
+   void wasm_interface::validate(const bytes& code) {
+      Module module;
+      Serialization::MemoryInputStream stream((U8*)code.data(), code.size());
+      WASM::serialize(stream, module);
 
-   static weak_ptr<runtime_guard> __runtime_guard_ptr;
-   static std::mutex __runtime_guard_lock;
+      wasm_validations::wasm_binary_validation validator(module);
+      validator.validate();
 
-   /**
-    *  Implementation class for the wasm cache
-    *  it is responsible for compiling and storing instances of wasm code for use
-    *
-    */
-   struct wasm_cache_impl {
-      wasm_cache_impl()
-      {
-         std::lock_guard<std::mutex> l(__runtime_guard_lock);
-         if (__runtime_guard_ptr.use_count() == 0) {
-            _runtime_guard = std::make_shared<runtime_guard>();
-            __runtime_guard_ptr = _runtime_guard;
-         } else {
-            _runtime_guard = __runtime_guard_ptr.lock();
-         }
-      }
+      root_resolver resolver;
+      LinkResult link_result = linkModule(module, resolver);
 
-      /**
-       * this must wait for all work to be done otherwise it may destroy memory
-       * referenced by other threads
-       *
-       * Expectations on wasm_cache dictate that all available code has been
-       * returned before this can be destroyed
-       */
-      ~wasm_cache_impl() {
-      }
-
-      /**
-       * internal tracking structure which deduplicates memory images
-       * and tracks available vs in-use entries.
-       *
-       * The instances array has two sections, "available" instances
-       * are in the front of the vector and anything at an index of
-       * available_instances or greater is considered "in use"
-       *
-       * instances are stored as pointers so that their positions
-       * in the array can be moved without invaliding references to
-       * the instance handed out to other threads
-       */
-      struct code_info {
-         explicit code_info(wavm::info&& wavm_info, binaryen::info&& binaryen_info)
-         : wavm_info(std::forward<wavm::info>(wavm_info))
-         , binaryen_info(std::forward<binaryen::info>(binaryen_info))
-         {}
-
-
-         wavm::info   wavm_info;
-         binaryen::info binaryen_info;
-
-         // all existing instances of this code
-         vector<unique_ptr<wasm_cache::entry>> instances;
-         size_t available_instances = 0;
-      };
-
-      using optional_info_ref = optional<std::reference_wrapper<code_info>>;
-      using optional_entry_ref = optional<std::reference_wrapper<wasm_cache::entry>>;
-
-      /**
-       * Convenience method for running code with the _cache_lock and releaseint that lock
-       * when the code completes
-       *
-       * @param f - lambda to execute
-       * @return - varies depending on the signature of the lambda
-       */
-      template<typename F>
-      auto with_lock(std::mutex &l, F f) {
-         std::lock_guard<std::mutex> lock(l);
-         return f();
-      };
-
-      /**
-       * Fetch the tracking struct given a code_id if it exists
-       *
-       * @param code_id
-       * @return
-       */
-      optional_info_ref fetch_info(const digest_type& code_id) {
-         return with_lock(_cache_lock, [&,this](){
-            auto iter = _cache.find(code_id);
-            if (iter != _cache.end()) {
-               return optional_info_ref(iter->second);
-            }
-
-            return optional_info_ref();
-         });
-      }
-
-      /**
-       * Opportunistically fetch an available instance of the code;
-       * @param code_id - the id of the code to fetch
-       * @return - reference to the entry when one is available
-       */
-      optional_entry_ref try_fetch_entry(const digest_type& code_id) {
-         return with_lock(_cache_lock, [&,this](){
-            auto iter = _cache.find(code_id);
-            if (iter != _cache.end() && iter->second.available_instances > 0) {
-               auto &ptr = iter->second.instances.at(--(iter->second.available_instances));
-               return optional_entry_ref(*ptr);
-            }
-
-            return optional_entry_ref();
-         });
-      }
-
-      /**
-       * Fetch a copy of the code, this is guaranteed to return an entry IF the code is compilable.
-       * In order to do that in safe way this code may cause the calling thread to sleep while a new
-       * version of the code is compiled and inserted into the cache
-       *
-       * @param code_id - the id of the code to fetch
-       * @param wasm_binary - the binary for the wasm
-       * @param wasm_binary_size - the size of the binary
-       * @return reference to a usable cache entry
-       */
-      wasm_cache::entry& fetch_entry(const digest_type& code_id, const char* wasm_binary, size_t wasm_binary_size) {
-         std::condition_variable condition;
-         optional_entry_ref result;
-         std::exception_ptr error;
-
-         // compilation is not thread safe, so we dispatch it to a io_service running on a single thread to
-         // queue up and synchronize compilations
-         with_lock(_compile_lock, [&,this](){
-            // check to see if someone returned what we need before making a new one
-            auto pending_result = try_fetch_entry(code_id);
-            std::exception_ptr pending_error;
-
-            if (!pending_result) {
-               // time to compile a brand new (maybe first) copy of this code
-
-               fc::optional<wavm::entry> wavm;
-               fc::optional<wavm::info> wavm_info;
-               fc::optional<binaryen::entry> binaryen;
-               fc::optional<binaryen::info> binaryen_info;
-
-               try {
-
-                  IR::Module* module = new IR::Module();
-
-                  Serialization::MemoryInputStream stream((const U8 *) wasm_binary, wasm_binary_size);
-                  WASM::serialize(stream, *module);
-
-                  wasm_validations::wasm_binary_validation validator( *module );
-                  wasm_injections::wasm_binary_injection injector( *module );
-
-                  injector.inject();
-                  validator.validate();
-                  Serialization::ArrayOutputStream outstream;
-                  WASM::serialize(outstream, *module);
-                  std::vector<U8> bytes = outstream.getBytes();
-
-                  wavm = wavm::entry::build((char*)bytes.data(), bytes.size());
-                  wavm_info.emplace(*wavm);
-
-                  binaryen = binaryen::entry::build((char*)bytes.data(), bytes.size());
-                  binaryen_info.emplace(*binaryen);
-               } catch (...) {
-                  pending_error = std::current_exception();
-               }
-
-               if (pending_error == nullptr) {
-                  // grab the lock and put this in the cache as unavailble
-                  with_lock(_cache_lock, [&,this]() {
-                     // find or create a new entry
-                     auto iter = _cache.emplace(code_id, code_info(std::move(*wavm_info),std::move(*binaryen_info))).first;
-
-                     iter->second.instances.emplace_back(std::make_unique<wasm_cache::entry>(std::move(*wavm), std::move(*binaryen)));
-                     pending_result = optional_entry_ref(*iter->second.instances.back().get());
-                  });
-               }
-            }
-
-           if (pending_error != nullptr) {
-              error = pending_error;
-           } else {
-              result = pending_result;
-           }
-
-         });
-
-
-         try {
-            if (error != nullptr) {
-               std::rethrow_exception(error);
-            } else {
-               return (*result).get();
-            }
-         } FC_RETHROW_EXCEPTIONS(error, "error compiling WASM for code with hash: ${code_id}", ("code_id", code_id));
-      }
-
-      /**
-       * return an entry to the cache.  The entry is presumed to come back in a "dirty" state and must be
-       * sanitized before returning to the "available" state.  This sanitization is done asynchronously so
-       * as not to delay the current executing thread.
-       *
-       * @param code_id - the code Id associated with the instance
-       * @param entry - the entry to return
-       */
-      void return_entry(const digest_type& code_id, wasm_cache::entry& entry) {
-         // sanitize by reseting the memory that may now be dirty
-         auto& info = (*fetch_info(code_id)).get();
-         entry.wavm.reset(info.wavm_info);
-         entry.binaryen.reset(info.binaryen_info);
-
-         // under a lock, put this entry back in the available instances side of the instances vector
-         with_lock(_cache_lock, [&,this](){
-            // walk the vector and find this entry
-            auto iter = info.instances.begin();
-            while (iter->get() != &entry) {
-               ++iter;
-            }
-
-            FC_ASSERT(iter != info.instances.end(), "Checking in a WASM enty that was not created properly!");
-
-            auto first_unavailable = (info.instances.begin() + info.available_instances);
-            if (iter != first_unavailable) {
-               std::swap(iter, first_unavailable);
-            }
-            info.available_instances++;
-         });
-      }
-
-      //initialize the memory for a cache entry
-      wasm_cache::entry& prepare_wasm_instance(wasm_cache::entry& wasm_cache_entry, const digest_type& code_id) {
-         auto& info = (*fetch_info(code_id)).get();
-         wasm_cache_entry.wavm.prepare(info.wavm_info);
-         wasm_cache_entry.binaryen.prepare(info.binaryen_info);
-         return wasm_cache_entry;
-      }
-
-      // mapping of digest to an entry for the code
-      map<digest_type, code_info> _cache;
-      std::mutex _cache_lock;
-
-      // compilation lock
-      std::mutex _compile_lock;
-
-      std::shared_ptr<runtime_guard> _runtime_guard;
-   };
-
-   wasm_cache::wasm_cache()
-      :_my( new wasm_cache_impl() ) {
+      //there are a couple opportunties for improvement here--
+      //Easy: Cache the Module created here so it can be reused for instantiaion
+      //Hard: Kick off instantiation in a separate thread at this location
    }
 
-   wasm_cache::~wasm_cache() = default;
-
-   wasm_cache::entry &wasm_cache::checkout( const digest_type& code_id, const char* wasm_binary, size_t wasm_binary_size ) {
-      // see if there is an available entry in the cache
-      auto result = _my->try_fetch_entry(code_id);
-      if (result) {
-         wasm_cache::entry& wasm_cache_entry = (*result).get();
-         return _my->prepare_wasm_instance(wasm_cache_entry, code_id);
-      }
-      return _my->prepare_wasm_instance(_my->fetch_entry(code_id, wasm_binary, wasm_binary_size), code_id);
+   void wasm_interface::apply( const digest_type& code_id, const shared_vector<char>& code, apply_context& context ) {
+      my->get_instantiated_module(code_id, code)->apply(context);
    }
 
-
-   void wasm_cache::checkin(const digest_type& code_id, entry& code ) {
-      _my->return_entry(code_id, code);
-   }
-
-   /**
-    * RAII wrapper to make sure that the context is cleaned up on exception
-    */
-   struct scoped_context {
-      template<typename ...Args>
-      scoped_context(optional<wasm_context> &context, Args&&... args)
-      :context(context)
-      {
-         context.emplace( std::forward<Args>(args)... );
-      }
-
-      ~scoped_context() {
-         context.reset();
-      }
-
-      optional<wasm_context>& context;
-   };
-
-   wasm_interface::wasm_interface()
-      :my( new wasm_interface_impl() ) {
-   }
-
-   wasm_interface& wasm_interface::get() {
-      thread_local wasm_interface* single = nullptr;
-      if( !single ) {
-         single = new wasm_interface();
-      }
-      return *single;
-   }
-
-   void wasm_interface::apply( wasm_cache::entry& code, apply_context& context, vm_type vm ) {
-      try {
-         auto context_guard = scoped_context(my->current_context, code, context, vm);
-         switch (vm) {
-            case vm_type::wavm:
-               code.wavm.call_apply(context);
-               break;
-            case vm_type::binaryen:
-               code.binaryen.call_apply(context);
-               break;
-         }
-      } catch ( const wasm_exit& ){}
-   }
-
-   void wasm_interface::error( wasm_cache::entry& code, apply_context& context, vm_type vm ) {
-      try {
-         auto context_guard = scoped_context(my->current_context, code, context, vm);
-         switch (vm) {
-            case vm_type::wavm:
-               code.wavm.call_error(context);
-               break;
-            case vm_type::binaryen:
-               code.binaryen.call_error(context);
-               break;
-         }
-      } catch ( const wasm_exit& ){}
-   }
-
-   wasm_context& common::intrinsics_accessor::get_context(wasm_interface &wasm) {
-      FC_ASSERT(wasm.my->current_context.valid());
-      return *wasm.my->current_context;
-   }
-
-   const wavm::entry& wavm::entry::get(wasm_interface& wasm) {
-      return common::intrinsics_accessor::get_context(wasm).code.wavm;
-   }
-
-
-   const binaryen::entry& binaryen::entry::get(wasm_interface& wasm) {
-      return common::intrinsics_accessor::get_context(wasm).code.binaryen;
-   }
+   wasm_instantiated_module_interface::~wasm_instantiated_module_interface() {}
+   wasm_runtime_interface::~wasm_runtime_interface() {}
 
 #if defined(assert)
    #undef assert
@@ -393,10 +62,8 @@ namespace eosio { namespace chain {
 
 class context_aware_api {
    public:
-      context_aware_api(wasm_interface& wasm, bool context_free = false )
-      :code(intrinsics_accessor::get_context(wasm).code),
-       context(intrinsics_accessor::get_context(wasm).context)
-      ,vm(intrinsics_accessor::get_context(wasm).vm)
+      context_aware_api(apply_context& ctx, bool context_free = false )
+      :context(ctx)
       {
          if( context.context_free )
             FC_ASSERT( context_free, "only context free api's can be used in this context" );
@@ -404,16 +71,14 @@ class context_aware_api {
       }
 
    protected:
-      wasm_cache::entry&         code;
       apply_context&             context;
-      wasm_interface::vm_type    vm;
 
 };
 
 class context_free_api : public context_aware_api {
    public:
-      context_free_api( wasm_interface& wasm )
-      :context_aware_api(wasm, true) {
+      context_free_api( apply_context& ctx )
+      :context_aware_api(ctx, true) {
          /* the context_free_data is not available during normal application because it is prunable */
          FC_ASSERT( context.context_free, "this API may only be called from context_free apply" );
       }
@@ -425,8 +90,8 @@ class context_free_api : public context_aware_api {
 
 class privileged_api : public context_aware_api {
    public:
-      privileged_api( wasm_interface& wasm )
-      :context_aware_api(wasm)
+      privileged_api( apply_context& ctx )
+      :context_aware_api(ctx)
       {
          FC_ASSERT( context.privileged, "${code} does not have permission to call this API", ("code",context.receiver) );
       }
@@ -535,8 +200,8 @@ class privileged_api : public context_aware_api {
 
 class checktime_api : public context_aware_api {
 public:
-   explicit checktime_api( wasm_interface& wasm )
-   :context_aware_api(wasm,true){}
+   explicit checktime_api( apply_context& ctx )
+   :context_aware_api(ctx,true){}
 
    void checktime(uint32_t instruction_count) {
       context.checktime(instruction_count);
@@ -800,7 +465,6 @@ class softfloat_api : public context_aware_api {
             return a.v >> 63 ? -0.0 : 1.0; //float64_t{0x8000000000000000} : float64_t{0xBE99999A3F800000}; //either -0.0 or 1
          }
          if (f64_lt( y, to_softfloat64(0) )) {
-            std::cout << "A3 " << af << " C " << floor(af) << " Y "<< *(double*)&ret << "\n";
             ret = f64_add( f64_add( a, y ), to_softfloat64(1) ); // 0xBE99999A3F800000 } ); // plus 1
             return from_softfloat64(ret);
          }
@@ -1027,8 +691,8 @@ class producer_api : public context_aware_api {
 
 class crypto_api : public context_aware_api {
    public:
-      explicit crypto_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+      explicit crypto_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       /**
        * This method can be optimized out during replay as it has
@@ -1112,8 +776,8 @@ class string_api : public context_aware_api {
 
 class system_api : public context_aware_api {
    public:
-      explicit system_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+      explicit system_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       void abort() {
          edump(("abort() called"));
@@ -1139,8 +803,8 @@ class system_api : public context_aware_api {
 
 class action_api : public context_aware_api {
    public:
-   action_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+   action_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       int read_action_data(array_ptr<char> memory, size_t size) {
          FC_ASSERT(size > 0);
@@ -1172,8 +836,8 @@ class action_api : public context_aware_api {
 
 class console_api : public context_aware_api {
    public:
-      console_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+      console_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       void prints(null_terminated_ptr str) {
          context.console_append<const char*>(str);
@@ -1339,8 +1003,8 @@ class database_api : public context_aware_api {
 
 class memory_api : public context_aware_api {
    public:
-      memory_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+      memory_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
          return (char *)::memcpy(dest, src, length);
@@ -1356,19 +1020,6 @@ class memory_api : public context_aware_api {
 
       char* memset( array_ptr<char> dest, int value, size_t length ) {
          return (char *)::memset( dest, value, length );
-      }
-
-      int sbrk(int num_bytes) {
-         // sbrk should only allow for memory to grow
-         if (num_bytes < 0)
-            throw eosio::chain::page_memory_error();
-
-         switch(vm) {
-            case wasm_interface::vm_type::wavm:
-               return (uint32_t)code.wavm.sbrk(num_bytes);
-            case wasm_interface::vm_type::binaryen:
-               return (uint32_t)code.binaryen.sbrk(num_bytes);
-         }
       }
 };
 
@@ -1407,8 +1058,8 @@ class transaction_api : public context_aware_api {
 
 class context_free_transaction_api : public context_aware_api {
    public:
-      context_free_transaction_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+      context_free_transaction_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       int read_transaction( array_ptr<char> data, size_t data_len ) {
          bytes trx = context.get_packed_transaction();
@@ -1662,8 +1313,8 @@ class compiler_builtins : public context_aware_api {
 
 class math_api : public context_aware_api {
    public:
-      math_api( wasm_interface& wasm )
-      :context_aware_api(wasm,true){}
+      math_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
 
       void diveq_i128(unsigned __int128* self, const unsigned __int128* other) {
          fc::uint128_t s(*self);
@@ -1921,7 +1572,6 @@ REGISTER_INTRINSICS(memory_api,
    (memmove,                int(int, int, int)  )
    (memcmp,                 int(int, int, int)  )
    (memset,                 int(int, int, int)  )
-   (sbrk,                   int(int)            )
 );
 
 REGISTER_INTRINSICS(softfloat_api,
@@ -1984,5 +1634,17 @@ REGISTER_INTRINSICS(softfloat_api,
       (_eosio_ui32_to_f64,    double(int32_t)       )
       (_eosio_ui64_to_f64,    double(int64_t)       )
 );
+
+std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
+   std::string s;
+   in >> s;
+   if (s == "wavm")
+      runtime = eosio::chain::wasm_interface::vm_type::wavm;
+   else if (s == "binaryen")
+      runtime = eosio::chain::wasm_interface::vm_type::binaryen;
+   else
+      in.setstate(std::ios_base::failbit);
+   return in;
+}
 
 } } /// eosio::chain

@@ -5,7 +5,7 @@ services:
     build:
       context: .
     image: eosio/eos
-    command: /opt/eosio/bin/start_nodeos.sh
+    command: /opt/eosio/bin/nodeosd.sh
     ports:
       - 8888:8888
       - 9876:9876

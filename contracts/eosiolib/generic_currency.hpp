@@ -7,6 +7,8 @@
 #include <eosiolib/action.hpp>
 #include <string>
 
+#define N(X) ::eosio::string_to_name(#X)
+
 namespace eosio {
    using std::string;
 

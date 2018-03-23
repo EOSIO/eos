@@ -2,11 +2,12 @@
 # these directories go as -isystem <dir> to avoid warnings from code of third-party libraries
 set(DEFAULT_SYSTEM_INCLUDE_FOLDERS ${CMAKE_SOURCE_DIR}/contracts/libc++/upstream/include ${CMAKE_SOURCE_DIR}/contracts/musl/upstream/include ${Boost_INCLUDE_DIR})
 
-set(STANDARD_INCLUDE_FOLDERS ${CMAKE_SOURCE_DIR}/contracts)
+set(STANDARD_INCLUDE_FOLDERS ${CMAKE_SOURCE_DIR}/contracts ${CMAKE_SOURCE_DIR}/externals/magic_get/include)
 
 add_subdirectory(eosiolib)
 add_subdirectory(musl)
 add_subdirectory(libc++)
+add_subdirectory(simple.token)
 add_subdirectory(multi_index_test)
 add_subdirectory(eosio.system)
 add_subdirectory(identity)
@@ -24,7 +25,7 @@ add_subdirectory(test_api_mem)
 add_subdirectory(test_api_db)
 add_subdirectory(test_api_multi_index)
 #add_subdirectory(social)
-add_subdirectory(test.system)
+add_subdirectory(eosio.bios)
 add_subdirectory(noop)
 
 file(GLOB SKELETONS RELATIVE ${CMAKE_SOURCE_DIR}/contracts "skeleton/*")

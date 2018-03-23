@@ -27,6 +27,7 @@ namespace eosio {
 
 using boost::multi_index::const_mem_fun;
 
+
 namespace hana = boost::hana;
 
 template<typename T>

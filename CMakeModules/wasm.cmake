@@ -54,14 +54,14 @@ macro(compile_wast)
     endif()
 
     set(WASM_COMMAND ${WASM_CLANG} -emit-llvm -O3 ${STDFLAG} --target=wasm32 -ffreestanding
-              -nostdlib -nostdlibinc -fno-threadsafe-statics -fno-rtti -fno-exceptions 
+              -nostdlib -nostdlibinc -fno-threadsafe-statics -fno-rtti -fno-exceptions  
               -c ${infile} -o ${outfile}.bc
     )
     if (${ARG_NOWARNINGS})
       list(APPEND WASM_COMMAND -Wno-everything)
     else()
       list(APPEND WASM_COMMAND -Weverything -Wno-c++98-compat -Wno-old-style-cast -Wno-vla -Wno-vla-extension -Wno-c++98-compat-pedantic
-                  -Wno-missing-prototypes -Wno-missing-variable-declarations -Wno-packed -Wno-padded -Wno-c99-extensions)
+                  -Wno-missing-prototypes -Wno-missing-variable-declarations -Wno-packed -Wno-padded -Wno-c99-extensions  -Wno-documentation-unknown-command)
     endif()
 
     foreach(folder ${ARG_INCLUDE_FOLDERS})

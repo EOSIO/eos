@@ -7,8 +7,8 @@
 #include <eosio/chain/contracts/contract_table_objects.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
-#include <test.system/test.system.wast.hpp>
-#include <test.system/test.system.abi.hpp>
+#include <eosio.bios/eosio.bios.wast.hpp>
+#include <eosio.bios/eosio.bios.abi.hpp>
 
 #include <fc/utility.hpp>
 #include <fc/io/json.hpp>
@@ -37,6 +37,14 @@ namespace eosio { namespace testing {
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
       cfg.limits = limits;
+
+      for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
+         if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--binaryen"))
+            cfg.wasm_runtime = chain::wasm_interface::vm_type::binaryen;
+         else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
+            cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
+      }
+
       open();
    }
 
@@ -523,8 +531,8 @@ namespace eosio { namespace testing {
    tester::tester(chain_controller::controller_config config): base_tester(config) {};
 
    void tester::push_genesis_block() {
-      set_code(config::system_account_name, test_system_wast);
-      set_abi(config::system_account_name, test_system_abi);
+      set_code(config::system_account_name, eosio_bios_wast);
+      set_abi(config::system_account_name, eosio_bios_abi);
    }
 
    void tester::set_producers(const vector<account_name>& producer_names) {

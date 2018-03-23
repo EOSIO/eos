@@ -1,3 +1,4 @@
+#include <eosiolib/types.hpp>
 #include <eosiolib/currency.hpp>
 #include <boost/container/flat_map.hpp>
 #include <cmath>
@@ -36,57 +37,28 @@ namespace eosio {
           _accounts(self)
          {}
 
-         /**
-          *  Create a new exchange between two extended asset types,
-          *  creator will receive the initial supply of a new token type
-          */
-         struct createx  {
-            account_name    creator;
-            asset           initial_supply;
-            uint32_t        fee;
-            extended_asset  base_deposit;
-            extended_asset  quote_deposit;
+         void createx( account_name    creator,
+                       asset           initial_supply,
+                       uint32_t        fee,
+                       extended_asset  base_deposit,
+                       extended_asset  quote_deposit
+                     );
 
-            EOSLIB_SERIALIZE( createx, (creator)(initial_supply)(fee)(base_deposit)(quote_deposit) )
-         };
+         void deposit( account_name from, extended_asset quantity );
+         void withdraw( account_name  from, extended_asset quantity );
+         void lend( account_name lender, symbol_type market, extended_asset quantity );
 
-         struct deposit {
-            account_name    from;
-            extended_asset  quantity;
-
-            EOSLIB_SERIALIZE( deposit, (from)(quantity) )
-         };
-
-         struct withdraw {
-            account_name    from;
-            extended_asset  quantity;
-
-            EOSLIB_SERIALIZE( withdraw, (from)(quantity) )
-         };
-
-         struct lend {
-            account_name     lender;
-            symbol_type      market;
-            extended_asset   quantity;
-
-            EOSLIB_SERIALIZE( lend, (lender)(market)(quantity) )
-         };
-
-         struct unlend {
-            account_name     lender;
-            symbol_type      market;
-            double           interest_shares;
-            extended_symbol  interest_symbol;
-
-            EOSLIB_SERIALIZE( unlend, (lender)(market)(interest_shares)(interest_symbol) )
-         };
+         void unlend(
+            account_name     lender,
+            symbol_type      market,
+            double           interest_shares,
+            extended_symbol  interest_symbol
+         );
 
          struct covermargin {
             account_name     borrower;
             symbol_type      market;
             extended_asset   cover_amount;
-
-            EOSLIB_SERIALIZE( covermargin, (borrower)(market)(cover_amount) )
          };
 
          struct upmargin {
@@ -94,8 +66,6 @@ namespace eosio {
             symbol_type      market;
             extended_asset   delta_borrow;
             extended_asset   delta_collateral;
-
-            EOSLIB_SERIALIZE( upmargin, (borrower)(market)(delta_borrow)(delta_collateral) )
          };
 
          struct trade {
@@ -105,23 +75,13 @@ namespace eosio {
             extended_asset  min_receive;
             uint32_t        expire = 0;
             uint8_t         fill_or_kill = true;
-
-            EOSLIB_SERIALIZE( trade, (seller)(market)(sell)(min_receive)(expire)(fill_or_kill) )
          };
 
-         // TODO: Need ability to cancel trades in order book.
-
-         void on( const deposit& d  );
-         void on( const withdraw& w );
-         void on( const lend& w );
-         void on( const unlend& w );
-         void on( const createx& c );
          void on( const trade& t    );
          void on( const upmargin& b );
          void on( const covermargin& b );
          void on( const currency::transfer& t, account_name code );
 
-
-         bool apply( account_name contract, account_name act );
+         void apply( account_name contract, account_name act );
    };
-}
+} // namespace eosio

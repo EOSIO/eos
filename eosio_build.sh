@@ -63,28 +63,28 @@
 		case $OS_NAME in
 			"Amazon Linux AMI")
 				FILE=${WORK_DIR}/scripts/eosio_build_amazon.sh
-				export CMAKE=${HOME}/opt/cmake/bin/cmake
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
-				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
+				export CMAKE=${HOME}/opt/cmake/bin/cmake
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"CentOS Linux")
 				FILE=${WORK_DIR}/scripts/eosio_build_centos.sh
-				export CMAKE=${HOME}/opt/cmake/bin/cmake
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
-				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
+				export CMAKE=${HOME}/opt/cmake/bin/cmake
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"Fedora")
 				FILE=${WORK_DIR}/scripts/eosio_build_fedora.sh
 				CXX_COMPILER=g++
 				C_COMPILER=gcc
-				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 				MONGOD_CONF=/etc/mongod.conf
+				export LLVM_DIR=${HOME}/opt/wasm/lib/cmake/llvm
 			;;
 			"Linux Mint")
 				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
@@ -107,20 +107,19 @@
 		export OPENSSL_ROOT_DIR=/usr/include/openssl
 		export OPENSSL_LIBRARIES=/usr/include/openssl
 		export WASM_ROOT=${HOME}/opt/wasm
-
-	 . $FILE
 	fi
 
 	if [ $ARCH == "Darwin" ]; then
-		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
-		OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
-		export WASM_ROOT=/usr/local/wasm
+		FILE=${WORK_DIR}/scripts/eosio_build_darwin.sh
 		CXX_COMPILER=clang++
 		C_COMPILER=clang
 		MONGOD_CONF=/usr/local/etc/mongod.conf
-
-	  . scripts/eosio_build_darwin.sh
+		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
+		OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
+		export WASM_ROOT=/usr/local/wasm
 	fi
+
+	. $FILE
 
 	printf "\n\n>>>>>>>> ALL dependencies sucessfully found or installed . Installing EOS.IO\n\n"
 
@@ -146,7 +145,7 @@
 		exit -1
 	fi
 
-	make -j${CPU_CORE} VERBOSE=0
+	make -j${CPU_CORE}
 
 	if [ $? -ne 0 ]; then
 		printf "\n\t>>>>>>>>>>>>>>>>>>>> MAKE building EOSIO has exited with the above error.\n\n"
@@ -171,8 +170,6 @@
 		printf "\n\tMongoDB is running PID=${MONGODB_PID}.\n"
 	fi
 	
-	make test
-
    if [ "x${EOSIO_BUILD_PACKAGE}" != "x" ]; then
       # Build eos.io package
       $CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \

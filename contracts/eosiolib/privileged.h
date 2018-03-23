@@ -16,6 +16,8 @@ extern "C" {
 
    bool is_privileged( account_name account );
 
+   void set_privileged( account_name account, bool is_priv );
+
    void     set_blockchain_parameters_packed(char* data, uint32_t datalen);
 
    uint32_t get_blockchain_parameters_packed(char* data, uint32_t datalen);
