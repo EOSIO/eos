@@ -366,7 +366,7 @@ struct launcher_def {
   int start_delay = 0;
   bool gelf_enabled;
   bool nogen;
-  bool rehearse;
+  bool boot;
   bool add_enable_stale_production = false;
   string launch_name;
   string launch_time;
@@ -434,7 +434,7 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), "nodeos does not require transaction signatures.")
     ("nodeos", bpo::value<string>(&eosd_extra_args), "forward nodeos command line argument(s) to each instance of nodeos, enclose arg in quotes")
     ("delay,d",bpo::value<int>(&start_delay)->default_value(0),"seconds delay before starting each node after the first")
-    ("rehearse",bpo::bool_switch(&rehearse)->default_value(false),"get all the instances stood up. generate a boot script but don't execute it.")
+    ("boot",bpo::bool_switch(&boot)->default_value(false),"After deploying the nodes and generating a boot script, invoke it.")
     ("nogen",bpo::bool_switch(&nogen)->default_value(false),"launch nodes without writing new config files")
     ("host-map",bpo::value<bf::path>(&host_map_file)->default_value(""),"a file containing mapping specific nodes to hosts. Used to enhance the custom shape argument")
     ("servers",bpo::value<bf::path>(&server_ident_file)->default_value(""),"a file containing ip addresses and names of individual servers to deploy as producers or non-producers ")
@@ -1604,7 +1604,7 @@ launcher_def::roll (const string& host_names) {
 
 void
 launcher_def::ignite() {
-   if (!rehearse) {
+   if (boot) {
       cerr << "Invoking the blockchain boot script, " << start_script << "\n";
       string script("bash " + start_script);
       bp::child c(script);

@@ -57,7 +57,6 @@ wcmd () {
 
 cacmd () {
     ecmd create account eosio $*
-    ecmd transfer eosio $1 1000000.000 "init"
 }
 
 sleep 2
@@ -93,6 +92,15 @@ echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
 ecmd set contract eosio contracts/eosio.system/eosio.system.wast contracts/eosio.system/eosio.system.abi
+
+echo ===== Start: $step ============ >> $logfile
+echo executing: cleos --wallet-port $wdport -p $biosport -H $bioshost push action eosio issue '{"to":"eosio","quantity":"1000000000.0000 EOS","memo":"init"}' -p eosio@active | tee -a $logfile
+echo ----------------------- >> $logfile
+programs/cleos/cleos --wallet-port $wdport --wallet-host $wdhost -p $biosport -H $bioshost push action eosio issue '{"to":"eosio","quantity":"1000000000.0000 EOS","memo":"init"}' -p eosio@active >> $logfile 2>&1
+echo ==== End: $step ============== >> $logfile
+step=$(($step + 1))
+
+for a in a b c d e f g h i j k l m n o p q r s t u; do ecmd transfer eosio init$a 1000000.0000 "fund producer init$a"; done
 
 
 echo waiting for producers to settle
