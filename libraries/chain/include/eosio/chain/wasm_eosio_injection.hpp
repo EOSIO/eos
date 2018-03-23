@@ -21,14 +21,14 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static std::map<std::vector<uint16_t>, uint32_t> type_slots;
       static std::map<std::string, uint32_t>           registered_injected;
       static std::map<uint32_t, uint32_t>              injected_index_mapping;
-      static uint32_t                                  first_imported_index;
+      static uint32_t                                  next_injected_index;
 
       static void init( Module& mod ) { 
          type_slots.clear(); 
          registered_injected.clear();
          injected_index_mapping.clear();
-         first_imported_index = mod.functions.imports.size();
          build_type_slots( mod );
+         next_injected_index = 0;
       }
 
       static void build_type_slots( Module& mod ) {
@@ -49,19 +49,16 @@ namespace eosio { namespace chain { namespace wasm_injections {
          }
       }
 
-      static int last_imported_index( Module& module ) {
-         return module.functions.imports.size() - 1;
-      }
-
       // get the next available index that is greater than the last exported function
-      static int get_next_index( Module& module ) {
+      static void get_next_indices( Module& module, int& next_function_index, int& next_actual_index ) {
          int exports = 0;
          for ( auto exp : module.exports )
             if ( exp.kind == IR::ObjectKind::function )
                exports++;
 
-         uint32_t next_index = module.functions.imports.size() + module.functions.defs.size() + exports + registered_injected.size()-1;
-         return next_index;
+         next_function_index = module.functions.imports.size() + module.functions.defs.size() + registered_injected.size(); // + exports + registered_injected.size()-1;
+         ;
+         next_actual_index = next_injected_index++;
       }
 
       template <ResultType Result, ValueType... Params>
@@ -69,16 +66,22 @@ namespace eosio { namespace chain { namespace wasm_injections {
          if (module.functions.imports.size() == 0 || registered_injected.find(func_name) == registered_injected.end() ) {
             add_type_slot<Result, Params...>( module );
             const uint32_t func_type_index = type_slots[{ FromResultType<Result>::value, FromValueType<Params>::value... }];
-            uint32_t next_index = get_next_index( module );
-            registered_injected.emplace( func_name, next_index );
-            module.functions.imports.push_back({{func_type_index}, std::move(scope), std::move(func_name)});
-            // TODO this is a work around to fix the export or nonimported call index offsetting
-            injected_index_mapping.emplace( next_index, module.functions.imports.size()-1 );
-            index = next_index;
+            int actual_index;
+            get_next_indices( module, index, actual_index );
+            registered_injected.emplace( func_name, index );
+            decltype(module.functions.imports) new_import = { {{func_type_index}, std::move(scope), std::move(func_name)} };
+            // prepend to the head of the imports
+            module.functions.imports.insert( module.functions.imports.begin()+(registered_injected.size()-1), new_import.begin(), new_import.end() ); 
+            injected_index_mapping.emplace( index, actual_index ); 
             // shift all exported functions by 1
             for ( int i=0; i < module.exports.size(); i++ ) {
                if ( module.exports[i].kind == IR::ObjectKind::function )
-                  module.exports[i].index += 1;
+                  module.exports[i].index++;
+            }
+            // shift all table entries for call indirect
+            for(TableSegment& ts : module.tableSegments) {
+               for(auto& idx : ts.indices)
+                  idx++;
             }
          }
          else {
@@ -91,11 +94,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void inject( IR::Module& m );
       static void initializer();
    };
-
-   struct table_element_fixup_visitor {
-      static void inject( IR::Module& m );
-      static void initializer();
-   };
+   
 
    struct memories_injection_visitor {
       static void inject( IR::Module& m );
@@ -106,8 +105,23 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void inject( IR::Module& m );
       static void initializer();
    };
+   
+   struct tables_injection_visitor {
+      static void inject( IR::Module& m );
+      static void initializer();
+   };
+
+   struct globals_injection_visitor {
+      static void inject( IR::Module& m );
+      static void initializer();
+   };
 
    struct max_memory_injection_visitor {
+      static void inject( IR::Module& m );
+      static void initializer();
+   };
+
+   struct blacklist_injection_visitor {
       static void inject( IR::Module& m );
       static void initializer();
    };
@@ -173,15 +187,13 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          wasm_ops::op_types<>::call_t* call_inst = reinterpret_cast<wasm_ops::op_types<>::call_t*>(inst);
-         const int offset = injector_utils::registered_injected.size();
-         uint32_t mapped_index = injector_utils::injected_index_mapping[call_inst->field];
-         if ( mapped_index > 0 ) {
-            call_inst->field = mapped_index;
-         } 
-         else
-            if ( call_inst->field > injector_utils::first_imported_index - 1 ) {
-               call_inst->field += offset;
-            }
+         auto mapped_index = injector_utils::injected_index_mapping.find(call_inst->field);
+         if ( mapped_index != injector_utils::injected_index_mapping.end() )  {
+            call_inst->field = mapped_index->second;
+         }
+         else {
+            call_inst->field += injector_utils::registered_injected.size();
+         }
       }
 
    };
@@ -762,7 +774,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
  
    // inherit from this class and define your own injectors 
    class wasm_binary_injection {
-      using standard_module_injectors = module_injectors< noop_injection_visitor, max_memory_injection_visitor >;
+      using standard_module_injectors = module_injectors< max_memory_injection_visitor >;
 
       public:
          wasm_binary_injection( IR::Module& mod )  : _module( &mod ) { 
@@ -797,7 +809,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
                }
                fd.code = post_code;
             }
-            table_element_fixup_visitor::inject(*_module);
          }
       private:
          IR::Module* _module;

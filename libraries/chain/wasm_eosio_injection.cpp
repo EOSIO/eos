@@ -14,20 +14,11 @@ using namespace eosio::chain::wasm_constraints;
 std::map<std::vector<uint16_t>, uint32_t> injector_utils::type_slots;
 std::map<std::string, uint32_t>           injector_utils::registered_injected;
 std::map<uint32_t, uint32_t>              injector_utils::injected_index_mapping;
-uint32_t                                  injector_utils::first_imported_index;
+uint32_t                                  injector_utils::next_injected_index;
 
 
 void noop_injection_visitor::inject( Module& m ) { /* just pass */ }
 void noop_injection_visitor::initializer() { /* just pass */ }
-
-void table_element_fixup_visitor::inject( Module& m ) {
-   for(TableSegment& ts : m.tableSegments) {
-      for(auto& idx : ts.indices)
-         idx += injector_utils::registered_injected.size();
-   }
-}
-void table_element_fixup_visitor::initializer() { /* just pass */ }
-
 
 void memories_injection_visitor::inject( Module& m ) {
 }
