@@ -59,8 +59,6 @@ namespace eosio {
             account_name     borrower;
             symbol_type      market;
             extended_asset   cover_amount;
-
-            EOSLIB_SERIALIZE( covermargin, (borrower)(market)(cover_amount) )
          };
 
          struct upmargin {
@@ -68,8 +66,6 @@ namespace eosio {
             symbol_type      market;
             extended_asset   delta_borrow;
             extended_asset   delta_collateral;
-
-            EOSLIB_SERIALIZE( upmargin, (borrower)(market)(delta_borrow)(delta_collateral) )
          };
 
          struct trade {
@@ -79,18 +75,13 @@ namespace eosio {
             extended_asset  min_receive;
             uint32_t        expire = 0;
             uint8_t         fill_or_kill = true;
-
-            EOSLIB_SERIALIZE( trade, (seller)(market)(sell)(min_receive)(expire)(fill_or_kill) )
          };
-
-         // TODO: Need ability to cancel trades in order book.
 
          void on( const trade& t    );
          void on( const upmargin& b );
          void on( const covermargin& b );
          void on( const currency::transfer& t, account_name code );
 
-
          bool apply( account_name contract, account_name act );
    };
-}
+} // namespace eosio
