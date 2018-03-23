@@ -437,6 +437,56 @@ class Node(object):
         blockNum += 1
         return self.doesNodeHaveBlockNum(blockNum)
 
+    def createInitAccounts(self, producers):
+        """Initializes accounts. Requires eosio account. Creates init accounts and funds them."""
+        eosio = Account("eosio")
+        # eosio = self.eosioAccount
+
+        # publish system contract
+        wastFile="contracts/eosio.system/eosio.system.wast"
+        abiFile="contracts/eosio.system/eosio.system.abi"
+        Utils.Print("Publish eosio.system contract")
+        trans=self.publishContract(eosio.name, wastFile, abiFile, waitForTransBlock=True)
+        if trans is None:
+           Utils.errorExit("Failed to publish eosio.system.")
+
+        Utils.Print("push issue action to eosio contract")
+        contract=eosio.name
+        action="issue"
+        data="{\"to\":\"eosio\",\"quantity\":\"1000000000.0000 EOS\"}"
+        opts="--permission eosio@active"
+        trans=self.pushMessage(contract, action, data, opts)
+        transId=Node.getTransId(trans[1])
+        self.waitForTransIdOnNode(transId)
+
+        expectedAmount=10000000000000
+        Utils.Print("Verify eosio issue, Expected: %d" % (expectedAmount))
+        actualAmount=self.getAccountBalance(eosio.name)
+        if expectedAmount != actualAmount:
+            Utils.errorExit("Issue verification failed. Excepted %d, actual: %d" % (expectedAmount, actualAmount))
+
+        trans=None
+        for name, keys in producers.items():
+            if name == eosio.name:
+                continue
+            initx = Account(name)
+            initx.ownerPrivateKey=keys[1]
+            initx.ownerPublicKey=keys[0]
+            initx.activePrivateKey=keys[1]
+            initx.activePublicKey=keys[0]
+            trans=self.createAccount(initx, eosio, 0)
+            if trans is None:
+                Utils.errorExit("Failed to create account %s" % (name))
+
+            trans = self.transferFunds(eosio, initx, 10000000000, "init transfer")
+            if trans is None:
+                Utils.errorExit("Failed to transfer funds from %s to %s." % (eosio.name, name))
+
+        transId=Node.getTransId(trans)
+        self.waitForTransIdOnNode(transId)
+
+        return None
+
     # Create account and return creation transactions. Return transaction json object
     # waitForTransBlock: wait on creation transaction id to appear in a block
     def createAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
@@ -614,7 +664,8 @@ class Node(object):
         cmdArr.append(memo)
         if force:
             cmdArr.append("-f")
-        Utils.Debug and Utils.Print("cmd: %s" % (cmdArr))
+        s=" ".join(cmdArr)
+        Utils.Debug and Utils.Print("cmd: %s" % (s))
         trans=None
         try:
             trans=Node.__runCmdArrReturnJson(cmdArr)
@@ -839,7 +890,8 @@ class Node(object):
             cmdArr.append(data)
         if opts is not None:
             cmdArr += opts.split()
-        Utils.Debug and Utils.Print("cmd: %s" % (cmdArr))
+        s=" ".join(cmdArr)
+        Utils.Debug and Utils.Print("cmd: %s" % (s))
         try:
             trans=Node.__runCmdArrReturnJson(cmdArr)
             return (True, trans)
@@ -1132,6 +1184,7 @@ class Cluster(object):
         # init accounts
         self.initaAccount=Account("inita")
         self.initbAccount=Account("initb")
+        self.eosioAccount=Account("eosio")
         self.initaAccount.ownerPrivateKey=initaPrvtKey
         self.initbAccount.ownerPrivateKey=initbPrvtKey
         self.producerKeys=None
@@ -1154,7 +1207,7 @@ class Cluster(object):
         if len(self.nodes) > 0:
             raise RuntimeError("Cluster already running.")
 
-        cmd="%s -p %s -n %s -s %s -d %s -f" % (
+        cmd="%s -p %s -n %s -s %s -d %s -f --rehearse" % (
             Utils.EosLauncherPath, pnodes, total_nodes, topo, delay)
         cmdArr=cmd.split()
         if self.staging:
@@ -1171,7 +1224,8 @@ class Cluster(object):
                     cmdArr.append("--plugin eosio::mongo_db_plugin --resync --mongodb-uri %s" % self.mongoUri)
                 else:
                     cmdArr.append("--plugin eosio::db_plugin --mongodb-uri %s" % self.mongoUri)
-        Utils.Print("cmd: ", cmdArr)
+        s=" ".join(cmdArr)
+        Utils.Print("cmd: %s" % (s))
         if 0 != subprocess.call(cmdArr):
             Utils.Print("ERROR: Launcher failed to launch.")
             return False
@@ -1521,7 +1575,13 @@ class Cluster(object):
     def parseClusterInfo(self, totalNodes):
         """Parse cluster config file. Updates producer keys data members. Returns True/False"""
 
-        producerKeys={}
+        configFile="etc/eosio/node_bios/config.ini"
+        Utils.Debug and Utils.Print("Parsing config file %s" % configFile)
+        producerKeys=Cluster.parseProducerKeys(configFile)
+        if producerKeys is None:
+            Utils.Print("ERROR: Failed to parse eosio private keys from cluster config files.")
+            return False
+
         for i in range(0, totalNodes):
             configFile="etc/eosio/node_%02d/config.ini" % (i)
             Utils.Debug and Utils.Print("Parsing config file %s" % configFile)
@@ -1532,6 +1592,7 @@ class Cluster(object):
 
         initaKeys=producerKeys["inita"]
         initbKeys=producerKeys["initb"]
+        eosioKeys=producerKeys["eosio"]
         if initaKeys is None or initbKeys is None:
             Utils.Print("ERROR: Failed to parse inita or intb private keys from cluster config files.")
             return False
@@ -1543,9 +1604,12 @@ class Cluster(object):
         self.initbAccount.ownerPublicKey=initbKeys[0]
         self.initbAccount.activePrivateKey=initbKeys[1]
         self.initbAccount.activePublicKey=initbKeys[0]
+        self.eosioAccount.ownerPrivateKey=eosioKeys[1]
+        self.eosioAccount.ownerPublicKey=eosioKeys[0]
+        self.eosioAccount.activePrivateKey=eosioKeys[1]
+        self.eosioAccount.activePublicKey=eosioKeys[0]
 
-        self.producerkeys=producerKeys
-
+        self.producerKeys=producerKeys
         return True
 
     # Populates list of EosInstanceInfo objects, matched to actual running instances
@@ -1647,12 +1711,19 @@ class Cluster(object):
             fileName="var/lib/node_%02d/stderr.txt" % (i)
             dumpErrorDetailImpl(filenme)
 
-    def killall(self):
+    def killall(self, silent=True):
         cmd="%s -k 15" % (Utils.EosLauncherPath)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-            Utils.Print("Launcher failed to shut down eos cluster.")
+            not silent and Utils.Print("Launcher failed to shut down eos cluster.")
 
+        # ocassionally the launcher cannot kill the eos server
+        cmd="pkill %s" % (Utils.EosServerName)
+        Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+        if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
+            not silent and Utils.Print("Failed to shut down eos cluster.")
+
+        # another explicit nodes shutdown
         for node in self.nodes:
             try:
                 os.kill(node.pid, signal.SIGKILL)
