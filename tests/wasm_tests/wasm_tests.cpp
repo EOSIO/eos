@@ -480,21 +480,6 @@ BOOST_FIXTURE_TEST_CASE( stl_test, tester ) try {
     }
 } FC_LOG_AND_RETHROW() /// stltest
 
-//Make sure current_memory/grow_memory is not allowed
-BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
-   produce_blocks(2);
-
-   create_accounts( {N(current_memory)} );
-   produce_block();
-
-   BOOST_CHECK_THROW(set_code(N(current_memory), current_memory_wast), eosio::chain::wasm_execution_error);
-   produce_blocks(1);
-
-   BOOST_CHECK_THROW(set_code(N(current_memory), grow_memory_wast), eosio::chain::wasm_execution_error);
-   produce_blocks(1);
-
-} FC_LOG_AND_RETHROW()
-
 //Make sure we can create a wasm with maximum pages, but not grow it any
 BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
    produce_blocks(2);
@@ -954,6 +939,130 @@ BOOST_FIXTURE_TEST_CASE( protected_globals, tester ) try {
 
    BOOST_CHECK_THROW(set_code(N(gob), global_protection_some_set_wasm), fc::exception);
    produce_blocks(1);
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(stackz)} );
+   produce_block();
+
+   {
+   std::stringstream ss;
+   ss << "(module ";
+   ss << "  (func ";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i+=4)
+      ss << "(local i32)";
+   ss << "  )";
+   ss << ")";
+   set_code(N(stackz), ss.str().c_str());
+   produce_blocks(1);
+   }
+   {
+   std::stringstream ss;
+   ss << "(module ";
+   ss << "  (func ";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i+=8)
+      ss << "(local f64)";
+   ss << "  )";
+   ss << ")";
+   set_code(N(stackz), ss.str().c_str());
+   produce_blocks(1);
+   }
+
+   //try to use contract with this many locals (so that it actually gets compiled). Note that
+   //at this time not having an apply() is an acceptable non-error.
+   {
+   signed_transaction trx;
+   action act;
+   act.account = N(stackz);
+   act.name = N();
+   act.authorization = vector<permission_level>{{N(stackz),config::active_name}};
+   trx.actions.push_back(act);
+
+   set_tapos(trx);
+   trx.sign(get_private_key( N(stackz), "active" ), chain_id_type());
+   push_transaction(trx);
+   }
+
+
+   //too many locals! should fail validation
+   {
+   std::stringstream ss;
+   ss << "(module ";
+   ss << "  (func ";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes+4; i+=4)
+      ss << "(local i32)";
+   ss << "  )";
+   ss << ")";
+   BOOST_CHECK_THROW(set_code(N(stackz), ss.str().c_str()), fc::exception);
+   produce_blocks(1);
+   }
+
+   //try again but with parameters
+   {
+   std::stringstream ss;
+   ss << "(module ";
+   ss << "  (func ";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i+=4)
+      ss << "(param i32)";
+   ss << "  )";
+   ss << ")";
+   set_code(N(stackz), ss.str().c_str());
+   produce_blocks(1);
+   }
+   //try to use contract with this many params
+   {
+   signed_transaction trx;
+   action act;
+   act.account = N(stackz);
+   act.name = N();
+   act.authorization = vector<permission_level>{{N(stackz),config::active_name}};
+   trx.actions.push_back(act);
+
+   set_tapos(trx);
+   trx.sign(get_private_key( N(stackz), "active" ), chain_id_type());
+   push_transaction(trx);
+   }
+
+   //too many params!
+   {
+   std::stringstream ss;
+   ss << "(module ";
+   ss << "  (func ";
+   for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes+4; i+=4)
+      ss << "(param i32)";
+   ss << "  )";
+   ss << ")";
+   BOOST_CHECK_THROW(set_code(N(stackz), ss.str().c_str()), fc::exception);
+   produce_blocks(1);
+   }
+
+   //let's mix params and locals are make sure it's counted correctly in mixed case
+   {
+   std::stringstream ss;
+   ss << "(module ";
+   ss << "  (func (param i64) (param f32) ";
+   for(unsigned int i = 12; i < wasm_constraints::maximum_func_local_bytes; i+=4)
+      ss << "(local i32)";
+   ss << "  )";
+   ss << ")";
+   set_code(N(stackz), ss.str().c_str());
+   produce_blocks(1);
+   }
+   {
+   std::stringstream ss;
+   ss << "(module ";
+   ss << "  (func (param i64) (param f32) ";
+   for(unsigned int i = 12; i < wasm_constraints::maximum_func_local_bytes+4; i+=4)
+      ss << "(local f32)";
+   ss << "  )";
+   ss << ")";
+   BOOST_CHECK_THROW(set_code(N(stackz), ss.str().c_str()), fc::exception);
+   produce_blocks(1);
+   }
+
+
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()

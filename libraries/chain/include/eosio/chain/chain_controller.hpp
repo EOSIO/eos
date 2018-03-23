@@ -19,6 +19,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/contracts/genesis_state.hpp>
 #include <eosio/chain/wasm_interface.hpp>
+#include <eosio/chain/webassembly/runtime_interface.hpp>
 
 #include <fc/log/logger.hpp>
 
@@ -77,6 +78,7 @@ namespace eosio { namespace chain {
             std::vector<signal<void(const transaction_metadata&, const packed_transaction&)>::slot_type> on_pending_transaction_callbacks;
             contracts::genesis_state_type  genesis;
             runtime_limits                 limits;
+            wasm_interface::vm_type        wasm_runtime        =  config::default_wasm_runtime;
          };
 
          explicit chain_controller( const controller_config& cfg );
@@ -271,10 +273,9 @@ namespace eosio { namespace chain {
          const chainbase::database& get_database() const { return _db; }
          chainbase::database&       get_mutable_database() { return _db; }
 
-         wasm_cache& get_wasm_cache() {
-            return _wasm_cache;
+         wasm_interface& get_wasm_interface() {
+            return _wasm_interface;
          }
-
 
          /**
           * @param actions - the actions to check authorization across
@@ -429,7 +430,7 @@ namespace eosio { namespace chain {
          typedef pair<scope_name,action_name>                   handler_key;
          map< account_name, map<handler_key, apply_handler> >   _apply_handlers;
 
-         wasm_cache                       _wasm_cache;
+         wasm_interface                   _wasm_interface;
 
          runtime_limits                   _limits;
    };

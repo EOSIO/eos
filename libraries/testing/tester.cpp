@@ -27,6 +27,14 @@ namespace eosio { namespace testing {
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
       cfg.limits = limits;
+
+      for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
+         if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--binaryen"))
+            cfg.wasm_runtime = chain::wasm_interface::vm_type::binaryen;
+         else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
+            cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
+      }
+
       open();
    }
 

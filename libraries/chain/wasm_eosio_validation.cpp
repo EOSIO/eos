@@ -59,4 +59,19 @@ void globals_validation_visitor::validate( const Module& m ) {
             ("k", wasm_constraints::maximum_mutable_globals));
 }
 
+void maximum_function_stack_visitor::validate( const IR::Module& m ) {
+   for(const FunctionDef& func : m.functions.defs) {
+      unsigned function_stack_usage = 0;
+      for(const ValueType& local : func.nonParameterLocalTypes)
+         function_stack_usage += getTypeBitWidth(local)/8;
+      for(const ValueType& params : m.types[func.type.index]->parameters)
+         function_stack_usage += getTypeBitWidth(params)/8;
+
+      if(function_stack_usage > wasm_constraints::maximum_func_local_bytes)
+         FC_THROW_EXCEPTION(wasm_execution_error, "Smart contract function has more than ${k} bytes of stack usage",
+            ("k", wasm_constraints::maximum_func_local_bytes));
+   }
+
+}
+
 }}} // namespace eosio chain validation
