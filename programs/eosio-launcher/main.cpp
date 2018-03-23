@@ -754,12 +754,10 @@ launcher_def::bind_nodes () {
        tn_node_def node;
         node.name = inst.name;
         node.instance = &inst;
-        // string p2p = h.public_name;
         auto kp = private_key_type::generate();
         auto pubkey = kp.get_public_key();
         node.keys.emplace_back (move(kp));
         if (is_bios) {
-           // private_key_type kp (string("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"));
            string prodname = "eosio";
            node.producers.push_back(prodname);
            producer_set.producers.push_back({prodname,pubkey});
