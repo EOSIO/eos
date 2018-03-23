@@ -480,21 +480,6 @@ BOOST_FIXTURE_TEST_CASE( stl_test, tester ) try {
     }
 } FC_LOG_AND_RETHROW() /// stltest
 
-//Make sure current_memory/grow_memory is not allowed
-BOOST_FIXTURE_TEST_CASE( memory_operators, tester ) try {
-   produce_blocks(2);
-
-   create_accounts( {N(curmen)} );
-   produce_block();
-
-   BOOST_CHECK_THROW(set_code(N(curmen), current_memory_wast), eosio::chain::wasm_execution_error);
-   produce_blocks(1);
-
-   BOOST_CHECK_THROW(set_code(N(curmen), grow_memory_wast), eosio::chain::wasm_execution_error);
-   produce_blocks(1);
-
-} FC_LOG_AND_RETHROW()
-
 //Make sure we can create a wasm with maximum pages, but not grow it any
 BOOST_FIXTURE_TEST_CASE( big_memory, tester ) try {
    produce_blocks(2);

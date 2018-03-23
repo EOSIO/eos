@@ -20,13 +20,8 @@ void apply_context::exec_one()
          (*native)(*this);
       } 
       else if (a.code.size() > 0) {
-         // get code from cache
-         auto code = mutable_controller.get_wasm_cache().checkout_scoped(a.code_version, a.code.data(),
-                                                                         a.code.size());
          try {
-            // get wasm_interface
-            auto &wasm = wasm_interface::get();
-            wasm.apply(code, *this);
+            mutable_controller.get_wasm_interface().apply(a.code_version, a.code, *this);
          } catch ( const wasm_exit& ){}
       }
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));

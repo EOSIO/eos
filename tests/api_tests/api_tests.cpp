@@ -1015,8 +1015,7 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_negative_bytes, tester)
    produce_blocks(1000);
    set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_extended_memory", "test_page_memory_negative_bytes", {} ),
-      page_memory_error, is_page_memory_error);
+   CALL_TEST_FUNCTION( *this, "test_extended_memory", "test_page_memory_negative_bytes", {} );
 
 } FC_LOG_AND_RETHROW() }
 
