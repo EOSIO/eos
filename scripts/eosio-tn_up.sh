@@ -6,18 +6,31 @@
 
 connected="0"
 
+rundir=programs/nodeos
+prog=nodeos
+
+
+if [ "$PWD" != "$EOSIO_HOME" ]; then
+    echo $0 must only be run from $EOSIO_HOME
+    exit -1
+fi
+
+if [ ! -e $rundir/$prog ]; then
+    echo unable to locate binary for nodeos
+    exit -1
+fi
+
+if [ -z "$EOSIO_NDOE" ]; then
+    echo data directory not set
+    exit -1
+fi
+
 relaunch() {
-    prog=$1; shift
-    DD=$1; shift
-    RD=$1; shift
-
-    now=`date +'%Y_%m_%d_%H_%M_%S'`
-    log=$DD/stderr.$now.txt
-
-    nohup $RD/$prog $* --data-dir $DD > $DD/stdout.txt  2> $log &
+    nohup $rundir/$prog $* --data-dir $datadir --config-dir etc/eosio/node_$EOSIO_NODE > $datadir/stdout.txt  2>> $log &
     pid=$!
 
-    echo $pid > $DD/$prog.pid
+    echo $pid > $datadir/$prog.pid
+
     for (( a = 10; $a; a = $(($a - 1)) )); do
         echo checking viability pass $((11 - $a))
         sleep 2
@@ -32,50 +45,30 @@ relaunch() {
     done
 }
 
-if [ "$PWD" != "$EOSIO_HOME" ]; then
-    echo $0 must only be run from $EOSIO_HOME
-    exit -1
-fi
+datadir=var/lib/node_$EOSIO_NODE
+now=`date +'%Y_%m_%d_%H_%M_%S'`
+log=$datadir/stderr.$now.txt
+touch $log
+rm $datadir/stderr.txt
+ln -s $log $datadir/stderr.txt
 
-prog=""
-RD=""
-for p in eosd eosiod nodeos; do
-    prog=$p
-    RD=bin
-    if [ -f $RD/$prog ]; then
-        break;
-    else
-        RD=programs/$prog
-        if [ -f $RD/$prog ]; then
-            break;
-        fi
-    fi
-    prog=""
-    RD=""
-done
 
-if [ \( -z "$prog" \) -o \( -z "$RD" \) ]; then
-    echo unable to locate binary for eosd or eosiod or nodeos
-    exit 1
-fi
-
-if [ -z "$EOSIO_TN_RESTART_DATA_DIR" ]; then
-    echo data directory not set
-    exit 1
-fi
-
-DD=$EOSIO_TN_RESTART_DATA_DIR;
-
-echo starting with no modifiers
-relaunch $prog $DD $RD $*
-if [ \( -z "$running" \) -o \( "$connected" -eq 0 \) ]; then
-    echo base relaunch failed, trying with replay
-    relaunch $prog $DD $RD $* --replay
+if [ -z "$EOSIO_LEVEL" ]; then
+    echo starting with no modifiers
+    relaunch $prog $rundir $*
     if [ \( -z "$running" \) -o \( "$connected" -eq 0 \) ]; then
-        echo relaunch replay failed, trying with resync
-        relaunch $prog $DD $RD $* --resync
+        EOSIO_LEVEL=replay
     fi
 fi
 
-rm $DD/stderr.txt
-ln -s stderr.$now.txt $DD/stderr.txt
+if [ $EOSIO_LEVEL == replay ]; then
+    echo starting with replay
+    relaunch $prog $rundir $* --replay
+    if [ \( -z "$running" \) -o \( "$connected" -eq 0 \) ]; then
+        EOSIO_LEVEL=resync
+    fi
+fi
+if [ "$EOSIO_LEVEL" == resync ]; then
+    echo starting wih resync
+    relaunch $* --resync
+fi
