@@ -35,7 +35,7 @@ BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
 
          // Calculate effective block num, which is the start of the next round
          auto eff_block_num = control->get_dynamic_global_properties().head_block_number + 1;
-         const auto blocks_per_round = control->get_global_properties().active_producers.producers.size() * config::producer_repititions;
+         const auto blocks_per_round = control->get_global_properties().active_producers.producers.size() * config::producer_repetitions;
          while((eff_block_num % blocks_per_round) != 0) {
             eff_block_num++;
          }
@@ -46,7 +46,7 @@ BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
 
       // Utility function to calculate expected producer
       const auto& get_expected_producer = [&](const producer_schedule_type& schedule, const uint64_t slot) -> account_name {
-         const auto& index = (slot % (schedule.producers.size() * config::producer_repititions)) / config::producer_repititions;
+         const auto& index = (slot % (schedule.producers.size() * config::producer_repetitions)) / config::producer_repetitions;
          return schedule.producers.at(index).producer_name;
       };
 
