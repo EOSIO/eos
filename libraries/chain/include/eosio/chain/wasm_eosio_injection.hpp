@@ -91,7 +91,11 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void inject( IR::Module& m );
       static void initializer();
    };
-   
+
+   struct table_element_fixup_visitor {
+      static void inject( IR::Module& m );
+      static void initializer();
+   };
 
    struct memories_injection_visitor {
       static void inject( IR::Module& m );
@@ -803,6 +807,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
                }
                fd.code = post_code;
             }
+            table_element_fixup_visitor::inject(*_module);
          }
       private:
          IR::Module* _module;
