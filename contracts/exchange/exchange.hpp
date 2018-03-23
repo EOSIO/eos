@@ -82,6 +82,6 @@ namespace eosio {
          void on( const covermargin& b );
          void on( const currency::transfer& t, account_name code );
 
-         bool apply( account_name contract, account_name act );
+         void apply( account_name contract, account_name act );
    };
 } // namespace eosio

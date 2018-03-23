@@ -55,10 +55,24 @@ namespace eosio {
    }
 
 #define EOSIO_API_CALL( r, OP, elem ) \
-   case ::eosio::string_to_name( BOOST_PP_STRINGIZE(elem) ): return eosio::execute_action( this, &OP::elem );
+   case ::eosio::string_to_name( BOOST_PP_STRINGIZE(elem) ): eosio::execute_action( &thiscontract, &OP::elem ); return;
 
 #define EOSIO_API( TYPE,  MEMBERS ) \
    BOOST_PP_SEQ_FOR_EACH( EOSIO_API_CALL, TYPE, MEMBERS )
+
+#define EOSIO_ABI( TYPE, MEMBERS ) \
+extern "C" { \
+   void apply( uint64_t code, uint64_t action ) { \
+      if( code == current_receiver() ) { \
+         TYPE thiscontract( current_receiver() ); \
+         switch( action ) { \
+            EOSIO_API( TYPE, (transfer)(issue) ) \
+         } \
+         eosio_exit(0); \
+      } \
+   } \
+} \
+
 
    /*
    template<typename T>

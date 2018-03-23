@@ -9,7 +9,6 @@
 
 namespace eosio {
 
-
    void exchange::deposit( account_name from, extended_asset quantity ) {
       eosio_assert( quantity.is_valid(), "invalid quantity" );
       currency::inline_transfer( from, _this_contract, quantity, "deposit" );
@@ -207,16 +206,17 @@ namespace eosio {
 
    #define N(X) ::eosio::string_to_name(#X)
 
-   bool exchange::apply( account_name contract, account_name act ) {
+   void exchange::apply( account_name contract, account_name act ) {
 
       if( act == N(transfer) ) {
          on( unpack_action_data<currency::transfer>(), contract );
-         return true;
+         return;
       }
 
       if( contract != _this_contract )
-         return false;
+         return;
 
+      auto& thiscontract = *this;
       switch( act ) {
          EOSIO_API( exchange, (createx)(deposit)(withdraw)(lend)(unlend) )
       };
@@ -224,15 +224,16 @@ namespace eosio {
       switch( act ) {
          case N(trade):
             on( unpack_action_data<trade>() );
-            return true;
+            return;
          case N(upmargin):
             on( unpack_action_data<upmargin>() );
-            return true;
+            return;
          case N(covermargin):
             on( unpack_action_data<covermargin>() );
-            return true;
+            return;
          default:
-            return _excurrencies.apply( contract, act );
+            _excurrencies.apply( contract, act ); 
+            return;
       }
    }
 
@@ -246,4 +247,7 @@ extern "C" {
       ex.apply( code, action );
       eosio_exit(0);
    }
+}
+
+void main() {
 }
