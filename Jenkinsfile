@@ -60,11 +60,6 @@ pipeline {
                             archiveArtifacts 'build/tn_data_00/stderr.txt'
                             archiveArtifacts 'build/test_walletd_output.log'
                         }
-                        always {
-                            sh '''
-                                /usr/bin/mongod --shutdown
-                            '''
-                        }
                     }
                 }
                 stage('MacOS') {
@@ -86,11 +81,6 @@ pipeline {
                             archiveArtifacts 'build/tn_data_00/config.ini'
                             archiveArtifacts 'build/tn_data_00/stderr.txt'
                             archiveArtifacts 'build/test_walletd_output.log'
-                        }
-                        always {
-                            sh '''
-                                /usr/local/bin/mongod --shutdown
-                            '''
                         }
                     }
                 }
@@ -116,11 +106,6 @@ pipeline {
                             archiveArtifacts 'build/tn_data_00/config.ini'
                             archiveArtifacts 'build/tn_data_00/stderr.txt'
                             archiveArtifacts 'build/test_walletd_output.log'
-                        }
-                        always {
-                            sh '''
-                                /usr/bin/mongod --shutdown
-                            '''
                         }
                     }
                 }
