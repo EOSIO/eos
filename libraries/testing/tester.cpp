@@ -136,7 +136,6 @@ namespace eosio { namespace testing {
    }
 
    base_tester::action_result base_tester::push_action(action&& cert_act, uint64_t authorizer) {
-      idump((cert_act)(authorizer));
       signed_transaction trx;
       if (authorizer) {
          cert_act.authorization = vector<permission_level>{{authorizer, config::active_name}};
@@ -162,26 +161,28 @@ namespace eosio { namespace testing {
                              const variant_object& data )
 
    { try {
-      chain::contracts::abi_serializer abis( control->get_database().get<account_object,by_name>(code).get_abi() );
+      const auto& acnt = control->get_database().get<account_object,by_name>(code);
+      auto abi = acnt.get_abi();
+      chain::contracts::abi_serializer abis(abi);
       auto a = control->get_database().get<account_object,by_name>(code).get_abi();
 
       string action_type_name = abis.get_action_type(acttype);
+      FC_ASSERT( action_type_name != string(), "unknown action type ${a}", ("a",acttype) );
+      
 
       action act;
       act.account = code;
       act.name = acttype;
       act.authorization = vector<permission_level>{{actor, config::active_name}};
       act.data = abis.variant_to_binary(action_type_name, data);
-      wdump((act));
 
       signed_transaction trx;
       trx.actions.emplace_back(std::move(act));
       set_tapos(trx);
       trx.sign(get_private_key(actor, "active"), chain_id_type());
-      wdump((get_public_key( actor, "active" )));;
 
       return push_transaction(trx);
-   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actor) ) }
+   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actor)(data) ) }
 
    transaction_trace base_tester::push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys ) {
       variant pretty_trx = fc::mutable_variant_object()
