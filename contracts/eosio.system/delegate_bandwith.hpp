@@ -260,7 +260,7 @@ namespace eosiosystem {
             //because of an implementation bug currently it would cancel transaction
             //that will be created later in this action
             //commenting out for now
-            //cancel_deferred( del.from );
+            cancel_deferred( del.from );
 
             //create new deferred transaction
             const auto self = current_receiver();
