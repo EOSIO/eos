@@ -462,6 +462,7 @@ class apply_context {
       void exec();
 
       void execute_inline( action &&a );
+      void execute_context_free_inline( action &&a );
       void execute_deferred( deferred_transaction &&trx );
       void cancel_deferred( uint32_t sender_id );
 
@@ -586,6 +587,7 @@ class apply_context {
 
       vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
       vector<action>                      _inline_actions; ///< queued inline messages
+      vector<action>                      _cfa_inline_actions; ///< queued inline messages
       std::ostringstream                  _pending_console_output;
 
       vector<shard_lock>                  _read_locks;
