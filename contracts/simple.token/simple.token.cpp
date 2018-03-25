@@ -1,6 +1,6 @@
 #include <eosiolib/eosio.hpp>
 
-class simpletoken : public contract {
+class simpletoken : public eosio::contract {
    public:
       simpletoken( account_name self )
       :contract(self),_accounts( _self, _self){}

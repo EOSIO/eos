@@ -161,6 +161,14 @@ namespace eosio {
    };
 
 
+   template<typename T, typename... Args>
+   void dispatch_inline( permission_level perm, 
+                         account_name code, action_name act,
+                         void (T::*)(Args...), std::tuple<Args...> args ) {
+      action( perm, code, act, args ).send();
+   }
+
+
  ///@} actioncpp api
 
 } // namespace eosio

@@ -9,11 +9,8 @@
 #include <eosiolib/math.hpp>
 #include <eosiolib/multi_index.hpp>
 #include <eosiolib/dispatcher.hpp>
+#include <eosiolib/contract.hpp>
 
-struct contract {
-   contract( account_name n ):_self(n){}
-   account_name _self;
-};
 
 
 

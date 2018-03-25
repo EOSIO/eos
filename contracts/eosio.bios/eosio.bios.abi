@@ -10,7 +10,7 @@
         {"name":"cpu_weight", "type":"int64"}
       ]
     },{
-        "name": "set_priv",
+        "name": "setpriv",
         "base": "",
         "fields": [
           {"name":"account",    "type":"account_name"},
@@ -56,8 +56,8 @@
       "name": "setglimits",
       "type": "set_global_limits"
     },{
-       "name": "setprivileged",
-       "type": "set_priv"
+       "name": "setpriv",
+       "type": "setpriv"
     },{
       "name": "setprods",
       "type": "set_producers"
