@@ -820,13 +820,19 @@ void chain_controller::validate_uniqueness( const transaction& trx )const {
    EOS_ASSERT(transaction == nullptr, tx_duplicate, "transaction is not unique");
 }
 
-void chain_controller::record_transaction(const transaction& trx) {
-   //Insert transaction into unique transactions database.
-    _db.create<transaction_object>([&](transaction_object& transaction) {
-        transaction.trx_id = trx.id();
-        transaction.expiration = trx.expiration;
-    });
-}
+void chain_controller::record_transaction(const transaction& trx) 
+{ 
+   try {
+       _db.create<transaction_object>([&](transaction_object& transaction) {
+           transaction.trx_id = trx.id();
+           transaction.expiration = trx.expiration;
+       });
+   } catch ( ... ) {
+       EOS_ASSERT( false, transaction_exception,
+                  "duplicate transaction ${id}", 
+                  ("id", trx.id() ) );
+   }
+} 
 
 
 void chain_controller::validate_tapos(const transaction& trx)const {

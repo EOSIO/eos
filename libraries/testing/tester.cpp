@@ -136,6 +136,7 @@ namespace eosio { namespace testing {
    }
 
    base_tester::action_result base_tester::push_action(action&& cert_act, uint64_t authorizer) {
+      idump((cert_act)(authorizer));
       signed_transaction trx;
       if (authorizer) {
          cert_act.authorization = vector<permission_level>{{authorizer, config::active_name}};
@@ -162,6 +163,7 @@ namespace eosio { namespace testing {
 
    { try {
       chain::contracts::abi_serializer abis( control->get_database().get<account_object,by_name>(code).get_abi() );
+      auto a = control->get_database().get<account_object,by_name>(code).get_abi();
 
       string action_type_name = abis.get_action_type(acttype);
 
