@@ -120,8 +120,7 @@ class privileged_api : public context_aware_api {
       }
 
       void set_resource_limits( account_name account,
-                                uint64_t ram_bytes, int64_t net_weight, int64_t cpu_weight,
-                                int64_t /*cpu_usec_per_period*/ ) {
+                                uint64_t ram_bytes, int64_t net_weight, int64_t cpu_weight ) {
          auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
          FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free too much space" );
 
@@ -145,6 +144,10 @@ class privileged_api : public context_aware_api {
 
       void get_resource_limits( account_name account,
                                 uint64_t& ram_bytes, uint64_t& net_weight, uint64_t cpu_weight ) {
+         auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
+         ram_bytes = buo.db_reserved_capacity;
+         net_weight = buo.net_weight;
+         cpu_weight = buo.cpu_weight;
       }
 
       void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
@@ -160,24 +163,13 @@ class privileged_api : public context_aware_api {
       bool is_privileged( account_name n )const {
          return context.db.get<account_object, by_name>( n ).privileged;
       }
-      bool is_frozen( account_name n )const {
-         return context.db.get<account_object, by_name>( n ).frozen;
-      }
+
       void set_privileged( account_name n, bool is_priv ) {
          const auto& a = context.db.get<account_object, by_name>( n );
          context.mutable_db.modify( a, [&]( auto& ma ){
             ma.privileged = is_priv;
          });
       }
-
-      void freeze_account( account_name n , bool should_freeze ) {
-         const auto& a = context.db.get<account_object, by_name>( n );
-         context.mutable_db.modify( a, [&]( auto& ma ){
-            ma.frozen = should_freeze;
-         });
-      }
-
-      /// TODO: add inline/deferred with support for arbitrary permissions rather than code/current auth
 };
 
 class checktime_api : public context_aware_api {
@@ -1018,6 +1010,15 @@ class transaction_api : public context_aware_api {
          context.execute_inline(std::move(act));
       }
 
+      void send_context_free_inline( array_ptr<char> data, size_t data_len ) {
+         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
+         FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
+
+         action act;
+         fc::raw::unpack<action>(data, data_len, act);
+         context.execute_context_free_inline(std::move(act));
+      }
+
       void send_deferred( uint32_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
          try {
             // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
@@ -1412,12 +1413,10 @@ REGISTER_INTRINSICS(compiler_builtins,
 REGISTER_INTRINSICS(privileged_api,
    (activate_feature,          void(int64_t)                                 )
    (is_feature_active,         int(int64_t)                                  )
-   (set_resource_limits,       void(int64_t,int64_t,int64_t,int64_t,int64_t) )
+   (set_resource_limits,       void(int64_t,int64_t,int64_t,int64_t)         )
    (set_active_producers,      void(int,int)                                 )
    (is_privileged,             int(int64_t)                                  )
    (set_privileged,            void(int64_t, int)                            )
-   (freeze_account,            void(int64_t, int)                            )
-   (is_frozen,                 int(int64_t)                                  )
 );
 
 REGISTER_INTRINSICS(checktime_api,
@@ -1534,8 +1533,9 @@ REGISTER_INTRINSICS(context_free_transaction_api,
 );
 
 REGISTER_INTRINSICS(transaction_api,
-   (send_inline,           void(int, int)            )
-   (send_deferred,         void(int, int, int, int)  )
+   (send_inline,                        void(int, int)            )
+   (send_context_free_inline,           void(int, int)            )
+   (send_deferred,                      void(int, int, int, int)  )
 );
 
 REGISTER_INTRINSICS(context_free_api,

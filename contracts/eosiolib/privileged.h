@@ -16,13 +16,17 @@ extern "C" {
     * @{
     */
 
-   void set_resource_limits( account_name account, uint64_t ram_bytes, uint64_t net_weight, uint64_t cpu_weight, int64_t ignored);
+   void set_resource_limits( account_name account, uint64_t ram_bytes, uint64_t net_weight, uint64_t cpu_weight );
 
    void set_active_producers( char *producer_data, size_t producer_data_size );
 
    bool is_privileged( account_name account );
 
    void set_privileged( account_name account, bool is_priv );
+
+   void activate_feature( int64_t f );
+
+
 
 
 

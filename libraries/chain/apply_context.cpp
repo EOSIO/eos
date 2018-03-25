@@ -95,6 +95,14 @@ void apply_context::exec()
       exec_one();
    }
 
+   for( uint32_t i = 0; i < _cfa_inline_actions.size(); ++i ) {
+      EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
+      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta, recurse_depth + 1 );
+      ncontext.context_free = true;
+      ncontext.exec();
+      append_results(move(ncontext.results));
+   }
+
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
       EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
       apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta, recurse_depth + 1 );
@@ -189,9 +197,16 @@ void apply_context::require_recipient( account_name code ) {
  */
 void apply_context::execute_inline( action&& a ) {
    if ( !privileged ) { 
-      controller.check_authorization({a}, flat_set<public_key_type>(), false, {receiver}); 
+      if( a.account != receiver ) {
+         controller.check_authorization({a}, flat_set<public_key_type>(), false, {receiver}); 
+      }
    }
    _inline_actions.emplace_back( move(a) );
+}
+
+void apply_context::execute_context_free_inline( action&& a ) {
+   FC_ASSERT( a.authorization.size() == 0, "context free actions cannot have authorizations" );
+   _cfa_inline_actions.emplace_back( move(a) );
 }
 
 void apply_context::execute_deferred( deferred_transaction&& trx ) {
