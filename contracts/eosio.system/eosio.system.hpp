@@ -205,7 +205,7 @@ namespace eosiosystem {
                });
             }
 
-            set_resource_limits( tot_itr->owner, tot_itr->total_ram, tot_itr->total_net_weight.quantity, tot_itr->total_cpu_weight.quantity, 0 );
+            set_resource_limits( tot_itr->owner, tot_itr->total_ram, tot_itr->total_net_weight.quantity, tot_itr->total_cpu_weight.quantity );
 
             currency::inline_transfer( del.from, SystemAccount, total_stake, "stake bandwidth" );
          } // delegatebw
@@ -242,7 +242,7 @@ namespace eosiosystem {
                tot.total_cpu_weight -= del.unstake_cpu_quantity;
             });
 
-            set_resource_limits( totals.owner, totals.total_ram, totals.total_net_weight.quantity, totals.total_cpu_weight.quantity, 0 );
+            set_resource_limits( totals.owner, totals.total_ram, totals.total_net_weight.quantity, totals.total_cpu_weight.quantity );
 
             /// TODO: implement / enforce time delays on withdrawing
             currency::inline_transfer( SystemAccount, del.from, total_stake, "unstake bandwidth" );
