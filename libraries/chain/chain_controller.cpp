@@ -1478,6 +1478,7 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
 
       FC_ASSERT( context.used_context_free_api, "action did not reference database state, it should be moved to context_free_actions", ("act",act) );
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
+      fc::move_append(result.deferred_transaction_requests, std::move(context.results.deferred_transaction_requests));
       //fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
       //fc::move_append(result.canceled_deferred, std::move(context.results.canceled_deferred));
    }
