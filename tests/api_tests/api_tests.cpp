@@ -392,7 +392,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
 
    dummy_action da = { DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C };
    CallAction(*this, da);
-  
+
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
@@ -491,13 +491,13 @@ BOOST_FIXTURE_TEST_CASE(checktime_pass_tests, tester) { try {
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_AUTO_TEST_CASE(checktime_fail_tests) {
-   try {
-      tester t( {fc::milliseconds(1), fc::milliseconds(1)} );
+BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
+      tester t( {fc::milliseconds(20), fc::milliseconds(20)} );
       t.produce_blocks(2);
 
       t.create_account( N(testapi) );
       t.set_code( N(testapi), test_api_wast );
+      t.produce_blocks(1);
 
    auto call_test = [](tester& test, auto ac) {
 		signed_transaction trx;
@@ -516,8 +516,8 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) {
 
    BOOST_CHECK_EXCEPTION(call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{}), checktime_exceeded, is_checktime_exceeded);
 
-   } FC_LOG_AND_RETHROW();
-}
+} FC_LOG_AND_RETHROW() }
+
 /*************************************************************************************
  * compiler_builtins_tests test case
  *************************************************************************************/
@@ -755,7 +755,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, tester) { try {
 	CALL_TEST_FUNCTION( *this, "test_db", "idx64_general", {});
 	CALL_TEST_FUNCTION( *this, "test_db", "idx64_lowerbound", {});
 	CALL_TEST_FUNCTION( *this, "test_db", "idx64_upperbound", {});
-   
+
 } FC_LOG_AND_RETHROW() }
 /*************************************************************************************
  * multi_index_tests test case
