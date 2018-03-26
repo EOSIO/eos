@@ -331,6 +331,17 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata&& da
    return result;
 }
 
+
+block_header chain_controller::head_block_header() const
+{
+   auto b = _fork_db.fetch_block(head_block_id());
+   if( b ) return b->data;
+   
+   if (auto head_block = fetch_block_by_id(head_block_id()))
+      return *head_block;
+   return block_header();
+}
+
 void chain_controller::_start_pending_block()
 {
    FC_ASSERT( !_pending_block );
@@ -340,6 +351,30 @@ void chain_controller::_start_pending_block()
    _pending_block->regions.resize(1);
    _pending_block_trace->region_traces.resize(1);
    _start_pending_cycle();
+   _apply_on_block_transaction();
+   _finalize_pending_cycle();
+   _start_pending_cycle();
+}
+
+transaction chain_controller::_get_on_block_transaction()
+{
+   action on_block_act;
+   on_block_act.account = config::system_account_name;
+   on_block_act.name = N(onblock);
+   on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
+   on_block_act.data = fc::raw::pack(head_block_header());
+
+   transaction trx;
+   trx.actions.emplace_back(std::move(on_block_act));
+   trx.set_reference_block(head_block_id());
+   return trx;
+}
+
+void chain_controller::_apply_on_block_transaction()
+{
+   _pending_block_trace->implicit_transactions.emplace_back(_get_on_block_transaction());
+   transaction_metadata mtrx(packed_transaction(_pending_block_trace->implicit_transactions.back()), get_chain_id(), head_block_time());
+   _push_transaction(std::move(mtrx));
 }
 
 /**
@@ -602,18 +637,22 @@ void chain_controller::__apply_block(const signed_block& next_block)
    for( uint32_t i = 1; i < next_block.regions.size(); ++i )
       FC_ASSERT( next_block.regions[i-1].region < next_block.regions[i].region );
 
+   block_trace next_block_trace(next_block);
 
    /// cache the input tranasction ids so that they can be looked up when executing the
    /// summary
    vector<transaction_metadata> input_metas;
-   input_metas.reserve(next_block.input_transactions.size());
+   input_metas.reserve(next_block.input_transactions.size() + 1);
+   {
+      next_block_trace.implicit_transactions.emplace_back(_get_on_block_transaction());
+      input_metas.emplace_back(packed_transaction(next_block_trace.implicit_transactions.back()), get_chain_id(), head_block_time());
+   }
    map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
       input_metas.emplace_back(t, chain_id_type(), next_block.timestamp);
       trx_index[input_metas.back().id] =  input_metas.size() - 1;
    }
 
-   block_trace next_block_trace(next_block);
    next_block_trace.region_traces.reserve(next_block.regions.size());
 
    for( const auto& r : next_block.regions ) {
@@ -665,10 +704,16 @@ void chain_controller::__apply_block(const signed_block& next_block)
                   if( itr != trx_index.end() ) {
                      return &input_metas.at(itr->second);
                   } else {
-                     const auto& gtrx = _db.get<generated_transaction_object,by_trx_id>(receipt.id);
-                     auto trx = fc::raw::unpack<deferred_transaction>(gtrx.packed_trx.data(), gtrx.packed_trx.size());
-                     _temp.emplace(trx, gtrx.published, trx.sender, trx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() );
-                     return &*_temp;
+                     const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
+                     if (gtrx != nullptr) {
+                        auto trx = fc::raw::unpack<deferred_transaction>(gtrx->packed_trx.data(), gtrx->packed_trx.size());
+                        _temp.emplace(trx, gtrx->published, trx.sender, trx.sender_id, gtrx->packed_trx.data(), gtrx->packed_trx.size() );
+                        return &*_temp;
+                     } else {
+                        const auto& mtrx = input_metas[0];
+                        FC_ASSERT(mtrx.id == receipt.id, "on-block transaction id mismatch");
+                        return &input_metas[0];
+                     }
                   }
                };
 
@@ -960,7 +1005,6 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
       {
           FC_ASSERT( schedule == *b.new_producers, "pending producer set different than expected" );
       }
-
       const auto& gpo = get_global_properties();
 
       if( _head_producer_schedule() != schedule ) {

@@ -2,153 +2,43 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/token.hpp>
-#include <eosiolib/reflect.hpp>
-#include <eosiolib/print.hpp>
+#pragma once
+
+#include "delegate_bandwidth.hpp"
+#include <eosiolib/optional.hpp>
 
 #include <eosiolib/generic_currency.hpp>
-#include <eosiolib/datastream.hpp>
-#include <eosiolib/serialize.hpp>
-#include <eosiolib/multi_index.hpp>
-#include <eosiolib/privileged.h>
-
-#include <algorithm>
-#include <map>
 
 namespace eosiosystem {
-   using eosio::indexed_by;
-   using eosio::const_mem_fun;
-   using eosio::bytes;
-   using std::map;
-   using std::pair;
-   using eosio::print;
+
+   struct block_header {
+      checksum256                               previous;
+      time                                      timestamp;
+      checksum256                               transaction_mroot;
+      checksum256                               action_mroot;
+      checksum256                               block_mroot;
+      account_name                              producer;
+      uint32_t                                  schedule_version;
+      eosio::optional<eosio::producer_schedule> new_producers;
+
+      EOSLIB_SERIALIZE(block_header, (previous)(timestamp)(transaction_mroot)(action_mroot)(block_mroot)
+                                     (producer)(schedule_version)(new_producers))
+   };
 
    template<account_name SystemAccount>
-   class contract {
+   class contract : public delegate_bandwidth<SystemAccount> {
       public:
-         static const account_name system_account = SystemAccount;
-         typedef eosio::generic_currency< eosio::token<system_account,S(4,EOS)> > currency;
-         typedef typename currency::token_type system_token_type;
-
-         struct producer_votes {
-            account_name      owner;
-            uint64_t          padding = 0;
-            uint128_t         total_votes;
-
-            uint64_t    primary_key()const { return owner;       }
-            uint128_t   by_votes()const    { return total_votes; }
-
-            EOSLIB_SERIALIZE( producer_votes, (owner)(total_votes) )
-         };
-         typedef eosio::multi_index< N(producervote), producer_votes,
-            indexed_by<N(prototalvote), const_mem_fun<producer_votes, uint128_t, &producer_votes::by_votes>  >
-         >  producer_votes_index_type;
-
-         struct account_votes {
-            account_name                owner;
-            account_name                proxy;
-            uint32_t                    last_update;
-            system_token_type           staked;
-            std::vector<account_name>   producers;
-
-            uint64_t primary_key()const { return owner; }
-
-            EOSLIB_SERIALIZE( account_votes, (owner)(proxy)(last_update)(staked)(producers) )
-         };
-         typedef eosio::multi_index< N(accountvotes), account_votes>  account_votes_index_type;
-
-
-         struct producer_config {
-            account_name      owner;
-            eosio::bytes      packed_key; /// a packed public key object
-
-            uint64_t primary_key()const { return owner;       }
-            EOSLIB_SERIALIZE( producer_config, (owner)(packed_key) )
-         };
-         typedef eosio::multi_index< N(producercfg), producer_config>  producer_config_index_type;
-
-         struct total_resources {
-            account_name owner;
-            typename currency::token_type total_net_weight;
-            typename currency::token_type total_cpu_weight;
-            uint32_t total_ram = 0;
-
-            uint64_t primary_key()const { return owner; }
-
-            EOSLIB_SERIALIZE( total_resources, (owner)(total_net_weight)(total_cpu_weight)(total_ram) )
-         };
-
-
-         /**
-          *  Every user 'from' has a scope/table that uses every receipient 'to' as the primary key.
-          */
-         struct delegated_bandwidth {
-            account_name from;
-            account_name to;
-            typename currency::token_type net_weight;
-            typename currency::token_type cpu_weight;
-
-            uint32_t start_pending_net_withdraw = 0;
-            typename currency::token_type pending_net_withdraw;
-            uint64_t deferred_net_withdraw_handler = 0;
-
-            uint32_t start_pending_cpu_withdraw = 0;
-            typename currency::token_type pending_cpu_withdraw;
-            uint64_t deferred_cpu_withdraw_handler = 0;
-
-
-            uint64_t  primary_key()const { return to; }
-
-            EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight)
-                              (start_pending_net_withdraw)(pending_net_withdraw)(deferred_net_withdraw_handler)
-                              (start_pending_cpu_withdraw)(pending_cpu_withdraw)(deferred_cpu_withdraw_handler) )
-
-         };
-
-
-         typedef eosio::multi_index< N(totalband), total_resources>  total_resources_index_type;
-         typedef eosio::multi_index< N(delband), delegated_bandwidth> del_bandwidth_index_type;
-
-
-         ACTION( SystemAccount, finishundel ) {
-            account_name from;
-            account_name to;
-            
-            EOSLIB_SERIALIZE( finishundel, (from)(to) )
-         };
-
-         ACTION( SystemAccount, regproducer ) {
-            account_name producer;
-            bytes        producer_key;
-
-            EOSLIB_SERIALIZE( regproducer, (producer)(producer_key) )
-         };
-
-         ACTION( SystemAccount, regproxy ) {
-            account_name proxy_to_register;
-
-            EOSLIB_SERIALIZE( regproxy, (proxy_to_register) )
-         };
-
-         ACTION( SystemAccount, delegatebw ) {
-            account_name                    from;
-            account_name                    receiver;
-            typename currency::token_type   stake_net_quantity;
-            typename currency::token_type   stake_cpu_quantity;
-
-
-            EOSLIB_SERIALIZE( delegatebw, (from)(receiver)(stake_net_quantity)(stake_cpu_quantity) )
-         };
-
-         ACTION( SystemAccount, undelegatebw ) {
-            account_name                    from;
-            account_name                    receiver;
-            typename currency::token_type   unstake_net_quantity;
-            typename currency::token_type   unstake_cpu_quantity;
-
-            EOSLIB_SERIALIZE( undelegatebw, (from)(receiver)(unstake_net_quantity)(unstake_cpu_quantity) )
-         };
+         using voting<SystemAccount>::on;
+         using delegate_bandwidth<SystemAccount>::on;
+         using pe = voting<SystemAccount>;
+         using db = delegate_bandwidth<SystemAccount>;
+         using currency = typename common<SystemAccount>::currency;
+         using system_token_type = typename common<SystemAccount>::system_token_type;
+         using producers_table = typename pe::producers_table;
+         using global_state_singleton = typename voting<SystemAccount>::global_state_singleton;
+         static const uint32_t max_inflation_rate = common<SystemAccount>::max_inflation_rate;
+         static const uint32_t seconds_per_day = common<SystemAccount>::seconds_per_day;
+         static const uint32_t num_of_payed_producers = 121;
 
          ACTION( SystemAccount, nonce ) {
             eosio::string                   value;
@@ -156,245 +46,132 @@ namespace eosiosystem {
             EOSLIB_SERIALIZE( nonce, (value) )
          };
 
-         /// new id options:
-         //  1. hash + collision
-         //  2. incrementing count  (key=> tablename
-
-         static void on( const delegatebw& del ) {
-            eosio_assert( del.stake_cpu_quantity.quantity >= 0, "must stake a positive amount" );
-            eosio_assert( del.stake_net_quantity.quantity >= 0, "must stake a positive amount" );
-
-            auto total_stake = del.stake_cpu_quantity + del.stake_net_quantity;
-            eosio_assert( total_stake.quantity >= 0, "must stake a positive amount" );
-
-
-            require_auth( del.from );
-
-            del_bandwidth_index_type     del_index( SystemAccount, del.from );
-            total_resources_index_type   total_index( SystemAccount, del.receiver );
-
-            //eosio_assert( is_account( del.receiver ), "can only delegate resources to an existing account" );
-
-            auto itr = del_index.find( del.receiver);
-            if( itr != del_index.end() ) {
-               del_index.emplace( del.from, [&]( auto& dbo ){
-                  dbo.from       = del.from;
-                  dbo.to         = del.receiver;
-                  dbo.net_weight = del.stake_net_quantity;
-                  dbo.cpu_weight = del.stake_cpu_quantity;
-               });
-            }
-            else {
-               del_index.modify( itr, del.from, [&]( auto& dbo ){
-                  dbo.net_weight = del.stake_net_quantity;
-                  dbo.cpu_weight = del.stake_cpu_quantity;
-               });
-            }
-
-            auto tot_itr = total_index.find( del.receiver );
-            if( tot_itr == total_index.end() ) {
-               tot_itr = total_index.emplace( del.from, [&]( auto& tot ) {
-                  tot.owner = del.receiver;
-                  tot.total_net_weight += del.stake_net_quantity;
-                  tot.total_cpu_weight += del.stake_cpu_quantity;
-               });
-            } else {
-               total_index.modify( tot_itr, 0, [&]( auto& tot ) {
-                  tot.total_net_weight += del.stake_net_quantity;
-                  tot.total_cpu_weight += del.stake_cpu_quantity;
-               });
-            }
-
-            set_resource_limits( tot_itr->owner, tot_itr->total_ram, tot_itr->total_net_weight.quantity, tot_itr->total_cpu_weight.quantity );
-
-            currency::inline_transfer( del.from, SystemAccount, total_stake, "stake bandwidth" );
-         } // delegatebw
-
-
-
-         static void on( const undelegatebw& del ) {
-            eosio_assert( del.unstake_cpu_quantity.quantity >= 0, "must stake a positive amount" );
-            eosio_assert( del.unstake_net_quantity.quantity >= 0, "must stake a positive amount" );
-
-            auto total_stake = del.unstake_cpu_quantity + del.unstake_net_quantity;
-            eosio_assert( total_stake.quantity >= 0, "must stake a positive amount" );
-
-            require_auth( del.from );
-
-            del_bandwidth_index_type     del_index( SystemAccount, del.from );
-            total_resources_index_type   total_index( SystemAccount, del.receiver );
-
-            //eosio_assert( is_account( del.receiver ), "can only delegate resources to an existing account" );
-
-            const auto& dbw = del_index.get(del.receiver);
-            eosio_assert( dbw.net_weight >= del.unstake_net_quantity, "insufficient staked net bandwidth" );
-            eosio_assert( dbw.cpu_weight >= del.unstake_cpu_quantity, "insufficient staked cpu bandwidth" );
-
-            del_index.modify( dbw, del.from, [&]( auto& dbo ){
-               dbo.net_weight -= del.unstake_net_quantity;
-               dbo.cpu_weight -= del.unstake_cpu_quantity;
-
-            });
-
-            const auto& totals = total_index.get( del.receiver );
-            total_index.modify( totals, 0, [&]( auto& tot ) {
-               tot.total_net_weight -= del.unstake_net_quantity;
-               tot.total_cpu_weight -= del.unstake_cpu_quantity;
-            });
-
-            set_resource_limits( totals.owner, totals.total_ram, totals.total_net_weight.quantity, totals.total_cpu_weight.quantity );
-
-            /// TODO: implement / enforce time delays on withdrawing
-            currency::inline_transfer( SystemAccount, del.from, total_stake, "unstake bandwidth" );
-         } // undelegatebw
-
-
-
-
-
-         /**
-          *  This method will create a producer_config and producer_votes object for 'producer'
-          *
-          *  @pre producer is not already registered
-          *  @pre producer to register is an account
-          *  @pre authority of producer to register
-          *
-          */
-         static void on( const regproducer& reg ) {
-            auto producer = reg.producer;
-            require_auth( producer );
-
-            producer_votes_index_type votes( SystemAccount, SystemAccount );
-            auto existing = votes.find( producer );
-            eosio_assert( existing == votes.end(), "producer already registered" );
-
-            votes.emplace( producer, [&]( auto& pv ){
-               pv.owner       = producer;
-               pv.total_votes = 0;
-            });
-
-            producer_config_index_type proconfig( SystemAccount, SystemAccount );
-            proconfig.emplace( producer, [&]( auto& pc ) {
-               pc.owner      = producer;
-               pc.packed_key = reg.producer_key;
-            });
+         static void on( const nonce& ) {
          }
 
-         ACTION( SystemAccount, stakevote ) {
-            account_name      voter;
-            system_token_type amount;
-
-            EOSLIB_SERIALIZE( stakevote, (voter)(amount) )
-         };
-
-         static void on( const stakevote& sv ) {
-            print( "on stake vote\n" );
-            eosio_assert( sv.amount.quantity > 0, "must stake some tokens" );
-            require_auth( sv.voter );
-
-            account_votes_index_type avotes( SystemAccount, SystemAccount );
-
-            auto acv = avotes.find( sv.voter );
-            if( acv == avotes.end() ) {
-               acv = avotes.emplace( sv.voter, [&]( auto& av ) {
-                 av.owner = sv.voter;
-                 av.last_update = now();
-                 av.proxy = 0;
-               });
+         static bool update_cycle(time block_time) {
+            auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
+               : common<SystemAccount>::get_default_parameters();
+            if (parameters.first_block_time_in_cycle == 0) {
+               // This is the first time onblock is called in the blockchain.
+               parameters.last_bucket_fill_time = block_time;
+               global_state_singleton::set(parameters);
+               voting<SystemAccount>::update_elected_producers(block_time);
+               return true;
             }
 
-            uint128_t old_weight = acv->staked.quantity;
-            uint128_t new_weight = old_weight + sv.amount.quantity;
-
-            producer_votes_index_type votes( SystemAccount, SystemAccount );
-
-            for( auto p : acv->producers ) {
-               votes.modify( votes.get( p ), 0, [&]( auto& v ) {
-                  v.total_votes -= old_weight;
-                  v.total_votes += new_weight;
-               });
+            static const uint32_t slots_per_cycle = parameters.blocks_per_cycle;
+            const uint32_t time_slots = block_time - parameters.first_block_time_in_cycle;
+            if (time_slots >= slots_per_cycle) {
+               time beginning_of_cycle = block_time - (time_slots % slots_per_cycle);
+               voting<SystemAccount>::update_elected_producers(beginning_of_cycle);
+               return true;
             }
 
-            avotes.modify( acv, 0, [&]( auto av ) {
-               av.last_update = now();
-               av.staked += sv.amount;
-            });
-
-            currency::inline_transfer( sv.voter, SystemAccount, sv.amount, "stake for voting" );
+            return false;
          }
 
-         ACTION( SystemAccount, voteproducer ) {
-            account_name                voter;
-            account_name                proxy;
-            std::vector<account_name>   producers;
+         ACTION(SystemAccount, onblock) {
+            block_header header;
 
-            EOSLIB_SERIALIZE( voteproducer, (voter)(proxy)(producers) )
+            EOSLIB_SERIALIZE(onblock, (header))
          };
 
-         /**
-          *  @pre vp.producers must be sorted from lowest to highest
-          *  @pre if proxy is set then no producers can be voted for
-          *  @pre every listed producer or proxy must have been previously registered
-          *  @pre vp.voter must authorize this action
-          *  @pre voter must have previously staked some EOS for voting
-          */
-         static void on( const voteproducer& vp ) {
-            eosio_assert( std::is_sorted( vp.producers.begin(), vp.producers.end() ), "producer votes must be sorted" );
-            eosio_assert( vp.producers.size() <= 30, "attempt to vote for too many producers" );
-            if( vp.proxy != 0 ) eosio_assert( vp.producers.size() == 0, "cannot vote for producers and proxy at same time" );
+         static void on(const onblock& ob) {
+            // update parameters if it's a new cycle
+            update_cycle(ob.header.timestamp);
 
-            require_auth( vp.voter );
-
-            account_votes_index_type avotes( SystemAccount, SystemAccount );
-            const auto& existing = avotes.get( vp.voter );
-
-            std::map<account_name, pair<uint128_t, uint128_t> > producer_vote_changes;
-
-            uint128_t old_weight = existing.staked.quantity; /// old time
-            uint128_t new_weight = old_weight; /// TODO: update for current weight
-
-            for( const auto& p : existing.producers )
-               producer_vote_changes[p].first = old_weight;
-            for( const auto& p : vp.producers )
-               producer_vote_changes[p].second = new_weight;
-
-            producer_votes_index_type votes( SystemAccount, SystemAccount );
-            for( const auto& delta : producer_vote_changes ) {
-               if( delta.second.first != delta.second.second ) {
-                  const auto& provote = votes.get( delta.first );
-                  votes.modify( provote, 0, [&]( auto& pv ){
-                     pv.total_votes -= delta.second.first;
-                     pv.total_votes += delta.second.second;
+            producers_table producers_tbl(SystemAccount, SystemAccount);
+            account_name producer = ob.header.producer;
+            auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
+                  : common<SystemAccount>::get_default_parameters();
+            const system_token_type block_payment = parameters.payment_per_block;
+            auto prod = producers_tbl.find(producer);
+            if ( prod != producers_tbl.end() ) {
+               producers_tbl.modify( prod, 0, [&](auto& p) {
+                     p.per_block_payments += block_payment;
+                     p.last_produced_block_time = ob.header.timestamp;
                   });
+            }
+
+            const uint32_t num_of_payments = ob.header.timestamp - parameters.last_bucket_fill_time;
+            const system_token_type to_eos_bucket = num_of_payments * parameters.payment_to_eos_bucket;
+            parameters.last_bucket_fill_time = ob.header.timestamp;
+            parameters.eos_bucket += to_eos_bucket;
+            global_state_singleton::set(parameters);
+         }
+
+         ACTION(SystemAccount, claimrewards) {
+            account_name owner;
+
+            EOSLIB_SERIALIZE(claimrewards, (owner))
+         };
+
+         static void on(const claimrewards& cr) {
+            require_auth(cr.owner);
+            eosio_assert(current_sender() == account_name(), "claimrewards can not be part of a deferred transaction");
+            producers_table producers_tbl(SystemAccount, SystemAccount);
+            auto prod = producers_tbl.find(cr.owner);
+            eosio_assert(prod != producers_tbl.end(), "account name is not in producer list");
+            eosio_assert(prod->active(), "producer is not active"); // QUESTION: Why do we want to prevent inactive producers from claiming their earned rewards?
+            if( prod->last_rewards_claim > 0 ) {
+               eosio_assert(now() >= prod->last_rewards_claim + seconds_per_day, "already claimed rewards within a day");
+            }
+            system_token_type rewards = prod->per_block_payments;
+            auto idx = producers_tbl.template get_index<N(prototalvote)>();
+            auto itr = --idx.end();
+
+            bool is_among_payed_producers = false;
+            uint128_t total_producer_votes = 0;
+            uint32_t n = 0;
+            while( n < num_of_payed_producers ) {
+               if( !is_among_payed_producers ) {
+                  if( itr->owner == cr.owner )
+                     is_among_payed_producers = true;
+               }
+               if( itr->active() ) {
+                  total_producer_votes += itr->total_votes;
+                  ++n;
+               }
+               if( itr == idx.begin() ) {
+                  break;
+               }
+               --itr;
+            }
+
+            if (is_among_payed_producers && total_producer_votes > 0) {
+               if( global_state_singleton::exists() ) {
+                  auto parameters = global_state_singleton::get();
+                  auto share_of_eos_bucket = system_token_type( static_cast<uint64_t>( (prod->total_votes * parameters.eos_bucket.quantity) / total_producer_votes ) ); // This will be improved in the future when total_votes becomes a double type.
+                  rewards += share_of_eos_bucket;
+                  parameters.eos_bucket -= share_of_eos_bucket;
+                  global_state_singleton::set(parameters);
                }
             }
 
-            avotes.modify( existing, 0, [&]( auto& av ) {
-              av.proxy = vp.proxy;
-              av.last_update = now();
-              av.producers = vp.producers;
-            });
-         }
+            eosio_assert( rewards > system_token_type(), "no rewards available to claim" );
 
-         static void on( const regproxy& reg ) {
-            require_auth( reg.proxy_to_register );
+            producers_tbl.modify( prod, 0, [&](auto& p) {
+                  p.last_rewards_claim = now();
+                  p.per_block_payments.quantity = 0;
+               });
 
-         }
-
-         static void on( const nonce& ) {
-         }
-         
-         static void on( const finishundel& ) {            
+            currency::inline_transfer(cr.owner, SystemAccount, rewards, "producer claiming rewards");
          }
 
          static void apply( account_name code, action_name act ) {
-
-            if( !eosio::dispatch<contract,
-                                 regproducer, regproxy,
-                                 delegatebw, undelegatebw,
-                                 finishundel, voteproducer, stakevote,
+            if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
+               if( !eosio::dispatch<contract, typename delegate_bandwidth<SystemAccount>::delegatebw,
+                                 typename delegate_bandwidth<SystemAccount>::undelegatebw,
+                                 typename delegate_bandwidth<SystemAccount>::refund,
+                                 typename voting<SystemAccount>::regproxy,
+                                 typename voting<SystemAccount>::unregproxy,
+                                 typename voting<SystemAccount>::regproducer,
+                                 typename voting<SystemAccount>::unregprod,
+                                 typename voting<SystemAccount>::voteproducer,
+                                 onblock,
+                                 claimrewards,
                                  nonce>( code, act) ) {
-               if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                   eosio::print("Unexpected action: ", eosio::name(act), "\n");
                   eosio_assert( false, "received unexpected action");
                }

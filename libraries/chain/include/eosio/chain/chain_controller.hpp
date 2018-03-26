@@ -267,6 +267,7 @@ namespace eosio { namespace chain {
          uint32_t             head_block_num()const;
          block_id_type        head_block_id()const;
          account_name         head_block_producer()const;
+         block_header         head_block_header()const; 
 
          uint32_t last_irreversible_block_num() const;
 
@@ -407,6 +408,9 @@ namespace eosio { namespace chain {
          void _finalize_pending_cycle();
          void _apply_cycle_trace( const cycle_trace& trace );
          void _finalize_block( const block_trace& b );
+
+         transaction _get_on_block_transaction();
+         void _apply_on_block_transaction();
 
 
       //        producer_schedule_type calculate_next_round( const signed_block& next_block );
