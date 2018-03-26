@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/wasm_eosio_binary_ops.hpp>
+#include <eosio/chain/webassembly/common.hpp>
 #include <fc/exception/exception.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <functional>
@@ -62,14 +63,14 @@ namespace eosio { namespace chain { namespace wasm_injections {
       }
 
       template <ResultType Result, ValueType... Params>
-      static void add_import(Module& module, const char* scope, const char* func_name, int32_t& index ) {
+      static void add_import(Module& module, const char* func_name, int32_t& index ) {
          if (module.functions.imports.size() == 0 || registered_injected.find(func_name) == registered_injected.end() ) {
             add_type_slot<Result, Params...>( module );
             const uint32_t func_type_index = type_slots[{ FromResultType<Result>::value, FromValueType<Params>::value... }];
             int actual_index;
             get_next_indices( module, index, actual_index );
             registered_injected.emplace( func_name, index );
-            decltype(module.functions.imports) new_import = { {{func_type_index}, std::move(scope), std::move(func_name)} };
+            decltype(module.functions.imports) new_import = { {{func_type_index}, EOSIO_INJECTED_MODULE_NAME, std::move(func_name)} };
             // prepend to the head of the imports
             module.functions.imports.insert( module.functions.imports.begin()+(registered_injected.size()-1), new_import.begin(), new_import.end() ); 
             injected_index_mapping.emplace( index, actual_index ); 
@@ -163,7 +164,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() { checktime_idx = -1; }
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          // first add the import for checktime
-         injector_utils::add_import<ResultType::none, ValueType::i32>( *(arg.module), u8"env", u8"checktime", checktime_idx );
+         injector_utils::add_import<ResultType::none, ValueType::i32>( *(arg.module), u8"checktime", checktime_idx );
 
          wasm_ops::op_types<>::i32_const_t cnt; 
          cnt.field = instruction_counter::icnt;
@@ -330,7 +331,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::f32, ValueType::f32, ValueType::f32>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         injector_utils::add_import<ResultType::f32, ValueType::f32, ValueType::f32>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
          std::vector<U8> injected = f32op.pack();
@@ -345,7 +346,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::f32, ValueType::f32>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         injector_utils::add_import<ResultType::f32, ValueType::f32>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
          std::vector<U8> injected = f32op.pack();
@@ -360,7 +361,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::i32, ValueType::f32, ValueType::f32>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         injector_utils::add_import<ResultType::i32, ValueType::f32, ValueType::f32>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
          std::vector<U8> injected = f32op.pack();
@@ -374,7 +375,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::f64, ValueType::f64, ValueType::f64>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         injector_utils::add_import<ResultType::f64, ValueType::f64, ValueType::f64>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f64op;
          f64op.field = idx;
          std::vector<U8> injected = f64op.pack();
@@ -389,7 +390,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::f64, ValueType::f64>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         injector_utils::add_import<ResultType::f64, ValueType::f64>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f64op;
          f64op.field = idx;
          std::vector<U8> injected = f64op.pack();
@@ -404,7 +405,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::i32, ValueType::f64, ValueType::f64>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         injector_utils::add_import<ResultType::i32, ValueType::f64, ValueType::f64>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f64op;
          f64op.field = idx;
          std::vector<U8> injected = f64op.pack();
@@ -419,7 +420,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::i32, ValueType::f32>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         injector_utils::add_import<ResultType::i32, ValueType::f32>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
          std::vector<U8> injected = f32op.pack();
@@ -433,7 +434,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::i64, ValueType::f32>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         injector_utils::add_import<ResultType::i64, ValueType::f32>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
          std::vector<U8> injected = f32op.pack();
@@ -447,7 +448,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::i32, ValueType::f64>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         injector_utils::add_import<ResultType::i32, ValueType::f64>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
          std::vector<U8> injected = f32op.pack();
@@ -461,7 +462,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::i64, ValueType::f64>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         injector_utils::add_import<ResultType::i64, ValueType::f64>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
          std::vector<U8> injected = f32op.pack();
@@ -475,7 +476,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::f32, ValueType::i32>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         injector_utils::add_import<ResultType::f32, ValueType::i32>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
          std::vector<U8> injected = f32op.pack();
@@ -489,7 +490,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::f32, ValueType::i64>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         injector_utils::add_import<ResultType::f32, ValueType::i64>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f32op;
          f32op.field = idx;
          std::vector<U8> injected = f32op.pack();
@@ -503,7 +504,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::f64, ValueType::i32>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         injector_utils::add_import<ResultType::f64, ValueType::i32>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f64op;
          f64op.field = idx;
          std::vector<U8> injected = f64op.pack();
@@ -517,7 +518,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::f64, ValueType::i64>( *(arg.module), u8"env", inject_which_op(Opcode), idx );
+         injector_utils::add_import<ResultType::f64, ValueType::i64>( *(arg.module), inject_which_op(Opcode), idx );
          wasm_ops::op_types<>::call_t f64op;
          f64op.field = idx;
          std::vector<U8> injected = f64op.pack();
@@ -531,7 +532,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::f64, ValueType::f32>( *(arg.module), u8"env", u8"_eosio_f32_promote", idx );
+         injector_utils::add_import<ResultType::f64, ValueType::f32>( *(arg.module), u8"_eosio_f32_promote", idx );
          wasm_ops::op_types<>::call_t f32promote;
          f32promote.field = idx;
          std::vector<U8> injected = f32promote.pack();
@@ -545,7 +546,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void init() {}
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          int32_t idx;
-         injector_utils::add_import<ResultType::f32, ValueType::f64>( *(arg.module), u8"env", u8"_eosio_f64_demote", idx );
+         injector_utils::add_import<ResultType::f32, ValueType::f64>( *(arg.module), u8"_eosio_f64_demote", idx );
          wasm_ops::op_types<>::call_t f32promote;
          f32promote.field = idx;
          std::vector<U8> injected = f32promote.pack();
