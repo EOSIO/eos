@@ -233,27 +233,7 @@ genesis-json = /path/to/eos/source/genesis.json
  # Enable production on a stale chain, since a single-node test chain is pretty much always stale
 enable-stale-production = true
 # Enable block production with the testnet producers
-producer-name = inita
-producer-name = initb
-producer-name = initc
-producer-name = initd
-producer-name = inite
-producer-name = initf
-producer-name = initg
-producer-name = inith
-producer-name = initi
-producer-name = initj
-producer-name = initk
-producer-name = initl
-producer-name = initm
-producer-name = initn
-producer-name = inito
-producer-name = initp
-producer-name = initq
-producer-name = initr
-producer-name = inits
-producer-name = initt
-producer-name = initu
+producer-name = eosio
 # Load the block producer plugin, so you can produce blocks
 plugin = eosio::producer_plugin
 # Wallet plugin
