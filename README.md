@@ -122,6 +122,7 @@ git submodule update --recursive
 For ease of contract development, one further step is required:
 
 ```bash
+cd build
 sudo make install
 ```
 
