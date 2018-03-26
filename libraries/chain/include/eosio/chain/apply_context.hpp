@@ -504,6 +504,8 @@ class apply_context {
 
       const bytes&         get_packed_transaction();
 
+      uint32_t get_next_sender_id();
+
       const chain_controller&       controller;
       const chainbase::database&    db;  ///< database where state is stored
       const action&                 act; ///< message being applied

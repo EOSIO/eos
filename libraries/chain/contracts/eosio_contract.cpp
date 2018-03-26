@@ -313,24 +313,6 @@ static optional<variant> get_pending_recovery(apply_context& context, account_na
    return optional<variant_object>();
 }
 
-static uint32_t get_next_sender_id(apply_context& context) {
-   const uint64_t id = N(config::eosio_auth_scope);
-   const auto table = N(deferred.seq);
-   const auto payer = config::system_account_name;
-   const auto iter = context.db_find_i64(config::system_account_name, config::eosio_auth_scope, table, id);
-   if (iter == -1) {
-      const uint32_t next_serial = 1;
-      context.db_store_i64(config::eosio_auth_scope, table, payer, id, (const char*)&next_serial, sizeof(next_serial));
-      return 0;
-   }
-
-   uint32_t next_serial = 0;
-   context.db_get_i64(iter, (char*)&next_serial, sizeof(next_serial));
-   const auto result = next_serial++;
-   context.db_update_i64(iter, payer, (const char*)&next_serial, sizeof(next_serial));
-   return result;
-}
-
 static auto get_account_creation(const apply_context& context, const account_name& account) {
    auto const& accnt = context.db.get<account_object, by_name>(account);
    return (time_point)accnt.creation_date;
@@ -393,7 +375,7 @@ void apply_eosio_postrecovery(apply_context& context) {
       .data = recover_act.data
    }, update);
 
-   uint32_t request_id = get_next_sender_id(context);
+   uint32_t request_id = context.get_next_sender_id();
 
    auto record_data = mutable_variant_object()
       ("account", account)
