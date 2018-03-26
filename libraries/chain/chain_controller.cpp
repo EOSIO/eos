@@ -1614,7 +1614,7 @@ vector<transaction_trace> chain_controller::push_deferred_transactions( bool flu
    auto& generated_index = generated_transaction_idx.indices().get<by_delay>();
    vector<const generated_transaction_object*> candidates;
 
-   for( auto itr = generated_index.rbegin(); itr != generated_index.rend() && (head_block_time() >= itr->delay_until); ++itr) {
+   for( auto itr = generated_index.begin(); itr != generated_index.end() && (head_block_time() >= itr->delay_until); ++itr) {
       const auto &gtrx = *itr;
       candidates.emplace_back(&gtrx);
    }
