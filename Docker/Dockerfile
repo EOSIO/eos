@@ -4,9 +4,7 @@ RUN git clone -b master --depth 1 https://github.com/EOSIO/eos.git --recursive \
     && cd eos \
     && cmake -H. -B"/tmp/build" -GNinja -DCMAKE_BUILD_TYPE=Release -DWASM_ROOT=/opt/wasm -DCMAKE_CXX_COMPILER=clang++ \
        -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/tmp/build  -DSecp256k1_ROOT_DIR=/usr/local \
-    && cmake --build /tmp/build --target install \
-    && mkdir -p /opt/eosio/ && cp -r /tmp/build/bin /opt/eosio/bin && cp -r /tmp/build/contracts /contracts \
-    && rm -rf /tmp/build && rm -rf /eos
+    && cmake --build /tmp/build --target install
 
 
 FROM ubuntu:16.04
