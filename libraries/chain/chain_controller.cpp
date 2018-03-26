@@ -803,10 +803,10 @@ flat_set<public_key_type> chain_controller::get_required_keys(const transaction&
    return checker.used_keys();
 }
 
-void chain_controller::check_authorization( const vector<action>& actions,
-                                            const flat_set<public_key_type>& provided_keys,
-                                            bool allow_unused_signatures,
-                                            flat_set<account_name> provided_accounts )const
+time_point chain_controller::check_authorization( const vector<action>& actions,
+                                                  const flat_set<public_key_type>& provided_keys,
+                                                  bool allow_unused_signatures,
+                                                  flat_set<account_name> provided_accounts )const
 {
    auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
                                      get_global_properties().configuration.max_authority_depth,
@@ -844,23 +844,36 @@ void chain_controller::check_authorization( const vector<action>& actions,
                  ("keys", checker.unused_keys()));
 }
 
-void chain_controller::check_transaction_authorization(const transaction& trx,
-                                                       const vector<signature_type>& signatures,
-                                                       const vector<bytes>& cfd,
-                                                       bool allow_unused_signatures)const
+time_point chain_controller::check_transaction_authorization(const transaction& trx,
+                                                             const vector<signature_type>& signatures,
+                                                             const vector<bytes>& cfd,
+                                                             bool allow_unused_signatures)const
 {
-   check_authorization( trx.actions, trx.get_signature_keys( signatures, chain_id_type{}, cfd ), allow_unused_signatures );
+   return check_authorization( trx.actions, trx.get_signature_keys( signatures, chain_id_type{}, cfd ), allow_unused_signatures );
 }
 
 optional<permission_name> chain_controller::lookup_minimum_permission(account_name authorizer_account,
                                                                     account_name scope,
                                                                     action_name act_name) const {
+#warning TODO: this comment sounds like it is expecting a check ("may") somewhere else, but I have not found anything else
    // updateauth is a special case where any permission _may_ be suitable depending
    // on the contents of the action
-   if (scope == config::system_account_name && act_name == N(updateauth)) {
+   if (scope == config::system_account_name && act_name == contracts::updateauth::get_name()) {
       return optional<permission_name>();
    }
 
+   try {
+      optional<permission_name> linked_permission = lookup_linked_permission(authorizer_account, scope, act_name);
+      if (!linked_permission)
+         return config::active_name;
+
+      return linked_permission;
+   } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
+}
+
+optional<permission_name> chain_controller::lookup_linked_permission(account_name authorizer_account,
+                                                                     account_name scope,
+                                                                     action_name act_name) const {
    try {
       // First look up a specific link for this message act_name
       auto key = boost::make_tuple(authorizer_account, scope, act_name);
@@ -874,8 +887,8 @@ optional<permission_name> chain_controller::lookup_minimum_permission(account_na
       // If no specific or default link found, use active permission
       if (link != nullptr)
          return link->required_permission;
-      else
-         return N(active);
+
+      return optional<permission_name>();
    } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
 }
 
