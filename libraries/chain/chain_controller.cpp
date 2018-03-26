@@ -256,17 +256,42 @@ transaction_trace chain_controller::push_transaction(const packed_transaction& t
    });
 } FC_CAPTURE_AND_RETHROW() }
 
-transaction_trace chain_controller::_push_transaction(const packed_transaction& trx) 
+transaction_trace chain_controller::_push_transaction(const packed_transaction& packed_trx)
 { try {
-   transaction_metadata   mtrx( trx, get_chain_id(), head_block_time());
+   transaction_metadata   mtrx( packed_trx, get_chain_id(), head_block_time());
 
-   check_transaction_authorization(mtrx.trx(), trx.signatures, trx.context_free_data);
-   auto result = _push_transaction(std::move(mtrx));
+   const auto delay = check_transaction_authorization(mtrx.trx(), packed_trx.signatures, packed_trx.context_free_data);
+   transaction_trace result(mtrx.id);
+   if (!delay.sec_since_epoch()) {
+      result = _push_transaction(std::move(mtrx));
 
-   // notify anyone listening to pending transactions
-   on_pending_transaction(_pending_transaction_metas.back(), trx);
+      // notify anyone listening to pending transactions
+      on_pending_transaction(_pending_transaction_metas.back(), packed_trx);
 
-   _pending_block->input_transactions.emplace_back(trx);
+      _pending_block->input_transactions.emplace_back(packed_trx);
+
+   } else {
+      result.status = transaction_trace::delayed;
+      const auto trx = mtrx.trx();
+      FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
+
+      FC_ASSERT( trx.expiration > (head_block_time() + fc::milliseconds(2*config::block_interval_ms)),
+                                   "transaction is expired when created" );
+
+      apply_context context(*this, _db, trx.actions[0], mtrx);
+
+      time_point_sec execute_after = head_block_time();
+      execute_after += time_point_sec(delay);
+      deferred_transaction dtrx(context.get_next_sender_id(), config::system_account_name, execute_after, trx);
+      FC_ASSERT( dtrx.execute_after < dtrx.expiration, "transaction expires before it can execute" );
+
+      result.deferred_transactions.push_back(std::move(dtrx));
+
+      // notify anyone listening to pending transactions
+      on_pending_transaction(std::move(mtrx), packed_trx);
+
+      store_deferred_transaction(result.deferred_transactions[0]);
+   }
 
    return result;
 
