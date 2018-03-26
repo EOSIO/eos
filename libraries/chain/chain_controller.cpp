@@ -855,29 +855,83 @@ time_point chain_controller::check_authorization( const vector<action>& actions,
                                      get_global_properties().configuration.max_authority_depth,
                                      provided_keys, provided_accounts );
 
+   time_point max_delay;
 
    for( const auto& act : actions ) {
       for( const auto& declared_auth : act.authorization ) {
 
          // check a minimum permission if one is set, otherwise assume the contract code will validate
          auto min_permission_name = lookup_minimum_permission(declared_auth.actor, act.account, act.name);
+         bool min_permission_required = true;
+         if (!min_permission_name) {
+            // for updateauth actions, need to determine the permission that is changing
+            if (act.account == config::system_account_name && act.name == contracts::updateauth::get_name()) {
+               auto update = act.data_as<contracts::updateauth>();
+               const auto permission_to_change = _db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
+               if (permission_to_change != nullptr) {
+                  // only determining delay
+                  min_permission_required = false;
+                  min_permission_name = update.permission;
+               }
+            }
+         }
          if (min_permission_name) {
             const auto& min_permission = _db.get<permission_object, by_owner>(boost::make_tuple(declared_auth.actor, *min_permission_name));
 
-
             if ((_skip_flags & skip_authority_check) == false) {
-               const auto &index = _db.get_index<permission_index>().indices();
-               EOS_ASSERT(get_permission(declared_auth).satisfies(min_permission, index),
+               const auto& index = _db.get_index<permission_index>().indices();
+               const optional<time_point> delay = get_permission(declared_auth).satisfies(min_permission, index);
+               EOS_ASSERT(!min_permission_required || delay.valid(),
                           tx_irrelevant_auth,
                           "action declares irrelevant authority '${auth}'; minimum authority is ${min}",
                           ("auth", declared_auth)("min", min_permission.name));
+               if (max_delay < *delay)
+                  max_delay = *delay;
             }
          }
+
+         if (act.account == config::system_account_name) {
+            // for link changes, we need to also determine the delay associated with an existing link that is being
+            // moved or removed
+            if (act.name == contracts::linkauth::get_name()) {
+               auto link = act.data_as<contracts::linkauth>();
+               if (declared_auth.actor == link.account) {
+                  const auto linked_permission_name = lookup_linked_permission(link.account, link.code, link.type);
+                  if (linked_permission_name.valid()) {
+                     const auto& linked_permission = _db.get<permission_object, by_owner>(boost::make_tuple(link.account, *linked_permission_name));
+                     const auto& index = _db.get_index<permission_index>().indices();
+                     const optional<time_point> delay = get_permission(declared_auth).satisfies(linked_permission, index);
+                     if (delay.valid() && max_delay < *delay)
+                        max_delay = *delay;
+                  } // else it is only a new link, so don't need to delay
+               }
+            } else if (act.name == contracts::unlinkauth::get_name()) {
+               auto unlink = act.data_as<contracts::unlinkauth>();
+               if (declared_auth.actor == unlink.account) {
+                  const auto unlinked_permission_name = lookup_linked_permission(unlink.account, unlink.code, unlink.type);
+                  if (unlinked_permission_name.valid()) {
+                     const auto& unlinked_permission = _db.get<permission_object, by_owner>(boost::make_tuple(unlink.account, *unlinked_permission_name));
+                     const auto& index = _db.get_index<permission_index>().indices();
+                     const optional<time_point> delay = get_permission(declared_auth).satisfies(unlinked_permission, index);
+                     if (delay.valid() && max_delay < *delay)
+                        max_delay = *delay;
+                  }
+               }
+            }
+         }
+
          if ((_skip_flags & skip_transaction_signatures) == false) {
             EOS_ASSERT(checker.satisfied(declared_auth), tx_missing_sigs,
                        "transaction declares authority '${auth}', but does not have signatures for it.",
                        ("auth", declared_auth));
          }
+      }
+
+      if (act.account == config::system_account_name && act.name == contracts::mindelay::get_name()) {
+         const auto mindelay = act.data_as<contracts::mindelay>();
+         const time_point delay = time_point_sec{mindelay.delay.convert_to<uint32_t>()};
+         if (max_delay < delay)
+            max_delay = delay;
       }
    }
 
@@ -885,6 +939,12 @@ time_point chain_controller::check_authorization( const vector<action>& actions,
       EOS_ASSERT(checker.all_keys_used(), tx_irrelevant_sig,
                  "transaction bears irrelevant signatures from these keys: ${keys}",
                  ("keys", checker.unused_keys()));
+
+   const auto checker_max_delay = checker.get_permission_visitor().get_max_delay();
+   if (max_delay < checker_max_delay)
+      max_delay = checker_max_delay;
+
+   return max_delay;
 }
 
 time_point chain_controller::check_transaction_authorization(const transaction& trx,
