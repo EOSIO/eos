@@ -265,12 +265,6 @@ const chain_controller& chain_plugin::chain() const { return *my->chain; }
 namespace chain_apis {
 
 const string read_only::KEYi64 = "i64";
-const string read_only::KEYstr = "str";
-const string read_only::KEYi128i128 = "i128i128";
-const string read_only::KEYi64i64i64 = "i64i64i64";
-const string read_only::PRIMARY = "primary";
-const string read_only::SECONDARY = "secondary";
-const string read_only::TERTIARY = "tertiary";
 
 read_only::get_info_results read_only::get_info(const read_only::get_info_params&) const {
    auto itoh = [](uint32_t n, size_t hlen = sizeof(uint32_t)<<1) {
@@ -313,26 +307,11 @@ string get_table_type( const abi_def& abi, const name& table_name ) {
 read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
    const abi_def abi = get_abi( db, p.code );
    auto table_type = get_table_type( abi, p.table );
-   auto table_key = PRIMARY;
 
    if( table_type == KEYi64 ) {
       return get_table_rows_ex<contracts::key_value_index, contracts::by_scope_primary>(p,abi);
-   } else if( table_type == KEYstr ) {
-      return get_table_rows_ex<contracts::keystr_value_index, contracts::by_scope_primary>(p,abi);
-   } else if( table_type == KEYi128i128 ) {
-      if( table_key == PRIMARY )
-         return get_table_rows_ex<contracts::key128x128_value_index, contracts::by_scope_primary>(p,abi);
-      if( table_key == SECONDARY )
-         return get_table_rows_ex<contracts::key128x128_value_index, contracts::by_scope_secondary>(p,abi);
-   } else if( table_type == KEYi64i64i64 ) {
-      if( table_key == PRIMARY )
-         return get_table_rows_ex<contracts::key64x64x64_value_index, contracts::by_scope_primary>(p,abi);
-      if( table_key == SECONDARY )
-         return get_table_rows_ex<contracts::key64x64x64_value_index, contracts::by_scope_secondary>(p,abi);
-      if( table_key == TERTIARY )
-         return get_table_rows_ex<contracts::key64x64x64_value_index, contracts::by_scope_tertiary>(p,abi);
    }
-   FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("key",table_key)("abi",abi));
+   FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("abi",abi));
 }
 
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
