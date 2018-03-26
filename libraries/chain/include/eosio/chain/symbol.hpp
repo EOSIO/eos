@@ -42,7 +42,7 @@ namespace eosio {
             while(str[len]) ++len;
             uint64_t result = 0;
             for (uint32_t i = 0; i < len; ++i) {
-               // All characters must be upper case alaphabets
+               // All characters must be upper case alphabets
                FC_ASSERT (str[i] >= 'A' && str[i] <= 'Z', "invalid character in symbol name");
                result |= (uint64_t(str[i]) << (8*(i+1)));
             }
@@ -64,7 +64,6 @@ namespace eosio {
                   FC_ASSERT(comma_pos != string::npos, "missing comma in symbol");
                   auto prec_part = s.substr(0, comma_pos);
                   uint8_t p = fc::to_int64(prec_part);
-                  FC_ASSERT(p > 0, "zero decimals in symbol");
                   string name_part = s.substr(comma_pos + 1);
                   return symbol(string_to_symbol(p, name_part.c_str()));
                } FC_CAPTURE_LOG_AND_RETHROW((from))
@@ -72,7 +71,6 @@ namespace eosio {
             uint64_t value() const { return m_value; }
             bool valid() const
             {
-               if (decimals() == 0) return false;
                const auto& s = name();
                return valid_name(s);
             }

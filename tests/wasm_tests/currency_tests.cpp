@@ -245,18 +245,17 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
                             fc::assert_exception, assert_message_is("creating symbol from empty string"));
    }
 
-   
    // precision part missing
    {
       BOOST_CHECK_EXCEPTION(symbol::from_string("RND"),
                             fc::assert_exception, assert_message_is("missing comma in symbol"));
    }
 
-
-   // precision part missing
+   // 0 decimals part
    {
-      BOOST_CHECK_EXCEPTION(symbol::from_string("0,EURO"),
-                            fc::assert_exception, assert_message_is("zero decimals in symbol"));
+      symbol sym = symbol::from_string("0,EURO");
+      BOOST_REQUIRE_EQUAL(0, sym.decimals());
+      BOOST_REQUIRE_EQUAL("EURO", sym.name());
    }
 
    // invalid - contains lower case characters, no validation
@@ -273,10 +272,47 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
                             fc::assert_exception, assert_message_is("invalid character in symbol name"));
    }
 
-   // invalid - missing decimal point
+   // Missing decimal point, should create asset with 0 decimals
    {
-      BOOST_CHECK_EXCEPTION(asset::from_string("10 CUR"),
-                            fc::assert_exception, assert_message_is("dot missing in asset from string"));
+      asset a = asset::from_string("10 CUR");
+      BOOST_REQUIRE_EQUAL(a.amount, 10);
+      BOOST_REQUIRE_EQUAL(a.precision(), 1);
+      BOOST_REQUIRE_EQUAL(a.decimals(), 0);
+      BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
+   }
+
+   // Missing space
+   {
+      BOOST_CHECK_EXCEPTION(asset::from_string("10CUR"),
+                            asset_type_exception, assert_message_is("Asset's amount and symbol should be separated with space"));
+   }
+
+   // Precision is not specified when decimal separator is introduced
+   {
+      BOOST_CHECK_EXCEPTION(asset::from_string("10. CUR"),
+                            asset_type_exception, assert_message_is("Missing decimal fraction after decimal point"));
+   }
+
+   // Missing symbol
+   {
+      BOOST_CHECK_EXCEPTION(asset::from_string("10"),
+                            asset_type_exception, assert_message_is("Asset's amount and symbol should be separated with space"));
+   }
+
+   // Multiple spaces
+   {
+      asset a = asset::from_string("1000000000.00000  CUR");
+      BOOST_REQUIRE_EQUAL(a.amount, 100000000000000);
+      BOOST_REQUIRE_EQUAL(a.decimals(), 5);
+      BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
+   }
+
+   // Valid asset
+   {
+      asset a = asset::from_string("1000000000.00000 CUR");
+      BOOST_REQUIRE_EQUAL(a.amount, 100000000000000);
+      BOOST_REQUIRE_EQUAL(a.decimals(), 5);
+      BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
    }
 
 } FC_LOG_AND_RETHROW() /// test_symbol
