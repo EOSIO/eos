@@ -221,9 +221,20 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
 
       FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
 
-      // todo: rethink this special case
-      if (receiver != config::system_account_name) {
-         controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
+      // privileged accounts can do anything, no need to check auth
+      if( !privileged ) {
+
+         // if a contract is deferring only actions to itself then there is no need
+         // to check permissions, it could have done everything anyway.
+         bool check_auth = false;
+         for( const auto& act : trx.actions ) {
+            if( act.account != receiver ) {
+               check_auth = true;
+               break;
+            }
+         }
+         if( check_auth ) 
+            controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
       }
 
       trx.sender = receiver; //  "Attempting to send from another account"
