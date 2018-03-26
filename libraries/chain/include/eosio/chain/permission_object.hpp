@@ -17,6 +17,7 @@ namespace eosio { namespace chain {
       permission_name   name; ///< human-readable name for the permission
       shared_authority  auth; ///< authority required to execute this permission
       time_point        last_updated; ///< the last time this authority was updated
+      time_point        delay; ///< delay associated with this permission
 
       /**
        * @brief Checks if this permission is equivalent or greater than other
@@ -108,7 +109,7 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_object, eosio::chain::permissi
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_usage_object, eosio::chain::permission_usage_index)
 
 FC_REFLECT(chainbase::oid<eosio::chain::permission_object>, (_id))
-FC_REFLECT(eosio::chain::permission_object, (id)(owner)(parent)(name)(auth))
+FC_REFLECT(eosio::chain::permission_object, (id)(owner)(parent)(name)(auth)(last_updated)(delay))
 
 FC_REFLECT(chainbase::oid<eosio::chain::permission_usage_object>, (_id))
 FC_REFLECT(eosio::chain::permission_usage_object, (id)(account)(permission)(last_used))

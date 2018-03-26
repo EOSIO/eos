@@ -150,6 +150,7 @@ struct updateauth {
    permission_name                   permission;
    permission_name                   parent;
    authority                         data;
+   uint32                            delay;
 
    static account_name get_account() {
       return config::system_account_name;
@@ -304,7 +305,7 @@ FC_REFLECT( eosio::chain::contracts::abi_def                          , (types)(
 FC_REFLECT( eosio::chain::contracts::newaccount                       , (creator)(name)(owner)(active)(recovery) )
 FC_REFLECT( eosio::chain::contracts::setcode                          , (account)(vmtype)(vmversion)(code) ) //abi
 FC_REFLECT( eosio::chain::contracts::setabi                           , (account)(abi) )
-FC_REFLECT( eosio::chain::contracts::updateauth                       , (account)(permission)(parent)(data) )
+FC_REFLECT( eosio::chain::contracts::updateauth                       , (account)(permission)(parent)(data)(delay) )
 FC_REFLECT( eosio::chain::contracts::deleteauth                       , (account)(permission) )
 FC_REFLECT( eosio::chain::contracts::linkauth                         , (account)(code)(type)(requirement) )
 FC_REFLECT( eosio::chain::contracts::unlinkauth                       , (account)(code)(type) )

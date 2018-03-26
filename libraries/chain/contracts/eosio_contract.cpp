@@ -200,6 +200,7 @@ void apply_eosio_updateauth(apply_context& context) {
          po.auth = update.data;
          po.parent = parent_id;
          po.last_updated = context.controller.head_block_time();
+         po.delay = time_point_sec(update.delay.convert_to<uint64_t>());
       });
    }  else {
       // TODO/QUESTION: If we are creating a new permission, should we check if the message declared
@@ -210,6 +211,7 @@ void apply_eosio_updateauth(apply_context& context) {
          po.auth = update.data;
          po.parent = parent_id;
          po.last_updated = context.controller.head_block_time();
+         po.delay = time_point_sec(update.delay.convert_to<uint64_t>());
       });
    }
 }
