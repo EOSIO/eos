@@ -116,20 +116,45 @@ bool apply_context::is_account( const account_name& account )const {
    return nullptr != db.find<account_object,by_name>( account );
 }
 
-void apply_context::require_authorization( const account_name& account )const {
-  EOS_ASSERT( has_authorization(account), tx_missing_auth, "missing authority of ${account}", ("account",account));
+bool apply_context::all_authorizations_used()const {
+   for ( bool has_auth : used_authorizations )
+      if ( !has_auth )
+         return false;
+   return true;
 }
+
+vector<permission_level> apply_context::unused_authorizations()const {
+   vector<permission_level> ret_auths;
+   for ( uint32_t i=0; i < act.authorization.size(); i++ )
+      if ( !used_authorizations[i] )
+         ret_auths.push_back( act.authorization[i] );
+   return ret_auths;
+}
+
+void apply_context::require_authorization( const account_name& account ) {
+   for( uint32_t i=0; i < act.authorization.size(); i++ )
+     if( act.authorization[i].actor == account ) {
+        used_authorizations[i] = true;
+        return;
+     }
+   EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}", ("account",account));
+}
+
 bool apply_context::has_authorization( const account_name& account )const {
-  for( const auto& auth : act.authorization )
-     if( auth.actor == account ) return true;
+   for( const auto& auth : act.authorization )
+     if( auth.actor == account )
+        return true;
   return false;
 }
 
 void apply_context::require_authorization(const account_name& account,
-                                          const permission_name& permission)const {
-  for( const auto& auth : act.authorization )
-     if( auth.actor == account ) {
-        if( auth.permission == permission ) return;
+                                          const permission_name& permission) {
+  for( uint32_t i=0; i < act.authorization.size(); i++ )
+     if( act.authorization[i].actor == account ) {
+        if( act.authorization[i].permission == permission ) {
+           used_authorizations[i] = true;
+           return;
+        }
      }
   EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}/${permission}",
               ("account",account)("permission",permission) );

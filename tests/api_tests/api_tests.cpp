@@ -153,6 +153,7 @@ transaction_trace CallFunction(tester& test, T ac, const vector<char>& data, con
 
       action act(pl, ac);
       act.data = data;
+      act.authorization = {{N(testapi), config::active_name}};
       trx.actions.push_back(act);
 
 		test.set_tapos(trx);
@@ -337,9 +338,11 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
       auto dat = fc::raw::pack(a3a4);
       vector<char>& dest = *(vector<char> *)(&act.data);
       std::copy(dat.begin(), dat.end(), std::back_inserter(dest));
+      act.authorization = {{N(testapi), config::active_name}, {N(acc3), config::active_name}, {N(acc4), config::active_name}};
       trx.actions.push_back(act);
 
 		set_tapos(trx);
+		trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
 		trx.sign(get_private_key(N(acc3), "active"), chain_id_type());
 		trx.sign(get_private_key(N(acc4), "active"), chain_id_type());
 		auto res = push_transaction(trx);
@@ -392,6 +395,13 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
 
       cf_action cfa;
       signed_transaction trx;
+      // need at least one normal action
+      BOOST_CHECK_EXCEPTION(push_transaction(trx), tx_no_action,
+                            [](const fc::assert_exception& e) {
+                               return expect_assert_message(e, "signatures");
+                            }
+      );
+
       action act({}, cfa);
       trx.context_free_actions.push_back(act);
       trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100)); // verify payload matches context free data
@@ -408,19 +418,17 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
 
       // clear signatures, so should now pass
       trx.signatures.clear();
-      auto res = push_transaction(trx);
-      BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
-
       // add a normal action along with cfa
       dummy_action da = { DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C };
       auto pl = vector<permission_level>{{N(testapi), config::active_name}};
       action act1(pl, da);
+      act1.authorization = {{N(testapi), config::active_name}};
       trx.actions.push_back(act1);
       // run normal passing case
       sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
-      res = push_transaction(trx);
+      auto res = push_transaction(trx);
       BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
-
+return;
       // attempt to access context free api in non context free action
       da = { DUMMY_ACTION_DEFAULT_A, 200, DUMMY_ACTION_DEFAULT_C };
       action act2(pl, da);
@@ -439,7 +447,6 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       trx.signatures.clear();
       trx.actions.clear();
       trx.actions.push_back(act1);
-
       // attempt to access non context free api
       for (uint32_t i = 200; i <= 204; ++i) {
          trx.context_free_actions.clear();
@@ -447,7 +454,9 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
          cfa.payload = i;
          cfa.cfd_idx = 1;
          action cfa_act({}, cfa);
+         dummy_action da = { DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C };
          trx.context_free_actions.emplace_back(cfa_act);
+         trx.actions.emplace_back(pl, da);
          trx.signatures.clear();
          sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
          BOOST_CHECK_EXCEPTION(push_transaction(trx), fc::assert_exception,

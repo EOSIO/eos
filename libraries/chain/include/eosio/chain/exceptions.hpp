@@ -49,6 +49,9 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( tx_msgs_code_exceeded,             eosio::chain::transaction_exception, 3030019, "Number of transaction messages per code account has been exceeded" )
    FC_DECLARE_DERIVED_EXCEPTION( wasm_execution_error,              eosio::chain::transaction_exception, 3030020, "Runtime Error Processing WASM" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_decompression_error,            eosio::chain::transaction_exception, 3030020, "Error decompressing transaction" )
+   FC_DECLARE_DERIVED_EXCEPTION( action_missing_auth,               eosio::chain::transaction_exception, 3030021, "action requires at least one required authority" )
+   FC_DECLARE_DERIVED_EXCEPTION( cfa_irrelevant_auth,               eosio::chain::transaction_exception, 3030022, "context-free action should have no required authority" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_no_action,                      eosio::chain::transaction_exception, 3030023, "transaction should have at least one normal action" )
 
    FC_DECLARE_DERIVED_EXCEPTION( account_name_exists_exception,     eosio::chain::action_validate_exception, 3040001, "account name already exists" )
    FC_DECLARE_DERIVED_EXCEPTION( invalid_pts_address,               eosio::chain::utility_exception, 3060001, "invalid pts address" )

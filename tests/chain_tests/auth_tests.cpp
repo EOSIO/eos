@@ -43,6 +43,17 @@ BOOST_FIXTURE_TEST_CASE( missing_auths, tester ) { try {
 
 } FC_LOG_AND_RETHROW() } /// transfer_test
 
+BOOST_FIXTURE_TEST_CASE( zero_reqauths, tester ) { try {
+   create_accounts( {N(alice)} );
+   produce_block();
+} FC_LOG_AND_RETHROW() } /// zero_reqauths
+
+BOOST_FIXTURE_TEST_CASE( too_many_auths, tester ) { try {
+   create_accounts( {N(alice), N(bob), N(eve)} );
+   produce_block();
+   BOOST_REQUIRE_THROW( push_reqauth( N(alice), {{N(alice), config::owner_name}, {N(bob), config::active_name}, {N(eve), config::active_name}}, { get_private_key(N(bob), "active"), get_private_key(N(alice), "owner"), get_private_key(N(eve), "active") } ), tx_irrelevant_auth);
+
+} FC_LOG_AND_RETHROW() } /// too_many_auths
 
 /**
  *  This test case will attempt to allow one account to transfer on behalf
