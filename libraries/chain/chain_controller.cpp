@@ -450,9 +450,9 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
                      ("a", ar.act.account)
                      ("n", ar.act.name)
                      ("r", ar.receiver));
-               std::cerr << prefix << ": CONSOLE OUTPUT BEGIN =====================" << std::endl;
-               std::cerr << ar.console;
-               std::cerr << prefix << ": CONSOLE OUTPUT END   =====================" << std::endl;
+               ilog(prefix + ": CONSOLE OUTPUT BEGIN =====================");
+               ilog(ar.console);
+               ilog(prefix + ": CONSOLE OUTPUT END   =====================");
             }
          }
       }
@@ -865,13 +865,19 @@ void chain_controller::validate_uniqueness( const transaction& trx )const {
    EOS_ASSERT(transaction == nullptr, tx_duplicate, "transaction is not unique");
 }
 
-void chain_controller::record_transaction(const transaction& trx) {
-   //Insert transaction into unique transactions database.
-    _db.create<transaction_object>([&](transaction_object& transaction) {
-        transaction.trx_id = trx.id();
-        transaction.expiration = trx.expiration;
-    });
-}
+void chain_controller::record_transaction(const transaction& trx) 
+{ 
+   try {
+       _db.create<transaction_object>([&](transaction_object& transaction) {
+           transaction.trx_id = trx.id();
+           transaction.expiration = trx.expiration;
+       });
+   } catch ( ... ) {
+       EOS_ASSERT( false, transaction_exception,
+                  "duplicate transaction ${id}", 
+                  ("id", trx.id() ) );
+   }
+} 
 
 
 void chain_controller::validate_tapos(const transaction& trx)const {
@@ -955,7 +961,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
    }
 
    EOS_ASSERT( next_block.schedule_version == get_global_properties().active_producers.version, block_validate_exception, "wrong producer schedule version specified" );
-      
+
    return producer;
 }
 
@@ -1098,7 +1104,7 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<contracts::index128_index>();
    _db.add_index<contracts::index256_index>();
    _db.add_index<contracts::index_double_index>();
-   
+
 
    _db.add_index<contracts::keystr_value_index>();
    _db.add_index<contracts::key128x128_value_index>();
@@ -1134,7 +1140,7 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
 
          _db.create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
             p.time = initial_timestamp;
-            p.recent_slots_filled = uint64_t(-1);
+            //p.recent_slots_filled = uint64_t(-1);
             p.virtual_net_bandwidth = gp.configuration.max_block_size * (config::blocksize_average_window_ms / config::block_interval_ms );
             p.virtual_act_bandwidth = gp.configuration.max_block_acts * (config::blocksize_average_window_ms / config::block_interval_ms );
          });
@@ -1268,6 +1274,7 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
       dgp.update_virtual_act_bandwidth( props.configuration );
 
 
+      /*
       // If we've missed more blocks than the bitmap stores, skip calculations and simply reset the bitmap
       if (missed_blocks < sizeof(dgp.recent_slots_filled) * 8) {
          dgp.recent_slots_filled <<= 1;
@@ -1278,6 +1285,7 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
             dgp.recent_slots_filled = uint64_t(-1);
          else
             dgp.recent_slots_filled = 0;
+      */
       dgp.block_merkle_root.append( head_block_id() );
    });
 
@@ -1448,8 +1456,9 @@ uint32_t chain_controller::get_slot_at_time( block_timestamp_type when )const
 
 uint32_t chain_controller::producer_participation_rate()const
 {
-   const dynamic_global_property_object& dpo = get_dynamic_global_properties();
-   return uint64_t(config::percent_100) * __builtin_popcountll(dpo.recent_slots_filled) / 64;
+   //const dynamic_global_property_object& dpo = get_dynamic_global_properties();
+   //return uint64_t(config::percent_100) * __builtin_popcountll(dpo.recent_slots_filled) / 64;
+   return static_cast<uint32_t>(config::percent_100); // Ignore participation rate for now until we construct a better metric.
 }
 
 void chain_controller::_set_apply_handler( account_name contract, scope_name scope, action_name action, apply_handler v ) {

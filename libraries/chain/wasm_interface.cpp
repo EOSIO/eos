@@ -41,7 +41,7 @@ namespace eosio { namespace chain {
       wasm_validations::wasm_binary_validation validator(module);
       validator.validate();
 
-      root_resolver resolver;
+      root_resolver resolver(true);
       LinkResult link_result = linkModule(module, resolver);
 
       //there are a couple opportunties for improvement here--
@@ -97,6 +97,16 @@ class privileged_api : public context_aware_api {
       }
 
       /**
+       * This should return true if a feature is active and irreversible, false if not.
+       *
+       * Irreversiblity by fork-database is not consensus safe, therefore, this defines
+       * irreversiblity only by block headers not by BFT short-cut.
+       */
+      int is_feature_active( int64_t feature_name ) {
+         return false;
+      }
+
+      /**
        *  This should schedule the feature to be activated once the
        *  block that includes this call is irreversible. It should
        *  fail if the feature is already pending.
@@ -107,19 +117,16 @@ class privileged_api : public context_aware_api {
          FC_ASSERT( !"Unsupported Hardfork Detected" );
       }
 
-      /**
-       * This should return true if a feature is active and irreversible, false if not.
-       *
-       * Irreversiblity by fork-database is not consensus safe, therefore, this defines
-       * irreversiblity only by block headers not by BFT short-cut.
-       */
-      int is_feature_active( int64_t feature_name ) {
-         return false;
+      void get_resource_limits( account_name account,
+                                uint64_t& ram_bytes, uint64_t& net_weight, uint64_t& cpu_weight ) {
+         auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
+         ram_bytes  = buo.db_reserved_capacity;
+         net_weight = buo.net_weight;
+         cpu_weight = buo.cpu_weight;
       }
 
       void set_resource_limits( account_name account,
-                                uint64_t ram_bytes, int64_t net_weight, int64_t cpu_weight,
-                                int64_t /*cpu_usec_per_period*/ ) {
+                                uint64_t ram_bytes, int64_t net_weight, int64_t cpu_weight ) {
          auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
          FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free too much space" );
 
@@ -140,11 +147,6 @@ class privileged_api : public context_aware_api {
          });
       }
 
-
-      void get_resource_limits( account_name account,
-                                uint64_t& ram_bytes, uint64_t& net_weight, uint64_t cpu_weight ) {
-      }
-
       void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          producer_schedule_type psch;
@@ -152,16 +154,6 @@ class privileged_api : public context_aware_api {
          context.mutable_db.modify( context.controller.get_global_properties(),
             [&]( auto& gprops ) {
                  gprops.new_active_producers = psch;
-         });
-      }
-
-      void set_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t datalen) {
-         datastream<const char*> ds( packed_blockchain_parameters, datalen );
-         chain::chain_config cfg;
-         fc::raw::unpack(ds, cfg);
-         context.mutable_db.modify( context.controller.get_global_properties(),
-            [&]( auto& gprops ) {
-                 gprops.configuration = cfg;
          });
       }
 
@@ -175,12 +167,21 @@ class privileged_api : public context_aware_api {
          return size;
       }
 
+
+      void set_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t datalen) {
+         datastream<const char*> ds( packed_blockchain_parameters, datalen );
+         chain::chain_config cfg;
+         fc::raw::unpack(ds, cfg);
+         context.mutable_db.modify( context.controller.get_global_properties(),
+            [&]( auto& gprops ) {
+                 gprops.configuration = cfg;
+         });
+      }
+
       bool is_privileged( account_name n )const {
          return context.db.get<account_object, by_name>( n ).privileged;
       }
-      bool is_frozen( account_name n )const {
-         return context.db.get<account_object, by_name>( n ).frozen;
-      }
+
       void set_privileged( account_name n, bool is_priv ) {
          const auto& a = context.db.get<account_object, by_name>( n );
          context.mutable_db.modify( a, [&]( auto& ma ){
@@ -188,14 +189,6 @@ class privileged_api : public context_aware_api {
          });
       }
 
-      void freeze_account( account_name n , bool should_freeze ) {
-         const auto& a = context.db.get<account_object, by_name>( n );
-         context.mutable_db.modify( a, [&]( auto& ma ){
-            ma.frozen = should_freeze;
-         });
-      }
-
-      /// TODO: add inline/deferred with support for arbitrary permissions rather than code/current auth
 };
 
 class checktime_api : public context_aware_api {
@@ -1036,6 +1029,15 @@ class transaction_api : public context_aware_api {
          context.execute_inline(std::move(act));
       }
 
+      void send_context_free_inline( array_ptr<char> data, size_t data_len ) {
+         // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
+         FC_ASSERT( data_len < config::default_max_inline_action_size, "inline action too big" );
+
+         action act;
+         fc::raw::unpack<action>(data, data_len, act);
+         context.execute_context_free_inline(std::move(act));
+      }
+
       void send_deferred( uint64_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
          try {
             // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
@@ -1432,19 +1434,18 @@ REGISTER_INTRINSICS(compiler_builtins,
 );
 
 REGISTER_INTRINSICS(privileged_api,
-   (activate_feature,          void(int64_t)                                 )
-   (is_feature_active,         int(int64_t)                                  )
-   (set_resource_limits,       void(int64_t,int64_t,int64_t,int64_t,int64_t) )
-   (set_active_producers,      void(int,int)                                 )
-   (is_privileged,             int(int64_t)                                  )
-   (set_privileged,            void(int64_t, int)                            )
-   (freeze_account,            void(int64_t, int)                            )
-   (is_frozen,                 int(int64_t)                                  )
-   (set_blockchain_parameters_packed, void(int,int)                          )
-   (get_blockchain_parameters_packed, int(int, int)                          )
+   (is_feature_active,                int(int64_t)                          )
+   (activate_feature,                 void(int64_t)                         )
+   (get_resource_limits,              void(int64_t,int,int,int)             )
+   (set_resource_limits,              void(int64_t,int64_t,int64_t,int64_t) )
+   (set_active_producers,             void(int,int)                         )
+   (get_blockchain_parameters_packed, int(int, int)                         )
+   (set_blockchain_parameters_packed, void(int,int)                         )
+   (is_privileged,                    int(int64_t)                          )
+   (set_privileged,                   void(int64_t, int)                    )
 );
 
-REGISTER_INTRINSICS(checktime_api,
+REGISTER_INJECTED_INTRINSICS(checktime_api,
    (checktime,      void(int))
 );
 
@@ -1554,13 +1555,14 @@ REGISTER_INTRINSICS(context_free_transaction_api,
    (expiration,             int()                    )
    (tapos_block_prefix,     int()                    )
    (tapos_block_num,        int()                    )
-   (get_action,            int (int, int, int, int)  )
+   (get_action,             int (int, int, int, int) )
 );
 
 REGISTER_INTRINSICS(transaction_api,
-   (send_inline,           void(int, int)               )
-   (send_deferred,         void(int64_t, int, int, int) )
-   (cancel_deferred,       void(int64_t)                )
+   (send_inline,               void(int, int)               )
+   (send_context_free_inline,  void(int, int)               )
+   (send_deferred,             void(int64_t, int, int, int) )
+   (cancel_deferred,           void(int64_t)                )
 );
 
 REGISTER_INTRINSICS(context_free_api,
@@ -1574,7 +1576,7 @@ REGISTER_INTRINSICS(memory_api,
    (memset,                 int(int, int, int)  )
 );
 
-REGISTER_INTRINSICS(softfloat_api,
+REGISTER_INJECTED_INTRINSICS(softfloat_api,
       (_eosio_f32_add,       float(float, float)    )
       (_eosio_f32_sub,       float(float, float)    )
       (_eosio_f32_mul,       float(float, float)    )

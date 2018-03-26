@@ -6,19 +6,19 @@
 # Copyright (c) 2017, Respective Authors all rights reserved.
 #
 # After June 1, 2018 this software is available under the following terms:
-# 
+#
 # The MIT License
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in
 # all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -37,7 +37,8 @@
 	TEMP_DIR=/tmp
 	ARCH=$( uname )
 	DISK_MIN=20
-	
+	BUILD_MONGO_DB_PLUGIN=false
+
 	txtbld=$(tput bold)
 	bldred=${txtbld}$(tput setaf 1)
 	txtrst=$(tput sgr0)
@@ -45,7 +46,7 @@
 	printf "\n\tARCHITECTURE: ${ARCH}\n"
 
 	if [ $ARCH == "Linux" ]; then
-		
+
 		if [ ! -e /etc/os-release ]; then
 			printf "\n\tEOSIO currently supports Amazon, Centos, Fedora, Mint & Ubuntu Linux only.\n"
 			printf "\tPlease install on the latest version of one of these Linux distributions.\n"
@@ -57,9 +58,9 @@
 			printf "\tExiting now.\n"
 			exit 1
 		fi
-	
+
 		OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
-	
+
 		case $OS_NAME in
 			"Amazon Linux AMI")
 				FILE=${WORK_DIR}/scripts/eosio_build_amazon.sh
@@ -102,7 +103,7 @@
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
 				exit 1
 		esac
-		
+
 		export BOOST_ROOT=${HOME}/opt/boost_1_66_0
 		export OPENSSL_ROOT_DIR=/usr/include/openssl
 		export OPENSSL_LIBRARIES=/usr/include/openssl
@@ -134,12 +135,16 @@
 	if [ -z $CMAKE ]; then
 		CMAKE=$( which cmake )
 	fi
-	
+
+	if [ -f ${MONGOD_CONF} ]; then
+		BUILD_MONGO_DB_PLUGIN=true
+	fi
+
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
 	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
 	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DBUILD_MONGO_DB_PLUGIN=true \
 	-DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} ..
-	
+
 	if [ $? -ne 0 ]; then
 		printf "\n\t>>>>>>>>>>>>>>>>>>>> CMAKE building EOSIO has exited with the above error.\n\n"
 		exit -1
@@ -169,8 +174,8 @@
 	else
 		printf "\n\tMongoDB is running PID=${MONGODB_PID}.\n"
 	fi
-	
-   if [ "x${EOSIO_BUILD_PACKAGE}" != "x" ]; then
+
+  if [ "x${EOSIO_BUILD_PACKAGE}" != "x" ]; then
       # Build eos.io package
       $CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
       -DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \

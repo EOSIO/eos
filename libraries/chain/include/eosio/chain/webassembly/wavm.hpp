@@ -695,9 +695,9 @@ struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const
 #define __INTRINSIC_NAME(LABEL, SUFFIX) LABEL##SUFFIX
 #define _INTRINSIC_NAME(LABEL, SUFFIX) __INTRINSIC_NAME(LABEL,SUFFIX)
 
-#define _REGISTER_WAVM_INTRINSIC(CLS, METHOD, WASM_SIG, NAME, SIG)\
+#define _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
    static Intrinsics::Function _INTRINSIC_NAME(__intrinsic_fn, __COUNTER__) (\
-      "env." NAME,\
+      MOD "." NAME,\
       eosio::chain::webassembly::wavm::wasm_function_type_provider<WASM_SIG>::type(),\
       (void *)eosio::chain::webassembly::wavm::intrinsic_function_invoker_wrapper<WASM_SIG, SIG>::type::fn<&CLS::METHOD>()\
    );\

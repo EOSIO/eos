@@ -184,7 +184,7 @@ namespace eosiosystem {
                });
             }
 
-            set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, tot_itr->net_weight.quantity, tot_itr->cpu_weight.quantity, 0 );
+            set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, tot_itr->net_weight.quantity, tot_itr->cpu_weight.quantity );
 
             currency::inline_transfer( del.from, SystemAccount, total_stake, "stake bandwidth" );
             if ( asset(0) < del.stake_net_quantity + del.stake_cpu_quantity ) {
@@ -239,7 +239,7 @@ namespace eosiosystem {
                tot.storage_bytes -= del.unstake_storage_bytes;
             });
 
-            set_resource_limits( totals.owner, totals.storage_bytes, totals.net_weight.quantity, totals.cpu_weight.quantity, 0 );
+            set_resource_limits( totals.owner, totals.storage_bytes, totals.net_weight.quantity, totals.cpu_weight.quantity );
 
             refunds_table refunds_tbl( SystemAccount, del.from );
             //create refund request

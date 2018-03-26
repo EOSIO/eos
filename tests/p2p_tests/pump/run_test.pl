@@ -96,7 +96,7 @@ sub write_config {
     mkdir ($data_dir[$i]."/blocks");
     mkdir ($data_dir[$i]."/blockchain");
 
-    open (my $cfg, '>', "$data_dir[$i]/config.ini") ;
+    open (my $cfg, '>', "$config_dir[$i]/config.ini") ;
     print $cfg "genesis-json = \"$genesis\"\n";
     print $cfg "block-log-dir = blocks\n";
     print $cfg "readonly = 0\n";

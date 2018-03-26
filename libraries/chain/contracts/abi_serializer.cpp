@@ -299,7 +299,7 @@ namespace eosio { namespace chain { namespace contracts {
       }
    } FC_CAPTURE_AND_RETHROW( (type)(var) ) }
 
-   bytes abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var)const {
+   bytes abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var)const { try {
       if( !is_type(type) ) {
          return var.as<bytes>();
       }
@@ -309,7 +309,7 @@ namespace eosio { namespace chain { namespace contracts {
       variant_to_binary(type, var, ds);
       temp.resize(ds.tellp());
       return temp;
-   }
+   } FC_CAPTURE_AND_RETHROW( (type)(var) ) }
 
    type_name abi_serializer::get_action_type(name action)const {
       auto itr = actions.find(action);

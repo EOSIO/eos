@@ -82,9 +82,10 @@ std::unique_ptr<wasm_instantiated_module_interface> binaryen_runtime::instantiat
       import_lut_type import_lut;
       import_lut.reserve(module->imports.size());
       for (auto& import : module->imports) {
-         if (import->module == "env") {
+         std::string full_name = string(import->module.c_str()) + "." + string(import->base.c_str());
+         if (import->kind == ExternalKind::Function) {
             auto& intrinsic_map = intrinsic_registrator::get_map();
-            auto intrinsic_itr = intrinsic_map.find(string(import->base.c_str()));
+            auto intrinsic_itr = intrinsic_map.find(full_name);
             if (intrinsic_itr != intrinsic_map.end()) {
                import_lut.emplace(make_pair((uintptr_t)import.get(), intrinsic_itr->second));
                continue;
