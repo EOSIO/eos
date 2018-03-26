@@ -991,7 +991,8 @@ int main( int argc, char** argv ) {
          } else {
             trx_var = fc::json::from_string(trx_to_push);
          }
-      } EOS_CAPTURE_AND_RETHROW(transaction_type_exception, "Fail to parse transaction JSON")      signed_transaction trx = trx_var.as<signed_transaction>();
+      } EOS_CAPTURE_AND_RETHROW(transaction_type_exception, "Fail to parse transaction JSON")
+      signed_transaction trx = trx_var.as<signed_transaction>();
       auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
    });
