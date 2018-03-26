@@ -412,6 +412,21 @@ void chain_controller::_finalize_pending_cycle()
    _pending_cycle_trace.reset();
 }
 
+void chain_controller::store_deferred_transaction(const deferred_transaction& dtrx)
+{
+   _db.create<generated_transaction_object>([&](generated_transaction_object &obj) {
+      obj.trx_id = dtrx.id();
+      obj.sender = dtrx.sender;
+      obj.sender_id = dtrx.sender_id;
+      obj.expiration = dtrx.expiration;
+      obj.delay_until = dtrx.execute_after;
+      obj.published = head_block_time();
+      obj.packed_trx.resize(fc::raw::pack_size(dtrx));
+      fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
+      fc::raw::pack(ds, dtrx);
+   });
+}
+
 void chain_controller::_apply_cycle_trace( const cycle_trace& res )
 {
    auto &generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
@@ -433,17 +448,7 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
                         fc::raw::pack(ds, dt);
                      });
                } else {
-                  _db.create<generated_transaction_object>([&](generated_transaction_object &obj) {
-                        obj.trx_id = dt.id();
-                        obj.sender = dt.sender;
-                        obj.sender_id = dt.sender_id;
-                        obj.expiration = dt.expiration;
-                        obj.delay_until = dt.execute_after;
-                        obj.published = head_block_time();
-                        obj.packed_trx.resize(fc::raw::pack_size(dt));
-                        fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
-                        fc::raw::pack(ds, dt);
-                     });
+                  store_deferred_transaction(dt);
                }
             } else if ( req.contains<deferred_reference>() ) {
                const auto& dr = req.get<deferred_reference>();

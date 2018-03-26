@@ -413,6 +413,7 @@ namespace eosio { namespace chain {
          transaction _get_on_block_transaction();
          void _apply_on_block_transaction();
 
+         void store_deferred_transaction(const deferred_transaction& dtrx);
 
       //        producer_schedule_type calculate_next_round( const signed_block& next_block );
 
