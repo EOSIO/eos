@@ -644,6 +644,50 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, tester) { try {
+   produce_blocks(2);
+   create_account( N(testapi) );
+   produce_blocks(100);
+   set_code( N(testapi), test_api_wast );
+   produce_blocks(1);
+
+   //schedule
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
+   //check that it doesn't get executed immediately
+   control->push_deferred_transactions( true );
+   CAPTURE( cerr, produce_blocks(24) );
+   BOOST_CHECK_EQUAL( 0, capture.size() );
+   //check that it gets executed afterwards
+   control->push_deferred_transactions( true );
+   CAPTURE( cerr, produce_blocks(1) );
+   BOOST_CHECK_EQUAL( 7, capture.size() );
+
+   //schedule twice (second deferred transaction should replace first one)
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
+   produce_blocks( 24 );
+   //check that only one deferred transaction executed
+   control->push_deferred_transactions( true );
+   CAPTURE( cerr, produce_blocks(1) );
+   BOOST_CHECK_EQUAL( 7, capture.size() );
+
+   //schedule and cancel
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
+   CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction", {});
+   produce_blocks( 24 );
+   control->push_deferred_transactions( true );
+   CAPTURE( cerr, produce_blocks(1) );
+   BOOST_CHECK_EQUAL( 0, capture.size() );
+
+   //cancel before schedule (check that previous bug was fixed)
+   CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction", {});
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
+   produce_blocks( 24 );
+   control->push_deferred_transactions( true );
+   CAPTURE( cerr, produce_blocks(1) );
+   BOOST_CHECK_EQUAL( 7, capture.size() );
+} FC_LOG_AND_RETHROW() }
+
 template <uint64_t NAME>
 struct setprod_act {
    static account_name get_account() {

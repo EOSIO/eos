@@ -229,6 +229,9 @@ struct test_transaction {
   static void send_transaction_max();
   static void send_transaction_large();
   static void send_action_sender();
+  static void deferred_print();
+  static void send_deferred_transaction();
+  static void cancel_deferred_transaction();
 };
 
 struct test_chain {

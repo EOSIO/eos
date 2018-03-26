@@ -523,8 +523,6 @@ class apply_context {
       struct apply_results {
          vector<action_trace> applied_actions;
          vector<fc::static_variant<deferred_transaction, deferred_reference>> deferred_transaction_requests;
-         //vector<deferred_transaction>  generated_transactions;
-         //vector<deferred_reference>    canceled_deferred;
       };
 
       apply_results results;

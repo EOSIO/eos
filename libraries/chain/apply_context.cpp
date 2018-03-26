@@ -200,11 +200,10 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
                                    "transaction is expired when created" );
 
       FC_ASSERT( trx.execute_after < trx.expiration, "transaction expires before it can execute" );
+      FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
 
       /// TODO: make default_max_gen_trx_count a producer parameter
       //XXX FC_ASSERT( results.generated_transactions.size() < config::default_max_gen_trx_count );
-
-      FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
 
       // todo: rethink this special case
       if (receiver != config::system_account_name) {
