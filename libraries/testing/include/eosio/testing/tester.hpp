@@ -78,7 +78,7 @@ namespace eosio { namespace testing {
          transaction_trace push_transaction( signed_transaction& trx, uint32_t skip_flag = skip_nothing  );
          action_result     push_action(action&& cert_act, uint64_t authorizer);
 
-         transaction_trace push_action( const account_name& code, const action_name& act, const account_name& signer, const variant_object &data );
+         transaction_trace push_action( const account_name& code, const action_name& act, const account_name& signer, const variant_object &data, int32_t expiration = -1 );
 
 
          void              set_tapos( signed_transaction& trx ) const;
@@ -96,7 +96,7 @@ namespace eosio { namespace testing {
          void delete_authority( account_name account, permission_name perm,  const vector<permission_level>& auths, const vector<private_key_type>& keys );
          void delete_authority( account_name account, permission_name perm );
 
-         void              create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
+         void create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
 
          transaction_trace push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys );
          transaction_trace push_reqauth(account_name from, string role, bool multi_sig = false);

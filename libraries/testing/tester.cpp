@@ -169,7 +169,8 @@ namespace eosio { namespace testing {
    transaction_trace base_tester::push_action( const account_name& code,
                              const action_name& acttype,
                              const account_name& actor,
-                             const variant_object& data )
+                             const variant_object& data,
+                             int32_t expiration)
 
    { try {
       const auto& acnt = control->get_database().get<account_object,by_name>(code);
@@ -188,6 +189,8 @@ namespace eosio { namespace testing {
       act.data = abis.variant_to_binary(action_type_name, data);
 
       signed_transaction trx;
+      if (expiration > -1)
+         trx.expiration = time_point_sec(control->head_block_time()) + expiration;
       trx.actions.emplace_back(std::move(act));
       set_tapos(trx);
       trx.sign(get_private_key(actor, "active"), chain_id_type());
