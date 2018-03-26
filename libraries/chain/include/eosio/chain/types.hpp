@@ -118,8 +118,6 @@ namespace eosio { namespace chain {
       permission_link_object_type,
       action_code_object_type,
       key_value_object_type,
-      key128x128_value_object_type,
-      key64x64_value_object_type,
       index64_object_type,
       index128_object_type,
       index256_object_type,
@@ -141,8 +139,6 @@ namespace eosio { namespace chain {
       producer_votes_object_type, ///< Defined by native_contract library
       producer_schedule_object_type, ///< Defined by native_contract library
       proxy_vote_object_type, ///< Defined by native_contract library
-      key64x64x64_value_object_type,
-      keystr_value_object_type,
       scope_sequence_object_type,
       bandwidth_usage_object_type,
       compute_usage_object_type,
@@ -178,8 +174,6 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (permission_link_object_type)
                 (action_code_object_type)
                 (key_value_object_type)
-                (key128x128_value_object_type)
-                (key64x64_value_object_type)
                 (index64_object_type)
                 (index128_object_type)
                 (index256_object_type)
@@ -201,8 +195,6 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (producer_votes_object_type)
                 (producer_schedule_object_type)
                 (proxy_vote_object_type)
-                (key64x64x64_value_object_type)
-                (keystr_value_object_type)
                 (scope_sequence_object_type)
                 (bandwidth_usage_object_type)
                 (compute_usage_object_type)
