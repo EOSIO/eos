@@ -43,7 +43,7 @@ namespace eosio { namespace chain {
       wasm_validations::wasm_binary_validation validator(module);
       validator.validate();
 
-      root_resolver resolver;
+      root_resolver resolver(true);
       LinkResult link_result = linkModule(module, resolver);
 
       //there are a couple opportunties for improvement here--
