@@ -315,6 +315,22 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
       BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
    }
 
+   // Negative asset
+   {
+      asset a = asset::from_string("-001000000.00010 CUR");
+      BOOST_REQUIRE_EQUAL(a.amount, -100000000010);
+      BOOST_REQUIRE_EQUAL(a.decimals(), 5);
+      BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
+   }
+
+   // Negative asset below 1
+   {
+      asset a = asset::from_string("-000000000.00100 CUR");
+      BOOST_REQUIRE_EQUAL(a.amount, -100);
+      BOOST_REQUIRE_EQUAL(a.decimals(), 5);
+      BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
+   }
+
 } FC_LOG_AND_RETHROW() /// test_symbol
 
 BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
