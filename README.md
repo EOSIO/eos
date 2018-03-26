@@ -396,7 +396,7 @@ code hash: 9b9db1a7940503a88535517049e64467a6e8f4e9e03af15e9968ec89dd794975
 Before using the currency contract, you must issue the currency.
 
 ```bash
-./cleos push action currency issue '{"to":"currency","quantity":"1000.0000 CUR"}' --permission currency@active
+./cleos push action currency issue '{"to":"currency","quantity":"1000.0000 CUR","memo":""}' --permission currency@active
 ```
 
 Next verify the currency contract has the proper initial balance:
