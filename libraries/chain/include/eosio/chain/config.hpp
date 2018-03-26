@@ -29,7 +29,6 @@ const static uint64_t owner_name  = N(owner);
 const static int      block_interval_ms = 500;
 const static int      block_interval_us = block_interval_ms*1000;
 const static uint64_t block_timestamp_epoch = 946684800000ll; // epoch is year 2000.
-const static uint32_t fixed_bandwidth_overhead_per_transaction = 100; // 100 bytes minimum (for signature and misc overhead)
 
 /** Percentages are fixed point with a denominator of 10,000 */
 const static int percent_100 = 10000;
@@ -63,6 +62,11 @@ const static uint32_t   producers_authority_threshold  = 14;
 const static uint32_t   rate_limiting_precision        = 1000*1000;
 
 const static uint16_t   max_recursion_depth = 6;
+
+const static uint32_t   default_base_per_transaction_net_usage  = 100; // 100 bytes minimum (for signature and misc overhead)
+const static uint32_t   default_base_per_transaction_cpu_usage  = 500; // TODO: is this reasonable?
+const static uint32_t   default_per_signature_cpu_usage         = 100; // TODO: is this reasonable?
+
 
 /**
  *  The number of sequential blocks produced by a single producer

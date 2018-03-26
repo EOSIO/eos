@@ -238,6 +238,7 @@ namespace eosio { namespace chain {
 
    struct action_trace {
       account_name               receiver;
+      uint64_t                   cpu_usage;
       action                     act;
       string                     console;
       uint32_t                   region_id;
@@ -251,6 +252,8 @@ namespace eosio { namespace chain {
       vector<action_trace>          action_traces;
       vector<deferred_transaction>  deferred_transactions;
       vector<deferred_reference>    canceled_deferred;
+      uint64_t                      cpu_usage;
+      uint64_t                      net_usage;
    };
 } } // eosio::chain
 
@@ -267,7 +270,7 @@ FC_REFLECT( eosio::chain::data_access_info, (type)(code)(scope)(sequence))
 FC_REFLECT( eosio::chain::action_trace, (receiver)(act)(console)(region_id)(cycle_index)(data_access) )
 FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
 FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail))
-FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transactions) )
+FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transactions)(cpu_usage)(net_usage) )
 
 
 

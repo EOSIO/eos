@@ -70,6 +70,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,                   eosio::chain::missing_plugin_exception, 3130003, "Missing Net API Plugin" )
 
    FC_DECLARE_DERIVED_EXCEPTION( rate_limiting_state_inconsistent,  eosio::chain::rate_limiting_invariant_exception, 3140001, "internal state is no longer consistent" )
+   FC_DECLARE_DERIVED_EXCEPTION( rate_limiting_overcommitment,      eosio::chain::rate_limiting_invariant_exception, 3140002, "chain resource limits are overcommitted" )
 
 
    #define EOS_RECODE_EXC( cause_type, effect_type ) \

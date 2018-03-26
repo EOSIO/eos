@@ -15,7 +15,6 @@
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/authority_checker.hpp>
 #include <eosio/chain/contracts/chain_initializer.hpp>
-#include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/scope_sequence_object.hpp>
 #include <eosio/chain/merkle.hpp>
 
@@ -52,9 +51,12 @@ chain_controller::chain_controller( const chain_controller::controller_config& c
       (cfg.read_only ? database::read_only : database::read_write),
       cfg.shared_memory_size),
  _block_log(cfg.block_log_dir),
- _limits(cfg.limits)
+ _limits(cfg.limits),
+ _resource_limits(_db)
 {
    _initialize_indexes();
+   _resource_limits.initialize_database();
+
 
    for (auto& f : cfg.applied_block_callbacks)
       applied_block.connect(f);
@@ -365,7 +367,7 @@ void chain_controller::_start_pending_shard()
 void chain_controller::_finalize_pending_cycle()
 {
    for( auto& shard : _pending_cycle_trace->shard_traces ) {
-      shard.calculate_root();
+      shard.finalize_shard();
    }
 
    _apply_cycle_trace(*_pending_cycle_trace);
@@ -440,7 +442,8 @@ void chain_controller::_finalize_block( const block_trace& trace ) { try {
    clear_expired_transactions();
 
    update_last_irreversible_block();
-   update_rate_limiting();
+   _resource_limits.process_pending_updates();
+   _resource_limits.add_block_usage(trace.calculate_cpu_usage(), fc::raw::pack_size(trace.block), b.block_num());
 
    applied_block( trace ); //emit
    if (_currently_replaying_blocks)
@@ -701,7 +704,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
             EOS_ASSERT(std::equal(used_write_locks.cbegin(), used_write_locks.cend(), shard.write_locks.begin()),
                block_lock_exception, "Write locks for executing shard: ${s} do not match those listed in the block", ("s", shard_index));
 
-            s_trace.calculate_root();
+            s_trace.finalize_shard();
             c_trace.shard_traces.emplace_back(move(s_trace));
          } /// for each shard
 
@@ -826,6 +829,44 @@ void chain_controller::record_transaction(const transaction& trx) {
         transaction.trx_id = trx.id();
         transaction.expiration = trx.expiration;
     });
+}
+
+void chain_controller::update_resource_usage( transaction_trace& trace, const transaction_metadata& meta ) {
+   const auto& chain_configuration = get_global_properties().configuration;
+
+   uint32_t act_usage = trace.action_traces.size();
+   for (auto &at: trace.action_traces) {
+      at.region_id = meta.region_id;
+      at.cycle_index = meta.cycle_index;
+      if (at.receiver == config::system_account_name &&
+          at.act.account == config::system_account_name &&
+          at.act.name == N(setcode)) {
+         act_usage += config::setcode_act_usage;
+      }
+   }
+
+   trace.net_usage = meta.bandwidth_usage + chain_configuration.base_per_transaction_net_usage;
+   trace.cpu_usage = act_usage + chain_configuration.base_per_transaction_cpu_usage;
+
+   // charge a system controlled amount for signature verification/recovery
+   if( meta.signing_keys ) {
+      trace.cpu_usage += meta.signing_keys->size() * chain_configuration.per_signature_cpu_usage;
+   }
+
+   // determine the accounts to bill
+   set<std::pair<account_name, permission_name>> authorizations;
+   for( const auto& act : meta.trx().actions )
+      for( const auto& auth : act.authorization )
+         authorizations.emplace( auth.actor, auth.permission );
+
+
+   vector<account_name> bill_to_accounts;
+   bill_to_accounts.reserve(authorizations.size());
+   for( const auto& ap : authorizations ) {
+      bill_to_accounts.push_back(ap.second);
+   }
+
+   _resource_limits.add_account_usage(bill_to_accounts, trace.cpu_usage, trace.net_usage, head_block_num());
 }
 
 
@@ -1065,8 +1106,6 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<generated_transaction_multi_index>();
    _db.add_index<producer_multi_index>();
    _db.add_index<scope_sequence_multi_index>();
-   _db.add_index<bandwidth_usage_index>();
-   _db.add_index<compute_usage_index>();
 }
 
 void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
@@ -1089,9 +1128,9 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          _db.create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
             p.time = initial_timestamp;
             p.recent_slots_filled = uint64_t(-1);
-            p.virtual_net_bandwidth = gp.configuration.max_block_size * (config::blocksize_average_window_ms / config::block_interval_ms );
-            p.virtual_act_bandwidth = gp.configuration.max_block_acts * (config::blocksize_average_window_ms / config::block_interval_ms );
          });
+
+         _resource_limits.initialize_chain();
 
          // Initialize block summary index
          for (int i = 0; i < 0x10000; i++)
@@ -1218,11 +1257,6 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
       dgp.time = b.timestamp;
       dgp.current_producer = b.producer;
       dgp.current_absolute_slot += missed_blocks+1;
-      dgp.average_block_size.add_usage( fc::raw::pack_size(b), b.timestamp );
-
-      dgp.update_virtual_net_bandwidth( props.configuration );
-      dgp.update_virtual_act_bandwidth( props.configuration );
-
 
       // If we've missed more blocks than the bitmap stores, skip calculations and simply reset the bitmap
       if (missed_blocks < sizeof(dgp.recent_slots_filled) * 8) {
@@ -1250,6 +1284,28 @@ void chain_controller::update_signing_producer(const producer_object& signing_pr
       _wit.last_aslot = new_block_aslot;
       _wit.last_confirmed_block_num = new_block.block_num();
    } );
+}
+
+void chain_controller::update_permission_usage( const transaction_metadata& meta ) {
+   // for any transaction not sent by code, update the affirmative last time a given permission was used
+   if (!meta.sender) {
+      for( const auto& act : meta.trx().actions ) {
+         for( const auto& auth : act.authorization ) {
+            const auto *puo = _db.find<permission_usage_object, by_account_permission>(boost::make_tuple(auth.actor, auth.permission));
+            if (puo) {
+               _db.modify(*puo, [this](permission_usage_object &pu) {
+                  pu.last_used = head_block_time();
+               });
+            } else {
+               _db.create<permission_usage_object>([this, &auth](permission_usage_object &pu){
+                  pu.account = auth.actor;
+                  pu.permission = auth.permission;
+                  pu.last_used = head_block_time();
+               });
+            }
+         }
+      }
+   }
 }
 
 void chain_controller::update_or_create_producers( const producer_schedule_type& producers ) {
@@ -1338,49 +1394,6 @@ void chain_controller::update_last_irreversible_block()
    // Trim fork_database and undo histories
    _fork_db.set_max_size(head_block_num() - new_last_irreversible_block_num + 1);
    _db.commit(new_last_irreversible_block_num);
-}
-
-void chain_controller::update_rate_limiting()
-{
-   auto& resource_limits_index = _db.get_mutable_index<resource_limits_index>();
-   auto& by_owner_index = resource_limits_index.indices().get<by_owner>();
-
-   auto updated_state = _db.get<resource_limits_state_object>();
-
-   while(!by_owner_index.empty()) {
-      const auto& itr = by_owner_index.lower_bound(boost::make_tuple(true));
-      if (itr == by_owner_index.end() || itr->pending!= true) {
-         break;
-      }
-
-      const auto& actual_entry = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, itr->owner));
-      _db.modify(actual_entry, [&](resource_limits_object& rlo){
-         // convenience local lambda to reduce clutter
-         auto update_state_and_value = [](uint64_t &total, int64_t &value, int64_t pending_value, const char* debug_which) -> void {
-            if (value > 0) {
-               EOS_ASSERT(total >= value, rate_limiting_state_inconsistent, "underflow when reverting old value to ${which}", ("which", debug_which));
-               total -= value;
-            }
-
-            if (pending_value > 0) {
-               EOS_ASSERT(UINT64_MAX - total < value, rate_limiting_state_inconsistent, "overflow when applying new value to ${which}", ("which", debug_which));
-               total += pending_value;
-            }
-
-            value = pending_value;
-         };
-
-         update_state_and_value(updated_state.total_ram_bytes,  rlo.ram_bytes,  itr->ram_bytes, "ram_bytes");
-         update_state_and_value(updated_state.total_cpu_weight, rlo.cpu_weight, itr->cpu_weight, "cpu_weight");
-         update_state_and_value(updated_state.total_net_weight, rlo.net_weight, itr->net_weight, "net_wright");
-      });
-
-      by_owner_index.remove(*itr);
-   }
-
-   _db.modify(updated_state, [&updated_state](resource_limits_state_object rso){
-      rso = updated_state;
-   });
 }
 
 void chain_controller::clear_expired_transactions()
@@ -1487,19 +1500,9 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
       fc::move_append(result.canceled_deferred, std::move(context.results.canceled_deferred));
    }
 
-   uint32_t act_usage = result.action_traces.size();
+   update_resource_usage(result, meta);
 
-   for (auto &at: result.action_traces) {
-      at.region_id = meta.region_id;
-      at.cycle_index = meta.cycle_index;
-      if (at.receiver == config::system_account_name &&
-          at.act.account == config::system_account_name &&
-          at.act.name == N(setcode)) {
-         act_usage += config::setcode_act_usage;
-      }
-   }
-
-   update_usage(meta, act_usage);
+   update_permission_usage(meta);
    record_transaction(meta.trx());
    return result;
 }
@@ -1545,7 +1548,7 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
          at.cycle_index = meta.cycle_index;
       }
 
-      update_usage(meta, act_usage);
+      update_resource_usage(result, meta);
       record_transaction(meta.trx());
 
       temp_session.squash();
@@ -1607,85 +1610,6 @@ void chain_controller::push_deferred_transactions( bool flush )
          generated_transaction_idx.remove(*trx_p);
       }
    }
-}
-
-
-/**
- *  @param act_usage The number of "actions" delivered directly or indirectly by applying meta.trx
- */
-void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_usage )
-{
-   const auto& config = _db.get<resource_limits_config_object>();
-   const auto& state = _db.get<resource_limits_state_object>();
-   set<std::pair<account_name, permission_name>> authorizing_accounts;
-
-   for( const auto& act : meta.trx().actions )
-      for( const auto& auth : act.authorization )
-         authorizing_accounts.emplace( auth.actor, auth.permission );
-
-   auto net_usage = meta.bandwidth_usage + config.base_per_transaction_net_usage;
-   auto cpu_usage = act_usage + config.base_per_transaction_net_usage;
-
-   // charge a system controlled amount for signature verification/recovery
-   if( meta.signing_keys ) {
-      cpu_usage += meta.signing_keys->size() * config.per_signature_cpu_usage;
-   }
-
-   auto head_time = head_block_time();
-   for( const auto& authaccnt : authorizing_accounts ) {
-
-      const auto& usage = _db.get<resource_usage_object,by_owner>( authaccnt.first );
-      const auto& limits = _db.get<resource_limits_object,by_owner>( boost::make_tuple(false, authaccnt.first));
-      _db.modify( usage, [&]( auto& bu ){
-          bu.net_usage.add_usage( net_usage, head_time );
-          bu.cpu_usage.add_usage( cpu_usage, head_time );
-      });
-
-      uint128_t  consumed_cpu_ex = usage.cpu_usage.value // this is pre-multiplied by config::rate_limiting_precision
-      uint128_t  capacity_cpu_ex = state.virtual_cpu_limit * config::rate_limiting_precision;
-      EOS_ASSERT( limits.cpu_weight < 0 || (consumed_cpu_ex * state.total_cpu_weight) <= (limits.cpu_weight * capacity_cpu_ex),
-                  tx_resource_exhausted,
-                  "authorizing account '${n}' has insufficient cpu resources for this transaction",
-                  ("n",                    name(authaccnt.first))
-                  ("consumed",             (double)consumed_cpu_ex/(double)config::rate_limiting_precision)
-                  ("cpu_weight",           limits.cpu_weight)
-                  ("virtual_cpu_capacity", (double)state.virtual_cpu_limit/(double)config::rate_limiting_precision )
-                  ("total_cpu_weight",     state.total_cpu_weight)
-      );
-
-      uint128_t  consumed_net_ex = usage.net_usage.value // this is pre-multiplied by config::rate_limiting_precision
-      uint128_t  capacity_net_ex = state.virtual_net_limit * config::rate_limiting_precision;
-
-      EOS_ASSERT( limits.net_weight < 0 || (consumed_net_ex * state.total_net_weight) <= (limits.net_weight * capacity_net_ex),
-                  tx_resource_exhausted,
-                  "authorizing account '${n}' has insufficient cpu resources for this transaction",
-                  ("n",                    name(authaccnt.first))
-                  ("consumed",             (double)consumed_net_ex/(double)config::rate_limiting_precision)
-                  ("net_weight",           limits.net_weight)
-                  ("virtual_net_capacity", (double)state.virtual_net_limit/(double)config::rate_limiting_precision )
-                  ("total_net_weight",     state.total_net_weight)
-      );
-
-      // for any transaction not sent by code, update the affirmative last time a given permission was used
-      if (!meta.sender) {
-         const auto *puo = _db.find<permission_usage_object, by_account_permission>(boost::make_tuple(authaccnt.first, authaccnt.second));
-         if (puo) {
-            _db.modify(*puo, [this](permission_usage_object &pu) {
-               pu.last_used = head_block_time();
-            });
-         } else {
-            _db.create<permission_usage_object>([this, &authaccnt](permission_usage_object &pu){
-               pu.account = authaccnt.first;
-               pu.permission = authaccnt.second;
-               pu.last_used = head_block_time();
-            });
-         }
-      }
-   }
-
-   _db.modify( state, [&]( rate_limiting_state_object& rls ) {
-      rls.average_block_cpu_usage.add_usage( cpu_usage, head_time );
-   });
 }
 
 const apply_handler* chain_controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const

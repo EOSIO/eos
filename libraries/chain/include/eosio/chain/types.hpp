@@ -143,10 +143,9 @@ namespace eosio { namespace chain {
       key64x64x64_value_object_type,
       keystr_value_object_type,
       scope_sequence_object_type,
+      table_id_object_type,
       resource_limits_object_type,
       resource_usage_object_type,
-      table_id_object_type,
-      pending_total_resource_limits_object_type,
       resource_limits_state_object_type,
       resource_limits_config_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
@@ -205,9 +204,11 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (key64x64x64_value_object_type)
                 (keystr_value_object_type)
                 (scope_sequence_object_type)
-                (resource_limits_object_type)
-                (compute_usage_object_type)
                 (table_id_object_type)
+                (resource_limits_object_type)
+                (resource_usage_object_type)
+                (resource_limits_state_object_type)
+                (resource_limits_config_object_type)
                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( eosio::chain::void_t, )

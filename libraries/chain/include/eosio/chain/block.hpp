@@ -126,6 +126,7 @@ namespace eosio { namespace chain {
    struct shard_trace {
       digest_type                   shard_root;
       vector<transaction_trace>     transaction_traces;
+      uint64_t                      cpu_usage;
 
       void append( transaction_trace&& res ) {
          transaction_traces.emplace_back(move(res));
@@ -135,7 +136,7 @@ namespace eosio { namespace chain {
          transaction_traces.emplace_back(res);
       }
 
-      void calculate_root();
+      void finalize_shard();
    };
 
    struct cycle_trace {
@@ -153,7 +154,9 @@ namespace eosio { namespace chain {
 
       const signed_block&     block;
       vector<region_trace>    region_traces;
+
       digest_type             calculate_action_merkle_root()const;
+      uint64_t                calculate_cpu_usage() const;
    };
 
 

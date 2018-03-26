@@ -24,6 +24,9 @@ struct genesis_state_type {
       .target_block_acts              = config::default_target_block_acts,
       .max_block_acts                 = config::default_max_block_acts,
       .real_threads                   = 0, // TODO: unused?
+      .base_per_transaction_net_usage = config::default_base_per_transaction_net_usage,
+      .base_per_transaction_cpu_usage = config::default_base_per_transaction_cpu_usage,
+      .per_signature_cpu_usage        = config::default_per_signature_cpu_usage,
       .max_storage_size               = config::default_max_storage_size,
       .max_transaction_lifetime       = config::default_max_trx_lifetime,
       .max_authority_depth            = config::default_max_auth_depth,

@@ -58,10 +58,11 @@ namespace eosio { namespace chain {
       return merkle( std::move(merkle_of_each_shard) );
     }
 
-   void shard_trace::calculate_root() {
+   void shard_trace::finalize_shard() {
       static const size_t GUESS_ACTS_PER_TX = 10;
 
       vector<digest_type> action_roots;
+      cpu_usage = 0;
       action_roots.reserve(transaction_traces.size() * GUESS_ACTS_PER_TX);
       for (const auto& tx :transaction_traces) {
          for (const auto& at: tx.action_traces) {
@@ -76,6 +77,8 @@ namespace eosio { namespace chain {
             fc::raw::pack(enc, at.data_access);
 
             action_roots.emplace_back(enc.result());
+
+            cpu_usage += at.cpu_usage;
          }
       }
       shard_root = merkle(action_roots);
@@ -92,6 +95,19 @@ namespace eosio { namespace chain {
          }
       }
       return merkle(shard_roots);
+   }
+
+   uint64_t block_trace::calculate_cpu_usage() const {
+      uint64_t cpu_usage = 0;
+      for(const auto& rt: region_traces ) {
+         for(const auto& ct: rt.cycle_traces ) {
+            for(const auto& st: ct.shard_traces) {
+               cpu_usage += st.cpu_usage;
+            }
+         }
+      }
+
+      return cpu_usage;
    }
 
 } }

@@ -99,12 +99,7 @@ void apply_eosio_newaccount(apply_context& context) {
    const auto& owner_permission = create_permission("owner", 0, std::move(create.owner));
    create_permission("active", owner_permission.id, std::move(create.active));
 
-   db.create<resource_limits_object>([&]( auto& bu ) { bu.owner = create.name; });
-
-   context.require_recipient()
-
-
-
+   context.mutable_controller.get_mutable_resource_limits_manager().initialize_account(create.name);
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
 

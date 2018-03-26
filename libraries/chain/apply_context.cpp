@@ -11,6 +11,7 @@ using boost::container::flat_set;
 namespace eosio { namespace chain {
 void apply_context::exec_one()
 {
+   _cpu_usage = 0;
    try {
       auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
       if (native) {
@@ -85,7 +86,7 @@ void apply_context::exec_one()
       }
    }
 
-   results.applied_actions.emplace_back(action_trace {receiver, act, _pending_console_output.str(), 0, 0, move(data_access)});
+   results.applied_actions.emplace_back(action_trace {receiver, _cpu_usage, act, _pending_console_output.str(), 0, 0, move(data_access)});
    _pending_console_output = std::ostringstream();
    _read_locks.clear();
    _write_scopes.clear();
@@ -238,10 +239,11 @@ vector<account_name> apply_context::get_active_producers() const {
    return accounts;
 }
 
-void apply_context::checktime(uint32_t instruction_count) const {
+void apply_context::checktime(uint32_t instruction_count) {
    if (trx_meta.processing_deadline && fc::time_point::now() > (*trx_meta.processing_deadline)) {
       throw checktime_exceeded();
    }
+   _cpu_usage += instruction_count;
 }
 
 

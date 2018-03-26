@@ -577,7 +577,7 @@ class apply_context {
          console_append(fc::format_string(fmt, vo));
       }
 
-      void checktime(uint32_t instruction_count) const;
+      void checktime(uint32_t instruction_count);
 
       int get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const;
       int get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const;
@@ -627,6 +627,7 @@ class apply_context {
       vector<shard_lock>                  _read_locks;
       vector<scope_name>                  _write_scopes;
       bytes                               _cached_trx;
+      uint64_t                            _cpu_usage;
 };
 
 using apply_handler = std::function<void(apply_context&)>;
