@@ -873,7 +873,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
    }
 
    produce_blocks(1);
-#if 0
+
    {
    signed_transaction trx;
    action act;
@@ -885,24 +885,6 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
    trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
    push_transaction(trx);
    }
-   set_code(N(tbl), table_checker_small_wast);
-   produce_blocks(1);
-
-   {
-   signed_transaction trx;
-   action act;
-   act.name = 888ULL;
-   act.account = N(tbl);
-   act.authorization = vector<permission_level>{{N(tbl),config::active_name}};
-   trx.actions.push_back(act);
-   set_tapos(trx);
-   trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
-
-   //an element that is out of range and has no mmap access permission either (should be a trapped segv)
-   BOOST_CHECK_EXCEPTION(push_transaction(trx), eosio::chain::wasm_execution_error, [](const eosio::chain::wasm_execution_error &e) {return true;});
-   }
-#endif
-
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( protected_globals, tester ) try {
