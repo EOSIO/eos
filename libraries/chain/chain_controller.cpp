@@ -1579,7 +1579,7 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    return result;
 }
 
-void chain_controller::push_deferred_transactions( bool flush )
+vector<transaction_trace> chain_controller::push_deferred_transactions( bool flush )
 {
    if (flush && _pending_cycle_trace && _pending_cycle_trace->shard_traces.size() > 0) {
       // TODO: when we go multithreaded this will need a better way to see if there are flushable
@@ -1614,18 +1614,20 @@ void chain_controller::push_deferred_transactions( bool flush )
       candidates.emplace_back(&gtrx);
    }
 
+   vector<transaction_trace> res;
    for (const auto* trx_p: candidates) {
       if (!is_known_transaction(trx_p->trx_id)) {
          try {
             auto trx = fc::raw::unpack<deferred_transaction>(trx_p->packed_trx.data(), trx_p->packed_trx.size());
             transaction_metadata mtrx (trx, trx_p->published, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size());
-            _push_transaction(std::move(mtrx));
+            res.push_back( _push_transaction(std::move(mtrx)) );
             generated_transaction_idx.remove(*trx_p);
          } FC_CAPTURE_AND_LOG((trx_p->trx_id)(trx_p->sender));
       } else {
          generated_transaction_idx.remove(*trx_p);
       }
    }
+   return res;
 }
 
 
