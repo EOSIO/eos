@@ -19,35 +19,43 @@ namespace eosio { namespace chain {
       time_point        last_updated; ///< the last time this authority was updated
       time_point        delay; ///< delay associated with this permission
 
+
       /**
        * @brief Checks if this permission is equivalent or greater than other
        * @tparam Index The permission_index
-       * @return True if this permission matches, or is a parent of, other; false otherwise
+       * @return a time_point set to the maximum delay encountered between this and the permission that is other;
+       * empty optional otherwise
        *
        * Permissions are organized hierarchically such that a parent permission is strictly more powerful than its
        * children/grandchildren. This method checks whether this permission is of greater or equal power (capable of
-       * satisfying) permission @ref other. This would be the case if this permission matches, or is some parent of,
-       * other.
+       * satisfying) permission @ref other. The returned value is an optional<time_point> that will indicate the
+       * maximum delay encountered walking the hierarchy between this permission and other, if other satisfies this,
+       * otherwise an empty optional is returned.
        */
       template <typename Index>
-      bool satisfies(const permission_object& other, const Index& permission_index) const {
+      optional<time_point> satisfies(const permission_object& other, const Index& permission_index) const {
          // If the owners are not the same, this permission cannot satisfy other
          if (owner != other.owner)
-            return false;
+            return optional<time_point>();
+
+         // if other satisfies this permission, then other's delay and this delay will have to contribute
+         auto max_delay = other.delay > delay ? other.delay : delay;
          // If this permission matches other, or is the immediate parent of other, then this permission satisfies other
          if (id == other.id || id == other.parent)
-            return true;
+            return optional<time_point>(max_delay);
          // Walk up other's parent tree, seeing if we find this permission. If so, this permission satisfies other
          const permission_object* parent = &*permission_index.template get<by_id>().find(other.parent);
          while (parent) {
+            if (max_delay < parent->delay)
+               max_delay = parent->delay;
             if (id == parent->parent)
-               return true;
+               return optional<time_point>(max_delay);
             if (parent->parent._id == 0)
-               return false;
+               return optional<time_point>();
             parent = &*permission_index.template get<by_id>().find(parent->parent);
          }
          // This permission is not a parent of other, and so does not satisfy other
-         return false;
+         return optional<time_point>();
       }
    };
 
