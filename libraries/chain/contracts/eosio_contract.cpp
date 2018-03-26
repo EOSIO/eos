@@ -14,6 +14,7 @@
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/permission_link_object.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/producer_object.hpp>
@@ -455,5 +456,38 @@ void apply_eosio_vetorecovery(apply_context& context) {
    context.console_append_formatted("Recovery for account ${account} vetoed!\n", mutable_variant_object()("account", account));
 }
 
+void apply_eosio_canceldelay(apply_context& context) {
+   auto cancel = context.act.data_as<canceldelay>();
+   const auto sender_id = cancel.sender_id.convert_to<uint32_t>();
+   const auto& generated_transaction_idx = context.controller.get_database().get_index<generated_transaction_multi_index>();
+   const auto& generated_index = generated_transaction_idx.indices().get<by_sender_id>();
+   const auto& itr = generated_index.lower_bound(boost::make_tuple(config::system_account_name, sender_id));
+   FC_ASSERT (itr == generated_index.end() || itr->sender != config::system_account_name || itr->sender_id != sender_id,
+              "cannot cancel sender_id=${sid}, there is no deferred transaction with that sender_id",("sid",sender_id));
+
+   auto dtrx = fc::raw::unpack<deferred_transaction>(itr->packed_trx.data(), itr->packed_trx.size());
+   set<account_name> accounts;
+   for (const auto& act : dtrx.actions) {
+      for (const auto& auth : act.authorization) {
+         accounts.insert(auth.actor);
+      }
+   }
+
+   bool found = false;
+   for (const auto& auth : context.act.authorization) {
+      if (auth.permission == config::active_name && accounts.count(auth.actor)) {
+         found = true;
+         break;
+      }
+   }
+
+   FC_ASSERT (found, "canceldelay action must be signed with the \"active\" permission for one of the actors"
+                     " provided in the authorizations on the original transaction");
+   context.cancel_deferred(sender_id);
+}
+
+void apply_eosio_mindelay(apply_context& context) {
+   // all processing is performed in chain_controller::check_authorization
+}
 
 } } } // namespace eosio::chain::contracts

@@ -268,6 +268,29 @@ struct vetorecovery {
    }
 };
 
+struct canceldelay {
+   uint32   sender_id;
+
+   static account_name get_account() {
+      return config::system_account_name;
+   }
+
+   static action_name get_name() {
+      return N(canceldelay);
+   }
+};
+
+struct mindelay {
+   uint32   delay;
+
+   static account_name get_account() {
+      return config::system_account_name;
+   }
+
+   static action_name get_name() {
+      return N(mindelay);
+   }
+};
 
 } } } /// namespace eosio::chain::contracts
 
@@ -288,3 +311,5 @@ FC_REFLECT( eosio::chain::contracts::unlinkauth                       , (account
 FC_REFLECT( eosio::chain::contracts::postrecovery                     , (account)(data)(memo) )
 FC_REFLECT( eosio::chain::contracts::passrecovery                     , (account) )
 FC_REFLECT( eosio::chain::contracts::vetorecovery                     , (account) )
+FC_REFLECT( eosio::chain::contracts::canceldelay                      , (sender_id) )
+FC_REFLECT( eosio::chain::contracts::mindelay                         , (delay) )
