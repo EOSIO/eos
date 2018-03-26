@@ -214,20 +214,7 @@ void test_transaction::send_transaction_large() {
  * deferred transaction
  */
 void test_transaction::deferred_print() {
-   using namespace eosio;
-   uint64_t max_value = 1;
-   int32_t end = db_end_i64( N(testapi), N(testapi),  N(deferred) );
-   if ( end != -1 ) {
-      int32_t last_it = db_previous_i64( end, &max_value );
-      if ( last_it != -1 ) {
-         ++max_value;
-      }
-   }
-   db_store_i64( N(testapi), N(deferred), N(testapi), max_value, &max_value, sizeof(uint64_t) );
-   print( "wrote ", max_value, "\n" );
-
-   auto it = db_lowerbound_i64( N(testapi), N(testapi), N(deferred), 0 );
-   eosio_assert (it >= 0, "not found row" );
+   eosio::print("deferred executed\n");
 }
 
 void test_transaction::send_deferred_transaction() {
@@ -235,10 +222,7 @@ void test_transaction::send_deferred_transaction() {
    auto trx = transaction();
    test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "deferred_print")> test_action;
    trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
-   //copy_data((char*)&num, sizeof(uint64_t), test_action.data);
-
-   trx.send( 0, now()+2 ); //use the same id (0) as in cancel_deferred_transaction
-   //print( "test_transaction::send_deferred_transaction ", num, "\n" );
+   trx.send( 0, now()+2 );
 }
 
 void test_transaction::cancel_deferred_transaction() {
