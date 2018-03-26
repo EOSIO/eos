@@ -198,7 +198,10 @@ void apply_context::require_recipient( account_name code ) {
 void apply_context::execute_inline( action&& a ) {
    if ( !privileged ) {
       if( a.account != receiver ) {
-         controller.check_authorization({a}, flat_set<public_key_type>(), false, {receiver});
+         const auto delay = controller.check_authorization({a}, flat_set<public_key_type>(), false, {receiver});
+         FC_ASSERT( trx_meta.published + delay <= controller.head_block_time(),
+                    "inline action uses a permission that imposes a delay that is not met, add an action of mindelay with delay of atleast ${delay}",
+                    ("delay", delay.sec_since_epoch()) );
       }
    }
    _inline_actions.emplace_back( move(a) );
@@ -232,8 +235,12 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
                break;
             }
          }
-         if( check_auth )
-            controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
+         if( check_auth ) {
+            const auto delay = controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
+            FC_ASSERT( trx_meta.published + delay <= controller.head_block_time(),
+                       "deferred transaction uses a permission that imposes a delay that is not met, add an action of mindelay with delay of atleast ${delay}",
+                       ("delay", delay.sec_since_epoch()) );
+         }
       }
 
       trx.sender = receiver; //  "Attempting to send from another account"
