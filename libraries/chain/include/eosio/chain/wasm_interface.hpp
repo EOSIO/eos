@@ -21,6 +21,11 @@ namespace eosio { namespace chain {
                       IR::ObjectType type,
                       Runtime::ObjectInstance*& out) override { 
       try {
+         //protect access to "private" injected functions; so for now just simply allow "env" since injected functions
+         //  are in a different module
+         if(mod_name != "env")
+            FC_ASSERT( !"importing from module that is not 'env'", "${module}.${export}", ("module",mod_name)("export",export_name) );
+
          // Try to resolve an intrinsic first.
          if(Runtime::IntrinsicResolver::singleton.resolve(mod_name,export_name,type, out)) {
             return true;

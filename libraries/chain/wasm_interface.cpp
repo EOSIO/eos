@@ -1419,7 +1419,7 @@ REGISTER_INTRINSICS(privileged_api,
    (set_privileged,            void(int64_t, int)                            )
 );
 
-REGISTER_INTRINSICS(checktime_api,
+REGISTER_INJECTED_INTRINSICS(checktime_api,
    (checktime,      void(int))
 );
 
@@ -1549,7 +1549,7 @@ REGISTER_INTRINSICS(memory_api,
    (memset,                 int(int, int, int)  )
 );
 
-REGISTER_INTRINSICS(softfloat_api,
+REGISTER_INJECTED_INTRINSICS(softfloat_api,
       (_eosio_f32_add,       float(float, float)    )
       (_eosio_f32_sub,       float(float, float)    )
       (_eosio_f32_mul,       float(float, float)    )
