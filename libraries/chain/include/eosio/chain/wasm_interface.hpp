@@ -19,7 +19,7 @@ namespace eosio { namespace chain {
          bool resolve(const string& mod_name,
                       const string& export_name,
                       IR::ObjectType type,
-                      Runtime::ObjectInstance*& out) override { 
+                      Runtime::ObjectInstance*& out) override {
       try {
          // Try to resolve an intrinsic first.
          if(Runtime::IntrinsicResolver::singleton.resolve(mod_name,export_name,type, out)) {
@@ -53,7 +53,6 @@ namespace eosio { namespace chain {
          void apply(const digest_type& code_id, const shared_vector<char>& code, apply_context& context);
 
       private:
-         wasm_interface();
          unique_ptr<struct wasm_interface_impl> my;
          friend class eosio::chain::webassembly::common::intrinsics_accessor;
    };
