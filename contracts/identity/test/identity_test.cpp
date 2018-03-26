@@ -1,7 +1,6 @@
 #include <eosiolib/chain.h>
 #include <eosiolib/dispatcher.hpp>
 #include <eosiolib/singleton.hpp>
-#include <eosiolib/table.hpp>
 #include <eosiolib/vector.hpp>
 
 #include <identity/identity.hpp>

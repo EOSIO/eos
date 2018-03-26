@@ -13,7 +13,7 @@ extern "C" {
 
     }
 
-   void apply( unsigned long long code, unsigned long long action ) {
+   void apply( unsigned long long, unsigned long long action ) {
 
       WASM_TEST_HANDLER(test_db, primary_i64_general);
       WASM_TEST_HANDLER(test_db, primary_i64_lowerbound);
@@ -21,8 +21,6 @@ extern "C" {
       WASM_TEST_HANDLER(test_db, idx64_general);
       WASM_TEST_HANDLER(test_db, idx64_lowerbound);
       WASM_TEST_HANDLER(test_db, idx64_upperbound);
-
-      WASM_TEST_HANDLER(test_db, key_str_general);
 
       //unhandled test call
       eosio_assert(false, "Unknown Test");

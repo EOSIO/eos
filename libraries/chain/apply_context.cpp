@@ -13,21 +13,17 @@ void apply_context::exec_one()
 {
    _cpu_usage = 0;
    try {
+      const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
+      privileged = a.privileged;
+
       auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
       if (native) {
          (*native)(*this);
-      } else {
-         const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
-         privileged = a.privileged;
-
-         if (a.code.size() > 0) {
-            // get code from cache
-            auto code = mutable_controller.get_wasm_cache().checkout_scoped(a.code_version, a.code.data(),
-                                                                            a.code.size());
-            // get wasm_interface
-            auto &wasm = wasm_interface::get();
-            wasm.apply(code, *this);
-      }
+      } 
+      else if (a.code.size() > 0) {
+         try {
+            mutable_controller.get_wasm_interface().apply(a.code_version, a.code, *this);
+         } catch ( const wasm_exit& ){}
       }
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 
@@ -100,6 +96,14 @@ void apply_context::exec()
       exec_one();
    }
 
+   for( uint32_t i = 0; i < _cfa_inline_actions.size(); ++i ) {
+      EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
+      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta, recurse_depth + 1 );
+      ncontext.context_free = true;
+      ncontext.exec();
+      append_results(move(ncontext.results));
+   }
+
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
       EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
       apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta, recurse_depth + 1 );
@@ -114,11 +118,14 @@ bool apply_context::is_account( const account_name& account )const {
 }
 
 void apply_context::require_authorization( const account_name& account )const {
-  for( const auto& auth : act.authorization )
-     if( auth.actor == account ) return;
-  wdump((act));
-  EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}", ("account",account));
+  EOS_ASSERT( has_authorization(account), tx_missing_auth, "missing authority of ${account}", ("account",account));
 }
+bool apply_context::has_authorization( const account_name& account )const {
+  for( const auto& auth : act.authorization )
+     if( auth.actor == account ) return true;
+  return false;
+}
+
 void apply_context::require_authorization(const account_name& account,
                                           const permission_name& permission)const {
   for( const auto& auth : act.authorization )
@@ -173,12 +180,34 @@ void apply_context::require_recipient( account_name code ) {
       _notified.push_back(code);
 }
 
-void apply_context::execute_inline( action &&a ) {
-   // todo: rethink this special case
-   if (receiver != config::system_account_name) {
-      controller.check_authorization({a}, flat_set<public_key_type>(), false, {receiver});
+
+/**
+ *  This will execute an action after checking the authorization. Inline transactions are 
+ *  implicitly authorized by the current receiver (running code). This method has significant
+ *  security considerations and several options have been considered:
+ *
+ *  1. priviledged accounts (those marked as such by block producers) can authorize any action
+ *  2. all other actions are only authorized by 'receiver' which means the following:
+ *         a. the user must set permissions on their account to allow the 'receiver' to act on their behalf
+ *  
+ *  Discarded Implemenation:  at one point we allowed any account that authorized the current transaction
+ *   to implicitly authorize an inline transaction. This approach would allow privelege escalation and
+ *   make it unsafe for users to interact with certain contracts.  We opted instead to have applications
+ *   ask the user for permission to take certain actions rather than making it implicit. This way users
+ *   can better understand the security risk.
+ */
+void apply_context::execute_inline( action&& a ) {
+   if ( !privileged ) { 
+      if( a.account != receiver ) {
+         controller.check_authorization({a}, flat_set<public_key_type>(), false, {receiver}); 
+      }
    }
    _inline_actions.emplace_back( move(a) );
+}
+
+void apply_context::execute_context_free_inline( action&& a ) {
+   FC_ASSERT( a.authorization.size() == 0, "context free actions cannot have authorizations" );
+   _cfa_inline_actions.emplace_back( move(a) );
 }
 
 void apply_context::execute_deferred( deferred_transaction&& trx ) {
@@ -193,9 +222,20 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
 
       FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
 
-      // todo: rethink this special case
-      if (receiver != config::system_account_name) {
-         controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
+      // privileged accounts can do anything, no need to check auth
+      if( !privileged ) {
+
+         // if a contract is deferring only actions to itself then there is no need
+         // to check permissions, it could have done everything anyway.
+         bool check_auth = false;
+         for( const auto& act : trx.actions ) {
+            if( act.account != receiver ) {
+               check_auth = true;
+               break;
+            }
+         }
+         if( check_auth ) 
+            controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
       }
 
       trx.sender = receiver; //  "Attempting to send from another account"
@@ -262,42 +302,6 @@ const bytes& apply_context::get_packed_transaction() {
    return trx_meta.packed_trx;
 }
 
-const char* to_string(contracts::table_key_type key_type) {
-   switch(key_type) {
-   case contracts::type_unassigned:
-      return "unassigned";
-   case contracts::type_i64:
-      return "i64";
-   case contracts::type_str:
-      return "str";
-   case contracts::type_i128i128:
-      return "i128i128";
-   case contracts::type_i64i64:
-      return "i64i64";
-   case contracts::type_i64i64i64:
-      return "i64i64i64";
-   default:
-      return "<unkown table_key_type>";
-   }
-}
-
-void apply_context::validate_table_key( const table_id_object& t_id, contracts::table_key_type key_type ) {
-   FC_ASSERT( t_id.key_type == contracts::table_key_type::type_unassigned || key_type == t_id.key_type,
-              "Table entry for ${code}-${scope}-${table} uses key type ${act_type} should have had type of ${exp_type}",
-              ("code",t_id.code)("scope",t_id.scope)("table",t_id.table)("act_type",to_string(t_id.key_type))("exp_type", to_string(key_type)) );
-}
-
-void apply_context::validate_or_add_table_key( const table_id_object& t_id, contracts::table_key_type key_type ) {
-   if (t_id.key_type == contracts::table_key_type::type_unassigned)
-      mutable_db.modify( t_id, [&key_type]( auto& o) {
-         o.key_type = key_type;
-      });
-   else
-      FC_ASSERT( key_type == t_id.key_type,
-                 "Table entry for ${code}-${scope}-${table} uses key type ${act_type} should have had type of ${exp_type}",
-                 ("code",t_id.code)("scope",t_id.scope)("table",t_id.table)("act_type",to_string(t_id.key_type))("exp_type", to_string(key_type)) );
-}
-
 void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
    require_write_lock( payer );
    if( (delta > 0) && payer != account_name(receiver) ) {
@@ -337,9 +341,9 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
    if( buffer_size == 0 ) return s;
 
    if( buffer_size < s )
-      memcpy( buffer, trx_meta.context_free_data.data(), buffer_size );
+      memcpy( buffer, trx_meta.context_free_data[index].data(), buffer_size );
    else
-      memcpy( buffer, trx_meta.context_free_data.data(), s );
+      memcpy( buffer, trx_meta.context_free_data[index].data(), s );
 
    return s;
 }
@@ -349,7 +353,6 @@ int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_n
    require_write_lock( scope );
    const auto& tab = find_or_create_table( receiver, scope, table );
    auto tableid = tab.id;
-   validate_or_add_table_key(tab, contracts::table_key_type::type_i64);
 
    FC_ASSERT( payer != account_name(), "must specify a valid account to pay for new record" );
 
@@ -468,7 +471,6 @@ int apply_context::db_find_i64( uint64_t code, uint64_t scope, uint64_t table, u
 
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
-   validate_table_key(*tab, contracts::table_key_type::type_i64);
 
    auto table_end_itr = keyval_cache.cache_table( *tab );
 
@@ -483,7 +485,6 @@ int apply_context::db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t ta
 
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
-   validate_table_key(*tab, contracts::table_key_type::type_i64);
 
    auto table_end_itr = keyval_cache.cache_table( *tab );
 
@@ -500,7 +501,6 @@ int apply_context::db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t ta
 
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
-   validate_table_key(*tab, contracts::table_key_type::type_i64);
 
    auto table_end_itr = keyval_cache.cache_table( *tab );
 
@@ -517,33 +517,7 @@ int apply_context::db_end_i64( uint64_t code, uint64_t scope, uint64_t table ) {
 
    const auto* tab = find_table( code, scope, table );
    if( !tab ) return -1;
-   validate_table_key(*tab, contracts::table_key_type::type_i64);
 
    return keyval_cache.cache_table( *tab );
-}
-
-template<>
-contracts::table_key_type apply_context::get_key_type<contracts::key_value_object>() {
-   return contracts::table_key_type::type_i64;
-}
-
-template<>
-contracts::table_key_type apply_context::get_key_type<contracts::keystr_value_object>() {
-   return contracts::table_key_type::type_str;
-}
-
-template<>
-contracts::table_key_type apply_context::get_key_type<contracts::key128x128_value_object>() {
-   return contracts::table_key_type::type_i128i128;
-}
-
-template<>
-contracts::table_key_type apply_context::get_key_type<contracts::key64x64_value_object>() {
-   return contracts::table_key_type::type_i64i64;
-}
-
-template<>
-contracts::table_key_type apply_context::get_key_type<contracts::key64x64x64_value_object>() {
-   return contracts::table_key_type::type_i64i64i64;
 }
 } } /// eosio::chain

@@ -13,8 +13,6 @@ using namespace boost::multiprecision;
 
 template<size_t Size>
 using uint_t = number<cpp_int_backend<Size, Size, unsigned_magnitude, unchecked, void> >;
-template<size_t Size>
-using int_t = number<cpp_int_backend<Size, Size, signed_magnitude, unchecked, void> >;
 
 using uint8     = uint_t<8>;
 using uint16    = uint_t<16>;
@@ -23,8 +21,8 @@ using uint64    = uint_t<64>;
 
 using fixed_string32 = fc::fixed_string<fc::array<uint64,4>>;
 using fixed_string16 = fc::fixed_string<>;
-using type_name      = fixed_string32;
-using field_name     = fixed_string16;
+using type_name      = string;
+using field_name     = string;
 using table_name     = name;
 using action_name    = eosio::chain::action_name;
 

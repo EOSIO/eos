@@ -20,6 +20,7 @@
 #include <eosio/chain/contracts/genesis_state.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/wasm_interface.hpp>
+#include <eosio/chain/webassembly/runtime_interface.hpp>
 
 #include <fc/log/logger.hpp>
 
@@ -79,6 +80,7 @@ namespace eosio { namespace chain {
             std::vector<signal<void(const transaction_metadata&, const packed_transaction&)>::slot_type> on_pending_transaction_callbacks;
             contracts::genesis_state_type  genesis;
             runtime_limits                 limits;
+            wasm_interface::vm_type        wasm_runtime        =  config::default_wasm_runtime;
          };
 
          explicit chain_controller( const controller_config& cfg );
@@ -276,21 +278,22 @@ namespace eosio { namespace chain {
          const resource_limits::resource_limits_manager get_resource_limits_manager() const { return _resource_limits; }
          resource_limits::resource_limits_manager       get_mutable_resource_limits_manager() { return _resource_limits; }
 
-         wasm_cache& get_wasm_cache() {
-            return _wasm_cache;
+         wasm_interface& get_wasm_interface() {
+            return _wasm_interface;
          }
 
-
          /**
+          * @param actions - the actions to check authorization across
           * @param provided_keys - the set of public keys which have authorized the transaction
+          * @param allow_unused_signatures - true if method should not assert on unused signatures
           * @param provided_accounts - the set of accounts which have authorized the transaction (presumed to be owner)
           *
           * @return true if the provided keys and accounts are sufficient to authorize actions of the transaction
           */
          void check_authorization( const vector<action>& actions,
-                                   flat_set<public_key_type> provided_keys,
-                                   bool                      allow_unused_signatures = false,
-                                   flat_set<account_name>    provided_accounts = flat_set<account_name>()
+                                   const flat_set<public_key_type>& provided_keys,
+                                   bool                             allow_unused_signatures = false,
+                                   flat_set<account_name>           provided_accounts = flat_set<account_name>()
                                    )const;
 
 
@@ -433,7 +436,7 @@ namespace eosio { namespace chain {
          typedef pair<scope_name,action_name>                   handler_key;
          map< account_name, map<handler_key, apply_handler> >   _apply_handlers;
 
-         wasm_cache                       _wasm_cache;
+         wasm_interface                   _wasm_interface;
 
          runtime_limits                   _limits;
          resource_limits_manager          _resource_limits;

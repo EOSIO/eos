@@ -29,7 +29,13 @@ void test_print::test_prints() {
 void test_print::test_printi() {
    printi(0);
    printi(556644);
-   printi((uint64_t)-1);
+   printi(-1);
+}
+
+void test_print::test_printui() {
+   printui(0);
+   printui(556644);
+   printui((uint64_t)-1);
 }
 
 void test_print::test_printi128() {

@@ -26,6 +26,21 @@ namespace IR
 		max = num-1
 	};
 
+	template<ValueType type> struct FromValueType;
+	template<> struct FromValueType<ValueType::any> { static constexpr uint16_t value = 0; };
+	template<> struct FromValueType<ValueType::i32> { static constexpr uint16_t value = 1; };
+	template<> struct FromValueType<ValueType::i64> { static constexpr uint16_t value = 2; };
+	template<> struct FromValueType<ValueType::f32> { static constexpr uint16_t value = 3; };
+	template<> struct FromValueType<ValueType::f64> { static constexpr uint16_t value = 4; };
+
+
+	template<uint16_t type> struct ToValueType;
+	template<> struct ToValueType<0> { static constexpr ValueType value = ValueType::any; };
+	template<> struct ToValueType<1> { static constexpr ValueType value = ValueType::i32; };
+	template<> struct ToValueType<2> { static constexpr ValueType value = ValueType::i64; };
+	template<> struct ToValueType<3> { static constexpr ValueType value = ValueType::f32; };
+	template<> struct ToValueType<4> { static constexpr ValueType value = ValueType::f64; };
+
 	template<ValueType type> struct ValueTypeInfo;
 	template<> struct ValueTypeInfo<ValueType::i32> { typedef I32 Value; };
 	template<> struct ValueTypeInfo<ValueType::i64> { typedef I64 Value; };
@@ -128,7 +143,21 @@ namespace IR
 		num,
 		max = num-1,
 	};
-	
+   template<uint16_t type> struct ToResultType;
+	template<> struct ToResultType<0> { static constexpr ResultType value = ResultType::none; };
+	template<> struct ToResultType<1> { static constexpr ResultType value = ResultType::i32; };
+	template<> struct ToResultType<2> { static constexpr ResultType value = ResultType::i64; };
+	template<> struct ToResultType<3> { static constexpr ResultType value = ResultType::f32; };
+	template<> struct ToResultType<4> { static constexpr ResultType value = ResultType::f64; };
+
+   template<ResultType type> struct FromResultType;
+	template<> struct FromResultType<ResultType::none> { static constexpr uint16_t value = 0; };
+	template<> struct FromResultType<ResultType::i32> { static constexpr uint16_t value = 1; };
+	template<> struct FromResultType<ResultType::i64> { static constexpr uint16_t value = 2; };
+	template<> struct FromResultType<ResultType::f32> { static constexpr uint16_t value = 3; };
+	template<> struct FromResultType<ResultType::f64> { static constexpr uint16_t value = 4; };
+
+
 	inline Uptr getArity(ResultType returnType) { return returnType == ResultType::none ? 0 : 1; }
 	
 	inline const char* asString(ResultType type)

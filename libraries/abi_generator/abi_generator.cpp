@@ -516,10 +516,6 @@ string abi_generator::add_struct(const clang::QualType& sqt, string full_name) {
   
   ABI_ASSERT(is_struct(qt), "Only struct and class are supported. ${full_name}",("full_name",full_name));
 
-  ABI_ASSERT(name.size() <= sizeof(type_name),
-    "Type name > ${maxsize}, ${name}",
-    ("type",full_name)("name",name)("maxsize",sizeof(type_name)));
-
   if( find_struct(name) ) {
     auto itr = full_types.find(resolve_type(name));
     if(itr != full_types.end()) {
@@ -556,12 +552,6 @@ string abi_generator::add_struct(const clang::QualType& sqt, string full_name) {
       || find_struct(get_vector_element_type(struct_field.type))
       || find_type(get_vector_element_type(struct_field.type))
       , "Unknown type ${type} [${abi}]",("type",struct_field.type)("abi",*output));
-
-    ABI_ASSERT(struct_field.type.size() <= sizeof(decltype(struct_field.type)),
-      "Type name > ${maxsize}, ${type}::${name}", ("type",struct_field.type)("name",struct_field.name)("maxsize",sizeof(decltype(struct_field.type))));
-
-    ABI_ASSERT(field->getNameAsString().size() <= sizeof(decltype(struct_field.name)) ,
-      "Field name > ${maxsize}, ${type}::${name}", ("type",struct_field.type)("name",struct_field.name)("maxsize",sizeof(decltype(struct_field.type))));
 
     type_size[string(struct_field.type)] = is_vector(struct_field.type) ? 0 : ast_context->getTypeSize(qt);
     abi_struct.fields.push_back(struct_field);

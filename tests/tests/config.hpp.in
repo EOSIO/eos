@@ -5,4 +5,5 @@
 
 namespace eosio { namespace tests { namespace config {
    constexpr char eosiolib_path[] = "${CMAKE_CURRENT_SOURCE_DIR}/../contracts";
+   constexpr char boost_include_path[] = "${Boost_INCLUDE_DIR}";
 }}}

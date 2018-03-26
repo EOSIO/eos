@@ -1,7 +1,7 @@
 add_subdirectory( fc )
+add_subdirectory( softfloat )
 add_subdirectory( chainbase )
 add_subdirectory( wasm-jit )
-add_subdirectory( egenesis )
 add_subdirectory( utilities )
 add_subdirectory( appbase )
 add_subdirectory( chain )

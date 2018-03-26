@@ -10,7 +10,7 @@
 #include <eosio/chain/producer_object.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/types.hpp>
-
+#include <eosio/chain/wasm_interface.hpp>
 
 #include <eosio/chain/contracts/chain_initializer.hpp>
 #include <eosio/chain/contracts/genesis_state.hpp>
@@ -27,6 +27,7 @@ namespace eosio {
 using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::chain::config;
+using vm_type = wasm_interface::vm_type;
 using fc::flat_map;
 
 //using txn_msg_rate_limits = chain_controller::txn_msg_rate_limits;
@@ -49,6 +50,7 @@ public:
    uint32_t                         max_reversible_block_time_ms;
    uint32_t                         max_pending_transaction_time_ms;
    //txn_msg_rate_limits              rate_limits;
+   fc::optional<vm_type>            wasm_runtime;
 };
 
 chain_plugin::chain_plugin()
@@ -69,6 +71,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Limits the maximum time (in milliseconds) that a reversible block is allowed to run before being considered invalid")
          ("max-pending-transaction-time", bpo::value<int32_t>()->default_value(-1),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
+         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
 #warning TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
           "The time frame, in seconds, that the per-authorized-account-transaction-msg-rate-limit is imposed over.")
@@ -161,6 +164,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
    my->max_reversible_block_time_ms = options.at("max-reversible-block-time").as<int32_t>();
    my->max_pending_transaction_time_ms = options.at("max-pending-transaction-time").as<int32_t>();
 
+   if(options.count("wasm-runtime"))
+      my->wasm_runtime = options.at("wasm-runtime").as<vm_type>();
+
 #warning TODO: Rate Limits
    /*my->rate_limits.per_auth_account_time_frame_sec = fc::time_point_sec(options.at("per-authorized-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
    my->rate_limits.per_auth_account = options.at("per-authorized-account-transaction-msg-rate-limit").as<uint32_t>();
@@ -189,6 +195,9 @@ void chain_plugin::plugin_startup()
    if (my->max_pending_transaction_time_ms > 0) {
       my->chain_config->limits.max_push_transaction_us = fc::milliseconds(my->max_pending_transaction_time_ms);
    }
+
+   if(my->wasm_runtime)
+      my->chain_config->wasm_runtime = *my->wasm_runtime;
 
    my->chain.emplace(*my->chain_config);
 
@@ -278,8 +287,8 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       db.head_block_id(),
       db.head_block_time(),
       db.head_block_producer(),
-      std::bitset<64>(db.get_dynamic_global_properties().recent_slots_filled).to_string(),
-      __builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0
+      //std::bitset<64>(db.get_dynamic_global_properties().recent_slots_filled).to_string(),
+      //__builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0
    };
 }
 

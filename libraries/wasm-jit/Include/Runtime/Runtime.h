@@ -122,12 +122,7 @@ namespace Runtime
 
 	// Invokes a FunctionInstance with the given parameters, and returns the result.
 	// Throws a Runtime::Exception if a trap occurs.
-	Result invokeFunction(FunctionInstance* function,const std::vector<Value>& parameters);
-
-	void invokeFunction2(FunctionInstance* function,const std::vector<Value>& parameters);
-
-  void test( int a );
-	Result testPointerPass(int64_t function, int64_t test2);
+	RUNTIME_API Result invokeFunction(FunctionInstance* function,const std::vector<Value>& parameters);
 
 	// Returns the type of a FunctionInstance.
 	RUNTIME_API const IR::FunctionType* getFunctionType(FunctionInstance* function);

@@ -78,12 +78,12 @@ void ripemd160( char* data, uint32_t length, checksum160* hash );
  * returns the number of bytes read into pub
  * `digest` should be checksum<256>
  */
-int recover_key( checksum256* digest, const char* sig, size_t siglen, char* pub, size_t publen );
+int recover_key( const checksum256* digest, const char* sig, size_t siglen, char* pub, size_t publen );
 
 /**
  * Tests a given public key with the generated key from digest and the signature
  * `digest` should be checksum<256>
  */
-void assert_recover_key( checksum256* digest, const char* sig, size_t siglen, const char* pub, size_t publen );
+void assert_recover_key( const checksum256* digest, const char* sig, size_t siglen, const char* pub, size_t publen );
 
 }

@@ -187,6 +187,7 @@ void sign(const string& hex) {
    }
 
    fc::ecdsa_sig sig = ECDSA_SIG_new();
+   BIGNUM *r = BN_new(), *s = BN_new();
    const UInt8* der_bytes = nullptr;
    fc::sha256 digest(hex);
    CFErrorRef error = nullptr;
@@ -210,8 +211,9 @@ void sign(const string& hex) {
    assert(der_bytes[2] == 0x02);
    assert(der_bytes[4+der_bytes[3]] == 0x02);
    
-   BN_bin2bn(der_bytes+4, der_bytes[3], sig->r);
-   BN_bin2bn(der_bytes+6+der_bytes[3], der_bytes[4+der_bytes[3]+1], sig->s);
+   BN_bin2bn(der_bytes+4, der_bytes[3], r);
+   BN_bin2bn(der_bytes+6+der_bytes[3], der_bytes[4+der_bytes[3]+1], s);
+   ECDSA_SIG_set0(sig, r, s);
 
    pub = get_compressed_pub_for_key(key);
 

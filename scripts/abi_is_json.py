@@ -15,12 +15,11 @@ def test_json_validator(abi_name):
     abi_file = open(abi_name,'r')
     abi_text = abi_file.read()
     abi_file.close()
-    return json_validator(abi_text) == True
+    return json_validator(abi_text)
 
 if __name__ == "__main__":
     for filename in sys.argv[1:]:
         print("Testing abi file ", filename)
-        if test_json_validator(filename):
-            exit(0)
-        else:
+        if not test_json_validator(filename):
             exit(1)
+    exit(0)

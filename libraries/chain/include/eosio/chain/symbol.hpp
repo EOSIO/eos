@@ -128,6 +128,11 @@ namespace eosio {
             friend struct fc::reflector<symbol>;
       }; // class symbol
 
+      struct extended_symbol {
+         symbol       sym;
+         account_name contract;
+      };
+
       inline bool operator== (const symbol& lhs, const symbol& rhs)
       {
          return lhs.value() == rhs.value();
@@ -156,3 +161,4 @@ namespace fc {
 }
 
 FC_REFLECT(eosio::chain::symbol, (m_value))
+FC_REFLECT(eosio::chain::extended_symbol, (sym)(contract))

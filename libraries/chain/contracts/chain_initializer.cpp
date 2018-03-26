@@ -27,7 +27,6 @@ chain_config chain_initializer::get_chain_start_configuration() {
 producer_schedule_type  chain_initializer::get_chain_start_producers() {
    producer_schedule_type result;
    result.producers.push_back( {config::system_account_name, genesis.initial_key} );
-   idump((result));
    return result;
 }
 
@@ -54,8 +53,14 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
 {
    abi_def eos_abi(eosio_system_abi);
    eos_abi.types.push_back( type_def{"account_name","name"} );
+   eos_abi.types.push_back( type_def{"table_name","name"} );
    eos_abi.types.push_back( type_def{"share_type","int64"} );
    eos_abi.types.push_back( type_def{"onerror","bytes"} );
+   eos_abi.types.push_back( type_def{"context_free_type","bytes"} );
+   eos_abi.types.push_back( type_def{"weight_type","uint16"} );
+   eos_abi.types.push_back( type_def{"fields","field[]"} );
+   eos_abi.types.push_back( type_def{"time_point_sec","time"} );
+
    eos_abi.actions.push_back( action_def{name("setcode"), "setcode"} );
    eos_abi.actions.push_back( action_def{name("setabi"), "setabi"} );
    eos_abi.actions.push_back( action_def{name("linkauth"), "linkauth"} );
@@ -170,6 +175,137 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
       "pending_recovery"
    });
 
+   // abi_def fields
+
+   eos_abi.structs.emplace_back( struct_def {
+      "field", "", {
+         {"name", "field_name"},
+         {"type", "type_name"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "struct_def", "", {
+         {"name", "type_name"},
+         {"base", "type_name"},
+         {"fields", "fields"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "permission_level", "", {
+         {"actor", "account_name"},
+         {"permission", "permission_name"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "action", "", {
+         {"account", "account_name"},
+         {"name", "action_name"},
+         {"authorization", "permission_level[]"},
+         {"data", "bytes"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "permission_level_weight", "", {
+         {"permission", "permission_level"},
+         {"weight", "weight_type"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "transaction_header", "", {
+         {"expiration", "time_point_sec"},
+         {"region", "uint16"},
+         {"ref_block_num", "uint16"},
+         {"ref_block_prefix", "uint16"},
+         {"packed_bandwidth_words", "uint16"},
+         {"context_free_cpu_bandwidth", "uint16"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "transaction", "transaction_header", {
+         {"context_free_actions", "action[]"},
+         {"actions", "action[]"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "signed_transaction", "transaction", {
+         {"signatures", "signature[]"},
+         {"context_free_data", "bytes[]"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "key_weight", "", {
+         {"key", "public_key"},
+         {"weight", "weight_type"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "authority", "", {
+         {"threshold", "uint32"},
+         {"keys", "key_weight[]"},
+         {"accounts", "permission_level_weight[]"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "chain_config", "", {
+         {"target_block_size", "uint32"},
+         {"max_block_size", "uint32"},
+         {"target_block_acts_per_scope", "uint32"},
+         {"max_block_acts_per_scope", "uint32"},
+         {"target_block_acts", "uint32"},
+         {"max_block_acts", "uint32"},
+         {"real_threads", "uint64"},
+         {"max_storage_size", "uint64"},
+         {"max_transaction_lifetime", "uint32"},
+         {"max_authority_depth", "uint16"},
+         {"max_transaction_exec_time", "uint32"},
+         {"max_inline_depth", "uint16"},
+         {"max_inline_action_size", "uint32"},
+         {"max_generated_transaction_size", "uint32"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "type_def", "", {
+         {"new_type_name", "type_name"},
+         {"type", "type_name"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "action_def", "", {
+         {"name", "action_name"},
+         {"type", "type_name"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "table_def", "", {
+         {"name", "table_name"},
+         {"index_type", "type_name"},
+         {"key_names", "field_name[]"},
+         {"key_types", "type_name[]"},
+         {"type", "type_name"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "abi_def", "", {
+         {"types", "type_def[]"},
+         {"structs", "struct_def[]"},
+         {"actions", "action_def[]"},
+         {"tables", "table_def[]"}
+      }
+   });
 
    return eos_abi;
 }

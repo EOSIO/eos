@@ -3,8 +3,8 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosiolib/eosio.hpp>
-#include "test_api.hpp"
 
+#include "test_api.hpp"
 #include "test_action.cpp"
 #include "test_print.cpp"
 #include "test_types.cpp"
@@ -60,10 +60,21 @@ extern "C" {
       WASM_TEST_HANDLER(test_action, test_current_sender);
       WASM_TEST_HANDLER(test_action, test_publication_time);
 
+      // test named actions
+      // We enforce action name matches action data type name, so name mangling will not work for these tests.
+      if ( action == N(dummy_action) ) {
+         test_action::test_dummy_action();
+         return;
+      } else if ( action == N(cf_action) ) {
+         test_action::test_cf_action();
+         return;
+      }
+
       //test_print
       WASM_TEST_HANDLER(test_print, test_prints);
       WASM_TEST_HANDLER(test_print, test_prints_l);
       WASM_TEST_HANDLER(test_print, test_printi);
+      WASM_TEST_HANDLER(test_print, test_printui);
       WASM_TEST_HANDLER(test_print, test_printi128);
       WASM_TEST_HANDLER(test_print, test_printn);
 
@@ -134,8 +145,17 @@ extern "C" {
       // test checktime
       WASM_TEST_HANDLER(test_checktime, checktime_pass);
       WASM_TEST_HANDLER(test_checktime, checktime_failure);
+/*      
+      // test softfloat
+      WASM_TEST_HANDLER(test_softfloat, test_f32_add);
+      WASM_TEST_HANDLER(test_softfloat, test_f32_sub);
+      WASM_TEST_HANDLER(test_softfloat, test_f32_mul);
+      WASM_TEST_HANDLER(test_softfloat, test_f32_div);
+      WASM_TEST_HANDLER(test_softfloat, test_f32_min);
+*/
 
       //unhandled test call
       eosio_assert(false, "Unknown Test");
+
    }
 }

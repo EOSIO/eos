@@ -58,7 +58,8 @@ extern "C" {
     *  printi(1e+18); // Output: 1000000000000000000
     *  @endcode
     */
-   void printi( uint64_t value );
+   void printi( int64_t value );
+   void printui( uint64_t value );
 
    /**
     * Prints value as a 128 bit unsigned integer
@@ -80,11 +81,13 @@ extern "C" {
     *
     *  Example:
     *  @code
-    *  uint64_t double_value = double_div( i64_to_double(5), i64_to_double(10) );
-    *  printd(double_value); // Output: 0.5
+    *  double double_value = 5.0 / 10.0;
+    *  printd(*(uint64_t*)(&double_value)); // Output: 0.5
     *  @endcode
     */
-   void printd(uint64_t value);
+   void printdf(double value);
+   void printff(float value);
+   void printdi(int64_t value); 
 
    /**
     * Prints a 64 bit names as base32 encoded string

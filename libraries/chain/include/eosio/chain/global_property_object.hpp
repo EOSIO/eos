@@ -76,7 +76,7 @@ namespace eosio { namespace chain {
          * number of missed slots plus head_block_number.
          */
         uint64_t          current_absolute_slot = 0;
-        
+
         /**
          * Bitmap used to compute producer participation. Stores
          * a high bit for each generated block, a low bit for
@@ -93,13 +93,13 @@ namespace eosio { namespace chain {
          * head block were produced, the two before them were
          * missed, and the one before that was produced.
          */
-        uint64_t recent_slots_filled;
-        
+        //uint64_t recent_slots_filled;
+
         uint32_t last_irreversible_block_num = 0;
 
         /**
          * Used to calculate the merkle root over all blocks
-         */ 
+         */
         shared_incremental_merkle  block_merkle_root;
    };
 
@@ -133,7 +133,7 @@ FC_REFLECT(eosio::chain::dynamic_global_property_object,
            (time)
            (current_producer)
            (current_absolute_slot)
-           (recent_slots_filled)
+           /* (recent_slots_filled) */
            (last_irreversible_block_num)
           )
 
