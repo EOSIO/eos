@@ -1091,4 +1091,14 @@ BOOST_FIXTURE_TEST_CASE( apply_export_and_signature, tester ) try {
    produce_blocks(1);
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( protect_injected, tester ) try {
+   produce_blocks(2);
+
+   create_accounts( {N(inj)} );
+   produce_block();
+
+   BOOST_CHECK_THROW(set_code(N(inj), import_injected_wast), fc::exception);
+   produce_blocks(1);
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_SUITE_END()

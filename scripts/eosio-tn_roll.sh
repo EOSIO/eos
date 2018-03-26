@@ -20,14 +20,16 @@ fi
 
 cd $EOSIO_HOME
 
-if [ -z "$EOSIO_TN_NODE" ]; then
-    DD=`ls -d tn_data_??`
+if [ -z "$EOSIO_NODE" ]; then
+    DD=`ls -d var/lib/node_[012]?`
     ddcount=`echo $DD | wc -w`
     if [ $ddcount -gt 1 ]; then
         DD="all"
     fi
+    OFS=$((${#DD}-2))
+    export EOSIO_NODE=${DD:$OFS}
 else
-    DD=tn_data_$EOSIO_TN_NODE
+    DD=var/lib/node_$EOSIO_NODE
     if [ ! \( -d $DD \) ]; then
         echo no directory named $PWD/$DD
         cd -
@@ -74,18 +76,17 @@ fi
 
 echo DD = $DD
 
-export EOSIO_TN_RESTART_DATA_DIR=$DD
 bash $EOSIO_HOME/scripts/eosio-tn_down.sh
 
 cp $SDIR/$RD/$prog $RD/$prog
 
 if [ $DD = "all" ]; then
-    for EOSIO_TN_RESTART_DATA_DIR in `ls -d tn_data_??`; do
+    for EOSIO_RESTART_DATA_DIR in `ls -d var/lib/node_??`; do
         bash $EOSIO_HOME/scripts/eosio-tn_up.sh $*
     done
 else
     bash $EOSIO_HOME/scripts/eosio-tn_up.sh $*
 fi
-unset EOSIO_TN_RESTART_DATA_DIR
+unset EOSIO_RESTART_DATA_DIR
 
 cd -

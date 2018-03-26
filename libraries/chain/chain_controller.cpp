@@ -331,6 +331,17 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata&& da
    return result;
 }
 
+
+block_header chain_controller::head_block_header() const
+{
+   auto b = _fork_db.fetch_block(head_block_id());
+   if( b ) return b->data;
+   
+   if (auto head_block = fetch_block_by_id(head_block_id()))
+      return *head_block;
+   return block_header();
+}
+
 void chain_controller::_start_pending_block()
 {
    FC_ASSERT( !_pending_block );
@@ -340,6 +351,30 @@ void chain_controller::_start_pending_block()
    _pending_block->regions.resize(1);
    _pending_block_trace->region_traces.resize(1);
    _start_pending_cycle();
+   _apply_on_block_transaction();
+   _finalize_pending_cycle();
+   _start_pending_cycle();
+}
+
+transaction chain_controller::_get_on_block_transaction()
+{
+   action on_block_act;
+   on_block_act.account = config::system_account_name;
+   on_block_act.name = N(onblock);
+   on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
+   on_block_act.data = fc::raw::pack(head_block_header());
+
+   transaction trx;
+   trx.actions.emplace_back(std::move(on_block_act));
+   trx.set_reference_block(head_block_id());
+   return trx;
+}
+
+void chain_controller::_apply_on_block_transaction()
+{
+   _pending_block_trace->implicit_transactions.emplace_back(_get_on_block_transaction());
+   transaction_metadata mtrx(packed_transaction(_pending_block_trace->implicit_transactions.back()), get_chain_id(), head_block_time());
+   _push_transaction(std::move(mtrx));
 }
 
 /**
@@ -423,9 +458,9 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
                      ("a", ar.act.account)
                      ("n", ar.act.name)
                      ("r", ar.receiver));
-               std::cerr << prefix << ": CONSOLE OUTPUT BEGIN =====================" << std::endl;
-               std::cerr << ar.console;
-               std::cerr << prefix << ": CONSOLE OUTPUT END   =====================" << std::endl;
+               ilog(prefix + ": CONSOLE OUTPUT BEGIN =====================");
+               ilog(ar.console);
+               ilog(prefix + ": CONSOLE OUTPUT END   =====================");
             }
          }
       }
@@ -610,18 +645,22 @@ void chain_controller::__apply_block(const signed_block& next_block)
    for( uint32_t i = 1; i < next_block.regions.size(); ++i )
       FC_ASSERT( next_block.regions[i-1].region < next_block.regions[i].region );
 
+   block_trace next_block_trace(next_block);
 
    /// cache the input tranasction ids so that they can be looked up when executing the
    /// summary
    vector<transaction_metadata> input_metas;
-   input_metas.reserve(next_block.input_transactions.size());
+   input_metas.reserve(next_block.input_transactions.size() + 1);
+   {
+      next_block_trace.implicit_transactions.emplace_back(_get_on_block_transaction());
+      input_metas.emplace_back(packed_transaction(next_block_trace.implicit_transactions.back()), get_chain_id(), head_block_time());
+   }
    map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
       input_metas.emplace_back(t, chain_id_type(), next_block.timestamp);
       trx_index[input_metas.back().id] =  input_metas.size() - 1;
    }
 
-   block_trace next_block_trace(next_block);
    next_block_trace.region_traces.reserve(next_block.regions.size());
 
    for( const auto& r : next_block.regions ) {
@@ -673,10 +712,16 @@ void chain_controller::__apply_block(const signed_block& next_block)
                   if( itr != trx_index.end() ) {
                      return &input_metas.at(itr->second);
                   } else {
-                     const auto& gtrx = _db.get<generated_transaction_object,by_trx_id>(receipt.id);
-                     auto trx = fc::raw::unpack<deferred_transaction>(gtrx.packed_trx.data(), gtrx.packed_trx.size());
-                     _temp.emplace(trx, gtrx.published, trx.sender, trx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() );
-                     return &*_temp;
+                     const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
+                     if (gtrx != nullptr) {
+                        auto trx = fc::raw::unpack<deferred_transaction>(gtrx->packed_trx.data(), gtrx->packed_trx.size());
+                        _temp.emplace(trx, gtrx->published, trx.sender, trx.sender_id, gtrx->packed_trx.data(), gtrx->packed_trx.size() );
+                        return &*_temp;
+                     } else {
+                        const auto& mtrx = input_metas[0];
+                        FC_ASSERT(mtrx.id == receipt.id, "on-block transaction id mismatch");
+                        return &input_metas[0];
+                     }
                   }
                };
 
@@ -828,13 +873,19 @@ void chain_controller::validate_uniqueness( const transaction& trx )const {
    EOS_ASSERT(transaction == nullptr, tx_duplicate, "transaction is not unique");
 }
 
-void chain_controller::record_transaction(const transaction& trx) {
-   //Insert transaction into unique transactions database.
-    _db.create<transaction_object>([&](transaction_object& transaction) {
-        transaction.trx_id = trx.id();
-        transaction.expiration = trx.expiration;
-    });
-}
+void chain_controller::record_transaction(const transaction& trx) 
+{ 
+   try {
+       _db.create<transaction_object>([&](transaction_object& transaction) {
+           transaction.trx_id = trx.id();
+           transaction.expiration = trx.expiration;
+       });
+   } catch ( ... ) {
+       EOS_ASSERT( false, transaction_exception,
+                  "duplicate transaction ${id}", 
+                  ("id", trx.id() ) );
+   }
+} 
 
 
 void chain_controller::validate_tapos(const transaction& trx)const {
@@ -918,7 +969,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
    }
 
    EOS_ASSERT( next_block.schedule_version == get_global_properties().active_producers.version, block_validate_exception, "wrong producer schedule version specified" );
-      
+
    return producer;
 }
 
@@ -962,7 +1013,6 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
       {
           FC_ASSERT( schedule == *b.new_producers, "pending producer set different than expected" );
       }
-
       const auto& gpo = get_global_properties();
 
       if( _head_producer_schedule() != schedule ) {
@@ -1062,7 +1112,7 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<contracts::index128_index>();
    _db.add_index<contracts::index256_index>();
    _db.add_index<contracts::index_double_index>();
-   
+
 
    _db.add_index<contracts::keystr_value_index>();
    _db.add_index<contracts::key128x128_value_index>();
@@ -1098,7 +1148,7 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
 
          _db.create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
             p.time = initial_timestamp;
-            p.recent_slots_filled = uint64_t(-1);
+            //p.recent_slots_filled = uint64_t(-1);
             p.virtual_net_bandwidth = gp.configuration.max_block_size * (config::blocksize_average_window_ms / config::block_interval_ms );
             p.virtual_act_bandwidth = gp.configuration.max_block_acts * (config::blocksize_average_window_ms / config::block_interval_ms );
          });
@@ -1232,6 +1282,7 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
       dgp.update_virtual_act_bandwidth( props.configuration );
 
 
+      /*
       // If we've missed more blocks than the bitmap stores, skip calculations and simply reset the bitmap
       if (missed_blocks < sizeof(dgp.recent_slots_filled) * 8) {
          dgp.recent_slots_filled <<= 1;
@@ -1242,6 +1293,7 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
             dgp.recent_slots_filled = uint64_t(-1);
          else
             dgp.recent_slots_filled = 0;
+      */
       dgp.block_merkle_root.append( head_block_id() );
    });
 
@@ -1412,8 +1464,9 @@ uint32_t chain_controller::get_slot_at_time( block_timestamp_type when )const
 
 uint32_t chain_controller::producer_participation_rate()const
 {
-   const dynamic_global_property_object& dpo = get_dynamic_global_properties();
-   return uint64_t(config::percent_100) * __builtin_popcountll(dpo.recent_slots_filled) / 64;
+   //const dynamic_global_property_object& dpo = get_dynamic_global_properties();
+   //return uint64_t(config::percent_100) * __builtin_popcountll(dpo.recent_slots_filled) / 64;
+   return static_cast<uint32_t>(config::percent_100); // Ignore participation rate for now until we construct a better metric.
 }
 
 void chain_controller::_set_apply_handler( account_name contract, scope_name scope, action_name action, apply_handler v ) {

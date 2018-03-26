@@ -18,7 +18,7 @@ void apply_context::exec_one()
       auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
       if (native) {
          (*native)(*this);
-      } 
+      }
       else if (a.code.size() > 0) {
          try {
             mutable_controller.get_wasm_interface().apply(a.code_version, a.code, *this);
@@ -93,6 +93,14 @@ void apply_context::exec()
    for( uint32_t i = 0; i < _notified.size(); ++i ) {
       receiver = _notified[i];
       exec_one();
+   }
+
+   for( uint32_t i = 0; i < _cfa_inline_actions.size(); ++i ) {
+      EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
+      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta, recurse_depth + 1 );
+      ncontext.context_free = true;
+      ncontext.exec();
+      append_results(move(ncontext.results));
    }
 
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
@@ -173,14 +181,14 @@ void apply_context::require_recipient( account_name code ) {
 
 
 /**
- *  This will execute an action after checking the authorization. Inline transactions are 
+ *  This will execute an action after checking the authorization. Inline transactions are
  *  implicitly authorized by the current receiver (running code). This method has significant
  *  security considerations and several options have been considered:
  *
  *  1. priviledged accounts (those marked as such by block producers) can authorize any action
  *  2. all other actions are only authorized by 'receiver' which means the following:
  *         a. the user must set permissions on their account to allow the 'receiver' to act on their behalf
- *  
+ *
  *  Discarded Implemenation:  at one point we allowed any account that authorized the current transaction
  *   to implicitly authorize an inline transaction. This approach would allow privelege escalation and
  *   make it unsafe for users to interact with certain contracts.  We opted instead to have applications
@@ -188,10 +196,17 @@ void apply_context::require_recipient( account_name code ) {
  *   can better understand the security risk.
  */
 void apply_context::execute_inline( action&& a ) {
-   if ( !privileged ) { 
-      controller.check_authorization({a}, flat_set<public_key_type>(), false, {receiver}); 
+   if ( !privileged ) {
+      if( a.account != receiver ) {
+         controller.check_authorization({a}, flat_set<public_key_type>(), false, {receiver});
+      }
    }
    _inline_actions.emplace_back( move(a) );
+}
+
+void apply_context::execute_context_free_inline( action&& a ) {
+   FC_ASSERT( a.authorization.size() == 0, "context free actions cannot have authorizations" );
+   _cfa_inline_actions.emplace_back( move(a) );
 }
 
 void apply_context::execute_deferred( deferred_transaction&& trx ) {
@@ -205,9 +220,20 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
       /// TODO: make default_max_gen_trx_count a producer parameter
       //XXX FC_ASSERT( results.generated_transactions.size() < config::default_max_gen_trx_count );
 
-      // todo: rethink this special case
-      if (receiver != config::system_account_name) {
-         controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
+      // privileged accounts can do anything, no need to check auth
+      if( !privileged ) {
+
+         // if a contract is deferring only actions to itself then there is no need
+         // to check permissions, it could have done everything anyway.
+         bool check_auth = false;
+         for( const auto& act : trx.actions ) {
+            if( act.account != receiver ) {
+               check_auth = true;
+               break;
+            }
+         }
+         if( check_auth )
+            controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
       }
 
       trx.sender = receiver; //  "Attempting to send from another account"
@@ -217,7 +243,7 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
    } FC_CAPTURE_AND_RETHROW((trx));
 }
 
-void apply_context::cancel_deferred( uint32_t sender_id ) {
+void apply_context::cancel_deferred( uint64_t sender_id ) {
    results.deferred_transaction_requests.push_back(deferred_reference(receiver, sender_id));
 }
 

@@ -31,8 +31,8 @@ struct abi_serializer {
    map<name,type_name>        actions;
    map<name,type_name>        tables;
 
-   typedef std::function<fc::variant(fc::datastream<const char*>&, bool)>  unpack_function;
-   typedef std::function<void(const fc::variant&, fc::datastream<char*>&, bool)>  pack_function;
+   typedef std::function<fc::variant(fc::datastream<const char*>&, bool, bool)>  unpack_function;
+   typedef std::function<void(const fc::variant&, fc::datastream<char*>&, bool, bool)>  pack_function;
    
    map<type_name, pair<unpack_function, pack_function>> built_in_types;
    void configure_built_in_types();
@@ -42,12 +42,13 @@ struct abi_serializer {
 
    type_name resolve_type(const type_name& t)const;
    bool      is_array(const type_name& type)const;
+   bool      is_optional(const type_name& type)const;
    bool      is_type(const type_name& type)const;
    bool      is_builtin_type(const type_name& type)const;
    bool      is_integer(const type_name& type) const;
    int       get_integer_size(const type_name& type) const;
    bool      is_struct(const type_name& type)const;
-   type_name array_type(const type_name& type)const;
+   type_name fundamental_type(const type_name& type)const;
 
    const struct_def& get_struct(const type_name& type)const;
 

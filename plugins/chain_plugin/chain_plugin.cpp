@@ -287,8 +287,8 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
       db.head_block_id(),
       db.head_block_time(),
       db.head_block_producer(),
-      std::bitset<64>(db.get_dynamic_global_properties().recent_slots_filled).to_string(),
-      __builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0
+      //std::bitset<64>(db.get_dynamic_global_properties().recent_slots_filled).to_string(),
+      //__builtin_popcountll(db.get_dynamic_global_properties().recent_slots_filled) / 64.0
    };
 }
 
