@@ -12,6 +12,7 @@
 #include "Runtime/Linker.h"
 #include "Runtime/Intrinsics.h"
 
+#include <mutex>
 
 using namespace IR;
 using namespace Runtime;

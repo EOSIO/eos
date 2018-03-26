@@ -20,10 +20,6 @@
 #include <boost/bind.hpp>
 #include <fstream>
 
-#include <mutex>
-#include <thread>
-#include <condition_variable>
-
 namespace eosio { namespace chain {
    using namespace contracts;
    using namespace webassembly;
