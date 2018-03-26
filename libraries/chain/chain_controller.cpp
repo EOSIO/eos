@@ -787,6 +787,7 @@ flat_set<public_key_type> chain_controller::get_required_keys(const transaction&
                                                               const flat_set<public_key_type>& candidate_keys)const
 {
    auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
+                                     [](const permission_level& ) {},
                                      get_global_properties().configuration.max_authority_depth,
                                      candidate_keys);
 
@@ -803,12 +804,29 @@ flat_set<public_key_type> chain_controller::get_required_keys(const transaction&
    return checker.used_keys();
 }
 
+class permission_visitor {
+public:
+   permission_visitor(const chain_controller& controller) : _chain_controller(controller) {}
+
+   void operator()(const permission_level& perm_level) {
+      const auto obj = _chain_controller.get_permission(perm_level);
+      if (_max_delay < obj.delay)
+         _max_delay = obj.delay;
+   }
+
+   const time_point& get_max_delay() const { return _max_delay; }
+private:
+   const chain_controller& _chain_controller;
+   time_point _max_delay;
+};
+
 time_point chain_controller::check_authorization( const vector<action>& actions,
                                                   const flat_set<public_key_type>& provided_keys,
                                                   bool allow_unused_signatures,
                                                   flat_set<account_name> provided_accounts )const
 {
    auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
+                                     permission_visitor(*this),
                                      get_global_properties().configuration.max_authority_depth,
                                      provided_keys, provided_accounts );
 
