@@ -524,6 +524,7 @@ class apply_context {
       struct apply_results {
          vector<action_trace> applied_actions;
          vector<fc::static_variant<deferred_transaction, deferred_reference>> deferred_transaction_requests;
+         size_t deferred_transactions_count = 0;
       };
 
       apply_results results;
@@ -575,6 +576,7 @@ class apply_context {
       void append_results(apply_results &&other) {
          fc::move_append(results.applied_actions, std::move(other.applied_actions));
          fc::move_append(results.deferred_transaction_requests, std::move(other.deferred_transaction_requests));
+         results.deferred_transactions_count += other.deferred_transactions_count;
       }
 
       void exec_one();
@@ -755,4 +757,4 @@ using apply_handler = std::function<void(apply_context&)>;
 
 } } // namespace eosio::chain
 
-FC_REFLECT(eosio::chain::apply_context::apply_results, (applied_actions)(deferred_transaction_requests))
+FC_REFLECT(eosio::chain::apply_context::apply_results, (applied_actions)(deferred_transaction_requests)(deferred_transactions_count))

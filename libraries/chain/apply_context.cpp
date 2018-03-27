@@ -218,7 +218,7 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
       FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
 
       const auto& gpo = controller.get_global_properties();
-      FC_ASSERT( results.deferred_transaction_requests.size() < gpo.configuration.max_generated_transaction_count );
+      FC_ASSERT( results.deferred_transactions_count < gpo.configuration.max_generated_transaction_count );
 
       // privileged accounts can do anything, no need to check auth
       if( !privileged ) {
@@ -240,6 +240,7 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
       trx.set_reference_block(controller.head_block_id());
 
       results.deferred_transaction_requests.push_back(move(trx));
+      results.deferred_transactions_count++;
    } FC_CAPTURE_AND_RETHROW((trx));
 }
 
