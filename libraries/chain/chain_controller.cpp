@@ -287,7 +287,10 @@ static void record_locks_for_data_access(const vector<action_trace>& action_trac
 transaction_trace chain_controller::_push_transaction( transaction_metadata&& data )
 { try {
    if (_limits.max_push_transaction_us.count() > 0) {
-      data.processing_deadline = fc::time_point::now() + _limits.max_push_transaction_us;
+      auto newval = fc::time_point::now() + _limits.max_push_transaction_us;
+      if ( !data.processing_deadline || newval < *data.processing_deadline ) {
+         data.processing_deadline = newval;
+      }
    }
 
    const transaction& trx = data.trx();
@@ -353,9 +356,16 @@ void chain_controller::_start_pending_block()
    _pending_block_session = _db.start_undo_session(true);
    _pending_block->regions.resize(1);
    _pending_block_trace->region_traces.resize(1);
+
    _start_pending_cycle();
    _apply_on_block_transaction();
    _finalize_pending_cycle();
+
+   push_deferred_transactions(true); //implicitly starts new cycle if there are deferred transactions ready for execution
+   if (_pending_cycle_trace && _pending_cycle_trace->shard_traces.size() > 0) {
+      _finalize_pending_cycle();
+   }
+
    _start_pending_cycle();
 }
 
@@ -1618,17 +1628,21 @@ vector<transaction_trace> chain_controller::push_deferred_transactions( bool flu
       candidates.emplace_back(&gtrx);
    }
 
+   auto deferred_transactions_deadline = fc::time_point::now() + fc::microseconds(20*1000);
    vector<transaction_trace> res;
    for (const auto* trx_p: candidates) {
       if (!is_known_transaction(trx_p->trx_id)) {
          try {
             auto trx = fc::raw::unpack<deferred_transaction>(trx_p->packed_trx.data(), trx_p->packed_trx.size());
-            transaction_metadata mtrx (trx, trx_p->published, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size());
+            transaction_metadata mtrx (trx, trx_p->published, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size(), deferred_transactions_deadline);
             res.push_back( _push_transaction(std::move(mtrx)) );
             generated_transaction_idx.remove(*trx_p);
          } FC_CAPTURE_AND_LOG((trx_p->trx_id)(trx_p->sender));
       } else {
          generated_transaction_idx.remove(*trx_p);
+      }
+      if ( deferred_transactions_deadline <= fc::time_point::now() ) {
+         break;
       }
    }
    return res;
