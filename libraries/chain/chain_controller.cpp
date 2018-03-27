@@ -278,7 +278,20 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
       FC_ASSERT( trx.expiration > (head_block_time() + fc::milliseconds(2*config::block_interval_ms)),
                                    "transaction is expired when created" );
 
-      apply_context context(*this, _db, trx.actions[0], mtrx);
+      // add in the system account authorization
+      action for_deferred = trx.actions[0];
+      bool found = false;
+      for (const auto& auth : for_deferred.authorization) {
+         if (auth.actor == config::system_account_name &&
+             auth.permission == config::active_name) {
+            found = true;
+            break;
+         }
+      }
+      if (!found)
+         for_deferred.authorization.push_back(permission_level{config::system_account_name, config::active_name});
+
+      apply_context context(*this, _db, for_deferred, mtrx);
 
       time_point_sec execute_after = head_block_time();
       execute_after += time_point_sec(delay);
