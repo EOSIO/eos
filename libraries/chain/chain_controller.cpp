@@ -260,7 +260,7 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
 { try {
    transaction_metadata   mtrx( trx, get_chain_id(), head_block_time());
 
-   check_transaction_authorization(mtrx.trx(), trx.signatures);
+   check_transaction_authorization(mtrx.trx(), trx.signatures, trx.context_free_data);
    auto result = _push_transaction(std::move(mtrx));
 
    // notify anyone listening to pending transactions
@@ -833,9 +833,10 @@ void chain_controller::check_authorization( const vector<action>& actions,
 
 void chain_controller::check_transaction_authorization(const transaction& trx,
                                                        const vector<signature_type>& signatures,
+                                                       const vector<bytes>& cfd,
                                                        bool allow_unused_signatures)const
 {
-   check_authorization( trx.actions, trx.get_signature_keys( signatures, chain_id_type{} ), allow_unused_signatures );
+   check_authorization( trx.actions, trx.get_signature_keys( signatures, chain_id_type{}, cfd ), allow_unused_signatures );
 }
 
 optional<permission_name> chain_controller::lookup_minimum_permission(account_name authorizer_account,

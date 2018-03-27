@@ -138,8 +138,8 @@ namespace eosio { namespace chain {
       vector<action>         actions;
 
       transaction_id_type        id()const;
-      digest_type                sig_digest( const chain_id_type& chain_id )const;
-      flat_set<public_key_type>  get_signature_keys( const vector<signature_type>& signatures, const chain_id_type& chain_id )const;
+      digest_type                sig_digest( const chain_id_type& chain_id, const vector<bytes>& cfd = vector<bytes>() )const;
+      flat_set<public_key_type>  get_signature_keys( const vector<signature_type>& signatures, const chain_id_type& chain_id, const vector<bytes>& cfd = vector<bytes>() )const;
 
    };
 
