@@ -42,7 +42,7 @@
       "name": "currency_stats",
       "base": "",
       "fields": [
-        {"name":"currency", "type":"symbol_name"},
+        {"name":"currency", "type":"symbol_code"},
         {"name":"supply", "type":"int64"}
       ]
     }
