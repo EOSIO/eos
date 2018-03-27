@@ -363,14 +363,20 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
 }
 
 uint32_t apply_context::get_next_sender_id() {
-   require_write_lock( config::eosio_auth_scope );
-   const auto& t_id = find_or_create_table(config::system_account_name, config::eosio_auth_scope, N(deferred.seq));
-   uint64_t key = N(config::eosio_auth_scope);
-   uint32_t next_serial = 0;
-   front_record<contracts::key_value_index, contracts::by_scope_primary>(t_id, &key, (char *)&next_serial, sizeof(uint32_t));
+   const uint64_t id = N(config::eosio_auth_scope);
+   const auto table = N(deferred.seq);
+   const auto payer = config::system_account_name;
+   const auto iter = db_find_i64(config::system_account_name, config::eosio_auth_scope, table, id);
+   if (iter == -1) {
+      const uint32_t next_serial = 1;
+      db_store_i64(config::system_account_name, config::eosio_auth_scope, table, payer, id, (const char*)&next_serial, sizeof(next_serial));
+      return 0;
+   }
 
-   uint32_t result = next_serial++;
-   store_record<key_value_object>(t_id, config::system_account_name, &key, (char *)&next_serial, sizeof(uint32_t));
+   uint32_t next_serial = 0;
+   db_get_i64(iter, (char*)&next_serial, sizeof(next_serial));
+   const auto result = next_serial++;
+   db_update_i64(iter, payer, (const char*)&next_serial, sizeof(next_serial));
    return result;
 }
 
