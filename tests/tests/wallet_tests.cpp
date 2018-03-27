@@ -8,6 +8,7 @@
 #include <eosio/wallet_plugin/wallet_manager.hpp>
 
 #include <boost/test/unit_test.hpp>
+#include <eosio/chain/authority.hpp>
 
 namespace eosio {
 
@@ -35,9 +36,9 @@ BOOST_AUTO_TEST_CASE(wallet_test)
 
    BOOST_CHECK_EQUAL(0, wallet.list_keys().size());
 
-   auto priv = fc::crypto::private_key::generate(); //fc::ecc::private_key::generate();
+   auto priv = fc::crypto::private_key::generate();
    auto pub = priv.get_public_key();
-   auto wif = (std::string)priv; // key_to_wif(priv.get_secret());
+   auto wif = (std::string)priv;
    wallet.import_key(wif);
    BOOST_CHECK_EQUAL(1, wallet.list_keys().size());
 
@@ -104,7 +105,6 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
        return std::pair<const public_key_type, private_key_type>(prikey.get_public_key(), prikey);
    };
 
-//#warning TODO: fix check commented out when keys was converted to map<public_key_type,string> 
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key1)) != keys.cend());
 
    wm.import_key("test", key2);
@@ -133,36 +133,31 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key2)) != keys.cend());
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key3)) != keys.cend());
 
-#warning TODO: need the transfer transaction to be ready
-//    fc::optional<fc::ecc::private_key> optional_private_key1 = utilities::wif_to_key(key1);
-//    fc::optional<fc::ecc::private_key> optional_private_key2 = utilities::wif_to_key(key2);
-//    fc::optional<fc::ecc::private_key> optional_private_key3 = utilities::wif_to_key(key3);
+   private_key_type pkey1{std::string(key1)};
+   private_key_type pkey2{std::string(key2)};
+   private_key_type pkey3{std::string(key3)};
 
-//    chain::signed_transaction trx;
-//    name sender("billgates");
-//    name recipient("kevinheifner");
-//    uint64_t amount = 100000000;
-//    //trx.scope = {sender,recipient};
-//    transaction_emplace_message(trx,config::eos_contract_name, vector<types::account_permission>{{sender,"active"}}, "transfer",
-//                          types::transfer{sender, recipient, amount, "deposit"});
-//    trx = wm.sign_transaction(trx,
-//                              { optional_private_key1->get_public_key(), optional_private_key2->get_public_key(), optional_private_key3->get_public_key()},
-//                              chain_id_type{});
-//    const auto& pks = trx.get_signature_keys(chain_id_type{});
-//    BOOST_CHECK_EQUAL(3, pks.size());
-//    BOOST_CHECK(find(pks.cbegin(), pks.cend(), optional_private_key1->get_public_key()) != pks.cend());
-//    BOOST_CHECK(find(pks.cbegin(), pks.cend(), optional_private_key2->get_public_key()) != pks.cend());
-//    BOOST_CHECK(find(pks.cbegin(), pks.cend(), optional_private_key3->get_public_key()) != pks.cend());
+   chain::signed_transaction trx;
+   flat_set<public_key_type> pubkeys;
+   pubkeys.emplace(pkey1.get_public_key());
+   pubkeys.emplace(pkey2.get_public_key());
+   pubkeys.emplace(pkey3.get_public_key());
+   trx = wm.sign_transaction(trx, pubkeys, chain_id_type{});
+   const auto& pks = trx.get_signature_keys(chain_id_type{});
+   BOOST_CHECK_EQUAL(3, pks.size());
+   BOOST_CHECK(find(pks.cbegin(), pks.cend(), pkey1.get_public_key()) != pks.cend());
+   BOOST_CHECK(find(pks.cbegin(), pks.cend(), pkey2.get_public_key()) != pks.cend());
+   BOOST_CHECK(find(pks.cbegin(), pks.cend(), pkey3.get_public_key()) != pks.cend());
 
-//    BOOST_CHECK_EQUAL(3, wm.list_keys().size());
-//    wm.set_timeout(chrono::seconds(0));
-//    BOOST_CHECK_EQUAL(0, wm.list_keys().size());
+   BOOST_CHECK_EQUAL(3, wm.list_keys().size());
+   wm.set_timeout(chrono::seconds(0));
+   BOOST_CHECK_EQUAL(0, wm.list_keys().size());
 
 
-//    BOOST_CHECK(fc::exists("test.wallet"));
-//    BOOST_CHECK(fc::exists("test2.wallet"));
-//    fc::remove("test.wallet");
-//    fc::remove("test2.wallet");
+   BOOST_CHECK(fc::exists("test.wallet"));
+   BOOST_CHECK(fc::exists("test2.wallet"));
+   fc::remove("test.wallet");
+   fc::remove("test2.wallet");
 
 } FC_LOG_AND_RETHROW() }
 
