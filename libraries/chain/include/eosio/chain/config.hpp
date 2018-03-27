@@ -37,19 +37,17 @@ const static int percent_1   = 100;
 
 const static uint32_t  required_producer_participation = 33 * config::percent_1;
 
-static const uint32_t bandwidth_average_window_ms   = 24*60*60*1000l;
-static const uint32_t compute_average_window_ms     = 24*60*60*1000l;
-static const uint32_t blocksize_average_window_ms   = 60*1000l;
+static const uint32_t account_cpu_usage_average_window_ms  = 24*60*60*1000l;
+static const uint32_t account_net_usage_average_window_ms  = 24*60*60*1000l;
+static const uint32_t block_cpu_usage_average_window_ms    = 60*1000l;
+static const uint32_t block_size_average_window_ms         = 60*1000l;
 
 
-const static uint32_t   default_max_block_size              = 1024 * 1024; /// at 500ms blocks and 200byte trx, this enables 10,000 TPS burst
-const static uint32_t   default_target_block_size           = default_max_block_size / 10; /// we target 1000 TPS burst
-const static uint32_t   default_target_block_acts_per_scope  = 1000;
-const static uint32_t   default_max_block_acts_per_scope     = default_target_block_acts_per_scope*10;
+const static uint32_t   default_max_block_size         = 1024 * 1024; /// at 500ms blocks and 200byte trx, this enables ~10,000 TPS burst
+const static uint32_t   default_target_block_size      = default_max_block_size / 10; /// we target 1000 TPS
 
-const static uint32_t   default_target_block_acts  = 2000;
-const static uint32_t   default_max_block_acts     = default_target_block_acts*100;
-const static uint32_t   setcode_act_usage          = 100;
+const static uint32_t   default_max_block_cpu_usage    = 10 * 1024 * 1024; /// at 500ms blocks and 2000instr trx, this enables ~10,000 TPS burst
+const static uint32_t   default_target_block_cpu_usage = default_max_block_cpu_usage / 10; /// target 1000 TPS
 
 const static uint64_t   default_max_storage_size       = 10 * 1024;
 const static uint32_t   default_max_trx_lifetime       = 60*60;
@@ -64,9 +62,11 @@ const static uint32_t   rate_limiting_precision        = 1000*1000;
 
 const static uint16_t   max_recursion_depth = 6;
 
-const static uint32_t   default_base_per_transaction_net_usage  = 100; // 100 bytes minimum (for signature and misc overhead)
-const static uint32_t   default_base_per_transaction_cpu_usage  = 500; // TODO: is this reasonable?
-const static uint32_t   default_per_signature_cpu_usage         = 100; // TODO: is this reasonable?
+const static uint32_t   default_base_per_transaction_net_usage  = 100;        // 100 bytes minimum (for signature and misc overhead)
+const static uint32_t   default_base_per_transaction_cpu_usage  = 500;        // TODO: is this reasonable?
+const static uint32_t   default_base_per_action_cpu_usage       = 1000;
+const static uint32_t   default_base_setcode_cpu_usage          = 2 * 1024 * 1024; /// overbilling cpu usage for setcode to cover incidental
+const static uint32_t   default_per_signature_cpu_usage         = 100 * 1000; // TODO: is this reasonable?
 
 const static uint32_t   overhead_per_row_ram_bytes         = 200;    ///< overhead accounts for basic tracking structures in a row
 const static uint32_t   overhead_per_account_ram_bytes     = 2*1024; ///< overhead accounts for basic account storage and pre-pays features like account recovery

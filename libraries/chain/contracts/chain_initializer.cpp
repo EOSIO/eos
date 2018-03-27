@@ -257,13 +257,11 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
 
    eos_abi.structs.emplace_back( struct_def {
       "chain_config", "", {
-         {"target_block_size", "uint32"},
-         {"max_block_size", "uint32"},
-         {"target_block_acts_per_scope", "uint32"},
-         {"max_block_acts_per_scope", "uint32"},
-         {"target_block_acts", "uint32"},
-         {"max_block_acts", "uint32"},
          {"real_threads", "uint64"},
+         {"base_per_transaction_net_usage", "uint32"},
+         {"base_per_transaction_cpu_usage", "uint32"},
+         {"base_per_action_cpu_usage", "uint32"},
+         {"per_signature_cpu_usage", "uint32"},
          {"max_storage_size", "uint64"},
          {"max_transaction_lifetime", "uint32"},
          {"max_authority_depth", "uint16"},

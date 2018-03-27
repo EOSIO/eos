@@ -17,15 +17,10 @@ namespace eosio { namespace chain { namespace contracts {
 
 struct genesis_state_type {
    chain_config   initial_configuration = {
-      .target_block_size              = config::default_target_block_size,
-      .max_block_size                 = config::default_max_block_size,
-      .target_block_acts_per_scope    = config::default_target_block_acts_per_scope,
-      .max_block_acts_per_scope       = config::default_max_block_acts_per_scope,
-      .target_block_acts              = config::default_target_block_acts,
-      .max_block_acts                 = config::default_max_block_acts,
-      .real_threads                   = 0, // TODO: unused?
       .base_per_transaction_net_usage = config::default_base_per_transaction_net_usage,
       .base_per_transaction_cpu_usage = config::default_base_per_transaction_cpu_usage,
+      .base_per_action_cpu_usage      = config::default_base_per_action_cpu_usage,
+      .base_setcode_cpu_usage         = config::default_base_setcode_cpu_usage,
       .per_signature_cpu_usage        = config::default_per_signature_cpu_usage,
       .max_storage_size               = config::default_max_storage_size,
       .max_transaction_lifetime       = config::default_max_trx_lifetime,

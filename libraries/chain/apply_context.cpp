@@ -11,6 +11,7 @@ using boost::container::flat_set;
 namespace eosio { namespace chain {
 void apply_context::exec_one()
 {
+   auto start = fc::time_point::now();
    _cpu_usage = 0;
    try {
       const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
@@ -86,6 +87,7 @@ void apply_context::exec_one()
    _pending_console_output = std::ostringstream();
    _read_locks.clear();
    _write_scopes.clear();
+   results.applied_actions.back()._profiling_us = fc::time_point::now() - start;
 }
 
 void apply_context::exec()

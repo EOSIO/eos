@@ -17,21 +17,13 @@ namespace eosio { namespace chain {
  */
 struct chain_config {
 
-   uint32_t   target_block_size;
-   uint32_t   max_block_size;
-
-   uint32_t   target_block_acts_per_scope;
-   uint32_t   max_block_acts_per_scope;
-
-   uint32_t   target_block_acts; ///< regardless of the amount of parallelism, this defines target compute time per block
-   uint32_t   max_block_acts; ///< regardless of the amount of parallelism, this maximum compute time per block
-
    uint64_t   real_threads; ///< the number of real threads the producers are using
 
    uint32_t   base_per_transaction_net_usage; ///< the base amount of net usage billed for a transaction to cover incidentals
    uint32_t   base_per_transaction_cpu_usage; ///< the base amount of cpu usage billed for a transaction to cover incidentals
+   uint32_t   base_per_action_cpu_usage;      ///< the base amount of cpu usage billed for an action to cover incidentals
+   uint32_t   base_setcode_cpu_usage;         ///< the base amount of cpu usage billed for a setcode action to cover compilation/etc
    uint32_t   per_signature_cpu_usage;        ///< the cpu usage billed for every signature on a transaction
-   uint32_t   per_row_ram_bytes;              ///< the number of bytes per database row committed to cover overhead
 
    uint64_t   max_storage_size;
    uint32_t   max_transaction_lifetime;
@@ -45,15 +37,11 @@ struct chain_config {
 
    template<typename Stream>
    friend Stream& operator << ( Stream& out, const chain_config& c ) {
-      return out << "Target Block Size: " << c.target_block_size << ", "
-                 << "Max Block Size: " << c.max_block_size << ", " 
-                 << "Target Block Acts Per Scope: " << c.target_block_acts_per_scope << ", " 
-                 << "Max Block Acts Per Scope: " << c.max_block_acts_per_scope << ", " 
-                 << "Target Block Acts: " << c.target_block_acts << ", " 
-                 << "Max Block Acts: " << c.max_block_acts << ", " 
-                 << "Real Threads: " << c.real_threads << ", "
+      return out << "Real Threads: " << c.real_threads << ", "
                  << "Base Per-Transaction Net Usage: " << c.base_per_transaction_net_usage << ", "
                  << "Base Per-Transaction CPU Usage: " << c.base_per_transaction_cpu_usage << ", "
+                 << "Base Per-Action CPU Usage: " << c.base_per_action_cpu_usage << ", "
+                 << "Base Setcode CPU Usage: " << c.base_setcode_cpu_usage << ", "
                  << "Per-Signature CPU Usage: " << c.per_signature_cpu_usage << ", "
                  << "Max Storage Size: " << c.max_storage_size << ", "
                  << "Max Transaction Lifetime: " << c.max_transaction_lifetime << ", " 
@@ -71,15 +59,11 @@ inline bool operator!=(const chain_config& a, const chain_config& b) { return !(
 } } // namespace eosio::chain
 
 FC_REFLECT(eosio::chain::chain_config, 
-           (target_block_size)
-           (max_block_size)
-           (target_block_acts_per_scope)
-           (max_block_acts_per_scope)
-           (target_block_acts)
-           (max_block_acts)
            (real_threads)
            (base_per_transaction_net_usage)
            (base_per_transaction_cpu_usage)
+           (base_per_action_cpu_usage)
+           (base_setcode_cpu_usage)
            (per_signature_cpu_usage)
            (max_storage_size)
            (max_transaction_lifetime)(max_authority_depth)(max_transaction_exec_time)

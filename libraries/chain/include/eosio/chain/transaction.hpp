@@ -249,6 +249,8 @@ namespace eosio { namespace chain {
       uint32_t                   region_id;
       uint32_t                   cycle_index;
       vector<data_access_info>   data_access;
+
+      fc::microseconds           _profiling_us = fc::microseconds(0);
    };
 
    struct transaction_trace : transaction_receipt {
@@ -259,6 +261,9 @@ namespace eosio { namespace chain {
       vector<deferred_reference>    canceled_deferred;
       uint64_t                      cpu_usage;
       uint64_t                      net_usage;
+
+      fc::microseconds              _profiling_us = fc::microseconds(0);
+      fc::microseconds              _setup_profiling_us = fc::microseconds(0);
    };
 } } // eosio::chain
 
@@ -272,10 +277,10 @@ FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(data) )
 FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(payer)(execute_after) )
 FC_REFLECT_ENUM( eosio::chain::data_access_info::access_type, (read)(write))
 FC_REFLECT( eosio::chain::data_access_info, (type)(code)(scope)(sequence))
-FC_REFLECT( eosio::chain::action_trace, (receiver)(act)(console)(region_id)(cycle_index)(data_access) )
+FC_REFLECT( eosio::chain::action_trace, (receiver)(cpu_usage)(act)(console)(region_id)(cycle_index)(data_access)(_profiling_us) )
 FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
 FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail))
-FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transactions)(cpu_usage)(net_usage) )
+FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transactions)(cpu_usage)(net_usage)(_profiling_us)(_setup_profiling_us) )
 
 
 

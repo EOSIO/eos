@@ -260,9 +260,12 @@ transaction_trace chain_controller::push_transaction(const packed_transaction& t
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
 transaction_trace chain_controller::_push_transaction(const packed_transaction& trx) {
+   auto start = fc::time_point::now();
    transaction_metadata   mtrx( trx, get_chain_id(), head_block_time());
    check_transaction_authorization(mtrx.trx(), trx.signatures);
+   auto setup_us = fc::time_point::now() - start;
    auto result = _push_transaction(std::move(mtrx));
+   result._setup_profiling_us = setup_us;
 
    // notify anyone listening to pending transactions
    on_pending_transaction(_pending_transaction_metas.back(), trx);
@@ -833,19 +836,18 @@ void chain_controller::record_transaction(const transaction& trx)
 void chain_controller::update_resource_usage( transaction_trace& trace, const transaction_metadata& meta ) {
    const auto& chain_configuration = get_global_properties().configuration;
 
-   uint32_t act_usage = trace.action_traces.size();
-   for (auto &at: trace.action_traces) {
-      at.region_id = meta.region_id;
-      at.cycle_index = meta.cycle_index;
+   uint32_t action_cpu_usage = 0;
+   for (const auto &at: trace.action_traces) {
+      action_cpu_usage += chain_configuration.base_per_action_cpu_usage + at.cpu_usage;
       if (at.receiver == config::system_account_name &&
           at.act.account == config::system_account_name &&
           at.act.name == N(setcode)) {
-         act_usage += config::setcode_act_usage;
+         action_cpu_usage += chain_configuration.base_setcode_cpu_usage;
       }
    }
 
    trace.net_usage = meta.bandwidth_usage + chain_configuration.base_per_transaction_net_usage;
-   trace.cpu_usage = act_usage + chain_configuration.base_per_transaction_cpu_usage;
+   trace.cpu_usage = action_cpu_usage + chain_configuration.base_per_transaction_cpu_usage;
 
    // charge a system controlled amount for signature verification/recovery
    if( meta.signing_keys ) {
@@ -1505,21 +1507,28 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
 }
 
 transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta ) {
-   try {
-      auto temp_session = _db.start_undo_session(true);
-      auto result = __apply_transaction(meta);
-      temp_session.squash();
-      return result;
-   } catch (...) {
-      // if there is no sender, there is no error handling possible, rethrow
-      if (!meta.sender) {
-         throw;
-      }
-      // log exceptions we can handle with the error handle, throws otherwise
-      log_handled_exceptions(meta.trx());
+   auto execute = [this](transaction_metadata& meta) -> transaction_trace {
+      try {
+         auto temp_session = _db.start_undo_session(true);
+         auto result =  __apply_transaction(meta);
+         temp_session.squash();
+         return result;
+      } catch (...) {
+         // if there is no sender, there is no error handling possible, rethrow
+         if (!meta.sender) {
+            throw;
+         }
+         // log exceptions we can handle with the error handle, throws otherwise
+         log_handled_exceptions(meta.trx());
 
-      return _apply_error( meta );
-   }
+         return _apply_error(meta);
+      }
+   };
+
+   auto start = fc::time_point::now();
+   auto result = execute(meta);
+   result._profiling_us = fc::time_point::now() - start;
+   return result;
 }
 
 transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
