@@ -410,7 +410,6 @@ namespace eosio { namespace testing {
                                 });
 
       set_tapos( trx );
-      wdump((transaction_header(trx)));
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
       push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account) )
