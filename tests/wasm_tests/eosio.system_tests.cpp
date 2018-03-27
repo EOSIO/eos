@@ -1375,7 +1375,7 @@ fc::mutable_variant_object config_to_variant( const eosio::chain::chain_config& 
       ( "max_authority_depth", config.max_authority_depth )
       ( "max_inline_depth", config.max_inline_depth )
       ( "max_inline_action_size", config.max_inline_action_size )
-      ( "max_generated_transaction_size", config.max_generated_transaction_size );
+      ( "max_generated_transaction_size", config.max_generated_transaction_size )
       ( "max_generated_transaction_count", config.max_generated_transaction_count );
 }
 
