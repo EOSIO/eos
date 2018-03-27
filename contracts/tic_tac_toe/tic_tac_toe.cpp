@@ -183,7 +183,7 @@ namespace tic_tac_toe {
 extern "C" {
 
   /// The apply method implements the dispatch of events to this contract
-  void apply( uint64_t code, uint64_t action ) {
+  void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
     if (code == N(tic.tac.toe)) {
       if (action == N(create)) {
         tic_tac_toe::apply_create(current_action<tic_tac_toe::create>());

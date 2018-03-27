@@ -159,10 +159,9 @@ namespace eosiosystem {
             currency::inline_transfer(cr.owner, SystemAccount, rewards, "producer claiming rewards");
          }
 
-         static void apply( account_name code, action_name act ) {
+         static void apply( account_name receiver, account_name code, action_name act ) {
             if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                if( !eosio::dispatch<contract, typename delegate_bandwidth<SystemAccount>::delegatebw,
-                                 typename delegate_bandwidth<SystemAccount>::undelegatebw,
                                  typename delegate_bandwidth<SystemAccount>::refund,
                                  typename voting<SystemAccount>::regproxy,
                                  typename voting<SystemAccount>::unregproxy,
@@ -172,8 +171,14 @@ namespace eosiosystem {
                                  onblock,
                                  claimrewards,
                                  nonce>( code, act) ) {
-                  eosio::print("Unexpected action: ", eosio::name(act), "\n");
-                  eosio_assert( false, "received unexpected action");
+                  //TODO: Small hack until we refactor eosio.system like eosio.token
+                  using undelegatebw = typename delegate_bandwidth<SystemAccount>::undelegatebw;
+                  if(code == undelegatebw::get_account() && act == undelegatebw::get_name() ){
+                     contract().on( receiver, eosio::unpack_action_data<undelegatebw>() );
+                  } else {
+                     eosio::print("Unexpected action: ", eosio::name(act), "\n");
+                     eosio_assert( false, "received unexpected action");
+                  }
                }
             }
 

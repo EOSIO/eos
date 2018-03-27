@@ -19,11 +19,11 @@ namespace eosio {
          from_string constructs a symbol from an input a string of the form "4,EOS"
          where the integer represents number of decimals. Number of decimals must be larger than zero.
        */
-      
+
       static constexpr uint64_t string_to_symbol_c(uint8_t precision, const char* str) {
          uint32_t len = 0;
          while (str[len]) ++len;
-         
+
          uint64_t result = 0;
          // No validation is done at compile time
          for (uint32_t i = 0; i < len; ++i) {
@@ -33,7 +33,7 @@ namespace eosio {
          result |= uint64_t(precision);
          return result;
       }
-      
+
 #define SY(P,X) ::eosio::chain::string_to_symbol_c(P,#X)
 
       static uint64_t string_to_symbol(uint8_t precision, const char* str) {
@@ -50,6 +50,10 @@ namespace eosio {
             return result;
          } FC_CAPTURE_LOG_AND_RETHROW((str))
       }
+
+      struct symbol_code {
+         uint64_t value;
+      };
 
       class symbol {
          public:
@@ -105,7 +109,9 @@ namespace eosio {
                }
                return result;
             }
-            
+
+            symbol_code to_symbol_code()const { return {m_value >> 8}; }
+
             explicit operator string() const
             {
                uint64_t v = m_value;
@@ -122,7 +128,7 @@ namespace eosio {
             {
                return ds << s.to_string();
             }
-            
+
          private:
             uint64_t m_value;
             friend struct fc::reflector<symbol>;
@@ -150,7 +156,7 @@ namespace eosio {
          return lhs.value() > rhs.value();
       }
 
-   } // namespace chain   
+   } // namespace chain
 } // namespace eosio
 
 namespace fc {
@@ -160,5 +166,15 @@ namespace fc {
    }
 }
 
+namespace fc {
+   inline void to_variant(const eosio::chain::symbol_code& var, fc::variant& vo) {
+      vo = eosio::chain::symbol(var.value << 8).name();
+   }
+   inline void from_variant(const fc::variant& var, eosio::chain::symbol_code& vo) {
+      vo = eosio::chain::symbol(0, var.get_string().c_str()).to_symbol_code();
+   }
+}
+
+FC_REFLECT(eosio::chain::symbol_code, (value))
 FC_REFLECT(eosio::chain::symbol, (m_value))
 FC_REFLECT(eosio::chain::extended_symbol, (sym)(contract))

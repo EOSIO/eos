@@ -36,10 +36,10 @@ namespace eosio { namespace chain {
          FC_ASSERT( !"error parsing wast", "${msg}", ("msg",ss.str()) );
       }
 
- 		for(auto sectionIt = module.userSections.begin();sectionIt != module.userSections.end();++sectionIt)
-		{
-			if(sectionIt->name == "name") { module.userSections.erase(sectionIt); break; }
-		}
+      for(auto sectionIt = module.userSections.begin();sectionIt != module.userSections.end();++sectionIt)
+      {
+         if(sectionIt->name == "name") { module.userSections.erase(sectionIt); break; }
+      }
 
       try
       {
