@@ -30,7 +30,7 @@ namespace eosio { namespace chain {
    using database = chainbase::database;
    using boost::signals2::signal;
    using resource_limits_manager = resource_limits::resource_limits_manager;
-
+   class generated_transaction_object;
 
    namespace contracts{ class chain_initializer; }
 
@@ -275,8 +275,8 @@ namespace eosio { namespace chain {
          const chainbase::database& get_database() const { return _db; }
          chainbase::database&       get_mutable_database() { return _db; }
 
-         const resource_limits::resource_limits_manager get_resource_limits_manager() const { return _resource_limits; }
-         resource_limits::resource_limits_manager       get_mutable_resource_limits_manager() { return _resource_limits; }
+         const resource_limits::resource_limits_manager& get_resource_limits_manager() const { return _resource_limits; }
+         resource_limits::resource_limits_manager&       get_mutable_resource_limits_manager() { return _resource_limits; }
 
          wasm_interface& get_wasm_interface() {
             return _wasm_interface;
@@ -318,6 +318,9 @@ namespace eosio { namespace chain {
          transaction_trace _apply_transaction( transaction_metadata& data );
          transaction_trace __apply_transaction( transaction_metadata& data );
          transaction_trace _apply_error( transaction_metadata& data );
+
+         void _destroy_generated_transaction( const generated_transaction_object& gto );
+         void _create_generated_transaction( const deferred_transaction& dto );
 
          /// Reset the object graph in-memory
          void _initialize_indexes();

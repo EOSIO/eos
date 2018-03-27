@@ -44,6 +44,8 @@
     { c(*this); }
 #define OBJECT_CTOR(...) BOOST_PP_OVERLOAD(OBJECT_CTOR, __VA_ARGS__)(__VA_ARGS__)
 
+#define _V(n, v)  fc::mutable_variant_object(n, v)
+
 namespace eosio { namespace chain {
    using                               std::map;
    using                               std::vector;

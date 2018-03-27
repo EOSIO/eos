@@ -222,6 +222,12 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
 
       FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
 
+      if (trx.payer != account_name(0)) {
+         require_authorization(trx.payer);
+      } else {
+         trx.payer = trx.sender;
+      }
+
       // privileged accounts can do anything, no need to check auth
       if( !privileged ) {
 
@@ -302,10 +308,14 @@ const bytes& apply_context::get_packed_transaction() {
    return trx_meta.packed_trx;
 }
 
-void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
+void apply_context::update_db_usage( const account_name& payer, int64_t delta, const char* use_format, const fc::variant_object& args ) {
    require_write_lock( payer );
-   if( (delta > 0) && payer != account_name(receiver) ) {
-      require_authorization( payer );
+   if( (delta > 0) ) {
+      if (payer != account_name(receiver)) {
+         require_authorization( payer );
+      }
+
+      mutable_controller.get_mutable_resource_limits_manager().add_account_ram_usage(payer, delta, use_format, args);
    }
 }
 
@@ -368,7 +378,8 @@ int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_n
      ++t.count;
    });
 
-   update_db_usage( payer, buffer_size + 200 );
+   int64_t billable_size = (int64_t)(buffer_size + sizeof(key_value_object) + config::overhead_per_row_ram_bytes);
+   update_db_usage( payer, billable_size, "New Row ${id} in (${c},${s},${t})", _V("id", obj.primary_key)("c",receiver)("s",scope)("t",table));
 
    keyval_cache.cache_table( tab );
    return keyval_cache.add( obj );
@@ -377,17 +388,23 @@ int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_n
 void apply_context::db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size ) {
    const key_value_object& obj = keyval_cache.get( iterator );
 
-   require_write_lock( keyval_cache.get_table( obj.t_id ).scope );
+   const auto& tab = keyval_cache.get_table( obj.t_id );
+   require_write_lock( tab.scope );
 
-   int64_t old_size = obj.value.size();
+   const int64_t overhead = sizeof(key_value_object) + config::overhead_per_row_ram_bytes;
+   int64_t old_size = (int64_t)(obj.value.size() + overhead);
+   int64_t new_size = (int64_t)(buffer_size + overhead);
 
    if( payer == account_name() ) payer = obj.payer;
 
-   if( account_name(obj.payer) == payer ) {
-      update_db_usage( obj.payer, buffer_size - old_size );
-   } else  {
-      update_db_usage( obj.payer,  -(old_size+200) );
-      update_db_usage( payer,  (buffer_size+200) );
+   if( account_name(obj.payer) != payer ) {
+      // refund the existing payer
+      update_db_usage( obj.payer,  -(old_size) );
+      // charge the new payer
+      update_db_usage( payer,  (new_size), "Transfer Row ${id} in (${c},${s},${t})", _V("id", obj.primary_key)("c",tab.code)("s",tab.scope)("t",tab.table));
+   } else if(old_size != new_size) {
+      // charge/refund the existing payer the difference
+      update_db_usage( obj.payer, new_size - old_size, "Update Row ${id} in (${c},${s},${t})", _V("id", obj.primary_key)("c",tab.code)("s",tab.scope)("t",tab.table));
    }
 
    mutable_db.modify( obj, [&]( auto& o ) {
@@ -399,7 +416,7 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
 
 void apply_context::db_remove_i64( int iterator ) {
    const key_value_object& obj = keyval_cache.get( iterator );
-   update_db_usage( obj.payer,  -(obj.value.size()+200) );
+   update_db_usage( obj.payer,  -(obj.value.size() + config::overhead_per_row_ram_bytes) );
 
    const auto& table_obj = keyval_cache.get_table( obj.t_id );
    require_write_lock( table_obj.scope );

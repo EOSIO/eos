@@ -59,7 +59,7 @@ extern "C" {
     * @{
     */
 
-   void send_deferred(uint32_t sender_id, time delay_until, char *serialized_transaction, size_t size);
+   void send_deferred(uint32_t sender_id, account_name payer, time delay_until, char *serialized_transaction, size_t size);
 
    /**
     * access a copy of the currently executing transaction

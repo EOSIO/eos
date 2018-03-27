@@ -68,6 +68,9 @@ const static uint32_t   default_base_per_transaction_net_usage  = 100; // 100 by
 const static uint32_t   default_base_per_transaction_cpu_usage  = 500; // TODO: is this reasonable?
 const static uint32_t   default_per_signature_cpu_usage         = 100; // TODO: is this reasonable?
 
+const static uint32_t   overhead_per_row_ram_bytes         = 200;    ///< overhead accounts for basic tracking structures in a row
+const static uint32_t   overhead_per_account_ram_bytes     = 2*1024; ///< overhead accounts for basic account storage and pre-pays features like account recovery
+
 const static eosio::chain::wasm_interface::vm_type default_wasm_runtime = eosio::chain::wasm_interface::vm_type::binaryen;
 
 /**

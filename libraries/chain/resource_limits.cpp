@@ -91,6 +91,22 @@ void resource_limits_manager::add_account_usage(const vector<account_name>& acco
    }
 }
 
+void resource_limits_manager::add_account_ram_usage( const account_name account, int64_t ram_delta, const char* use_format, const fc::variant_object& args ) {
+   const auto& usage = _db.get<resource_usage_object,by_owner>( account );
+   const auto& limits = _db.get<resource_limits_object,by_owner>( boost::make_tuple(false, account));
+
+   if (limits.ram_bytes >= 0 && usage.ram_usage + ram_delta > limits.ram_bytes) {
+      tx_resource_exhausted e(FC_LOG_MESSAGE(error, "account ${a} has insufficient ram bytes", ("a", account)));
+      e.append_log(fc::log_message( FC_LOG_CONTEXT(error), use_format, args ));
+      e.append_log(FC_LOG_MESSAGE(error, "needs ${d} has ${m}", ("d",ram_delta)("m",limits.ram_bytes)));
+      throw e;
+   }
+
+   _db.modify(usage, [&](resource_usage_object& o){
+      o.ram_usage += ram_delta;
+   });
+}
+
 void resource_limits_manager::add_block_usage( uint64_t cpu_usage, uint64_t net_usage, uint32_t block_num ) {
    const auto& s = _db.get<resource_limits_state_object>();
    const auto& config = _db.get<resource_limits_config_object>();

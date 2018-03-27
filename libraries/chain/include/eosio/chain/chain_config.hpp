@@ -28,9 +28,10 @@ struct chain_config {
 
    uint64_t   real_threads; ///< the number of real threads the producers are using
 
-   uint32_t   base_per_transaction_net_usage;
-   uint32_t   base_per_transaction_cpu_usage;
-   uint32_t   per_signature_cpu_usage;
+   uint32_t   base_per_transaction_net_usage; ///< the base amount of net usage billed for a transaction to cover incidentals
+   uint32_t   base_per_transaction_cpu_usage; ///< the base amount of cpu usage billed for a transaction to cover incidentals
+   uint32_t   per_signature_cpu_usage;        ///< the cpu usage billed for every signature on a transaction
+   uint32_t   per_row_ram_bytes;              ///< the number of bytes per database row committed to cover overhead
 
    uint64_t   max_storage_size;
    uint32_t   max_transaction_lifetime;

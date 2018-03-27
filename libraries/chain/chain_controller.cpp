@@ -52,7 +52,7 @@ chain_controller::chain_controller( const chain_controller::controller_config& c
       cfg.shared_memory_size),
  _block_log(cfg.block_log_dir),
  _wasm_interface(cfg.wasm_runtime),
- _limits(cfg.limits)
+ _limits(cfg.limits),
  _resource_limits(_db)
 {
    _initialize_indexes();
@@ -381,17 +381,7 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
    for (const auto&st: res.shard_traces) {
       for (const auto &tr: st.transaction_traces) {
          for (const auto &dt: tr.deferred_transactions) {
-            _db.create<generated_transaction_object>([&](generated_transaction_object &obj) {
-               obj.trx_id = dt.id();
-               obj.sender = dt.sender;
-               obj.sender_id = dt.sender_id;
-               obj.expiration = dt.expiration;
-               obj.delay_until = dt.execute_after;
-               obj.published = head_block_time();
-               obj.packed_trx.resize(fc::raw::pack_size(dt));
-               fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
-               fc::raw::pack(ds, dt);
-            });
+            _create_generated_transaction(dt);
          }
 
          if (tr.canceled_deferred.size() > 0 ) {
@@ -404,7 +394,7 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
                      break;
                   }
 
-                  generated_transaction_idx.remove(*itr);
+                  _destroy_generated_transaction(*itr);
                }
             }
          }
@@ -673,6 +663,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                      const auto& gtrx = _db.get<generated_transaction_object,by_trx_id>(receipt.id);
                      auto trx = fc::raw::unpack<deferred_transaction>(gtrx.packed_trx.data(), gtrx.packed_trx.size());
                      _temp.emplace(trx, gtrx.published, trx.sender, trx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() );
+                     _destroy_generated_transaction(gtrx);
                      return &*_temp;
                   }
                };
@@ -1414,8 +1405,9 @@ void chain_controller::clear_expired_transactions()
    //transactions must have expired by at least two forking windows in order to be removed.
    auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
    const auto& generated_index = generated_transaction_idx.indices().get<by_expiration>();
-   while( (!generated_index.empty()) && (head_block_time() > generated_index.rbegin()->expiration) )
-      generated_transaction_idx.remove(*generated_index.rbegin());
+   while( (!generated_index.empty()) && (head_block_time() > generated_index.rbegin()->expiration) ) {
+      _destroy_generated_transaction(*generated_index.rbegin());
+   }
 
 } FC_CAPTURE_AND_RETHROW() }
 
@@ -1571,6 +1563,36 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    return result;
 }
 
+void chain_controller::_destroy_generated_transaction( const generated_transaction_object& gto ) {
+   auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
+   _resource_limits.add_account_ram_usage(gto.payer, -(sizeof(generated_transaction_object) + gto.packed_trx.size() + config::overhead_per_row_ram_bytes));
+   generated_transaction_idx.remove(gto);
+
+}
+
+void chain_controller::_create_generated_transaction( const deferred_transaction& dto ) {
+   size_t trx_size = fc::raw::pack_size(dto);
+   _resource_limits.add_account_ram_usage(
+      dto.payer,
+      (sizeof(generated_transaction_object) + (int64_t)trx_size + config::overhead_per_row_ram_bytes),
+      "Generated Transaction ${id} from ${s}", _V("id", dto.sender_id)("s",dto.sender)
+   );
+
+   _db.create<generated_transaction_object>([&](generated_transaction_object &obj) {
+      obj.trx_id = dto.id();
+      obj.sender = dto.sender;
+      obj.sender_id = dto.sender_id;
+      obj.payer = dto.payer;
+      obj.expiration = dto.expiration;
+      obj.delay_until = dto.execute_after;
+      obj.published = head_block_time();
+      obj.packed_trx.resize(trx_size);
+      fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
+      fc::raw::pack(ds, dto);
+   });
+}
+
+
 void chain_controller::push_deferred_transactions( bool flush )
 {
    if (flush && _pending_cycle_trace && _pending_cycle_trace->shard_traces.size() > 0) {
@@ -1594,7 +1616,7 @@ void chain_controller::push_deferred_transactions( bool flush )
       maybe_start_new_cycle();
    }
 
-   auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
+   const auto& generated_transaction_idx = _db.get_index<generated_transaction_multi_index>();
    auto& generated_index = generated_transaction_idx.indices().get<by_delay>();
    vector<const generated_transaction_object*> candidates;
 
@@ -1609,11 +1631,10 @@ void chain_controller::push_deferred_transactions( bool flush )
             auto trx = fc::raw::unpack<deferred_transaction>(trx_p->packed_trx.data(), trx_p->packed_trx.size());
             transaction_metadata mtrx (trx, trx_p->published, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size());
             _push_transaction(std::move(mtrx));
-            generated_transaction_idx.remove(*trx_p);
          } FC_CAPTURE_AND_LOG((trx_p->trx_id)(trx_p->sender));
-      } else {
-         generated_transaction_idx.remove(*trx_p);
       }
+
+      _destroy_generated_transaction(*trx_p);
    }
 }
 

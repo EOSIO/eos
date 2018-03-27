@@ -1010,7 +1010,9 @@ class transaction_api : public context_aware_api {
          context.execute_context_free_inline(std::move(act));
       }
 
-      void send_deferred( uint32_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
+      void send_deferred( uint32_t sender_id, const account_name& payer, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
+         const auto* paying_account = context.db.find<account_object, by_name>(payer);
+         EOS_ASSERT(paying_account, tx_unknown_argument, "The account for the payer: ${a}, does not exist!", ("a", payer));
          try {
             // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
             FC_ASSERT(data_len < config::default_max_gen_trx_size, "generated transaction too big");
@@ -1020,6 +1022,7 @@ class transaction_api : public context_aware_api {
             dtrx.sender = context.receiver;
             dtrx.sender_id = sender_id;
             dtrx.execute_after = execute_after;
+            dtrx.payer = payer;
             context.execute_deferred(std::move(dtrx));
          } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
       }
@@ -1524,9 +1527,9 @@ REGISTER_INTRINSICS(context_free_transaction_api,
 );
 
 REGISTER_INTRINSICS(transaction_api,
-   (send_inline,                        void(int, int)            )
-   (send_context_free_inline,           void(int, int)            )
-   (send_deferred,                      void(int, int, int, int)  )
+   (send_inline,                        void(int, int)                     )
+   (send_context_free_inline,           void(int, int)                     )
+   (send_deferred,                      void(int, int64_t, int, int, int)  )
 );
 
 REGISTER_INTRINSICS(context_free_api,
