@@ -119,6 +119,13 @@ extern "C" {
    void send_inline(char *serialized_action, size_t size);
 
    /**
+    *  Send an inline context free action in the context of this action's parent transaction
+    * @param serialized_action - serialized action
+    * @param size - size of serialized action in bytes
+    */
+   void send_context_free_inline(char *serialized_action, size_t size);
+
+   /**
     *  Verifies that @ref name exists in the set of write locks held on a action. Throws if not found
     *  @brief Verifies that @ref name exists in the set of write locks held
     *  @param name - name of the account to be verified

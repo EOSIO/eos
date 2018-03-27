@@ -209,3 +209,19 @@ void test_transaction::send_transaction_large() {
 
    eosio_assert(false, "send_transaction_large() should've thrown an error");
 }
+
+void test_transaction::send_cf_action() {
+   using namespace eosio;
+   test_action_action<N(dummy), N(event1)> cfa;
+   action act(cfa);
+   act.send_context_free();
+}
+
+void test_transaction::send_cf_action_fail() {
+   using namespace eosio;
+   test_action_action<N(dummy), N(event1)> cfa;
+   action act(vector<permission_level>{{N(dummy), N(active)}}, cfa);
+   act.send_context_free();
+   eosio_assert(false, "send_cfa_action_fail() should've thrown an error");
+}
+
