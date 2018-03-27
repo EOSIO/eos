@@ -477,7 +477,11 @@ BOOST_FIXTURE_TEST_CASE(checktime_pass_tests, tester) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
-   tester t( {fc::milliseconds(100), fc::milliseconds(100)} );
+	// TODO: This is an extremely fragile test. It needs improvements:
+	//       1) compilation of the smart contract should probably not count towards the CPU time of a transaction that first uses it;
+	//       2) checktime should eventually switch to a deterministic metric which should hopefully fix the inconsistencies
+	//          of this test succeeding/failing on different machines (for example, succeeding on our local dev machines but failing on Jenkins).
+   tester t( {fc::milliseconds(5000), fc::milliseconds(5000)} );
    t.produce_blocks(2);
 
    t.create_account( N(testapi) );
