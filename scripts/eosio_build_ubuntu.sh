@@ -130,7 +130,7 @@
 		tar xf mongo-c-driver-1.9.3.tar.gz
 		rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz
 		cd mongo-c-driver-1.9.3
-		./configure --enable-static --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+		./configure --enable-static --with-libbson=bundled --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
 		if [ $? -ne 0 ]; then
 			printf "\tConfiguring MondgDB C driver has encountered the errors above.\n"
 			printf "\tExiting now.\n\n"
