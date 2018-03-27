@@ -132,6 +132,9 @@ vector<permission_level> apply_context::unused_authorizations()const {
 }
 
 void apply_context::require_authorization( const account_name& account ) {
+   // skip context free actions
+   if (act.name == N(cf.action))
+      return;
    for( uint32_t i=0; i < act.authorization.size(); i++ )
      if( act.authorization[i].actor == account ) {
         used_authorizations[i] = true;
@@ -149,6 +152,9 @@ bool apply_context::has_authorization( const account_name& account )const {
 
 void apply_context::require_authorization(const account_name& account,
                                           const permission_name& permission) {
+  // skip context free actions
+  if (act.name == N(cf.action))
+      return;
   for( uint32_t i=0; i < act.authorization.size(); i++ )
      if( act.authorization[i].actor == account ) {
         if( act.authorization[i].permission == permission ) {

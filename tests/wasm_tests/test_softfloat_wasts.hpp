@@ -2,6 +2,7 @@
 
 static const char f32_test_wast[] = R"=====(
 (module
+  (import "env" "require_auth" (func $require_auth (param i64)))
   (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
@@ -2545,6 +2546,7 @@ static const char f32_test_wast[] = R"=====(
    (func $trunc (param $0 f32) (result f32) (f32.trunc (get_local $0)))
    (func $nearest (param $0 f32) (result f32) (f32.nearest (get_local $0)))
    (func $apply (param $0 i64)(param $1 i64)
+   (call $require_auth (i64.const 6396251299783901184))
    (call $assert_return (call $add (f32.const -0x0p+0) (f32.const -0x0p+0)) (f32.const -0x0p+0) (i32.const 20))
    (call $assert_return (call $add (f32.const -0x0p+0) (f32.const 0x0p+0)) (f32.const 0x0p+0) (i32.const 24))
    (call $assert_return (call $add (f32.const 0x0p+0) (f32.const -0x0p+0)) (f32.const 0x0p+0) (i32.const 28))
@@ -5049,6 +5051,7 @@ static const char f32_test_wast[] = R"=====(
 )=====";
 static const char f32_cmp_test_wast[] = R"=====(
 (module
+  (import "env" "require_auth" (func $require_auth (param i64)))
   (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
@@ -7468,6 +7471,7 @@ static const char f32_cmp_test_wast[] = R"=====(
    (func $fge (param $0 f32) (param $1 f32) (result i32) (f32.ge (get_local $0) (get_local $1)))
    (func $fle (param $0 f32) (param $1 f32) (result i32) (f32.le (get_local $0) (get_local $1)))
    (func $apply (param $0 i64)(param $1 i64)
+   (call $require_auth (i64.const 6396251299783901184))
    (call $assert_return (call $feq (f32.const -0x0p+0) (f32.const -0x0p+0)) (i32.const 1) (i32.const 20))
    (call $assert_return (call $feq (f32.const -0x0p+0) (f32.const 0x0p+0)) (i32.const 1) (i32.const 24))
    (call $assert_return (call $feq (f32.const 0x0p+0) (f32.const -0x0p+0)) (i32.const 1) (i32.const 28))
@@ -9873,6 +9877,7 @@ static const char f32_cmp_test_wast[] = R"=====(
 
 static const char f32_bitwise_test_wast[] = R"=====(
 (module
+  (import "env" "require_auth" (func $require_auth (param i64)))
   (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
@@ -10260,6 +10265,7 @@ static const char f32_bitwise_test_wast[] = R"=====(
    (func $neg (param $0 f32) (result f32) (f32.neg (get_local $0)))
    (func $copysign (param $0 f32) (param $1 f32) (result f32) (f32.copysign (get_local $0) (get_local $1)))
    (func $apply (param $0 i64)(param $1 i64)
+   (call $require_auth (i64.const 6396251299783901184))
    (call $assert_return (call $copysign (f32.const -0x0p+0) (f32.const -0x0p+0)) (f32.const -0x0p+0) (i32.const 20))
    (call $assert_return (call $copysign (f32.const -0x0p+0) (f32.const 0x0p+0)) (f32.const 0x0p+0) (i32.const 24))
    (call $assert_return (call $copysign (f32.const 0x0p+0) (f32.const -0x0p+0)) (f32.const -0x0p+0) (i32.const 28))
@@ -10624,6 +10630,7 @@ static const char f32_bitwise_test_wast[] = R"=====(
 )=====";
 static const char f64_test_wast[] = R"=====(
 (module
+  (import "env" "require_auth" (func $require_auth (param i64)))
   (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
@@ -13167,6 +13174,7 @@ static const char f64_test_wast[] = R"=====(
    (func $trunc (param $0 f64) (result f64) (f64.trunc (get_local $0)))
    (func $nearest (param $0 f64) (result f64) (f64.nearest (get_local $0)))
    (func $apply (param $0 i64)(param $1 i64)
+   (call $require_auth (i64.const 6355331582554800128))
    (call $assert_return (call $add (f64.const -0x0p+0) (f64.const -0x0p+0)) (f64.const -0x0p+0) (i32.const 20))
    (call $assert_return (call $add (f64.const -0x0p+0) (f64.const 0x0p+0)) (f64.const 0x0p+0) (i32.const 24))
    (call $assert_return (call $add (f64.const 0x0p+0) (f64.const -0x0p+0)) (f64.const 0x0p+0) (i32.const 28))
@@ -15671,6 +15679,7 @@ static const char f64_test_wast[] = R"=====(
 )=====";
 static const char f64_bitwise_test_wast[] = R"=====(
 (module
+  (import "env" "require_auth" (func $require_auth (param i64)))
   (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
@@ -16044,6 +16053,7 @@ static const char f64_bitwise_test_wast[] = R"=====(
    (func $neg (param $0 f64) (result f64) (f64.neg (get_local $0)))
    (func $copysign (param $0 f64) (param $1 f64) (result f64) (f64.copysign (get_local $0) (get_local $1)))
    (func $apply (param $0 i64)(param $1 i64)
+   (call $require_auth (i64.const 6355331582554800128))
     (call $assert_return (call $copysign (f64.const -0x0p+0) (f64.const -0x0p+0)) (f64.const -0x0p+0) (i32.const 20))
     (call $assert_return (call $copysign (f64.const -0x0p+0) (f64.const 0x0p+0)) (f64.const 0x0p+0) (i32.const 24))
     (call $assert_return (call $copysign (f64.const 0x0p+0) (f64.const -0x0p+0)) (f64.const -0x0p+0) (i32.const 28))
@@ -16409,6 +16419,7 @@ static const char f64_bitwise_test_wast[] = R"=====(
 
 static const char f64_cmp_test_wast[] = R"=====(
 (module
+  (import "env" "require_auth" (func $require_auth (param i64)))
   (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)
@@ -18828,6 +18839,7 @@ static const char f64_cmp_test_wast[] = R"=====(
    (func $ge (param $0 f64) (param $1 f64) (result i32) (f64.ge (get_local $0) (get_local $1)))
    (func $le (param $0 f64) (param $1 f64) (result i32) (f64.le (get_local $0) (get_local $1)))
    (func $apply (param $0 i64)(param $1 i64)
+    (call $require_auth (i64.const 6355331582554800128))
     (call $assert_return (call $eq (f64.const -0x0p+0) (f64.const -0x0p+0)) (i32.const 1) (i32.const 20))
     (call $assert_return (call $eq (f64.const -0x0p+0) (f64.const 0x0p+0)) (i32.const 1) (i32.const 24))
     (call $assert_return (call $eq (f64.const 0x0p+0) (f64.const -0x0p+0)) (i32.const 1) (i32.const 28))
@@ -21233,6 +21245,7 @@ static const char f64_cmp_test_wast[] = R"=====(
 
 static const char f32_f64_conv_wast[] = R"=====(
 (module
+  (import "env" "require_auth" (func $require_auth (param i64)))
   (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
    (table 0 anyfunc)
    (memory $0 1)

@@ -9,12 +9,8 @@
 
 extern "C" {
 
-    void init()  {
-
-    }
-
-   void apply( unsigned long long, unsigned long long action ) {
-
+   void apply( unsigned long long code, unsigned long long action ) {
+      require_auth(code);
       WASM_TEST_HANDLER(test_multi_index, idx64_general);
       WASM_TEST_HANDLER(test_multi_index, idx64_store_only);
       WASM_TEST_HANDLER(test_multi_index, idx64_check_without_storing);

@@ -263,6 +263,7 @@ namespace stltest {
         }
 
         static void apply( account_name c, action_name act) {
+            require_auth(c);
             eosio::dispatch<stltest::contract, message>(c,act);
         }
     };

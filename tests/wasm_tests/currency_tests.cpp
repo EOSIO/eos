@@ -29,12 +29,19 @@ class currency_tester : public tester {
          action act;
          act.account = N(currency);
          act.name = name;
-         act.authorization = vector<permission_level>{{signer, config::active_name}};
+         if (signer != N(currency))
+            act.authorization = vector<permission_level>{{N(currency), config::active_name},{signer, config::active_name}};
+         else
+            act.authorization = vector<permission_level>{{signer, config::active_name}};
          act.data = abi_ser.variant_to_binary(action_type_name, data);
 
          signed_transaction trx;
          trx.actions.emplace_back(std::move(act));
          set_tapos(trx);
+
+         if (signer != N(currency))
+            trx.sign(get_private_key(N(currency), "active"), chain_id_type());
+
          trx.sign(get_private_key(signer, "active"), chain_id_type());
          return push_transaction(trx);
       }

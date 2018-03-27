@@ -10,13 +10,8 @@
 
 extern "C" {
 
-    void init()  {
-
-    }
-
-   void apply( unsigned long long, unsigned long long action ) {
-
-      //eosio::print("==> CONTRACT: ", code, " ", action, "\n");
+   void apply( unsigned long long code, unsigned long long action ) {
+      require_auth(code);
 
       //test_extended_memory
       WASM_TEST_HANDLER(test_extended_memory, test_initial_buffer);
