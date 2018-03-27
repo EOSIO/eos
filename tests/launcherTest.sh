@@ -7,15 +7,15 @@ delay=0
 
 cmd="programs/eosio-launcher/eosio-launcher -p $pnodes -n $total_nodes -d $delay -f"
 echo cmd: $cmd
-`$cmd`
+eval $cmd
 
 cmd="sleep 5"
 echo cmd: $cmd
-`$cmd`
+eval $cmd
 
 cmd="ps -ef | grep nodeos"
 echo cmd: $cmd
-ps -ef | grep nodeos
+eval $cmd
 
 for file in "var/lib/node_00/stdout.txt" "var/lib/node_bios/stdout.txt" "bios_boot.sh" "setprods.json" "etc/eosio/node_00/config.ini" "etc/eosio/node_bios/config.ini" "etc/eosio/node_00/genesis.json" "etc/eosio/node_bios/genesis.json":
 do
@@ -25,7 +25,7 @@ done
 
 cmd="programs/eosio-launcher/eosio-launcher -k 15"
 echo cmd: $cmd
-programs/eosio-launcher/eosio-launcher -k 15
+eval $cmd
 
 rm -rf staging
 rm -rf var/lib/node_*
