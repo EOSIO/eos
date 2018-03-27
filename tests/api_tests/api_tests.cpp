@@ -1227,6 +1227,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, tester) { try {
    auto get_result_uint64 = [&]() -> uint64_t {
       const auto& db = control->get_database();
       const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(testapi), N(testapi), N(testapi)));
+      
       FC_ASSERT(t_id != 0, "Table id not found");
 
       const auto& idx = db.get_index<key_value_index, by_scope_primary>();
@@ -1234,8 +1235,8 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, tester) { try {
       auto itr = idx.lower_bound(boost::make_tuple(t_id->id));
       FC_ASSERT( itr != idx.end() && itr->t_id == t_id->id, "lower_bound failed");
 
-      FC_ASSERT( 0 == itr->value.size(), "unexpected result size");
-      return itr->primary_key;
+      FC_ASSERT( 0 != itr->value.size(), "unexpected result size");
+      return *reinterpret_cast<const uint64_t *>(itr->value.data());
    };
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",

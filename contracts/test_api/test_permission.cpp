@@ -24,10 +24,16 @@ struct check_auth {
 };
 
 void test_permission::check_authorization() {
-  auto params = unpack_action_data<check_auth>();
+   auto self = current_receiver();
 
-  uint64_t res64 = (uint64_t)::check_authorization( params.account, params.permission, 
+   auto params = unpack_action_data<check_auth>();
+   uint64_t res64 = (uint64_t)::check_authorization( params.account, params.permission, 
         (char*)params.pubkeys.data(), params.pubkeys.size()*sizeof(public_key) );
 
-  store_i64(current_receiver(), current_receiver(), current_receiver(), &res64, sizeof(uint64_t));
+   auto itr = db_lowerbound_i64(self, self, self, 1);
+   if(itr == -1) {
+      db_store_i64(self, self, self, 1, &res64, sizeof(uint64_t));
+   } else {
+      db_update_i64(itr, self, &res64, sizeof(uint64_t));
+   }
 }
