@@ -216,6 +216,11 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
 
       FC_ASSERT( trx.execute_after < trx.expiration, "transaction expires before it can execute" );
 
+      const auto& chain_configuration = controller.get_global_properties().configuration;
+      EOS_ASSERT( (trx.expiration - trx.execute_after) <= fc::seconds(chain_configuration.max_transaction_lifetime), transaction_exception,
+                  "deferred transaction expiration is further than ${mtl} sec in the future relative to the first time it is allowed to execute",
+                  ("mtl", chain_configuration.max_transaction_lifetime)("trx.expiration", trx.expiration)("trx.execute_after", trx.execute_after) );
+
       /// TODO: make default_max_gen_trx_count a producer parameter
       FC_ASSERT( results.generated_transactions.size() < config::default_max_gen_trx_count );
 
