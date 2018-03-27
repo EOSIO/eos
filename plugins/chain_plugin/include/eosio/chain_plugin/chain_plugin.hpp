@@ -14,6 +14,8 @@
 #include <eosio/chain/contracts/abi_serializer.hpp>
 
 #include <boost/container/flat_set.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
 
 namespace fc { class variant; }
 
@@ -49,13 +51,7 @@ class read_only {
 
 public:
    static const string KEYi64;
-   static const string KEYstr;
-   static const string KEYi128i128;
-   static const string KEYi64i64i64;
-   static const string PRIMARY;
-   static const string SECONDARY;
-   static const string TERTIARY;
-   
+
    read_only(const chain_controller& db)
       : db(db) {}
 
@@ -68,8 +64,8 @@ public:
       chain::block_id_type    head_block_id;
       fc::time_point_sec      head_block_time;
       account_name            head_block_producer;
-      string                  recent_slots;
-      double                  participation_rate = 0;
+      //string                  recent_slots;
+      //double                  participation_rate = 0;
    };
    get_info_results get_info(const get_info_params&) const;
 
@@ -113,7 +109,7 @@ public:
       vector<name>   required_scope;
       vector<name>   required_auth;
    };
-      
+
    abi_json_to_bin_result abi_json_to_bin( const abi_json_to_bin_params& params )const;
 
 
@@ -127,7 +123,7 @@ public:
       vector<name>   required_scope;
       vector<name>   required_auth;
    };
-      
+
    abi_bin_to_json_result abi_bin_to_json( const abi_bin_to_json_params& params )const;
 
 
@@ -151,7 +147,7 @@ public:
    struct get_table_rows_params {
       bool        json = false;
       name        code;
-      name        scope;
+      string      scope;
       name        table;
 //      string      table_type;
       string      table_key;
@@ -161,7 +157,7 @@ public:
     };
 
    struct get_table_rows_result {
-      vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object 
+      vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object
       bool                more = false; ///< true if last element in data is not the end and sizeof data() < limit
    };
 
@@ -186,41 +182,7 @@ public:
 
    fc::variant get_currency_stats( const get_currency_stats_params& params )const;
 
-   static void copy_row(const chain::contracts::key_value_object& obj, vector<char>& data) {
-      data.resize( sizeof(uint64_t) + obj.value.size() );
-      memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
-      memcpy( data.data()+sizeof(uint64_t), obj.value.data(), obj.value.size() );
-   }
-
    static void copy_inline_row(const chain::contracts::key_value_object& obj, vector<char>& data) {
-      data.resize( obj.value.size() );
-      memcpy( data.data(), obj.value.data(), obj.value.size() );
-   }
-
-   static void copy_row(const chain::contracts::keystr_value_object& obj, vector<char>& data) {
-      data.resize( obj.primary_key.size() + obj.value.size() + 8 );
-      fc::datastream<char*> ds(data.data(), data.size());
-      fc::raw::pack(ds, obj.primary_key);
-      ds.write(obj.value.data(), obj.value.size());
-      data.resize(ds.tellp());
-   }
-
-   static void copy_row(const chain::contracts::key128x128_value_object& obj, vector<char>& data) {
-      data.resize( 2*sizeof(uint128_t) + obj.value.size() );
-      memcpy( data.data(), &obj.primary_key, sizeof(uint128_t) );
-      memcpy( data.data()+sizeof(uint128_t), &obj.secondary_key, sizeof(uint128_t) );
-      memcpy( data.data()+2*sizeof(uint128_t), obj.value.data(), obj.value.size() );
-   }
-
-   static void copy_row(const chain::contracts::key64x64x64_value_object& obj, vector<char>& data) {
-      data.resize( 3*sizeof(uint64_t) + obj.value.size() );
-      memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
-      memcpy( data.data()+sizeof(uint64_t), &obj.secondary_key, sizeof(uint64_t) );
-      memcpy( data.data()+2*sizeof(uint64_t), &obj.tertiary_key, sizeof(uint64_t) );
-      memcpy( data.data()+3*sizeof(uint64_t), obj.value.data(), obj.value.size() );
-   }
-
-   static void copy_inline_row(const chain::contracts::key64x64x64_value_object& obj, vector<char>& data) {
       data.resize( obj.value.size() );
       memcpy( data.data(), obj.value.data(), obj.value.size() );
    }
@@ -243,15 +205,38 @@ public:
          }
       }
    }
- 
+
    template <typename IndexType, typename Scope>
    read_only::get_table_rows_result get_table_rows_ex( const read_only::get_table_rows_params& p, const abi_def& abi )const {
       read_only::get_table_rows_result result;
       const auto& d = db.get_database();
 
+      uint64_t scope = 0;
+      try {
+         name s(p.scope);
+         scope = s.value;
+      } catch( ... ) {
+         try {
+            auto trimmed_scope_str = p.scope;
+            boost::trim(trimmed_scope_str);
+            scope = boost::lexical_cast<uint64_t>(trimmed_scope_str.c_str(), trimmed_scope_str.size());
+         } catch( ... ) {
+            try {
+               auto symb = eosio::chain::symbol::from_string(p.scope);
+               scope = symb.value();
+            } catch( ... ) {
+               try {
+                  scope = ( eosio::chain::string_to_symbol( 0, p.scope.c_str() ) >> 8 );
+               } catch( ... ) {
+                  FC_ASSERT( false, "could not convert scope string to any of the following: uint64_t, valid name, or valid symbol (with or without the precision)" );
+               }
+            }
+         }
+      }
+
       abi_serializer abis;
       abis.set_abi(abi);
-      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_code_scope_table>(boost::make_tuple(p.code, p.scope, p.table));
+      const auto* t_id = d.find<chain::contracts::table_id_object, chain::contracts::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<IndexType, Scope>();
          decltype(t_id->id) next_tid(t_id->id._id + 1);
@@ -274,7 +259,7 @@ public:
          unsigned int count = 0;
          auto itr = lower;
          for (itr = lower; itr != upper; ++itr) {
-            copy_row(*itr, data);
+            copy_inline_row(*itr, data);
 
             if (p.json) {
                result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data));
@@ -364,12 +349,11 @@ private:
 FC_REFLECT( eosio::chain_apis::permission, (perm_name)(parent)(required_auth) )
 FC_REFLECT(eosio::chain_apis::empty, )
 FC_REFLECT(eosio::chain_apis::read_only::get_info_results,
-  (server_version)(head_block_num)(last_irreversible_block_num)(head_block_id)(head_block_time)(head_block_producer)
-  (recent_slots)(participation_rate))
+  (server_version)(head_block_num)(last_irreversible_block_num)(head_block_id)(head_block_time)(head_block_producer) )
 FC_REFLECT(eosio::chain_apis::read_only::get_block_params, (block_num_or_id))
-  
+
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
-  
+
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
 

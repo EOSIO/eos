@@ -18,8 +18,8 @@ pipeline {
                     steps {
                         sh '''
                             . $HOME/.bash_profile
-                            echo 1 | ./eosio_build.sh 
-                        ''' 
+                            echo 1 | ./eosio_build.sh
+                        '''
                         stash includes: 'build/**/*', name: 'buildMacOS'
                     }
                 }
@@ -28,7 +28,7 @@ pipeline {
                     steps {
                         sh '''
                             . $HOME/.bash_profile
-                            echo 1 | ./eosio_build.sh 
+                            echo 1 | ./eosio_build.sh
                         '''
                         stash includes: 'build/**/*', name: 'buildFedora'
                     }
@@ -43,6 +43,9 @@ pipeline {
                         unstash 'buildUbuntu'
                         sh '''
                             . $HOME/.bash_profile
+                            if ! /usr/bin/pgrep mongod &>/dev/null; then
+                                /usr/bin/mongod -f /etc/mongod.conf > /dev/null 2>&1 &
+                            fi
                             cd build
                             printf "Waiting for testing to be available..."
                             while /usr/bin/pgrep -x ctest > /dev/null; do sleep 1; done
@@ -53,8 +56,8 @@ pipeline {
                     post {
                         failure {
                             archiveArtifacts 'build/genesis.json'
-                            archiveArtifacts 'build/tn_data_00/config.ini'
-                            archiveArtifacts 'build/tn_data_00/stderr.txt'
+                            archiveArtifacts 'build/etc/eosio/node_00/config.ini'
+                            archiveArtifacts 'build/var/lib/node_00/stderr.txt'
                             archiveArtifacts 'build/test_walletd_output.log'
                         }
                     }
@@ -65,18 +68,18 @@ pipeline {
                         unstash 'buildMacOS'
                         sh '''
                             . $HOME/.bash_profile
+                            if ! /usr/bin/pgrep mongod &>/dev/null; then
+                                /usr/local/bin/mongod -f /usr/local/etc/mongod.conf > /dev/null 2>&1 &
+                            fi
                             cd build
-                            printf "Waiting for testing to be available..."
-                            while /usr/bin/pgrep -x ctest > /dev/null; do sleep 1; done
-                            echo "OK!"
                             ctest --output-on-failure
                         '''
                     }
                     post {
                         failure {
                             archiveArtifacts 'build/genesis.json'
-                            archiveArtifacts 'build/tn_data_00/config.ini'
-                            archiveArtifacts 'build/tn_data_00/stderr.txt'
+                            archiveArtifacts 'build/etc/eosio/node_00/config.ini'
+                            archiveArtifacts 'build/var/lib/node_00/stderr.txt'
                             archiveArtifacts 'build/test_walletd_output.log'
                         }
                     }
@@ -87,6 +90,9 @@ pipeline {
                         unstash 'buildFedora'
                         sh '''
                             . $HOME/.bash_profile
+                            if ! /usr/bin/pgrep mongod &>/dev/null; then
+                                /usr/bin/mongod -f /etc/mongod.conf > /dev/null 2>&1 &
+                            fi
                             cd build
                             printf "Waiting for testing to be available..."
                             while /usr/bin/pgrep -x ctest > /dev/null; do sleep 1; done
@@ -97,8 +103,8 @@ pipeline {
                     post {
                         failure {
                             archiveArtifacts 'build/genesis.json'
-                            archiveArtifacts 'build/tn_data_00/config.ini'
-                            archiveArtifacts 'build/tn_data_00/stderr.txt'
+                            archiveArtifacts 'build/etc/eosio/node_00/config.ini'
+                            archiveArtifacts 'build/var/lib/node_00/stderr.txt'
                             archiveArtifacts 'build/test_walletd_output.log'
                         }
                     }
@@ -106,12 +112,12 @@ pipeline {
             }
         }
     }
-    post { 
-        always { 
+    post {
+        always {
             node('Ubuntu') {
                 cleanWs()
             }
-            
+
             node('MacOS') {
                 cleanWs()
             }

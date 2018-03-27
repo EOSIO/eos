@@ -20,13 +20,14 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/tests/config.hpp.in ${CMAKE_CURRENT_S
 
 file(GLOB UNIT_TESTS "chain_tests/*.cpp" "api_tests/*.cpp" "tests/abi_tests.cpp" "tests/database_tests.cpp" "tests/misc_tests.cpp" "wasm_tests/*.cpp" "tests/message_buffer_tests.cpp")
 
-add_executable( chain_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} common/main.cpp )
-target_link_libraries( chain_test eosio_testing eosio_chain chainbase eos_utilities eos_egenesis_none chain_plugin abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
+add_executable( chain_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} common/main.cpp)
+target_link_libraries( chain_test eosio_testing eosio_chain chainbase eos_utilities chain_plugin abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
+
 
 target_include_directories( chain_test PUBLIC ${CMAKE_BINARY_DIR}/contracts ${CMAKE_CURRENT_BINARY_DIR}/tests/contracts )
 target_include_directories( chain_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/wasm_tests )
 target_include_directories( chain_test PUBLIC ${CMAKE_SOURCE_DIR}/plugins/net_plugin/include )
-add_dependencies(chain_test asserter test_api exchange currency proxy identity identity_test stltest infinite)
+add_dependencies(chain_test asserter test_api exchange currency proxy identity identity_test stltest infinite eosio.system eosio.token eosio.bios test.inline )
 
 #
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/p2p_tests/sync/test.sh ${CMAKE_CURRENT_BINARY_DIR}/p2p_tests/sync/test.sh COPYONLY)
@@ -41,12 +42,15 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_run_test.py ${CMAKE_CURRENT_BI
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_run_remote_test.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_run_remote_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/consensus-validation-malicious-producers.py ${CMAKE_CURRENT_BINARY_DIR}/consensus-validation-malicious-producers.py COPYONLY)
 
-add_test(chain_test chain_test --report_level=detailed)
-add_test(NAME nodeos_run_test COMMAND tests/nodeos_run_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-add_test(NAME nodeos_run_remote_test COMMAND tests/nodeos_run_remote_test.py --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+#Manually run chain_test for all supported runtimes
+#To run chain_test with all log from blockchain displayed, put --verbose after --, i.e. chain_test -- --verbose
+add_test(NAME chain_test_binaryen COMMAND chain_test --report_level=detailed --color_output -- --binaryen)
+add_test(NAME chain_test_wavm COMMAND chain_test --report_level=detailed --color_output -- --wavm)
+#add_test(NAME nodeos_run_test COMMAND tests/nodeos_run_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+# add_test(NAME nodeos_run_remote_test COMMAND tests/nodeos_run_remote_test.py --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_test(NAME p2p_dawn515_test COMMAND tests/p2p_tests/dawn_515/test.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 if(BUILD_MONGO_DB_PLUGIN)
-   add_test(NAME nodeos_run_test-mongodb COMMAND tests/nodeos_run_test.py --mongodb --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+#   add_test(NAME nodeos_run_test-mongodb COMMAND tests/nodeos_run_test.py --mongodb --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 endif()
 
 # TODO: Tests removed until working again on master.

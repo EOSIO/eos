@@ -1,6 +1,59 @@
+#include "datastream.hpp"
 #include "memory.hpp"
+#include "privileged.hpp"
+
+void* sbrk(size_t num_bytes) {
+      constexpr uint32_t NBPPL2  = 16U;
+      constexpr uint32_t NBBP    = 65536U;
+
+      static bool initialized;
+      static uint32_t sbrk_bytes;
+      if(!initialized) {
+         sbrk_bytes = __builtin_wasm_current_memory() * NBBP;
+         initialized = true;
+      }
+
+      if(num_bytes > INT32_MAX)
+         return reinterpret_cast<void*>(-1);
+
+      //uint32_t num_bytes = (uint32_t)num_bytesI;
+      const uint32_t prev_num_bytes = sbrk_bytes;
+      const uint32_t current_pages = __builtin_wasm_current_memory();
+
+      // round the absolute value of num_bytes to an alignment boundary
+      num_bytes = (num_bytes + 7U) & ~7U;
+
+      // update the number of bytes allocated, and compute the number of pages needed
+      const uint32_t num_desired_pages = (sbrk_bytes + num_bytes + NBBP - 1) >> NBPPL2;
+
+      if(num_desired_pages > current_pages) {
+         //unfortuately clang4 doesn't provide the return code of grow_memory, that's why need
+         //to go back around and double check current_memory to make sure it has actually grown!
+         __builtin_wasm_grow_memory(num_desired_pages - current_pages);
+         if(num_desired_pages != __builtin_wasm_current_memory())
+            return reinterpret_cast<void*>(-1);
+      }
+
+      sbrk_bytes += num_bytes;
+      return reinterpret_cast<void*>(prev_num_bytes);
+}
 
 namespace eosio {
+
+   void set_blockchain_parameters(const eosio::blockchain_parameters& params) {
+      char buf[sizeof(eosio::blockchain_parameters)];
+      eosio::datastream<char *> ds( buf, sizeof(buf) );
+      ds << params;
+      set_blockchain_parameters_packed( buf, ds.tellp() );
+   }
+
+   void get_blockchain_parameters(eosio::blockchain_parameters& params) {
+      char buf[sizeof(eosio::blockchain_parameters)];
+      size_t size = get_blockchain_parameters_packed( buf, sizeof(buf) );
+      eosio_assert( size <= sizeof(buf), "buffer is too small" );
+      eosio::datastream<const char*> ds( buf, size_t(size) );
+      ds >> params;
+   }
 
    using ::memset;
    using ::memcpy;
@@ -40,7 +93,7 @@ namespace eosio {
          const uint32_t current_memory_size = reinterpret_cast<uint32_t>(sbrk(0));
          if(static_cast<int32_t>(current_memory_size) < 0)
             return nullptr;
-         
+
          //grab up to the end of the current WASM memory page provided that it has 1KiB remaining, otherwise
          // grow to end of next page
          uint32_t heap_adj;
@@ -288,7 +341,7 @@ namespace eosio {
                return nullptr;
             }
 
-            if( *orig_ptr_size > size ) 
+            if( *orig_ptr_size > size )
             {
                // use a buffer_ptr to allocate the memory to free
                char* const new_ptr = ptr + size + _size_marker;
@@ -479,7 +532,8 @@ namespace eosio {
    };
 
    memory_manager memory_heap;
-}
+
+} /// namespace eosio
 
 extern "C" {
 

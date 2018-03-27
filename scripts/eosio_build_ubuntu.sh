@@ -8,8 +8,10 @@
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 )
 
 	DISK_INSTALL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f1`
-	DISK_TOTAL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f2 | sed 's/[^0-9\.]//g'`
-	DISK_AVAIL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f4 | sed 's/[^0-9\.]//g'`
+	DISK_TOTAL_KB=`df . | tail -1 | awk '{print $2}'`
+	DISK_AVAIL_KB=`df . | tail -1 | awk '{print $4}'`
+	DISK_TOTAL=$(( $DISK_TOTAL_KB / 1048576 ))
+	DISK_AVAIL=$(( $DISK_AVAIL_KB / 1048576 ))
 
 	printf "\n\tOS name: $OS_NAME\n"
 	printf "\tOS Version: ${OS_VER}\n"

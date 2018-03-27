@@ -24,3 +24,6 @@
 [submodule "libraries/softfloat"]
 	path = libraries/softfloat
 	url = https://github.com/eosio/berkeley-softfloat-3
+[submodule "externals/magic_get"]
+	path = externals/magic_get
+	url = https://github.com/EOSIO/magic_get

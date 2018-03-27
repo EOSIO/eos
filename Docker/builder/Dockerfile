@@ -1,6 +1,6 @@
 FROM ubuntu:16.04
 
-LABEL maintainer="Huang-Ming Huang <huangh@objectcomputing.com>" version="0.1.1" \
+LABEL author="xiaobo <peterwillcn@gmail.com>" maintainer="Xiaobo <peterwillcn@gmail.com> Huang-Ming Huang <huangh@objectcomputing.com>" version="0.1.1" \
   description="This is a base image for building eosio/eos"
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
@@ -26,13 +26,13 @@ RUN wget --no-check-certificate https://cmake.org/files/v3.9/cmake-3.9.6-Linux-x
 ENV CC clang
 ENV CXX clang++
 
-RUN wget https://dl.bintray.com/boostorg/release/1.64.0/source/boost_1_64_0.tar.bz2 -O - | tar -xj \
-    && cd boost_1_64_0 \
+RUN wget https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2 -O - | tar -xj \
+    && cd boost_1_66_0 \
     && ./bootstrap.sh --prefix=/usr/local \
     && echo 'using clang : 4.0 : clang++-4.0 ;' >> project-config.jam \
     && ./b2 -d0 -j$(nproc) --with-thread --with-date_time --with-system --with-filesystem --with-program_options \
        --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine --with-iostreams toolset=clang link=static install \
-    && cd .. && rm -rf boost_1_64_0
+    && cd .. && rm -rf boost_1_66_0
 
 RUN wget https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz -O - | tar -xz \
     && cd mongo-c-driver-1.9.3 \

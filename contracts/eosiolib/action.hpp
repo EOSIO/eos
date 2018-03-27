@@ -126,6 +126,17 @@ namespace eosio {
        *  @param value - will be serialized via pack into data
        */
       template<typename Action>
+      action( const Action& value ) {
+         account       = Action::get_account();
+         name          = Action::get_name();
+         data          = pack(value);
+      }
+
+      /**
+       *  @tparam Action - a type derived from action_meta<Scope,Name>
+       *  @param value - will be serialized via pack into data
+       */
+      template<typename Action>
       action( const permission_level& auth, account_name a, action_name n, const Action& value )
       :authorization(1,auth) {
          account       = a;
@@ -138,6 +149,12 @@ namespace eosio {
       void send() const {
          auto serialize = pack(*this);
          ::send_inline(serialize.data(), serialize.size());
+      }
+
+      void send_context_free() const {
+         eosio_assert( authorization.size() == 0, "context free actions cannot have authorizations");
+         auto serialize = pack(*this);
+         ::send_context_free_inline(serialize.data(), serialize.size());
       }
 
       /**
@@ -159,6 +176,14 @@ namespace eosio {
       static uint64_t get_account() { return Account; }
       static uint64_t get_name()  { return Name; }
    };
+
+
+   template<typename T, typename... Args>
+   void dispatch_inline( permission_level perm, 
+                         account_name code, action_name act,
+                         void (T::*)(Args...), std::tuple<Args...> args ) {
+      action( perm, code, act, args ).send();
+   }
 
 
  ///@} actioncpp api

@@ -35,23 +35,23 @@ EOS.IO currently supports the following operating systems:
 
 1. [Getting Started](#gettingstarted)
 2. [Setting up a build/development environment](#setup)
-	1. [Automated build script](#autobuild)
+  1. [Automated build script](#autobuild)
       1. [Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for a local testnet](#autoubuntulocal)
       2. [Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for the public testnet](#autoubuntupublic)
       3. [MacOS for a local testnet](#automaclocal)
       4. [MacOS for the public testnet](#automacpublic)
 3. [Building EOS and running a node](#runanode)
-	1. [Getting the code](#getcode)
-	2. [Building from source code](#build)
-	3. [Creating and launching a single-node testnet](#singlenode)
+  1. [Getting the code](#getcode)
+  2. [Building from source code](#build)
+  3. [Creating and launching a single-node testnet](#singlenode)
   4. [Next steps](#nextsteps)
 4. [Example Currency Contract Walkthrough](#smartcontracts)
-	1. [Example Contracts](#smartcontractexample)
-	2. [Setting up a wallet and importing account key](#walletimport)
-	3. [Creating accounts for your smart contracts](#createaccounts)
-	4. [Upload sample contract to blockchain](#uploadsmartcontract)
-	5. [Pushing a message to a sample contract](#pushamessage)
-	6. [Reading Currency Contract Balance](#readingcontract)
+  1. [Example Contracts](#smartcontractexample)
+  2. [Setting up a wallet and importing account key](#walletimport)
+  3. [Creating accounts for your smart contracts](#createaccounts)
+  4. [Upload sample contract to blockchain](#uploadsmartcontract)
+  5. [Pushing a message to a sample contract](#pushamessage)
+  6. [Reading Currency Contract Balance](#readingcontract)
 5. [Running local testnet](#localtestnet)
 6. [Running a node on the public testnet](#publictestnet)
 7. [Doxygen documentation](#doxygen)
@@ -61,8 +61,8 @@ EOS.IO currently supports the following operating systems:
    2. [Clean install Centos 7 and higher](#manualdepcentos)
    3. [Clean install Fedora 25 and higher](#manualdepfedora)
    4. [Clean install Mint 18](#manualdepubuntu)
-   4. [Clean install Ubuntu 16](#manualdepubuntu)
-   5. [Clean install MacOS Sierra 10.12 and higher](#manualdepmacos)
+   5. [Clean install Ubuntu 16](#manualdepubuntu)
+   6. [Clean install MacOS Sierra 10.12 and higher](#manualdepmacos)
 
 <a name="gettingstarted"></a>
 ## Getting Started
@@ -116,12 +116,13 @@ git clone https://github.com/eosio/eos --recursive
 cd eos
 git checkout DAWN-2018-02-14
 git submodule update --recursive
-./build.sh
+./build.sh ubuntu
 ```
 
 For ease of contract development, one further step is required:
 
 ```bash
+cd build
 sudo make install
 ```
 
@@ -144,7 +145,8 @@ cd eos
 For ease of contract development, one further step is required:
 
 ```bash
-make install
+cd build
+sudo make install
 ```
 
 Now you can proceed to the next step - [Creating and launching a single-node testnet](#singlenode)
@@ -162,13 +164,14 @@ git clone https://github.com/eosio/eos --recursive
 cd eos
 git checkout DAWN-2018-02-14
 git submodule update --recursive
-./build.sh
+./build.sh darwin
 ```
 
 For ease of contract development, one further step is required:
 
 ```bash
-make install
+cd build
+sudo make install
 ```
 
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
@@ -230,27 +233,7 @@ genesis-json = /path/to/eos/source/genesis.json
  # Enable production on a stale chain, since a single-node test chain is pretty much always stale
 enable-stale-production = true
 # Enable block production with the testnet producers
-producer-name = inita
-producer-name = initb
-producer-name = initc
-producer-name = initd
-producer-name = inite
-producer-name = initf
-producer-name = initg
-producer-name = inith
-producer-name = initi
-producer-name = initj
-producer-name = initk
-producer-name = initl
-producer-name = initm
-producer-name = initn
-producer-name = inito
-producer-name = initp
-producer-name = initq
-producer-name = initr
-producer-name = inits
-producer-name = initt
-producer-name = initu
+producer-name = eosio
 # Load the block producer plugin, so you can produce blocks
 plugin = eosio::producer_plugin
 # Wallet plugin
@@ -393,7 +376,7 @@ code hash: 9b9db1a7940503a88535517049e64467a6e8f4e9e03af15e9968ec89dd794975
 Before using the currency contract, you must issue the currency.
 
 ```bash
-./cleos push action currency issue '{"to":"currency","quantity":"1000.0000 CUR"}' --permission currency@active
+./cleos push action currency issue '{"to":"currency","quantity":"1000.0000 CUR","memo":""}' --permission currency@active
 ```
 
 Next verify the currency contract has the proper initial balance:
@@ -572,7 +555,7 @@ Install the development toolkit:
 sudo yum update
 sudo yum install git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 \
 				 bzip2-devel.x86_64 openssl-devel.x86_64 gmp.x86_64 gmp-devel.x86_64 \
-				 libstdc++72.x86_64 python27-devel.x86_64 libedit-devel.x86_64 \
+				 libstdc++72.x86_64 python36-devel.x86_64 libedit-devel.x86_64 \
 				 ncurses-devel.x86_64 swig.x86_64 gettext-devel.x86_64
 
 ```
@@ -602,6 +585,50 @@ source ~/.bash_profile
 cd boost_1_66_0/
 ./bootstrap.sh "--prefix=$BOOST_ROOT"
 ./b2 install
+```
+Install [MongoDB (mongodb.org)](https://www.mongodb.com):
+
+```bash
+mkdir ${HOME}/opt
+cd ${HOME}/opt
+curl -OL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.tgz
+tar xf mongodb-linux-x86_64-amazon-3.6.3.tgz
+rm -f mongodb-linux-x86_64-amazon-3.6.3.tgz
+ln -s ${HOME}/opt/mongodb-linux-x86_64-amazon-3.6.3/ ${HOME}/opt/mongodb
+mkdir ${HOME}/opt/mongodb/data
+mkdir ${HOME}/opt/mongodb/log
+touch ${HOME}/opt/mongodb/log/mongod.log
+		
+tee > /dev/null ${HOME}/opt/mongodb/mongod.conf <<mongodconf
+systemLog:
+ destination: file
+ path: ${HOME}/opt/mongodb/log/mongod.log
+ logAppend: true
+ logRotate: reopen
+net:
+ bindIp: 127.0.0.1,::1
+ ipv6: true
+storage:
+ dbPath: ${HOME}/opt/mongodb/data
+mongodconf
+
+export PATH=${HOME}/opt/mongodb/bin:$PATH
+mongod -f ${HOME}/opt/mongodb/mongod.conf
+```
+Install [mongo-cxx-driver (release/stable)](https://github.com/mongodb/mongo-cxx-driver):
+
+```bash
+cd ~
+curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
+tar xf mongo-c-driver-1.9.3.tar.gz
+cd mongo-c-driver-1.9.3
+./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+make -j$( nproc )
+sudo make install
+git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
+cd mongo-cxx-driver/build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+sudo make -j$( nproc )
 ```
 
 Install [secp256k1-zkp (Cryptonomex branch)](https://github.com/cryptonomex/secp256k1-zkp.git):
@@ -639,8 +666,8 @@ Your environment is set up. Now you can <a href="#runanode">build EOS and run a 
 
 Install the development toolkit:
 * Installation on Centos requires installing/enabling the Centos Software Collections
-Repository.
-[Centos SCL](https://wiki.centos.org/AdditionalResources/Repositories/SCL):
+  Repository.
+  [Centos SCL](https://wiki.centos.org/AdditionalResources/Repositories/SCL):
 
 ```bash
 sudo yum --enablerepo=extras install centos-release-scl

@@ -7,7 +7,7 @@
 #include <eosiolib/memory.h>
 #include <eosiolib/print.hpp>
 
-#include <unistd.h>
+void* sbrk(size_t num_bytes);
 
 extern "C" {
 

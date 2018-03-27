@@ -76,14 +76,14 @@ namespace eosio { namespace chain {
         uint64_t total_cpu_weight  = 1;
         uint64_t total_db_capacity = 1024*1024*1024ull*1024ull;
         uint64_t total_db_reserved = 0;
-        
+
         /**
          * The current absolute slot number.  Equal to the total
          * number of slots since genesis.  Also equal to the total
          * number of missed slots plus head_block_number.
          */
         uint64_t          current_absolute_slot = 0;
-        
+
         /**
          * Bitmap used to compute producer participation. Stores
          * a high bit for each generated block, a low bit for
@@ -100,14 +100,14 @@ namespace eosio { namespace chain {
          * head block were produced, the two before them were
          * missed, and the one before that was produced.
          */
-        uint64_t recent_slots_filled;
-        
+        //uint64_t recent_slots_filled;
+
         uint32_t last_irreversible_block_num = 0;
 
         /**
          * Track the average blocksize over the past 60 seconds and use it to adjust the
          * reserve ratio for bandwidth rate limiting calclations.
-         */ 
+         */
         average_accumulator<config::blocksize_average_window_ms> average_block_size;
 
         /**
@@ -127,12 +127,12 @@ namespace eosio { namespace chain {
          * It's lowest possible value is max_block_size * blocksize_average_window_ms / block_interval
          * It's highest possible value is 1000 times its lowest possible value
          *
-         * This means that the most an account can consume during idle periods is 1000x the bandwidth 
+         * This means that the most an account can consume during idle periods is 1000x the bandwidth
          * it is gauranteed under congestion.
          *
          * Increases when average_block_size < target_block_size, decreases when
          * average_block_size > target_block_size, with a cap at 1000x max_block_size
-         * and a floor at max_block_size;           
+         * and a floor at max_block_size;
          **/
         uint64_t virtual_net_bandwidth = 0;
 
@@ -141,9 +141,9 @@ namespace eosio { namespace chain {
          */
         uint64_t virtual_act_bandwidth = 0;
 
-        /** 
+        /**
          * Used to calculate the merkle root over all blocks
-         */ 
+         */
         shared_incremental_merkle  block_merkle_root;
    };
 
@@ -177,7 +177,7 @@ FC_REFLECT(eosio::chain::dynamic_global_property_object,
            (time)
            (current_producer)
            (current_absolute_slot)
-           (recent_slots_filled)
+           /* (recent_slots_filled) */
            (last_irreversible_block_num)
           )
 

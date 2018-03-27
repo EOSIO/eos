@@ -12,8 +12,15 @@
 #include <map>
 #include <string>
 
+#include <boost/fusion/algorithm/iteration/for_each.hpp>
+#include <boost/fusion/include/for_each.hpp>
+
+#include <boost/pfr.hpp>
+
 
 namespace eosio {
+
+
 /**
  *  @brief A data stream for reading and writing data in the form of bytes
  */
@@ -159,7 +166,7 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, key256& d) {
 
 /**
  *  Serialize a float into a stream
- *  @brief Serialize a float 
+ *  @brief Serialize a float
  *  @param ds stream to write
  *  @param d value to serialize
  */
@@ -570,6 +577,38 @@ DataStream& operator>>( DataStream& ds, boost::container::flat_map<K,V>& m ) {
    return ds;
 }
 
+template<typename DataStream, typename... Args>
+DataStream& operator<<( DataStream& ds, const std::tuple<Args...>& t ) {
+   boost::fusion::for_each( t, [&]( const auto& i ) {
+       ds << i;
+   });
+   return ds;
+}
+
+template<typename DataStream, typename... Args>
+DataStream& operator>>( DataStream& ds, std::tuple<Args...>& t ) {
+   boost::fusion::for_each( t, [&]( auto& i ) {
+       ds >> i;
+   });
+   return ds;
+}
+
+template<typename DataStream, typename T>
+DataStream& operator<<( DataStream& ds, const T& v ) {
+   boost::pfr::for_each_field(v, [&](const auto& field) {
+      ds << field;
+   });
+   return ds;
+}
+template<typename DataStream, typename T>
+DataStream& operator>>( DataStream& ds, T& v ) {
+   boost::pfr::for_each_field(v, [&](auto& field) {
+      ds >> field;
+   });
+   return ds;
+}
+
+
 template<typename T>
 T unpack( const char* buffer, size_t len ) {
    T result;
@@ -593,6 +632,42 @@ bytes pack( const T& value ) {
   datastream<char*> ds( result.data(), result.size() );
   ds << value;
   return result;
+}
+
+template<typename Stream>
+inline eosio::datastream<Stream>& operator<<(eosio::datastream<Stream>& ds, const public_key pk) {
+   ds.write((const char*)&pk, sizeof(pk));
+   return ds;
+}
+
+template<typename Stream>
+inline eosio::datastream<Stream>& operator>>(eosio::datastream<Stream>& ds, public_key& pk) {
+   ds.read((char*)&pk, sizeof(pk));
+   return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum160& cs) {
+   ds.write((const char*)&cs, sizeof(cs));
+   return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum160& cs) {
+   ds.read((char*)&cs, sizeof(cs));
+   return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum512& cs) {
+   ds.write((const char*)&cs, sizeof(cs));
+   return ds;
+}
+
+template<typename Stream>
+inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum512& cs) {
+   ds.read((char*)&cs, sizeof(cs));
+   return ds;
 }
 
 }
