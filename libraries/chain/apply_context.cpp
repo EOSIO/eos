@@ -15,8 +15,8 @@ void apply_context::exec_one()
       const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
       privileged = a.privileged;
       auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
+      std::cout << "NATIVE " << native << " RECEIVER " << receiver << " SCOPE " << act.account << " ACT " << act.name << "\n";
       if (native) {
-         FC_ASSERT(false, "WHAT!?!?!?!");
          (*native)(*this);
       }
       else if (a.code.size() > 0) {

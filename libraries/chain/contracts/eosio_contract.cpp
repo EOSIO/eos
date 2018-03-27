@@ -86,7 +86,6 @@ void apply_eosio_newaccount(apply_context& context) {
 void apply_eosio_setcode(apply_context& context) {
    auto& db = context.mutable_db;
    auto  act = context.act.data_as<setcode>();
-   FC_ASSERT( false, "MADE IT HERE\n");
    context.require_authorization(act.account);
    context.require_write_lock( config::eosio_auth_scope );
 
