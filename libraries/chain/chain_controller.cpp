@@ -254,10 +254,12 @@ transaction_trace chain_controller::push_transaction(const packed_transaction& t
          return _push_transaction(trx);
       });
    });
-} FC_CAPTURE_AND_RETHROW((trx)) }
+} FC_CAPTURE_AND_RETHROW() }
 
-transaction_trace chain_controller::_push_transaction(const packed_transaction& trx) {
+transaction_trace chain_controller::_push_transaction(const packed_transaction& trx) 
+{ try {
    transaction_metadata   mtrx( trx, get_chain_id(), head_block_time());
+
    check_transaction_authorization(mtrx.trx(), trx.signatures);
    auto result = _push_transaction(std::move(mtrx));
 
@@ -268,7 +270,7 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
 
    return result;
 
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 static void record_locks_for_data_access(const vector<action_trace>& action_traces, vector<shard_lock>& read_locks, vector<shard_lock>& write_locks ) {
    for (const auto& at: action_traces) {
@@ -283,12 +285,13 @@ static void record_locks_for_data_access(const vector<action_trace>& action_trac
 }
 
 transaction_trace chain_controller::_push_transaction( transaction_metadata&& data )
-{
+{ try {
    if (_limits.max_push_transaction_us.count() > 0) {
       data.processing_deadline = fc::time_point::now() + _limits.max_push_transaction_us;
    }
 
    const transaction& trx = data.trx();
+
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
    if( !_pending_block ) {
@@ -329,7 +332,7 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata&& da
    _pending_transaction_metas.emplace_back(std::forward<transaction_metadata>(data));
 
    return result;
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 
 block_header chain_controller::head_block_header() const
@@ -367,6 +370,7 @@ transaction chain_controller::_get_on_block_transaction()
    transaction trx;
    trx.actions.emplace_back(std::move(on_block_act));
    trx.set_reference_block(head_block_id());
+   trx.expiration = head_block_time() + fc::seconds(1);
    return trx;
 }
 
@@ -702,8 +706,10 @@ void chain_controller::__apply_block(const signed_block& next_block)
                 auto make_metadata = [&]() -> transaction_metadata* {
                   auto itr = trx_index.find(receipt.id);
                   if( itr != trx_index.end() ) {
+                     ilog( "input" );
                      return &input_metas.at(itr->second);
                   } else {
+                     ilog( "defer" );
                      const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
                      if (gtrx != nullptr) {
                         auto trx = fc::raw::unpack<deferred_transaction>(gtrx->packed_trx.data(), gtrx->packed_trx.size());
@@ -724,6 +730,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                mtrx->allowed_read_locks.emplace(&shard.read_locks);
                mtrx->allowed_write_locks.emplace(&shard.write_locks);
                mtrx->processing_deadline = processing_deadline;
+               ilog( "." );
 
                s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
                record_locks_for_data_access(s_trace.transaction_traces.back().action_traces, used_read_locks, used_write_locks);
@@ -1467,8 +1474,11 @@ static void log_handled_exceptions(const transaction& trx) {
    } FC_CAPTURE_AND_LOG((trx));
 }
 
-transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta ) {
+transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta ) 
+{ try {
    transaction_trace result(meta.id);
+
+   validate_transaction( meta.trx() );
 
    for (const auto &act : meta.trx().context_free_actions) {
       FC_ASSERT( act.authorization.size() == 0, "context free actions cannot require authorization" );
@@ -1506,9 +1516,10 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
    update_usage(meta, act_usage);
    record_transaction(meta.trx());
    return result;
-}
+} FC_CAPTURE_AND_RETHROW() }
 
-transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta ) {
+transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta ) 
+{ try {
    try {
       auto temp_session = _db.start_undo_session(true);
       auto result = __apply_transaction(meta);
@@ -1524,7 +1535,7 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
 
       return _apply_error( meta );
    }
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    transaction_trace result(meta.id);

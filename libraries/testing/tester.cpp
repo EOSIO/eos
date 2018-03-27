@@ -107,6 +107,7 @@ namespace eosio { namespace testing {
    }
 
   void base_tester::set_tapos( signed_transaction& trx ) const {
+     trx.expiration = control->head_block_time() + fc::seconds(6);
      trx.set_reference_block( control->head_block_id() );
   }
 
@@ -409,6 +410,7 @@ namespace eosio { namespace testing {
                                 });
 
       set_tapos( trx );
+      wdump((transaction_header(trx)));
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
       push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account) )

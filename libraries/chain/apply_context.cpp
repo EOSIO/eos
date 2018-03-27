@@ -215,6 +215,7 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
                                    "transaction is expired when created" );
 
       FC_ASSERT( trx.execute_after < trx.expiration, "transaction expires before it can execute" );
+      edump((trx.execute_after)(trx.expiration));
 
       /// TODO: make default_max_gen_trx_count a producer parameter
       FC_ASSERT( results.generated_transactions.size() < config::default_max_gen_trx_count );

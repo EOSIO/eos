@@ -124,6 +124,7 @@ template <typename T>
 transaction_trace CallAction(tester& test, T ac, const vector<account_name>& scope = {N(testapi)}) {
    signed_transaction trx;
 
+
    auto pl = vector<permission_level>{{scope[0], config::active_name}};
    if (scope.size() > 1)
       for (int i = 1; i < scope.size(); i++)
@@ -400,33 +401,36 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
 
       // signing a transaction with only context_free_actions should not be allowed
       auto sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
+
       BOOST_CHECK_EXCEPTION(push_transaction(trx), tx_irrelevant_sig,
                             [](const fc::assert_exception& e) {
+                               edump((e.what()));
                                return expect_assert_message(e, "signatures");
                             }
       );
 
-      // clear signatures, so should now pass
       trx.signatures.clear();
-      auto res = push_transaction(trx);
-      BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
 
       // add a normal action along with cfa
       dummy_action da = { DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C };
       auto pl = vector<permission_level>{{N(testapi), config::active_name}};
       action act1(pl, da);
       trx.actions.push_back(act1);
+      set_tapos(trx);
       // run normal passing case
       sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
-      res = push_transaction(trx);
+      auto res = push_transaction(trx);
+
       BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
 
       // attempt to access context free api in non context free action
+
       da = { DUMMY_ACTION_DEFAULT_A, 200, DUMMY_ACTION_DEFAULT_C };
       action act2(pl, da);
       trx.signatures.clear();
       trx.actions.clear();
       trx.actions.push_back(act2);
+      set_tapos(trx);
       // run normal passing case
       sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
       BOOST_CHECK_EXCEPTION(push_transaction(trx), fc::assert_exception,
@@ -449,6 +453,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
          action cfa_act({}, cfa);
          trx.context_free_actions.emplace_back(cfa_act);
          trx.signatures.clear();
+         set_tapos(trx);
          sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
          BOOST_CHECK_EXCEPTION(push_transaction(trx), fc::assert_exception,
               [](const fc::assert_exception& e) {

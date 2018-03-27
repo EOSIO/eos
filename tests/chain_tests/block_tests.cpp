@@ -123,6 +123,7 @@ BOOST_AUTO_TEST_CASE(irrelevant_auth) {
                                         .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
                                         .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
                                 });
+      chain.set_tapos(trx);
       trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
 
       chain.push_transaction(trx, skip_transaction_signatures);
@@ -586,6 +587,8 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
 
       // Make an account, but add an extra signature to the transaction
       signed_transaction trx;
+      chain.set_tapos(trx);
+
       name new_account_name = name("alice");
       authority owner_auth = authority( chain.get_public_key( new_account_name, "owner" ) );
 
