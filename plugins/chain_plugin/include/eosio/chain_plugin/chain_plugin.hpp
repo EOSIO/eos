@@ -182,12 +182,6 @@ public:
 
    fc::variant get_currency_stats( const get_currency_stats_params& params )const;
 
-   static void copy_row(const chain::contracts::key_value_object& obj, vector<char>& data) {
-      data.resize( sizeof(uint64_t) + obj.value.size() );
-      memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
-      memcpy( data.data()+sizeof(uint64_t), obj.value.data(), obj.value.size() );
-   }
-
    static void copy_inline_row(const chain::contracts::key_value_object& obj, vector<char>& data) {
       data.resize( obj.value.size() );
       memcpy( data.data(), obj.value.data(), obj.value.size() );
@@ -265,7 +259,7 @@ public:
          unsigned int count = 0;
          auto itr = lower;
          for (itr = lower; itr != upper; ++itr) {
-            copy_row(*itr, data);
+            copy_inline_row(*itr, data);
 
             if (p.json) {
                result.rows.emplace_back(abis.binary_to_variant(abis.get_table_type(p.table), data));
