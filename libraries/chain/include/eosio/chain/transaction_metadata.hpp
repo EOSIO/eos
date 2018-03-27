@@ -27,7 +27,7 @@ class transaction_metadata {
       // things for packed_transaction
       optional<bytes>                       raw_trx;
       optional<transaction>                 decompressed_trx;
-      vector<vector<char>>                  context_free_data;
+      vector<bytes>                         context_free_data;
 
       // things for signed/packed transactions
       optional<flat_set<public_key_type>>   signing_keys;

@@ -50,10 +50,21 @@ class currency_tester : public tester {
          create_account( N(currency));
          set_code( N(currency), currency_wast );
 
-         push_action(N(currency), N(issue), mutable_variant_object()
+         auto result = push_action(N(currency), N(create), mutable_variant_object()
+                 ("issuer",       "currency")
+                 ("maximum_supply", "1000000000.0000 CUR")
+                 ("can_freeze", 0)
+                 ("can_recall", 0)
+                 ("can_whitelist", 0)
+         );
+         wdump((result));
+
+         result = push_action(N(currency), N(issue), mutable_variant_object()
                  ("to",       "currency")
                  ("quantity", "1000000.0000 CUR")
+                 ("memo", "gggggggggggg")
          );
+         wdump((result));
          produce_block();
       }
 
@@ -150,7 +161,7 @@ BOOST_FIXTURE_TEST_CASE( test_overspend, currency_tester ) try {
          ("quantity", "101.0000 CUR")
          ("memo", "overspend! Alice");
 
-      BOOST_CHECK_EXCEPTION(push_action(N(alice), N(transfer), data), fc::assert_exception, assert_message_is("integer underflow subtracting token balance"));
+      BOOST_CHECK_EXCEPTION(push_action(N(alice), N(transfer), data), fc::assert_exception, assert_message_is("overdrawn balance"));
       produce_block();
 
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ));

@@ -1,8 +1,10 @@
 #pragma once
 
 #include <eosio/chain/webassembly/common.hpp>
+#include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <wasm-interpreter.h>
+#include <softfloat_types.h>
 
 
 namespace eosio { namespace chain { namespace webassembly { namespace binaryen {
@@ -15,8 +17,10 @@ using namespace eosio::chain::webassembly::common;
 using linear_memory_type = fc::array<char, wasm_constraints::maximum_linear_memory>;
 using call_indirect_table_type = vector<Name>;
 
+struct interpreter_interface;
+
 struct intrinsic_registrator {
-   using intrinsic_fn = Literal(*)(LiteralList&);
+   using intrinsic_fn = Literal(*)(interpreter_interface*, LiteralList&);
 
    static auto& get_map(){
       static map<string, intrinsic_fn> _map;
@@ -31,19 +35,10 @@ struct intrinsic_registrator {
 
 using import_lut_type = unordered_map<uintptr_t, intrinsic_registrator::intrinsic_fn>;
 
-// create own module instance to access memorySize
-class interpreter_instance : public ModuleInstance {
-   public:
-      using ModuleInstance::ModuleInstance;
-
-      void set_accessible_pages(uint32_t num_pages) {
-         memorySize = num_pages;
-      }
-};
 
 struct interpreter_interface : ModuleInstance::ExternalInterface {
-   interpreter_interface(linear_memory_type& memory, call_indirect_table_type& table, import_lut_type& import_lut, const uint32_t& sbrk_bytes)
-   :memory(memory),table(table),import_lut(import_lut), sbrk_bytes(sbrk_bytes)
+   interpreter_interface(linear_memory_type& memory, call_indirect_table_type& table, import_lut_type& import_lut, const unsigned& initial_memory_size, apply_context& context)
+   :memory(memory),table(table),import_lut(import_lut), current_memory_size(initial_memory_size), context(context)
    {}
 
    void importGlobals(std::map<Name, Literal>& globals, Module& wasm) override
@@ -59,7 +54,7 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
    {
       auto fn_iter = import_lut.find((uintptr_t)import);
       EOS_ASSERT(fn_iter != import_lut.end(), wasm_execution_error, "unknown import ${m}:${n}", ("m", import->module.c_str())("n", import->module.c_str()));
-      return fn_iter->second(args);
+      return fn_iter->second(this, args);
    }
 
    Literal callTable(Index index, LiteralList& arguments, WasmType result, ModuleInstance& instance) override
@@ -81,9 +76,8 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
    }
 
    void assert_memory_is_accessible(uint32_t offset, size_t size) {
-      #warning this is wrong
-      if(offset + size > sbrk_bytes)
-      FC_THROW_EXCEPTION(wasm_execution_error, "access violation");
+      if(offset + size > current_memory_size)
+         FC_THROW_EXCEPTION(wasm_execution_error, "access violation");
    }
 
    char* get_validated_pointer(uint32_t offset, size_t size) {
@@ -118,9 +112,8 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
       }
    }
 
-   void growMemory(Address, Address) override
-   {
-      FC_THROW_EXCEPTION(wasm_execution_error, "grow memory is not supported");
+   void growMemory(Address old_size, Address new_size) override {
+      current_memory_size += new_size.addr - old_size.addr;
    }
 
    int8_t load8s(Address addr) override { return load_memory<int8_t>(addr); }
@@ -140,60 +133,18 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
    linear_memory_type&          memory;
    call_indirect_table_type&    table;
    import_lut_type&             import_lut;
-   const uint32_t&              sbrk_bytes;
+   unsigned                     current_memory_size;
+   apply_context&               context;
 };
 
-struct info;
-class entry {
-public:
-   unique_ptr<Module>                  module;
-   linear_memory_type                  memory;
-   call_indirect_table_type            table;
-   import_lut_type                     import_lut;
-   interpreter_interface*              interface;
-   interpreter_instance*               instance;
-   uint32_t                            sbrk_bytes;
+class binaryen_runtime : public eosio::chain::wasm_runtime_interface {
+   public:
+      binaryen_runtime();
+      std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) override;
 
-   void reset(const info& );
-   void prepare( const info& );
-
-   void call(const string& entry_point, LiteralList& args, apply_context& context);
-   void call_apply(apply_context&);
-   void call_error(apply_context&);
-
-   int sbrk(int num_bytes);
-
-   static const entry& get(wasm_interface& wasm);
-
-   static entry build(const char* wasm_binary, size_t wasm_binary_size);
-
-private:
-   entry(unique_ptr<Module>&& module, linear_memory_type&& memory, call_indirect_table_type&& table, import_lut_type&& import_lut, uint32_t sbrk_bytes);
-
+   private:
+      linear_memory_type                  _memory __attribute__ ((aligned (4096)));
 };
-
-struct info {
-   info( const entry& binaryen )
-   {
-      default_sbrk_bytes = binaryen.sbrk_bytes;
-      const char* start = binaryen.memory.data;
-      const char* high_watermark = start + (binaryen.module->memory.initial * Memory::kPageSize);
-      while (high_watermark > start) {
-         if (*high_watermark) {
-            break;
-         }
-         high_watermark--;
-      }
-      mem_image.resize(high_watermark - start);
-      memcpy(mem_image.data(), start, high_watermark - start);
-   }
-
-   // a clean image of the memory used to sanitize things on checkin
-   vector<char> mem_image;
-   uint32_t default_sbrk_bytes;
-};
-
-
 
 /**
  * class to represent an in-wasm-memory array
@@ -203,21 +154,19 @@ struct info {
  * @tparam T
  */
 template<typename T>
-inline array_ptr<T> array_ptr_impl (wasm_interface& wasm, uint32_t ptr, size_t length)
+inline array_ptr<T> array_ptr_impl (interpreter_interface* interface, uint32_t ptr, size_t length)
 {
-   auto &interface = entry::get(wasm).interface;
-   return array_ptr<T>((T*)(interface->get_validated_pointer(ptr, length)));
+   return array_ptr<T>((T*)(interface->get_validated_pointer(ptr, length * sizeof(T))));
 }
 
 /**
  * class to represent an in-wasm-memory char array that must be null terminated
  */
-inline null_terminated_ptr null_terminated_ptr_impl(wasm_interface& wasm, uint32_t ptr)
+inline null_terminated_ptr null_terminated_ptr_impl(interpreter_interface* interface, uint32_t ptr)
 {
-   auto &interface = entry::get(wasm).interface;
    char *value = interface->get_validated_pointer(ptr, 1);
    const char* p = value;
-   const char* const top_of_memory = interface->memory.data + interface->sbrk_bytes;
+   const char* const top_of_memory = interface->memory.data + interface->current_memory_size;
    while(p < top_of_memory)
       if(*p++ == '\0')
          return null_terminated_ptr(value);
@@ -248,6 +197,28 @@ template<typename T>
 T convert_literal_to_native(Literal& v);
 
 template<>
+inline float64_t convert_literal_to_native<float64_t>(Literal& v) {
+   auto val = v.getf64();
+   return reinterpret_cast<float64_t&>(val);
+}
+
+template<>
+inline float32_t convert_literal_to_native<float32_t>(Literal& v) {
+   auto val = v.getf32();
+   return reinterpret_cast<float32_t&>(val);
+}
+
+template<>
+inline double convert_literal_to_native<double>(Literal& v) {
+   return v.getf64();
+}
+
+template<>
+inline float convert_literal_to_native<float>(Literal& v) {
+   return v.getf32();
+}
+
+template<>
 inline int64_t convert_literal_to_native<int64_t>(Literal& v) {
    return v.geti64();
 }
@@ -272,13 +243,6 @@ inline bool convert_literal_to_native<bool>(Literal& v) {
    return v.geti32();
 }
 
-
-template<>
-inline wasm_double convert_literal_to_native<wasm_double>(Literal& v) {
-   int64_t val = v.geti64();
-   return wasm_double(*reinterpret_cast<wasm_double *>(&val));
-}
-
 template<>
 inline name convert_literal_to_native<name>(Literal& v) {
    int64_t val = v.geti64();
@@ -286,22 +250,30 @@ inline name convert_literal_to_native<name>(Literal& v) {
 }
 
 template<typename T>
-inline auto convert_native_to_literal(const wasm_interface &, T val) {
+inline auto convert_native_to_literal(const interpreter_interface*, T val) {
    return Literal(val);
 }
 
-inline auto convert_native_to_literal(const wasm_interface &, const name &val) {
+inline auto convert_native_to_literal(const interpreter_interface*, const float64_t& val) {
+   return Literal( *((double*)(&val)) );
+}
+
+inline auto convert_native_to_literal(const interpreter_interface*, const float32_t& val) {
+   return Literal( *((float*)(&val)) );
+}
+
+
+inline auto convert_native_to_literal(const interpreter_interface*, const name &val) {
    return Literal(val.value);
 }
 
-inline auto convert_native_to_literal(const wasm_interface &, const fc::time_point_sec &val) {
+inline auto convert_native_to_literal(const interpreter_interface*, const fc::time_point_sec &val) {
    return Literal(val.sec_since_epoch());
 }
 
-inline auto convert_native_to_literal(wasm_interface &wasm, char* ptr) {
-   const auto& mem = entry::get(wasm).interface->memory;
-   const char* base = mem.data;
-   const char* top_of_memory = base + mem.size();
+inline auto convert_native_to_literal(const interpreter_interface* interface, char* ptr) {
+   const char* base = interface->memory.data;
+   const char* top_of_memory = base + interface->current_memory_size;
    EOS_ASSERT(ptr >= base && ptr < top_of_memory, wasm_execution_error, "returning pointer not in linear memory");
    return Literal((int)(ptr - base));
 }
@@ -326,12 +298,11 @@ struct intrinsic_invoker_impl;
  */
 template<typename Ret>
 struct intrinsic_invoker_impl<Ret, std::tuple<>> {
-   using next_method_type        = Ret (*)(wasm_interface&, LiteralList&, int);
+   using next_method_type        = Ret (*)(interpreter_interface*, LiteralList&, int);
 
    template<next_method_type Method>
-   static Literal invoke(LiteralList& args) {
-      wasm_interface &wasm = wasm_interface::get();
-      return convert_native_to_literal(wasm, Method(wasm, args, args.size() - 1));
+   static Literal invoke(interpreter_interface* interface, LiteralList& args) {
+      return convert_native_to_literal(interface, Method(interface, args, args.size() - 1));
    }
 
    template<next_method_type Method>
@@ -346,12 +317,11 @@ struct intrinsic_invoker_impl<Ret, std::tuple<>> {
  */
 template<>
 struct intrinsic_invoker_impl<void_type, std::tuple<>> {
-   using next_method_type        = void_type (*)(wasm_interface&, LiteralList&, int);
+   using next_method_type        = void_type (*)(interpreter_interface*, LiteralList&, int);
 
    template<next_method_type Method>
-   static Literal invoke(LiteralList& args) {
-      wasm_interface &wasm = wasm_interface::get();
-      Method(wasm, args, args.size() - 1);
+   static Literal invoke(interpreter_interface* interface, LiteralList& args) {
+      Method(interface, args, args.size() - 1);
       return Literal();
    }
 
@@ -370,13 +340,13 @@ struct intrinsic_invoker_impl<void_type, std::tuple<>> {
 template<typename Ret, typename Input, typename... Inputs>
 struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
-   using then_type = Ret (*)(wasm_interface &, Input, Inputs..., LiteralList&, int);
+   using then_type = Ret (*)(interpreter_interface*, Input, Inputs..., LiteralList&, int);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, LiteralList& args, int offset) {
+   static Ret translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) {
       auto& last = args.at(offset);
       auto native = convert_literal_to_native<Input>(last);
-      return Then(wasm, native, rest..., args, offset - 1);
+      return Then(interface, native, rest..., args, offset - 1);
    };
 
    template<then_type Then>
@@ -396,13 +366,13 @@ struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>> {
 template<typename T, typename Ret, typename... Inputs>
 struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
-   using then_type = Ret(*)(wasm_interface &, array_ptr<T>, size_t, Inputs..., LiteralList&, int);
+   using then_type = Ret(*)(interpreter_interface*, array_ptr<T>, size_t, Inputs..., LiteralList&, int);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, LiteralList& args, int offset) {
+   static Ret translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) {
       uint32_t ptr = args.at(offset - 1).geti32();
       size_t length = args.at(offset).geti32();
-      return Then(wasm, array_ptr_impl<T>(wasm, ptr, length), length, rest..., args, offset - 2);
+      return Then(interface, array_ptr_impl<T>(interface, ptr, length), length, rest..., args, offset - 2);
    };
 
    template<then_type Then>
@@ -422,12 +392,12 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>> 
 template<typename Ret, typename... Inputs>
 struct intrinsic_invoker_impl<Ret, std::tuple<null_terminated_ptr, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
-   using then_type = Ret(*)(wasm_interface &, null_terminated_ptr, Inputs..., LiteralList&, int);
+   using then_type = Ret(*)(interpreter_interface*, null_terminated_ptr, Inputs..., LiteralList&, int);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, LiteralList& args, int offset) {
+   static Ret translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) {
       uint32_t ptr = args.at(offset).geti32();
-      return Then(wasm, null_terminated_ptr_impl(wasm, ptr), rest..., args, offset - 1);
+      return Then(interface, null_terminated_ptr_impl(interface, ptr), rest..., args, offset - 1);
    };
 
    template<then_type Then>
@@ -447,14 +417,15 @@ struct intrinsic_invoker_impl<Ret, std::tuple<null_terminated_ptr, Inputs...>> {
 template<typename T, typename U, typename Ret, typename... Inputs>
 struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
-   using then_type = Ret(*)(wasm_interface &, array_ptr<T>, array_ptr<U>, size_t, Inputs..., LiteralList&, int);
+   using then_type = Ret(*)(interpreter_interface*, array_ptr<T>, array_ptr<U>, size_t, Inputs..., LiteralList&, int);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, LiteralList& args, int offset) {
+   static Ret translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) {
       uint32_t ptr_t = args.at(offset - 2).geti32();
       uint32_t ptr_u = args.at(offset - 1).geti32();
       size_t length = args.at(offset).geti32();
-      return Then(wasm, array_ptr_impl<T>(wasm, ptr_t, length), array_ptr_impl<U>(wasm, ptr_u, length), length, args, offset - 3);
+      assert(sizeof(T) == sizeof(U));
+      return Then(interface, array_ptr_impl<T>(interface, ptr_t, length), array_ptr_impl<U>(interface, ptr_u, length), length, args, offset - 3);
    };
 
    template<then_type Then>
@@ -472,14 +443,14 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
 template<typename Ret>
 struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<>>;
-   using then_type = Ret(*)(wasm_interface &, array_ptr<char>, int, size_t, LiteralList&, int);
+   using then_type = Ret(*)(interpreter_interface*, array_ptr<char>, int, size_t, LiteralList&, int);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, LiteralList& args, int offset) {
+   static Ret translate_one(interpreter_interface* interface, LiteralList& args, int offset) {
       uint32_t ptr = args.at(offset - 2).geti32();
       uint32_t value = args.at(offset - 1).geti32();
       size_t length = args.at(offset).geti32();
-      return Then(wasm, array_ptr_impl<char>(wasm, ptr, length), value, length, args, offset - 3);
+      return Then(interface, array_ptr_impl<char>(interface, ptr, length), value, length, args, offset - 3);
    };
 
    template<then_type Then>
@@ -499,13 +470,13 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>> {
 template<typename T, typename Ret, typename... Inputs>
 struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
-   using then_type = Ret (*)(wasm_interface &, T *, Inputs..., LiteralList&, int);
+   using then_type = Ret (*)(interpreter_interface*, T *, Inputs..., LiteralList&, int);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, LiteralList& args, int offset) {
+   static Ret translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) {
       uint32_t ptr = args.at(offset).geti32();
-      T* base = array_ptr_impl<T>(wasm, ptr, sizeof(T));
-      return Then(wasm, base, rest..., args, offset - 1);
+      T* base = array_ptr_impl<T>(interface, ptr, 1);
+      return Then(interface, base, rest..., args, offset - 1);
    };
 
    template<then_type Then>
@@ -525,13 +496,13 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
 template<typename Ret, typename... Inputs>
 struct intrinsic_invoker_impl<Ret, std::tuple<const name&, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
-   using then_type = Ret (*)(wasm_interface &, const name&, Inputs..., LiteralList&, int);
+   using then_type = Ret (*)(interpreter_interface*, const name&, Inputs..., LiteralList&, int);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, LiteralList& args, int offset) {
+   static Ret translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) {
       uint64_t wasm_value = args.at(offset).geti64();
       auto value = name(wasm_value);
-      return Then(wasm, value, rest..., args, offset - 1);
+      return Then(interface, value, rest..., args, offset - 1);
    }
 
    template<then_type Then>
@@ -551,13 +522,13 @@ struct intrinsic_invoker_impl<Ret, std::tuple<const name&, Inputs...>> {
 template<typename Ret, typename... Inputs>
 struct intrinsic_invoker_impl<Ret, std::tuple<const fc::time_point_sec&, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
-   using then_type = Ret (*)(wasm_interface &, const fc::time_point_sec&, Inputs..., LiteralList&, int);
+   using then_type = Ret (*)(interpreter_interface*, const fc::time_point_sec&, Inputs..., LiteralList&, int);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, LiteralList& args, int offset) {
+   static Ret translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) {
       uint32_t wasm_value = args.at(offset).geti32();
       auto value = fc::time_point_sec(wasm_value);
-      return Then(wasm, value, rest..., args, offset - 1);
+      return Then(interface, value, rest..., args, offset - 1);
    }
 
    template<then_type Then>
@@ -578,15 +549,15 @@ struct intrinsic_invoker_impl<Ret, std::tuple<const fc::time_point_sec&, Inputs.
 template<typename T, typename Ret, typename... Inputs>
 struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
-   using then_type = Ret (*)(wasm_interface &, T &, Inputs..., LiteralList&, int);
+   using then_type = Ret (*)(interpreter_interface*, T &, Inputs..., LiteralList&, int);
 
    template<then_type Then>
-   static Ret translate_one(wasm_interface &wasm, Inputs... rest, LiteralList& args, int offset) {
+   static Ret translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) {
       // references cannot be created for null pointers
       uint32_t ptr = args.at(offset).geti32();
       FC_ASSERT(ptr != 0);
-      T* base = array_ptr_impl<T>(wasm, ptr, sizeof(T));
-      return Then(wasm, *base, rest..., args, offset - 1);
+      T* base = array_ptr_impl<T>(interface, ptr, 1);
+      return Then(interface, *base, rest..., args, offset - 1);
    }
 
    template<then_type Then>
@@ -603,8 +574,8 @@ struct intrinsic_function_invoker {
    using impl = intrinsic_invoker_impl<Ret, std::tuple<Params...>>;
 
    template<MethodSig Method>
-   static Ret wrapper(wasm_interface &wasm, Params... params, LiteralList&, int) {
-      return (class_from_wasm<Cls>::value(wasm).*Method)(params...);
+   static Ret wrapper(interpreter_interface* interface, Params... params, LiteralList&, int) {
+      return (class_from_wasm<Cls>::value(interface->context).*Method)(params...);
    }
 
    template<MethodSig Method>
@@ -618,8 +589,8 @@ struct intrinsic_function_invoker<void, MethodSig, Cls, Params...> {
    using impl = intrinsic_invoker_impl<void_type, std::tuple<Params...>>;
 
    template<MethodSig Method>
-   static void_type wrapper(wasm_interface &wasm, Params... params, LiteralList& args, int offset) {
-      (class_from_wasm<Cls>::value(wasm).*Method)(params...);
+   static void_type wrapper(interpreter_interface* interface, Params... params, LiteralList& args, int offset) {
+      (class_from_wasm<Cls>::value(interface->context).*Method)(params...);
       return void_type();
    }
 

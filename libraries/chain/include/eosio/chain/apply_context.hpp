@@ -455,50 +455,16 @@ class apply_context {
        idx64(*this),
        idx128(*this),
        idx256(*this),
+       idx_double(*this),
        recurse_depth(depth)
        {}
 
       void exec();
 
       void execute_inline( action &&a );
+      void execute_context_free_inline( action &&a );
       void execute_deferred( deferred_transaction &&trx );
       void cancel_deferred( uint32_t sender_id );
-
-      using table_id_object = contracts::table_id_object;
-      const table_id_object* find_table( name code, name scope, name table );
-      const table_id_object& find_or_create_table( name code, name scope, name table );
-
-      template <typename ObjectType>
-      int32_t store_record( const table_id_object& t_id, const account_name& bta, const typename ObjectType::key_type* keys, const char* value, size_t valuelen );
-
-      template <typename ObjectType>
-      int32_t update_record( const table_id_object& t_id, const account_name& bta, const typename ObjectType::key_type* keys, const char* value, size_t valuelen );
-
-      template <typename ObjectType>
-      int32_t remove_record( const table_id_object& t_id, const typename ObjectType::key_type* keys );
-
-      template <typename IndexType, typename Scope>
-      int32_t load_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen );
-
-
-      template <typename IndexType, typename Scope>
-      int32_t front_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen );
-
-      template <typename IndexType, typename Scope>
-      int32_t back_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys,
-                           char* value, size_t valuelen );
-
-      template <typename IndexType, typename Scope>
-      int32_t next_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen );
-
-      template <typename IndexType, typename Scope>
-      int32_t previous_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen );
-
-      template <typename IndexType, typename Scope>
-      int32_t lower_bound_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen );
-
-      template <typename IndexType, typename Scope>
-      int32_t upper_bound_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen );
 
       /**
        * @brief Require @ref account to have approved of this message
@@ -510,6 +476,7 @@ class apply_context {
        * @throws tx_missing_auth If no sufficient permission was found
        */
       void require_authorization(const account_name& account)const;
+      bool has_authorization(const account_name& account)const;
       void require_authorization(const account_name& account, const permission_name& permission)const;
       void require_write_lock(const scope_name& scope);
       void require_read_lock(const account_name& account, const scope_name& scope);
@@ -597,6 +564,7 @@ class apply_context {
       generic_index<contracts::index64_object>    idx64;
       generic_index<contracts::index128_object>   idx128;
       generic_index<contracts::index256_object, uint128_t*, const uint128_t*>   idx256;
+      generic_index<contracts::index_double_object> idx_double;
 
       uint32_t                                    recurse_depth;  // how deep inline actions can recurse
 
@@ -613,15 +581,13 @@ class apply_context {
 
       void exec_one();
 
-      void validate_table_key( const table_id_object& t_id, contracts::table_key_type key_type );
-
-      void validate_or_add_table_key( const table_id_object& t_id, contracts::table_key_type key_type );
-
-      template<typename ObjectType>
-      static contracts::table_key_type get_key_type();
+      using table_id_object = contracts::table_id_object;
+      const table_id_object* find_table( name code, name scope, name table );
+      const table_id_object& find_or_create_table( name code, name scope, name table );
 
       vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
       vector<action>                      _inline_actions; ///< queued inline messages
+      vector<action>                      _cfa_inline_actions; ///< queued inline messages
       std::ostringstream                  _pending_console_output;
 
       vector<shard_lock>                  _read_locks;
@@ -787,280 +753,6 @@ using apply_handler = std::function<void(apply_context&)>;
             return boost::make_tuple( tid.id );
          }
       };
-   }
-
-
-
-   template <typename ObjectType>
-   int32_t apply_context::store_record( const table_id_object& t_id, const account_name& bta, const typename ObjectType::key_type* keys, const char* value, size_t valuelen ) {
-      require_write_lock( t_id.scope );
-      validate_or_add_table_key(t_id, get_key_type<ObjectType>());
-
-      auto tuple = impl::exact_tuple<ObjectType>::get(t_id, keys);
-      const auto* obj = db.find<ObjectType, contracts::by_scope_primary>(tuple);
-
-      if( obj ) {
-         mutable_db.modify( *obj, [&]( auto& o ) {
-            o.value.assign(value, valuelen);
-         });
-         return 0;
-      } else {
-         mutable_db.create<ObjectType>( [&](auto& o) {
-            o.t_id = t_id.id;
-            impl::key_helper<ObjectType>::set(o, keys);
-            o.value.insert( 0, value, valuelen );
-         });
-         return 1;
-      }
-   }
-
-   template <typename ObjectType>
-   int32_t apply_context::update_record( const table_id_object& t_id, const account_name& bta, const typename ObjectType::key_type* keys, const char* value, size_t valuelen ) {
-      require_write_lock( t_id.scope );
-      validate_or_add_table_key(t_id, get_key_type<ObjectType>());
-
-      auto tuple = impl::exact_tuple<ObjectType>::get(t_id, keys);
-      const auto* obj = db.find<ObjectType, contracts::by_scope_primary>(tuple);
-
-      if( !obj ) {
-         return 0;
-      }
-
-      mutable_db.modify( *obj, [&]( auto& o ) {
-         if( valuelen > o.value.size() ) {
-            o.value.resize(valuelen);
-         }
-         memcpy(o.value.data(), value, valuelen);
-      });
-
-      return 1;
-   }
-
-   template <typename ObjectType>
-   int32_t apply_context::remove_record( const table_id_object& t_id, const typename ObjectType::key_type* keys ) {
-      require_write_lock( t_id.scope );
-      validate_or_add_table_key(t_id, get_key_type<ObjectType>());
-
-      auto tuple = impl::exact_tuple<ObjectType>::get(t_id, keys);
-      const auto* obj = db.find<ObjectType,  contracts::by_scope_primary>(tuple);
-      if( obj ) {
-         mutable_db.remove( *obj );
-         return 1;
-      }
-      return 0;
-   }
-
-   template <typename IndexType, typename Scope>
-   int32_t apply_context::load_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
-      require_read_lock( t_id.code, t_id.scope );
-      validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
-
-      const auto& idx = db.get_index<IndexType, Scope>();
-      auto tuple = impl::partial_tuple<IndexType, Scope>::get(t_id, keys);
-      auto itr = idx.lower_bound(tuple);
-
-      if( itr == idx.end() ||
-          itr->t_id != t_id.id ||
-          !impl::record_scope_compare<IndexType, Scope>::compare(*itr, keys)) return -1;
-
-      impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
-      if (valuelen) {
-         auto copylen = std::min<size_t>(itr->value.size(), valuelen);
-         if (copylen) {
-            itr->value.copy(value, copylen);
-         }
-         return copylen;
-      } else {
-         return itr->value.size();
-      }
-   }
-
-   template <typename IndexType, typename Scope>
-   int32_t apply_context::front_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
-      require_read_lock( t_id.code, t_id.scope );
-      validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
-
-      const auto& idx = db.get_index<IndexType, Scope>();
-      auto tuple = impl::front_record_tuple<IndexType, Scope>::get(t_id);
-
-      auto itr = idx.lower_bound( tuple );
-      if( itr == idx.end() ||
-         itr->t_id != t_id.id ) return -1;
-
-      impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
-
-      if (valuelen) {
-         auto copylen = std::min<size_t>(itr->value.size(), valuelen);
-         if (copylen) {
-            itr->value.copy(value, copylen);
-         }
-         return copylen;
-      } else {
-         return itr->value.size();
-      }
-   }
-
-   template <typename IndexType, typename Scope>
-   int32_t apply_context::back_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
-      require_read_lock( t_id.code, t_id.scope );
-      validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
-
-      const auto& idx = db.get_index<IndexType, Scope>();
-      decltype(t_id.id) next_tid(t_id.id._id + 1);
-      auto tuple = boost::make_tuple( next_tid );
-      auto itr = idx.lower_bound(tuple);
-
-      if( std::distance(idx.begin(), itr) == 0 ) return -1;
-
-      --itr;
-
-      if( itr->t_id != t_id.id ) return -1;
-
-      impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
-
-      if (valuelen) {
-         auto copylen = std::min<size_t>(itr->value.size(), valuelen);
-         if (copylen) {
-            itr->value.copy(value, copylen);
-         }
-         return copylen;
-      } else {
-         return itr->value.size();
-      }
-   }
-
-   template <typename IndexType, typename Scope>
-   int32_t apply_context::next_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
-      require_read_lock( t_id.code, t_id.scope );
-      validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
-
-      const auto& pidx = db.get_index<IndexType, contracts::by_scope_primary>();
-
-      auto tuple = impl::exact_tuple<typename IndexType::value_type>::get(t_id, keys);
-      auto pitr = pidx.find(tuple);
-
-      if(pitr == pidx.end())
-        return -1;
-
-      const auto& fidx = db.get_index<IndexType>();
-      auto itr = fidx.indicies().template project<Scope>(pitr);
-
-      const auto& idx = db.get_index<IndexType, Scope>();
-
-      if( itr == idx.end() ||
-          itr->t_id != t_id.id ||
-          !impl::key_helper<typename IndexType::value_type>::compare(*itr, keys) ) {
-        return -1;
-      }
-
-      ++itr;
-
-      if( itr == idx.end() ||
-          itr->t_id != t_id.id ) {
-        return -1;
-      }
-
-      impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
-
-      if (valuelen) {
-         auto copylen = std::min<size_t>(itr->value.size(), valuelen);
-         if (copylen) {
-            itr->value.copy(value, copylen);
-         }
-         return copylen;
-      } else {
-         return itr->value.size();
-      }
-   }
-
-   template <typename IndexType, typename Scope>
-   int32_t apply_context::previous_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
-      require_read_lock( t_id.code, t_id.scope );
-      validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
-
-      const auto& pidx = db.get_index<IndexType, contracts::by_scope_primary>();
-
-      auto tuple = impl::exact_tuple<typename IndexType::value_type>::get(t_id, keys);
-      auto pitr = pidx.find(tuple);
-
-      if(pitr == pidx.end())
-        return 0;
-
-      const auto& fidx = db.get_index<IndexType>();
-      auto itr = fidx.indicies().template project<Scope>(pitr);
-
-      const auto& idx = db.get_index<IndexType, Scope>();
-
-      if( itr == idx.end() ||
-          itr == idx.begin() ||
-          itr->t_id != t_id.id ||
-          !impl::key_helper<typename IndexType::value_type>::compare(*itr, keys) ) return 0;
-
-      --itr;
-
-      if( itr->t_id != t_id.id ) return 0;
-
-      impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
-
-      if (valuelen) {
-         auto copylen = std::min<size_t>(itr->value.size(), valuelen);
-         if (copylen) {
-            itr->value.copy(value, copylen);
-         }
-         return copylen;
-      } else {
-         return itr->value.size();
-      }
-   }
-
-   template <typename IndexType, typename Scope>
-   int32_t apply_context::lower_bound_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
-      require_read_lock( t_id.code, t_id.scope );
-      validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
-
-      const auto& idx = db.get_index<IndexType, Scope>();
-      auto tuple = impl::partial_tuple<IndexType, Scope>::get(t_id, keys);
-      auto itr = idx.lower_bound(tuple);
-
-      if( itr == idx.end() ||
-          itr->t_id != t_id.id) return 0;
-
-      impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
-
-      if (valuelen) {
-         auto copylen = std::min<size_t>(itr->value.size(), valuelen);
-         if (copylen) {
-            itr->value.copy(value, copylen);
-         }
-         return copylen;
-      } else {
-         return itr->value.size();
-      }
-   }
-
-   template <typename IndexType, typename Scope>
-   int32_t apply_context::upper_bound_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen ) {
-      require_read_lock( t_id.code, t_id.scope );
-      validate_table_key(t_id, get_key_type<typename IndexType::value_type>());
-
-      const auto& idx = db.get_index<IndexType, Scope>();
-      auto tuple = impl::partial_tuple<IndexType, Scope>::get(t_id, keys);
-      auto itr = idx.upper_bound(tuple);
-
-      if( itr == idx.end() ||
-          itr->t_id != t_id.id ) return 0;
-
-      impl::key_helper<typename IndexType::value_type>::get(keys, *itr);
-
-      if (valuelen) {
-         auto copylen = std::min<size_t>(itr->value.size(), valuelen);
-         if (copylen) {
-            itr->value.copy(value, copylen);
-         }
-         return copylen;
-      } else {
-         return itr->value.size();
-      }
    }
 
 } } // namespace eosio::chain

@@ -33,14 +33,14 @@
       "name": "regproducer",
       "base": "",
       "fields": [
-        {"name":"producer", "type":"account_name"}
+        {"name":"producer", "type":"account_name"},
         {"name":"producer_key", "type":"bytes"}
       ]
     },{
       "name": "stakevote",
       "base": "",
       "fields": [
-        {"name":"voter", "type":"account_name"}
+        {"name":"voter", "type":"account_name"},
         {"name":"amount", "type":"asset"}
       ]
     }

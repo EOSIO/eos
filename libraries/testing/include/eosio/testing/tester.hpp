@@ -18,15 +18,17 @@ namespace eosio { namespace testing {
          typedef string action_result;
 
          base_tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
+         explicit base_tester(chain_controller::controller_config config);
 
          void              close();
          void              open();
 
-         signed_block      produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) );
+         signed_block      produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty );
          void              produce_blocks( uint32_t n = 1 );
+         void              produce_blocks_until_end_of_round();
 
-         transaction_trace push_transaction( packed_transaction& trx );
-         transaction_trace push_transaction( signed_transaction& trx );
+         transaction_trace push_transaction( packed_transaction& trx, uint32_t skip_flag = skip_nothing  );
+         transaction_trace push_transaction( signed_transaction& trx, uint32_t skip_flag = skip_nothing  );
          action_result     push_action(action&& cert_act, uint64_t authorizer);
 
          transaction_trace push_action( const account_name& code, const action_name& act, const account_name& signer, const variant_object &data );
@@ -38,27 +40,44 @@ namespace eosio { namespace testing {
             for( auto n : names ) create_account(n, config::system_account_name, multisig );
          }
 
-
+         void link_authority( account_name account, account_name code,  permission_name req, action_name type = "" );
+         void unlink_authority( account_name account, account_name code, action_name type = "" );
+         void set_authority( account_name account, permission_name perm, authority auth,
+                                     permission_name parent, const vector<permission_level>& auths, const vector<private_key_type>& keys );
          void set_authority( account_name account, permission_name perm, authority auth,
                                      permission_name parent = config::owner_name );
+         void delete_authority( account_name account, permission_name perm,  const vector<permission_level>& auths, const vector<private_key_type>& keys );
+         void delete_authority( account_name account, permission_name perm );
 
          void              create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
 
          transaction_trace push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys );
          transaction_trace push_reqauth(account_name from, string role, bool multi_sig = false);
-         transaction_trace push_nonce( account_name from, const string& v = "blah" );
+         // use when just want any old non-context free action
+         transaction_trace push_dummy(account_name from, const string& v = "blah");
          transaction_trace transfer( account_name from, account_name to, asset amount, string memo, account_name currency );
          transaction_trace transfer( account_name from, account_name to, string amount, string memo, account_name currency );
+
+         template<typename ObjectType>
+         const auto& get(const chainbase::oid< ObjectType >& key) {
+            return control->get_database().get<ObjectType>(key);
+         }
 
          template<typename ObjectType, typename IndexBy, typename... Args>
          const auto& get( Args&&... args ) {
             return control->get_database().get<ObjectType,IndexBy>( forward<Args>(args)... );
          }
 
+         template<typename ObjectType, typename IndexBy, typename... Args>
+         const auto* find( Args&&... args ) {
+            return control->get_database().find<ObjectType,IndexBy>( forward<Args>(args)... );
+         }
+
          public_key_type   get_public_key( name keyname, string role = "owner" ) const;
          private_key_type  get_private_key( name keyname, string role = "owner" ) const;
 
          void              set_code( account_name name, const char* wast );
+         void              set_code( account_name name, const vector<uint8_t> wasm );
          void              set_abi( account_name name, const char* abi_json );
 
 
@@ -96,6 +115,7 @@ namespace eosio { namespace testing {
            };
         }
 
+       void sync_with(base_tester& other);
 
    private:
          fc::temp_directory                            tempdir;
@@ -107,8 +127,10 @@ namespace eosio { namespace testing {
    class tester : public base_tester {
    public:
       tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
+      tester(chain_controller::controller_config config);
 
       void              push_genesis_block();
+      void              set_producers(const vector<account_name>& producer_names);
    };
 
    /**

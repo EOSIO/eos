@@ -43,7 +43,7 @@ bool chain_controller::is_start_of_round( block_num_type block_num )const  {
 }
 
 uint32_t chain_controller::blocks_per_round()const {
-  return get_global_properties().active_producers.producers.size()*config::producer_repititions;
+  return get_global_properties().active_producers.producers.size()*config::producer_repetitions;
 }
 
 chain_controller::chain_controller( const chain_controller::controller_config& cfg )
@@ -51,6 +51,7 @@ chain_controller::chain_controller( const chain_controller::controller_config& c
       (cfg.read_only ? database::read_only : database::read_write),
       cfg.shared_memory_size),
  _block_log(cfg.block_log_dir),
+ _wasm_interface(cfg.wasm_runtime),
  _limits(cfg.limits)
 {
    _initialize_indexes();
@@ -414,9 +415,9 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
                      ("a", ar.act.account)
                      ("n", ar.act.name)
                      ("r", ar.receiver));
-               std::cerr << prefix << ": CONSOLE OUTPUT BEGIN =====================" << std::endl;
-               std::cerr << ar.console;
-               std::cerr << prefix << ": CONSOLE OUTPUT END   =====================" << std::endl;
+               ilog(prefix + ": CONSOLE OUTPUT BEGIN =====================");
+               ilog(ar.console);
+               ilog(prefix + ": CONSOLE OUTPUT END   =====================");
             }
          }
       }
@@ -484,18 +485,19 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
          FC_ASSERT( producer_obj.signing_key == block_signing_key.get_public_key(),
                     "producer key ${pk}, block key ${bk}", ("pk", producer_obj.signing_key)("bk", block_signing_key.get_public_key()) );
 
-         _pending_block->timestamp   = when;
-         _pending_block->producer    = producer_obj.owner;
-         _pending_block->previous    = head_block_id();
-         _pending_block->block_mroot = get_dynamic_global_properties().block_merkle_root.get_root();
-         _pending_block->transaction_mroot = transaction_metadata::calculate_transaction_merkle_root( _pending_transaction_metas );
-         _pending_block->action_mroot = _pending_block_trace->calculate_action_merkle_root();
+       _pending_block->timestamp   = when;
+       _pending_block->producer    = producer_obj.owner;
+       _pending_block->previous    = head_block_id();
+       _pending_block->block_mroot = get_dynamic_global_properties().block_merkle_root.get_root();
+       _pending_block->transaction_mroot = transaction_metadata::calculate_transaction_merkle_root( _pending_transaction_metas );
+       _pending_block->action_mroot = _pending_block_trace->calculate_action_merkle_root();
 
-         if( is_start_of_round( _pending_block->block_num() ) ) {
+      if( is_start_of_round( _pending_block->block_num() ) ) {
          auto latest_producer_schedule = _calculate_producer_schedule();
          if( latest_producer_schedule != _head_producer_schedule() )
             _pending_block->new_producers = latest_producer_schedule;
       }
+      _pending_block->schedule_version = get_global_properties().active_producers.version;
 
       if( !(skip & skip_producer_signature) )
          _pending_block->sign( block_signing_key );
@@ -737,9 +739,9 @@ flat_set<public_key_type> chain_controller::get_required_keys(const transaction&
 }
 
 void chain_controller::check_authorization( const vector<action>& actions,
-                                            flat_set<public_key_type> provided_keys,
+                                            const flat_set<public_key_type>& provided_keys,
                                             bool allow_unused_signatures,
-                                            flat_set<account_name>    provided_accounts  )const
+                                            flat_set<account_name> provided_accounts )const
 {
    auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
                                      get_global_properties().configuration.max_authority_depth,
@@ -818,13 +820,19 @@ void chain_controller::validate_uniqueness( const transaction& trx )const {
    EOS_ASSERT(transaction == nullptr, tx_duplicate, "transaction is not unique");
 }
 
-void chain_controller::record_transaction(const transaction& trx) {
-   //Insert transaction into unique transactions database.
-    _db.create<transaction_object>([&](transaction_object& transaction) {
-        transaction.trx_id = trx.id();
-        transaction.expiration = trx.expiration;
-    });
-}
+void chain_controller::record_transaction(const transaction& trx) 
+{ 
+   try {
+       _db.create<transaction_object>([&](transaction_object& transaction) {
+           transaction.trx_id = trx.id();
+           transaction.expiration = trx.expiration;
+       });
+   } catch ( ... ) {
+       EOS_ASSERT( false, transaction_exception,
+                  "duplicate transaction ${id}", 
+                  ("id", trx.id() ) );
+   }
+} 
 
 
 void chain_controller::validate_tapos(const transaction& trx)const {
@@ -888,6 +896,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
            ("bi", config::block_interval_ms)("t", (time_point(next_block.timestamp) - head_block_time()).count() / 1000));
    }
 
+
    if( !is_start_of_round( next_block.block_num() ) )  {
       EOS_ASSERT(!next_block.new_producers, block_validate_exception,
                  "Producer changes may only occur at the end of a round.");
@@ -906,6 +915,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
                  ("block producer",next_block.producer)("scheduled producer",producer.owner));
    }
 
+   EOS_ASSERT( next_block.schedule_version == get_global_properties().active_producers.version, block_validate_exception, "wrong producer schedule version specified" );
 
    return producer;
 }
@@ -1049,6 +1059,7 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<contracts::index64_index>();
    _db.add_index<contracts::index128_index>();
    _db.add_index<contracts::index256_index>();
+   _db.add_index<contracts::index_double_index>();
 
 
    _db.add_index<contracts::keystr_value_index>();
@@ -1081,12 +1092,11 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
             p.configuration = starter.get_chain_start_configuration();
             p.active_producers = starter.get_chain_start_producers();
             p.new_active_producers = starter.get_chain_start_producers();
-            wdump((starter.get_chain_start_producers()));
          });
 
          _db.create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
             p.time = initial_timestamp;
-            p.recent_slots_filled = uint64_t(-1);
+            //p.recent_slots_filled = uint64_t(-1);
             p.virtual_net_bandwidth = gp.configuration.max_block_size * (config::blocksize_average_window_ms / config::block_interval_ms );
             p.virtual_act_bandwidth = gp.configuration.max_block_acts * (config::blocksize_average_window_ms / config::block_interval_ms );
          });
@@ -1096,8 +1106,6 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
             _db.create<block_summary_object>([&](block_summary_object&) {});
 
          starter.prepare_database(*this, _db);
-
-         ilog( "done initializing chain" );
       });
    }
 } FC_CAPTURE_AND_RETHROW() }
@@ -1222,6 +1230,7 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
       dgp.update_virtual_act_bandwidth( props.configuration );
 
 
+      /*
       // If we've missed more blocks than the bitmap stores, skip calculations and simply reset the bitmap
       if (missed_blocks < sizeof(dgp.recent_slots_filled) * 8) {
          dgp.recent_slots_filled <<= 1;
@@ -1232,6 +1241,7 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
             dgp.recent_slots_filled = uint64_t(-1);
          else
             dgp.recent_slots_filled = 0;
+      */
       dgp.block_merkle_root.append( head_block_id() );
    });
 
@@ -1365,8 +1375,8 @@ account_name chain_controller::get_scheduled_producer(uint32_t slot_num)const
    uint64_t current_aslot = dpo.current_absolute_slot + slot_num;
    const auto& gpo = _db.get<global_property_object>();
    auto number_of_active_producers = gpo.active_producers.producers.size();
-   auto index = current_aslot % (number_of_active_producers * config::producer_repititions);
-   index /= config::producer_repititions;
+   auto index = current_aslot % (number_of_active_producers * config::producer_repetitions);
+   index /= config::producer_repetitions;
    FC_ASSERT( gpo.active_producers.producers.size() > 0, "no producers defined" );
 
    return gpo.active_producers.producers[index].producer_name;
@@ -1402,8 +1412,9 @@ uint32_t chain_controller::get_slot_at_time( block_timestamp_type when )const
 
 uint32_t chain_controller::producer_participation_rate()const
 {
-   const dynamic_global_property_object& dpo = get_dynamic_global_properties();
-   return uint64_t(config::percent_100) * __builtin_popcountll(dpo.recent_slots_filled) / 64;
+   //const dynamic_global_property_object& dpo = get_dynamic_global_properties();
+   //return uint64_t(config::percent_100) * __builtin_popcountll(dpo.recent_slots_filled) / 64;
+   return static_cast<uint32_t>(config::percent_100); // Ignore participation rate for now until we construct a better metric.
 }
 
 void chain_controller::_set_apply_handler( account_name contract, scope_name scope, action_name action, apply_handler v ) {

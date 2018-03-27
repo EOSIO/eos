@@ -39,7 +39,8 @@ using account_control_history_multi_index = chainbase::shared_multi_index_contai
       ordered_unique<tag<by_controlled_authority>,
          composite_key< account_control_history_object,
             member<account_control_history_object, account_name, &account_control_history_object::controlled_account>,
-            member<account_control_history_object, permission_name, &account_control_history_object::controlled_permission>
+            member<account_control_history_object, permission_name, &account_control_history_object::controlled_permission>,
+            member<account_control_history_object, account_name, &account_control_history_object::controlling_account>
          >
       >
    >

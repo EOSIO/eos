@@ -4,7 +4,6 @@
  */
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/token.hpp>
-#include <eosiolib/db.hpp>
 #include <eosiolib/reflect.hpp>
 #include <eosiolib/print.hpp>
 
@@ -112,9 +111,11 @@ namespace eosiosystem {
          typedef eosio::multi_index< N(delband), delegated_bandwidth> del_bandwidth_index_type;
 
 
-         ACTION( SystemAccount, finshundel ) {
+         ACTION( SystemAccount, finishundel ) {
             account_name from;
             account_name to;
+            
+            EOSLIB_SERIALIZE( finishundel, (from)(to) )
          };
 
          ACTION( SystemAccount, regproducer ) {
@@ -204,7 +205,7 @@ namespace eosiosystem {
                });
             }
 
-            set_resource_limits( tot_itr->owner, tot_itr->total_ram, tot_itr->total_net_weight.quantity, tot_itr->total_cpu_weight.quantity, 0 );
+            set_resource_limits( tot_itr->owner, tot_itr->total_ram, tot_itr->total_net_weight.quantity, tot_itr->total_cpu_weight.quantity );
 
             currency::inline_transfer( del.from, SystemAccount, total_stake, "stake bandwidth" );
          } // delegatebw
@@ -241,7 +242,7 @@ namespace eosiosystem {
                tot.total_cpu_weight -= del.unstake_cpu_quantity;
             });
 
-            set_resource_limits( totals.owner, totals.total_ram, totals.total_net_weight.quantity, totals.total_cpu_weight.quantity, 0 );
+            set_resource_limits( totals.owner, totals.total_ram, totals.total_net_weight.quantity, totals.total_cpu_weight.quantity );
 
             /// TODO: implement / enforce time delays on withdrawing
             currency::inline_transfer( SystemAccount, del.from, total_stake, "unstake bandwidth" );
@@ -252,7 +253,7 @@ namespace eosiosystem {
 
 
          /**
-          *  This method will create a producr_config and producer_votes object for 'producer'
+          *  This method will create a producer_config and producer_votes object for 'producer'
           *
           *  @pre producer is not already registered
           *  @pre producer to register is an account
@@ -382,13 +383,16 @@ namespace eosiosystem {
 
          static void on( const nonce& ) {
          }
+         
+         static void on( const finishundel& ) {            
+         }
 
          static void apply( account_name code, action_name act ) {
 
             if( !eosio::dispatch<contract,
                                  regproducer, regproxy,
                                  delegatebw, undelegatebw,
-                                 regproducer, voteproducer, stakevote,
+                                 finishundel, voteproducer, stakevote,
                                  nonce>( code, act) ) {
                if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                   eosio::print("Unexpected action: ", eosio::name(act), "\n");

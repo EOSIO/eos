@@ -25,32 +25,6 @@
 
 namespace eosio { namespace chain { namespace contracts {
 
-void intialize_eosio_tokens(chainbase::database& db, const account_name& system_account, share_type initial_tokens) {
-   const auto& t_id = db.create<contracts::table_id_object>([&](contracts::table_id_object &t_id){
-      t_id.scope = system_account;
-      t_id.code = config::system_account_name;
-      t_id.table = N(currency);
-   });
-
-   db.create<key_value_object>([&](key_value_object &o){
-      o.t_id = t_id.id;
-      o.primary_key = N(account);
-      o.value.insert(0, reinterpret_cast<const char *>(&initial_tokens), sizeof(share_type));
-   });
-}
-
-static void modify_eosio_balance( apply_context& context, const account_name& account, share_type amt) {
-   const auto& t_id = context.find_or_create_table(config::system_account_name, account, N(currency));
-   uint64_t key = N(account);
-   share_type balance = 0;
-   context.front_record<key_value_index, by_scope_primary>(t_id, &key, (char *)&balance, sizeof(balance));
-
-   balance += amt;
-
-   context.store_record<key_value_object>(t_id, config::system_account_name, &key, (const char *)&balance, sizeof(balance));
-}
-
-
 void validate_authority_precondition( const apply_context& context, const authority& auth ) {
    for(const auto& a : auth.accounts) {
       context.db.get<account_object, by_name>(a.permission.actor);
@@ -62,7 +36,7 @@ void validate_authority_precondition( const apply_context& context, const author
  *  This method is called assuming precondition_system_newaccount succeeds a
  */
 void apply_eosio_newaccount(apply_context& context) { 
-   auto create = context.act.as<newaccount>();
+   auto create = context.act.data_as<newaccount>();
    try {
    context.require_authorization(create.creator);
    context.require_write_lock( config::eosio_auth_scope );
@@ -72,6 +46,11 @@ void apply_eosio_newaccount(apply_context& context) {
    EOS_ASSERT( validate(create.recovery), action_validate_exception, "Invalid recovery authority");
 
    auto& db = context.mutable_db;
+
+   EOS_ASSERT( create.name.to_string().size() <= 12, action_validate_exception, "account names can only be 12 chars long" );
+   if( !context.privileged ) {
+      EOS_ASSERT( name(create.name).to_string().find( "eosio." ) == std::string::npos, action_validate_exception, "only privileged accounts can have names that contain 'eosio.'" );
+   }
 
    auto existing_account = db.find<account_object, by_name>(create.name);
    EOS_ASSERT(existing_account == nullptr, action_validate_exception,
@@ -106,7 +85,7 @@ void apply_eosio_newaccount(apply_context& context) {
 
 void apply_eosio_setcode(apply_context& context) {
    auto& db = context.mutable_db;
-   auto  act = context.act.as<setcode>();
+   auto  act = context.act.data_as<setcode>();
 
    context.require_authorization(act.account);
    context.require_write_lock( config::eosio_auth_scope );
@@ -116,9 +95,7 @@ void apply_eosio_setcode(apply_context& context) {
 
    auto code_id = fc::sha256::hash( act.code.data(), act.code.size() );
 
-   // TODO: remove this compilation step in favor of validation without compilation
-   auto& code = context.mutable_controller.get_wasm_cache().checkout(code_id, act.code.data(), act.code.size());
-   context.mutable_controller.get_wasm_cache().checkin(code_id, code);
+   wasm_interface::validate(act.code);
 
    const auto& account = db.get<account_object,by_name>(act.account);
 //   wlog( "set code: ${size}", ("size",act.code.size()));
@@ -138,7 +115,7 @@ void apply_eosio_setcode(apply_context& context) {
 
 void apply_eosio_setabi(apply_context& context) {
    auto& db = context.mutable_db;
-   auto  act = context.act.as<setabi>();
+   auto  act = context.act.data_as<setabi>();
 
    context.require_authorization(act.account);
 
@@ -161,7 +138,7 @@ void apply_eosio_setabi(apply_context& context) {
 void apply_eosio_updateauth(apply_context& context) {
    context.require_write_lock( config::eosio_auth_scope );
 
-   auto update = context.act.as<updateauth>();
+   auto update = context.act.data_as<updateauth>();
    EOS_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
    EOS_ASSERT(update.permission != update.parent, action_validate_exception,
               "Cannot set an authority as its own parent");
@@ -237,7 +214,7 @@ void apply_eosio_updateauth(apply_context& context) {
 }
 
 void apply_eosio_deleteauth(apply_context& context) {
-   auto remove = context.act.as<deleteauth>();
+   auto remove = context.act.data_as<deleteauth>();
    EOS_ASSERT(remove.permission != "active", action_validate_exception, "Cannot delete active authority");
    EOS_ASSERT(remove.permission != "owner", action_validate_exception, "Cannot delete owner authority");
 
@@ -263,7 +240,7 @@ void apply_eosio_deleteauth(apply_context& context) {
 }
 
 void apply_eosio_linkauth(apply_context& context) {
-   auto requirement = context.act.as<linkauth>();
+   auto requirement = context.act.data_as<linkauth>();
    EOS_ASSERT(!requirement.requirement.empty(), action_validate_exception, "Required permission cannot be empty");
 
    context.require_authorization(requirement.account);
@@ -294,7 +271,7 @@ void apply_eosio_linkauth(apply_context& context) {
 
 void apply_eosio_unlinkauth(apply_context& context) {
    auto& db = context.mutable_db;
-   auto unlink = context.act.as<unlinkauth>();
+   auto unlink = context.act.data_as<unlinkauth>();
 
    context.require_authorization(unlink.account);
 
@@ -320,34 +297,37 @@ static const abi_serializer& get_abi_serializer() {
 }
 
 static optional<variant> get_pending_recovery(apply_context& context, account_name account ) {
-   const auto* t_id = context.find_table(config::system_account_name, account, N(recovery));
-   if (t_id) {
-      uint64_t key = account;
-      int32_t record_size = context.front_record<key_value_index, by_scope_primary>(*t_id, &key, nullptr, 0);
-      if (record_size > 0) {
-         bytes value(record_size + sizeof(uint64_t));
-         uint64_t* key_p = reinterpret_cast<uint64_t *>(value.data());
-         *key_p = key;
+   const uint64_t id = account;
+   const auto table = N(recovery);
+   const auto iter = context.db_find_i64(config::system_account_name, account, table, id);
+   if (iter != -1) {
+      const auto buffer_size = context.db_get_i64(iter, nullptr, 0);
+      bytes value(buffer_size);
 
-         record_size = context.front_record<key_value_index, by_scope_primary>(*t_id, &key, value.data() + sizeof(uint64_t), value.size() - sizeof(uint64_t));
-         assert(record_size == value.size() - sizeof(uint64_t));
+      const auto written_size = context.db_get_i64(iter, value.data(), buffer_size);
+      assert(written_size == buffer_size);
 
-         return get_abi_serializer().binary_to_variant("pending_recovery", value);
-      }
+      return get_abi_serializer().binary_to_variant("pending_recovery", value);
    }
 
    return optional<variant_object>();
 }
 
 static uint32_t get_next_sender_id(apply_context& context) {
-   context.require_write_lock( config::eosio_auth_scope );
-   const auto& t_id = context.find_or_create_table(config::system_account_name, config::eosio_auth_scope, N(deferred.seq));
-   uint64_t key = N(config::eosio_auth_scope);
-   uint32_t next_serial = 0;
-   context.front_record<key_value_index, by_scope_primary>(t_id, &key, (char *)&next_serial, sizeof(uint32_t));
+   const uint64_t id = N(config::eosio_auth_scope);
+   const auto table = N(deferred.seq);
+   const auto payer = config::system_account_name;
+   const auto iter = context.db_find_i64(config::system_account_name, config::eosio_auth_scope, table, id);
+   if (iter == -1) {
+      const uint32_t next_serial = 1;
+      context.db_store_i64(config::eosio_auth_scope, table, payer, id, (const char*)&next_serial, sizeof(next_serial));
+      return 0;
+   }
 
-   uint32_t result = next_serial++;
-   context.store_record<key_value_object>(t_id, config::system_account_name, &key, (char *)&next_serial, sizeof(uint32_t));
+   uint32_t next_serial = 0;
+   context.db_get_i64(iter, (char*)&next_serial, sizeof(next_serial));
+   const auto result = next_serial++;
+   context.db_update_i64(iter, payer, (const char*)&next_serial, sizeof(next_serial));
    return result;
 }
 
@@ -370,7 +350,7 @@ void apply_eosio_postrecovery(apply_context& context) {
 
    FC_ASSERT(context.act.authorization.size() == 1, "Recovery Message must have exactly one authorization");
 
-   auto recover_act = context.act.as<postrecovery>();
+   auto recover_act = context.act.data_as<postrecovery>();
    const auto &auth = context.act.authorization.front();
    const auto& account = recover_act.account;
    context.require_write_lock(account);
@@ -434,20 +414,29 @@ void apply_eosio_postrecovery(apply_context& context) {
    context.execute_deferred(std::move(dtrx));
 
 
-   const auto& t_id = context.find_or_create_table(config::system_account_name, account, N(recovery));
    auto data = get_abi_serializer().variant_to_binary("pending_recovery", record_data);
-   context.store_record<key_value_object>(t_id, 0, &account.value, data.data() + sizeof(uint64_t), data.size() - sizeof(uint64_t));
+   const uint64_t id = account;
+   const uint64_t table = N(recovery);
+   const auto payer = account;
+   const auto iter = context.db_find_i64(config::system_account_name, account, table, id);
+   if (iter == -1) {
+      context.db_store_i64(account, table, payer, id, (const char*)data.data(), data.size());
+   } else {
+      context.db_update_i64(iter, payer, (const char*)data.data(), data.size());
+   }
 
    context.console_append_formatted("Recovery Started for account ${account} : ${memo}\n", mutable_variant_object()("account", account)("memo", recover_act.memo));
 }
 
 static void remove_pending_recovery(apply_context& context, const account_name& account) {
-   const auto& t_id = context.find_or_create_table(config::system_account_name, account, N(recovery));
-   context.remove_record<key_value_object>(t_id, &account.value);
+   const auto iter = context.db_find_i64(config::system_account_name, account, N(recovery), account);
+   if (iter != -1) {
+      context.db_remove_i64(iter);
+   }
 }
 
 void apply_eosio_passrecovery(apply_context& context) {
-   auto pass_act = context.act.as<passrecovery>();
+   auto pass_act = context.act.data_as<passrecovery>();
    const auto& account = pass_act.account;
 
    // ensure this is only processed if it is a deferred transaction from the system account
@@ -470,7 +459,7 @@ void apply_eosio_passrecovery(apply_context& context) {
 
 void apply_eosio_vetorecovery(apply_context& context) {
    context.require_write_lock( config::eosio_auth_scope );
-   auto pass_act = context.act.as<vetorecovery>();
+   auto pass_act = context.act.data_as<vetorecovery>();
    const auto& account = pass_act.account;
    context.require_authorization(account);
 

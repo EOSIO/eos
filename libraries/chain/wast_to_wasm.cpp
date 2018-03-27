@@ -33,7 +33,7 @@ namespace eosio { namespace chain {
             ss << error.locus.sourceLine << std::endl;
             ss << std::setw(error.locus.column(8)) << "^" << std::endl;
          }
-         FC_ASSERT( !"error parsing wast", "${msg}", ("msg",ss.get()) );
+         FC_ASSERT( !"error parsing wast", "${msg}", ("msg",ss.str()) );
       }
 
  		for(auto sectionIt = module.userSections.begin();sectionIt != module.userSections.end();++sectionIt)

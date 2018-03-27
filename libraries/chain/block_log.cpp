@@ -89,7 +89,7 @@ namespace eosio { namespace chain {
       my->block_file = data_dir / "blocks.log";
       my->index_file = data_dir / "blocks.index";
 
-      ilog("Opening block log at ${path}", ("path", my->block_file.generic_string()));
+      //ilog("Opening block log at ${path}", ("path", my->block_file.generic_string()));
       my->block_stream.open(my->block_file.generic_string().c_str(), LOG_WRITE);
       my->index_stream.open(my->index_file.generic_string().c_str(), LOG_WRITE);
       my->block_write = true;

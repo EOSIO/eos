@@ -65,9 +65,9 @@ BOOST_AUTO_TEST_SUITE(database_tests)
             if( max_reversible_rounds == 0) {
                return head_block_num - 1;
             } else {
-               const auto current_round = head_block_num / config::producer_repititions;
+               const auto current_round = head_block_num / config::producer_repetitions;
                const auto irreversible_round = current_round - max_reversible_rounds;
-               return (irreversible_round + 1) * config::producer_repititions - 1;
+               return (irreversible_round + 1) * config::producer_repetitions - 1;
             }
          };
 

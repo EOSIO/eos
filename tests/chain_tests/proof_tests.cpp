@@ -246,11 +246,11 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, tester ) { try {
 
    produce_blocks(50);
 
-   push_nonce( N(alice), "AB" );
-   push_nonce( N(bob),   "BC" );
-   push_nonce( N(carol), "CD" );
-   push_nonce( N(david), "DE" );
-   push_nonce( N(elvis), "EF" );
+   push_dummy(N(alice), "AB");
+   push_dummy(N(bob), "BC");
+   push_dummy(N(carol), "CD");
+   push_dummy(N(david), "DE");
+   push_dummy(N(elvis), "EF");
 
    produce_blocks(50);
    digest_type block_mroot = process_merkle(nodes, move(block_leaves));
