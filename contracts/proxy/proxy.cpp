@@ -58,6 +58,7 @@ namespace proxy {
 
    void apply_setowner(set_owner params) {
       const auto self = current_receiver();
+      require_auth(params.owner);
       config code_config;
       configs::get(code_config, self);
       code_config.owner = params.owner;

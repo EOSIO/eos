@@ -193,6 +193,7 @@ namespace eosio {
           }
 
           void on( const transfer& t ) {
+             require_auth(t.from);
              auto sym = t.quantity.symbol.name();
              stats statstable( _contract, sym );
              const auto& st = statstable.get( sym );

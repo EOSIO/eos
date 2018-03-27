@@ -43,11 +43,6 @@ BOOST_FIXTURE_TEST_CASE( missing_auths, tester ) { try {
 
 } FC_LOG_AND_RETHROW() } /// transfer_test
 
-BOOST_FIXTURE_TEST_CASE( zero_reqauths, tester ) { try {
-   create_accounts( {N(alice)} );
-   produce_block();
-} FC_LOG_AND_RETHROW() } /// zero_reqauths
-
 BOOST_FIXTURE_TEST_CASE( too_many_auths, tester ) { try {
    create_accounts( {N(alice), N(bob), N(eve)} );
    produce_block();

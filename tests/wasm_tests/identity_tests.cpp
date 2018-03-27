@@ -237,7 +237,7 @@ BOOST_FIXTURE_TEST_CASE( identity_create, identity_tester ) try {
    BOOST_REQUIRE_EQUAL(error("condition: assertion failed: identity=0 is not allowed"), create_identity("alice", 0));
 
    //creating adentity without authentication is not allowed
-   BOOST_REQUIRE_EQUAL(error("missing authority of alice"), create_identity("alice", 3, false));
+   BOOST_REQUIRE_EQUAL(error("context-sensitive actions require at least one authorization"), create_identity("alice", 3, false));
 
    //bob can create an identity as well
    BOOST_REQUIRE_EQUAL(success(), create_identity("bob", 1));
@@ -291,7 +291,7 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify, identity_tester ) try {
    };
 
    //shouldn't be able to certify without authorization
-   BOOST_REQUIRE_EQUAL(error("missing authority of bob"), certify("bob", identity_val, fields, false));
+   BOOST_REQUIRE_EQUAL(error("context-sensitive actions require at least one authorization"), certify("bob", identity_val, fields, false));
 
    //certifying non-existent identity is not allowed
    uint64_t non_existent = 11;

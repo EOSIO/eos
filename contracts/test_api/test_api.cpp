@@ -24,6 +24,10 @@ extern "C" {
     }
 
    void apply( unsigned long long code, unsigned long long action ) {
+      if ( action == N(cf_action) ) {
+         test_action::test_cf_action();
+         return;
+      }
       require_auth(code); 
       //eosio::print("==> CONTRACT: ", code, " ", action, "\n");
       //test_types
@@ -66,11 +70,7 @@ extern "C" {
       if ( action == N(dummy_action) ) {
          test_action::test_dummy_action();
          return;
-      } else if ( action == N(cf_action) ) {
-         test_action::test_cf_action();
-         return;
-      }
-
+      } 
       //test_print
       WASM_TEST_HANDLER(test_print, test_prints);
       WASM_TEST_HANDLER(test_print, test_prints_l);
