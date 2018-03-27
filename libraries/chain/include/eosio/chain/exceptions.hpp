@@ -75,8 +75,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( block_id_type_exception,           eosio::chain::chain_type_exception, 3120008, "Invalid block ID" )
    FC_DECLARE_DERIVED_EXCEPTION( transaction_id_type_exception,     eosio::chain::chain_type_exception, 3120009, "Invalid transaction ID" )
    FC_DECLARE_DERIVED_EXCEPTION( packed_transaction_type_exception, eosio::chain::chain_type_exception, 3120010, "Invalid packed transaction" )
-
-   FC_DECLARE_DERIVED_EXCEPTION( asset_type_exception,     eosio::chain::chain_type_exception, 3120011, "Invalid asset" )
+   FC_DECLARE_DERIVED_EXCEPTION( asset_type_exception,              eosio::chain::chain_type_exception, 3120011, "Invalid asset" )
 
    FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,                 eosio::chain::missing_plugin_exception, 3130001, "Missing Chain API Plugin" )
    FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,                eosio::chain::missing_plugin_exception, 3130002, "Missing Wallet API Plugin" )
