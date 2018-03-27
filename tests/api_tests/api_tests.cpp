@@ -654,6 +654,46 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, tester) { try {
+   produce_blocks(2);
+   create_account( N(testapi) );
+   produce_blocks(100);
+   set_code( N(testapi), test_api_wast );
+   produce_blocks(1);
+
+   //schedule
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", fc::raw::pack(uint64_t(1)) );
+   //check that it doesn't get executed immediately
+   auto traces = control->push_deferred_transactions( true );
+   BOOST_CHECK_EQUAL( 0, traces.size() );
+   produce_blocks(24);
+   //check that it gets executed afterwards
+   traces = control->push_deferred_transactions( true );
+   BOOST_CHECK_EQUAL( 1, traces.size() );
+
+   //schedule twice (second deferred transaction should replace first one)
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
+   produce_blocks( 24 );
+   //check that only one deferred transaction executed
+   traces = control->push_deferred_transactions( true );
+   BOOST_CHECK_EQUAL( 1, traces.size() );
+
+   //schedule and cancel
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
+   CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction", {});
+   produce_blocks( 24 );
+   traces = control->push_deferred_transactions( true );
+   BOOST_CHECK_EQUAL( 0, traces.size() );
+
+   //cancel_deferred() before scheduling transaction should not prevent the transaction from being scheduled (check that previous bug is fixed)
+   CALL_TEST_FUNCTION(*this, "test_transaction", "cancel_deferred_transaction", {});
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
+   produce_blocks( 24 );
+   traces = control->push_deferred_transactions( true );
+   BOOST_CHECK_EQUAL( 1, traces.size() );
+} FC_LOG_AND_RETHROW() }
+
 template <uint64_t NAME>
 struct setprod_act {
    static account_name get_account() {

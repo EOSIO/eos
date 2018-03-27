@@ -455,8 +455,8 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       ("memo", "fund Proxy")
    );
 
-   BOOST_REQUIRE_EQUAL(trace.deferred_transactions.size(), 1);
-   auto deferred_id = trace.deferred_transactions.back().id();
+   BOOST_REQUIRE_EQUAL(trace.deferred_transaction_requests.size(), 1);
+   auto deferred_id = trace.deferred_transaction_requests.back().get<deferred_transaction>().id();
 
    while(control->head_block_time() < expected_delivery) {
       control->push_deferred_transactions(true);

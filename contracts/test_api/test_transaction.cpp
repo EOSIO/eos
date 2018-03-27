@@ -210,6 +210,26 @@ void test_transaction::send_transaction_large() {
    eosio_assert(false, "send_transaction_large() should've thrown an error");
 }
 
+/**
+ * deferred transaction
+ */
+void test_transaction::deferred_print() {
+   eosio::print("deferred executed\n");
+}
+
+void test_transaction::send_deferred_transaction() {
+   using namespace eosio;
+   auto trx = transaction();
+   test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "deferred_print")> test_action;
+   trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
+   trx.send( 0xffffffffffffffff, now()+2 );
+}
+
+void test_transaction::cancel_deferred_transaction() {
+   using namespace eosio;
+   cancel_deferred( 0xffffffffffffffff ); //use the same id (0) as in send_deferred_transaction
+}
+
 void test_transaction::send_cf_action() {
    using namespace eosio;
    test_action_action<N(dummy), N(event1)> cfa;

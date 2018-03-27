@@ -99,6 +99,7 @@ public:
          ("max_inline_depth", 4 + n)
          ("max_inline_action_size", 4096 + n)
          ("max_generated_transaction_size", 64*1024 + n)
+         ("max_generated_transaction_count", 10 + n)
          ("percent_of_max_inflation_rate", 50 + n)
          ("storage_reserve_ratio", 100 + n);
    }
@@ -1374,7 +1375,8 @@ fc::mutable_variant_object config_to_variant( const eosio::chain::chain_config& 
       ( "max_authority_depth", config.max_authority_depth )
       ( "max_inline_depth", config.max_inline_depth )
       ( "max_inline_action_size", config.max_inline_action_size )
-      ( "max_generated_transaction_size", config.max_generated_transaction_size );
+      ( "max_generated_transaction_size", config.max_generated_transaction_size )
+      ( "max_generated_transaction_count", config.max_generated_transaction_count );
 }
 
 BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) try {

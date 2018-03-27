@@ -475,16 +475,26 @@ void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_bl
                                         "unknown";
                trx_status_map[trx_trace.id] = trx_status;
                
-               for (const auto& trx : trx_trace.deferred_transactions) {
-                  auto doc = process_trx(trx);
-                  doc.append(kvp("type", "deferred"),
-                             kvp("sender_id", b_int64{static_cast<int64_t>(trx.sender_id)}),
-                             kvp("sender", trx.sender.to_string()),
-                             kvp("execute_after", b_date{std::chrono::milliseconds{
-                                   std::chrono::seconds{trx.execute_after.sec_since_epoch()}}}));
-                  mongocxx::model::insert_one insert_op{doc.view()};
-                  bulk_trans.append(insert_op);
-                  ++trx_num;
+               for (const auto& req : trx_trace.deferred_transaction_requests) {
+                  if ( req.contains<chain::deferred_transaction>() ) {
+                     auto trx = req.get<chain::deferred_transaction>();
+                     auto doc = process_trx(trx);
+                     doc.append(kvp("type", "deferred"),
+                                kvp("sender_id", b_int64{static_cast<int64_t>(trx.sender_id)}),
+                                kvp("sender", trx.sender.to_string()),
+                                kvp("execute_after", b_date{std::chrono::milliseconds{
+                                         std::chrono::seconds{trx.execute_after.sec_since_epoch()}}}));
+                     mongocxx::model::insert_one insert_op{doc.view()};
+                     bulk_trans.append(insert_op);
+                     ++trx_num;
+                  } else {
+                     auto cancel = req.get<chain::deferred_reference>();
+                     auto doc = bsoncxx::builder::basic::document{};
+                     doc.append(kvp("type", "cancel_deferred"),
+                                kvp("sender_id", b_int64{static_cast<int64_t>(cancel.sender_id)}),
+                                kvp("sender", cancel.sender.to_string())
+                     );
+                  }
                }
                if (!trx_trace.action_traces.empty()) {
                   actions_to_write = true;
