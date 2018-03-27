@@ -106,8 +106,8 @@ namespace eosio { namespace testing {
       }
    }
 
-  void base_tester::set_tapos( signed_transaction& trx ) const {
-     trx.expiration = control->head_block_time() + fc::seconds(6);
+  void base_tester::set_tapos( signed_transaction& trx, uint32_t expiration ) const {
+     trx.expiration = control->head_block_time() + fc::seconds(expiration);
      trx.set_reference_block( control->head_block_id() );
   }
 
@@ -170,7 +170,17 @@ namespace eosio { namespace testing {
                              const action_name& acttype,
                              const account_name& actor,
                              const variant_object& data,
-                             int32_t expiration)
+                             uint32_t expiration)
+
+   { try {
+      return push_action(code, acttype, vector<account_name>{ actor }, data, expiration);
+   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actor)(data)(expiration) ) }
+
+   transaction_trace base_tester::push_action( const account_name& code,
+                             const action_name& acttype,
+                             const vector<account_name>& actors,
+                             const variant_object& data,
+                             uint32_t expiration)
 
    { try {
       const auto& acnt = control->get_database().get<account_object,by_name>(code);
@@ -185,18 +195,20 @@ namespace eosio { namespace testing {
       action act;
       act.account = code;
       act.name = acttype;
-      act.authorization = vector<permission_level>{{actor, config::active_name}};
+      for (const auto& actor : actors) {
+         act.authorization.push_back(permission_level{actor, config::active_name});
+      }
       act.data = abis.variant_to_binary(action_type_name, data);
 
       signed_transaction trx;
-      if (expiration > -1)
-         trx.expiration = time_point_sec(control->head_block_time()) + expiration;
       trx.actions.emplace_back(std::move(act));
-      set_tapos(trx);
-      trx.sign(get_private_key(actor, "active"), chain_id_type());
+      set_tapos(trx, expiration);
+      for (const auto& actor : actors) {
+         trx.sign(get_private_key(actor, "active"), chain_id_type());
+      }
 
       return push_transaction(trx);
-   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actor)(data) ) }
+   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actors)(data)(expiration) ) }
 
    transaction_trace base_tester::push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys ) {
       variant pretty_trx = fc::mutable_variant_object()
