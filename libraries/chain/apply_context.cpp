@@ -14,7 +14,6 @@ void apply_context::exec_one()
    try {
       const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
       privileged = a.privileged;
-      FC_ASSERT(false, "WHATTTTTTT");
       auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
       if (native) {
          FC_ASSERT(false, "WHAT!?!?!?!");
