@@ -300,12 +300,6 @@ const char* my_abi = R"=====(
          "name": "authority_arr",
          "type": "authority[]"
       },{
-         "name": "chainconfig",
-         "type": "chain_config"
-      },{
-         "name": "chainconfig_arr",
-         "type": "chain_config[]"
-      },{
          "name": "typedef",
          "type": "type_def"
       },{
@@ -1774,53 +1768,6 @@ BOOST_AUTO_TEST_CASE(general)
          "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}],
          "accounts":[{"permission":{"actor":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"actor":"acc2","permission":"permname2"},"weight":"2"}]
        }],
-      "chainconfig": {
-         "target_block_size": "200",
-         "max_block_size": "300",
-         "target_block_acts_per_scope": "400",
-         "max_block_acts_per_scope": "500",
-         "target_block_acts": "600",
-         "max_block_acts": "700",
-         "real_threads": "800",
-         "max_storage_size": "900",
-         "max_transaction_lifetime": "1000",
-         "max_authority_depth": "1100",
-         "max_transaction_exec_time": "1200",
-         "max_inline_depth": "1300",
-         "max_inline_action_size": "1400",
-         "max_generated_transaction_size": "1500"
-      },
-      "chainconfig_arr": [{
-         "target_block_size": "200",
-         "max_block_size": "300",
-         "target_block_acts_per_scope": "400",
-         "max_block_acts_per_scope": "500",
-         "target_block_acts": "600",
-         "max_block_acts": "700",
-         "real_threads": "800",
-         "max_storage_size": "900",
-         "max_transaction_lifetime": "1000",
-         "max_authority_depth": "1100",
-         "max_transaction_exec_time": "1200",
-         "max_inline_depth": "1300",
-         "max_inline_action_size": "1400",
-         "max_generated_transaction_size": "1500"
-      },{
-         "target_block_size": "200",
-         "max_block_size": "300",
-         "target_block_acts_per_scope": "400",
-         "max_block_acts_per_scope": "500",
-         "target_block_acts": "600",
-         "max_block_acts": "700",
-         "real_threads": "800",
-         "max_storage_size": "900",
-         "max_transaction_lifetime": "1000",
-         "max_authority_depth": "1100",
-         "max_transaction_exec_time": "1200",
-         "max_inline_depth": "1300",
-         "max_inline_action_size": "1400",
-         "max_generated_transaction_size": "1500"
-      }],
       "typedef" : {"new_type_name":"new", "type":"old"},
       "typedef_arr": [{"new_type_name":"new", "type":"old"},{"new_type_name":"new", "type":"old"}],
       "actiondef"       : {"name":"actionname1", "type":"type1"},

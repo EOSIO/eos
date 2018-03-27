@@ -19,8 +19,6 @@ void test_action::read_action_normal() {
    char buffer[100];
    uint32_t total = 0;
 
-   eosio_assert( current_receiver() == N(testapi),  "current_receiver() == N(testapi)" );
-
    eosio_assert(action_data_size() == sizeof(dummy_action), "action_size() == sizeof(dummy_action)");
 
    total = read_action_data(buffer, 30);
@@ -131,13 +129,14 @@ void test_action::test_cf_action() {
 
 }
 
-void test_action::require_notice() {
-   if( current_receiver() == N(testapi) ) {
+void test_action::require_notice(uint64_t receiver, uint64_t code, uint64_t action) {
+   (void)code;(void)action;
+   if( receiver == N(testapi) ) {
       eosio::require_recipient( N(acc1) );
       eosio::require_recipient( N(acc2) );
       eosio::require_recipient( N(acc1), N(acc2) );
       eosio_assert(false, "Should've failed");
-   } else if ( current_receiver() == N(acc1) || current_receiver() == N(acc2) ) {
+   } else if ( receiver == N(acc1) || receiver == N(acc2) ) {
       return;
    }
    eosio_assert(false, "Should've failed");
@@ -168,11 +167,12 @@ void test_action::test_publication_time() {
    eosio_assert( pub_time == publication_time(), "pub_time == publication_time()" );
 }
 
-void test_action::test_current_receiver() {
+void test_action::test_current_receiver(uint64_t receiver, uint64_t code, uint64_t action) {
+   (void)code;(void)action;
    account_name cur_rec;
    read_action_data(&cur_rec, sizeof(account_name));
    
-   eosio_assert( current_receiver() == cur_rec, "the current receiver does not match" );
+   eosio_assert( receiver == cur_rec, "the current receiver does not match" );
 }
 
 void test_action::test_current_sender() {

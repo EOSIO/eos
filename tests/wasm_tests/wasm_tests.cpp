@@ -402,6 +402,7 @@ BOOST_FIXTURE_TEST_CASE( simple_no_memory_check, tester ) try {
    act.name = N();
    act.authorization = vector<permission_level>{{N(nomem),config::active_name}};
    trx.actions.push_back(act);
+   trx.expiration = control->head_block_time();
 
    trx.sign(get_private_key( N(nomem), "active" ), chain_id_type());
    BOOST_CHECK_THROW(push_transaction( trx ), wasm_execution_error);
@@ -566,7 +567,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_globals, tester ) try {
    produce_block();
 
    std::stringstream ss;
-   ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64))";
+   ss << "(module (export \"apply\" (func $apply)) (func $apply (param $0 i64) (param $1 i64) (param $2 i64))";
    for(unsigned int i = 0; i < 85; ++i)
       ss << "(global $g" << i << " (mut i32) (i32.const 0))" << "(global $g" << i+100 << " (mut i64) (i64.const 0))";
    //that gives us 1020 bytes of mutable globals
@@ -613,7 +614,7 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
 
    for(const string& s : loadops) {
       std::stringstream ss;
-      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
       ss << "(drop (" << s << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory-2 << " (i32.const 0)))";
       ss << ") (export \"apply\" (func $apply)) )";
 
@@ -622,7 +623,7 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
    }
    for(const vector<string>& o : storeops) {
       std::stringstream ss;
-      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
       ss << "(" << o[0] << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory-2 << " (i32.const 0) (" << o[1] << ".const 0))";
       ss << ") (export \"apply\" (func $apply)) )";
 
@@ -632,7 +633,7 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
 
    for(const string& s : loadops) {
       std::stringstream ss;
-      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
       ss << "(drop (" << s << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory+4 << " (i32.const 0)))";
       ss << ") (export \"apply\" (func $apply)) )";
 
@@ -641,7 +642,7 @@ BOOST_FIXTURE_TEST_CASE( offset_check, tester ) try {
    }
    for(const vector<string>& o : storeops) {
       std::stringstream ss;
-      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) ";
+      ss << "(module (memory $0 " << eosio::chain::wasm_constraints::maximum_linear_memory/(64*1024) << ") (func $apply (param $0 i64) (param $1 i64) (param $2 i64)";
       ss << "(" << o[0] << " offset=" << eosio::chain::wasm_constraints::maximum_linear_memory+4 << " (i32.const 0) (" << o[1] << ".const 0))";
       ss << ") (export \"apply\" (func $apply)) )";
 
@@ -950,7 +951,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
    std::stringstream ss;
    ss << "(module ";
    ss << "(export \"apply\" (func $apply))";
-   ss << "  (func $apply  (param $0 i64) (param $1 i64))";
+   ss << "  (func $apply  (param $0 i64) (param $1 i64) (param $2 i64))";
    ss << "  (func ";
    for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i+=4)
       ss << "(local i32)";
@@ -995,7 +996,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
    std::stringstream ss;
    ss << "(module ";
    ss << "(export \"apply\" (func $apply))";
-   ss << "  (func $apply  (param $0 i64) (param $1 i64))";
+   ss << "  (func $apply  (param $0 i64) (param $1 i64) (param $2 i64))";
    ss << "  (func ";
    for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes+4; i+=4)
       ss << "(local i32)";
@@ -1039,7 +1040,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
    std::stringstream ss;
    ss << "(module ";
    ss << "(export \"apply\" (func $apply))";
-   ss << "  (func $apply  (param $0 i64) (param $1 i64))";
+   ss << "  (func $apply  (param $0 i64) (param $1 i64) (param $2 i64))";
    ss << "  (func ";
    for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes+4; i+=4)
       ss << "(param i32)";
@@ -1054,7 +1055,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
    std::stringstream ss;
    ss << "(module ";
    ss << "(export \"apply\" (func $apply))";
-   ss << "  (func $apply  (param $0 i64) (param $1 i64))";
+   ss << "  (func $apply  (param $0 i64) (param $1 i64) (param $2 i64))";
    ss << "  (func (param i64) (param f32) ";
    for(unsigned int i = 12; i < wasm_constraints::maximum_func_local_bytes; i+=4)
       ss << "(local i32)";
@@ -1067,7 +1068,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
    std::stringstream ss;
    ss << "(module ";
    ss << "(export \"apply\" (func $apply))";
-   ss << "  (func $apply  (param $0 i64) (param $1 i64))";
+   ss << "  (func $apply  (param $0 i64) (param $1 i64) (param $2 i64))";
    ss << "  (func (param i64) (param f32) ";
    for(unsigned int i = 12; i < wasm_constraints::maximum_func_local_bytes+4; i+=4)
       ss << "(local f32)";

@@ -5,8 +5,8 @@
 	CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 )
 
-	DISK_TOTAL=`df -h / | grep /dev | tr -s ' ' | cut -d\  -f2 | sed 's/[^0-9]//'`
-	DISK_AVAIL=`df -h / | grep /dev | tr -s ' ' | cut -d\  -f4 | sed 's/[^0-9]//'`
+	DISK_TOTAL=`df -h . | grep /dev | tr -s ' ' | cut -d\  -f2 | sed 's/[^0-9]//'`
+	DISK_AVAIL=`df -h . | grep /dev | tr -s ' ' | cut -d\  -f4 | sed 's/[^0-9]//'`
 
 	printf "\n\tOS name: $OS_NAME\n"
 	printf "\tOS Version: ${OS_VER}\n"
@@ -54,7 +54,6 @@
 	
 	printf "\t${UPDATE}\n"
 	DEP_ARRAY=( git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 bzip2-devel.x86_64 openssl-devel.x86_64 gmp.x86_64 gmp-devel.x86_64 libstdc++72.x86_64 python36-devel.x86_64 libedit-devel.x86_64 ncurses-devel.x86_64 swig.x86_64 )
-	DCOUNT=0
 	COUNT=1
 	DISPLAY=""
 	DEP=""
@@ -70,14 +69,13 @@
 			DISPLAY="${DISPLAY}${COUNT}. ${DEP_ARRAY[$i]}\n\t"
 			printf "\tPackage ${DEP_ARRAY[$i]} ${bldred} NOT ${txtrst} found.\n"
 			let COUNT++
-			let DCOUNT++
 		else
 			printf "\tPackage ${DEP_ARRAY[$i]} found.\n"
 			continue
 		fi
 	done		
 
-	if [ ${DCOUNT} -ne 0 ]; then
+	if [ ${COUNT} -gt 1 ]; then
 		printf "\n\tThe following dependencies are required to install EOSIO.\n"
 		printf "\n\t$DISPLAY\n\n"
 		printf "\tDo you wish to install these dependencies?\n"
@@ -102,8 +100,7 @@
 		printf "\n\tNo required YUM dependencies to install.\n"
 	fi
 
-	printf "\n\tChecking for CMAKE.\n"
-    # install CMAKE 3.10.2
+	printf "\n\tChecking CMAKE installation.\n"
     if [ ! -e ${CMAKE} ]; then
 		printf "\tInstalling CMAKE\n"
 		mkdir -p ${HOME}/opt/ 2>/dev/null
@@ -129,10 +126,9 @@
 		printf "\tCMAKE found\n"
 	fi
 
-	printf "\n\tChecking for boost libraries\n"
+	printf "\n\tChecking boost library installation.\n"
 	if [ ! -d ${HOME}/opt/boost_1_66_0 ]; then
-		# install boost
-		printf "\tInstalling boost libraries\n"
+		printf "\tInstalling boost libraries.\n"
 		cd ${TEMP_DIR}
 		curl -L https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2 > boost_1.66.0.tar.bz2
 		tar xf boost_1.66.0.tar.bz2
@@ -145,7 +141,7 @@
 		printf "\tBoost 1.66 found at ${HOME}/opt/boost_1_66_0\n"
 	fi
 
-	printf "\n\tChecking for MongoDB installation.\n"
+	printf "\n\tChecking MongoDB installation.\n"
     if [ ! -e ${MONGOD_CONF} ]; then
 		printf "\n\tInstalling MongoDB 3.6.3.\n"
 		cd ${HOME}/opt
@@ -179,8 +175,7 @@ mongodconf
 		printf "\tMongoDB configuration found at ${MONGOD_CONF}.\n"
 	fi
 	
-	printf "\n\tChecking for MongoDB C++ driver.\n"
-    # install libmongocxx.dylib
+	printf "\n\tChecking MongoDB C++ driver installation.\n"
     if [ ! -e /usr/local/lib/libmongocxx.so ]; then
 		cd ${TEMP_DIR}
 		curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
@@ -245,7 +240,7 @@ mongodconf
 		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx.so.\n"
 	fi
 
-	printf "\n\tChecking for secp256k1-zkp\n"
+	printf "\n\tChecking secp256k1-zkp installation.\n"
     # install secp256k1-zkp (Cryptonomex branch)
     if [ ! -e /usr/local/lib/libsecp256k1.a ]; then
 		printf "\tInstalling secp256k1-zkp (Cryptonomex branch)\n"
@@ -268,35 +263,32 @@ mongodconf
 		sudo make install
 		rm -rf cd ${TEMP_DIR}/secp256k1-zkp
 	else
-		printf "\tsecp256k1 found\n"
+		printf "\tsecp256k1 found.\n"
 	fi
 
-   printf "\n\tChecking for SoftFloat\n"
-   if [ ! -d ${HOME}/opt/berkeley-softfloat-3 ]; then
-      # clone the library
+	printf "\n\tChecking for SoftFloat\n"
+	if [ ! -d ${HOME}/opt/berkeley-softfloat-3 ]; then
 		cd ${TEMP_DIR}
-      mkdir softfloat
-      cd softfloat
-      git clone --depth 1 --single-branch --branch master https://github.com/ucb-bar/berkeley-softfloat-3.git
-      cd berkeley-softfloat-3/build/Linux-x86_64-GCC
-      make -j${CPU_CORE} SPECIALIZE_TYPE="8086-SSE" SOFTFLOAT_OPS="-DSOFTFLOAT_ROUND_EVEN -DINLINE_LEVEL=5 -DSOFTFLOAT_FAST_DIV32TO16 -DSOFTFLOAT_FAST_DIV64TO32"
-      if [ $? -ne 0 ]; then
-         printf "\tError compiling softfloat.\n"
-         printf "\tExiting now.\n\n"
-         exit;
-      fi
-      # no install target defined for this library
-      mkdir -p ${HOME}/opt/berkeley-softfloat-3
-      cp softfloat.a ${HOME}/opt/berkeley-softfloat-3/libsoftfloat.a
-      mv ${TEMP_DIR}/softfloat/berkeley-softfloat-3/source/include ${HOME}/opt/berkeley-softfloat-3/include
+		mkdir softfloat
+		cd softfloat
+		git clone --depth 1 --single-branch --branch master https://github.com/ucb-bar/berkeley-softfloat-3.git
+		cd berkeley-softfloat-3/build/Linux-x86_64-GCC
+		make -j${CPU_CORE} SPECIALIZE_TYPE="8086-SSE" SOFTFLOAT_OPS="-DSOFTFLOAT_ROUND_EVEN -DINLINE_LEVEL=5 -DSOFTFLOAT_FAST_DIV32TO16 -DSOFTFLOAT_FAST_DIV64TO32"
+		if [ $? -ne 0 ]; then
+			printf "\tError compiling softfloat.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		mkdir -p ${HOME}/opt/berkeley-softfloat-3
+		cp softfloat.a ${HOME}/opt/berkeley-softfloat-3/libsoftfloat.a
+		mv ${TEMP_DIR}/softfloat/berkeley-softfloat-3/source/include ${HOME}/opt/berkeley-softfloat-3/include
 		rm -rf ${TEMP_DIR}/softfloat
 	else
-		printf "\tsoftfloat found at /usr/local/berkeley-softfloat-3/\n"
-   fi
+		printf "\tsoftfloat found at /usr/local/berkeley-softfloat-3/.\n"
+	fi
 
-	printf "\n\tChecking for LLVM with WASM support.\n"
+	printf "\n\tChecking LLVM with WASM support.\n"
 	if [ ! -d ${HOME}/opt/wasm/bin ]; then
-		# Build LLVM and clang with EXPERIMENTAL WASM support:
 		printf "\tInstalling LLVM & WASM\n"
 		cd ${TEMP_DIR}
 		mkdir llvm-compiler  2>/dev/null

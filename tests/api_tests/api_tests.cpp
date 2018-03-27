@@ -124,6 +124,7 @@ template <typename T>
 transaction_trace CallAction(tester& test, T ac, const vector<account_name>& scope = {N(testapi)}) {
    signed_transaction trx;
 
+
    auto pl = vector<permission_level>{{scope[0], config::active_name}};
    if (scope.size() > 1)
       for (int i = 1; i < scope.size(); i++)
@@ -380,7 +381,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
 
    dummy_action da = { DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C };
    CallAction(*this, da);
-  
+
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
@@ -389,6 +390,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
 BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       produce_blocks(2);
       create_account( N(testapi) );
+      create_account( N(dummy) );
       produce_blocks(1000);
       set_code( N(testapi), test_api_wast );
       produce_blocks(1);
@@ -416,7 +418,6 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
                                }
          );
       }
-
       {
          cf_action cfa;
          signed_transaction trx;
@@ -443,6 +444,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
          trx.actions.clear();
          trx.actions.push_back(act2);
          // run normal passing case
+         set_tapos(trx);
          sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
          BOOST_CHECK_EXCEPTION(push_transaction(trx), fc::assert_exception,
                                [](const fc::assert_exception& e) {
@@ -475,6 +477,23 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
 
          produce_block();
       }
+      // test send context free action
+      auto ttrace = CALL_TEST_FUNCTION( *this, "test_transaction", "send_cf_action", {} );
+      BOOST_CHECK_EQUAL(ttrace.action_traces.size(), 2);
+      BOOST_CHECK_EQUAL(ttrace.action_traces[1].receiver == account_name("dummy"), true);
+      BOOST_CHECK_EQUAL(ttrace.action_traces[1].act.account == account_name("dummy"), true);
+      BOOST_CHECK_EQUAL(ttrace.action_traces[1].act.name == account_name("event1"), true);
+      BOOST_CHECK_EQUAL(ttrace.action_traces[1].act.authorization.size(), 0);
+
+      BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_transaction", "send_cf_action_fail", {} ), fc::assert_exception,
+           [](const fc::assert_exception& e) {
+              return expect_assert_message(e, "context free actions cannot have authorizations");
+           }
+      );
+
+      CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_action", {} );
+      CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_cf_action", {} );
+
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
@@ -492,13 +511,17 @@ BOOST_FIXTURE_TEST_CASE(checktime_pass_tests, tester) { try {
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_AUTO_TEST_CASE(checktime_fail_tests) {
-   try {
-      tester t( {fc::milliseconds(1), fc::milliseconds(1)} );
-      t.produce_blocks(2);
+BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
+	// TODO: This is an extremely fragile test. It needs improvements:
+	//       1) compilation of the smart contract should probably not count towards the CPU time of a transaction that first uses it;
+	//       2) checktime should eventually switch to a deterministic metric which should hopefully fix the inconsistencies
+	//          of this test succeeding/failing on different machines (for example, succeeding on our local dev machines but failing on Jenkins).
+   tester t( {fc::milliseconds(5000), fc::milliseconds(5000)} );
+   t.produce_blocks(2);
 
-      t.create_account( N(testapi) );
-      t.set_code( N(testapi), test_api_wast );
+   t.create_account( N(testapi) );
+   t.set_code( N(testapi), test_api_wast );
+   t.produce_blocks(1);
 
    auto call_test = [](tester& test, auto ac) {
 		signed_transaction trx;
@@ -517,8 +540,8 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) {
 
    BOOST_CHECK_EXCEPTION(call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{}), checktime_exceeded, is_checktime_exceeded);
 
-   } FC_LOG_AND_RETHROW();
-}
+} FC_LOG_AND_RETHROW() }
+
 /*************************************************************************************
  * compiler_builtins_tests test case
  *************************************************************************************/
@@ -595,8 +618,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
    // test send_action_large
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), fc::assert_exception,
          [](const fc::assert_exception& e) {
-            return expect_assert_message(e, "abort()");
-            //return expect_assert_message(e, "data_len < config::default_max_inline_action_size: inline action too big");
+            return expect_assert_message(e, "data_len < config::default_max_inline_action_size: inline action too big");
          }
       );
 

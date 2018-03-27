@@ -1,13 +1,60 @@
 #pragma once
 #include <eosio/chain/chain_controller.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
+#include <fc/io/json.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/test/unit_test.hpp>
 
-#include <iostream>
+#include <iosfwd>
+
+#define REQUIRE_EQUAL_OBJECTS(left, right) { auto a = fc::variant( left ); auto b = fc::variant( right ); BOOST_REQUIRE_EQUAL( true, a.is_object() ); \
+   BOOST_REQUIRE_EQUAL( true, b.is_object() ); \
+   BOOST_REQUIRE_EQUAL_COLLECTIONS( a.get_object().begin(), a.get_object().end(), b.get_object().begin(), b.get_object().end() ); }
+
+#define REQUIRE_MATCHING_OBJECT(left, right) { auto a = fc::variant( left ); auto b = fc::variant( right ); BOOST_REQUIRE_EQUAL( true, a.is_object() ); \
+   BOOST_REQUIRE_EQUAL( true, b.is_object() ); \
+   auto filtered = ::eosio::testing::filter_fields( a.get_object(), b.get_object() ); \
+   BOOST_REQUIRE_EQUAL_COLLECTIONS( a.get_object().begin(), a.get_object().end(), filtered.begin(), filtered.end() ); }
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant& v );
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant_object& v );
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant_object::entry& e );
+
+namespace boost { namespace test_tools { namespace tt_detail {
+
+   template<>
+   struct print_log_value<fc::variant> {
+      void operator()( std::ostream& osm, const fc::variant& v )
+      {
+         ::operator<<( osm, v );
+      }
+   };                       
+
+   template<>
+   struct print_log_value<fc::variant_object> {
+      void operator()( std::ostream& osm, const fc::variant_object& v )
+      {
+         ::operator<<( osm, v );
+      }
+   };
+
+   template<>
+   struct print_log_value<fc::variant_object::entry> {
+      void operator()( std::ostream& osm, const fc::variant_object::entry& e )
+      {
+         ::operator<<( osm, e );
+      }
+   };
+
+} } }
 
 namespace eosio { namespace testing {
 
    using namespace eosio::chain;
+
+   fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value);
 
    /**
     *  @class tester
@@ -57,6 +104,7 @@ namespace eosio { namespace testing {
          transaction_trace push_dummy(account_name from, const string& v = "blah");
          transaction_trace transfer( account_name from, account_name to, asset amount, string memo, account_name currency );
          transaction_trace transfer( account_name from, account_name to, string amount, string memo, account_name currency );
+         transaction_trace issue( account_name to, string amount, account_name currency );
 
          template<typename ObjectType>
          const auto& get(const chainbase::oid< ObjectType >& key) {
@@ -89,6 +137,8 @@ namespace eosio { namespace testing {
          asset                         get_currency_balance( const account_name& contract,
                                                              const symbol&       asset_symbol,
                                                              const account_name& account ) const;
+
+        vector<char> get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act );
 
         static vector<uint8_t> to_uint8_vector(const string& s);
 
@@ -149,5 +199,5 @@ namespace eosio { namespace testing {
       string expected;
    };
 
-
 } } /// eosio::testing
+

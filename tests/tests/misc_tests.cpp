@@ -50,27 +50,27 @@ BOOST_AUTO_TEST_CASE(median_properties_test)
    try
    {
       vector<chain_config> votes{
-          {512 , 1024 , 256, 512 , 512 , 1024 , 1000, 4096, 512 , 6, 1000 , 3, 4096, 65536},
-          {100 , 10000, 50 , 5000, 100 , 10000, 500 , 4096, 100 , 6, 3000 , 2, 4096, 65536},
-          {1500, 2048 , 750, 1024, 1500, 2048 , 300 , 1000, 1500, 6, 5000 , 9, 4096, 65536},
-          {25  , 100  , 12 , 50  , 25  , 100  , 1200, 1024, 25  , 6, 10000, 4, 4096, 65536},
-          {1000, 1024 , 500, 512 , 10  , 1024 , 1500, 100 , 1000, 6, 4000 , 1, 4096, 65536}};
+          {512 , 1024 , 256, 512 , 512 , 1024 , 4096, 512 , 1000 , 6, 3, 4096, 65536},
+          {100 , 10000, 50 , 5000, 100 , 10000, 4096, 100 , 3000 , 6, 2, 4096, 65536},
+          {1500, 2048 , 750, 1024, 1500, 2048 , 1000, 1500, 5000 , 6, 9, 4096, 65536},
+          {25  , 100  , 12 , 50  , 25  , 100  , 1024, 25  , 10000, 6, 4, 4096, 65536},
+          {1000, 1024 , 500, 512 , 10  , 1024 , 100 , 1000, 4000 , 6, 1, 4096, 65536}};
 
       chain_config medians{
-          512, 1024, 256, 512, 100, 1024, 1000, 1024, 512, 6, 4000, 3, 4096, 65536};
+          512, 1024, 256, 512, 100, 1024, 1024, 512, 4000, 6, 3, 4096, 65536};
 
       BOOST_TEST(chain_config::get_median_values(votes) == medians);
 
-      votes.emplace_back(chain_config{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-      votes.emplace_back(chain_config{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-      medians = chain_config{100, 1024, 50, 512, 25, 1024, 500, 1000, 100, 6, 3000, 2, 4096, 65536};
+      votes.emplace_back(chain_config{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+      votes.emplace_back(chain_config{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+      medians = chain_config{100, 1024, 50, 512, 25, 1024, 1000, 100, 3000, 6, 2, 4096, 65536};
 
       BOOST_TEST(chain_config::get_median_values(votes) == medians);
       BOOST_TEST(chain_config::get_median_values({medians}) == medians);
 
       votes.erase(votes.begin() + 2);
       votes.erase(votes.end() - 1);
-      medians = chain_config{100, 1024, 50, 512, 25, 1024, 1000, 1024, 100, 6, 3000, 2, 4096, 65536};
+      medians = chain_config{100, 1024, 50, 512, 25, 1024, 1024, 100, 3000, 6, 2, 4096, 65536};
       BOOST_TEST(chain_config::get_median_values(votes) == medians);
    }
    FC_LOG_AND_RETHROW()
@@ -249,7 +249,7 @@ BOOST_AUTO_TEST_CASE(authority_checker)
          return authority(2, {key_weight{d, 1}}, {permission_level_weight{{"bottom",  "bottom"}, 1}});
       return authority{1, {{e, 1}}, {}};
    };
-   
+
    A = authority(5, {key_weight{a, 2}, key_weight{b, 2}, key_weight{c, 2}}, {permission_level_weight{{"top",  "top"}, 5}});
    {
       auto checker = make_auth_checker(GetAuthority, 2, {d, e});

@@ -18,18 +18,13 @@
 #include "test_checktime.cpp"
 
 extern "C" {
-
-    void init()  {
-
-    }
-
-   void apply( unsigned long long code, unsigned long long action ) {
+   void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
       if ( action == N(cf_action) ) {
          test_action::test_cf_action();
          return;
       }
       require_auth(code); 
-      //eosio::print("==> CONTRACT: ", code, " ", action, "\n");
+
       //test_types
       WASM_TEST_HANDLER(test_types, types_size);
       WASM_TEST_HANDLER(test_types, char_to_symbol);
@@ -55,13 +50,13 @@ extern "C" {
       WASM_TEST_HANDLER(test_action, read_action_normal);
       WASM_TEST_HANDLER(test_action, read_action_to_0);
       WASM_TEST_HANDLER(test_action, read_action_to_64k);
-      WASM_TEST_HANDLER(test_action, require_notice);
+      WASM_TEST_HANDLER_EX(test_action, require_notice);
       WASM_TEST_HANDLER(test_action, require_auth);
       WASM_TEST_HANDLER(test_action, assert_false);
       WASM_TEST_HANDLER(test_action, assert_true);
       WASM_TEST_HANDLER(test_action, now);
       WASM_TEST_HANDLER(test_action, test_abort);
-      WASM_TEST_HANDLER(test_action, test_current_receiver);
+      WASM_TEST_HANDLER_EX(test_action, test_current_receiver);
       WASM_TEST_HANDLER(test_action, test_current_sender);
       WASM_TEST_HANDLER(test_action, test_publication_time);
 
@@ -124,6 +119,10 @@ extern "C" {
       WASM_TEST_HANDLER(test_transaction, send_transaction_empty);
       WASM_TEST_HANDLER(test_transaction, send_transaction_large);
       WASM_TEST_HANDLER(test_transaction, send_action_sender);
+      WASM_TEST_HANDLER(test_transaction, send_cf_action);
+      WASM_TEST_HANDLER(test_transaction, send_cf_action_fail);
+      WASM_TEST_HANDLER(test_transaction, read_inline_action);
+      WASM_TEST_HANDLER(test_transaction, read_inline_cf_action);
 
       //test chain
       WASM_TEST_HANDLER(test_chain, test_activeprods);
@@ -146,14 +145,6 @@ extern "C" {
       // test checktime
       WASM_TEST_HANDLER(test_checktime, checktime_pass);
       WASM_TEST_HANDLER(test_checktime, checktime_failure);
-/*      
-      // test softfloat
-      WASM_TEST_HANDLER(test_softfloat, test_f32_add);
-      WASM_TEST_HANDLER(test_softfloat, test_f32_sub);
-      WASM_TEST_HANDLER(test_softfloat, test_f32_mul);
-      WASM_TEST_HANDLER(test_softfloat, test_f32_div);
-      WASM_TEST_HANDLER(test_softfloat, test_f32_min);
-*/
 
       //unhandled test call
       eosio_assert(false, "Unknown Test");

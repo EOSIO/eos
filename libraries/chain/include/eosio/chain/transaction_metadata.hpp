@@ -9,9 +9,6 @@
 namespace eosio { namespace chain {
 
 class transaction_metadata {
-//   transaction_metadata( const transaction& t )
-//      :trx(t)
-//      ,id(trx.id()) {}
    public:
       transaction_metadata( const transaction& t, const time_point& published, const account_name& sender, uint32_t sender_id, const char* raw_data, size_t raw_size )
          :id(t.id())
@@ -67,7 +64,7 @@ class transaction_metadata {
 
       static digest_type calculate_transaction_merkle_root( const vector<transaction_metadata>& metas );
    private:
-      const transaction* _trx;
+      const transaction* _trx = nullptr;
 };
 
 } } // eosio::chain

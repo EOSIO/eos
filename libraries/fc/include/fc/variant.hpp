@@ -633,11 +633,12 @@ namespace fc
    variant operator - ( const variant& a, const variant& b );
    variant operator * ( const variant& a, const variant& b );
    variant operator / ( const variant& a, const variant& b );
-   variant operator == ( const variant& a, const variant& b );
-   variant operator != ( const variant& a, const variant& b );
-   variant operator < ( const variant& a, const variant& b );
-   variant operator > ( const variant& a, const variant& b );
-   variant operator ! ( const variant& a );
+
+   bool operator == ( const variant& a, const variant& b );
+   bool operator != ( const variant& a, const variant& b );
+   bool operator < ( const variant& a, const variant& b );
+   bool operator > ( const variant& a, const variant& b );
+   bool operator ! ( const variant& a );
 } // namespace fc
 
 #include <fc/reflect/reflect.hpp>

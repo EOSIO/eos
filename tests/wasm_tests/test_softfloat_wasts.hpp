@@ -21355,7 +21355,7 @@ static const char f32_f64_conv_wast[] = R"=====(
    )
    (func $assert_return_nan32 (param $0 f32) (param $1 i32)( call $eosio_assert (call $is_nan32 (get_local $0)) (get_local $1)))
    (func $assert_return_nan64 (param $0 f64) (param $1 i32)( call $eosio_assert (call $is_nan64 (get_local $0)) (get_local $1)))
-   (func $apply (param $0 i64)(param $1 i64)
+   (func $apply (param $0 i64)(param $1 i64)(param $2 i64)
     (call $assert_returnf64 (call $f64_promote_f32 (f32.const 0.0)) (f64.const 0.0) (i32.const 20))
     (call $assert_returnf64 (call $f64_promote_f32 (f32.const -0.0)) (f64.const -0.0) (i32.const 24))
     (call $assert_returnf64 (call $f64_promote_f32 (f32.const 0x1p-149)) (f64.const 0x1p-149) (i32.const 28))

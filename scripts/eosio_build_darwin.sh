@@ -5,7 +5,7 @@
 
 	MEM_GIG=`bc <<< "($(sysctl -in hw.memsize) / 1024000000)"`
 
-	CPU_SPEED=`bc <<< "scale=2; ($(sysctl -in hw.cpufrequency) / 100000000) / 10"`
+	CPU_SPEED=`bc <<< "scale=2; ($(sysctl -in hw.cpufrequency) / 10^6) / 10"`
 	CPU_CORE=$( sysctl -in machdep.cpu.core_count )
 
 	blksize=`df . | head -1 | awk '{print $2}' | cut -d- -f1`
@@ -22,7 +22,7 @@
 	printf "\tPhysical Memory: $MEM_GIG Gbytes\n"
 	printf "\tDisk space total: ${DISK_TOTAL}G\n"
 	printf "\tDisk space available: ${DISK_AVAIL}G\n\n"
-	
+
 	if [ $MEM_GIG -lt 8 ]; then
 		echo "Your system must have 8 or more Gigabytes of physical memory installed."
 		echo "Exiting now."
@@ -100,7 +100,7 @@
 			printf '\t\t %s found\n' "$name"
 			continue
 		fi
-		# resolve conflict with homebrew glibtool and apples install of libtool
+		# resolve conflict with homebrew glibtool and apple/gnu installs of libtool
 		if [ ${testee} == "/usr/local/bin/glibtool" ]; then
 			if [ ${tester} "/usr/local/bin/libtool" ]; then
 				printf '\t\t %s found\n' "$name"
@@ -117,6 +117,16 @@
 		let COUNT++
 	done < scripts/eosio_build_dep
 	IFS=${var_ifs}
+		
+	printf "\tChecking Python3 ... "
+	if [ `python --version | tr - ' ' | cut -d ' ' -f2 | cut -d'.' -f1` != ${PYTHON_MIN} ]; then
+		DEP=$DEP"python@${PYTHON_MIN} "
+		DISPLAY="${DISPLAY}${COUNT}. Python 3\n\t"
+		printf "\t\t python${PYTHON_MIN} ${bldred}NOT${txtrst} found.\n"
+		let DCOUNT++
+	else
+		printf "\t\t Python3 found\n"
+	fi
 
 	if [ $DCOUNT -ne 0 ]; then
 		printf "\n\tThe following dependencies are required to install EOSIO.\n"

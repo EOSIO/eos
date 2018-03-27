@@ -478,7 +478,7 @@ void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_bl
                for (const auto& trx : trx_trace.deferred_transactions) {
                   auto doc = process_trx(trx);
                   doc.append(kvp("type", "deferred"),
-                             kvp("sender_id", b_int64{trx.sender_id}),
+                             kvp("sender_id", b_int64{static_cast<int64_t>(trx.sender_id)}),
                              kvp("sender", trx.sender.to_string()),
                              kvp("execute_after", b_date{std::chrono::milliseconds{
                                    std::chrono::seconds{trx.execute_after.sec_since_epoch()}}}));
@@ -517,6 +517,14 @@ void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_bl
             subarr.append(fc::variant(sig).as_string());
          }
       }));
+      mongocxx::model::insert_one insert_op{doc.view()};
+      bulk_trans.append(insert_op);
+      ++trx_num;
+   }
+
+   for (const auto& implicit_trx : bt.implicit_transactions ){
+      auto doc = process_trx(implicit_trx);
+      doc.append(kvp("type", "implicit"));
       mongocxx::model::insert_one insert_op{doc.view()};
       bulk_trans.append(insert_op);
       ++trx_num;

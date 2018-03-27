@@ -10,8 +10,6 @@ using namespace eosio::testing;
 
 BOOST_AUTO_TEST_SUITE(block_tests)
 
-
-
 BOOST_AUTO_TEST_CASE( schedule_test ) { try {
   tester test;
 
@@ -125,6 +123,7 @@ BOOST_AUTO_TEST_CASE(irrelevant_auth) {
                                         .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
                                         .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
                                 });
+      chain.set_tapos(trx);
       trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
 
       chain.push_transaction(trx, skip_transaction_signatures);
@@ -204,8 +203,11 @@ BOOST_AUTO_TEST_CASE(order_dependent_transactions)
       BOOST_TEST(chain.control->fetch_block_by_number(11).valid());
       BOOST_TEST_REQUIRE(!chain.control->fetch_block_by_number(11)->regions.empty());
       BOOST_TEST_REQUIRE(!chain.control->fetch_block_by_number(11)->regions.front().cycles_summary.empty());
+      BOOST_TEST_REQUIRE(chain.control->fetch_block_by_number(11)->regions.front().cycles_summary.size() >= 1);
+      // First cycle has only on-block transaction
       BOOST_TEST(!chain.control->fetch_block_by_number(11)->regions.front().cycles_summary.front().empty());
-      BOOST_TEST(chain.control->fetch_block_by_number(11)->regions.front().cycles_summary.front().front().transactions.size() == 2);
+      BOOST_TEST(chain.control->fetch_block_by_number(11)->regions.front().cycles_summary.front().front().transactions.size() == 1);
+      BOOST_TEST(chain.control->fetch_block_by_number(11)->regions.front().cycles_summary.at(1).front().transactions.size() == 2);
    } FC_LOG_AND_RETHROW() }
 
 // Simple test of block production when a block is missed
@@ -579,13 +581,14 @@ BOOST_AUTO_TEST_CASE(wipe)
       }
 
    } FC_LOG_AND_RETHROW() }
-
 BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
    try {
       tester chain;
 
       // Make an account, but add an extra signature to the transaction
       signed_transaction trx;
+      chain.set_tapos(trx);
+
       name new_account_name = name("alice");
       authority owner_auth = authority( chain.get_public_key( new_account_name, "owner" ) );
 
@@ -616,5 +619,6 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
       BOOST_TEST((newchain.find<account_object, by_name>("alice")) != nullptr);
    } FC_LOG_AND_RETHROW()
 }
+
 
 BOOST_AUTO_TEST_SUITE_END()

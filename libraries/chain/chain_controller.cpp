@@ -255,10 +255,12 @@ transaction_trace chain_controller::push_transaction(const packed_transaction& t
          return _push_transaction(trx);
       });
    });
-} FC_CAPTURE_AND_RETHROW((trx)) }
+} FC_CAPTURE_AND_RETHROW() }
 
-transaction_trace chain_controller::_push_transaction(const packed_transaction& trx) {
+transaction_trace chain_controller::_push_transaction(const packed_transaction& trx) 
+{ try {
    transaction_metadata   mtrx( trx, get_chain_id(), head_block_time());
+
    check_transaction_authorization(mtrx.trx(), trx.signatures);
    auto result = _push_transaction(std::move(mtrx));
 
@@ -269,7 +271,7 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
 
    return result;
 
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 static void record_locks_for_data_access(const vector<action_trace>& action_traces, vector<shard_lock>& read_locks, vector<shard_lock>& write_locks ) {
    for (const auto& at: action_traces) {
@@ -284,12 +286,13 @@ static void record_locks_for_data_access(const vector<action_trace>& action_trac
 }
 
 transaction_trace chain_controller::_push_transaction( transaction_metadata&& data )
-{
+{ try {
    if (_limits.max_push_transaction_us.count() > 0) {
       data.processing_deadline = fc::time_point::now() + _limits.max_push_transaction_us;
    }
 
    const transaction& trx = data.trx();
+
    // If this is the first transaction pushed after applying a block, start a new undo session.
    // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
    if( !_pending_block ) {
@@ -330,6 +333,17 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata&& da
    _pending_transaction_metas.emplace_back(std::forward<transaction_metadata>(data));
 
    return result;
+} FC_CAPTURE_AND_RETHROW() }
+
+
+block_header chain_controller::head_block_header() const
+{
+   auto b = _fork_db.fetch_block(head_block_id());
+   if( b ) return b->data;
+   
+   if (auto head_block = fetch_block_by_id(head_block_id()))
+      return *head_block;
+   return block_header();
 }
 
 void chain_controller::_start_pending_block()
@@ -341,6 +355,31 @@ void chain_controller::_start_pending_block()
    _pending_block->regions.resize(1);
    _pending_block_trace->region_traces.resize(1);
    _start_pending_cycle();
+   _apply_on_block_transaction();
+   _finalize_pending_cycle();
+   _start_pending_cycle();
+}
+
+transaction chain_controller::_get_on_block_transaction()
+{
+   action on_block_act;
+   on_block_act.account = config::system_account_name;
+   on_block_act.name = N(onblock);
+   on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
+   on_block_act.data = fc::raw::pack(head_block_header());
+
+   transaction trx;
+   trx.actions.emplace_back(std::move(on_block_act));
+   trx.set_reference_block(head_block_id());
+   trx.expiration = head_block_time() + fc::seconds(1);
+   return trx;
+}
+
+void chain_controller::_apply_on_block_transaction()
+{
+   _pending_block_trace->implicit_transactions.emplace_back(_get_on_block_transaction());
+   transaction_metadata mtrx(packed_transaction(_pending_block_trace->implicit_transactions.back()), get_chain_id(), head_block_time());
+   _push_transaction(std::move(mtrx));
 }
 
 /**
@@ -603,18 +642,22 @@ void chain_controller::__apply_block(const signed_block& next_block)
    for( uint32_t i = 1; i < next_block.regions.size(); ++i )
       FC_ASSERT( next_block.regions[i-1].region < next_block.regions[i].region );
 
+   block_trace next_block_trace(next_block);
 
    /// cache the input tranasction ids so that they can be looked up when executing the
    /// summary
    vector<transaction_metadata> input_metas;
-   input_metas.reserve(next_block.input_transactions.size());
+   input_metas.reserve(next_block.input_transactions.size() + 1);
+   {
+      next_block_trace.implicit_transactions.emplace_back(_get_on_block_transaction());
+      input_metas.emplace_back(packed_transaction(next_block_trace.implicit_transactions.back()), get_chain_id(), head_block_time());
+   }
    map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
       input_metas.emplace_back(t, chain_id_type(), next_block.timestamp);
       trx_index[input_metas.back().id] =  input_metas.size() - 1;
    }
 
-   block_trace next_block_trace(next_block);
    next_block_trace.region_traces.reserve(next_block.regions.size());
 
    for( const auto& r : next_block.regions ) {
@@ -664,12 +707,20 @@ void chain_controller::__apply_block(const signed_block& next_block)
                 auto make_metadata = [&]() -> transaction_metadata* {
                   auto itr = trx_index.find(receipt.id);
                   if( itr != trx_index.end() ) {
+                     ilog( "input" );
                      return &input_metas.at(itr->second);
                   } else {
-                     const auto& gtrx = _db.get<generated_transaction_object,by_trx_id>(receipt.id);
-                     auto trx = fc::raw::unpack<deferred_transaction>(gtrx.packed_trx.data(), gtrx.packed_trx.size());
-                     _temp.emplace(trx, gtrx.published, trx.sender, trx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() );
-                     return &*_temp;
+                     ilog( "defer" );
+                     const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
+                     if (gtrx != nullptr) {
+                        auto trx = fc::raw::unpack<deferred_transaction>(gtrx->packed_trx.data(), gtrx->packed_trx.size());
+                        _temp.emplace(trx, gtrx->published, trx.sender, trx.sender_id, gtrx->packed_trx.data(), gtrx->packed_trx.size() );
+                        return &*_temp;
+                     } else {
+                        const auto& mtrx = input_metas[0];
+                        FC_ASSERT(mtrx.id == receipt.id, "on-block transaction id mismatch");
+                        return &input_metas[0];
+                     }
                   }
                };
 
@@ -680,6 +731,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                mtrx->allowed_read_locks.emplace(&shard.read_locks);
                mtrx->allowed_write_locks.emplace(&shard.write_locks);
                mtrx->processing_deadline = processing_deadline;
+               ilog( "." );
 
                s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
                record_locks_for_data_access(s_trace.transaction_traces.back().action_traces, used_read_locks, used_write_locks);
@@ -961,7 +1013,6 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
       {
           FC_ASSERT( schedule == *b.new_producers, "pending producer set different than expected" );
       }
-
       const auto& gpo = get_global_properties();
 
       if( _head_producer_schedule() != schedule ) {
@@ -1061,12 +1112,6 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<contracts::index128_index>();
    _db.add_index<contracts::index256_index>();
    _db.add_index<contracts::index_double_index>();
-
-
-   _db.add_index<contracts::keystr_value_index>();
-   _db.add_index<contracts::key128x128_value_index>();
-   _db.add_index<contracts::key64x64_value_index>();
-   _db.add_index<contracts::key64x64x64_value_index>();
 
    _db.add_index<global_property_multi_index>();
    _db.add_index<dynamic_global_property_multi_index>();
@@ -1353,12 +1398,11 @@ void chain_controller::clear_expired_transactions()
 { try {
    //Look for expired transactions in the deduplication list, and remove them.
    //transactions must have expired by at least two forking windows in order to be removed.
-   /*
    auto& transaction_idx = _db.get_mutable_index<transaction_multi_index>();
    const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
-   while( (!dedupe_index.empty()) && (head_block_time() > dedupe_index.rbegin()->expiration) )
+   while( (!dedupe_index.empty()) && (head_block_time() > fc::time_point(dedupe_index.rbegin()->expiration) ) )
       transaction_idx.remove(*dedupe_index.rbegin());
-      */
+
    //Look for expired transactions in the pending generated list, and remove them.
    //transactions must have expired by at least two forking windows in order to be removed.
    auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
@@ -1430,12 +1474,15 @@ static void log_handled_exceptions(const transaction& trx) {
    } FC_CAPTURE_AND_LOG((trx));
 }
 
-transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta ) {
+transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta ) 
+{ try {
    transaction_trace result(meta.id);
    EOS_ASSERT( !meta.trx().actions.empty(), tx_no_action, "transactions require at least one context-sensitive action" );
    // first check for at least one valid action
    for (const auto& act : meta.trx().actions)
       EOS_ASSERT( !act.authorization.empty(), action_missing_auth, "context-sensitive actions require at least one authorization" );
+
+   validate_transaction( meta.trx() );
 
    for (const auto &act : meta.trx().context_free_actions) {
       EOS_ASSERT( act.authorization.empty(), cfa_irrelevant_auth, "context-free actions cannot require authorization" );
@@ -1474,9 +1521,10 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
    update_usage(meta, act_usage);
    record_transaction(meta.trx());
    return result;
-}
+} FC_CAPTURE_AND_RETHROW() }
 
-transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta ) {
+transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta ) 
+{ try {
    try {
       auto temp_session = _db.start_undo_session(true);
       auto result = __apply_transaction(meta);
@@ -1492,7 +1540,7 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
 
       return _apply_error( meta );
    }
-}
+} FC_CAPTURE_AND_RETHROW() }
 
 transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    transaction_trace result(meta.id);
