@@ -48,10 +48,6 @@ namespace eosio { namespace chain { namespace contracts {
       );
    }
 
-   struct symbol_name {
-      uint64_t value;
-   };
-
    abi_serializer::abi_serializer( const abi_def& abi ) {
       configure_built_in_types();
       set_abi(abi);
@@ -328,14 +324,3 @@ namespace eosio { namespace chain { namespace contracts {
    }
 
 } } }
-
-namespace fc {
-   inline void to_variant(const eosio::chain::contracts::symbol_name& var, fc::variant& vo) {
-      vo = eosio::chain::symbol(var.value << 8).name();
-   }
-   inline void from_variant(const fc::variant& var, eosio::chain::contracts::symbol_name& vo) {
-      vo.value = (eosio::chain::symbol(0, var.get_string().c_str()).value() >> 8);
-   }
-}
-
-FC_REFLECT(eosio::chain::contracts::symbol_name, (value))
