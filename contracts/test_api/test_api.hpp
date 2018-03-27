@@ -231,6 +231,8 @@ struct test_transaction {
   static void send_action_sender();
   static void send_cf_action();
   static void send_cf_action_fail();
+  static void read_inline_action();
+  static void read_inline_cf_action();
 };
 
 struct test_chain {

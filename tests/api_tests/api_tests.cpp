@@ -474,6 +474,9 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
            }
       );
 
+      CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_action", {} );
+      CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_cf_action", {} );
+
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************

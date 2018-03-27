@@ -322,6 +322,16 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
          return -1;
       act = &trx.actions[index];
    }
+   else if( type == 2 ) {
+      if( index >= _cfa_inline_actions.size() )
+         return -1;
+      act = &_cfa_inline_actions[index];
+   }
+   else if( type == 3 ) {
+      if( index >= _inline_actions.size() )
+         return -1;
+      act = &_inline_actions[index];
+   }
 
    auto ps = fc::raw::pack_size( *act );
    if( ps <= buffer_size ) {
