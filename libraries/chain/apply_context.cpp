@@ -222,10 +222,8 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
 
       FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
 
-      if (trx.payer != account_name(0)) {
+      if (trx.payer != receiver) {
          require_authorization(trx.payer);
-      } else {
-         trx.payer = trx.sender;
       }
 
       // privileged accounts can do anything, no need to check auth

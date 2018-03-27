@@ -862,7 +862,7 @@ void chain_controller::update_resource_usage( transaction_trace& trace, const tr
    vector<account_name> bill_to_accounts;
    bill_to_accounts.reserve(authorizations.size());
    for( const auto& ap : authorizations ) {
-      bill_to_accounts.push_back(ap.second);
+      bill_to_accounts.push_back(ap.first);
    }
 
    _resource_limits.add_account_usage(bill_to_accounts, trace.cpu_usage, trace.net_usage, head_block_num());

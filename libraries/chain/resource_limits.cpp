@@ -45,7 +45,11 @@ void resource_limits_manager::initialize_chain() {
 }
 
 void resource_limits_manager::initialize_account(const account_name& account) {
-   _db.create<resource_limits_object>([&]( resource_limits_object& bu ) {
+   _db.create<resource_limits_object>([&]( resource_limits_object& bl ) {
+      bl.owner = account;
+   });
+
+   _db.create<resource_usage_object>([&]( resource_usage_object& bu ) {
       bu.owner = account;
    });
 }
@@ -154,19 +158,6 @@ void resource_limits_manager::set_account_limits( const account_name& account, i
       pending_limits.net_weight = net_weight;
       pending_limits.cpu_weight = cpu_weight;
    });
-
-   // TODO: make this thread safe when we need it
-   // Currently, we have no parallel way of protecting the invariant that we don't overcommit the chain ram bytes
-   // set via the config
-   const auto& state = _db.get<resource_limits_state_object>();
-   const auto& config = _db.get<resource_limits_config_object>();
-   auto new_speculative_ram_bytes = state.speculative_ram_bytes + ram_bytes - old_ram_bytes;
-   EOS_ASSERT(new_speculative_ram_bytes <= config.max_ram_bytes, rate_limiting_overcommitment,
-              "Allocating ${b} bytes of ram to account ${a} will overcommit configured maximum of ${m}",
-              ("b", ram_bytes - old_ram_bytes)("a",account)("m",config.max_ram_bytes));
-   _db.modify(state, [&](resource_limits_state_object &s ){
-      s.speculative_ram_bytes = new_speculative_ram_bytes;
-   });
 }
 
 void resource_limits_manager::get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) const {
@@ -188,41 +179,38 @@ void resource_limits_manager::process_pending_updates() {
    auto& multi_index = _db.get_mutable_index<resource_limits_index>();
    auto& by_owner_index = multi_index.indices().get<by_owner>();
 
-   auto updated_state = _db.get<resource_limits_state_object>();
-
-   while(!by_owner_index.empty()) {
-      const auto& itr = by_owner_index.lower_bound(boost::make_tuple(true));
-      if (itr == by_owner_index.end() || itr->pending!= true) {
-         break;
+   // convenience local lambda to reduce clutter
+   auto update_state_and_value = [](uint64_t &total, int64_t &value, int64_t pending_value, const char* debug_which) -> void {
+      if (value > 0) {
+         EOS_ASSERT(total >= value, rate_limiting_state_inconsistent, "underflow when reverting old value to ${which}", ("which", debug_which));
+         total -= value;
       }
 
-      const auto& actual_entry = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, itr->owner));
-      _db.modify(actual_entry, [&](resource_limits_object& rlo){
-         // convenience local lambda to reduce clutter
-         auto update_state_and_value = [](uint64_t &total, int64_t &value, int64_t pending_value, const char* debug_which) -> void {
-            if (value > 0) {
-               EOS_ASSERT(total >= value, rate_limiting_state_inconsistent, "underflow when reverting old value to ${which}", ("which", debug_which));
-               total -= value;
-            }
+      if (pending_value > 0) {
+         EOS_ASSERT(UINT64_MAX - total < value, rate_limiting_state_inconsistent, "overflow when applying new value to ${which}", ("which", debug_which));
+         total += pending_value;
+      }
 
-            if (pending_value > 0) {
-               EOS_ASSERT(UINT64_MAX - total < value, rate_limiting_state_inconsistent, "overflow when applying new value to ${which}", ("which", debug_which));
-               total += pending_value;
-            }
+      value = pending_value;
+   };
 
-            value = pending_value;
-         };
+   const auto& state = _db.get<resource_limits_state_object>();
+   _db.modify(state, [&](resource_limits_state_object rso){
+      while(!by_owner_index.empty()) {
+         const auto& itr = by_owner_index.lower_bound(boost::make_tuple(true));
+         if (itr == by_owner_index.end() || itr->pending!= true) {
+            break;
+         }
 
-         update_state_and_value(updated_state.total_ram_bytes,  rlo.ram_bytes,  itr->ram_bytes, "ram_bytes");
-         update_state_and_value(updated_state.total_cpu_weight, rlo.cpu_weight, itr->cpu_weight, "cpu_weight");
-         update_state_and_value(updated_state.total_net_weight, rlo.net_weight, itr->net_weight, "net_wright");
-      });
+         const auto& actual_entry = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, itr->owner));
+         _db.modify(actual_entry, [&](resource_limits_object& rlo){
+            update_state_and_value(rso.total_ram_bytes,  rlo.ram_bytes,  itr->ram_bytes, "ram_bytes");
+            update_state_and_value(rso.total_cpu_weight, rlo.cpu_weight, itr->cpu_weight, "cpu_weight");
+            update_state_and_value(rso.total_net_weight, rlo.net_weight, itr->net_weight, "net_wright");
+         });
 
-      multi_index.remove(*itr);
-   }
-
-   _db.modify(updated_state, [&updated_state](resource_limits_state_object rso){
-      rso = updated_state;
+         multi_index.remove(*itr);
+      }
    });
 }
 

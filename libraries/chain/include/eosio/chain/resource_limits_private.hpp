@@ -132,18 +132,8 @@ namespace eosio { namespace chain { namespace resource_limits {
       OBJECT_CTOR(resource_limits_config_object);
       id_type id;
 
-      uint32_t  base_per_transaction_net_usage;
-      uint32_t  base_per_transaction_cpu_usage;
-
-      uint32_t  per_signature_cpu_usage;
-
-      elastic_limit_parameters cpu_limit_parameters;
-      elastic_limit_parameters net_limit_parameters;
-
-      uint32_t  target_block_size;
-      uint32_t  max_block_size;
-
-      uint64_t  max_ram_bytes;
+      elastic_limit_parameters cpu_limit_parameters = {config::default_target_block_acts, config::default_max_block_acts, config::compute_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}};
+      elastic_limit_parameters net_limit_parameters = {config::default_target_block_size, config::default_max_block_size, config::blocksize_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}};
    };
 
    using resource_limits_config_index = chainbase::shared_multi_index_container<
