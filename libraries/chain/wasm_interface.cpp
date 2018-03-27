@@ -806,10 +806,6 @@ class action_api : public context_aware_api {
          return context.act.data.size();
       }
 
-      const name& current_receiver() {
-         return context.receiver;
-      }
-
       fc::time_point_sec publication_time() {
          return context.trx_meta.published;
       }
@@ -1518,7 +1514,6 @@ REGISTER_INTRINSICS(system_api,
 REGISTER_INTRINSICS(action_api,
    (read_action_data,       int(int, int)  )
    (action_data_size,       int()          )
-   (current_receiver,   int64_t()          )
    (publication_time,   int32_t()          )
    (current_sender,     int64_t()          )
 );

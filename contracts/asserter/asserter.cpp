@@ -11,7 +11,7 @@ static int global_variable = 45;
 
 extern "C" {
     /// The apply method implements the dispatch of events to this contract
-    void apply( uint64_t code, uint64_t action ) {
+    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
        if( code == N(asserter) ) {
           if( action == N(procassert) ) {
              assertdef check;
