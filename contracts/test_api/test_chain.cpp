@@ -16,7 +16,7 @@ struct producers {
 
 void test_chain::test_activeprods() {
   producers act_prods;
-  read_action(&act_prods, sizeof(producers));
+  read_action_data(&act_prods, sizeof(producers));
    
   eosio_assert(act_prods.len == 21, "producers.len != 21");
 

@@ -12,6 +12,8 @@ namespace fc { class variant; }
 
 namespace eosio {
 
+static appbase::abstract_plugin& _wallet_plugin = app().register_plugin<wallet_plugin>();
+
 wallet_plugin::wallet_plugin()
   : wallet_manager_ptr(new wallet_manager()) {
 }

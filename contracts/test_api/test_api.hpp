@@ -3,6 +3,8 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
+#include <eosiolib/serialize.hpp>
+#include <string>
 
 typedef unsigned long long u64;
 typedef unsigned int u32;
@@ -24,16 +26,39 @@ static constexpr u64 WASM_TEST_ACTION(const char* cls, const char* method)
      CLASS::METHOD(); \
      return; \
   }
-   
+
 #pragma pack(push, 1)
 struct dummy_action {
+   static uint64_t get_name() {
+      return N(dummy_action);
+   }
+   static uint64_t get_account() {
+      return N(testapi);
+   }
+
   char a; //1
-  unsigned long long b; //8
-  int  c; //4
+  uint64_t b; //8
+  int32_t  c; //4
+
+  EOSLIB_SERIALIZE( dummy_action, (a)(b)(c) )
 };
 
 struct u128_action {
   unsigned __int128  values[3]; //16*3
+};
+
+struct cf_action {
+   static uint64_t get_name() {
+      return N(cf_action);
+   }
+   static uint64_t get_account() {
+      return N(testapi);
+   }
+
+   uint32_t       payload = 100;
+   uint32_t       cfd_idx = 0; // context free data index
+
+   EOSLIB_SERIALIZE( cf_action, (payload)(cfd_idx) )
 };
 #pragma pack(pop)
 
@@ -51,6 +76,7 @@ struct test_print {
   static void test_prints();
   static void test_prints_l();
   static void test_printi();
+  static void test_printui();
   static void test_printi128();
   static void test_printn();
 };
@@ -64,12 +90,14 @@ struct test_action {
   static void read_action_normal();
   static void read_action_to_0();
   static void read_action_to_64k();
+  static void test_dummy_action();
+  static void test_cf_action();
   static void require_notice();
   static void require_auth();
   static void assert_false();
   static void assert_true();
   static void now();
-  static void test_abort();
+  static void test_abort() __attribute__ ((noreturn)) ;
   static void test_current_receiver();
   static void test_current_sender();
   static void test_publication_time();
@@ -97,7 +125,6 @@ struct test_db {
 
    static void key_i128i128_general();
    static void key_i64i64i64_general();
-   static void key_str_general();
    static void key_str_table();
 
    static void key_str_setup_limit();
@@ -123,7 +150,7 @@ struct test_db {
    static void key_i64i64i64_under_limit();
    static void key_i64i64i64_available_space_exceed_limit();
    static void key_i64i64i64_another_under_limit();
-     
+
    static void primary_i64_general();
    static void primary_i64_lowerbound();
    static void primary_i64_upperbound();
@@ -131,6 +158,36 @@ struct test_db {
    static void idx64_general();
    static void idx64_lowerbound();
    static void idx64_upperbound();
+};
+
+struct test_multi_index {
+   static void idx64_general();
+   static void idx64_store_only();
+   static void idx64_check_without_storing();
+   static void idx128_general();
+   static void idx128_store_only();
+   static void idx128_check_without_storing();
+   static void idx128_autoincrement_test();
+   static void idx128_autoincrement_test_part1();
+   static void idx128_autoincrement_test_part2();
+   static void idx256_general();
+   static void idx_double_general();
+   static void idx64_pk_iterator_exceed_end();
+   static void idx64_sk_iterator_exceed_end();
+   static void idx64_pk_iterator_exceed_begin();
+   static void idx64_sk_iterator_exceed_begin();
+   static void idx64_pass_pk_ref_to_other_table();
+   static void idx64_pass_sk_ref_to_other_table();
+   static void idx64_pass_pk_end_itr_to_iterator_to();
+   static void idx64_pass_pk_end_itr_to_modify();
+   static void idx64_pass_pk_end_itr_to_erase();
+   static void idx64_pass_sk_end_itr_to_iterator_to();
+   static void idx64_pass_sk_end_itr_to_modify();
+   static void idx64_pass_sk_end_itr_to_erase();
+   static void idx64_modify_primary_key();
+   static void idx64_run_out_of_avl_pk();
+   static void idx64_sk_cache_pk_lookup();
+   static void idx64_pk_cache_sk_lookup();
 };
 
 struct test_crypto {
@@ -233,4 +290,12 @@ struct test_checktime {
    static void checktime_pass();
    static void checktime_failure();
 };
-
+/*
+struct test_softfloat {
+   static void test_f32_add();
+   static void test_f32_sub();
+   static void test_f32_mul();
+   static void test_f32_div();
+   static void test_f32_min();
+};
+*/

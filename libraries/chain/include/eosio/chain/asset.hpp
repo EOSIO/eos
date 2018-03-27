@@ -87,6 +87,13 @@ struct asset
 
 };
 
+struct extended_asset  {
+  extended_asset(){}
+  extended_asset( asset a, name n ):quantity(a),contract(n){}
+  asset quantity;
+  name contract;
+};
+
 bool  operator <  (const asset& a, const asset& b);
 bool  operator <= (const asset& a, const asset& b);
 
@@ -100,3 +107,4 @@ inline void from_variant(const fc::variant& var, eosio::chain::asset& vo) {
 }
 
 FC_REFLECT(eosio::chain::asset, (amount)(sym))
+FC_REFLECT(eosio::chain::extended_asset, (quantity)(contract) )

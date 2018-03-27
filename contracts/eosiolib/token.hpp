@@ -9,6 +9,7 @@
 #include <eosiolib/print.hpp>
 #include <eosiolib/reflect.hpp>
 #include <eosiolib/asset.hpp>
+#include <eosiolib/serialize.hpp>
 
 
 namespace eosio {
@@ -19,6 +20,9 @@ namespace eosio {
   *
   * @{
   */
+
+  template<typename BaseToken, typename QuoteToken>
+  struct price;
 
   template< uint64_t Code,
             uint64_t Symbol,
@@ -38,9 +42,13 @@ namespace eosio {
     */
     token(){}
 
-    operator asset()const { return asset( quantity, Symbol ); }
 
-    token( const asset& a ):quantity(a.amount) {
+    template<typename Base, typename Quote>
+    friend price<Base,Quote> operator / ( const Base& b, const Quote& q );
+
+    operator asset()const { return asset( int64_t(quantity), Symbol ); }
+
+    token( const asset& a ):quantity(NumberType(a.amount)) {
        eosio_assert( a.symbol == Symbol, "attempt to construct token from asset with different symbol" );
     }
 
@@ -190,6 +198,10 @@ namespace eosio {
      QuoteToken  quote;
   };
 
+  template<typename Base, typename Quote>
+  price<Base,Quote> operator / ( const Base& b, const Quote& q ) {
+     return price<Base,Quote>(b,q);
+  }
   
 
   /**
@@ -250,6 +262,11 @@ namespace eosio {
     * @brief Default constructor.
     */
     price():base_per_quote(1ul){}
+    explicit price( uint128_t b ):base_per_quote(b){}
+    price& operator=( uint128_t b ) {
+       base_per_quote = b;
+       return *this;
+    }
 
     /**
     * Construction for price given the base token and quote token.
@@ -343,13 +360,18 @@ namespace eosio {
     */
     friend bool operator != ( const price& a, const price& b ) { return a.base_per_quote != b.base_per_quote; }
 
+
+    operator uint128_t()const { return base_per_quote; }
+
+    EOSLIB_SERIALIZE( price, (base_per_quote) )
   private:
     /**
     * Represents as number of base tokens to purchase 1 quote token.
     * @brief Represents number of base tokens to purchase 1 quote token.
     */
-    eosio::uint128 base_per_quote;
+    uint128_t base_per_quote;
   };
+
 
   /// @}
 

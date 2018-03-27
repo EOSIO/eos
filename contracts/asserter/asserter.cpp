@@ -15,10 +15,10 @@ extern "C" {
        if( code == N(asserter) ) {
           if( action == N(procassert) ) {
              assertdef check;
-             read_action(&check, sizeof(assertdef));
+             read_action_data(&check, sizeof(assertdef));
 
              unsigned char buffer[256];
-             size_t actsize = read_action(buffer, 256);
+             size_t actsize = read_action_data(buffer, 256);
              assertdef *def = reinterpret_cast<assertdef *>(buffer);
 
              // make sure to null term the string
@@ -29,7 +29,7 @@ extern "C" {
              }
 
              // maybe assert?
-             eosio_assert(def->condition, def->message);
+             eosio_assert((uint32_t)def->condition, def->message);
           } else if( action == N(provereset) ) {
              eosio_assert(global_variable == 45, "Global Variable Initialized poorly");
              global_variable = 100;

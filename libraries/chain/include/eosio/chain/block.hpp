@@ -15,26 +15,20 @@ namespace eosio { namespace chain {
       uint32_t        block_num() const { return num_from_id(previous) + 1; }
       static uint32_t num_from_id(const block_id_type& id);
 
-      block_id_type                 previous;
-      block_timestamp_type          timestamp;
+      block_id_type                    previous;
+      block_timestamp_type             timestamp;
 
       checksum256_type                 transaction_mroot; /// mroot of cycles_summary
       checksum256_type                 action_mroot;
       checksum256_type                 block_mroot;
 
-      account_name                  producer;
-      /**
-       * The changes in the round of producers after this block
-       *
-       * Must be stored with keys *and* values sorted, thus this is a valid RoundChanges:
-       * [["A", "X"],
-       *  ["B", "Y"]]
-       * ... whereas this is not:
-       * [["A", "Y"],
-       *  ["B", "X"]]
-       * Even though the above examples are semantically equivalent (replace A and B with X and Y), only the first is
-       * legal.
+      account_name                     producer;
+
+      /** The producer schedule version that should validate this block, this is used to
+       * indicate that the prior block which included new_producers->version has been marked
+       * irreversible and that it the new producer schedule takes effect this block.
        */
+      uint32_t                          schedule_version = 0;
       optional<producer_schedule_type>  new_producers;
    };
 
@@ -161,7 +155,7 @@ namespace eosio { namespace chain {
 
 FC_REFLECT(eosio::chain::block_header, (previous)(timestamp)
            (transaction_mroot)(action_mroot)(block_mroot)
-           (producer)(new_producers))
+           (producer)(schedule_version)(new_producers))
 
 FC_REFLECT_DERIVED(eosio::chain::signed_block_header, (eosio::chain::block_header), (producer_signature))
 FC_REFLECT( eosio::chain::shard_lock, (account)(scope))

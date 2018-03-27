@@ -21,6 +21,9 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( black_swan_exception,              eosio::chain::chain_exception, 3100000, "black swan" )
    FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           eosio::chain::chain_exception, 3110000, "unknown block" )
    FC_DECLARE_DERIVED_EXCEPTION( chain_type_exception,              eosio::chain::chain_exception, 3120000, "chain type exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( missing_plugin_exception,          eosio::chain::chain_exception, 3130000, "missing plugin exception" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( permission_query_exception,        eosio::chain::database_query_exception, 3010001, "permission query exception" )
 
    FC_DECLARE_DERIVED_EXCEPTION( block_tx_output_exception,         eosio::chain::block_validate_exception, 3020001, "transaction outputs in block do not match transaction outputs from applying block" )
    FC_DECLARE_DERIVED_EXCEPTION( block_concurrency_exception,       eosio::chain::block_validate_exception, 3020002, "block does not guarantee concurrent exection without conflicts" )
@@ -59,6 +62,11 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( action_type_exception,             eosio::chain::chain_type_exception, 3120004, "Invalid action" )
    FC_DECLARE_DERIVED_EXCEPTION( transaction_type_exception,        eosio::chain::chain_type_exception, 3120005, "Invalid transaction" )
    FC_DECLARE_DERIVED_EXCEPTION( abi_type_exception,                eosio::chain::chain_type_exception, 3120006, "Invalid ABI" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,                 eosio::chain::missing_plugin_exception, 3130001, "Missing Chain API Plugin" )
+   FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,                eosio::chain::missing_plugin_exception, 3130002, "Missing Wallet API Plugin" )
+   FC_DECLARE_DERIVED_EXCEPTION( missing_account_history_api_plugin_exception,       eosio::chain::missing_plugin_exception, 3130003, "Missing Account History API Plugin" )
+   FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,                   eosio::chain::missing_plugin_exception, 3130003, "Missing Net API Plugin" )
 
 
    #define EOS_RECODE_EXC( cause_type, effect_type ) \

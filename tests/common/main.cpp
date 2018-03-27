@@ -5,10 +5,24 @@
 #include <cstdlib>
 #include <iostream>
 #include <boost/test/included/unit_test.hpp>
-
+#include <fc/log/logger.hpp>
 //extern uint32_t EOS_TESTING_GENESIS_TIMESTAMP;
 
+
+
 boost::unit_test::test_suite* init_unit_test_suite(int argc, char* argv[]) {
+   // Turn off blockchain logging if no --verbose parameter is not added
+   // To have verbose enabled, call "tests/chain_test --report_level=detailed -- --verbose"
+   bool is_verbose = false;
+   std::string verbose_arg = "--verbose";
+   for (int i = 0; i < argc; i++) {
+      if (verbose_arg == argv[i]) {
+         is_verbose = true;
+         break;
+      }
+   }
+   if(!is_verbose) fc::logger::get(DEFAULT_LOGGER).set_log_level(fc::log_level::off);
+
    std::srand(time(NULL));
    std::cout << "Random number generator seeded to " << time(NULL) << std::endl;
    /*

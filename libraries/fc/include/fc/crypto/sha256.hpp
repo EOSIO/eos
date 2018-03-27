@@ -107,6 +107,7 @@ class sha256
   uint64_t hash64(const char* buf, size_t len);    
 
 } // fc
+
 namespace std
 {
     template<>
@@ -117,6 +118,7 @@ namespace std
            return  *((size_t*)&s);
        }
     };
+
 }
 
 namespace boost

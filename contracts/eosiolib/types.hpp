@@ -4,8 +4,10 @@
  */
 #pragma once
 #include <eosiolib/types.h>
+#include <functional>
+#include <tuple>
 
-namespace  eosio {
+namespace eosio {
 
    /**
     *  @brief Converts a base32 symbol into its binary representation, used by string_to_name()
@@ -23,7 +25,7 @@ namespace  eosio {
 
 
    /**
-    *  @brief Converts a base32 string to a uint64_t. 
+    *  @brief Converts a base32 string to a uint64_t.
     *
     *  @details Converts a base32 string to a uint64_t. This is a constexpr so that
     *  this method can be used in template arguments as well.
@@ -87,7 +89,26 @@ namespace  eosio {
          return ds >> v.value;
       }
    };
-
    /// @}
 
-} // namespace eos
+} // namespace eosio
+
+namespace std {
+   /**
+    * @brief provide less for checksum256
+    */
+   template<>
+   struct less<checksum256> : binary_function<checksum256, checksum256, bool> {
+      bool operator()( const checksum256& lhs, const checksum256& rhs ) const {
+         return memcmp(&lhs, &rhs, sizeof(lhs)) < 0;
+      }
+   };
+
+} // namespace std
+
+/**
+ * Provide == for checksum256 in global namespace
+ */
+bool operator==(const checksum256& lhs, const checksum256& rhs) {
+   return memcmp(&lhs, &rhs, sizeof(lhs)) == 0;
+}

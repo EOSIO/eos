@@ -93,8 +93,8 @@ namespace tic_tac_toe {
 
     // Check if game already exists
     game existing_game;
-    bool game_exists = Games::get(c.challenger, existing_game, c.host);
-    eosio_assert(game_exists == false, "game already exists");
+    bool game_does_not_exist = Games::get(c.challenger, existing_game, c.host);
+    eosio_assert(game_does_not_exist == false, "game already exists");
 
     game game_to_create(c.challenger, c.host);
     Games::store(game_to_create, c.host);
@@ -109,8 +109,8 @@ namespace tic_tac_toe {
 
     // Check if game exists
     game game_to_restart;
-    bool game_exists = Games::get(r.challenger, game_to_restart, r.host);
-    eosio_assert(game_exists == true, "game doesn't exist!");
+    bool game_does_not_exist = Games::get(r.challenger, game_to_restart, r.host);
+    eosio_assert(game_does_not_exist, "game doesn't exist!");
 
     // Check if this game belongs to the action sender
     eosio_assert(r.by == game_to_restart.host || r.by == game_to_restart.challenger, "this is not your game!");
@@ -130,8 +130,8 @@ namespace tic_tac_toe {
 
     // Check if game exists
     game game_to_close;
-    bool game_exists = Games::get(c.challenger, game_to_close, c.host);
-    eosio_assert(game_exists == true, "game doesn't exist!");
+    bool game_does_not_exist = Games::get(c.challenger, game_to_close, c.host);
+    eosio_assert(game_does_not_exist, "game doesn't exist!");
 
     Games::remove(game_to_close, game_to_close.host);
   }
@@ -145,8 +145,8 @@ namespace tic_tac_toe {
 
     // Check if game exists
     game game_to_move;
-    bool game_exists = Games::get(m.challenger, game_to_move, m.host);
-    eosio_assert(game_exists == true, "game doesn't exist!");
+    bool game_does_not_exist = Games::get(m.challenger, game_to_move, m.host);
+    eosio_assert(game_does_not_exist, "game doesn't exist!");
 
     // Check if this game hasn't ended yet
     eosio_assert(game_to_move.winner == N(none), "the game has ended!");

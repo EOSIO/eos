@@ -42,16 +42,14 @@ static cl::opt<bool> abi_opt_sfs(
     cl::desc("Optimize single field struct"),
     cl::cat(abi_generator_category));
 
-int main(int argc, const char **argv) { try {
+int main(int argc, const char **argv) { abi_def output; try {
    CommonOptionsParser op(argc, argv, abi_generator_category);
    ClangTool Tool(op.getCompilations(), op.getSourcePathList());
 
-   abi_def abi;
-
-   int result = Tool.run(create_factory(abi_verbose, abi_opt_sfs, abi_context, abi).get());
+   int result = Tool.run(create_factory(abi_verbose, abi_opt_sfs, abi_context, output).get());
    if(!result) {
-      abi_serializer(abi).validate();
-      fc::json::save_to_file<abi_def>(abi, abi_destination, true);
+      abi_serializer(output).validate();
+      fc::json::save_to_file<abi_def>(output, abi_destination, true);
    }
    return result;
-} FC_CAPTURE_AND_LOG(()); return -1; }
+} FC_CAPTURE_AND_LOG((output)); return -1; }

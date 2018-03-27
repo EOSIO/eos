@@ -21,14 +21,30 @@ if(BUILD_MONGO_DB_PLUGIN)
 
       find_package(libbsoncxx REQUIRED)
       message(STATUS "Found bsoncxx headers: ${LIBBSONCXX_INCLUDE_DIRS}")
-      find_library(EOS_LIBBSONCXX ${LIBBSONCXX_LIBRARIES}
-                   PATHS ${LIBBSONCXX_LIBRARY_DIRS} NO_DEFAULT_PATH)
+
+      # mongo-cxx-driver 3.2 release altered LIBBSONCXX_LIBRARIES semantics. Instead of library names,
+      #  it now hold library paths.
+      if((LIBBSONCXX_VERSION_MAJOR LESS 3) OR ((LIBBSONCXX_VERSION_MAJOR EQUAL 3) AND (LIBBSONCXX_VERSION_MINOR LESS 2)))
+        find_library(EOS_LIBBSONCXX ${LIBBSONCXX_LIBRARIES}
+          PATHS ${LIBBSONCXX_LIBRARY_DIRS} NO_DEFAULT_PATH)
+      else()
+        set(EOS_LIBBSONCXX ${LIBBSONCXX_LIBRARIES})
+      endif()
+
       message(STATUS "Found bsoncxx library: ${EOS_LIBBSONCXX}")
 
       find_package(libmongocxx REQUIRED)
       message(STATUS "Found mongocxx headers: ${LIBMONGOCXX_INCLUDE_DIRS}")
-      find_library(EOS_LIBMONGOCXX ${LIBMONGOCXX_LIBRARIES}
-                   PATHS ${LIBMONGOCXX_LIBRARY_DIRS} NO_DEFAULT_PATH)
+
+      # mongo-cxx-driver 3.2 release altered LIBBSONCXX_LIBRARIES semantics. Instead of library names,
+      #  it now hold library paths.
+      if((LIBMONGOCXX_VERSION_MAJOR LESS 3) OR ((LIBMONGOCXX_VERSION_MAJOR EQUAL 3) AND (LIBMONGOCXX_VERSION_MINOR LESS 2)))
+        find_library(EOS_LIBMONGOCXX ${LIBMONGOCXX_LIBRARIES}
+          PATHS ${LIBMONGOCXX_LIBRARY_DIRS} NO_DEFAULT_PATH)
+      else()
+        set(EOS_LIBMONGOCXX ${LIBMONGOCXX_LIBRARIES})
+      endif()
+
       message(STATUS "Found mongocxx library: ${EOS_LIBMONGOCXX}")
   else()
       message("Could NOT find MongoDB. mongo_db_plugin with MongoDB support will not be included.")
@@ -63,6 +79,8 @@ if(BUILD_MONGO_DB_PLUGIN)
           PUBLIC chain_plugin eosio_chain appbase
           ${EOS_LIBMONGOCXX} ${EOS_LIBBSONCXX}
           )
+
+  set(CPACK_DEBIAN_PACKAGE_DEPENDS "libmongoc-1.0-0 (>= 1.3)" PARENT_SCOPE)
 else()
   message("mongo_db_plugin not selected and will be omitted.")
 endif()

@@ -2,9 +2,9 @@
 #INCLUDE(GetPrerequisites)
 #INCLUDE(VersionMacros)
 
-SET( DEFAULT_HEADER_INSTALL_DIR include/${target} )
-SET( DEFAULT_LIBRARY_INSTALL_DIR lib/ )
-SET( DEFAULT_EXECUTABLE_INSTALL_DIR bin/ )
+SET( DEFAULT_HEADER_INSTALL_DIR usr/include/${target} )
+SET( DEFAULT_LIBRARY_INSTALL_DIR usr/lib )
+SET( DEFAULT_EXECUTABLE_INSTALL_DIR usr/bin )
 SET( CMAKE_DEBUG_POSTFIX _debug )
 SET( BUILD_SHARED_LIBS NO )
 SET( ECC_IMPL secp256k1 CACHE STRING "secp256k1 or openssl or mixed" )
@@ -39,7 +39,6 @@ IF(NOT APPLE)
  SET(rt_library rt )
  SET(pthread_library pthread)
 ENDIF(NOT APPLE)
-
 
 IF(NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
   set(OPENSSL_ROOT_DIR $ENV{OPENSSL_ROOT_DIR} )
@@ -119,14 +118,7 @@ set( sources
 #list(APPEND sources "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp")
 list(APPEND sources ${fc_headers})
 
-setup_library( fc SOURCES ${sources} LIBRARY_TYPE STATIC )
-
-INSTALL( TARGETS fc
-   RUNTIME DESTINATION bin
-   LIBRARY DESTINATION lib
-   ARCHIVE DESTINATION lib
-)
-INSTALL( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include DESTINATION . )
+setup_library( fc SOURCES ${sources} LIBRARY_TYPE STATIC DONT_INSTALL_LIBRARY )
   
 IF(APPLE)
   # As of 10.10 yosemite, the OpenSSL static libraries shipped with os x have a dependency

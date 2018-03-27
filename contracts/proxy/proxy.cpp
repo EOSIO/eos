@@ -5,22 +5,31 @@
 #include <proxy/proxy.hpp>
 #include <eosio.system/eosio.system.hpp>
 #include <eosiolib/transaction.hpp>
-#include <currency/currency.hpp>
+#include <eosiolib/currency.hpp>
 
 namespace proxy {
    using namespace eosio;
 
    namespace configs {
+
       bool get(config &out, const account_name &self) {
-         auto read = load_i64(self, self, N(config), (char*)&out, sizeof(config));
-         if (read < 0) {
+         auto it = db_find_i64(self, self, N(config), config::key);
+         if (it != -1) {
+            auto size = db_get_i64(it, (char*)&out, sizeof(config));
+            eosio_assert(size == sizeof(config), "Wrong record size");
+            return true;
+         } else {
             return false;
          }
-         return true;
       }
 
       void store(const config &in, const account_name &self) {
-         store_i64(self, N(config), self, (const char *)&in, sizeof(config));
+         auto it = db_find_i64(self, self, N(config), config::key);
+         if (it != -1) {
+            db_update_i64(it, self, (const char *)&in, sizeof(config));
+         } else {
+            db_store_i64(self, N(config), self, config::key, (const char *)&in, sizeof(config));
+         }
       }
    };
 
@@ -42,7 +51,7 @@ namespace proxy {
          configs::store(code_config, self);
 
          transaction out;
-         out.actions.emplace_back(vector<permission_level>{{self, N(active)}}, new_transfer);
+         out.actions.emplace_back(permission_level{self, N(active)}, N(currency), N(transfer), new_transfer);
          out.send(id, now() + code_config.delay);
       }
    }
@@ -83,15 +92,15 @@ extern "C" {
           if (action == N(onerror)) {
              apply_onerror(deferred_transaction::from_current_action());
           } if( action == N(transfer) ) {
-             apply_transfer(code, unpack_action<eosiosystem::contract<N(eosio.system)>::currency::transfer_memo>());
+             apply_transfer(code, unpack_action_data<eosiosystem::contract<N(eosio.system)>::currency::transfer_memo>());
           }
        } else if ( code == N(currency) ) {
           if( action == N(transfer) ) {
-             apply_transfer(code, unpack_action<currency::contract::transfer_memo>());
+             apply_transfer(code, unpack_action_data<eosio::currency::transfer>());
           }
        } else if (code == current_receiver() ) {
           if ( action == N(setowner)) {
-             apply_setowner(current_action<set_owner>());
+             apply_setowner(current_action_data<set_owner>());
           }
        }
     }

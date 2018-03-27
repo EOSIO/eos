@@ -1,7 +1,6 @@
 #include <eosiolib/chain.h>
 #include <eosiolib/dispatcher.hpp>
 #include <eosiolib/singleton.hpp>
-#include <eosiolib/table.hpp>
 #include <eosiolib/vector.hpp>
 
 #include <identity/identity.hpp>
@@ -25,28 +24,14 @@ namespace identity_test {
          {
             uint64_t identity;
 
-            template<typename DataStream>
-            friend DataStream& operator << ( DataStream& ds, const get_owner_for_identity& c ){
-               return ds << c.identity;
-            }
-            template<typename DataStream>
-            friend DataStream& operator >> ( DataStream& ds, get_owner_for_identity& c ){
-               return ds >> c.identity;
-            }
+            EOSLIB_SERIALIZE( get_owner_for_identity, (identity) )
          };
 
          struct get_identity_for_account : public action_meta< code, N(getidentity) >
          {
             account_name account ;
 
-            template<typename DataStream>
-            friend DataStream& operator << ( DataStream& ds, const get_identity_for_account& c ){
-               return ds << c.account;
-            }
-            template<typename DataStream>
-            friend DataStream& operator >> ( DataStream& ds, get_identity_for_account& c ){
-               return ds >> c.account;
-            }
+            EOSLIB_SERIALIZE( get_identity_for_account, (account) )
          };
 
          typedef singleton<code, N(result), code, uint64_t> result_table;

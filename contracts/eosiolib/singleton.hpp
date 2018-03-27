@@ -1,75 +1,74 @@
 #pragma once
-#include <eosiolib/db.hpp>
-#include <eosiolib/datastream.hpp>
+#include <eosiolib/multi_index.hpp>
+#include <eosiolib/system.h>
 
 namespace  eosio {
 
    /**
-    *  This wrapper uses a single table to store named objects various types. 
+    *  This wrapper uses a single table to store named objects various types.
     *
     *  @tparam Code - the name of the code which has write permission
     *  @tparam SingletonName - the name of this singlton variable
-    *  @tparam T - the type of the singleton 
+    *  @tparam T - the type of the singleton
     */
    template<account_name Code, uint64_t SingletonName, account_name BillToAccount, typename T>
    class singleton
    {
+      constexpr static uint64_t pk_value = SingletonName;
+      struct row {
+         T value;
+
+         uint64_t primary_key() const { return pk_value; }
+
+         EOSLIB_SERIALIZE( row, (value) )
+      };
+
+      typedef eosio::multi_index<SingletonName, row> table;
+
       public:
          //static const uint64_t singleton_table_name = N(singleton);
 
          static bool exists( scope_name scope = Code ) {
-            uint64_t key = SingletonName;
-            auto read = load_i64( Code, scope, key, (char*)&key, sizeof(key) );
-            return read > 0;
+            table t( Code, scope );
+            return t.find( pk_value );
          }
 
          static T get( scope_name scope = Code ) {
-            char temp[1024+8];
-            *reinterpret_cast<uint64_t *>(temp) = SingletonName;
-            auto read = load_i64( Code, scope, SingletonName, temp, sizeof(temp) );
-            eosio_assert( read > 0, "singleton does not exist" );
-            return unpack<T>( temp + sizeof(SingletonName), read );
+            table t( Code, scope );
+            auto itr = t.find( pk_value );
+            eosio_assert( itr != t.end(), "singleton does not exist" );
+            return itr->value;
          }
 
          static T get_or_default( scope_name scope = Code, const T& def = T() ) {
-            char temp[1024+8];
-            *reinterpret_cast<uint64_t *>(temp) = SingletonName;
-            auto read = load_i64( Code, scope, SingletonName, temp, sizeof(temp) );
-            if ( read < 0 ) {
-               return def;
-            }
-            return unpack<T>( temp + sizeof(SingletonName), size_t(read) );
+            table t( Code, scope );
+            auto itr = t.find( pk_value );
+            return itr != t.end() ? itr->value : def;
          }
 
          static T get_or_create( scope_name scope = Code, const T& def = T() ) {
-            char temp[1024+8];
-            *reinterpret_cast<uint64_t *>(temp) = SingletonName;
-
-
-            auto read = load_i64( Code, scope, SingletonName, temp, sizeof(temp) );
-            if( read < 0 ) {
-               set( def, scope );
-               return def;
-            }
-            return unpack<T>( temp + sizeof(SingletonName), read );
+            table t( Code, scope );
+            auto itr = t.find( pk_value );
+            return itr != t.end() ? itr->value
+               : t.emplace(BillToAccount, [&](row& r) { r.value = def; });
          }
 
          static void set( const T& value = T(), scope_name scope = Code, account_name b = BillToAccount ) {
-            auto size = pack_size( value );
-            char buf[size+ sizeof(SingletonName)];
-
-            eosio_assert( sizeof(buf) <= 1024 + 8, "singleton too big to store" );
-
-            datastream<char*> ds( buf, size + sizeof(SingletonName) );
-            ds << SingletonName;
-            ds << value;
-            
-            store_i64( scope, SingletonName, b, buf, sizeof(buf) );
+            table t( Code, scope );
+            auto itr = t.find( pk_value );
+            if( itr != t.end() ) {
+               t.modify(itr, b, [&](row& r) { r.value = value; });
+            } else {
+               t.emplace(b, [&](row& r) { r.value = value; });
+            }
          }
 
          static void remove( scope_name scope = Code ) {
-            uint64_t key = SingletonName;
-            remove_i64( scope, SingletonName, &key );
+            table t( Code, scope );
+            auto itr = t.find( pk_value );
+            if( itr != t.end() ) {
+               t.erase(itr);
+            }
          }
    };
 

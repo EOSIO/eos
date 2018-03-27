@@ -9,7 +9,8 @@ add_library( eosio_chain
              block.cpp
              wast_to_wasm.cpp
              wasm_interface.cpp
-             wasm_eosio_constraints.cpp
+             wasm_eosio_validation.cpp
+             wasm_eosio_injection.cpp
              apply_context.cpp
              rate_limiting.cpp
 
@@ -27,14 +28,19 @@ add_library( eosio_chain
              contracts/genesis_state.cpp
              contracts/abi_serializer.cpp
 
+             webassembly/wavm.cpp
+             webassembly/binaryen.cpp
 
              ${HEADERS}
              transaction_metadata.cpp)
 
-target_link_libraries( eosio_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime )
+target_link_libraries( eosio_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime
+      wasm asmjs passes cfg ast emscripten-optimizer support softfloat 
+                     )
 target_include_directories( eosio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
+                                   "${CMAKE_CURRENT_SOURCE_DIR}/../../externals/binaryen/src"
                             )
 
 if(MSVC)

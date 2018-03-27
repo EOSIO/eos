@@ -55,6 +55,7 @@ tests/chain_bench
 tests/chain_test
 tests/intense_test
 tests/performance_test
+tests/tests/config.hpp
 
 doxygen
 
@@ -73,6 +74,7 @@ object_database/*
 build/*
 build-debug/*
 
-tn_data_*
+etc/eosio/node_*
+var/lib/node_*
 .vscode
 .DS_Store

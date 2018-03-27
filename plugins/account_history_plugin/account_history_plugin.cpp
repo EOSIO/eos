@@ -75,12 +75,20 @@ private:
    static void remove(chainbase::database& db, const account_name& account_name, const permission_name& permission)
    {
       const auto& idx = db.get_index<MultiIndex, LookupType>();
-      auto& mutatable_idx = db.get_mutable_index<MultiIndex>();
-      auto obj = idx.find( boost::make_tuple( account_name, permission ) );
+      auto& mutable_idx = db.get_mutable_index<MultiIndex>();
+      while(!idx.empty()) {
+         auto key = boost::make_tuple(account_name, permission);
+         const auto& itr = idx.lower_bound(key);
+         if (itr == idx.end()) {
+            break;
+         }
 
-      if (obj != idx.end())
-      {
-         mutatable_idx.remove(*obj);
+         const auto& range_end = idx.upper_bound(key);
+         if (itr == range_end) {
+            break;
+         }
+
+         mutable_idx.remove(*itr);
       }
    }
 
@@ -336,7 +344,7 @@ void account_history_plugin_impl::applied_block(const chain::block_trace& trace)
          {
             if (act_trace.act.name == NEW_ACCOUNT)
             {
-               const auto create = act_trace.act.as<chain::contracts::newaccount>();
+               const auto create = act_trace.act.data_as<chain::contracts::newaccount>();
                add(db, create.owner.keys, create.name, OWNER);
                add(db, create.active.keys, create.name, ACTIVE);
                add(db, create.recovery.keys, create.name, RECOVERY);
@@ -347,7 +355,7 @@ void account_history_plugin_impl::applied_block(const chain::block_trace& trace)
             }
             else if (act_trace.act.name == UPDATE_AUTH)
             {
-               const auto update = act_trace.act.as<chain::contracts::updateauth>();
+               const auto update = act_trace.act.data_as<chain::contracts::updateauth>();
                remove<public_key_history_multi_index, by_account_permission>(db, update.account, update.permission);
                add(db, update.data.keys, update.account, update.permission);
 
@@ -356,7 +364,7 @@ void account_history_plugin_impl::applied_block(const chain::block_trace& trace)
             }
             else if (act_trace.act.name == DELETE_AUTH)
             {
-               const auto del = act_trace.act.as<chain::contracts::deleteauth>();
+               const auto del = act_trace.act.data_as<chain::contracts::deleteauth>();
                remove<public_key_history_multi_index, by_account_permission>(db, del.account, del.permission);
 
                remove<account_control_history_multi_index, by_controlled_authority>(db, del.account, del.permission);

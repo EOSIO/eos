@@ -30,7 +30,7 @@ namespace eosio {
         * @brief Constructor to double object from uint64 value
         *
         * @details Constructor to double object from uint64 value
-        * @param val    data
+        * @param _val    data
         */
         real(const uint64_t &_val) : val(_val) {}
 
