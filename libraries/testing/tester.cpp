@@ -397,7 +397,7 @@ namespace eosio { namespace testing {
 
    void base_tester::set_code( account_name account, const char* wast ) try {
       set_code(account, wast_to_wasm(wast));
-   } FC_CAPTURE_AND_RETHROW( (account)(wast) )
+   } FC_CAPTURE_AND_RETHROW( (account) )
 
    void base_tester::set_code( account_name account, const vector<uint8_t> wasm ) try {
       signed_transaction trx;
