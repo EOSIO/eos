@@ -104,6 +104,55 @@ BOOST_AUTO_TEST_CASE(trx_variant ) {
    }
 }
 
+BOOST_AUTO_TEST_CASE(trx_uniqueness) {
+   tester chain;
+
+   signed_transaction trx;
+   name new_account_name = name("alice");
+   authority owner_auth = authority(chain.get_public_key( new_account_name, "owner"));
+   trx.actions.emplace_back(vector<permission_level>{{config::system_account_name, config::active_name}},
+                            contracts::newaccount{
+                               .creator  = config::system_account_name,
+                               .name     = new_account_name,
+                               .owner    = owner_auth,
+                               .active   = authority(chain.get_public_key(new_account_name, "active")),
+                               .recovery = authority(chain.get_public_key(new_account_name, "recovery)),"))
+                            });
+   trx.expiration = time_point_sec(chain.control->head_block_time()) + 90;
+   trx.ref_block_num = static_cast<uint16_t>(chain.control->head_block_num());
+   trx.ref_block_prefix = static_cast<uint32_t>(chain.control->head_block_id()._hash[1]);
+   trx.sign(chain.get_private_key(config::system_account_name, "active"), chain_id_type());
+   chain.push_transaction(trx);
+
+   BOOST_CHECK_THROW(chain.push_transaction(trx), tx_duplicate);
+}
+
+BOOST_AUTO_TEST_CASE(invalid_expiration) {
+   tester chain;
+
+   signed_transaction trx;
+   name new_account_name = name("alice");
+   authority owner_auth = authority(chain.get_public_key( new_account_name, "owner"));
+   trx.actions.emplace_back(vector<permission_level>{{config::system_account_name, config::active_name}},
+                            contracts::newaccount{
+                               .creator  = config::system_account_name,
+                               .name     = new_account_name,
+                               .owner    = owner_auth,
+                               .active   = authority(chain.get_public_key(new_account_name, "active")),
+                               .recovery = authority(chain.get_public_key(new_account_name, "recovery)),"))
+                            });
+   trx.ref_block_num = static_cast<uint16_t>(chain.control->head_block_num());
+   trx.ref_block_prefix = static_cast<uint32_t>(chain.control->head_block_id()._hash[1]);
+   trx.sign(chain.get_private_key(config::system_account_name, "active"), chain_id_type());
+   // Unset expiration should throw
+   BOOST_CHECK_THROW(chain.push_transaction(trx), transaction_exception);
+
+   memset(&trx.expiration, 0, sizeof(trx.expiration)); // currently redundant, as default is all zeros, but may not always be.
+   trx.sign(chain.get_private_key(config::system_account_name, "active"), chain_id_type());
+   // Expired transaction (January 1970) should throw
+   BOOST_CHECK_THROW(chain.push_transaction(trx), transaction_exception);
+}
+
 BOOST_AUTO_TEST_CASE(irrelevant_auth) {
    try {
       tester chain;
