@@ -381,7 +381,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
          block = db.fetch_block_by_number(fc::to_uint64(params.block_num_or_id));
       }
 
-   } EOS_CAPTURE_AND_RETHROW(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
+   } EOS_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
 
    if (!block)
       FC_THROW_EXCEPTION(unknown_block_exception,
@@ -408,7 +408,7 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
    auto resolver = make_resolver(this);
    try {
       abi_serializer::from_variant(params, pretty_input, resolver);
-   } EOS_CAPTURE_AND_RETHROW(chain::packed_transaction_type_exception, "Invalid packed transaction")
+   } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
    auto result = db.push_transaction(pretty_input, skip_flags);
 #warning TODO: get transaction results asynchronously
@@ -493,7 +493,7 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
       abi_serializer abis( abi );
       try {
          result.binargs = abis.variant_to_binary(abis.get_action_type(params.action), params.args);
-      } EOS_CAPTURE_AND_RETHROW(chain::invalid_action_args_exception,
+      } EOS_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
                                 "'${args}' is invalid args for action '${action}' code '${code}'",
                                 ("args", params.args)("action", params.action)("code", params.code))
    }

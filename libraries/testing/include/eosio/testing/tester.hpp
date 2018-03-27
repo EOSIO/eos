@@ -191,7 +191,7 @@ namespace eosio { namespace testing {
          :expected(expected)
       {}
 
-      bool operator()( const fc::assert_exception& ex ) {
+      bool operator()( const fc::exception& ex ) {
          auto message = ex.get_log().at(0).get_message();
          return boost::algorithm::ends_with(message, expected);
       }

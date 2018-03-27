@@ -18,6 +18,7 @@
 #include <eosio/chain/scope_sequence_object.hpp>
 #include <eosio/chain/merkle.hpp>
 
+#include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 
 #include <eosio/utilities/rand.hpp>
@@ -248,13 +249,13 @@ bool chain_controller::_push_block(const signed_block& new_block)
  * queues.
  */
 transaction_trace chain_controller::push_transaction(const packed_transaction& trx, uint32_t skip)
-{ try {
-   return with_skip_flags(skip, [&]() {
-      return _db.with_write_lock([&]() {
-         return _push_transaction(trx);
-      });
-   });
-} EOS_CAPTURE_AND_RETHROW( tx_apply_exception, "Unable to apply transaction") }
+   { try {
+         return with_skip_flags(skip, [&]() {
+            return _db.with_write_lock([&]() {
+               return _push_transaction(trx);
+            });
+         });
+      } EOS_CAPTURE_AND_RETHROW( transaction_exception ) }
 
 transaction_trace chain_controller::_push_transaction(const packed_transaction& trx) 
 { try {
@@ -1090,7 +1091,7 @@ const producer_object& chain_controller::get_producer(const account_name& owner_
 const permission_object&   chain_controller::get_permission( const permission_level& level )const
 { try {
    return _db.get<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
-} EOS_CAPTURE_AND_RETHROW( chain::permission_query_exception, "Fail to retrieve permission: ${level}", ("level", level) ) }
+} EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Fail to retrieve permission: ${level}", ("level", level) ) }
 
 uint32_t chain_controller::last_irreversible_block_num() const {
    return get_dynamic_global_properties().last_irreversible_block_num;

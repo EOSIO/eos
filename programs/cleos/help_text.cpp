@@ -102,9 +102,9 @@ const char* error_advice_3010002 =  "Most likely, the given account doesn't exis
 const char* error_advice_3010003 =  "Most likely, the given table doesnt' exist in the blockchain.";
 const char* error_advice_3010004 =  "Most likely, the given contract doesnt' exist in the blockchain.";
 
+const char* error_advice_3030000 =  "Ensure that your transaction satisfy the contract's constraint!";
 const char* error_advice_3030001 =  R"=====(Ensure that you have the related authority inside your transaction!;
-If you are currently using 'eosioc push action' command, try to add the relevant authority using -p option.)=====";
-
+If you are currently using 'cleos push action' command, try to add the relevant authority using -p option.)=====";
 const char* error_advice_3030002 =  "Ensure that you have the related private keys inside your wallet and you wallet is unlocked.";
 const char* error_advice_3030003 =  "Please remove the unnecessary authority from your action!";
 const char* error_advice_3030004 =  "Please remove the unnecessary signature from your transaction!";
@@ -112,10 +112,9 @@ const char* error_advice_3030011 =  "You can try embedding eosio nonce action in
 const char* error_advice_3030022 =  "Please increase the expiration time of your transaction!";
 const char* error_advice_3030023 =  "Please decrease the expiration time of your transaction!";
 const char* error_advice_3030024 =  "Ensure that the reference block exist in the blockchain!";
-const char* error_advice_3030025 =  "Ensure that your transaction satisfy the contract's constraint!";
 
 const char* error_advice_3040002 = R"=====(Ensure that your arguments follow the contract abi!
-You can check the contract's abi by using 'eosioc get code' command.)=====";
+You can check the contract's abi by using 'cleos get code' command.)=====";
 
 const char* error_advice_3120001 = R"=====(Name should be less than 13 characters and only contains the following symbol .12345abcdefghijklmnopqrstuvwxyz)=====";
 const char* error_advice_3120002 = R"=====(Public key should be encoded in base58 and starts with EOS prefix)=====";
@@ -232,6 +231,7 @@ const std::map<int64_t, std::string> error_advice = {
    { 3010003, error_advice_3010003 },
    { 3010004, error_advice_3010004 },
 
+   { 3030000, error_advice_3030000 },
    { 3030001, error_advice_3030001 },
    { 3030002, error_advice_3030002 },
    { 3030003, error_advice_3030003 },
@@ -240,7 +240,7 @@ const std::map<int64_t, std::string> error_advice = {
    { 3030022, error_advice_3030022 },
    { 3030023, error_advice_3030023 },
    { 3030024, error_advice_3030024 },
-   { 3030025, error_advice_3030025 },
+
 
    { 3040002, error_advice_3040002 },
 

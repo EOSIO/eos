@@ -344,7 +344,7 @@ struct set_account_permission_subcommand {
             if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
                try {
                   auth = authority(public_key_type(authorityJsonOrFile));
-               } EOS_CAPTURE_AND_RETHROW(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
+               } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
             } else {
                fc::variant parsedAuthority;
                try {
@@ -354,8 +354,8 @@ struct set_account_permission_subcommand {
                      parsedAuthority = fc::json::from_file(authorityJsonOrFile);
                   }
                   auth = parsedAuthority.as<authority>();
-               } EOS_CAPTURE_AND_RETHROW(authority_type_exception, "Fail to parse Authority JSON")
-
+               } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON")
+                 
             }
 
             name parent;
@@ -475,10 +475,10 @@ int main( int argc, char** argv ) {
       public_key_type owner_key, active_key;
       try {
          owner_key = public_key_type(owner_key_str);
-      } EOS_CAPTURE_AND_RETHROW(public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str))
+      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str))
       try {
          active_key = public_key_type(active_key_str);
-      } EOS_CAPTURE_AND_RETHROW(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str))
+      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str))
       send_actions({create_newaccount(creator, account_name, owner_key, active_key)});
    });
 
@@ -623,7 +623,7 @@ int main( int argc, char** argv ) {
       public_key_type public_key;
       try {
          public_key = public_key_type(public_key_str);
-      } EOS_CAPTURE_AND_RETHROW(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", public_key_str))
+      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", public_key_str))
       auto arg = fc::mutable_variant_object( "public_key", public_key);
       std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
    });
@@ -646,7 +646,7 @@ int main( int argc, char** argv ) {
       transaction_id_type transaction_id;
       try {
          transaction_id = transaction_id_type(transaction_id_str);
-      } EOS_CAPTURE_AND_RETHROW(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", transaction_id_str))
+      } EOS_RETHROW_EXCEPTIONS(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", transaction_id_str))
       auto arg= fc::mutable_variant_object( "transaction_id", transaction_id);
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
@@ -666,14 +666,14 @@ int main( int argc, char** argv ) {
          uint64_t skip_seq;
          try {
             skip_seq = boost::lexical_cast<uint64_t>(skip_seq_str);
-         } EOS_CAPTURE_AND_RETHROW(chain_type_exception, "Invalid Skip Seq: ${skip_seq}", ("skip_seq", skip_seq_str))
+         } EOS_RETHROW_EXCEPTIONS(chain_type_exception, "Invalid Skip Seq: ${skip_seq}", ("skip_seq", skip_seq_str))
          if (num_seq_str.empty()) {
             arg = fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq);
          } else {
             uint64_t num_seq;
             try {
                num_seq = boost::lexical_cast<uint64_t>(num_seq_str);
-            } EOS_CAPTURE_AND_RETHROW(chain_type_exception, "Invalid Num Seq: ${num_seq}", ("num_seq", num_seq_str))
+            } EOS_RETHROW_EXCEPTIONS(chain_type_exception, "Invalid Num Seq: ${num_seq}", ("num_seq", num_seq_str))
             arg = fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq_str)("num_seq", num_seq);
          }
       }
@@ -733,7 +733,7 @@ int main( int argc, char** argv ) {
       if (abi->count()) {
          try {
             actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<contracts::abi_def>()) );
-         } EOS_CAPTURE_AND_RETHROW(abi_type_exception,  "Fail to parse ABI JSON")
+         } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
       }
 
       std::cout << localized("Publishing contract...") << std::endl;
@@ -965,7 +965,7 @@ int main( int argc, char** argv ) {
       fc::variant action_args_var;
       try {
          action_args_var = fc::json::from_string(data);
-      } EOS_CAPTURE_AND_RETHROW(action_type_exception, "Fail to parse action JSON")
+      } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON")
 
       auto arg= fc::mutable_variant_object
                 ("code", contract)
@@ -991,7 +991,7 @@ int main( int argc, char** argv ) {
          } else {
             trx_var = fc::json::from_string(trx_to_push);
          }
-      } EOS_CAPTURE_AND_RETHROW(transaction_type_exception, "Fail to parse transaction JSON")
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON")
       signed_transaction trx = trx_var.as<signed_transaction>();
       auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
@@ -1005,7 +1005,7 @@ int main( int argc, char** argv ) {
       fc::variant trx_var;
       try {
          trx_var = fc::json::from_string(trxsJson);
-      } EOS_CAPTURE_AND_RETHROW(transaction_type_exception, "Fail to parse transaction JSON")
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON")
       auto trxs_result = call(push_txns_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
