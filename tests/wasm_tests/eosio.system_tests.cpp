@@ -99,6 +99,7 @@ public:
          ("max_inline_depth", 4 + n)
          ("max_inline_action_size", 4096 + n)
          ("max_generated_transaction_size", 64*1024 + n)
+         ("max_generated_transaction_count", 10 + n)
          ("percent_of_max_inflation_rate", 50 + n)
          ("storage_reserve_ratio", 100 + n);
    }

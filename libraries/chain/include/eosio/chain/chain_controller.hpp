@@ -352,7 +352,7 @@ namespace eosio { namespace chain {
          template<typename T>
          void validate_transaction(const T& trx) const {
          try {
-            EOS_ASSERT(trx.messages.size() > 0, transaction_exception, "A transaction must have at least one message");
+            EOS_ASSERT(trx.actions.size() > 0, transaction_exception, "A transaction must have at least one message");
 
             validate_expiration(trx);
             validate_uniqueness(trx);

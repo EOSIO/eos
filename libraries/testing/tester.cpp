@@ -107,6 +107,7 @@ namespace eosio { namespace testing {
    }
 
   void base_tester::set_tapos( signed_transaction& trx ) const {
+     trx.expiration = control->head_block_time() + fc::seconds(6);
      trx.set_reference_block( control->head_block_id() );
   }
 
