@@ -141,7 +141,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
       if (res.size() == 0 || !CLI::detail::lexical_cast(res[0], value_s)) {
          return false;
       }
-      
+
       tx_expiration = fc::seconds(static_cast<uint64_t>(value_s));
       return true;
    };
@@ -245,9 +245,9 @@ chain::action create_newaccount(const name& creator, const name& newaccount, pub
    return action {
       tx_permission.empty() ? vector<chain::permission_level>{{creator,config::active_name}} : get_account_permissions(tx_permission),
       contracts::newaccount{
-         .creator      = creator, 
-         .name         = newaccount, 
-         .owner        = eosio::chain::authority{1, {{owner, 1}}, {}}, 
+         .creator      = creator,
+         .name         = newaccount,
+         .owner        = eosio::chain::authority{1, {{owner, 1}}, {}},
          .active       = eosio::chain::authority{1, {{active, 1}}, {}},
          .recovery     = eosio::chain::authority{1, {}, {{{creator, config::active_name}, 1}}}
       }
@@ -261,7 +261,7 @@ chain::action create_transfer(const name& sender, const name& recipient, uint64_
       ("to", recipient)
       ("quantity", asset(amount))
       ("memo", memo);
-   
+
    auto args = fc::mutable_variant_object
       ("code", name(config::system_account_name))
       ("action", "transfer")
@@ -276,7 +276,7 @@ chain::action create_transfer(const name& sender, const name& recipient, uint64_
 }
 
 chain::action create_setabi(const name& account, const contracts::abi_def& abi) {
-   return action { 
+   return action {
       tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
       contracts::setabi{
          .account   = account,
@@ -286,13 +286,13 @@ chain::action create_setabi(const name& account, const contracts::abi_def& abi) 
 }
 
 chain::action create_setcode(const name& account, const bytes& code) {
-   return action { 
+   return action {
       tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
       contracts::setcode{
          .account   = account,
          .vmtype    = 0,
          .vmversion = 0,
-         .code      = code 
+         .code      = code
       }
    };
 }
@@ -336,7 +336,7 @@ struct set_account_permission_subcommand {
          name account = name(accountStr);
          name permission = name(permissionStr);
          bool is_delete = boost::iequals(authorityJsonOrFile, "null");
-         
+
          if (is_delete) {
             send_actions({create_deleteauth(account, permission)});
          } else {
@@ -355,7 +355,7 @@ struct set_account_permission_subcommand {
                   }
                   auth = parsedAuthority.as<authority>();
                } EOS_CAPTURE_AND_RETHROW(authority_type_exception, "Fail to parse Authority JSON")
-                 
+
             }
 
             name parent;
@@ -363,10 +363,10 @@ struct set_account_permission_subcommand {
                // see if we can auto-determine the proper parent
                const auto account_result = call(get_account_func, fc::mutable_variant_object("account_name", accountStr));
                const auto& existing_permissions = account_result.get_object()["permissions"].get_array();
-               auto permissionPredicate = [this](const auto& perm) { 
-                  return perm.is_object() && 
+               auto permissionPredicate = [this](const auto& perm) {
+                  return perm.is_object() &&
                         perm.get_object().contains("permission") &&
-                        boost::equals(perm.get_object()["permission"].get_string(), permissionStr); 
+                        boost::equals(perm.get_object()["permission"].get_string(), permissionStr);
                };
 
                auto itr = boost::find_if(existing_permissions, permissionPredicate);
@@ -382,10 +382,10 @@ struct set_account_permission_subcommand {
             }
 
             send_actions({create_updateauth(account, permission, parent, auth)});
-         }      
+         }
       });
    }
-   
+
 };
 
 struct set_action_permission_subcommand {
@@ -408,13 +408,13 @@ struct set_action_permission_subcommand {
          name code = name(codeStr);
          name type = name(typeStr);
          bool is_delete = boost::iequals(requirementStr, "null");
-         
+
          if (is_delete) {
             send_actions({create_unlinkauth(account, code, type)});
          } else {
             name requirement = name(requirementStr);
             send_actions({create_linkauth(account, code, type, requirement)});
-         }      
+         }
       });
    }
 };
@@ -422,7 +422,7 @@ struct set_action_permission_subcommand {
 int main( int argc, char** argv ) {
    fc::path binPath = argv[0];
    if (binPath.is_relative()) {
-      binPath = relative(binPath, current_path()); 
+      binPath = relative(binPath, current_path());
    }
 
    setlocale(LC_ALL, "");
@@ -534,7 +534,7 @@ int main( int argc, char** argv ) {
       }
    });
 
-   // get table 
+   // get table
    string scope;
    string code;
    string table;
@@ -544,8 +544,8 @@ int main( int argc, char** argv ) {
    bool binary = false;
    uint32_t limit = 10;
    auto getTable = get->add_subcommand( "table", localized("Retrieve the contents of a database table"), false);
-   getTable->add_option( "scope", scope, localized("The account scope where the table is found") )->required();
-   getTable->add_option( "contract", code, localized("The contract within scope who owns the table") )->required();
+   getTable->add_option( "contract", code, localized("The contract who owns the table") )->required();
+   getTable->add_option( "scope", scope, localized("The scope within the contract in which the table is found") )->required();
    getTable->add_option( "table", table, localized("The name of the table as specified by the contract abi") )->required();
    getTable->add_option( "-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON") );
    getTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
@@ -555,8 +555,8 @@ int main( int argc, char** argv ) {
 
    getTable->set_callback([&] {
       auto result = call(get_table_func, fc::mutable_variant_object("json", !binary)
-                         ("scope",scope)
                          ("code",code)
+                         ("scope",scope)
                          ("table",table)
                          ("table_key",table_key)
                          ("lower_bound",lower)
@@ -685,7 +685,7 @@ int main( int argc, char** argv ) {
          ->check(CLI::ExistingFile);
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract"))
               ->check(CLI::ExistingFile);
-   
+
    add_standard_transaction_options(contractSubcommand, "account@active");
    contractSubcommand->set_callback([&] {
       std::string wast;
@@ -724,7 +724,7 @@ int main( int argc, char** argv ) {
 
    // set action
    auto setAction = setSubcommand->add_subcommand("action", localized("set or update blockchain action state"))->require_subcommand();
-   
+
    // set action permission
    auto setActionPermission = set_action_permission_subcommand(setAction);
 
@@ -747,11 +747,11 @@ int main( int argc, char** argv ) {
          memo = generate_nonce_value();
          tx_force_unique = false;
       }
-      
+
       send_actions({create_transfer(sender, recipient, amount, memo)});
    });
 
-   // Net subcommand 
+   // Net subcommand
    string new_host;
    auto net = app.add_subcommand( "net", localized("Interact with local p2p network connections"), false );
    net->require_subcommand();
