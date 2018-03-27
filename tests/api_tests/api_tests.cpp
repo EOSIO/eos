@@ -387,6 +387,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
 BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       produce_blocks(2);
       create_account( N(testapi) );
+      create_account( N(dummy) );
       produce_blocks(1000);
       set_code( N(testapi), test_api_wast );
       produce_blocks(1);
@@ -463,6 +464,23 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       }
 
       produce_block();
+
+      // test send context free action
+      auto ttrace = CALL_TEST_FUNCTION( *this, "test_transaction", "send_cf_action", {} );
+      BOOST_CHECK_EQUAL(ttrace.action_traces.size(), 2);
+      BOOST_CHECK_EQUAL(ttrace.action_traces[1].receiver == account_name("dummy"), true);
+      BOOST_CHECK_EQUAL(ttrace.action_traces[1].act.account == account_name("dummy"), true);
+      BOOST_CHECK_EQUAL(ttrace.action_traces[1].act.name == account_name("event1"), true);
+      BOOST_CHECK_EQUAL(ttrace.action_traces[1].act.authorization.size(), 0);
+
+      BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_transaction", "send_cf_action_fail", {} ), fc::assert_exception,
+           [](const fc::assert_exception& e) {
+              return expect_assert_message(e, "context free actions cannot have authorizations");
+           }
+      );
+
+      CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_action", {} );
+      CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_cf_action", {} );
 
 } FC_LOG_AND_RETHROW() }
 

@@ -123,6 +123,10 @@ extern "C" {
       WASM_TEST_HANDLER(test_transaction, send_transaction_empty);
       WASM_TEST_HANDLER(test_transaction, send_transaction_large);
       WASM_TEST_HANDLER(test_transaction, send_action_sender);
+      WASM_TEST_HANDLER(test_transaction, send_cf_action);
+      WASM_TEST_HANDLER(test_transaction, send_cf_action_fail);
+      WASM_TEST_HANDLER(test_transaction, read_inline_action);
+      WASM_TEST_HANDLER(test_transaction, read_inline_cf_action);
 
       //test chain
       WASM_TEST_HANDLER(test_chain, test_activeprods);

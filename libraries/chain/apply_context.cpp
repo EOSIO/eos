@@ -97,7 +97,7 @@ void apply_context::exec()
 
    for( uint32_t i = 0; i < _cfa_inline_actions.size(); ++i ) {
       EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
-      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta, recurse_depth + 1 );
+      apply_context ncontext( mutable_controller, mutable_db, _cfa_inline_actions[i], trx_meta, recurse_depth + 1 );
       ncontext.context_free = true;
       ncontext.exec();
       append_results(move(ncontext.results));
@@ -321,6 +321,16 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
       if( index >= trx.actions.size() )
          return -1;
       act = &trx.actions[index];
+   }
+   else if( type == 2 ) {
+      if( index >= _cfa_inline_actions.size() )
+         return -1;
+      act = &_cfa_inline_actions[index];
+   }
+   else if( type == 3 ) {
+      if( index >= _inline_actions.size() )
+         return -1;
+      act = &_inline_actions[index];
    }
 
    auto ps = fc::raw::pack_size( *act );
