@@ -192,7 +192,7 @@ namespace eosiosystem {
             }
          } // delegatebw
 
-         static void on( const undelegatebw& del ) {
+         static void on( account_name receiver, const undelegatebw& del ) {
             eosio_assert( del.unstake_cpu_quantity.amount >= 0, "must unstake a positive amount" );
             eosio_assert( del.unstake_net_quantity.amount >= 0, "must unstake a positive amount" );
 
@@ -263,7 +263,7 @@ namespace eosiosystem {
             //cancel_deferred( del.from );
 
             //create new deferred transaction
-            const auto self = current_receiver();
+            const auto self = receiver; //current_receiver();
             refund act;
             act.owner = del.from;
             transaction out( now() + refund_delay + refund_expiration_time );
