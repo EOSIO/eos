@@ -361,12 +361,12 @@ void chain_controller::_start_pending_block()
    _apply_on_block_transaction();
    _finalize_pending_cycle();
 
+   _start_pending_cycle();
    push_deferred_transactions(true); //implicitly starts new cycle if there are deferred transactions ready for execution
    if (_pending_cycle_trace && _pending_cycle_trace->shard_traces.size() > 0) {
       _finalize_pending_cycle();
+      _start_pending_cycle();
    }
-
-   _start_pending_cycle();
 }
 
 transaction chain_controller::_get_on_block_transaction()
