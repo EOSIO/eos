@@ -48,6 +48,10 @@ namespace eosio { namespace chain { namespace contracts {
       );
    }
 
+   struct symbol_name {
+      uint64_t value;
+   };
+
    abi_serializer::abi_serializer( const abi_def& abi ) {
       configure_built_in_types();
       set_abi(abi);
@@ -59,6 +63,7 @@ namespace eosio { namespace chain { namespace contracts {
 
       //symbol.hpp
       built_in_types.emplace("symbol",                    pack_unpack<symbol>());
+      built_in_types.emplace("symbol_name",               pack_unpack<symbol_name>());
 
       //asset.hpp
       built_in_types.emplace("asset",                     pack_unpack<asset>());
@@ -102,7 +107,7 @@ namespace eosio { namespace chain { namespace contracts {
 
       for( const auto& st : abi.structs )
          structs[st.name] = st;
-      
+
       for( const auto& td : abi.types ) {
          FC_ASSERT(is_type(td.type), "invalid type", ("type",td.type));
          typedefs[td.new_type_name] = td.type;
@@ -140,9 +145,9 @@ namespace eosio { namespace chain { namespace contracts {
          return boost::lexical_cast<int>(stype.substr(4));
       } else {
          return boost::lexical_cast<int>(stype.substr(3));
-      }      
+      }
    }
-   
+
    bool abi_serializer::is_struct(const type_name& type)const {
       return structs.find(resolve_type(type)) != structs.end();
    }
@@ -256,7 +261,7 @@ namespace eosio { namespace chain { namespace contracts {
         fc::raw::unpack(stream, flag);
         return flag ? binary_to_variant(ftype, stream) : fc::variant();
       }
-      
+
       fc::mutable_variant_object mvo;
       binary_to_variant(rtype, stream, mvo);
       return fc::variant( std::move(mvo) );
@@ -322,4 +327,15 @@ namespace eosio { namespace chain { namespace contracts {
       return type_name();
    }
 
-} } } 
+} } }
+
+namespace fc {
+   inline void to_variant(const eosio::chain::contracts::symbol_name& var, fc::variant& vo) {
+      vo = eosio::chain::symbol(var.value << 8).name();
+   }
+   inline void from_variant(const fc::variant& var, eosio::chain::contracts::symbol_name& vo) {
+      vo.value = (eosio::chain::symbol(0, var.get_string().c_str()).value() >> 8);
+   }
+}
+
+FC_REFLECT(eosio::chain::contracts::symbol_name, (value))

@@ -35,15 +35,15 @@
       "name": "account",
       "base": "",
       "fields": [
-        {"name":"currency", "type":"uint64"},
-        {"name":"balance", "type":"uint64"}
+        {"name":"currency", "type":"symbol"},
+        {"name":"balance", "type":"int64"}
       ]
     },{
       "name": "currency_stats",
       "base": "",
       "fields": [
-        {"name":"currency", "type":"uint64"},
-        {"name":"supply", "type":"uint64"}
+        {"name":"currency", "type":"symbol_name"},
+        {"name":"supply", "type":"int64"}
       ]
     }
   ],
@@ -60,7 +60,7 @@
 
   ],
   "tables": [{
-      "name": "account",
+      "name": "accounts",
       "type": "account",
       "index_type": "i64",
       "key_names" : ["currency"],
