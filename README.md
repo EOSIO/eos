@@ -10,7 +10,10 @@ This code is currently alpha-quality and under rapid development. That said,
 there is plenty early experimenters can do including running a private multi-node test network and
 developing applications (smart contracts).
 
-The public testnet described in the [wiki](https://github.com/EOSIO/eos/wiki/Testnet%3A%20Public) is running the `dawn-2.x` branch.  The `master` branch is no longer compatible with the public testnet.  Instructions are provided below for building either option.
+The public testnet described in the [wiki](https://github.com/EOSIO/eos/wiki/Testnet%3A%20Public) is running the `dawn-2.x` 
+branch.  The `master` branch is no longer compatible with the public testnet.  Instructions are provided below for 
+building a local testnet using the `master` branch.  This document will be updated later with instructions for running on
+the `dawn-3.x` public testnet.
 
 ### Supported Operating Systems
 EOS.IO currently supports the following operating systems:  
@@ -92,7 +95,9 @@ Choose whether you will be building for a local testnet or for the public testne
 We strongly recommend following the instructions for building the public testnet version for [Linux](#autoubuntupublic) or [Mac OS X](#automacpublic). `master` is in pieces on the garage floor while we rebuild this hotrod. This notice will be removed when `master` is usable again. Your patience is appreciated.
 
 <a name="autoubuntulocal"></a>
-#### :no_entry: Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for a local testnet :no_entry:
+#### Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for a local testnet
+
+Clone the `eos` repository and run the build script.
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
@@ -100,7 +105,26 @@ cd eos
 ./eosio_build.sh
 ```
 
-For ease of contract development, one further step is required:
+The eosio_build.sh script puts content in the `build` folder.  Key executables (nodeos, cleos, etc.) can be found
+in the `build/programs` folder.
+
+Optionally, a set of tests can be run against your build to perform some basic validation.
+
+```bash
+cd build
+make test
+```
+ 
+For ease of contract development, content can be installed in the `/usr/local` folder using the `make install` target.
+This step is run from the `build` folder.
+
+If not already in the `build` folder:
+
+```bash
+cd build
+```
+
+Run `make install`.
 
 ```bash
 sudo make install
@@ -111,30 +135,17 @@ Now you can proceed to the next step - [Creating and launching a single-node tes
 <a name="autoubuntupublic"></a>
 #### Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for the public testnet
 
-```bash
-git clone https://github.com/eosio/eos --recursive
-cd eos
-git checkout DAWN-2018-02-14
-git submodule update --recursive
-./build.sh ubuntu
-```
-
-For ease of contract development, one further step is required:
-
-```bash
-cd build
-sudo make install
-```
-
-Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
+The `master` branch is no longer compatible with the `dawn-2.x` public testnet.  To run on the public testnet, please
+see 
+[DAWN-2018-02-14/eos/README.md](https://github.com/EOSIO/eos/blob/DAWN-2018-02-14/README.md)
 
 <a name="automaclocal"></a>
-#### :no_entry: MacOS for a local testnet :no_entry:
+#### MacOS for a local testnet
 
 Before running the script make sure you have installed/updated XCode. Note: The build script
 will install homebrew if it is not already installed on you system. [Homebrew Website](https://brew.sh)
 
-Then clone the EOS repository recursively and run eosio_build.sh in the root `eos` folder.
+Clone the `eos` repository and run the build script.
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
@@ -142,10 +153,28 @@ cd eos
 ./eosio_build.sh
 ```
 
-For ease of contract development, one further step is required:
+The eosio_build.sh script puts content in the `build` folder.  Key executables (nodeos, cleos, etc.) can be found
+in the `build/programs` folder.
+
+Optionally, a set of tests can be run against your build to perform some basic validation.
 
 ```bash
 cd build
+make test
+```
+ 
+For ease of contract development, content can be installed in the `/usr/local` folder using the `make install` target.
+This step is run from the `build` folder.
+
+If not already in the `build` folder:
+
+```bash
+cd build
+```
+
+Run `make install`.
+
+```bash
 sudo make install
 ```
 
@@ -154,27 +183,9 @@ Now you can proceed to the next step - [Creating and launching a single-node tes
 <a name="automacpublic"></a>
 #### MacOS for the public testnet
 
-Before running the script make sure you have installed/updated XCode. Note: The build script
-will install homebrew if it is not already installed on you system. [Homebrew Website](https://brew.sh)
-
-Then clone the EOS repository recursively, checkout the branch that is compatible with the public testnet, and run eosio_build.sh in the root `eos` folder.
-
-```bash
-git clone https://github.com/eosio/eos --recursive
-cd eos
-git checkout DAWN-2018-02-14
-git submodule update --recursive
-./build.sh darwin
-```
-
-For ease of contract development, one further step is required:
-
-```bash
-cd build
-sudo make install
-```
-
-Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
+The `master` branch is no longer compatible with the `dawn-2.x` public testnet.  To run on the public testnet, please
+see 
+[DAWN-2018-02-14/eos/README.md](https://github.com/EOSIO/eos/blob/DAWN-2018-02-14/README.md)
 
 <a name="runanode"></a>
 ## Building EOS and running a node
@@ -223,8 +234,18 @@ EOS comes with a number of programs you can find in `~/eos/build/programs`. They
 <a name="singlenode"></a>
 ### Creating and launching a single-node testnet
 
-After successfully building the project, the `nodeos` binary should be present in the `build/programs/nodeos` directory. Run `nodeos` -- it will probably exit with an error, but if not, close it immediately with <kbd>Ctrl-C</kbd>. If it exited with an error, note that `nodeos` created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `nodeos`.  These instructions will continue to use the default directory.
+After successfully building the project, the `nodeos` binary should be present in the `build/programs/nodeos` folder.
+`nodeos` can be run directly from the `build` folder using `programs/nodeos/nodeos`. The instructions here assume 
+running from the `build` folder.
 
+By default, `nodeos` uses `etc/eosio/node_00` as its configuration folder.  The build seeds this folder with a
+default `genesis.json` file.  Alternatively, a configuration folder can be specified using the `--config-dir` command
+line argument to `nodeos`.  If you use this option, you will need to manually copy a genesis.json file to your config folder.
+
+`nodeos` will need a properly configured `config.ini` file in order to do meaningful work.  On startup, `nodeos` looks
+in the config folder for `config.ini`.  If one is not found, a default `config.ini` file is created.  If you do not
+already have a `config.ini` file ready to use, run `nodeos` and then close it immediately with <kbd>Ctrl-C</kbd>.  A
+default configuration (`config.ini`) will have been created in the config folder. 
 Edit the `config.ini` file, adding/updating the following settings to the defaults already in place:
 
 ```
@@ -244,7 +265,6 @@ plugin = eosio::http_plugin
 ```
 
 Now it should be possible to run `nodeos` and see it begin producing blocks.
-You can specify the location of a custom `config.ini` by passing the `--config-dir` argument to `nodeos`.
 
 When running `nodeos` you should get log messages similar to below. It means the blocks are successfully produced.
 
@@ -255,6 +275,9 @@ When running `nodeos` you should get log messages similar to below. It means the
 1578001ms thread-0   producer_plugin.cpp:207       block_production_loo ] initc generated block #2 @ 2017-09-04T04:26:18 with 0 trxs  0 pending
 ...
 ```
+
+By default, `nodeos` uses `var/lib/eosio/node_00` as its data folder (where shared memory and log content are stored).
+Alternatively, a data folder can be specified using the `--data-dir` command line argument to `nodeos`.
 <a name="nextsteps"></a>
 ### Next Steps
 
