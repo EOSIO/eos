@@ -1154,6 +1154,8 @@ class Cluster(object):
     __WalletName="MyWallet"
     __localHost="localhost"
     __lastTrans=None
+    __BiosHost="localhost"
+    __BiosPort=8788
 
 
     # walletd [True|False] Is walletd running. If not load the wallet plugin
@@ -1231,6 +1233,26 @@ class Cluster(object):
             return False
 
         self.nodes=range(total_nodes) # placeholder for cleanup purposes only
+
+        # wait `systemWaitTimeout` seconds for bios node to get a pulse
+        startTime=time.time()
+        remainingTime=Utils.systemWaitTimeout
+        biosIsAlive=False
+        biosNode=Node(Cluster.__BiosHost, Cluster.__BiosPort)
+        while time.time()-startTime < Utils.systemWaitTimeout:
+            if biosNode.checkPulse():
+                biosIsAlive=True
+                break
+
+            sleepTime=3 if remainingTime > 3 else (3 - remainingTime)
+            remainingTime -= sleepTime
+            Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (sleepTime))
+            time.sleep(sleepTime)
+
+        if not biosIsAlive:
+            Utils.Print("ERROR: Bios node doesn't seem to be alive.")
+            return False
+
         nodes=self.discoverLocalNodes(total_nodes)
 
         if total_nodes != len(nodes):
