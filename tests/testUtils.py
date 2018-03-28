@@ -1640,9 +1640,7 @@ class Cluster(object):
 
         try:
             pgrepOpts="-fl"
-            if platform.linux_distribution()[0] == "Ubuntu":
-                pgrepOpts="-a"
-            elif platform.linux_distribution()[0] == "LinuxMint":
+            if platform.linux_distribution()[0] == "Ubuntu" or platform.linux_distribution()[0] == "LinuxMint" or platform.linux_distribution()[0] == "Fedora":
                 pgrepOpts="-a"
 
             cmd="pgrep %s %s" % (pgrepOpts, Utils.EosServerName)
@@ -1727,6 +1725,11 @@ class Cluster(object):
             shutil.copyfileobj(f, sys.stdout)
 
     def dumpErrorDetails(self):
+        fileName="etc/eosio/node_bios/config.ini"
+        self.dumpErrorDetailImpl(fileName)
+        fileName="var/lib/node_bios/stderr.txt"
+        self.dumpErrorDetailImpl(fileName)
+
         for i in range(0, len(self.nodes)):
             fileName="etc/eosio/node_%02d/config.ini" % (i)
             self.dumpErrorDetailImpl(fileName)
