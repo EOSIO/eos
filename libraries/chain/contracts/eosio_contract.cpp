@@ -49,7 +49,10 @@ void apply_eosio_newaccount(apply_context& context) {
    auto& db = context.mutable_db;
 
    EOS_ASSERT( create.name.to_string().size() <= 12, action_validate_exception, "account names can only be 12 chars long" );
-   if( !context.privileged ) {
+
+   // Check if the creator is privileged
+   const auto &creator = db.get<account_object, by_name>(create.creator);
+   if( !creator.privileged ) {
       EOS_ASSERT( name(create.name).to_string().find( "eosio." ) == std::string::npos, action_validate_exception, "only privileged accounts can have names that contain 'eosio.'" );
    }
 
