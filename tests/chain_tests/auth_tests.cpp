@@ -260,4 +260,29 @@ try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE( any_auth ) { try {
+   tester chain;
+   chain.create_accounts( {"alice","bob"} );
+   chain.produce_block();
+
+   const auto spending_priv_key = chain.get_private_key("alice", "spending");
+   const auto spending_pub_key = spending_priv_key.get_public_key();
+
+   chain.set_authority("alice", "spending", spending_pub_key, "active");
+
+   /// this should fail because eosio::reqauth action is not linked to spending permission
+   //chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key });
+   chain.produce_block();
+
+   //test.push_reqauth( N(alice), { permission_level{N(alice),"spending"} }, { spending_priv_key });
+
+   chain.link_authority( "alice", "eosio", "eosio.any", "reqauth" );
+
+   /// this should succeed because eosio::reqauth is linked to any permission
+   //chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key });
+
+
+   chain.produce_block();
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
