@@ -249,9 +249,15 @@ void apply_eosio_linkauth(apply_context& context) {
    context.require_authorization(requirement.account);
    
    auto& db = context.mutable_db;
-   db.get<account_object, by_name>(requirement.account);
-   db.get<account_object, by_name>(requirement.code);
-   db.get<permission_object, by_name>(requirement.requirement);
+   const auto *account = db.find<account_object, by_name>(requirement.account);
+   EOS_ASSERT(account != nullptr, account_query_exception,
+              "Fail to retrieve account: ${account}", ("account", requirement.account));
+   const auto *code = db.find<account_object, by_name>(requirement.code);
+   EOS_ASSERT(code != nullptr, account_query_exception,
+              "Fail to retrieve code for account: ${account}", ("account", requirement.code));
+   const auto *permission = db.find<permission_object, by_name>(requirement.requirement);
+   EOS_ASSERT(permission != nullptr, permission_query_exception,
+              "Fail to retrieve permission: ${permission}", ("permission", requirement.requirement));
    
    auto link_key = boost::make_tuple(requirement.account, requirement.code, requirement.type);
    auto link = db.find<permission_link_object, by_action_name>(link_key);
