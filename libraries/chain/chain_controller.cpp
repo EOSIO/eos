@@ -1647,7 +1647,7 @@ vector<transaction_trace> chain_controller::_push_deferred_transactions( bool fl
       candidates.emplace_back(&gtrx);
    }
 
-   auto deferred_transactions_deadline = fc::time_point::now() + fc::microseconds(20*1000);
+   auto deferred_transactions_deadline = fc::time_point::now() + fc::microseconds(config::deffered_transactions_max_time_per_block_us);
    vector<transaction_trace> res;
    for (const auto* trx_p: candidates) {
       if (!is_known_transaction(trx_p->trx_id)) {
