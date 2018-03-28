@@ -59,6 +59,7 @@ namespace eosio { namespace chain { namespace contracts {
 
       //symbol.hpp
       built_in_types.emplace("symbol",                    pack_unpack<symbol>());
+      built_in_types.emplace("symbol_code",               pack_unpack<symbol_code>());
 
       //asset.hpp
       built_in_types.emplace("asset",                     pack_unpack<asset>());
@@ -102,7 +103,7 @@ namespace eosio { namespace chain { namespace contracts {
 
       for( const auto& st : abi.structs )
          structs[st.name] = st;
-      
+
       for( const auto& td : abi.types ) {
          FC_ASSERT(is_type(td.type), "invalid type", ("type",td.type));
          typedefs[td.new_type_name] = td.type;
@@ -140,9 +141,9 @@ namespace eosio { namespace chain { namespace contracts {
          return boost::lexical_cast<int>(stype.substr(4));
       } else {
          return boost::lexical_cast<int>(stype.substr(3));
-      }      
+      }
    }
-   
+
    bool abi_serializer::is_struct(const type_name& type)const {
       return structs.find(resolve_type(type)) != structs.end();
    }
@@ -256,7 +257,7 @@ namespace eosio { namespace chain { namespace contracts {
         fc::raw::unpack(stream, flag);
         return flag ? binary_to_variant(ftype, stream) : fc::variant();
       }
-      
+
       fc::mutable_variant_object mvo;
       binary_to_variant(rtype, stream, mvo);
       return fc::variant( std::move(mvo) );
@@ -293,7 +294,7 @@ namespace eosio { namespace chain { namespace contracts {
             }
             else {
                /// TODO: default construct field and write it out
-               FC_ASSERT( !"missing field in variant object", "Missing '${f}' in variant object", ("f",field.name) );
+               FC_THROW( "Missing '${f}' in variant object", ("f",field.name) );
             }
          }
       }
@@ -322,4 +323,4 @@ namespace eosio { namespace chain { namespace contracts {
       return type_name();
    }
 
-} } } 
+} } }

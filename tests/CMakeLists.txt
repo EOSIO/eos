@@ -15,14 +15,14 @@ set( CMAKE_CXX_STANDARD 14 )
 #include_directories("${CMAKE_BINARY_DIR}/tests/api_tests")
 include_directories("${CMAKE_BINARY_DIR}/contracts")
 include_directories("${CMAKE_SOURCE_DIR}/contracts")
+include_directories("${CMAKE_SOURCE_DIR}/plugins/wallet_plugin/include")
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/tests/config.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/tests/config.hpp ESCAPE_QUOTES)
 
-file(GLOB UNIT_TESTS "chain_tests/*.cpp" "api_tests/*.cpp" "tests/abi_tests.cpp" "tests/database_tests.cpp" "tests/misc_tests.cpp" "wasm_tests/*.cpp" "tests/message_buffer_tests.cpp")
+file(GLOB UNIT_TESTS "chain_tests/*.cpp" "api_tests/*.cpp" "tests/abi_tests.cpp" "tests/database_tests.cpp" "tests/misc_tests.cpp" "wasm_tests/*.cpp" "tests/message_buffer_tests.cpp" "tests/wallet_tests.cpp")
 
 add_executable( chain_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} common/main.cpp)
-target_link_libraries( chain_test eosio_testing eosio_chain chainbase eos_utilities chain_plugin abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
-
+target_link_libraries( chain_test eosio_testing eosio_chain chainbase eos_utilities chain_plugin wallet_plugin abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
 
 target_include_directories( chain_test PUBLIC ${CMAKE_BINARY_DIR}/contracts ${CMAKE_CURRENT_BINARY_DIR}/tests/contracts )
 target_include_directories( chain_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/wasm_tests )

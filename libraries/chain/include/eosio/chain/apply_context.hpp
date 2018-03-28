@@ -504,6 +504,8 @@ class apply_context {
 
       const bytes&         get_packed_transaction();
 
+      uint32_t get_next_sender_id();
+
       const chain_controller&       controller;
       const chainbase::database&    db;  ///< database where state is stored
       const action&                 act; ///< message being applied
@@ -584,6 +586,8 @@ class apply_context {
       using table_id_object = contracts::table_id_object;
       const table_id_object* find_table( name code, name scope, name table );
       const table_id_object& find_or_create_table( name code, name scope, name table );
+
+      int  db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
 
       vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
       vector<action>                      _inline_actions; ///< queued inline messages

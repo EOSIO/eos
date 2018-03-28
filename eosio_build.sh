@@ -30,20 +30,22 @@
 # https://github.com/EOSIO/eos/blob/master/LICENSE.txt
 ##########################################################################
 
-	VERSION=1.1
+	VERSION=1.2
 	ULIMIT=$( ulimit -u )
 	WORK_DIR=$PWD
 	BUILD_DIR=${WORK_DIR}/build
 	TEMP_DIR=/tmp
 	ARCH=$( uname )
-	DISK_MIN=20
-	PYTHON_MIN=3
 	TIME_BEGIN=$( date -u +%s )
 	txtbld=$(tput bold)
 	bldred=${txtbld}$(tput setaf 1)
 	txtrst=$(tput sgr0)
 
-	printf "\n\t$( date -u )\n"
+	DISK_MIN=20
+	PYTHON_MIN=3
+
+	printf "\n\tBeginning build version: ${VERSION}\n"
+	printf "\t$( date -u )\n"
 	printf "\tgit head id: $( cat .git/refs/heads/master )\n"
 	printf "\tCurrent branch: $( git branch | grep \* )\n"
 	printf "\n\tARCHITECTURE: ${ARCH}\n"
@@ -174,7 +176,7 @@
 	
 	TIME_END=$(( `date -u +%s` - $TIME_BEGIN ))
 
-	printf  "\t _______  _______  _______ _________ _______\n"
+	printf  "\t _______ _______  _______ _________ _______\n"
 	printf "\t(  ____ \(  ___  )(  ____ \\__   __/(  ___  )\n"
 	printf "\t| (    \/| (   ) || (    \/   ) (   | (   ) |\n"
 	printf "\t| (__    | |   | || (_____    | |   | |   | |\n"

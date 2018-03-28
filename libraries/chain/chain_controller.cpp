@@ -18,6 +18,7 @@
 #include <eosio/chain/scope_sequence_object.hpp>
 #include <eosio/chain/merkle.hpp>
 
+#include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 
 #include <eosio/utilities/rand.hpp>
@@ -260,20 +261,57 @@ transaction_trace chain_controller::push_transaction(const packed_transaction& t
          return _push_transaction(trx);
       });
    });
-} FC_CAPTURE_AND_RETHROW() }
+} EOS_CAPTURE_AND_RETHROW( transaction_exception ) }
 
-transaction_trace chain_controller::_push_transaction(const packed_transaction& trx) 
+transaction_trace chain_controller::_push_transaction(const packed_transaction& packed_trx)
 { try {
-   transaction_metadata   mtrx( trx, get_chain_id(), head_block_time());
+   transaction_metadata   mtrx( packed_trx, get_chain_id(), head_block_time());
 
-   check_transaction_authorization(mtrx.trx(), trx.signatures);
-   auto result = _push_transaction(std::move(mtrx));
+   const auto delay = check_transaction_authorization(mtrx.trx(), packed_trx.signatures, packed_trx.context_free_data);
+   transaction_trace result(mtrx.id);
+   if (!delay.sec_since_epoch()) {
+      result = _push_transaction(std::move(mtrx));
 
-   // notify anyone listening to pending transactions
-   on_pending_transaction(_pending_transaction_metas.back(), trx);
+      // notify anyone listening to pending transactions
+      on_pending_transaction(_pending_transaction_metas.back(), packed_trx);
 
-   _pending_block->input_transactions.emplace_back(trx);
+      _pending_block->input_transactions.emplace_back(packed_trx);
 
+   } else {
+      result.status = transaction_trace::delayed;
+      const auto trx = mtrx.trx();
+      FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
+
+      FC_ASSERT( trx.expiration > (head_block_time() + fc::milliseconds(2*config::block_interval_ms)),
+                                   "transaction is expired when created" );
+
+      // add in the system account authorization
+      action for_deferred = trx.actions[0];
+      bool found = false;
+      for (const auto& auth : for_deferred.authorization) {
+         if (auth.actor == config::system_account_name &&
+             auth.permission == config::active_name) {
+            found = true;
+            break;
+         }
+      }
+      if (!found)
+         for_deferred.authorization.push_back(permission_level{config::system_account_name, config::active_name});
+
+      apply_context context(*this, _db, for_deferred, mtrx);
+
+      time_point_sec execute_after = head_block_time();
+      execute_after += time_point_sec(delay);
+      deferred_transaction dtrx(context.get_next_sender_id(), config::system_account_name, execute_after, trx);
+      FC_ASSERT( dtrx.execute_after < dtrx.expiration, "transaction expires before it can execute" );
+
+      result.deferred_transaction_requests.push_back(std::move(dtrx));
+
+      // notify anyone listening to pending transactions
+      on_pending_transaction(std::move(mtrx), packed_trx);
+
+      store_deferred_transaction(result.deferred_transaction_requests[0].get<deferred_transaction>());
+   }
    return result;
 
 } FC_CAPTURE_AND_RETHROW() }
@@ -426,6 +464,21 @@ void chain_controller::_finalize_pending_cycle()
    _pending_cycle_trace.reset();
 }
 
+void chain_controller::store_deferred_transaction(const deferred_transaction& dtrx)
+{
+   _db.create<generated_transaction_object>([&](generated_transaction_object &obj) {
+      obj.trx_id = dtrx.id();
+      obj.sender = dtrx.sender;
+      obj.sender_id = dtrx.sender_id;
+      obj.expiration = dtrx.expiration;
+      obj.delay_until = dtrx.execute_after;
+      obj.published = head_block_time();
+      obj.packed_trx.resize(fc::raw::pack_size(dtrx));
+      fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
+      fc::raw::pack(ds, dtrx);
+   });
+}
+
 void chain_controller::_apply_cycle_trace( const cycle_trace& res )
 {
    auto &generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
@@ -447,17 +500,7 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
                         fc::raw::pack(ds, dt);
                      });
                } else {
-                  _db.create<generated_transaction_object>([&](generated_transaction_object &obj) {
-                        obj.trx_id = dt.id();
-                        obj.sender = dt.sender;
-                        obj.sender_id = dt.sender_id;
-                        obj.expiration = dt.expiration;
-                        obj.delay_until = dt.execute_after;
-                        obj.published = head_block_time();
-                        obj.packed_trx.resize(fc::raw::pack_size(dt));
-                        fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
-                        fc::raw::pack(ds, dt);
-                     });
+                  store_deferred_transaction(dt);
                }
             } else if ( req.contains<deferred_reference>() ) {
                const auto& dr = req.get<deferred_reference>();
@@ -797,6 +840,7 @@ flat_set<public_key_type> chain_controller::get_required_keys(const transaction&
                                                               const flat_set<public_key_type>& candidate_keys)const
 {
    auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
+                                     [](const permission_level& ) {},
                                      get_global_properties().configuration.max_authority_depth,
                                      candidate_keys);
 
@@ -813,38 +857,109 @@ flat_set<public_key_type> chain_controller::get_required_keys(const transaction&
    return checker.used_keys();
 }
 
-void chain_controller::check_authorization( const vector<action>& actions,
-                                            const flat_set<public_key_type>& provided_keys,
-                                            bool allow_unused_signatures,
-                                            flat_set<account_name> provided_accounts )const
+class permission_visitor {
+public:
+   permission_visitor(const chain_controller& controller) : _chain_controller(controller) {}
+
+   void operator()(const permission_level& perm_level) {
+      const auto obj = _chain_controller.get_permission(perm_level);
+      if (_max_delay < obj.delay)
+         _max_delay = obj.delay;
+   }
+
+   const time_point& get_max_delay() const { return _max_delay; }
+private:
+   const chain_controller& _chain_controller;
+   time_point _max_delay;
+};
+
+time_point chain_controller::check_authorization( const vector<action>& actions,
+                                                  const flat_set<public_key_type>& provided_keys,
+                                                  bool allow_unused_signatures,
+                                                  flat_set<account_name> provided_accounts )const
 {
    auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
+                                     permission_visitor(*this),
                                      get_global_properties().configuration.max_authority_depth,
                                      provided_keys, provided_accounts );
 
+   time_point max_delay;
 
    for( const auto& act : actions ) {
       for( const auto& declared_auth : act.authorization ) {
 
          // check a minimum permission if one is set, otherwise assume the contract code will validate
          auto min_permission_name = lookup_minimum_permission(declared_auth.actor, act.account, act.name);
+         bool min_permission_required = true;
+         if (!min_permission_name) {
+            // for updateauth actions, need to determine the permission that is changing
+            if (act.account == config::system_account_name && act.name == contracts::updateauth::get_name()) {
+               auto update = act.data_as<contracts::updateauth>();
+               const auto permission_to_change = _db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
+               if (permission_to_change != nullptr) {
+                  // only determining delay
+                  min_permission_required = false;
+                  min_permission_name = update.permission;
+               }
+            }
+         }
          if (min_permission_name) {
             const auto& min_permission = _db.get<permission_object, by_owner>(boost::make_tuple(declared_auth.actor, *min_permission_name));
 
-
             if ((_skip_flags & skip_authority_check) == false) {
-               const auto &index = _db.get_index<permission_index>().indices();
-               EOS_ASSERT(get_permission(declared_auth).satisfies(min_permission, index),
+               const auto& index = _db.get_index<permission_index>().indices();
+               const optional<time_point> delay = get_permission(declared_auth).satisfies(min_permission, index);
+               EOS_ASSERT(!min_permission_required || delay.valid(),
                           tx_irrelevant_auth,
                           "action declares irrelevant authority '${auth}'; minimum authority is ${min}",
                           ("auth", declared_auth)("min", min_permission.name));
+               if (max_delay < *delay)
+                  max_delay = *delay;
             }
          }
+
+         if (act.account == config::system_account_name) {
+            // for link changes, we need to also determine the delay associated with an existing link that is being
+            // moved or removed
+            if (act.name == contracts::linkauth::get_name()) {
+               auto link = act.data_as<contracts::linkauth>();
+               if (declared_auth.actor == link.account) {
+                  const auto linked_permission_name = lookup_linked_permission(link.account, link.code, link.type);
+                  if (linked_permission_name.valid()) {
+                     const auto& linked_permission = _db.get<permission_object, by_owner>(boost::make_tuple(link.account, *linked_permission_name));
+                     const auto& index = _db.get_index<permission_index>().indices();
+                     const optional<time_point> delay = get_permission(declared_auth).satisfies(linked_permission, index);
+                     if (delay.valid() && max_delay < *delay)
+                        max_delay = *delay;
+                  } // else it is only a new link, so don't need to delay
+               }
+            } else if (act.name == contracts::unlinkauth::get_name()) {
+               auto unlink = act.data_as<contracts::unlinkauth>();
+               if (declared_auth.actor == unlink.account) {
+                  const auto unlinked_permission_name = lookup_linked_permission(unlink.account, unlink.code, unlink.type);
+                  if (unlinked_permission_name.valid()) {
+                     const auto& unlinked_permission = _db.get<permission_object, by_owner>(boost::make_tuple(unlink.account, *unlinked_permission_name));
+                     const auto& index = _db.get_index<permission_index>().indices();
+                     const optional<time_point> delay = get_permission(declared_auth).satisfies(unlinked_permission, index);
+                     if (delay.valid() && max_delay < *delay)
+                        max_delay = *delay;
+                  }
+               }
+            }
+         }
+
          if ((_skip_flags & skip_transaction_signatures) == false) {
             EOS_ASSERT(checker.satisfied(declared_auth), tx_missing_sigs,
                        "transaction declares authority '${auth}', but does not have signatures for it.",
                        ("auth", declared_auth));
          }
+      }
+
+      if (act.account == config::system_account_name && act.name == contracts::mindelay::get_name()) {
+         const auto mindelay = act.data_as<contracts::mindelay>();
+         const time_point delay = time_point_sec{mindelay.delay.convert_to<uint32_t>()};
+         if (max_delay < delay)
+            max_delay = delay;
       }
    }
 
@@ -852,24 +967,44 @@ void chain_controller::check_authorization( const vector<action>& actions,
       EOS_ASSERT(checker.all_keys_used(), tx_irrelevant_sig,
                  "transaction bears irrelevant signatures from these keys: ${keys}",
                  ("keys", checker.unused_keys()));
+
+   const auto checker_max_delay = checker.get_permission_visitor().get_max_delay();
+   if (max_delay < checker_max_delay)
+      max_delay = checker_max_delay;
+
+   return max_delay;
 }
 
-void chain_controller::check_transaction_authorization(const transaction& trx,
-                                                       const vector<signature_type>& signatures,
-                                                       bool allow_unused_signatures)const
+time_point chain_controller::check_transaction_authorization(const transaction& trx,
+                                                             const vector<signature_type>& signatures,
+                                                             const vector<bytes>& cfd,
+                                                             bool allow_unused_signatures)const
 {
-   check_authorization( trx.actions, trx.get_signature_keys( signatures, chain_id_type{} ), allow_unused_signatures );
+   return check_authorization( trx.actions, trx.get_signature_keys( signatures, chain_id_type{}, cfd ), allow_unused_signatures );
 }
 
 optional<permission_name> chain_controller::lookup_minimum_permission(account_name authorizer_account,
                                                                     account_name scope,
                                                                     action_name act_name) const {
+#warning TODO: this comment sounds like it is expecting a check ("may") somewhere else, but I have not found anything else
    // updateauth is a special case where any permission _may_ be suitable depending
    // on the contents of the action
-   if (scope == config::system_account_name && act_name == N(updateauth)) {
+   if (scope == config::system_account_name && act_name == contracts::updateauth::get_name()) {
       return optional<permission_name>();
    }
 
+   try {
+      optional<permission_name> linked_permission = lookup_linked_permission(authorizer_account, scope, act_name);
+      if (!linked_permission)
+         return config::active_name;
+
+      return linked_permission;
+   } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
+}
+
+optional<permission_name> chain_controller::lookup_linked_permission(account_name authorizer_account,
+                                                                     account_name scope,
+                                                                     action_name act_name) const {
    try {
       // First look up a specific link for this message act_name
       auto key = boost::make_tuple(authorizer_account, scope, act_name);
@@ -883,8 +1018,8 @@ optional<permission_name> chain_controller::lookup_minimum_permission(account_na
       // If no specific or default link found, use active permission
       if (link != nullptr)
          return link->required_permission;
-      else
-         return N(active);
+
+      return optional<permission_name>();
    } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
 }
 
@@ -892,7 +1027,7 @@ void chain_controller::validate_uniqueness( const transaction& trx )const {
    if( !should_check_for_duplicate_transactions() ) return;
 
    auto transaction = _db.find<transaction_object, by_trx_id>(trx.id());
-   EOS_ASSERT(transaction == nullptr, tx_duplicate, "transaction is not unique");
+   EOS_ASSERT(transaction == nullptr, tx_duplicate, "Transaction is not unique");
 }
 
 void chain_controller::record_transaction(const transaction& trx) 
@@ -916,8 +1051,8 @@ void chain_controller::validate_tapos(const transaction& trx)const {
    const auto& tapos_block_summary = _db.get<block_summary_object>((uint16_t)trx.ref_block_num);
 
    //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
-   EOS_ASSERT(trx.verify_reference_block(tapos_block_summary.block_id), transaction_exception,
-              "transaction's reference block did not match. Is this transaction from a different fork?",
+   EOS_ASSERT(trx.verify_reference_block(tapos_block_summary.block_id), invalid_ref_block_exception,
+              "Transaction's reference block did not match. Is this transaction from a different fork?",
               ("tapos_summary", tapos_block_summary));
 }
 
@@ -936,10 +1071,10 @@ void chain_controller::validate_expiration( const transaction& trx ) const
    const auto& chain_configuration = get_global_properties().configuration;
 
    EOS_ASSERT( time_point(trx.expiration) <= now + fc::seconds(chain_configuration.max_transaction_lifetime),
-              transaction_exception, "transaction expiration is too far in the future",
+               tx_exp_too_far_exception, "Transaction expiration is too far in the future, expiration is ${trx.expiration} but max expiration is ${max_til_exp}",
               ("trx.expiration",trx.expiration)("now",now)
               ("max_til_exp",chain_configuration.max_transaction_lifetime));
-   EOS_ASSERT( now <= time_point(trx.expiration), transaction_exception, "transaction is expired",
+   EOS_ASSERT( now <= time_point(trx.expiration), expired_tx_exception, "Transaction is expired, now is ${now}, expiration is ${trx.exp}",
               ("now",now)("trx.exp",trx.expiration));
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
@@ -1113,7 +1248,7 @@ const producer_object& chain_controller::get_producer(const account_name& owner_
 const permission_object&   chain_controller::get_permission( const permission_level& level )const
 { try {
    return _db.get<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
-} FC_CAPTURE_AND_RETHROW( (level) ) }
+} EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Fail to retrieve permission: ${level}", ("level", level) ) }
 
 uint32_t chain_controller::last_irreversible_block_num() const {
    return get_dynamic_global_properties().last_irreversible_block_num;
@@ -1643,7 +1778,7 @@ vector<transaction_trace> chain_controller::_push_deferred_transactions( bool fl
    auto& generated_index = generated_transaction_idx.indices().get<by_delay>();
    vector<const generated_transaction_object*> candidates;
 
-   for( auto itr = generated_index.rbegin(); itr != generated_index.rend() && (head_block_time() >= itr->delay_until); ++itr) {
+   for( auto itr = generated_index.begin(); itr != generated_index.end() && (head_block_time() >= itr->delay_until); ++itr) {
       const auto &gtrx = *itr;
       candidates.emplace_back(&gtrx);
    }

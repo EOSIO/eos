@@ -50,10 +50,11 @@ namespace detail {
     * @tparam F A callable which takes a single argument of type @ref AccountPermission and returns the corresponding
     * authority
     */
-   template<typename PermissionToAuthorityFunc>
+   template<typename PermissionToAuthorityFunc, typename PermissionVisitorFunc>
    class authority_checker {
       private:
          PermissionToAuthorityFunc  permission_to_authority;
+         PermissionVisitorFunc      permission_visitor;
          uint16_t                   recursion_depth_limit;
          vector<public_key_type>    signing_keys;
          flat_set<account_name>     _provided_auths; /// accounts which have authorized the transaction at owner level
@@ -79,6 +80,8 @@ namespace detail {
             }
             uint32_t operator()(const permission_level_weight& permission) {
                if (recursion_depth < checker.recursion_depth_limit) {
+                  checker.permission_visitor(permission.permission);
+
                   if( checker.has_permission( permission.permission.actor ) )
                      total_weight += permission.weight;
                   else if( checker.satisfied(permission.permission, recursion_depth + 1) )
@@ -93,10 +96,12 @@ namespace detail {
          }
 
       public:
-         authority_checker( PermissionToAuthorityFunc permission_to_authority, 
+         authority_checker( PermissionToAuthorityFunc permission_to_authority,
+                            PermissionVisitorFunc permission_visitor,
                             uint16_t recursion_depth_limit, const flat_set<public_key_type>& signing_keys,
                             flat_set<account_name> provided_auths = flat_set<account_name>() )
             : permission_to_authority(permission_to_authority),
+              permission_visitor(permission_visitor),
               recursion_depth_limit(recursion_depth_limit),
               signing_keys(signing_keys.begin(), signing_keys.end()),
               _provided_auths(provided_auths.begin(), provided_auths.end()),
@@ -146,14 +151,19 @@ namespace detail {
             auto range = utilities::filter_data_by_marker(signing_keys, _used_keys, false);
             return {range.begin(), range.end()};
          }
+
+         const PermissionVisitorFunc& get_permission_visitor() {
+            return permission_visitor;
+         }
    }; /// authority_checker
 
-   template<typename PermissionToAuthorityFunc>
-   auto make_auth_checker(PermissionToAuthorityFunc&& pta, 
+   template<typename PermissionToAuthorityFunc, typename PermissionVisitorFunc>
+   auto make_auth_checker(PermissionToAuthorityFunc&& pta,
+                          PermissionVisitorFunc&& permission_visitor,
                           uint16_t recursion_depth_limit, 
                           const flat_set<public_key_type>& signing_keys,
                           const flat_set<account_name>& accounts = flat_set<account_name>() ) {
-      return authority_checker<PermissionToAuthorityFunc>(std::forward<PermissionToAuthorityFunc>(pta), recursion_depth_limit, signing_keys, accounts);
+      return authority_checker<PermissionToAuthorityFunc, PermissionVisitorFunc>(std::forward<PermissionToAuthorityFunc>(pta), std::forward<PermissionVisitorFunc>(permission_visitor), recursion_depth_limit, signing_keys, accounts);
    }
 
 } } // namespace eosio::chain

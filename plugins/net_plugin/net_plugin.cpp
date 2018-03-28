@@ -2253,7 +2253,11 @@ namespace eosio {
                         }
                      }
                      break;
-                  }}
+                  }
+                  case transaction_receipt::delayed:
+#warning TODO: Not sure what should happen here
+                     break;
+                  }
                }
             }
          }

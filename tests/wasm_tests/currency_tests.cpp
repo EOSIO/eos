@@ -1,4 +1,7 @@
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <boost/test/unit_test.hpp>
+#pragma GCC diagnostic pop
 #include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
@@ -100,6 +103,29 @@ BOOST_FIXTURE_TEST_CASE( test_transfer, currency_tester ) try {
    }
 } FC_LOG_AND_RETHROW() /// test_transfer
 
+BOOST_FIXTURE_TEST_CASE( test_duplicate_transfer, currency_tester ) {
+   create_accounts( {N(alice)} );
+
+   auto trace = push_action(N(currency), N(transfer), mutable_variant_object()
+      ("from", "currency")
+      ("to",   "alice")
+      ("quantity", "100.0000 CUR")
+      ("memo", "fund Alice")
+   );
+
+   BOOST_CHECK_THROW(push_action(N(currency), N(transfer), mutable_variant_object()
+                                 ("from", "currency")
+                                 ("to",   "alice")
+                                 ("quantity", "100.0000 CUR")
+                                 ("memo", "fund Alice")),
+                     tx_duplicate);
+
+   produce_block();
+
+   BOOST_CHECK_EQUAL(true, chain_has_transaction(trace.id));
+   BOOST_CHECK_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ) );
+}
+
 BOOST_FIXTURE_TEST_CASE( test_addtransfer, currency_tester ) try {
    create_accounts( {N(alice)} );
 
@@ -161,7 +187,7 @@ BOOST_FIXTURE_TEST_CASE( test_overspend, currency_tester ) try {
          ("quantity", "101.0000 CUR")
          ("memo", "overspend! Alice");
 
-      BOOST_CHECK_EXCEPTION(push_action(N(alice), N(transfer), data), fc::assert_exception, assert_message_is("overdrawn balance"));
+      BOOST_CHECK_EXCEPTION(push_action(N(alice), N(transfer), data), transaction_exception, assert_message_is("overdrawn balance"));
       produce_block();
 
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ));
@@ -245,18 +271,17 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
                             fc::assert_exception, assert_message_is("creating symbol from empty string"));
    }
 
-   
    // precision part missing
    {
       BOOST_CHECK_EXCEPTION(symbol::from_string("RND"),
                             fc::assert_exception, assert_message_is("missing comma in symbol"));
    }
 
-
-   // precision part missing
+   // 0 decimals part
    {
-      BOOST_CHECK_EXCEPTION(symbol::from_string("0,EURO"),
-                            fc::assert_exception, assert_message_is("zero decimals in symbol"));
+      symbol sym = symbol::from_string("0,EURO");
+      BOOST_REQUIRE_EQUAL(0, sym.decimals());
+      BOOST_REQUIRE_EQUAL("EURO", sym.name());
    }
 
    // invalid - contains lower case characters, no validation
@@ -273,10 +298,63 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
                             fc::assert_exception, assert_message_is("invalid character in symbol name"));
    }
 
-   // invalid - missing decimal point
+   // Missing decimal point, should create asset with 0 decimals
    {
-      BOOST_CHECK_EXCEPTION(asset::from_string("10 CUR"),
-                            fc::assert_exception, assert_message_is("dot missing in asset from string"));
+      asset a = asset::from_string("10 CUR");
+      BOOST_REQUIRE_EQUAL(a.amount, 10);
+      BOOST_REQUIRE_EQUAL(a.precision(), 1);
+      BOOST_REQUIRE_EQUAL(a.decimals(), 0);
+      BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
+   }
+
+   // Missing space
+   {
+      BOOST_CHECK_EXCEPTION(asset::from_string("10CUR"),
+                            asset_type_exception, assert_message_is("Asset's amount and symbol should be separated with space"));
+   }
+
+   // Precision is not specified when decimal separator is introduced
+   {
+      BOOST_CHECK_EXCEPTION(asset::from_string("10. CUR"),
+                            asset_type_exception, assert_message_is("Missing decimal fraction after decimal point"));
+   }
+
+   // Missing symbol
+   {
+      BOOST_CHECK_EXCEPTION(asset::from_string("10"),
+                            asset_type_exception, assert_message_is("Asset's amount and symbol should be separated with space"));
+   }
+
+   // Multiple spaces
+   {
+      asset a = asset::from_string("1000000000.00000  CUR");
+      BOOST_REQUIRE_EQUAL(a.amount, 100000000000000);
+      BOOST_REQUIRE_EQUAL(a.decimals(), 5);
+      BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
+   }
+
+   // Valid asset
+   {
+      asset a = asset::from_string("1000000000.00000 CUR");
+      BOOST_REQUIRE_EQUAL(a.amount, 100000000000000);
+      BOOST_REQUIRE_EQUAL(a.decimals(), 5);
+      BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
+   }
+
+   // Negative asset
+   {
+      asset a = asset::from_string("-001000000.00010 CUR");
+      BOOST_REQUIRE_EQUAL(a.amount, -100000000010);
+      BOOST_REQUIRE_EQUAL(a.decimals(), 5);
+      BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
+   }
+
+   // Negative asset below 1
+   {
+      asset a = asset::from_string("-000000000.00100 CUR");
+      BOOST_REQUIRE_EQUAL(a.amount, -100);
+      BOOST_REQUIRE_EQUAL(a.decimals(), 5);
+      BOOST_REQUIRE_EQUAL(a.symbol_name(), "CUR");
    }
 
 } FC_LOG_AND_RETHROW() /// test_symbol

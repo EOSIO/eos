@@ -110,7 +110,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, tester ) try {
       trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
       yes_assert_id = trx.id();
 
-      BOOST_CHECK_THROW(push_transaction( trx ), fc::assert_exception);
+      BOOST_CHECK_THROW(push_transaction( trx ), transaction_exception);
    }
 
    produce_blocks(1);
@@ -820,7 +820,7 @@ BOOST_FIXTURE_TEST_CASE( check_table_maximum, tester ) try {
    trx.sign(get_private_key( N(tbl), "active" ), chain_id_type());
 
    //should fail, a check to make sure assert() in wasm is being evaluated correctly
-   BOOST_CHECK_THROW(push_transaction(trx), fc::assert_exception);
+   BOOST_CHECK_THROW(push_transaction(trx), transaction_exception);
    }
 
    produce_blocks(1);

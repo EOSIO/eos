@@ -14,6 +14,7 @@
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/permission_link_object.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/producer_object.hpp>
@@ -199,6 +200,7 @@ void apply_eosio_updateauth(apply_context& context) {
          po.auth = update.data;
          po.parent = parent_id;
          po.last_updated = context.controller.head_block_time();
+         po.delay = time_point_sec(update.delay.convert_to<uint64_t>());
       });
    }  else {
       // TODO/QUESTION: If we are creating a new permission, should we check if the message declared
@@ -209,6 +211,7 @@ void apply_eosio_updateauth(apply_context& context) {
          po.auth = update.data;
          po.parent = parent_id;
          po.last_updated = context.controller.head_block_time();
+         po.delay = time_point_sec(update.delay.convert_to<uint64_t>());
       });
    }
 }
@@ -246,9 +249,15 @@ void apply_eosio_linkauth(apply_context& context) {
    context.require_authorization(requirement.account);
    
    auto& db = context.mutable_db;
-   db.get<account_object, by_name>(requirement.account);
-   db.get<account_object, by_name>(requirement.code);
-   db.get<permission_object, by_name>(requirement.requirement);
+   const auto *account = db.find<account_object, by_name>(requirement.account);
+   EOS_ASSERT(account != nullptr, account_query_exception,
+              "Fail to retrieve account: ${account}", ("account", requirement.account));
+   const auto *code = db.find<account_object, by_name>(requirement.code);
+   EOS_ASSERT(code != nullptr, account_query_exception,
+              "Fail to retrieve code for account: ${account}", ("account", requirement.code));
+   const auto *permission = db.find<permission_object, by_name>(requirement.requirement);
+   EOS_ASSERT(permission != nullptr, permission_query_exception,
+              "Fail to retrieve permission: ${permission}", ("permission", requirement.requirement));
    
    auto link_key = boost::make_tuple(requirement.account, requirement.code, requirement.type);
    auto link = db.find<permission_link_object, by_action_name>(link_key);
@@ -313,24 +322,6 @@ static optional<variant> get_pending_recovery(apply_context& context, account_na
    return optional<variant_object>();
 }
 
-static uint32_t get_next_sender_id(apply_context& context) {
-   const uint64_t id = N(config::eosio_auth_scope);
-   const auto table = N(deferred.seq);
-   const auto payer = config::system_account_name;
-   const auto iter = context.db_find_i64(config::system_account_name, config::eosio_auth_scope, table, id);
-   if (iter == -1) {
-      const uint32_t next_serial = 1;
-      context.db_store_i64(config::eosio_auth_scope, table, payer, id, (const char*)&next_serial, sizeof(next_serial));
-      return 0;
-   }
-
-   uint32_t next_serial = 0;
-   context.db_get_i64(iter, (char*)&next_serial, sizeof(next_serial));
-   const auto result = next_serial++;
-   context.db_update_i64(iter, payer, (const char*)&next_serial, sizeof(next_serial));
-   return result;
-}
-
 static auto get_account_creation(const apply_context& context, const account_name& account) {
    auto const& accnt = context.db.get<account_object, by_name>(account);
    return (time_point)accnt.creation_date;
@@ -393,7 +384,7 @@ void apply_eosio_postrecovery(apply_context& context) {
       .data = recover_act.data
    }, update);
 
-   uint32_t request_id = get_next_sender_id(context);
+   uint32_t request_id = context.get_next_sender_id();
 
    auto record_data = mutable_variant_object()
       ("account", account)
@@ -473,5 +464,38 @@ void apply_eosio_vetorecovery(apply_context& context) {
    context.console_append_formatted("Recovery for account ${account} vetoed!\n", mutable_variant_object()("account", account));
 }
 
+void apply_eosio_canceldelay(apply_context& context) {
+   auto cancel = context.act.data_as<canceldelay>();
+   const auto sender_id = cancel.sender_id.convert_to<uint32_t>();
+   const auto& generated_transaction_idx = context.controller.get_database().get_index<generated_transaction_multi_index>();
+   const auto& generated_index = generated_transaction_idx.indices().get<by_sender_id>();
+   const auto& itr = generated_index.lower_bound(boost::make_tuple(config::system_account_name, sender_id));
+   FC_ASSERT (itr == generated_index.end() || itr->sender != config::system_account_name || itr->sender_id != sender_id,
+              "cannot cancel sender_id=${sid}, there is no deferred transaction with that sender_id",("sid",sender_id));
+
+   auto dtrx = fc::raw::unpack<deferred_transaction>(itr->packed_trx.data(), itr->packed_trx.size());
+   set<account_name> accounts;
+   for (const auto& act : dtrx.actions) {
+      for (const auto& auth : act.authorization) {
+         accounts.insert(auth.actor);
+      }
+   }
+
+   bool found = false;
+   for (const auto& auth : context.act.authorization) {
+      if (auth.permission == config::active_name && accounts.count(auth.actor)) {
+         found = true;
+         break;
+      }
+   }
+
+   FC_ASSERT (found, "canceldelay action must be signed with the \"active\" permission for one of the actors"
+                     " provided in the authorizations on the original transaction");
+   context.cancel_deferred(sender_id);
+}
+
+void apply_eosio_mindelay(apply_context& context) {
+   // all processing is performed in chain_controller::check_authorization
+}
 
 } } } // namespace eosio::chain::contracts
