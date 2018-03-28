@@ -150,6 +150,7 @@ struct updateauth {
    permission_name                   permission;
    permission_name                   parent;
    authority                         data;
+   uint32                            delay;
 
    static account_name get_account() {
       return config::system_account_name;
@@ -268,6 +269,29 @@ struct vetorecovery {
    }
 };
 
+struct canceldelay {
+   uint32   sender_id;
+
+   static account_name get_account() {
+      return config::system_account_name;
+   }
+
+   static action_name get_name() {
+      return N(canceldelay);
+   }
+};
+
+struct mindelay {
+   uint32   delay;
+
+   static account_name get_account() {
+      return config::system_account_name;
+   }
+
+   static action_name get_name() {
+      return N(mindelay);
+   }
+};
 
 } } } /// namespace eosio::chain::contracts
 
@@ -281,10 +305,12 @@ FC_REFLECT( eosio::chain::contracts::abi_def                          , (types)(
 FC_REFLECT( eosio::chain::contracts::newaccount                       , (creator)(name)(owner)(active)(recovery) )
 FC_REFLECT( eosio::chain::contracts::setcode                          , (account)(vmtype)(vmversion)(code) ) //abi
 FC_REFLECT( eosio::chain::contracts::setabi                           , (account)(abi) )
-FC_REFLECT( eosio::chain::contracts::updateauth                       , (account)(permission)(parent)(data) )
+FC_REFLECT( eosio::chain::contracts::updateauth                       , (account)(permission)(parent)(data)(delay) )
 FC_REFLECT( eosio::chain::contracts::deleteauth                       , (account)(permission) )
 FC_REFLECT( eosio::chain::contracts::linkauth                         , (account)(code)(type)(requirement) )
 FC_REFLECT( eosio::chain::contracts::unlinkauth                       , (account)(code)(type) )
 FC_REFLECT( eosio::chain::contracts::postrecovery                     , (account)(data)(memo) )
 FC_REFLECT( eosio::chain::contracts::passrecovery                     , (account) )
 FC_REFLECT( eosio::chain::contracts::vetorecovery                     , (account) )
+FC_REFLECT( eosio::chain::contracts::canceldelay                      , (sender_id) )
+FC_REFLECT( eosio::chain::contracts::mindelay                         , (delay) )

@@ -284,13 +284,13 @@ namespace eosio { namespace chain {
           * @param allow_unused_signatures - true if method should not assert on unused signatures
           * @param provided_accounts - the set of accounts which have authorized the transaction (presumed to be owner)
           *
-          * @return true if the provided keys and accounts are sufficient to authorize actions of the transaction
+          * @return time_point set to the max delay that this authorization requires to complete
           */
-         void check_authorization( const vector<action>& actions,
-                                   const flat_set<public_key_type>& provided_keys,
-                                   bool                             allow_unused_signatures = false,
-                                   flat_set<account_name>           provided_accounts = flat_set<account_name>()
-                                   )const;
+         time_point check_authorization( const vector<action>& actions,
+                                         const flat_set<public_key_type>& provided_keys,
+                                         bool                             allow_unused_signatures = false,
+                                         flat_set<account_name>           provided_accounts = flat_set<account_name>()
+                                         )const;
 
 
       private:
@@ -337,10 +337,10 @@ namespace eosio { namespace chain {
             return f();
          }
 
-         void check_transaction_authorization(const transaction& trx,
-                                              const vector<signature_type>& signatures,
-                                              const vector<bytes>&  cfd = vector<bytes>(),
-                                              bool allow_unused_signatures = false)const;
+         time_point check_transaction_authorization(const transaction& trx,
+                                                    const vector<signature_type>& signatures,
+                                                    const vector<bytes>&  cfd = vector<bytes>(),
+                                                    bool allow_unused_signatures = false)const;
 
 
          void require_scope(const scope_name& name) const;
@@ -381,6 +381,17 @@ namespace eosio { namespace chain {
                                                              scope_name code_account,
                                                              action_name type) const;
 
+         /**
+          * @brief Find the linked permission for the passed in parameters
+          * @param authorizer_account The account authorizing the message
+          * @param code_account The account which publishes the contract that handles the message
+          * @param type The type of message
+          * @return an optional<permission_name> for the linked permission if one exists; otherwise an invalid
+          * optional<permission_name>
+          */
+         optional<permission_name> lookup_linked_permission( account_name authorizer_account,
+                                                             scope_name code_account,
+                                                             action_name type) const;
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
          bool should_check_tapos()const                      { return !(_skip_flags&skip_tapos_check);            }
@@ -413,6 +424,7 @@ namespace eosio { namespace chain {
          transaction _get_on_block_transaction();
          void _apply_on_block_transaction();
 
+         void store_deferred_transaction(const deferred_transaction& dtrx);
 
       //        producer_schedule_type calculate_next_round( const signed_block& next_block );
 

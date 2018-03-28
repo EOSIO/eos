@@ -225,12 +225,14 @@ BOOST_AUTO_TEST_CASE(order_dependent_transactions)
               ("account", "tester")
               ("permission", "first")
               ("parent", "active")
-              ("data",  authority(chain.get_public_key(name("tester"), "first"))));
+              ("data",  authority(chain.get_public_key(name("tester"), "first")))
+              ("delay", 0));
       chain.push_action(name("eosio"), name("updateauth"), name("tester"), fc::mutable_variant_object()
               ("account", "tester")
               ("permission", "second")
               ("parent", "first")
-              ("data",  authority(chain.get_public_key(name("tester"), "second"))));
+              ("data",  authority(chain.get_public_key(name("tester"), "second")))
+              ("delay", 0));
 
       // Ensure the related auths are created
       const auto* first_auth = chain.find<permission_object, by_owner>(boost::make_tuple(name("tester"), name("first")));
