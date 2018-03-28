@@ -1687,11 +1687,12 @@ launcher_def::start_all (string &gts, launch_modes mode) {
 
 //------------------------------------------------------------
 
-void write_default_config(const bfs::path& cfg_file, const options_description &cfg ) {
+void write_default_config(const bfs::path& cfg_file, const options_description &cfg, bool verbose ) {
    bfs::path parent = cfg_file.parent_path();
    if (parent.empty()) {
       parent = ".";
    }
+    if (verbose) { cout << "Check if directory exists " << parent << std::endl; }
    if(!bfs::exists(parent)) {
       try {
          bfs::create_directories(parent);
@@ -1702,27 +1703,35 @@ void write_default_config(const bfs::path& cfg_file, const options_description &
       }
    }
 
+    if (verbose) { cout << "Actual writing to file " << cfg_file << std::endl; }
    std::ofstream out_cfg( bfs::path(cfg_file).make_preferred().string());
    for(const boost::shared_ptr<bpo::option_description> od : cfg.options())
    {
       if(!od->description().empty()) {
+          if (verbose) { cout << "Option description: " << od->description() << std::endl; }
          out_cfg << "# " << od->description();
-         std::map<std::string, std::string>::iterator it;
-            out_cfg << " (" << it->second << ")";
+//         std::map<std::string, std::string>::iterator it;
+//            out_cfg << " (" << it->second << ")";
          out_cfg << std::endl;
       }
       boost::any store;
-      if(!od->semantic()->apply_default(store))
-         out_cfg << "# " << od->long_name() << " = " << std::endl;
+      if(!od->semantic()->apply_default(store)) {
+          if (verbose) { cout << "Non-default option: " << od->long_name() << std::endl; }
+          out_cfg << "# " << od->long_name() << " = " << std::endl;
+      }
       else {
          auto example = od->format_parameter();
-         if(example.empty())
-            // This is a boolean switch
-            out_cfg << od->long_name() << " = " << "false" << std::endl;
+         if(example.empty()) {
+             if (verbose) { cout << "Boolean option: " << od->long_name() << std::endl; }
+             // This is a boolean switch
+             out_cfg << od->long_name() << " = " << "false" << std::endl;
+         }
          else {
+               if (verbose) { cout << "String option: " << od->long_name(); }
             // The string is formatted "arg (=<interesting part>)"
             example.erase(0, 6);
             example.erase(example.length()-1);
+               if (verbose) { cout << ", value: " << example << std::endl; }
             out_cfg << od->long_name() << " = " << example << std::endl;
          }
       }
@@ -1799,6 +1808,7 @@ int main (int argc, char *argv[]) {
          config_file_name = config_dir / config_file_name;
    }
 
+      if (verbose) { cout << "Checking config file existence " << config_file_name << std::endl; }
    if(!bfs::exists(config_file_name)) {
       if(config_file_name.compare(config_dir / "config.ini") != 0)
       {
@@ -1806,7 +1816,7 @@ int main (int argc, char *argv[]) {
          return -1;
       }
        if (verbose) { cout << "Writing default config file." << std::endl; }
-      write_default_config(config_file_name, cfg);
+      write_default_config(config_file_name, cfg, verbose);
    }
 
 
