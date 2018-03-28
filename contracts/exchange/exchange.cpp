@@ -1,9 +1,9 @@
 #include <math.h>
 #include "exchange.hpp"
 
-#include "exchange_state.cpp"
-#include "exchange_accounts.cpp"
-#include "market_state.cpp"
+#include "exchange_state.hpp"
+#include "exchange_accounts.hpp"
+#include "market_state.hpp"
 
 #include <eosiolib/dispatcher.hpp>
 
@@ -232,7 +232,7 @@ namespace eosio {
             on( unpack_action_data<covermargin>() );
             return;
          default:
-            _excurrencies.apply( contract, act ); 
+            _excurrencies.apply( contract, act );
             return;
       }
    }
