@@ -628,7 +628,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
        ("memo", "hi" )
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
-   BOOST_REQUIRE_EQUAL(0, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
    chain.control->push_deferred_transactions(true);
 
@@ -730,7 +730,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
        ("memo", "hi" )
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
-   BOOST_REQUIRE_EQUAL(0, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
    chain.produce_blocks();
 
@@ -749,9 +749,8 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    );
 
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace.status);
-   BOOST_REQUIRE_EQUAL(1, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(1, trace.deferred_transaction_requests.size());
    BOOST_REQUIRE_EQUAL(0, trace.action_traces.size());
-   BOOST_REQUIRE_EQUAL(0, trace.canceled_deferred.size());
 
    chain.produce_blocks();
 
@@ -770,9 +769,8 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
            ("requirement", "second"),
            30);
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace.status);
-   BOOST_REQUIRE_EQUAL(1, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(1, trace.deferred_transaction_requests.size());
    BOOST_REQUIRE_EQUAL(0, trace.action_traces.size());
-   BOOST_REQUIRE_EQUAL(0, trace.canceled_deferred.size());
 
    chain.produce_blocks();
 
@@ -799,9 +797,8 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
        30
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace.status);
-   BOOST_REQUIRE_EQUAL(1, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(1, trace.deferred_transaction_requests.size());
    BOOST_REQUIRE_EQUAL(0, trace.action_traces.size());
-   BOOST_REQUIRE_EQUAL(0, trace.canceled_deferred.size());
 
    chain.produce_blocks();
 
