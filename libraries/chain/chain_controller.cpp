@@ -365,8 +365,8 @@ void chain_controller::_start_pending_block( bool skip_deferred )
    _start_pending_cycle();
 
    if ( !skip_deferred ) {
-      _push_deferred_transactions(true);
-      if (_pending_cycle_trace && _pending_cycle_trace->shard_traces.size() > 0) {
+      _push_deferred_transactions( false );
+      if (_pending_cycle_trace && _pending_cycle_trace->shard_traces.size() > 0 && _pending_cycle_trace->shard_traces.back().transaction_traces.size() > 0) {
          _finalize_pending_cycle();
          _start_pending_cycle();
       }
