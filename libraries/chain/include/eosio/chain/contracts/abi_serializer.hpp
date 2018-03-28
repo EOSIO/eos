@@ -177,6 +177,12 @@ namespace impl {
          mvo(name, std::move(array));
       }
 
+      template<typename Resolver, typename... Args>
+      static void add( mutable_variant_object &mvo, const char* name, const fc::static_variant<Args...>& v, Resolver resolver )
+      {
+         //TODO: implement deserialization for static_variant
+      }
+
       /**
        * overload of to_variant_object for actions
        * @tparam Resolver
@@ -400,7 +406,6 @@ namespace impl {
          T& _val;
          Resolver _resolver;
    };
-
 
    template<typename M, typename Resolver, require_abi_t<M>>
    void abi_to_variant::add( mutable_variant_object &mvo, const char* name, const M& v, Resolver resolver ) {

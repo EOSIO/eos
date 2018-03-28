@@ -35,23 +35,23 @@ EOS.IO currently supports the following operating systems:
 
 1. [Getting Started](#gettingstarted)
 2. [Setting up a build/development environment](#setup)
-  1. [Automated build script](#autobuild)
+   1. [Automated build script](#autobuild)
       1. [Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for a local testnet](#autoubuntulocal)
       2. [Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for the public testnet](#autoubuntupublic)
       3. [MacOS for a local testnet](#automaclocal)
       4. [MacOS for the public testnet](#automacpublic)
 3. [Building EOS and running a node](#runanode)
-  1. [Getting the code](#getcode)
-  2. [Building from source code](#build)
-  3. [Creating and launching a single-node testnet](#singlenode)
-  4. [Next steps](#nextsteps)
+   1. [Getting the code](#getcode)
+   2. [Building from source code](#build)
+   3. [Creating and launching a single-node testnet](#singlenode)
+   4. [Next steps](#nextsteps)
 4. [Example Currency Contract Walkthrough](#smartcontracts)
-  1. [Example Contracts](#smartcontractexample)
-  2. [Setting up a wallet and importing account key](#walletimport)
-  3. [Creating accounts for your smart contracts](#createaccounts)
-  4. [Upload sample contract to blockchain](#uploadsmartcontract)
-  5. [Pushing a message to a sample contract](#pushamessage)
-  6. [Reading Currency Contract Balance](#readingcontract)
+   1. [Example Contracts](#smartcontractexample)
+   2. [Setting up a wallet and importing account key](#walletimport)
+   3. [Creating accounts for your smart contracts](#createaccounts)
+   4. [Upload sample contract to blockchain](#uploadsmartcontract)
+   5. [Pushing a message to a sample contract](#pushamessage)
+   6. [Reading Currency Contract Balance](#readingcontract)
 5. [Running local testnet](#localtestnet)
 6. [Running a node on the public testnet](#publictestnet)
 7. [Doxygen documentation](#doxygen)
@@ -622,12 +622,12 @@ cd ~
 curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
 tar xf mongo-c-driver-1.9.3.tar.gz
 cd mongo-c-driver-1.9.3
-./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+./configure --enable-static --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
 make -j$( nproc )
 sudo make install
 git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 cd mongo-cxx-driver/build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
 sudo make -j$( nproc )
 ```
 
@@ -745,12 +745,12 @@ cd ~
 curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
 tar xf mongo-c-driver-1.9.3.tar.gz
 cd mongo-c-driver-1.9.3
-./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+./configure --enable-static --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
 make -j$( nproc )
 sudo make install
 git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 cd mongo-cxx-driver/build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
 sudo make -j$( nproc )
 ```
 
@@ -819,12 +819,12 @@ cd ~
 curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
 tar xf mongo-c-driver-1.9.3.tar.gz
 cd mongo-c-driver-1.9.3
-./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+./configure --enable-static --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
 make -j$( nproc )
 sudo make install
 git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 cd mongo-cxx-driver/build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
 sudo make -j$( nproc )
 ```
 
@@ -893,12 +893,12 @@ cd ~
 curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
 tar xf mongo-c-driver-1.9.3.tar.gz
 cd mongo-c-driver-1.9.3
-./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+./configure --enable-static --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
 make -j$( nproc )
 sudo make install
 git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 cd mongo-cxx-driver/build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
 sudo make -j$( nproc )
 ```
 
@@ -969,7 +969,7 @@ curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo
 tar xf mongo-c-driver-1.9.3.tar.gz
 rm -f mongo-c-driver-1.9.3.tar.gz
 cd mongo-c-driver-1.9.3
-./configure --enable-ssl=darwin --disable-automatic-init-and-cleanup --prefix=/usr/local
+./configure --enable-static --enable-ssl=darwin --disable-automatic-init-and-cleanup --prefix=/usr/local
 make -j$( sysctl -in machdep.cpu.core_count )
 sudo make install
 cd ..
@@ -977,7 +977,7 @@ rm -rf mongo-c-driver-1.9.3
 
 git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 cd mongo-cxx-driver/build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
 make -j$( sysctl -in machdep.cpu.core_count )
 sudo make install
 cd ..

@@ -1,4 +1,7 @@
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <boost/test/unit_test.hpp>
+#pragma GCC diagnostic pop
 #include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
@@ -99,6 +102,29 @@ BOOST_FIXTURE_TEST_CASE( test_transfer, currency_tester ) try {
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ) );
    }
 } FC_LOG_AND_RETHROW() /// test_transfer
+
+BOOST_FIXTURE_TEST_CASE( test_duplicate_transfer, currency_tester ) {
+   create_accounts( {N(alice)} );
+
+   auto trace = push_action(N(currency), N(transfer), mutable_variant_object()
+      ("from", "currency")
+      ("to",   "alice")
+      ("quantity", "100.0000 CUR")
+      ("memo", "fund Alice")
+   );
+
+   BOOST_CHECK_THROW(push_action(N(currency), N(transfer), mutable_variant_object()
+                                 ("from", "currency")
+                                 ("to",   "alice")
+                                 ("quantity", "100.0000 CUR")
+                                 ("memo", "fund Alice")),
+                     tx_duplicate);
+
+   produce_block();
+
+   BOOST_CHECK_EQUAL(true, chain_has_transaction(trace.id));
+   BOOST_CHECK_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ) );
+}
 
 BOOST_FIXTURE_TEST_CASE( test_addtransfer, currency_tester ) try {
    create_accounts( {N(alice)} );
@@ -429,8 +455,8 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       ("memo", "fund Proxy")
    );
 
-   BOOST_REQUIRE_EQUAL(trace.deferred_transactions.size(), 1);
-   auto deferred_id = trace.deferred_transactions.back().id();
+   BOOST_REQUIRE_EQUAL(trace.deferred_transaction_requests.size(), 1);
+   auto deferred_id = trace.deferred_transaction_requests.back().get<deferred_transaction>().id();
 
    while(control->head_block_time() < expected_delivery) {
       control->push_deferred_transactions(true);

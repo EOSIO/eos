@@ -46,6 +46,8 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
    SET_APP_HANDLER( eosio, eosio, postrecovery, eosio );
    SET_APP_HANDLER( eosio, eosio, passrecovery, eosio );
    SET_APP_HANDLER( eosio, eosio, vetorecovery, eosio );
+   SET_APP_HANDLER( eosio, eosio, canceldelay, eosio );
+   SET_APP_HANDLER( eosio, eosio, mindelay, eosio );
 }
 
 
@@ -73,6 +75,8 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.actions.push_back( action_def{name("vetorecovery"), "vetorecovery"} );
    eos_abi.actions.push_back( action_def{name("onerror"), "onerror"} );
    eos_abi.actions.push_back( action_def{name("onblock"), "onblock"} );
+   eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay"} );
+   eos_abi.actions.push_back( action_def{name("mindelay"), "mindelay"} );
 
    // ACTION PAYLOADS
 
@@ -99,6 +103,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"permission", "permission_name"},
          {"parent", "permission_name"},
          {"data", "authority"},
+         {"delay", "uint32"}
       }
    });
 
@@ -153,6 +158,18 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.structs.emplace_back( struct_def {
       "vetorecovery", "", {
          {"account", "account_name"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "canceldelay", "", {
+         {"sender_id", "uint32"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "mindelay", "", {
+         {"delay", "uint32"},
       }
    });
 

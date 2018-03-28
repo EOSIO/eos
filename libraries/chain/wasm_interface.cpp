@@ -1033,7 +1033,8 @@ class transaction_api : public context_aware_api {
       void send_deferred( uint64_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
          try {
             // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
-            FC_ASSERT(data_len < config::default_max_gen_trx_size, "generated transaction too big");
+            const auto& gpo = context.controller.get_global_properties();
+            FC_ASSERT(data_len < gpo.configuration.max_generated_transaction_size, "generated transaction too big");
 
             deferred_transaction dtrx;
             fc::raw::unpack<transaction>(data, data_len, dtrx);

@@ -256,13 +256,7 @@ namespace eosiosystem {
                      r.request_time = now();
                   });
             }
-            //cancel previous deferred transaction if we have one
-            //because of an implementation bug currently it would cancel transaction
-            //that will be created later in this action
-            //commenting out for now
-            //cancel_deferred( del.from );
-
-            //create new deferred transaction
+            //create or replace deferred transaction
             const auto self = receiver; //current_receiver();
             refund act;
             act.owner = del.from;

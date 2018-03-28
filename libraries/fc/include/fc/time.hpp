@@ -62,6 +62,7 @@ namespace fc {
         time_point&  operator += ( const microseconds& m)                           { elapsed+=m; return *this;                 }
         time_point&  operator -= ( const microseconds& m)                           { elapsed-=m; return *this;                 }
         time_point   operator + (const microseconds& m) const { return time_point(elapsed+m); }
+        time_point   operator + (const time_point& m) const { return time_point(elapsed+m.elapsed); }
         time_point   operator - (const microseconds& m) const { return time_point(elapsed-m); }
         microseconds operator - (const time_point& m) const { return microseconds(elapsed.count() - m.elapsed.count()); }
     private:
@@ -102,8 +103,10 @@ namespace fc {
         friend bool      operator != ( const time_point_sec& a, const time_point_sec& b ) { return a.utc_seconds != b.utc_seconds; }
         time_point_sec&  operator += ( uint32_t m ) { utc_seconds+=m; return *this; }
         time_point_sec&  operator += ( microseconds m ) { utc_seconds+=m.to_seconds(); return *this; }
+        time_point_sec&  operator += ( time_point_sec m ) { utc_seconds+=m.utc_seconds; return *this; }
         time_point_sec&  operator -= ( uint32_t m ) { utc_seconds-=m; return *this; }
         time_point_sec&  operator -= ( microseconds m ) { utc_seconds-=m.to_seconds(); return *this; }
+        time_point_sec&  operator -= ( time_point_sec m ) { utc_seconds-=m.utc_seconds; return *this; }
         time_point_sec   operator +( uint32_t offset )const { return time_point_sec(utc_seconds + offset); }
         time_point_sec   operator -( uint32_t offset )const { return time_point_sec(utc_seconds - offset); }
 
