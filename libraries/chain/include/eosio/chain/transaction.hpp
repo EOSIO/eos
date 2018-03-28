@@ -220,7 +220,7 @@ namespace eosio { namespace chain {
 
       deferred_transaction() = default;
 
-      deferred_transaction(uint32_t sender_id, account_name sender, time_point_sec execute_after, const transaction& txn)
+      deferred_transaction(uint128_t sender_id, account_name sender, time_point_sec execute_after, const transaction& txn)
       : transaction(txn),
         sender_id(sender_id),
         sender(sender),
@@ -229,7 +229,7 @@ namespace eosio { namespace chain {
    };
 
    struct deferred_reference {
-      deferred_reference( const account_name& sender, uint64_t sender_id)
+      deferred_reference( const account_name& sender, uint128_t sender_id)
       :sender(sender),sender_id(sender_id)
       {}
 
