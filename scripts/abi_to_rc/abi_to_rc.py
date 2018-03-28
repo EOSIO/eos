@@ -60,37 +60,37 @@ def get_actions_inputs_types():
                     types[action['name']].append(field['type'])
 
 # builds rows for the table
-def build_table_rows():
+def build_table_rows(is_action):
     table_rows = []
     for action in actions:
-        action_string = "`" + action['name'] + "`"
+        action_string = "`{{ " + action['name'] + " }}`"
         input_string = ""
         input_list = []
         type_string = ""
         type_list =[]
         if len(inputs[action['name']]) >= 1:
             for name in inputs[action['name']]:
-                input_list.append("`" + name + "`")
+                input_list.append("`{{ " + name + ("Var }}`" if is_action else " }}`"))
             input_string = '<br/>'.join(input_list)
         else:
-            input_string = "`" + action['type'] + "`"
+            input_string = "`{{ " + action['type'] + ("Var }}`" if is_action else " }}`")
         if len(types[action['name']]) >= 1:
             for name in types[action['name']]:
-                type_list.append("`" + name + "`")
+                type_list.append("`{{ " + name + " }}`")
             type_string = '<br/>'.join(type_list)
         else:
-            type_string = "`" + action['type'] + "`"
+            type_string = "`{{ " + action['type'] + " }}`"
         table_rows.append('| ' + action_string + ' | ' + input_string + ' | ' + type_string + ' |')
     return table_rows
 
 # generates an overview ricardian contract from the overview template
 def generate_rc_overview_file():
-    tr = build_table_rows()
+    tr = build_table_rows(False)
     abi_file_name = os.path.split(args.abi_file)[1]
     contract_name = os.path.splitext(abi_file_name)[0]
     rc_file_name = contract_name + '-rc.md'
     dirname = os.path.split(args.abi_file)[0]
-    subs = {'contract': contract_name,
+    subs = {'contract': "{{ " + contract_name + " }}",
             'action': 'actions' if len(actions) > 1 else 'action',
             'input': 'inputs' if len(inputs) > 1 else 'input',
             'type': 'types' if len(types) > 1 else 'type'}
@@ -104,12 +104,12 @@ def generate_rc_overview_file():
 
 # generates a ricardian contract for each action from the action template
 def generate_rc_action_files():
-    tr = build_table_rows()
+    tr = build_table_rows(True)
     abi_filename = os.path.split(args.abi_file)[1]
     contract_name = os.path.splitext(abi_filename)[0]
     dirname = os.path.split(args.abi_file)[0]
     for action in actions:
-        subs = {'action': action['name'],
+        subs = {'action': "{{ " + action['name'] + " }}",
                 'input': 'inputs' if len(inputs[action['name']]) > 1 else 'input',
                 'type': 'types' if len(types[action['name']]) > 1 else 'type'}
         subs.update([(k+'_header',v.title()) for k,v in subs.copy().items()])
