@@ -1700,8 +1700,8 @@ void write_default_config(const bfs::path& cfg_file, const options_description &
    {
       if(!od->description().empty()) {
          out_cfg << "# " << od->description();
-         std::map<std::string, std::string>::iterator it;
-            out_cfg << " (" << it->second << ")";
+//         std::map<std::string, std::string>::iterator it;
+//            out_cfg << " (" << it->second << ")";
          out_cfg << std::endl;
       }
       boost::any store;
