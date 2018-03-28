@@ -735,6 +735,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                      const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
                      if (gtrx != nullptr) {
                         auto trx = fc::raw::unpack<deferred_transaction>(gtrx->packed_trx.data(), gtrx->packed_trx.size());
+                        FC_ASSERT( trx.execute_after <= head_block_time() , "deffered transaction executed prematurely" );
                         _temp.emplace(trx, gtrx->published, trx.sender, trx.sender_id, gtrx->packed_trx.data(), gtrx->packed_trx.size() );
                         return &*_temp;
                      } else {
