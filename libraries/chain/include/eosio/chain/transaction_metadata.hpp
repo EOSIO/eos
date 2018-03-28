@@ -72,3 +72,4 @@ class transaction_metadata {
 
 } } // eosio::chain
 
+FC_REFLECT( eosio::chain::transaction_metadata, (raw_trx)(signing_keys)(id)(region_id)(cycle_index)(shard_index)(bandwidth_usage)(published)(sender)(sender_id))
