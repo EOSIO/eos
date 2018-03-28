@@ -15,7 +15,6 @@ void apply_context::exec_one()
       const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
       privileged = a.privileged;
       auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
-      std::cout << "NATIVE " << native << " RECEIVER " << receiver << " SCOPE " << act.account << " ACT " << act.name << "\n";
       if (native) {
          (*native)(*this);
       }
@@ -133,7 +132,6 @@ vector<permission_level> apply_context::unused_authorizations()const {
 }
 
 void apply_context::require_authorization( const account_name& account ) {
-     EOS_ASSERT(false, tx_missing_auth, "ACCOUNT ${auth}", ("auth",act.authorization));
    for( uint32_t i=0; i < act.authorization.size(); i++ ) {
      if( act.authorization[i].actor == account ) {
         used_authorizations[i] = true;

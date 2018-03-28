@@ -16,7 +16,7 @@ class transaction_metadata {
          ,sender(sender),sender_id(sender_id),raw_data(raw_data),raw_size(raw_size),_trx(&t)
       {}
 
-      transaction_metadata( const packed_transaction& t, chain_id_type chainid, const time_point& published );
+      transaction_metadata( const packed_transaction& t, chain_id_type chainid, const time_point& published, bool implicit=false );
 
       transaction_metadata( transaction_metadata && ) = default;
       transaction_metadata& operator= (transaction_metadata &&) = default;
@@ -46,6 +46,9 @@ class transaction_metadata {
       size_t                                raw_size = 0;
 
       vector<char>                          packed_trx;
+      
+      // is this transaction implicit
+      bool                                  is_implicit = false; 
 
       // scopes available to this transaction if we are applying a block
       optional<const vector<shard_lock>*>   allowed_read_locks;

@@ -378,7 +378,7 @@ transaction chain_controller::_get_on_block_transaction()
 void chain_controller::_apply_on_block_transaction()
 {
    _pending_block_trace->implicit_transactions.emplace_back(_get_on_block_transaction());
-   transaction_metadata mtrx(packed_transaction(_pending_block_trace->implicit_transactions.back()), get_chain_id(), head_block_time());
+   transaction_metadata mtrx(packed_transaction(_pending_block_trace->implicit_transactions.back()), get_chain_id(), head_block_time(), true /*is implicit*/);
    _push_transaction(std::move(mtrx));
 }
 
@@ -644,14 +644,20 @@ void chain_controller::__apply_block(const signed_block& next_block)
 
    block_trace next_block_trace(next_block);
 
-   /// cache the input tranasction ids so that they can be looked up when executing the
+   /// cache the input transaction ids so that they can be looked up when executing the
    /// summary
    vector<transaction_metadata> input_metas;
-   input_metas.reserve(next_block.input_transactions.size() + 1);
+   // add all implicit transactions
    {
       next_block_trace.implicit_transactions.emplace_back(_get_on_block_transaction());
-      input_metas.emplace_back(packed_transaction(next_block_trace.implicit_transactions.back()), get_chain_id(), head_block_time());
    }
+
+   input_metas.reserve(next_block.input_transactions.size() + next_block_trace.implicit_transactions.size());
+   
+   for ( const auto& t : next_block_trace.implicit_transactions ) {
+      input_metas.emplace_back(packed_transaction(t), get_chain_id(), head_block_time(), true /*implicit*/);
+   }
+
    map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
       input_metas.emplace_back(t, chain_id_type(), next_block.timestamp);
@@ -710,15 +716,20 @@ void chain_controller::__apply_block(const signed_block& next_block)
                      ilog( "input" );
                      return &input_metas.at(itr->second);
                   } else {
-                     ilog( "defer" );
                      const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
                      if (gtrx != nullptr) {
+                        ilog( "defer" );
                         auto trx = fc::raw::unpack<deferred_transaction>(gtrx->packed_trx.data(), gtrx->packed_trx.size());
                         _temp.emplace(trx, gtrx->published, trx.sender, trx.sender_id, gtrx->packed_trx.data(), gtrx->packed_trx.size() );
                         return &*_temp;
                      } else {
-                        const auto& mtrx = input_metas[0];
-                        FC_ASSERT(mtrx.id == receipt.id, "on-block transaction id mismatch");
+                        ilog( "implicit" );
+                        for ( size_t i=0; i < next_block_trace.implicit_transactions.size(); i++ ) {
+                           std::cout << std::hex << "ID " << input_metas[i].id << " " << receipt.id << " status " << receipt.status << "\n";
+                           if ( input_metas[i].id == receipt.id )
+                              return &input_metas[i];
+                        }
+                        FC_ASSERT(false, "implicit transaction not found ${trx}", ("trx", receipt));
                         return &input_metas[0];
                      }
                   }
@@ -1501,7 +1512,7 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
       fc::move_append(result.canceled_deferred, std::move(context.results.canceled_deferred));
       // check if all authorizations were used
-      if (!(act.name == N(updateauth)) && !(act.name == N(onblock)))
+      if (!(act.name == N(updateauth)))
          EOS_ASSERT( context.all_authorizations_used(), tx_irrelevant_auth, "actions should only require the authorizations needed for execution, unused : ${auth}", ("auth", context.unused_authorizations()) );
    }
    
@@ -1525,12 +1536,18 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
 
 transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta ) 
 { try {
+   transaction_trace result;
    try {
       auto temp_session = _db.start_undo_session(true);
-      auto result = __apply_transaction(meta);
+      result = __apply_transaction(meta);
       temp_session.squash();
       return result;
    } catch (...) {
+      // if this is an implicit transaction, then hard fail
+      if (meta.is_implicit) {
+         result.status = transaction_trace::hard_fail;
+         return result;
+      }
       // if there is no sender, there is no error handling possible, rethrow
       if (!meta.sender) {
          throw;
