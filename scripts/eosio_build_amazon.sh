@@ -209,6 +209,7 @@ mongodconf
 		cd ..
 		rm -rf ${TEMP_DIR}/mongo-c-driver-1.9.3
 		cd ${TEMP_DIR}
+		sudo rm -rf ${TEMP_DIR}/mongo-cxx-driver
 		git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 		if [ $? -ne 0 ]; then
 			printf "\tUnable to clone MondgDB C++ driver at this time.\n"
