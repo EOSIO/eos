@@ -652,6 +652,13 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
          }
       );
 
+   // test send_transaction_expiring_late
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_transaction", "send_transaction_expiring_late", fc::raw::pack(N(testapi))),
+                         eosio::chain::transaction_exception,  [](const eosio::chain::transaction_exception& e) {
+                                                                  return expect_assert_message(e, "deferred transaction expiration");
+                                                               }
+      );
+
 } FC_LOG_AND_RETHROW() }
 
 template <uint64_t NAME>

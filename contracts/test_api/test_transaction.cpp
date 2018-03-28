@@ -23,11 +23,11 @@ struct test_action_action {
 
    template <typename DataStream>
    friend DataStream& operator << ( DataStream& ds, const test_action_action& a ) {
-      for ( auto c : a.data ) 
+      for ( auto c : a.data )
          ds << c;
       return ds;
    }
-  /* 
+  /*
    template <typename DataStream>
    friend DataStream& operator >> ( DataStream& ds, test_action_action& a ) {
       return ds;
@@ -56,7 +56,7 @@ struct test_dummy_action {
       ds << da.c;
       return ds;
    }
-   
+
    template <typename DataStream>
    friend DataStream& operator >> ( DataStream& ds, test_dummy_action& da ) {
       ds >> da.a;
@@ -95,7 +95,7 @@ void test_transaction::send_action_large() {
    using namespace eosio;
    char large_message[8 * 1024];
    test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal")> test_action;
-   copy_data(large_message, 8*1024, test_action.data); 
+   copy_data(large_message, 8*1024, test_action.data);
    action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
    act.send();
    eosio_assert(false, "send_message_large() should've thrown an error");
@@ -110,9 +110,9 @@ void test_transaction::send_action_recurse() {
    read_action_data(buffer, 1024);
 
    test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "send_action_recurse")> test_action;
-   copy_data(buffer, 1024, test_action.data); 
+   copy_data(buffer, 1024, test_action.data);
    action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
-   
+
    act.send();
 }
 
@@ -165,8 +165,8 @@ void test_transaction::send_transaction() {
    dummy_action payload = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
 
    test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal")> test_action;
-   copy_data((char*)&payload, sizeof(dummy_action), test_action.data); 
-  
+   copy_data((char*)&payload, sizeof(dummy_action), test_action.data);
+
    auto trx = transaction();
    trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
    trx.send(0);
@@ -201,13 +201,27 @@ void test_transaction::send_transaction_large() {
    for (int i = 0; i < 32; i ++) {
       char large_message[1024];
       test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal")> test_action;
-      copy_data(large_message, 1024, test_action.data); 
+      copy_data(large_message, 1024, test_action.data);
       trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
    }
 
    trx.send(0);
 
    eosio_assert(false, "send_transaction_large() should've thrown an error");
+}
+
+void test_transaction::send_transaction_expiring_late() {
+   using namespace eosio;
+   account_name cur_send;
+   read_action_data( &cur_send, sizeof(account_name) );
+   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "test_current_sender")> test_action;
+   copy_data((char*)&cur_send, sizeof(account_name), test_action.data);
+
+   auto trx = transaction(now() + 60*60*24*365);
+   trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
+   trx.send(0);
+
+   eosio_assert(false, "send_transaction_expiring_late() should've thrown an error");
 }
 
 void test_transaction::send_cf_action() {

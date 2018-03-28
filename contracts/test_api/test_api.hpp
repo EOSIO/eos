@@ -199,6 +199,7 @@ struct test_transaction {
   static void send_transaction_empty();
   static void send_transaction_max();
   static void send_transaction_large();
+  static void send_transaction_expiring_late();
   static void send_action_sender();
   static void send_cf_action();
   static void send_cf_action_fail();

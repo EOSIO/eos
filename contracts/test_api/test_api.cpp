@@ -119,6 +119,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_transaction, send_transaction_empty);
       WASM_TEST_HANDLER(test_transaction, send_transaction_large);
       WASM_TEST_HANDLER(test_transaction, send_action_sender);
+      WASM_TEST_HANDLER(test_transaction, send_transaction_expiring_late);
       WASM_TEST_HANDLER(test_transaction, send_cf_action);
       WASM_TEST_HANDLER(test_transaction, send_cf_action_fail);
       WASM_TEST_HANDLER(test_transaction, read_inline_action);
@@ -145,7 +146,7 @@ extern "C" {
       // test checktime
       WASM_TEST_HANDLER(test_checktime, checktime_pass);
       WASM_TEST_HANDLER(test_checktime, checktime_failure);
-/*      
+/*
       // test softfloat
       WASM_TEST_HANDLER(test_softfloat, test_f32_add);
       WASM_TEST_HANDLER(test_softfloat, test_f32_sub);
