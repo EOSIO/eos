@@ -73,7 +73,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
        ("memo", "hi" )
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
-   BOOST_REQUIRE_EQUAL(0, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
    chain.produce_blocks();
 
@@ -90,7 +90,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
    );
 
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
-   BOOST_REQUIRE_EQUAL(0, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
    chain.produce_blocks();
 
@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
            ("data",  authority(chain.get_public_key(tester_account, "first")))
            ("delay", 10));
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
-   BOOST_REQUIRE_EQUAL(0, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
    chain.produce_blocks();
 
@@ -120,9 +120,8 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
        20
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace.status);
-   BOOST_REQUIRE_EQUAL(1, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(1, trace.deferred_transaction_requests.size());
    BOOST_REQUIRE_EQUAL(0, trace.action_traces.size());
-   BOOST_REQUIRE_EQUAL(0, trace.canceled_deferred.size());
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("99.0000 CUR"), liquid_balance);
@@ -222,7 +221,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
        ("memo", "hi" )
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
-   BOOST_REQUIRE_EQUAL(0, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
    chain.produce_blocks();
 
@@ -239,7 +238,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
    );
 
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
-   BOOST_REQUIRE_EQUAL(0, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
    chain.produce_blocks();
 
@@ -257,7 +256,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
            ("data",  authority(chain.get_public_key(tester_account, "active")))
            ("delay", 15));
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
-   BOOST_REQUIRE_EQUAL(0, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
    chain.produce_blocks();
 
@@ -269,9 +268,8 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
        20
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace.status);
-   BOOST_REQUIRE_EQUAL(1, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(1, trace.deferred_transaction_requests.size());
    BOOST_REQUIRE_EQUAL(0, trace.action_traces.size());
-   BOOST_REQUIRE_EQUAL(0, trace.canceled_deferred.size());
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("99.0000 CUR"), liquid_balance);
@@ -377,7 +375,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
        ("memo", "hi" )
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
-   BOOST_REQUIRE_EQUAL(0, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
    chain.produce_blocks();
 
@@ -394,7 +392,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
    );
 
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
-   BOOST_REQUIRE_EQUAL(0, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
    chain.produce_blocks();
 
@@ -412,7 +410,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
            ("data",  authority(chain.get_public_key(tester_account, "first")))
            ("delay", 20));
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
-   BOOST_REQUIRE_EQUAL(0, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
    chain.produce_blocks();
 
@@ -424,9 +422,8 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
        30
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace.status);
-   BOOST_REQUIRE_EQUAL(1, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(1, trace.deferred_transaction_requests.size());
    BOOST_REQUIRE_EQUAL(0, trace.action_traces.size());
-   BOOST_REQUIRE_EQUAL(0, trace.canceled_deferred.size());
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("99.0000 CUR"), liquid_balance);
@@ -526,7 +523,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
        ("memo", "hi" )
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
-   BOOST_REQUIRE_EQUAL(0, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
    chain.produce_blocks();
 
@@ -545,9 +542,8 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
    );
 
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace.status);
-   BOOST_REQUIRE_EQUAL(1, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(1, trace.deferred_transaction_requests.size());
    BOOST_REQUIRE_EQUAL(0, trace.action_traces.size());
-   BOOST_REQUIRE_EQUAL(0, trace.canceled_deferred.size());
 
    chain.produce_blocks();
 
@@ -567,9 +563,8 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
            ("delay", 0),
            30);
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace.status);
-   BOOST_REQUIRE_EQUAL(1, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(1, trace.deferred_transaction_requests.size());
    BOOST_REQUIRE_EQUAL(0, trace.action_traces.size());
-   BOOST_REQUIRE_EQUAL(0, trace.canceled_deferred.size());
 
    chain.produce_blocks();
 
@@ -596,9 +591,8 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
        30
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace.status);
-   BOOST_REQUIRE_EQUAL(1, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(1, trace.deferred_transaction_requests.size());
    BOOST_REQUIRE_EQUAL(0, trace.action_traces.size());
-   BOOST_REQUIRE_EQUAL(0, trace.canceled_deferred.size());
 
    chain.produce_blocks();
 
@@ -634,7 +628,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
        ("memo", "hi" )
    );
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
-   BOOST_REQUIRE_EQUAL(0, trace.deferred_transactions.size());
+   BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
    chain.control->push_deferred_transactions(true);
 

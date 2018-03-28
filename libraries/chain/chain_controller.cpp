@@ -298,14 +298,13 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
       deferred_transaction dtrx(context.get_next_sender_id(), config::system_account_name, execute_after, trx);
       FC_ASSERT( dtrx.execute_after < dtrx.expiration, "transaction expires before it can execute" );
 
-      result.deferred_transactions.push_back(std::move(dtrx));
+      result.deferred_transaction_requests.push_back(std::move(dtrx));
 
       // notify anyone listening to pending transactions
       on_pending_transaction(std::move(mtrx), packed_trx);
 
-      store_deferred_transaction(result.deferred_transactions[0]);
+      store_deferred_transaction(result.deferred_transaction_requests[0].get<deferred_transaction>());
    }
-
    return result;
 
 } FC_CAPTURE_AND_RETHROW() }
