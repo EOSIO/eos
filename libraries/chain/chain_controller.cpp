@@ -1657,7 +1657,7 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transaction_requests, std::move(context.results.deferred_transaction_requests));
       // check if all authorizations were used
-#if 0
+#if 1
       if (!(act.name == N(updateauth)))
          EOS_ASSERT( context.all_authorizations_used(), tx_irrelevant_auth, "actions should only require the authorizations needed for execution, unused : ${auth}", 
                ("auth", context.unused_authorizations()) );
