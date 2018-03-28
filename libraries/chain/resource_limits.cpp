@@ -7,16 +7,15 @@
 
 namespace eosio { namespace chain { namespace resource_limits {
 
-static uint64_t update_elastic_limit(uint64_t current_limit, uint64_t average_usage_ex, const elastic_limit_parameters& params) {
+static uint64_t update_elastic_limit(uint64_t current_limit, uint64_t average_usage, const elastic_limit_parameters& params) {
    uint64_t result = current_limit;
-   if (average_usage_ex > (params.target * config::rate_limiting_precision) ) {
+   if (average_usage > params.target ) {
       result = result * params.contract_rate;
    } else {
       result = result * params.expand_rate;
    }
 
-   uint64_t min = params.max * params.periods;
-   return std::min(std::max(result, min), min * params.max_multiplier);
+   return std::min(std::max(result, params.max), params.max * params.max_multiplier);
 }
 
 void resource_limits_state_object::update_virtual_cpu_limit( const resource_limits_config_object& cfg ) {
@@ -35,12 +34,16 @@ void resource_limits_manager::initialize_database() {
 }
 
 void resource_limits_manager::initialize_chain() {
-   _db.create<resource_limits_config_object>([](resource_limits_config_object& config){
+   const auto& config = _db.create<resource_limits_config_object>([](resource_limits_config_object& config){
       // see default settings in the declaration
    });
 
-   _db.create<resource_limits_state_object>([](resource_limits_state_object& state){
+   _db.create<resource_limits_state_object>([&config](resource_limits_state_object& state){
       // see default settings in the declaration
+
+      // start the chain off in a way that it is "congested" aka slow-start
+      state.virtual_cpu_limit = config.cpu_limit_parameters.max;
+      state.virtual_net_limit = config.net_limit_parameters.max;
    });
 }
 
@@ -65,10 +68,10 @@ void resource_limits_manager::add_account_usage(const vector<account_name>& acco
       const auto& limits = _db.get<resource_limits_object,by_owner>( boost::make_tuple(false, a));
       _db.modify( usage, [&]( auto& bu ){
           bu.net_usage.add( net_usage, block_num, config.net_limit_parameters.periods );
-          bu.cpu_usage.add( cpu_usage, block_num, config.net_limit_parameters.periods );
+          bu.cpu_usage.add( cpu_usage, block_num, config.cpu_limit_parameters.periods );
       });
 
-      uint128_t  consumed_cpu_ex = usage.cpu_usage.value; // this is pre-multiplied by config::rate_limiting_precision
+      uint128_t  consumed_cpu_ex = usage.cpu_usage.consumed * config::rate_limiting_precision;
       uint128_t  capacity_cpu_ex = state.virtual_cpu_limit * config::rate_limiting_precision;
       EOS_ASSERT( limits.cpu_weight < 0 || (consumed_cpu_ex * state.total_cpu_weight) <= (limits.cpu_weight * capacity_cpu_ex),
                   tx_resource_exhausted,
@@ -80,7 +83,7 @@ void resource_limits_manager::add_account_usage(const vector<account_name>& acco
                   ("total_cpu_weight",     state.total_cpu_weight)
       );
 
-      uint128_t  consumed_net_ex = usage.net_usage.value; // this is pre-multiplied by config::rate_limiting_precision
+      uint128_t  consumed_net_ex = usage.net_usage.consumed * config::rate_limiting_precision;
       uint128_t  capacity_net_ex = state.virtual_net_limit * config::rate_limiting_precision;
 
       EOS_ASSERT( limits.net_weight < 0 || (consumed_net_ex * state.total_net_weight) <= (limits.net_weight * capacity_net_ex),
@@ -175,7 +178,7 @@ void resource_limits_manager::get_account_limits( const account_name& account, i
 }
 
 
-void resource_limits_manager::process_pending_updates() {
+void resource_limits_manager::process_account_limit_updates() {
    auto& multi_index = _db.get_mutable_index<resource_limits_index>();
    auto& by_owner_index = multi_index.indices().get<by_owner>();
 
@@ -187,7 +190,7 @@ void resource_limits_manager::process_pending_updates() {
       }
 
       if (pending_value > 0) {
-         EOS_ASSERT(UINT64_MAX - total < value, rate_limiting_state_inconsistent, "overflow when applying new value to ${which}", ("which", debug_which));
+         EOS_ASSERT(UINT64_MAX - total >= pending_value, rate_limiting_state_inconsistent, "overflow when applying new value to ${which}", ("which", debug_which));
          total += pending_value;
       }
 
@@ -195,7 +198,7 @@ void resource_limits_manager::process_pending_updates() {
    };
 
    const auto& state = _db.get<resource_limits_state_object>();
-   _db.modify(state, [&](resource_limits_state_object rso){
+   _db.modify(state, [&](resource_limits_state_object& rso){
       while(!by_owner_index.empty()) {
          const auto& itr = by_owner_index.lower_bound(boost::make_tuple(true));
          if (itr == by_owner_index.end() || itr->pending!= true) {
@@ -213,5 +216,55 @@ void resource_limits_manager::process_pending_updates() {
       }
    });
 }
+
+uint64_t resource_limits_manager::get_virtual_block_cpu_limit() const {
+   const auto& state = _db.get<resource_limits_state_object>();
+   return state.virtual_cpu_limit;
+}
+
+uint64_t resource_limits_manager::get_virtual_block_net_limit() const {
+   const auto& state = _db.get<resource_limits_state_object>();
+   return state.virtual_net_limit;
+}
+
+int64_t resource_limits_manager::get_account_block_cpu_limit( const account_name& name ) const {
+   const auto& state = _db.get<resource_limits_state_object>();
+   const auto& usage = _db.get<resource_usage_object, by_owner>(name);
+   const auto& limits = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, name));
+   if (limits.cpu_weight < 0) {
+      return -1;
+   }
+
+   uint128_t consumed_ex = (uint128_t)usage.cpu_usage.consumed * (uint128_t)config::rate_limiting_precision;
+   uint128_t virtual_capacity_ex = (uint128_t)state.virtual_cpu_limit * (uint128_t)config::rate_limiting_precision;
+   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.cpu_weight) / (uint128_t)state.total_cpu_weight;
+
+   if (usable_capacity_ex < consumed_ex) {
+      return 0;
+   }
+
+   return (int64_t)((usable_capacity_ex - consumed_ex) / (uint128_t)config::rate_limiting_precision);
+}
+
+int64_t resource_limits_manager::get_account_block_net_limit( const account_name& name ) const {
+   const auto& state = _db.get<resource_limits_state_object>();
+   const auto& usage = _db.get<resource_usage_object, by_owner>(name);
+   const auto& limits = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, name));
+   if (limits.net_weight < 0) {
+      return -1;
+   }
+
+   uint128_t consumed_ex = (uint128_t)usage.net_usage.consumed * (uint128_t)config::rate_limiting_precision;
+   uint128_t virtual_capacity_ex = (uint128_t)state.virtual_net_limit * (uint128_t)config::rate_limiting_precision;
+   uint128_t usable_capacity_ex = (uint128_t)(virtual_capacity_ex * limits.net_weight) / (uint128_t)state.total_net_weight;
+
+   if (usable_capacity_ex < consumed_ex) {
+      return 0;
+   }
+
+   return (int64_t)((usable_capacity_ex - consumed_ex) / (uint128_t)config::rate_limiting_precision);
+
+}
+
 
 } } } /// eosio::chain::resource_limits

@@ -35,17 +35,21 @@ namespace eosio { namespace chain { namespace resource_limits {
       {
          exponential_moving_average_accumulator()
          : last_ordinal(0)
-         , value(0)
+         , value_ex(0)
+         , consumed(0)
          {
          }
 
-         uint32_t   last_ordinal;
-         uint64_t   value;
+         uint32_t   last_ordinal;  ///< The ordinal of the last period which has contributed to the average
+         uint64_t   value_ex;      ///< The current average pre-multiplied by Precision
+         uint64_t   consumed;       ///< The the last periods average + the current periods contribution so far
 
          /**
-          * return the average value in rate_limiting_precision
+          * return the average value
           */
-         uint64_t average() const { return value; }
+         uint64_t average() const {
+            return value_ex / Precision;
+         }
 
          void add( uint64_t units, uint32_t ordinal, uint32_t window_size )
          {
@@ -57,15 +61,17 @@ namespace eosio { namespace chain { namespace resource_limits {
                           (uint64_t)window_size
                   );
 
-                  value = value * decay;
+                  value_ex = value_ex * decay;
                } else {
-                  value = 0;
+                  value_ex = 0;
                }
 
                last_ordinal = ordinal;
+               consumed = value_ex / Precision;
             }
 
-            value += units * Precision;
+            consumed += units;
+            value_ex += units * Precision / (uint64_t)window_size;
          }
       };
    }
@@ -114,6 +120,7 @@ namespace eosio { namespace chain { namespace resource_limits {
 
       usage_accumulator        net_usage;
       usage_accumulator        cpu_usage;
+
       uint64_t                 ram_usage = 0;
    };
 
@@ -170,12 +177,6 @@ namespace eosio { namespace chain { namespace resource_limits {
       uint64_t total_net_weight = 0;
       uint64_t total_cpu_weight = 0;
       uint64_t total_ram_bytes = 0;
-
-      /* TODO: we have to guarantee that we don't over commit our ram.  This can be tricky if multiple threads are
-       * updating limits in parallel.  For now, we are not running in parallel so this is a temporary measure that
-       * allows us to quarantine this guarantee from the rest of the otherwise parallel-compatible code
-       */
-      uint64_t speculative_ram_bytes = 0;
 
       /**
        * The virtual number of bytes that would be consumed over blocksize_average_window_ms

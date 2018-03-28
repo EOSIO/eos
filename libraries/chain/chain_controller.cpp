@@ -436,7 +436,7 @@ void chain_controller::_finalize_block( const block_trace& trace ) { try {
    clear_expired_transactions();
 
    update_last_irreversible_block();
-   _resource_limits.process_pending_updates();
+   _resource_limits.process_account_limit_updates();
 
    // for block usage tracking the ordinal is based on actual blocks, this means that gaps from skipped blocks are
    // do not affect the calculation of elastic target/maximums.
