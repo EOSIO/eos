@@ -68,8 +68,9 @@ const static uint32_t   default_base_per_action_cpu_usage       = 1000;
 const static uint32_t   default_base_setcode_cpu_usage          = 2 * 1024 * 1024; /// overbilling cpu usage for setcode to cover incidental
 const static uint32_t   default_per_signature_cpu_usage         = 100 * 1000; // TODO: is this reasonable?
 
-const static uint32_t   overhead_per_row_ram_bytes         = 200;    ///< overhead accounts for basic tracking structures in a row
+const static uint32_t   overhead_per_row_ram_bytes         = 512;    ///< overhead accounts for basic tracking structures in a row
 const static uint32_t   overhead_per_account_ram_bytes     = 2*1024; ///< overhead accounts for basic account storage and pre-pays features like account recovery
+const static uint32_t   setcode_ram_bytes_multiplier       = 10;     ///< multiplier on contract size to account for multiple copies and cached compilation
 
 const static eosio::chain::wasm_interface::vm_type default_wasm_runtime = eosio::chain::wasm_interface::vm_type::binaryen;
 

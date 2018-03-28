@@ -437,7 +437,11 @@ void chain_controller::_finalize_block( const block_trace& trace ) { try {
 
    update_last_irreversible_block();
    _resource_limits.process_pending_updates();
-   _resource_limits.add_block_usage(trace.calculate_cpu_usage(), fc::raw::pack_size(trace.block), b.block_num());
+
+   // for block usage tracking the ordinal is based on actual blocks, this means that gaps from skipped blocks are
+   // do not affect the calculation of elastic target/maximums.
+   uint32_t ordinal = b.block_num();
+   _resource_limits.add_block_usage(trace.calculate_cpu_usage(), fc::raw::pack_size(trace.block), ordinal);
 
    applied_block( trace ); //emit
    if (_currently_replaying_blocks)
@@ -867,7 +871,10 @@ void chain_controller::update_resource_usage( transaction_trace& trace, const tr
       bill_to_accounts.push_back(ap.first);
    }
 
-   _resource_limits.add_account_usage(bill_to_accounts, trace.cpu_usage, trace.net_usage, head_block_num());
+   // for account usage, the ordinal is based on possible blocks not actual blocks.  This means that as blocks are
+   // skipped account usage will still decay.
+   uint32_t ordinal = (uint32_t)(head_block_time().time_since_epoch().count() / fc::milliseconds(config::block_interval_ms).count());
+   _resource_limits.add_account_usage(bill_to_accounts, trace.cpu_usage, trace.net_usage, ordinal);
 }
 
 

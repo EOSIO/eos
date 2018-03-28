@@ -116,17 +116,18 @@ void apply_eosio_setcode(apply_context& context) {
 
    const auto& account = db.get<account_object,by_name>(act.account);
 
-   int64_t old_size = (int64_t)account.code.size();
-   int64_t new_size = (int64_t)act.code.size();
+   int64_t code_size = (int64_t)act.code.size();
+   int64_t old_size = (int64_t)account.code.size() * config::setcode_ram_bytes_multiplier;
+   int64_t new_size = code_size * config::setcode_ram_bytes_multiplier;
 
 //   wlog( "set code: ${size}", ("size",act.code.size()));
    db.modify( account, [&]( auto& a ) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
       #warning TODO: update setcode message to include the hash, then validate it in validate 
       a.code_version = code_id;
-      a.code.resize( new_size );
+      a.code.resize( code_size );
       a.last_code_update = context.controller.head_block_time();
-      memcpy( a.code.data(), act.code.data(), new_size );
+      memcpy( a.code.data(), act.code.data(), code_size );
 
    });
 

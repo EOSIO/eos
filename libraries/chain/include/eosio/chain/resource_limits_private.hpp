@@ -50,12 +50,19 @@ namespace eosio { namespace chain { namespace resource_limits {
          void add( uint64_t units, uint32_t ordinal, uint32_t window_size )
          {
             if( last_ordinal != ordinal ) {
-               const auto decay = make_ratio(
-                  (uint64_t) window_size - 1,
-                  (uint64_t) window_size
-               );
+               if (last_ordinal + window_size > ordinal) {
+                  const auto delta = ordinal - last_ordinal;
+                  const auto decay = make_ratio(
+                          (uint64_t)window_size - delta,
+                          (uint64_t)window_size
+                  );
 
-               value = value * decay;
+                  value = value * decay;
+               } else {
+                  value = 0;
+               }
+
+               last_ordinal = ordinal;
             }
 
             value += units * Precision;
