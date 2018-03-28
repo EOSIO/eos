@@ -96,13 +96,15 @@
 				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
-				MONGOD_CONF=/etc/mongod.conf
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"Ubuntu")
 				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
-				MONGOD_CONF=/etc/mongod.conf
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			*)
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
@@ -176,14 +178,14 @@
 	
 	TIME_END=$(( `date -u +%s` - $TIME_BEGIN ))
 
-	printf  "\t _______ _______  _______ _________ _______\n"
+	printf  "${bldred}\t _______ _______  _______ _________ _______\n"
 	printf "\t(  ____ \(  ___  )(  ____ \\__   __/(  ___  )\n"
 	printf "\t| (    \/| (   ) || (    \/   ) (   | (   ) |\n"
 	printf "\t| (__    | |   | || (_____    | |   | |   | |\n"
 	printf "\t|  __)   | |   | |(_____  )   | |   | |   | |\n"
 	printf "\t| (      | |   | |      ) |   | |   | |   | |\n"
 	printf "\t| (____/\| (___) |/\____) |___) (___| (___) |\n"
-	printf "\t(_______/(_______)\_______)\_______/(_______)\n"
+	printf "\t(_______/(_______)\_______)\_______/(_______)\n${txtrst}"
 
 	printf "\n\tEOS.IO has been successfully built. %d:%d:%d\n\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
 	printf "\tTo verify your installation run the following commands:\n"
