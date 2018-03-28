@@ -324,13 +324,12 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
    }
 
    while(control->head_block_time() < expected_delivery) {
-      control->push_deferred_transactions(true);
       produce_block();
       BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 CUR"));
       BOOST_REQUIRE_EQUAL(get_balance( N(alice)),   asset::from_string("0.0000 CUR"));
    }
 
-   control->push_deferred_transactions(true);
+   produce_block();
    BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 CUR"));
    BOOST_REQUIRE_EQUAL(get_balance( N(alice)),   asset::from_string("5.0000 CUR"));
 
@@ -381,7 +380,6 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    auto deferred_id = trace.deferred_transaction_requests.back().get<deferred_transaction>().id();
 
    while(control->head_block_time() < expected_delivery) {
-      control->push_deferred_transactions(true);
       produce_block();
       BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 CUR"));
       BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
@@ -390,7 +388,6 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    }
 
    fc::time_point expected_redelivery(fc::seconds(control->head_block_time().sec_since_epoch()) + fc::seconds(10));
-   control->push_deferred_transactions(true);
    produce_block();
    BOOST_REQUIRE_EQUAL(chain_has_transaction(deferred_id), true);
    BOOST_REQUIRE_EQUAL(get_transaction_receipt(deferred_id).status, transaction_receipt::soft_fail);
@@ -416,19 +413,18 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    }
 
    while(control->head_block_time() < expected_redelivery) {
-      control->push_deferred_transactions(true);
       produce_block();
       BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("5.0000 CUR"));
       BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
       BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
    }
 
-   control->push_deferred_transactions(true);
+   produce_block();
    BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 CUR"));
    BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("0.0000 CUR"));
    BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("5.0000 CUR"));
 
-   control->push_deferred_transactions(true);
+   produce_block();
 
    BOOST_REQUIRE_EQUAL(get_balance( N(proxy)), asset::from_string("0.0000 CUR"));
    BOOST_REQUIRE_EQUAL(get_balance( N(alice)), asset::from_string("5.0000 CUR"));
