@@ -249,6 +249,12 @@ bool chain_controller::_push_block(const signed_block& new_block)
  */
 transaction_trace chain_controller::push_transaction(const packed_transaction& trx, uint32_t skip)
 { try {
+   // If this is the first transaction pushed after applying a block, start a new undo session.
+   // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
+   if( !_pending_block ) {
+      _start_pending_block();
+   }
+
    return with_skip_flags(skip, [&]() {
       return _db.with_write_lock([&]() {
          return _push_transaction(trx);
@@ -286,6 +292,8 @@ static void record_locks_for_data_access(const vector<action_trace>& action_trac
 
 transaction_trace chain_controller::_push_transaction( transaction_metadata&& data )
 { try {
+   FC_ASSERT( _pending_block, " block not started" );
+
    if (_limits.max_push_transaction_us.count() > 0) {
       auto newval = fc::time_point::now() + _limits.max_push_transaction_us;
       if ( !data.processing_deadline || newval < *data.processing_deadline ) {
@@ -294,13 +302,6 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata&& da
    }
 
    const transaction& trx = data.trx();
-
-   // If this is the first transaction pushed after applying a block, start a new undo session.
-   // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
-   if( !_pending_block ) {
-      _start_pending_block();
-   }
-
    auto temp_session = _db.start_undo_session(true);
 
    // for now apply the transaction serially but schedule it according to those invariants
@@ -348,7 +349,7 @@ block_header chain_controller::head_block_header() const
    return block_header();
 }
 
-void chain_controller::_start_pending_block()
+void chain_controller::_start_pending_block( bool skip_deferred )
 {
    FC_ASSERT( !_pending_block );
    _pending_block         = signed_block();
@@ -362,10 +363,13 @@ void chain_controller::_start_pending_block()
    _finalize_pending_cycle();
 
    _start_pending_cycle();
-   push_deferred_transactions(true); //implicitly starts new cycle if there are deferred transactions ready for execution
-   if (_pending_cycle_trace && _pending_cycle_trace->shard_traces.size() > 0) {
-      _finalize_pending_cycle();
-      _start_pending_cycle();
+
+   if ( !skip_deferred ) {
+      _push_deferred_transactions(true);
+      if (_pending_cycle_trace && _pending_cycle_trace->shard_traces.size() > 0) {
+         _finalize_pending_cycle();
+         _start_pending_cycle();
+      }
    }
 }
 
@@ -1593,8 +1597,23 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    return result;
 }
 
-vector<transaction_trace> chain_controller::push_deferred_transactions( bool flush )
+vector<transaction_trace> chain_controller::push_deferred_transactions( bool flush, uint32_t skip )
+{ try {
+   if( !_pending_block ) {
+      _start_pending_block( true );
+   }
+
+   return with_skip_flags(skip, [&]() {
+      return _db.with_write_lock([&]() {
+         return _push_deferred_transactions( flush );
+      });
+   });
+} FC_CAPTURE_AND_RETHROW() }
+
+vector<transaction_trace> chain_controller::_push_deferred_transactions( bool flush )
 {
+   FC_ASSERT( _pending_block, " block not started" );
+
    if (flush && _pending_cycle_trace && _pending_cycle_trace->shard_traces.size() > 0) {
       // TODO: when we go multithreaded this will need a better way to see if there are flushable
       // deferred transactions in the shards

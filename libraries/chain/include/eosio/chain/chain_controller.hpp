@@ -87,8 +87,7 @@ namespace eosio { namespace chain {
 
          void push_block( const signed_block& b, uint32_t skip = skip_nothing );
          transaction_trace push_transaction( const packed_transaction& trx, uint32_t skip = skip_nothing );
-         vector<transaction_trace> push_deferred_transactions( bool flush = false );
-
+         vector<transaction_trace> push_deferred_transactions( bool flush = false, uint32_t skip = skip_nothing );
 
 
       /**
@@ -314,6 +313,7 @@ namespace eosio { namespace chain {
          transaction_trace _apply_transaction( transaction_metadata& data );
          transaction_trace __apply_transaction( transaction_metadata& data );
          transaction_trace _apply_error( transaction_metadata& data );
+         vector<transaction_trace> _push_deferred_transactions( bool flush = false );
 
          /// Reset the object graph in-memory
          void _initialize_indexes();
@@ -402,7 +402,7 @@ namespace eosio { namespace chain {
          void _spinup_db();
          void _spinup_fork_db();
 
-         void _start_pending_block();
+         void _start_pending_block( bool skip_deferred = false );
          void _start_pending_cycle();
          void _start_pending_shard();
          void _finalize_pending_cycle();
