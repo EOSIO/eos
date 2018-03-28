@@ -256,7 +256,7 @@ transaction_trace chain_controller::push_transaction(const packed_transaction& t
    });
 } FC_CAPTURE_AND_RETHROW() }
 
-transaction_trace chain_controller::_push_transaction(const packed_transaction& trx) 
+transaction_trace chain_controller::_push_transaction(const packed_transaction& trx)
 { try {
    transaction_metadata   mtrx( trx, get_chain_id(), head_block_time());
 
@@ -339,7 +339,7 @@ block_header chain_controller::head_block_header() const
 {
    auto b = _fork_db.fetch_block(head_block_id());
    if( b ) return b->data;
-   
+
    if (auto head_block = fetch_block_by_id(head_block_id()))
       return *head_block;
    return block_header();
@@ -467,9 +467,8 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
  *  After applying all transactions successfully we can update
  *  the current block time, block number, producer stats, etc
  */
-void chain_controller::_finalize_block( const block_trace& trace ) { try {
+void chain_controller::_finalize_block( const block_trace& trace, const producer_object& signing_producer ) { try {
    const auto& b = trace.block;
-   const producer_object& signing_producer = validate_block_header(_skip_flags, b);
 
    update_global_properties( b );
    update_global_dynamic_data( b );
@@ -506,6 +505,7 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
 { try {
 
    try {
+      FC_ASSERT( head_block_time() < (fc::time_point)when, "block must be generated at a timestamp after the head block time" );
       uint32_t skip     = _skip_flags;
       uint32_t slot_num = get_slot_at_time( when );
       FC_ASSERT( slot_num > 0 );
@@ -541,7 +541,7 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
       if( !(skip & skip_producer_signature) )
          _pending_block->sign( block_signing_key );
 
-      _finalize_block( *_pending_block_trace );
+      _finalize_block( *_pending_block_trace, producer_obj );
 
       _pending_block_session->push();
 
@@ -628,14 +628,14 @@ void chain_controller::__apply_block(const signed_block& next_block)
 
    uint32_t skip = _skip_flags;
 
+   const producer_object& signing_producer = validate_block_header(skip, next_block);
+
    /*
    FC_ASSERT((skip & skip_merkle_check)
              || next_block.transaction_merkle_root == next_block.calculate_merkle_root(),
              "", ("next_block.transaction_merkle_root", next_block.transaction_merkle_root)
              ("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block.id()));
              */
-
-   const producer_object& signing_producer = validate_block_header(skip, next_block);
 
    /// regions must be listed in order
    for( uint32_t i = 1; i < next_block.regions.size(); ++i )
@@ -767,7 +767,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
    FC_ASSERT(next_block.action_mroot == next_block_trace.calculate_action_merkle_root());
    FC_ASSERT( transaction_metadata::calculate_transaction_merkle_root(input_metas) == next_block.transaction_mroot, "merkle root does not match" );
 
-   _finalize_block( next_block_trace );
+   _finalize_block( next_block_trace, signing_producer );
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 
 flat_set<public_key_type> chain_controller::get_required_keys(const transaction& trx,
@@ -872,8 +872,8 @@ void chain_controller::validate_uniqueness( const transaction& trx )const {
    EOS_ASSERT(transaction == nullptr, tx_duplicate, "transaction is not unique");
 }
 
-void chain_controller::record_transaction(const transaction& trx) 
-{ 
+void chain_controller::record_transaction(const transaction& trx)
+{
    try {
        _db.create<transaction_object>([&](transaction_object& transaction) {
            transaction.trx_id = trx.id();
@@ -881,10 +881,10 @@ void chain_controller::record_transaction(const transaction& trx)
        });
    } catch ( ... ) {
        EOS_ASSERT( false, transaction_exception,
-                  "duplicate transaction ${id}", 
+                  "duplicate transaction ${id}",
                   ("id", trx.id() ) );
    }
-} 
+}
 
 
 void chain_controller::validate_tapos(const transaction& trx)const {
@@ -1473,7 +1473,7 @@ static void log_handled_exceptions(const transaction& trx) {
    } FC_CAPTURE_AND_LOG((trx));
 }
 
-transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta ) 
+transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta )
 { try {
    transaction_trace result(meta.id);
 
@@ -1517,7 +1517,7 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
    return result;
 } FC_CAPTURE_AND_RETHROW() }
 
-transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta ) 
+transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta )
 { try {
    try {
       auto temp_session = _db.start_undo_session(true);

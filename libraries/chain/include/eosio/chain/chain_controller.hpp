@@ -267,7 +267,7 @@ namespace eosio { namespace chain {
          uint32_t             head_block_num()const;
          block_id_type        head_block_id()const;
          account_name         head_block_producer()const;
-         block_header         head_block_header()const; 
+         block_header         head_block_header()const;
 
          uint32_t last_irreversible_block_num() const;
 
@@ -387,7 +387,6 @@ namespace eosio { namespace chain {
          ///Steps involved in applying a new block
          ///@{
          const producer_object& validate_block_header(uint32_t skip, const signed_block& next_block)const;
-         const producer_object& _validate_block_header(const signed_block& next_block)const;
          void create_block_summary(const signed_block& next_block);
 
          void update_global_properties(const signed_block& b);
@@ -407,7 +406,7 @@ namespace eosio { namespace chain {
          void _start_pending_shard();
          void _finalize_pending_cycle();
          void _apply_cycle_trace( const cycle_trace& trace );
-         void _finalize_block( const block_trace& b );
+         void _finalize_block( const block_trace& b, const producer_object& signing_producer );
 
          transaction _get_on_block_transaction();
          void _apply_on_block_transaction();
