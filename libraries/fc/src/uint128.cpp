@@ -376,8 +376,12 @@ namespace fc
 
    void to_variant( const uint128& var,  variant& vo )  { vo = std::string(var);         }
    void from_variant( const variant& var,  uint128& vo ){ vo = uint128(var.as_string()); }
-   void to_variant( const unsigned __int128& var,  variant& vo ) { to_variant( *((uint128*)var), vo); }
-   void from_variant( const variant& var,  unsigned __int128& vo ) { from_variant( var, *((uint128*)&vo)); }
+   void to_variant( const unsigned __int128& var,  variant& vo ) { to_variant( uint128(var), vo); }
+   void from_variant( const variant& var,  unsigned __int128& vo ) {
+      uint128 tmp;
+      from_variant( var, tmp );
+      vo = (unsigned __int128)tmp;
+   }
 
 } // namespace fc
 

@@ -47,7 +47,7 @@ class transaction_metadata {
 
       // things for processing deferred transactions
       optional<account_name>                sender;
-      uint32_t                              sender_id = 0;
+      uint128_t                             sender_id = 0;
 
       // packed form to pass to contracts if needed
       const char*                           raw_data = nullptr;

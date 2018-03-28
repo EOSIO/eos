@@ -1030,23 +1030,24 @@ class transaction_api : public context_aware_api {
          context.execute_context_free_inline(std::move(act));
       }
 
-      void send_deferred( uint64_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
+      void send_deferred( const unsigned __int128& val, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
          try {
-            // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
+            fc::uint128_t sender_id(val>>64, uint64_t(val) );
             const auto& gpo = context.controller.get_global_properties();
             FC_ASSERT(data_len < gpo.configuration.max_generated_transaction_size, "generated transaction too big");
 
             deferred_transaction dtrx;
             fc::raw::unpack<transaction>(data, data_len, dtrx);
             dtrx.sender = context.receiver;
-            dtrx.sender_id = sender_id;
+            dtrx.sender_id = (unsigned __int128)sender_id;
             dtrx.execute_after = execute_after;
             context.execute_deferred(std::move(dtrx));
          } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
       }
 
-      void cancel_deferred( uint64_t sender_id ) {
-         context.cancel_deferred( sender_id );
+      void cancel_deferred( const unsigned __int128& val ) {
+         fc::uint128_t sender_id(val>>64, uint64_t(val) );
+         context.cancel_deferred( (unsigned __int128)sender_id );
       }
 };
 
@@ -1553,8 +1554,8 @@ REGISTER_INTRINSICS(context_free_transaction_api,
 REGISTER_INTRINSICS(transaction_api,
    (send_inline,               void(int, int)               )
    (send_context_free_inline,  void(int, int)               )
-   (send_deferred,             void(int64_t, int, int, int) )
-   (cancel_deferred,           void(int64_t)                )
+   (send_deferred,             void(int, int, int, int) )
+   (cancel_deferred,           void(int)                )
 );
 
 REGISTER_INTRINSICS(context_free_api,
