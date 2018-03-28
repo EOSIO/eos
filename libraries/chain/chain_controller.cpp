@@ -1000,10 +1000,15 @@ optional<permission_name> chain_controller::lookup_linked_permission(account_nam
       }
 
       // If no specific or default link found, use active permission
-      if (link != nullptr)
+      if (link != nullptr) {
+         if( link->required_permission == N(eosio.any) )
+            return optional<permission_name>(); /// any permission will do, just like update auth
          return link->required_permission;
+      } 
 
-      return optional<permission_name>();
+      return N(active);
+
+    //  return optional<permission_name>();
    } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
 }
 

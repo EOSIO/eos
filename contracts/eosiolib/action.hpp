@@ -82,6 +82,10 @@ namespace eosio {
       account_name    actor;
       permission_name permission;
 
+      friend bool operator == ( const permission_level& a, const permission_level& b ) {
+         return std::tie( a.actor, a.permission ) == std::tie( b.actor, b.permission );
+      }
+
       EOSLIB_SERIALIZE( permission_level, (actor)(permission) )
    };
 
