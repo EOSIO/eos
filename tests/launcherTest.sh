@@ -5,7 +5,7 @@ total_nodes=1
 topo=maze
 delay=0
 
-cmd="programs/eosio-launcher/eosio-launcher -p $pnodes -n $total_nodes -d $delay -f"
+cmd="programs/eosio-launcher/eosio-launcher -p $pnodes -n $total_nodes -d $delay -f --verbose"
 echo cmd: $cmd
 eval $cmd
 
