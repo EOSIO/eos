@@ -464,7 +464,7 @@ void apply_eosio_canceldelay(apply_context& context) {
    const auto& generated_transaction_idx = context.controller.get_database().get_index<generated_transaction_multi_index>();
    const auto& generated_index = generated_transaction_idx.indices().get<by_sender_id>();
    const auto& itr = generated_index.lower_bound(boost::make_tuple(config::system_account_name, sender_id));
-   FC_ASSERT (itr == generated_index.end() || itr->sender != config::system_account_name || itr->sender_id != sender_id,
+   FC_ASSERT (itr != generated_index.end() && itr->sender == config::system_account_name && itr->sender_id == sender_id,
               "cannot cancel sender_id=${sid}, there is no deferred transaction with that sender_id",("sid",sender_id));
 
    auto dtrx = fc::raw::unpack<deferred_transaction>(itr->packed_trx.data(), itr->packed_trx.size());
