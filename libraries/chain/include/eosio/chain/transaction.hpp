@@ -214,13 +214,13 @@ namespace eosio { namespace chain {
     */
    struct deferred_transaction : public transaction
    {
-      uint64_t       sender_id; /// ID assigned by sender of generated, accessible via WASM api when executing normal or error
+      uint128_t       sender_id; /// ID assigned by sender of generated, accessible via WASM api when executing normal or error
       account_name   sender; /// receives error handler callback
       time_point_sec execute_after; /// delayed exeuction
 
       deferred_transaction() = default;
 
-      deferred_transaction(uint32_t sender_id, account_name sender, time_point_sec execute_after, const transaction& txn)
+      deferred_transaction(uint128_t sender_id, account_name sender, time_point_sec execute_after, const transaction& txn)
       : transaction(txn),
         sender_id(sender_id),
         sender(sender),
@@ -229,12 +229,12 @@ namespace eosio { namespace chain {
    };
 
    struct deferred_reference {
-      deferred_reference( const account_name& sender, uint64_t sender_id)
+      deferred_reference( const account_name& sender, uint128_t sender_id)
       :sender(sender),sender_id(sender_id)
       {}
 
       account_name   sender;
-      uint64_t       sender_id;
+      uint128_t       sender_id;
    };
 
    struct data_access_info {

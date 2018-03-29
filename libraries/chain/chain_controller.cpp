@@ -249,13 +249,19 @@ bool chain_controller::_push_block(const signed_block& new_block)
  * queues.
  */
 transaction_trace chain_controller::push_transaction(const packed_transaction& trx, uint32_t skip)
-   { try {
-         return with_skip_flags(skip, [&]() {
-            return _db.with_write_lock([&]() {
-               return _push_transaction(trx);
-            });
-         });
-      } EOS_CAPTURE_AND_RETHROW( transaction_exception ) }
+{ try {
+   // If this is the first transaction pushed after applying a block, start a new undo session.
+   // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
+   if( !_pending_block ) {
+      _start_pending_block();
+   }
+
+   return with_skip_flags(skip, [&]() {
+      return _db.with_write_lock([&]() {
+         return _push_transaction(trx);
+      });
+   });
+} EOS_CAPTURE_AND_RETHROW( transaction_exception ) }
 
 transaction_trace chain_controller::_push_transaction(const packed_transaction& packed_trx)
 { try {
@@ -324,18 +330,16 @@ static void record_locks_for_data_access(const vector<action_trace>& action_trac
 
 transaction_trace chain_controller::_push_transaction( transaction_metadata&& data )
 { try {
+   FC_ASSERT( _pending_block, " block not started" );
+
    if (_limits.max_push_transaction_us.count() > 0) {
-      data.processing_deadline = fc::time_point::now() + _limits.max_push_transaction_us;
+      auto newval = fc::time_point::now() + _limits.max_push_transaction_us;
+      if ( !data.processing_deadline || newval < *data.processing_deadline ) {
+         data.processing_deadline = newval;
+      }
    }
 
    const transaction& trx = data.trx();
-
-   // If this is the first transaction pushed after applying a block, start a new undo session.
-   // This allows us to quickly rewind to the clean state of the head block, in case a new block arrives.
-   if( !_pending_block ) {
-      _start_pending_block();
-   }
-
    auto temp_session = _db.start_undo_session(true);
 
    // for now apply the transaction serially but schedule it according to those invariants
@@ -383,7 +387,7 @@ block_header chain_controller::head_block_header() const
    return block_header();
 }
 
-void chain_controller::_start_pending_block()
+void chain_controller::_start_pending_block( bool skip_deferred )
 {
    FC_ASSERT( !_pending_block );
    _pending_block         = signed_block();
@@ -391,10 +395,20 @@ void chain_controller::_start_pending_block()
    _pending_block_session = _db.start_undo_session(true);
    _pending_block->regions.resize(1);
    _pending_block_trace->region_traces.resize(1);
+
    _start_pending_cycle();
    _apply_on_block_transaction();
    _finalize_pending_cycle();
+
    _start_pending_cycle();
+
+   if ( !skip_deferred ) {
+      _push_deferred_transactions( false );
+      if (_pending_cycle_trace && _pending_cycle_trace->shard_traces.size() > 0 && _pending_cycle_trace->shard_traces.back().transaction_traces.size() > 0) {
+         _finalize_pending_cycle();
+         _start_pending_cycle();
+      }
+   }
 }
 
 transaction chain_controller::_get_on_block_transaction()
@@ -764,6 +778,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                      const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
                      if (gtrx != nullptr) {
                         auto trx = fc::raw::unpack<deferred_transaction>(gtrx->packed_trx.data(), gtrx->packed_trx.size());
+                        FC_ASSERT( trx.execute_after <= head_block_time() , "deffered transaction executed prematurely" );
                         _temp.emplace(trx, gtrx->published, trx.sender, trx.sender_id, gtrx->packed_trx.data(), gtrx->packed_trx.size() );
                         return &*_temp;
                      } else {
@@ -1726,8 +1741,23 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    return result;
 }
 
-vector<transaction_trace> chain_controller::push_deferred_transactions( bool flush )
+vector<transaction_trace> chain_controller::push_deferred_transactions( bool flush, uint32_t skip )
+{ try {
+   if( !_pending_block ) {
+      _start_pending_block( true );
+   }
+
+   return with_skip_flags(skip, [&]() {
+      return _db.with_write_lock([&]() {
+         return _push_deferred_transactions( flush );
+      });
+   });
+} FC_CAPTURE_AND_RETHROW() }
+
+vector<transaction_trace> chain_controller::_push_deferred_transactions( bool flush )
 {
+   FC_ASSERT( _pending_block, " block not started" );
+
    if (flush && _pending_cycle_trace && _pending_cycle_trace->shard_traces.size() > 0) {
       // TODO: when we go multithreaded this will need a better way to see if there are flushable
       // deferred transactions in the shards
@@ -1761,17 +1791,21 @@ vector<transaction_trace> chain_controller::push_deferred_transactions( bool flu
       candidates.emplace_back(&gtrx);
    }
 
+   auto deferred_transactions_deadline = fc::time_point::now() + fc::microseconds(config::deffered_transactions_max_time_per_block_us);
    vector<transaction_trace> res;
    for (const auto* trx_p: candidates) {
       if (!is_known_transaction(trx_p->trx_id)) {
          try {
             auto trx = fc::raw::unpack<deferred_transaction>(trx_p->packed_trx.data(), trx_p->packed_trx.size());
-            transaction_metadata mtrx (trx, trx_p->published, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size());
+            transaction_metadata mtrx (trx, trx_p->published, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size(), deferred_transactions_deadline);
             res.push_back( _push_transaction(std::move(mtrx)) );
             generated_transaction_idx.remove(*trx_p);
          } FC_CAPTURE_AND_LOG((trx_p->trx_id)(trx_p->sender));
       } else {
          generated_transaction_idx.remove(*trx_p);
+      }
+      if ( deferred_transactions_deadline <= fc::time_point::now() ) {
+         break;
       }
    }
    return res;

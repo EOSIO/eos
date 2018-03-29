@@ -464,7 +464,7 @@ class apply_context {
       void execute_inline( action &&a );
       void execute_context_free_inline( action &&a );
       void execute_deferred( deferred_transaction &&trx );
-      void cancel_deferred( uint64_t sender_id );
+      void cancel_deferred( uint128_t sender_id );
 
       /**
        * @brief Require @ref account to have approved of this message
