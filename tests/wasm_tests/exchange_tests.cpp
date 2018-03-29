@@ -265,7 +265,6 @@ BOOST_AUTO_TEST_CASE( bootstrap ) try {
    auto expected = asset::from_string( "1000000.0000 CUR" );
    exchange_tester t;
    t.create_currency( N(currency), N(currency), expected );
-   return;
    t.issue( N(currency), N(currency), N(currency), expected );
    auto actual = t.get_currency_balance(N(currency), expected.get_symbol(), N(currency));
    BOOST_REQUIRE_EQUAL(expected, actual);

@@ -18,7 +18,7 @@ void apply_context::exec_one()
       if (native) {
          (*native)(*this);
       }
-      else if (a.code.size() > 0) { // && !(act.name == N(setcode) && act.account == config::system_account_name)) {
+      else if (a.code.size() > 0) {
          try {
             mutable_controller.get_wasm_interface().apply(a.code_version, a.code, *this);
          } catch ( const wasm_exit& ){}

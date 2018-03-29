@@ -57,9 +57,9 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( tx_exp_too_far_exception,          eosio::chain::transaction_exception, 3030023, "Transaction Expiration Too Far" )
    FC_DECLARE_DERIVED_EXCEPTION( invalid_ref_block_exception,       eosio::chain::transaction_exception, 3030024, "Invalid Reference Block" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_apply_exception,                eosio::chain::transaction_exception, 3030025, "Transaction Apply Exception" )
-   FC_DECLARE_DERIVED_EXCEPTION( action_missing_auth,               eosio::chain::transaction_exception, 3030026, "action requires at least one required authority" )
-   FC_DECLARE_DERIVED_EXCEPTION( cfa_irrelevant_auth,               eosio::chain::transaction_exception, 3030027, "context-free action should have no required authority" )
-   FC_DECLARE_DERIVED_EXCEPTION( tx_no_action,                      eosio::chain::transaction_exception, 3030028, "transaction should have at least one normal action" )
+   FC_DECLARE_DERIVED_EXCEPTION( cfa_irrelevant_auth,               eosio::chain::transaction_exception, 3030026, "context-free action should have no required authority" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_no_action,                      eosio::chain::transaction_exception, 3030027, "transaction should have at least one normal action" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_no_auths,                       eosio::chain::transaction_exception, 3030028, "transaction should have at least one required authority" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( account_name_exists_exception,     eosio::chain::action_validate_exception, 3040001, "account name already exists" )

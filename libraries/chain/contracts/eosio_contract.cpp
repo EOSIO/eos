@@ -85,11 +85,7 @@ void apply_eosio_newaccount(apply_context& context) {
    db.create<bandwidth_usage_object>([&]( auto& bu ) { bu.owner = create.name; });
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
-/*
-void apply_eosio_onblock(apply_context& context) {
-   context.require_authorization(config::system_account_name);
-}
-*/
+
 void apply_eosio_setcode(apply_context& context) {
    auto& db = context.mutable_db;
    auto  act = context.act.data_as<setcode>();

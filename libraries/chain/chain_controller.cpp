@@ -26,7 +26,6 @@
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
 #include <fc/crypto/digest.hpp>
-#include <fc/io/json.hpp>
 
 #include <boost/range/algorithm/copy.hpp>
 #include <boost/range/algorithm_ext/erase.hpp>
@@ -36,7 +35,6 @@
 
 #include <fstream>
 #include <functional>
-#include <algorithm>
 #include <chrono>
 
 namespace eosio { namespace chain {
@@ -1654,9 +1652,12 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
 { try {
    transaction_trace result(meta.id);
    EOS_ASSERT( !meta.trx().actions.empty(), tx_no_action, "transactions require at least one context-aware action" );
-   // first check for at least one valid action
+   // first check for at least one authorization
+   bool has_auth = false;
    for (const auto& act : meta.trx().actions)
-      EOS_ASSERT( !act.authorization.empty(), action_missing_auth, "context-aware actions require at least one authorization" );
+      has_auth |= !act.authorization.empty();
+
+   EOS_ASSERT( has_auth, tx_no_auths, "transactions require at least one authorization" );
 
    validate_transaction( meta.trx() );
 

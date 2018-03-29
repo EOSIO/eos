@@ -53,7 +53,7 @@ public:
          act.name = name;
          act.data = abi_ser.variant_to_binary( action_type_name, data );
 
-         return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : 0 );
+         return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : signer == N(bob) ? N(alice) : N(bob) );
    }
 
    action_result stake( const account_name& from, const account_name& to, const string& net, const string& cpu, const string& storage ) {
@@ -225,7 +225,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
 BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
 
-   BOOST_REQUIRE_EQUAL( error("context-aware actions require at least one authorization"),
+   BOOST_REQUIRE_EQUAL( error("missing authority of alice"),
                         push_action( N(alice), N(delegatebw), mvo()
                                     ("from",     "alice")
                                     ("receiver", "bob")
@@ -236,7 +236,7 @@ BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
                         )
    );
 
-   BOOST_REQUIRE_EQUAL( error("context-aware actions require at least one authorization"),
+   BOOST_REQUIRE_EQUAL( error("missing authority of alice"),
                         push_action(N(alice), N(undelegatebw), mvo()
                                     ("from",     "alice")
                                     ("receiver", "bob")

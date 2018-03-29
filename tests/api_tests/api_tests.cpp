@@ -349,7 +349,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
 		auto res = push_transaction(trx);
 		BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
    }
-
+   
    uint32_t now = control->head_block_time().sec_since_epoch();
    CALL_TEST_FUNCTION( *this, "test_action", "now", fc::raw::pack(now));
 
@@ -613,6 +613,20 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
    produce_blocks(100);
    set_code( N(testapi), test_api_wast );
    produce_blocks(1);
+   // test for zero auth
+   {
+      signed_transaction trx;
+      auto tm = test_api_action<TEST_METHOD("test_action", "require_auth")>{};
+      action act({}, tm); 
+      trx.actions.push_back(act);
+
+		set_tapos(trx);
+      BOOST_CHECK_EXCEPTION(push_transaction(trx), transaction_exception,
+         [](const fc::exception& e) {
+            return expect_assert_message(e, "transactions require at least one authorization");
+         }
+      );
+   }
 
    // test send_action
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_action", {});
@@ -623,7 +637,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
    // test send_action_large
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), transaction_exception,
          [](const fc::exception& e) {
-            return expect_assert_message(e, "");
+            return expect_assert_message(e, "data_len < config::default_max_inline_action_size");
          }
       );
    // test send_action_inline_fail

@@ -103,7 +103,7 @@ public:
                                                   ("creator", account_name)
                                                   ("identity", identity)
       );
-      return push_action( std::move(create_act), (auth ? string_to_name(account_name.c_str()) : 0) );
+      return push_action( std::move(create_act), (auth ? string_to_name(account_name.c_str()) : (string_to_name(account_name.c_str()) == N(bob)) ? N(alice) : N(bob)));
    }
 
    fc::variant get_identity(uint64_t idnt) {
@@ -132,7 +132,7 @@ public:
                                                 ("identity", identity)
                                                 ("value", fields)
       );
-      return push_action( std::move(cert_act), (auth ? string_to_name(certifier.c_str()) : 0) );
+      return push_action( std::move(cert_act), (auth ? string_to_name(certifier.c_str()) : (string_to_name(certifier.c_str()) == N(bob)) ? N(alice) : N(bob)));
    }
 
    fc::variant get_certrow(uint64_t identity, const string& property, uint64_t trusted, const string& certifier) {
@@ -233,15 +233,16 @@ BOOST_FIXTURE_TEST_CASE( identity_create, identity_tester ) try {
    BOOST_REQUIRE_EQUAL( 2, idnt2["identity"].as_uint64());
    BOOST_REQUIRE_EQUAL( "alice", idnt2["creator"].as_string());
 
+   //bob can create an identity as well
+   BOOST_REQUIRE_EQUAL(success(), create_identity("bob", 1));
+
    //identity == 0 has special meaning, should be impossible to create
    BOOST_REQUIRE_EQUAL(error("condition: assertion failed: identity=0 is not allowed"), create_identity("alice", 0));
 
    //creating adentity without authentication is not allowed
-   BOOST_REQUIRE_EQUAL(error("context-aware actions require at least one authorization"), create_identity("alice", 3, false));
+   BOOST_REQUIRE_EQUAL(error("missing authority of alice"), create_identity("alice", 3, false));
 
-   //bob can create an identity as well
-   BOOST_REQUIRE_EQUAL(success(), create_identity("bob", 1));
-   fc::variant idnt_bob = get_identity(1);
+      fc::variant idnt_bob = get_identity(1);
    BOOST_REQUIRE_EQUAL( 1, idnt_bob["identity"].as_uint64());
    BOOST_REQUIRE_EQUAL( "bob", idnt_bob["creator"].as_string());
 
@@ -291,7 +292,7 @@ BOOST_FIXTURE_TEST_CASE( certify_decertify, identity_tester ) try {
    };
 
    //shouldn't be able to certify without authorization
-   BOOST_REQUIRE_EQUAL(error("context-aware actions require at least one authorization"), certify("bob", identity_val, fields, false));
+   BOOST_REQUIRE_EQUAL(error("missing authority of bob"), certify("bob", identity_val, fields, false));
 
    //certifying non-existent identity is not allowed
    uint64_t non_existent = 11;
