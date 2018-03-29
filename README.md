@@ -1,6 +1,6 @@
 ## EOS.IO - The Most Powerful Infrastructure for Decentralized Applications
 
-[![Build Status](https://jenkins.eos.io/buildStatus/icon?job=eosio/master)](https://jenkins.eos.io/job/eosio/job/master/)
+[![Build Status](https://jenkins.eos.io/buildStatus/icon?job=eosio/master)](https://jenkins.eos.io/job/eosio/job/master/) | [中文文档](README_zh.md)
 
 Welcome to the EOS.IO source code repository!  EOS.IO software enables developers to create and deploy high-performance, horizontally scalable, blockchain infrastructure upon which decentralized applications can be built.
 
@@ -105,7 +105,7 @@ Optionally, a set of tests can be run against your build to perform some basic v
 cd build
 make test
 ```
- 
+
 For ease of contract development, content can be installed in the `/usr/local` folder using the `make install` target.  This step is run from the `build` folder.
 
 If not already in the `build` folder:
@@ -148,7 +148,7 @@ Optionally, a set of tests can be run against your build to perform some basic v
 cd build
 make test
 ```
- 
+
 For ease of contract development, content can be installed in the `/usr/local` folder using the `make install` target.  This step is run from the `build` folder.
 
 If not already in the `build` folder:
@@ -522,7 +522,7 @@ for p2p requests, and includes the wallet plugins.
 ## Doxygen documentation
 
 You can find more detailed API documentation in the Doxygen reference. 
- 
+
 For the `master` branch: https://eosio.github.io/eos/  
 For the public testnet branch: http://htmlpreview.github.io/?https://github.com/EOSIO/eos/blob/dawn-2.x/docs/index.html  
 
