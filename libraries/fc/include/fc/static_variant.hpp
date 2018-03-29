@@ -195,7 +195,7 @@ class static_variant {
     static_assert(impl::type_info<Types...>::no_reference_types, "Reference types are not permitted in static_variant.");
     static_assert(impl::type_info<Types...>::no_duplicates, "static_variant type arguments contain duplicate types.");
 
-    alignas(__int128) char storage[impl::type_info<Types...>::size];
+    alignas(Types...) char storage[impl::type_info<Types...>::size];
     int _tag;
 
     template<typename X>
