@@ -42,7 +42,6 @@
 	txtrst=$(tput sgr0)
 
 	DISK_MIN=20
-	PYTHON_MIN=3
 
 	printf "\n\tBeginning build version: ${VERSION}\n"
 	printf "\t$( date -u )\n"
