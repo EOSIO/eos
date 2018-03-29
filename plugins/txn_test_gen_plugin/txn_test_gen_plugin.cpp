@@ -255,22 +255,9 @@ struct txn_test_gen_plugin_impl {
 
       for(unsigned int i = 0; i < batch; ++i) {
       {
-
-      char salt[20];
-      {
-        uint64_t k = nonce++;
-        int p = 0;
-        while (k) { salt[p++] = "0123456789abcdef"[k & 15]; k >>= 4; }
-        salt[p] = 0;
-      }
-
-      act_a_to_b.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string(fc::format_string("{\"from\":\"txn.test.a\",\"to\":\"txn.test.b\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", fc::mutable_variant_object()("l", salt))));
-
-      act_b_to_a.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string(fc::format_string("{\"from\":\"txn.test.b\",\"to\":\"txn.test.a\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", fc::mutable_variant_object()("l", salt))));
-
       signed_transaction trx;
       trx.actions.push_back(act_a_to_b);
-      //trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", fc::raw::pack(nonce)));
+      trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", fc::raw::pack(nonce++)));
       trx.set_reference_block(cc.head_block_id());
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.sign(a_priv_key, chainid);
@@ -280,7 +267,7 @@ struct txn_test_gen_plugin_impl {
       {
       signed_transaction trx;
       trx.actions.push_back(act_b_to_a);
-      //trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", fc::raw::pack(nonce)));
+      trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", fc::raw::pack(nonce++)));
       trx.set_reference_block(cc.head_block_id());
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.sign(b_priv_key, chainid);

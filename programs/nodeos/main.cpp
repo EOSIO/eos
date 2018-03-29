@@ -7,6 +7,7 @@
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/net_plugin/net_plugin.hpp>
+#include <eosio/txn_test_gen_plugin/txn_test_gen_plugin.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>
@@ -104,7 +105,7 @@ int main(int argc, char** argv)
       bfs::path root = determine_root_directory();
       app().set_default_data_dir(root / "var/lib/eosio/node_00");
       app().set_default_config_dir(root / "etc/eosio/node_00");
-      if(!app().initialize<chain_plugin, http_plugin, net_plugin>(argc, argv))
+      if(!app().initialize<chain_plugin, http_plugin, net_plugin, txn_test_gen_plugin>(argc, argv))
          return -1;
       initialize_logging();
       ilog("nodeos version ${ver}", ("ver", eosio::nodeos::config::itoh(static_cast<uint32_t>(app().version()))));
