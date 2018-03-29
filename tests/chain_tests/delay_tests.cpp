@@ -128,16 +128,12 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("99.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
-
-   chain.control->push_deferred_transactions(true);
 
    chain.produce_blocks(18);
 
@@ -146,16 +142,12 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("99.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
-
-   chain.control->push_deferred_transactions(true);
 
    chain.produce_blocks();
 
@@ -276,16 +268,12 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("99.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
-
-   chain.control->push_deferred_transactions(true);
 
    chain.produce_blocks(28);
 
@@ -294,16 +282,12 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("99.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
-
-   chain.control->push_deferred_transactions(true);
 
    chain.produce_blocks();
 
@@ -430,16 +414,12 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("99.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
-
-   chain.control->push_deferred_transactions(true);
 
    chain.produce_blocks(38);
 
@@ -448,16 +428,12 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("99.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
-
-   chain.control->push_deferred_transactions(true);
 
    chain.produce_blocks();
 
@@ -573,8 +549,6 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks(16);
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -601,8 +575,6 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -611,8 +583,6 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
    // first transfer will finally be performed
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -630,8 +600,6 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
    BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -639,16 +607,12 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("11.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks(15);
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("89.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("11.0000 CUR"), liquid_balance);
-
-   chain.control->push_deferred_transactions(true);
 
    chain.produce_blocks();
 
@@ -658,8 +622,6 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
    BOOST_REQUIRE_EQUAL(asset::from_string("11.0000 CUR"), liquid_balance);
 
    // second transfer finally is performed
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -780,8 +742,6 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks(16);
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -808,8 +768,6 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -818,8 +776,6 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
    // first transfer will finally be performed
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -837,8 +793,6 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
    BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -846,16 +800,12 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("11.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks(15);
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("89.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("11.0000 CUR"), liquid_balance);
-
-   chain.control->push_deferred_transactions(true);
 
    chain.produce_blocks();
 
@@ -865,8 +815,6 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
    BOOST_REQUIRE_EQUAL(asset::from_string("11.0000 CUR"), liquid_balance);
 
    // second transfer finally is performed
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -986,8 +934,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks(16);
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -1014,8 +960,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -1024,8 +968,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
    // first transfer will finally be performed
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -1043,8 +985,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
    BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -1052,16 +992,12 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("11.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks(15);
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("89.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("11.0000 CUR"), liquid_balance);
-
-   chain.control->push_deferred_transactions(true);
 
    chain.produce_blocks();
 
@@ -1071,8 +1007,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    BOOST_REQUIRE_EQUAL(asset::from_string("11.0000 CUR"), liquid_balance);
 
    // second transfer finally is performed
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -1198,8 +1132,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks(16);
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -1226,8 +1158,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -1236,8 +1166,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
    // first transfer will finally be performed
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -1255,8 +1183,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
    BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -1264,16 +1190,12 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("11.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks(15);
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("89.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("11.0000 CUR"), liquid_balance);
-
-   chain.control->push_deferred_transactions(true);
 
    chain.produce_blocks();
 
@@ -1283,8 +1205,6 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
    BOOST_REQUIRE_EQUAL(asset::from_string("11.0000 CUR"), liquid_balance);
 
    // second transfer finally is performed
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -1400,16 +1320,12 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("99.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
-
-   chain.control->push_deferred_transactions(true);
 
    chain.produce_blocks(18);
 
@@ -1418,16 +1334,12 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("99.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("1.0000 CUR"), liquid_balance);
-
-   chain.control->push_deferred_transactions(true);
 
    chain.produce_blocks();
 
@@ -1542,8 +1454,6 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks(16);
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -1582,9 +1492,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
    BOOST_REQUIRE_EQUAL(1, trace.deferred_transaction_requests.size());
    const auto sender_id_canceled = trace.deferred_transaction_requests[0].get<deferred_reference>().sender_id;
-   BOOST_REQUIRE_EQUAL(sender_id_to_cancel, sender_id_canceled);
-
-   chain.control->push_deferred_transactions(true);
+   BOOST_REQUIRE_EQUAL(std::string(uint128(sender_id_to_cancel)), std::string(uint128(sender_id_canceled)));
 
    chain.produce_blocks();
 
@@ -1594,8 +1502,6 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
    // first transfer will finally be performed
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -1613,8 +1519,6 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
    BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -1622,16 +1526,12 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("10.0000 CUR"), liquid_balance);
 
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks(15);
 
    liquid_balance = get_currency_balance(chain, N(tester));
    BOOST_REQUIRE_EQUAL(asset::from_string("90.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("10.0000 CUR"), liquid_balance);
-
-   chain.control->push_deferred_transactions(true);
 
    chain.produce_blocks();
 
@@ -1641,8 +1541,6 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    BOOST_REQUIRE_EQUAL(asset::from_string("10.0000 CUR"), liquid_balance);
 
    // second transfer finally is performed
-   chain.control->push_deferred_transactions(true);
-
    chain.produce_blocks();
 
    liquid_balance = get_currency_balance(chain, N(tester));

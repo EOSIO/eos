@@ -1,55 +1,59 @@
 /**
  *  @file
  *  @copyright defined in eos/LICENSE.txt
- *  @defgroup eosclienttool EOS Command Line Client Reference
- *  @brief Tool for sending transactions and querying state from @ref eosd
+ *  @defgroup eosclienttool EOSIO Command Line Client Reference
+ *  @brief Tool for sending transactions and querying state from @ref nodeos
  *  @ingroup eosclienttool
  */
 
 /**
   @defgroup eosclienttool
 
-  @section intro Introduction to EOSC
+  @section intro Introduction to cleos
 
-  `eosc` is a command line tool that interfaces with the REST api exposed by @ref eosd. In order to use `eosc` you will need to
-  have a local copy of `eosd` running and configured to load the 'eosio::chain_api_plugin'.
+  `cleos` is a command line tool that interfaces with the REST api exposed by @ref nodeos. In order to use `cleos` you will need to
+  have a local copy of `nodeos` running and configured to load the 'eosio::chain_api_plugin'.
 
-   eosc contains documentation for all of its commands. For a list of all commands known to eosc, simply run it with no arguments:
+   cleos contains documentation for all of its commands. For a list of all commands known to cleos, simply run it with no arguments:
 ```
-$ ./eosc
-Command Line Interface to Eos Daemon
-Usage: ./eosc [OPTIONS] SUBCOMMAND
+$ ./cleos
+Command Line Interface to EOSIO Client
+Usage: programs/cleos/cleos [OPTIONS] SUBCOMMAND
 
 Options:
-  -h,--help                   Print this help actions and exit
-  -H,--host TEXT=localhost    the host where eosd is running
-  -p,--port UINT=8888         the port where eosd is running
+  -h,--help                   Print this help message and exit
+  -H,--host TEXT=localhost    the host where nodeos is running
+  -p,--port UINT=8888         the port where nodeos is running
   --wallet-host TEXT=localhost
-                              the host where eos-walletd is running
-  --wallet-port UINT=8888     the port where eos-walletd is running
+                              the host where eosiowd is running
+  --wallet-port UINT=8888     the port where eosiowd is running
+  -v,--verbose                output verbose actions on error
 
 Subcommands:
+  version                     Retrieve version information
   create                      Create various items, on and off the blockchain
   get                         Retrieve various items and information from the blockchain
   set                         Set or update blockchain state
   transfer                    Transfer EOS from account to account
+  net                         Interact with local p2p network connections
   wallet                      Interact with local wallet
+  sign                        Sign a transaction
   push                        Push arbitrary transactions to the blockchain
 
 ```
 To get help with any particular subcommand, run it with no arguments as well:
 ```
-$ ./eosc create
+$ ./cleos create
 Create various items, on and off the blockchain
-Usage: ./eosc create SUBCOMMAND
+Usage: ./cleos create SUBCOMMAND
 
 Subcommands:
   key                         Create a new keypair and print the public and private keys
   account                     Create a new account on the blockchain
 
-$ ./eosc create account
+$ ./cleos create account
 Create a new account on the blockchain
-Usage: ./eosc create account [OPTIONS] creator name OwnerKey ActiveKey
+Usage: ./cleos create account [OPTIONS] creator name OwnerKey ActiveKey
 
 Positionals:
   creator TEXT                The name of the account creating the new account
@@ -58,7 +62,11 @@ Positionals:
   ActiveKey TEXT              The active public key for the new account
 
 Options:
-  -s,--skip-signature         Specify that unlocked wallet keys should not be used to sign transaction
+  -x,--expiration             set the time in seconds before a transaction expires, defaults to 30s
+  -f,--force-unique           force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times
+  -s,--skip-sign              Specify if unlocked wallet keys should be used to sign transaction
+  -d,--dont-broadcast         don't broadcast transaction to the network (just print to stdout)
+  -p,--permission TEXT ...    An account and permission level to authorize, as in 'account@permission' (defaults to 'creator@active')
 ```
 */
 #include <string>
@@ -429,12 +437,12 @@ int main( int argc, char** argv ) {
    bindtextdomain(locale_domain, locale_path);
    textdomain(locale_domain);
 
-   CLI::App app{"Command Line Interface to Eos Client"};
+   CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
-   app.add_option( "-H,--host", host, localized("the host where eosd is running"), true );
-   app.add_option( "-p,--port", port, localized("the port where eosd is running"), true );
-   app.add_option( "--wallet-host", wallet_host, localized("the host where eos-walletd is running"), true );
-   app.add_option( "--wallet-port", wallet_port, localized("the port where eos-walletd is running"), true );
+   app.add_option( "-H,--host", host, localized("the host where nodeos is running"), true );
+   app.add_option( "-p,--port", port, localized("the port where nodeos is running"), true );
+   app.add_option( "--wallet-host", wallet_host, localized("the host where eosiowd is running"), true );
+   app.add_option( "--wallet-port", wallet_port, localized("the port where eosiowd is running"), true );
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
@@ -1020,9 +1028,9 @@ int main( int argc, char** argv ) {
       auto errorString = e.to_detail_string();
       if (errorString.find("Connection refused") != string::npos) {
          if (errorString.find(fc::json::to_string(port)) != string::npos) {
-            std::cerr << localized("Failed to connect to eosd at ${ip}:${port}; is eosd running?", ("ip", host)("port", port)) << std::endl;
+            std::cerr << localized("Failed to connect to nodeos at ${ip}:${port}; is nodeos running?", ("ip", host)("port", port)) << std::endl;
          } else if (errorString.find(fc::json::to_string(wallet_port)) != string::npos) {
-            std::cerr << localized("Failed to connect to eos-walletd at ${ip}:${port}; is eos-walletd running?", ("ip", wallet_host)("port", wallet_port)) << std::endl;
+            std::cerr << localized("Failed to connect to eosiowd at ${ip}:${port}; is eosiowd running?", ("ip", wallet_host)("port", wallet_port)) << std::endl;
          } else {
             std::cerr << localized("Failed to connect") << std::endl;
          }

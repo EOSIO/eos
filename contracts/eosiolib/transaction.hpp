@@ -48,7 +48,7 @@ namespace eosio {
 
    class deferred_transaction : public transaction {
       public:
-         uint64_t     sender_id;
+         uint128_t     sender_id;
          account_name sender;
          time         delay_until;
 

@@ -1618,9 +1618,7 @@ class Cluster(object):
 
         try:
             pgrepOpts="-fl"
-            if platform.linux_distribution()[0] == "Ubuntu":
-                pgrepOpts="-a"
-            elif platform.linux_distribution()[0] == "LinuxMint":
+            if platform.linux_distribution()[0] == "Ubuntu" or platform.linux_distribution()[0] == "LinuxMint" or platform.linux_distribution()[0] == "Fedora":
                 pgrepOpts="-a"
 
             cmd="pgrep %s %s" % (pgrepOpts, Utils.EosServerName)

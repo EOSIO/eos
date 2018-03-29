@@ -618,6 +618,11 @@ T unpack( const char* buffer, size_t len ) {
 }
 
 template<typename T>
+T unpack( const vector<char>& bytes ) {
+   return unpack<T>( bytes.data(), bytes.size() );
+}
+
+template<typename T>
 size_t pack_size( const T& value ) {
   datastream<size_t> ps;
   ps << value;

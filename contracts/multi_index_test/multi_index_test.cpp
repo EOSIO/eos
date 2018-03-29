@@ -70,14 +70,14 @@ struct limit_order {
 
                   print("Items sorted by primary key:\n");
                   for( const auto& item : orders ) {
-                     print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name(item.owner), "\n");
+                     print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name{item.owner}, "\n");
                   }
 
                   auto expidx = orders.get_index<N(byexp)>();
 
                   print("Items sorted by expiration:\n");
                   for( const auto& item : expidx ) {
-                     print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name(item.owner), "\n");
+                     print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name{item.owner}, "\n");
                   }
 
                   print("Modifying expiration of order with ID=2 to 400.\n");
@@ -87,7 +87,7 @@ struct limit_order {
 
                   print("Items sorted by expiration:\n");
                   for( const auto& item : expidx ) {
-                     print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name(item.owner), "\n");
+                     print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name{item.owner}, "\n");
                   }
 
                   auto lower = expidx.lower_bound(100);

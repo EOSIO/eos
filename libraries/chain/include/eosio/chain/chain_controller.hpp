@@ -87,8 +87,7 @@ namespace eosio { namespace chain {
 
          void push_block( const signed_block& b, uint32_t skip = skip_nothing );
          transaction_trace push_transaction( const packed_transaction& trx, uint32_t skip = skip_nothing );
-         vector<transaction_trace> push_deferred_transactions( bool flush = false );
-
+         vector<transaction_trace> push_deferred_transactions( bool flush = false, uint32_t skip = skip_nothing );
 
 
       /**
@@ -316,6 +315,7 @@ namespace eosio { namespace chain {
          transaction_trace _apply_transaction( transaction_metadata& data );
          transaction_trace __apply_transaction( transaction_metadata& data );
          transaction_trace _apply_error( transaction_metadata& data );
+         vector<transaction_trace> _push_deferred_transactions( bool flush = false );
 
          /// Reset the object graph in-memory
          void _initialize_indexes();
@@ -377,7 +377,6 @@ namespace eosio { namespace chain {
           * @param authorizer_account The account authorizing the message
           * @param code_account The account which publishes the contract that handles the message
           * @param type The type of message
-          * @return
           */
          optional<permission_name> lookup_minimum_permission( account_name authorizer_account,
                                                              scope_name code_account,
@@ -388,12 +387,11 @@ namespace eosio { namespace chain {
           * @param authorizer_account The account authorizing the message
           * @param code_account The account which publishes the contract that handles the message
           * @param type The type of message
-          * @return an optional<permission_name> for the linked permission if one exists; otherwise an invalid
-          * optional<permission_name>
+          * @return active permission or the linked permission if one exists
           */
          optional<permission_name> lookup_linked_permission( account_name authorizer_account,
-                                                             scope_name code_account,
-                                                             action_name type) const;
+                                                   scope_name code_account,
+                                                   action_name type ) const;
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
          bool should_check_tapos()const                      { return !(_skip_flags&skip_tapos_check);            }
@@ -416,7 +414,7 @@ namespace eosio { namespace chain {
          void _spinup_db();
          void _spinup_fork_db();
 
-         void _start_pending_block();
+         void _start_pending_block( bool skip_deferred = false );
          void _start_pending_cycle();
          void _start_pending_shard();
          void _finalize_pending_cycle();

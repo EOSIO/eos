@@ -188,7 +188,7 @@ namespace eosiosystem {
                   if(code == undelegatebw::get_account() && act == undelegatebw::get_name() ){
                      contract().on( receiver, eosio::unpack_action_data<undelegatebw>() );
                   } else {
-                     eosio::print("Unexpected action: ", eosio::name(act), "\n");
+                     eosio::print("Unexpected action: ", eosio::name{act}, "\n");
                      eosio_assert( false, "received unexpected action");
                   }
                }

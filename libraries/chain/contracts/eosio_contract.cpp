@@ -247,40 +247,44 @@ void apply_eosio_deleteauth(apply_context& context) {
    db.remove(permission);
 }
 
-void apply_eosio_linkauth(apply_context& context) {
+void apply_eosio_linkauth(apply_context& context) { 
    auto requirement = context.act.data_as<linkauth>();
-   EOS_ASSERT(!requirement.requirement.empty(), action_validate_exception, "Required permission cannot be empty");
+   try {
+      EOS_ASSERT(!requirement.requirement.empty(), action_validate_exception, "Required permission cannot be empty");
 
-   context.require_authorization(requirement.account);
-   
-   auto& db = context.mutable_db;
-   const auto *account = db.find<account_object, by_name>(requirement.account);
-   EOS_ASSERT(account != nullptr, account_query_exception,
-              "Fail to retrieve account: ${account}", ("account", requirement.account));
-   const auto *code = db.find<account_object, by_name>(requirement.code);
-   EOS_ASSERT(code != nullptr, account_query_exception,
-              "Fail to retrieve code for account: ${account}", ("account", requirement.code));
-   const auto *permission = db.find<permission_object, by_name>(requirement.requirement);
-   EOS_ASSERT(permission != nullptr, permission_query_exception,
-              "Fail to retrieve permission: ${permission}", ("permission", requirement.requirement));
-   
-   auto link_key = boost::make_tuple(requirement.account, requirement.code, requirement.type);
-   auto link = db.find<permission_link_object, by_action_name>(link_key);
-   
-   if (link) {
-      EOS_ASSERT(link->required_permission != requirement.requirement, action_validate_exception,
-                 "Attempting to update required authority, but new requirement is same as old");
-      db.modify(*link, [requirement = requirement.requirement](permission_link_object& link) {
-          link.required_permission = requirement;
-      });
-   } else {
-      db.create<permission_link_object>([&requirement](permission_link_object& link) {
-         link.account = requirement.account;
-         link.code = requirement.code;
-         link.message_type = requirement.type;
-         link.required_permission = requirement.requirement;
-      });
-   }
+      context.require_authorization(requirement.account);
+      
+      auto& db = context.mutable_db;
+      const auto *account = db.find<account_object, by_name>(requirement.account);
+      EOS_ASSERT(account != nullptr, account_query_exception,
+                 "Fail to retrieve account: ${account}", ("account", requirement.account));
+      const auto *code = db.find<account_object, by_name>(requirement.code);
+      EOS_ASSERT(code != nullptr, account_query_exception,
+                 "Fail to retrieve code for account: ${account}", ("account", requirement.code));
+      if( requirement.requirement != N(eosio.any) ) {
+         const auto *permission = db.find<permission_object, by_name>(requirement.requirement);
+         EOS_ASSERT(permission != nullptr, permission_query_exception,
+                    "Fail to retrieve permission: ${permission}", ("permission", requirement.requirement));
+      }
+      
+      auto link_key = boost::make_tuple(requirement.account, requirement.code, requirement.type);
+      auto link = db.find<permission_link_object, by_action_name>(link_key);
+      
+      if (link) {
+         EOS_ASSERT(link->required_permission != requirement.requirement, action_validate_exception,
+                    "Attempting to update required authority, but new requirement is same as old");
+         db.modify(*link, [requirement = requirement.requirement](permission_link_object& link) {
+             link.required_permission = requirement;
+         });
+      } else {
+         db.create<permission_link_object>([&requirement](permission_link_object& link) {
+            link.account = requirement.account;
+            link.code = requirement.code;
+            link.message_type = requirement.type;
+            link.required_permission = requirement.requirement;
+         });
+      }
+  } FC_CAPTURE_AND_RETHROW((requirement)) 
 }
 
 void apply_eosio_unlinkauth(apply_context& context) {

@@ -63,7 +63,7 @@ namespace proxy {
       configs::get(code_config, self);
       code_config.owner = params.owner;
       code_config.delay = params.delay;
-      eosio::print("Setting owner to: ", name(params.owner), " with delay: ", params.delay, "\n");
+      eosio::print("Setting owner to: ", name{params.owner}, " with delay: ", params.delay, "\n");
       configs::store(code_config, self);
    }
 
