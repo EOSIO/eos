@@ -258,6 +258,22 @@ try {
    BOOST_TEST(string(joe_active_authority.auth.keys[0].key) == string(chain.get_public_key("joe", "active")));
    BOOST_TEST(joe_active_authority.auth.keys[0].weight == 1);
 
+   // Create duplicate name
+   BOOST_CHECK_EXCEPTION(chain.create_account("joe"), action_validate_exception,
+                         assert_message_is("Cannot create account named joe, as that name is already taken"));
+
+   // Creating account with name more than 12 chars
+   BOOST_CHECK_EXCEPTION(chain.create_account("aaaaaaaaaaaaa"), action_validate_exception,
+                         assert_message_is("account names can only be 12 chars long"));
+
+   // Creating account with eosio. prefix with priveleged account
+   chain.create_account("eosio.test1");
+
+   // Creating account with eosio. prefix with non-privileged account, should fail
+   BOOST_CHECK_EXCEPTION(chain.create_account("eosio.test2", "joe"), action_validate_exception,
+                         assert_message_is("only privileged accounts can have names that contain 'eosio.'"));
+
+
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( any_auth ) { try {

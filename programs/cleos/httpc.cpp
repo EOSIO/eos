@@ -124,26 +124,24 @@ namespace eosio { namespace client { namespace http {
                throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
             }
          } else {
-            auto &&error = response_result.as<eosio::error_results>().error;
+            auto &&error_info = response_result.as<eosio::error_results>().error;
             // Construct fc exception from error
-            const auto &stack_trace = error.stack_trace;
-            fc::exception new_exception(error.code, error.name, error.message);
-            if (stack_trace.empty()) {
-               new_exception.append_log(FC_LOG_MESSAGE(error, error.details));
-            } else {
-               for (auto itr = stack_trace.begin(); itr != stack_trace.end(); itr++) {
-                  const auto &error_message = itr == stack_trace.begin() ? error.details : std::string();
-                  new_exception.append_log(fc::log_message(*itr, error_message));
-               }
+            const auto &error_details = error_info.details;
+
+            fc::log_messages logs;
+            for (auto itr = error_details.begin(); itr != error_details.end(); itr++) {
+               const auto& context = fc::log_context(fc::log_level::error, itr->file.data(), itr->line_number, itr->method.data());
+               logs.emplace_back(fc::log_message(context, itr->message));
             }
-            throw new_exception;
+
+            throw fc::exception(logs, error_info.code, error_info.name, error_info.what);
          }
 
          FC_ASSERT( status_code == 200, "Error code ${c}\n: ${msg}\n", ("c", status_code)("msg", re.str()) );
       }
 
       FC_ASSERT( !"unable to connect" );
-   } FC_RETHROW_EXCEPTIONS( error, "Request Path: ${server}:${port}${path}, Request Post Data: ${postdata}" ,
+   } FC_RETHROW_EXCEPTIONS( error, "Request Path: ${server}:${port}${path}\nRequest Post Data: ${postdata}" ,
                             ("server", server)("port", port)("path", path)("postdata", postdata) )
    }
 }}}
