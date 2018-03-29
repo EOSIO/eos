@@ -484,6 +484,26 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+
+BOOST_FIXTURE_TEST_CASE(cfa_tx_signature, tester)  try {
+
+   action cfa({}, cf_action());
+
+   signed_transaction tx1;
+   tx1.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100));
+   tx1.context_free_actions.push_back(cfa);
+   set_tapos(tx1);
+
+   signed_transaction tx2;
+   tx2.context_free_data.emplace_back(fc::raw::pack<uint32_t>(200));
+   tx2.context_free_actions.push_back(cfa);
+   set_tapos(tx2);
+
+   const private_key_type& priv_key = get_private_key("dummy", "active");
+   BOOST_TEST((std::string)tx1.sign(priv_key, chain_id_type()) != (std::string)tx2.sign(priv_key, chain_id_type()));
+
+} FC_LOG_AND_RETHROW()
+
 /*************************************************************************************
  * checktime_tests test case
  *************************************************************************************/
