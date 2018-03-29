@@ -20,7 +20,7 @@ if [ ! -e $rundir/$prog ]; then
     exit -1
 fi
 
-if [ -z "$EOSIO_NDOE" ]; then
+if [ -z "$EOSIO_NODE" ]; then
     echo data directory not set
     exit -1
 fi

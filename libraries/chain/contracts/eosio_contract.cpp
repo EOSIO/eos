@@ -49,7 +49,10 @@ void apply_eosio_newaccount(apply_context& context) {
    auto& db = context.mutable_db;
 
    EOS_ASSERT( create.name.to_string().size() <= 12, action_validate_exception, "account names can only be 12 chars long" );
-   if( !context.privileged ) {
+
+   // Check if the creator is privileged
+   const auto &creator = db.get<account_object, by_name>(create.creator);
+   if( !creator.privileged ) {
       EOS_ASSERT( name(create.name).to_string().find( "eosio." ) == std::string::npos, action_validate_exception, "only privileged accounts can have names that contain 'eosio.'" );
    }
 
@@ -470,7 +473,7 @@ void apply_eosio_canceldelay(apply_context& context) {
    const auto& generated_transaction_idx = context.controller.get_database().get_index<generated_transaction_multi_index>();
    const auto& generated_index = generated_transaction_idx.indices().get<by_sender_id>();
    const auto& itr = generated_index.lower_bound(boost::make_tuple(config::system_account_name, sender_id));
-   FC_ASSERT (itr == generated_index.end() || itr->sender != config::system_account_name || itr->sender_id != sender_id,
+   FC_ASSERT (itr != generated_index.end() && itr->sender == config::system_account_name && itr->sender_id == sender_id,
               "cannot cancel sender_id=${sid}, there is no deferred transaction with that sender_id",("sid",sender_id));
 
    auto dtrx = fc::raw::unpack<deferred_transaction>(itr->packed_trx.data(), itr->packed_trx.size());
