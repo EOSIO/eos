@@ -12,6 +12,8 @@
 #include <chainbase/chainbase.hpp>
 #include <fc/scoped_exit.hpp>
 
+#include <boost/range/algorithm/find.hpp>
+#include <boost/range/algorithm/remove_if.hpp>
 #include <boost/signals2/signal.hpp>
 
 #include <eosio/chain/protocol.hpp>

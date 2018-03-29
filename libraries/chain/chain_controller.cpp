@@ -33,8 +33,6 @@
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/sort.hpp>
-#include <boost/range/algorithm/find.hpp>
-#include <boost/range/algorithm/remove_if.hpp>
 #include <boost/range/algorithm/equal.hpp>
 
 #include <fstream>
