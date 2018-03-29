@@ -1,6 +1,8 @@
 ## EOS.IO - The Most Powerful Infrastructure for Decentralized Applications
 
-[![Build Status](https://jenkins.eos.io/buildStatus/icon?job=eosio/master)](https://jenkins.eos.io/job/eosio/job/master/) | [中文文档](README_zh.md)
+[![Build Status](https://jenkins.eos.io/buildStatus/icon?job=eosio/master)](https://jenkins.eos.io/job/eosio/job/master/) 
+
+[中文文档](README_zh.md)
 
 Welcome to the EOS.IO source code repository!  EOS.IO software enables developers to create and deploy high-performance, horizontally scalable, blockchain infrastructure upon which decentralized applications can be built.
 
