@@ -57,7 +57,7 @@ void resource_limits_manager::initialize_account(const account_name& account) {
    });
 }
 
-void resource_limits_manager::add_account_usage(const vector<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t block_num ) {
+void resource_limits_manager::add_transaction_usage(const vector<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t time_slot ) {
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& config = _db.get<resource_limits_config_object>();
    set<std::pair<account_name, permission_name>> authorizing_accounts;
@@ -67,8 +67,8 @@ void resource_limits_manager::add_account_usage(const vector<account_name>& acco
       const auto& usage = _db.get<resource_usage_object,by_owner>( a );
       const auto& limits = _db.get<resource_limits_object,by_owner>( boost::make_tuple(false, a));
       _db.modify( usage, [&]( auto& bu ){
-          bu.net_usage.add( net_usage, block_num, config.net_limit_parameters.periods );
-          bu.cpu_usage.add( cpu_usage, block_num, config.cpu_limit_parameters.periods );
+          bu.net_usage.add( net_usage, time_slot, config.net_limit_parameters.periods );
+          bu.cpu_usage.add( cpu_usage, time_slot, config.cpu_limit_parameters.periods );
       });
 
       uint128_t  consumed_cpu_ex = usage.cpu_usage.consumed * config::rate_limiting_precision;
@@ -88,7 +88,7 @@ void resource_limits_manager::add_account_usage(const vector<account_name>& acco
 
       EOS_ASSERT( limits.net_weight < 0 || (consumed_net_ex * state.total_net_weight) <= (limits.net_weight * capacity_net_ex),
                   tx_resource_exhausted,
-                  "authorizing account '${n}' has insufficient cpu resources for this transaction",
+                  "authorizing account '${n}' has insufficient net resources for this transaction",
                   ("n",                    name(a))
                   ("consumed",             (double)consumed_net_ex/(double)config::rate_limiting_precision)
                   ("net_weight",           limits.net_weight)
@@ -96,6 +96,15 @@ void resource_limits_manager::add_account_usage(const vector<account_name>& acco
                   ("total_net_weight",     state.total_net_weight)
       );
    }
+
+   // account for this transaction in the block and do not exceed those limits either
+   _db.modify(state, [&](resource_limits_state_object& rls){
+      rls.pending_cpu_usage += cpu_usage;
+      rls.pending_net_usage += net_usage;
+   });
+
+   EOS_ASSERT( state.pending_cpu_usage <= config.cpu_limit_parameters.max, block_resource_exhausted, "Block has insufficient cpu resources" );
+   EOS_ASSERT( state.pending_net_usage <= config.net_limit_parameters.max, block_resource_exhausted, "Block has insufficient net resources" );
 }
 
 void resource_limits_manager::add_account_ram_usage( const account_name account, int64_t ram_delta, const char* use_format, const fc::variant_object& args ) {
@@ -111,18 +120,6 @@ void resource_limits_manager::add_account_ram_usage( const account_name account,
 
    _db.modify(usage, [&](resource_usage_object& o){
       o.ram_usage += ram_delta;
-   });
-}
-
-void resource_limits_manager::add_block_usage( uint64_t cpu_usage, uint64_t net_usage, uint32_t block_num ) {
-   const auto& s = _db.get<resource_limits_state_object>();
-   const auto& config = _db.get<resource_limits_config_object>();
-   _db.modify(s, [&](resource_limits_state_object& state){
-      state.average_block_net_usage.add(net_usage, block_num, config.net_limit_parameters.periods);
-      state.update_virtual_net_limit(config);
-
-      state.average_block_cpu_usage.add(cpu_usage, block_num, config.cpu_limit_parameters.periods);
-      state.update_virtual_cpu_limit(config);
    });
 }
 
@@ -217,6 +214,23 @@ void resource_limits_manager::process_account_limit_updates() {
    });
 }
 
+void resource_limits_manager::process_block_usage(uint32_t block_num) {
+   const auto& s = _db.get<resource_limits_state_object>();
+   const auto& config = _db.get<resource_limits_config_object>();
+   _db.modify(s, [&](resource_limits_state_object& state){
+      // apply pending usage, update virtual limits and reset the pending
+
+      state.average_block_cpu_usage.add(state.pending_cpu_usage, block_num, config.cpu_limit_parameters.periods);
+      state.update_virtual_cpu_limit(config);
+      state.pending_cpu_usage = 0;
+
+      state.average_block_net_usage.add(state.pending_net_usage, block_num, config.net_limit_parameters.periods);
+      state.update_virtual_net_limit(config);
+      state.pending_net_usage = 0;
+
+   });
+}
+
 uint64_t resource_limits_manager::get_virtual_block_cpu_limit() const {
    const auto& state = _db.get<resource_limits_state_object>();
    return state.virtual_cpu_limit;
@@ -227,7 +241,19 @@ uint64_t resource_limits_manager::get_virtual_block_net_limit() const {
    return state.virtual_net_limit;
 }
 
-int64_t resource_limits_manager::get_account_block_cpu_limit( const account_name& name ) const {
+uint64_t resource_limits_manager::get_block_cpu_limit() const {
+   const auto& state = _db.get<resource_limits_state_object>();
+   const auto& config = _db.get<resource_limits_config_object>();
+   return config.cpu_limit_parameters.max - state.pending_cpu_usage;
+}
+
+uint64_t resource_limits_manager::get_block_net_limit() const {
+   const auto& state = _db.get<resource_limits_state_object>();
+   const auto& config = _db.get<resource_limits_config_object>();
+   return config.net_limit_parameters.max - state.pending_net_usage;
+}
+
+int64_t resource_limits_manager::get_account_cpu_limit( const account_name& name ) const {
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& usage = _db.get<resource_usage_object, by_owner>(name);
    const auto& limits = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, name));
@@ -246,7 +272,7 @@ int64_t resource_limits_manager::get_account_block_cpu_limit( const account_name
    return (int64_t)((usable_capacity_ex - consumed_ex) / (uint128_t)config::rate_limiting_precision);
 }
 
-int64_t resource_limits_manager::get_account_block_net_limit( const account_name& name ) const {
+int64_t resource_limits_manager::get_account_net_limit( const account_name& name ) const {
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& usage = _db.get<resource_usage_object, by_owner>(name);
    const auto& limits = _db.get<resource_limits_object, by_owner>(boost::make_tuple(false, name));

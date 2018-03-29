@@ -29,6 +29,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( block_tx_output_exception,         eosio::chain::block_validate_exception, 3020001, "transaction outputs in block do not match transaction outputs from applying block" )
    FC_DECLARE_DERIVED_EXCEPTION( block_concurrency_exception,       eosio::chain::block_validate_exception, 3020002, "block does not guarantee concurrent exection without conflicts" )
    FC_DECLARE_DERIVED_EXCEPTION( block_lock_exception,              eosio::chain::block_validate_exception, 3020003, "shard locks in block are incorrect or mal-formed" )
+   FC_DECLARE_DERIVED_EXCEPTION( block_resource_exhausted,          eosio::chain::block_validate_exception, 3020004, "block exhausted allowed resources" )
 
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_auth,                   eosio::chain::transaction_exception, 3030001, "missing required authority" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_sigs,                   eosio::chain::transaction_exception, 3030002, "signatures do not satisfy declared authorizations" )

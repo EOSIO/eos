@@ -174,9 +174,12 @@ namespace eosio { namespace chain { namespace resource_limits {
       void update_virtual_net_limit( const resource_limits_config_object& cfg );
       void update_virtual_cpu_limit( const resource_limits_config_object& cfg );
 
-      uint64_t total_net_weight = 0;
-      uint64_t total_cpu_weight = 0;
-      uint64_t total_ram_bytes = 0;
+      uint64_t pending_net_usage = 0ULL;
+      uint64_t pending_cpu_usage = 0ULL;
+
+      uint64_t total_net_weight = 0ULL;
+      uint64_t total_cpu_weight = 0ULL;
+      uint64_t total_ram_bytes = 0ULL;
 
       /**
        * The virtual number of bytes that would be consumed over blocksize_average_window_ms
@@ -193,12 +196,12 @@ namespace eosio { namespace chain { namespace resource_limits {
        * average_block_size > target_block_size, with a cap at 1000x max_block_size
        * and a floor at max_block_size;
        **/
-      uint64_t virtual_net_limit = 0;
+      uint64_t virtual_net_limit = 0ULL;
 
       /**
        *  Increases when average_bloc
        */
-      uint64_t virtual_cpu_limit = 0;
+      uint64_t virtual_cpu_limit = 0ULL;
 
    };
 
