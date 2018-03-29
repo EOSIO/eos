@@ -911,7 +911,7 @@ time_point chain_controller::check_authorization( const vector<action>& actions,
                auto link = act.data_as<contracts::linkauth>();
                if (declared_auth.actor == link.account) {
                   const auto linked_permission_name = lookup_linked_permission(link.account, link.code, link.type);
-                  if (linked_permission_name.valid()) {
+                  if( linked_permission_name.valid() ) {
                      const auto& linked_permission = _db.get<permission_object, by_owner>(boost::make_tuple(link.account, *linked_permission_name));
                      const auto& index = _db.get_index<permission_index>().indices();
                      const optional<time_point> delay = get_permission(declared_auth).satisfies(linked_permission, index);
@@ -983,8 +983,11 @@ optional<permission_name> chain_controller::lookup_minimum_permission(account_na
 
    try {
       optional<permission_name> linked_permission = lookup_linked_permission(authorizer_account, scope, act_name);
-      if (!linked_permission)
+      if (!linked_permission )
          return config::active_name;
+
+      if( *linked_permission == N(eosio.any) ) 
+         return optional<permission_name>();
 
       return linked_permission;
    } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
@@ -1004,10 +1007,12 @@ optional<permission_name> chain_controller::lookup_linked_permission(account_nam
       }
 
       // If no specific or default link found, use active permission
-      if (link != nullptr)
+      if (link != nullptr) {
          return link->required_permission;
+      } 
+      return optional<permission_name>(); 
 
-      return optional<permission_name>();
+    //  return optional<permission_name>();
    } FC_CAPTURE_AND_RETHROW((authorizer_account)(scope)(act_name))
 }
 
