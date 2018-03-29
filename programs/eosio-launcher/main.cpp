@@ -375,6 +375,7 @@ struct launcher_def {
    vector<string> genesis_block;
    string start_temp;
    string start_script;
+    bool verbose=false;
 
    void assign_name (eosd_def &node, bool is_bios);
 
@@ -455,6 +456,10 @@ inline enum_type& operator|=(enum_type&lhs, const enum_type& rhs)
 
 void
 launcher_def::initialize (const variables_map &vmap) {
+    if (vmap.count("verbose") > 0) {
+        verbose=true;
+    }
+
   if (vmap.count("mode")) {
     const vector<string> modes = vmap["mode"].as<vector<string>>();
     for(const string&m : modes)
@@ -1475,6 +1480,7 @@ launcher_def::kill (launch_modes mode, string sig_opt) {
   case LM_ALL:
   case LM_LOCAL:
   case LM_REMOTE : {
+      if (verbose) { cout << "Parsing last_run.json." << std::endl; }
     bfs::path source = "last_run.json";
     fc::json::from_file(source).as<last_run_def>(last_run);
     for (auto &info : last_run.running_nodes) {
@@ -1484,6 +1490,7 @@ launcher_def::kill (launch_modes mode, string sig_opt) {
           string pid;
           fc::json::from_file(info.pid_file).as<string>(pid);
           string kill_cmd = "kill " + sig_opt + " " + pid;
+            if (verbose) { cout << "Killing node pid " << pid << std::endl; }
           boost::process::system (kill_cmd);
         }
         else {
@@ -1680,11 +1687,12 @@ launcher_def::start_all (string &gts, launch_modes mode) {
 
 //------------------------------------------------------------
 
-void write_default_config(const bfs::path& cfg_file, const options_description &cfg ) {
+void write_default_config(const bfs::path& cfg_file, const options_description &cfg, bool verbose ) {
    bfs::path parent = cfg_file.parent_path();
    if (parent.empty()) {
       parent = ".";
    }
+    if (verbose) { cout << "Check if directory exists " << parent << std::endl; }
    if(!bfs::exists(parent)) {
       try {
          bfs::create_directories(parent);
@@ -1695,27 +1703,35 @@ void write_default_config(const bfs::path& cfg_file, const options_description &
       }
    }
 
+    if (verbose) { cout << "Actual writing to file " << cfg_file << std::endl; }
    std::ofstream out_cfg( bfs::path(cfg_file).make_preferred().string());
    for(const boost::shared_ptr<bpo::option_description> od : cfg.options())
    {
       if(!od->description().empty()) {
+          if (verbose) { cout << "Option description: " << od->description() << std::endl; }
          out_cfg << "# " << od->description();
-         std::map<std::string, std::string>::iterator it;
-            out_cfg << " (" << it->second << ")";
+//         std::map<std::string, std::string>::iterator it;
+//            out_cfg << " (" << it->second << ")";
          out_cfg << std::endl;
       }
       boost::any store;
-      if(!od->semantic()->apply_default(store))
-         out_cfg << "# " << od->long_name() << " = " << std::endl;
+      if(!od->semantic()->apply_default(store)) {
+          if (verbose) { cout << "Non-default option: " << od->long_name() << std::endl; }
+          out_cfg << "# " << od->long_name() << " = " << std::endl;
+      }
       else {
          auto example = od->format_parameter();
-         if(example.empty())
-            // This is a boolean switch
-            out_cfg << od->long_name() << " = " << "false" << std::endl;
+         if(example.empty()) {
+             if (verbose) { cout << "Boolean option: " << od->long_name() << std::endl; }
+             // This is a boolean switch
+             out_cfg << od->long_name() << " = " << "false" << std::endl;
+         }
          else {
+               if (verbose) { cout << "String option: " << od->long_name(); }
             // The string is formatted "arg (=<interesting part>)"
             example.erase(0, 6);
             example.erase(example.length()-1);
+               if (verbose) { cout << ", value: " << example << std::endl; }
             out_cfg << od->long_name() << " = " << example << std::endl;
          }
       }
@@ -1737,6 +1753,7 @@ int main (int argc, char *argv[]) {
   string bounce_nodes;
   string down_nodes;
   string roll_nodes;
+  bool verbose = false;
   bfs::path config_dir;
   bfs::path config_file;
 
@@ -1752,6 +1769,7 @@ int main (int argc, char *argv[]) {
     ("bounce", bpo::value<string>(&bounce_nodes),"comma-separated list of node numbers that will be restarted using the eosio-tn_bounce.sh script")
     ("roll", bpo::value<string>(&roll_nodes),"comma-separated list of host names where the nodes should be rolled to a new version using the eosio-tn_roll.sh script")
     ("version,v", "print version information")
+          ("verbose", "verbose output")
     ("help,h","print this list")
     ("config-dir", bpo::value<bfs::path>(), "Directory containing configuration files such as config.ini")
     ("config,c", bpo::value<bfs::path>()->default_value( "config.ini" ), "Configuration file name relative to config-dir");
@@ -1764,6 +1782,9 @@ int main (int argc, char *argv[]) {
 
     top.initialize(vmap);
 
+      if (vmap.count("verbose") > 0) {
+          verbose=true;
+      }
     if (vmap.count("help") > 0) {
       cli.print(cerr);
       return 0;
@@ -1773,6 +1794,7 @@ int main (int argc, char *argv[]) {
       return 0;
     }
 
+      if (verbose) { cout << "Initializing..." << std::endl; }
     if( vmap.count( "config-dir" ) ) {
       config_dir = vmap["config-dir"].as<bfs::path>();
       if( config_dir.is_relative() )
@@ -1786,16 +1808,19 @@ int main (int argc, char *argv[]) {
          config_file_name = config_dir / config_file_name;
    }
 
+      if (verbose) { cout << "Checking config file existence " << config_file_name << std::endl; }
    if(!bfs::exists(config_file_name)) {
       if(config_file_name.compare(config_dir / "config.ini") != 0)
       {
          cout << "Config file " << config_file_name << " missing." << std::endl;
          return -1;
       }
-      write_default_config(config_file_name, cfg);
+       if (verbose) { cout << "Writing default config file." << std::endl; }
+      write_default_config(config_file_name, cfg, verbose);
    }
 
 
+      if (verbose) { cout << "Parsing config file." << std::endl; }
    bpo::store(bpo::parse_config_file<char>(config_file_name.make_preferred().string().c_str(),
                                            cfg, true), vmap);
 
@@ -1838,7 +1863,9 @@ int main (int argc, char *argv[]) {
        top.roll(roll_nodes);
     }
     else {
+        if (verbose) { cout << "Generating configurations." << std::endl; }
       top.generate();
+        if (verbose) { cout << "Starting up nodes." << std::endl; }
       top.start_all(gts, mode);
       top.ignite();
     }

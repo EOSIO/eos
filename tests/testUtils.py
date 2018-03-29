@@ -1154,6 +1154,8 @@ class Cluster(object):
     __WalletName="MyWallet"
     __localHost="localhost"
     __lastTrans=None
+    __BiosHost="localhost"
+    __BiosPort=8788
 
 
     # walletd [True|False] Is walletd running. If not load the wallet plugin
@@ -1231,6 +1233,26 @@ class Cluster(object):
             return False
 
         self.nodes=range(total_nodes) # placeholder for cleanup purposes only
+
+        # wait `systemWaitTimeout` seconds for bios node to get a pulse
+        startTime=time.time()
+        remainingTime=Utils.systemWaitTimeout
+        biosIsAlive=False
+        biosNode=Node(Cluster.__BiosHost, Cluster.__BiosPort)
+        while time.time()-startTime < Utils.systemWaitTimeout:
+            if biosNode.checkPulse():
+                biosIsAlive=True
+                break
+
+            sleepTime=3 if remainingTime > 3 else (3 - remainingTime)
+            remainingTime -= sleepTime
+            Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (sleepTime))
+            time.sleep(sleepTime)
+
+        if not biosIsAlive:
+            Utils.Print("ERROR: Bios node doesn't seem to be alive.")
+            return False
+
         nodes=self.discoverLocalNodes(total_nodes)
 
         if total_nodes != len(nodes):
@@ -1618,9 +1640,7 @@ class Cluster(object):
 
         try:
             pgrepOpts="-fl"
-            if platform.linux_distribution()[0] == "Ubuntu":
-                pgrepOpts="-a"
-            elif platform.linux_distribution()[0] == "LinuxMint":
+            if platform.linux_distribution()[0] == "Ubuntu" or platform.linux_distribution()[0] == "LinuxMint" or platform.linux_distribution()[0] == "Fedora":
                 pgrepOpts="-a"
 
             cmd="pgrep %s %s" % (pgrepOpts, Utils.EosServerName)
@@ -1698,18 +1718,23 @@ class Cluster(object):
 
         return self.updateNodesStatus()
 
-    def dumpErrorDEtailImpl(self,fileName):
+    def dumpErrorDetailImpl(self,fileName):
         Utils.Print("=================================================================")
         Utils.Print("Contents of %s:" % (fileName))
         with open(fileName, "r") as f:
             shutil.copyfileobj(f, sys.stdout)
 
     def dumpErrorDetails(self):
+        fileName="etc/eosio/node_bios/config.ini"
+        self.dumpErrorDetailImpl(fileName)
+        fileName="var/lib/node_bios/stderr.txt"
+        self.dumpErrorDetailImpl(fileName)
+
         for i in range(0, len(self.nodes)):
-            fileName="etc/eosio/node_$02d/config.ini" % (i)
-            dumpErrorDetailImpl(filenme)
+            fileName="etc/eosio/node_%02d/config.ini" % (i)
+            self.dumpErrorDetailImpl(fileName)
             fileName="var/lib/node_%02d/stderr.txt" % (i)
-            dumpErrorDetailImpl(filenme)
+            self.dumpErrorDetailImpl(fileName)
 
     def killall(self, silent=True):
         cmd="%s -k 15" % (Utils.EosLauncherPath)
