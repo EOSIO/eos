@@ -5,6 +5,9 @@
 #include <dice/dice.wast.hpp>
 #include <dice/dice.abi.hpp>
 
+#include <eosio.token/eosio.token.wast.hpp>
+#include <eosio.token/eosio.token.abi.hpp>
+
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
@@ -221,6 +224,9 @@ BOOST_AUTO_TEST_SUITE(dice_tests)
 
 BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
+   set_code(config::system_account_name, eosio_token_wast);
+   set_abi(config::system_account_name, eosio_token_abi);
+
    create_accounts( {N(dice),N(alice),N(bob),N(carol),N(david)}, false);
    produce_block();
    
@@ -228,9 +234,18 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
    add_dice_authority(N(bob));
    add_dice_authority(N(carol));
 
+   push_action(N(eosio), N(create), N(eosio), mvo()
+     ("issuer", "eosio")
+     ("maximum_supply", "1000000000000.0000 EOS")
+     ("can_freeze", "0")
+     ("can_recall", "0")
+     ("can_whitelist", "0")
+   );
+
    push_action(N(eosio), N(issue), N(eosio), mvo()
      ("to", "eosio")
      ("quantity", "1000000.0000 EOS")
+     ("memo", "")
    );
 
    transfer( N(eosio), N(alice), "10000.0000 EOS", "", N(eosio) );
