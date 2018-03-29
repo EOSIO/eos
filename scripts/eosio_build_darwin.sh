@@ -119,10 +119,10 @@
 	IFS=${var_ifs}
 		
 	printf "\tChecking Python3 ... "
-	if [ `python --version | tr - ' ' | cut -d ' ' -f2 | cut -d'.' -f1` != ${PYTHON_MIN} ]; then
-		DEP=$DEP"python@${PYTHON_MIN} "
+	if [  -z `python3 -c 'import sys; print(sys.version_info.major)' 2>/dev/null` ]; then
+		DEP=$DEP"python@3 "
 		DISPLAY="${DISPLAY}${COUNT}. Python 3\n\t"
-		printf "\t\t python${PYTHON_MIN} ${bldred}NOT${txtrst} found.\n"
+		printf "\t\t python3 ${bldred}NOT${txtrst} found.\n"
 		let DCOUNT++
 	else
 		printf "\t\t Python3 found\n"
