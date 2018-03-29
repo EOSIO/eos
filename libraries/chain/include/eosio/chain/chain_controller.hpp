@@ -280,6 +280,7 @@ namespace eosio { namespace chain {
 
          /**
           * @param actions - the actions to check authorization across
+          * @param context_free_actions - the context free actions to check for mindelays across
           * @param provided_keys - the set of public keys which have authorized the transaction
           * @param allow_unused_signatures - true if method should not assert on unused signatures
           * @param provided_accounts - the set of accounts which have authorized the transaction (presumed to be owner)
@@ -287,6 +288,7 @@ namespace eosio { namespace chain {
           * @return time_point set to the max delay that this authorization requires to complete
           */
          time_point check_authorization( const vector<action>& actions,
+                                         const vector<action>& context_free_actions,
                                          const flat_set<public_key_type>& provided_keys,
                                          bool                             allow_unused_signatures = false,
                                          flat_set<account_name>           provided_accounts = flat_set<account_name>()
