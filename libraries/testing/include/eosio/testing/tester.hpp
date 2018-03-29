@@ -201,5 +201,21 @@ namespace eosio { namespace testing {
       string expected;
    };
 
+   class validating_tester : public base_tester {
+   public:
+      validating_tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
+      validating_tester(chain_controller::controller_config config);
+
+      void                    push_genesis_block();
+      producer_schedule_type  set_producers(const vector<account_name>& producer_names, const uint32_t version = 0);
+      transaction_trace       push_transaction( packed_transaction& trx, uint32_t skip_flag = skip_nothing  );
+      signed_block            produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty );
+      void                    produce_blocks( uint32_t n = 1 );
+      void                    produce_blocks_until_end_of_round();
+
+   private:
+      base_tester validating_node;
+   };
+   
 } } /// eosio::testing
 
