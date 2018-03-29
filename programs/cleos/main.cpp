@@ -25,8 +25,8 @@ Options:
   -H,--host TEXT=localhost    the host where nodeos is running
   -p,--port UINT=8888         the port where nodeos is running
   --wallet-host TEXT=localhost
-                              the host where eosiowd is running
-  --wallet-port UINT=8888     the port where eosiowd is running
+                              the host where keosd is running
+  --wallet-port UINT=8888     the port where keosd is running
   -v,--verbose                output verbose actions on error
 
 Subcommands:
@@ -441,8 +441,8 @@ int main( int argc, char** argv ) {
    app.require_subcommand();
    app.add_option( "-H,--host", host, localized("the host where nodeos is running"), true );
    app.add_option( "-p,--port", port, localized("the port where nodeos is running"), true );
-   app.add_option( "--wallet-host", wallet_host, localized("the host where eosiowd is running"), true );
-   app.add_option( "--wallet-port", wallet_port, localized("the port where eosiowd is running"), true );
+   app.add_option( "--wallet-host", wallet_host, localized("the host where keosd is running"), true );
+   app.add_option( "--wallet-port", wallet_port, localized("the port where keosd is running"), true );
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
@@ -1030,7 +1030,7 @@ int main( int argc, char** argv ) {
          if (errorString.find(fc::json::to_string(port)) != string::npos) {
             std::cerr << localized("Failed to connect to nodeos at ${ip}:${port}; is nodeos running?", ("ip", host)("port", port)) << std::endl;
          } else if (errorString.find(fc::json::to_string(wallet_port)) != string::npos) {
-            std::cerr << localized("Failed to connect to eosiowd at ${ip}:${port}; is eosiowd running?", ("ip", wallet_host)("port", wallet_port)) << std::endl;
+            std::cerr << localized("Failed to connect to keosd at ${ip}:${port}; is keosd running?", ("ip", wallet_host)("port", wallet_port)) << std::endl;
          } else {
             std::cerr << localized("Failed to connect") << std::endl;
          }
