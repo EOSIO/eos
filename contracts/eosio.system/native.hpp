@@ -188,5 +188,23 @@ namespace eosiosystem {
 
          static void on( const onerror& ) {
          }
+         
+         ACTION( SystemAccount, canceldelay ) {
+            uint32_t   sender_id;
+            
+            EOSLIB_SERIALIZE( canceldelay, (sender_id) )
+         };
+         
+         static void on( const canceldelay& ) {
+         }
+         
+         ACTION ( SystemAccount, mindelay ) {
+            uint32_t   delay;
+            
+            EOSLIB_SERIALIZE( mindelay, (delay) )
+         };
+         
+         static void on( const mindelay& ) {
+         }
    };
 }
