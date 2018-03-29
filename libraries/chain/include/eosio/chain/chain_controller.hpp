@@ -377,7 +377,6 @@ namespace eosio { namespace chain {
           * @param authorizer_account The account authorizing the message
           * @param code_account The account which publishes the contract that handles the message
           * @param type The type of message
-          * @return
           */
          optional<permission_name> lookup_minimum_permission( account_name authorizer_account,
                                                              scope_name code_account,
@@ -388,12 +387,11 @@ namespace eosio { namespace chain {
           * @param authorizer_account The account authorizing the message
           * @param code_account The account which publishes the contract that handles the message
           * @param type The type of message
-          * @return an optional<permission_name> for the linked permission if one exists; otherwise an invalid
-          * optional<permission_name>
+          * @return active permission or the linked permission if one exists
           */
          optional<permission_name> lookup_linked_permission( account_name authorizer_account,
-                                                             scope_name code_account,
-                                                             action_name type) const;
+                                                   scope_name code_account,
+                                                   action_name type ) const;
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
          bool should_check_tapos()const                      { return !(_skip_flags&skip_tapos_check);            }
