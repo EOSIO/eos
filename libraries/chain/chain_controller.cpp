@@ -859,6 +859,7 @@ private:
 };
 
 time_point chain_controller::check_authorization( const vector<action>& actions,
+                                                  const vector<action>& context_free_actions,
                                                   const flat_set<public_key_type>& provided_keys,
                                                   bool allow_unused_signatures,
                                                   flat_set<account_name> provided_accounts )const
@@ -939,7 +940,9 @@ time_point chain_controller::check_authorization( const vector<action>& actions,
                        ("auth", declared_auth));
          }
       }
+   }
 
+   for( const auto& act : context_free_actions ) {
       if (act.account == config::system_account_name && act.name == contracts::mindelay::get_name()) {
          const auto mindelay = act.data_as<contracts::mindelay>();
          const time_point delay = time_point_sec{mindelay.delay.convert_to<uint32_t>()};
@@ -965,7 +968,7 @@ time_point chain_controller::check_transaction_authorization(const transaction& 
                                                              const vector<bytes>& cfd,
                                                              bool allow_unused_signatures)const
 {
-   return check_authorization( trx.actions, trx.get_signature_keys( signatures, chain_id_type{}, cfd ), allow_unused_signatures );
+   return check_authorization( trx.actions, trx.context_free_actions, trx.get_signature_keys( signatures, chain_id_type{}, cfd ), allow_unused_signatures );
 }
 
 optional<permission_name> chain_controller::lookup_minimum_permission(account_name authorizer_account,
