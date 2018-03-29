@@ -160,21 +160,21 @@
 		exit -1
 	fi
 
-	printf "\n\tVerifying MongoDB is running.\n"
-	MONGODB_PID=$( pgrep -x mongod )
-	if [ -z $MONGODB_PID ]; then
-		printf "\tMongoDB is not currently running.\n"
-		printf "\tStarting MongoDB.\n"
-		mongod -f ${MONGOD_CONF} &
-		if [ $? -ne 0 ]; then
-			printf "\tUnable to start MongoDB.\nExiting now.\n\n"
-			exit -1
-		fi
-		MONGODB_PID=$( pgrep -x mongod )
-		printf "\tSuccessfully started MongoDB PID = ${MONGODB_PID}.\n\n"
-	else
-		printf "\tMongoDB is running PID=${MONGODB_PID}.\n\n"
-	fi
+# 	printf "\n\tVerifying MongoDB is running.\n"
+# 	MONGODB_PID=$( pgrep -x mongod )
+# 	if [ -z $MONGODB_PID ]; then
+# 		printf "\tMongoDB is not currently running.\n"
+# 		printf "\tStarting MongoDB.\n"
+# 		mongod -f ${MONGOD_CONF} &
+# 		if [ $? -ne 0 ]; then
+# 			printf "\tUnable to start MongoDB.\nExiting now.\n\n"
+# 			exit -1
+# 		fi
+# 		MONGODB_PID=$( pgrep -x mongod )
+# 		printf "\tSuccessfully started MongoDB PID = ${MONGODB_PID}.\n\n"
+# 	else
+# 		printf "\tMongoDB is running PID=${MONGODB_PID}.\n\n"
+# 	fi
 	
 	TIME_END=$(( `date -u +%s` - $TIME_BEGIN ))
 
