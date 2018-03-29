@@ -317,6 +317,52 @@ namespace eosio { namespace chain {
          transaction_trace _apply_error( transaction_metadata& data );
          vector<transaction_trace> _push_deferred_transactions( bool flush = false );
 
+         template<typename TransactionProcessing>
+         transaction_trace wrap_transaction_processing( transaction_metadata&& data, TransactionProcessing trx_processing )
+         { try {
+            FC_ASSERT( _pending_block, " block not started" );
+
+            if (_limits.max_push_transaction_us.count() > 0) {
+               auto newval = fc::time_point::now() + _limits.max_push_transaction_us;
+               if ( !data.processing_deadline || newval < *data.processing_deadline ) {
+                  data.processing_deadline = newval;
+               }
+            }
+
+            const transaction& trx = data.trx();
+
+            auto temp_session = _db.start_undo_session(true);
+
+            // for now apply the transaction serially but schedule it according to those invariants
+            validate_referenced_accounts(trx);
+
+            auto result = trx_processing(data);
+
+            auto& bcycle = _pending_block->regions.back().cycles_summary.back();
+            auto& bshard = bcycle.front();
+
+            record_locks_for_data_access(result.action_traces, bshard.read_locks, bshard.write_locks);
+
+            fc::deduplicate(bshard.read_locks);
+            fc::deduplicate(bshard.write_locks);
+            auto newend = boost::remove_if( bshard.read_locks,
+                            [&]( const auto& l ){
+                               return boost::find( bshard.write_locks, l ) != bshard.write_locks.end();
+                            });
+            bshard.read_locks.erase( newend, bshard.read_locks.end() );
+
+            bshard.transactions.emplace_back( result );
+
+            _pending_cycle_trace->shard_traces.at(0).append(result);
+
+            // The transaction applied successfully. Merge its changes into the pending block session.
+            temp_session.squash();
+
+            _pending_transaction_metas.emplace_back(std::forward<transaction_metadata>(data));
+
+            return result;
+         } FC_CAPTURE_AND_RETHROW() }
+
          /// Reset the object graph in-memory
          void _initialize_indexes();
          void _initialize_chain(contracts::chain_initializer& starter);
