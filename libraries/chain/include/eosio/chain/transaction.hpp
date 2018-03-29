@@ -273,7 +273,7 @@ FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures)(context_free_data) )
 FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
-FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(data) )
+FC_REFLECT( eosio::chain::packed_transaction, (signatures)(context_free_data)(compression)(data) )
 FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(execute_after) )
 FC_REFLECT( eosio::chain::deferred_reference, (sender_id)(sender) )
 FC_REFLECT_ENUM( eosio::chain::data_access_info::access_type, (read)(write))
