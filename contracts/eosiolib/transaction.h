@@ -59,7 +59,7 @@ extern "C" {
     * @{
     */
 
-   void send_deferred(uint64_t sender_id, time delay_until, char *serialized_transaction, size_t size);
+   void send_deferred(uint64_t sender_id, time delay_until, const char *serialized_transaction, size_t size);
 
    void cancel_deferred(uint64_t sender_id);
 
@@ -111,6 +111,11 @@ extern "C" {
     * @return signed_transaction.context_free_data[index].size() or -1 if index not valid
     */
    int get_context_free_data( uint32_t index, char* buff, size_t size );
+
+   /**
+    * Check that prodived authorizations is enough to execute the transaction
+    */
+   void check_auth( const char *serialized_transaction, size_t size, const char* permissions, size_t psize );
 
    ///@ } transactioncapi
 }

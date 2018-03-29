@@ -1,4 +1,5 @@
 #include <eosio.msig/eosio.msig.hpp>
+#include <eosiolib/action.hpp>
 
 namespace eosio {
 
@@ -6,10 +7,14 @@ void multisig::propose( account_name proposer,
                         name proposal_name,
                         transaction  trx,
                         vector<permission_level> requested) {
+   require_auth( proposer );
    eosio_assert( trx.expiration > now(), "transaction expired" );
    eosio_assert( trx.actions.size() > 0, "transaction must have at least one action" );
 
    proposals proptable( _self, proposer );
+   eosio_assert( proptable.find( proposal_name ) == proptable.end(), "proposal with the same name exists" );
+
+   check_auth( trx, requested );
 
    proptable.emplace( proposer, [&]( auto& prop ) {
       prop.proposal_name       = proposal_name;
@@ -19,7 +24,7 @@ void multisig::propose( account_name proposer,
 }
 
 void multisig::approve( account_name proposer, name proposal_name, permission_level level ) {
-   //require_auth( level );
+   require_auth( level );
 
    proposals proptable( _self, proposer );
    const auto& prop = proptable.get( proposal_name );
@@ -34,7 +39,7 @@ void multisig::approve( account_name proposer, name proposal_name, permission_le
 }
 
 void multisig::unapprove( account_name proposer, name proposal_name, permission_level level ) {
-   //require_auth( level );
+   require_auth( level );
 
    proposals proptable( _self, proposer );
    const auto& prop = proptable.get( proposal_name );
@@ -65,6 +70,9 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
 
    proposals proptable( _self, proposer );
    const auto& prop = proptable.get( proposal_name );
+
+   check_auth( prop.packed_transaction, prop.provided_approvals );
+   send_deferred( (uint128_t(proposer) << 64) | proposal_name, now(), prop.packed_transaction.data(), prop.packed_transaction.size() );
 
    proptable.erase(prop);
 }

@@ -1083,6 +1083,9 @@ class context_free_transaction_api : public context_aware_api {
          return context.get_action( type, index, buffer, buffer_size );
       }
 
+      void check_auth( array_ptr<char> trx, size_t trx_size, array_ptr<char> perm, size_t perm_size ) {
+         std::cout << "check auth called" << std::endl;
+      }
 };
 
 class compiler_builtins : public context_aware_api {
@@ -1524,6 +1527,7 @@ REGISTER_INTRINSICS(apply_context,
    (require_read_lock,     void(int64_t, int64_t) )
    (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&)const)
+   (require_authorization, void(int64_t, int64_t), "require_auth2", void(apply_context::*)(const account_name&, const permission_name& permission)const)
    (has_authorization,     int(int64_t), "has_auth", bool(apply_context::*)(const account_name&)const)
    (is_account,            int(int64_t)           )
 );
@@ -1548,6 +1552,7 @@ REGISTER_INTRINSICS(context_free_transaction_api,
    (tapos_block_prefix,     int()                    )
    (tapos_block_num,        int()                    )
    (get_action,             int (int, int, int, int) )
+   (check_auth,              void(int, int, int, int) )
 );
 
 REGISTER_INTRINSICS(transaction_api,

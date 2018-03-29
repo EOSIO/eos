@@ -65,13 +65,24 @@ namespace eosio {
     * @param index - the index of the requested action
     * @return the indicated action
     */
-   action get_action( uint32_t type, uint32_t index ) {
+   inline action get_action( uint32_t type, uint32_t index ) {
       auto size = ::get_action(type, index, nullptr, 0);
       eosio_assert( size > 0, "get_action size failed" );
       char buf[size];
       auto size2 = ::get_action(type, index, &buf[0], static_cast<size_t>(size) );
       eosio_assert( size == size2, "get_action failed" );
       return eosio::unpack<eosio::action>(&buf[0], static_cast<size_t>(size));
+   }
+
+   inline void check_auth(const bytes& trx_packed, const vector<permission_level>& permissions) {
+      auto perm_packed = pack(permissions);
+      ::check_auth( trx_packed.data(), trx_packed.size(), perm_packed.data(), perm_packed.size() );
+   }
+
+   inline void check_auth(const transaction& trx, const vector<permission_level>& permissions) {
+      auto trx_packed = pack(trx);
+      check_auth( trx_packed, permissions );
+      //return res > 0;
    }
 
    ///@} transactioncpp api
