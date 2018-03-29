@@ -19,11 +19,13 @@ void apply_context::exec_one()
       if (native) {
          (*native)(*this);
       }
-      else if (a.code.size() > 0) {
+
+      if (a.code.size() > 0 && !(act.name == N(setcode) && act.account == config::system_account_name)) {
          try {
             mutable_controller.get_wasm_interface().apply(a.code_version, a.code, *this);
          } catch ( const wasm_exit& ){}
       }
+
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 
    if (!_write_scopes.empty()) {
