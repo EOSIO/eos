@@ -251,7 +251,7 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
    } FC_CAPTURE_AND_RETHROW((trx));
 }
 
-void apply_context::cancel_deferred( uint64_t sender_id ) {
+void apply_context::cancel_deferred( uint128_t sender_id ) {
    results.deferred_transaction_requests.push_back(deferred_reference(receiver, sender_id));
 }
 
