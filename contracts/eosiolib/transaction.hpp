@@ -37,13 +37,13 @@ namespace eosio {
       region_id       region;
       uint16_t        ref_block_num;
       uint32_t        ref_block_prefix;
-      uint16_t        packed_bandwidth_words = 0; /// number of 8 byte words this transaction can compress into
-      uint16_t        context_free_cpu_bandwidth = 0; /// number of CPU usage units to bill transaction for
+      unsigned_int    net_usage_words = 0UL; /// number of 8 byte words this transaction can serialize into after compressions
+      unsigned_int    context_free_kilo_cpu_usage = 0UL; /// number of CPU usage units to bill transaction for
 
       vector<action>  context_free_actions;
       vector<action>  actions;
 
-      EOSLIB_SERIALIZE( transaction, (expiration)(region)(ref_block_num)(ref_block_prefix)(packed_bandwidth_words)(context_free_cpu_bandwidth)(context_free_actions)(actions) )
+      EOSLIB_SERIALIZE( transaction, (expiration)(region)(ref_block_num)(ref_block_prefix)(net_usage_words)(context_free_kilo_cpu_usage)(context_free_actions)(actions) )
    };
 
    class deferred_transaction : public transaction {

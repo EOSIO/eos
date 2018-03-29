@@ -221,8 +221,8 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"region", "uint16"},
          {"ref_block_num", "uint16"},
          {"ref_block_prefix", "uint16"},
-         {"packed_bandwidth_words", "uint16"},
-         {"context_free_cpu_bandwidth", "uint16"}
+         {"net_usage_words", "varuint32"},
+         {"context_free_kilo_cpu_usage", "varuint32"}
       }
    });
 
