@@ -1700,6 +1700,7 @@ void write_default_config(const bfs::path& cfg_file, const options_description &
    {
       if(!od->description().empty()) {
          out_cfg << "# " << od->description();
+         // disable uninitialized variable usage.
 //         std::map<std::string, std::string>::iterator it;
 //            out_cfg << " (" << it->second << ")";
          out_cfg << std::endl;
