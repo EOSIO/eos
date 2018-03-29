@@ -226,7 +226,7 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
 BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
    issue( "alice", "1000.0000 EOS",  config::system_account_name );
 
-   BOOST_REQUIRE_EQUAL( error("missing authority of alice"),
+   BOOST_REQUIRE_EQUAL( error("context-aware actions require at least one authorization"),
                         push_action( N(alice), N(delegatebw), mvo()
                                     ("from",     "alice")
                                     ("receiver", "bob")
@@ -237,7 +237,7 @@ BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
                         )
    );
 
-   BOOST_REQUIRE_EQUAL( error("missing authority of alice"),
+   BOOST_REQUIRE_EQUAL( error("context-aware actions require at least one authorization"),
                         push_action(N(alice), N(undelegatebw), mvo()
                                     ("from",     "alice")
                                     ("receiver", "bob")
@@ -1055,7 +1055,7 @@ BOOST_FIXTURE_TEST_CASE( proxy_actions_affect_producers, eosio_system_tester ) t
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
-   issue( "alice", "1000000.0000 EOS",  config::system_account_name );
+   issue( "alice", "10000000.0000 EOS",  config::system_account_name );
    fc::variant params = producer_parameters_example(50);
    vector<char> key = fc::raw::pack(get_public_key(N(alice), "active"));
 

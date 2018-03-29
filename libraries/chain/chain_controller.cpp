@@ -417,11 +417,6 @@ void chain_controller::_apply_on_block_transaction()
 {
    _pending_block_trace->implicit_transactions.emplace_back(_get_on_block_transaction());
    transaction_metadata mtrx(packed_transaction(_pending_block_trace->implicit_transactions.back()), get_chain_id(), head_block_time(), true /*is implicit*/);
-   std::cout << "MTX ";
-   fc::variant var;
-   fc::to_variant(mtrx, var);
-   fc::json::to_stream(std::cout, var);
-   std::cout << std::endl;
    _push_transaction(std::move(mtrx));
 }
 
@@ -781,7 +776,6 @@ void chain_controller::__apply_block(const signed_block& next_block)
                      } else {
                         ilog( "implicit" );
                         for ( size_t i=0; i < next_block_trace.implicit_transactions.size(); i++ ) {
-                           std::cout << "TID1 " << input_metas[i].id.str() << " TID2 " << receipt.id.str() << "\n";
                            if ( input_metas[i].id == receipt.id )
                               return &input_metas[i];
                         }
@@ -1692,7 +1686,6 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
    } catch (...) {
       // if this is an implicit transaction, then hard fail
       if (meta.is_implicit) {
-         std::cout << "MID " << meta.id.str() << "\n";
          transaction_trace result(meta.id);
          result.status = transaction_trace::hard_fail;
          return result;

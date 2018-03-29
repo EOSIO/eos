@@ -156,6 +156,10 @@ void test_action::assert_true() {
    eosio_assert(true, "test_action::assert_true");
 }
 
+void test_action::assert_true_cf() {
+   eosio_assert(true, "test_action::assert_true");
+}
+
 void test_action::test_abort() {
    abort();
    eosio_assert( false, "should've aborted" );

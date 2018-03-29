@@ -23,6 +23,8 @@ extern "C" {
          test_action::test_cf_action();
          return;
       }
+      WASM_TEST_HANDLER(test_action, assert_true_cf);
+
       require_auth(code); 
 
       //test_types

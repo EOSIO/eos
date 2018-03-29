@@ -277,7 +277,7 @@ void test_transaction::read_inline_action() {
 
 void test_transaction::read_inline_cf_action() {
    using namespace eosio;
-   using dummy_act_t = test_dummy_action<N(testapi), WASM_TEST_ACTION("test_action","assert_true")>;
+   using dummy_act_t = test_dummy_action<N(testapi), WASM_TEST_ACTION("test_action","assert_true_cf")>;
 
    char buffer[64];
    auto res = get_action( 2, 0, buffer, 64);

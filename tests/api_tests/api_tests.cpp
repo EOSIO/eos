@@ -400,7 +400,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
          // need at least one normal action
          BOOST_CHECK_EXCEPTION(push_transaction(trx), tx_no_action,
                                [](const fc::assert_exception& e) {
-                                  return expect_assert_message(e, "signatures");
+                                  return expect_assert_message(e, "transactions require at least one context-aware action");
                                }
          );
 
@@ -477,6 +477,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
 
          produce_block();
       }
+
       // test send context free action
       auto ttrace = CALL_TEST_FUNCTION( *this, "test_transaction", "send_cf_action", {} );
       BOOST_CHECK_EQUAL(ttrace.action_traces.size(), 2);
@@ -493,6 +494,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
 
       CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_action", {} );
       CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_cf_action", {} );
+      return;
 
 } FC_LOG_AND_RETHROW() }
 

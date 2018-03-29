@@ -951,7 +951,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
    std::stringstream ss;
    ss << "(module ";
    ss << "(export \"apply\" (func $apply))";
-   ss << "  (func $apply  (param $0 i64) (param $1 i64) (param $2 i64))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
    ss << "  (func ";
    for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i+=4)
       ss << "(local i32)";
@@ -965,7 +965,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
    ss << "(module ";
    ss << "(import \"env\" \"require_auth\" (func $require_auth (param i64)))";
    ss << "(export \"apply\" (func $apply))";
-   ss << "  (func $apply  (param $0 i64) (param $1 i64) (call $require_auth (i64.const 14288945783897063424)))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64) (call $require_auth (i64.const 14288945783897063424)))";
    ss << "  (func ";
    for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i+=8)
       ss << "(local f64)";
@@ -1012,7 +1012,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, tester ) try {
    ss << "(module ";
    ss << "(import \"env\" \"require_auth\" (func $require_auth (param i64)))";
    ss << "(export \"apply\" (func $apply))";
-   ss << "  (func $apply  (param $0 i64) (param $1 i64) (call $require_auth (i64.const 14288945783897063424)))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64) (call $require_auth (i64.const 14288945783897063424)))";
    ss << "  (func ";
    for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i+=4)
       ss << "(param i32)";
