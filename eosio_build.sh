@@ -42,7 +42,6 @@
 	txtrst=$(tput sgr0)
 
 	DISK_MIN=20
-	PYTHON_MIN=3
 
 	printf "\n\tBeginning build version: ${VERSION}\n"
 	printf "\t$( date -u )\n"
@@ -178,8 +177,9 @@
 	
 	TIME_END=$(( `date -u +%s` - $TIME_BEGIN ))
 
-	printf  "${bldred}\t _______ _______  _______ _________ _______\n"
-	printf "\t(  ____ \(  ___  )(  ____ \\__   __/(  ___  )\n"
+
+	printf "${bldred}\t _______  _______  _______ _________ _______\n"
+	printf '\t(  ____ \(  ___  )(  ____ \\\\__   __/(  ___  )\n'
 	printf "\t| (    \/| (   ) || (    \/   ) (   | (   ) |\n"
 	printf "\t| (__    | |   | || (_____    | |   | |   | |\n"
 	printf "\t|  __)   | |   | |(_____  )   | |   | |   | |\n"

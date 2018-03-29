@@ -59,9 +59,9 @@ extern "C" {
     * @{
     */
 
-   void send_deferred(uint64_t sender_id, time delay_until, char *serialized_transaction, size_t size);
+   void send_deferred(const uint128_t& sender_id, time delay_until, char *serialized_transaction, size_t size);
 
-   void cancel_deferred(uint64_t sender_id);
+   void cancel_deferred(const uint128_t& sender_id);
 
    /**
     * access a copy of the currently executing transaction

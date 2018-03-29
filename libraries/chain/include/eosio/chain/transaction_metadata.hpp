@@ -16,6 +16,14 @@ class transaction_metadata {
          ,sender(sender),sender_id(sender_id),raw_data(raw_data),raw_size(raw_size),_trx(&t)
       {}
 
+      transaction_metadata( const transaction& t, const time_point& published, const account_name& sender, uint32_t sender_id, const char* raw_data, size_t raw_size, fc::time_point deadline )
+         :id(t.id())
+         ,published(published)
+         ,sender(sender),sender_id(sender_id),raw_data(raw_data),raw_size(raw_size)
+         ,processing_deadline(deadline)
+         ,_trx(&t)
+      {}
+
       transaction_metadata( const packed_transaction& t, chain_id_type chainid, const time_point& published );
 
       transaction_metadata( transaction_metadata && ) = default;
@@ -39,7 +47,7 @@ class transaction_metadata {
 
       // things for processing deferred transactions
       optional<account_name>                sender;
-      uint32_t                              sender_id = 0;
+      uint128_t                             sender_id = 0;
 
       // packed form to pass to contracts if needed
       const char*                           raw_data = nullptr;
