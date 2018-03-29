@@ -257,6 +257,7 @@ namespace eosio { namespace chain {
       uint32_t                   region_id;
       uint32_t                   cycle_index;
       vector<data_access_info>   data_access;
+      uint32_t                   auths_used; // authorizations that were actually used
    };
 
    struct transaction_trace : transaction_receipt {

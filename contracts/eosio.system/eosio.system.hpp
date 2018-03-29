@@ -5,6 +5,7 @@
 #pragma once
 
 #include "delegate_bandwidth.hpp"
+#include "native.hpp"
 #include <eosiolib/optional.hpp>
 
 #include <eosiolib/generic_currency.hpp>
@@ -26,10 +27,11 @@ namespace eosiosystem {
    };
 
    template<account_name SystemAccount>
-   class contract : public delegate_bandwidth<SystemAccount> {
+   class contract : public delegate_bandwidth<SystemAccount>, public native<SystemAccount> {
       public:
          using voting<SystemAccount>::on;
          using delegate_bandwidth<SystemAccount>::on;
+         using native<SystemAccount>::on;
          using pe = voting<SystemAccount>;
          using db = delegate_bandwidth<SystemAccount>;
          using currency = typename common<SystemAccount>::currency;
@@ -170,6 +172,16 @@ namespace eosiosystem {
                                  typename voting<SystemAccount>::voteproducer,
                                  onblock,
                                  claimrewards,
+                                 typename native<SystemAccount>::newaccount,
+                                 typename native<SystemAccount>::updateauth,
+                                 typename native<SystemAccount>::deleteauth,
+                                 typename native<SystemAccount>::linkauth,
+                                 typename native<SystemAccount>::unlinkauth,
+                                 typename native<SystemAccount>::postrecovery,
+                                 typename native<SystemAccount>::passrecovery,
+                                 typename native<SystemAccount>::vetorecovery,
+                                 typename native<SystemAccount>::setabi,
+                                 typename native<SystemAccount>::onerror,
                                  nonce>( code, act) ) {
                   //TODO: Small hack until we refactor eosio.system like eosio.token
                   using undelegatebw = typename delegate_bandwidth<SystemAccount>::undelegatebw;

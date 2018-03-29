@@ -34,7 +34,7 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
 
 #define SET_APP_HANDLER( contract, scope, action, nspace ) \
    chain._set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(contracts::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
-   SET_APP_HANDLER( eosio, eosio, onblock, eosio );
+//   SET_APP_HANDLER( eosio, eosio, onblock, eosio );
    SET_APP_HANDLER( eosio, eosio, newaccount, eosio );
    SET_APP_HANDLER( eosio, eosio, setcode, eosio );
    SET_APP_HANDLER( eosio, eosio, setabi, eosio );

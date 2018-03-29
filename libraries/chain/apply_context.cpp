@@ -18,7 +18,7 @@ void apply_context::exec_one()
       if (native) {
          (*native)(*this);
       }
-      else if (a.code.size() > 0) {
+      else if (a.code.size() > 0) { // && !(act.name == N(setcode) && act.account == config::system_account_name)) {
          try {
             mutable_controller.get_wasm_interface().apply(a.code_version, a.code, *this);
          } catch ( const wasm_exit& ){}
@@ -224,7 +224,7 @@ void apply_context::require_recipient( account_name code ) {
 void apply_context::execute_inline( action&& a ) {
    if ( !privileged ) {
       if( a.account != receiver ) {
-         const auto delay = controller.check_authorization({a}, flat_set<public_key_type>(), false, {receiver});
+         const auto delay = controller.check_authorization({a}, vector<action>(), flat_set<public_key_type>(), false, {receiver});
          FC_ASSERT( trx_meta.published + delay <= controller.head_block_time(),
                     "inline action uses a permission that imposes a delay that is not met, add an action of mindelay with delay of atleast ${delay}",
                     ("delay", delay.sec_since_epoch()) );
@@ -262,7 +262,7 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
             }
          }
          if( check_auth ) {
-            const auto delay = controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
+            const auto delay = controller.check_authorization(trx.actions, vector<action>(), flat_set<public_key_type>(), false, {receiver});
             FC_ASSERT( trx_meta.published + delay <= controller.head_block_time(),
                        "deferred transaction uses a permission that imposes a delay that is not met, add an action of mindelay with delay of atleast ${delay}",
                        ("delay", delay.sec_since_epoch()) );

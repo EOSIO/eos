@@ -43,13 +43,6 @@ BOOST_FIXTURE_TEST_CASE( missing_auths, tester ) { try {
 
 } FC_LOG_AND_RETHROW() } /// transfer_test
 
-BOOST_FIXTURE_TEST_CASE( too_many_auths, tester ) { try {
-   create_accounts( {N(alice), N(bob), N(eve)} );
-   produce_block();
-   BOOST_REQUIRE_THROW( push_reqauth( N(alice), {{N(alice), config::owner_name}, {N(bob), config::active_name}, {N(eve), config::active_name}}, { get_private_key(N(bob), "active"), get_private_key(N(alice), "owner"), get_private_key(N(eve), "active") } ), tx_irrelevant_auth);
-
-} FC_LOG_AND_RETHROW() } /// too_many_auths
-
 /**
  *  This test case will attempt to allow one account to transfer on behalf
  *  of another account by updating the active authority.
@@ -263,6 +256,22 @@ try {
    BOOST_TEST(joe_active_authority.auth.keys.size() == 1);
    BOOST_TEST(string(joe_active_authority.auth.keys[0].key) == string(chain.get_public_key("joe", "active")));
    BOOST_TEST(joe_active_authority.auth.keys[0].weight == 1);
+
+   // Create duplicate name
+   BOOST_CHECK_EXCEPTION(chain.create_account("joe"), action_validate_exception,
+                         assert_message_is("Cannot create account named joe, as that name is already taken"));
+
+   // Creating account with name more than 12 chars
+   BOOST_CHECK_EXCEPTION(chain.create_account("aaaaaaaaaaaaa"), action_validate_exception,
+                         assert_message_is("account names can only be 12 chars long"));
+
+   // Creating account with eosio. prefix with priveleged account
+   chain.create_account("eosio.test1");
+
+   // Creating account with eosio. prefix with non-privileged account, should fail
+   BOOST_CHECK_EXCEPTION(chain.create_account("eosio.test2", "joe"), action_validate_exception,
+                         assert_message_is("only privileged accounts can have names that contain 'eosio.'"));
+
 
 } FC_LOG_AND_RETHROW() }
 

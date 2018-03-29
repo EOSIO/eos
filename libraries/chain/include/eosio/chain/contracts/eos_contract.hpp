@@ -15,7 +15,7 @@ namespace eosio { namespace chain { namespace contracts {
     */
    ///@{
    void apply_eosio_newaccount(apply_context&);
-   void apply_eosio_onblock(apply_context&);
+//   void apply_eosio_onblock(apply_context&);
    void apply_eosio_updateauth(apply_context&);
    void apply_eosio_deleteauth(apply_context&);
    void apply_eosio_linkauth(apply_context&);
