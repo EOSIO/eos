@@ -267,19 +267,29 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
 
    const auto spending_priv_key = chain.get_private_key("alice", "spending");
    const auto spending_pub_key = spending_priv_key.get_public_key();
+   const auto bob_spending_priv_key = chain.get_private_key("bob", "spending");
+   const auto bob_spending_pub_key = spending_priv_key.get_public_key();
 
    chain.set_authority("alice", "spending", spending_pub_key, "active");
+   chain.set_authority("bob", "spending", bob_spending_pub_key, "active");
 
-   /// this should fail because eosio::reqauth action is not linked to spending permission
-   //chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key });
+   /// this should fail because spending is not active which is default for reqauth
+   BOOST_REQUIRE_THROW( chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key }), 
+                        tx_irrelevant_auth );
+
    chain.produce_block();
 
    //test.push_reqauth( N(alice), { permission_level{N(alice),"spending"} }, { spending_priv_key });
 
    chain.link_authority( "alice", "eosio", "eosio.any", "reqauth" );
+   chain.link_authority( "bob", "eosio", "eosio.any", "reqauth" );
 
    /// this should succeed because eosio::reqauth is linked to any permission
-   //chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key });
+   chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key });
+   
+   /// this should fail because bob cannot authorize for alice, the permission given must be one-of alices
+   BOOST_REQUIRE_THROW( chain.push_reqauth("alice", { permission_level{N(bob), "spending"} }, { spending_priv_key }),
+                        tx_missing_auth );
 
 
    chain.produce_block();
