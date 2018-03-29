@@ -105,7 +105,7 @@ struct dice_tester : tester {
       action act( {{account, config::active_name}},
          offer_bet_t{amount, account, commitment} );
       trx.actions.push_back(act);
-      set_tapos(trx);
+      set_transaction_headers(trx);
       trx.sign(get_private_key( account, "active" ), chain_id_type());
       control->push_transaction(packed_transaction(trx,packed_transaction::none));
    }
@@ -115,7 +115,7 @@ struct dice_tester : tester {
       action act( {{account, config::active_name}},
          cancel_offer_t{commitment} );
       trx.actions.push_back(act);
-      set_tapos(trx);
+      set_transaction_headers(trx);
       trx.sign(get_private_key( account, "active" ), chain_id_type());
       control->push_transaction(packed_transaction(trx,packed_transaction::none));
    }
@@ -125,7 +125,7 @@ struct dice_tester : tester {
       action act( {{account, config::active_name}},
          deposit_t{account, amount} );
       trx.actions.push_back(act);
-      set_tapos(trx);
+      set_transaction_headers(trx);
       trx.sign(get_private_key( account, "active" ), chain_id_type());
       control->push_transaction(packed_transaction(trx,packed_transaction::none));
    }
@@ -135,7 +135,7 @@ struct dice_tester : tester {
       action act( {{account, config::active_name}},
          withdraw_t{account, amount} );
       trx.actions.push_back(act);
-      set_tapos(trx);
+      set_transaction_headers(trx);
       trx.sign(get_private_key( account, "active" ), chain_id_type());
       control->push_transaction(packed_transaction(trx,packed_transaction::none));
    }
@@ -145,7 +145,7 @@ struct dice_tester : tester {
       action act( {{account, config::active_name}},
          reveal_t{commitment, source} );
       trx.actions.push_back(act);
-      set_tapos(trx);
+      set_transaction_headers(trx);
       trx.sign(get_private_key( account, "active" ), chain_id_type());
       control->push_transaction(packed_transaction(trx,packed_transaction::none));
    }
