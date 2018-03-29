@@ -181,8 +181,8 @@ namespace eosio { namespace testing {
       tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
       tester(chain_controller::controller_config config);
 
-      void              push_genesis_block();
-      void              set_producers(const vector<account_name>& producer_names);
+      void                    push_genesis_block();
+      producer_schedule_type  set_producers(const vector<account_name>& producer_names, const uint32_t version = 0);
    };
 
    /**
