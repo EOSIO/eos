@@ -13,19 +13,20 @@
 
 #include "test_api.hpp"
 
-using namespace eosio;
-
 struct check_auth {
    account_name         account;
    permission_name      permission;
-   vector<public_key>   pubkeys;
+   std::vector<public_key>   pubkeys;
 
    EOSLIB_SERIALIZE( check_auth, (account)(permission)(pubkeys)  )
 };
 
-void test_permission::check_authorization() {
-   auto self = current_receiver();
+void test_permission::check_authorization(uint64_t receiver, uint64_t code, uint64_t action) {
+   (void)code;
+   (void)action;
+   using namespace eosio;
 
+   auto self = receiver;
    auto params = unpack_action_data<check_auth>();
    uint64_t res64 = (uint64_t)::check_authorization( params.account, params.permission, 
         (char*)params.pubkeys.data(), params.pubkeys.size()*sizeof(public_key) );

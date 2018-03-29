@@ -970,8 +970,9 @@ bool chain_controller::check_authorization( account_name account, permission_nam
                                          bool allow_unused_signatures)const
 {
    auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
-                                     get_global_properties().configuration.max_authority_depth,
-                                     provided_keys);
+                                  [](const permission_level& ) {},
+                                  get_global_properties().configuration.max_authority_depth,
+                                  provided_keys);
 
    auto satisfied = checker.satisfied({account, permission});
 
