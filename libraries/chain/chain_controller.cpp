@@ -653,7 +653,9 @@ void chain_controller::__apply_block(const signed_block& next_block)
    }
    map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
+
       input_metas.emplace_back(t, chain_id_type(), next_block.timestamp);
+      input_metas.back().signing_keys = input_metas.back().trx().get_signature_keys( t.signatures, chain_id_type(), false );
       trx_index[input_metas.back().id] =  input_metas.size() - 1;
    }
 
@@ -706,10 +708,15 @@ void chain_controller::__apply_block(const signed_block& next_block)
                 auto make_metadata = [&]() -> transaction_metadata* {
                   auto itr = trx_index.find(receipt.id);
                   if( itr != trx_index.end() ) {
-                     ilog( "input" );
+                     //ilog( "input" );
+                     const auto& trx_meta = input_metas.at(itr->second);
+                     const auto& trx      = trx_meta.trx();
+                     validate_referenced_accounts(trx);
+                     FC_ASSERT( !should_check_signatures() || trx_meta.signing_keys, "signing_keys missing from transaction_metadata of an input transaction" );
+                     check_authorization(trx.actions, should_check_signatures() ? *trx_meta.signing_keys : flat_set<public_key_type>() );
                      return &input_metas.at(itr->second);
                   } else {
-                     ilog( "defer" );
+                     //ilog( "defer" );
                      const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
                      if (gtrx != nullptr) {
                         auto trx = fc::raw::unpack<deferred_transaction>(gtrx->packed_trx.data(), gtrx->packed_trx.size());
@@ -730,17 +737,12 @@ void chain_controller::__apply_block(const signed_block& next_block)
                mtrx->allowed_read_locks.emplace(&shard.read_locks);
                mtrx->allowed_write_locks.emplace(&shard.write_locks);
                mtrx->processing_deadline = processing_deadline;
-               ilog( "." );
 
                s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
                record_locks_for_data_access(s_trace.transaction_traces.back().action_traces, used_read_locks, used_write_locks);
 
                FC_ASSERT(receipt.status == s_trace.transaction_traces.back().status);
 
-               // validate_referenced_accounts(trx);
-               // Check authorization, and allow irrelevant signatures.
-               // If the block producer let it slide, we'll roll with it.
-               // check_transaction_authorization(trx, true);
             } /// for each transaction id
 
             // Validate that the producer didn't list extra locks to bloat the size of the block
@@ -817,7 +819,7 @@ void chain_controller::check_authorization( const vector<action>& actions,
                           ("auth", declared_auth)("min", min_permission.name));
             }
          }
-         if ((_skip_flags & skip_transaction_signatures) == false) {
+         if( should_check_signatures() ) {
             EOS_ASSERT(checker.satisfied(declared_auth), tx_missing_sigs,
                        "transaction declares authority '${auth}', but does not have signatures for it.",
                        ("auth", declared_auth));
@@ -825,7 +827,7 @@ void chain_controller::check_authorization( const vector<action>& actions,
       }
    }
 
-   if (!allow_unused_signatures && (_skip_flags & skip_transaction_signatures) == false)
+   if (!allow_unused_signatures && should_check_signatures() )
       EOS_ASSERT(checker.all_keys_used(), tx_irrelevant_sig,
                  "transaction bears irrelevant signatures from these keys: ${keys}",
                  ("keys", checker.unused_keys()));
@@ -835,7 +837,13 @@ void chain_controller::check_transaction_authorization(const transaction& trx,
                                                        const vector<signature_type>& signatures,
                                                        bool allow_unused_signatures)const
 {
-   check_authorization( trx.actions, trx.get_signature_keys( signatures, chain_id_type{} ), allow_unused_signatures );
+   if( should_check_signatures() ) {
+      check_authorization( trx.actions,
+                           trx.get_signature_keys( signatures, chain_id_type{}, allow_unused_signatures ),
+                           allow_unused_signatures );
+   } else {
+      check_authorization( trx.actions, flat_set<public_key_type>(), true );
+   }
 }
 
 optional<permission_name> chain_controller::lookup_minimum_permission(account_name authorizer_account,

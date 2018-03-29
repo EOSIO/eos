@@ -17,7 +17,7 @@ namespace eosio { namespace chain {
    /**
     *  An action is performed by an actor, aka an account. It may
     *  be created explicitly and authorized by signatures or might be
-    *  generated implicitly by executing application code. 
+    *  generated implicitly by executing application code.
     *
     *  This follows the design pattern of React Flux where actions are
     *  named and then dispatched to one or more action handlers (aka stores).
@@ -75,8 +75,8 @@ namespace eosio { namespace chain {
 
 
    /**
-    * When a transaction is referenced by a block it could imply one of several outcomes which 
-    * describe the state-transition undertaken by the block producer. 
+    * When a transaction is referenced by a block it could imply one of several outcomes which
+    * describe the state-transition undertaken by the block producer.
     */
    struct transaction_receipt {
       enum status_enum {
@@ -100,11 +100,11 @@ namespace eosio { namespace chain {
     *
     *  All transactions have an expiration time after which they
     *  may no longer be included in the blockchain. Once a block
-    *  with a block_header::timestamp greater than expiration is 
+    *  with a block_header::timestamp greater than expiration is
     *  deemed irreversible, then a user can safely trust the transaction
-    *  will never be included. 
+    *  will never be included.
     *
-    
+
     *  Each region is an independent blockchain, it is included as routing
     *  information for inter-blockchain communication. A contract in this
     *  region might generate or authorize a transaction intended for a foreign
@@ -139,7 +139,7 @@ namespace eosio { namespace chain {
 
       transaction_id_type        id()const;
       digest_type                sig_digest( const chain_id_type& chain_id )const;
-      flat_set<public_key_type>  get_signature_keys( const vector<signature_type>& signatures, const chain_id_type& chain_id )const;
+      flat_set<public_key_type>  get_signature_keys( const vector<signature_type>& signatures, const chain_id_type& chain_id, bool allow_duplicate_keys = false )const;
 
    };
 
@@ -160,7 +160,7 @@ namespace eosio { namespace chain {
 
       const signature_type&     sign(const private_key_type& key, const chain_id_type& chain_id);
       signature_type            sign(const private_key_type& key, const chain_id_type& chain_id)const;
-      flat_set<public_key_type> get_signature_keys( const chain_id_type& chain_id )const;
+      flat_set<public_key_type> get_signature_keys( const chain_id_type& chain_id, bool allow_duplicate_keys = false )const;
    };
 
    struct packed_transaction {
@@ -272,6 +272,3 @@ FC_REFLECT( eosio::chain::action_trace, (receiver)(act)(console)(region_id)(cycl
 FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
 FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail))
 FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transactions) )
-
-
-

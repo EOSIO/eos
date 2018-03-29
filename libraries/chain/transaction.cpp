@@ -57,7 +57,7 @@ bool transaction_header::verify_reference_block( const block_id_type& reference_
 }
 
 
-transaction_id_type transaction::id() const { 
+transaction_id_type transaction::id() const {
    digest_type::encoder enc;
    fc::raw::pack( enc, *this );
    return enc.result();
@@ -71,7 +71,7 @@ digest_type transaction::sig_digest( const chain_id_type& chain_id )const {
    return enc.result();
 }
 
-flat_set<public_key_type> transaction::get_signature_keys( const vector<signature_type>& signatures, const chain_id_type& chain_id )const
+flat_set<public_key_type> transaction::get_signature_keys( const vector<signature_type>& signatures, const chain_id_type& chain_id, bool allow_duplicate_keys )const
 { try {
    using boost::adaptors::transformed;
 
@@ -83,13 +83,19 @@ flat_set<public_key_type> transaction::get_signature_keys( const vector<signatur
    for(const signature_type& sig : signatures) {
       recovery_cache_type::index<by_sig>::type::iterator it = recovery_cache.get<by_sig>().find(sig);
 
+      public_key_type recov;
       if(it == recovery_cache.get<by_sig>().end() || it->trx_id != id()) {
-         public_key_type recov = public_key_type(sig, digest);
+         recov = public_key_type(sig, digest);
          recovery_cache.emplace_back( cached_pub_key{id(), recov, sig} ); //could fail on dup signatures; not a problem
-         recovered_pub_keys.insert(recov);
-         continue;
+      } else {
+         recov = it->pub_key;
       }
-      recovered_pub_keys.insert(it->pub_key);
+      bool successful_insertion = false;
+      std::tie(std::ignore, successful_insertion) = recovered_pub_keys.insert(recov);
+      EOS_ASSERT( allow_duplicate_keys || successful_insertion, tx_irrelevant_sig,
+                  "transaction includes more than one signature signed using the same key associated with public key: ${key}",
+                  ("key", recov)
+               );
    }
 
    while(recovery_cache.size() > recovery_cache_size)
@@ -108,9 +114,9 @@ signature_type signed_transaction::sign(const private_key_type& key, const chain
    return key.sign(sig_digest(chain_id));
 }
 
-flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id_type& chain_id )const
+flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id_type& chain_id, bool allow_duplicate_keys )const
 {
-   return transaction::get_signature_keys(signatures, chain_id);
+   return transaction::get_signature_keys(signatures, chain_id, allow_duplicate_keys);
 }
 
 namespace bio = boost::iostreams;

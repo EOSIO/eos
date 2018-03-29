@@ -581,6 +581,7 @@ BOOST_AUTO_TEST_CASE(wipe)
       }
 
    } FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
    try {
       tester chain;
@@ -604,19 +605,99 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
       trx.sign( chain.get_private_key( name("random"), "active" ), chain_id_type()  );
 
       // Check that it throws for irrelevant signatures
-      BOOST_CHECK_THROW(chain.push_transaction( trx ), tx_irrelevant_sig);
+      BOOST_REQUIRE_THROW(chain.push_transaction( trx ), tx_irrelevant_sig);
 
-      // Push it through with a skip flag
-      chain.push_transaction( trx, skip_transaction_signatures);
+      // Check that it throws for multiple signatures by the same key
+      trx.signatures.clear();
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+      BOOST_REQUIRE_THROW(chain.push_transaction( trx ), tx_irrelevant_sig);
+
+      // Sign the transaction properly and push to the block
+      trx.signatures.clear();
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+      chain.push_transaction( trx );
+
       // Produce block so the transaction gets included in the block
       chain.produce_blocks();
 
-      // Now check that a second blockchain accepts the block with the oversigned transaction
+      // Now check that a second blockchain accepts the block
       tester newchain;
       tester_network net;
       net.connect_blockchain(chain);
       net.connect_blockchain(newchain);
       BOOST_TEST((newchain.find<account_object, by_name>("alice")) != nullptr);
+   } FC_LOG_AND_RETHROW()
+}
+
+//
+BOOST_AUTO_TEST_CASE(irrelevant_sig_hard_check) {
+   try {
+      {
+         tester chain;
+
+         // Make an account, but add an extra signature to the transaction
+         signed_transaction trx;
+         chain.set_tapos(trx);
+
+         name new_account_name = name("alice");
+         authority owner_auth = authority( chain.get_public_key( new_account_name, "owner" ) );
+
+         trx.actions.emplace_back( vector<permission_level>{{ config::system_account_name, config::active_name}},
+                                   contracts::newaccount{
+                                           .creator  = config::system_account_name,
+                                           .name     = new_account_name,
+                                           .owner    = owner_auth,
+                                           .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
+                                           .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
+                                   });
+         trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
+         trx.sign( chain.get_private_key( name("random"), "active" ), chain_id_type()  );
+
+         // Force push transaction with irrelevant signatures using a skip flag
+         chain.push_transaction( trx, skip_transaction_signatures );
+         // Produce block so the transaction gets included in the block
+         chain.produce_blocks();
+
+         // Now check that a second blockchain rejects the block with the oversigned transaction
+         tester newchain;
+         tester_network net;
+         net.connect_blockchain(chain);
+         BOOST_CHECK_THROW(net.connect_blockchain(newchain), tx_irrelevant_sig);
+      }
+
+      {
+         tester chain;
+
+         // Make an account, but add an extra signature to the transaction
+         signed_transaction trx;
+         chain.set_tapos(trx);
+
+         name new_account_name = name("alice");
+         authority owner_auth = authority( chain.get_public_key( new_account_name, "owner" ) );
+
+         trx.actions.emplace_back( vector<permission_level>{{ config::system_account_name, config::active_name}},
+                                   contracts::newaccount{
+                                           .creator  = config::system_account_name,
+                                           .name     = new_account_name,
+                                           .owner    = owner_auth,
+                                           .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
+                                           .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
+                                   });
+        trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+        trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+
+         // Force push transaction with multiple signatures by the same key using a skip flag
+         chain.push_transaction( trx, skip_transaction_signatures );
+         // Produce block so the transaction gets included in the block
+         chain.produce_blocks();
+
+         // Now check that a second blockchain rejects the block with the oversigned transaction
+         tester newchain;
+         tester_network net;
+         net.connect_blockchain(chain);
+         BOOST_CHECK_THROW(net.connect_blockchain(newchain), tx_irrelevant_sig);
+      }
    } FC_LOG_AND_RETHROW()
 }
 
