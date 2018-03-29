@@ -554,24 +554,19 @@ namespace eosio { namespace testing {
       set_abi(config::system_account_name, eosio_bios_abi);
    }
 
-   void tester::set_producers(const vector<account_name>& producer_names) {
-      // Create producer accounts, if it does not exist yet
+   producer_schedule_type tester::set_producers(const vector<account_name>& producer_names, const uint32_t version) {
+      // Create producer schedule
+      producer_schedule_type schedule;
+      schedule.version = version;
       for (auto& producer_name: producer_names) {
-        create_account(producer_name);
+         producer_key pk = { producer_name, get_public_key( producer_name, "active" )};
+         schedule.producers.emplace_back(pk);
       }
 
-      // Construct the param for setprods action
-      vector<fc::mutable_variant_object> producer_keys;
-      for (auto& producer_name: producer_names) {
-         producer_keys.emplace_back( fc::mutable_variant_object()
-                                             ("producer_name", producer_name)
-                                             ("signing_key", get_public_key( producer_name, "active" )));
-      }
-      // Send setprods action
-      static uint32_t version = 1;
-      push_action(N(eosio), N(setprods), N(eosio), fc::mutable_variant_object()
-                                                        ("version", version++)
-                                                        ("producers", producer_keys));
+      push_action(N(eosio), N(setprods), N(eosio),
+                  fc::mutable_variant_object()("version", schedule.version)("producers", schedule.producers));
+
+      return schedule;
    }
 
 } }  /// eosio::test
