@@ -332,7 +332,6 @@ BOOST_AUTO_TEST_CASE(simple_network)
       BOOST_TEST(chain2.control->head_block_num() == 1);
       BOOST_TEST(chain1.control->head_block_id().str() == chain2.control->head_block_id().str());
       chain2.produce_blocks(5);
-return;
       BOOST_TEST(chain1.control->head_block_num() == 6);
       BOOST_TEST(chain2.control->head_block_num() == 6);
       BOOST_TEST(chain1.control->head_block_id().str() == chain2.control->head_block_id().str());

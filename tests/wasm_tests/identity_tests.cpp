@@ -242,7 +242,7 @@ BOOST_FIXTURE_TEST_CASE( identity_create, identity_tester ) try {
    //creating adentity without authentication is not allowed
    BOOST_REQUIRE_EQUAL(error("missing authority of alice"), create_identity("alice", 3, false));
 
-      fc::variant idnt_bob = get_identity(1);
+   fc::variant idnt_bob = get_identity(1);
    BOOST_REQUIRE_EQUAL( 1, idnt_bob["identity"].as_uint64());
    BOOST_REQUIRE_EQUAL( "bob", idnt_bob["creator"].as_string());
 
