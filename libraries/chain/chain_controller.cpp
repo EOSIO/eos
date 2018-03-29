@@ -32,6 +32,10 @@
 #include <boost/range/algorithm_ext/is_sorted.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/adaptor/map.hpp>
+#include <boost/range/algorithm/sort.hpp>
+#include <boost/range/algorithm/find.hpp>
+#include <boost/range/algorithm/remove_if.hpp>
+#include <boost/range/algorithm/equal.hpp>
 
 #include <fstream>
 #include <functional>
@@ -359,6 +363,11 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata&& da
 
    fc::deduplicate(bshard.read_locks);
    fc::deduplicate(bshard.write_locks);
+   auto newend = boost::remove_if( bshard.read_locks,
+                   [&]( const auto& l ){ 
+                      return boost::find( bshard.write_locks, l ) != bshard.write_locks.end(); 
+                   });
+   bshard.read_locks.erase( newend, bshard.read_locks.end() );
 
    bshard.transactions.emplace_back( result );
 
@@ -757,10 +766,8 @@ void chain_controller::__apply_block(const signed_block& next_block)
                 auto make_metadata = [&]() -> transaction_metadata* {
                   auto itr = trx_index.find(receipt.id);
                   if( itr != trx_index.end() ) {
-                     ilog( "input" );
                      return &input_metas.at(itr->second);
                   } else {
-                     ilog( "defer" );
                      const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
                      if (gtrx != nullptr) {
                         auto trx = fc::raw::unpack<deferred_transaction>(gtrx->packed_trx.data(), gtrx->packed_trx.size());
@@ -781,7 +788,6 @@ void chain_controller::__apply_block(const signed_block& next_block)
                mtrx->allowed_read_locks.emplace(&shard.read_locks);
                mtrx->allowed_write_locks.emplace(&shard.write_locks);
                mtrx->processing_deadline = processing_deadline;
-               ilog( "." );
 
                s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
                record_locks_for_data_access(s_trace.transaction_traces.back().action_traces, used_read_locks, used_write_locks);
@@ -799,9 +805,15 @@ void chain_controller::__apply_block(const signed_block& next_block)
             fc::deduplicate(used_read_locks);
             fc::deduplicate(used_write_locks);
 
-            EOS_ASSERT(std::equal(used_read_locks.cbegin(), used_read_locks.cend(), shard.read_locks.begin()),
+            auto newend = boost::remove_if( used_read_locks,
+                            [&]( const auto& l ){ 
+                               return boost::find( used_write_locks, l ) != used_write_locks.end(); 
+                            });
+            used_read_locks.erase( newend, used_read_locks.end() );
+
+            EOS_ASSERT( boost::equal( used_read_locks, shard.read_locks ), 
                block_lock_exception, "Read locks for executing shard: ${s} do not match those listed in the block", ("s", shard_index));
-            EOS_ASSERT(std::equal(used_write_locks.cbegin(), used_write_locks.cend(), shard.write_locks.begin()),
+            EOS_ASSERT( boost::equal( used_write_locks, shard.write_locks ),
                block_lock_exception, "Write locks for executing shard: ${s} do not match those listed in the block", ("s", shard_index));
 
             s_trace.calculate_root();
