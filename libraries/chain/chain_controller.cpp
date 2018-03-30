@@ -734,10 +734,12 @@ void chain_controller::__apply_block(const signed_block& next_block)
 
    next_block_trace.region_traces.reserve(next_block.regions.size());
 
-   for( const auto& r : next_block.regions ) {
+   for( uint32_t region_index = 0; region_index < next_block.regions.size(); ++region_index ) {
+      const auto& r = next_block.regions[region_index];
       region_trace r_trace;
       r_trace.cycle_traces.reserve(r.cycles_summary.size());
 
+      EOS_ASSERT(!r.cycles_summary.empty(), tx_empty_region,"region[${r_index}] has no cycles", ("r_index",region_index));
       for (uint32_t cycle_index = 0; cycle_index < r.cycles_summary.size(); cycle_index++) {
          const auto& cycle = r.cycles_summary.at(cycle_index);
          cycle_trace c_trace;
@@ -748,8 +750,11 @@ void chain_controller::__apply_block(const signed_block& next_block)
          set<shard_lock> read_locks;
          map<shard_lock, uint32_t> write_locks;
 
+         EOS_ASSERT(!cycle.empty(), tx_empty_cycle,"region[${r_index}] cycle[${c_index}] has no shards", ("r_index",region_index)("c_index",cycle_index));
          for (uint32_t shard_index = 0; shard_index < cycle.size(); shard_index++) {
             const auto& shard = cycle.at(shard_index);
+            EOS_ASSERT(!shard.empty(), tx_empty_shard,"region[${r_index}] cycle[${c_index}] shard[${s_index}] is empty",
+                       ("r_index",region_index)("c_index",cycle_index)("s_index",shard_index));
 
             // Validate that the shards scopes are correct and available
             validate_shard_locks(shard.read_locks,  "read");
