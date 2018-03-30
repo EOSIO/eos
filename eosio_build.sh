@@ -112,7 +112,6 @@
 		
 		export BOOST_ROOT=${HOME}/opt/boost_1_66_0
 		export OPENSSL_ROOT_DIR=/usr/include/openssl
-		export OPENSSL_LIBRARIES=/usr/include/openssl
 		export WASM_ROOT=${HOME}/opt/wasm
 	fi
 
@@ -122,7 +121,6 @@
 		C_COMPILER=clang
 		MONGOD_CONF=/usr/local/etc/mongod.conf
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
-		OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
 		export WASM_ROOT=/usr/local/wasm
 	fi
 
@@ -145,7 +143,7 @@
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
 	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
 	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DBUILD_MONGO_DB_PLUGIN=true \
-	-DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} ..
+	..
 	
 	if [ $? -ne 0 ]; then
 		printf "\n\t>>>>>>>>>>>>>>>>>>>> CMAKE building EOSIO has exited with the above error.\n\n"
@@ -201,7 +199,7 @@
       # Build eos.io package
       $CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
       -DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
-      -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} \
+      -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} \
       -DCMAKE_INSTALL_PREFIX=/usr ..
 
       if [ $? -ne 0 ]; then
