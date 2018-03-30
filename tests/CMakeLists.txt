@@ -19,7 +19,7 @@ include_directories("${CMAKE_SOURCE_DIR}/plugins/wallet_plugin/include")
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/tests/config.hpp.in ${CMAKE_CURRENT_SOURCE_DIR}/tests/config.hpp ESCAPE_QUOTES)
 
-file(GLOB UNIT_TESTS "chain_tests/*.cpp" "api_tests/*.cpp" "tests/abi_tests.cpp" "tests/database_tests.cpp" "tests/misc_tests.cpp" "wasm_tests/*.cpp" "tests/message_buffer_tests.cpp" "tests/wallet_tests.cpp")
+file(GLOB UNIT_TESTS "chain_tests/*.cpp" "api_tests/*.cpp" "tests/abi_tests.cpp" "tests/database_tests.cpp" "tests/misc_tests.cpp" "wasm_tests/*.cpp" "tests/message_buffer_tests.cpp" "tests/wallet_tests.cpp" "library_tests/*/*.cpp")
 
 add_executable( chain_test ${UNIT_TESTS} ${WASM_UNIT_TESTS} common/main.cpp)
 target_link_libraries( chain_test eosio_testing eosio_chain chainbase eos_utilities chain_plugin wallet_plugin abi_generator fc ${PLATFORM_SPECIFIC_LIBS} )
@@ -27,6 +27,7 @@ target_link_libraries( chain_test eosio_testing eosio_chain chainbase eos_utilit
 target_include_directories( chain_test PUBLIC ${CMAKE_BINARY_DIR}/contracts ${CMAKE_CURRENT_BINARY_DIR}/tests/contracts )
 target_include_directories( chain_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/wasm_tests )
 target_include_directories( chain_test PUBLIC ${CMAKE_SOURCE_DIR}/plugins/net_plugin/include )
+target_include_directories( chain_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include )
 add_dependencies(chain_test asserter test_api test_api_mem test_api_db test_api_multi_index exchange currency proxy identity identity_test stltest infinite eosio.system eosio.token eosio.bios test.inline multi_index_test noop )
 
 #

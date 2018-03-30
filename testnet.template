@@ -100,11 +100,6 @@ programs/cleos/cleos --wallet-port $wdport --wallet-host $wdhost -p $biosport -H
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
-for a in a b c d e f g h i j k l m n o p q r s t u; do ecmd transfer eosio init$a 1000000.0000 "fund producer init$a"; done
+for a in {a..u}; do ecmd transfer eosio init$a 1000000.0000 "\"fund producer init$a\""; done
 
-
-echo waiting for producers to settle
-sleep 15
-echo shutting down ignition wallet and bios node
 pkill -15 keosd
-kill -15 $(cat var/lib/node_bios/nodeos.pid) && rm var/lib/node_bios/nodeos.pid

@@ -57,9 +57,12 @@ chain_controller::chain_controller( const chain_controller::controller_config& c
       cfg.shared_memory_size),
  _block_log(cfg.block_log_dir),
  _wasm_interface(cfg.wasm_runtime),
- _limits(cfg.limits)
+ _limits(cfg.limits),
+ _resource_limits(_db)
 {
    _initialize_indexes();
+   _resource_limits.initialize_database();
+
 
    for (auto& f : cfg.applied_block_callbacks)
       applied_block.connect(f);
@@ -269,10 +272,25 @@ transaction_trace chain_controller::push_transaction(const packed_transaction& t
 
 transaction_trace chain_controller::_push_transaction(const packed_transaction& packed_trx)
 { try {
+   auto start = fc::time_point::now();
    transaction_metadata   mtrx( packed_trx, get_chain_id(), head_block_time());
 
    const auto delay = check_transaction_authorization(mtrx.trx(), packed_trx.signatures, packed_trx.context_free_data);
+   auto setup_us = fc::time_point::now() - start;
+
+   // enforce that the header is accurate as a commitment to net_usage
+   uint32_t cfa_sig_net_usage = (uint32_t)(packed_trx.context_free_data.size() + fc::raw::pack_size(packed_trx.signatures));
+   uint32_t net_usage_commitment = mtrx.trx().net_usage_words.value * 8U;
+   uint32_t packed_size = (uint32_t)packed_trx.data.size();
+   uint32_t net_usage = cfa_sig_net_usage + packed_size;
+   EOS_ASSERT(net_usage <= net_usage_commitment,
+                tx_resource_exhausted,
+                "Packed Transaction and associated data does not fit into the space committed to by the transaction's header! [usage=${usage},commitment=${commit}]",
+                ("usage", net_usage)("commit", net_usage_commitment));
+
    transaction_trace result(mtrx.id);
+   result._setup_profiling_us = setup_us;
+
    if (!delay.sec_since_epoch()) {
       result = _push_transaction(std::move(mtrx));
 
@@ -302,12 +320,13 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
 
          time_point_sec execute_after = head_block_time();
          execute_after += time_point_sec(delay);
-         deferred_transaction dtrx(context.get_next_sender_id(), config::system_account_name, execute_after, trx);
+         //TODO: !!! WHO GETS BILLED TO STORE THE DELAYED TX?
+         deferred_transaction dtrx(context.get_next_sender_id(), config::system_account_name, config::system_account_name, execute_after, trx);
          FC_ASSERT( dtrx.execute_after < dtrx.expiration, "transaction expires before it can execute" );
 
          result.deferred_transaction_requests.push_back(std::move(dtrx));
 
-         store_deferred_transaction(result.deferred_transaction_requests[0].get<deferred_transaction>());
+         _create_generated_transaction(result.deferred_transaction_requests[0].get<deferred_transaction>());
 
          return result;
       };
@@ -324,16 +343,24 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
 
 } FC_CAPTURE_AND_RETHROW() }
 
-static void record_locks_for_data_access(const vector<action_trace>& action_traces, vector<shard_lock>& read_locks, vector<shard_lock>& write_locks ) {
-   for (const auto& at: action_traces) {
+static void record_locks_for_data_access(transaction_trace& trace, flat_set<shard_lock>& read_locks, flat_set<shard_lock>& write_locks ) {
+   for (const auto& at: trace.action_traces) {
       for (const auto& access: at.data_access) {
          if (access.type == data_access_info::read) {
-            read_locks.emplace_back(shard_lock{access.code, access.scope});
+            trace.read_locks.emplace(shard_lock{access.code, access.scope});
          } else {
-            write_locks.emplace_back(shard_lock{access.code, access.scope});
+            trace.write_locks.emplace(shard_lock{access.code, access.scope});
          }
       }
    }
+
+   // remove read locks for write locks taken by other actions
+   std::for_each(trace.write_locks.begin(), trace.write_locks.end(), [&]( const shard_lock& l){
+      trace.read_locks.erase(l); read_locks.erase(l);
+   });
+
+   read_locks.insert(trace.read_locks.begin(), trace.read_locks.end());
+   write_locks.insert(trace.write_locks.begin(), trace.write_locks.end());
 }
 
 transaction_trace chain_controller::_push_transaction( transaction_metadata&& data )
@@ -432,28 +459,21 @@ void chain_controller::_start_pending_shard()
 
 void chain_controller::_finalize_pending_cycle()
 {
-   for( auto& shard : _pending_cycle_trace->shard_traces ) {
-      shard.calculate_root();
+   for( int idx = 0; idx < _pending_cycle_trace->shard_traces.size(); idx++ ) {
+      auto& trace = _pending_cycle_trace->shard_traces.at(idx);
+      auto& shard = _pending_block->regions.back().cycles_summary.back().at(idx);
+
+      trace.finalize_shard();
+      shard.read_locks.reserve(trace.read_locks.size());
+      shard.read_locks.insert(shard.read_locks.end(), trace.read_locks.begin(), trace.read_locks.end());
+
+      shard.write_locks.reserve(trace.write_locks.size());
+      shard.write_locks.insert(shard.write_locks.end(), trace.write_locks.begin(), trace.write_locks.end());
    }
 
    _apply_cycle_trace(*_pending_cycle_trace);
    _pending_block_trace->region_traces.back().cycle_traces.emplace_back(std::move(*_pending_cycle_trace));
    _pending_cycle_trace.reset();
-}
-
-void chain_controller::store_deferred_transaction(const deferred_transaction& dtrx)
-{
-   _db.create<generated_transaction_object>([&](generated_transaction_object &obj) {
-      obj.trx_id = dtrx.id();
-      obj.sender = dtrx.sender;
-      obj.sender_id = dtrx.sender_id;
-      obj.expiration = dtrx.expiration;
-      obj.delay_until = dtrx.execute_after;
-      obj.published = head_block_time();
-      obj.packed_trx.resize(fc::raw::pack_size(dtrx));
-      fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
-      fc::raw::pack(ds, dtrx);
-   });
 }
 
 void chain_controller::_apply_cycle_trace( const cycle_trace& res )
@@ -468,22 +488,15 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
                const auto& dt = req.get<deferred_transaction>();
                const auto itr = generated_index.lower_bound(boost::make_tuple(dt.sender, dt.sender_id));
                if ( itr != generated_index.end() && itr->sender == dt.sender && itr->sender_id == dt.sender_id ) {
-                  _db.modify<generated_transaction_object>( *itr, [&](generated_transaction_object &obj) {
-                        obj.expiration = dt.expiration;
-                        obj.delay_until = dt.execute_after;
-                        obj.published = head_block_time();
-                        obj.packed_trx.resize(fc::raw::pack_size(dt));
-                        fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
-                        fc::raw::pack(ds, dt);
-                     });
-               } else {
-                  store_deferred_transaction(dt);
+                  _destroy_generated_transaction(*itr);
                }
+
+               _create_generated_transaction(dt);
             } else if ( req.contains<deferred_reference>() ) {
                const auto& dr = req.get<deferred_reference>();
                const auto itr = generated_index.lower_bound(boost::make_tuple(dr.sender, dr.sender_id));
                if ( itr != generated_index.end() && itr->sender == dr.sender && itr->sender_id == dr.sender_id ) {
-                  generated_transaction_idx.remove(*itr);
+                  _destroy_generated_transaction(*itr);
                }
             }
          }
@@ -521,6 +534,10 @@ void chain_controller::_finalize_block( const block_trace& trace ) { try {
    clear_expired_transactions();
 
    update_last_irreversible_block();
+   _resource_limits.process_account_limit_updates();
+
+   // trigger an update of our elastic values for block limits
+   _resource_limits.process_block_usage(b.block_num());
 
    applied_block( trace ); //emit
    if (_currently_replaying_blocks)
@@ -739,8 +756,8 @@ void chain_controller::__apply_block(const signed_block& next_block)
                write_locks[s] = shard_index;
             }
 
-            vector<shard_lock> used_read_locks;
-            vector<shard_lock> used_write_locks;
+            flat_set<shard_lock> used_read_locks;
+            flat_set<shard_lock> used_write_locks;
 
             shard_trace s_trace;
             for (const auto& receipt : shard.transactions) {
@@ -755,6 +772,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                         auto trx = fc::raw::unpack<deferred_transaction>(gtrx->packed_trx.data(), gtrx->packed_trx.size());
                         FC_ASSERT( trx.execute_after <= head_block_time() , "deffered transaction executed prematurely" );
                         _temp.emplace(trx, gtrx->published, trx.sender, trx.sender_id, gtrx->packed_trx.data(), gtrx->packed_trx.size() );
+                        _destroy_generated_transaction(*gtrx);
                         return &*_temp;
                      } else {
                         const auto& mtrx = input_metas[0];
@@ -773,7 +791,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                mtrx->processing_deadline = processing_deadline;
 
                s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
-               record_locks_for_data_access(s_trace.transaction_traces.back().action_traces, used_read_locks, used_write_locks);
+               record_locks_for_data_access(s_trace.transaction_traces.back(), used_read_locks, used_write_locks);
 
                FC_ASSERT(receipt.status == s_trace.transaction_traces.back().status);
 
@@ -783,23 +801,12 @@ void chain_controller::__apply_block(const signed_block& next_block)
                // check_transaction_authorization(trx, true);
             } /// for each transaction id
 
-            // Validate that the producer didn't list extra locks to bloat the size of the block
-            // TODO: this check can be removed when blocks are irreversible
-            fc::deduplicate(used_read_locks);
-            fc::deduplicate(used_write_locks);
-
-            auto newend = boost::remove_if( used_read_locks,
-                            [&]( const auto& l ){ 
-                               return boost::find( used_write_locks, l ) != used_write_locks.end(); 
-                            });
-            used_read_locks.erase( newend, used_read_locks.end() );
-
-            EOS_ASSERT( boost::equal( used_read_locks, shard.read_locks ), 
+            EOS_ASSERT( boost::equal( used_read_locks, shard.read_locks ),
                block_lock_exception, "Read locks for executing shard: ${s} do not match those listed in the block", ("s", shard_index));
             EOS_ASSERT( boost::equal( used_write_locks, shard.write_locks ),
                block_lock_exception, "Write locks for executing shard: ${s} do not match those listed in the block", ("s", shard_index));
 
-            s_trace.calculate_root();
+            s_trace.finalize_shard();
             c_trace.shard_traces.emplace_back(move(s_trace));
          } /// for each shard
 
@@ -1030,6 +1037,89 @@ void chain_controller::record_transaction(const transaction& trx)
                   ("id", trx.id() ) );
    }
 } 
+
+static uint32_t calculate_transaction_cpu_usage( const transaction_trace& trace, const transaction_metadata& meta, const chain_config& chain_configuration ) {
+   // calculate the sum of all actions retired
+   uint32_t action_cpu_usage = 0;
+   uint32_t context_free_actual_cpu_usage = 0;
+   for (const auto &at: trace.action_traces) {
+      if (at.context_free) {
+         context_free_actual_cpu_usage += chain_configuration.base_per_action_cpu_usage + at.cpu_usage;
+      } else {
+         action_cpu_usage += chain_configuration.base_per_action_cpu_usage + at.cpu_usage;
+         if (at.receiver == config::system_account_name &&
+             at.act.account == config::system_account_name &&
+             at.act.name == N(setcode)) {
+            action_cpu_usage += chain_configuration.base_setcode_cpu_usage;
+         }
+      }
+   }
+
+
+   // charge a system controlled amount for signature verification/recovery
+   uint32_t signature_cpu_usage = 0;
+   if( meta.signing_keys ) {
+      signature_cpu_usage = (uint32_t)meta.signing_keys->size() * chain_configuration.per_signature_cpu_usage;
+   }
+
+   // charge a system discounted amount for context free cpu usage
+   uint32_t context_free_cpu_commitment = (uint32_t)(meta.trx().context_free_kilo_cpu_usage.value * 1024UL);
+   EOS_ASSERT(context_free_actual_cpu_usage <= context_free_cpu_commitment,
+              tx_resource_exhausted,
+              "Transaction context free actions can not fit into the cpu usage committed to by the transaction's header! [usage=${usage},commitment=${commit}]",
+              ("usage", context_free_actual_cpu_usage)("commit", context_free_cpu_commitment) );
+
+   uint32_t context_free_cpu_usage = (uint32_t)((uint64_t)context_free_cpu_commitment * chain_configuration.context_free_discount_cpu_usage_num / chain_configuration.context_free_discount_cpu_usage_den);
+
+   return chain_configuration.base_per_transaction_cpu_usage +
+          action_cpu_usage +
+          context_free_cpu_usage +
+          signature_cpu_usage;
+}
+
+static uint32_t calculate_transaction_net_usage( const transaction_trace& trace, const transaction_metadata& meta, const chain_config& chain_configuration ) {
+   // charge a system controlled per-lock overhead to account for shard bloat
+   uint32_t lock_net_usage = uint32_t(trace.read_locks.size() + trace.write_locks.size()) * chain_configuration.per_lock_net_usage;
+   uint32_t trx_wire_net_usage = meta.trx().net_usage_words.value * 8U;
+
+   return chain_configuration.base_per_transaction_net_usage +
+          trx_wire_net_usage +
+          lock_net_usage;
+}
+
+void chain_controller::update_resource_usage( transaction_trace& trace, const transaction_metadata& meta ) {
+   const auto& chain_configuration = get_global_properties().configuration;
+
+   trace.cpu_usage = calculate_transaction_cpu_usage(trace, meta, chain_configuration);
+   trace.net_usage = calculate_transaction_net_usage(trace, meta, chain_configuration);
+
+   // enforce that the system controlled per tx limits are not violated
+   EOS_ASSERT(trace.cpu_usage <= chain_configuration.max_transaction_cpu_usage,
+              tx_resource_exhausted, "Transaction exceeds the maximum cpu usage [used: ${used}, max: ${max}]",
+              ("used", trace.cpu_usage)("max", chain_configuration.max_transaction_cpu_usage));
+
+   EOS_ASSERT(trace.net_usage <= chain_configuration.max_transaction_net_usage,
+              tx_resource_exhausted, "Transaction exceeds the maximum net usage [used: ${used}, max: ${max}]",
+              ("used", trace.net_usage)("max", chain_configuration.max_transaction_net_usage));
+
+   // determine the accounts to bill
+   set<std::pair<account_name, permission_name>> authorizations;
+   for( const auto& act : meta.trx().actions )
+      for( const auto& auth : act.authorization )
+         authorizations.emplace( auth.actor, auth.permission );
+
+
+   vector<account_name> bill_to_accounts;
+   bill_to_accounts.reserve(authorizations.size());
+   for( const auto& ap : authorizations ) {
+      bill_to_accounts.push_back(ap.first);
+   }
+
+   // for account usage, the ordinal is based on possible blocks not actual blocks.  This means that as blocks are
+   // skipped account usage will still decay.
+   uint32_t ordinal = (uint32_t)(head_block_time().time_since_epoch().count() / fc::milliseconds(config::block_interval_ms).count());
+   _resource_limits.add_transaction_usage(bill_to_accounts, trace.cpu_usage, trace.net_usage, ordinal);
+}
 
 
 void chain_controller::validate_tapos(const transaction& trx)const {
@@ -1264,8 +1354,6 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<generated_transaction_multi_index>();
    _db.add_index<producer_multi_index>();
    _db.add_index<scope_sequence_multi_index>();
-   _db.add_index<bandwidth_usage_index>();
-   _db.add_index<compute_usage_index>();
 }
 
 void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
@@ -1287,9 +1375,9 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
          _db.create<dynamic_global_property_object>([&](dynamic_global_property_object& p) {
             p.time = initial_timestamp;
             //p.recent_slots_filled = uint64_t(-1);
-            p.virtual_net_bandwidth = gp.configuration.max_block_size * (config::blocksize_average_window_ms / config::block_interval_ms );
-            p.virtual_act_bandwidth = gp.configuration.max_block_acts * (config::blocksize_average_window_ms / config::block_interval_ms );
          });
+
+         _resource_limits.initialize_chain();
 
          // Initialize block summary index
          for (int i = 0; i < 0x10000; i++)
@@ -1414,11 +1502,6 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
       dgp.time = b.timestamp;
       dgp.current_producer = b.producer;
       dgp.current_absolute_slot += missed_blocks+1;
-      dgp.average_block_size.add_usage( fc::raw::pack_size(b), b.timestamp );
-
-      dgp.update_virtual_net_bandwidth( props.configuration );
-      dgp.update_virtual_act_bandwidth( props.configuration );
-
 
       /*
       // If we've missed more blocks than the bitmap stores, skip calculations and simply reset the bitmap
@@ -1448,6 +1531,28 @@ void chain_controller::update_signing_producer(const producer_object& signing_pr
       _wit.last_aslot = new_block_aslot;
       _wit.last_confirmed_block_num = new_block.block_num();
    } );
+}
+
+void chain_controller::update_permission_usage( const transaction_metadata& meta ) {
+   // for any transaction not sent by code, update the affirmative last time a given permission was used
+   if (!meta.sender) {
+      for( const auto& act : meta.trx().actions ) {
+         for( const auto& auth : act.authorization ) {
+            const auto *puo = _db.find<permission_usage_object, by_account_permission>(boost::make_tuple(auth.actor, auth.permission));
+            if (puo) {
+               _db.modify(*puo, [this](permission_usage_object &pu) {
+                  pu.last_used = head_block_time();
+               });
+            } else {
+               _db.create<permission_usage_object>([this, &auth](permission_usage_object &pu){
+                  pu.account = auth.actor;
+                  pu.permission = auth.permission;
+                  pu.last_used = head_block_time();
+               });
+            }
+         }
+      }
+   }
 }
 
 void chain_controller::update_or_create_producers( const producer_schedule_type& producers ) {
@@ -1551,8 +1656,9 @@ void chain_controller::clear_expired_transactions()
    //transactions must have expired by at least two forking windows in order to be removed.
    auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
    const auto& generated_index = generated_transaction_idx.indices().get<by_expiration>();
-   while( (!generated_index.empty()) && (head_block_time() > generated_index.rbegin()->expiration) )
-      generated_transaction_idx.remove(*generated_index.rbegin());
+   while( (!generated_index.empty()) && (head_block_time() > generated_index.rbegin()->expiration) ) {
+      _destroy_generated_transaction(*generated_index.rbegin());
+   }
 
 } FC_CAPTURE_AND_RETHROW() }
 
@@ -1643,40 +1749,37 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
       fc::move_append(result.deferred_transaction_requests, std::move(context.results.deferred_transaction_requests));
    }
 
-   uint32_t act_usage = result.action_traces.size();
+   update_resource_usage(result, meta);
 
-   for (auto &at: result.action_traces) {
-      at.region_id = meta.region_id;
-      at.cycle_index = meta.cycle_index;
-      if (at.receiver == config::system_account_name &&
-          at.act.account == config::system_account_name &&
-          at.act.name == N(setcode)) {
-         act_usage += config::setcode_act_usage;
-      }
-   }
-
-   update_usage(meta, act_usage);
+   update_permission_usage(meta);
    record_transaction(meta.trx());
    return result;
 } FC_CAPTURE_AND_RETHROW() }
 
-transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta ) 
-{ try {
-   try {
-      auto temp_session = _db.start_undo_session(true);
-      auto result = __apply_transaction(meta);
-      temp_session.squash();
-      return result;
-   } catch (...) {
-      // if there is no sender, there is no error handling possible, rethrow
-      if (!meta.sender) {
-         throw;
-      }
-      // log exceptions we can handle with the error handle, throws otherwise
-      log_handled_exceptions(meta.trx());
+transaction_trace chain_controller::_apply_transaction( transaction_metadata& meta ) { try {
+   auto execute = [this](transaction_metadata& meta) -> transaction_trace {
+      try {
+         auto temp_session = _db.start_undo_session(true);
+         auto result =  __apply_transaction(meta);
+         temp_session.squash();
+         return result;
+      } catch (...) {
+         // if there is no sender, there is no error handling possible, rethrow
+         if (!meta.sender) {
+            throw;
+         }
 
-      return _apply_error( meta );
-   }
+         // log exceptions we can handle with the error handle, throws otherwise
+         log_handled_exceptions(meta.trx());
+
+         return _apply_error(meta);
+      }
+   };
+
+   auto start = fc::time_point::now();
+   auto result = execute(meta);
+   result._profiling_us = fc::time_point::now() - start;
+   return result;
 } FC_CAPTURE_AND_RETHROW() }
 
 transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
@@ -1702,7 +1805,7 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
          at.cycle_index = meta.cycle_index;
       }
 
-      update_usage(meta, act_usage);
+      update_resource_usage(result, meta);
       record_transaction(meta.trx());
 
       temp_session.squash();
@@ -1718,6 +1821,35 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    // if we have an objective error, on an error handler, we return hard fail for the trx
    result.status = transaction_trace::hard_fail;
    return result;
+}
+
+void chain_controller::_destroy_generated_transaction( const generated_transaction_object& gto ) {
+   auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
+   _resource_limits.add_account_ram_usage(gto.payer, -(sizeof(generated_transaction_object) + gto.packed_trx.size() + config::overhead_per_row_ram_bytes));
+   generated_transaction_idx.remove(gto);
+
+}
+
+void chain_controller::_create_generated_transaction( const deferred_transaction& dto ) {
+   size_t trx_size = fc::raw::pack_size(dto);
+   _resource_limits.add_account_ram_usage(
+      dto.payer,
+      (sizeof(generated_transaction_object) + (int64_t)trx_size + config::overhead_per_row_ram_bytes),
+      "Generated Transaction ${id} from ${s}", _V("id", dto.sender_id)("s",dto.sender)
+   );
+
+   _db.create<generated_transaction_object>([&](generated_transaction_object &obj) {
+      obj.trx_id = dto.id();
+      obj.sender = dto.sender;
+      obj.sender_id = dto.sender_id;
+      obj.payer = dto.payer;
+      obj.expiration = dto.expiration;
+      obj.delay_until = dto.execute_after;
+      obj.published = head_block_time();
+      obj.packed_trx.resize(trx_size);
+      fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
+      fc::raw::pack(ds, dto);
+   });
 }
 
 vector<transaction_trace> chain_controller::push_deferred_transactions( bool flush, uint32_t skip )
@@ -1761,7 +1893,7 @@ vector<transaction_trace> chain_controller::_push_deferred_transactions( bool fl
       maybe_start_new_cycle();
    }
 
-   auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
+   const auto& generated_transaction_idx = _db.get_index<generated_transaction_multi_index>();
    auto& generated_index = generated_transaction_idx.indices().get<by_delay>();
    vector<const generated_transaction_object*> candidates;
 
@@ -1778,93 +1910,16 @@ vector<transaction_trace> chain_controller::_push_deferred_transactions( bool fl
             auto trx = fc::raw::unpack<deferred_transaction>(trx_p->packed_trx.data(), trx_p->packed_trx.size());
             transaction_metadata mtrx (trx, trx_p->published, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size(), deferred_transactions_deadline);
             res.push_back( _push_transaction(std::move(mtrx)) );
-            generated_transaction_idx.remove(*trx_p);
          } FC_CAPTURE_AND_LOG((trx_p->trx_id)(trx_p->sender));
-      } else {
-         generated_transaction_idx.remove(*trx_p);
       }
+
+      _destroy_generated_transaction(*trx_p);
+
       if ( deferred_transactions_deadline <= fc::time_point::now() ) {
          break;
       }
    }
    return res;
-}
-
-
-/**
- *  @param act_usage The number of "actions" delivered directly or indirectly by applying meta.trx
- */
-void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_usage )
-{
-   set<std::pair<account_name, permission_name>> authorizing_accounts;
-
-   for( const auto& act : meta.trx().actions )
-      for( const auto& auth : act.authorization )
-         authorizing_accounts.emplace( auth.actor, auth.permission );
-
-   auto trx_size = meta.bandwidth_usage + config::fixed_bandwidth_overhead_per_transaction;
-
-   const auto& dgpo = get_dynamic_global_properties();
-
-   if( meta.signing_keys ) {
-      act_usage += meta.signing_keys->size();
-   }
-
-   auto head_time = head_block_time();
-   for( const auto& authaccnt : authorizing_accounts ) {
-
-      const auto& buo = _db.get<bandwidth_usage_object,by_owner>( authaccnt.first );
-      _db.modify( buo, [&]( auto& bu ){
-          bu.bytes.add_usage( trx_size, head_time );
-          bu.acts.add_usage( act_usage, head_time );
-      });
-
-      uint128_t  used_ubytes        = buo.bytes.value;
-      uint128_t  used_uacts         = buo.acts.value;
-      uint128_t  virtual_max_ubytes = dgpo.virtual_net_bandwidth * config::rate_limiting_precision;
-      uint128_t  virtual_max_uacts  = dgpo.virtual_act_bandwidth * config::rate_limiting_precision;
-
-      if( !(_skip_flags & genesis_setup) ) {
-         #warning TODO: restore bandwidth checks
-         /* setting of bandwidth currently not implemented
-         FC_ASSERT( (used_ubytes * dgpo.total_net_weight) <=  (buo.net_weight * virtual_max_ubytes), "authorizing account '${n}' has insufficient net bandwidth for this transaction",
-                    ("n",name(authaccnt.first))
-                    ("used_bytes",double(used_ubytes)/1000000.)
-                    ("user_net_weight",buo.net_weight)
-                    ("virtual_max_bytes", double(virtual_max_ubytes)/1000000. )
-                    ("total_net_weight", dgpo.total_net_weight)
-                    );
-         FC_ASSERT( (used_uacts * dgpo.total_cpu_weight)  <=  (buo.cpu_weight* virtual_max_uacts),  "authorizing account '${n}' has insufficient compute bandwidth for this transaction",
-                    ("n",name(authaccnt.first))
-                    ("used_acts",double(used_uacts)/1000000.)
-                    ("user_cpu_weight",buo.cpu_weight)
-                    ("virtual_max_uacts", double(virtual_max_uacts)/1000000. )
-                    ("total_cpu_tokens", dgpo.total_cpu_weight)
-                  );
-         */
-      }
-
-      // for any transaction not sent by code, update the affirmative last time a given permission was used
-      if (!meta.sender) {
-         const auto *puo = _db.find<permission_usage_object, by_account_permission>(boost::make_tuple(authaccnt.first, authaccnt.second));
-         if (puo) {
-            _db.modify(*puo, [this](permission_usage_object &pu) {
-               pu.last_used = head_block_time();
-            });
-         } else {
-            _db.create<permission_usage_object>([this, &authaccnt](permission_usage_object &pu){
-               pu.account = authaccnt.first;
-               pu.permission = authaccnt.second;
-               pu.last_used = head_block_time();
-            });
-         }
-      }
-   }
-
-   _db.modify( dgpo, [&]( auto& props ) {
-      props.average_block_acts.add_usage( act_usage, head_time );
-   });
-
 }
 
 const apply_handler* chain_controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const
@@ -1901,20 +1956,13 @@ transaction_trace chain_controller::wrap_transaction_processing( transaction_met
 
    auto& bcycle = _pending_block->regions.back().cycles_summary.back();
    auto& bshard = bcycle.front();
+   auto& bshard_trace = _pending_cycle_trace->shard_traces.at(0);
 
-   record_locks_for_data_access(result.action_traces, bshard.read_locks, bshard.write_locks);
-
-   fc::deduplicate(bshard.read_locks);
-   fc::deduplicate(bshard.write_locks);
-   auto newend = boost::remove_if( bshard.read_locks,
-                   [&]( const auto& l ){
-                      return boost::find( bshard.write_locks, l ) != bshard.write_locks.end();
-                   });
-   bshard.read_locks.erase( newend, bshard.read_locks.end() );
+   record_locks_for_data_access(result, bshard_trace.read_locks, bshard_trace.write_locks);
 
    bshard.transactions.emplace_back( result );
-
-   _pending_cycle_trace->shard_traces.at(0).append(result);
+   
+   bshard_trace.append(result);
 
    // The transaction applied successfully. Merge its changes into the pending block session.
    temp_session.squash();

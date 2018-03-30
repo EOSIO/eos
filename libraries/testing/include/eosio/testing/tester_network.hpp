@@ -22,13 +22,13 @@ namespace eosio { namespace testing {
        * @brief Add a new blockchain to the network
        * @param new_blockchain The blockchain to add
        */
-      void connect_blockchain(tester &new_blockchain);
+      void connect_blockchain(base_tester &new_blockchain);
 
       /**
        * @brief Remove a blockchain from the network
        * @param leaving_blockchain The blockchain to remove
        */
-      void disconnect_blockchain(tester &leaving_blockchain);
+      void disconnect_blockchain(base_tester &leaving_blockchain);
 
       /**
        * @brief Disconnect all blockchains from the network
@@ -39,10 +39,10 @@ namespace eosio { namespace testing {
        * @brief Send a block to all blockchains in this network
        * @param block The block to send
        */
-      void propagate_block(const signed_block &block, const tester &skip_db);
+      void propagate_block(const signed_block &block, const base_tester &skip_db);
 
    protected:
-      std::map<tester *, scoped_connection> blockchains;
+      std::map<base_tester *, scoped_connection> blockchains;
    };
 
 } } /// eosio::testing
