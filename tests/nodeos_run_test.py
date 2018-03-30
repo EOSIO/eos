@@ -81,7 +81,7 @@ if amINoon:
     WalletdName="keosd"
     ClientName="cleos"
     # noon branch requires longer mongo sync time.
-    testUtils.Utils.setMongoSyncTime(50)
+    # testUtils.Utils.setMongoSyncTime(50)
 else:
     testUtils.Utils.iAmNotNoon()
 
