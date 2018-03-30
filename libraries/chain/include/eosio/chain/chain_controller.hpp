@@ -13,8 +13,6 @@
 #include <chainbase/chainbase.hpp>
 #include <fc/scoped_exit.hpp>
 
-#include <boost/range/algorithm/find.hpp>
-#include <boost/range/algorithm/remove_if.hpp>
 #include <boost/signals2/signal.hpp>
 
 #include <eosio/chain/protocol.hpp>
@@ -329,43 +327,7 @@ namespace eosio { namespace chain {
          void _create_generated_transaction( const deferred_transaction& dto );
 
          template<typename TransactionProcessing>
-         transaction_trace wrap_transaction_processing( transaction_metadata&& data, TransactionProcessing trx_processing )
-         { try {
-            FC_ASSERT( _pending_block, " block not started" );
-
-            if (_limits.max_push_transaction_us.count() > 0) {
-               auto newval = fc::time_point::now() + _limits.max_push_transaction_us;
-               if ( !data.processing_deadline || newval < *data.processing_deadline ) {
-                  data.processing_deadline = newval;
-               }
-            }
-
-            const transaction& trx = data.trx();
-
-            auto temp_session = _db.start_undo_session(true);
-
-            // for now apply the transaction serially but schedule it according to those invariants
-            validate_referenced_accounts(trx);
-
-            auto result = trx_processing(data);
-
-            auto& bcycle = _pending_block->regions.back().cycles_summary.back();
-            auto& bshard = bcycle.front();
-            auto& bshard_trace = _pending_cycle_trace->shard_traces.at(0);
-
-            record_locks_for_data_access(result, bshard_trace.read_locks, bshard_trace.write_locks);
-
-            bshard.transactions.emplace_back( result );
-
-            bshard_trace.append(result);
-
-            // The transaction applied successfully. Merge its changes into the pending block session.
-            temp_session.squash();
-
-            _pending_transaction_metas.emplace_back(std::forward<transaction_metadata>(data));
-
-            return result;
-         } FC_CAPTURE_AND_RETHROW() }
+         transaction_trace wrap_transaction_processing( transaction_metadata&& data, TransactionProcessing trx_processing );
 
          /// Reset the object graph in-memory
          void _initialize_indexes();
