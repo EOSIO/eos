@@ -47,8 +47,8 @@ relaunch() {
 
 datadir=var/lib/node_$EOSIO_NODE
 now=`date +'%Y_%m_%d_%H_%M_%S'`
-log=$datadir/stderr.$now.txt
-touch $log
+log=stderr.$now.txt
+touch $datadir/$log
 rm $datadir/stderr.txt
 ln -s $log $datadir/stderr.txt
 
@@ -58,14 +58,18 @@ if [ -z "$EOSIO_LEVEL" ]; then
     relaunch $prog $rundir $*
     if [ \( -z "$running" \) -o \( "$connected" -eq 0 \) ]; then
         EOSIO_LEVEL=replay
+    else
+        exit 0
     fi
 fi
 
-if [ $EOSIO_LEVEL == replay ]; then
+if [ "$EOSIO_LEVEL" == replay ]; then
     echo starting with replay
     relaunch $prog $rundir $* --replay
     if [ \( -z "$running" \) -o \( "$connected" -eq 0 \) ]; then
         EOSIO_LEVEL=resync
+    else
+        exit 0
     fi
 fi
 if [ "$EOSIO_LEVEL" == resync ]; then
