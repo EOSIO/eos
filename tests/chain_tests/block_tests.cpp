@@ -12,6 +12,7 @@ BOOST_AUTO_TEST_SUITE(block_tests)
 
 BOOST_AUTO_TEST_CASE( schedule_test ) { try {
   validating_tester test;
+  //tester test;
 
   for( uint32_t i = 0; i < 200; ++i )
      test.produce_block();
@@ -35,17 +36,17 @@ BOOST_AUTO_TEST_CASE( schedule_test ) { try {
 
 BOOST_AUTO_TEST_CASE( push_block ) { try {
    tester test1;
-   base_tester test2;
+   validating_tester test2;
 
    for (uint32 i = 0; i < 1000; ++i) {
-      test2.control->push_block(test1.produce_block());
+      test2.push_block(test1.produce_block());
    }
 
    test1.create_account(N(alice));
-   test2.control->push_block(test1.produce_block());
+   test2.push_block(test1.produce_block());
 
    test1.push_dummy(N(alice), "Foo!");
-   test2.control->push_block(test1.produce_block());
+   test2.push_block(test1.produce_block());
 } FC_LOG_AND_RETHROW() }/// schedule_test
 
 

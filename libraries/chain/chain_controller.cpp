@@ -1013,7 +1013,6 @@ optional<permission_name> chain_controller::lookup_linked_permission(account_nam
 
 void chain_controller::validate_uniqueness( const transaction& trx )const {
    if( !should_check_for_duplicate_transactions() ) return;
-
    auto transaction = _db.find<transaction_object, by_trx_id>(trx.id());
    EOS_ASSERT(transaction == nullptr, tx_duplicate, "Transaction is not unique");
 }

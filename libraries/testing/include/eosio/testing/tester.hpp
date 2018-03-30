@@ -66,16 +66,16 @@ namespace eosio { namespace testing {
 
          static const uint32_t DEFAULT_EXPIRATION_DELTA = 6;
 
-         base_tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
-         explicit base_tester(chain_controller::controller_config config);
+         void              init(bool push_genesis = true, chain_controller::runtime_limits limits = chain_controller::runtime_limits());
+         void              init(chain_controller::controller_config config);
 
          void              close();
          void              open();
 
-         virtual signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty );
+         virtual signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty ) = 0;
          void                 produce_blocks( uint32_t n = 1 );
          void                 produce_blocks_until_end_of_round();
-         bool                 push_block(signed_block& b);
+         signed_block         push_block(signed_block&& b);
          transaction_trace    push_transaction( packed_transaction& trx, uint32_t skip_flag = skip_nothing  );
          transaction_trace    push_transaction( signed_transaction& trx, uint32_t skip_flag = skip_nothing  );
          action_result        push_action(action&& cert_act, uint64_t authorizer);
@@ -88,6 +88,9 @@ namespace eosio { namespace testing {
          void                 create_accounts( vector<account_name> names, bool multisig = false ) {
             for( auto n : names ) create_account(n, config::system_account_name, multisig );
          }
+
+         void                 push_genesis_block();
+         producer_schedule_type  set_producers(const vector<account_name>& producer_names, const uint32_t version = 0);
 
          void link_authority( account_name account, account_name code,  permission_name req, action_name type = "" );
          void unlink_authority( account_name account, account_name code, action_name type = "" );
@@ -169,21 +172,43 @@ namespace eosio { namespace testing {
 
        void sync_with(base_tester& other);
 
-   private:
+   protected:
+         signed_block _produce_block( fc::microseconds skip_time, uint32_t skip_flag);
          fc::temp_directory                            tempdir;
          chain_controller::controller_config           cfg;
-
+         unique_ptr<chain_controller>                  validating_node;
          map<transaction_id_type, transaction_receipt> chain_transactions;
    };
 
    class tester : public base_tester {
-   public:
-      tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
-      tester(chain_controller::controller_config config);
+      public:
+      tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits()) {
+         init(true, limits);
+      }
 
-      void                    push_genesis_block();
-      producer_schedule_type  set_producers(const vector<account_name>& producer_names, const uint32_t version = 0);
-   };
+      tester(chain_controller::controller_config config) {
+         init(config); 
+      }
+
+      signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty )override {
+         return _produce_block(skip_time, skip_flag);
+      }
+   };   
+
+   class validating_tester : public base_tester {
+      public:
+      validating_tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits()) {
+         init(false, limits);
+      }
+
+      validating_tester(chain_controller::controller_config config) {
+         init(config);
+      }
+
+      signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty )override {
+         return push_block( _produce_block(skip_time, skip_flag) );
+      }
+   };   
 
    /**
     * Utility predicate to check whether an FC_ASSERT message ends with a given string
@@ -201,20 +226,6 @@ namespace eosio { namespace testing {
       string expected;
    };
 
-   class validating_tester : public tester {
-      public:
-         validating_tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
-         explicit validating_tester(chain_controller::controller_config config);
-
-         signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty ) override {
-            auto sb = tester::produce_block(skip_time, skip_flag);
-            validating_node.push_block(sb);
-            return sb;
-         }
-         
-      private:
-         tester validating_node;
-   };
-
+   
 } } /// eosio::testing
 

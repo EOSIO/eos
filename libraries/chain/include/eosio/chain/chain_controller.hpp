@@ -113,7 +113,7 @@ namespace eosio { namespace chain {
           * This signal is emitted any time a new transaction is added to the pending
           * block state.
           */
-      signal<void(const transaction_metadata&, const packed_transaction&)> on_pending_transaction;
+         signal<void(const transaction_metadata&, const packed_transaction&)> on_pending_transaction;
 
 
 
