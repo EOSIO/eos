@@ -29,20 +29,20 @@
 	fi
 
         case $OS_NAME in
-                "Linux Mint")
-                       if [ $OS_MAJ -lt 18 ]; then
-                               printf "\tYou must be running Linux Mint 18.x or higher to install EOSIO.\n"
-                               printf "\tExiting now.\n"
-                               exit 1
-                       fi
-                ;;
-                "Ubuntu")
-                        if [ $OS_MIN -lt 4 ]; then
-                                printf "\tYou must be running Ubuntu 16.04.x or higher to install EOSIO.\n"
-                                printf "\tExiting now.\n"
-                                exit 1
-                        fi
-                ;;
+			"Linux Mint")
+			   if [ $OS_MAJ -lt 18 ]; then
+				   printf "\tYou must be running Linux Mint 18.x or higher to install EOSIO.\n"
+				   printf "\tExiting now.\n"
+				   exit 1
+			   fi
+			;;
+			"Ubuntu")
+				if [ $OS_MIN -lt 4 ]; then
+					printf "\tYou must be running Ubuntu 16.04.x or higher to install EOSIO.\n"
+					printf "\tExiting now.\n"
+					exit 1
+				fi
+			;;
         esac
 
 	if [ ${DISK_AVAIL%.*} -lt $DISK_MIN ]; then
@@ -51,8 +51,8 @@
 		exit 1
 	fi
 
-	DEP_ARRAY=(clang-4.0 lldb-4.0 libclang-4.0-dev cmake make libbz2-dev libssl-dev libgmp3-dev autotools-dev build-essential libbz2-dev libicu-dev python-dev autoconf libtool curl mongodb)
-	DCOUNT=0
+	DEP_ARRAY=(clang-4.0 lldb-4.0 libclang-4.0-dev cmake make libbz2-dev libssl-dev \
+	libgmp3-dev autotools-dev build-essential libbz2-dev libicu-dev python3-dev autoconf libtool curl)
 	COUNT=1
 	DISPLAY=""
 	DEP=""
@@ -67,14 +67,13 @@
 			DISPLAY="${DISPLAY}${COUNT}. ${DEP_ARRAY[$i]}\n\t"
 			printf "\tPackage ${DEP_ARRAY[$i]} ${bldred} NOT ${txtrst} found.\n"
 			let COUNT++
-			let DCOUNT++
 		else
 			printf "\tPackage ${DEP_ARRAY[$i]} found.\n"
 			continue
 		fi
 	done		
 	
-	if [ ${DCOUNT} -ne 0 ]; then
+	if [ ${COUNT} -gt 1 ]; then
 		printf "\n\tThe following dependencies are required to install EOSIO.\n"
 		printf "\n\t$DISPLAY\n\n"
 		printf "\tDo you wish to install these packages?\n"
@@ -100,10 +99,10 @@
 		printf "\n\tNo required dpkg dependencies to install.\n"
 	fi
 
-	printf "\n\tChecking for boost libraries\n"
+	printf "\n\tChecking boost library installation.\n"
 	if [ ! -d ${HOME}/opt/boost_1_66_0 ]; then
 		# install boost
-		printf "\tInstalling boost libraries\n"
+		printf "\tInstalling boost libraries.\n"
 		cd ${TEMP_DIR}
 		curl -L https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2 > boost_1.66.0.tar.bz2
 		tar xf boost_1.66.0.tar.bz2
@@ -116,7 +115,41 @@
 		printf "\tBoost 1.66 found at ${HOME}/opt/boost_1_66_0\n"
 	fi
 
-	printf "\n\tChecking for MongoDB C++ driver.\n"
+	printf "\n\tChecking MongoDB installation.\n"
+    if [ ! -e ${MONGOD_CONF} ]; then
+		printf "\n\tInstalling MongoDB 3.6.3.\n"
+		cd ${HOME}/opt
+		curl -OL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.3.tgz
+		if [ $? -ne 0 ]; then
+			printf "\tUnable to download MongoDB at this time.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		tar xf mongodb-linux-x86_64-3.6.3.tgz
+		rm -f mongodb-linux-x86_64-3.6.3.tgz
+		ln -s mongodb-linux-x86_64-3.6.3/ mongodb
+		mkdir ${HOME}/opt/mongodb/data
+		mkdir ${HOME}/opt/mongodb/log
+		touch ${HOME}/opt/mongodb/log/mongodb.log
+		
+tee > /dev/null ${MONGOD_CONF} <<mongodconf
+systemLog:
+ destination: file
+ path: ${HOME}/opt/mongodb/log/mongodb.log
+ logAppend: true
+ logRotate: reopen
+net:
+ bindIp: 127.0.0.1,::1
+ ipv6: true
+storage:
+ dbPath: ${HOME}/opt/mongodb/data
+mongodconf
+
+	else
+		printf "\tMongoDB configuration found at ${MONGOD_CONF}.\n"
+	fi
+
+	printf "\n\tChecking MongoDB C++ driver installation.\n"
     if [ ! -e /usr/local/lib/libmongocxx-static.a ]; then
 		printf "\n\tInstalling MongoDB C & C++ drivers.\n"
 		cd ${TEMP_DIR}
@@ -222,7 +255,8 @@
 		cd ..
 		mkdir build
 		cd build
-		cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+		cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm -DLLVM_TARGETS_TO_BUILD= \
+		-DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
 			printf "\tExiting now.\n\n"

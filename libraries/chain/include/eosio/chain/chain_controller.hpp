@@ -317,6 +317,9 @@ namespace eosio { namespace chain {
          transaction_trace _apply_error( transaction_metadata& data );
          vector<transaction_trace> _push_deferred_transactions( bool flush = false );
 
+         template<typename TransactionProcessing>
+         transaction_trace wrap_transaction_processing( transaction_metadata&& data, TransactionProcessing trx_processing );
+
          /// Reset the object graph in-memory
          void _initialize_indexes();
          void _initialize_chain(contracts::chain_initializer& starter);
