@@ -343,8 +343,9 @@ static void record_locks_for_data_access(transaction_trace& trace, flat_set<shar
    }
 
    // remove read locks for write locks taken by other actions
-   trace.read_locks.erase(trace.write_locks.begin(), trace.write_locks.end());
-   read_locks.erase(trace.write_locks.begin(), trace.write_locks.end());
+   std::for_each(trace.write_locks.begin(), trace.write_locks.end(), [&]( const shard_lock& l){
+      trace.read_locks.erase(l); read_locks.erase(l);
+   });
 
    read_locks.insert(trace.read_locks.begin(), trace.read_locks.end());
    write_locks.insert(trace.write_locks.begin(), trace.write_locks.end());
@@ -1072,11 +1073,11 @@ void chain_controller::update_resource_usage( transaction_trace& trace, const tr
    // enforce that the system controlled per tx limits are not violated
    EOS_ASSERT(trace.cpu_usage <= chain_configuration.max_transaction_cpu_usage,
               tx_resource_exhausted, "Transaction exceeds the maximum cpu usage [used: ${used}, max: ${max}]",
-              ("usage", trace.cpu_usage)("max", chain_configuration.max_transaction_cpu_usage));
+              ("used", trace.cpu_usage)("max", chain_configuration.max_transaction_cpu_usage));
 
    EOS_ASSERT(trace.net_usage <= chain_configuration.max_transaction_net_usage,
               tx_resource_exhausted, "Transaction exceeds the maximum net usage [used: ${used}, max: ${max}]",
-              ("usage", trace.net_usage)("max", chain_configuration.max_transaction_net_usage));
+              ("used", trace.net_usage)("max", chain_configuration.max_transaction_net_usage));
 
    // determine the accounts to bill
    set<std::pair<account_name, permission_name>> authorizations;

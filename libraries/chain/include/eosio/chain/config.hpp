@@ -46,7 +46,7 @@ static const uint32_t block_size_average_window_ms         = 60*1000l;
 const static uint32_t   default_max_block_size         = 1024 * 1024; /// at 500ms blocks and 200byte trx, this enables ~10,000 TPS burst
 const static uint32_t   default_target_block_size      = default_max_block_size / 10; /// we target 1000 TPS
 
-const static uint32_t   default_max_block_cpu_usage    = 10 * 1024 * 1024; /// at 500ms blocks and 2000instr trx, this enables ~10,000 TPS burst
+const static uint32_t   default_max_block_cpu_usage    = 100 * 1024 * 1024; /// at 500ms blocks and 20000instr trx, this enables ~10,000 TPS burst
 const static uint32_t   default_target_block_cpu_usage = default_max_block_cpu_usage / 10; /// target 1000 TPS
 
 const static uint64_t   default_max_storage_size       = 10 * 1024;
