@@ -75,7 +75,7 @@ const static int producer_repetitions = 12;
 /**
  * In block production, at the begining of each block we schedule deferred transactions until reach this time
  */
-const static uint32_t deffered_transactions_max_time_per_block_us = 20*1000; //20ms
+const static uint32_t deferred_transactions_max_time_per_block_us = 20*1000; //20ms
 
 /**
  * The number of blocks produced per round is based upon all producers having a chance

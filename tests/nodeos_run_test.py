@@ -78,7 +78,7 @@ WalletdName="eos-walletd"
 ClientName="eosc"
 
 if amINoon:
-    WalletdName="eosio-walletd"
+    WalletdName="keosd"
     ClientName="cleos"
     # noon branch requires longer mongo sync time.
     testUtils.Utils.setMongoSyncTime(50)

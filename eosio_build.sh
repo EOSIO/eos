@@ -95,13 +95,15 @@
 				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
-				MONGOD_CONF=/etc/mongod.conf
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"Ubuntu")
 				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
-				MONGOD_CONF=/etc/mongod.conf
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			*)
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
@@ -157,32 +159,33 @@
 		exit -1
 	fi
 
-	printf "\n\tVerifying MongoDB is running.\n"
-	MONGODB_PID=$( pgrep -x mongod )
-	if [ -z $MONGODB_PID ]; then
-		printf "\tMongoDB is not currently running.\n"
-		printf "\tStarting MongoDB.\n"
-		mongod -f ${MONGOD_CONF} &
-		if [ $? -ne 0 ]; then
-			printf "\tUnable to start MongoDB.\nExiting now.\n\n"
-			exit -1
-		fi
-		MONGODB_PID=$( pgrep -x mongod )
-		printf "\tSuccessfully started MongoDB PID = ${MONGODB_PID}.\n\n"
-	else
-		printf "\tMongoDB is running PID=${MONGODB_PID}.\n\n"
-	fi
+# 	printf "\n\tVerifying MongoDB is running.\n"
+# 	MONGODB_PID=$( pgrep -x mongod )
+# 	if [ -z $MONGODB_PID ]; then
+# 		printf "\tMongoDB is not currently running.\n"
+# 		printf "\tStarting MongoDB.\n"
+# 		mongod -f ${MONGOD_CONF} &
+# 		if [ $? -ne 0 ]; then
+# 			printf "\tUnable to start MongoDB.\nExiting now.\n\n"
+# 			exit -1
+# 		fi
+# 		MONGODB_PID=$( pgrep -x mongod )
+# 		printf "\tSuccessfully started MongoDB PID = ${MONGODB_PID}.\n\n"
+# 	else
+# 		printf "\tMongoDB is running PID=${MONGODB_PID}.\n\n"
+# 	fi
 	
 	TIME_END=$(( `date -u +%s` - $TIME_BEGIN ))
 
-	printf "\t _______  _______  _______ _________ _______\n"
+
+	printf "${bldred}\t _______  _______  _______ _________ _______\n"
 	printf '\t(  ____ \(  ___  )(  ____ \\\\__   __/(  ___  )\n'
 	printf "\t| (    \/| (   ) || (    \/   ) (   | (   ) |\n"
 	printf "\t| (__    | |   | || (_____    | |   | |   | |\n"
 	printf "\t|  __)   | |   | |(_____  )   | |   | |   | |\n"
 	printf "\t| (      | |   | |      ) |   | |   | |   | |\n"
 	printf "\t| (____/\| (___) |/\____) |___) (___| (___) |\n"
-	printf "\t(_______/(_______)\_______)\_______/(_______)\n"
+	printf "\t(_______/(_______)\_______)\_______/(_______)\n${txtrst}"
 
 	printf "\n\tEOS.IO has been successfully built. %d:%d:%d\n\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
 	printf "\tTo verify your installation run the following commands:\n"

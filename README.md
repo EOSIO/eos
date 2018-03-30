@@ -211,7 +211,7 @@ EOS comes with a number of programs you can find in `~/eos/build/programs`. They
 
 * nodeos - server-side blockchain node component
 * cleos - command line interface to interact with the blockchain
-* eosiowd - EOS wallet
+* keosd - EOS wallet
 * eosio-launcher - application for nodes network composing and deployment; [more on eosio-launcher](https://github.com/EOSIO/eos/blob/master/testnet.md)
 
 <a name="singlenode"></a>
