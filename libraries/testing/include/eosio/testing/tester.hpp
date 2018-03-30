@@ -72,20 +72,20 @@ namespace eosio { namespace testing {
          void              close();
          void              open();
 
-         signed_block      produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty );
-         void              produce_blocks( uint32_t n = 1 );
-         void              produce_blocks_until_end_of_round();
+         virtual signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty );
+         void                 produce_blocks( uint32_t n = 1 );
+         void                 produce_blocks_until_end_of_round();
+         bool                 push_block(signed_block& b);
+         transaction_trace    push_transaction( packed_transaction& trx, uint32_t skip_flag = skip_nothing  );
+         transaction_trace    push_transaction( signed_transaction& trx, uint32_t skip_flag = skip_nothing  );
+         action_result        push_action(action&& cert_act, uint64_t authorizer);
 
-         transaction_trace push_transaction( packed_transaction& trx, uint32_t skip_flag = skip_nothing  );
-         transaction_trace push_transaction( signed_transaction& trx, uint32_t skip_flag = skip_nothing  );
-         action_result     push_action(action&& cert_act, uint64_t authorizer);
+         transaction_trace    push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA );
+         transaction_trace    push_action( const account_name& code, const action_name& acttype, const vector<account_name>& actors, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA );
 
-         transaction_trace push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA );
-         transaction_trace push_action( const account_name& code, const action_name& acttype, const vector<account_name>& actors, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA );
+         void                 set_tapos( signed_transaction& trx, uint32_t expiration = DEFAULT_EXPIRATION_DELTA ) const;
 
-         void              set_tapos( signed_transaction& trx, uint32_t expiration = DEFAULT_EXPIRATION_DELTA ) const;
-
-         void              create_accounts( vector<account_name> names, bool multisig = false ) {
+         void                 create_accounts( vector<account_name> names, bool multisig = false ) {
             for( auto n : names ) create_account(n, config::system_account_name, multisig );
          }
 
@@ -201,21 +201,20 @@ namespace eosio { namespace testing {
       string expected;
    };
 
-   class validating_tester : public base_tester {
-   public:
-      validating_tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
-      validating_tester(chain_controller::controller_config config);
+   class validating_tester : public tester {
+      public:
+         validating_tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
+         explicit validating_tester(chain_controller::controller_config config);
 
-      void                    push_genesis_block();
-      producer_schedule_type  set_producers(const vector<account_name>& producer_names, const uint32_t version = 0);
-      transaction_trace       push_transaction( packed_transaction& trx, uint32_t skip_flag = skip_nothing  );
-      signed_block            produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty );
-      void                    produce_blocks( uint32_t n = 1 );
-      void                    produce_blocks_until_end_of_round();
-
-   private:
-      base_tester validating_node;
+         signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty ) override {
+            auto sb = tester::produce_block(skip_time, skip_flag);
+            validating_node.push_block(sb);
+            return sb;
+         }
+         
+      private:
+         tester validating_node;
    };
-   
+
 } } /// eosio::testing
 

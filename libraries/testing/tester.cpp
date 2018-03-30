@@ -82,6 +82,16 @@ namespace eosio { namespace testing {
       });
    }
 
+   bool base_tester::push_block(signed_block& b) { 
+      std::cout << b.block_num() << " " << b.digest() << "\n";
+      try {
+         control->push_block(b);
+      } catch(...) {
+         return false;
+      }
+      return true;
+   }
+
    signed_block base_tester::produce_block( fc::microseconds skip_time, uint32_t skip_flag) {
       auto head_time = control->head_block_time();
       auto next_time = head_time + skip_time;
@@ -91,7 +101,6 @@ namespace eosio { namespace testing {
 
       return control->generate_block( next_time, sch_pro, priv_key, skip_flag );
    }
-
    void base_tester::produce_blocks( uint32_t n ) {
       for( uint32_t i = 0; i < n; ++i )
          produce_block();
@@ -553,6 +562,15 @@ namespace eosio { namespace testing {
       set_code(config::system_account_name, eosio_bios_wast);
       set_abi(config::system_account_name, eosio_bios_abi);
    }
+
+   validating_tester::validating_tester(chain_controller::runtime_limits limits)
+      : tester(limits) {
+      push_genesis_block();
+      //produce_block();
+   }
+
+   validating_tester::validating_tester(chain_controller::controller_config config): tester(config) {};
+
 
    producer_schedule_type tester::set_producers(const vector<account_name>& producer_names, const uint32_t version) {
       // Create producer schedule

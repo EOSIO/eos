@@ -11,7 +11,7 @@ using namespace eosio::testing;
 BOOST_AUTO_TEST_SUITE(block_tests)
 
 BOOST_AUTO_TEST_CASE( schedule_test ) { try {
-  tester test;
+  validating_tester test;
 
   for( uint32_t i = 0; i < 200; ++i )
      test.produce_block();
