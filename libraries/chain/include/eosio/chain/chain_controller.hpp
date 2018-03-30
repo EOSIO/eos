@@ -429,7 +429,6 @@ namespace eosio { namespace chain {
 
          void _start_pending_block( bool skip_deferred = false );
          void _start_pending_cycle();
-         void _start_pending_shard();
          void _finalize_pending_cycle();
          void _apply_cycle_trace( const cycle_trace& trace );
          void _finalize_block( const block_trace& b );

@@ -442,19 +442,20 @@ void chain_controller::_apply_on_block_transaction()
  *  executes any pending transactions
  */
 void chain_controller::_start_pending_cycle() {
-   _pending_block->regions.back().cycles_summary.resize( _pending_block->regions[0].cycles_summary.size() + 1 );
+   // only add a new cycle if there are no cycles or if the previous cycle isn't empty
+   if (_pending_block->regions.back().cycles_summary.empty() ||
+       (!_pending_block->regions.back().cycles_summary.back().empty() &&
+        !_pending_block->regions.back().cycles_summary.back().back().empty()))
+      _pending_block->regions.back().cycles_summary.resize( _pending_block->regions[0].cycles_summary.size() + 1 );
+
+
    _pending_cycle_trace = cycle_trace();
-   _start_pending_shard();
-
-   /// TODO: check for deferred transactions and schedule them
-} // _start_pending_cycle
-
-void chain_controller::_start_pending_shard()
-{
-   auto& bcycle = _pending_block->regions.back().cycles_summary.back();
-   bcycle.resize( bcycle.size()+1 );
 
    _pending_cycle_trace->shard_traces.resize(_pending_cycle_trace->shard_traces.size() + 1 );
+
+   auto& bcycle = _pending_block->regions.back().cycles_summary.back();
+   if(bcycle.empty() || !bcycle.back().empty())
+      bcycle.resize( bcycle.size()+1 );
 }
 
 void chain_controller::_finalize_pending_cycle()
