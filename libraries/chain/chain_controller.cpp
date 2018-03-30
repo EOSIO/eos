@@ -583,12 +583,12 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
          FC_ASSERT( producer_obj.signing_key == block_signing_key.get_public_key(),
                     "producer key ${pk}, block key ${bk}", ("pk", producer_obj.signing_key)("bk", block_signing_key.get_public_key()) );
 
-       _pending_block->timestamp   = when;
-       _pending_block->producer    = producer_obj.owner;
-       _pending_block->previous    = head_block_id();
-       _pending_block->block_mroot = get_dynamic_global_properties().block_merkle_root.get_root();
-       _pending_block->transaction_mroot = transaction_metadata::calculate_transaction_merkle_root( _pending_transaction_metas );
-       _pending_block->action_mroot = _pending_block_trace->calculate_action_merkle_root();
+      _pending_block->timestamp   = when;
+      _pending_block->producer    = producer_obj.owner;
+      _pending_block->previous    = head_block_id();
+      _pending_block->block_mroot = get_dynamic_global_properties().block_merkle_root.get_root();
+      _pending_block->transaction_mroot = transaction_metadata::calculate_transaction_merkle_root( _pending_transaction_metas );
+      _pending_block->action_mroot = _pending_block_trace->calculate_action_merkle_root();
 
       if( is_start_of_round( _pending_block->block_num() ) ) {
          auto latest_producer_schedule = _calculate_producer_schedule();
