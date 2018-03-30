@@ -133,7 +133,7 @@ transaction_trace CallAction(tester& test, T ac, const vector<account_name>& sco
    action act(pl, ac);
    trx.actions.push_back(act);
 
-   test.set_tapos(trx);
+   test.set_transaction_headers(trx);
    auto sigs = trx.sign(test.get_private_key(scope[0], "active"), chain_id_type());
    trx.get_signature_keys(chain_id_type());
    auto res = test.push_transaction(trx);
@@ -143,7 +143,7 @@ transaction_trace CallAction(tester& test, T ac, const vector<account_name>& sco
 }
 
 template <typename T>
-transaction_trace CallFunction(tester& test, T ac, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}) {
+transaction_trace CallFunction(tester& test, T ac, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}, uint32_t extra_cf_cpu_usage = 0) {
 	{
 		signed_transaction trx;
 
@@ -156,7 +156,7 @@ transaction_trace CallFunction(tester& test, T ac, const vector<char>& data, con
       act.data = data;
       trx.actions.push_back(act);
 
-		test.set_tapos(trx);
+      test.set_transaction_headers(trx, test.DEFAULT_EXPIRATION_DELTA, extra_cf_cpu_usage );
 		auto sigs = trx.sign(test.get_private_key(scope[0], "active"), chain_id_type());
       trx.get_signature_keys(chain_id_type() );
 		auto res = test.push_transaction(trx);
@@ -289,7 +289,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
       std::copy(data.begin(), data.end(), std::back_inserter(dest));
       trx.actions.push_back(act);
 
-		test.set_tapos(trx);
+		test.set_transaction_headers(trx);
 		trx.sign(test.get_private_key(N(inita), "active"), chain_id_type());
 		auto res = test.push_transaction(trx);
 		BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
@@ -340,7 +340,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
       std::copy(dat.begin(), dat.end(), std::back_inserter(dest));
       trx.actions.push_back(act);
 
-		set_tapos(trx);
+      set_transaction_headers(trx);
 		trx.sign(get_private_key(N(acc3), "active"), chain_id_type());
 		trx.sign(get_private_key(N(acc4), "active"), chain_id_type());
 		auto res = push_transaction(trx);
@@ -398,7 +398,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       trx.context_free_actions.push_back(act);
       trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100)); // verify payload matches context free data
       trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(200));
-      set_tapos(trx);
+      set_transaction_headers(trx);
 
       // signing a transaction with only context_free_actions should not be allowed
       auto sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
@@ -417,7 +417,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       auto pl = vector<permission_level>{{N(testapi), config::active_name}};
       action act1(pl, da);
       trx.actions.push_back(act1);
-      set_tapos(trx);
+      set_transaction_headers(trx);
       // run normal passing case
       sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
       auto res = push_transaction(trx);
@@ -431,7 +431,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       trx.signatures.clear();
       trx.actions.clear();
       trx.actions.push_back(act2);
-      set_tapos(trx);
+      set_transaction_headers(trx);
       // run normal passing case
       sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
       BOOST_CHECK_EXCEPTION(push_transaction(trx), transaction_exception,
@@ -454,7 +454,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
          action cfa_act({}, cfa);
          trx.context_free_actions.emplace_back(cfa_act);
          trx.signatures.clear();
-         set_tapos(trx);
+         set_transaction_headers(trx);
          sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
          BOOST_CHECK_EXCEPTION(push_transaction(trx), transaction_exception,
               [](const fc::exception& e) {
@@ -466,7 +466,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       produce_block();
 
       // test send context free action
-      auto ttrace = CALL_TEST_FUNCTION( *this, "test_transaction", "send_cf_action", {} );
+      auto ttrace = CallFunction( *this, test_api_action<TEST_METHOD("test_transaction", "send_cf_action")>{}, {}, {N(testapi)}, 20000 );
       BOOST_CHECK_EQUAL(ttrace.action_traces.size(), 2);
       BOOST_CHECK_EQUAL(ttrace.action_traces[1].receiver == account_name("dummy"), true);
       BOOST_CHECK_EQUAL(ttrace.action_traces[1].act.account == account_name("dummy"), true);
@@ -480,7 +480,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       );
 
       CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_action", {} );
-      CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_cf_action", {} );
+      CallFunction( *this, test_api_action<TEST_METHOD("test_transaction", "read_inline_cf_action")>{}, {}, {N(testapi)}, 20000 );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -492,12 +492,12 @@ BOOST_FIXTURE_TEST_CASE(cfa_tx_signature, tester)  try {
    signed_transaction tx1;
    tx1.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100));
    tx1.context_free_actions.push_back(cfa);
-   set_tapos(tx1);
+   set_transaction_headers(tx1);
 
    signed_transaction tx2;
    tx2.context_free_data.emplace_back(fc::raw::pack<uint32_t>(200));
    tx2.context_free_actions.push_back(cfa);
-   set_tapos(tx2);
+   set_transaction_headers(tx2);
 
    const private_key_type& priv_key = get_private_key("dummy", "active");
    BOOST_TEST((std::string)tx1.sign(priv_key, chain_id_type()) != (std::string)tx2.sign(priv_key, chain_id_type()));
@@ -538,7 +538,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
       action act(pl, ac);
 
       trx.actions.push_back(act);
-		test.set_tapos(trx);
+      test.set_transaction_headers(trx);
 		auto sigs = trx.sign(test.get_private_key(N(testapi), "active"), chain_id_type());
       trx.get_signature_keys(chain_id_type() );
 		auto res = test.push_transaction(trx);
@@ -651,13 +651,13 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
    control->push_deferred_transactions( true );
 
    // test test_transaction_size
-   CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(56) );
+   CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(54) );
    control->push_deferred_transactions( true );
 
    // test test_read_transaction
    // this is a bit rough, but I couldn't figure out a better way to compare the hashes
    auto tx_trace = CALL_TEST_FUNCTION( *this, "test_transaction", "test_read_transaction", {} );
-   string sha_expect = "bdeb5b58dda272e4b23ee7d2a5f0ff034820c156364893b758892e06fa39e7fe";
+   string sha_expect = "96f7634b737511212dedb9c3eb42672882b066c7af3601a4b50beda56deb977e";
    BOOST_CHECK_EQUAL(tx_trace.action_traces.front().console == sha_expect, true);
    // test test_tapos_block_num
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_num", fc::raw::pack(control->head_block_num()) );
@@ -790,7 +790,7 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, tester) { try {
       act.data = data;
       trx.actions.push_back(act);
 
-		set_tapos(trx);
+      set_transaction_headers(trx);
 
 		auto sigs = trx.sign(get_private_key(config::system_account_name, "active"), chain_id_type());
       trx.get_signature_keys(chain_id_type() );

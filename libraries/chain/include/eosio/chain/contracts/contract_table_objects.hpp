@@ -94,7 +94,8 @@ namespace eosio { namespace chain { namespace contracts {
          table_id      t_id;
          uint64_t      primary_key;
          SecondaryKey  secondary_key;
-         account_name  payer;
+         account_name  payer = 0;
+         uint16_t      billed_overhead = 0;
       };
 
 
@@ -120,14 +121,6 @@ namespace eosio { namespace chain { namespace contracts {
          >
       > index_index;
    };
-
-   template<typename SecondaryKey>
-   inline
-   //typename std::enable_if<!_is_array<SecondaryKey>::value, size_t>::type
-   size_t
-   get_key_memory_usage() {
-      return sizeof(SecondaryKey);
-   }
 
    typedef secondary_index<uint64_t,index64_object_type>::index_object   index64_object;
    typedef secondary_index<uint64_t,index64_object_type>::index_index    index64_index;
