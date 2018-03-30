@@ -459,6 +459,21 @@ void chain_controller::_start_pending_shard()
 
 void chain_controller::_finalize_pending_cycle()
 {
+   // prune empty shard
+   if (!_pending_block->regions.back().cycles_summary.empty() &&
+       !_pending_block->regions.back().cycles_summary.back().empty() &&
+       _pending_block->regions.back().cycles_summary.back().back().empty()) {
+      _pending_block->regions.back().cycles_summary.back().resize( _pending_block->regions.back().cycles_summary.back().size() - 1 );
+      _pending_cycle_trace->shard_traces.resize(_pending_cycle_trace->shard_traces.size() - 1 );
+   }
+   // prune empty cycle
+   if (!_pending_block->regions.back().cycles_summary.empty() &&
+       _pending_block->regions.back().cycles_summary.back().empty()) {
+      _pending_block->regions.back().cycles_summary.resize( _pending_block->regions.back().cycles_summary.size() - 1 );
+      _pending_cycle_trace.reset();
+      return;
+   }
+
    for( int idx = 0; idx < _pending_cycle_trace->shard_traces.size(); idx++ ) {
       auto& trace = _pending_cycle_trace->shard_traces.at(idx);
       auto& shard = _pending_block->regions.back().cycles_summary.back().at(idx);
