@@ -442,23 +442,39 @@ void chain_controller::_apply_on_block_transaction()
  *  executes any pending transactions
  */
 void chain_controller::_start_pending_cycle() {
-   _pending_block->regions.back().cycles_summary.resize( _pending_block->regions[0].cycles_summary.size() + 1 );
+   // only add a new cycle if there are no cycles or if the previous cycle isn't empty
+   if (_pending_block->regions.back().cycles_summary.empty() ||
+       (!_pending_block->regions.back().cycles_summary.back().empty() &&
+        !_pending_block->regions.back().cycles_summary.back().back().empty()))
+      _pending_block->regions.back().cycles_summary.resize( _pending_block->regions[0].cycles_summary.size() + 1 );
+
+
    _pending_cycle_trace = cycle_trace();
-   _start_pending_shard();
-
-   /// TODO: check for deferred transactions and schedule them
-} // _start_pending_cycle
-
-void chain_controller::_start_pending_shard()
-{
-   auto& bcycle = _pending_block->regions.back().cycles_summary.back();
-   bcycle.resize( bcycle.size()+1 );
 
    _pending_cycle_trace->shard_traces.resize(_pending_cycle_trace->shard_traces.size() + 1 );
+
+   auto& bcycle = _pending_block->regions.back().cycles_summary.back();
+   if(bcycle.empty() || !bcycle.back().empty())
+      bcycle.resize( bcycle.size()+1 );
 }
 
 void chain_controller::_finalize_pending_cycle()
 {
+   // prune empty shard
+   if (!_pending_block->regions.back().cycles_summary.empty() &&
+       !_pending_block->regions.back().cycles_summary.back().empty() &&
+       _pending_block->regions.back().cycles_summary.back().back().empty()) {
+      _pending_block->regions.back().cycles_summary.back().resize( _pending_block->regions.back().cycles_summary.back().size() - 1 );
+      _pending_cycle_trace->shard_traces.resize(_pending_cycle_trace->shard_traces.size() - 1 );
+   }
+   // prune empty cycle
+   if (!_pending_block->regions.back().cycles_summary.empty() &&
+       _pending_block->regions.back().cycles_summary.back().empty()) {
+      _pending_block->regions.back().cycles_summary.resize( _pending_block->regions.back().cycles_summary.size() - 1 );
+      _pending_cycle_trace.reset();
+      return;
+   }
+
    for( int idx = 0; idx < _pending_cycle_trace->shard_traces.size(); idx++ ) {
       auto& trace = _pending_cycle_trace->shard_traces.at(idx);
       auto& shard = _pending_block->regions.back().cycles_summary.back().at(idx);
@@ -583,12 +599,12 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
          FC_ASSERT( producer_obj.signing_key == block_signing_key.get_public_key(),
                     "producer key ${pk}, block key ${bk}", ("pk", producer_obj.signing_key)("bk", block_signing_key.get_public_key()) );
 
-       _pending_block->timestamp   = when;
-       _pending_block->producer    = producer_obj.owner;
-       _pending_block->previous    = head_block_id();
-       _pending_block->block_mroot = get_dynamic_global_properties().block_merkle_root.get_root();
-       _pending_block->transaction_mroot = transaction_metadata::calculate_transaction_merkle_root( _pending_transaction_metas );
-       _pending_block->action_mroot = _pending_block_trace->calculate_action_merkle_root();
+      _pending_block->timestamp   = when;
+      _pending_block->producer    = producer_obj.owner;
+      _pending_block->previous    = head_block_id();
+      _pending_block->block_mroot = get_dynamic_global_properties().block_merkle_root.get_root();
+      _pending_block->transaction_mroot = transaction_metadata::calculate_transaction_merkle_root( _pending_transaction_metas );
+      _pending_block->action_mroot = _pending_block_trace->calculate_action_merkle_root();
 
       if( is_start_of_round( _pending_block->block_num() ) ) {
          auto latest_producer_schedule = _calculate_producer_schedule();
@@ -718,10 +734,12 @@ void chain_controller::__apply_block(const signed_block& next_block)
 
    next_block_trace.region_traces.reserve(next_block.regions.size());
 
-   for( const auto& r : next_block.regions ) {
+   for( uint32_t region_index = 0; region_index < next_block.regions.size(); ++region_index ) {
+      const auto& r = next_block.regions[region_index];
       region_trace r_trace;
       r_trace.cycle_traces.reserve(r.cycles_summary.size());
 
+      EOS_ASSERT(!r.cycles_summary.empty(), tx_empty_region,"region[${r_index}] has no cycles", ("r_index",region_index));
       for (uint32_t cycle_index = 0; cycle_index < r.cycles_summary.size(); cycle_index++) {
          const auto& cycle = r.cycles_summary.at(cycle_index);
          cycle_trace c_trace;
@@ -732,8 +750,11 @@ void chain_controller::__apply_block(const signed_block& next_block)
          set<shard_lock> read_locks;
          map<shard_lock, uint32_t> write_locks;
 
+         EOS_ASSERT(!cycle.empty(), tx_empty_cycle,"region[${r_index}] cycle[${c_index}] has no shards", ("r_index",region_index)("c_index",cycle_index));
          for (uint32_t shard_index = 0; shard_index < cycle.size(); shard_index++) {
             const auto& shard = cycle.at(shard_index);
+            EOS_ASSERT(!shard.empty(), tx_empty_shard,"region[${r_index}] cycle[${c_index}] shard[${s_index}] is empty",
+                       ("r_index",region_index)("c_index",cycle_index)("s_index",shard_index));
 
             // Validate that the shards scopes are correct and available
             validate_shard_locks(shard.read_locks,  "read");
@@ -793,7 +814,9 @@ void chain_controller::__apply_block(const signed_block& next_block)
                s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
                record_locks_for_data_access(s_trace.transaction_traces.back(), used_read_locks, used_write_locks);
 
-               FC_ASSERT(receipt.status == s_trace.transaction_traces.back().status);
+               EOS_ASSERT(receipt.status == s_trace.transaction_traces.back().status, tx_receipt_inconsistent_status,
+                          "Received status of transaction from block (${rstatus}) does not match the applied transaction's status (${astatus})",
+                          ("rstatus",receipt.status)("astatus",s_trace.transaction_traces.back().status));
 
                // validate_referenced_accounts(trx);
                // Check authorization, and allow irrelevant signatures.
