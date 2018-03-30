@@ -809,7 +809,9 @@ void chain_controller::__apply_block(const signed_block& next_block)
                s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
                record_locks_for_data_access(s_trace.transaction_traces.back(), used_read_locks, used_write_locks);
 
-               FC_ASSERT(receipt.status == s_trace.transaction_traces.back().status);
+               EOS_ASSERT(receipt.status == s_trace.transaction_traces.back().status, tx_receipt_inconsistent_status,
+                          "Received status of transaction from block (${rstatus}) does not match the applied transaction's status (${astatus})",
+                          ("rstatus",receipt.status)("astatus",s_trace.transaction_traces.back().status));
 
                // validate_referenced_accounts(trx);
                // Check authorization, and allow irrelevant signatures.

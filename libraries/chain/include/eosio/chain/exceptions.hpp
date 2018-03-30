@@ -60,6 +60,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( invalid_ref_block_exception,       eosio::chain::transaction_exception, 3030024, "Invalid Reference Block" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_apply_exception,                eosio::chain::transaction_exception, 3030025, "Transaction Apply Exception" )
    FC_DECLARE_DERIVED_EXCEPTION( wasm_serialization_error,          eosio::chain::transaction_exception, 3030026, "Serialization Error Processing WASM" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_receipt_inconsistent_status,    eosio::chain::transaction_exception, 3030030, "Transaction receipt applied status does not match received status" )
 
    FC_DECLARE_DERIVED_EXCEPTION( account_name_exists_exception,     eosio::chain::action_validate_exception, 3040001, "account name already exists" )
    FC_DECLARE_DERIVED_EXCEPTION( invalid_action_args_exception,       eosio::chain::action_validate_exception, 3040002, "Invalid Action Arguments" )
