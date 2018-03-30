@@ -281,7 +281,8 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
    // enforce that the header is accurate as a commitment to net_usage
    uint32_t cfa_sig_net_usage = (uint32_t)(packed_trx.context_free_data.size() + fc::raw::pack_size(packed_trx.signatures));
    uint32_t net_usage_commitment = mtrx.trx().net_usage_words.value * 8U;
-   uint32_t net_usage = cfa_sig_net_usage + (uint32_t)packed_trx.data.size();
+   uint32_t packed_size = (uint32_t)packed_trx.data.size();
+   uint32_t net_usage = cfa_sig_net_usage + packed_size;
    EOS_ASSERT(net_usage <= net_usage_commitment,
                 tx_resource_exhausted,
                 "Packed Transaction and associated data does not fit into the space committed to by the transaction's header! [usage=${usage},commitment=${commit}]",
