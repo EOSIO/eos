@@ -6,6 +6,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/multiprecision/cpp_bin_float.hpp>
+#include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <eosio/chain/wasm_eosio_validation.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
@@ -20,30 +21,28 @@
 #include <boost/bind.hpp>
 #include <fstream>
 
-#include <mutex>
-#include <thread>
-#include <condition_variable>
-
 namespace eosio { namespace chain {
    using namespace contracts;
    using namespace webassembly;
    using namespace webassembly::common;
 
-   wasm_interface::wasm_interface(vm_type vm)
-      :my( new wasm_interface_impl(vm) ) {
-      }
+   wasm_interface::wasm_interface(vm_type vm) : my( new wasm_interface_impl(vm) ) {}
 
    wasm_interface::~wasm_interface() {}
 
    void wasm_interface::validate(const bytes& code) {
       Module module;
-      Serialization::MemoryInputStream stream((U8*)code.data(), code.size());
-      WASM::serialize(stream, module);
+      try {
+         Serialization::MemoryInputStream stream((U8*)code.data(), code.size());
+         WASM::serialize(stream, module);
+      } catch(Serialization::FatalSerializationException& e) {
+         EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+      }
 
       wasm_validations::wasm_binary_validation validator(module);
       validator.validate();
 
-      root_resolver resolver;
+      root_resolver resolver(true);
       LinkResult link_result = linkModule(module, resolver);
 
       //there are a couple opportunties for improvement here--
@@ -99,6 +98,16 @@ class privileged_api : public context_aware_api {
       }
 
       /**
+       * This should return true if a feature is active and irreversible, false if not.
+       *
+       * Irreversiblity by fork-database is not consensus safe, therefore, this defines
+       * irreversiblity only by block headers not by BFT short-cut.
+       */
+      int is_feature_active( int64_t feature_name ) {
+         return false;
+      }
+
+      /**
        *  This should schedule the feature to be activated once the
        *  block that includes this call is irreversible. It should
        *  fail if the feature is already pending.
@@ -110,44 +119,23 @@ class privileged_api : public context_aware_api {
       }
 
       /**
-       * This should return true if a feature is active and irreversible, false if not.
+       * update the resource limits associated with an account.  Note these new values will not take effect until the
+       * next resource "tick" which is currently defined as a cycle boundary inside a block.
        *
-       * Irreversiblity by fork-database is not consensus safe, therefore, this defines
-       * irreversiblity only by block headers not by BFT short-cut.
+       * @param account - the account whose limits are being modified
+       * @param ram_bytes - the limit for ram bytes
+       * @param net_weight - the weight for determining share of network capacity
+       * @param cpu_weight - the weight for determining share of compute capacity
        */
-      int is_feature_active( int64_t feature_name ) {
-         return false;
+      void set_resource_limits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
+         EOS_ASSERT(ram_bytes >= -1 && ram_bytes <= INT64_MAX, wasm_execution_error, "invalid value for ram resource limit expected [-1,INT64_MAX]");
+         EOS_ASSERT(net_weight >= -1 && net_weight <= INT64_MAX, wasm_execution_error, "invalid value for net resource weight expected [-1,INT64_MAX]");
+         EOS_ASSERT(cpu_weight >= -1 && cpu_weight <= INT64_MAX, wasm_execution_error, "invalid value for cpu resource weight expected [-1,INT64_MAX]");
+         context.mutable_controller.get_mutable_resource_limits_manager().set_account_limits(account, ram_bytes, net_weight, cpu_weight);
       }
 
-      void set_resource_limits( account_name account,
-                                uint64_t ram_bytes, int64_t net_weight, int64_t cpu_weight ) {
-         auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
-         FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free too much space" );
-
-         auto& gdp = context.controller.get_dynamic_global_properties();
-         context.mutable_db.modify( gdp, [&]( auto& p ) {
-           p.total_net_weight -= buo.net_weight;
-           p.total_net_weight += net_weight;
-           p.total_cpu_weight -= buo.cpu_weight;
-           p.total_cpu_weight += cpu_weight;
-           p.total_db_reserved -= buo.db_reserved_capacity;
-           p.total_db_reserved += ram_bytes;
-         });
-
-         context.mutable_db.modify( buo, [&]( auto& o ){
-            o.net_weight = net_weight;
-            o.cpu_weight = cpu_weight;
-            o.db_reserved_capacity = ram_bytes;
-         });
-      }
-
-
-      void get_resource_limits( account_name account,
-                                uint64_t& ram_bytes, uint64_t& net_weight, uint64_t cpu_weight ) {
-         auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
-         ram_bytes = buo.db_reserved_capacity;
-         net_weight = buo.net_weight;
-         cpu_weight = buo.cpu_weight;
+      void get_resource_limits( account_name account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) {
+         context.controller.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
       }
 
       void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
@@ -157,6 +145,27 @@ class privileged_api : public context_aware_api {
          context.mutable_db.modify( context.controller.get_global_properties(),
             [&]( auto& gprops ) {
                  gprops.new_active_producers = psch;
+         });
+      }
+
+      uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t datalen) {
+         auto& gpo = context.controller.get_global_properties();
+         auto size = fc::raw::pack_size( gpo.configuration );
+         if ( size <= datalen ) {
+            datastream<char*> ds( packed_blockchain_parameters, datalen );
+            fc::raw::pack(ds, gpo.configuration);
+         }
+         return size;
+      }
+
+
+      void set_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t datalen) {
+         datastream<const char*> ds( packed_blockchain_parameters, datalen );
+         chain::chain_config cfg;
+         fc::raw::unpack(ds, cfg);
+         context.mutable_db.modify( context.controller.get_global_properties(),
+            [&]( auto& gprops ) {
+                 gprops.configuration = cfg;
          });
       }
 
@@ -170,6 +179,7 @@ class privileged_api : public context_aware_api {
             ma.privileged = is_priv;
          });
       }
+
 };
 
 class checktime_api : public context_aware_api {
@@ -187,51 +197,51 @@ class softfloat_api : public context_aware_api {
       // TODO add traps on truncations for special cases (NaN or outside the range which rounds to an integer)
       using context_aware_api::context_aware_api;
       // float binops
-      float _eosio_f32_add( float a, float b ) { 
+      float _eosio_f32_add( float a, float b ) {
          float32_t ret = f32_add( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
-      float _eosio_f32_sub( float a, float b ) { 
+      float _eosio_f32_sub( float a, float b ) {
          float32_t ret = f32_sub( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
-      float _eosio_f32_div( float a, float b ) { 
+      float _eosio_f32_div( float a, float b ) {
          float32_t ret = f32_div( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
-      float _eosio_f32_mul( float a, float b ) { 
+      float _eosio_f32_mul( float a, float b ) {
          float32_t ret = f32_mul( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
-      float _eosio_f32_min( float af, float bf ) { 
+      float _eosio_f32_min( float af, float bf ) {
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
          if (is_nan(a)) {
             return af;
-         } 
+         }
          if (is_nan(b)) {
             return bf;
          }
          if ( sign_bit(a) != sign_bit(b) ) {
             return sign_bit(a) ? af : bf;
          }
-         return f32_lt(a,b) ? af : bf; 
+         return f32_lt(a,b) ? af : bf;
       }
-      float _eosio_f32_max( float af, float bf ) { 
+      float _eosio_f32_max( float af, float bf ) {
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
          if (is_nan(a)) {
             return af;
-         } 
+         }
          if (is_nan(b)) {
             return bf;
          }
          if ( sign_bit(a) != sign_bit(b) ) {
             return sign_bit(a) ? bf : af;
          }
-         return f32_lt( a, b ) ? bf : af; 
+         return f32_lt( a, b ) ? bf : af;
       }
-      float _eosio_f32_copysign( float af, float bf ) { 
+      float _eosio_f32_copysign( float af, float bf ) {
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
          uint32_t sign_of_a = a.v >> 31;
@@ -241,21 +251,21 @@ class softfloat_api : public context_aware_api {
          return from_softfloat32(a);
       }
       // float unops
-      float _eosio_f32_abs( float af ) { 
+      float _eosio_f32_abs( float af ) {
          float32_t a = to_softfloat32(af);
-         a.v &= ~(1 << 31);  
-         return from_softfloat32(a); 
+         a.v &= ~(1 << 31);
+         return from_softfloat32(a);
       }
-      float _eosio_f32_neg( float af ) { 
+      float _eosio_f32_neg( float af ) {
          float32_t a = to_softfloat32(af);
          uint32_t sign = a.v >> 31;
-         a.v &= ~(1 << 31);  
+         a.v &= ~(1 << 31);
          a.v |= (!sign << 31);
-         return from_softfloat32(a); 
+         return from_softfloat32(a);
       }
-      float _eosio_f32_sqrt( float a ) { 
-         float32_t ret = f32_sqrt( to_softfloat32(a) ); 
-         return from_softfloat32(ret); 
+      float _eosio_f32_sqrt( float a ) {
+         float32_t ret = f32_sqrt( to_softfloat32(a) );
+         return from_softfloat32(ret);
       }
       // ceil, floor, trunc and nearest are lifted from libc
       float _eosio_f32_ceil( float af ) {
@@ -263,11 +273,11 @@ class softfloat_api : public context_aware_api {
          int e = (int)(a.v >> 23 & 0xFF) - 0X7F;
          uint32_t m;
          if (e >= 23)
-            return af; 
+            return af;
          if (e >= 0) {
             m = 0x007FFFFF >> e;
             if ((a.v & m) == 0)
-               return af; 
+               return af;
             if (a.v >> 31 == 0)
                a.v += m;
             a.v &= ~m;
@@ -278,18 +288,18 @@ class softfloat_api : public context_aware_api {
                a.v = 0x3F800000; // return 1.0f
          }
 
-         return from_softfloat32(a); 
+         return from_softfloat32(a);
       }
       float _eosio_f32_floor( float af ) {
          float32_t a = to_softfloat32(af);
          int e = (int)(a.v >> 23 & 0xFF) - 0X7F;
          uint32_t m;
          if (e >= 23)
-            return af; 
+            return af;
          if (e >= 0) {
             m = 0x007FFFFF >> e;
             if ((a.v & m) == 0)
-               return af; 
+               return af;
             if (a.v >> 31)
                a.v += m;
             a.v &= ~m;
@@ -299,21 +309,21 @@ class softfloat_api : public context_aware_api {
             else if (a.v << 1)
                a.v = 0xBF800000; // return -1.0f
          }
-         return from_softfloat32(a); 
+         return from_softfloat32(a);
       }
       float _eosio_f32_trunc( float af ) {
          float32_t a = to_softfloat32(af);
          int e = (int)(a.v >> 23 & 0xff) - 0x7f + 9;
          uint32_t m;
          if (e >= 23 + 9)
-            return af; 
+            return af;
          if (e < 9)
             e = 1;
          m = -1U >> e;
          if ((a.v & m) == 0)
-            return af; 
+            return af;
          a.v &= ~m;
-         return from_softfloat32(a); 
+         return from_softfloat32(a);
       }
       float _eosio_f32_nearest( float af ) {
          float32_t a = to_softfloat32(af);
@@ -321,14 +331,14 @@ class softfloat_api : public context_aware_api {
          int s = a.v>>31;
          float32_t y;
          if (e >= 0x7f+23)
-            return af; 
+            return af;
          if (s)
             y = f32_add( f32_sub( a, float32_t{inv_float_eps} ), float32_t{inv_float_eps} );
          else
             y = f32_sub( f32_add( a, float32_t{inv_float_eps} ), float32_t{inv_float_eps} );
          if (f32_eq( y, {0} ) )
-            return s ? -0.0f : 0.0f; 
-         return from_softfloat32(y); 
+            return s ? -0.0f : 0.0f;
+         return from_softfloat32(y);
       }
 
       // float relops
@@ -336,14 +346,14 @@ class softfloat_api : public context_aware_api {
       bool _eosio_f32_ne( float a, float b ) { return !f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
       bool _eosio_f32_lt( float a, float b ) { return f32_lt( to_softfloat32(a), to_softfloat32(b) ); }
       bool _eosio_f32_le( float a, float b ) { return f32_le( to_softfloat32(a), to_softfloat32(b) ); }
-      bool _eosio_f32_gt( float af, float bf ) {  
+      bool _eosio_f32_gt( float af, float bf ) {
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
          if (is_nan(a))
             return false;
          if (is_nan(b))
             return false;
-         return !f32_le( a, b ); 
+         return !f32_le( a, b );
       }
       bool _eosio_f32_ge( float af, float bf ) {
          float32_t a = to_softfloat32(af);
@@ -352,27 +362,27 @@ class softfloat_api : public context_aware_api {
             return false;
          if (is_nan(b))
             return false;
-         return !f32_lt( a, b ); 
+         return !f32_lt( a, b );
       }
 
       // double binops
-      double _eosio_f64_add( double a, double b ) { 
-         float64_t ret = f64_add( to_softfloat64(a), to_softfloat64(b) ); 
-         return from_softfloat64(ret); 
+      double _eosio_f64_add( double a, double b ) {
+         float64_t ret = f64_add( to_softfloat64(a), to_softfloat64(b) );
+         return from_softfloat64(ret);
       }
-      double _eosio_f64_sub( double a, double b ) { 
-         float64_t ret = f64_sub( to_softfloat64(a), to_softfloat64(b) ); 
-         return from_softfloat64(ret); 
+      double _eosio_f64_sub( double a, double b ) {
+         float64_t ret = f64_sub( to_softfloat64(a), to_softfloat64(b) );
+         return from_softfloat64(ret);
       }
-      double _eosio_f64_div( double a, double b ) { 
-         float64_t ret = f64_div( to_softfloat64(a), to_softfloat64(b) ); 
-         return from_softfloat64(ret); 
+      double _eosio_f64_div( double a, double b ) {
+         float64_t ret = f64_div( to_softfloat64(a), to_softfloat64(b) );
+         return from_softfloat64(ret);
       }
-      double _eosio_f64_mul( double a, double b ) { 
-         float64_t ret = f64_mul( to_softfloat64(a), to_softfloat64(b) ); 
-         return from_softfloat64(ret); 
+      double _eosio_f64_mul( double a, double b ) {
+         float64_t ret = f64_mul( to_softfloat64(a), to_softfloat64(b) );
+         return from_softfloat64(ret);
       }
-      double _eosio_f64_min( double af, double bf ) { 
+      double _eosio_f64_min( double af, double bf ) {
          float64_t a = to_softfloat64(af);
          float64_t b = to_softfloat64(bf);
          if (is_nan(a))
@@ -382,8 +392,8 @@ class softfloat_api : public context_aware_api {
          if (sign_bit(a) != sign_bit(b))
             return sign_bit(a) ? af : bf;
          return f64_lt( a, b ) ? af : bf;
-      } 
-      double _eosio_f64_max( double af, double bf ) { 
+      }
+      double _eosio_f64_max( double af, double bf ) {
          float64_t a = to_softfloat64(af);
          float64_t b = to_softfloat64(bf);
          if (is_nan(a))
@@ -401,29 +411,29 @@ class softfloat_api : public context_aware_api {
          uint64_t sign_of_b = b.v >> 63;
          a.v &= ~(uint64_t(1) << 63);             // clear the sign bit
          a.v = a.v | (sign_of_b << 63); // add the sign of b
-         return from_softfloat64(a); 
+         return from_softfloat64(a);
       }
 
       // double unops
-      double _eosio_f64_abs( double af ) { 
+      double _eosio_f64_abs( double af ) {
          float64_t a = to_softfloat64(af);
-         a.v &= ~(uint64_t(1) << 63);  
-         return from_softfloat64(a); 
+         a.v &= ~(uint64_t(1) << 63);
+         return from_softfloat64(a);
       }
-      double _eosio_f64_neg( double af ) { 
+      double _eosio_f64_neg( double af ) {
          float64_t a = to_softfloat64(af);
          uint64_t sign = a.v >> 63;
-         a.v &= ~(uint64_t(1) << 63);  
+         a.v &= ~(uint64_t(1) << 63);
          a.v |= (uint64_t(!sign) << 63);
-         return from_softfloat64(a); 
+         return from_softfloat64(a);
       }
-      double _eosio_f64_sqrt( double a ) { 
+      double _eosio_f64_sqrt( double a ) {
          float64_t ret = f64_sqrt( to_softfloat64(a) );
-         return from_softfloat64(ret); 
+         return from_softfloat64(ret);
       }
       // ceil, floor, trunc and nearest are lifted from libc
       double _eosio_f64_ceil( double af ) {
-         float64_t a = to_softfloat64( af ); 
+         float64_t a = to_softfloat64( af );
          float64_t ret;
          int e = a.v >> 52 & 0x7ff;
          float64_t y;
@@ -440,13 +450,13 @@ class softfloat_api : public context_aware_api {
          }
          if (f64_lt( y, to_softfloat64(0) )) {
             ret = f64_add( f64_add( a, y ), to_softfloat64(1) ); // 0xBE99999A3F800000 } ); // plus 1
-            return from_softfloat64(ret); 
+            return from_softfloat64(ret);
          }
          ret = f64_add( a, y );
-         return from_softfloat64(ret); 
+         return from_softfloat64(ret);
       }
       double _eosio_f64_floor( double af ) {
-         float64_t a = to_softfloat64( af ); 
+         float64_t a = to_softfloat64( af );
          float64_t ret;
          int e = a.v >> 52 & 0x7FF;
          float64_t y;
@@ -466,13 +476,13 @@ class softfloat_api : public context_aware_api {
          }
          if ( !f64_le( y, float64_t{0} ) ) {
             ret = f64_sub( f64_add(a,y), to_softfloat64(1.0));
-            return from_softfloat64(ret); 
+            return from_softfloat64(ret);
          }
          ret = f64_add( a, y );
-         return from_softfloat64(ret); 
+         return from_softfloat64(ret);
       }
       double _eosio_f64_trunc( double af ) {
-         float64_t a = to_softfloat64( af ); 
+         float64_t a = to_softfloat64( af );
          int e = (int)(a.v >> 52 & 0x7ff) - 0x3ff + 12;
          uint64_t m;
          if (e >= 52 + 12)
@@ -483,11 +493,11 @@ class softfloat_api : public context_aware_api {
          if ((a.v & m) == 0)
             return af;
          a.v &= ~m;
-         return from_softfloat64(a); 
+         return from_softfloat64(a);
       }
 
       double _eosio_f64_nearest( double af ) {
-         float64_t a = to_softfloat64( af ); 
+         float64_t a = to_softfloat64( af );
          int e = (a.v >> 52 & 0x7FF);
          int s = a.v >> 63;
          float64_t y;
@@ -499,7 +509,7 @@ class softfloat_api : public context_aware_api {
             y = f64_sub( f64_add( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} );
          if ( f64_eq( y, float64_t{0} ) )
             return s ? -0.0 : 0.0;
-         return from_softfloat64(y); 
+         return from_softfloat64(y);
       }
 
       // double relops
@@ -507,14 +517,14 @@ class softfloat_api : public context_aware_api {
       bool _eosio_f64_ne( double a, double b ) { return !f64_eq( to_softfloat64(a), to_softfloat64(b) ); }
       bool _eosio_f64_lt( double a, double b ) { return f64_lt( to_softfloat64(a), to_softfloat64(b) ); }
       bool _eosio_f64_le( double a, double b ) { return f64_le( to_softfloat64(a), to_softfloat64(b) ); }
-      bool _eosio_f64_gt( double af, double bf ) {  
+      bool _eosio_f64_gt( double af, double bf ) {
          float64_t a = to_softfloat64(af);
          float64_t b = to_softfloat64(bf);
          if (is_nan(a))
             return false;
          if (is_nan(b))
             return false;
-         return !f64_le( a, b ); 
+         return !f64_le( a, b );
       }
       bool _eosio_f64_ge( double af, double bf ) {
          float64_t a = to_softfloat64(af);
@@ -523,104 +533,104 @@ class softfloat_api : public context_aware_api {
             return false;
          if (is_nan(b))
             return false;
-         return !f64_lt( a, b ); 
+         return !f64_lt( a, b );
       }
 
       // float and double conversions
-      double _eosio_f32_promote( float a ) { 
-         return from_softfloat64(f32_to_f64( to_softfloat32(a)) ); 
+      double _eosio_f32_promote( float a ) {
+         return from_softfloat64(f32_to_f64( to_softfloat32(a)) );
       }
-      float _eosio_f64_demote( double a ) { 
-         return from_softfloat32(f64_to_f32( to_softfloat64(a)) ); 
+      float _eosio_f64_demote( double a ) {
+         return from_softfloat32(f64_to_f32( to_softfloat64(a)) );
       }
-      int32_t _eosio_f32_trunc_i32s( float af ) { 
+      int32_t _eosio_f32_trunc_i32s( float af ) {
          float32_t a = to_softfloat32(af);
          if (a.v == 0x4F000000 || a.v == 0xCF000001 || a.v == 0x7F800000 || a.v == 0xFF800000)
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow");
          if (is_nan(a))
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
-         return f32_to_i32( to_softfloat32(_eosio_f32_trunc( af )), 0, false ); 
+         return f32_to_i32( to_softfloat32(_eosio_f32_trunc( af )), 0, false );
       }
-      int32_t _eosio_f64_trunc_i32s( double af ) { 
+      int32_t _eosio_f64_trunc_i32s( double af ) {
          float64_t a = to_softfloat64(af);
          if (a.v == 0x41E0000000000000 || a.v == 0xC1E0000000200000 || a.v == 0x7FF0000000000000 || a.v == 0xFFF0000000000000)
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i32 overflow");
          if (is_nan(a))
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i32 unrepresentable");
-         return f64_to_i32( to_softfloat64(_eosio_f64_trunc( af )), 0, false ); 
+         return f64_to_i32( to_softfloat64(_eosio_f64_trunc( af )), 0, false );
       }
-      uint32_t _eosio_f32_trunc_i32u( float af ) { 
+      uint32_t _eosio_f32_trunc_i32u( float af ) {
          float32_t a = to_softfloat32(af);
          if (a.v == 0x4F000000 || a.v == 0xCF000001 || a.v == 0x7F800000 || a.v == 0xFF800000)
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow");
          if (is_nan(a))
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
-         return f32_to_ui32( to_softfloat32(_eosio_f32_trunc( af )), 0, false ); 
+         return f32_to_ui32( to_softfloat32(_eosio_f32_trunc( af )), 0, false );
       }
-      uint32_t _eosio_f64_trunc_i32u( double af ) { 
+      uint32_t _eosio_f64_trunc_i32u( double af ) {
          float64_t a = to_softfloat64(af);
          if (a.v == 0x41E0000000000000 || a.v == 0xC1E0000000200000 || a.v == 0x7FF0000000000000 || a.v == 0xFFF0000000000000)
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i32 overflow");
          if (is_nan(a))
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i32 unrepresentable");
-         return f64_to_ui32( to_softfloat64(_eosio_f64_trunc( af )), 0, false ); 
+         return f64_to_ui32( to_softfloat64(_eosio_f64_trunc( af )), 0, false );
       }
-      int64_t _eosio_f32_trunc_i64s( float af ) { 
+      int64_t _eosio_f32_trunc_i64s( float af ) {
          float32_t a = to_softfloat32(af);
          if (a.v ==  0x5F000000 || a.v ==  0xDF000001|| a.v == 0x7F800000 || a.v == 0xFF800000)
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow");
          if (is_nan(a))
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
-         return f32_to_i64( to_softfloat32(_eosio_f32_trunc( af )), 0, false ); 
+         return f32_to_i64( to_softfloat32(_eosio_f32_trunc( af )), 0, false );
       }
-      int64_t _eosio_f64_trunc_i64s( double af ) { 
+      int64_t _eosio_f64_trunc_i64s( double af ) {
          float64_t a = to_softfloat64(af);
          if (a.v == 0x43E0000000000000 || a.v ==  0xC3E0000020000000 || a.v == 0x7FF0000000000000 || a.v == 0xFFF0000000000000)
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow");
          if (is_nan(a))
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
- 
-         return f64_to_i64( to_softfloat64(_eosio_f64_trunc( af )), 0, false ); 
+
+         return f64_to_i64( to_softfloat64(_eosio_f64_trunc( af )), 0, false );
       }
-      uint64_t _eosio_f32_trunc_i64u( float af ) { 
+      uint64_t _eosio_f32_trunc_i64u( float af ) {
          float32_t a = to_softfloat32(af);
          if (a.v ==  0x5F000000 || a.v ==  0xDF000001|| a.v == 0x7F800000 || a.v == 0xFF800000)
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow");
          if (is_nan(a))
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
-         return f32_to_ui64( to_softfloat32(_eosio_f32_trunc( af )), 0, false ); 
+         return f32_to_ui64( to_softfloat32(_eosio_f32_trunc( af )), 0, false );
       }
-      uint64_t _eosio_f64_trunc_i64u( double af ) { 
+      uint64_t _eosio_f64_trunc_i64u( double af ) {
          float64_t a = to_softfloat64(af);
          if (a.v == 0x43E0000000000000 || a.v ==  0xC3E0000020000000 || a.v == 0x7FF0000000000000 || a.v == 0xFFF0000000000000)
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow");
          if (is_nan(a))
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 unrepresentable");
-         return f64_to_ui64( to_softfloat64(_eosio_f64_trunc( af )), 0, false ); 
+         return f64_to_ui64( to_softfloat64(_eosio_f64_trunc( af )), 0, false );
       }
-      float _eosio_i32_to_f32( int32_t a )  { 
-         return from_softfloat32(i32_to_f32( a )); 
+      float _eosio_i32_to_f32( int32_t a )  {
+         return from_softfloat32(i32_to_f32( a ));
       }
-      float _eosio_i64_to_f32( int64_t a ) { 
-         return from_softfloat32(i64_to_f32( a )); 
+      float _eosio_i64_to_f32( int64_t a ) {
+         return from_softfloat32(i64_to_f32( a ));
       }
-      float _eosio_ui32_to_f32( uint32_t a ) { 
-         return from_softfloat32(ui32_to_f32( a )); 
+      float _eosio_ui32_to_f32( uint32_t a ) {
+         return from_softfloat32(ui32_to_f32( a ));
       }
-      float _eosio_ui64_to_f32( uint64_t a ) { 
-         return from_softfloat32(ui64_to_f32( a )); 
+      float _eosio_ui64_to_f32( uint64_t a ) {
+         return from_softfloat32(ui64_to_f32( a ));
       }
-      double _eosio_i32_to_f64( int32_t a ) { 
-         return from_softfloat64(i32_to_f64( a )); 
+      double _eosio_i32_to_f64( int32_t a ) {
+         return from_softfloat64(i32_to_f64( a ));
       }
-      double _eosio_i64_to_f64( int64_t a ) { 
-         return from_softfloat64(i64_to_f64( a )); 
+      double _eosio_i64_to_f64( int64_t a ) {
+         return from_softfloat64(i64_to_f64( a ));
       }
-      double _eosio_ui32_to_f64( uint32_t a ) { 
-         return from_softfloat64(ui32_to_f64( a )); 
+      double _eosio_ui32_to_f64( uint32_t a ) {
+         return from_softfloat64(ui32_to_f64( a ));
       }
       double _eosio_ui64_to_f64( uint64_t a ) {
-         return from_softfloat64(ui64_to_f64( a )); 
+         return from_softfloat64(ui64_to_f64( a ));
       }
 
 
@@ -637,7 +647,7 @@ class softfloat_api : public context_aware_api {
       inline double from_softfloat64( float64_t d ) {
          return *reinterpret_cast<double*>(&d);
       }
-      static constexpr uint32_t inv_float_eps = 0x4B000000; 
+      static constexpr uint32_t inv_float_eps = 0x4B000000;
       static constexpr uint64_t inv_double_eps = 0x4330000000000000;
 
       inline bool sign_bit( float32_t f ) { return f.v >> 31; }
@@ -789,10 +799,6 @@ class action_api : public context_aware_api {
 
       int action_data_size() {
          return context.act.data.size();
-      }
-
-      const name& current_receiver() {
-         return context.receiver;
       }
 
       fc::time_point_sec publication_time() {
@@ -1019,18 +1025,33 @@ class transaction_api : public context_aware_api {
          context.execute_context_free_inline(std::move(act));
       }
 
-      void send_deferred( uint32_t sender_id, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
+      void send_deferred( const unsigned __int128& val, account_name payer, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
+         account_name actual_payer = payer;
+         if (actual_payer != account_name(0)) {
+            const auto* paying_account = context.db.find<account_object, by_name>(payer);
+            EOS_ASSERT(paying_account, tx_unknown_argument, "The account for the payer: ${a}, does not exist!", ("a", payer));
+         } else {
+            actual_payer = context.receiver;
+         }
+
          try {
-            // TODO: use global properties object for dynamic configuration of this default_max_gen_trx_size
-            FC_ASSERT(data_len < config::default_max_gen_trx_size, "generated transaction too big");
+            fc::uint128_t sender_id(val>>64, uint64_t(val) );
+            const auto& gpo = context.controller.get_global_properties();
+            FC_ASSERT(data_len < gpo.configuration.max_generated_transaction_size, "generated transaction too big");
 
             deferred_transaction dtrx;
             fc::raw::unpack<transaction>(data, data_len, dtrx);
             dtrx.sender = context.receiver;
-            dtrx.sender_id = sender_id;
+            dtrx.sender_id = (unsigned __int128)sender_id;
             dtrx.execute_after = execute_after;
+            dtrx.payer = actual_payer;
             context.execute_deferred(std::move(dtrx));
          } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
+      }
+
+      void cancel_deferred( const unsigned __int128& val ) {
+         fc::uint128_t sender_id(val>>64, uint64_t(val) );
+         context.cancel_deferred( (unsigned __int128)sender_id );
       }
 };
 
@@ -1176,58 +1197,58 @@ class compiler_builtins : public context_aware_api {
          lhs %= rhs;
          ret = lhs;
       }
-      
-      void __addtf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+
+      void __addtf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ lb, hb }};
-         ret = f128_add( a, b ); 
+         ret = f128_add( a, b );
       }
-      void __subtf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+      void __subtf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ lb, hb }};
-         ret = f128_sub( a, b ); 
+         ret = f128_sub( a, b );
       }
-      void __multf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+      void __multf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ lb, hb }};
-         ret = f128_mul( a, b ); 
+         ret = f128_mul( a, b );
       }
-      void __divtf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+      void __divtf3( float128_t& ret, uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ lb, hb }};
-         ret = f128_div( a, b ); 
+         ret = f128_div( a, b );
       }
-      int __eqtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+      int __eqtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ la, ha }};
-         return f128_eq( a, b ); 
+         return f128_eq( a, b );
       }
-      int __netf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+      int __netf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ la, ha }};
-         return !f128_eq( a, b ); 
+         return !f128_eq( a, b );
       }
-      int __getf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+      int __getf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ la, ha }};
-         return !f128_lt( a, b ); 
+         return !f128_lt( a, b );
       }
-      int __gttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+      int __gttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ la, ha }};
-         return !f128_lt( a, b ) && !f128_eq( a, b ); 
+         return !f128_lt( a, b ) && !f128_eq( a, b );
       }
-      int __letf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+      int __letf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ la, ha }};
-         return f128_le( a, b ); 
+         return f128_le( a, b );
       }
-      int __lttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+      int __lttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ la, ha }};
-         return f128_lt( a, b ); 
+         return f128_lt( a, b );
       }
-      int __cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+      int __cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ la, ha }};
          if ( f128_lt( a, b ) )
@@ -1236,7 +1257,7 @@ class compiler_builtins : public context_aware_api {
             return 0;
          return 1;
       }
-      int __unordtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) { 
+      int __unordtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ la, ha }};
          if ( f128_isSignalingNaN( a ) || f128_isSignalingNaN( b ) )
@@ -1245,7 +1266,7 @@ class compiler_builtins : public context_aware_api {
       }
       double __floatsidf( int32_t i ) {
          edump((i)( "warning returning float64") );
-         float64_t ret = i32_to_f64(i); 
+         float64_t ret = i32_to_f64(i);
          return *reinterpret_cast<double*>(&ret);
       }
       void __floatsitf( float128_t& ret, int32_t i ) {
@@ -1254,38 +1275,38 @@ class compiler_builtins : public context_aware_api {
       void __floatunsitf( float128_t& ret, uint32_t i ) {
          ret = ui32_to_f128(i); /// TODO: should be 128
       }
-      void __extendsftf2( float128_t& ret, uint32_t f ) { 
+      void __extendsftf2( float128_t& ret, uint32_t f ) {
          float32_t in = { f };
-         ret = f32_to_f128( in ); 
+         ret = f32_to_f128( in );
       }
-      void __extenddftf2( float128_t& ret, double in ) { 
+      void __extenddftf2( float128_t& ret, double in ) {
          edump(("warning in flaot64..." ));
-         ret = f64_to_f128( float64_t{*(uint64_t*)&in} ); 
+         ret = f64_to_f128( float64_t{*(uint64_t*)&in} );
       }
-      int64_t __fixtfdi( uint64_t l, uint64_t h ) { 
+      int64_t __fixtfdi( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-         return f128_to_i64( f, 0, false ); 
-      } 
-      int32_t __fixtfsi( uint64_t l, uint64_t h ) { 
+         return f128_to_i64( f, 0, false );
+      }
+      int32_t __fixtfsi( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-         return f128_to_i32( f, 0, false ); 
-      } 
-      uint64_t __fixunstfdi( uint64_t l, uint64_t h ) { 
+         return f128_to_i32( f, 0, false );
+      }
+      uint64_t __fixunstfdi( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-         return f128_to_ui64( f, 0, false ); 
-      } 
-      uint32_t __fixunstfsi( uint64_t l, uint64_t h ) { 
+         return f128_to_ui64( f, 0, false );
+      }
+      uint32_t __fixunstfsi( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-         return f128_to_ui32( f, 0, false ); 
-      } 
-      uint64_t __trunctfdf2( uint64_t l, uint64_t h ) { 
+         return f128_to_ui32( f, 0, false );
+      }
+      uint64_t __trunctfdf2( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-         return f128_to_f64( f ).v; 
-      } 
-      uint32_t __trunctfsf2( uint64_t l, uint64_t h ) { 
+         return f128_to_f64( f ).v;
+      }
+      uint32_t __trunctfsf2( uint64_t l, uint64_t h ) {
          float128_t f = {{ l, h }};
-         return f128_to_f32( f ).v; 
-      } 
+         return f128_to_f32( f ).v;
+      }
 
       static constexpr uint32_t SHIFT_WIDTH = (sizeof(uint64_t)*8)-1;
 };
@@ -1399,9 +1420,9 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__unordtf2,    int(int64_t, int64_t, int64_t, int64_t)        )
    (__floatsitf,   void (int, int)                                )
    (__floatunsitf, void (int, int)                                )
-   (__floatsidf,   double(int)                                 )
-   (__extendsftf2, void(int, int)                                 )      
-   (__extenddftf2, void(int, double)                           )      
+   (__floatsidf,   double(int)                                    )
+   (__extendsftf2, void(int, int)                                 )
+   (__extenddftf2, void(int, double)                              )
    (__fixtfdi,     int64_t(int64_t, int64_t)                      )
    (__fixtfsi,     int(int64_t, int64_t)                          )
    (__fixunstfdi,  int64_t(int64_t, int64_t)                      )
@@ -1411,15 +1432,18 @@ REGISTER_INTRINSICS(compiler_builtins,
 );
 
 REGISTER_INTRINSICS(privileged_api,
-   (activate_feature,          void(int64_t)                                 )
-   (is_feature_active,         int(int64_t)                                  )
-   (set_resource_limits,       void(int64_t,int64_t,int64_t,int64_t)         )
-   (set_active_producers,      void(int,int)                                 )
-   (is_privileged,             int(int64_t)                                  )
-   (set_privileged,            void(int64_t, int)                            )
+   (is_feature_active,                int(int64_t)                          )
+   (activate_feature,                 void(int64_t)                         )
+   (get_resource_limits,              void(int64_t,int,int,int)             )
+   (set_resource_limits,              void(int64_t,int64_t,int64_t,int64_t) )
+   (set_active_producers,             void(int,int)                         )
+   (get_blockchain_parameters_packed, int(int, int)                         )
+   (set_blockchain_parameters_packed, void(int,int)                         )
+   (is_privileged,                    int(int64_t)                          )
+   (set_privileged,                   void(int64_t, int)                    )
 );
 
-REGISTER_INTRINSICS(checktime_api,
+REGISTER_INJECTED_INTRINSICS(checktime_api,
    (checktime,      void(int))
 );
 
@@ -1496,7 +1520,6 @@ REGISTER_INTRINSICS(system_api,
 REGISTER_INTRINSICS(action_api,
    (read_action_data,       int(int, int)  )
    (action_data_size,       int()          )
-   (current_receiver,   int64_t()          )
    (publication_time,   int32_t()          )
    (current_sender,     int64_t()          )
 );
@@ -1529,13 +1552,14 @@ REGISTER_INTRINSICS(context_free_transaction_api,
    (expiration,             int()                    )
    (tapos_block_prefix,     int()                    )
    (tapos_block_num,        int()                    )
-   (get_action,            int (int, int, int, int)  )
+   (get_action,             int (int, int, int, int) )
 );
 
 REGISTER_INTRINSICS(transaction_api,
-   (send_inline,                        void(int, int)            )
-   (send_context_free_inline,           void(int, int)            )
-   (send_deferred,                      void(int, int, int, int)  )
+   (send_inline,               void(int, int)                    )
+   (send_context_free_inline,  void(int, int)                    )
+   (send_deferred,             void(int, int64_t, int, int, int) )
+   (cancel_deferred,           void(int)                         )
 );
 
 REGISTER_INTRINSICS(context_free_api,
@@ -1549,7 +1573,7 @@ REGISTER_INTRINSICS(memory_api,
    (memset,                 int(int, int, int)  )
 );
 
-REGISTER_INTRINSICS(softfloat_api,
+REGISTER_INJECTED_INTRINSICS(softfloat_api,
       (_eosio_f32_add,       float(float, float)    )
       (_eosio_f32_sub,       float(float, float)    )
       (_eosio_f32_mul,       float(float, float)    )

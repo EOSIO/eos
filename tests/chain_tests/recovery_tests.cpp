@@ -14,7 +14,7 @@ auto make_postrecovery(const tester &t, account_name account, string role) {
                                 .data    = authority(t.get_public_key(account, role)),
                                 .memo    = "Test recovery"
                              } );
-   t.set_tapos(trx);
+   t.set_transaction_headers(trx);
    trx.sign(t.get_private_key(account, "active"), chain_id_type());
    return trx;
 }
@@ -25,7 +25,7 @@ auto make_vetorecovery(const tester &t, account_name account, permission_name ve
                              vetorecovery{
                                 .account = account
                              } );
-   t.set_tapos(trx);
+   t.set_transaction_headers(trx);
    if (signing_key) {
       trx.sign(*signing_key, chain_id_type());
    } else {
@@ -52,8 +52,8 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_multisig_owner, tester ) try {
     {
         signed_transaction trx = make_postrecovery(*this, N(alice), "owner.recov");
         auto trace = push_transaction(trx);
-        BOOST_REQUIRE_EQUAL(trace.deferred_transactions.size(), 1);
-        recovery_txid = trace.deferred_transactions.front().id();
+        BOOST_REQUIRE_EQUAL(trace.deferred_transaction_requests.size(), 1);
+        recovery_txid = trace.deferred_transaction_requests.front().get<deferred_transaction>().id();
         produce_block();
         BOOST_REQUIRE_EQUAL(chain_has_transaction(trx.id()), true);
     }
@@ -84,8 +84,8 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_owner, tester ) try {
    {
       signed_transaction trx = make_postrecovery(*this, N(alice), "owner.recov");
       auto trace = push_transaction(trx);
-      BOOST_REQUIRE_EQUAL(trace.deferred_transactions.size(), 1);
-      recovery_txid = trace.deferred_transactions.front().id();
+      BOOST_REQUIRE_EQUAL(trace.deferred_transaction_requests.size(), 1);
+      recovery_txid = trace.deferred_transaction_requests.front().get<deferred_transaction>().id();
       produce_block();
       BOOST_REQUIRE_EQUAL(chain_has_transaction(trx.id()), true);
    }
@@ -117,8 +117,8 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_owner_veto, tester ) try {
    {
       signed_transaction trx = make_postrecovery(*this, N(alice), "owner.recov");
       auto trace = push_transaction(trx);
-      BOOST_REQUIRE_EQUAL(trace.deferred_transactions.size(), 1);
-      recovery_txid = trace.deferred_transactions.front().id();
+      BOOST_REQUIRE_EQUAL(trace.deferred_transaction_requests.size(), 1);
+      recovery_txid = trace.deferred_transaction_requests.front().get<deferred_transaction>().id();
       produce_block();
       BOOST_REQUIRE_EQUAL(chain_has_transaction(trx.id()), true);
    }
@@ -159,8 +159,8 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_bad_creator, tester ) try {
    {
       signed_transaction trx = make_postrecovery(*this, N(alice), "owner");
       auto trace = push_transaction(trx);
-      BOOST_REQUIRE_EQUAL(trace.deferred_transactions.size(), 1);
-      recovery_txid = trace.deferred_transactions.front().id();
+      BOOST_REQUIRE_EQUAL(trace.deferred_transaction_requests.size(), 1);
+      recovery_txid = trace.deferred_transaction_requests.front().get<deferred_transaction>().id();
       produce_block();
       BOOST_REQUIRE_EQUAL(chain_has_transaction(trx.id()), true);
    }

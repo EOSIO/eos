@@ -228,8 +228,10 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, tester ) { try {
 
                if (action_leaves.size() > 0) {
                   process_merkle(nodes, move(action_leaves));
-                  shard_leaves.emplace_back(nodes.size() - 1);
+               } else {
+                  nodes.emplace_back(merkle_node{digest_type()});
                }
+               shard_leaves.emplace_back(nodes.size() - 1);
             }
          }
       }

@@ -68,7 +68,7 @@ class exchange_tester : public tester {
 
          signed_transaction trx;
          trx.actions.emplace_back(std::move(act));
-         set_tapos(trx);
+         set_transaction_headers(trx);
          trx.sign(get_private_key(signer, "active"), chain_id_type());
          return push_transaction(trx);
       }

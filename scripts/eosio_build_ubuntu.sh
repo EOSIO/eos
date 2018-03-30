@@ -8,8 +8,10 @@
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 )
 
 	DISK_INSTALL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f1`
-	DISK_TOTAL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f2 | sed 's/[^0-9\.]//g'`
-	DISK_AVAIL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f4 | sed 's/[^0-9\.]//g'`
+	DISK_TOTAL_KB=`df . | tail -1 | awk '{print $2}'`
+	DISK_AVAIL_KB=`df . | tail -1 | awk '{print $4}'`
+	DISK_TOTAL=$(( $DISK_TOTAL_KB / 1048576 ))
+	DISK_AVAIL=$(( $DISK_AVAIL_KB / 1048576 ))
 
 	printf "\n\tOS name: $OS_NAME\n"
 	printf "\tOS Version: ${OS_VER}\n"
@@ -27,20 +29,20 @@
 	fi
 
         case $OS_NAME in
-                "Linux Mint")
-                       if [ $OS_MAJ -lt 18 ]; then
-                               printf "\tYou must be running Linux Mint 18.x or higher to install EOSIO.\n"
-                               printf "\tExiting now.\n"
-                               exit 1
-                       fi
-                ;;
-                "Ubuntu")
-                        if [ $OS_MIN -lt 4 ]; then
-                                printf "\tYou must be running Ubuntu 16.04.x or higher to install EOSIO.\n"
-                                printf "\tExiting now.\n"
-                                exit 1
-                        fi
-                ;;
+			"Linux Mint")
+			   if [ $OS_MAJ -lt 18 ]; then
+				   printf "\tYou must be running Linux Mint 18.x or higher to install EOSIO.\n"
+				   printf "\tExiting now.\n"
+				   exit 1
+			   fi
+			;;
+			"Ubuntu")
+				if [ $OS_MIN -lt 4 ]; then
+					printf "\tYou must be running Ubuntu 16.04.x or higher to install EOSIO.\n"
+					printf "\tExiting now.\n"
+					exit 1
+				fi
+			;;
         esac
 
 	if [ ${DISK_AVAIL%.*} -lt $DISK_MIN ]; then
@@ -49,8 +51,8 @@
 		exit 1
 	fi
 
-	DEP_ARRAY=(clang-4.0 lldb-4.0 libclang-4.0-dev cmake make libbz2-dev libssl-dev libgmp3-dev autotools-dev build-essential libbz2-dev libicu-dev python-dev autoconf libtool curl mongodb)
-	DCOUNT=0
+	DEP_ARRAY=(clang-4.0 lldb-4.0 libclang-4.0-dev cmake make libbz2-dev libssl-dev \
+	libgmp3-dev autotools-dev build-essential libbz2-dev libicu-dev python3-dev autoconf libtool curl)
 	COUNT=1
 	DISPLAY=""
 	DEP=""
@@ -65,14 +67,13 @@
 			DISPLAY="${DISPLAY}${COUNT}. ${DEP_ARRAY[$i]}\n\t"
 			printf "\tPackage ${DEP_ARRAY[$i]} ${bldred} NOT ${txtrst} found.\n"
 			let COUNT++
-			let DCOUNT++
 		else
 			printf "\tPackage ${DEP_ARRAY[$i]} found.\n"
 			continue
 		fi
 	done		
 	
-	if [ ${DCOUNT} -ne 0 ]; then
+	if [ ${COUNT} -gt 1 ]; then
 		printf "\n\tThe following dependencies are required to install EOSIO.\n"
 		printf "\n\t$DISPLAY\n\n"
 		printf "\tDo you wish to install these packages?\n"
@@ -98,10 +99,10 @@
 		printf "\n\tNo required dpkg dependencies to install.\n"
 	fi
 
-	printf "\n\tChecking for boost libraries\n"
+	printf "\n\tChecking boost library installation.\n"
 	if [ ! -d ${HOME}/opt/boost_1_66_0 ]; then
 		# install boost
-		printf "\tInstalling boost libraries\n"
+		printf "\tInstalling boost libraries.\n"
 		cd ${TEMP_DIR}
 		curl -L https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.bz2 > boost_1.66.0.tar.bz2
 		tar xf boost_1.66.0.tar.bz2
@@ -114,9 +115,42 @@
 		printf "\tBoost 1.66 found at ${HOME}/opt/boost_1_66_0\n"
 	fi
 
-	printf "\n\tChecking for MongoDB C++ driver.\n"
-    # install libmongocxx.dylib
-    if [ ! -e /usr/local/lib/libmongocxx.so ]; then
+	printf "\n\tChecking MongoDB installation.\n"
+    if [ ! -e ${MONGOD_CONF} ]; then
+		printf "\n\tInstalling MongoDB 3.6.3.\n"
+		cd ${HOME}/opt
+		curl -OL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.3.tgz
+		if [ $? -ne 0 ]; then
+			printf "\tUnable to download MongoDB at this time.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		tar xf mongodb-linux-x86_64-3.6.3.tgz
+		rm -f mongodb-linux-x86_64-3.6.3.tgz
+		ln -s mongodb-linux-x86_64-3.6.3/ mongodb
+		mkdir ${HOME}/opt/mongodb/data
+		mkdir ${HOME}/opt/mongodb/log
+		touch ${HOME}/opt/mongodb/log/mongodb.log
+		
+tee > /dev/null ${MONGOD_CONF} <<mongodconf
+systemLog:
+ destination: file
+ path: ${HOME}/opt/mongodb/log/mongodb.log
+ logAppend: true
+ logRotate: reopen
+net:
+ bindIp: 127.0.0.1,::1
+ ipv6: true
+storage:
+ dbPath: ${HOME}/opt/mongodb/data
+mongodconf
+
+	else
+		printf "\tMongoDB configuration found at ${MONGOD_CONF}.\n"
+	fi
+
+	printf "\n\tChecking MongoDB C++ driver installation.\n"
+    if [ ! -e /usr/local/lib/libmongocxx-static.a ]; then
 		printf "\n\tInstalling MongoDB C & C++ drivers.\n"
 		cd ${TEMP_DIR}
 		curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
@@ -129,7 +163,7 @@
 		tar xf mongo-c-driver-1.9.3.tar.gz
 		rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz
 		cd mongo-c-driver-1.9.3
-		./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+		./configure --enable-static --with-libbson=bundled --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
 		if [ $? -ne 0 ]; then
 			printf "\tConfiguring MondgDB C driver has encountered the errors above.\n"
 			printf "\tExiting now.\n\n"
@@ -150,6 +184,7 @@
 		cd ..
 		rm -rf ${TEMP_DIR}/mongo-c-driver-1.9.3
 		cd ${TEMP_DIR}
+		sudo rm -rf ${TEMP_DIR}/mongo-cxx-driver
 		git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 		if [ $? -ne 0 ]; then
 			printf "\tUnable to clone MondgDB C++ driver at this time.\n"
@@ -157,7 +192,7 @@
 			exit;
 		fi
 		cd mongo-cxx-driver/build
-		cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+		cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
 		if [ $? -ne 0 ]; then
 			printf "\tCmake has encountered the above errors building the MongoDB C++ driver.\n"
 			printf "\tExiting now.\n\n"
@@ -178,7 +213,7 @@
 		cd
 		sudo rm -rf ${TEMP_DIR}/mongo-cxx-driver
 	else
-		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx.so.\n"
+		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx-static.a.\n"
 	fi
 
 	printf "\n\tChecking for secp256k1-zkp\n"
@@ -220,7 +255,8 @@
 		cd ..
 		mkdir build
 		cd build
-		cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+		cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm -DLLVM_TARGETS_TO_BUILD= \
+		-DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
 			printf "\tExiting now.\n\n"

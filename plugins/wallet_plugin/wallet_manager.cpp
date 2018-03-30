@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/wallet_plugin/wallet_manager.hpp>
-
+#include <eosio/chain/exceptions.hpp>
 namespace eosio {
 namespace wallet {
 
@@ -38,7 +38,7 @@ std::string wallet_manager::create(const std::string& name) {
    auto wallet_filename = dir / (name + file_ext);
 
    if (fc::exists(wallet_filename)) {
-      FC_THROW("Wallet with name: '${n}' already exists at ${path}", ("n", name)("path",fc::path(wallet_filename)));
+      EOS_THROW(chain::wallet_exist_exception, "Wallet with name: '${n}' already exists at ${path}", ("n", name)("path",fc::path(wallet_filename)));
    }
 
    wallet_data d;
@@ -68,7 +68,7 @@ void wallet_manager::open(const std::string& name) {
    auto wallet_filename = dir / (name + file_ext);
    wallet->set_wallet_filename(wallet_filename.string());
    if (!wallet->load_wallet_file()) {
-      FC_THROW("Unable to open file: ${f}", ("f", wallet_filename.string()));
+      EOS_THROW(chain::wallet_nonexistent_exception, "Unable to open file: ${f}", ("f", wallet_filename.string()));
    }
 
    // If we have name in our map then remove it since we want the emplace below to replace.
@@ -134,7 +134,7 @@ void wallet_manager::lock_all() {
 void wallet_manager::lock(const std::string& name) {
    check_timeout();
    if (wallets.count(name) == 0) {
-      FC_THROW("Wallet not found: ${w}", ("w", name));
+      EOS_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
    }
    auto& w = wallets.at(name);
    if (w->is_locked()) {
@@ -158,11 +158,11 @@ void wallet_manager::unlock(const std::string& name, const std::string& password
 void wallet_manager::import_key(const std::string& name, const std::string& wif_key) {
    check_timeout();
    if (wallets.count(name) == 0) {
-      FC_THROW("Wallet not found: ${w}", ("w", name));
+      EOS_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
    }
    auto& w = wallets.at(name);
    if (w->is_locked()) {
-      FC_THROW("Wallet is locked: ${w}", ("w", name));
+      EOS_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
    }
    w->import_key(wif_key);
 }
@@ -185,7 +185,7 @@ wallet_manager::sign_transaction(const chain::signed_transaction& txn, const fla
          }
       }
       if (!found) {
-         FC_THROW("Public key not found in unlocked wallets ${k}", ("k", pk));
+         EOS_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", pk));
       }
    }
 

@@ -12,6 +12,7 @@
 #include "Runtime/Linker.h"
 #include "Runtime/Intrinsics.h"
 
+#include <mutex>
 
 using namespace IR;
 using namespace Runtime;
@@ -29,7 +30,8 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
       {}
 
       void apply(apply_context& context) override {
-         vector<Value> args = {Value(uint64_t(context.act.account)),
+         vector<Value> args = {Value(uint64_t(context.receiver)),
+	                       Value(uint64_t(context.act.account)),
                                Value(uint64_t(context.act.name))};
 
          call("apply", args, context);
@@ -76,24 +78,48 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
          } FC_CAPTURE_AND_RETHROW()
       }
 
+
       std::vector<uint8_t> _initial_memory;
       //naked pointers because ModuleInstance is opaque
       ModuleInstance*      _instance;
       Module*              _module;
 };
 
-wavm_runtime::wavm_runtime() {
+
+wavm_runtime::runtime_guard::runtime_guard() {
+   // TODO clean this up
+   //check_wasm_opcode_dispositions();
    Runtime::init();
 }
 
-wavm_runtime::~wavm_runtime() {
+wavm_runtime::runtime_guard::~runtime_guard() {
    Runtime::freeUnreferencedObjects({});
+}
+
+static weak_ptr<wavm_runtime::runtime_guard> __runtime_guard_ptr;
+static std::mutex __runtime_guard_lock;
+
+wavm_runtime::wavm_runtime() {
+   std::lock_guard<std::mutex> l(__runtime_guard_lock);
+   if (__runtime_guard_ptr.use_count() == 0) {
+      _runtime_guard = std::make_shared<runtime_guard>();
+      __runtime_guard_ptr = _runtime_guard;
+   } else {
+      _runtime_guard = __runtime_guard_ptr.lock();
+   }
+}
+
+wavm_runtime::~wavm_runtime() {
 }
 
 std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) {
    Module* module = new Module();
-   Serialization::MemoryInputStream stream((const U8 *)code_bytes, code_size);
-   WASM::serialize(stream, *module);
+   try {
+      Serialization::MemoryInputStream stream((const U8*)code_bytes, code_size);
+      WASM::serialize(stream, *module);
+   } catch(Serialization::FatalSerializationException& e) {
+      EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+   }
 
    eosio::chain::webassembly::common::root_resolver resolver;
    LinkResult link_result = linkModule(*module, resolver);

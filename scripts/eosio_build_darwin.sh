@@ -5,7 +5,7 @@
 
 	MEM_GIG=`bc <<< "($(sysctl -in hw.memsize) / 1024000000)"`
 
-	CPU_SPEED=`bc <<< "scale=2; ($(sysctl -in hw.cpufrequency) / 100000000) / 10"`
+	CPU_SPEED=`bc <<< "scale=2; ($(sysctl -in hw.cpufrequency) / 10^6) / 10"`
 	CPU_CORE=$( sysctl -in machdep.cpu.core_count )
 
 	blksize=`df . | head -1 | awk '{print $2}' | cut -d- -f1`
@@ -22,7 +22,7 @@
 	printf "\tPhysical Memory: $MEM_GIG Gbytes\n"
 	printf "\tDisk space total: ${DISK_TOTAL}G\n"
 	printf "\tDisk space available: ${DISK_AVAIL}G\n\n"
-	
+
 	if [ $MEM_GIG -lt 8 ]; then
 		echo "Your system must have 8 or more Gigabytes of physical memory installed."
 		echo "Exiting now."
@@ -100,7 +100,7 @@
 			printf '\t\t %s found\n' "$name"
 			continue
 		fi
-		# resolve conflict with homebrew glibtool and apples install of libtool
+		# resolve conflict with homebrew glibtool and apple/gnu installs of libtool
 		if [ ${testee} == "/usr/local/bin/glibtool" ]; then
 			if [ ${tester} "/usr/local/bin/libtool" ]; then
 				printf '\t\t %s found\n' "$name"
@@ -117,6 +117,16 @@
 		let COUNT++
 	done < scripts/eosio_build_dep
 	IFS=${var_ifs}
+		
+	printf "\tChecking Python3 ... "
+	if [  -z `python3 -c 'import sys; print(sys.version_info.major)' 2>/dev/null` ]; then
+		DEP=$DEP"python@3 "
+		DISPLAY="${DISPLAY}${COUNT}. Python 3\n\t"
+		printf "\t\t python3 ${bldred}NOT${txtrst} found.\n"
+		let DCOUNT++
+	else
+		printf "\t\t Python3 found\n"
+	fi
 
 	if [ $DCOUNT -ne 0 ]; then
 		printf "\n\tThe following dependencies are required to install EOSIO.\n"
@@ -145,7 +155,7 @@
 		
 	printf "\n\tChecking for MongoDB C++ driver\n"
     # install libmongocxx.dylib
-    if [ ! -e /usr/local/lib/libmongocxx.dylib ]; then
+    if [ ! -e /usr/local/lib/libmongocxx-static.a ]; then
 		cd ${TEMP_DIR}
 		brew install --force pkgconfig
 		brew unlink pkgconfig && brew link --force pkgconfig
@@ -159,7 +169,7 @@
 		tar xf mongo-c-driver-1.9.3.tar.gz
 		rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz
 		cd mongo-c-driver-1.9.3
-		./configure --enable-ssl=darwin --disable-automatic-init-and-cleanup --prefix=/usr/local
+		./configure --enable-static --with-libbson=bundled --enable-ssl=darwin --disable-automatic-init-and-cleanup --prefix=/usr/local
 		if [ $? -ne 0 ]; then
 			printf "\tConfiguring MondgDB C driver has encountered the errors above.\n"
 			printf "\tExiting now.\n\n"
@@ -180,6 +190,7 @@
 		cd ..
 		rm -rf ${TEMP_DIR}/mongo-c-driver-1.9.3
 		cd ${TEMP_DIR}
+		rm -rf ${TEMP_DIR}/mongo-cxx-driver
 		git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 		if [ $? -ne 0 ]; then
 			printf "\tUnable to clone MondgDB C++ driver at this time.\n"
@@ -187,7 +198,7 @@
 			exit;
 		fi
 		cd mongo-cxx-driver/build
-		cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+		cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
 		if [ $? -ne 0 ]; then
 			printf "\tCmake has encountered the above errors building the MongoDB C++ driver.\n"
 			printf "\tExiting now.\n\n"
@@ -208,7 +219,7 @@
 		cd
 		rm -rf ${TEMP_DIR}/mongo-cxx-driver
 	else
-		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx.dylib.\n"
+		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx-static.a.\n"
 	fi
 
 	printf "\n\tChecking for secp256k1-zkp\n"
