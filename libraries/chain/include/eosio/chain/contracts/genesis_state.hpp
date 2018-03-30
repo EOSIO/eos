@@ -29,7 +29,8 @@ struct genesis_state_type {
       .max_authority_depth            = config::default_max_auth_depth,
       .max_inline_depth               = config::default_max_inline_depth,
       .max_inline_action_size         = config::default_max_inline_action_size,
-      .max_generated_transaction_size = config::default_max_gen_trx_size
+      .max_generated_transaction_size = config::default_max_gen_trx_size,
+      .max_generated_transaction_count = config::default_max_gen_trx_count
    };
 
    time_point                               initial_timestamp;

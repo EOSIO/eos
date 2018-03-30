@@ -1,55 +1,59 @@
 /**
  *  @file
  *  @copyright defined in eos/LICENSE.txt
- *  @defgroup eosclienttool EOS Command Line Client Reference
- *  @brief Tool for sending transactions and querying state from @ref eosd
+ *  @defgroup eosclienttool EOSIO Command Line Client Reference
+ *  @brief Tool for sending transactions and querying state from @ref nodeos
  *  @ingroup eosclienttool
  */
 
 /**
   @defgroup eosclienttool
 
-  @section intro Introduction to EOSC
+  @section intro Introduction to cleos
 
-  `eosc` is a command line tool that interfaces with the REST api exposed by @ref eosd. In order to use `eosc` you will need to
-  have a local copy of `eosd` running and configured to load the 'eosio::chain_api_plugin'.
+  `cleos` is a command line tool that interfaces with the REST api exposed by @ref nodeos. In order to use `cleos` you will need to
+  have a local copy of `nodeos` running and configured to load the 'eosio::chain_api_plugin'.
 
-   eosc contains documentation for all of its commands. For a list of all commands known to eosc, simply run it with no arguments:
+   cleos contains documentation for all of its commands. For a list of all commands known to cleos, simply run it with no arguments:
 ```
-$ ./eosc
-Command Line Interface to Eos Daemon
-Usage: ./eosc [OPTIONS] SUBCOMMAND
+$ ./cleos
+Command Line Interface to EOSIO Client
+Usage: programs/cleos/cleos [OPTIONS] SUBCOMMAND
 
 Options:
-  -h,--help                   Print this help actions and exit
-  -H,--host TEXT=localhost    the host where eosd is running
-  -p,--port UINT=8888         the port where eosd is running
+  -h,--help                   Print this help message and exit
+  -H,--host TEXT=localhost    the host where nodeos is running
+  -p,--port UINT=8888         the port where nodeos is running
   --wallet-host TEXT=localhost
-                              the host where eos-walletd is running
-  --wallet-port UINT=8888     the port where eos-walletd is running
+                              the host where eosiowd is running
+  --wallet-port UINT=8888     the port where eosiowd is running
+  -v,--verbose                output verbose actions on error
 
 Subcommands:
+  version                     Retrieve version information
   create                      Create various items, on and off the blockchain
   get                         Retrieve various items and information from the blockchain
   set                         Set or update blockchain state
   transfer                    Transfer EOS from account to account
+  net                         Interact with local p2p network connections
   wallet                      Interact with local wallet
+  sign                        Sign a transaction
   push                        Push arbitrary transactions to the blockchain
 
 ```
 To get help with any particular subcommand, run it with no arguments as well:
 ```
-$ ./eosc create
+$ ./cleos create
 Create various items, on and off the blockchain
-Usage: ./eosc create SUBCOMMAND
+Usage: ./cleos create SUBCOMMAND
 
 Subcommands:
   key                         Create a new keypair and print the public and private keys
   account                     Create a new account on the blockchain
 
-$ ./eosc create account
+$ ./cleos create account
 Create a new account on the blockchain
-Usage: ./eosc create account [OPTIONS] creator name OwnerKey ActiveKey
+Usage: ./cleos create account [OPTIONS] creator name OwnerKey ActiveKey
 
 Positionals:
   creator TEXT                The name of the account creating the new account
@@ -58,7 +62,11 @@ Positionals:
   ActiveKey TEXT              The active public key for the new account
 
 Options:
-  -s,--skip-signature         Specify that unlocked wallet keys should not be used to sign transaction
+  -x,--expiration             set the time in seconds before a transaction expires, defaults to 30s
+  -f,--force-unique           force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times
+  -s,--skip-sign              Specify if unlocked wallet keys should be used to sign transaction
+  -d,--dont-broadcast         don't broadcast transaction to the network (just print to stdout)
+  -p,--permission TEXT ...    An account and permission level to authorize, as in 'account@permission' (defaults to 'creator@active')
 ```
 */
 #include <string>
@@ -344,7 +352,7 @@ struct set_account_permission_subcommand {
             if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
                try {
                   auth = authority(public_key_type(authorityJsonOrFile));
-               } EOS_CAPTURE_AND_RETHROW(public_key_type_exception, "")
+               } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
             } else {
                fc::variant parsedAuthority;
                try {
@@ -354,8 +362,8 @@ struct set_account_permission_subcommand {
                      parsedAuthority = fc::json::from_file(authorityJsonOrFile);
                   }
                   auth = parsedAuthority.as<authority>();
-               } EOS_CAPTURE_AND_RETHROW(authority_type_exception, "Fail to parse Authority JSON")
-
+               } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON")
+                 
             }
 
             name parent;
@@ -429,12 +437,12 @@ int main( int argc, char** argv ) {
    bindtextdomain(locale_domain, locale_path);
    textdomain(locale_domain);
 
-   CLI::App app{"Command Line Interface to Eos Client"};
+   CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
-   app.add_option( "-H,--host", host, localized("the host where eosd is running"), true );
-   app.add_option( "-p,--port", port, localized("the port where eosd is running"), true );
-   app.add_option( "--wallet-host", wallet_host, localized("the host where eos-walletd is running"), true );
-   app.add_option( "--wallet-port", wallet_port, localized("the port where eos-walletd is running"), true );
+   app.add_option( "-H,--host", host, localized("the host where nodeos is running"), true );
+   app.add_option( "-p,--port", port, localized("the port where nodeos is running"), true );
+   app.add_option( "--wallet-host", wallet_host, localized("the host where eosiowd is running"), true );
+   app.add_option( "--wallet-port", wallet_port, localized("the port where eosiowd is running"), true );
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
@@ -475,8 +483,10 @@ int main( int argc, char** argv ) {
       public_key_type owner_key, active_key;
       try {
          owner_key = public_key_type(owner_key_str);
+      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str))
+      try {
          active_key = public_key_type(active_key_str);
-      } EOS_CAPTURE_AND_RETHROW(public_key_type_exception, "Invalid Public Key")
+      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str))
       send_actions({create_newaccount(creator, account_name, owner_key, active_key)});
    });
 
@@ -572,6 +582,7 @@ int main( int argc, char** argv ) {
    // get currency balance
    string symbol;
    auto get_currency = get->add_subcommand( "currency", localized("Retrieve information related to standard currencies"), true);
+   get_currency->require_subcommand();
    auto get_balance = get_currency->add_subcommand( "balance", localized("Retrieve the balance of an account for a given currency"), false);
    get_balance->add_option( "contract", code, localized("The contract that operates the currency") )->required();
    get_balance->add_option( "account", accountName, localized("The account to query balances for") )->required();
@@ -613,11 +624,15 @@ int main( int argc, char** argv ) {
    });
 
    // get accounts
-   string publicKey;
+   string public_key_str;
    auto getAccounts = get->add_subcommand("accounts", localized("Retrieve accounts associated with a public key"), false);
-   getAccounts->add_option("public_key", publicKey, localized("The public key to retrieve accounts for"))->required();
+   getAccounts->add_option("public_key", public_key_str, localized("The public key to retrieve accounts for"))->required();
    getAccounts->set_callback([&] {
-      auto arg = fc::mutable_variant_object( "public_key", publicKey);
+      public_key_type public_key;
+      try {
+         public_key = public_key_type(public_key_str);
+      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", public_key_str))
+      auto arg = fc::mutable_variant_object( "public_key", public_key);
       std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
    });
 
@@ -632,27 +647,44 @@ int main( int argc, char** argv ) {
    });
 
    // get transaction
-   string transactionId;
+   string transaction_id_str;
    auto getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"), false);
-   getTransaction->add_option("id", transactionId, localized("ID of the transaction to retrieve"))->required();
+   getTransaction->add_option("id", transaction_id_str, localized("ID of the transaction to retrieve"))->required();
    getTransaction->set_callback([&] {
-      auto arg= fc::mutable_variant_object( "transaction_id", transactionId);
+      transaction_id_type transaction_id;
+      try {
+         transaction_id = transaction_id_type(transaction_id_str);
+      } EOS_RETHROW_EXCEPTIONS(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", transaction_id_str))
+      auto arg= fc::mutable_variant_object( "transaction_id", transaction_id);
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
 
    // get transactions
-   string skip_seq;
-   string num_seq;
+   string skip_seq_str;
+   string num_seq_str;
    auto getTransactions = get->add_subcommand("transactions", localized("Retrieve all transactions with specific account name referenced in their scope"), false);
    getTransactions->add_option("account_name", account_name, localized("name of account to query on"))->required();
-   getTransactions->add_option("skip_seq", skip_seq, localized("Number of most recent transactions to skip (0 would start at most recent transaction)"));
-   getTransactions->add_option("num_seq", num_seq, localized("Number of transactions to return"));
+   getTransactions->add_option("skip_seq", skip_seq_str, localized("Number of most recent transactions to skip (0 would start at most recent transaction)"));
+   getTransactions->add_option("num_seq", num_seq_str, localized("Number of transactions to return"));
    getTransactions->set_callback([&] {
-      auto arg = (skip_seq.empty())
-                  ? fc::mutable_variant_object( "account_name", account_name)
-                  : (num_seq.empty())
-                     ? fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)
-                     : fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)("num_seq", num_seq);
+      fc::mutable_variant_object arg;
+      if (skip_seq_str.empty()) {
+         arg = fc::mutable_variant_object( "account_name", account_name);
+      } else {
+         uint64_t skip_seq;
+         try {
+            skip_seq = boost::lexical_cast<uint64_t>(skip_seq_str);
+         } EOS_RETHROW_EXCEPTIONS(chain_type_exception, "Invalid Skip Seq: ${skip_seq}", ("skip_seq", skip_seq_str))
+         if (num_seq_str.empty()) {
+            arg = fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq);
+         } else {
+            uint64_t num_seq;
+            try {
+               num_seq = boost::lexical_cast<uint64_t>(num_seq_str);
+            } EOS_RETHROW_EXCEPTIONS(chain_type_exception, "Invalid Num Seq: ${num_seq}", ("num_seq", num_seq_str))
+            arg = fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq_str)("num_seq", num_seq);
+         }
+      }
       auto result = call(get_transactions_func, arg);
       std::cout << fc::json::to_pretty_string(call(get_transactions_func, arg)) << std::endl;
 
@@ -709,7 +741,7 @@ int main( int argc, char** argv ) {
       if (abi->count()) {
          try {
             actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<contracts::abi_def>()) );
-         } EOS_CAPTURE_AND_RETHROW(abi_type_exception,  "Fail to parse ABI JSON")
+         } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
       }
 
       std::cout << localized("Publishing contract...") << std::endl;
@@ -847,13 +879,18 @@ int main( int argc, char** argv ) {
    });
 
    // import keys into wallet
-   string wallet_key;
+   string wallet_key_str;
    auto importWallet = wallet->add_subcommand("import", localized("Import private key into wallet"), false);
    importWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to import key into"));
-   importWallet->add_option("key", wallet_key, localized("Private key in WIF format to import"))->required();
-   importWallet->set_callback([&wallet_name, &wallet_key] {
-      private_key_type key( wallet_key );
-      public_key_type pubkey = key.get_public_key();
+   importWallet->add_option("key", wallet_key_str, localized("Private key in WIF format to import"))->required();
+   importWallet->set_callback([&wallet_name, &wallet_key_str] {
+      private_key_type wallet_key;
+      try {
+         wallet_key = private_key_type( wallet_key_str );
+      } catch (...) {
+          EOS_THROW(private_key_type_exception, "Invalid private key: ${private_key}", ("private_key", wallet_key_str))
+      }
+      public_key_type pubkey = wallet_key.get_public_key();
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_key)};
       const auto& v = call(wallet_host, wallet_port, wallet_import_key, vs);
@@ -936,7 +973,7 @@ int main( int argc, char** argv ) {
       fc::variant action_args_var;
       try {
          action_args_var = fc::json::from_string(data);
-      } EOS_CAPTURE_AND_RETHROW(action_type_exception, "Fail to parse action JSON")
+      } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON")
 
       auto arg= fc::mutable_variant_object
                 ("code", contract)
@@ -962,7 +999,8 @@ int main( int argc, char** argv ) {
          } else {
             trx_var = fc::json::from_string(trx_to_push);
          }
-      } EOS_CAPTURE_AND_RETHROW(transaction_type_exception, "Fail to parse transaction JSON")      signed_transaction trx = trx_var.as<signed_transaction>();
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON")
+      signed_transaction trx = trx_var.as<signed_transaction>();
       auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
    });
@@ -975,7 +1013,7 @@ int main( int argc, char** argv ) {
       fc::variant trx_var;
       try {
          trx_var = fc::json::from_string(trxsJson);
-      } EOS_CAPTURE_AND_RETHROW(transaction_type_exception, "Fail to parse transaction JSON")
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON")
       auto trxs_result = call(push_txns_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
@@ -990,9 +1028,9 @@ int main( int argc, char** argv ) {
       auto errorString = e.to_detail_string();
       if (errorString.find("Connection refused") != string::npos) {
          if (errorString.find(fc::json::to_string(port)) != string::npos) {
-            std::cerr << localized("Failed to connect to eosd at ${ip}:${port}; is eosd running?", ("ip", host)("port", port)) << std::endl;
+            std::cerr << localized("Failed to connect to nodeos at ${ip}:${port}; is nodeos running?", ("ip", host)("port", port)) << std::endl;
          } else if (errorString.find(fc::json::to_string(wallet_port)) != string::npos) {
-            std::cerr << localized("Failed to connect to eos-walletd at ${ip}:${port}; is eos-walletd running?", ("ip", wallet_host)("port", wallet_port)) << std::endl;
+            std::cerr << localized("Failed to connect to eosiowd at ${ip}:${port}; is eosiowd running?", ("ip", wallet_host)("port", wallet_port)) << std::endl;
          } else {
             std::cerr << localized("Failed to connect") << std::endl;
          }

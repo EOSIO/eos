@@ -88,13 +88,13 @@ void test_types::string_to_name() {
 
 void test_types::name_class() {
 
-   eosio_assert( eosio::name(eosio::string_to_name("azAA34")).value == N(azAA34), "eosio::name != N(azAA34)" );
-   eosio_assert( eosio::name(eosio::string_to_name("AABBCC")).value == 0, "eosio::name != N(0)" );
-   eosio_assert( eosio::name(eosio::string_to_name("AA11")).value == N(AA11), "eosio::name != N(AA11)" );
-   eosio_assert( eosio::name(eosio::string_to_name("11AA")).value == N(11), "eosio::name != N(11)" );
-   eosio_assert( eosio::name(eosio::string_to_name("22BBCCXXAA")).value == N(22), "eosio::name != N(22)" );
-   eosio_assert( eosio::name(eosio::string_to_name("AAAbbcccdd")) == eosio::name(eosio::string_to_name("AAAbbcccdd")), "eosio::name == eosio::name" );
+   eosio_assert( eosio::name{eosio::string_to_name("azAA34")}.value == N(azAA34), "eosio::name != N(azAA34)" );
+   eosio_assert( eosio::name{eosio::string_to_name("AABBCC")}.value == 0, "eosio::name != N(0)" );
+   eosio_assert( eosio::name{eosio::string_to_name("AA11")}.value == N(AA11), "eosio::name != N(AA11)" );
+   eosio_assert( eosio::name{eosio::string_to_name("11AA")}.value == N(11), "eosio::name != N(11)" );
+   eosio_assert( eosio::name{eosio::string_to_name("22BBCCXXAA")}.value == N(22), "eosio::name != N(22)" );
+   eosio_assert( eosio::name{eosio::string_to_name("AAAbbcccdd")} == eosio::name{eosio::string_to_name("AAAbbcccdd")}, "eosio::name == eosio::name" );
 
-   uint64_t tmp = eosio::name(eosio::string_to_name("11bbcccdd"));
+   uint64_t tmp = eosio::name{eosio::string_to_name("11bbcccdd")};
    eosio_assert(N(11bbcccdd) == tmp, "N(11bbcccdd) == tmp");
 }

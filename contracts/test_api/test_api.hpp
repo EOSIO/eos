@@ -201,6 +201,9 @@ struct test_transaction {
   static void send_transaction_large();
   static void send_transaction_expiring_late();
   static void send_action_sender();
+  static void deferred_print();
+  static void send_deferred_transaction();
+  static void cancel_deferred_transaction();
   static void send_cf_action();
   static void send_cf_action_fail();
   static void read_inline_action();

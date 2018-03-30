@@ -8,11 +8,6 @@
 #include "test_multi_index.cpp"
 
 extern "C" {
-
-    void init()  {
-
-    }
-
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
 
       WASM_TEST_HANDLER_EX(test_multi_index, idx64_general);

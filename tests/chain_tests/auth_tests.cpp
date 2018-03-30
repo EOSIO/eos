@@ -258,6 +258,57 @@ try {
    BOOST_TEST(string(joe_active_authority.auth.keys[0].key) == string(chain.get_public_key("joe", "active")));
    BOOST_TEST(joe_active_authority.auth.keys[0].weight == 1);
 
+   // Create duplicate name
+   BOOST_CHECK_EXCEPTION(chain.create_account("joe"), action_validate_exception,
+                         assert_message_is("Cannot create account named joe, as that name is already taken"));
+
+   // Creating account with name more than 12 chars
+   BOOST_CHECK_EXCEPTION(chain.create_account("aaaaaaaaaaaaa"), action_validate_exception,
+                         assert_message_is("account names can only be 12 chars long"));
+
+   // Creating account with eosio. prefix with priveleged account
+   chain.create_account("eosio.test1");
+
+   // Creating account with eosio. prefix with non-privileged account, should fail
+   BOOST_CHECK_EXCEPTION(chain.create_account("eosio.test2", "joe"), action_validate_exception,
+                         assert_message_is("only privileged accounts can have names that contain 'eosio.'"));
+
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( any_auth ) { try {
+   tester chain;
+   chain.create_accounts( {"alice","bob"} );
+   chain.produce_block();
+
+   const auto spending_priv_key = chain.get_private_key("alice", "spending");
+   const auto spending_pub_key = spending_priv_key.get_public_key();
+   const auto bob_spending_priv_key = chain.get_private_key("bob", "spending");
+   const auto bob_spending_pub_key = spending_priv_key.get_public_key();
+
+   chain.set_authority("alice", "spending", spending_pub_key, "active");
+   chain.set_authority("bob", "spending", bob_spending_pub_key, "active");
+
+   /// this should fail because spending is not active which is default for reqauth
+   BOOST_REQUIRE_THROW( chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key }), 
+                        tx_irrelevant_auth );
+
+   chain.produce_block();
+
+   //test.push_reqauth( N(alice), { permission_level{N(alice),"spending"} }, { spending_priv_key });
+
+   chain.link_authority( "alice", "eosio", "eosio.any", "reqauth" );
+   chain.link_authority( "bob", "eosio", "eosio.any", "reqauth" );
+
+   /// this should succeed because eosio::reqauth is linked to any permission
+   chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key });
+   
+   /// this should fail because bob cannot authorize for alice, the permission given must be one-of alices
+   BOOST_REQUIRE_THROW( chain.push_reqauth("alice", { permission_level{N(bob), "spending"} }, { spending_priv_key }),
+                        tx_missing_auth );
+
+
+   chain.produce_block();
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

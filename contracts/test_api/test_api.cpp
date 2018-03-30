@@ -120,6 +120,9 @@ extern "C" {
       WASM_TEST_HANDLER(test_transaction, send_transaction_large);
       WASM_TEST_HANDLER(test_transaction, send_action_sender);
       WASM_TEST_HANDLER(test_transaction, send_transaction_expiring_late);
+      WASM_TEST_HANDLER(test_transaction, deferred_print);
+      WASM_TEST_HANDLER(test_transaction, send_deferred_transaction);
+      WASM_TEST_HANDLER(test_transaction, cancel_deferred_transaction);
       WASM_TEST_HANDLER(test_transaction, send_cf_action);
       WASM_TEST_HANDLER(test_transaction, send_cf_action_fail);
       WASM_TEST_HANDLER(test_transaction, read_inline_action);

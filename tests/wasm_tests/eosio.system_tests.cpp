@@ -99,6 +99,7 @@ public:
          ("max_inline_depth", 4 + n)
          ("max_inline_action_size", 4096 + n)
          ("max_generated_transaction_size", 64*1024 + n)
+         ("max_generated_transaction_count", 10 + n)
          ("percent_of_max_inflation_rate", 50 + n)
          ("storage_reserve_ratio", 100 + n);
    }
@@ -206,17 +207,16 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, total["storage_stake"].as_uint64());
    BOOST_REQUIRE_EQUAL( 0, total["storage_bytes"].as_uint64());
    REQUIRE_MATCHING_OBJECT( voter( "alice", "0.00 EOS" ), get_voter_info( "alice" ) );
-   control->push_deferred_transactions(true);
+   produce_blocks(1);
    BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
 
    //after 2 days balance should not be available yet
    produce_block( fc::hours(3*24-1) );
-   control->push_deferred_transactions(true);
+   produce_blocks(1);
    BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
-
    //after 3 days funds should be released
    produce_block( fc::hours(1) );
-   control->push_deferred_transactions(true);
+   produce_blocks(1);
    BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
 
 } FC_LOG_AND_RETHROW()
@@ -501,10 +501,10 @@ BOOST_FIXTURE_TEST_CASE( adding_stake_partial_unstake, eosio_system_tester ) try
 
    //combined amount should be available only in 3 days
    produce_block( fc::days(2) );
-   control->push_deferred_transactions(true);
+   produce_blocks(1);
    BOOST_REQUIRE_EQUAL( asset::from_string("430.0000 EOS"), get_balance( "alice" ) );
    produce_block( fc::days(1) );
-   control->push_deferred_transactions(true);
+   produce_blocks(1);
    BOOST_REQUIRE_EQUAL( asset::from_string("790.0000 EOS"), get_balance( "alice" ) );
 
 } FC_LOG_AND_RETHROW()
@@ -660,7 +660,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
    //carol should receive funds in 3 days
    produce_block( fc::days(3) );
-   control->push_deferred_transactions(true);
+   produce_block();
    BOOST_REQUIRE_EQUAL( asset::from_string("3000.0000 EOS"), get_balance( "carol" ) );
 
 } FC_LOG_AND_RETHROW()
@@ -1374,7 +1374,8 @@ fc::mutable_variant_object config_to_variant( const eosio::chain::chain_config& 
       ( "max_authority_depth", config.max_authority_depth )
       ( "max_inline_depth", config.max_inline_depth )
       ( "max_inline_action_size", config.max_inline_action_size )
-      ( "max_generated_transaction_size", config.max_generated_transaction_size );
+      ( "max_generated_transaction_size", config.max_generated_transaction_size )
+      ( "max_generated_transaction_count", config.max_generated_transaction_count );
 }
 
 BOOST_FIXTURE_TEST_CASE( elect_producers_and_parameters, eosio_system_tester ) try {

@@ -29,7 +29,7 @@ namespace eosio { namespace chain {
          id_type                       id;
          transaction_id_type           trx_id;
          account_name                  sender;
-         uint32_t                      sender_id = 0; /// ID given this transaction by the sender
+         uint128_t                     sender_id = 0; /// ID given this transaction by the sender
          time_point                    delay_until; /// this generated transaction will not be applied until the specified time
          time_point                    expiration; /// this generated transaction will not be applied after this time
          time_point                    published;
@@ -62,8 +62,7 @@ namespace eosio { namespace chain {
          ordered_unique< tag<by_sender_id>,
             composite_key< generated_transaction_object,
                BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, account_name, sender),
-               BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, uint32_t, sender_id),
-               BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, generated_transaction_object::id_type, id)
+               BOOST_MULTI_INDEX_MEMBER( generated_transaction_object, uint128_t, sender_id)
             >
          >
       >

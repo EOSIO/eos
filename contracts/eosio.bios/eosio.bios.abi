@@ -27,7 +27,7 @@
       "base": "",
       "fields": [
         {"name":"producer_name",      "type":"account_name"},
-        {"name":"signing_key",  "type":"public_key"}
+        {"name":"block_signing_key",  "type":"public_key"}
       ]
     },{
       "name": "set_producers",
