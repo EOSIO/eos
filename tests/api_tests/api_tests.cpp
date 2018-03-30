@@ -143,7 +143,7 @@ transaction_trace CallAction(tester& test, T ac, const vector<account_name>& sco
 }
 
 template <typename T>
-transaction_trace CallFunction(tester& test, T ac, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}) {
+transaction_trace CallFunction(tester& test, T ac, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}, uint32_t extra_cf_cpu_usage = 0) {
 	{
 		signed_transaction trx;
 
@@ -156,7 +156,7 @@ transaction_trace CallFunction(tester& test, T ac, const vector<char>& data, con
       act.data = data;
       trx.actions.push_back(act);
 
-      test.set_transaction_headers(trx);
+      test.set_transaction_headers(trx, test.DEFAULT_EXPIRATION_DELTA, extra_cf_cpu_usage );
 		auto sigs = trx.sign(test.get_private_key(scope[0], "active"), chain_id_type());
       trx.get_signature_keys(chain_id_type() );
 		auto res = test.push_transaction(trx);
@@ -466,7 +466,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       produce_block();
 
       // test send context free action
-      auto ttrace = CALL_TEST_FUNCTION( *this, "test_transaction", "send_cf_action", {} );
+      auto ttrace = CallFunction( *this, test_api_action<TEST_METHOD("test_transaction", "send_cf_action")>{}, {}, {N(testapi)}, 20000 );
       BOOST_CHECK_EQUAL(ttrace.action_traces.size(), 2);
       BOOST_CHECK_EQUAL(ttrace.action_traces[1].receiver == account_name("dummy"), true);
       BOOST_CHECK_EQUAL(ttrace.action_traces[1].act.account == account_name("dummy"), true);
@@ -480,7 +480,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       );
 
       CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_action", {} );
-      CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_cf_action", {} );
+      CallFunction( *this, test_api_action<TEST_METHOD("test_transaction", "read_inline_cf_action")>{}, {}, {N(testapi)}, 20000 );
 
 } FC_LOG_AND_RETHROW() }
 

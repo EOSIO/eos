@@ -106,7 +106,7 @@ namespace eosio { namespace testing {
       }
    }
 
-  void base_tester::set_transaction_headers(signed_transaction& trx, uint32_t expiration) const {
+  void base_tester::set_transaction_headers(signed_transaction& trx, uint32_t expiration, uint32_t extra_cf_cpu_usage) const {
      trx.expiration = control->head_block_time() + fc::seconds(expiration);
      trx.set_reference_block( control->head_block_id() );
 
@@ -116,6 +116,9 @@ namespace eosio { namespace testing {
      estimated_size += 4 * sizeof(signature_type); // hack to allow for 4 sigs
 
      trx.net_usage_words = estimated_size / 8;
+
+     // estimate the usage of the context free actions
+     trx.context_free_kilo_cpu_usage = extra_cf_cpu_usage + (trx.context_free_actions.size() * config::default_base_per_action_cpu_usage * 10);
   }
 
    void base_tester::create_account( account_name a, account_name creator, bool multisig ) {
