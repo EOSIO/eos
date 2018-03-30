@@ -26,8 +26,8 @@ class Utils:
 
     EosClientPath="programs/cleos/cleos"
 
-    EosWalletName="eosiowd"
-    EosWalletPath="programs/eosiowd/"+ EosWalletName
+    EosWalletName="keosd"
+    EosWalletPath="programs/keosd/"+ EosWalletName
 
     EosServerName="nodeos"
     EosServerPath="programs/nodeos/"+ EosServerName

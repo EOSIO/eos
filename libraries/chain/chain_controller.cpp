@@ -32,6 +32,8 @@
 #include <boost/range/algorithm_ext/is_sorted.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/adaptor/map.hpp>
+#include <boost/range/algorithm/sort.hpp>
+#include <boost/range/algorithm/equal.hpp>
 
 #include <fstream>
 #include <functional>
@@ -280,47 +282,51 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
    if (!delay.sec_since_epoch()) {
       result = _push_transaction(std::move(mtrx));
 
-      // notify anyone listening to pending transactions
-      on_pending_transaction(_pending_transaction_metas.back(), packed_trx);
-
-      _pending_block->input_transactions.emplace_back(packed_trx);
-
    } else {
-      result.status = transaction_trace::delayed;
-      const auto trx = mtrx.trx();
-      FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
+      auto delayed_transaction_processing = [&](transaction_metadata& meta) {
+         result.status = transaction_trace::delayed;
+         const auto trx = mtrx.trx();
+         FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
 
-      FC_ASSERT( trx.expiration > (head_block_time() + fc::milliseconds(2*config::block_interval_ms)),
-                                   "transaction is expired when created" );
+         FC_ASSERT( trx.expiration > (head_block_time() + fc::milliseconds(2*config::block_interval_ms)),
+                                      "transaction is expired when created" );
 
-      // add in the system account authorization
-      action for_deferred = trx.actions[0];
-      bool found = false;
-      for (const auto& auth : for_deferred.authorization) {
-         if (auth.actor == config::system_account_name &&
-             auth.permission == config::active_name) {
-            found = true;
-            break;
+         // add in the system account authorization
+         action for_deferred = trx.actions[0];
+         bool found = false;
+         for (const auto& auth : for_deferred.authorization) {
+            if (auth.actor == config::system_account_name &&
+                auth.permission == config::active_name) {
+               found = true;
+               break;
+            }
          }
-      }
-      if (!found)
-         for_deferred.authorization.push_back(permission_level{config::system_account_name, config::active_name});
+         if (!found)
+            for_deferred.authorization.push_back(permission_level{config::system_account_name, config::active_name});
 
-      apply_context context(*this, _db, for_deferred, mtrx);
+         apply_context context(*this, _db, for_deferred, mtrx);
 
-      time_point_sec execute_after = head_block_time();
-      execute_after += time_point_sec(delay);
-      //TODO: !!! WHO GETS BILLED TO STORE THE DELAYED TX?
-      deferred_transaction dtrx(context.get_next_sender_id(), config::system_account_name, config::system_account_name, execute_after, trx);
-      FC_ASSERT( dtrx.execute_after < dtrx.expiration, "transaction expires before it can execute" );
+         time_point_sec execute_after = head_block_time();
+         execute_after += time_point_sec(delay);
+         //TODO: !!! WHO GETS BILLED TO STORE THE DELAYED TX?
+         deferred_transaction dtrx(context.get_next_sender_id(), config::system_account_name, config::system_account_name, execute_after, trx);
+         FC_ASSERT( dtrx.execute_after < dtrx.expiration, "transaction expires before it can execute" );
 
-      result.deferred_transaction_requests.push_back(std::move(dtrx));
+         result.deferred_transaction_requests.push_back(std::move(dtrx));
 
-      // notify anyone listening to pending transactions
-      on_pending_transaction(std::move(mtrx), packed_trx);
+         _create_generated_transaction(result.deferred_transaction_requests[0].get<deferred_transaction>());
 
-      _create_generated_transaction(result.deferred_transaction_requests[0].get<deferred_transaction>());
+         return result;
+      };
+
+      result = wrap_transaction_processing(std::forward<transaction_metadata>(mtrx), delayed_transaction_processing);
    }
+
+   // notify anyone listening to pending transactions
+   on_pending_transaction(_pending_transaction_metas.back(), packed_trx);
+
+   _pending_block->input_transactions.emplace_back(packed_trx);
+
    return result;
 
 } FC_CAPTURE_AND_RETHROW() }
@@ -339,50 +345,19 @@ static void record_locks_for_data_access(const vector<action_trace>& action_trac
 
 transaction_trace chain_controller::_push_transaction( transaction_metadata&& data )
 { try {
-   FC_ASSERT( _pending_block, " block not started" );
+   auto process_apply_transaction = [&](transaction_metadata& meta) {
+      auto cyclenum = _pending_block->regions.back().cycles_summary.size() - 1;
 
-   if (_limits.max_push_transaction_us.count() > 0) {
-      auto newval = fc::time_point::now() + _limits.max_push_transaction_us;
-      if ( !data.processing_deadline || newval < *data.processing_deadline ) {
-         data.processing_deadline = newval;
-      }
-   }
-
-   const transaction& trx = data.trx();
-   auto temp_session = _db.start_undo_session(true);
-
-   // for now apply the transaction serially but schedule it according to those invariants
-   validate_referenced_accounts(trx);
-
-   auto cyclenum = _pending_block->regions.back().cycles_summary.size() - 1;
-
-   /// TODO: move _pending_cycle into db so that it can be undone if transation fails, for now we will apply
-   /// the transaction first so that there is nothing to undo... this only works because things are currently
-   /// single threaded
-   // set cycle, shard, region etc
-   data.region_id = 0;
-   data.cycle_index = cyclenum;
-   data.shard_index = 0;
-   auto result = _apply_transaction( data );
-
-   auto& bcycle = _pending_block->regions.back().cycles_summary.back();
-   auto& bshard = bcycle.front();
-
-   record_locks_for_data_access(result.action_traces, bshard.read_locks, bshard.write_locks);
-
-   fc::deduplicate(bshard.read_locks);
-   fc::deduplicate(bshard.write_locks);
-
-   bshard.transactions.emplace_back( result );
-
-   _pending_cycle_trace->shard_traces.at(0).append(result);
-
-   // The transaction applied successfully. Merge its changes into the pending block session.
-   temp_session.squash();
-
-   _pending_transaction_metas.emplace_back(std::forward<transaction_metadata>(data));
-
-   return result;
+      /// TODO: move _pending_cycle into db so that it can be undone if transation fails, for now we will apply
+      /// the transaction first so that there is nothing to undo... this only works because things are currently
+      /// single threaded
+      // set cycle, shard, region etc
+      data.region_id = 0;
+      data.cycle_index = cyclenum;
+      data.shard_index = 0;
+      return _apply_transaction( data );
+   };
+   return wrap_transaction_processing( std::forward<transaction_metadata>(data), process_apply_transaction );
 } FC_CAPTURE_AND_RETHROW() }
 
 
@@ -762,10 +737,8 @@ void chain_controller::__apply_block(const signed_block& next_block)
                 auto make_metadata = [&]() -> transaction_metadata* {
                   auto itr = trx_index.find(receipt.id);
                   if( itr != trx_index.end() ) {
-                     ilog( "input" );
                      return &input_metas.at(itr->second);
                   } else {
-                     ilog( "defer" );
                      const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
                      if (gtrx != nullptr) {
                         auto trx = fc::raw::unpack<deferred_transaction>(gtrx->packed_trx.data(), gtrx->packed_trx.size());
@@ -788,7 +761,6 @@ void chain_controller::__apply_block(const signed_block& next_block)
                mtrx->allowed_read_locks.emplace(&shard.read_locks);
                mtrx->allowed_write_locks.emplace(&shard.write_locks);
                mtrx->processing_deadline = processing_deadline;
-               ilog( "." );
 
                s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
                record_locks_for_data_access(s_trace.transaction_traces.back().action_traces, used_read_locks, used_write_locks);
@@ -806,9 +778,15 @@ void chain_controller::__apply_block(const signed_block& next_block)
             fc::deduplicate(used_read_locks);
             fc::deduplicate(used_write_locks);
 
-            EOS_ASSERT(std::equal(used_read_locks.cbegin(), used_read_locks.cend(), shard.read_locks.begin()),
+            auto newend = boost::remove_if( used_read_locks,
+                            [&]( const auto& l ){ 
+                               return boost::find( used_write_locks, l ) != used_write_locks.end(); 
+                            });
+            used_read_locks.erase( newend, used_read_locks.end() );
+
+            EOS_ASSERT( boost::equal( used_read_locks, shard.read_locks ), 
                block_lock_exception, "Read locks for executing shard: ${s} do not match those listed in the block", ("s", shard_index));
-            EOS_ASSERT(std::equal(used_write_locks.cbegin(), used_write_locks.cend(), shard.write_locks.begin()),
+            EOS_ASSERT( boost::equal( used_write_locks, shard.write_locks ),
                block_lock_exception, "Write locks for executing shard: ${s} do not match those listed in the block", ("s", shard_index));
 
             s_trace.finalize_shard();
