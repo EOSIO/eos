@@ -7,6 +7,7 @@
 #include <vector>
 #include <math.h>
 #include <sstream>
+#include <regex>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -1397,7 +1398,18 @@ launcher_def::launch (eosd_def &instance, string &gts) {
     eosdcmd += "--skip-transaction-signatures ";
   }
   if (!eosd_extra_args.empty()) {
-    eosdcmd += eosd_extra_args + " ";
+    if (instance.name == "bios") {
+       // Strip the mongo-related options out of the bios node so
+       // the plugins don't conflict between 00 and bios.
+       regex r("--plugin +eosio::mongo_db_plugin");
+       string args = std::regex_replace (eosd_extra_args,r,"");
+       regex r2("--mongodb-uri +[^ ]+");
+       args = std::regex_replace (args,r2,"");
+       eosdcmd += args + " ";
+    }
+    else {
+       eosdcmd += eosd_extra_args + " ";
+    }
   }
 
   if( add_enable_stale_production ) {
