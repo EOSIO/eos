@@ -331,16 +331,23 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
 
 } FC_CAPTURE_AND_RETHROW() }
 
-static void record_locks_for_data_access(const vector<action_trace>& action_traces, vector<shard_lock>& read_locks, vector<shard_lock>& write_locks ) {
-   for (const auto& at: action_traces) {
+static void record_locks_for_data_access(transaction_trace& trace, flat_set<shard_lock>& read_locks, flat_set<shard_lock>& write_locks ) {
+   for (const auto& at: trace.action_traces) {
       for (const auto& access: at.data_access) {
          if (access.type == data_access_info::read) {
-            read_locks.emplace_back(shard_lock{access.code, access.scope});
+            trace.read_locks.emplace(shard_lock{access.code, access.scope});
          } else {
-            write_locks.emplace_back(shard_lock{access.code, access.scope});
+            trace.write_locks.emplace(shard_lock{access.code, access.scope});
          }
       }
    }
+
+   // remove read locks for write locks taken by other actions
+   trace.read_locks.erase(trace.write_locks.begin(), trace.write_locks.end());
+   read_locks.erase(trace.write_locks.begin(), trace.write_locks.end());
+
+   read_locks.insert(trace.read_locks.begin(), trace.read_locks.end());
+   write_locks.insert(trace.write_locks.begin(), trace.write_locks.end());
 }
 
 transaction_trace chain_controller::_push_transaction( transaction_metadata&& data )
@@ -439,8 +446,16 @@ void chain_controller::_start_pending_shard()
 
 void chain_controller::_finalize_pending_cycle()
 {
-   for( auto& shard : _pending_cycle_trace->shard_traces ) {
-      shard.finalize_shard();
+   for( int idx = 0; idx < _pending_cycle_trace->shard_traces.size(); idx++ ) {
+      auto& trace = _pending_cycle_trace->shard_traces.at(idx);
+      auto& shard = _pending_block->regions.back().cycles_summary.back().at(idx);
+
+      trace.finalize_shard();
+      shard.read_locks.reserve(trace.read_locks.size());
+      shard.write_locks.insert(shard.read_locks.end(), trace.read_locks.begin(), trace.read_locks.end());
+
+      shard.write_locks.reserve(trace.write_locks.size());
+      shard.write_locks.insert(shard.write_locks.end(), trace.write_locks.begin(), trace.write_locks.end());
    }
 
    _apply_cycle_trace(*_pending_cycle_trace);
@@ -728,8 +743,8 @@ void chain_controller::__apply_block(const signed_block& next_block)
                write_locks[s] = shard_index;
             }
 
-            vector<shard_lock> used_read_locks;
-            vector<shard_lock> used_write_locks;
+            flat_set<shard_lock> used_read_locks;
+            flat_set<shard_lock> used_write_locks;
 
             shard_trace s_trace;
             for (const auto& receipt : shard.transactions) {
@@ -763,7 +778,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                mtrx->processing_deadline = processing_deadline;
 
                s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
-               record_locks_for_data_access(s_trace.transaction_traces.back().action_traces, used_read_locks, used_write_locks);
+               record_locks_for_data_access(s_trace.transaction_traces.back(), used_read_locks, used_write_locks);
 
                FC_ASSERT(receipt.status == s_trace.transaction_traces.back().status);
 
@@ -773,18 +788,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                // check_transaction_authorization(trx, true);
             } /// for each transaction id
 
-            // Validate that the producer didn't list extra locks to bloat the size of the block
-            // TODO: this check can be removed when blocks are irreversible
-            fc::deduplicate(used_read_locks);
-            fc::deduplicate(used_write_locks);
-
-            auto newend = boost::remove_if( used_read_locks,
-                            [&]( const auto& l ){ 
-                               return boost::find( used_write_locks, l ) != used_write_locks.end(); 
-                            });
-            used_read_locks.erase( newend, used_read_locks.end() );
-
-            EOS_ASSERT( boost::equal( used_read_locks, shard.read_locks ), 
+            EOS_ASSERT( boost::equal( used_read_locks, shard.read_locks ),
                block_lock_exception, "Read locks for executing shard: ${s} do not match those listed in the block", ("s", shard_index));
             EOS_ASSERT( boost::equal( used_write_locks, shard.write_locks ),
                block_lock_exception, "Write locks for executing shard: ${s} do not match those listed in the block", ("s", shard_index));
@@ -1022,9 +1026,8 @@ void chain_controller::record_transaction(const transaction& trx)
    }
 } 
 
-void chain_controller::update_resource_usage( transaction_trace& trace, const transaction_metadata& meta ) {
-   const auto& chain_configuration = get_global_properties().configuration;
-
+static uint32_t calculate_transaction_cpu_usage( const transaction_trace& trace, const transaction_metadata& meta, const chain_config& chain_configuration ) {
+   // calculate the sum of all actions retired
    uint32_t action_cpu_usage = 0;
    for (const auto &at: trace.action_traces) {
       action_cpu_usage += chain_configuration.base_per_action_cpu_usage + at.cpu_usage;
@@ -1035,13 +1038,45 @@ void chain_controller::update_resource_usage( transaction_trace& trace, const tr
       }
    }
 
-   trace.net_usage = meta.bandwidth_usage + chain_configuration.base_per_transaction_net_usage;
-   trace.cpu_usage = action_cpu_usage + chain_configuration.base_per_transaction_cpu_usage;
-
    // charge a system controlled amount for signature verification/recovery
+   uint32_t signature_cpu_usage = 0;
    if( meta.signing_keys ) {
-      trace.cpu_usage += meta.signing_keys->size() * chain_configuration.per_signature_cpu_usage;
+      signature_cpu_usage = (uint32_t)meta.signing_keys->size() * chain_configuration.per_signature_cpu_usage;
    }
+
+   // charge a system discounted amount for context free cpu usage
+   uint32_t context_free_cpu_usage = meta.trx().context_free_kilo_cpu_usage.value * 1024UL;
+   context_free_cpu_usage = (uint32_t)((uint64_t)context_free_cpu_usage * chain_configuration.context_free_discount_cpu_usage_num / chain_configuration.context_free_discount_cpu_usage_den);
+
+   return chain_configuration.base_per_transaction_cpu_usage +
+          action_cpu_usage +
+          context_free_cpu_usage +
+          signature_cpu_usage;
+}
+
+static uint32_t calculate_tranasaction_net_usage( const transaction_trace& trace, const transaction_metadata& meta, const chain_config& chain_configuration ) {
+   // charge a system controlled per-lock overhead to account for shard bloat
+   uint32_t lock_net_usage = uint32_t(trace.read_locks.size() + trace.write_locks.size()) * chain_configuration.per_lock_net_usage;
+
+   return chain_configuration.base_per_transaction_net_usage +
+           meta.bandwidth_usage +
+           lock_net_usage;
+}
+
+void chain_controller::update_resource_usage( transaction_trace& trace, const transaction_metadata& meta ) {
+   const auto& chain_configuration = get_global_properties().configuration;
+
+   trace.cpu_usage = calculate_transaction_cpu_usage(trace, meta, chain_configuration);
+   trace.net_usage = calculate_tranasaction_net_usage(trace, meta, chain_configuration);
+
+   // enforce that the system controlled per tx limits are not violated
+   EOS_ASSERT(trace.cpu_usage <= chain_configuration.max_transaction_cpu_usage,
+              tx_resource_exhausted, "Transaction exceeds the maximum cpu usage [used: ${used}, max: ${max}]",
+              ("usage", trace.cpu_usage)("max", chain_configuration.max_transaction_cpu_usage));
+
+   EOS_ASSERT(trace.net_usage <= chain_configuration.max_transaction_net_usage,
+              tx_resource_exhausted, "Transaction exceeds the maximum net usage [used: ${used}, max: ${max}]",
+              ("usage", trace.net_usage)("max", chain_configuration.max_transaction_net_usage));
 
    // determine the accounts to bill
    set<std::pair<account_name, permission_name>> authorizations;

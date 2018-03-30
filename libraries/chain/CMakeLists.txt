@@ -7,6 +7,7 @@ add_library( eosio_chain
              name.cpp
              transaction.cpp
              block.cpp
+             block_trace.cpp
              wast_to_wasm.cpp
              wasm_interface.cpp
              wasm_eosio_validation.cpp

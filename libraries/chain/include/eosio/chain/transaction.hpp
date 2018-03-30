@@ -238,48 +238,11 @@ namespace eosio { namespace chain {
       account_name   sender;
       uint128_t       sender_id;
    };
-
-   struct data_access_info {
-      enum access_type {
-         read = 0, ///< scope was read by this action
-         write  = 1, ///< scope was (potentially) written to by this action
-      };
-
-      access_type                type;
-      account_name               code;
-      scope_name                 scope;
-
-      uint64_t                   sequence;
-   };
-
-   struct action_trace {
-      account_name               receiver;
-      uint64_t                   cpu_usage;
-      action                     act;
-      string                     console;
-      uint32_t                   region_id;
-      uint32_t                   cycle_index;
-      vector<data_access_info>   data_access;
-
-      fc::microseconds           _profiling_us = fc::microseconds(0);
-   };
-
-   struct transaction_trace : transaction_receipt {
-      using transaction_receipt::transaction_receipt;
-
-      vector<action_trace>          action_traces;
-      vector<fc::static_variant<deferred_transaction, deferred_reference>> deferred_transaction_requests;
-
-      uint64_t                      cpu_usage;
-      uint64_t                      net_usage;
-
-      fc::microseconds              _profiling_us = fc::microseconds(0);
-      fc::microseconds              _setup_profiling_us = fc::microseconds(0);
-   };
 } } // eosio::chain
 
 FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
 FC_REFLECT( eosio::chain::action, (account)(name)(authorization)(data) )
+FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix)(net_usage_words)(context_free_kilo_cpu_usage) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures)(context_free_data) )
@@ -287,12 +250,6 @@ FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib
 FC_REFLECT( eosio::chain::packed_transaction, (signatures)(context_free_data)(compression)(data) )
 FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(payer)(execute_after) )
 FC_REFLECT( eosio::chain::deferred_reference, (sender_id)(sender) )
-FC_REFLECT_ENUM( eosio::chain::data_access_info::access_type, (read)(write))
-FC_REFLECT( eosio::chain::data_access_info, (type)(code)(scope)(sequence))
-FC_REFLECT( eosio::chain::action_trace, (receiver)(cpu_usage)(act)(console)(region_id)(cycle_index)(data_access)(_profiling_us) )
-FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
-FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail)(delayed) )
-FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transaction_requests)(cpu_usage)(net_usage)(_profiling_us)(_setup_profiling_us) )
 
 
 

@@ -126,6 +126,7 @@ void apply_eosio_setcode(apply_context& context) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
       #warning TODO: update setcode message to include the hash, then validate it in validate 
       a.code_version = code_id;
+      // Added resize(0) here to avoid bug in boost vector container
       a.code.resize( 0 );
       a.code.resize( code_size );
       a.last_code_update = context.controller.head_block_time();

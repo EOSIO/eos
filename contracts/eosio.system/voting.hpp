@@ -247,6 +247,11 @@ namespace eosiosystem {
             std::array<uint32_t, 21> base_per_action_cpu_usage;
             std::array<uint32_t, 21> base_setcode_cpu_usage;
             std::array<uint32_t, 21> per_signature_cpu_usage;
+            std::array<uint32_t, 21> per_lock_net_usage;
+            std::array<uint64_t, 21> context_free_discount_cpu_usage_num;
+            std::array<uint64_t, 21> context_free_discount_cpu_usage_den;
+            std::array<uint32_t, 21> max_transaction_cpu_usage;
+            std::array<uint32_t, 21> max_transaction_net_usage;
             std::array<uint32_t, 21> max_transaction_lifetime;
             std::array<uint16_t, 21> max_authority_depth;
             std::array<uint32_t, 21> max_transaction_exec_time;
@@ -272,6 +277,11 @@ namespace eosiosystem {
                   base_per_action_cpu_usage[n] = it->prefs.base_per_action_cpu_usage;
                   base_setcode_cpu_usage[n] = it->prefs.base_setcode_cpu_usage;
                   per_signature_cpu_usage[n] = it->prefs.per_signature_cpu_usage;
+                  per_lock_net_usage[n] = it->prefs.per_lock_net_usage;
+                  context_free_discount_cpu_usage_num[n] = it->prefs.context_free_discount_cpu_usage_num;
+                  context_free_discount_cpu_usage_den[n] = it->prefs.context_free_discount_cpu_usage_den;
+                  max_transaction_cpu_usage[n] = it->prefs.max_transaction_cpu_usage;
+                  max_transaction_net_usage[n] = it->prefs.max_transaction_net_usage;
                   max_transaction_lifetime[n] = it->prefs.max_transaction_lifetime;
                   max_authority_depth[n] = it->prefs.max_authority_depth;
                   max_transaction_exec_time[n] = it->prefs.max_transaction_exec_time;
@@ -294,6 +304,11 @@ namespace eosiosystem {
                std::sort( base_per_action_cpu_usage.begin(), base_per_action_cpu_usage.begin()+n );
                std::sort( base_setcode_cpu_usage.begin(), base_setcode_cpu_usage.begin()+n );
                std::sort( per_signature_cpu_usage.begin(), per_signature_cpu_usage.begin()+n );
+               std::sort( per_lock_net_usage.begin(), per_lock_net_usage.begin()+n );
+               std::sort( context_free_discount_cpu_usage_num.begin(), context_free_discount_cpu_usage_num.begin()+n );
+               std::sort( context_free_discount_cpu_usage_den.begin(), context_free_discount_cpu_usage_den.begin()+n );
+               std::sort( max_transaction_cpu_usage.begin(), max_transaction_cpu_usage.begin()+n );
+               std::sort( max_transaction_net_usage.begin(), max_transaction_net_usage.begin()+n );
                std::sort( max_transaction_lifetime.begin(), max_transaction_lifetime.begin()+n );
                std::sort( max_transaction_exec_time.begin(), max_transaction_exec_time.begin()+n );
                std::sort( max_authority_depth.begin(), max_authority_depth.begin()+n );
@@ -318,6 +333,11 @@ namespace eosiosystem {
             parameters.base_per_action_cpu_usage = base_per_action_cpu_usage[median];
             parameters.base_setcode_cpu_usage = base_setcode_cpu_usage[median];
             parameters.per_signature_cpu_usage = per_signature_cpu_usage[median];
+            parameters.per_lock_net_usage = per_lock_net_usage[median];
+            parameters.context_free_discount_cpu_usage_num = context_free_discount_cpu_usage_num[median];
+            parameters.context_free_discount_cpu_usage_den = context_free_discount_cpu_usage_den[median];
+            parameters.max_transaction_cpu_usage = max_transaction_cpu_usage[median];
+            parameters.max_transaction_net_usage = max_transaction_net_usage[median];
             parameters.max_transaction_lifetime = max_transaction_lifetime[median];
             parameters.max_transaction_exec_time = max_transaction_exec_time[median];
             parameters.max_authority_depth = max_authority_depth[median];

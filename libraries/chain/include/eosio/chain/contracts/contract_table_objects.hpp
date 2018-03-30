@@ -64,7 +64,6 @@ namespace eosio { namespace chain { namespace contracts {
       uint64_t              primary_key;
       shared_string         value;
       account_name          payer = 0;
-      uint16_t              billed_overhead = 0;
    };
 
    using key_value_index = chainbase::shared_multi_index_container<

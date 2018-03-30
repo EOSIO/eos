@@ -11,6 +11,11 @@ namespace eosio {
       uint32_t base_per_action_cpu_usage;
       uint32_t base_setcode_cpu_usage;
       uint32_t per_signature_cpu_usage;
+      uint32_t per_lock_net_usage;
+      uint64_t context_free_discount_cpu_usage_num;
+      uint64_t context_free_discount_cpu_usage_den;
+      uint32_t max_transaction_cpu_usage;
+      uint32_t max_transaction_net_usage;
       uint32_t max_transaction_lifetime;
       uint32_t max_transaction_exec_time;
       uint16_t max_authority_depth;
@@ -21,7 +26,9 @@ namespace eosio {
 
       EOSLIB_SERIALIZE( blockchain_parameters,
                         (base_per_transaction_net_usage)(base_per_transaction_cpu_usage)(base_per_action_cpu_usage)
-                        (base_setcode_cpu_usage)(per_signature_cpu_usage)
+                        (base_setcode_cpu_usage)(per_signature_cpu_usage)(per_lock_net_usage)
+                        (context_free_discount_cpu_usage_num)(context_free_discount_cpu_usage_den)
+                        (max_transaction_cpu_usage)(max_transaction_net_usage)
                         (max_transaction_lifetime)(max_transaction_exec_time)(max_authority_depth)
                         (max_inline_depth)(max_inline_action_size)(max_generated_transaction_size)
                         (max_generated_transaction_count)

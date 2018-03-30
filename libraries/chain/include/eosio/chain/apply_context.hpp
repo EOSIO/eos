@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/block.hpp>
+#include <eosio/chain/block_trace.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/transaction_metadata.hpp>
 #include <eosio/chain/contracts/contract_table_objects.hpp>

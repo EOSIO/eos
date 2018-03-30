@@ -8,6 +8,7 @@
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/fork_database.hpp>
 #include <eosio/chain/block_log.hpp>
+#include <eosio/chain/block_trace.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/scoped_exit.hpp>
@@ -350,20 +351,13 @@ namespace eosio { namespace chain {
 
             auto& bcycle = _pending_block->regions.back().cycles_summary.back();
             auto& bshard = bcycle.front();
+            auto& bshard_trace = _pending_cycle_trace->shard_traces.at(0);
 
-            record_locks_for_data_access(result.action_traces, bshard.read_locks, bshard.write_locks);
-
-            fc::deduplicate(bshard.read_locks);
-            fc::deduplicate(bshard.write_locks);
-            auto newend = boost::remove_if( bshard.read_locks,
-                            [&]( const auto& l ){
-                               return boost::find( bshard.write_locks, l ) != bshard.write_locks.end();
-                            });
-            bshard.read_locks.erase( newend, bshard.read_locks.end() );
+            record_locks_for_data_access(result, bshard_trace.read_locks, bshard_trace.write_locks);
 
             bshard.transactions.emplace_back( result );
 
-            _pending_cycle_trace->shard_traces.at(0).append(result);
+            bshard_trace.append(result);
 
             // The transaction applied successfully. Merge its changes into the pending block session.
             temp_session.squash();
