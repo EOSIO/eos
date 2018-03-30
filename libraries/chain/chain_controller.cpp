@@ -278,6 +278,15 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
    const auto delay = check_transaction_authorization(mtrx.trx(), packed_trx.signatures, packed_trx.context_free_data);
    auto setup_us = fc::time_point::now() - start;
 
+   // enforce that the header is accurate as a commitment to net_usage
+   uint32_t cfa_sig_net_usage = (uint32_t)(packed_trx.context_free_data.size() + fc::raw::pack_size(packed_trx.signatures));
+   uint32_t net_usage_commitment = mtrx.trx().net_usage_words.value * 8U;
+   uint32_t net_usage = cfa_sig_net_usage + (uint32_t)packed_trx.data.size();
+   EOS_ASSERT(net_usage <= net_usage_commitment,
+                tx_resource_exhausted,
+                "Packed Transaction and associated data does not fit into the space committed to by the transaction's header! [usage=${usage},commitment=${commit}]",
+                ("usage", net_usage)("commit", net_usage_commitment));
+
    transaction_trace result(mtrx.id);
    result._setup_profiling_us = setup_us;
 
@@ -1057,20 +1066,21 @@ static uint32_t calculate_transaction_cpu_usage( const transaction_trace& trace,
           signature_cpu_usage;
 }
 
-static uint32_t calculate_tranasaction_net_usage( const transaction_trace& trace, const transaction_metadata& meta, const chain_config& chain_configuration ) {
+static uint32_t calculate_transaction_net_usage( const transaction_trace& trace, const transaction_metadata& meta, const chain_config& chain_configuration ) {
    // charge a system controlled per-lock overhead to account for shard bloat
    uint32_t lock_net_usage = uint32_t(trace.read_locks.size() + trace.write_locks.size()) * chain_configuration.per_lock_net_usage;
+   uint32_t trx_wire_net_usage = meta.trx().net_usage_words.value * 8U;
 
    return chain_configuration.base_per_transaction_net_usage +
-           meta.bandwidth_usage +
-           lock_net_usage;
+          trx_wire_net_usage +
+          lock_net_usage;
 }
 
 void chain_controller::update_resource_usage( transaction_trace& trace, const transaction_metadata& meta ) {
    const auto& chain_configuration = get_global_properties().configuration;
 
    trace.cpu_usage = calculate_transaction_cpu_usage(trace, meta, chain_configuration);
-   trace.net_usage = calculate_tranasaction_net_usage(trace, meta, chain_configuration);
+   trace.net_usage = calculate_transaction_net_usage(trace, meta, chain_configuration);
 
    // enforce that the system controlled per tx limits are not violated
    EOS_ASSERT(trace.cpu_usage <= chain_configuration.max_transaction_cpu_usage,

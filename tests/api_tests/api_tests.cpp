@@ -133,7 +133,7 @@ transaction_trace CallAction(tester& test, T ac, const vector<account_name>& sco
    action act(pl, ac);
    trx.actions.push_back(act);
 
-   test.set_tapos(trx);
+   test.set_transaction_headers(trx);
    auto sigs = trx.sign(test.get_private_key(scope[0], "active"), chain_id_type());
    trx.get_signature_keys(chain_id_type());
    auto res = test.push_transaction(trx);
@@ -156,7 +156,7 @@ transaction_trace CallFunction(tester& test, T ac, const vector<char>& data, con
       act.data = data;
       trx.actions.push_back(act);
 
-		test.set_tapos(trx);
+      test.set_transaction_headers(trx);
 		auto sigs = trx.sign(test.get_private_key(scope[0], "active"), chain_id_type());
       trx.get_signature_keys(chain_id_type() );
 		auto res = test.push_transaction(trx);
@@ -289,7 +289,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
       std::copy(data.begin(), data.end(), std::back_inserter(dest));
       trx.actions.push_back(act);
 
-		test.set_tapos(trx);
+		test.set_transaction_headers(trx);
 		trx.sign(test.get_private_key(N(inita), "active"), chain_id_type());
 		auto res = test.push_transaction(trx);
 		BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
@@ -340,7 +340,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
       std::copy(dat.begin(), dat.end(), std::back_inserter(dest));
       trx.actions.push_back(act);
 
-		set_tapos(trx);
+      set_transaction_headers(trx);
 		trx.sign(get_private_key(N(acc3), "active"), chain_id_type());
 		trx.sign(get_private_key(N(acc4), "active"), chain_id_type());
 		auto res = push_transaction(trx);
@@ -398,7 +398,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       trx.context_free_actions.push_back(act);
       trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100)); // verify payload matches context free data
       trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(200));
-      set_tapos(trx);
+      set_transaction_headers(trx);
 
       // signing a transaction with only context_free_actions should not be allowed
       auto sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
@@ -417,7 +417,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       auto pl = vector<permission_level>{{N(testapi), config::active_name}};
       action act1(pl, da);
       trx.actions.push_back(act1);
-      set_tapos(trx);
+      set_transaction_headers(trx);
       // run normal passing case
       sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
       auto res = push_transaction(trx);
@@ -431,7 +431,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       trx.signatures.clear();
       trx.actions.clear();
       trx.actions.push_back(act2);
-      set_tapos(trx);
+      set_transaction_headers(trx);
       // run normal passing case
       sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
       BOOST_CHECK_EXCEPTION(push_transaction(trx), transaction_exception,
@@ -454,7 +454,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
          action cfa_act({}, cfa);
          trx.context_free_actions.emplace_back(cfa_act);
          trx.signatures.clear();
-         set_tapos(trx);
+         set_transaction_headers(trx);
          sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
          BOOST_CHECK_EXCEPTION(push_transaction(trx), transaction_exception,
               [](const fc::exception& e) {
@@ -492,12 +492,12 @@ BOOST_FIXTURE_TEST_CASE(cfa_tx_signature, tester)  try {
    signed_transaction tx1;
    tx1.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100));
    tx1.context_free_actions.push_back(cfa);
-   set_tapos(tx1);
+   set_transaction_headers(tx1);
 
    signed_transaction tx2;
    tx2.context_free_data.emplace_back(fc::raw::pack<uint32_t>(200));
    tx2.context_free_actions.push_back(cfa);
-   set_tapos(tx2);
+   set_transaction_headers(tx2);
 
    const private_key_type& priv_key = get_private_key("dummy", "active");
    BOOST_TEST((std::string)tx1.sign(priv_key, chain_id_type()) != (std::string)tx2.sign(priv_key, chain_id_type()));
@@ -538,7 +538,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
       action act(pl, ac);
 
       trx.actions.push_back(act);
-		test.set_tapos(trx);
+      test.set_transaction_headers(trx);
 		auto sigs = trx.sign(test.get_private_key(N(testapi), "active"), chain_id_type());
       trx.get_signature_keys(chain_id_type() );
 		auto res = test.push_transaction(trx);
@@ -790,7 +790,7 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, tester) { try {
       act.data = data;
       trx.actions.push_back(act);
 
-		set_tapos(trx);
+      set_transaction_headers(trx);
 
 		auto sigs = trx.sign(get_private_key(config::system_account_name, "active"), chain_id_type());
       trx.get_signature_keys(chain_id_type() );

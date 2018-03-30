@@ -1308,7 +1308,7 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
 
    trx.context_free_actions.emplace_back(vector<permission_level>(), chain::contracts::mindelay { .delay = 10 });
 
-   chain.set_tapos(trx, 30);
+   chain.set_transaction_headers(trx, 30);
    trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
    trace = chain.push_transaction(trx);
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace.status);
@@ -1486,7 +1486,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
                             chain::contracts::canceldelay{sender_id_to_cancel});
 
-   chain.set_tapos(trx);
+   chain.set_transaction_headers(trx);
    trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
    trace = chain.push_transaction(trx);
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
