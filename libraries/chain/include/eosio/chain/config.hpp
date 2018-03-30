@@ -67,6 +67,11 @@ const static uint32_t   default_base_per_transaction_cpu_usage  = 500;        //
 const static uint32_t   default_base_per_action_cpu_usage       = 1000;
 const static uint32_t   default_base_setcode_cpu_usage          = 2 * 1024 * 1024; /// overbilling cpu usage for setcode to cover incidental
 const static uint32_t   default_per_signature_cpu_usage         = 100 * 1000; // TODO: is this reasonable?
+const static uint32_t   default_per_lock_net_usage                     = 32;
+const static uint64_t   default_context_free_discount_cpu_usage_num    = 20;
+const static uint64_t   default_context_free_discount_cpu_usage_den    = 100;
+const static uint32_t   default_max_transaction_cpu_usage              = default_max_block_cpu_usage / 10;
+const static uint32_t   default_max_transaction_net_usage              = default_max_block_size / 10;
 
 const static uint32_t   overhead_per_row_ram_bytes         = 512;    ///< overhead accounts for basic tracking structures in a row
 const static uint32_t   overhead_per_account_ram_bytes     = 2*1024; ///< overhead accounts for basic account storage and pre-pays features like account recovery

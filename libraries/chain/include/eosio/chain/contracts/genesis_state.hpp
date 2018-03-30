@@ -22,6 +22,11 @@ struct genesis_state_type {
       .base_per_action_cpu_usage      = config::default_base_per_action_cpu_usage,
       .base_setcode_cpu_usage         = config::default_base_setcode_cpu_usage,
       .per_signature_cpu_usage        = config::default_per_signature_cpu_usage,
+      .per_lock_net_usage             = config::default_per_lock_net_usage,
+      .context_free_discount_cpu_usage_num      = config::default_context_free_discount_cpu_usage_num,
+      .context_free_discount_cpu_usage_den      = config::default_context_free_discount_cpu_usage_den,
+      .max_transaction_cpu_usage      = config::default_max_transaction_cpu_usage,
+      .max_transaction_net_usage      = config::default_max_transaction_net_usage,
       .max_transaction_lifetime       = config::default_max_trx_lifetime,
       .max_transaction_exec_time      = 0, // TODO: unused?
       .max_authority_depth            = config::default_max_auth_depth,
