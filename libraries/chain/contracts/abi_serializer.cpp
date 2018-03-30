@@ -30,14 +30,18 @@ namespace eosio { namespace chain { namespace contracts {
    template <typename T>
    auto pack_unpack() {
       return std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
-         []( fc::datastream<const char*>& stream, bool is_array) -> fc::variant  {
+         []( fc::datastream<const char*>& stream, bool is_array, bool is_optional) -> fc::variant  {
             if( is_array )
                return variant_from_stream<vector<T>>(stream);
+            else if ( is_optional )
+               return variant_from_stream<optional<T>>(stream);
             return variant_from_stream<T>(stream);
          },
-         []( const fc::variant& var, fc::datastream<char*>& ds, bool is_array ){
+         []( const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional ){
             if( is_array )
                fc::raw::pack( ds, var.as<vector<T>>() );
+            else if ( is_optional )
+               fc::raw::pack( ds, var.as<optional<T>>() );
             else
                fc::raw::pack( ds,  var.as<T>());
          }
@@ -55,6 +59,7 @@ namespace eosio { namespace chain { namespace contracts {
 
       //symbol.hpp
       built_in_types.emplace("symbol",                    pack_unpack<symbol>());
+      built_in_types.emplace("symbol_code",               pack_unpack<symbol_code>());
 
       //asset.hpp
       built_in_types.emplace("asset",                     pack_unpack<asset>());
@@ -89,6 +94,7 @@ namespace eosio { namespace chain { namespace contracts {
       built_in_types.emplace("permission_name",           pack_unpack<permission_name>());
       built_in_types.emplace("action_name",               pack_unpack<action_name>());
       built_in_types.emplace("scope_name",                pack_unpack<scope_name>());
+      built_in_types.emplace("producer_schedule",         pack_unpack<producer_schedule_type>());
    }
 
    void abi_serializer::set_abi(const abi_def& abi) {
@@ -99,7 +105,7 @@ namespace eosio { namespace chain { namespace contracts {
 
       for( const auto& st : abi.structs )
          structs[st.name] = st;
-      
+
       for( const auto& td : abi.types ) {
          FC_ASSERT(is_type(td.type), "invalid type", ("type",td.type));
          typedefs[td.new_type_name] = td.type;
@@ -137,9 +143,9 @@ namespace eosio { namespace chain { namespace contracts {
          return boost::lexical_cast<int>(stype.substr(4));
       } else {
          return boost::lexical_cast<int>(stype.substr(3));
-      }      
+      }
    }
-   
+
    bool abi_serializer::is_struct(const type_name& type)const {
       return structs.find(resolve_type(type)) != structs.end();
    }
@@ -148,13 +154,22 @@ namespace eosio { namespace chain { namespace contracts {
       return ends_with(string(type), "[]");
    }
 
-   type_name abi_serializer::array_type(const type_name& type)const {
-      if( !is_array(type) ) return type;
-      return type_name(string(type).substr(0, type.size()-2));
+   bool abi_serializer::is_optional(const type_name& type)const {
+      return ends_with(string(type), "?");
+   }
+
+   type_name abi_serializer::fundamental_type(const type_name& type)const {
+      if( is_array(type) ) {
+         return type_name(string(type).substr(0, type.size()-2));
+      } else if ( is_optional(type) ) {
+         return type_name(string(type).substr(0, type.size()-1));
+      } else {
+       return type;
+      }
    }
 
    bool abi_serializer::is_type(const type_name& rtype)const {
-      auto type = array_type(rtype);
+      auto type = fundamental_type(rtype);
       if( built_in_types.find(type) != built_in_types.end() ) return true;
       if( typedefs.find(type) != typedefs.end() ) return is_type(typedefs.find(type)->second);
       if( structs.find(type) != structs.end() ) return true;
@@ -225,9 +240,10 @@ namespace eosio { namespace chain { namespace contracts {
    fc::variant abi_serializer::binary_to_variant(const type_name& type, fc::datastream<const char *>& stream)const
    {
       type_name rtype = resolve_type(type);
-      auto btype = built_in_types.find(array_type(rtype) );
+      auto ftype = fundamental_type(rtype);
+      auto btype = built_in_types.find(ftype );
       if( btype != built_in_types.end() ) {
-         return btype->second.first(stream, is_array(rtype));
+         return btype->second.first(stream, is_array(rtype), is_optional(rtype));
       }
       if ( is_array(rtype) ) {
         fc::unsigned_int size;
@@ -235,11 +251,15 @@ namespace eosio { namespace chain { namespace contracts {
         vector<fc::variant> vars;
         vars.resize(size);
         for (auto& var : vars) {
-           var = binary_to_variant(array_type(rtype), stream);
+           var = binary_to_variant(ftype, stream);
         }
         return fc::variant( std::move(vars) );
+      } else if ( is_optional(rtype) ) {
+        char flag;
+        fc::raw::unpack(stream, flag);
+        return flag ? binary_to_variant(ftype, stream) : fc::variant();
       }
-      
+
       fc::mutable_variant_object mvo;
       binary_to_variant(rtype, stream, mvo);
       return fc::variant( std::move(mvo) );
@@ -254,14 +274,14 @@ namespace eosio { namespace chain { namespace contracts {
    { try {
       auto rtype = resolve_type(type);
 
-      auto btype = built_in_types.find(array_type(rtype));
+      auto btype = built_in_types.find(fundamental_type(rtype));
       if( btype != built_in_types.end() ) {
-         btype->second.second(var, ds, is_array(rtype));
+         btype->second.second(var, ds, is_array(rtype), is_optional(rtype));
       } else if ( is_array(rtype) ) {
          vector<fc::variant> vars = var.get_array();
          fc::raw::pack(ds, (fc::unsigned_int)vars.size());
          for (const auto& var : vars) {
-           variant_to_binary(array_type(rtype), var, ds);
+           variant_to_binary(fundamental_type(rtype), var, ds);
          }
       } else {
          const auto& st = get_struct(rtype);
@@ -276,7 +296,7 @@ namespace eosio { namespace chain { namespace contracts {
             }
             else {
                /// TODO: default construct field and write it out
-               FC_ASSERT( !"missing field in variant object", "Missing '${f}' in variant object", ("f",field.name) );
+               FC_THROW( "Missing '${f}' in variant object", ("f",field.name) );
             }
          }
       }
@@ -305,4 +325,4 @@ namespace eosio { namespace chain { namespace contracts {
       return type_name();
    }
 
-} } } 
+} } }

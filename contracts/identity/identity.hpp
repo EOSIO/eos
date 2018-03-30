@@ -169,7 +169,7 @@ namespace identity {
             return accounts_table::get_or_default(acnt, 0);
          }
 
-         static account_name get_owner_for_identity( identity_name ident ) {
+         static account_name get_owner_for_identity( uint64_t receiver, identity_name ident ) {
             // for each trusted owner certification
             //   check to see if the certification is still trusted
             //   check to see if the account has claimed it
@@ -189,7 +189,7 @@ namespace identity {
                            //contradiction found: different owners certified for the same identity
                            return 0;
                         }
-                     } else if (DeployToAccount == current_receiver()){
+                     } else if (DeployToAccount == receiver){
                         //the certifier is no longer trusted, need to unset the flag
                         idx.modify(itr, 0, [&](certrow& r) {
                               r.trusted = 0;
@@ -214,7 +214,7 @@ namespace identity {
                if (sizeof(account_name) == itr->data.size()) {
                   account_name account = *reinterpret_cast<const account_name*>(itr->data.data());
                   if (ident == get_claimed_identity(account) && is_trusted(itr->certifier)) {
-                     if (DeployToAccount == current_receiver()) {
+                     if (DeployToAccount == receiver) {
                         // the certifier became trusted and we have permissions to update the flag
                         idx.modify(itr, 0, [&](certrow& r) {
                               r.trusted = 1;
@@ -235,11 +235,11 @@ namespace identity {
             return owner;
          }
 
-         static identity_name get_identity_for_account( account_name acnt ) {
+         static identity_name get_identity_for_account( uint64_t receiver, account_name acnt ) {
             //  check what identity the account has self certified owner
             //  verify that a trusted certifier has confirmed owner
             auto identity = get_claimed_identity(acnt);
-            return (identity != 0 && acnt == get_owner_for_identity(identity)) ? identity : 0;
+            return (identity != 0 && acnt == get_owner_for_identity(receiver, identity)) ? identity : 0;
          }
 
          static bool is_trusted_by( account_name trusted, account_name by ) {

@@ -300,12 +300,6 @@ const char* my_abi = R"=====(
          "name": "authority_arr",
          "type": "authority[]"
       },{
-         "name": "chainconfig",
-         "type": "chain_config"
-      },{
-         "name": "chainconfig_arr",
-         "type": "chain_config[]"
-      },{
          "name": "typedef",
          "type": "type_def"
       },{
@@ -1774,50 +1768,6 @@ BOOST_AUTO_TEST_CASE(general)
          "keys":[{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}],
          "accounts":[{"permission":{"actor":"acc1","permission":"permname1"},"weight":"1"},{"permission":{"actor":"acc2","permission":"permname2"},"weight":"2"}]
        }],
-      "chainconfig": {
-         "base_per_transaction_net_usage": 10,
-         "base_per_transaction_cpu_usage": 11,
-         "base_per_action_cpu_usage": 12,
-         "base_setcode_cpu_usage": 13,
-         "per_signature_cpu_usage": 14,
-         "real_threads": "800",
-         "max_storage_size": "900",
-         "max_transaction_lifetime": "1000",
-         "max_authority_depth": "1100",
-         "max_transaction_exec_time": "1200",
-         "max_inline_depth": "1300",
-         "max_inline_action_size": "1400",
-         "max_generated_transaction_size": "1500"
-      },
-      "chainconfig_arr": [{
-         "base_per_transaction_net_usage": 10,
-         "base_per_transaction_cpu_usage": 11,
-         "base_per_action_cpu_usage": 12,
-         "base_setcode_cpu_usage": 13,
-         "per_signature_cpu_usage": 14,
-         "real_threads": "800",
-         "max_storage_size": "900",
-         "max_transaction_lifetime": "1000",
-         "max_authority_depth": "1100",
-         "max_transaction_exec_time": "1200",
-         "max_inline_depth": "1300",
-         "max_inline_action_size": "1400",
-         "max_generated_transaction_size": "1500"
-      },{
-         "base_per_transaction_net_usage": 20,
-         "base_per_transaction_cpu_usage": 21,
-         "base_per_action_cpu_usage": 22,
-         "base_setcode_cpu_usage": 23,
-         "per_signature_cpu_usage": 24,
-         "real_threads": "800",
-         "max_storage_size": "900",
-         "max_transaction_lifetime": "1000",
-         "max_authority_depth": "1100",
-         "max_transaction_exec_time": "1200",
-         "max_inline_depth": "1300",
-         "max_inline_action_size": "1400",
-         "max_generated_transaction_size": "1500"
-      }],
       "typedef" : {"new_type_name":"new", "type":"old"},
       "typedef_arr": [{"new_type_name":"new", "type":"old"},{"new_type_name":"new", "type":"old"}],
       "actiondef"       : {"name":"actionname1", "type":"type1"},
@@ -1987,7 +1937,8 @@ BOOST_AUTO_TEST_CASE(updateauth)
                    {"key" : "EOS5eVr9TVnqwnUBNwf9kwMTbrHvX5aPyyEG97dz2b2TNeqWRzbJf", "weight" : 57605} ],
         "accounts" : [ {"permission" : {"actor" : "prm.acct1", "permission" : "prm.prm1"}, "weight" : 53005 },
                        {"permission" : {"actor" : "prm.acct2", "permission" : "prm.prm2"}, "weight" : 53405 }]
-     }
+     },
+     "delay" : 0
    }
    )=====";
 

@@ -34,9 +34,9 @@ namespace proxy {
    };
 
    template<typename T>
-   void apply_transfer(account_name code, const T& transfer) {
+   void apply_transfer(uint64_t receiver, account_name code, const T& transfer) {
       config code_config;
-      const auto self = current_receiver();
+      const auto self = receiver;
       auto get_res = configs::get(code_config, self);
       eosio_assert(get_res, "Attempting to use unconfigured proxy");
       if (transfer.from == self) {
@@ -56,20 +56,20 @@ namespace proxy {
       }
    }
 
-   void apply_setowner(set_owner params) {
-      const auto self = current_receiver();
+   void apply_setowner(uint64_t receiver, set_owner params) {
+      const auto self = receiver;
       config code_config;
       configs::get(code_config, self);
       code_config.owner = params.owner;
       code_config.delay = params.delay;
-      eosio::print("Setting owner to: ", name(params.owner), " with delay: ", params.delay, "\n");
+      eosio::print("Setting owner to: ", name{params.owner}, " with delay: ", params.delay, "\n");
       configs::store(code_config, self);
    }
 
    template<size_t ...Args>
-   void apply_onerror( const deferred_transaction& failed_dtrx ) {
+   void apply_onerror(uint64_t receiver, const deferred_transaction& failed_dtrx ) {
       eosio::print("starting onerror\n");
-      const auto self = current_receiver();
+      const auto self = receiver;
       config code_config;
       eosio_assert(configs::get(code_config, self), "Attempting use of unconfigured proxy");
 
@@ -87,20 +87,20 @@ using namespace eosio;
 extern "C" {
 
     /// The apply method implements the dispatch of events to this contract
-    void apply( uint64_t code, uint64_t action ) {
+    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
        if ( code == N(eosio)) {
           if (action == N(onerror)) {
-             apply_onerror(deferred_transaction::from_current_action());
+             apply_onerror(receiver, deferred_transaction::from_current_action());
           } if( action == N(transfer) ) {
-             apply_transfer(code, unpack_action_data<eosiosystem::contract<N(eosio.system)>::currency::transfer_memo>());
+             apply_transfer(receiver, code, unpack_action_data<eosiosystem::contract<N(eosio.system)>::currency::transfer_memo>());
           }
        } else if ( code == N(currency) ) {
           if( action == N(transfer) ) {
-             apply_transfer(code, unpack_action_data<eosio::currency::transfer>());
+             apply_transfer(receiver, code, unpack_action_data<eosio::currency::transfer>());
           }
-       } else if (code == current_receiver() ) {
+       } else if (code == receiver ) {
           if ( action == N(setowner)) {
-             apply_setowner(current_action_data<set_owner>());
+             apply_setowner(receiver, current_action_data<set_owner>());
           }
        }
     }

@@ -14,6 +14,7 @@
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/permission_link_object.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/producer_object.hpp>
@@ -49,7 +50,10 @@ void apply_eosio_newaccount(apply_context& context) {
    auto& db = context.mutable_db;
 
    EOS_ASSERT( create.name.to_string().size() <= 12, action_validate_exception, "account names can only be 12 chars long" );
-   if( !context.privileged ) {
+
+   // Check if the creator is privileged
+   const auto &creator = db.get<account_object, by_name>(create.creator);
+   if( !creator.privileged ) {
       EOS_ASSERT( name(create.name).to_string().find( "eosio." ) == std::string::npos, action_validate_exception, "only privileged accounts can have names that contain 'eosio.'" );
    }
 
@@ -65,9 +69,6 @@ void apply_eosio_newaccount(apply_context& context) {
    const auto& new_account = db.create<account_object>([&create, &context](account_object& a) {
       a.name = create.name;
       a.creation_date = context.controller.head_block_time();
-      // Added resize(0) here to avoid bug in boost vector container
-      a.code.resize( 0 );
-      a.abi.resize( 0 );
    });
    resources.initialize_account(create.name);
    resources.add_account_ram_usage(
@@ -125,6 +126,7 @@ void apply_eosio_setcode(apply_context& context) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
       #warning TODO: update setcode message to include the hash, then validate it in validate 
       a.code_version = code_id;
+      a.code.resize( 0 );
       a.code.resize( code_size );
       a.last_code_update = context.controller.head_block_time();
       memcpy( a.code.data(), act.code.data(), code_size );
@@ -243,6 +245,7 @@ void apply_eosio_updateauth(apply_context& context) {
          po.auth = update.data;
          po.parent = parent_id;
          po.last_updated = context.controller.head_block_time();
+         po.delay = time_point_sec(update.delay.convert_to<uint64_t>());
       });
 
       int64_t new_size = (int64_t)(sizeof(permission_object) + permission->auth.get_billable_size());
@@ -261,6 +264,7 @@ void apply_eosio_updateauth(apply_context& context) {
          po.auth = update.data;
          po.parent = parent_id;
          po.last_updated = context.controller.head_block_time();
+         po.delay = time_point_sec(update.delay.convert_to<uint64_t>());
       });
 
       resources.add_account_ram_usage(
@@ -306,38 +310,48 @@ void apply_eosio_deleteauth(apply_context& context) {
 void apply_eosio_linkauth(apply_context& context) {
    auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
    auto requirement = context.act.data_as<linkauth>();
-   EOS_ASSERT(!requirement.requirement.empty(), action_validate_exception, "Required permission cannot be empty");
+   try {
+      EOS_ASSERT(!requirement.requirement.empty(), action_validate_exception, "Required permission cannot be empty");
 
-   context.require_authorization(requirement.account);
-   
-   auto& db = context.mutable_db;
-   db.get<account_object, by_name>(requirement.account);
-   db.get<account_object, by_name>(requirement.code);
-   db.get<permission_object, by_name>(requirement.requirement);
-   
-   auto link_key = boost::make_tuple(requirement.account, requirement.code, requirement.type);
-   auto link = db.find<permission_link_object, by_action_name>(link_key);
-   
-   if (link) {
-      EOS_ASSERT(link->required_permission != requirement.requirement, action_validate_exception,
-                 "Attempting to update required authority, but new requirement is same as old");
-      db.modify(*link, [requirement = requirement.requirement](permission_link_object& link) {
-          link.required_permission = requirement;
-      });
-   } else {
-      const auto& l = db.create<permission_link_object>([&requirement](permission_link_object& link) {
-         link.account = requirement.account;
-         link.code = requirement.code;
-         link.message_type = requirement.type;
-         link.required_permission = requirement.requirement;
-      });
+      context.require_authorization(requirement.account);
+      
+      auto& db = context.mutable_db;
+      const auto *account = db.find<account_object, by_name>(requirement.account);
+      EOS_ASSERT(account != nullptr, account_query_exception,
+                 "Fail to retrieve account: ${account}", ("account", requirement.account));
+      const auto *code = db.find<account_object, by_name>(requirement.code);
+      EOS_ASSERT(code != nullptr, account_query_exception,
+                 "Fail to retrieve code for account: ${account}", ("account", requirement.code));
+      if( requirement.requirement != N(eosio.any) ) {
+         const auto *permission = db.find<permission_object, by_name>(requirement.requirement);
+         EOS_ASSERT(permission != nullptr, permission_query_exception,
+                    "Fail to retrieve permission: ${permission}", ("permission", requirement.requirement));
+      }
+      
+      auto link_key = boost::make_tuple(requirement.account, requirement.code, requirement.type);
+      auto link = db.find<permission_link_object, by_action_name>(link_key);
+      
+      if (link) {
+         EOS_ASSERT(link->required_permission != requirement.requirement, action_validate_exception,
+                    "Attempting to update required authority, but new requirement is same as old");
+         db.modify(*link, [requirement = requirement.requirement](permission_link_object& link) {
+             link.required_permission = requirement;
+         });
+      } else {
+         const auto& l =  db.create<permission_link_object>([&requirement](permission_link_object& link) {
+            link.account = requirement.account;
+            link.code = requirement.code;
+            link.message_type = requirement.type;
+            link.required_permission = requirement.requirement;
+         });
 
-      resources.add_account_ram_usage(
-         l.account,
-         (int64_t)(sizeof(permission_link_object)),
-         "New Permission Link ${code}::${act} -> ${a}@${p}", _V("code", l.code)("act",l.message_type)("a", l.account)("p",l.required_permission)
-      );
-   }
+         resources.add_account_ram_usage(
+            l.account,
+            (int64_t)(sizeof(permission_link_object)),
+            "New Permission Link ${code}::${act} -> ${a}@${p}", _V("code", l.code)("act",l.message_type)("a", l.account)("p",l.required_permission)
+         );
+      }
+  } FC_CAPTURE_AND_RETHROW((requirement)) 
 }
 
 void apply_eosio_unlinkauth(apply_context& context) {
@@ -388,24 +402,6 @@ static optional<variant> get_pending_recovery(apply_context& context, account_na
    }
 
    return optional<variant_object>();
-}
-
-static uint32_t get_next_sender_id(apply_context& context) {
-   const uint64_t id = N(config::eosio_auth_scope);
-   const auto table = N(deferred.seq);
-   const auto payer = config::system_account_name;
-   const auto iter = context.db_find_i64(config::system_account_name, config::eosio_auth_scope, table, id);
-   if (iter == -1) {
-      const uint32_t next_serial = 1;
-      context.db_store_i64(config::eosio_auth_scope, table, payer, id, (const char*)&next_serial, sizeof(next_serial));
-      return 0;
-   }
-
-   uint32_t next_serial = 0;
-   context.db_get_i64(iter, (char*)&next_serial, sizeof(next_serial));
-   const auto result = next_serial++;
-   context.db_update_i64(iter, payer, (const char*)&next_serial, sizeof(next_serial));
-   return result;
 }
 
 static auto get_account_creation(const apply_context& context, const account_name& account) {
@@ -470,7 +466,7 @@ void apply_eosio_postrecovery(apply_context& context) {
       .data = recover_act.data
    }, update);
 
-   uint32_t request_id = get_next_sender_id(context);
+   uint32_t request_id = context.get_next_sender_id();
 
    auto record_data = mutable_variant_object()
       ("account", account)
@@ -551,5 +547,38 @@ void apply_eosio_vetorecovery(apply_context& context) {
    context.console_append_formatted("Recovery for account ${account} vetoed!\n", mutable_variant_object()("account", account));
 }
 
+void apply_eosio_canceldelay(apply_context& context) {
+   auto cancel = context.act.data_as<canceldelay>();
+   const auto sender_id = cancel.sender_id.convert_to<uint32_t>();
+   const auto& generated_transaction_idx = context.controller.get_database().get_index<generated_transaction_multi_index>();
+   const auto& generated_index = generated_transaction_idx.indices().get<by_sender_id>();
+   const auto& itr = generated_index.lower_bound(boost::make_tuple(config::system_account_name, sender_id));
+   FC_ASSERT (itr != generated_index.end() && itr->sender == config::system_account_name && itr->sender_id == sender_id,
+              "cannot cancel sender_id=${sid}, there is no deferred transaction with that sender_id",("sid",sender_id));
+
+   auto dtrx = fc::raw::unpack<deferred_transaction>(itr->packed_trx.data(), itr->packed_trx.size());
+   set<account_name> accounts;
+   for (const auto& act : dtrx.actions) {
+      for (const auto& auth : act.authorization) {
+         accounts.insert(auth.actor);
+      }
+   }
+
+   bool found = false;
+   for (const auto& auth : context.act.authorization) {
+      if (auth.permission == config::active_name && accounts.count(auth.actor)) {
+         found = true;
+         break;
+      }
+   }
+
+   FC_ASSERT (found, "canceldelay action must be signed with the \"active\" permission for one of the actors"
+                     " provided in the authorizations on the original transaction");
+   context.cancel_deferred(sender_id);
+}
+
+void apply_eosio_mindelay(apply_context& context) {
+   // all processing is performed in chain_controller::check_authorization
+}
 
 } } } // namespace eosio::chain::contracts

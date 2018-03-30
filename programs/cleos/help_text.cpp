@@ -97,11 +97,29 @@ auto smatch_to_variant(const std::smatch& smatch) {
    return result;
 };
 
+const char* error_advice_3010001 =  "Most likely, the given account/ permission doesn't exist in the blockchain.";
+const char* error_advice_3010002 =  "Most likely, the given account doesn't exist in the blockchain.";
+const char* error_advice_3010003 =  "Most likely, the given table doesnt' exist in the blockchain.";
+const char* error_advice_3010004 =  "Most likely, the given contract doesnt' exist in the blockchain.";
+
+const char* error_advice_3030000 =  "Ensure that your transaction satisfy the contract's constraint!";
+const char* error_advice_3030001 =  R"=====(Ensure that you have the related authority inside your transaction!;
+If you are currently using 'cleos push action' command, try to add the relevant authority using -p option.)=====";
+const char* error_advice_3030002 =  "Ensure that you have the related private keys inside your wallet and you wallet is unlocked.";
+const char* error_advice_3030003 =  "Please remove the unnecessary authority from your action!";
+const char* error_advice_3030004 =  "Please remove the unnecessary signature from your transaction!";
+const char* error_advice_3030011 =  "You can try embedding eosio nonce action inside your transaction to ensure uniqueness.";
+const char* error_advice_3030022 =  "Please increase the expiration time of your transaction!";
+const char* error_advice_3030023 =  "Please decrease the expiration time of your transaction!";
+const char* error_advice_3030024 =  "Ensure that the reference block exist in the blockchain!";
+
+const char* error_advice_3040002 = R"=====(Ensure that your arguments follow the contract abi!
+You can check the contract's abi by using 'cleos get code' command.)=====";
+
 const char* error_advice_3120001 = R"=====(Name should be less than 13 characters and only contains the following symbol .12345abcdefghijklmnopqrstuvwxyz)=====";
-
 const char* error_advice_3120002 = R"=====(Public key should be encoded in base58 and starts with EOS prefix)=====";
-
-const char* error_advice_3120003 = R"=====(Ensure that your authority JSON follows the following format!
+const char* error_advice_3120003 = R"=====(Private key should be encoded in base58 WIF)=====";
+const char* error_advice_3120004 = R"=====(Ensure that your authority JSON follows the following format!
 {
   "threshold":"uint32_t",
   "keys":[{ "key":"public_key", "weight":"uint16_t" }],
@@ -119,10 +137,8 @@ e.g.
     "weight":"1
   }]
 })=====";
-
-const char* error_advice_3120004 = R"=====(Ensure that your action JSON follows the contract's abi!)=====";
-
-const char* error_advice_3120005 = R"=====(Ensure that your transaction JSON follows the following format!\n"
+const char* error_advice_3120005 = R"=====(Ensure that your action JSON follows the contract's abi!)=====";
+const char* error_advice_3120006 = R"=====(Ensure that your transaction JSON follows the following format!\n"
 {
   "ref_block_num":"uint16_t",
   "ref_block_prefix":"uint32_t",
@@ -152,8 +168,7 @@ e.g.
     "data":"000000008093dd74000000000094dd74e80300000000000000"
   }]
 })=====";
-
-const char* error_advice_3120006 =  R"=====(Ensure that your abi JSON follows the following format!
+const char* error_advice_3120007 =  R"=====(Ensure that your abi JSON follows the following format!
 {
   "types" : [{ "new_type_name":"type_name", "type":"type_name" }],
   "structs" : [{ "name":"type_name", "base":"type_name", "fields": [{ "name":"field_name", "type": "type_name" }] }],
@@ -182,27 +197,74 @@ e.g.
     "type":"foobar" "
   }]
 })=====";
+const char* error_advice_3120008 =  "Ensure that the block ID is a SHA-256 hexadecimal string!";
+const char* error_advice_3120009 =  "Ensure that the transaction ID is a SHA-256 hexadecimal string!";
+const char* error_advice_3120010 =  R"=====(Ensure that your packed transaction JSON follows the following format!
+{
+  "signatures" : [ "signature" ],
+  "compression" : enum("none", "zlib"),
+  "data" : "bytes"
+}
+e.g.
+{
+  "signatures" : [ "EOSJze4m1ZHQ4UjuHpBcX6uHPN4Xyggv52raQMTBZJghzDLepaPcSGCNYTxaP2NiaF4yRF5RaYwqsQYAwBwFtfuTJr34Z5GJX" ],
+  "compression" : "none",
+  "data" : "6c36a25a00002602626c5e7f0000000000010000001e4d75af460000000000a53176010000000000ea305500000000a8ed3232180000001e4d75af4680969800000000000443555200000000"
+})=====";
 
-const char* error_advice_3030002 =  "Ensure that you have the related private keys inside your wallet.";
+const char* error_advice_3130001 =  "Ensure that you have \033[2meosio::chain_api_plugin\033[0m\033[32m added to your node's configuration!";
+const char* error_advice_3130002 =  "Ensure that you have \033[2meosio::wallet_api_plugin\033[0m\033[32m added to your node's configuration!\n"\
+                                    "Otherwise specify your wallet location with \033[2m--wallet-host\033[0m\033[32m and \033[2m--wallet_port\033[0m\033[32m arguments!";
+const char* error_advice_3130003 =  "Ensure that you have \033[2meosio::account_history_api_plugin\033[0m\033[32m added to your node's configuration!";
+const char* error_advice_3130004 =  "Ensure that you have \033[2meosio::net_api_plugin\033[0m\033[32m added to your node's configuration!";
 
-const char* error_advice_3130001 =  "Ensure that you have \033[2meosio::chain_api_plugin\033[0m\033[32m added to your node's configuration.";
-const char* error_advice_3130002 =  "Ensure that you have \033[2meosio::wallet_api_plugin\033[0m\033[32m added to your node's configuration.\n"\
-                                    "Otherwise specify your wallet location with \033[2m--wallet-host\033[0m\033[32m and \033[2m--wallet_port\033[0m\033[32m arguments.";
-const char* error_advice_3130003 =  "Ensure that you have \033[2meosio::account_history_api_plugin\033[0m\033[32m added to your node's configuration.";
-const char* error_advice_3130004 =  "Ensure that you have \033[2meosio::net_api_plugin\033[0m\033[32m added to your node's configuration";
+const char* error_advice_3140001 =  "Try to use different wallet name.";
+const char* error_advice_3140002 =  "Are you sure you typed the name correctly?";
+const char* error_advice_3140003 =  "Ensure that your wallet is unlocked before using it!";
+const char* error_advice_3140004 =  "Ensure that you have the relevant private key imported!";
+const char* error_advice_3140005 =  "Are you sure you are using the right password?";
+
 
 const std::map<int64_t, std::string> error_advice = {
+   { 3010001, error_advice_3010001 },
+   { 3010002, error_advice_3010002 },
+   { 3010003, error_advice_3010003 },
+   { 3010004, error_advice_3010004 },
+
+   { 3030000, error_advice_3030000 },
+   { 3030001, error_advice_3030001 },
+   { 3030002, error_advice_3030002 },
+   { 3030003, error_advice_3030003 },
+   { 3030004, error_advice_3030004 },
+   { 3030011, error_advice_3030011 },
+   { 3030022, error_advice_3030022 },
+   { 3030023, error_advice_3030023 },
+   { 3030024, error_advice_3030024 },
+
+
+   { 3040002, error_advice_3040002 },
+
    { 3120001, error_advice_3120001 },
    { 3120002, error_advice_3120002 },
    { 3120003, error_advice_3120003 },
    { 3120004, error_advice_3120004 },
    { 3120005, error_advice_3120005 },
    { 3120006, error_advice_3120006 },
+   { 3120007, error_advice_3120007 },
+   { 3120008, error_advice_3120008 },
+   { 3120009, error_advice_3120009 },
+   { 3120010, error_advice_3120010 },
+
    { 3130001, error_advice_3130001 },
    { 3130002, error_advice_3130002 },
    { 3130003, error_advice_3130003 },
    { 3130004, error_advice_3130004 },
-   { 3030002, error_advice_3030002 }
+
+   { 3140001, error_advice_3140001 },
+   { 3140002, error_advice_3140002 },
+   { 3140003, error_advice_3140003 },
+   { 3140004, error_advice_3140004 },
+   { 3140005, error_advice_3140005 }
 };
 
 
@@ -222,14 +284,14 @@ bool print_recognized_errors(const fc::exception& e, const bool verbose_errors) 
          // Check if there's a log to display
          if (!log.get_format().empty()) {
             // Localize the message as needed
-            explanation += "\n  " + localized_with_variant(log.get_format().data(), log.get_data());
+            explanation += "\n" + localized_with_variant(log.get_format().data(), log.get_data());
          } else if (log.get_data().size() > 0 && verbose_errors) {
             // Show data-only log only if verbose_errors option is enabled
-            explanation += "\n  " + fc::json::to_string(log.get_data());
+            explanation += "\n" + fc::json::to_string(log.get_data());
          }
          // Check if there's stack trace to be added
          if (!log.get_context().get_method().empty() && verbose_errors) {
-            stack_trace += "\n  " +
+            stack_trace += "\n" +
                            log.get_context().get_file() +  ":" +
                            fc::to_string(log.get_context().get_line_number())  + " " +
                            log.get_context().get_method();

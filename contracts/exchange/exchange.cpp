@@ -45,7 +45,7 @@ namespace eosio {
       }
       market.exstate = temp;
 
-      print( name(t.seller), "   ", t.sell, "  =>  ", output, "\n" );
+      print( name{t.seller}, "   ", t.sell, "  =>  ", output, "\n" );
 
       if( t.min_receive.amount != 0 ) {
          eosio_assert( t.min_receive.amount <= output.amount, "unable to fill" );
@@ -242,8 +242,8 @@ namespace eosio {
 
 
 extern "C" {
-   void apply( uint64_t code, uint64_t action ) {
-      eosio::exchange  ex( current_receiver() );
+   [[noreturn]] void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
+      eosio::exchange  ex( receiver );
       ex.apply( code, action );
       eosio_exit(0);
    }

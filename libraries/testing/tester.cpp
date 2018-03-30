@@ -5,6 +5,7 @@
 #include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/contracts/eos_contract.hpp>
 #include <eosio/chain/contracts/contract_table_objects.hpp>
+#include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <eosio.bios/eosio.bios.wast.hpp>
 #include <eosio.bios/eosio.bios.abi.hpp>
@@ -18,6 +19,15 @@
 #include "IR/Validate.h"
 
 namespace eosio { namespace testing {
+
+   fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value) {
+      fc::mutable_variant_object res;
+      for( auto& entry : filter ) {
+         auto it = value.find(entry.key());
+         res( it->key(), it->value() );
+      }
+      return res;
+   }
 
    base_tester::base_tester(chain_controller::runtime_limits limits) {
       cfg.block_log_dir      = tempdir.path() / "blocklog";
@@ -96,7 +106,8 @@ namespace eosio { namespace testing {
       }
    }
 
-  void base_tester::set_tapos( signed_transaction& trx ) const {
+  void base_tester::set_tapos( signed_transaction& trx, uint32_t expiration ) const {
+     trx.expiration = control->head_block_time() + fc::seconds(expiration);
      trx.set_reference_block( control->head_block_id() );
   }
 
@@ -135,12 +146,12 @@ namespace eosio { namespace testing {
       return push_transaction( ptrx, skip_flag );
    }
 
-   base_tester::action_result base_tester::push_action(action&& cert_act, uint64_t authorizer) {
+   base_tester::action_result base_tester::push_action(action&& act, uint64_t authorizer) {
       signed_transaction trx;
       if (authorizer) {
-         cert_act.authorization = vector<permission_level>{{authorizer, config::active_name}};
+         act.authorization = vector<permission_level>{{authorizer, config::active_name}};
       }
-      trx.actions.emplace_back(std::move(cert_act));
+      trx.actions.emplace_back(std::move(act));
       set_tapos(trx);
       if (authorizer) {
          trx.sign(get_private_key(authorizer, "active"), chain_id_type());
@@ -158,7 +169,18 @@ namespace eosio { namespace testing {
    transaction_trace base_tester::push_action( const account_name& code,
                              const action_name& acttype,
                              const account_name& actor,
-                             const variant_object& data )
+                             const variant_object& data,
+                             uint32_t expiration)
+
+   { try {
+      return push_action(code, acttype, vector<account_name>{ actor }, data, expiration);
+   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actor)(data)(expiration) ) }
+
+   transaction_trace base_tester::push_action( const account_name& code,
+                             const action_name& acttype,
+                             const vector<account_name>& actors,
+                             const variant_object& data,
+                             uint32_t expiration)
 
    { try {
       const auto& acnt = control->get_database().get<account_object,by_name>(code);
@@ -173,16 +195,20 @@ namespace eosio { namespace testing {
       action act;
       act.account = code;
       act.name = acttype;
-      act.authorization = vector<permission_level>{{actor, config::active_name}};
+      for (const auto& actor : actors) {
+         act.authorization.push_back(permission_level{actor, config::active_name});
+      }
       act.data = abis.variant_to_binary(action_type_name, data);
 
       signed_transaction trx;
       trx.actions.emplace_back(std::move(act));
-      set_tapos(trx);
-      trx.sign(get_private_key(actor, "active"), chain_id_type());
+      set_tapos(trx, expiration);
+      for (const auto& actor : actors) {
+         trx.sign(get_private_key(actor, "active"), chain_id_type());
+      }
 
       return push_transaction(trx);
-   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actor)(data) ) }
+   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actors)(data)(expiration) ) }
 
    transaction_trace base_tester::push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys ) {
       variant pretty_trx = fc::mutable_variant_object()
@@ -283,6 +309,32 @@ namespace eosio { namespace testing {
       return push_transaction( trx );
    }
 
+   transaction_trace base_tester::issue( account_name to, string amount, account_name currency ) {
+      variant pretty_trx = fc::mutable_variant_object()
+         ("actions", fc::variants({
+            fc::mutable_variant_object()
+               ("account", currency)
+               ("name", "issue")
+               ("authorization", fc::variants({
+                  fc::mutable_variant_object()
+                     ("actor", currency )
+                     ("permission", name(config::active_name))
+               }))
+               ("data", fc::mutable_variant_object()
+                  ("to", to)
+                  ("quantity", amount)
+               )
+            })
+         );
+
+      signed_transaction trx;
+      contracts::abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+      set_tapos( trx );
+
+      trx.sign( get_private_key( currency, name(config::active_name).to_string() ), chain_id_type()  );
+      return push_transaction( trx );
+   }
+
    void base_tester::link_authority( account_name account, account_name code, permission_name req, action_name type ) {
       signed_transaction trx;
 
@@ -360,7 +412,7 @@ namespace eosio { namespace testing {
 
    void base_tester::set_code( account_name account, const char* wast ) try {
       set_code(account, wast_to_wasm(wast));
-   } FC_CAPTURE_AND_RETHROW( (account)(wast) )
+   } FC_CAPTURE_AND_RETHROW( (account) )
 
    void base_tester::set_code( account_name account, const vector<uint8_t> wasm ) try {
       signed_transaction trx;
@@ -419,6 +471,26 @@ namespace eosio { namespace testing {
          }
       }
       return asset(result, asset_symbol);
+   }
+
+   vector<char> base_tester::get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act ) {
+      vector<char> data;
+      const auto& db = control->get_database();
+      const auto* t_id = db.find<chain::contracts::table_id_object, chain::contracts::by_code_scope_table>( boost::make_tuple( code, scope, table ) );
+      if ( !t_id ) {
+         return data;
+      }
+      //FC_ASSERT( t_id != 0, "object not found" );
+
+      const auto& idx = db.get_index<chain::contracts::key_value_index, chain::contracts::by_scope_primary>();
+
+      auto itr = idx.lower_bound( boost::make_tuple( t_id->id, act ) );
+      if ( itr == idx.end() || itr->t_id != t_id->id || act.value != itr->primary_key ) {
+         return data;
+      }
+
+      chain_apis::read_only::copy_inline_row( *itr, data );
+      return data;
    }
 
    vector<uint8_t> base_tester::to_uint8_vector(const string& s) {
@@ -503,3 +575,19 @@ namespace eosio { namespace testing {
    }
 
 } }  /// eosio::test
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant& v ) {
+   //fc::json::to_stream( osm, v );
+   osm << fc::json::to_pretty_string( v );
+   return osm;
+}
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant_object& v ) {
+   osm << fc::variant(v);
+   return osm;
+}
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant_object::entry& e ) {
+   osm << "{ " << e.key() << ": " << e.value() << " }";
+   return osm;
+}

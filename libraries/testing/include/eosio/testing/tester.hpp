@@ -1,13 +1,60 @@
 #pragma once
 #include <eosio/chain/chain_controller.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
+#include <fc/io/json.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/test/unit_test.hpp>
 
-#include <iostream>
+#include <iosfwd>
+
+#define REQUIRE_EQUAL_OBJECTS(left, right) { auto a = fc::variant( left ); auto b = fc::variant( right ); BOOST_REQUIRE_EQUAL( true, a.is_object() ); \
+   BOOST_REQUIRE_EQUAL( true, b.is_object() ); \
+   BOOST_REQUIRE_EQUAL_COLLECTIONS( a.get_object().begin(), a.get_object().end(), b.get_object().begin(), b.get_object().end() ); }
+
+#define REQUIRE_MATCHING_OBJECT(left, right) { auto a = fc::variant( left ); auto b = fc::variant( right ); BOOST_REQUIRE_EQUAL( true, a.is_object() ); \
+   BOOST_REQUIRE_EQUAL( true, b.is_object() ); \
+   auto filtered = ::eosio::testing::filter_fields( a.get_object(), b.get_object() ); \
+   BOOST_REQUIRE_EQUAL_COLLECTIONS( a.get_object().begin(), a.get_object().end(), filtered.begin(), filtered.end() ); }
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant& v );
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant_object& v );
+
+std::ostream& operator<<( std::ostream& osm, const fc::variant_object::entry& e );
+
+namespace boost { namespace test_tools { namespace tt_detail {
+
+   template<>
+   struct print_log_value<fc::variant> {
+      void operator()( std::ostream& osm, const fc::variant& v )
+      {
+         ::operator<<( osm, v );
+      }
+   };                       
+
+   template<>
+   struct print_log_value<fc::variant_object> {
+      void operator()( std::ostream& osm, const fc::variant_object& v )
+      {
+         ::operator<<( osm, v );
+      }
+   };
+
+   template<>
+   struct print_log_value<fc::variant_object::entry> {
+      void operator()( std::ostream& osm, const fc::variant_object::entry& e )
+      {
+         ::operator<<( osm, e );
+      }
+   };
+
+} } }
 
 namespace eosio { namespace testing {
 
    using namespace eosio::chain;
+
+   fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value);
 
    /**
     *  @class tester
@@ -16,6 +63,8 @@ namespace eosio { namespace testing {
    class base_tester {
       public:
          typedef string action_result;
+
+         static const uint32_t DEFAULT_EXPIRATION_DELTA = 6;
 
          base_tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
          explicit base_tester(chain_controller::controller_config config);
@@ -31,10 +80,10 @@ namespace eosio { namespace testing {
          transaction_trace push_transaction( signed_transaction& trx, uint32_t skip_flag = skip_nothing  );
          action_result     push_action(action&& cert_act, uint64_t authorizer);
 
-         transaction_trace push_action( const account_name& code, const action_name& act, const account_name& signer, const variant_object &data );
+         transaction_trace push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA );
+         transaction_trace push_action( const account_name& code, const action_name& acttype, const vector<account_name>& actors, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA );
 
-
-         void              set_tapos( signed_transaction& trx ) const;
+         void              set_tapos( signed_transaction& trx, uint32_t expiration = DEFAULT_EXPIRATION_DELTA ) const;
 
          void              create_accounts( vector<account_name> names, bool multisig = false ) {
             for( auto n : names ) create_account(n, config::system_account_name, multisig );
@@ -49,7 +98,7 @@ namespace eosio { namespace testing {
          void delete_authority( account_name account, permission_name perm,  const vector<permission_level>& auths, const vector<private_key_type>& keys );
          void delete_authority( account_name account, permission_name perm );
 
-         void              create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
+         void create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
 
          transaction_trace push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys );
          transaction_trace push_reqauth(account_name from, string role, bool multi_sig = false);
@@ -57,6 +106,7 @@ namespace eosio { namespace testing {
          transaction_trace push_dummy(account_name from, const string& v = "blah");
          transaction_trace transfer( account_name from, account_name to, asset amount, string memo, account_name currency );
          transaction_trace transfer( account_name from, account_name to, string amount, string memo, account_name currency );
+         transaction_trace issue( account_name to, string amount, account_name currency );
 
          template<typename ObjectType>
          const auto& get(const chainbase::oid< ObjectType >& key) {
@@ -89,6 +139,8 @@ namespace eosio { namespace testing {
          asset                         get_currency_balance( const account_name& contract,
                                                              const symbol&       asset_symbol,
                                                              const account_name& account ) const;
+
+        vector<char> get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act );
 
         static vector<uint8_t> to_uint8_vector(const string& s);
 
@@ -141,7 +193,7 @@ namespace eosio { namespace testing {
          :expected(expected)
       {}
 
-      bool operator()( const fc::assert_exception& ex ) {
+      bool operator()( const fc::exception& ex ) {
          auto message = ex.get_log().at(0).get_message();
          return boost::algorithm::ends_with(message, expected);
       }
@@ -149,5 +201,5 @@ namespace eosio { namespace testing {
       string expected;
    };
 
-
 } } /// eosio::testing
+

@@ -71,30 +71,35 @@ void resource_limits_manager::add_transaction_usage(const vector<account_name>& 
           bu.cpu_usage.add( cpu_usage, time_slot, config.cpu_limit_parameters.periods );
       });
 
-      uint128_t  consumed_cpu_ex = usage.cpu_usage.consumed * config::rate_limiting_precision;
-      uint128_t  capacity_cpu_ex = state.virtual_cpu_limit * config::rate_limiting_precision;
-      EOS_ASSERT( limits.cpu_weight < 0 || (consumed_cpu_ex * state.total_cpu_weight) <= (limits.cpu_weight * capacity_cpu_ex),
-                  tx_resource_exhausted,
-                  "authorizing account '${n}' has insufficient cpu resources for this transaction",
-                  ("n",                    name(a))
-                  ("consumed",             (double)consumed_cpu_ex/(double)config::rate_limiting_precision)
-                  ("cpu_weight",           limits.cpu_weight)
-                  ("virtual_cpu_capacity", (double)state.virtual_cpu_limit/(double)config::rate_limiting_precision )
-                  ("total_cpu_weight",     state.total_cpu_weight)
-      );
+      if (limits.cpu_weight >= 0) {
+         uint128_t  consumed_cpu_ex = usage.cpu_usage.consumed * config::rate_limiting_precision;
+         uint128_t  capacity_cpu_ex = state.virtual_cpu_limit * config::rate_limiting_precision;
 
-      uint128_t  consumed_net_ex = usage.net_usage.consumed * config::rate_limiting_precision;
-      uint128_t  capacity_net_ex = state.virtual_net_limit * config::rate_limiting_precision;
+         EOS_ASSERT( state.total_cpu_weight > 0 && (consumed_cpu_ex * state.total_cpu_weight) <= (limits.cpu_weight * capacity_cpu_ex),
+                     tx_resource_exhausted,
+                     "authorizing account '${n}' has insufficient cpu resources for this transaction",
+                     ("n",                    name(a))
+                     ("consumed",             (double)consumed_cpu_ex/(double)config::rate_limiting_precision)
+                     ("cpu_weight",           limits.cpu_weight)
+                     ("virtual_cpu_capacity", (double)state.virtual_cpu_limit )
+                     ("total_cpu_weight",     state.total_cpu_weight)
+         );
+      }
 
-      EOS_ASSERT( limits.net_weight < 0 || (consumed_net_ex * state.total_net_weight) <= (limits.net_weight * capacity_net_ex),
-                  tx_resource_exhausted,
-                  "authorizing account '${n}' has insufficient net resources for this transaction",
-                  ("n",                    name(a))
-                  ("consumed",             (double)consumed_net_ex/(double)config::rate_limiting_precision)
-                  ("net_weight",           limits.net_weight)
-                  ("virtual_net_capacity", (double)state.virtual_net_limit/(double)config::rate_limiting_precision )
-                  ("total_net_weight",     state.total_net_weight)
-      );
+      if (limits.net_weight >= 0) {
+         uint128_t  consumed_net_ex = usage.net_usage.consumed * config::rate_limiting_precision;
+         uint128_t  capacity_net_ex = state.virtual_net_limit * config::rate_limiting_precision;
+
+         EOS_ASSERT( state.total_net_weight > 0 && (consumed_net_ex * state.total_net_weight) <= (limits.net_weight * capacity_net_ex),
+                     tx_resource_exhausted,
+                     "authorizing account '${n}' has insufficient net resources for this transaction",
+                     ("n",                    name(a))
+                     ("consumed",             (double)consumed_net_ex/(double)config::rate_limiting_precision)
+                     ("net_weight",           limits.net_weight)
+                     ("virtual_net_capacity", (double)state.virtual_net_limit )
+                     ("total_net_weight",     state.total_net_weight)
+         );
+      }
    }
 
    // account for this transaction in the block and do not exceed those limits either
@@ -124,11 +129,7 @@ void resource_limits_manager::add_account_ram_usage( const account_name account,
 }
 
 void resource_limits_manager::set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
-   const auto& usage = _db.get<resource_usage_object>();
-   if (ram_bytes >= 0) {
-      EOS_ASSERT(ram_bytes >= usage.ram_usage, wasm_execution_error, "attempting to release committed ram resources");
-   }
-
+   const auto& usage = _db.get<resource_usage_object,by_owner>( account );
    /*
     * Since we need to delay these until the next resource limiting boundary, these are created in a "pending"
     * state or adjusted in an existing "pending" state.  The chain controller will collapse "pending" state into
@@ -152,6 +153,16 @@ void resource_limits_manager::set_account_limits( const account_name& account, i
 
    // update the users weights directly
    auto& limits = find_or_create_pending_limits();
+
+   if (ram_bytes >= 0) {
+      if (limits.ram_bytes < 0 ) {
+         EOS_ASSERT(ram_bytes >= usage.ram_usage, wasm_execution_error, "converting unlimited account would result in overcommitment [commit=${c}, desired limit=${l}]", ("c", usage.ram_usage)("l", ram_bytes));
+      } else {
+         EOS_ASSERT(ram_bytes >= usage.ram_usage, wasm_execution_error, "attempting to release committed ram resources [commit=${c}, desired limit=${l}]", ("c", usage.ram_usage)("l", ram_bytes));
+      }
+
+   }
+
    auto old_ram_bytes = limits.ram_bytes;
    _db.modify( limits, [&]( resource_limits_object& pending_limits ){
       pending_limits.ram_bytes = ram_bytes;

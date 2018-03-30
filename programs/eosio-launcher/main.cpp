@@ -430,7 +430,6 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("mode,m",bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"),"connection mode, combination of \"any\", \"producers\", \"specified\", \"none\"")
     ("shape,s",bpo::value<string>(&shape)->default_value("star"),"network topology, use \"star\" \"mesh\" or give a filename for custom")
     ("genesis,g",bpo::value<bfs::path>(&genesis)->default_value("./genesis.json"),"set the path to genesis.json")
-    ("output,o",bpo::value<bfs::path>(&output),"save a copy of the generated topology in this file")
     ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), "nodeos does not require transaction signatures.")
     ("nodeos", bpo::value<string>(&eosd_extra_args), "forward nodeos command line argument(s) to each instance of nodeos, enclose arg in quotes")
     ("delay,d",bpo::value<int>(&start_delay)->default_value(0),"seconds delay before starting each node after the first")
@@ -510,12 +509,12 @@ launcher_def::initialize (const variables_map &vmap) {
   config_dir_base = "etc/eosio";
   data_dir_base = "var/lib";
   next_node = 0;
-  prod_nodes += 1; // add one for the bios node
-  total_nodes += 1;
+  ++prod_nodes; // add one for the bios node
+  ++total_nodes;
 
   load_servers ();
 
-  if (prod_nodes > producers)
+  if (prod_nodes > (producers + 1))
     prod_nodes = producers;
   if (prod_nodes > total_nodes)
     total_nodes = prod_nodes;
@@ -549,7 +548,7 @@ launcher_def::load_servers () {
   if (!server_ident_file.empty()) {
     try {
       fc::json::from_file(server_ident_file).as<server_identities>(servers);
-      prod_nodes = 1; // start with the bios node
+      prod_nodes = 0;
       for (auto &s : servers.producer) {
          prod_nodes += s.instances;
       }
@@ -1701,8 +1700,9 @@ void write_default_config(const bfs::path& cfg_file, const options_description &
    {
       if(!od->description().empty()) {
          out_cfg << "# " << od->description();
-         std::map<std::string, std::string>::iterator it;
-            out_cfg << " (" << it->second << ")";
+         // disable uninitialized variable usage.
+//         std::map<std::string, std::string>::iterator it;
+//            out_cfg << " (" << it->second << ")";
          out_cfg << std::endl;
       }
       boost::any store;

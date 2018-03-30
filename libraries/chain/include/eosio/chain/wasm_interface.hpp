@@ -25,7 +25,7 @@ namespace eosio { namespace chain {
          bool resolve(const string& mod_name,
                       const string& export_name,
                       IR::ObjectType type,
-                      Runtime::ObjectInstance*& out) override { 
+                      Runtime::ObjectInstance*& out) override {
       try {
          //protect access to "private" injected functions; so for now just simply allow "env" since injected functions
          //  are in a different module
@@ -64,7 +64,6 @@ namespace eosio { namespace chain {
          void apply(const digest_type& code_id, const shared_vector<char>& code, apply_context& context);
 
       private:
-         wasm_interface();
          unique_ptr<struct wasm_interface_impl> my;
          friend class eosio::chain::webassembly::common::intrinsics_accessor;
    };

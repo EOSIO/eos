@@ -2,15 +2,11 @@
 
 [![Build Status](https://jenkins.eos.io/buildStatus/icon?job=eosio/master)](https://jenkins.eos.io/job/eosio/job/master/)
 
-Welcome to the EOS.IO source code repository!  EOS.IO software enables developers to create and deploy
-high-performance, horizontally scalable, blockchain infrastructure upon which decentralized applications
-can be built.
+Welcome to the EOS.IO source code repository!  EOS.IO software enables developers to create and deploy high-performance, horizontally scalable, blockchain infrastructure upon which decentralized applications can be built.
 
-This code is currently alpha-quality and under rapid development. That said,
-there is plenty early experimenters can do including running a private multi-node test network and
-developing applications (smart contracts).
+This code is currently alpha-quality and under rapid development. That said, there is plenty early experimenters can do including running a private multi-node test network and developing applications (smart contracts).
 
-The public testnet described in the [wiki](https://github.com/EOSIO/eos/wiki/Testnet%3A%20Public) is running the `dawn-2.x` branch.  The `master` branch is no longer compatible with the public testnet.  Instructions are provided below for building either option.
+The public testnet described in the [wiki](https://github.com/EOSIO/eos/wiki/Testnet%3A%20Public) is running the `dawn-2.x` branch.  The `master` branch is no longer compatible with the public testnet.  Instructions are provided below for building a local testnet using the `master` branch.  This document will be updated later with instructions for running on the `dawn-3.x` public testnet.
 
 ### Supported Operating Systems
 EOS.IO currently supports the following operating systems:  
@@ -35,23 +31,23 @@ EOS.IO currently supports the following operating systems:
 
 1. [Getting Started](#gettingstarted)
 2. [Setting up a build/development environment](#setup)
-  1. [Automated build script](#autobuild)
+   1. [Automated build script](#autobuild)
       1. [Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for a local testnet](#autoubuntulocal)
       2. [Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for the public testnet](#autoubuntupublic)
       3. [MacOS for a local testnet](#automaclocal)
       4. [MacOS for the public testnet](#automacpublic)
 3. [Building EOS and running a node](#runanode)
-  1. [Getting the code](#getcode)
-  2. [Building from source code](#build)
-  3. [Creating and launching a single-node testnet](#singlenode)
-  4. [Next steps](#nextsteps)
+   1. [Getting the code](#getcode)
+   2. [Building from source code](#build)
+   3. [Creating and launching a single-node testnet](#singlenode)
+   4. [Next steps](#nextsteps)
 4. [Example Currency Contract Walkthrough](#smartcontracts)
-  1. [Example Contracts](#smartcontractexample)
-  2. [Setting up a wallet and importing account key](#walletimport)
-  3. [Creating accounts for your smart contracts](#createaccounts)
-  4. [Upload sample contract to blockchain](#uploadsmartcontract)
-  5. [Pushing a message to a sample contract](#pushamessage)
-  6. [Reading Currency Contract Balance](#readingcontract)
+   1. [Example Contracts](#smartcontractexample)
+   2. [Setting up a wallet and importing account key](#walletimport)
+   3. [Creating accounts for your smart contracts](#createaccounts)
+   4. [Upload sample contract to blockchain](#uploadsmartcontract)
+   5. [Pushing a message to a sample contract](#pushamessage)
+   6. [Reading Currency Contract Balance](#readingcontract)
 5. [Running local testnet](#localtestnet)
 6. [Running a node on the public testnet](#publictestnet)
 7. [Doxygen documentation](#doxygen)
@@ -82,8 +78,7 @@ Supported Operating Systems:
 5. Ubuntu 16.04 (Ubuntu 16.10 recommended).  
 6. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
 
-For Amazon, Centos, Fedora, Mint, Ubuntu, & MacOS there is an automated build script that can install all dependencies and builds EOS.
-We are working on supporting other Linux/Unix distributions in future releases.
+For Amazon, Centos, Fedora, Mint, Ubuntu, & MacOS there is an automated build script that can install all dependencies and builds EOS.  We are working on supporting other Linux/Unix distributions in future releases.
 
 Choose whether you will be building for a local testnet or for the public testnet and jump to the appropriate section below.  Clone the EOS repository recursively as described and run eosio_build.sh located in the root `eos` folder.
 
@@ -92,7 +87,9 @@ Choose whether you will be building for a local testnet or for the public testne
 We strongly recommend following the instructions for building the public testnet version for [Linux](#autoubuntupublic) or [Mac OS X](#automacpublic). `master` is in pieces on the garage floor while we rebuild this hotrod. This notice will be removed when `master` is usable again. Your patience is appreciated.
 
 <a name="autoubuntulocal"></a>
-#### :no_entry: Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for a local testnet :no_entry:
+#### Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for a local testnet
+
+Clone the `eos` repository and run the build script.
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
@@ -100,7 +97,24 @@ cd eos
 ./eosio_build.sh
 ```
 
-For ease of contract development, one further step is required:
+The eosio_build.sh script puts content in the `build` folder.  Key executables (nodeos, cleos, etc.) can be found in the `build/programs` folder.
+
+Optionally, a set of tests can be run against your build to perform some basic validation.
+
+```bash
+cd build
+make test
+```
+ 
+For ease of contract development, content can be installed in the `/usr/local` folder using the `make install` target.  This step is run from the `build` folder.
+
+If not already in the `build` folder:
+
+```bash
+cd build
+```
+
+Run `make install`.
 
 ```bash
 sudo make install
@@ -111,30 +125,14 @@ Now you can proceed to the next step - [Creating and launching a single-node tes
 <a name="autoubuntupublic"></a>
 #### Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for the public testnet
 
-```bash
-git clone https://github.com/eosio/eos --recursive
-cd eos
-git checkout DAWN-2018-02-14
-git submodule update --recursive
-./build.sh ubuntu
-```
-
-For ease of contract development, one further step is required:
-
-```bash
-cd build
-sudo make install
-```
-
-Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
+The `master` branch is no longer compatible with the `dawn-2.x` public testnet.  To run on the public testnet, please see [DAWN-2018-02-14/eos/README.md](https://github.com/EOSIO/eos/blob/DAWN-2018-02-14/README.md)
 
 <a name="automaclocal"></a>
-#### :no_entry: MacOS for a local testnet :no_entry:
+#### MacOS for a local testnet
 
-Before running the script make sure you have installed/updated XCode. Note: The build script
-will install homebrew if it is not already installed on you system. [Homebrew Website](https://brew.sh)
+Before running the script make sure you have installed/updated XCode. Note: The build script will install homebrew if it is not already installed on you system. [Homebrew Website](https://brew.sh)
 
-Then clone the EOS repository recursively and run eosio_build.sh in the root `eos` folder.
+Clone the `eos` repository and run the build script.
 
 ```bash
 git clone https://github.com/eosio/eos --recursive
@@ -142,10 +140,26 @@ cd eos
 ./eosio_build.sh
 ```
 
-For ease of contract development, one further step is required:
+The eosio_build.sh script puts content in the `build` folder.  Key executables (nodeos, cleos, etc.) can be found in the `build/programs` folder.
+
+Optionally, a set of tests can be run against your build to perform some basic validation.
 
 ```bash
 cd build
+make test
+```
+ 
+For ease of contract development, content can be installed in the `/usr/local` folder using the `make install` target.  This step is run from the `build` folder.
+
+If not already in the `build` folder:
+
+```bash
+cd build
+```
+
+Run `make install`.
+
+```bash
 sudo make install
 ```
 
@@ -154,27 +168,7 @@ Now you can proceed to the next step - [Creating and launching a single-node tes
 <a name="automacpublic"></a>
 #### MacOS for the public testnet
 
-Before running the script make sure you have installed/updated XCode. Note: The build script
-will install homebrew if it is not already installed on you system. [Homebrew Website](https://brew.sh)
-
-Then clone the EOS repository recursively, checkout the branch that is compatible with the public testnet, and run eosio_build.sh in the root `eos` folder.
-
-```bash
-git clone https://github.com/eosio/eos --recursive
-cd eos
-git checkout DAWN-2018-02-14
-git submodule update --recursive
-./build.sh darwin
-```
-
-For ease of contract development, one further step is required:
-
-```bash
-cd build
-sudo make install
-```
-
-Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
+The `master` branch is no longer compatible with the `dawn-2.x` public testnet.  To run on the public testnet, please see [DAWN-2018-02-14/eos/README.md](https://github.com/EOSIO/eos/blob/DAWN-2018-02-14/README.md)
 
 <a name="runanode"></a>
 ## Building EOS and running a node
@@ -223,9 +217,13 @@ EOS comes with a number of programs you can find in `~/eos/build/programs`. They
 <a name="singlenode"></a>
 ### Creating and launching a single-node testnet
 
-After successfully building the project, the `nodeos` binary should be present in the `build/programs/nodeos` directory. Run `nodeos` -- it will probably exit with an error, but if not, close it immediately with <kbd>Ctrl-C</kbd>. If it exited with an error, note that `nodeos` created a directory named `data-dir` containing the default configuration (`config.ini`) and some other internals. This default data storage path can be overridden by passing `--data-dir /path/to/data` to `nodeos`.  These instructions will continue to use the default directory.
+After successfully building the project, the `nodeos` binary should be present in the `build/programs/nodeos` folder.  `nodeos` can be run directly from the `build` folder using `programs/nodeos/nodeos`. The instructions here assume 
+running from the `build` folder.
 
-Edit the `config.ini` file, adding/updating the following settings to the defaults already in place:
+By default, `nodeos` uses `etc/eosio/node_00` as its configuration folder.  The build seeds this folder with a default `genesis.json` file.  Alternatively, a configuration folder can be specified using the `--config-dir` command line argument to `nodeos`.  If you use this option, you will need to manually copy a genesis.json file to your config folder.
+
+`nodeos` will need a properly configured `config.ini` file in order to do meaningful work.  On startup, `nodeos` looks in the config folder for `config.ini`.  If one is not found, a default `config.ini` file is created.  If you do not
+already have a `config.ini` file ready to use, run `nodeos` and then close it immediately with <kbd>Ctrl-C</kbd>.  A default configuration (`config.ini`) will have been created in the config folder.  Edit the `config.ini` file, adding/updating the following settings to the defaults already in place:
 
 ```
 # Load the testnet genesis state, which creates some initial block producers with the default key
@@ -244,7 +242,6 @@ plugin = eosio::http_plugin
 ```
 
 Now it should be possible to run `nodeos` and see it begin producing blocks.
-You can specify the location of a custom `config.ini` by passing the `--config-dir` argument to `nodeos`.
 
 When running `nodeos` you should get log messages similar to below. It means the blocks are successfully produced.
 
@@ -255,6 +252,9 @@ When running `nodeos` you should get log messages similar to below. It means the
 1578001ms thread-0   producer_plugin.cpp:207       block_production_loo ] initc generated block #2 @ 2017-09-04T04:26:18 with 0 trxs  0 pending
 ...
 ```
+
+By default, `nodeos` uses `var/lib/eosio/node_00` as its data folder (where shared memory and log content are stored).  Alternatively, a data folder can be specified using the `--data-dir` command line argument to `nodeos`.
+
 <a name="nextsteps"></a>
 ### Next Steps
 
@@ -521,9 +521,10 @@ for p2p requests, and includes the wallet plugins.
 <a name="doxygen"></a>
 ## Doxygen documentation
 
-You can find more detailed API documentation in the Doxygen reference.
-For the `master` branch: https://eosio.github.io/eos/
-For the public testnet branch: http://htmlpreview.github.io/?https://github.com/EOSIO/eos/blob/dawn-2.x/docs/index.html
+You can find more detailed API documentation in the Doxygen reference. 
+ 
+For the `master` branch: https://eosio.github.io/eos/  
+For the public testnet branch: http://htmlpreview.github.io/?https://github.com/EOSIO/eos/blob/dawn-2.x/docs/index.html  
 
 <a name="docker"></a>
 ## Running EOS in Docker
@@ -622,12 +623,12 @@ cd ~
 curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
 tar xf mongo-c-driver-1.9.3.tar.gz
 cd mongo-c-driver-1.9.3
-./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+./configure --enable-static --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
 make -j$( nproc )
 sudo make install
 git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 cd mongo-cxx-driver/build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
 sudo make -j$( nproc )
 ```
 
@@ -745,12 +746,12 @@ cd ~
 curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
 tar xf mongo-c-driver-1.9.3.tar.gz
 cd mongo-c-driver-1.9.3
-./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+./configure --enable-static --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
 make -j$( nproc )
 sudo make install
 git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 cd mongo-cxx-driver/build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
 sudo make -j$( nproc )
 ```
 
@@ -819,12 +820,12 @@ cd ~
 curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
 tar xf mongo-c-driver-1.9.3.tar.gz
 cd mongo-c-driver-1.9.3
-./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+./configure --enable-static --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
 make -j$( nproc )
 sudo make install
 git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 cd mongo-cxx-driver/build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
 sudo make -j$( nproc )
 ```
 
@@ -893,12 +894,12 @@ cd ~
 curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
 tar xf mongo-c-driver-1.9.3.tar.gz
 cd mongo-c-driver-1.9.3
-./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+./configure --enable-static --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
 make -j$( nproc )
 sudo make install
 git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 cd mongo-cxx-driver/build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
 sudo make -j$( nproc )
 ```
 
@@ -969,7 +970,7 @@ curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo
 tar xf mongo-c-driver-1.9.3.tar.gz
 rm -f mongo-c-driver-1.9.3.tar.gz
 cd mongo-c-driver-1.9.3
-./configure --enable-ssl=darwin --disable-automatic-init-and-cleanup --prefix=/usr/local
+./configure --enable-static --enable-ssl=darwin --disable-automatic-init-and-cleanup --prefix=/usr/local
 make -j$( sysctl -in machdep.cpu.core_count )
 sudo make install
 cd ..
@@ -977,7 +978,7 @@ rm -rf mongo-c-driver-1.9.3
 
 git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 cd mongo-cxx-driver/build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
 make -j$( sysctl -in machdep.cpu.core_count )
 sudo make install
 cd ..

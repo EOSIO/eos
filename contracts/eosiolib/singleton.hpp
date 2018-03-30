@@ -30,7 +30,7 @@ namespace  eosio {
 
          static bool exists( scope_name scope = Code ) {
             table t( Code, scope );
-            return t.find( pk_value );
+            return t.find( pk_value ) != t.end();
          }
 
          static T get( scope_name scope = Code ) {

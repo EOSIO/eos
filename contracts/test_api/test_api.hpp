@@ -27,6 +27,12 @@ static constexpr u64 WASM_TEST_ACTION(const char* cls, const char* method)
      return; \
   }
 
+#define WASM_TEST_HANDLER_EX(CLASS, METHOD) \
+  if( action == WASM_TEST_ACTION(#CLASS, #METHOD) ) { \
+     CLASS::METHOD(receiver, code, action); \
+     return; \
+  }
+
 #pragma pack(push, 1)
 struct dummy_action {
    static uint64_t get_name() {
@@ -92,13 +98,13 @@ struct test_action {
   static void read_action_to_64k();
   static void test_dummy_action();
   static void test_cf_action();
-  static void require_notice();
+  static void require_notice(uint64_t receiver, uint64_t code, uint64_t action);
   static void require_auth();
   static void assert_false();
   static void assert_true();
   static void now();
   static void test_abort() __attribute__ ((noreturn)) ;
-  static void test_current_receiver();
+  static void test_current_receiver(uint64_t receiver, uint64_t code, uint64_t action);
   static void test_current_sender();
   static void test_publication_time();
 };
@@ -114,80 +120,45 @@ struct test_math {
 };
 
 struct test_db {
-   static void key_i64_general();
-   static void key_i64_remove_all();
-   static void key_i64_small_load();
-   static void key_i64_small_store();
-   static void key_i64_store_scope();
-   static void key_i64_remove_scope();
-   static void key_i64_not_found();
-   static void key_i64_front_back();
+   static void primary_i64_general(uint64_t receiver, uint64_t code, uint64_t action);
+   static void primary_i64_lowerbound(uint64_t receiver, uint64_t code, uint64_t action);
+   static void primary_i64_upperbound(uint64_t receiver, uint64_t code, uint64_t action);
 
-   static void key_i128i128_general();
-   static void key_i64i64i64_general();
-   static void key_str_table();
-
-   static void key_str_setup_limit();
-   static void key_str_min_exceed_limit();
-   static void key_str_under_limit();
-   static void key_str_available_space_exceed_limit();
-   static void key_str_another_under_limit();
-
-   static void key_i64_setup_limit();
-   static void key_i64_min_exceed_limit();
-   static void key_i64_under_limit();
-   static void key_i64_available_space_exceed_limit();
-   static void key_i64_another_under_limit();
-
-   static void key_i128i128_setup_limit();
-   static void key_i128i128_min_exceed_limit();
-   static void key_i128i128_under_limit();
-   static void key_i128i128_available_space_exceed_limit();
-   static void key_i128i128_another_under_limit();
-
-   static void key_i64i64i64_setup_limit();
-   static void key_i64i64i64_min_exceed_limit();
-   static void key_i64i64i64_under_limit();
-   static void key_i64i64i64_available_space_exceed_limit();
-   static void key_i64i64i64_another_under_limit();
-
-   static void primary_i64_general();
-   static void primary_i64_lowerbound();
-   static void primary_i64_upperbound();
-
-   static void idx64_general();
-   static void idx64_lowerbound();
-   static void idx64_upperbound();
+   static void idx64_general(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_lowerbound(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_upperbound(uint64_t receiver, uint64_t code, uint64_t action);
 };
 
 struct test_multi_index {
-   static void idx64_general();
-   static void idx64_store_only();
-   static void idx64_check_without_storing();
-   static void idx128_general();
-   static void idx128_store_only();
-   static void idx128_check_without_storing();
-   static void idx128_autoincrement_test();
-   static void idx128_autoincrement_test_part1();
-   static void idx128_autoincrement_test_part2();
-   static void idx256_general();
-   static void idx_double_general();
-   static void idx64_pk_iterator_exceed_end();
-   static void idx64_sk_iterator_exceed_end();
-   static void idx64_pk_iterator_exceed_begin();
-   static void idx64_sk_iterator_exceed_begin();
-   static void idx64_pass_pk_ref_to_other_table();
-   static void idx64_pass_sk_ref_to_other_table();
-   static void idx64_pass_pk_end_itr_to_iterator_to();
-   static void idx64_pass_pk_end_itr_to_modify();
-   static void idx64_pass_pk_end_itr_to_erase();
-   static void idx64_pass_sk_end_itr_to_iterator_to();
-   static void idx64_pass_sk_end_itr_to_modify();
-   static void idx64_pass_sk_end_itr_to_erase();
-   static void idx64_modify_primary_key();
-   static void idx64_run_out_of_avl_pk();
-   static void idx64_sk_cache_pk_lookup();
-   static void idx64_pk_cache_sk_lookup();
+
+   static void idx64_general(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_store_only(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_check_without_storing(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx128_general(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx128_store_only(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx128_check_without_storing(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx128_autoincrement_test(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx128_autoincrement_test_part1(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx128_autoincrement_test_part2(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx256_general(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx_double_general(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pk_iterator_exceed_end(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_sk_iterator_exceed_end(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pk_iterator_exceed_begin(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_sk_iterator_exceed_begin(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pass_pk_ref_to_other_table(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pass_sk_ref_to_other_table(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pass_pk_end_itr_to_iterator_to(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pass_pk_end_itr_to_modify(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pass_pk_end_itr_to_erase(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pass_sk_end_itr_to_iterator_to(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pass_sk_end_itr_to_modify(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pass_sk_end_itr_to_erase(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_modify_primary_key(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_run_out_of_avl_pk(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_sk_cache_pk_lookup(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx64_pk_cache_sk_lookup(uint64_t receiver, uint64_t code, uint64_t action);
+
 };
 
 struct test_crypto {
@@ -229,6 +200,13 @@ struct test_transaction {
   static void send_transaction_max();
   static void send_transaction_large();
   static void send_action_sender();
+  static void deferred_print();
+  static void send_deferred_transaction();
+  static void cancel_deferred_transaction();
+  static void send_cf_action();
+  static void send_cf_action_fail();
+  static void read_inline_action();
+  static void read_inline_cf_action();
 };
 
 struct test_chain {

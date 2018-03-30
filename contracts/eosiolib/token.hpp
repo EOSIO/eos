@@ -46,10 +46,11 @@ namespace eosio {
     template<typename Base, typename Quote>
     friend price<Base,Quote> operator / ( const Base& b, const Quote& q );
 
-    operator asset()const { return asset( int64_t(quantity), Symbol ); }
+    explicit operator asset()const { return asset( int64_t(quantity), Symbol ); }
 
     token( const asset& a ):quantity(NumberType(a.amount)) {
        eosio_assert( a.symbol == Symbol, "attempt to construct token from asset with different symbol" );
+       eosio_assert( 0 <= a.amount, "attemt to convert asset with negative value to token" );
     }
 
     /**
@@ -117,6 +118,85 @@ namespace eosio {
       token result = a;
       result -= b;
       return result;
+    }
+
+    /**
+    * Multiplies quantity of token by an integer
+    * Throws an exception if overflow
+    * @brief Multiplies quantity of token by an integer
+    * @param a multipier
+    * @return this token after addition
+    */
+    token& operator*=( uint64_t a ) {
+      eosio_assert( a == 0 || (quantity * a) / a == quantity, "integer overflow multiplying token balance" );
+      quantity *= a;
+      return *this;
+    }
+
+    /**
+    * Multiplies token and integer
+    * Throws an exception if overflow
+    * @brief Multiplies quantity of two tokens and return a new token
+    * @param a token to be multiplied
+    * @param b multipier
+    * @return result of addition as a new token
+    */
+    inline friend token operator*( const token& a, uint64_t b ) {
+      token result = a;
+      result *= b;
+      return result;
+    }
+
+    /**
+    * Multiplies token and integer
+    * Throws an exception if overflow
+    * @brief Multiplies quantity of two tokens and return a new token
+    * @param a token to be multiplied
+    * @param b multipier
+    * @return result of addition as a new token
+    */
+   inline friend token operator*( uint64_t b, const token& a ) {
+      token result = a;
+      result *= b;
+      return result;
+    }
+
+    /**
+    * Divides quantity of token by an integer
+    * Throws an exception if overflow
+    * @brief Divides quantity of token by an integer
+    * @param a multipier
+    * @return this token after addition
+    */
+    token& operator/=( uint64_t a ) {
+      quantity /= a;
+      return *this;
+    }
+
+    /**
+    * Divides token and integer
+    * Throws an exception if overflow
+    * @brief Divides quantity of two tokens and return a new token
+    * @param a token to be multiplied
+    * @param b multipier
+    * @return result of addition as a new token
+    */
+    inline friend token operator/( const token& a, uint64_t b ) {
+      token result = a;
+      result /= b;
+      return result;
+    }
+
+     /**
+    * Divides two tokens
+    * Throws an exception if overflow
+    * @brief Divides quantity of two tokens and return a new token
+    * @param a token
+    * @param b token
+    * @return result of addition as a new token
+    */
+    inline friend NumberType operator/( const token& a, const token& b ) {
+      return a.quantity / b.quantity;
     }
 
     /**

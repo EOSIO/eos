@@ -20,7 +20,7 @@ void apply_context::exec_one()
       auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
       if (native) {
          (*native)(*this);
-      } 
+      }
       else if (a.code.size() > 0) {
          try {
             mutable_controller.get_wasm_interface().apply(a.code_version, a.code, *this);
@@ -100,7 +100,7 @@ void apply_context::exec()
 
    for( uint32_t i = 0; i < _cfa_inline_actions.size(); ++i ) {
       EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
-      apply_context ncontext( mutable_controller, mutable_db, _inline_actions[i], trx_meta, recurse_depth + 1 );
+      apply_context ncontext( mutable_controller, mutable_db, _cfa_inline_actions[i], trx_meta, recurse_depth + 1 );
       ncontext.context_free = true;
       ncontext.exec();
       append_results(move(ncontext.results));
@@ -184,14 +184,14 @@ void apply_context::require_recipient( account_name code ) {
 
 
 /**
- *  This will execute an action after checking the authorization. Inline transactions are 
+ *  This will execute an action after checking the authorization. Inline transactions are
  *  implicitly authorized by the current receiver (running code). This method has significant
  *  security considerations and several options have been considered:
  *
  *  1. priviledged accounts (those marked as such by block producers) can authorize any action
  *  2. all other actions are only authorized by 'receiver' which means the following:
  *         a. the user must set permissions on their account to allow the 'receiver' to act on their behalf
- *  
+ *
  *  Discarded Implemenation:  at one point we allowed any account that authorized the current transaction
  *   to implicitly authorize an inline transaction. This approach would allow privelege escalation and
  *   make it unsafe for users to interact with certain contracts.  We opted instead to have applications
@@ -199,9 +199,12 @@ void apply_context::require_recipient( account_name code ) {
  *   can better understand the security risk.
  */
 void apply_context::execute_inline( action&& a ) {
-   if ( !privileged ) { 
+   if ( !privileged ) {
       if( a.account != receiver ) {
-         controller.check_authorization({a}, flat_set<public_key_type>(), false, {receiver}); 
+         const auto delay = controller.check_authorization({a}, vector<action>(), flat_set<public_key_type>(), false, {receiver});
+         FC_ASSERT( trx_meta.published + delay <= controller.head_block_time(),
+                    "inline action uses a permission that imposes a delay that is not met, add an action of mindelay with delay of atleast ${delay}",
+                    ("delay", delay.sec_since_epoch()) );
       }
    }
    _inline_actions.emplace_back( move(a) );
@@ -218,15 +221,14 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
                                    "transaction is expired when created" );
 
       FC_ASSERT( trx.execute_after < trx.expiration, "transaction expires before it can execute" );
-
-      /// TODO: make default_max_gen_trx_count a producer parameter
-      FC_ASSERT( results.generated_transactions.size() < config::default_max_gen_trx_count );
-
       FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
 
       if (trx.payer != receiver) {
          require_authorization(trx.payer);
       }
+
+      const auto& gpo = controller.get_global_properties();
+      FC_ASSERT( results.deferred_transactions_count < gpo.configuration.max_generated_transaction_count );
 
       // privileged accounts can do anything, no need to check auth
       if( !privileged ) {
@@ -240,20 +242,24 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
                break;
             }
          }
-         if( check_auth ) 
-            controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
+         if( check_auth ) {
+            const auto delay = controller.check_authorization(trx.actions, vector<action>(), flat_set<public_key_type>(), false, {receiver});
+            FC_ASSERT( trx_meta.published + delay <= controller.head_block_time(),
+                       "deferred transaction uses a permission that imposes a delay that is not met, add an action of mindelay with delay of atleast ${delay}",
+                       ("delay", delay.sec_since_epoch()) );
+         }
       }
 
       trx.sender = receiver; //  "Attempting to send from another account"
       trx.set_reference_block(controller.head_block_id());
 
-      /// TODO: make sure there isn't already a deferred transaction with this ID or senderID?
-      results.generated_transactions.emplace_back(move(trx));
+      results.deferred_transaction_requests.push_back(move(trx));
+      results.deferred_transactions_count++;
    } FC_CAPTURE_AND_RETHROW((trx));
 }
 
-void apply_context::cancel_deferred( uint32_t sender_id ) {
-   results.canceled_deferred.emplace_back(receiver, sender_id);
+void apply_context::cancel_deferred( uint128_t sender_id ) {
+   results.deferred_transaction_requests.push_back(deferred_reference(receiver, sender_id));
 }
 
 const contracts::table_id_object* apply_context::find_table( name code, name scope, name table ) {
@@ -334,6 +340,16 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
          return -1;
       act = &trx.actions[index];
    }
+   else if( type == 2 ) {
+      if( index >= _cfa_inline_actions.size() )
+         return -1;
+      act = &_cfa_inline_actions[index];
+   }
+   else if( type == 3 ) {
+      if( index >= _inline_actions.size() )
+         return -1;
+      act = &_inline_actions[index];
+   }
 
    auto ps = fc::raw::pack_size( *act );
    if( ps <= buffer_size ) {
@@ -358,10 +374,31 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
    return s;
 }
 
+uint32_t apply_context::get_next_sender_id() {
+   const uint64_t id = N(config::eosio_auth_scope);
+   const auto table = N(deferred.seq);
+   const auto payer = config::system_account_name;
+   const auto iter = db_find_i64(config::system_account_name, config::eosio_auth_scope, table, id);
+   if (iter == -1) {
+      const uint32_t next_serial = 1;
+      db_store_i64(config::system_account_name, config::eosio_auth_scope, table, payer, id, (const char*)&next_serial, sizeof(next_serial));
+      return 0;
+   }
+
+   uint32_t next_serial = 0;
+   db_get_i64(iter, (char*)&next_serial, sizeof(next_serial));
+   const auto result = next_serial++;
+   db_update_i64(iter, payer, (const char*)&next_serial, sizeof(next_serial));
+   return result;
+}
 
 int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
+   return db_store_i64( receiver, scope, table, payer, id, buffer, buffer_size);
+}
+
+int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
    require_write_lock( scope );
-   const auto& tab = find_or_create_table( receiver, scope, table );
+   const auto& tab = find_or_create_table( code, scope, table );
    auto tableid = tab.id;
 
    FC_ASSERT( payer != account_name(), "must specify a valid account to pay for new record" );
