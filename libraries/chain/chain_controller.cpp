@@ -453,7 +453,7 @@ void chain_controller::_finalize_pending_cycle()
 
       trace.finalize_shard();
       shard.read_locks.reserve(trace.read_locks.size());
-      shard.write_locks.insert(shard.read_locks.end(), trace.read_locks.begin(), trace.read_locks.end());
+      shard.read_locks.insert(shard.read_locks.end(), trace.read_locks.begin(), trace.read_locks.end());
 
       shard.write_locks.reserve(trace.write_locks.size());
       shard.write_locks.insert(shard.write_locks.end(), trace.write_locks.begin(), trace.write_locks.end());
