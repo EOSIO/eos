@@ -83,7 +83,9 @@ namespace eosio { namespace testing {
          transaction_trace push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA );
          transaction_trace push_action( const account_name& code, const action_name& acttype, const vector<account_name>& actors, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA );
 
-         void              set_tapos( signed_transaction& trx, uint32_t expiration = DEFAULT_EXPIRATION_DELTA ) const;
+         void              set_transaction_headers(signed_transaction& trx,
+                                                   uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
+                                                   uint32_t extra_cf_cpu_usage = 0) const;
 
          void              create_accounts( vector<account_name> names, bool multisig = false ) {
             for( auto n : names ) create_account(n, config::system_account_name, multisig );

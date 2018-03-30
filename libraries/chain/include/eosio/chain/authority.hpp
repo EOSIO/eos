@@ -57,6 +57,10 @@ struct shared_authority {
       for( const auto& a : accounts ) { auth.accounts.emplace_back( a ); }
       return auth;
    }
+
+   size_t get_billable_size() const {
+      return keys.size() * sizeof(key_weight) + accounts.size() * sizeof(permission_level_weight);
+   }
 };
 
 inline bool operator< (const permission_level& a, const permission_level& b) {

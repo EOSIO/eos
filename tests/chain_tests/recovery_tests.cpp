@@ -14,7 +14,7 @@ auto make_postrecovery(const tester &t, account_name account, string role) {
                                 .data    = authority(t.get_public_key(account, role)),
                                 .memo    = "Test recovery"
                              } );
-   t.set_tapos(trx);
+   t.set_transaction_headers(trx);
    trx.sign(t.get_private_key(account, "active"), chain_id_type());
    return trx;
 }
@@ -25,7 +25,7 @@ auto make_vetorecovery(const tester &t, account_name account, permission_name ve
                              vetorecovery{
                                 .account = account
                              } );
-   t.set_tapos(trx);
+   t.set_transaction_headers(trx);
    if (signing_key) {
       trx.sign(*signing_key, chain_id_type());
    } else {
