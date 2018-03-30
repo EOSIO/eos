@@ -85,7 +85,7 @@ void apply_context::exec_one()
       }
    }
 
-   results.applied_actions.emplace_back(action_trace {receiver, _cpu_usage, act, _pending_console_output.str(), 0, 0, move(data_access)});
+   results.applied_actions.emplace_back(action_trace {receiver, context_free, _cpu_usage, act, _pending_console_output.str(), 0, 0, move(data_access)});
    _pending_console_output = std::ostringstream();
    _read_locks.clear();
    _write_scopes.clear();

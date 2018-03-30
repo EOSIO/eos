@@ -1041,14 +1041,20 @@ void chain_controller::record_transaction(const transaction& trx)
 static uint32_t calculate_transaction_cpu_usage( const transaction_trace& trace, const transaction_metadata& meta, const chain_config& chain_configuration ) {
    // calculate the sum of all actions retired
    uint32_t action_cpu_usage = 0;
+   uint32_t context_free_actual_cpu_usage = 0;
    for (const auto &at: trace.action_traces) {
-      action_cpu_usage += chain_configuration.base_per_action_cpu_usage + at.cpu_usage;
-      if (at.receiver == config::system_account_name &&
-          at.act.account == config::system_account_name &&
-          at.act.name == N(setcode)) {
-         action_cpu_usage += chain_configuration.base_setcode_cpu_usage;
+      if (at.context_free) {
+         context_free_actual_cpu_usage += chain_configuration.base_per_action_cpu_usage + at.cpu_usage;
+      } else {
+         action_cpu_usage += chain_configuration.base_per_action_cpu_usage + at.cpu_usage;
+         if (at.receiver == config::system_account_name &&
+             at.act.account == config::system_account_name &&
+             at.act.name == N(setcode)) {
+            action_cpu_usage += chain_configuration.base_setcode_cpu_usage;
+         }
       }
    }
+
 
    // charge a system controlled amount for signature verification/recovery
    uint32_t signature_cpu_usage = 0;
@@ -1057,8 +1063,13 @@ static uint32_t calculate_transaction_cpu_usage( const transaction_trace& trace,
    }
 
    // charge a system discounted amount for context free cpu usage
-   uint32_t context_free_cpu_usage = meta.trx().context_free_kilo_cpu_usage.value * 1024UL;
-   context_free_cpu_usage = (uint32_t)((uint64_t)context_free_cpu_usage * chain_configuration.context_free_discount_cpu_usage_num / chain_configuration.context_free_discount_cpu_usage_den);
+   uint32_t context_free_cpu_commitment = (uint32_t)(meta.trx().context_free_kilo_cpu_usage.value * 1024UL);
+   EOS_ASSERT(context_free_actual_cpu_usage <= context_free_cpu_commitment,
+              tx_resource_exhausted,
+              "Transaction context free actions can not fit into the cpu usage committed to by the transaction's header! [usage=${usage},commitment=${commit}]",
+              ("usage", context_free_actual_cpu_usage)("commit", context_free_cpu_commitment) );
+
+   uint32_t context_free_cpu_usage = (uint32_t)((uint64_t)context_free_cpu_commitment * chain_configuration.context_free_discount_cpu_usage_num / chain_configuration.context_free_discount_cpu_usage_den);
 
    return chain_configuration.base_per_transaction_cpu_usage +
           action_cpu_usage +
