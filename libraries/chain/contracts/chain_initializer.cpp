@@ -240,7 +240,8 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"ref_block_num", "uint16"},
          {"ref_block_prefix", "uint16"},
          {"net_usage_words", "varuint32"},
-         {"context_free_kilo_cpu_usage", "varuint32"}
+         {"kcpu_usage", "varuint32"},
+         {"delay_sec", "varuint32"}
       }
    });
 
