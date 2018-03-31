@@ -263,7 +263,7 @@ fc::variant push_transaction( signed_transaction& trx, packed_transaction::compr
    auto required_keys = determine_required_keys(trx);
    size_t num_keys = required_keys.is_array() ? required_keys.get_array().size() : 1;
 
-   trx.context_free_kilo_cpu_usage = estimate_transaction_context_free_kilo_cpu_usage(trx);
+   trx.kcpu_usage = estimate_transaction_context_free_kilo_cpu_usage(trx);
    trx.net_usage_words = estimate_transaction_net_usage_words(trx, compression, num_keys);
 
    if (!tx_skip_sign) {

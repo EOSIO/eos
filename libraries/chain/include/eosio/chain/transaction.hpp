@@ -113,11 +113,12 @@ namespace eosio { namespace chain {
     */
    struct transaction_header {
       time_point_sec         expiration;   ///< the time at which a transaction expires
-      uint16_t               region        = 0U; ///< the computational memory region this transaction applies to.
-      uint16_t               ref_block_num = 0U; ///< specifies a block num in the last 2^16 blocks.
+      uint16_t               region           = 0U; ///< the computational memory region this transaction applies to.
+      uint16_t               ref_block_num    = 0U; ///< specifies a block num in the last 2^16 blocks.
       uint32_t               ref_block_prefix = 0UL; ///< specifies the lower 32 bits of the blockid at get_ref_blocknum
-      fc::unsigned_int       net_usage_words = 0UL; /// number of 8 byte words this transaction serialize too taking any compression into account
-      fc::unsigned_int       context_free_kilo_cpu_usage = 0UL; /// number of kilo CPU usage units to bill transaction for to process context free actions
+      fc::unsigned_int       net_usage_words  = 0UL; /// number of 8 byte words this transaction serialize too taking any compression into account
+      fc::unsigned_int       kcpu_usage       = 0UL; /// number of kilo CPU usage units to bill transaction for to process all free actions
+      fc::unsigned_int       delay_sec        = 0UL; /// number of seconds to delay this transaction for during which it may be canceled.
 
       /**
        * @return the absolute block number given the relative ref_block_num
@@ -150,7 +151,7 @@ namespace eosio { namespace chain {
 //      signed_transaction( const signed_transaction& ) = default;
 //      signed_transaction( signed_transaction&& ) = default;
       signed_transaction( transaction&& trx, const vector<signature_type>& signatures, const vector<bytes>& context_free_data)
-      : transaction(std::forward<transaction>(trx))
+      : transaction(std::move(trx))
       , signatures(signatures)
       , context_free_data(context_free_data)
       {
@@ -243,7 +244,8 @@ namespace eosio { namespace chain {
 FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
 FC_REFLECT( eosio::chain::action, (account)(name)(authorization)(data) )
 FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
-FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix)(net_usage_words)(context_free_kilo_cpu_usage) )
+FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix)
+                                              (net_usage_words)(kcpu_usage)(delay_sec) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures)(context_free_data) )
 FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))

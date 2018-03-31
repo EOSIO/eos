@@ -272,8 +272,10 @@ transaction_trace chain_controller::push_transaction(const packed_transaction& t
 
 transaction_trace chain_controller::_push_transaction(const packed_transaction& packed_trx)
 { try {
+   //edump((transaction_header(packed_trx.get_transaction())));
    auto start = fc::time_point::now();
    transaction_metadata   mtrx( packed_trx, get_chain_id(), head_block_time());
+   //idump((transaction_header(mtrx.trx())));
 
    const auto delay = check_transaction_authorization(mtrx.trx(), packed_trx.signatures, packed_trx.context_free_data);
    auto setup_us = fc::time_point::now() - start;
@@ -331,7 +333,7 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
          return result;
       };
 
-      result = wrap_transaction_processing(std::forward<transaction_metadata>(mtrx), delayed_transaction_processing);
+      result = wrap_transaction_processing( move(mtrx), delayed_transaction_processing);
    }
 
    // notify anyone listening to pending transactions
@@ -341,7 +343,7 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
 
    return result;
 
-} FC_CAPTURE_AND_RETHROW() }
+} FC_CAPTURE_AND_RETHROW( (transaction_header(packed_trx.get_transaction())) ) }
 
 static void record_locks_for_data_access(transaction_trace& trace, flat_set<shard_lock>& read_locks, flat_set<shard_lock>& write_locks ) {
    for (const auto& at: trace.action_traces) {
@@ -365,20 +367,22 @@ static void record_locks_for_data_access(transaction_trace& trace, flat_set<shar
 
 transaction_trace chain_controller::_push_transaction( transaction_metadata&& data )
 { try {
-   auto process_apply_transaction = [&](transaction_metadata& meta) {
+   auto process_apply_transaction = [this](transaction_metadata& meta) {
       auto cyclenum = _pending_block->regions.back().cycles_summary.size() - 1;
+      //wdump((transaction_header(meta.trx())));
 
       /// TODO: move _pending_cycle into db so that it can be undone if transation fails, for now we will apply
       /// the transaction first so that there is nothing to undo... this only works because things are currently
       /// single threaded
       // set cycle, shard, region etc
-      data.region_id = 0;
-      data.cycle_index = cyclenum;
-      data.shard_index = 0;
-      return _apply_transaction( data );
+      meta.region_id = 0;
+      meta.cycle_index = cyclenum;
+      meta.shard_index = 0;
+      return _apply_transaction( meta );
    };
-   return wrap_transaction_processing( std::forward<transaction_metadata>(data), process_apply_transaction );
-} FC_CAPTURE_AND_RETHROW() }
+ //  wdump((transaction_header(data.trx())));
+   return wrap_transaction_processing( move(data), process_apply_transaction );
+} FC_CAPTURE_AND_RETHROW( ) }
 
 
 block_header chain_controller::head_block_header() const
@@ -427,6 +431,7 @@ transaction chain_controller::_get_on_block_transaction()
    trx.actions.emplace_back(std::move(on_block_act));
    trx.set_reference_block(head_block_id());
    trx.expiration = head_block_time() + fc::seconds(1);
+   trx.kcpu_usage = 2000; // 1 << 24;
    return trx;
 }
 
@@ -1087,18 +1092,29 @@ static uint32_t calculate_transaction_cpu_usage( const transaction_trace& trace,
    }
 
    // charge a system discounted amount for context free cpu usage
-   uint32_t context_free_cpu_commitment = (uint32_t)(meta.trx().context_free_kilo_cpu_usage.value * 1024UL);
+   //uint32_t context_free_cpu_commitment = (uint32_t)(meta.trx().kcpu_usage.value * 1024UL);
+   /*
    EOS_ASSERT(context_free_actual_cpu_usage <= context_free_cpu_commitment,
               tx_resource_exhausted,
               "Transaction context free actions can not fit into the cpu usage committed to by the transaction's header! [usage=${usage},commitment=${commit}]",
               ("usage", context_free_actual_cpu_usage)("commit", context_free_cpu_commitment) );
+              */
 
-   uint32_t context_free_cpu_usage = (uint32_t)((uint64_t)context_free_cpu_commitment * chain_configuration.context_free_discount_cpu_usage_num / chain_configuration.context_free_discount_cpu_usage_den);
+   uint32_t context_free_cpu_usage = (uint32_t)((uint64_t)context_free_actual_cpu_usage * chain_configuration.context_free_discount_cpu_usage_num / chain_configuration.context_free_discount_cpu_usage_den);
 
-   return chain_configuration.base_per_transaction_cpu_usage +
+   auto actual_usage = chain_configuration.base_per_transaction_cpu_usage +
           action_cpu_usage +
           context_free_cpu_usage +
           signature_cpu_usage;
+
+   
+
+   if( meta.trx().kcpu_usage.value == 0 ) {
+      return actual_usage;
+   } else {
+      EOS_ASSERT( actual_usage <= meta.trx().kcpu_usage.value*1000ll, tx_resource_exhausted, "transaction did not declare sufficient cpu usage: ${actual} > ${declared}", ("actual", actual_usage)("declared",meta.trx().kcpu_usage.value*1000ll) );
+   }
+   return meta.trx().kcpu_usage;
 }
 
 static uint32_t calculate_transaction_net_usage( const transaction_trace& trace, const transaction_metadata& meta, const chain_config& chain_configuration ) {
@@ -1804,7 +1820,7 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
    auto result = execute(meta);
    result._profiling_us = fc::time_point::now() - start;
    return result;
-} FC_CAPTURE_AND_RETHROW() }
+} FC_CAPTURE_AND_RETHROW( (transaction_header(meta.trx())) ) }
 
 transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    transaction_trace result(meta.id);
@@ -1971,6 +1987,8 @@ transaction_trace chain_controller::wrap_transaction_processing( transaction_met
 
    const transaction& trx = data.trx();
 
+   //wdump((transaction_header(trx)));
+
    auto temp_session = _db.start_undo_session(true);
 
    // for now apply the transaction serially but schedule it according to those invariants
@@ -1991,9 +2009,10 @@ transaction_trace chain_controller::wrap_transaction_processing( transaction_met
    // The transaction applied successfully. Merge its changes into the pending block session.
    temp_session.squash();
 
-   _pending_transaction_metas.emplace_back(std::forward<transaction_metadata>(data));
+   //wdump((transaction_header(data.trx())));
+   _pending_transaction_metas.emplace_back( move(data) );
 
    return result;
-} FC_CAPTURE_AND_RETHROW() }
+} FC_CAPTURE_AND_RETHROW( (transaction_header(data.trx())) ) }
 
 } } /// eosio::chain
