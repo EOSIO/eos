@@ -225,13 +225,13 @@ void sign_transaction(signed_transaction& trx, fc::variant& required_keys) {
    trx = signed_trx.as<signed_transaction>();
 }
 
-static uint32_t estimate_transaction_context_free_kilo_cpu_usage( const signed_transaction& trx ) {
+static uint32_t estimate_transaction_context_free_kilo_cpu_usage( const signed_transaction& trx, int32_t extra_kcpu = 1000 ) {
    if (tx_cf_cpu_usage != 0) {
       return (uint32_t)(tx_cf_cpu_usage + 1023UL) / (uint32_t)1024UL;
    }
 
    const uint32_t estimated_per_action_usage = config::default_base_per_action_cpu_usage * 10;
-   return (uint32_t)(trx.context_free_actions.size() * estimated_per_action_usage + 1023) / (uint32_t)1024;
+   return extra_kcpu + (uint32_t)(trx.context_free_actions.size() * estimated_per_action_usage + 1023) / (uint32_t)1024;
 }
 
 static uint32_t estimate_transaction_net_usage_words( const signed_transaction& trx, packed_transaction::compression_type compression, size_t num_keys ) {
@@ -251,7 +251,7 @@ static uint32_t estimate_transaction_net_usage_words( const signed_transaction& 
    return (uint32_t)(sigs + estimated_packed_size + (uint32_t)trx.context_free_data.size() + 7) / (uint32_t)8;
 }
 
-fc::variant push_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::none ) {
+fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
    auto info = get_info();
    trx.expiration = info.head_block_time + tx_expiration;
    trx.set_reference_block(info.head_block_id);
@@ -263,7 +263,7 @@ fc::variant push_transaction( signed_transaction& trx, packed_transaction::compr
    auto required_keys = determine_required_keys(trx);
    size_t num_keys = required_keys.is_array() ? required_keys.get_array().size() : 1;
 
-   trx.kcpu_usage = estimate_transaction_context_free_kilo_cpu_usage(trx);
+   trx.kcpu_usage = estimate_transaction_context_free_kilo_cpu_usage(trx, extra_kcpu );
    trx.net_usage_words = estimate_transaction_net_usage_words(trx, compression, num_keys);
 
    if (!tx_skip_sign) {
@@ -277,19 +277,19 @@ fc::variant push_transaction( signed_transaction& trx, packed_transaction::compr
    }
 }
 
-fc::variant push_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none ) {
+fc::variant push_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu, packed_transaction::compression_type compression = packed_transaction::none ) {
    signed_transaction trx;
    trx.actions = std::forward<decltype(actions)>(actions);
 
-   return push_transaction(trx, compression);
+   return push_transaction(trx, extra_kcpu, compression);
 }
 
-void send_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none ) {
-   std::cout << fc::json::to_pretty_string(push_actions(std::forward<decltype(actions)>(actions), compression)) << std::endl;
+void send_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
+   std::cout << fc::json::to_pretty_string(push_actions(std::forward<decltype(actions)>(actions), extra_kcpu, compression)) << std::endl;
 }
 
-void send_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::none  ) {
-   std::cout << fc::json::to_pretty_string(push_transaction(trx, compression)) << std::endl;
+void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_transaction::compression_type compression = packed_transaction::none  ) {
+   std::cout << fc::json::to_pretty_string(push_transaction(trx, extra_kcpu, compression)) << std::endl;
 }
 
 chain::action create_newaccount(const name& creator, const name& newaccount, public_key_type owner, public_key_type active) {
@@ -788,7 +788,7 @@ int main( int argc, char** argv ) {
       }
 
       std::cout << localized("Publishing contract...") << std::endl;
-      send_actions(std::move(actions), packed_transaction::zlib);
+      send_actions(std::move(actions), 10000, packed_transaction::zlib);
    });
 
    // set account
