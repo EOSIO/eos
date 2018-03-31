@@ -82,7 +82,7 @@ void producer_plugin::set_program_options(
    boost::program_options::options_description producer_options;
 
    producer_options.add_options()
-         ("enable-stale-production", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
+         ("enable-stale-production,e", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
          ("required-participation", boost::program_options::value<uint32_t>()
                                        ->default_value(uint32_t(config::required_producer_participation/config::percent_1))
                                        ->notifier([this](uint32_t e) {

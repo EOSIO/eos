@@ -56,6 +56,17 @@ public:
    int64_t transactions_time_limit = DEFAULT_TRANSACTION_TIME_LIMIT;
    std::set<account_name> filter_on;
 
+   bool init_db = false;
+   void check_init_db() {
+      if( !init_db ) {
+         init_db = true;
+         auto& db = chain_plug->chain().get_mutable_database();
+         db.add_index<account_control_history_multi_index>();
+         db.add_index<account_transaction_history_multi_index>();
+         db.add_index<public_key_history_multi_index>();
+         db.add_index<transaction_history_multi_index>();
+      }
+   }
 private:
    struct block_comp
    {
@@ -464,11 +475,19 @@ void account_history_plugin::plugin_initialize(const variables_map& options)
       for(auto filter_account : foa)
          my->filter_on.emplace(filter_account);
    }
+
+   my->chain_plug = app().find_plugin<chain_plugin>();
+   my->chain_plug->chain_config().applied_block_callbacks.emplace_back( 
+            [&impl = my](const chain::block_trace& trace) {
+                  impl->check_init_db();
+                  impl->applied_block(trace);
+            });
 }
+
 
 void account_history_plugin::plugin_startup()
 {
-   my->chain_plug = app().find_plugin<chain_plugin>();
+   /*
    auto& db = my->chain_plug->chain().get_mutable_database();
    db.add_index<account_control_history_multi_index>();
    db.add_index<account_transaction_history_multi_index>();
@@ -478,6 +497,7 @@ void account_history_plugin::plugin_startup()
    my->chain_plug->chain().applied_block.connect ([&impl = my](const chain::block_trace& trace) {
       impl->applied_block(trace);
    });
+   */
 }
 
 void account_history_plugin::plugin_shutdown()
