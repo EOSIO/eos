@@ -232,6 +232,7 @@ namespace eosio { namespace chain {
    };
 
    struct deferred_reference {
+      deferred_reference(){}
       deferred_reference( const account_name& sender, uint128_t sender_id)
       :sender(sender),sender_id(sender_id)
       {}

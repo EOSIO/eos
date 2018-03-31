@@ -285,18 +285,39 @@ namespace eosio { namespace chain { namespace contracts {
          }
       } else {
          const auto& st = get_struct(rtype);
-         const auto& vo = var.get_object();
 
-         if( st.base != type_name() ) {
-            variant_to_binary(resolve_type(st.base), var, ds);
-         }
-         for( const auto& field : st.fields ) {
-            if( vo.contains( string(field.name).c_str() ) ) {
-               variant_to_binary(field.type, vo[field.name], ds);
+         if( var.is_object() ) {
+            const auto& vo = var.get_object();
+
+            if( st.base != type_name() ) {
+               variant_to_binary(resolve_type(st.base), var, ds);
             }
-            else {
-               /// TODO: default construct field and write it out
-               FC_THROW( "Missing '${f}' in variant object", ("f",field.name) );
+            for( const auto& field : st.fields ) {
+               if( vo.contains( string(field.name).c_str() ) ) {
+                  variant_to_binary(field.type, vo[field.name], ds);
+               }
+               else {
+                  variant_to_binary(field.type, fc::variant(), ds);
+                  /// TODO: default construct field and write it out
+                  FC_THROW( "Missing '${f}' in variant object", ("f",field.name) );
+               }
+            }
+         } else if( var.is_array() ) {
+            const auto& va = var.get_array();
+
+            FC_ASSERT( st.base == type_name(), "support for base class as array not yet implemented" );
+            /*if( st.base != type_name() ) {
+               variant_to_binary(resolve_type(st.base), var, ds);
+            }
+            */
+            uint32_t i = 0;
+            for( const auto& field : st.fields ) {
+               idump((field.type)(va[i])(i));
+               if( va.size() > i )
+                  variant_to_binary(field.type, va[i], ds);
+               else
+                  variant_to_binary(field.type, fc::variant(), ds);
+               ++i;
             }
          }
       }
