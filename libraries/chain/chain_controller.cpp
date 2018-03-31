@@ -872,6 +872,7 @@ flat_set<public_key_type> chain_controller::get_required_keys(const transaction&
    return checker.used_keys();
 }
 
+
 class permission_visitor {
 public:
    permission_visitor(const chain_controller& controller) : _chain_controller(controller) {}
@@ -893,6 +894,7 @@ time_point chain_controller::check_authorization( const vector<action>& actions,
                                                   const flat_set<public_key_type>& provided_keys,
                                                   bool allow_unused_signatures,
                                                   flat_set<account_name> provided_accounts )const
+
 {
    auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
                                      permission_visitor(*this),
@@ -991,6 +993,26 @@ time_point chain_controller::check_authorization( const vector<action>& actions,
       max_delay = checker_max_delay;
 
    return max_delay;
+}
+
+bool chain_controller::check_authorization( account_name account, permission_name permission,
+                                         flat_set<public_key_type> provided_keys,
+                                         bool allow_unused_signatures)const
+{
+   auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
+                                  [](const permission_level& ) {},
+                                  get_global_properties().configuration.max_authority_depth,
+                                  provided_keys);
+
+   auto satisfied = checker.satisfied({account, permission});
+
+   if (satisfied && !allow_unused_signatures) {
+      EOS_ASSERT(checker.all_keys_used(), tx_irrelevant_sig,
+                 "irrelevant signatures from these keys: ${keys}",
+                 ("keys", checker.unused_keys()));
+   }
+
+   return satisfied;
 }
 
 time_point chain_controller::check_transaction_authorization(const transaction& trx,

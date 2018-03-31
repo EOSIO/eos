@@ -116,7 +116,7 @@ namespace eosio { namespace chain {
           * This signal is emitted any time a new transaction is added to the pending
           * block state.
           */
-      signal<void(const transaction_metadata&, const packed_transaction&)> on_pending_transaction;
+         signal<void(const transaction_metadata&, const packed_transaction&)> on_pending_transaction;
 
 
 
@@ -299,6 +299,16 @@ namespace eosio { namespace chain {
                                          flat_set<account_name>           provided_accounts = flat_set<account_name>()
                                          )const;
 
+         /**
+          * @param account - the account owner of the permission
+          * @param permission - the permission name to check for authorization
+          * @param provided_keys - a set of public keys
+          *
+          * @return true if the provided keys are sufficient to authorize the account permission
+          */
+         bool check_authorization( account_name account, permission_name permission,
+                                flat_set<public_key_type> provided_keys,
+                                bool allow_unused_signatures)const;
 
       private:
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;

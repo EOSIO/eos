@@ -747,6 +747,28 @@ class crypto_api : public context_aware_api {
       }
 };
 
+class permission_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      bool check_authorization( account_name account, permission_name permission, array_ptr<char> packed_pubkeys, size_t datalen) {
+
+         vector<public_key_type> pub_keys;
+         datastream<const char*> ds( packed_pubkeys, datalen );
+         while(ds.remaining()) {
+            public_key_type pub;
+            fc::raw::unpack(ds, pub);
+            pub_keys.emplace_back(pub);
+         }
+
+         return context.controller.check_authorization(
+            account, permission,
+            {pub_keys.begin(), pub_keys.end()},
+            false
+         );
+      }
+};
+
 class string_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
@@ -1504,6 +1526,10 @@ REGISTER_INTRINSICS(crypto_api,
    (sha256,                 void(int, int, int)           )
    (sha512,                 void(int, int, int)           )
    (ripemd160,              void(int, int, int)           )
+);
+
+REGISTER_INTRINSICS(permission_api,
+   (check_authorization,  int(int64_t, int64_t, int, int))
 );
 
 REGISTER_INTRINSICS(string_api,
