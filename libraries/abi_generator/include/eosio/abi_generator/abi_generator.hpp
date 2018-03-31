@@ -124,6 +124,7 @@ namespace eosio {
          void handle_tagdecl_definition(TagDecl* tag_decl);
 
       private:
+         bool inspect_type_methods_for_actions(const Decl* decl);
 
          string remove_namespace(const string& full_name);
 

@@ -37,18 +37,16 @@ namespace eosio {
       return eosio::dispatch<Contract,SecondAction,Actions...>( code, act );
    }
 
-
-
    template<typename T, typename... Args>
    bool execute_action( T* obj, void (T::*func)(Args...)  ) {
       char buffer[action_data_size()];
       read_action_data( buffer, sizeof(buffer) );
-      auto args = unpack<std::tuple<Args...>>( buffer, sizeof(buffer) );
+
+      auto args = unpack<std::tuple<std::decay_t<Args>...>>( buffer, sizeof(buffer) );
 
       auto f2 = [&]( auto... a ){  
          (obj->*func)( a... ); 
       };
-//      apply( obj, func, args );
 
       boost::mp11::tuple_apply( f2, args );
       return true;
