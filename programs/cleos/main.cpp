@@ -285,7 +285,7 @@ fc::variant push_actions(std::vector<chain::action>&& actions, int32_t extra_kcp
 }
 
 void send_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
-   std::cout << fc::json::to_pretty_string(push_actions(std::forward<decltype(actions)>(actions), extra_kcpu, compression)) << std::endl;
+   std::cout << fc::json::to_pretty_string(push_actions( move(actions), extra_kcpu, compression)) << std::endl;
 }
 
 void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_transaction::compression_type compression = packed_transaction::none  ) {
@@ -752,19 +752,37 @@ int main( int argc, char** argv ) {
 
    // set contract subcommand
    string account;
+   string contractPath;
    string wastPath;
    string abiPath;
    auto contractSubcommand = setSubcommand->add_subcommand("contract", localized("Create or update the contract on an account"));
-   contractSubcommand->add_option("account", account, localized("The account to publish a contract for"))->required();
-   contractSubcommand->add_option("wast-file", wastPath, localized("The file containing the contract WAST or WASM"))->required()
-         ->check(CLI::ExistingFile);
-   auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract"))
-              ->check(CLI::ExistingFile);
+   contractSubcommand->add_option("account", account, localized("The account to publish a contract for"))
+                     ->required();
+   contractSubcommand->add_option("contract-dir", contractPath, localized("The the path containing the .wast and .abi"))
+                     ->required();
+   contractSubcommand->add_option("wast-file", wastPath, localized("The file containing the contract WAST or WASM relative to contract-dir"));
+//                     ->check(CLI::ExistingFile);
+   auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract relative to contract-dir"));
+//                                ->check(CLI::ExistingFile);
+
 
    add_standard_transaction_options(contractSubcommand, "account@active");
    contractSubcommand->set_callback([&] {
       std::string wast;
       std::cout << localized("Reading WAST...") << std::endl;
+      fc::path cpath(contractPath);
+      if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
+
+      if( wastPath == string() ) 
+      {
+         wastPath = (cpath / (cpath.filename().generic_string()+".wast")).generic_string();
+      }
+
+      if( abiPath == string() ) 
+      {
+         abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
+      }
+
       fc::read_file_contents(wastPath, wast);
 
       vector<uint8_t> wasm;
@@ -788,7 +806,12 @@ int main( int argc, char** argv ) {
       }
 
       std::cout << localized("Publishing contract...") << std::endl;
-      send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      //send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      auto result = push_actions(std::move(actions), 10000, packed_transaction::zlib);
+
+      if( tx_dont_broadcast ) {
+         std::cout << fc::json::to_pretty_string(result) << "\n";
+      }
    });
 
    // set account

@@ -36,8 +36,8 @@ struct genesis_state_type {
       .max_generated_transaction_count = config::default_max_gen_trx_count
    };
 
-   time_point                               initial_timestamp;
-   public_key_type                          initial_key;
+   time_point                               initial_timestamp = fc::time_point::from_iso_string( "2018-03-01T12:00:00" );;
+   public_key_type                          initial_key = fc::variant("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV").as<public_key_type>();
 
    /**
     * Temporary, will be moved elsewhere.

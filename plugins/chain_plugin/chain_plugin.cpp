@@ -166,13 +166,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    if(options.count("wasm-runtime"))
       my->wasm_runtime = options.at("wasm-runtime").as<vm_type>();
-
-#warning TODO: Rate Limits
-   /*my->rate_limits.per_auth_account_time_frame_sec = fc::time_point_sec(options.at("per-authorized-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
-   my->rate_limits.per_auth_account = options.at("per-authorized-account-transaction-msg-rate-limit").as<uint32_t>();
-
-   my->rate_limits.per_code_account_time_frame_sec = fc::time_point_sec(options.at("per-code-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
-   my->rate_limits.per_code_account = options.at("per-code-account-transaction-msg-rate-limit").as<uint32_t>();*/
 }
 
 void chain_plugin::plugin_startup()

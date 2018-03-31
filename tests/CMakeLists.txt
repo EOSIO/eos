@@ -47,7 +47,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/consensus-validation-malicious-produc
 #To run chain_test with all log from blockchain displayed, put --verbose after --, i.e. chain_test -- --verbose
 add_test(NAME chain_test_binaryen COMMAND chain_test --report_level=detailed --color_output -- --binaryen)
 add_test(NAME chain_test_wavm COMMAND chain_test --report_level=detailed --color_output -- --wavm)
-add_test(NAME nodeos_run_test COMMAND tests/nodeos_run_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+#add_test(NAME nodeos_run_test COMMAND tests/nodeos_run_test.py -v --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 # add_test(NAME nodeos_run_remote_test COMMAND tests/nodeos_run_remote_test.py --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 add_test(NAME p2p_dawn515_test COMMAND tests/p2p_tests/dawn_515/test.sh WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 if(BUILD_MONGO_DB_PLUGIN)
