@@ -300,7 +300,7 @@ balances be derivable by the sum of the transfer actions that reference them. It
 receiver of funds be notified so they can automate handling deposits and withdraws. 
 
 If you want to see the actual transaction that was broadcast you can use the `-d -j` options to indicate 
-"don't prodcast" and "return transaction as json".
+"don't broadcast" and "return transaction as json".
 
 ```
 $ cleos push action eosio.token issue '["user", "100.0000 EOS", "memo"]' -p eosio -d -j
@@ -343,6 +343,101 @@ executed transaction: 06d0a99652c11637230d08a207520bf38066b8817ef7cafaab2f0344aa
 #          user <= eosio.token::transfer        {"from":"user","to":"tester","quantity":"25.0000 EOS","memo":"m"}
 #        tester <= eosio.token::transfer        {"from":"user","to":"tester","quantity":"25.0000 EOS","memo":"m"}
 ```
+
+
+## Hello World Contract
+
+The next step we will create our first "hello world" contract. Create a new folder called "hello" and then create
+a file "hello/hello.cpp" with the following contents:
+
+#### hello/hello.cpp
+```
+#include <eosiolib/eosio.hpp>
+#include <eosiolib/print.hpp>
+using namespace eosio;
+
+class hello : public eosio::contract {
+  public:
+      using contract::contract;
+
+      /// @abi action 
+      void hi( account_name user ) {
+         print( "Hello, ", name{user} );
+      }
+};
+
+EOSIO_ABI( hello, (hi) )
+```
+
+Then you can compile it to web assmebly (.wast) like so:
+```
+$ eosiocpp -o hello.wast hello.cpp
+```
+
+Then you can generate the abi:
+
+```
+$ eosiocpp -g hello.abi hello.cpp
+Generated hello.abi
+```
+
+Then we create the account and upload contract
+
+```
+$ cleos create account eosio hello.code EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+...
+$ cleos set contract hello.code ../hello -p hello.code
+...
+```
+
+Now we can run the contract:
+
+```
+$ cleos push action hello.code hi '["user"]' -p user
+executed transaction: 4c10c1426c16b1656e802f3302677594731b380b18a44851d38e8b5275072857  244 bytes  1000 cycles
+#    hello.code <= hello.code::hi               {"user":"user"}
+>> Hello, user
+```
+
+At this time the contract allows anyone to authorize it, we could also say:
+
+```
+$ cleos push action hello.code hi '["user"]' -p tester
+executed transaction: 28d92256c8ffd8b0255be324e4596b7c745f50f85722d0c4400471bc184b9a16  244 bytes  1000 cycles
+#    hello.code <= hello.code::hi               {"user":"user"}
+>> Hello, user
+```
+
+In this case tester is the one who authorized it and user is just an argument.  If we want our contact to authenticate the
+user we are sying "hi" to, then we need to modify the contract:
+
+We update the hi() function:
+```
+void hi( account_name user ) {
+   require_auth( user );
+   print( "Hello, ", name{user} );
+}
+```
+
+Now if we attempt to mismatch the user and the authority the contract will throw an error:
+```
+$ cleos push action hello.code hi '["tester"]' -p user
+Error 3030001: missing required authority
+Ensure that you have the related authority inside your transaction!;
+If you are currently using 'cleos push action' command, try to add the relevant authority using -p option.
+Error Details:
+missing authority of tester
+```
+
+We can fix this by giving the permission of tester:
+
+```
+$ cleos push action hello.code hi '["tester"]' -p tester
+executed transaction: 235bd766c2097f4a698cfb948eb2e709532df8d18458b92c9c6aae74ed8e4518  244 bytes  1000 cycles
+#    hello.code <= hello.code::hi               {"user":"tester"}
+>> Hello, tester
+```
+
 
 ## Deploy Exchange Contract
 
