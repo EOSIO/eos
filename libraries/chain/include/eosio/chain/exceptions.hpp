@@ -23,6 +23,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( chain_type_exception,              eosio::chain::chain_exception, 3120000, "chain type exception" )
    FC_DECLARE_DERIVED_EXCEPTION( missing_plugin_exception,          eosio::chain::chain_exception, 3130000, "missing plugin exception" )
    FC_DECLARE_DERIVED_EXCEPTION( wallet_exception,                  eosio::chain::chain_exception, 3140000, "wallet exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( rate_limiting_invariant_exception, eosio::chain::chain_exception, 3150000, "rate limiting invariant violated" )
 
    FC_DECLARE_DERIVED_EXCEPTION( permission_query_exception,        eosio::chain::database_query_exception, 3010001, "Permission Query Exception" )
    FC_DECLARE_DERIVED_EXCEPTION( account_query_exception,           eosio::chain::database_query_exception, 3010002, "Account Query Exception" )
@@ -32,6 +33,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( block_tx_output_exception,         eosio::chain::block_validate_exception, 3020001, "transaction outputs in block do not match transaction outputs from applying block" )
    FC_DECLARE_DERIVED_EXCEPTION( block_concurrency_exception,       eosio::chain::block_validate_exception, 3020002, "block does not guarantee concurrent exection without conflicts" )
    FC_DECLARE_DERIVED_EXCEPTION( block_lock_exception,              eosio::chain::block_validate_exception, 3020003, "shard locks in block are incorrect or mal-formed" )
+   FC_DECLARE_DERIVED_EXCEPTION( block_resource_exhausted,          eosio::chain::block_validate_exception, 3020004, "block exhausted allowed resources" )
 
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_auth,                   eosio::chain::transaction_exception, 3030001, "missing required authority" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_sigs,                   eosio::chain::transaction_exception, 3030002, "signatures do not satisfy declared authorizations" )
@@ -57,6 +59,11 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( tx_exp_too_far_exception,          eosio::chain::transaction_exception, 3030023, "Transaction Expiration Too Far" )
    FC_DECLARE_DERIVED_EXCEPTION( invalid_ref_block_exception,       eosio::chain::transaction_exception, 3030024, "Invalid Reference Block" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_apply_exception,                eosio::chain::transaction_exception, 3030025, "Transaction Apply Exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( wasm_serialization_error,          eosio::chain::transaction_exception, 3030026, "Serialization Error Processing WASM" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_empty_region,                   eosio::chain::transaction_exception, 3030027, "Transaction contains an empty region" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_empty_cycle,                    eosio::chain::transaction_exception, 3030028, "Transaction contains an empty cycle" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_empty_shard,                    eosio::chain::transaction_exception, 3030029, "Transaction contains an empty shard" )
+   FC_DECLARE_DERIVED_EXCEPTION( tx_receipt_inconsistent_status,    eosio::chain::transaction_exception, 3030030, "Transaction receipt applied status does not match received status" )
 
    FC_DECLARE_DERIVED_EXCEPTION( account_name_exists_exception,     eosio::chain::action_validate_exception, 3040001, "account name already exists" )
    FC_DECLARE_DERIVED_EXCEPTION( invalid_action_args_exception,       eosio::chain::action_validate_exception, 3040002, "Invalid Action Arguments" )
@@ -87,6 +94,9 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( wallet_locked_exception,           eosio::chain::wallet_exception, 3140003, "Locked wallet" )
    FC_DECLARE_DERIVED_EXCEPTION( wallet_missing_pub_key_exception,  eosio::chain::wallet_exception, 3140004, "Missing public key" )
    FC_DECLARE_DERIVED_EXCEPTION( wallet_invalid_password_exception, eosio::chain::wallet_exception, 3140005, "Invalid wallet password" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( rate_limiting_state_inconsistent,  eosio::chain::rate_limiting_invariant_exception, 3150001, "internal state is no longer consistent" )
+   FC_DECLARE_DERIVED_EXCEPTION( rate_limiting_overcommitment,      eosio::chain::rate_limiting_invariant_exception, 3150002, "chain resource limits are overcommitted" )
 
 
    #define EOS_RECODE_EXC( cause_type, effect_type ) \

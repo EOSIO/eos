@@ -114,8 +114,12 @@ wavm_runtime::~wavm_runtime() {
 
 std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) {
    Module* module = new Module();
-   Serialization::MemoryInputStream stream((const U8 *)code_bytes, code_size);
-   WASM::serialize(stream, *module);
+   try {
+      Serialization::MemoryInputStream stream((const U8*)code_bytes, code_size);
+      WASM::serialize(stream, *module);
+   } catch(Serialization::FatalSerializationException& e) {
+      EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+   }
 
    eosio::chain::webassembly::common::root_resolver resolver;
    LinkResult link_result = linkModule(*module, resolver);

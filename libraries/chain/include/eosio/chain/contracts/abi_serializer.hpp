@@ -4,8 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/contracts/types.hpp>
-#include <eosio/chain/transaction.hpp>
-#include <eosio/chain/block.hpp>
+#include <eosio/chain/block_trace.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <fc/variant_object.hpp>
 

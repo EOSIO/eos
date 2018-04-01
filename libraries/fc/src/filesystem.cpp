@@ -487,7 +487,7 @@ namespace fc {
            return fc::path(std::wstring(app_data_dir));
          }();
 #else
-        static fc::path appdir = home_path();
+        static fc::path appdir = home_path() / ".local/share";
 #endif
       return appdir;
    }

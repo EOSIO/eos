@@ -106,14 +106,24 @@ namespace eosio { namespace testing {
       }
    }
 
-  void base_tester::set_tapos( signed_transaction& trx, uint32_t expiration ) const {
+  void base_tester::set_transaction_headers(signed_transaction& trx, uint32_t expiration, uint32_t extra_cf_cpu_usage) const {
      trx.expiration = control->head_block_time() + fc::seconds(expiration);
      trx.set_reference_block( control->head_block_id() );
+
+     // estimate the size of the uncompressed transaction
+     uint32_t estimated_size = (uint32_t)fc::raw::pack_size(trx);
+     estimated_size += trx.context_free_data.size();
+     estimated_size += 4 * sizeof(signature_type); // hack to allow for 4 sigs
+
+     trx.net_usage_words = estimated_size / 8;
+
+     // estimate the usage of the context free actions
+     trx.kcpu_usage = 30000 + extra_cf_cpu_usage + (trx.context_free_actions.size() * config::default_base_per_action_cpu_usage * 10);
   }
 
    void base_tester::create_account( account_name a, account_name creator, bool multisig ) {
       signed_transaction trx;
-      set_tapos( trx );
+      set_transaction_headers(trx);
 
       authority owner_auth;
       if (multisig) {
@@ -132,19 +142,19 @@ namespace eosio { namespace testing {
                                    .recovery = authority( get_public_key( a, "recovery" ) ),
                                 });
 
-      set_tapos(trx);
+      set_transaction_headers(trx);
       trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
       push_transaction( trx );
    }
 
-   transaction_trace base_tester::push_transaction( packed_transaction& trx, uint32_t skip_flag ) {
+   transaction_trace base_tester::push_transaction( packed_transaction& trx, uint32_t skip_flag ) { try {
       return control->push_transaction( trx, skip_flag );
-   }
+   } FC_CAPTURE_AND_RETHROW( (transaction_header(trx.get_transaction())) ) }
 
-   transaction_trace base_tester::push_transaction( signed_transaction& trx, uint32_t skip_flag ) {
+   transaction_trace base_tester::push_transaction( signed_transaction& trx, uint32_t skip_flag ) { try {
       auto ptrx = packed_transaction(trx);
       return push_transaction( ptrx, skip_flag );
-   }
+   } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
 
    base_tester::action_result base_tester::push_action(action&& act, uint64_t authorizer) {
       signed_transaction trx;
@@ -152,7 +162,7 @@ namespace eosio { namespace testing {
          act.authorization = vector<permission_level>{{authorizer, config::active_name}};
       }
       trx.actions.emplace_back(std::move(act));
-      set_tapos(trx);
+      set_transaction_headers(trx);
       if (authorizer) {
          trx.sign(get_private_key(authorizer, "active"), chain_id_type());
       }
@@ -202,7 +212,7 @@ namespace eosio { namespace testing {
 
       signed_transaction trx;
       trx.actions.emplace_back(std::move(act));
-      set_tapos(trx, expiration);
+         set_transaction_headers(trx, expiration);
       for (const auto& actor : actors) {
          trx.sign(get_private_key(actor, "active"), chain_id_type());
       }
@@ -225,7 +235,8 @@ namespace eosio { namespace testing {
 
       signed_transaction trx;
       contracts::abi_serializer::from_variant(pretty_trx, trx, get_resolver());
-      set_tapos( trx );
+      set_transaction_headers(trx);
+      wdump((trx));
       for(auto iter = keys.begin(); iter != keys.end(); iter++)
          trx.sign( *iter, chain_id_type() );
       return push_transaction( trx );
@@ -271,7 +282,7 @@ namespace eosio { namespace testing {
 
       signed_transaction trx;
       contracts::abi_serializer::from_variant(pretty_trx, trx, get_resolver());
-      set_tapos( trx );
+      set_transaction_headers(trx);
 
       trx.sign( get_private_key( from, "active" ), chain_id_type() );
       return push_transaction( trx );
@@ -303,7 +314,7 @@ namespace eosio { namespace testing {
 
       signed_transaction trx;
       contracts::abi_serializer::from_variant(pretty_trx, trx, get_resolver());
-      set_tapos( trx );
+      set_transaction_headers(trx);
 
       trx.sign( get_private_key( from, name(config::active_name).to_string() ), chain_id_type()  );
       return push_transaction( trx );
@@ -329,7 +340,7 @@ namespace eosio { namespace testing {
 
       signed_transaction trx;
       contracts::abi_serializer::from_variant(pretty_trx, trx, get_resolver());
-      set_tapos( trx );
+      set_transaction_headers(trx);
 
       trx.sign( get_private_key( currency, name(config::active_name).to_string() ), chain_id_type()  );
       return push_transaction( trx );
@@ -340,7 +351,7 @@ namespace eosio { namespace testing {
 
       trx.actions.emplace_back( vector<permission_level>{{account, config::active_name}},
                                 contracts::linkauth(account, code, type, req));
-      set_tapos( trx );
+      set_transaction_headers(trx);
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
 
       push_transaction( trx );
@@ -351,7 +362,7 @@ namespace eosio { namespace testing {
 
       trx.actions.emplace_back( vector<permission_level>{{account, config::active_name}},
                                 contracts::unlinkauth(account, code, type ));
-      set_tapos( trx );
+      set_transaction_headers(trx);
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
 
       push_transaction( trx );
@@ -373,7 +384,7 @@ namespace eosio { namespace testing {
                                    .data       = move(auth),
                                 });
 
-      set_tapos( trx );
+         set_transaction_headers(trx);
       for (const auto& key: keys) {
          trx.sign( key, chain_id_type()  );
       }
@@ -397,7 +408,7 @@ namespace eosio { namespace testing {
          trx.actions.emplace_back( auths,
                                    contracts::deleteauth(account, perm) );
 
-         set_tapos( trx );
+         set_transaction_headers(trx);
          for (const auto& key: keys) {
             trx.sign( key, chain_id_type()  );
          }
@@ -424,7 +435,7 @@ namespace eosio { namespace testing {
                                    .code       = bytes(wasm.begin(), wasm.end())
                                 });
 
-      set_tapos( trx );
+      set_transaction_headers(trx);
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
       push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account) )
@@ -438,7 +449,7 @@ namespace eosio { namespace testing {
                                    .abi        = abi
                                 });
 
-      set_tapos( trx );
+      set_transaction_headers(trx);
       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
       push_transaction( trx );
    }

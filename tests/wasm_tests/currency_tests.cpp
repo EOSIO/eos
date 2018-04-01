@@ -37,7 +37,7 @@ class currency_tester : public tester {
 
          signed_transaction trx;
          trx.actions.emplace_back(std::move(act));
-         set_tapos(trx);
+         set_transaction_headers(trx);
          trx.sign(get_private_key(signer, "active"), chain_id_type());
          return push_transaction(trx);
       }
@@ -383,7 +383,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
       );
       trx.actions.emplace_back(std::move(setowner_act));
 
-      set_tapos(trx);
+      set_transaction_headers(trx);
       trx.sign(get_private_key(N(proxy), "active"), chain_id_type());
       push_transaction(trx);
       produce_block();
@@ -438,7 +438,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       );
       trx.actions.emplace_back(std::move(setowner_act));
 
-      set_tapos(trx);
+      set_transaction_headers(trx);
       trx.sign(get_private_key(N(proxy), "active"), chain_id_type());
       push_transaction(trx);
       produce_block();
@@ -483,7 +483,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       );
       trx.actions.emplace_back(std::move(setowner_act));
 
-      set_tapos(trx);
+      set_transaction_headers(trx);
       trx.sign(get_private_key(N(bob), "active"), chain_id_type());
       push_transaction(trx);
       produce_block();

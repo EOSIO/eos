@@ -113,11 +113,12 @@ namespace eosio { namespace chain {
     */
    struct transaction_header {
       time_point_sec         expiration;   ///< the time at which a transaction expires
-      uint16_t               region        = 0; ///< the computational memory region this transaction applies to.
-      uint16_t               ref_block_num = 0; ///< specifies a block num in the last 2^16 blocks.
-      uint32_t               ref_block_prefix = 0; ///< specifies the lower 32 bits of the blockid at get_ref_blocknum
-      uint16_t               packed_bandwidth_words = 0; /// number of 8 byte words this transaction can compress into
-      uint16_t               context_free_cpu_bandwidth = 0; /// number of CPU usage units to bill transaction for
+      uint16_t               region           = 0U; ///< the computational memory region this transaction applies to.
+      uint16_t               ref_block_num    = 0U; ///< specifies a block num in the last 2^16 blocks.
+      uint32_t               ref_block_prefix = 0UL; ///< specifies the lower 32 bits of the blockid at get_ref_blocknum
+      fc::unsigned_int       net_usage_words  = 0UL; /// number of 8 byte words this transaction serialize too taking any compression into account
+      fc::unsigned_int       kcpu_usage       = 0UL; /// number of kilo CPU usage units to bill transaction for to process all free actions
+      fc::unsigned_int       delay_sec        = 0UL; /// number of seconds to delay this transaction for during which it may be canceled.
 
       /**
        * @return the absolute block number given the relative ref_block_num
@@ -153,7 +154,7 @@ namespace eosio { namespace chain {
 //      signed_transaction( const signed_transaction& ) = default;
 //      signed_transaction( signed_transaction&& ) = default;
       signed_transaction( transaction&& trx, const vector<signature_type>& signatures, const vector<bytes>& context_free_data)
-      : transaction(std::forward<transaction>(trx))
+      : transaction(std::move(trx))
       , signatures(signatures)
       , context_free_data(context_free_data)
       {
@@ -217,21 +218,24 @@ namespace eosio { namespace chain {
     */
    struct deferred_transaction : public transaction
    {
-      uint128_t       sender_id; /// ID assigned by sender of generated, accessible via WASM api when executing normal or error
+      uint128_t      sender_id; /// ID assigned by sender of generated, accessible via WASM api when executing normal or error
       account_name   sender; /// receives error handler callback
+      account_name   payer;
       time_point_sec execute_after; /// delayed exeuction
 
       deferred_transaction() = default;
 
-      deferred_transaction(uint128_t sender_id, account_name sender, time_point_sec execute_after, const transaction& txn)
+      deferred_transaction(uint128_t sender_id, account_name sender, account_name payer,time_point_sec execute_after, const transaction& txn)
       : transaction(txn),
         sender_id(sender_id),
         sender(sender),
+        payer(payer),
         execute_after(execute_after)
       {}
    };
 
    struct deferred_reference {
+      deferred_reference(){}
       deferred_reference( const account_name& sender, uint128_t sender_id)
       :sender(sender),sender_id(sender_id)
       {}
@@ -239,49 +243,16 @@ namespace eosio { namespace chain {
       account_name   sender;
       uint128_t       sender_id;
    };
-
-   struct data_access_info {
-      enum access_type {
-         read = 0, ///< scope was read by this action
-         write  = 1, ///< scope was (potentially) written to by this action
-      };
-
-      access_type                type;
-      account_name               code;
-      scope_name                 scope;
-
-      uint64_t                   sequence;
-   };
-
-   struct action_trace {
-      account_name               receiver;
-      action                     act;
-      string                     console;
-      uint32_t                   region_id;
-      uint32_t                   cycle_index;
-      vector<data_access_info>   data_access;
-   };
-
-   struct transaction_trace : transaction_receipt {
-      using transaction_receipt::transaction_receipt;
-
-      vector<action_trace>          action_traces;
-      vector<fc::static_variant<deferred_transaction, deferred_reference>> deferred_transaction_requests;
-   };
 } } // eosio::chain
 
 FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
 FC_REFLECT( eosio::chain::action, (account)(name)(authorization)(data) )
-FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix)(packed_bandwidth_words)(context_free_cpu_bandwidth) )
+FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
+FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix)
+                                              (net_usage_words)(kcpu_usage)(delay_sec) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures)(context_free_data) )
 FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
 FC_REFLECT( eosio::chain::packed_transaction, (signatures)(context_free_data)(compression)(data) )
-FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(execute_after) )
+FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(payer)(execute_after) )
 FC_REFLECT( eosio::chain::deferred_reference, (sender_id)(sender) )
-FC_REFLECT_ENUM( eosio::chain::data_access_info::access_type, (read)(write))
-FC_REFLECT( eosio::chain::data_access_info, (type)(code)(scope)(sequence))
-FC_REFLECT( eosio::chain::action_trace, (receiver)(act)(console)(region_id)(cycle_index)(data_access) )
-FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
-FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail)(delayed) )
-FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transaction_requests) )

@@ -118,9 +118,7 @@ BOOST_AUTO_TEST_CASE(trx_uniqueness) {
                                .active   = authority(chain.get_public_key(new_account_name, "active")),
                                .recovery = authority(chain.get_public_key(new_account_name, "recovery)),"))
                             });
-   trx.expiration = time_point_sec(chain.control->head_block_time()) + 90;
-   trx.ref_block_num = static_cast<uint16_t>(chain.control->head_block_num());
-   trx.ref_block_prefix = static_cast<uint32_t>(chain.control->head_block_id()._hash[1]);
+   chain.set_transaction_headers(trx, 90);
    trx.sign(chain.get_private_key(config::system_account_name, "active"), chain_id_type());
    chain.push_transaction(trx);
 
@@ -172,7 +170,7 @@ BOOST_AUTO_TEST_CASE(irrelevant_auth) {
                                         .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
                                         .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
                                 });
-      chain.set_tapos(trx);
+      chain.set_transaction_headers(trx);
       trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
 
       chain.push_transaction(trx, skip_transaction_signatures);
@@ -639,7 +637,7 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
 
       // Make an account, but add an extra signature to the transaction
       signed_transaction trx;
-      chain.set_tapos(trx);
+      chain.set_transaction_headers(trx);
 
       name new_account_name = name("alice");
       authority owner_auth = authority( chain.get_public_key( new_account_name, "owner" ) );
@@ -652,6 +650,7 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
                                         .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
                                         .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
                                 });
+      chain.set_transaction_headers(trx);
       trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
       trx.sign( chain.get_private_key( name("random"), "active" ), chain_id_type()  );
 
@@ -689,7 +688,6 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_hard_check) {
 
          // Make an account, but add an extra signature to the transaction
          signed_transaction trx;
-         chain.set_tapos(trx);
 
          name new_account_name = name("alice");
          authority owner_auth = authority( chain.get_public_key( new_account_name, "owner" ) );
@@ -702,6 +700,7 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_hard_check) {
                                            .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
                                            .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
                                    });
+         chain.set_transaction_headers(trx);
          trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
          trx.sign( chain.get_private_key( name("random"), "active" ), chain_id_type()  );
 
@@ -722,7 +721,6 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_hard_check) {
 
          // Make an account, but add an extra signature to the transaction
          signed_transaction trx;
-         chain.set_tapos(trx);
 
          name new_account_name = name("alice");
          authority owner_auth = authority( chain.get_public_key( new_account_name, "owner" ) );
@@ -735,8 +733,9 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_hard_check) {
                                            .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
                                            .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
                                    });
-        trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
-        trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+         chain.set_transaction_headers(trx);
+         trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+         trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
 
          // Force push transaction with multiple signatures by the same key using a skip flag
          chain.push_transaction( trx, skip_transaction_signatures );

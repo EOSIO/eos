@@ -141,7 +141,7 @@ namespace eosio { namespace client { namespace http {
       }
 
       FC_ASSERT( !"unable to connect" );
-   } FC_RETHROW_EXCEPTIONS( error, "Request Path: ${server}:${port}${path}\nRequest Post Data: ${postdata}" ,
-                            ("server", server)("port", port)("path", path)("postdata", postdata) )
+   } FC_CAPTURE_AND_RETHROW()  // error, "Request Path: ${server}:${port}${path}\nRequest Post Data: ${postdata}" ,
+                           // ("server", server)("port", port)("path", path)("postdata", postdata) )
    }
 }}}

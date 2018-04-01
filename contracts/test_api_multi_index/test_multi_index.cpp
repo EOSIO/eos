@@ -770,3 +770,4 @@ void test_multi_index::idx64_pk_cache_sk_lookup(uint64_t receiver, uint64_t code
 }
 
 #pragma GCC diagnostic pop
+
