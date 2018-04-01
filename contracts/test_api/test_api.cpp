@@ -26,7 +26,7 @@ extern "C" {
       }
       WASM_TEST_HANDLER(test_action, assert_true_cf);
 
-      require_auth(code); 
+      require_auth(code);
 
       //test_types
       WASM_TEST_HANDLER(test_types, types_size);

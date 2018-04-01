@@ -473,7 +473,7 @@ BOOST_FIXTURE_TEST_CASE( stl_test, tester ) try {
         trx.actions.push_back(std::move(msg_act));
 
         set_transaction_headers(trx);
-        trx.sign(get_private_key(N(bob), "active"), chain_id_type());
+        trx.sign(get_private_key(N(stltest), "active"), chain_id_type());
         push_transaction(trx);
         produce_block();
 

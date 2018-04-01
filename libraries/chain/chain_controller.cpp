@@ -1824,12 +1824,6 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
       context.results.applied_actions.back().auths_used = act.authorization.size() - context.unused_authorizations().size();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transaction_requests, std::move(context.results.deferred_transaction_requests));
-      /*
-      // check if all authorizations were used, special case a couple of native contracts
-      if (!(act.name == N(updateauth) || act.name == N(canceldelay)))
-         EOS_ASSERT( context.all_authorizations_used(), tx_irrelevant_auth, "actions should only require the authorizations needed for execution, unused : ${auth}", 
-               ("auth", context.unused_authorizations()) );
-      */
    }
 
    update_resource_usage(result, meta);
