@@ -10,6 +10,12 @@
 
 #include <fc/variant_object.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
+
 using namespace eosio::testing;
 using namespace eosio;
 using namespace eosio::chain;
@@ -20,7 +26,7 @@ using namespace fc;
 
 using mvo = fc::mutable_variant_object;
 
-class eosio_system_tester : public tester {
+class eosio_system_tester : public TESTER {
 public:
 
    eosio_system_tester() {

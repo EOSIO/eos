@@ -58,6 +58,10 @@ namespace eosio { namespace chain {
       vector<shard_lock>            read_locks;
       vector<shard_lock>            write_locks;
       vector<transaction_receipt>   transactions; /// new or generated transactions
+
+      bool empty() const {
+         return read_locks.empty() && write_locks.empty() && transactions.empty();
+      }
    };
 
    typedef vector<shard_summary>    cycle;

@@ -68,7 +68,7 @@ string abi_generator::translate_type(const string& type_name) {
   else if (type_name == "unsigned long"      || type_name == "uint32_t") built_in_type = "uint32";
   else if (type_name == "unsigned short"     || type_name == "uint16_t") built_in_type = "uint16";
   else if (type_name == "unsigned char"      || type_name == "uint8_t")  built_in_type = "uint8";
-  
+
   else if (type_name == "long long"          || type_name == "int64_t")  built_in_type = "int64";
   else if (type_name == "long"               || type_name == "int32_t")  built_in_type = "int32";
   else if (type_name == "short"              || type_name == "int16_t")  built_in_type = "int16";
@@ -77,20 +77,86 @@ string abi_generator::translate_type(const string& type_name) {
   return built_in_type;
 }
 
+bool abi_generator::inspect_type_methods_for_actions(const Decl* decl) { try {
+
+  const auto* rec_decl = dyn_cast<CXXRecordDecl>(decl);
+  if(rec_decl == nullptr) return false;
+
+  const auto* type = rec_decl->getTypeForDecl();
+  ABI_ASSERT(type != nullptr);
+  if( !type->isStructureOrClassType() ) {
+    return false;
+  }
+
+  bool at_least_one_action = false;
+  for(const auto* method : rec_decl->methods()) {
+
+    const RawComment* raw_comment = ast_context->getRawCommentForDeclNoCache(method);
+    if( raw_comment == nullptr) continue;
+
+    SourceManager& source_manager = ast_context->getSourceManager();
+    string raw_text = raw_comment->getRawText(source_manager);
+    regex r(R"(@abi (action))");
+
+    smatch smatch;
+    if(regex_search(raw_text, smatch, r)){
+
+      auto method_name = method->getNameAsString();
+      ABI_ASSERT(find_struct(method_name) == nullptr, "action already exists ${method_name}", ("method_name",method_name));
+
+      struct_def abi_struct;
+      for(const auto* p : method->parameters() ) {
+        clang::QualType qt = p->getOriginalType().getNonReferenceType();
+        qt.setLocalFastQualifiers(0);
+
+        string field_name = p->getNameAsString();
+        string field_type_name = add_type(qt);
+
+        field_def struct_field{field_name, field_type_name};
+        ABI_ASSERT(is_builtin_type(get_vector_element_type(struct_field.type)) 
+          || find_struct(get_vector_element_type(struct_field.type))
+          || find_type(get_vector_element_type(struct_field.type))
+          , "Unknown type ${type} [${abi}]",("type",struct_field.type)("abi",*output));
+
+        type_size[string(struct_field.type)] = is_vector(struct_field.type) ? 0 : ast_context->getTypeSize(qt);
+        abi_struct.fields.push_back(struct_field);
+      }
+
+      abi_struct.name = method_name;
+      abi_struct.base = "";
+
+      output->structs.push_back(abi_struct);
+
+      full_types[method_name] = method_name;
+
+      output->actions.push_back({method_name, method_name});
+      at_least_one_action = true;
+    }
+
+  }
+
+  return at_least_one_action;
+
+} FC_CAPTURE_AND_RETHROW() }
+
 void abi_generator::handle_decl(const Decl* decl) { try {
 
   ABI_ASSERT(decl != nullptr);
   ABI_ASSERT(output != nullptr);
   ABI_ASSERT(ast_context != nullptr);
 
-  //ASTContext& ctx = decl->getASTContext();
-  const RawComment* raw_comment = ast_context->getRawCommentForDeclNoCache(decl);
-
-  if(!raw_comment) return;
-
   SourceManager& source_manager = ast_context->getSourceManager();
-  auto file_name = source_manager.getFilename(raw_comment->getLocStart());
+  auto file_name = source_manager.getFilename(decl->getLocStart());
   if ( !abi_context.empty() && !file_name.startswith(abi_context) ) {
+    return;
+  }
+
+  if(inspect_type_methods_for_actions(decl)) {
+    return;
+  }
+
+  const RawComment* raw_comment = ast_context->getRawCommentForDeclNoCache(decl);
+  if(raw_comment == nullptr) {
     return;
   }
 
@@ -103,7 +169,7 @@ void abi_generator::handle_decl(const Decl* decl) { try {
     if(smatch.size() == 3) {
 
       auto type = smatch[1].str();
-      
+
       vector<string> params;
       auto string_params = smatch[2].str();
       boost::trim(string_params);
@@ -116,7 +182,7 @@ void abi_generator::handle_decl(const Decl* decl) { try {
         ABI_ASSERT(action_decl != nullptr);
 
         auto qt = action_decl->getTypeForDecl()->getCanonicalTypeInternal();
-        
+
         auto type_name = add_struct(qt);
         ABI_ASSERT(!is_builtin_type(type_name), 
           "A built-in type with the same name exists, try using another name: ${type_name}", ("type_name",type_name));
@@ -151,7 +217,7 @@ void abi_generator::handle_decl(const Decl* decl) { try {
         table_def table;
         table.name = boost::algorithm::to_lower_copy(boost::erase_all_copy(type_name, "_"));
         table.type = type_name;
-        
+
         if(params.size() >= 1) {
           table.name = params[0];
         }
@@ -173,9 +239,9 @@ void abi_generator::handle_decl(const Decl* decl) { try {
         }
       }
     }
-  
+
     raw_text = smatch.suffix();
-  } 
+  }
 
 } FC_CAPTURE_AND_RETHROW() }
 
@@ -193,11 +259,11 @@ bool abi_generator::is_string(const string& type) {
 
 void abi_generator::get_all_fields(const struct_def& s, vector<field_def>& fields) {
   abi_serializer abis(*output);
-  
+
   for(const auto& field : s.fields) {
     fields.push_back(field);
   }
-  
+
   if(s.base.size()) {
     const auto* base = find_struct(s.base);
     ABI_ASSERT(base, "Unable to find base type ${type}",("type",s.base));
@@ -246,7 +312,7 @@ void abi_generator::guess_key_names(table_def& table, const struct_def s) {
 
  if( table.index_type == "i64i64i64" || table.index_type == "i128i128" 
     || table.index_type == "i64") {
-    
+
     table.key_names.clear();
     table.key_types.clear();
 
@@ -342,7 +408,7 @@ bool abi_generator::is_elaborated(const clang::QualType& qt) {
 }
 
 bool abi_generator::is_vector(const clang::QualType& vqt) {
-  
+
   QualType qt(vqt);
 
   if ( is_elaborated(qt) )
@@ -404,7 +470,7 @@ clang::QualType abi_generator::add_typedef(const clang::QualType& tqt) {
   abi_typedef.new_type_name = new_type_name;
   abi_typedef.type = translate_type(underlying_type_name);
   const auto* td = find_type(abi_typedef.new_type_name);
-  
+
   if(!td && !is_struct_specialization(underlying_type) ) {
     output->types.push_back(abi_typedef);
   } else {
@@ -424,7 +490,7 @@ clang::CXXRecordDecl::base_class_range abi_generator::get_struct_bases(const cla
     const auto* td_decl = qt->getAs<clang::TypedefType>()->getDecl();
     qt = td_decl->getUnderlyingType().getUnqualifiedType();
   }
-  
+
   const auto* record_type = qt->getAs<clang::RecordType>();
   ABI_ASSERT(record_type != nullptr);
   auto cxxrecord_decl = clang::dyn_cast<CXXRecordDecl>(record_type->getDecl());
@@ -455,7 +521,7 @@ string abi_generator::add_vector(const clang::QualType& vqt) {
 
   auto vector_element_type = get_vector_element_type(qt);
   ABI_ASSERT(!is_vector(vector_element_type), "Only one-dimensional arrays are supported");
-  
+
   add_type(vector_element_type);
 
   auto vector_element_type_str = translate_type(get_type_name(vector_element_type));
@@ -492,7 +558,7 @@ string abi_generator::add_type(const clang::QualType& tqt) {
   if( is_struct(qt) ) {
     return add_struct(qt, full_type_name);
   }
-    
+
   ABI_ASSERT(false, "types can only be: vector, struct, class or a built-in type. (${type}) ", ("type",get_type_name(qt)));
   return type_name;
 }
@@ -513,7 +579,7 @@ string abi_generator::add_struct(const clang::QualType& sqt, string full_name) {
   }
 
   auto name = remove_namespace(full_name);
-  
+
   ABI_ASSERT(is_struct(qt), "Only struct and class are supported. ${full_name}",("full_name",full_name));
 
   if( find_struct(name) ) {
@@ -543,7 +609,7 @@ string abi_generator::add_struct(const clang::QualType& sqt, string full_name) {
   struct_def abi_struct;
   for (const clang::FieldDecl* field : get_struct_fields(qt) ) {
     clang::QualType qt = field->getType();
-    
+
     string field_name = field->getNameAsString();
     string field_type_name = add_type(qt);
 
@@ -561,7 +627,7 @@ string abi_generator::add_struct(const clang::QualType& sqt, string full_name) {
   abi_struct.base = base_name;
 
   output->structs.push_back(abi_struct);
-  
+
   full_types[name] = full_name;
   return name;
 }

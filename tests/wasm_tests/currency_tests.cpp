@@ -17,13 +17,19 @@
 #include <fc/variant_object.hpp>
 #include <fc/io/json.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
+
 using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 using namespace fc;
 
-class currency_tester : public tester {
+class currency_tester : public TESTER {
    public:
 
       auto push_action(const account_name& signer, const action_name &name, const variant_object &data ) {
@@ -48,7 +54,7 @@ class currency_tester : public tester {
 
 
       currency_tester()
-      :tester(),abi_ser(json::from_string(currency_abi).as<abi_def>())
+      :TESTER(),abi_ser(json::from_string(currency_abi).as<abi_def>())
       {
          create_account( N(currency));
          set_code( N(currency), currency_wast );
@@ -233,7 +239,7 @@ BOOST_FIXTURE_TEST_CASE( test_fullspend, currency_tester ) try {
 
 
 
-BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
+BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
 
    {
       symbol dollar(2, "DLLR");

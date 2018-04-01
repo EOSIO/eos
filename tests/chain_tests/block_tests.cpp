@@ -527,7 +527,7 @@ BOOST_AUTO_TEST_CASE( rsf_missed_blocks )
 // Check that a db rewinds to the LIB after being closed and reopened
 BOOST_AUTO_TEST_CASE(restart_db)
 { try {
-      validating_tester chain;
+      TESTER chain;
 
 
       {
@@ -551,7 +551,7 @@ BOOST_AUTO_TEST_CASE(restart_db)
 // that it missed while it was down
 BOOST_AUTO_TEST_CASE(sleepy_db)
 { try {
-      validating_tester producer;
+      TESTER producer;
 
       tester_network net;
       net.connect_blockchain(producer);
@@ -559,7 +559,7 @@ BOOST_AUTO_TEST_CASE(sleepy_db)
       producer.produce_blocks(20);
 
       // The new node, sleepy, joins, syncs, disconnects
-      validating_tester sleepy;
+      tester sleepy;
       net.connect_blockchain(sleepy);
       BOOST_TEST(producer.control->head_block_num() == 20);
       BOOST_TEST(sleepy.control->head_block_num() == 20);
@@ -594,7 +594,7 @@ BOOST_FIXTURE_TEST_CASE(reindex, validating_tester)
 
       {
          // Create chain with shared configuration
-         validating_tester chain(cfg);
+         tester chain(cfg);
          chain.produce_blocks(100);
          BOOST_TEST(chain.control->last_irreversible_block_num() == calc_exp_last_irr_block_num(chain, 100));
       }

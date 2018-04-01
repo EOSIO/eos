@@ -134,7 +134,7 @@ namespace eosio { namespace testing {
      trx.net_usage_words = estimated_size / 8;
 
      // estimate the usage of the context free actions
-     trx.context_free_kilo_cpu_usage = extra_cf_cpu_usage + (trx.context_free_actions.size() * config::default_base_per_action_cpu_usage * 10);
+     trx.kcpu_usage = 30000 + extra_cf_cpu_usage + (trx.context_free_actions.size() * config::default_base_per_action_cpu_usage * 10);
   }
 
    
@@ -164,16 +164,14 @@ namespace eosio { namespace testing {
       push_transaction( trx );
    }
 
-   
-   transaction_trace base_tester::push_transaction( packed_transaction& trx, uint32_t skip_flag ) {
+   transaction_trace base_tester::push_transaction( packed_transaction& trx, uint32_t skip_flag ) { try {
       return control->push_transaction( trx, skip_flag );
-   }
+   } FC_CAPTURE_AND_RETHROW( (transaction_header(trx.get_transaction())) ) }
 
-   
-   transaction_trace base_tester::push_transaction( signed_transaction& trx, uint32_t skip_flag ) {
+   transaction_trace base_tester::push_transaction( signed_transaction& trx, uint32_t skip_flag ) { try {
       auto ptrx = packed_transaction(trx);
       return push_transaction( ptrx, skip_flag );
-   }
+   } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
 
    
    typename base_tester::action_result base_tester::push_action(action&& act, uint64_t authorizer) {
@@ -259,6 +257,7 @@ namespace eosio { namespace testing {
       signed_transaction trx;
       contracts::abi_serializer::from_variant(pretty_trx, trx, get_resolver());
       set_transaction_headers(trx);
+      wdump((trx));
       for(auto iter = keys.begin(); iter != keys.end(); iter++)
          trx.sign( *iter, chain_id_type() );
       return push_transaction( trx );
