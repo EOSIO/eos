@@ -191,7 +191,7 @@ vector<chain::permission_level> get_account_permissions(const vector<string>& pe
    auto fixedPermissions = permissions | boost::adaptors::transformed([](const string& p) {
       vector<string> pieces;
       split(pieces, p, boost::algorithm::is_any_of("@"));
-      EOSC_ASSERT(pieces.size() == 2, "Invalid permission: ${p}", ("p", p));
+      if( pieces.size() == 1 ) pieces.push_back( "active" );
       return chain::permission_level{ .actor = pieces[0], .permission = pieces[1] };
    });
    vector<chain::permission_level> accountPermissions;
