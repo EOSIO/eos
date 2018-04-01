@@ -266,12 +266,12 @@ try {
    BOOST_CHECK_EXCEPTION(chain.create_account("aaaaaaaaaaaaa"), action_validate_exception,
                          assert_message_is("account names can only be 12 chars long"));
 
-   // Creating account with eosio. prefix with priveleged account
+   // Creating account with eosio. prefix with privileged account
    chain.create_account("eosio.test1");
 
    // Creating account with eosio. prefix with non-privileged account, should fail
    BOOST_CHECK_EXCEPTION(chain.create_account("eosio.test2", "joe"), action_validate_exception,
-                         assert_message_is("only privileged accounts can have names that contain 'eosio.'"));
+                         assert_message_is("only privileged accounts can have names that start with 'eosio.'"));
 
 
 } FC_LOG_AND_RETHROW() }
@@ -290,7 +290,7 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
    chain.set_authority("bob", "spending", bob_spending_pub_key, "active");
 
    /// this should fail because spending is not active which is default for reqauth
-   BOOST_REQUIRE_THROW( chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key }), 
+   BOOST_REQUIRE_THROW( chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key }),
                         tx_irrelevant_auth );
 
    chain.produce_block();
@@ -302,7 +302,7 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
 
    /// this should succeed because eosio::reqauth is linked to any permission
    chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key });
-   
+
    /// this should fail because bob cannot authorize for alice, the permission given must be one-of alices
    BOOST_REQUIRE_THROW( chain.push_reqauth("alice", { permission_level{N(bob), "spending"} }, { spending_priv_key }),
                         tx_missing_auth );

@@ -1066,7 +1066,7 @@ optional<permission_name> chain_controller::lookup_minimum_permission(account_na
       if (!linked_permission )
          return config::active_name;
 
-      if( *linked_permission == N(eosio.any) )
+      if( *linked_permission == config::eosio_any_name )
          return optional<permission_name>();
 
       return linked_permission;
@@ -1414,8 +1414,9 @@ const producer_object& chain_controller::get_producer(const account_name& owner_
 
 const permission_object&   chain_controller::get_permission( const permission_level& level )const
 { try {
+   FC_ASSERT( !level.actor.empty() && !level.permission.empty(), "Invalid permission" );
    return _db.get<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
-} EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Fail to retrieve permission: ${level}", ("level", level) ) }
+} EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Failed to retrieve permission: ${level}", ("level", level) ) }
 
 uint32_t chain_controller::last_irreversible_block_num() const {
    return get_dynamic_global_properties().last_irreversible_block_num;
