@@ -95,13 +95,15 @@
 				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
-				MONGOD_CONF=/etc/mongod.conf
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"Ubuntu")
 				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
-				MONGOD_CONF=/etc/mongod.conf
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			*)
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
@@ -110,7 +112,6 @@
 		
 		export BOOST_ROOT=${HOME}/opt/boost_1_66_0
 		export OPENSSL_ROOT_DIR=/usr/include/openssl
-		export OPENSSL_LIBRARIES=/usr/include/openssl
 		export WASM_ROOT=${HOME}/opt/wasm
 	fi
 
@@ -120,7 +121,6 @@
 		C_COMPILER=clang
 		MONGOD_CONF=/usr/local/etc/mongod.conf
 		OPENSSL_ROOT_DIR=/usr/local/opt/openssl
-		OPENSSL_LIBRARIES=/usr/local/opt/openssl/lib
 		export WASM_ROOT=/usr/local/wasm
 	fi
 
@@ -130,7 +130,12 @@
 
 	COMPILE_EOS=1
 	COMPILE_CONTRACTS=1
-	CMAKE_BUILD_TYPE=RelWithDebInfo
+
+# 	export EOS_BUILD_TYPE=[Debug|Release|RelWithDebInfo|MinSizeRel] to enable
+	CMAKE_BUILD_TYPE=Release
+	if [ ! -z $EOS_BUILD_TYPE ]; then
+		CMAKE_BUILD_TYPE=$EOS_BUILD_TYPE
+	fi
 
 	cd ${WORK_DIR}
 	mkdir -p ${BUILD_DIR}
@@ -143,7 +148,7 @@
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
 	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
 	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DBUILD_MONGO_DB_PLUGIN=true \
-	-DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} ..
+	..
 	
 	if [ $? -ne 0 ]; then
 		printf "\n\t>>>>>>>>>>>>>>>>>>>> CMAKE building EOSIO has exited with the above error.\n\n"
@@ -157,32 +162,33 @@
 		exit -1
 	fi
 
-	printf "\n\tVerifying MongoDB is running.\n"
-	MONGODB_PID=$( pgrep -x mongod )
-	if [ -z $MONGODB_PID ]; then
-		printf "\tMongoDB is not currently running.\n"
-		printf "\tStarting MongoDB.\n"
-		mongod -f ${MONGOD_CONF} &
-		if [ $? -ne 0 ]; then
-			printf "\tUnable to start MongoDB.\nExiting now.\n\n"
-			exit -1
-		fi
-		MONGODB_PID=$( pgrep -x mongod )
-		printf "\tSuccessfully started MongoDB PID = ${MONGODB_PID}.\n\n"
-	else
-		printf "\tMongoDB is running PID=${MONGODB_PID}.\n\n"
-	fi
+# 	printf "\n\tVerifying MongoDB is running.\n"
+# 	MONGODB_PID=$( pgrep -x mongod )
+# 	if [ -z $MONGODB_PID ]; then
+# 		printf "\tMongoDB is not currently running.\n"
+# 		printf "\tStarting MongoDB.\n"
+# 		mongod -f ${MONGOD_CONF} &
+# 		if [ $? -ne 0 ]; then
+# 			printf "\tUnable to start MongoDB.\nExiting now.\n\n"
+# 			exit -1
+# 		fi
+# 		MONGODB_PID=$( pgrep -x mongod )
+# 		printf "\tSuccessfully started MongoDB PID = ${MONGODB_PID}.\n\n"
+# 	else
+# 		printf "\tMongoDB is running PID=${MONGODB_PID}.\n\n"
+# 	fi
 	
 	TIME_END=$(( `date -u +%s` - $TIME_BEGIN ))
 
-	printf "\t _______  _______  _______ _________ _______\n"
+
+	printf "${bldred}\t _______  _______  _______ _________ _______\n"
 	printf '\t(  ____ \(  ___  )(  ____ \\\\__   __/(  ___  )\n'
 	printf "\t| (    \/| (   ) || (    \/   ) (   | (   ) |\n"
 	printf "\t| (__    | |   | || (_____    | |   | |   | |\n"
 	printf "\t|  __)   | |   | |(_____  )   | |   | |   | |\n"
 	printf "\t| (      | |   | |      ) |   | |   | |   | |\n"
 	printf "\t| (____/\| (___) |/\____) |___) (___| (___) |\n"
-	printf "\t(_______/(_______)\_______)\_______/(_______)\n"
+	printf "\t(_______/(_______)\_______)\_______/(_______)\n${txtrst}"
 
 	printf "\n\tEOS.IO has been successfully built. %d:%d:%d\n\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
 	printf "\tTo verify your installation run the following commands:\n"
@@ -198,7 +204,7 @@
       # Build eos.io package
       $CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
       -DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
-      -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DOPENSSL_LIBRARIES=${OPENSSL_LIBRARIES} \
+      -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} \
       -DCMAKE_INSTALL_PREFIX=/usr ..
 
       if [ $? -ne 0 ]; then

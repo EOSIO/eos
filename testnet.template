@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#set up a wallet just for holding he  key used during blockchain igniion
+# set up a wallet just for holding the key used during blockchain ignition
 
 bioshost=$BIOS_HOSTNAME
 if [ -z "$bioshost" ]; then
@@ -37,9 +37,9 @@ echo Initializing ignition sequence  at $(date) | tee $logfile
 
 echo "http-server-address = 127.0.0.1:$wdport" > $wddir/config.ini
 
-programs/eosiowd/eosiowd --config-dir $wddir --data-dir $wddir 2> $wddir/wdlog.txt &
+programs/keosd/keosd --config-dir $wddir --data-dir $wddir 2> $wddir/wdlog.txt &
 echo $$ > ignition_wallet.pid
-echo eosiowd log in $wddir/wdlog.txt >> $logfile
+echo keosd log in $wddir/wdlog.txt >> $logfile
 sleep 1
 
 ecmd () {
@@ -100,11 +100,6 @@ programs/cleos/cleos --wallet-port $wdport --wallet-host $wdhost -p $biosport -H
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
-for a in a b c d e f g h i j k l m n o p q r s t u; do ecmd transfer eosio init$a 1000000.0000 "fund producer init$a"; done
+for a in {a..u}; do ecmd transfer eosio init$a 1000000.0000 "\"fund producer init$a\""; done
 
-
-echo waiting for producers to settle
-sleep 15
-echo shutting down ignition wallet and bios node
-pkill -15 eosiowd
-kill -15 $(cat var/lib/node_bios/nodeos.pid) && rm var/lib/node_bios/nodeos.pid
+pkill -15 keosd

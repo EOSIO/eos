@@ -28,35 +28,37 @@ namespace eosio {
       :expiration(exp),region(r)
       {}
 
-      void send(uint64_t sender_id, time delay_until = 0) const {
+      void send(uint64_t sender_id, account_name payer = account_name(0), time delay_until = 0) const {
          auto serialize = pack(*this);
-         send_deferred(sender_id, delay_until, serialize.data(), serialize.size());
+         send_deferred(sender_id, payer, delay_until, serialize.data(), serialize.size());
       }
 
       time            expiration;
       region_id       region;
       uint16_t        ref_block_num;
       uint32_t        ref_block_prefix;
-      uint16_t        packed_bandwidth_words = 0; /// number of 8 byte words this transaction can compress into
-      uint16_t        context_free_cpu_bandwidth = 0; /// number of CPU usage units to bill transaction for
+      unsigned_int    net_usage_words = 0UL; /// number of 8 byte words this transaction can serialize into after compressions
+      unsigned_int    kcpu_usage = 0UL; /// number of CPU usage units to bill transaction for
+      unsigned_int    delay_sec = 0UL; /// number of CPU usage units to bill transaction for
 
       vector<action>  context_free_actions;
       vector<action>  actions;
 
-      EOSLIB_SERIALIZE( transaction, (expiration)(region)(ref_block_num)(ref_block_prefix)(packed_bandwidth_words)(context_free_cpu_bandwidth)(context_free_actions)(actions) )
+      EOSLIB_SERIALIZE( transaction, (expiration)(region)(ref_block_num)(ref_block_prefix)(net_usage_words)(kcpu_usage)(delay_sec)(context_free_actions)(actions) )
    };
 
    class deferred_transaction : public transaction {
       public:
          uint128_t     sender_id;
-         account_name sender;
-         time         delay_until;
+         account_name  sender;
+         account_name  payer;
+         time          delay_until;
 
          static deferred_transaction from_current_action() {
             return unpack_action_data<deferred_transaction>();
          }
 
-         EOSLIB_SERIALIZE_DERIVED( deferred_transaction, transaction, (sender_id)(sender)(delay_until) )
+         EOSLIB_SERIALIZE_DERIVED( deferred_transaction, transaction, (sender_id)(sender)(payer)(delay_until) )
    };
 
    /**

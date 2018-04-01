@@ -166,20 +166,15 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    if(options.count("wasm-runtime"))
       my->wasm_runtime = options.at("wasm-runtime").as<vm_type>();
-
-#warning TODO: Rate Limits
-   /*my->rate_limits.per_auth_account_time_frame_sec = fc::time_point_sec(options.at("per-authorized-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
-   my->rate_limits.per_auth_account = options.at("per-authorized-account-transaction-msg-rate-limit").as<uint32_t>();
-
-   my->rate_limits.per_code_account_time_frame_sec = fc::time_point_sec(options.at("per-code-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
-   my->rate_limits.per_code_account = options.at("per-code-account-transaction-msg-rate-limit").as<uint32_t>();*/
 }
 
 void chain_plugin::plugin_startup()
 { try {
-   FC_ASSERT( fc::exists( my->genesis_file ),
-              "unable to find genesis file '${f}', check --genesis-json argument",
-              ("f",my->genesis_file.generic_string()) );
+   if( !fc::exists( my->genesis_file ) ) {
+      wlog( "\n generating default genesis file ${f}", ("f", my->genesis_file.generic_string() ) );
+      contracts::genesis_state_type default_genesis;
+      fc::json::save_to_file( default_genesis, my->genesis_file, true );
+   }
    my->chain_config->block_log_dir = my->block_log_dir;
    my->chain_config->shared_memory_dir = app().data_dir() / default_shared_memory_dir;
    my->chain_config->read_only = my->readonly;
@@ -211,7 +206,7 @@ void chain_plugin::plugin_startup()
 
    my->chain_config.reset();
 
-   } FC_CAPTURE_AND_RETHROW( (my->genesis_file.generic_string()) ) }
+} FC_CAPTURE_LOG_AND_RETHROW( (my->genesis_file.generic_string()) ) }
 
 void chain_plugin::plugin_shutdown() {
    my->chain.reset();
@@ -317,7 +312,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
 
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
    vector<asset> results;
-   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.account, N(account), [&](const contracts::key_value_object& obj){
+   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.account, N(accounts), [&](const contracts::key_value_object& obj){
       share_type balance;
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
       fc::raw::unpack(ds, balance);

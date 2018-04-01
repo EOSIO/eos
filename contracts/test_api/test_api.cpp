@@ -16,6 +16,7 @@
 #include "test_chain.cpp"
 #include "test_transaction.cpp"
 #include "test_checktime.cpp"
+#include "test_permission.cpp"
 
 extern "C" {
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
@@ -150,6 +151,9 @@ extern "C" {
       // test checktime
       WASM_TEST_HANDLER(test_checktime, checktime_pass);
       WASM_TEST_HANDLER(test_checktime, checktime_failure);
+
+      // test permission
+      WASM_TEST_HANDLER_EX(test_permission, check_authorization);
 
       //unhandled test call
       eosio_assert(false, "Unknown Test");

@@ -238,8 +238,9 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"region", "uint16"},
          {"ref_block_num", "uint16"},
          {"ref_block_prefix", "uint16"},
-         {"packed_bandwidth_words", "uint16"},
-         {"context_free_cpu_bandwidth", "uint16"}
+         {"net_usage_words", "varuint32"},
+         {"kcpu_usage", "varuint32"},
+         {"delay_sec", "varuint32"}
       }
    });
 
@@ -330,7 +331,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
 void chain_initializer::prepare_database( chain_controller& chain,
                                                          chainbase::database& db) {
    /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
-   auto create_native_account = [this, &db](account_name name) {
+   auto create_native_account = [this, &chain, &db](account_name name) {
       db.create<account_object>([this, &name](account_object& a) {
          a.name = name;
          a.creation_date = genesis.initial_timestamp;
@@ -353,12 +354,8 @@ void chain_initializer::prepare_database( chain_controller& chain,
          p.auth.threshold = 1;
          p.auth.keys.push_back( key_weight{ .key = genesis.initial_key, .weight = 1 } );
       });
-      db.create<bandwidth_usage_object>([&](auto& sb) { 
-         sb.owner = name;      
-         sb.net_weight  = -1;
-         sb.cpu_weight  = -1;
-         sb.db_reserved_capacity = -1;
-      });
+
+      chain.get_mutable_resource_limits_manager().initialize_account(name);
 
       db.create<producer_object>( [&]( auto& pro ) {
          pro.owner = config::system_account_name;

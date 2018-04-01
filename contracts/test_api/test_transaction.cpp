@@ -157,6 +157,7 @@ void test_transaction::test_transaction_size() {
    using namespace eosio;
    uint32_t trans_size = 0;
    read_action_data( (char*)&trans_size, sizeof(uint32_t) );
+   print( "size: ", transaction_size() );
    eosio_assert( trans_size == transaction_size(), "transaction size does not match" );
 }
 
@@ -222,7 +223,7 @@ void test_transaction::send_deferred_transaction() {
    auto trx = transaction();
    test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "deferred_print")> test_action;
    trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
-   trx.send( 0xffffffffffffffff, now()+2 );
+   trx.send( 0xffffffffffffffff, 0, now()+2 );
 }
 
 void test_transaction::cancel_deferred_transaction() {

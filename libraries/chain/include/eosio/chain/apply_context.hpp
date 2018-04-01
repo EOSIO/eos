@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/block.hpp>
+#include <eosio/chain/block_trace.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/transaction_metadata.hpp>
 #include <eosio/chain/contracts/contract_table_objects.hpp>
@@ -200,7 +200,7 @@ class apply_context {
                  ++t.count;
                });
 
-               context.update_db_usage( payer, contracts::get_key_memory_usage<secondary_key_type>()+base_row_fee );
+               context.update_db_usage( payer, sizeof(ObjectType) + config::overhead_per_row_ram_bytes );
 
                itr_cache.cache_table( tab );
                return itr_cache.add( obj );
@@ -208,7 +208,7 @@ class apply_context {
 
             void remove( int iterator ) {
                const auto& obj = itr_cache.get( iterator );
-               context.update_db_usage( obj.payer, -( contracts::get_key_memory_usage<secondary_key_type>()+base_row_fee ) );
+               context.update_db_usage( obj.payer, -( sizeof(ObjectType) + config::overhead_per_row_ram_bytes ) );
 
                const auto& table_obj = itr_cache.get_table( obj.t_id );
                context.require_write_lock( table_obj.scope );
@@ -228,9 +228,11 @@ class apply_context {
 
                if( payer == account_name() ) payer = obj.payer;
 
+               int64_t billing_size = sizeof(ObjectType) + config::overhead_per_row_ram_bytes;
+
                if( obj.payer != payer ) {
-                  context.update_db_usage( obj.payer, -(contracts::get_key_memory_usage<secondary_key_type>()+base_row_fee) );
-                  context.update_db_usage( payer, +(contracts::get_key_memory_usage<secondary_key_type>()+base_row_fee) );
+                  context.update_db_usage( obj.payer, -(billing_size) );
+                  context.update_db_usage( payer, +(billing_size) );
                }
 
                context.mutable_db.modify( obj, [&]( auto& o ) {
@@ -547,12 +549,12 @@ class apply_context {
          console_append(fc::format_string(fmt, vo));
       }
 
-      void checktime(uint32_t instruction_count) const;
+      void checktime(uint32_t instruction_count);
 
       int get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const;
       int get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const;
 
-      void update_db_usage( const account_name& payer, int64_t delta );
+      void update_db_usage( const account_name& payer, int64_t delta, const char* use_format = "Unspecified", const fc::variant_object& args = fc::variant_object() );
       int  db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
       void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
       void db_remove_i64( int iterator );
@@ -570,8 +572,6 @@ class apply_context {
       generic_index<contracts::index_double_object> idx_double;
 
       uint32_t                                    recurse_depth;  // how deep inline actions can recurse
-
-      static constexpr uint32_t base_row_fee = 200;
 
    private:
       iterator_cache<key_value_object> keyval_cache;
@@ -598,6 +598,7 @@ class apply_context {
       vector<shard_lock>                  _read_locks;
       vector<scope_name>                  _write_scopes;
       bytes                               _cached_trx;
+      uint64_t                            _cpu_usage;
 };
 
 using apply_handler = std::function<void(apply_context&)>;

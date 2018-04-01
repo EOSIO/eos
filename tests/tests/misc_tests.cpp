@@ -44,38 +44,6 @@ BOOST_AUTO_TEST_CASE(json_from_string_test)
   BOOST_CHECK_EQUAL(exc_found, true);
 }
 
-/// Test calculation of median values of blockchain operation properties
-BOOST_AUTO_TEST_CASE(median_properties_test)
-{
-   try
-   {
-      vector<chain_config> votes{
-          {512 , 1024 , 256, 512 , 512 , 1024 , 4096, 512 , 1000 , 6, 3, 4096, 65536},
-          {100 , 10000, 50 , 5000, 100 , 10000, 4096, 100 , 3000 , 6, 2, 4096, 65536},
-          {1500, 2048 , 750, 1024, 1500, 2048 , 1000, 1500, 5000 , 6, 9, 4096, 65536},
-          {25  , 100  , 12 , 50  , 25  , 100  , 1024, 25  , 10000, 6, 4, 4096, 65536},
-          {1000, 1024 , 500, 512 , 10  , 1024 , 100 , 1000, 4000 , 6, 1, 4096, 65536}};
-
-      chain_config medians{
-          512, 1024, 256, 512, 100, 1024, 1024, 512, 4000, 6, 3, 4096, 65536};
-
-      BOOST_TEST(chain_config::get_median_values(votes) == medians);
-
-      votes.emplace_back(chain_config{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-      votes.emplace_back(chain_config{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1});
-      medians = chain_config{100, 1024, 50, 512, 25, 1024, 1000, 100, 3000, 6, 2, 4096, 65536};
-
-      BOOST_TEST(chain_config::get_median_values(votes) == medians);
-      BOOST_TEST(chain_config::get_median_values({medians}) == medians);
-
-      votes.erase(votes.begin() + 2);
-      votes.erase(votes.end() - 1);
-      medians = chain_config{100, 1024, 50, 512, 25, 1024, 1024, 100, 3000, 6, 2, 4096, 65536};
-      BOOST_TEST(chain_config::get_median_values(votes) == medians);
-   }
-   FC_LOG_AND_RETHROW()
-}
-
 /// Test that our deterministic random shuffle algorithm gives the same results in all environments
 BOOST_AUTO_TEST_CASE(deterministic_randomness)
 { try {

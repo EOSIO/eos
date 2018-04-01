@@ -8,6 +8,7 @@
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/fork_database.hpp>
 #include <eosio/chain/block_log.hpp>
+#include <eosio/chain/block_trace.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/scoped_exit.hpp>
@@ -18,6 +19,7 @@
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/contracts/genesis_state.hpp>
+#include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 
@@ -28,7 +30,8 @@
 namespace eosio { namespace chain {
    using database = chainbase::database;
    using boost::signals2::signal;
-
+   using resource_limits_manager = resource_limits::resource_limits_manager;
+   class generated_transaction_object;
 
    namespace contracts{ class chain_initializer; }
 
@@ -113,7 +116,7 @@ namespace eosio { namespace chain {
           * This signal is emitted any time a new transaction is added to the pending
           * block state.
           */
-      signal<void(const transaction_metadata&, const packed_transaction&)> on_pending_transaction;
+         signal<void(const transaction_metadata&, const packed_transaction&)> on_pending_transaction;
 
 
 
@@ -273,6 +276,9 @@ namespace eosio { namespace chain {
          const chainbase::database& get_database() const { return _db; }
          chainbase::database&       get_mutable_database() { return _db; }
 
+         const resource_limits::resource_limits_manager& get_resource_limits_manager() const { return _resource_limits; }
+         resource_limits::resource_limits_manager&       get_mutable_resource_limits_manager() { return _resource_limits; }
+
          wasm_interface& get_wasm_interface() {
             return _wasm_interface;
          }
@@ -293,6 +299,16 @@ namespace eosio { namespace chain {
                                          flat_set<account_name>           provided_accounts = flat_set<account_name>()
                                          )const;
 
+         /**
+          * @param account - the account owner of the permission
+          * @param permission - the permission name to check for authorization
+          * @param provided_keys - a set of public keys
+          *
+          * @return true if the provided keys are sufficient to authorize the account permission
+          */
+         bool check_authorization( account_name account, permission_name permission,
+                                flat_set<public_key_type> provided_keys,
+                                bool allow_unused_signatures)const;
 
       private:
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
@@ -316,6 +332,12 @@ namespace eosio { namespace chain {
          transaction_trace __apply_transaction( transaction_metadata& data );
          transaction_trace _apply_error( transaction_metadata& data );
          vector<transaction_trace> _push_deferred_transactions( bool flush = false );
+
+         void _destroy_generated_transaction( const generated_transaction_object& gto );
+         void _create_generated_transaction( const deferred_transaction& dto );
+
+         template<typename TransactionProcessing>
+         transaction_trace wrap_transaction_processing( transaction_metadata&& data, TransactionProcessing trx_processing );
 
          /// Reset the object graph in-memory
          void _initialize_indexes();
@@ -369,6 +391,7 @@ namespace eosio { namespace chain {
          void validate_referenced_accounts(const transaction& trx)const;
          void validate_expiration(const transaction& trx) const;
          void record_transaction(const transaction& trx);
+         void update_resource_usage( transaction_trace& trace, const transaction_metadata& meta );
          /// @}
 
          /**
@@ -404,7 +427,7 @@ namespace eosio { namespace chain {
 
          void update_global_properties(const signed_block& b);
          void update_global_dynamic_data(const signed_block& b);
-         void update_usage( transaction_metadata&, uint32_t act_usage );
+         void update_permission_usage( const transaction_metadata& meta );
          void update_signing_producer(const producer_object& signing_producer, const signed_block& new_block);
          void update_last_irreversible_block();
          void update_or_create_producers( const producer_schedule_type& producers);
@@ -416,15 +439,12 @@ namespace eosio { namespace chain {
 
          void _start_pending_block( bool skip_deferred = false );
          void _start_pending_cycle();
-         void _start_pending_shard();
          void _finalize_pending_cycle();
          void _apply_cycle_trace( const cycle_trace& trace );
          void _finalize_block( const block_trace& b );
 
          transaction _get_on_block_transaction();
          void _apply_on_block_transaction();
-
-         void store_deferred_transaction(const deferred_transaction& dtrx);
 
       //        producer_schedule_type calculate_next_round( const signed_block& next_block );
 
@@ -450,6 +470,7 @@ namespace eosio { namespace chain {
          wasm_interface                   _wasm_interface;
 
          runtime_limits                   _limits;
+         resource_limits_manager          _resource_limits;
    };
 
 } }

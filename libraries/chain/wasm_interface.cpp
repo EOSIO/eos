@@ -6,6 +6,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/multiprecision/cpp_bin_float.hpp>
+#include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <eosio/chain/wasm_eosio_validation.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
@@ -31,8 +32,12 @@ namespace eosio { namespace chain {
 
    void wasm_interface::validate(const bytes& code) {
       Module module;
-      Serialization::MemoryInputStream stream((U8*)code.data(), code.size());
-      WASM::serialize(stream, module);
+      try {
+         Serialization::MemoryInputStream stream((U8*)code.data(), code.size());
+         WASM::serialize(stream, module);
+      } catch(Serialization::FatalSerializationException& e) {
+         EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+      }
 
       wasm_validations::wasm_binary_validation validator(module);
       validator.validate();
@@ -113,34 +118,24 @@ class privileged_api : public context_aware_api {
          FC_ASSERT( !"Unsupported Hardfork Detected" );
       }
 
-      void get_resource_limits( account_name account,
-                                uint64_t& ram_bytes, uint64_t& net_weight, uint64_t& cpu_weight ) {
-         auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
-         ram_bytes  = buo.db_reserved_capacity;
-         net_weight = buo.net_weight;
-         cpu_weight = buo.cpu_weight;
+      /**
+       * update the resource limits associated with an account.  Note these new values will not take effect until the
+       * next resource "tick" which is currently defined as a cycle boundary inside a block.
+       *
+       * @param account - the account whose limits are being modified
+       * @param ram_bytes - the limit for ram bytes
+       * @param net_weight - the weight for determining share of network capacity
+       * @param cpu_weight - the weight for determining share of compute capacity
+       */
+      void set_resource_limits( account_name account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
+         EOS_ASSERT(ram_bytes >= -1 && ram_bytes <= INT64_MAX, wasm_execution_error, "invalid value for ram resource limit expected [-1,INT64_MAX]");
+         EOS_ASSERT(net_weight >= -1 && net_weight <= INT64_MAX, wasm_execution_error, "invalid value for net resource weight expected [-1,INT64_MAX]");
+         EOS_ASSERT(cpu_weight >= -1 && cpu_weight <= INT64_MAX, wasm_execution_error, "invalid value for cpu resource weight expected [-1,INT64_MAX]");
+         context.mutable_controller.get_mutable_resource_limits_manager().set_account_limits(account, ram_bytes, net_weight, cpu_weight);
       }
 
-      void set_resource_limits( account_name account,
-                                uint64_t ram_bytes, int64_t net_weight, int64_t cpu_weight ) {
-         auto& buo = context.db.get<bandwidth_usage_object,by_owner>( account );
-         FC_ASSERT( buo.db_usage <= ram_bytes, "attempt to free too much space" );
-
-         auto& gdp = context.controller.get_dynamic_global_properties();
-         context.mutable_db.modify( gdp, [&]( auto& p ) {
-           p.total_net_weight -= buo.net_weight;
-           p.total_net_weight += net_weight;
-           p.total_cpu_weight -= buo.cpu_weight;
-           p.total_cpu_weight += cpu_weight;
-           p.total_db_reserved -= buo.db_reserved_capacity;
-           p.total_db_reserved += ram_bytes;
-         });
-
-         context.mutable_db.modify( buo, [&]( auto& o ){
-            o.net_weight = net_weight;
-            o.cpu_weight = cpu_weight;
-            o.db_reserved_capacity = ram_bytes;
-         });
+      void get_resource_limits( account_name account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) {
+         context.controller.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
       }
 
       void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
@@ -752,6 +747,28 @@ class crypto_api : public context_aware_api {
       }
 };
 
+class permission_api : public context_aware_api {
+   public:
+      using context_aware_api::context_aware_api;
+
+      bool check_authorization( account_name account, permission_name permission, array_ptr<char> packed_pubkeys, size_t datalen) {
+
+         vector<public_key_type> pub_keys;
+         datastream<const char*> ds( packed_pubkeys, datalen );
+         while(ds.remaining()) {
+            public_key_type pub;
+            fc::raw::unpack(ds, pub);
+            pub_keys.emplace_back(pub);
+         }
+
+         return context.controller.check_authorization(
+            account, permission,
+            {pub_keys.begin(), pub_keys.end()},
+            false
+         );
+      }
+};
+
 class string_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
@@ -1030,7 +1047,15 @@ class transaction_api : public context_aware_api {
          context.execute_context_free_inline(std::move(act));
       }
 
-      void send_deferred( const unsigned __int128& val, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
+      void send_deferred( const unsigned __int128& val, account_name payer, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
+         account_name actual_payer = payer;
+         if (actual_payer != account_name(0)) {
+            const auto* paying_account = context.db.find<account_object, by_name>(payer);
+            EOS_ASSERT(paying_account, tx_unknown_argument, "The account for the payer: ${a}, does not exist!", ("a", payer));
+         } else {
+            actual_payer = context.receiver;
+         }
+
          try {
             fc::uint128_t sender_id(val>>64, uint64_t(val) );
             const auto& gpo = context.controller.get_global_properties();
@@ -1041,6 +1066,7 @@ class transaction_api : public context_aware_api {
             dtrx.sender = context.receiver;
             dtrx.sender_id = (unsigned __int128)sender_id;
             dtrx.execute_after = execute_after;
+            dtrx.payer = actual_payer;
             context.execute_deferred(std::move(dtrx));
          } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
       }
@@ -1502,6 +1528,10 @@ REGISTER_INTRINSICS(crypto_api,
    (ripemd160,              void(int, int, int)           )
 );
 
+REGISTER_INTRINSICS(permission_api,
+   (check_authorization,  int(int64_t, int64_t, int, int))
+);
+
 REGISTER_INTRINSICS(string_api,
    (assert_is_utf8,  void(int, int, int) )
 );
@@ -1552,10 +1582,10 @@ REGISTER_INTRINSICS(context_free_transaction_api,
 );
 
 REGISTER_INTRINSICS(transaction_api,
-   (send_inline,               void(int, int)               )
-   (send_context_free_inline,  void(int, int)               )
-   (send_deferred,             void(int, int, int, int) )
-   (cancel_deferred,           void(int)                )
+   (send_inline,               void(int, int)                    )
+   (send_context_free_inline,  void(int, int)                    )
+   (send_deferred,             void(int, int64_t, int, int, int) )
+   (cancel_deferred,           void(int)                         )
 );
 
 REGISTER_INTRINSICS(context_free_api,

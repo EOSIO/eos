@@ -1,7 +1,12 @@
-version: "3"
+version: "4"
 
 services:
-  nodeos:
+  builder:
+    build:
+      context: builder
+    image: eosio/builder
+
+  nodeosd:
     build:
       context: .
     image: eosio/eos
@@ -16,9 +21,9 @@ services:
 
   walletd:
     image: eosio/eos
-    command: /opt/eosio/bin/eosiowd
+    command: /opt/eosio/bin/keosd
     links:
-      - nodeos
+      - nodeosd
     volumes:
       - walletd-data-volume:/opt/eosio/bin/data-dir
 
