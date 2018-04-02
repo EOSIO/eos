@@ -166,6 +166,7 @@ transaction_trace CallFunction(TESTER& test, T ac, const vector<char>& data, con
 
       action act(pl, ac);
       act.data = data;
+      act.authorization = {{N(testapi), config::active_name}};
       trx.actions.push_back(act);
 
       test.set_transaction_headers(trx, test.DEFAULT_EXPIRATION_DELTA, extra_cf_cpu_usage );
@@ -350,15 +351,17 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
       auto dat = fc::raw::pack(a3a4);
       vector<char>& dest = *(vector<char> *)(&act.data);
       std::copy(dat.begin(), dat.end(), std::back_inserter(dest));
+      act.authorization = {{N(testapi), config::active_name}, {N(acc3), config::active_name}, {N(acc4), config::active_name}};
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
+		trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
 		trx.sign(get_private_key(N(acc3), "active"), chain_id_type());
 		trx.sign(get_private_key(N(acc4), "active"), chain_id_type());
 		auto res = push_transaction(trx);
 		BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
    }
-
+   
    uint32_t now = control->head_block_time().sec_since_epoch();
    CALL_TEST_FUNCTION( *this, "test_action", "now", fc::raw::pack(now));
 
@@ -403,9 +406,16 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       produce_blocks(1000);
       set_code( N(testapi), test_api_wast );
       produce_blocks(1);
-
       cf_action cfa;
       signed_transaction trx;
+      set_transaction_headers(trx);
+      // need at least one normal action
+      BOOST_CHECK_EXCEPTION(push_transaction(trx), tx_no_action,
+                            [](const fc::assert_exception& e) {
+                               return expect_assert_message(e, "transactions require at least one context-aware action");
+                            }
+      );
+
       action act({}, cfa);
       trx.context_free_actions.push_back(act);
       trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100)); // verify payload matches context free data
@@ -451,30 +461,34 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
                                return expect_assert_message(e, "may only be called from context_free");
                             }
       );
+      {
+         // back to normal action
+         action act1(pl, da);
+         signed_transaction trx;
+         trx.context_free_actions.push_back(act);
+         trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100)); // verify payload matches context free data
+         trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(200));
+         
+         trx.actions.push_back(act1);
+         // attempt to access non context free api
+         for (uint32_t i = 200; i <= 204; ++i) {
+            trx.context_free_actions.clear();
+            trx.context_free_data.clear();
+            cfa.payload = i;
+            cfa.cfd_idx = 1;
+            action cfa_act({}, cfa);
+            trx.context_free_actions.emplace_back(cfa_act);
+            trx.signatures.clear();
+            set_transaction_headers(trx);
+            sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
+            BOOST_CHECK_EXCEPTION(push_transaction(trx), transaction_exception,
+                 [](const fc::exception& e) {
+                    return expect_assert_message(e, "context_free: only context free api's can be used in this context");
+                 }
+            );
+         }
 
-      // back to normal action
-      trx.signatures.clear();
-      trx.actions.clear();
-      trx.actions.push_back(act1);
-
-      // attempt to access non context free api
-      for (uint32_t i = 200; i <= 204; ++i) {
-         trx.context_free_actions.clear();
-         trx.context_free_data.clear();
-         cfa.payload = i;
-         cfa.cfd_idx = 1;
-         action cfa_act({}, cfa);
-         trx.context_free_actions.emplace_back(cfa_act);
-         trx.signatures.clear();
-         set_transaction_headers(trx);
-         sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
-         BOOST_CHECK_EXCEPTION(push_transaction(trx), transaction_exception,
-              [](const fc::exception& e) {
-                 return expect_assert_message(e, "context_free: only context free api's can be used in this context");
-              }
-         );
       }
-
       produce_block();
 
       // test send context free action
@@ -492,6 +506,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       );
 
       CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_action", {} );
+
       CallFunction( *this, test_api_action<TEST_METHOD("test_transaction", "read_inline_cf_action")>{}, {}, {N(testapi)}, 20000 );
 
       BOOST_REQUIRE_EQUAL( validate(), true );
@@ -634,6 +649,20 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    produce_blocks(100);
    set_code( N(testapi), test_api_wast );
    produce_blocks(1);
+   // test for zero auth
+   {
+      signed_transaction trx;
+      auto tm = test_api_action<TEST_METHOD("test_action", "require_auth")>{};
+      action act({}, tm); 
+      trx.actions.push_back(act);
+
+		set_transaction_headers(trx);
+      BOOST_CHECK_EXCEPTION(push_transaction(trx), transaction_exception,
+         [](const fc::exception& e) {
+            return expect_assert_message(e, "transactions require at least one authorization");
+         }
+      );
+   }
 
    // test send_action
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_action", {});
@@ -644,10 +673,9 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    // test send_action_large
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), transaction_exception,
          [](const fc::exception& e) {
-            return expect_assert_message(e, "data_len < config::default_max_inline_action_size: inline action too big");
+            return expect_assert_message(e, "data_len < config::default_max_inline_action_size");
          }
       );
-
    // test send_action_inline_fail
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_inline_fail", {}), transaction_exception,
          [](const fc::exception& e) {
@@ -851,6 +879,7 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
+
 /*************************************************************************************
  * multi_index_tests test case
  *************************************************************************************/

@@ -8,8 +8,9 @@
 #include "test_multi_index.cpp"
 
 extern "C" {
-   void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
 
+   void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
+      require_auth(code);
       WASM_TEST_HANDLER_EX(test_multi_index, idx64_general);
       WASM_TEST_HANDLER_EX(test_multi_index, idx64_store_only);
       WASM_TEST_HANDLER_EX(test_multi_index, idx64_check_without_storing);

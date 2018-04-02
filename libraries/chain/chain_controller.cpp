@@ -449,7 +449,7 @@ transaction chain_controller::_get_on_block_transaction()
 void chain_controller::_apply_on_block_transaction()
 {
    _pending_block_trace->implicit_transactions.emplace_back(_get_on_block_transaction());
-   transaction_metadata mtrx(packed_transaction(_pending_block_trace->implicit_transactions.back()), get_chain_id(), head_block_time());
+   transaction_metadata mtrx(packed_transaction(_pending_block_trace->implicit_transactions.back()), get_chain_id(), head_block_time(), true /*is implicit*/);
    _push_transaction(std::move(mtrx));
 }
 
@@ -734,14 +734,20 @@ void chain_controller::__apply_block(const signed_block& next_block)
 
    block_trace next_block_trace(next_block);
 
-   /// cache the input tranasction ids so that they can be looked up when executing the
+   /// cache the input transaction ids so that they can be looked up when executing the
    /// summary
    vector<transaction_metadata> input_metas;
-   input_metas.reserve(next_block.input_transactions.size() + 1);
+   // add all implicit transactions
    {
       next_block_trace.implicit_transactions.emplace_back(_get_on_block_transaction());
-      input_metas.emplace_back(packed_transaction(next_block_trace.implicit_transactions.back()), get_chain_id(), head_block_time());
    }
+
+   input_metas.reserve(next_block.input_transactions.size() + next_block_trace.implicit_transactions.size());
+   
+   for ( const auto& t : next_block_trace.implicit_transactions ) {
+      input_metas.emplace_back(packed_transaction(t), get_chain_id(), head_block_time(), true /*implicit*/);
+   }
+
    map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
       input_metas.emplace_back(t, chain_id_type(), next_block.timestamp);
@@ -806,15 +812,19 @@ void chain_controller::__apply_block(const signed_block& next_block)
                   } else {
                      const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
                      if (gtrx != nullptr) {
+                        ilog( "defer" );
                         auto trx = fc::raw::unpack<deferred_transaction>(gtrx->packed_trx.data(), gtrx->packed_trx.size());
                         FC_ASSERT( trx.execute_after <= head_block_time() , "deffered transaction executed prematurely" );
                         _temp.emplace(trx, gtrx->published, trx.sender, trx.sender_id, gtrx->packed_trx.data(), gtrx->packed_trx.size() );
                         _destroy_generated_transaction(*gtrx);
                         return &*_temp;
                      } else {
-                        const auto& mtrx = input_metas[0];
-                        FC_ASSERT(mtrx.id == receipt.id, "on-block transaction id mismatch");
-                        return &input_metas[0];
+                        ilog( "implicit" );
+                        for ( size_t i=0; i < next_block_trace.implicit_transactions.size(); i++ ) {
+                           if ( input_metas[i].id == receipt.id )
+                              return &input_metas[i];
+                        }
+                        FC_ASSERT(false, "implicit transaction not found ${trx}", ("trx", receipt));
                      }
                   }
                };
@@ -1799,24 +1809,29 @@ static void log_handled_exceptions(const transaction& trx) {
 transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta ) 
 { try {
    transaction_trace result(meta.id);
+   EOS_ASSERT( !meta.trx().actions.empty(), tx_no_action, "transactions require at least one context-aware action" );
+   // first check for at least one authorization
+   bool has_auth = false;
+   for (const auto& act : meta.trx().actions)
+      has_auth |= !act.authorization.empty();
+
+   EOS_ASSERT( has_auth, tx_no_auths, "transactions require at least one authorization" );
 
    validate_transaction( meta.trx() );
 
    for (const auto &act : meta.trx().context_free_actions) {
-      FC_ASSERT( act.authorization.size() == 0, "context free actions cannot require authorization" );
+      EOS_ASSERT( act.authorization.empty(), cfa_irrelevant_auth, "context-free actions cannot require authorization" );
       apply_context context(*this, _db, act, meta);
       context.context_free = true;
       context.exec();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       FC_ASSERT( result.deferred_transaction_requests.size() == 0 );
    }
-
+   
    for (const auto &act : meta.trx().actions) {
       apply_context context(*this, _db, act, meta);
       context.exec();
-      context.used_context_free_api |= act.authorization.size();
-
-      FC_ASSERT( context.used_context_free_api, "action did not reference database state, it should be moved to context_free_actions", ("act",act) );
+      context.results.applied_actions.back().auths_used = act.authorization.size() - context.unused_authorizations().size();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transaction_requests, std::move(context.results.deferred_transaction_requests));
    }
@@ -1836,6 +1851,12 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
          temp_session.squash();
          return result;
       } catch (...) {
+         if (meta.is_implicit) {
+            transaction_trace result(meta.id);
+            result.status = transaction_trace::hard_fail;
+            return result;
+         }
+
          // if there is no sender, there is no error handling possible, rethrow
          if (!meta.sender) {
             throw;

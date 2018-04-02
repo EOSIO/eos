@@ -1414,7 +1414,6 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    BOOST_REQUIRE_EQUAL(0, trace.deferred_transaction_requests.size());
 
    chain.produce_blocks();
-
    auto liquid_balance = get_currency_balance(chain, N(currency));
    BOOST_REQUIRE_EQUAL(asset::from_string("999900.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester));
@@ -1491,6 +1490,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    signed_transaction trx;
    trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
                             chain::contracts::canceldelay{sender_id_to_cancel});
+   trx.actions.back().authorization.push_back({N(tester), config::active_name});
 
    chain.set_transaction_headers(trx);
    trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());

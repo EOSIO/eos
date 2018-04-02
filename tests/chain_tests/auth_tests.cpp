@@ -22,7 +22,7 @@ BOOST_FIXTURE_TEST_CASE( missing_sigs, TESTER ) { try {
    BOOST_REQUIRE_THROW( push_reqauth( N(alice), {permission_level{N(alice), config::active_name}}, {} ), tx_missing_sigs );
    auto trace = push_reqauth(N(alice), "owner");
 
-                    produce_block();
+   produce_block();
    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace.id));
 
 } FC_LOG_AND_RETHROW() } /// missing_sigs
@@ -48,7 +48,6 @@ BOOST_FIXTURE_TEST_CASE( missing_auths, TESTER ) { try {
    BOOST_REQUIRE_THROW( push_reqauth( N(alice), {permission_level{N(bob), config::active_name}}, { get_private_key(N(bob), "active") } ), tx_missing_auth);
 
 } FC_LOG_AND_RETHROW() } /// transfer_test
-
 
 /**
  *  This test case will attempt to allow one account to transfer on behalf
