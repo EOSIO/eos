@@ -552,12 +552,13 @@ void apply_eosio_vetorecovery(apply_context& context) {
 
 void apply_eosio_canceldelay(apply_context& context) {
    auto cancel = context.act.data_as<canceldelay>();
-   const auto sender_id = cancel.sender_id.convert_to<uint32_t>();
+   //const auto sender_id = cancel.sender_id.convert_to<uint32_t>();
+   const auto& trx_id = cancel.trx_id;
    const auto& generated_transaction_idx = context.controller.get_database().get_index<generated_transaction_multi_index>();
-   const auto& generated_index = generated_transaction_idx.indices().get<by_sender_id>();
-   const auto& itr = generated_index.lower_bound(boost::make_tuple(config::system_account_name, sender_id));
-   FC_ASSERT (itr != generated_index.end() && itr->sender == config::system_account_name && itr->sender_id == sender_id,
-              "cannot cancel sender_id=${sid}, there is no deferred transaction with that sender_id",("sid",sender_id));
+   const auto& generated_index = generated_transaction_idx.indices().get<by_trx_id>();
+   const auto& itr = generated_index.lower_bound(trx_id);
+   FC_ASSERT (itr != generated_index.end() && itr->sender == config::system_account_name && itr->trx_id == trx_id,
+              "cannot cancel trx_id=${tid}, there is no deferred transaction with that transaction id",("tid", trx_id));
 
    auto dtrx = fc::raw::unpack<deferred_transaction>(itr->packed_trx.data(), itr->packed_trx.size());
    set<account_name> accounts;
@@ -577,7 +578,7 @@ void apply_eosio_canceldelay(apply_context& context) {
 
    FC_ASSERT (found, "canceldelay action must be signed with the \"active\" permission for one of the actors"
                      " provided in the authorizations on the original transaction");
-   context.cancel_deferred(sender_id);
+   context.cancel_deferred(itr->sender_id);
 }
 
 void apply_eosio_mindelay(apply_context& context) {

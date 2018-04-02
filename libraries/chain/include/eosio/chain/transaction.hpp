@@ -218,7 +218,7 @@ namespace eosio { namespace chain {
       uint128_t      sender_id; /// ID assigned by sender of generated, accessible via WASM api when executing normal or error
       account_name   sender; /// receives error handler callback
       account_name   payer;
-      time_point_sec execute_after; /// delayed exeuction
+      time_point_sec execute_after; /// delayed execution
 
       deferred_transaction() = default;
 
@@ -236,9 +236,8 @@ namespace eosio { namespace chain {
       deferred_reference( const account_name& sender, uint128_t sender_id)
       :sender(sender),sender_id(sender_id)
       {}
-
-      account_name   sender;
-      uint128_t       sender_id;
+      account_name  sender;
+      uint128_t     sender_id;
    };
 } } // eosio::chain
 

@@ -163,7 +163,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
 
    eos_abi.structs.emplace_back( struct_def {
       "canceldelay", "", {
-         {"sender_id", "uint32"},
+         {"trx_id", "checksum256"},
       }
    });
 
