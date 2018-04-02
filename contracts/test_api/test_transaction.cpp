@@ -161,7 +161,7 @@ void test_transaction::test_transaction_size() {
    eosio_assert( trans_size == transaction_size(), "transaction size does not match" );
 }
 
-void test_transaction::send_transaction() {
+void test_transaction::send_transaction(uint64_t receiver, uint64_t code, uint64_t action) {
    using namespace eosio;
    dummy_action payload = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
 
@@ -170,10 +170,10 @@ void test_transaction::send_transaction() {
   
    auto trx = transaction();
    trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
-   trx.send(0);
+   trx.send(0, receiver);
 }
 
-void test_transaction::send_action_sender() {
+void test_transaction::send_action_sender(uint64_t receiver, uint64_t code, uint64_t action) {
    using namespace eosio;
    account_name cur_send;
    read_action_data( &cur_send, sizeof(account_name) );
@@ -182,13 +182,13 @@ void test_transaction::send_action_sender() {
 
    auto trx = transaction();
    trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
-   trx.send(0);
+   trx.send(0, receiver);
 }
 
-void test_transaction::send_transaction_empty() {
+void test_transaction::send_transaction_empty(uint64_t receiver, uint64_t code, uint64_t action) {
    using namespace eosio;
    auto trx = transaction();
-   trx.send(0);
+   trx.send(0, receiver);
 
    eosio_assert(false, "send_transaction_empty() should've thrown an error");
 }
@@ -196,7 +196,7 @@ void test_transaction::send_transaction_empty() {
 /**
  * cause failure due to a large transaction size
  */
-void test_transaction::send_transaction_large() {
+void test_transaction::send_transaction_large(uint64_t receiver, uint64_t code, uint64_t action) {
    using namespace eosio;
    auto trx = transaction();
    for (int i = 0; i < 32; i ++) {
@@ -206,7 +206,7 @@ void test_transaction::send_transaction_large() {
       trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
    }
 
-   trx.send(0);
+   trx.send(0, receiver);
 
    eosio_assert(false, "send_transaction_large() should've thrown an error");
 }
@@ -218,12 +218,12 @@ void test_transaction::deferred_print() {
    eosio::print("deferred executed\n");
 }
 
-void test_transaction::send_deferred_transaction() {
+void test_transaction::send_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action) {
    using namespace eosio;
    auto trx = transaction();
    test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "deferred_print")> test_action;
    trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
-   trx.send( 0xffffffffffffffff, 0, now()+2 );
+   trx.send( 0xffffffffffffffff, receiver, now()+2 );
 }
 
 void test_transaction::cancel_deferred_transaction() {

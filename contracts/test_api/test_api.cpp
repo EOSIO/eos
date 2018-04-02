@@ -18,6 +18,8 @@
 #include "test_checktime.cpp"
 #include "test_permission.cpp"
 
+account_name global_receiver;
+
 extern "C" {
 
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
@@ -116,12 +118,12 @@ extern "C" {
       WASM_TEST_HANDLER(test_transaction, send_action_recurse);
       WASM_TEST_HANDLER(test_transaction, test_read_transaction);
       WASM_TEST_HANDLER(test_transaction, test_transaction_size);
-      WASM_TEST_HANDLER(test_transaction, send_transaction);
-      WASM_TEST_HANDLER(test_transaction, send_transaction_empty);
-      WASM_TEST_HANDLER(test_transaction, send_transaction_large);
-      WASM_TEST_HANDLER(test_transaction, send_action_sender);
+      WASM_TEST_HANDLER_EX(test_transaction, send_transaction);
+      WASM_TEST_HANDLER_EX(test_transaction, send_transaction_empty);
+      WASM_TEST_HANDLER_EX(test_transaction, send_transaction_large);
+      WASM_TEST_HANDLER_EX(test_transaction, send_action_sender);
       WASM_TEST_HANDLER(test_transaction, deferred_print);
-      WASM_TEST_HANDLER(test_transaction, send_deferred_transaction);
+      WASM_TEST_HANDLER_EX(test_transaction, send_deferred_transaction);
       WASM_TEST_HANDLER(test_transaction, cancel_deferred_transaction);
       WASM_TEST_HANDLER(test_transaction, send_cf_action);
       WASM_TEST_HANDLER(test_transaction, send_cf_action_fail);

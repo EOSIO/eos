@@ -1048,14 +1048,6 @@ class transaction_api : public context_aware_api {
       }
 
       void send_deferred( const unsigned __int128& val, account_name payer, const fc::time_point_sec& execute_after, array_ptr<char> data, size_t data_len ) {
-         account_name actual_payer = payer;
-         if (actual_payer != account_name(0)) {
-            const auto* paying_account = context.db.find<account_object, by_name>(payer);
-            EOS_ASSERT(paying_account, tx_unknown_argument, "The account for the payer: ${a}, does not exist!", ("a", payer));
-         } else {
-            actual_payer = context.receiver;
-         }
-
          try {
             fc::uint128_t sender_id(val>>64, uint64_t(val) );
             const auto& gpo = context.controller.get_global_properties();
@@ -1066,7 +1058,7 @@ class transaction_api : public context_aware_api {
             dtrx.sender = context.receiver;
             dtrx.sender_id = (unsigned __int128)sender_id;
             dtrx.execute_after = execute_after;
-            dtrx.payer = actual_payer;
+            dtrx.payer = payer;
             context.execute_deferred(std::move(dtrx));
          } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
       }
