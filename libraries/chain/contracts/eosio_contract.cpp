@@ -72,7 +72,7 @@ void apply_eosio_newaccount(apply_context& context) {
    });
    resources.initialize_account(create.name);
    resources.add_account_ram_usage(
-      create.name,
+      create.creator,
       (int64_t)config::overhead_per_account_ram_bytes,
       "New Account ${n}", _V("n", create.name)
    );
