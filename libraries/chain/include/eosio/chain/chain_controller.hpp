@@ -339,6 +339,8 @@ namespace eosio { namespace chain {
          template<typename TransactionProcessing>
          transaction_trace wrap_transaction_processing( transaction_metadata&& data, TransactionProcessing trx_processing );
 
+         transaction_trace delayed_transaction_processing( const transaction_metadata& mtrx );
+
          /// Reset the object graph in-memory
          void _initialize_indexes();
          void _initialize_chain(contracts::chain_initializer& starter);
@@ -370,29 +372,19 @@ namespace eosio { namespace chain {
          void require_scope(const scope_name& name) const;
          void require_account(const account_name& name) const;
 
-         /**
-          * This method performs some consistency checks on a transaction.
-          * @throw transaction_exception if the transaction is invalid
-          */
-         template<typename T>
-         void validate_transaction(const T& trx) const {
-         try {
-            EOS_ASSERT(trx.actions.size() > 0, transaction_exception, "A transaction must have at least one action");
-
-            validate_expiration(trx);
-            validate_uniqueness(trx);
-            validate_tapos(trx);
-
-         } FC_CAPTURE_AND_RETHROW( (trx) ) }
-
          /// Validate transaction helpers @{
-         void validate_uniqueness(const transaction& trx)const;
-         void validate_tapos(const transaction& trx)const;
-         void validate_referenced_accounts(const transaction& trx)const;
-         void validate_expiration(const transaction& trx) const;
-         void record_transaction(const transaction& trx);
-         void update_resource_usage( transaction_trace& trace, const transaction_metadata& meta );
+         void validate_uniqueness( const transaction& trx )const;
+         void validate_tapos( const transaction& trx )const;
+         void validate_referenced_accounts( const transaction& trx )const;
+         void validate_not_expired( const transaction& trx )const;
+         void validate_expiration_not_too_far( const transaction& trx, fc::time_point reference_time )const;
+         void validate_transaction_with_minimal_state( const transaction& trx )const;
+         void validate_transaction_with_minimal_state( const packed_transaction& packed_trx, const transaction* trx_ptr = nullptr )const;
          /// @}
+
+         void record_transaction( const transaction& trx );
+         void update_resource_usage( transaction_trace& trace, const transaction_metadata& meta );
+
 
          /**
           * @brief Find the lowest authority level required for @ref authorizer_account to authorize a message of the

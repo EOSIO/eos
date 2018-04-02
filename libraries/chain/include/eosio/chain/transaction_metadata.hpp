@@ -44,6 +44,7 @@ class transaction_metadata {
       uint32_t                              shard_index     = 0;
       uint32_t                              bandwidth_usage = 0;
       time_point                            published;
+      fc::microseconds                      delay;
 
       // things for processing deferred transactions
       optional<account_name>                sender;
@@ -76,4 +77,3 @@ class transaction_metadata {
 };
 
 } } // eosio::chain
-

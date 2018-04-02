@@ -409,10 +409,10 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       // signing a transaction with only context_free_actions should not be allowed
       auto sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
 
-      BOOST_CHECK_EXCEPTION(push_transaction(trx), tx_irrelevant_sig,
+      BOOST_CHECK_EXCEPTION(push_transaction(trx), transaction_exception,
                             [](const fc::exception& e) {
                                edump((e.what()));
-                               return expect_assert_message(e, "signatures");
+                               return expect_assert_message(e, "A transaction must have at least one action");
                             }
       );
 
@@ -1254,7 +1254,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, tester) { try {
    auto get_result_uint64 = [&]() -> uint64_t {
       const auto& db = control->get_database();
       const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(testapi), N(testapi), N(testapi)));
-      
+
       FC_ASSERT(t_id != 0, "Table id not found");
 
       const auto& idx = db.get_index<key_value_index, by_scope_primary>();

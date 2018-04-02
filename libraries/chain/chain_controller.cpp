@@ -277,63 +277,26 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
    transaction_metadata   mtrx( packed_trx, get_chain_id(), head_block_time());
    //idump((transaction_header(mtrx.trx())));
 
-   auto delay = check_transaction_authorization(mtrx.trx(), packed_trx.signatures, packed_trx.context_free_data);
+   const transaction& trx = mtrx.trx();
+   validate_transaction_with_minimal_state( packed_trx, &trx );
+   validate_referenced_accounts(trx);
+   validate_uniqueness(trx);
+   auto delay = check_transaction_authorization(trx, packed_trx.signatures, packed_trx.context_free_data);
+   validate_expiration_not_too_far(trx, head_block_time() + delay );
+   mtrx.delay = delay;
+
    auto setup_us = fc::time_point::now() - start;
 
-   // enforce that the header is accurate as a commitment to net_usage
-   uint32_t cfa_sig_net_usage = (uint32_t)(packed_trx.context_free_data.size() + fc::raw::pack_size(packed_trx.signatures));
-   uint32_t net_usage_commitment = mtrx.trx().net_usage_words.value * 8U;
-   uint32_t packed_size = (uint32_t)packed_trx.data.size();
-   uint32_t net_usage = cfa_sig_net_usage + packed_size;
-   EOS_ASSERT(net_usage <= net_usage_commitment,
-                tx_resource_exhausted,
-                "Packed Transaction and associated data does not fit into the space committed to by the transaction's header! [usage=${usage},commitment=${commit}]",
-                ("usage", net_usage)("commit", net_usage_commitment));
-
    transaction_trace result(mtrx.id);
-   result._setup_profiling_us = setup_us;
 
    if( delay.count() == 0 ) {
-      result = _push_transaction(std::move(mtrx));
+      result = _push_transaction( std::move(mtrx) );
    } else {
-      auto delayed_transaction_processing = [&](transaction_metadata& meta) {
-         result.status = transaction_trace::delayed;
-         const auto trx = mtrx.trx();
-         FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
-
-         FC_ASSERT( trx.expiration > (head_block_time() + fc::milliseconds(2*config::block_interval_ms)),
-                                      "transaction is expired when created" );
-
-         // add in the system account authorization
-         action for_deferred = trx.actions[0];
-         bool found = false;
-         for (const auto& auth : for_deferred.authorization) {
-            if (auth.actor == config::system_account_name &&
-                auth.permission == config::active_name) {
-               found = true;
-               break;
-            }
-         }
-         if (!found)
-            for_deferred.authorization.push_back(permission_level{config::system_account_name, config::active_name});
-
-         apply_context context(*this, _db, for_deferred, mtrx);
-
-         time_point_sec execute_after = head_block_time();
-         execute_after += delay;
-         //TODO: !!! WHO GETS BILLED TO STORE THE DELAYED TX?
-         deferred_transaction dtrx(context.get_next_sender_id(), config::system_account_name, config::system_account_name, execute_after, trx);
-         FC_ASSERT( dtrx.execute_after < dtrx.expiration, "transaction expires before it can execute" );
-
-         result.deferred_transaction_requests.push_back(std::move(dtrx));
-
-         _create_generated_transaction(result.deferred_transaction_requests[0].get<deferred_transaction>());
-
-         return result;
-      };
-
-      result = wrap_transaction_processing( move(mtrx), delayed_transaction_processing);
+      result = wrap_transaction_processing( std::move(mtrx),
+                                            [this](transaction_metadata& meta) { return delayed_transaction_processing(meta); } );
    }
+
+   result._setup_profiling_us = setup_us;
 
    // notify anyone listening to pending transactions
    on_pending_transaction(_pending_transaction_metas.back(), packed_trx);
@@ -343,6 +306,67 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
    return result;
 
 } FC_CAPTURE_AND_RETHROW( (transaction_header(packed_trx.get_transaction())) ) }
+
+transaction_trace chain_controller::_push_transaction( transaction_metadata&& data )
+{ try {
+   auto process_apply_transaction = [this](transaction_metadata& meta) {
+      auto cyclenum = _pending_block->regions.back().cycles_summary.size() - 1;
+      //wdump((transaction_header(meta.trx())));
+
+      const auto& trx = meta.trx();
+
+      // Validate uniqueness and expiration again
+      validate_uniqueness(trx);
+      validate_not_expired(trx);
+
+      /// TODO: move _pending_cycle into db so that it can be undone if transation fails, for now we will apply
+      /// the transaction first so that there is nothing to undo... this only works because things are currently
+      /// single threaded
+      // set cycle, shard, region etc
+      meta.region_id = 0;
+      meta.cycle_index = cyclenum;
+      meta.shard_index = 0;
+      return _apply_transaction( meta );
+   };
+ //  wdump((transaction_header(data.trx())));
+   return wrap_transaction_processing( move(data), process_apply_transaction );
+} FC_CAPTURE_AND_RETHROW( ) }
+
+transaction_trace chain_controller::delayed_transaction_processing( const transaction_metadata& mtrx )
+{ try {
+   transaction_trace result(mtrx.id);
+   result.status = transaction_trace::delayed;
+
+   const auto& trx = mtrx.trx();
+
+   // add in the system account authorization
+   action for_deferred = trx.actions[0];
+   bool found = false;
+   for (const auto& auth : for_deferred.authorization) {
+      if (auth.actor == config::system_account_name &&
+          auth.permission == config::active_name) {
+         found = true;
+         break;
+      }
+   }
+   if (!found)
+      for_deferred.authorization.push_back(permission_level{config::system_account_name, config::active_name});
+
+   apply_context context(*this, _db, for_deferred, mtrx); // TODO: Better solution for getting next sender_id needed.
+
+   time_point_sec execute_after = head_block_time();
+   execute_after += mtrx.delay;
+   //TODO: !!! WHO GETS BILLED TO STORE THE DELAYED TX?
+   deferred_transaction dtrx(context.get_next_sender_id(), config::system_account_name, config::system_account_name, execute_after, trx);
+   FC_ASSERT( dtrx.execute_after < dtrx.expiration, "transaction expires before it can execute" );
+
+   result.deferred_transaction_requests.push_back(std::move(dtrx));
+
+   _create_generated_transaction(result.deferred_transaction_requests[0].get<deferred_transaction>());
+
+   return result;
+
+} FC_CAPTURE_AND_RETHROW( ) }
 
 static void record_locks_for_data_access(transaction_trace& trace, flat_set<shard_lock>& read_locks, flat_set<shard_lock>& write_locks ) {
    // Precondition: read_locks and write_locks do not intersect.
@@ -379,26 +403,6 @@ static void record_locks_for_data_access(transaction_trace& trace, flat_set<shar
    // Postcondition: read_locks and write_locks do not intersect
    // Postcondition: trace.read_locks and trace.write_locks do not intersect
 }
-
-transaction_trace chain_controller::_push_transaction( transaction_metadata&& data )
-{ try {
-   auto process_apply_transaction = [this](transaction_metadata& meta) {
-      auto cyclenum = _pending_block->regions.back().cycles_summary.size() - 1;
-      //wdump((transaction_header(meta.trx())));
-
-      /// TODO: move _pending_cycle into db so that it can be undone if transation fails, for now we will apply
-      /// the transaction first so that there is nothing to undo... this only works because things are currently
-      /// single threaded
-      // set cycle, shard, region etc
-      meta.region_id = 0;
-      meta.cycle_index = cyclenum;
-      meta.shard_index = 0;
-      return _apply_transaction( meta );
-   };
- //  wdump((transaction_header(data.trx())));
-   return wrap_transaction_processing( move(data), process_apply_transaction );
-} FC_CAPTURE_AND_RETHROW( ) }
-
 
 block_header chain_controller::head_block_header() const
 {
@@ -517,6 +521,7 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
    auto &generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
    const auto &generated_index = generated_transaction_idx.indices().get<by_sender_id>();
 
+   // TODO: Check for conflicts in deferred_transaction_requests between shards
    for (const auto&st: res.shard_traces) {
       for (const auto &tr: st.transaction_traces) {
          for (const auto &req: tr.deferred_transaction_requests) {
@@ -725,13 +730,6 @@ void chain_controller::__apply_block(const signed_block& next_block)
 
    const producer_object& signing_producer = validate_block_header(skip, next_block);
 
-   /*
-   FC_ASSERT((skip & skip_merkle_check)
-             || next_block.transaction_merkle_root == next_block.calculate_merkle_root(),
-             "", ("next_block.transaction_merkle_root", next_block.transaction_merkle_root)
-             ("calc",next_block.calculate_merkle_root())("next_block",next_block)("id",next_block.id()));
-             */
-
    /// regions must be listed in order
    for( uint32_t i = 1; i < next_block.regions.size(); ++i )
       FC_ASSERT( next_block.regions[i-1].region < next_block.regions[i].region );
@@ -748,9 +746,10 @@ void chain_controller::__apply_block(const signed_block& next_block)
    }
    map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
-
       input_metas.emplace_back(t, chain_id_type(), next_block.timestamp);
-      input_metas.back().signing_keys = input_metas.back().trx().get_signature_keys( t.signatures, chain_id_type(), t.context_free_data, false );
+      validate_transaction_with_minimal_state( t, &input_metas.back().trx() );
+      if( should_check_signatures() )
+         input_metas.back().signing_keys = input_metas.back().trx().get_signature_keys( t.signatures, chain_id_type(), t.context_free_data, false );
       trx_index[input_metas.back().id] =  input_metas.size() - 1;
    }
 
@@ -778,7 +777,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
             EOS_ASSERT(!shard.empty(), tx_empty_shard,"region[${r_index}] cycle[${c_index}] shard[${s_index}] is empty",
                        ("r_index",region_index)("c_index",cycle_index)("s_index",shard_index));
 
-            // Validate that the shards scopes are correct and available
+            // Validate that the shards locks are unique and sorted
             validate_shard_locks(shard.read_locks,  "read");
             validate_shard_locks(shard.write_locks, "write");
 
@@ -808,19 +807,25 @@ void chain_controller::__apply_block(const signed_block& next_block)
                 auto make_metadata = [&]() -> transaction_metadata* {
                   auto itr = trx_index.find(receipt.id);
                   if( itr != trx_index.end() ) {
-                     const auto& trx_meta = input_metas.at(itr->second);
+                     auto& trx_meta = input_metas.at(itr->second);
                      const auto& trx      = trx_meta.trx();
                      validate_referenced_accounts(trx);
+                     validate_uniqueness(trx);
                      FC_ASSERT( !should_check_signatures() || trx_meta.signing_keys,
                                 "signing_keys missing from transaction_metadata of an input transaction" );
-                     check_authorization( trx.actions, trx.context_free_actions,
-                                          should_check_signatures() ? *trx_meta.signing_keys : flat_set<public_key_type>() );
+                     auto delay = check_authorization( trx.actions, trx.context_free_actions,
+                                                       should_check_signatures() ? *trx_meta.signing_keys : flat_set<public_key_type>() );
+                     validate_expiration_not_too_far(trx, head_block_time() + delay );
+
+                     trx_meta.delay = delay;
                      return &input_metas.at(itr->second);
                   } else {
                      const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
                      if (gtrx != nullptr) {
                         auto trx = fc::raw::unpack<deferred_transaction>(gtrx->packed_trx.data(), gtrx->packed_trx.size());
                         FC_ASSERT( trx.execute_after <= head_block_time() , "deferred transaction executed prematurely" );
+                        validate_not_expired( trx );
+                        validate_uniqueness( trx );
                         _temp.emplace(trx, gtrx->published, trx.sender, trx.sender_id, gtrx->packed_trx.data(), gtrx->packed_trx.size() );
                         _destroy_generated_transaction(*gtrx);
                         return &*_temp;
@@ -833,6 +838,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                };
 
                auto *mtrx = make_metadata();
+
                mtrx->region_id = r.region;
                mtrx->cycle_index = cycle_index;
                mtrx->shard_index = shard_index;
@@ -840,12 +846,15 @@ void chain_controller::__apply_block(const signed_block& next_block)
                mtrx->allowed_write_locks.emplace(&shard.write_locks);
                mtrx->processing_deadline = processing_deadline;
 
-               s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
-               record_locks_for_data_access(s_trace.transaction_traces.back(), used_read_locks, used_write_locks);
-
-               EOS_ASSERT(receipt.status == s_trace.transaction_traces.back().status, tx_receipt_inconsistent_status,
-                          "Received status of transaction from block (${rstatus}) does not match the applied transaction's status (${astatus})",
-                          ("rstatus",receipt.status)("astatus",s_trace.transaction_traces.back().status));
+               if( mtrx->delay.count() == 0 ) {
+                  s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
+                  record_locks_for_data_access(s_trace.transaction_traces.back(), used_read_locks, used_write_locks);
+               } else {
+                  s_trace.transaction_traces.emplace_back(delayed_transaction_processing(*mtrx));
+               }
+               EOS_ASSERT( receipt.status == s_trace.transaction_traces.back().status, tx_receipt_inconsistent_status,
+                           "Received status of transaction from block (${rstatus}) does not match the applied transaction's status (${astatus})",
+                           ("rstatus",receipt.status)("astatus",s_trace.transaction_traces.back().status) );
 
             } /// for each transaction id
 
@@ -1249,19 +1258,55 @@ void chain_controller::validate_referenced_accounts( const transaction& trx )con
    }
 } FC_CAPTURE_AND_RETHROW() }
 
-void chain_controller::validate_expiration( const transaction& trx ) const
+void chain_controller::validate_not_expired( const transaction& trx )const
+{ try {
+   fc::time_point now = head_block_time();
+
+   EOS_ASSERT( now <= time_point(trx.expiration),
+               expired_tx_exception,
+               "Transaction is expired, now is ${now}, expiration is ${trx.exp}",
+               ("now",now)("trx.exp",trx.expiration) );
+} FC_CAPTURE_AND_RETHROW((trx)) }
+
+void chain_controller::validate_expiration_not_too_far( const transaction& trx, fc::time_point reference_time )const
 { try {
    fc::time_point now = head_block_time();
    const auto& chain_configuration = get_global_properties().configuration;
 
-   EOS_ASSERT( time_point(trx.expiration) <= now + fc::seconds(chain_configuration.max_transaction_lifetime),
-               tx_exp_too_far_exception, "Transaction expiration is too far in the future, expiration is ${trx.expiration} but max expiration is ${max_til_exp}",
-              ("trx.expiration",trx.expiration)("now",now)
-              ("max_til_exp",chain_configuration.max_transaction_lifetime));
-   EOS_ASSERT( now <= time_point(trx.expiration), expired_tx_exception, "Transaction is expired, now is ${now}, expiration is ${trx.exp}",
-              ("now",now)("trx.exp",trx.expiration));
+   EOS_ASSERT( time_point(trx.expiration) <= reference_time + fc::seconds(chain_configuration.max_transaction_lifetime),
+               tx_exp_too_far_exception,
+               "Transaction expiration is too far in the future, expiration is ${trx.expiration} but max expiration is ${max_til_exp}",
+               ("trx.expiration",trx.expiration)("now",now)("max_til_exp",chain_configuration.max_transaction_lifetime) );
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
+
+void chain_controller::validate_transaction_with_minimal_state( const transaction& trx )const
+{ try {
+   EOS_ASSERT(trx.actions.size() > 0, transaction_exception, "A transaction must have at least one action");
+   validate_not_expired(trx);
+   validate_tapos(trx);
+} FC_CAPTURE_AND_RETHROW((trx)) }
+
+void chain_controller::validate_transaction_with_minimal_state( const packed_transaction& packed_trx, const transaction* trx_ptr )const
+{ try {
+   transaction temp;
+   if( trx_ptr == nullptr ) {
+      temp = packed_trx.get_transaction();
+      trx_ptr = &temp;
+   }
+
+   validate_transaction_with_minimal_state(*trx_ptr);
+
+   // enforce that the header is accurate as a commitment to net_usage
+   uint32_t cfa_sig_net_usage = (uint32_t)(packed_trx.context_free_data.size() + fc::raw::pack_size(packed_trx.signatures));
+   uint32_t net_usage_commitment = trx_ptr->net_usage_words.value * 8U;
+   uint32_t packed_size = (uint32_t)packed_trx.data.size();
+   uint32_t net_usage = cfa_sig_net_usage + packed_size;
+   EOS_ASSERT(net_usage <= net_usage_commitment,
+                tx_resource_exhausted,
+                "Packed Transaction and associated data does not fit into the space committed to by the transaction's header! [usage=${usage},commitment=${commit}]",
+                ("usage", net_usage)("commit", net_usage_commitment));
+} FC_CAPTURE_AND_RETHROW((packed_trx)) }
 
 void chain_controller::require_scope( const scope_name& scope )const {
    switch( uint64_t(scope) ) {
@@ -1836,8 +1881,6 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
 { try {
    transaction_trace result(meta.id);
 
-   validate_transaction( meta.trx() );
-
    for (const auto &act : meta.trx().context_free_actions) {
       FC_ASSERT( act.authorization.size() == 0, "context free actions cannot require authorization" );
       apply_context context(*this, _db, act, meta);
@@ -2060,7 +2103,6 @@ transaction_trace chain_controller::wrap_transaction_processing( transaction_met
    auto temp_session = _db.start_undo_session(true);
 
    // for now apply the transaction serially but schedule it according to those invariants
-   validate_referenced_accounts(trx);
 
    auto result = trx_processing(data);
 
