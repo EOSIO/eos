@@ -120,6 +120,9 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_execute, eosio_msig_tester ) try {
                                                 ("proposal_name", "first")
                                                 ("executer",      "alice")
                         ));
+
+   auto traces = control->push_deferred_transactions( true );
+   BOOST_CHECK_EQUAL( 1, traces.size() );
 } FC_LOG_AND_RETHROW()
 
 
@@ -189,7 +192,10 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_by_two, eosio_msig_tester ) try {
                                                 ("proposal_name", "first")
                                                 ("executer",      "alice")
                         ));
+   auto traces = control->push_deferred_transactions( true );
+   BOOST_CHECK_EQUAL( 1, traces.size() );
 } FC_LOG_AND_RETHROW()
+
 
 BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, eosio_msig_tester ) try {
    auto trx = reqauth("alice", vector<permission_level>{ { N(alice), config::active_name },  { N(bob), config::active_name } } );
