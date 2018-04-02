@@ -194,8 +194,8 @@ void apply_eosio_updateauth(apply_context& context) {
 
    auto update = context.act.data_as<updateauth>();
    EOS_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
-   EOS_ASSERT(update.permission != config::eosio_any_name, action_validate_exception,
-              "Cannot create authority for reserved 'eosio.any' permission name" );
+   EOS_ASSERT( update.permission.to_string().find( "eosio." ) != 0, action_validate_exception,
+               "Permission names that start with 'eosio.' are reserved" );
    EOS_ASSERT(update.permission != update.parent, action_validate_exception, "Cannot set an authority as its own parent");
    db.get<account_object, by_name>(update.account);
    EOS_ASSERT(validate(update.data), action_validate_exception,
