@@ -52,7 +52,7 @@ namespace proxy {
 
          transaction out;
          out.actions.emplace_back(permission_level{self, N(active)}, N(currency), N(transfer), new_transfer);
-         out.send(id, now() + code_config.delay);
+         out.send(id, 0, now() + code_config.delay);
       }
    }
 
@@ -62,7 +62,7 @@ namespace proxy {
       configs::get(code_config, self);
       code_config.owner = params.owner;
       code_config.delay = params.delay;
-      eosio::print("Setting owner to: ", name(params.owner), " with delay: ", params.delay, "\n");
+      eosio::print("Setting owner to: ", name{params.owner}, " with delay: ", params.delay, "\n");
       configs::store(code_config, self);
    }
 
@@ -77,7 +77,7 @@ namespace proxy {
       configs::store(code_config, self);
 
       eosio::print("Resending Transaction: ", failed_dtrx.sender_id, " as ", id, "\n");
-      failed_dtrx.send(id, now() + code_config.delay);
+      failed_dtrx.send(id, 0, now() + code_config.delay);
    }
 }
 

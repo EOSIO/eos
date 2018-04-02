@@ -53,7 +53,9 @@
 	fi
 	
 	printf "\t${UPDATE}\n"
-	DEP_ARRAY=( git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 bzip2-devel.x86_64 openssl-devel.x86_64 gmp.x86_64 gmp-devel.x86_64 libstdc++72.x86_64 python36-devel.x86_64 libedit-devel.x86_64 ncurses-devel.x86_64 swig.x86_64 )
+	DEP_ARRAY=( git gcc72.x86_64 gcc72-c++.x86_64 autoconf automake libtool make bzip2 \
+	bzip2-devel.x86_64 openssl-devel.x86_64 gmp.x86_64 gmp-devel.x86_64 libstdc++72.x86_64 \
+	python36-devel.x86_64 libedit-devel.x86_64 ncurses-devel.x86_64 swig.x86_64 )
 	COUNT=1
 	DISPLAY=""
 	DEP=""
@@ -161,7 +163,7 @@
 tee > /dev/null ${MONGOD_CONF} <<mongodconf
 systemLog:
  destination: file
- path: ${HOME}/opt/mongodb/log/mongod.log
+ path: ${HOME}/opt/mongodb/log/mongodb.log
  logAppend: true
  logRotate: reopen
 net:

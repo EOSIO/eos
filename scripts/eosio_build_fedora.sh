@@ -58,8 +58,10 @@
 	fi
 	
 	printf "\t${UPDATE}\n"
-	DEP_ARRAY=( git gcc.x86_64 gcc-c++.x86_64 autoconf automake libtool make cmake.x86_64 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++-devel.x86_64 python3-devel.x86_64 mongodb.x86_64 mongodb-server.x86_64 libedit.x86_64 ncurses-devel.x86_64 swig.x86_64 )
-	DCOUNT=0
+	DEP_ARRAY=( git gcc.x86_64 gcc-c++.x86_64 autoconf automake libtool make cmake.x86_64 \
+	bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 libstdc++-devel.x86_64 \
+	python3-devel.x86_64 mongodb.x86_64 mongodb-server.x86_64 libedit.x86_64 \
+	graphviz.x86_64 doxygen.x86_64 ncurses-devel.x86_64 swig.x86_64 )
 	COUNT=1
 	DISPLAY=""
 	DEP=""
@@ -75,14 +77,13 @@
 			DISPLAY="${DISPLAY}${COUNT}. ${DEP_ARRAY[$i]}\n\t"
 			printf "\tPackage ${DEP_ARRAY[$i]} ${bldred} NOT ${txtrst} found.\n"
 			let COUNT++
-			let DCOUNT++
 		else
 			printf "\tPackage ${DEP_ARRAY[$i]} found.\n"
 			continue
 		fi
 	done		
 
-	if [ ${DCOUNT} -ne 0 ]; then
+	if [ ${COUNT} -gt 1 ]; then
 		printf "\n\tThe following dependencies are required to install EOSIO.\n"
 		printf "\n\t$DISPLAY\n\n"
 		printf "\tDo you wish to install these dependencies?\n"
@@ -107,7 +108,7 @@
 		printf "\n\tNo required YUM dependencies to install.\n"
 	fi
 
-	printf "\n\tChecking for boost libraries\n"
+	printf "\n\tChecking boost library installation.\n"
 	if [ ! -d ${HOME}/opt/boost_1_66_0 ]; then
 		# install boost
 		printf "\tInstalling boost libraries\n"
@@ -123,7 +124,7 @@
 		printf "\tBoost 1.66 found at ${HOME}/opt/boost_1_66_0\n"
 	fi
 
-	printf "\n\tChecking for MongoDB C++ driver.\n"
+	printf "\n\tChecking MongoDB C++ driver installation.\n"
     if [ ! -e /usr/local/lib/libmongocxx-static.a ]; then
 		printf "\n\tInstalling MongoDB C & C++ drivers.\n"
 		cd ${TEMP_DIR}
@@ -190,8 +191,7 @@
 		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx-static.a.\n"
 	fi
 
-	printf "\n\tChecking for secp256k1-zkp\n"
-    # install secp256k1-zkp (Cryptonomex branch)
+	printf "\n\tChecking secp256k1-zkp installation.\n"
     if [ ! -e /usr/local/lib/libsecp256k1.a ]; then
 		printf "\tInstalling secp256k1-zkp (Cryptonomex branch)\n"
 		cd ${TEMP_DIR}
@@ -216,9 +216,8 @@
 		printf "\tsecp256k1 found\n"
 	fi
 
-	printf "\n\tChecking for LLVM with WASM support.\n"
+	printf "\n\tChecking LLVM with WASM support installation.\n"
 	if [ ! -d ${HOME}/opt/wasm/bin ]; then
-		# Build LLVM and clang with EXPERIMENTAL WASM support:
 		printf "\tInstalling LLVM & WASM\n"
 		cd ${TEMP_DIR}
 		mkdir llvm-compiler  2>/dev/null
@@ -229,7 +228,8 @@
 		cd ..
 		mkdir build
 		cd build
-		cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm -DLLVM_ENABLE_RTTI=1 -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
+		cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=${HOME}/opt/wasm -DLLVM_ENABLE_RTTI=1 \
+		-DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release ../
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
 			printf "\tExiting now.\n\n"

@@ -7,12 +7,13 @@ add_library( eosio_chain
              name.cpp
              transaction.cpp
              block.cpp
+             block_trace.cpp
              wast_to_wasm.cpp
              wasm_interface.cpp
              wasm_eosio_validation.cpp
              wasm_eosio_injection.cpp
              apply_context.cpp
-             rate_limiting.cpp
+             resource_limits.cpp
 
              fork_database.cpp
              get_config.cpp
@@ -46,10 +47,5 @@ target_include_directories( eosio_chain
 if(MSVC)
   set_source_files_properties( db_init.cpp db_block.cpp database.cpp block_log.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
 endif(MSVC)
-
-add_subdirectory(test)
-
-#add_executable( test test.cpp )
-#target_link_libraries( test eosio_chain ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} )
 
 
