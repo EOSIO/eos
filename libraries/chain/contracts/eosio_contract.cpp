@@ -262,7 +262,7 @@ void apply_eosio_updateauth(apply_context& context) {
          po.auth = update.data;
          po.parent = parent_id;
          po.last_updated = context.controller.head_block_time();
-         po.delay = time_point_sec(update.delay.convert_to<uint64_t>());
+         po.delay = fc::seconds(update.delay);
       });
 
       int64_t new_size = (int64_t)(sizeof(permission_object) + permission->auth.get_billable_size());
@@ -281,7 +281,7 @@ void apply_eosio_updateauth(apply_context& context) {
          po.auth = update.data;
          po.parent = parent_id;
          po.last_updated = context.controller.head_block_time();
-         po.delay = time_point_sec(update.delay.convert_to<uint64_t>());
+         po.delay = fc::seconds(update.delay);
       });
 
       resources.add_account_ram_usage(

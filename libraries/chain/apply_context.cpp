@@ -205,8 +205,8 @@ void apply_context::execute_inline( action&& a ) {
       if( a.account != receiver ) {
          const auto delay = controller.check_authorization({a}, vector<action>(), flat_set<public_key_type>(), false, {receiver});
          FC_ASSERT( trx_meta.published + delay <= controller.head_block_time(),
-                    "inline action uses a permission that imposes a delay that is not met, add an action of mindelay with delay of atleast ${delay}",
-                    ("delay", delay.sec_since_epoch()) );
+                    "inline action uses a permission that imposes a delay that is not met, add an action of mindelay with delay of at least ${delay} seconds",
+                    ("delay", delay.to_seconds()) );
       }
    }
    _inline_actions.emplace_back( move(a) );
@@ -253,8 +253,8 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
          if( check_auth ) {
             const auto delay = controller.check_authorization(trx.actions, vector<action>(), flat_set<public_key_type>(), false, {receiver});
             FC_ASSERT( trx_meta.published + delay <= controller.head_block_time(),
-                       "deferred transaction uses a permission that imposes a delay that is not met, add an action of mindelay with delay of atleast ${delay}",
-                       ("delay", delay.sec_since_epoch()) );
+                       "deferred transaction uses a permission that imposes a delay that is not met, add an action of mindelay with delay of at least ${delay} seconds",
+                       ("delay", delay.to_seconds()) );
          }
       }
 

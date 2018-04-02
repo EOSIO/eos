@@ -290,14 +290,14 @@ namespace eosio { namespace chain {
           * @param allow_unused_signatures - true if method should not assert on unused signatures
           * @param provided_accounts - the set of accounts which have authorized the transaction (presumed to be owner)
           *
-          * @return time_point set to the max delay that this authorization requires to complete
+          * @return fc::microseconds set to the max delay that this authorization requires to complete
           */
-         time_point check_authorization( const vector<action>& actions,
-                                         const vector<action>& context_free_actions,
-                                         const flat_set<public_key_type>& provided_keys,
-                                         bool                             allow_unused_signatures = false,
-                                         flat_set<account_name>           provided_accounts = flat_set<account_name>()
-                                         )const;
+         fc::microseconds check_authorization( const vector<action>& actions,
+                                               const vector<action>& context_free_actions,
+                                               const flat_set<public_key_type>& provided_keys,
+                                               bool                             allow_unused_signatures = false,
+                                               flat_set<account_name>           provided_accounts = flat_set<account_name>()
+                                             )const;
 
          /**
           * @param account - the account owner of the permission
@@ -361,10 +361,10 @@ namespace eosio { namespace chain {
             return f();
          }
 
-         time_point check_transaction_authorization(const transaction& trx,
-                                                    const vector<signature_type>& signatures,
-                                                    const vector<bytes>&  cfd = vector<bytes>(),
-                                                    bool allow_unused_signatures = false)const;
+         fc::microseconds check_transaction_authorization(const transaction& trx,
+                                                          const vector<signature_type>& signatures,
+                                                          const vector<bytes>&  cfd = vector<bytes>(),
+                                                          bool allow_unused_signatures = false)const;
 
 
          void require_scope(const scope_name& name) const;
