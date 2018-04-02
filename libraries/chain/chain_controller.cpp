@@ -198,6 +198,18 @@ bool chain_controller::_push_block(const signed_block& new_block)
             // push all blocks on the new fork
             for (auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
                 ilog("pushing blocks from fork ${n} ${id}", ("n",(*ritr)->data.block_num())("id",(*ritr)->data.id()));
+                {
+                   uint32_t delta = 0;
+                   if (ritr != branches.first.rbegin()) {
+                      delta = (*ritr)->data.timestamp.slot - (*std::prev(ritr))->data.timestamp.slot;
+                   } else {
+                      optional<signed_block> prev = fetch_block_by_id((*ritr)->data.previous);
+                      if (prev)
+                         delta = (*ritr)->data.timestamp.slot - prev->timestamp.slot;
+                   }
+                   if (delta > 1)
+                      wlog("Number of missed blocks: ${num}", ("num", delta-1));
+                }
                 optional<fc::exception> except;
                 try {
                    auto session = _db.start_undo_session(true);
