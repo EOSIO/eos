@@ -205,7 +205,7 @@ bool chain_controller::_push_block(const signed_block& new_block)
                    } else {
                       optional<signed_block> prev = fetch_block_by_id((*ritr)->data.previous);
                       if (prev)
-                         uint32_t delta = (*ritr)->data.timestamp.slot - prev->timestamp.slot;
+                         delta = (*ritr)->data.timestamp.slot - prev->timestamp.slot;
                    }
                    if (delta > 1)
                       wlog("Number of missed blocks: ${num}", ("num", delta-1));
