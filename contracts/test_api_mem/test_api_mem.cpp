@@ -9,14 +9,8 @@
 #include "test_memory.cpp"
 
 extern "C" {
-
-    void init()  {
-
-    }
-
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
-
-      //eosio::print("==> CONTRACT: ", code, " ", action, "\n");
+      require_auth(code);
 
       //test_extended_memory
       WASM_TEST_HANDLER(test_extended_memory, test_initial_buffer);

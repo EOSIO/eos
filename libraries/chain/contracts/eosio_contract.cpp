@@ -99,12 +99,10 @@ void apply_eosio_newaccount(apply_context& context) {
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
-
 void apply_eosio_setcode(apply_context& context) {
    auto& db = context.mutable_db;
    auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
    auto  act = context.act.data_as<setcode>();
-
    context.require_authorization(act.account);
    context.require_write_lock( config::eosio_auth_scope );
 
@@ -156,7 +154,6 @@ void apply_eosio_setabi(apply_context& context) {
    if ( act.account == eosio::chain::config::system_account_name ) {
       act.abi = chain_initializer::eos_contract_abi(act.abi);
    }
-
    /// if an ABI is specified make sure it is well formed and doesn't
    /// reference any undefined types
    abi_serializer(act.abi).validate();
@@ -469,7 +466,7 @@ void apply_eosio_postrecovery(apply_context& context) {
       .data = recover_act.data
    }, update);
 
-   uint32_t request_id = context.get_next_sender_id();
+   auto& request_id = context.trx_meta.id;
 
    auto record_data = mutable_variant_object()
       ("account", account)
@@ -479,7 +476,7 @@ void apply_eosio_postrecovery(apply_context& context) {
 
    deferred_transaction dtrx;
    dtrx.sender = config::system_account_name;
-   dtrx.sender_id = request_id;
+   dtrx.sender_id = static_cast<uint128_t>(account);
    dtrx.payer = config::system_account_name; // NOTE: we pre-reserve capacity for this during create account
    dtrx.region = 0;
    dtrx.execute_after = context.controller.head_block_time() + delay_lock;
@@ -544,7 +541,7 @@ void apply_eosio_vetorecovery(apply_context& context) {
    FC_ASSERT(maybe_recovery, "No pending recovery found for account ${account}", ("account", account));
    auto recovery = *maybe_recovery;
 
-   context.cancel_deferred(recovery["request_id"].as<uint32_t>());
+   context.cancel_deferred(recovery["request_id"].as<transaction_id_type>());
 
    remove_pending_recovery(context, account);
    context.console_append_formatted("Recovery for account ${account} vetoed!\n", mutable_variant_object()("account", account));
@@ -552,7 +549,6 @@ void apply_eosio_vetorecovery(apply_context& context) {
 
 void apply_eosio_canceldelay(apply_context& context) {
    auto cancel = context.act.data_as<canceldelay>();
-   //const auto sender_id = cancel.sender_id.convert_to<uint32_t>();
    const auto& trx_id = cancel.trx_id;
 
    const auto& generated_transaction_idx = context.controller.get_database().get_index<generated_transaction_multi_index>();

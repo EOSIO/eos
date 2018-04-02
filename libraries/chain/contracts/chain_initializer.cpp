@@ -34,7 +34,6 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
 
 #define SET_APP_HANDLER( contract, scope, action, nspace ) \
    chain._set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(contracts::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
-
    SET_APP_HANDLER( eosio, eosio, newaccount, eosio );
    SET_APP_HANDLER( eosio, eosio, setcode, eosio );
    SET_APP_HANDLER( eosio, eosio, setabi, eosio );
@@ -151,13 +150,13 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
 
    eos_abi.structs.emplace_back( struct_def {
       "passrecovery", "", {
-         {"account", "account_name"},
+         {"account", "name"},
       }
    });
 
    eos_abi.structs.emplace_back( struct_def {
       "vetorecovery", "", {
-         {"account", "account_name"},
+         {"account", "name"},
       }
    });
 
@@ -178,7 +177,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.structs.emplace_back( struct_def {
       "pending_recovery", "", {
          {"account",    "name"},
-         {"request_id", "uint32"},
+         {"request_id", "checksum256"},
          {"update",     "updateauth"},
          {"memo",       "string"}
       }
@@ -238,7 +237,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"expiration", "time_point_sec"},
          {"region", "uint16"},
          {"ref_block_num", "uint16"},
-         {"ref_block_prefix", "uint16"},
+         {"ref_block_prefix", "uint32"},
          {"net_usage_words", "varuint32"},
          {"kcpu_usage", "varuint32"},
          {"delay_sec", "varuint32"}
