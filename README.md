@@ -220,10 +220,10 @@ EOS comes with a number of programs you can find in `~/eos/build/programs`. They
 After successfully building the project, the `nodeos` binary should be present in the `build/programs/nodeos` folder.  `nodeos` can be run directly from the `build` folder using `programs/nodeos/nodeos`. The instructions here assume 
 running from the `build` folder.
 
-`nodeos` uses a custom configuration folder, the location of this folder is determined by your system. 
+`nodeos` uses a custom configuration fold	er, the location of this folder is determined by your system. 
 
 - Mac OS: `~/Library/Application Support/eosio`
-- Linux: `~/.local/share/`
+- Linux: `~/.local/share/eosio`
 
 The build seeds this folder with a default `genesis.json` file.  Alternatively, a configuration folder can be specified using the `--config-dir` command line argument to `nodeos`.  If you use this option, you will need to manually copy a genesis.json file to your config folder.
 
