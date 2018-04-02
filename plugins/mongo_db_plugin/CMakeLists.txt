@@ -19,30 +19,30 @@ if(BUILD_MONGO_DB_PLUGIN)
       # link step for all executables using this archive must include the
       # mongo-cxx-driver libraries libmongocxx and libbsoncxx.
 
-      find_package(libbsoncxx REQUIRED)
-      message(STATUS "Found bsoncxx headers: ${LIBBSONCXX_INCLUDE_DIRS}")
+      find_package(libbsoncxx-static REQUIRED)
+      message(STATUS "Found bsoncxx headers: ${LIBBSONCXX_STATIC_INCLUDE_DIRS}")
 
       # mongo-cxx-driver 3.2 release altered LIBBSONCXX_LIBRARIES semantics. Instead of library names,
       #  it now hold library paths.
-      if((LIBBSONCXX_VERSION_MAJOR LESS 3) OR ((LIBBSONCXX_VERSION_MAJOR EQUAL 3) AND (LIBBSONCXX_VERSION_MINOR LESS 2)))
-        find_library(EOS_LIBBSONCXX ${LIBBSONCXX_LIBRARIES}
-          PATHS ${LIBBSONCXX_LIBRARY_DIRS} NO_DEFAULT_PATH)
+      if((LIBBSONCXX_STATIC_VERSION_MAJOR LESS 3) OR ((LIBBSONCXX_STATIC_VERSION_MAJOR EQUAL 3) AND (LIBBSONCXX_STATIC_VERSION_MINOR LESS 2)))
+        find_library(EOS_LIBBSONCXX ${LIBBSONCXX_STATIC_LIBRARIES}
+          PATHS ${LIBBSONCXX_STATIC_LIBRARY_DIRS} NO_DEFAULT_PATH)
       else()
-        set(EOS_LIBBSONCXX ${LIBBSONCXX_LIBRARIES})
+        set(EOS_LIBBSONCXX ${LIBBSONCXX_STATIC_LIBRARIES})
       endif()
 
       message(STATUS "Found bsoncxx library: ${EOS_LIBBSONCXX}")
 
-      find_package(libmongocxx REQUIRED)
-      message(STATUS "Found mongocxx headers: ${LIBMONGOCXX_INCLUDE_DIRS}")
+      find_package(libmongocxx-static REQUIRED)
+      message(STATUS "Found mongocxx headers: ${LIBMONGOCXX_STATIC_INCLUDE_DIRS}")
 
       # mongo-cxx-driver 3.2 release altered LIBBSONCXX_LIBRARIES semantics. Instead of library names,
       #  it now hold library paths.
-      if((LIBMONGOCXX_VERSION_MAJOR LESS 3) OR ((LIBMONGOCXX_VERSION_MAJOR EQUAL 3) AND (LIBMONGOCXX_VERSION_MINOR LESS 2)))
-        find_library(EOS_LIBMONGOCXX ${LIBMONGOCXX_LIBRARIES}
-          PATHS ${LIBMONGOCXX_LIBRARY_DIRS} NO_DEFAULT_PATH)
+      if((LIBMONGOCXX_STATIC_VERSION_MAJOR LESS 3) OR ((LIBMONGOCXX_STATIC_VERSION_MAJOR EQUAL 3) AND (LIBMONGOCXX_STATIC_VERSION_MINOR LESS 2)))
+        find_library(EOS_LIBMONGOCXX ${LIBMONGOCXX_STATIC_LIBRARIES}
+          PATHS ${LIBMONGOCXX_STATIC_LIBRARY_DIRS} NO_DEFAULT_PATH)
       else()
-        set(EOS_LIBMONGOCXX ${LIBMONGOCXX_LIBRARIES})
+        set(EOS_LIBMONGOCXX ${LIBMONGOCXX_STATIC_LIBRARIES})
       endif()
 
       message(STATUS "Found mongocxx library: ${EOS_LIBMONGOCXX}")
@@ -58,7 +58,7 @@ if(BUILD_MONGO_DB_PLUGIN)
       #
       # git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
       # cd mongo-cxx-driver/build
-      # cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+      # cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_SHARED_LIBS=OFF ..
       # sudo make EP_mnmlstc_core
       # make
       # sudo make install
@@ -67,20 +67,18 @@ if(BUILD_MONGO_DB_PLUGIN)
   endif()
 
   target_include_directories(mongo_db_plugin
-          PRIVATE ${LIBMONGOCXX_INCLUDE_DIRS} ${LIBBSONCXX_INCLUDE_DIRS}
+          PRIVATE ${LIBMONGOCXX_STATIC_INCLUDE_DIRS} ${LIBBSONCXX_STATIC_INCLUDE_DIRS}
           PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
           )
 
   target_compile_definitions(mongo_db_plugin
-    PRIVATE ${LIBMONGOCXX_DEFINITIONS} ${LIBBSONCXX_DEFINITIONS}
+    PRIVATE ${LIBMONGOCXX_STATIC_DEFINITIONS} ${LIBBSONCXX_STATIC_DEFINITIONS}
     )
 
   target_link_libraries(mongo_db_plugin
           PUBLIC chain_plugin eosio_chain appbase
           ${EOS_LIBMONGOCXX} ${EOS_LIBBSONCXX}
           )
-
-  set(CPACK_DEBIAN_PACKAGE_DEPENDS "libmongoc-1.0-0 (>= 1.3)" PARENT_SCOPE)
 else()
   message("mongo_db_plugin not selected and will be omitted.")
 endif()

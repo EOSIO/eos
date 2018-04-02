@@ -6,16 +6,16 @@
 namespace eosio {
 
    struct blockchain_parameters {
-      uint32_t target_block_size;
-      uint32_t max_block_size;
-
-      uint32_t target_block_acts_per_scope;
-      uint32_t max_block_acts_per_scope;
-
-      uint32_t target_block_acts; ///< regardless of the amount of parallelism, this defines target compute time per block
-      uint32_t max_block_acts; ///< regardless of the amount of parallelism, this maximum compute time per block
-
-      uint64_t max_storage_size;
+      uint32_t base_per_transaction_net_usage;
+      uint32_t base_per_transaction_cpu_usage;
+      uint32_t base_per_action_cpu_usage;
+      uint32_t base_setcode_cpu_usage;
+      uint32_t per_signature_cpu_usage;
+      uint32_t per_lock_net_usage;
+      uint64_t context_free_discount_cpu_usage_num;
+      uint64_t context_free_discount_cpu_usage_den;
+      uint32_t max_transaction_cpu_usage;
+      uint32_t max_transaction_net_usage;
       uint32_t max_transaction_lifetime;
       uint32_t max_transaction_exec_time;
       uint16_t max_authority_depth;
@@ -24,8 +24,11 @@ namespace eosio {
       uint32_t max_generated_transaction_size;
       uint32_t max_generated_transaction_count;
 
-      EOSLIB_SERIALIZE( blockchain_parameters, (target_block_size)(max_block_size)(target_block_acts_per_scope)
-                        (max_block_acts_per_scope)(target_block_acts)(max_block_acts)(max_storage_size)
+      EOSLIB_SERIALIZE( blockchain_parameters,
+                        (base_per_transaction_net_usage)(base_per_transaction_cpu_usage)(base_per_action_cpu_usage)
+                        (base_setcode_cpu_usage)(per_signature_cpu_usage)(per_lock_net_usage)
+                        (context_free_discount_cpu_usage_num)(context_free_discount_cpu_usage_den)
+                        (max_transaction_cpu_usage)(max_transaction_net_usage)
                         (max_transaction_lifetime)(max_transaction_exec_time)(max_authority_depth)
                         (max_inline_depth)(max_inline_action_size)(max_generated_transaction_size)
                         (max_generated_transaction_count)

@@ -51,15 +51,24 @@ namespace eosio { namespace chain {
          auto it = instantiation_cache.find(code_id);
          if(it == instantiation_cache.end()) {
             IR::Module module;
-            Serialization::MemoryInputStream stream((const U8 *)code.data(), code.size());
-            WASM::serialize(stream, module);
+            try {
+               Serialization::MemoryInputStream stream((const U8*)code.data(), code.size());
+               WASM::serialize(stream, module);
+            } catch(Serialization::FatalSerializationException& e) {
+               EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+            }
 
             wasm_injections::wasm_binary_injection injector(module);
             injector.inject();
-
-            Serialization::ArrayOutputStream outstream;
-            WASM::serialize(outstream, module);
-            std::vector<U8> bytes = outstream.getBytes();
+            
+            std::vector<U8> bytes;
+            try {
+               Serialization::ArrayOutputStream outstream;
+               WASM::serialize(outstream, module);
+               bytes = outstream.getBytes();
+            } catch(Serialization::FatalSerializationException& e) {
+               EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+            }
 
             it = instantiation_cache.emplace(code_id, runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module))).first;
          }

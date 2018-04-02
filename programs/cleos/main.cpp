@@ -1,55 +1,59 @@
 /**
  *  @file
  *  @copyright defined in eos/LICENSE.txt
- *  @defgroup eosclienttool EOS Command Line Client Reference
- *  @brief Tool for sending transactions and querying state from @ref eosd
+ *  @defgroup eosclienttool EOSIO Command Line Client Reference
+ *  @brief Tool for sending transactions and querying state from @ref nodeos
  *  @ingroup eosclienttool
  */
 
 /**
   @defgroup eosclienttool
 
-  @section intro Introduction to EOSC
+  @section intro Introduction to cleos
 
-  `eosc` is a command line tool that interfaces with the REST api exposed by @ref eosd. In order to use `eosc` you will need to
-  have a local copy of `eosd` running and configured to load the 'eosio::chain_api_plugin'.
+  `cleos` is a command line tool that interfaces with the REST api exposed by @ref nodeos. In order to use `cleos` you will need to
+  have a local copy of `nodeos` running and configured to load the 'eosio::chain_api_plugin'.
 
-   eosc contains documentation for all of its commands. For a list of all commands known to eosc, simply run it with no arguments:
+   cleos contains documentation for all of its commands. For a list of all commands known to cleos, simply run it with no arguments:
 ```
-$ ./eosc
-Command Line Interface to Eos Daemon
-Usage: ./eosc [OPTIONS] SUBCOMMAND
+$ ./cleos
+Command Line Interface to EOSIO Client
+Usage: programs/cleos/cleos [OPTIONS] SUBCOMMAND
 
 Options:
-  -h,--help                   Print this help actions and exit
-  -H,--host TEXT=localhost    the host where eosd is running
-  -p,--port UINT=8888         the port where eosd is running
+  -h,--help                   Print this help message and exit
+  -H,--host TEXT=localhost    the host where nodeos is running
+  -p,--port UINT=8888         the port where nodeos is running
   --wallet-host TEXT=localhost
-                              the host where eos-walletd is running
-  --wallet-port UINT=8888     the port where eos-walletd is running
+                              the host where keosd is running
+  --wallet-port UINT=8888     the port where keosd is running
+  -v,--verbose                output verbose actions on error
 
 Subcommands:
+  version                     Retrieve version information
   create                      Create various items, on and off the blockchain
   get                         Retrieve various items and information from the blockchain
   set                         Set or update blockchain state
   transfer                    Transfer EOS from account to account
+  net                         Interact with local p2p network connections
   wallet                      Interact with local wallet
+  sign                        Sign a transaction
   push                        Push arbitrary transactions to the blockchain
 
 ```
 To get help with any particular subcommand, run it with no arguments as well:
 ```
-$ ./eosc create
+$ ./cleos create
 Create various items, on and off the blockchain
-Usage: ./eosc create SUBCOMMAND
+Usage: ./cleos create SUBCOMMAND
 
 Subcommands:
   key                         Create a new keypair and print the public and private keys
   account                     Create a new account on the blockchain
 
-$ ./eosc create account
+$ ./cleos create account
 Create a new account on the blockchain
-Usage: ./eosc create account [OPTIONS] creator name OwnerKey ActiveKey
+Usage: ./cleos create account [OPTIONS] creator name OwnerKey ActiveKey
 
 Positionals:
   creator TEXT                The name of the account creating the new account
@@ -58,7 +62,11 @@ Positionals:
   ActiveKey TEXT              The active public key for the new account
 
 Options:
-  -s,--skip-signature         Specify that unlocked wallet keys should not be used to sign transaction
+  -x,--expiration             set the time in seconds before a transaction expires, defaults to 30s
+  -f,--force-unique           force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times
+  -s,--skip-sign              Specify if unlocked wallet keys should be used to sign transaction
+  -d,--dont-broadcast         don't broadcast transaction to the network (just print to stdout)
+  -p,--permission TEXT ...    An account and permission level to authorize, as in 'account@permission' (defaults to 'creator@active')
 ```
 */
 #include <string>
@@ -74,7 +82,9 @@ Options:
 
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
+#include <eosio/chain/transaction_trace.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
 #include <boost/range/adaptor/transformed.hpp>
@@ -133,6 +143,11 @@ auto   tx_expiration = fc::seconds(30);
 bool   tx_force_unique = false;
 bool   tx_dont_broadcast = false;
 bool   tx_skip_sign = false;
+bool   tx_print_json = false;
+
+uint32_t tx_cf_cpu_usage = 0;
+uint32_t tx_net_usage = 0;
+
 vector<string> tx_permission;
 
 void add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
@@ -149,12 +164,16 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_option("-x,--expiration", parse_exipration, localized("set the time in seconds before a transaction expires, defaults to 30s"));
    cmd->add_flag("-f,--force-unique", tx_force_unique, localized("force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"));
    cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
+   cmd->add_flag("-j,--json", tx_print_json, localized("print result as json"));
    cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("don't broadcast transaction to the network (just print to stdout)"));
 
    string msg = "An account and permission level to authorize, as in 'account@permission'";
    if(!default_permission.empty())
       msg += " (defaults to '" + default_permission + "')";
    cmd->add_option("-p,--permission", tx_permission, localized(msg.c_str()));
+
+   cmd->add_option("--cf-cpu-usage", tx_cf_cpu_usage, localized("set the cpu usage budget, in instructions-retired, for the execution of all context free actions, defaults to an estimated value based on the transaction"));
+   cmd->add_option("--net-usage", tx_net_usage, localized("set the net usage budget, in bytes, for the storage of the transaction (compressed), signatures and any context-free data on the block chain"));
 }
 
 string generate_nonce_value() {
@@ -172,7 +191,7 @@ vector<chain::permission_level> get_account_permissions(const vector<string>& pe
    auto fixedPermissions = permissions | boost::adaptors::transformed([](const string& p) {
       vector<string> pieces;
       split(pieces, p, boost::algorithm::is_any_of("@"));
-      EOSC_ASSERT(pieces.size() == 2, "Invalid permission: ${p}", ("p", p));
+      if( pieces.size() == 1 ) pieces.push_back( "active" );
       return chain::permission_level{ .actor = pieces[0], .permission = pieces[1] };
    });
    vector<chain::permission_level> accountPermissions;
@@ -193,20 +212,50 @@ eosio::chain_apis::read_only::get_info_results get_info() {
   return call(host, port, get_info_func ).as<eosio::chain_apis::read_only::get_info_results>();
 }
 
-void sign_transaction(signed_transaction& trx) {
+fc::variant determine_required_keys(const signed_transaction& trx) {
    // TODO better error checking
    const auto& public_keys = call(wallet_host, wallet_port, wallet_public_keys);
    auto get_arg = fc::mutable_variant_object
-         ("transaction", (transaction)trx)
-         ("available_keys", public_keys);
+           ("transaction", (transaction)trx)
+           ("available_keys", public_keys);
    const auto& required_keys = call(host, port, get_required_keys, get_arg);
+   return required_keys["required_keys"];
+}
+
+void sign_transaction(signed_transaction& trx, fc::variant& required_keys) {
    // TODO determine chain id
-   fc::variants sign_args = {fc::variant(trx), required_keys["required_keys"], fc::variant(chain_id_type{})};
+   fc::variants sign_args = {fc::variant(trx), required_keys, fc::variant(chain_id_type{})};
    const auto& signed_trx = call(wallet_host, wallet_port, wallet_sign_trx, sign_args);
    trx = signed_trx.as<signed_transaction>();
 }
 
-fc::variant push_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::none ) {
+static uint32_t estimate_transaction_context_free_kilo_cpu_usage( const signed_transaction& trx, int32_t extra_kcpu = 1000 ) {
+   if (tx_cf_cpu_usage != 0) {
+      return (uint32_t)(tx_cf_cpu_usage + 1023UL) / (uint32_t)1024UL;
+   }
+
+   const uint32_t estimated_per_action_usage = config::default_base_per_action_cpu_usage * 10;
+   return extra_kcpu + (uint32_t)(trx.context_free_actions.size() * estimated_per_action_usage + 1023) / (uint32_t)1024;
+}
+
+static uint32_t estimate_transaction_net_usage_words( const signed_transaction& trx, packed_transaction::compression_type compression, size_t num_keys ) {
+   if (tx_net_usage != 0) {
+      return tx_net_usage / (uint32_t)8UL;
+   }
+
+   uint32_t sigs =  (uint32_t)5 +  // the maximum encoded size of the unsigned_int for the size of the signature block
+                    (uint32_t)(num_keys * sizeof(signature_type));
+
+   uint32_t packed_size_drift = compression == packed_transaction::none ?
+           4 :  // there is 1 variably encoded ints we haven't set yet, this size it can grow by 4 bytes
+           256; // allow for drift in the compression due to new data
+
+   uint32_t estimated_packed_size = (uint32_t)packed_transaction(trx, compression).data.size() + packed_size_drift;
+
+   return (uint32_t)(sigs + estimated_packed_size + (uint32_t)trx.context_free_data.size() + 7) / (uint32_t)8;
+}
+
+fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
    auto info = get_info();
    trx.expiration = info.head_block_time + tx_expiration;
    trx.set_reference_block(info.head_block_id);
@@ -215,8 +264,14 @@ fc::variant push_transaction( signed_transaction& trx, packed_transaction::compr
       trx.context_free_actions.emplace_back( generate_nonce() );
    }
 
+   auto required_keys = determine_required_keys(trx);
+   size_t num_keys = required_keys.is_array() ? required_keys.get_array().size() : 1;
+
+   trx.kcpu_usage = estimate_transaction_context_free_kilo_cpu_usage(trx, extra_kcpu );
+   trx.net_usage_words = estimate_transaction_net_usage_words(trx, compression, num_keys);
+
    if (!tx_skip_sign) {
-      sign_transaction(trx);
+      sign_transaction(trx, required_keys);
    }
 
    if (!tx_dont_broadcast) {
@@ -226,19 +281,69 @@ fc::variant push_transaction( signed_transaction& trx, packed_transaction::compr
    }
 }
 
-fc::variant push_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none ) {
+fc::variant push_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu, packed_transaction::compression_type compression = packed_transaction::none ) {
    signed_transaction trx;
    trx.actions = std::forward<decltype(actions)>(actions);
 
-   return push_transaction(trx, compression);
+   return push_transaction(trx, extra_kcpu, compression);
 }
 
-void send_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none ) {
-   std::cout << fc::json::to_pretty_string(push_actions(std::forward<decltype(actions)>(actions), compression)) << std::endl;
+void print_result( const fc::variant& result ) {
+      const auto& processed = result["processed"];
+      const auto& transaction_id = processed["id"].as_string();
+      const auto& status = processed["status"].as_string() ;
+      auto net = processed["net_usage"].as_int64(); 
+      auto cpu = processed["cpu_usage"].as_int64(); 
+
+      cout << status << " transaction: " << transaction_id << "  " << net << " bytes  " << cpu << " cycles\n";
+
+      const auto& actions = processed["action_traces"].get_array();
+      for( const auto& at : actions ) {
+         auto receiver = at["receiver"].as_string();
+         const auto& act = at["act"].get_object();
+         auto code = act["account"].as_string();
+         auto func = act["name"].as_string();
+         auto args = fc::json::to_string( act["data"] );
+         auto console = at["console"].as_string();
+
+         /*
+         if( code == "eosio" && func == "setcode" )
+            args = args.substr(40)+"...";
+         if( name(code) == config::system_account_name && func == "setabi" )
+            args = args.substr(40)+"...";
+         */
+         if( args.size() > 100 ) args = args.substr(0,100) + "...";
+
+         cout << "#" << std::setw(14) << right << receiver << " <= " << std::setw(28) << std::left << (code +"::" + func) << " " << args << "\n";
+         if( console.size() ) {
+            std::stringstream ss(console);
+            string line;
+            std::getline( ss, line );
+            cout << ">> " << line << "\n";
+         }
+      }
 }
 
-void send_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::none  ) {
-   std::cout << fc::json::to_pretty_string(push_transaction(trx, compression)) << std::endl;
+using std::cout;
+void send_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
+   auto result = push_actions( move(actions), extra_kcpu, compression);
+
+   if( tx_print_json ) {
+      cout << fc::json::to_pretty_string( result );
+   } else {
+      print_result( result );
+   }
+}
+
+void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_transaction::compression_type compression = packed_transaction::none  ) {
+   auto result = push_transaction(trx, extra_kcpu, compression);
+   
+   if( tx_print_json ) {
+      cout << fc::json::to_pretty_string( result );
+   } else {
+      auto trace = result["processed"].as<eosio::chain::transaction_trace>();
+      print_result( result );
+   }
 }
 
 chain::action create_newaccount(const name& creator, const name& newaccount, public_key_type owner, public_key_type active) {
@@ -344,7 +449,7 @@ struct set_account_permission_subcommand {
             if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
                try {
                   auth = authority(public_key_type(authorityJsonOrFile));
-               } EOS_CAPTURE_AND_RETHROW(public_key_type_exception, "")
+               } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
             } else {
                fc::variant parsedAuthority;
                try {
@@ -354,8 +459,8 @@ struct set_account_permission_subcommand {
                      parsedAuthority = fc::json::from_file(authorityJsonOrFile);
                   }
                   auth = parsedAuthority.as<authority>();
-               } EOS_CAPTURE_AND_RETHROW(authority_type_exception, "Fail to parse Authority JSON")
-
+               } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON")
+                 
             }
 
             name parent;
@@ -429,12 +534,12 @@ int main( int argc, char** argv ) {
    bindtextdomain(locale_domain, locale_path);
    textdomain(locale_domain);
 
-   CLI::App app{"Command Line Interface to Eos Client"};
+   CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
-   app.add_option( "-H,--host", host, localized("the host where eosd is running"), true );
-   app.add_option( "-p,--port", port, localized("the port where eosd is running"), true );
-   app.add_option( "--wallet-host", wallet_host, localized("the host where eos-walletd is running"), true );
-   app.add_option( "--wallet-port", wallet_port, localized("the port where eos-walletd is running"), true );
+   app.add_option( "-H,--host", host, localized("the host where nodeos is running"), true );
+   app.add_option( "-p,--port", port, localized("the port where nodeos is running"), true );
+   app.add_option( "--wallet-host", wallet_host, localized("the host where keosd is running"), true );
+   app.add_option( "--wallet-port", wallet_port, localized("the port where keosd is running"), true );
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
@@ -475,8 +580,10 @@ int main( int argc, char** argv ) {
       public_key_type owner_key, active_key;
       try {
          owner_key = public_key_type(owner_key_str);
+      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid owner public key: ${public_key}", ("public_key", owner_key_str))
+      try {
          active_key = public_key_type(active_key_str);
-      } EOS_CAPTURE_AND_RETHROW(public_key_type_exception, "Invalid Public Key")
+      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str))
       send_actions({create_newaccount(creator, account_name, owner_key, active_key)});
    });
 
@@ -572,6 +679,7 @@ int main( int argc, char** argv ) {
    // get currency balance
    string symbol;
    auto get_currency = get->add_subcommand( "currency", localized("Retrieve information related to standard currencies"), true);
+   get_currency->require_subcommand();
    auto get_balance = get_currency->add_subcommand( "balance", localized("Retrieve the balance of an account for a given currency"), false);
    get_balance->add_option( "contract", code, localized("The contract that operates the currency") )->required();
    get_balance->add_option( "account", accountName, localized("The account to query balances for") )->required();
@@ -580,15 +688,21 @@ int main( int argc, char** argv ) {
       auto result = call(get_currency_balance_func, fc::mutable_variant_object("json", false)
          ("account", accountName)
          ("code", code)
-         ("symbol", symbol)
+         ("symbol", symbol=="*" ? fc::variant(symbol) : fc::variant() )
       );
 
       const auto& rows = result.get_array();
       if (symbol.empty()) {
+         for( const auto& r : rows ) {
+            std::cout << r.as_string()
+                      << std::endl;
+         }
+         /*
          std::cout << fc::json::to_pretty_string(rows)
                    << std::endl;
+                   */
       } else if ( rows.size() > 0 ){
-         std::cout << fc::json::to_pretty_string(rows[0])
+         std::cout << rows[0].as_string()
                    << std::endl;
       }
    });
@@ -613,11 +727,15 @@ int main( int argc, char** argv ) {
    });
 
    // get accounts
-   string publicKey;
+   string public_key_str;
    auto getAccounts = get->add_subcommand("accounts", localized("Retrieve accounts associated with a public key"), false);
-   getAccounts->add_option("public_key", publicKey, localized("The public key to retrieve accounts for"))->required();
+   getAccounts->add_option("public_key", public_key_str, localized("The public key to retrieve accounts for"))->required();
    getAccounts->set_callback([&] {
-      auto arg = fc::mutable_variant_object( "public_key", publicKey);
+      public_key_type public_key;
+      try {
+         public_key = public_key_type(public_key_str);
+      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", public_key_str))
+      auto arg = fc::mutable_variant_object( "public_key", public_key);
       std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
    });
 
@@ -632,41 +750,71 @@ int main( int argc, char** argv ) {
    });
 
    // get transaction
-   string transactionId;
+   string transaction_id_str;
    auto getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"), false);
-   getTransaction->add_option("id", transactionId, localized("ID of the transaction to retrieve"))->required();
+   getTransaction->add_option("id", transaction_id_str, localized("ID of the transaction to retrieve"))->required();
    getTransaction->set_callback([&] {
-      auto arg= fc::mutable_variant_object( "transaction_id", transactionId);
+      transaction_id_type transaction_id;
+      try {
+         transaction_id = transaction_id_type(transaction_id_str);
+      } EOS_RETHROW_EXCEPTIONS(transaction_id_type_exception, "Invalid transaction ID: ${transaction_id}", ("transaction_id", transaction_id_str))
+      auto arg= fc::mutable_variant_object( "transaction_id", transaction_id);
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
 
    // get transactions
-   string skip_seq;
-   string num_seq;
+   string skip_seq_str;
+   string num_seq_str;
+   bool printjson = false;
    auto getTransactions = get->add_subcommand("transactions", localized("Retrieve all transactions with specific account name referenced in their scope"), false);
    getTransactions->add_option("account_name", account_name, localized("name of account to query on"))->required();
-   getTransactions->add_option("skip_seq", skip_seq, localized("Number of most recent transactions to skip (0 would start at most recent transaction)"));
-   getTransactions->add_option("num_seq", num_seq, localized("Number of transactions to return"));
+   getTransactions->add_option("skip_seq", skip_seq_str, localized("Number of most recent transactions to skip (0 would start at most recent transaction)"));
+   getTransactions->add_option("num_seq", num_seq_str, localized("Number of transactions to return"));
+   getTransactions->add_flag("--json,-j", printjson, localized("print full json"));
    getTransactions->set_callback([&] {
-      auto arg = (skip_seq.empty())
-                  ? fc::mutable_variant_object( "account_name", account_name)
-                  : (num_seq.empty())
-                     ? fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)
-                     : fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq)("num_seq", num_seq);
+      fc::mutable_variant_object arg;
+      if (skip_seq_str.empty()) {
+         arg = fc::mutable_variant_object( "account_name", account_name);
+      } else {
+         uint64_t skip_seq;
+         try {
+            skip_seq = boost::lexical_cast<uint64_t>(skip_seq_str);
+         } EOS_RETHROW_EXCEPTIONS(chain_type_exception, "Invalid Skip Seq: ${skip_seq}", ("skip_seq", skip_seq_str))
+         if (num_seq_str.empty()) {
+            arg = fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq);
+         } else {
+            uint64_t num_seq;
+            try {
+               num_seq = boost::lexical_cast<uint64_t>(num_seq_str);
+            } EOS_RETHROW_EXCEPTIONS(chain_type_exception, "Invalid Num Seq: ${num_seq}", ("num_seq", num_seq_str))
+            arg = fc::mutable_variant_object( "account_name", account_name)("skip_seq", skip_seq_str)("num_seq", num_seq);
+         }
+      }
       auto result = call(get_transactions_func, arg);
-      std::cout << fc::json::to_pretty_string(call(get_transactions_func, arg)) << std::endl;
+      if( printjson ) {
+         std::cout << fc::json::to_pretty_string(call(get_transactions_func, arg)) << std::endl;
+      }
+      else {
+         const auto& trxs = result.get_object()["transactions"].get_array();
+         for( const auto& t : trxs ) {
 
+            const auto& tobj = t.get_object();
+            const auto& trx  = tobj["transaction"].get_object();
+            const auto& data = trx["data"].get_object();
+            const auto& msgs = data["actions"].get_array();
 
-      const auto& trxs = result.get_object()["transactions"].get_array();
-      for( const auto& t : trxs ) {
-         const auto& tobj = t.get_object();
-         int64_t seq_num  = tobj["seq_num"].as<int64_t>();
-         string  id       = tobj["transaction_id"].as_string();
-         const auto& trx  = tobj["transaction"].get_object();
-         const auto& data = trx["data"].get_object();
-         const auto& exp  = data["expiration"].as<fc::time_point_sec>();
-         const auto& msgs = data["actions"].get_array();
-         std::cout << tobj["seq_num"].as_string() <<"] " << id << "  " << data["expiration"].as_string() << std::endl;
+            for( const auto& msg : msgs ) {
+               int64_t seq_num  = tobj["seq_num"].as<int64_t>();
+               string  id       = tobj["transaction_id"].as_string();
+               const auto& exp  = data["expiration"].as<fc::time_point_sec>();
+               std::cout << tobj["seq_num"].as_string() <<"] " << id.substr(0,8) << "...  " << data["expiration"].as_string() << "  ";
+               auto code = msg["account"].as_string();
+               auto func = msg["name"].as_string();
+               auto args = fc::json::to_string( msg["data"] );
+               std::cout << setw(26) << left << (code + "::" + func) << "  " << args;
+               std::cout << std::endl;
+            }
+         }
       }
 
    });
@@ -677,19 +825,37 @@ int main( int argc, char** argv ) {
 
    // set contract subcommand
    string account;
+   string contractPath;
    string wastPath;
    string abiPath;
    auto contractSubcommand = setSubcommand->add_subcommand("contract", localized("Create or update the contract on an account"));
-   contractSubcommand->add_option("account", account, localized("The account to publish a contract for"))->required();
-   contractSubcommand->add_option("wast-file", wastPath, localized("The file containing the contract WAST or WASM"))->required()
-         ->check(CLI::ExistingFile);
-   auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract"))
-              ->check(CLI::ExistingFile);
+   contractSubcommand->add_option("account", account, localized("The account to publish a contract for"))
+                     ->required();
+   contractSubcommand->add_option("contract-dir", contractPath, localized("The the path containing the .wast and .abi"))
+                     ->required();
+   contractSubcommand->add_option("wast-file", wastPath, localized("The file containing the contract WAST or WASM relative to contract-dir"));
+//                     ->check(CLI::ExistingFile);
+   auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract relative to contract-dir"));
+//                                ->check(CLI::ExistingFile);
+
 
    add_standard_transaction_options(contractSubcommand, "account@active");
    contractSubcommand->set_callback([&] {
       std::string wast;
       std::cout << localized("Reading WAST...") << std::endl;
+      fc::path cpath(contractPath);
+      if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
+
+      if( wastPath == string() ) 
+      {
+         wastPath = (cpath / (cpath.filename().generic_string()+".wast")).generic_string();
+      }
+
+      if( abiPath == string() ) 
+      {
+         abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
+      }
+
       fc::read_file_contents(wastPath, wast);
 
       vector<uint8_t> wasm;
@@ -706,14 +872,21 @@ int main( int argc, char** argv ) {
       std::vector<chain::action> actions;
       actions.emplace_back( create_setcode(account, bytes(wasm.begin(), wasm.end()) ) );
 
-      if (abi->count()) {
-         try {
-            actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<contracts::abi_def>()) );
-         } EOS_CAPTURE_AND_RETHROW(abi_type_exception,  "Fail to parse ABI JSON")
-      }
+      FC_ASSERT( fc::exists( abiPath ), "no abi file found ${f}", ("f", abiPath)  );
+
+      try {
+         actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<contracts::abi_def>()) );
+      } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
 
       std::cout << localized("Publishing contract...") << std::endl;
-      send_actions(std::move(actions), packed_transaction::zlib);
+      send_actions(std::move(actions), 10000, packed_transaction::zlib);
+      /*
+      auto result = push_actions(std::move(actions), 10000, packed_transaction::zlib);
+
+      if( tx_dont_broadcast ) {
+         std::cout << fc::json::to_pretty_string(result) << "\n";
+      }
+      */
    });
 
    // set account
@@ -847,13 +1020,18 @@ int main( int argc, char** argv ) {
    });
 
    // import keys into wallet
-   string wallet_key;
+   string wallet_key_str;
    auto importWallet = wallet->add_subcommand("import", localized("Import private key into wallet"), false);
    importWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to import key into"));
-   importWallet->add_option("key", wallet_key, localized("Private key in WIF format to import"))->required();
-   importWallet->set_callback([&wallet_name, &wallet_key] {
-      private_key_type key( wallet_key );
-      public_key_type pubkey = key.get_public_key();
+   importWallet->add_option("key", wallet_key_str, localized("Private key in WIF format to import"))->required();
+   importWallet->set_callback([&wallet_name, &wallet_key_str] {
+      private_key_type wallet_key;
+      try {
+         wallet_key = private_key_type( wallet_key_str );
+      } catch (...) {
+          EOS_THROW(private_key_type_exception, "Invalid private key: ${private_key}", ("private_key", wallet_key_str))
+      }
+      public_key_type pubkey = wallet_key.get_public_key();
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_key)};
       const auto& v = call(wallet_host, wallet_port, wallet_import_key, vs);
@@ -932,11 +1110,10 @@ int main( int argc, char** argv ) {
 
    add_standard_transaction_options(actionsSubcommand);
    actionsSubcommand->set_callback([&] {
-      ilog("Converting argument to binary...");
       fc::variant action_args_var;
       try {
-         action_args_var = fc::json::from_string(data);
-      } EOS_CAPTURE_AND_RETHROW(action_type_exception, "Fail to parse action JSON")
+         action_args_var = fc::json::from_string(data, fc::json::relaxed_parser);
+      } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON")
 
       auto arg= fc::mutable_variant_object
                 ("code", contract)
@@ -962,7 +1139,8 @@ int main( int argc, char** argv ) {
          } else {
             trx_var = fc::json::from_string(trx_to_push);
          }
-      } EOS_CAPTURE_AND_RETHROW(transaction_type_exception, "Fail to parse transaction JSON")      signed_transaction trx = trx_var.as<signed_transaction>();
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON")
+      signed_transaction trx = trx_var.as<signed_transaction>();
       auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
    });
@@ -975,7 +1153,7 @@ int main( int argc, char** argv ) {
       fc::variant trx_var;
       try {
          trx_var = fc::json::from_string(trxsJson);
-      } EOS_CAPTURE_AND_RETHROW(transaction_type_exception, "Fail to parse transaction JSON")
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON")
       auto trxs_result = call(push_txns_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
@@ -990,9 +1168,9 @@ int main( int argc, char** argv ) {
       auto errorString = e.to_detail_string();
       if (errorString.find("Connection refused") != string::npos) {
          if (errorString.find(fc::json::to_string(port)) != string::npos) {
-            std::cerr << localized("Failed to connect to eosd at ${ip}:${port}; is eosd running?", ("ip", host)("port", port)) << std::endl;
+            std::cerr << localized("Failed to connect to nodeos at ${ip}:${port}; is nodeos running?", ("ip", host)("port", port)) << std::endl;
          } else if (errorString.find(fc::json::to_string(wallet_port)) != string::npos) {
-            std::cerr << localized("Failed to connect to eos-walletd at ${ip}:${port}; is eos-walletd running?", ("ip", wallet_host)("port", wallet_port)) << std::endl;
+            std::cerr << localized("Failed to connect to keosd at ${ip}:${port}; is keosd running?", ("ip", wallet_host)("port", wallet_port)) << std::endl;
          } else {
             std::cerr << localized("Failed to connect") << std::endl;
          }

@@ -73,21 +73,10 @@ namespace eosio {
     *  @{
     */
    struct name {
-      name( uint64_t v = 0 ): value(v) {}
       operator uint64_t()const { return value; }
 
       friend bool operator==( const name& a, const name& b ) { return a.value == b.value; }
       account_name value = 0;
-
-
-      template<typename DataStream>
-      friend DataStream& operator << ( DataStream& ds, const name& v ){
-         return ds << v.value;
-      }
-      template<typename DataStream>
-      friend DataStream& operator >> ( DataStream& ds, name& v ){
-         return ds >> v.value;
-      }
    };
    /// @}
 

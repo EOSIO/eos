@@ -40,7 +40,7 @@ BOOST_FIXTURE_TEST_CASE( multi_index_load, tester ) try {
                                                    ("what", 0)
       );
       trx.actions.emplace_back(std::move(trigger_act));
-      set_tapos(trx);
+      set_transaction_headers(trx);
       trx.sign(get_private_key(N(multitest), "active"), chain_id_type());
       push_transaction(trx);
    }
@@ -57,7 +57,7 @@ BOOST_FIXTURE_TEST_CASE( multi_index_load, tester ) try {
                                                    ("what", 1)
       );
       trx.actions.emplace_back(std::move(trigger_act));
-      set_tapos(trx);
+      set_transaction_headers(trx);
       trx.sign(get_private_key(N(multitest), "active"), chain_id_type());
       push_transaction(trx);
    }

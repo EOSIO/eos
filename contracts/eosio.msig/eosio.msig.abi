@@ -1,0 +1,76 @@
+{
+  "types": [{
+      "new_type_name": "account_name",
+      "type": "name"
+    }
+  ],
+  "structs": [{
+      "name": "propose",
+      "base": "",
+      "fields": [
+        {"name":"proposer", "type":"account_name"},
+        {"name":"proposal_name", "type":"name"},
+        {"name":"trx", "type":"transaction"},
+        {"name":"requested", "type":"permission_level[]"}
+      ]
+    },{
+     "name": "approve",
+     "base": "",
+     "fields": [
+        {"name":"proposer", "type":"account_name"},
+        {"name":"proposal_name", "type":"name"},
+        {"name":"level", "type":"permission_level"}
+     ]
+  },{
+     "name": "unapprove",
+     "base": "",
+     "fields": [
+        {"name":"proposer", "type":"account_name"},
+        {"name":"proposal_name", "type":"name"},
+        {"name":"level", "type":"permission_level"}
+     ]
+  },{
+      "name": "cancel",
+      "base": "",
+      "fields": [
+        {"name":"proposer", "type":"account_name"},
+        {"name":"proposal_name", "type":"name"},
+        {"name":"canceler", "type":"account_name"}
+      ]
+    },{
+      "name": "exec",
+      "base": "",
+      "fields": [
+        {"name":"proposer", "type":"account_name"},
+        {"name":"proposal_name", "type":"name"},
+        {"name":"canceler", "type":"executer"}
+      ]
+    }
+  ],
+  "actions": [{
+      "name": "propose",
+      "type": "propose"
+    },{
+      "name": "approve",
+      "type": "approve"
+    },{
+      "name": "unapprove",
+      "type": "unapprove"
+    }, {
+      "name": "cancel",
+      "type": "cancel"
+    }, {
+      "name": "exec",
+      "type": "exec"
+    }
+
+  ],
+  "tables": [{
+      "name": "proposal",
+      "type": "proposal",
+      "index_type": "i64",
+      "key_names" : ["proposal_name"],
+      "key_types" : ["name"]
+    } 
+  ]
+}

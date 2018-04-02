@@ -144,6 +144,7 @@ struct txn_test_gen_plugin_impl {
       trx.actions.emplace_back( vector<chain::permission_level>{{newaccountC,"active"}}, handler);
       }
 
+      trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.set_reference_block(cc.head_block_id());
       trx.sign(txn_test_receiver_C_priv_key, chainid);
       cc.push_transaction(packed_transaction(trx));
@@ -153,13 +154,21 @@ struct txn_test_gen_plugin_impl {
       {
       signed_transaction trx;
       abi_serializer currency_serializer(currency_abi_def);
-      
+
+      {
+      action act;
+      act.account = N(currency);
+      act.name = N(create);
+      act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
+      act.data = currency_serializer.variant_to_binary("create", fc::json::from_string("{\"issuer\":\"currency\",\"maximum_supply\":\"1000000000.0000 CUR\", \"can_freeze\":0, \"can_recall\":0, \"can_whitelist\":0}}"));
+      trx.actions.push_back(act);
+      }
       {
       action act;
       act.account = N(currency);
       act.name = N(issue);
       act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-      act.data = currency_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"currency\",\"quantity\":\"600.0000 CUR\"}"));
+      act.data = currency_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"currency\",\"quantity\":\"600.0000 CUR\",\"memo\":\"\"}"));
       trx.actions.push_back(act);
       }
       {
@@ -179,6 +188,7 @@ struct txn_test_gen_plugin_impl {
       trx.actions.push_back(act);
       }
 
+      trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.set_reference_block(cc.head_block_id());
       trx.sign(txn_test_receiver_C_priv_key, chainid);
       cc.push_transaction(packed_transaction(trx));
@@ -219,7 +229,7 @@ struct txn_test_gen_plugin_impl {
    void arm_timer(boost::asio::high_resolution_timer::time_point s) {
       timer.expires_at(s + std::chrono::milliseconds(timer_timeout));
       timer.async_wait([this](const boost::system::error_code& ec) {
-         if(ec)
+         if(!running || ec)
             return;
          try {
             send_transaction();
@@ -243,13 +253,13 @@ struct txn_test_gen_plugin_impl {
       fc::crypto::private_key a_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
       fc::crypto::private_key b_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
 
-      static uint64_t nonce;
+      static uint64_t nonce = 0;
 
       for(unsigned int i = 0; i < batch; ++i) {
       {
       signed_transaction trx;
       trx.actions.push_back(act_a_to_b);
-      trx.actions.emplace_back(action({}, config::system_account_name, "nonce", fc::raw::pack(nonce)));
+      trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", fc::raw::pack(nonce++)));
       trx.set_reference_block(cc.head_block_id());
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.sign(a_priv_key, chainid);
@@ -259,7 +269,7 @@ struct txn_test_gen_plugin_impl {
       {
       signed_transaction trx;
       trx.actions.push_back(act_b_to_a);
-      trx.actions.emplace_back(action({}, config::system_account_name, "nonce", fc::raw::pack(nonce)));
+      trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", fc::raw::pack(nonce++)));
       trx.set_reference_block(cc.head_block_id());
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.sign(b_priv_key, chainid);

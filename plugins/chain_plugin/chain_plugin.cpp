@@ -166,20 +166,15 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    if(options.count("wasm-runtime"))
       my->wasm_runtime = options.at("wasm-runtime").as<vm_type>();
-
-#warning TODO: Rate Limits
-   /*my->rate_limits.per_auth_account_time_frame_sec = fc::time_point_sec(options.at("per-authorized-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
-   my->rate_limits.per_auth_account = options.at("per-authorized-account-transaction-msg-rate-limit").as<uint32_t>();
-
-   my->rate_limits.per_code_account_time_frame_sec = fc::time_point_sec(options.at("per-code-account-transaction-msg-rate-limit-time-frame-sec").as<uint32_t>());
-   my->rate_limits.per_code_account = options.at("per-code-account-transaction-msg-rate-limit").as<uint32_t>();*/
 }
 
 void chain_plugin::plugin_startup()
 { try {
-   FC_ASSERT( fc::exists( my->genesis_file ),
-              "unable to find genesis file '${f}', check --genesis-json argument",
-              ("f",my->genesis_file.generic_string()) );
+   if( !fc::exists( my->genesis_file ) ) {
+      wlog( "\n generating default genesis file ${f}", ("f", my->genesis_file.generic_string() ) );
+      contracts::genesis_state_type default_genesis;
+      fc::json::save_to_file( default_genesis, my->genesis_file, true );
+   }
    my->chain_config->block_log_dir = my->block_log_dir;
    my->chain_config->shared_memory_dir = app().data_dir() / default_shared_memory_dir;
    my->chain_config->read_only = my->readonly;
@@ -211,7 +206,7 @@ void chain_plugin::plugin_startup()
 
    my->chain_config.reset();
 
-   } FC_CAPTURE_AND_RETHROW( (my->genesis_file.generic_string()) ) }
+} FC_CAPTURE_LOG_AND_RETHROW( (my->genesis_file.generic_string()) ) }
 
 void chain_plugin::plugin_shutdown() {
    my->chain.reset();
@@ -287,11 +282,11 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
 }
 
 abi_def get_abi( const chain_controller& db, const name& account ) {
-   const auto& d = db.get_database();
-   const auto& code_accnt  = d.get<account_object,by_name>( account );
-
+   const auto &d = db.get_database();
+   const account_object *code_accnt = d.find<account_object, by_name>(account);
+   EOS_ASSERT(code_accnt != nullptr, chain::account_query_exception, "Fail to retrieve account for ${account}", ("account", account) );
    abi_def abi;
-   abi_serializer::to_abi(code_accnt.abi, abi);
+   abi_serializer::to_abi(code_accnt->abi, abi);
    return abi;
 }
 
@@ -301,7 +296,7 @@ string get_table_type( const abi_def& abi, const name& table_name ) {
          return t.index_type;
       }
    }
-   FC_ASSERT( !"ABI does not define table", "Table ${table} not specified in ABI", ("table",table_name) );
+   EOS_ASSERT( false, chain::contract_table_query_exception, "Table ${table} is not specified in the ABI", ("table",table_name) );
 }
 
 read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
@@ -311,12 +306,13 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
    if( table_type == KEYi64 ) {
       return get_table_rows_ex<contracts::key_value_index, contracts::by_scope_primary>(p,abi);
    }
-   FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("abi",abi));
+
+   EOS_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type ${type}", ("type",table_type)("abi",abi));
 }
 
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
    vector<asset> results;
-   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.account, N(account), [&](const contracts::key_value_object& obj){
+   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.account, N(accounts), [&](const contracts::key_value_object& obj){
       share_type balance;
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
       fc::raw::unpack(ds, balance);
@@ -380,7 +376,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
          block = db.fetch_block_by_number(fc::to_uint64(params.block_num_or_id));
       }
 
-   } catch (fc::bad_cast_exception) {/* do nothing */}
+   } EOS_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
 
    if (!block)
       FC_THROW_EXCEPTION(unknown_block_exception,
@@ -405,7 +401,10 @@ read_write::push_block_results read_write::push_block(const read_write::push_blo
 read_write::push_transaction_results read_write::push_transaction(const read_write::push_transaction_params& params) {
    packed_transaction pretty_input;
    auto resolver = make_resolver(this);
-   abi_serializer::from_variant(params, pretty_input, resolver);
+   try {
+      abi_serializer::from_variant(params, pretty_input, resolver);
+   } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
+
    auto result = db.push_transaction(pretty_input, skip_flags);
 #warning TODO: get transaction results asynchronously
    fc::variant pretty_output;
@@ -481,11 +480,17 @@ read_only::get_account_results read_only::get_account( const get_account_params&
 
 read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::abi_json_to_bin_params& params )const try {
    abi_json_to_bin_result result;
-   const auto& code_account = db.get_database().get<account_object,by_name>( params.code );
+   const auto code_account = db.get_database().find<account_object,by_name>( params.code );
+   EOS_ASSERT(code_account != nullptr, contract_query_exception, "Contract can't be found ${contract}", ("contract", params.code));
+
    abi_def abi;
-   if( abi_serializer::to_abi(code_account.abi, abi) ) {
+   if( abi_serializer::to_abi(code_account->abi, abi) ) {
       abi_serializer abis( abi );
-      result.binargs = abis.variant_to_binary( abis.get_action_type( params.action ), params.args );
+      try {
+         result.binargs = abis.variant_to_binary(abis.get_action_type(params.action), params.args);
+      } EOS_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
+                                "'${args}' is invalid args for action '${action}' code '${code}'",
+                                ("args", params.args)("action", params.action)("code", params.code))
    }
    return result;
 } FC_CAPTURE_AND_RETHROW( (params.code)(params.action)(params.args) )

@@ -249,7 +249,7 @@ mongodconf
 	fi
 
 	printf "\n\tChecking for MongoDB C++ driver.\n"
-    if [ ! -e /usr/local/lib/libmongocxx.so ]; then
+    if [ ! -e /usr/local/lib/libmongocxx-static.a ]; then
 		printf "\n\tInstalling MongoDB C & C++ drivers.\n"
 		cd ${TEMP_DIR}
 		curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
@@ -262,7 +262,7 @@ mongodconf
 		tar xf mongo-c-driver-1.9.3.tar.gz
 		rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz
 		cd mongo-c-driver-1.9.3
-		./configure --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
+		./configure --enable-static --with-libbson=bundled --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
 		if [ $? -ne 0 ]; then
 			printf "\tConfiguring MondgDB C driver has encountered the errors above.\n"
 			printf "\tExiting now.\n\n"
@@ -283,6 +283,7 @@ mongodconf
 		cd ..
 		rm -rf ${TEMP_DIR}/mongo-c-driver-1.9.3
 		cd ${TEMP_DIR}
+		sudo rm -rf ${TEMP_DIR}/mongo-cxx-driver
 		git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 		if [ $? -ne 0 ]; then
 			printf "\tUnable to clone MondgDB C++ driver at this time.\n"
@@ -290,7 +291,7 @@ mongodconf
 			exit;
 		fi
 		cd mongo-cxx-driver/build
-		${CMAKE} -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+		${CMAKE} -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
 		if [ $? -ne 0 ]; then
 			printf "\tCmake has encountered the above errors building the MongoDB C++ driver.\n"
 			printf "\tExiting now.\n\n"
@@ -311,7 +312,7 @@ mongodconf
 		cd
 		sudo rm -rf ${TEMP_DIR}/mongo-cxx-driver
 	else
-		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx.so.\n"
+		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx-static.a.\n"
 	fi	
 	printf "\n\tChecking for secp256k1-zkp\n"
     if [ ! -e /usr/local/lib/libsecp256k1.a ]; then
