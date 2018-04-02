@@ -19,6 +19,12 @@
 
 #include "test_wasts.hpp"
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
+
 using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::chain::contracts;
@@ -26,7 +32,7 @@ using namespace eosio::chain_apis;
 using namespace eosio::testing;
 using namespace fc;
 
-class identity_tester : public tester {
+class identity_tester : public TESTER {
 public:
 
    identity_tester() {

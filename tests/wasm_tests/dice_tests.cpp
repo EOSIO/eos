@@ -12,6 +12,12 @@
 
 #include <fc/variant_object.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
+
 using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::chain::contracts;
@@ -88,7 +94,7 @@ struct __attribute((packed)) game_t {
 };
 FC_REFLECT(game_t, (gameid)(bet)(deadline)(player1)(player2));
 
-struct dice_tester : tester {
+struct dice_tester : TESTER {
 
    const contracts::table_id_object* find_table( name code, name scope, name table ) {
       auto tid = control->get_database().find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));

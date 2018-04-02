@@ -2,6 +2,12 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
+
 using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::chain::contracts;
@@ -9,7 +15,7 @@ using namespace eosio::testing;
 
 BOOST_AUTO_TEST_SUITE(auth_tests)
 
-BOOST_FIXTURE_TEST_CASE( missing_sigs, tester ) { try {
+BOOST_FIXTURE_TEST_CASE( missing_sigs, TESTER ) { try {
    create_accounts( {N(alice)} );
    produce_block();
 
@@ -21,7 +27,7 @@ BOOST_FIXTURE_TEST_CASE( missing_sigs, tester ) { try {
 
 } FC_LOG_AND_RETHROW() } /// missing_sigs
 
-BOOST_FIXTURE_TEST_CASE( missing_multi_sigs, tester ) { try {
+BOOST_FIXTURE_TEST_CASE( missing_multi_sigs, TESTER ) { try {
     produce_block();
     create_account(N(alice), config::system_account_name, true);
     produce_block();
@@ -34,7 +40,7 @@ BOOST_FIXTURE_TEST_CASE( missing_multi_sigs, tester ) { try {
 
  } FC_LOG_AND_RETHROW() } /// missing_multi_sigs
 
-BOOST_FIXTURE_TEST_CASE( missing_auths, tester ) { try {
+BOOST_FIXTURE_TEST_CASE( missing_auths, TESTER ) { try {
    create_accounts( {N(alice), N(bob)} );
    produce_block();
 
@@ -48,7 +54,7 @@ BOOST_FIXTURE_TEST_CASE( missing_auths, tester ) { try {
  *  This test case will attempt to allow one account to transfer on behalf
  *  of another account by updating the active authority.
  */
-BOOST_FIXTURE_TEST_CASE( delegate_auth, tester ) { try {
+BOOST_FIXTURE_TEST_CASE( delegate_auth, TESTER ) { try {
    create_accounts( {N(alice),N(bob)});
    produce_block();
 
@@ -66,12 +72,13 @@ BOOST_FIXTURE_TEST_CASE( delegate_auth, tester ) { try {
 
    produce_block();
    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace.id));
+
 } FC_LOG_AND_RETHROW() }
 
 
 BOOST_AUTO_TEST_CASE(update_auths) {
 try {
-   tester chain;
+   TESTER chain;
    chain.create_account("alice");
 
    // Deleting active or owner should fail
@@ -196,7 +203,7 @@ try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(link_auths) { try {
-   tester chain;
+   TESTER chain;
 
    chain.create_accounts({"alice","bob"});
 
@@ -235,11 +242,12 @@ BOOST_AUTO_TEST_CASE(link_auths) { try {
    chain.push_reqauth("alice", { permission_level{N(alice), "scud"} }, { scud_priv_key });
    // req auth action with alice's spending key should also be fine, since it is the parent of alice's scud key
    chain.push_reqauth("alice", { permission_level{N(alice), "spending"} }, { spending_priv_key });
+
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(create_account) {
 try {
-   tester chain;
+   TESTER chain;
    chain.create_account("joe");
    chain.produce_block();
 
@@ -273,11 +281,10 @@ try {
    BOOST_CHECK_EXCEPTION(chain.create_account("eosio.test2", "joe"), action_validate_exception,
                          assert_message_is("only privileged accounts can have names that contain 'eosio.'"));
 
-
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE( any_auth ) { try {
-   tester chain;
+   TESTER chain;
    chain.create_accounts( {"alice","bob"} );
    chain.produce_block();
 
@@ -309,6 +316,7 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
 
 
    chain.produce_block();
+
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

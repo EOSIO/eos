@@ -6,6 +6,12 @@
 #include <currency/currency.wast.hpp>
 #include <currency/currency.abi.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
+
 using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::chain::contracts;
@@ -14,13 +20,13 @@ using namespace eosio::testing;
 
 BOOST_AUTO_TEST_SUITE(delay_tests)
 
-asset get_currency_balance(const tester& chain, account_name account) {
+asset get_currency_balance(const TESTER& chain, account_name account) {
    return chain.get_currency_balance(N(currency), symbol(SY(4,CUR)), account);
 }
 
 // test link to permission with delay directly on it
 BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
-   tester chain;
+   TESTER chain;
 
    const auto& tester_account = N(tester);
 
@@ -160,7 +166,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_test ) { try {
 
 // test link to permission with delay on permission which is parent of min permission (special logic in permission_object::satisfies)
 BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
-   tester chain;
+   TESTER chain;
 
    const auto& tester_account = N(tester);
 
@@ -300,7 +306,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_parent_permission_test ) { try {
 
 // test link to permission with delay on permission between min permission and authorizing permission it
 BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
-   tester chain;
+   TESTER chain;
 
    const auto& tester_account = N(tester);
 
@@ -446,7 +452,7 @@ BOOST_AUTO_TEST_CASE( link_delay_direct_walk_parent_permissions_test ) { try {
 
 // test removing delay on permission
 BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
-   tester chain;
+   TESTER chain;
 
    const auto& tester_account = N(tester);
 
@@ -633,7 +639,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_test ) { try {
 
 // test removing delay on permission based on heirarchy delay
 BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) { try {
-   tester chain;
+   TESTER chain;
 
    const auto& tester_account = N(tester);
 
@@ -826,7 +832,7 @@ BOOST_AUTO_TEST_CASE( link_delay_permission_change_with_delay_heirarchy_test ) {
 
 // test moving link with delay on permission
 BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
-   tester chain;
+   TESTER chain;
 
    const auto& tester_account = N(tester);
 
@@ -1018,7 +1024,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
 
 // test moving link with delay on permission's parent
 BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
-   tester chain;
+   TESTER chain;
 
    const auto& tester_account = N(tester);
 
@@ -1216,7 +1222,7 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_heirarchy_test ) { try {
 
 // test mindelay action imposing delay
 BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
-   tester chain;
+   TESTER chain;
 
    const auto& tester_account = N(tester);
 
@@ -1352,7 +1358,7 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
 
 // test canceldelay action cancelling a delayed transaction
 BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
-   tester chain;
+   TESTER chain;
 
    const auto& tester_account = N(tester);
 
