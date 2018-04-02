@@ -24,7 +24,7 @@ class transaction_metadata {
          ,_trx(&t)
       {}
 
-      transaction_metadata( const packed_transaction& t, chain_id_type chainid, const time_point& published );
+      transaction_metadata( const packed_transaction& t, chain_id_type chainid, const time_point& published, bool implicit=false );
 
       transaction_metadata( transaction_metadata && ) = default;
       transaction_metadata& operator= (transaction_metadata &&) = default;
@@ -54,6 +54,9 @@ class transaction_metadata {
       size_t                                raw_size = 0;
 
       vector<char>                          packed_trx;
+      
+      // is this transaction implicit
+      bool                                  is_implicit = false; 
 
       // scopes available to this transaction if we are applying a block
       optional<const vector<shard_lock>*>   allowed_read_locks;
@@ -77,3 +80,4 @@ class transaction_metadata {
 
 } } // eosio::chain
 
+FC_REFLECT( eosio::chain::transaction_metadata, (raw_trx)(signing_keys)(id)(region_id)(cycle_index)(shard_index)(bandwidth_usage)(published)(sender)(sender_id)(is_implicit))

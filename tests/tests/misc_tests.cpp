@@ -16,6 +16,12 @@
 
 #include <boost/test/unit_test.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
+
 using namespace eosio::chain;
 namespace eosio
 {
@@ -87,7 +93,7 @@ struct permission_visitor {
 
 BOOST_AUTO_TEST_CASE(authority_checker)
 { try {
-   testing::tester test;
+   testing::TESTER test;
    auto a = test.get_public_key("a", "active");
    auto b = test.get_public_key("b", "active");
    auto c = test.get_public_key("c", "active");

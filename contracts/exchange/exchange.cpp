@@ -248,6 +248,3 @@ extern "C" {
       eosio_exit(0);
    }
 }
-
-void main() {
-}

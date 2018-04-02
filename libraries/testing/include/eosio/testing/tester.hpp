@@ -66,30 +66,35 @@ namespace eosio { namespace testing {
 
          static const uint32_t DEFAULT_EXPIRATION_DELTA = 6;
 
-         base_tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
-         explicit base_tester(chain_controller::controller_config config);
+         void              init(bool push_genesis = true, chain_controller::runtime_limits limits = chain_controller::runtime_limits());
+         void              init(chain_controller::controller_config config);
 
          void              close();
          void              open();
 
-         signed_block      produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty );
-         void              produce_blocks( uint32_t n = 1 );
-         void              produce_blocks_until_end_of_round();
+         virtual signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty ) = 0;
+         void                 produce_blocks( uint32_t n = 1 );
+         void                 produce_blocks_until_end_of_round();
+         signed_block         push_block(signed_block b);
+         transaction_trace    push_transaction( packed_transaction& trx, uint32_t skip_flag = skip_nothing  );
+         transaction_trace    push_transaction( signed_transaction& trx, uint32_t skip_flag = skip_nothing  );
+         action_result        push_action(action&& cert_act, uint64_t authorizer);
 
-         transaction_trace push_transaction( packed_transaction& trx, uint32_t skip_flag = skip_nothing  );
-         transaction_trace push_transaction( signed_transaction& trx, uint32_t skip_flag = skip_nothing  );
-         action_result     push_action(action&& cert_act, uint64_t authorizer);
+         transaction_trace    push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA );
+         transaction_trace    push_action( const account_name& code, const action_name& acttype, const vector<account_name>& actors, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA );
 
-         transaction_trace push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA );
-         transaction_trace push_action( const account_name& code, const action_name& acttype, const vector<account_name>& actors, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA );
+         void                 set_tapos( signed_transaction& trx, uint32_t expiration = DEFAULT_EXPIRATION_DELTA ) const;
 
-         void              set_transaction_headers(signed_transaction& trx,
+         void                 set_transaction_headers(signed_transaction& trx,
                                                    uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
                                                    uint32_t extra_cf_cpu_usage = 0) const;
 
-         void              create_accounts( vector<account_name> names, bool multisig = false ) {
+         void                 create_accounts( vector<account_name> names, bool multisig = false ) {
             for( auto n : names ) create_account(n, config::system_account_name, multisig );
          }
+
+         void                 push_genesis_block();
+         producer_schedule_type  set_producers(const vector<account_name>& producer_names, const uint32_t version = 0);
 
          void link_authority( account_name account, account_name code,  permission_name req, action_name type = "" );
          void unlink_authority( account_name account, account_name code, action_name type = "" );
@@ -171,21 +176,85 @@ namespace eosio { namespace testing {
 
        void sync_with(base_tester& other);
 
-   private:
+   protected:
+         signed_block _produce_block( fc::microseconds skip_time, uint32_t skip_flag);
          fc::temp_directory                            tempdir;
          chain_controller::controller_config           cfg;
-
          map<transaction_id_type, transaction_receipt> chain_transactions;
    };
 
    class tester : public base_tester {
    public:
-      tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits());
-      tester(chain_controller::controller_config config);
+      tester(bool push_genesis, chain_controller::runtime_limits limits = chain_controller::runtime_limits()) {
+         init(push_genesis, limits);
+      }
+      tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits()) {
+         init(true, limits);
+      }
 
-      void                    push_genesis_block();
-      producer_schedule_type  set_producers(const vector<account_name>& producer_names, const uint32_t version = 0);
-   };
+      tester(chain_controller::controller_config config) {
+         init(config); 
+      }
+
+      signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty )override {
+         return _produce_block(skip_time, skip_flag);
+      }
+
+      bool validate() { return true; }
+   };   
+
+   class validating_tester : public base_tester {
+   public:
+      virtual ~validating_tester() { 
+         produce_block();
+         BOOST_REQUIRE_EQUAL( validate(), true );
+      }
+      validating_tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits()) {
+         chain_controller::controller_config vcfg;
+         vcfg.block_log_dir      = tempdir.path() / "blocklog";
+         vcfg.shared_memory_dir  = tempdir.path() / "shared";
+         vcfg.shared_memory_size = 1024*1024*8;
+
+         vcfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
+         vcfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
+         vcfg.limits = limits;
+
+         for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
+            if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--binaryen"))
+               vcfg.wasm_runtime = chain::wasm_interface::vm_type::binaryen;
+            else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
+               vcfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
+         }
+
+         validating_node = std::make_unique<chain_controller>(vcfg);
+         init(true, limits);
+      }
+
+      validating_tester(chain_controller::controller_config config) {
+         validating_node = std::make_unique<chain_controller>(config);
+         init(config);
+      }
+
+      signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty )override {
+         auto sb = _produce_block(skip_time, skip_flag | 2);
+         validating_node->push_block( sb );
+         return sb;
+      }
+      
+      bool validate() {
+        auto hbh = control->head_block_header();
+        auto vn_hbh = validating_node->head_block_header();
+        return control->head_block_id() == validating_node->head_block_id() && 
+               hbh.previous == vn_hbh.previous &&
+               hbh.timestamp == vn_hbh.timestamp &&
+               hbh.transaction_mroot == vn_hbh.transaction_mroot &&
+               hbh.action_mroot == vn_hbh.action_mroot &&
+               hbh.block_mroot == vn_hbh.block_mroot &&
+               hbh.producer == vn_hbh.producer;
+      }
+
+      unique_ptr<chain_controller>                  validating_node;
+   };   
 
    /**
     * Utility predicate to check whether an FC_ASSERT message ends with a given string
@@ -203,5 +272,6 @@ namespace eosio { namespace testing {
       string expected;
    };
 
+   
 } } /// eosio::testing
 

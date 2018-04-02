@@ -2,6 +2,12 @@
 #include <eosio/testing/tester.hpp>
 #include <boost/range/algorithm.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
+
 using namespace eosio::testing;
 using namespace eosio::chain;
 using mvo = fc::mutable_variant_object;
@@ -35,7 +41,7 @@ BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
       return res;
    };
 
-   BOOST_FIXTURE_TEST_CASE( verify_producer_schedule, tester ) try {
+   BOOST_FIXTURE_TEST_CASE( verify_producer_schedule, TESTER ) try {
 
       // Utility function to ensure that producer schedule work as expected
       const auto& confirm_schedule_correctness = [&](const producer_schedule_type& new_prod_schd, const uint64_t eff_new_prod_schd_block_num)  {
@@ -108,7 +114,7 @@ BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
    } FC_LOG_AND_RETHROW()
 
 
-   BOOST_FIXTURE_TEST_CASE( verify_header_schedule_version, tester ) try {
+   BOOST_FIXTURE_TEST_CASE( verify_header_schedule_version, TESTER ) try {
 
       // Utility function to ensure that producer schedule version in the header is correct
       const auto& confirm_header_schd_ver_correctness = [&](const uint64_t expected_version, const uint64_t eff_new_prod_schd_block_num)  {

@@ -2,7 +2,7 @@
 
 namespace eosio { namespace testing {
 
-   void tester_network::connect_blockchain(tester &new_blockchain) {
+   void tester_network::connect_blockchain(base_tester &new_blockchain) {
       if (blockchains.count(&new_blockchain))
          return;
 
@@ -20,7 +20,7 @@ namespace eosio { namespace testing {
               });
    }
 
-   void tester_network::disconnect_blockchain(tester &leaving_blockchain) {
+   void tester_network::disconnect_blockchain(base_tester &leaving_blockchain) {
       blockchains.erase(&leaving_blockchain);
    }
 
@@ -28,7 +28,7 @@ namespace eosio { namespace testing {
       blockchains.clear();
    }
 
-   void tester_network::propagate_block(const signed_block &block, const tester &skip_blockchain) {
+   void tester_network::propagate_block(const signed_block &block, const base_tester &skip_blockchain) {
       for (const auto &pair : blockchains) {
          if (pair.first == &skip_blockchain) continue;
          boost::signals2::shared_connection_block blocker(pair.second);

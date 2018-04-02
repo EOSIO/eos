@@ -8,6 +8,12 @@
 
 #include <boost/test/unit_test.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
+
 
 using namespace eosio::chain;
 using namespace eosio::testing;
@@ -18,7 +24,7 @@ BOOST_AUTO_TEST_SUITE(database_tests)
    // Simple tests of undo infrastructure
    BOOST_AUTO_TEST_CASE(undo_test) {
       try {
-         tester test;
+         TESTER test;
          auto &db = test.control->get_mutable_database();
 
          auto ses = db.start_undo_session(true);
@@ -44,7 +50,7 @@ BOOST_AUTO_TEST_SUITE(database_tests)
    // Test the block fetching methods on database, get_block_id_for_num, fetch_bock_by_id, and fetch_block_by_number
    BOOST_AUTO_TEST_CASE(get_blocks) {
       try {
-         tester test;
+         TESTER test;
          vector<block_id_type> block_ids;
 
          const uint32_t num_of_blocks_to_prod = 200;
