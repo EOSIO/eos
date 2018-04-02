@@ -8,7 +8,6 @@
 #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
-#include <eosio/txn_test_gen_plugin/txn_test_gen_plugin.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>
@@ -85,7 +84,7 @@ int main(int argc, char** argv)
       auto root = fc::app_path(); 
       app().set_default_data_dir(root / "eosio/nodeos/data" );
       app().set_default_config_dir(root / "eosio/nodeos/config" );
-      if(!app().initialize<chain_plugin, http_plugin, net_plugin, txn_test_gen_plugin, producer_plugin>(argc, argv))
+      if(!app().initialize<chain_plugin, http_plugin, net_plugin, producer_plugin>(argc, argv))
          return -1;
       initialize_logging();
       ilog("nodeos version ${ver}", ("ver", eosio::nodeos::config::itoh(static_cast<uint32_t>(app().version()))));
