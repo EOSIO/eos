@@ -296,13 +296,12 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
                                             [this](transaction_metadata& meta) { return delayed_transaction_processing(meta); } );
    }
 
-   result._setup_profiling_us = setup_us;
-
    // notify anyone listening to pending transactions
    on_pending_transaction(_pending_transaction_metas.back(), packed_trx);
 
    _pending_block->input_transactions.emplace_back(packed_trx);
 
+   result._setup_profiling_us = setup_us;
    return result;
 
 } FC_CAPTURE_AND_RETHROW( (transaction_header(packed_trx.get_transaction())) ) }

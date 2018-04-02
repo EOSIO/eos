@@ -10,13 +10,13 @@ namespace eosio { namespace chain {
 
 class transaction_metadata {
    public:
-      transaction_metadata( const transaction& t, const time_point& published, const account_name& sender, uint32_t sender_id, const char* raw_data, size_t raw_size )
+      transaction_metadata( const transaction& t, const time_point& published, const account_name& sender, uint128_t sender_id, const char* raw_data, size_t raw_size )
          :id(t.id())
          ,published(published)
          ,sender(sender),sender_id(sender_id),raw_data(raw_data),raw_size(raw_size),_trx(&t)
       {}
 
-      transaction_metadata( const transaction& t, const time_point& published, const account_name& sender, uint32_t sender_id, const char* raw_data, size_t raw_size, fc::time_point deadline )
+      transaction_metadata( const transaction& t, const time_point& published, const account_name& sender, uint128_t sender_id, const char* raw_data, size_t raw_size, fc::time_point deadline )
          :id(t.id())
          ,published(published)
          ,sender(sender),sender_id(sender_id),raw_data(raw_data),raw_size(raw_size)

@@ -570,7 +570,7 @@ void apply_eosio_vetorecovery(apply_context& context) {
 
 void apply_eosio_canceldelay(apply_context& context) {
    auto cancel = context.act.data_as<canceldelay>();
-   const auto sender_id = cancel.sender_id.convert_to<uint32_t>();
+   const auto sender_id = cancel.sender_id;
    const auto& generated_transaction_idx = context.controller.get_database().get_index<generated_transaction_multi_index>();
    const auto& generated_index = generated_transaction_idx.indices().get<by_sender_id>();
    const auto& itr = generated_index.lower_bound(boost::make_tuple(config::system_account_name, sender_id));

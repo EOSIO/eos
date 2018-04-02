@@ -270,7 +270,7 @@ struct vetorecovery {
 };
 
 struct canceldelay {
-   uint32   sender_id;
+   uint128_t  sender_id;
 
    static account_name get_account() {
       return config::system_account_name;
