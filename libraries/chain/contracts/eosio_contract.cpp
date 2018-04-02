@@ -554,6 +554,7 @@ void apply_eosio_canceldelay(apply_context& context) {
    auto cancel = context.act.data_as<canceldelay>();
    //const auto sender_id = cancel.sender_id.convert_to<uint32_t>();
    const auto& trx_id = cancel.trx_id;
+
    const auto& generated_transaction_idx = context.controller.get_database().get_index<generated_transaction_multi_index>();
    const auto& generated_index = generated_transaction_idx.indices().get<by_trx_id>();
    const auto& itr = generated_index.lower_bound(trx_id);
@@ -578,7 +579,8 @@ void apply_eosio_canceldelay(apply_context& context) {
 
    FC_ASSERT (found, "canceldelay action must be signed with the \"active\" permission for one of the actors"
                      " provided in the authorizations on the original transaction");
-   context.cancel_deferred(itr->sender_id);
+
+   context.cancel_deferred(trx_id);
 }
 
 void apply_eosio_mindelay(apply_context& context) {
