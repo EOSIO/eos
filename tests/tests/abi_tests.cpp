@@ -1695,8 +1695,9 @@ BOOST_AUTO_TEST_CASE(general)
         "region": "1",
         "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
         "actions":[{"account":"accountname1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
-        "packed_bandwidth_words":15,
-        "context_free_cpu_bandwidth":43
+        "net_usage_words":15,
+        "kcpu_usage":43,
+        "delay_sec":0
       },
       "transaction_arr": [{
         "ref_block_num":"1",
@@ -1705,8 +1706,9 @@ BOOST_AUTO_TEST_CASE(general)
         "region": "1",
         "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
         "actions":[{"account":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
-        "packed_bandwidth_words":15,
-        "context_free_cpu_bandwidth":43
+        "net_usage_words":15,
+        "kcpu_usage":43,
+        "delay_sec":0
       },{
         "ref_block_num":"2",
         "ref_block_prefix":"3",
@@ -1714,8 +1716,9 @@ BOOST_AUTO_TEST_CASE(general)
         "region": "1",
         "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
         "actions":[{"account":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}],
-        "packed_bandwidth_words":21,
-        "context_free_cpu_bandwidth":87
+        "net_usage_words":21,
+        "kcpu_usage":87,
+        "delay_sec":0
       }],
       "strx": {
         "ref_block_num":"1",
@@ -1726,8 +1729,9 @@ BOOST_AUTO_TEST_CASE(general)
         "context_free_data" : ["abcdef","0123456789","ABCDEF0123456789abcdef"],
         "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
         "actions":[{"account":"accountname1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
-        "packed_bandwidth_words":15,
-        "context_free_cpu_bandwidth":43
+        "net_usage_words":15,
+        "kcpu_usage":43,
+        "delay_sec":0
       },
       "strx_arr": [{
         "ref_block_num":"1",
@@ -1738,8 +1742,9 @@ BOOST_AUTO_TEST_CASE(general)
         "context_free_data" : ["abcdef","0123456789","ABCDEF0123456789abcdef"],
         "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
         "actions":[{"account":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
-        "packed_bandwidth_words":15,
-        "context_free_cpu_bandwidth":43
+        "net_usage_words":15,
+        "kcpu_usage":43,
+        "delay_sec":0
       },{
         "ref_block_num":"2",
         "ref_block_prefix":"3",
@@ -1749,8 +1754,9 @@ BOOST_AUTO_TEST_CASE(general)
         "context_free_data" : ["abcdef","0123456789","ABCDEF0123456789abcdef"],
         "context_free_actions":[{"account":"contextfree2", "name":"cfactionname2", "authorization":[{"actor":"cfacc2","permission":"cfpermname2"}], "data":"667788"}],
         "actions":[{"account":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}],
-        "packed_bandwidth_words":15,
-        "context_free_cpu_bandwidth":43
+        "net_usage_words":15,
+        "kcpu_usage":43,
+        "delay_sec":0
       }],
       "keyweight": {"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},
       "keyweight_arr": [{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},{"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"200"}],
@@ -2560,8 +2566,8 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
    txn.actions.emplace_back(
          vector<permission_level>{{N(testapi4), config::active_name}},
          action2{ 61, 23, (uint8_t)2});
-   txn.packed_bandwidth_words = 15;
-   txn.context_free_cpu_bandwidth = 43;
+   txn.net_usage_words = 15;
+   txn.kcpu_usage = 43;
 
    // pack the transaction to verify that the var unpacking logic is correct
    auto packed_txn = chain::packed_transaction(txn);
@@ -2641,8 +2647,8 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
    BOOST_REQUIRE_EQUAL(txn.actions.size(), txn2.actions.size());
    for (unsigned int i = 0; i < txn.actions.size(); ++i)
       verify_action_equal<action2>(txn.actions[i], txn2.actions[i]);
-   BOOST_REQUIRE_EQUAL(txn.packed_bandwidth_words, txn2.packed_bandwidth_words);
-   BOOST_REQUIRE_EQUAL(txn.context_free_cpu_bandwidth, txn2.context_free_cpu_bandwidth);
+   BOOST_REQUIRE_EQUAL(txn.net_usage_words.value, txn2.net_usage_words.value);
+   BOOST_REQUIRE_EQUAL(txn.kcpu_usage.value, txn2.kcpu_usage.value);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(abi_type_repeat)

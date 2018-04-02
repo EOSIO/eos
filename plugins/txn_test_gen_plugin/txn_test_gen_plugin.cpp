@@ -144,6 +144,7 @@ struct txn_test_gen_plugin_impl {
       trx.actions.emplace_back( vector<chain::permission_level>{{newaccountC,"active"}}, handler);
       }
 
+      trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.set_reference_block(cc.head_block_id());
       trx.sign(txn_test_receiver_C_priv_key, chainid);
       cc.push_transaction(packed_transaction(trx));
@@ -187,6 +188,7 @@ struct txn_test_gen_plugin_impl {
       trx.actions.push_back(act);
       }
 
+      trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.set_reference_block(cc.head_block_id());
       trx.sign(txn_test_receiver_C_priv_key, chainid);
       cc.push_transaction(packed_transaction(trx));
@@ -227,7 +229,7 @@ struct txn_test_gen_plugin_impl {
    void arm_timer(boost::asio::high_resolution_timer::time_point s) {
       timer.expires_at(s + std::chrono::milliseconds(timer_timeout));
       timer.async_wait([this](const boost::system::error_code& ec) {
-         if(ec)
+         if(!running || ec)
             return;
          try {
             send_transaction();

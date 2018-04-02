@@ -86,13 +86,16 @@ public:
 
    static fc::variant_object producer_parameters_example( int n ) {
       return mutable_variant_object()
-         ("target_block_size", 1024 * 1024 + n)
-         ("max_block_size", 10 * 1024 + n)
-         ("target_block_acts_per_scope", 1000 + n)
-         ("max_block_acts_per_scope", 10000 + n)
-         ("target_block_acts", 1100 + n)
-         ("max_block_acts", 11000 + n)
-         ("max_storage_size", 2000 + n)
+         ("base_per_transaction_net_usage", 100 + n)
+         ("base_per_transaction_cpu_usage", 100 + n)
+         ("base_per_action_cpu_usage", 100 + n)
+         ("base_setcode_cpu_usage", 100 + n)
+         ("per_signature_cpu_usage", 100 + n)
+         ("per_lock_net_usage", 100 + n )
+         ("context_free_discount_cpu_usage_num", 1 + n )
+         ("context_free_discount_cpu_usage_den", 100 + n )
+         ("max_transaction_cpu_usage", 1000000 + n )
+         ("max_transaction_net_usage", 1000000 + n )
          ("max_transaction_lifetime", 3600 + n)
          ("max_transaction_exec_time", 9900 + n)
          ("max_authority_depth", 6 + n)
@@ -207,17 +210,16 @@ BOOST_FIXTURE_TEST_CASE( stake_unstake, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( asset::from_string("0.0000 EOS").amount, total["storage_stake"].as_uint64());
    BOOST_REQUIRE_EQUAL( 0, total["storage_bytes"].as_uint64());
    REQUIRE_MATCHING_OBJECT( voter( "alice", "0.00 EOS" ), get_voter_info( "alice" ) );
-   control->push_deferred_transactions(true);
+   produce_blocks(1);
    BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
 
    //after 2 days balance should not be available yet
    produce_block( fc::hours(3*24-1) );
-   control->push_deferred_transactions(true);
+   produce_blocks(1);
    BOOST_REQUIRE_EQUAL( asset::from_string("200.0000 EOS"), get_balance( "alice" ) );
-
    //after 3 days funds should be released
    produce_block( fc::hours(1) );
-   control->push_deferred_transactions(true);
+   produce_blocks(1);
    BOOST_REQUIRE_EQUAL( asset::from_string("1000.0000 EOS"), get_balance( "alice" ) );
 
 } FC_LOG_AND_RETHROW()
@@ -502,10 +504,10 @@ BOOST_FIXTURE_TEST_CASE( adding_stake_partial_unstake, eosio_system_tester ) try
 
    //combined amount should be available only in 3 days
    produce_block( fc::days(2) );
-   control->push_deferred_transactions(true);
+   produce_blocks(1);
    BOOST_REQUIRE_EQUAL( asset::from_string("430.0000 EOS"), get_balance( "alice" ) );
    produce_block( fc::days(1) );
-   control->push_deferred_transactions(true);
+   produce_blocks(1);
    BOOST_REQUIRE_EQUAL( asset::from_string("790.0000 EOS"), get_balance( "alice" ) );
 
 } FC_LOG_AND_RETHROW()
@@ -661,7 +663,7 @@ BOOST_FIXTURE_TEST_CASE( vote_for_producer, eosio_system_tester ) try {
    BOOST_REQUIRE_EQUAL( string(key.begin(), key.end()), to_string(prod["packed_key"]) );
    //carol should receive funds in 3 days
    produce_block( fc::days(3) );
-   control->push_deferred_transactions(true);
+   produce_block();
    BOOST_REQUIRE_EQUAL( asset::from_string("3000.0000 EOS"), get_balance( "carol" ) );
 
 } FC_LOG_AND_RETHROW()
@@ -1363,13 +1365,16 @@ BOOST_FIXTURE_TEST_CASE( proxy_cannot_use_another_proxy, eosio_system_tester ) t
 
 fc::mutable_variant_object config_to_variant( const eosio::chain::chain_config& config ) {
    return mutable_variant_object()
-      ( "target_block_size", config.target_block_size )
-      ( "max_block_size", config.max_block_size )
-      ( "target_block_acts_per_scope", config.target_block_acts_per_scope )
-      ( "max_block_acts_per_scope", config.max_block_acts_per_scope )
-      ( "target_block_acts", config.target_block_acts )
-      ( "max_block_acts", config.max_block_acts )
-      ( "max_storage_size", config.max_storage_size )
+      ( "base_per_transaction_net_usage", config.base_per_transaction_net_usage )
+      ( "base_per_transaction_cpu_usage", config.base_per_transaction_cpu_usage )
+      ( "base_per_action_cpu_usage", config.base_per_action_cpu_usage )
+      ( "base_setcode_cpu_usage", config.base_setcode_cpu_usage )
+      ( "per_signature_cpu_usage", config.per_signature_cpu_usage )
+      ( "per_lock_net_usage", config.per_lock_net_usage )
+      ( "context_free_discount_cpu_usage_num", config.context_free_discount_cpu_usage_num )
+      ( "context_free_discount_cpu_usage_den", config.context_free_discount_cpu_usage_den )
+      ( "max_transaction_cpu_usage", config.max_transaction_cpu_usage )
+      ( "max_transaction_net_usage", config.max_transaction_net_usage )
       ( "max_transaction_lifetime", config.max_transaction_lifetime )
       ( "max_transaction_exec_time", config.max_transaction_exec_time )
       ( "max_authority_depth", config.max_authority_depth )

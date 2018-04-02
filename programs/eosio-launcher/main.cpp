@@ -744,23 +744,26 @@ launcher_def::bind_nodes () {
    }
    int non_bios = prod_nodes - 1;
    int per_node = producers / non_bios;
-  int extra = producers % non_bios;
-  producer_set.version = 1;
-  unsigned int i = 0;
-  for (auto &h : bindings) {
-    for (auto &inst : h.instances) {
-       bool is_bios = inst.name == "bios";
-       tn_node_def node;
-        node.name = inst.name;
-        node.instance = &inst;
-        auto kp = private_key_type::generate();
-        auto pubkey = kp.get_public_key();
-        node.keys.emplace_back (move(kp));
-        if (is_bios) {
-           string prodname = "eosio";
-           node.producers.push_back(prodname);
-           producer_set.producers.push_back({prodname,pubkey});
-        }
+   int extra = producers % non_bios;
+   producer_set.version = 1;
+   unsigned int i = 0;
+   for (auto &h : bindings) {
+      for (auto &inst : h.instances) {
+         bool is_bios = inst.name == "bios";
+         tn_node_def node;
+         node.name = inst.name;
+         node.instance = &inst;
+         auto kp = is_bios ?
+            private_key_type(string("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3")) :
+            private_key_type::generate();
+         auto pubkey = kp.get_public_key();
+         node.keys.emplace_back (move(kp));
+         if (is_bios) {
+            string prodname = "eosio";
+            //pubkey = public_key_type(string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"));
+            node.producers.push_back(prodname);
+            producer_set.producers.push_back({prodname,pubkey});
+         }
         else {
            if (i < non_bios) {
               int count = per_node;
@@ -1700,8 +1703,9 @@ void write_default_config(const bfs::path& cfg_file, const options_description &
    {
       if(!od->description().empty()) {
          out_cfg << "# " << od->description();
-         std::map<std::string, std::string>::iterator it;
-            out_cfg << " (" << it->second << ")";
+         // disable uninitialized variable usage.
+//         std::map<std::string, std::string>::iterator it;
+//            out_cfg << " (" << it->second << ")";
          out_cfg << std::endl;
       }
       boost::any store;

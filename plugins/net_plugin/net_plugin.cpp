@@ -2233,6 +2233,7 @@ namespace eosio {
                for (const auto &recpt : shard.transactions) {
                   auto ltx = local_txns.get<by_id>().find(recpt.id);
                   switch (recpt.status) {
+                  case transaction_receipt::delayed:
                   case transaction_receipt::executed: {
                      if( ltx != local_txns.end()) {
                         sb.input_transactions.push_back(ltx->packed_txn);
@@ -2252,9 +2253,6 @@ namespace eosio {
                      }
                      break;
                   }
-                  case transaction_receipt::delayed:
-#warning TODO: Not sure what should happen here
-                     break;
                   }
                }
             }
@@ -2365,7 +2363,7 @@ namespace eosio {
                expire_txns( );
             }
             else {
-               elog( "Error from connection check monitor: ${m}",( "m", ec.message()));
+               elog( "Error from transaction check monitor: ${m}",( "m", ec.message()));
                start_txn_timer( );
             }
          });

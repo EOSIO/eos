@@ -42,6 +42,7 @@ namespace eosio { namespace chain {
 
       operator producer_schedule_type()const {
          producer_schedule_type result;
+         result.version = version;
          result.producers.reserve(producers.size());
          for( const auto& p : producers )
             result.producers.push_back(p);
