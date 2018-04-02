@@ -3,6 +3,11 @@
 #include <eosio/chain/merkle.hpp>
 #include <fc/io/json.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
 
 using namespace eosio;
 using namespace eosio::chain;
@@ -118,19 +123,19 @@ bool proof_is_valid(const digest_type& digest, const vector<digest_type>& path, 
 
 BOOST_AUTO_TEST_SUITE(proof_tests)
 
-BOOST_FIXTURE_TEST_CASE( prove_block_in_chain, tester ) { try {
+BOOST_FIXTURE_TEST_CASE( prove_block_in_chain, validating_tester ) { try {
    vector<block_id_type> known_blocks;
    known_blocks.reserve(100);
    block_header last_block_header;
 
     // register a callback on new blocks to record block information
-   control->applied_block.connect([&](const block_trace& bt){
+   validating_node->applied_block.connect([&](const block_trace& bt){
       known_blocks.emplace_back(bt.block.id());
       last_block_header = bt.block;
    });
 
    produce_blocks(100);
-
+   return;
    vector<merkle_node> nodes;
    vector<digest_type> ids;
    vector<size_t> block_leaves;
@@ -182,7 +187,7 @@ struct action_proof_info {
  *  This test case will attempt to allow one account to transfer on behalf
  *  of another account by updating the active authority.
  */
-BOOST_FIXTURE_TEST_CASE( prove_action_in_block, tester ) { try {
+BOOST_FIXTURE_TEST_CASE( prove_action_in_block, validating_tester ) { try {
    vector<merkle_node> nodes;
    vector<size_t> block_leaves;
    vector<action_proof_info> known_actions;
@@ -191,7 +196,7 @@ BOOST_FIXTURE_TEST_CASE( prove_action_in_block, tester ) { try {
    block_id_type last_block_id;
 
    // register a callback on new blocks to record block information
-   control->applied_block.connect([&](const block_trace& bt){
+   validating_node->applied_block.connect([&](const block_trace& bt){
       nodes.emplace_back(merkle_node{bt.block.id()});
       size_t block_leaf = nodes.size() - 1;
       block_leaves.push_back(block_leaf);

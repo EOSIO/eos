@@ -181,34 +181,7 @@ template<typename T>
 inline auto convert_wasm_to_native(native_to_wasm_t<T> val) {
    return T(val);
 }
-/*
-template<>
-inline auto convert_wasm_to_native<float>(native_to_wasm_t<float> val) {
-   // ensure implicit casting doesn't occur
-   std::cout << "OOP1 " << *(float*)&val << "\n";
-   float32_t ret = { *(uint32_t*)&val };
-   return ret;
-}
-template<>
-inline auto convert_wasm_to_native<double>(native_to_wasm_t<double> val) {
-   // ensure implicit casting doesn't occur
-   float64_t ret = { *(uint64_t*)&val };
-   return ret;
-}
-template<>
-inline auto convert_wasm_to_native<float32_t>(native_to_wasm_t<float32_t> val) {
-   // ensure implicit casting doesn't occur
-   std::cout << "OOP1 " << *(float*)&val << "\n";
-   float32_t ret = { *(uint32_t*)&val };
-   return ret;
-}
-template<>
-inline auto convert_wasm_to_native<float64_t>(native_to_wasm_t<float64_t> val) {
-   // ensure implicit casting doesn't occur
-   float64_t ret = { *(uint64_t*)&val };
-   return ret;
-}
-*/
+
 template<typename T>
 struct wasm_to_value_type;
 

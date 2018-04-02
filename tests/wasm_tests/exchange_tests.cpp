@@ -18,6 +18,12 @@
 #include <fc/variant_object.hpp>
 #include <fc/io/json.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
+
 using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::chain::contracts;
@@ -52,7 +58,7 @@ struct exchange_state {
 FC_REFLECT( exchange_state::connector, (balance)(weight)(peer_margin) );
 FC_REFLECT( exchange_state, (manager)(supply)(fee)(base)(quote) );
 
-class exchange_tester : public tester {
+class exchange_tester : public TESTER {
    public:
 
       auto push_action(account_name contract,
@@ -232,7 +238,7 @@ class exchange_tester : public tester {
 
 
       exchange_tester()
-      :tester(),abi_ser(json::from_string(exchange_abi).as<abi_def>())
+      :TESTER(),abi_ser(json::from_string(exchange_abi).as<abi_def>())
       {
          create_account( N(dan) );
          create_account( N(trader) );

@@ -162,7 +162,6 @@ void apply_eosio_setabi(apply_context& context) {
    if ( act.account == eosio::chain::config::system_account_name ) {
       act.abi = chain_initializer::eos_contract_abi(act.abi);
    }
-
    /// if an ABI is specified make sure it is well formed and doesn't
    /// reference any undefined types
    abi_serializer(act.abi).validate();

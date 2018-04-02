@@ -73,6 +73,9 @@ void  fork_database::_push_block(const item_ptr& item)
    if( !_head ) _head = item;
    else if( item->num > _head->num )
    {
+      uint32_t delta = item->data.timestamp.slot - _head->data.timestamp.slot;
+      if (delta > 1)
+         wlog("Number of missed blocks: ${num}", ("num", delta-1));
       _head = item;
       uint32_t min_num = _head->num - std::min( _max_size, _head->num );
 //      ilog( "min block in fork DB ${n}, max_size: ${m}", ("n",min_num)("m",_max_size) );
