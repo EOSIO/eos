@@ -225,15 +225,15 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
       FC_ASSERT( trx.execute_after < trx.expiration, "transaction expires before it can execute" );
       FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
 
-      if (trx.payer != receiver) {
-         require_authorization(trx.payer);
-      }
-
       const auto& gpo = controller.get_global_properties();
       FC_ASSERT( results.deferred_transactions_count < gpo.configuration.max_generated_transaction_count );
 
       // privileged accounts can do anything, no need to check auth
       if( !privileged ) {
+         // check to make sure the payer has authorized this deferred transaction's storage in RAM
+         if (trx.payer != receiver) {
+            require_authorization(trx.payer);
+         }
 
          // if a contract is deferring only actions to itself then there is no need
          // to check permissions, it could have done everything anyway.
@@ -319,7 +319,7 @@ const bytes& apply_context::get_packed_transaction() {
 void apply_context::update_db_usage( const account_name& payer, int64_t delta, const char* use_format, const fc::variant_object& args ) {
    require_write_lock( payer );
    if( (delta > 0) ) {
-      if (payer != account_name(receiver)) {
+      if (!(privileged || payer == account_name(receiver))) {
          require_authorization( payer );
       }
 
