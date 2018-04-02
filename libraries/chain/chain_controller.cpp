@@ -291,8 +291,6 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
                 ("usage", net_usage)("commit", net_usage_commitment));
 
    transaction_trace result(mtrx.id);
-   result._setup_profiling_us = setup_us;
-
    if (!delay.sec_since_epoch()) {
       result = _push_transaction(std::move(mtrx));
 
@@ -341,6 +339,7 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
 
    _pending_block->input_transactions.emplace_back(packed_trx);
 
+   result._setup_profiling_us = setup_us;
    return result;
 
 } FC_CAPTURE_AND_RETHROW( (transaction_header(packed_trx.get_transaction())) ) }
