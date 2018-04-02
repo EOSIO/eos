@@ -184,7 +184,7 @@ namespace eosio { namespace testing {
    };
 
    class tester : public base_tester {
-      public:
+   public:
       tester(bool push_genesis, chain_controller::runtime_limits limits = chain_controller::runtime_limits()) {
          init(push_genesis, limits);
       }
@@ -204,7 +204,7 @@ namespace eosio { namespace testing {
    };   
 
    class validating_tester : public base_tester {
-      public:
+   public:
       virtual ~validating_tester() { 
          produce_block();
          BOOST_REQUIRE_EQUAL( validate(), true );

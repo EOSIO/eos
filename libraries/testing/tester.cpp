@@ -29,7 +29,6 @@ namespace eosio { namespace testing {
       return res;
    }
    
-   
    void base_tester::init(bool push_genesis, chain_controller::runtime_limits limits) {
       cfg.block_log_dir      = tempdir.path() / "blocklog";
       cfg.shared_memory_dir  = tempdir.path() / "shared";
