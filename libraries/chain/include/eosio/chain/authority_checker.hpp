@@ -58,6 +58,7 @@ namespace detail {
          uint16_t                   recursion_depth_limit;
          vector<public_key_type>    signing_keys;
          flat_set<account_name>     _provided_auths; /// accounts which have authorized the transaction at owner level
+         flat_set<permission_level> _provided_levels;
          vector<bool>               _used_keys;
 
          struct weight_tally_visitor {
@@ -82,7 +83,7 @@ namespace detail {
                if (recursion_depth < checker.recursion_depth_limit) {
                   checker.permission_visitor(permission.permission);
 
-                  if( checker.has_permission( permission.permission.actor ) )
+                  if( checker.has_permission( permission.permission ) )
                      total_weight += permission.weight;
                   else if( checker.satisfied(permission.permission, recursion_depth + 1) )
                      total_weight += permission.weight;
@@ -91,25 +92,28 @@ namespace detail {
             }
          };
 
-         bool has_permission( account_name n )const {
-            return _provided_auths.find(n) != _provided_auths.end();
+         bool has_permission( const permission_level& level )const {
+            return _provided_auths.find( level.actor ) != _provided_auths.end()
+               || _provided_levels.find( level ) != _provided_levels.end();
          }
 
       public:
          authority_checker( PermissionToAuthorityFunc permission_to_authority,
                             PermissionVisitorFunc permission_visitor,
                             uint16_t recursion_depth_limit, const flat_set<public_key_type>& signing_keys,
-                            flat_set<account_name> provided_auths = flat_set<account_name>() )
+                            const flat_set<account_name>& provided_auths = flat_set<account_name>(),
+                            const flat_set<permission_level>& provided_levels = flat_set<permission_level>())
             : permission_to_authority(permission_to_authority),
               permission_visitor(permission_visitor),
               recursion_depth_limit(recursion_depth_limit),
               signing_keys(signing_keys.begin(), signing_keys.end()),
               _provided_auths(provided_auths.begin(), provided_auths.end()),
+              _provided_levels(provided_levels.begin(), provided_levels.end()),
               _used_keys(signing_keys.size(), false)
          {}
 
          bool satisfied(const permission_level& permission, uint16_t depth = 0) {
-            return has_permission( permission.actor ) ||
+            return has_permission( permission ) ||
                    satisfied(permission_to_authority(permission), depth);
          }
 
@@ -162,8 +166,9 @@ namespace detail {
                           PermissionVisitorFunc&& permission_visitor,
                           uint16_t recursion_depth_limit, 
                           const flat_set<public_key_type>& signing_keys,
-                          const flat_set<account_name>& accounts = flat_set<account_name>() ) {
-      return authority_checker<PermissionToAuthorityFunc, PermissionVisitorFunc>(std::forward<PermissionToAuthorityFunc>(pta), std::forward<PermissionVisitorFunc>(permission_visitor), recursion_depth_limit, signing_keys, accounts);
+                          const flat_set<account_name>& accounts = flat_set<account_name>(),
+                          const flat_set<permission_level>& levels = flat_set<permission_level>() ) {
+      return authority_checker<PermissionToAuthorityFunc, PermissionVisitorFunc>(std::forward<PermissionToAuthorityFunc>(pta), std::forward<PermissionVisitorFunc>(permission_visitor), recursion_depth_limit, signing_keys, accounts, levels);
    }
 
 } } // namespace eosio::chain

@@ -29,10 +29,11 @@
       "fields": [
          {"name": "expiration", "type": "time_point_sec"},
          {"name": "region", "type": "uint16"},
-         {"name": "ref_block_num", "type": "uint16"},
+         {"name": "ref_block_num", "type": "uint32"},
          {"name": "ref_block_prefix", "type": "uint16"},
-         {"name": "packed_bandwidth_words", "type": "uint16"},
-         {"name": "context_free_cpu_bandwidth", "type": "uint16"}
+         {"name": "net_usage_words", "type": "varuint32"},
+         {"name": "kcpu_usage", "type": "varuint32"},
+         {"name": "delay_sec", "type": "varuint32"}
       ]
    },{
       "name": "transaction",

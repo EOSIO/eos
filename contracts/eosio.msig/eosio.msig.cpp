@@ -30,7 +30,7 @@ void multisig::approve( account_name proposer, name proposal_name, permission_le
    const auto& prop = proptable.get( proposal_name );
 
    auto itr = std::find( prop.requested_approvals.begin(), prop.requested_approvals.end(), level );
-   eosio_assert( itr != prop.requested_approvals.end(), "no approval previously granted" );
+   eosio_assert( itr != prop.requested_approvals.end(), "approval is not on the list of requested approvals" );
  
    proptable.modify( prop, proposer, [&]( auto& mprop ) {
       mprop.provided_approvals.push_back( level );
@@ -72,7 +72,7 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
    const auto& prop = proptable.get( proposal_name );
 
    check_auth( prop.packed_transaction, prop.provided_approvals );
-   send_deferred( (uint128_t(proposer) << 64) | proposal_name, now(), prop.packed_transaction.data(), prop.packed_transaction.size() );
+   send_deferred( (uint128_t(proposer) << 64) | proposal_name, proposer, now(), prop.packed_transaction.data(), prop.packed_transaction.size() );
 
    proptable.erase(prop);
 }

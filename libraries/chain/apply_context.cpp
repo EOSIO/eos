@@ -376,6 +376,15 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
    return s;
 }
 
+void apply_context::check_auth( const transaction& trx, const vector<permission_level>& perm ) {
+   controller.check_authorization( trx.actions,
+                                   trx.context_free_actions,
+                                   {},
+                                   true,
+                                   {},
+                                   flat_set<permission_level>(perm.begin(), perm.end()) );
+}
+
 uint32_t apply_context::get_next_sender_id() {
    const uint64_t id = N(config::eosio_auth_scope);
    const auto table = N(deferred.seq);

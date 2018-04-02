@@ -1110,8 +1110,10 @@ class context_free_transaction_api : public context_aware_api {
          return context.get_action( type, index, buffer, buffer_size );
       }
 
-      void check_auth( array_ptr<char> trx, size_t trx_size, array_ptr<char> perm, size_t perm_size ) {
-         std::cout << "check auth called" << std::endl;
+      void check_auth( array_ptr<char> trx_data, size_t trx_size, array_ptr<char> perm_data, size_t perm_size ) {
+         transaction trx = fc::raw::unpack<transaction>( trx_data, trx_size );
+         vector<permission_level> perm = fc::raw::unpack<vector<permission_level>>( perm_data, perm_size );
+         return context.check_auth( trx, perm );
       }
 };
 
