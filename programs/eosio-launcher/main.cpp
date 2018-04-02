@@ -285,8 +285,7 @@ struct testnet_def {
 
 struct prodkey_def {
   string producer_name;
-  public_key_type signing_key;
-  // string p2p_server_address;
+  public_key_type block_signing_key;
 };
 
 struct producer_set_def {
@@ -472,7 +471,6 @@ launcher_def::initialize (const variables_map &vmap) {
         exit (-1);
       }
     }
-    //    add_enable_stale_production = true;
   }
 
   using namespace std::chrono;
@@ -760,7 +758,6 @@ launcher_def::bind_nodes () {
          node.keys.emplace_back (move(kp));
          if (is_bios) {
             string prodname = "eosio";
-            //pubkey = public_key_type(string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"));
             node.producers.push_back(prodname);
             producer_set.producers.push_back({prodname,pubkey});
          }
@@ -1135,19 +1132,19 @@ launcher_def::write_bios_boot () {
          if (key == "envars") {
             brb << "bioshost=" << bhost << "\nbiosport=" << biosport << "\n";
          }
-         if (key == "bioskey") {
-            brb << "wcmd import -n ignition " << string(bios_node.keys[0]) << "\n";
-            continue;
+         else if (key == "prodkeys" ) {
+            for (auto &node : network.nodes) {
+               brb << "wcmd import -n ignition " << string(node.second.keys[0]) << "\n";
+            }
          }
-         if (key == "cacmd") {
+         else if (key == "cacmd") {
             for (auto &p : producer_set.producers) {
                if (p.producer_name == "eosio") {
                   continue;
                }
                brb << "cacmd " << p.producer_name
-                   << " " << string(p.signing_key) << " " << string(p.signing_key) << "\n";
+                   << " " << string(p.block_signing_key) << " " << string(p.block_signing_key) << "\n";
             }
-            continue;
          }
       }
       brb << line << "\n";
@@ -1616,7 +1613,7 @@ launcher_def::ignite() {
          cerr << "wait threw error " << ex.what() << "\n";
       }
       catch (...) {
-         // when scritp dies wait throws an exception but that is ok
+         // when script dies wait throws an exception but that is ok
       }
    } else {
       cerr << "**********************************************************************\n"
@@ -1702,11 +1699,7 @@ void write_default_config(const bfs::path& cfg_file, const options_description &
    for(const boost::shared_ptr<bpo::option_description> od : cfg.options())
    {
       if(!od->description().empty()) {
-         out_cfg << "# " << od->description();
-         // disable uninitialized variable usage.
-//         std::map<std::string, std::string>::iterator it;
-//            out_cfg << " (" << it->second << ")";
-         out_cfg << std::endl;
+         out_cfg << "# " << od->description() << std::endl;
       }
       boost::any store;
       if(!od->semantic()->apply_default(store))
@@ -1860,8 +1853,7 @@ FC_REFLECT( remote_deploy,
             (ssh_cmd)(scp_cmd)(ssh_identity)(ssh_args) )
 
 FC_REFLECT( prodkey_def,
-            (producer_name)(signing_key))
-            // (producer_name)(signing_key)(p2p_server_address))
+            (producer_name)(block_signing_key))
 
 FC_REFLECT( producer_set_def,
             (version)(producers))
