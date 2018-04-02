@@ -95,7 +95,6 @@ namespace eosio { namespace chain { namespace contracts {
          uint64_t      primary_key;
          SecondaryKey  secondary_key;
          account_name  payer = 0;
-         uint16_t      billed_overhead = 0;
       };
 
 
@@ -148,7 +147,42 @@ namespace eosio { namespace chain { namespace contracts {
    typedef secondary_index<uint64_t,index_double_object_type,soft_double_less>::index_object  index_double_object;
    typedef secondary_index<uint64_t,index_double_object_type,soft_double_less>::index_index   index_double_index;
 
-} } }  // namespace eosio::chain::contracts
+} // ::contracts
+
+namespace config {
+   template<>
+   struct billable_size<contracts::key_value_object> {
+      static const uint64_t overhead = overhead_per_row_per_index_ram_bytes * 2;  ///< overhead for 2x indices internal-key and primary key
+      static const uint64_t value = 32 + 4 + overhead; ///< 32 bytes for our constant size fields, 4 bytes for a varint for value size + overhead
+   };
+
+   template<>
+   struct billable_size<contracts::index64_object> {
+      static const uint64_t overhead = overhead_per_row_per_index_ram_bytes * 3;  ///< overhead for 3x indices internal-key, primary key and primary+secondary key
+      static const uint64_t value = 24 + 8 + overhead; ///< 24 bytes for fixed fields + 8 bytes key + overhead
+   };
+
+   template<>
+   struct billable_size<contracts::index128_object> {
+      static const uint64_t overhead = overhead_per_row_per_index_ram_bytes * 3;  ///< overhead for 3x indices internal-key, primary key and primary+secondary key
+      static const uint64_t value = 24 + 16 + overhead; ///< 24 bytes for fixed fields + 16 bytes key + overhead
+   };
+
+   template<>
+   struct billable_size<contracts::index256_object> {
+      static const uint64_t overhead = overhead_per_row_per_index_ram_bytes * 3;  ///< overhead for 3x indices internal-key, primary key and primary+secondary key
+      static const uint64_t value = 24 + 32 + overhead; ///< 24 bytes for fixed fields + 32 bytes key + overhead
+   };
+
+   template<>
+   struct billable_size<contracts::index_double_object> {
+      static const uint64_t overhead = overhead_per_row_per_index_ram_bytes * 3;  ///< overhead for 3x indices internal-key, primary key and primary+secondary key
+      static const uint64_t value = 24 + 8 + overhead; ///< 24 bytes for fixed fields + 32 bytes key + overhead
+   };
+
+}
+
+} }  // namespace eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::table_id_object, eosio::chain::contracts::table_id_multi_index)
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key_value_object, eosio::chain::contracts::key_value_index)

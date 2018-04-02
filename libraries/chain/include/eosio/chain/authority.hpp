@@ -5,6 +5,7 @@
 #pragma once
 #include <chainbase/chainbase.hpp>
 #include <eosio/chain/transaction.hpp>
+#include <eosio/chain/config.hpp>
 
 namespace eosio { namespace chain {
 
@@ -14,10 +15,21 @@ struct permission_level_weight {
    weight_type       weight;
 };
 
+template<>
+struct config::billable_size<permission_level_weight> {
+   static const uint64_t value = 24; ///< over value of weight for safety
+};
+
 struct key_weight {
    public_key_type key;
    weight_type     weight;
 };
+
+template<>
+struct config::billable_size<key_weight> {
+   static const uint64_t value = 8; ///< over value of weight for safety, dynamically sizing key
+};
+
 
 struct authority {
   authority( public_key_type k ):threshold(1),keys({{k,1}}){}
@@ -59,7 +71,14 @@ struct shared_authority {
    }
 
    size_t get_billable_size() const {
-      return keys.size() * sizeof(key_weight) + accounts.size() * sizeof(permission_level_weight);
+      size_t accounts_size = accounts.size() * config::billable_size_v<permission_level_weight>;
+      size_t keys_size = 0;
+      for (const auto& k: keys) {
+         keys_size += config::billable_size_v<key_weight>;
+         keys_size += fc::raw::pack_size(k.key);  ///< serialized size of the key
+      }
+
+      return accounts_size + keys_size;
    }
 };
 

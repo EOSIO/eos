@@ -417,7 +417,7 @@ int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, 
      ++t.count;
    });
 
-   int64_t billable_size = (int64_t)(buffer_size + sizeof(key_value_object) + config::overhead_per_row_ram_bytes);
+   int64_t billable_size = (int64_t)(buffer_size + config::billable_size_v<key_value_object>);
    update_db_usage( payer, billable_size, "New Row ${id} in (${c},${s},${t})", _V("id", obj.primary_key)("c",receiver)("s",scope)("t",table));
 
    keyval_cache.cache_table( tab );
@@ -430,7 +430,7 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
    const auto& tab = keyval_cache.get_table( obj.t_id );
    require_write_lock( tab.scope );
 
-   const int64_t overhead = sizeof(key_value_object) + config::overhead_per_row_ram_bytes;
+   const int64_t overhead = config::billable_size_v<key_value_object>;
    int64_t old_size = (int64_t)(obj.value.size() + overhead);
    int64_t new_size = (int64_t)(buffer_size + overhead);
 
@@ -455,7 +455,7 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
 
 void apply_context::db_remove_i64( int iterator ) {
    const key_value_object& obj = keyval_cache.get( iterator );
-   update_db_usage( obj.payer,  -(obj.value.size() + config::overhead_per_row_ram_bytes) );
+   update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>) );
 
    const auto& table_obj = keyval_cache.get_table( obj.t_id );
    require_write_lock( table_obj.scope );

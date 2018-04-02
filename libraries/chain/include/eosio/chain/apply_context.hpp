@@ -199,7 +199,7 @@ class apply_context {
                  ++t.count;
                });
 
-               context.update_db_usage( payer, sizeof(ObjectType) + config::overhead_per_row_ram_bytes );
+               context.update_db_usage( payer, config::billable_size_v<ObjectType> );
 
                itr_cache.cache_table( tab );
                return itr_cache.add( obj );
@@ -207,7 +207,7 @@ class apply_context {
 
             void remove( int iterator ) {
                const auto& obj = itr_cache.get( iterator );
-               context.update_db_usage( obj.payer, -( sizeof(ObjectType) + config::overhead_per_row_ram_bytes ) );
+               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ) );
 
                const auto& table_obj = itr_cache.get_table( obj.t_id );
                context.require_write_lock( table_obj.scope );
@@ -227,7 +227,7 @@ class apply_context {
 
                if( payer == account_name() ) payer = obj.payer;
 
-               int64_t billing_size = sizeof(ObjectType) + config::overhead_per_row_ram_bytes;
+               int64_t billing_size =  config::billable_size_v<ObjectType>;
 
                if( obj.payer != payer ) {
                   context.update_db_usage( obj.payer, -(billing_size) );

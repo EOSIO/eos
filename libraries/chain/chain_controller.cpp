@@ -1887,7 +1887,7 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
 
 void chain_controller::_destroy_generated_transaction( const generated_transaction_object& gto ) {
    auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
-   _resource_limits.add_account_ram_usage(gto.payer, -(sizeof(generated_transaction_object) + gto.packed_trx.size() + config::overhead_per_row_ram_bytes));
+   _resource_limits.add_account_ram_usage(gto.payer, -( config::billable_size_v<generated_transaction_object> + gto.packed_trx.size()));
    generated_transaction_idx.remove(gto);
 
 }
@@ -1896,7 +1896,7 @@ void chain_controller::_create_generated_transaction( const deferred_transaction
    size_t trx_size = fc::raw::pack_size(dto);
    _resource_limits.add_account_ram_usage(
       dto.payer,
-      (sizeof(generated_transaction_object) + (int64_t)trx_size + config::overhead_per_row_ram_bytes),
+      (config::billable_size_v<generated_transaction_object> + (int64_t)trx_size),
       "Generated Transaction ${id} from ${s}", _V("id", dto.sender_id)("s",dto.sender)
    );
 

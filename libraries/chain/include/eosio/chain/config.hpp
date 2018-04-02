@@ -73,7 +73,7 @@ const static uint64_t   default_context_free_discount_cpu_usage_den    = 100;
 const static uint32_t   default_max_transaction_cpu_usage              = default_max_block_cpu_usage / 10;
 const static uint32_t   default_max_transaction_net_usage              = default_max_block_size / 10;
 
-const static uint32_t   overhead_per_row_ram_bytes         = 512;    ///< overhead accounts for basic tracking structures in a row
+const static uint32_t   overhead_per_row_per_index_ram_bytes = 64;    ///< overhead accounts for basic tracking structures in a row per index
 const static uint32_t   overhead_per_account_ram_bytes     = 2*1024; ///< overhead accounts for basic account storage and pre-pays features like account recovery
 const static uint32_t   setcode_ram_bytes_multiplier       = 10;     ///< multiplier on contract size to account for multiple copies and cached compilation
 
@@ -96,6 +96,13 @@ const static uint32_t deffered_transactions_max_time_per_block_us = 20*1000; //2
 //const static int blocks_per_round = producer_count * producer_repetitions;
 
 const static int irreversible_threshold_percent= 70 * percent_1;
+
+template<typename T>
+struct billable_size;
+
+template<typename T>
+constexpr uint64_t billable_size_v = billable_size<T>::value;
+
 
 } } } // namespace eosio::chain::config
 
