@@ -57,6 +57,55 @@ BOOST_AUTO_TEST_CASE( push_block ) { try {
    BOOST_REQUIRE_EQUAL( test1.validate(), true );
 } FC_LOG_AND_RETHROW() }/// schedule_test
 
+BOOST_AUTO_TEST_CASE( push_invalid_block ) { try {
+   TESTER chain;
+
+   // Create a new block
+   signed_block new_block;
+   auto head_time = chain.control->head_block_time();
+   auto next_time = head_time + fc::microseconds(config::block_interval_us);
+   uint32_t slot  = chain.control->get_slot_at_time( next_time );
+   auto sch_pro   = chain.control->get_scheduled_producer(slot);
+   auto priv_key  = chain.get_private_key( sch_pro, "active" );
+
+   // On block action
+   action on_block_act;
+   on_block_act.account = config::system_account_name;
+   on_block_act.name = N(onblock);
+   on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
+   on_block_act.data = fc::raw::pack(chain.control->head_block_header());
+   transaction trx;
+   trx.actions.emplace_back(std::move(on_block_act));
+   trx.set_reference_block(chain.control->head_block_id());
+   trx.expiration = chain.control->head_block_time() + fc::seconds(1);
+   trx.kcpu_usage = 2000; // 1 << 24;
+
+   // Add properties to block header
+   new_block.previous = chain.control->head_block_id();
+   new_block.timestamp = next_time;
+   new_block.producer = sch_pro;
+   new_block.block_mroot = chain.control->get_dynamic_global_properties().block_merkle_root.get_root();
+   vector<transaction_metadata> input_metas;
+   input_metas.emplace_back(packed_transaction(trx), chain.control->get_chain_id(), chain.control->head_block_time(), true);
+   new_block.transaction_mroot = transaction_metadata::calculate_transaction_merkle_root(input_metas);
+   new_block.sign(priv_key);
+
+   // Create a new empty region
+   new_block.regions.resize(new_block.regions.size() + 1);
+   // Pushing this block should fail, since every region inside a block should not be empty
+   BOOST_REQUIRE_THROW(chain.control->push_block(new_block), tx_empty_region);
+
+   // Create a new cycle inside the empty region
+   new_block.regions.back().cycles_summary.resize(new_block.regions.back().cycles_summary.size() + 1);
+   // Pushing this block should fail, since there should not be an empty cycle inside a block
+   BOOST_REQUIRE_THROW(chain.control->push_block(new_block), tx_empty_cycle);
+
+   // Create a new shard inside the empty cycle
+   new_block.regions.back().cycles_summary.back().resize(new_block.regions.back().cycles_summary.back().size() + 1);
+   // Pushing this block should fail, since there should not be an empty shard inside a block
+   BOOST_REQUIRE_THROW(chain.control->push_block(new_block), tx_empty_shard);
+} FC_LOG_AND_RETHROW() }/// push_invalid_block
+
 
 // Utility function to check expected irreversible block
 uint32_t calc_exp_last_irr_block_num(const base_tester& chain, const uint32_t& head_block_num) {
