@@ -306,16 +306,7 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
 void apply_context::cancel_deferred( const uint128_t& sender_id ) {
    results.deferred_transaction_requests.push_back(deferred_reference(receiver, sender_id));
 }
-/*
-void apply_context::cancel_deferred( const transaction_id_type& trx_id ) {
-   const auto& generated_transaction = controller.get_database().get_index<generated_transaction_multi_index>();
-   const auto& generated_index       = generated_transaction.indices().get<by_trx_id>();
-   const auto& itr                   = generated_index.lower_bound(trx_id);
-   FC_ASSERT (itr != generated_index.end() && itr->sender == config::system_account_name && itr->trx_id == trx_id,
-              "cannot cancel trx_id=${tid}, there is no deferred transaction with that transaction id",("tid", trx_id));
-   results.deferred_transaction_requests.push_back(deferred_reference(receiver, itr->sender_id, trx_id));
-}
-*/
+
 const contracts::table_id_object* apply_context::find_table( name code, name scope, name table ) {
    require_read_lock(code, scope);
    return db.find<table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));

@@ -505,7 +505,7 @@ void apply_eosio_postrecovery(apply_context& context) {
    context.execute_deferred(std::move(dtrx));
 
    auto data = get_abi_serializer().variant_to_binary("pending_recovery", record_data);
-   const uint128_t id = account;
+   const uint64_t id = account;
    const uint64_t table = N(recovery);
    const auto payer = account;
 
@@ -558,7 +558,7 @@ void apply_eosio_vetorecovery(apply_context& context) {
    FC_ASSERT(maybe_recovery, "No pending recovery found for account ${account}", ("account", account));
    auto recovery = *maybe_recovery;
 
-   context.cancel_deferred(recovery["account"].as<name>());
+   context.cancel_deferred(recovery["request_id"].as<uint128_t>());
 
    remove_pending_recovery(context, account);
    context.console_append_formatted("Recovery for account ${account} vetoed!\n", mutable_variant_object()("account", account));

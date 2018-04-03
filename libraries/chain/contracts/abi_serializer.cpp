@@ -71,6 +71,7 @@ namespace eosio { namespace chain { namespace contracts {
       built_in_types.emplace("checksum160",               pack_unpack<checksum160_type>());
       built_in_types.emplace("checksum256",               pack_unpack<checksum256_type>());
       built_in_types.emplace("checksum512",               pack_unpack<checksum512_type>());
+      built_in_types.emplace("transaction_id_type",       pack_unpack<checksum256_type>());
       built_in_types.emplace("field_name",                pack_unpack<field_name>());
       built_in_types.emplace("fixed_string32",            pack_unpack<fixed_string32>());
       built_in_types.emplace("fixed_string16",            pack_unpack<fixed_string16>());
@@ -81,6 +82,7 @@ namespace eosio { namespace chain { namespace contracts {
       built_in_types.emplace("uint32",                    pack_unpack<uint32>());
       built_in_types.emplace("uint64",                    pack_unpack<uint64>());
       built_in_types.emplace("uint128",                   pack_unpack<boost::multiprecision::uint128_t>());
+      built_in_types.emplace("sender_id_type",            pack_unpack<boost::multiprecision::uint128_t>());
       built_in_types.emplace("uint256",                   pack_unpack<boost::multiprecision::uint256_t>());
       built_in_types.emplace("varuint32",                 pack_unpack<fc::unsigned_int>());
       built_in_types.emplace("int8",                      pack_unpack<int8_t>());

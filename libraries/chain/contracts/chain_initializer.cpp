@@ -150,19 +150,19 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
 
    eos_abi.structs.emplace_back( struct_def {
       "passrecovery", "", {
-         {"account", "name"},
+         {"account", "account_name"},
       }
    });
 
    eos_abi.structs.emplace_back( struct_def {
       "vetorecovery", "", {
-         {"account", "name"},
+         {"account", "account_name"},
       }
    });
 
    eos_abi.structs.emplace_back( struct_def {
       "canceldelay", "", {
-         {"trx_id", "checksum256"},
+         {"trx_id", "transaction_id_type"},
       }
    });
 
@@ -177,7 +177,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.structs.emplace_back( struct_def {
       "pending_recovery", "", {
          {"account",    "name"},
-         {"request_id", "checksum256"},
+         {"request_id", "sender_id_type"},
          {"update",     "updateauth"},
          {"memo",       "string"}
       }

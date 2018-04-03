@@ -468,7 +468,6 @@ class apply_context {
       void execute_context_free_inline( action &&a );
       void execute_deferred( deferred_transaction &&trx );
       void cancel_deferred( const uint128_t& sender_id );
-      //void cancel_deferred( const transaction_id_type& trx_id );
 
       /**
        * @brief Require @ref account to have approved of this message
