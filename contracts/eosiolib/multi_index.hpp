@@ -437,18 +437,18 @@ class multi_index
          if( itr2 != _items_vector.rend() )
             return *itr2->_item;
 
-         size_t size = db_get_i64( itr, nullptr, 0 );
+         auto size = db_get_i64( itr, nullptr, 0 );
          eosio_assert( size >= 0, "error reading iterator" );
 
-         char default_buffer[2048];
+         char default_buffer[512];
          //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
-         char* buffer = size <= sizeof(default_buffer) ? default_buffer : (char*)malloc(size);
+         char* buffer = size_t(size) <= sizeof(default_buffer) ? default_buffer : (char*)malloc( size_t(size) );
 
-         db_get_i64( itr, buffer, size );
+         db_get_i64( itr, buffer, uint32_t(size) );
 
          datastream<const char*> ds( buffer, uint32_t(size) );
 
-         if (buffer == default_buffer) {
+         if (buffer != default_buffer) {
             free( buffer );
          }
 
@@ -628,7 +628,7 @@ class multi_index
 
             size_t size = pack_size( obj );
 
-            char default_buffer[2048];
+            char default_buffer[512];
             //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
             char* buffer = size <= sizeof(default_buffer) ? default_buffer : (char*)malloc(size);
 
@@ -639,7 +639,7 @@ class multi_index
 
             i.__primary_itr = db_store_i64( _scope, TableName, payer, pk, buffer, size );
 
-            if (buffer == default_buffer) {
+            if (buffer != default_buffer) {
                free( buffer );
             }
 
@@ -688,7 +688,7 @@ class multi_index
          eosio_assert( pk == obj.primary_key(), "updater cannot change primary key when modifying an object" );
 
          size_t size = pack_size( obj );
-         char default_buffer[2048];
+         char default_buffer[512];
          //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
          char* buffer = size <= sizeof(default_buffer) ? default_buffer : (char*)malloc(size);
 
@@ -697,7 +697,7 @@ class multi_index
 
          db_update_i64( objitem.__primary_itr, payer, buffer, size );
 
-         if (buffer == default_buffer) {
+         if (buffer != default_buffer) {
             free( buffer );
          }
 
