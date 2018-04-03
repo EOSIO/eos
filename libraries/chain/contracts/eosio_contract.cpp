@@ -483,8 +483,9 @@ void apply_eosio_postrecovery(apply_context& context) {
       .parent = 0,
       .data = recover_act.data
    }, update);
-
-   auto& request_id = *reinterpret_cast<const uint128_t*>(context.trx_meta.id._hash);
+   
+   const fc::uint128_t _request_id(context.trx_meta.id._hash[3], context.trx_meta.id._hash[2]);
+   const uint128_t request_id = (unsigned __int128)_request_id;
    auto record_data = mutable_variant_object()
       ("account", account)
       ("request_id", request_id)
@@ -592,8 +593,9 @@ void apply_eosio_canceldelay(apply_context& context) {
 
    FC_ASSERT (found, "canceldelay action must be signed with the \"active\" permission for one of the actors"
                      " provided in the authorizations on the original transaction");
-
-   context.cancel_deferred(*reinterpret_cast<const uint128_t*>(trx_id._hash));
+   
+   const fc::uint128_t _id(trx_id._hash[3], trx_id._hash[2]);
+   context.cancel_deferred((unsigned __int128)_id);
 }
 
 void apply_eosio_mindelay(apply_context& context) {
