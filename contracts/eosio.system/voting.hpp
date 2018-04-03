@@ -253,9 +253,9 @@ namespace eosiosystem {
             std::array<uint32_t, 21> max_transaction_cpu_usage;
             std::array<uint32_t, 21> max_transaction_net_usage;
             std::array<uint64_t, 21> max_block_cpu_usage;
-            std::array<int     , 21> target_block_cpu_usage_pct;
+            std::array<uint32_t, 21> target_block_cpu_usage_pct;
             std::array<uint64_t, 21> max_block_net_usage;
-            std::array<int     , 21> target_block_net_usage_pct;
+            std::array<uint32_t, 21> target_block_net_usage_pct;
             std::array<uint32_t, 21> max_transaction_lifetime;
             std::array<uint16_t, 21> max_authority_depth;
             std::array<uint32_t, 21> max_transaction_exec_time;

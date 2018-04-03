@@ -32,9 +32,9 @@ struct chain_config {
    uint32_t   max_transaction_net_usage;      ///< the maximum objectively measured net usage that the chain will allow regardless of account limits
 
    uint64_t   max_block_cpu_usage;            ///< the maxiumum cpu usage in instructions for a block
-   int        target_block_cpu_usage_pct;     ///< the target percent (1% == 100, 100%= 10,000) of maximum cpu usage; exceeding this triggers congestion handling
+   uint32_t   target_block_cpu_usage_pct;     ///< the target percent (1% == 100, 100%= 10,000) of maximum cpu usage; exceeding this triggers congestion handling
    uint64_t   max_block_net_usage;            ///< the maxiumum net usage in instructions for a block
-   int        target_block_net_usage_pct;     ///< the target percent (1% == 100, 100%= 10,000) of maximum net usage; exceeding this triggers congestion handling
+   uint32_t   target_block_net_usage_pct;     ///< the target percent (1% == 100, 100%= 10,000) of maximum net usage; exceeding this triggers congestion handling
 
    uint32_t   max_transaction_lifetime;
    uint32_t   max_transaction_exec_time;

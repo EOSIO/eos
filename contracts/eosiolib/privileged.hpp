@@ -17,9 +17,9 @@ namespace eosio {
       uint32_t max_transaction_cpu_usage;
       uint32_t max_transaction_net_usage;
       uint64_t max_block_cpu_usage;
-      int      target_block_cpu_usage_pct;
+      uint32_t target_block_cpu_usage_pct;
       uint64_t max_block_net_usage;
-      int      target_block_net_usage_pct;
+      uint32_t target_block_net_usage_pct;
       uint32_t max_transaction_lifetime;
       uint32_t max_transaction_exec_time;
       uint16_t max_authority_depth;
