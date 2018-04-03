@@ -93,7 +93,7 @@ void test_transaction::send_action_empty() {
  */
 void test_transaction::send_action_large() {
    using namespace eosio;
-   char large_message[8 * 1024];
+   static char large_message[8 * 1024];
    test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "read_action_normal")> test_action;
    copy_data(large_message, 8*1024, test_action.data);
    action act(vector<permission_level>{{N(testapi), N(active)}}, test_action);
@@ -161,7 +161,7 @@ void test_transaction::test_transaction_size() {
    eosio_assert( trans_size == transaction_size(), "transaction size does not match" );
 }
 
-void test_transaction::send_transaction(uint64_t receiver, uint64_t code, uint64_t action) {
+void test_transaction::send_transaction(uint64_t receiver, uint64_t, uint64_t) {
    using namespace eosio;
    dummy_action payload = {DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C};
 
@@ -173,7 +173,7 @@ void test_transaction::send_transaction(uint64_t receiver, uint64_t code, uint64
    trx.send(0, receiver);
 }
 
-void test_transaction::send_action_sender(uint64_t receiver, uint64_t code, uint64_t action) {
+void test_transaction::send_action_sender(uint64_t receiver, uint64_t, uint64_t) {
    using namespace eosio;
    account_name cur_send;
    read_action_data( &cur_send, sizeof(account_name) );
@@ -185,7 +185,7 @@ void test_transaction::send_action_sender(uint64_t receiver, uint64_t code, uint
    trx.send(0, receiver);
 }
 
-void test_transaction::send_transaction_empty(uint64_t receiver, uint64_t code, uint64_t action) {
+void test_transaction::send_transaction_empty(uint64_t receiver, uint64_t, uint64_t) {
    using namespace eosio;
    auto trx = transaction();
    trx.send(0, receiver);
@@ -196,7 +196,7 @@ void test_transaction::send_transaction_empty(uint64_t receiver, uint64_t code, 
 /**
  * cause failure due to a large transaction size
  */
-void test_transaction::send_transaction_large(uint64_t receiver, uint64_t code, uint64_t action) {
+void test_transaction::send_transaction_large(uint64_t receiver, uint64_t, uint64_t) {
    using namespace eosio;
    auto trx = transaction();
    for (int i = 0; i < 32; i ++) {
@@ -211,7 +211,7 @@ void test_transaction::send_transaction_large(uint64_t receiver, uint64_t code, 
    eosio_assert(false, "send_transaction_large() should've thrown an error");
 }
 
-void test_transaction::send_transaction_expiring_late(uint64_t receiver, uint64_t code, uint64_t action) {
+void test_transaction::send_transaction_expiring_late(uint64_t receiver, uint64_t, uint64_t) {
    using namespace eosio;
    account_name cur_send;
    read_action_data( &cur_send, sizeof(account_name) );
@@ -232,7 +232,7 @@ void test_transaction::deferred_print() {
    eosio::print("deferred executed\n");
 }
 
-void test_transaction::send_deferred_transaction(uint64_t receiver, uint64_t code, uint64_t action) {
+void test_transaction::send_deferred_transaction(uint64_t receiver, uint64_t, uint64_t) {
    using namespace eosio;
    auto trx = transaction();
    test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "deferred_print")> test_action;
@@ -277,7 +277,7 @@ void test_transaction::read_inline_action() {
    eosio_assert(res != -1, "get_action error");
 
    action tmp;
-   datastream<char *> ds(buffer, res);
+   datastream<char *> ds(buffer, (size_t)res);
    ds >> tmp.account;
    ds >> tmp.name;
    ds >> tmp.authorization;
@@ -307,7 +307,7 @@ void test_transaction::read_inline_cf_action() {
    eosio_assert(res != -1, "get_action error");
 
    action tmp;
-   datastream<char *> ds(buffer, res);
+   datastream<char *> ds(buffer, (size_t)res);
    ds >> tmp.account;
    ds >> tmp.name;
    ds >> tmp.authorization;
