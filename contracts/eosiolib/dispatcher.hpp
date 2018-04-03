@@ -39,10 +39,17 @@ namespace eosio {
 
    template<typename T, typename... Args>
    bool execute_action( T* obj, void (T::*func)(Args...)  ) {
-      char buffer[action_data_size()];
-      read_action_data( buffer, sizeof(buffer) );
+      size_t size = action_data_size();
+      char default_buffer[2048];
+      //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
+      char* buffer = size <= sizeof(default_buffer) ? default_buffer : (char*)malloc(size);
+      read_action_data( buffer, size );
 
-      auto args = unpack<std::tuple<std::decay_t<Args>...>>( buffer, sizeof(buffer) );
+      auto args = unpack<std::tuple<std::decay_t<Args>...>>( buffer, size );
+
+      if ( buffer != default_buffer ) {
+         free(buffer);
+      }
 
       auto f2 = [&]( auto... a ){  
          (obj->*func)( a... ); 

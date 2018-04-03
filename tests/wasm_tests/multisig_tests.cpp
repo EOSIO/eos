@@ -1,10 +1,14 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <eosio.msig/eosio.msig.wast.hpp>
 #include <eosio.msig/eosio.msig.abi.hpp>
+
+#include <exchange/exchange.wast.hpp>
+#include <exchange/exchange.abi.hpp>
 
 #include <Runtime/Runtime.h>
 
@@ -73,8 +77,9 @@ transaction eosio_msig_tester::reqauth( account_name from, const vector<permissi
       ("region", 1)
       ("ref_block_num", 2)
       ("ref_block_prefix", 3)
-      ("packed_bandwidth_words", 4)
-      ("context_free_cpu_bandwidth", 5)
+      ("net_usage_words", 4)
+      ("kcpu_usage", 5)
+      ("delay_sec", 0)
       ("actions", fc::variants({
             fc::mutable_variant_object()
                ("account", name(config::system_account_name))
@@ -207,9 +212,73 @@ BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, eosio_msig_tester ) 
                                      ("trx",           trx)
                                      ("requested", vector<permission_level>{ { N(alice), config::active_name } } )
                         ));
+} FC_LOG_AND_RETHROW()
 
 
+BOOST_FIXTURE_TEST_CASE( big_transaction, eosio_msig_tester ) try {
+   vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name } };
+   auto wasm = wast_to_wasm( exchange_wast );
 
+   variant pretty_trx = fc::mutable_variant_object()
+      ("expiration", "2020-01-01T00:30")
+      ("region", 1)
+      ("ref_block_num", 2)
+      ("ref_block_prefix", 3)
+      ("net_usage_words", 4)
+      ("kcpu_usage", 10485760)
+      ("delay_sec", 0)
+      ("actions", fc::variants({
+            fc::mutable_variant_object()
+               ("account", name(config::system_account_name))
+               ("name", "setcode")
+               ("authorization", perm)
+               ("data", fc::mutable_variant_object()
+                ("account", "alice")
+                ("vmtype", 0)
+                ("vmversion", 0)
+                ("code", bytes( wasm.begin(), wasm.end() ))
+               )
+               })
+      );
+
+   transaction trx;
+   contracts::abi_serializer::from_variant(pretty_trx, trx, get_resolver());
+   /*
+   trx.actions.emplace_back( perm,
+                             contracts::setcode{
+                                .account    = N(alice),
+                                   .vmtype     = 0,
+                                   .vmversion  = 0,
+                                   //.code       = bytes(eosio_msig_wast, eosio_msig_wast + strlen(eosio_msig_wast))
+                                   .code       = bytes( wasm.begin(), wasm.end() )
+                                   });
+   */
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(propose), mvo()
+                                                ("proposer",      "alice")
+                                                ("proposal_name", "first")
+                                                ("trx",           trx)
+                                                ("requested", perm)
+                        ));
+
+   //approve by alice
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(approve), mvo()
+                                                ("proposer",      "alice")
+                                                ("proposal_name", "first")
+                                                ("level",         permission_level{ N(alice), config::active_name })
+                        ));
+   //approve by bob and execute
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(bob), N(approve), mvo()
+                                                ("proposer",      "alice")
+                                                ("proposal_name", "first")
+                                                ("level",         permission_level{ N(bob), config::active_name })
+                        ));
+   BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(exec), mvo()
+                                                ("proposer",      "alice")
+                                                ("proposal_name", "first")
+                                                ("executer",      "alice")
+                        ));
+   auto traces = control->push_deferred_transactions( true );
+   BOOST_CHECK_EQUAL( 1, traces.size() );
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()

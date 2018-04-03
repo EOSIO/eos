@@ -437,12 +437,20 @@ class multi_index
          if( itr2 != _items_vector.rend() )
             return *itr2->_item;
 
-         auto size = db_get_i64( itr, nullptr, 0 );
+         size_t size = db_get_i64( itr, nullptr, 0 );
          eosio_assert( size >= 0, "error reading iterator" );
-         char tmp[size];
-         db_get_i64( itr, tmp, uint32_t(size) );
 
-         datastream<const char*> ds(tmp,uint32_t(size));
+         char default_buffer[2048];
+         //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
+         char* buffer = size <= sizeof(default_buffer) ? default_buffer : (char*)malloc(size);
+
+         db_get_i64( itr, buffer, size );
+
+         datastream<const char*> ds( buffer, uint32_t(size) );
+
+         if (buffer == default_buffer) {
+            free( buffer );
+         }
 
          auto itm = std::make_unique<item>( this, [&]( auto& i ) {
             T& val = static_cast<T&>(i);
@@ -618,13 +626,22 @@ class multi_index
             T& obj = static_cast<T&>(i);
             constructor( obj );
 
-            char tmp[ pack_size( obj ) ];
-            datastream<char*> ds( tmp, sizeof(tmp) );
+            size_t size = pack_size( obj );
+
+            char default_buffer[2048];
+            //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
+            char* buffer = size <= sizeof(default_buffer) ? default_buffer : (char*)malloc(size);
+
+            datastream<char*> ds( buffer, size );
             ds << obj;
 
             auto pk = obj.primary_key();
 
-            i.__primary_itr = db_store_i64( _scope, TableName, payer, pk, tmp, sizeof(tmp) );
+            i.__primary_itr = db_store_i64( _scope, TableName, payer, pk, buffer, size );
+
+            if (buffer == default_buffer) {
+               free( buffer );
+            }
 
             if( pk >= _next_primary_key )
                _next_primary_key = (pk >= no_available_primary_key) ? no_available_primary_key : (pk + 1);
@@ -670,11 +687,19 @@ class multi_index
 
          eosio_assert( pk == obj.primary_key(), "updater cannot change primary key when modifying an object" );
 
-         char tmp[ pack_size( obj ) ];
-         datastream<char*> ds( tmp, sizeof(tmp) );
+         size_t size = pack_size( obj );
+         char default_buffer[2048];
+         //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
+         char* buffer = size <= sizeof(default_buffer) ? default_buffer : (char*)malloc(size);
+
+         datastream<char*> ds( buffer, size );
          ds << obj;
 
-         db_update_i64( objitem.__primary_itr, payer, tmp, sizeof(tmp) );
+         db_update_i64( objitem.__primary_itr, payer, buffer, size );
+
+         if (buffer == default_buffer) {
+            free( buffer );
+         }
 
          if( pk >= _next_primary_key )
             _next_primary_key = (pk >= no_available_primary_key) ? no_available_primary_key : (pk + 1);
