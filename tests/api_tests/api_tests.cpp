@@ -1364,18 +1364,16 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
       }
    );
 
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
+   CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
          .account    = N(noname),
          .permission = N(active),
          .pubkeys    = {
             get_public_key(N(testapi), "active")
          }
-      })), fc::exception,
-       [](const fc::exception& e) {
-         return expect_assert_message(e, "unknown key");
-      }
+      })
    );
+   BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() );
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1386,6 +1384,18 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
    );
    BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() );
 
+   CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
+      fc::raw::pack( check_auth {
+         .account    = N(testapi),
+         .permission = N(noname),
+         .pubkeys    = {
+            get_public_key(N(testapi), "active")
+         }
+      })
+   );
+   BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() );
+
+   /*
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
          .account    = N(testapi),
@@ -1398,6 +1408,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          return expect_assert_message(e, "unknown key");
       }
    );
+   */
 
 } FC_LOG_AND_RETHROW() }
 

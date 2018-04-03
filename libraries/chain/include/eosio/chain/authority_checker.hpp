@@ -6,6 +6,7 @@
 
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/authority.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 #include <eosio/utilities/parallel_markers.hpp>
 
@@ -117,13 +118,13 @@ namespace detail {
          {}
 
          bool satisfied(const permission_level& permission, uint16_t depth = 0) {
-            // QUESTION: Should we not catch the chain::permission_query_exception from permission_to_authority and try to
-            //           recover by returning false? That way other paths to satisfying the authority can be attempted rather
-            //           than hard failing. If Alice has an authority which includes Bob's permission inside, then Bob may later
-            //           delete that permission possibly causing Alice's authority to be useless until she updates it to remove
-            //           Bob's outdated permission.
-            return has_permission( permission.actor ) ||
-                   satisfied(permission_to_authority(permission), depth);
+            if( has_permission( permission.actor ) )
+               return true;
+            try {
+               return satisfied(permission_to_authority(permission), depth);
+            } catch( const permission_query_exception& e ) {
+               return false;
+            }
          }
 
          template<typename AuthorityType>
