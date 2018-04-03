@@ -369,8 +369,19 @@ transaction_trace chain_controller::delayed_transaction_processing( const transa
    execute_after += mtrx.delay;
 
    // TODO: update to better method post RC1?
-   FC_ASSERT(mtrx.trx().actions.size() > 0 && mtrx.trx().actions.at(0).authorization.size() > 0, "Delayed transactions must have at least one action and those must have at least one authorization");
-   account_name payer = mtrx.trx().actions.at(0).authorization.at(0).actor;
+   account_name payer;
+   for(const auto& act : mtrx.trx().actions ) {
+      for (const auto& auth : act.authorization) {
+         payer = auth.actor;
+         break;
+      }
+
+      if (!payer.empty()) {
+         break;
+      }
+   }
+
+   FC_ASSERT(!payer.empty(), "Failed to find a payer for delayed transaction!");
 
    deferred_transaction dtrx(context.get_next_sender_id(), config::system_account_name, payer, execute_after, trx);
    FC_ASSERT( dtrx.execute_after < dtrx.expiration, "transaction expires before it can execute" );
@@ -1214,19 +1225,23 @@ static uint32_t calculate_transaction_cpu_usage( const transaction_trace& trace,
           signature_cpu_usage;
 
 
-
    if( meta.trx().kcpu_usage.value == 0 ) {
       return actual_usage;
    } else {
-      EOS_ASSERT( actual_usage <= meta.trx().kcpu_usage.value*1000ll, tx_resource_exhausted, "transaction did not declare sufficient cpu usage: ${actual} > ${declared}", ("actual", actual_usage)("declared",meta.trx().kcpu_usage.value*1000ll) );
+      EOS_ASSERT(meta.trx().kcpu_usage.value <= UINT32_MAX / 1024UL, transaction_exception, "declared kcpu usage overflows when expanded to cpu usage");
+      uint32_t declared_value = (uint32_t)(meta.trx().kcpu_usage.value * 1024UL);
+
+      EOS_ASSERT( actual_usage <= declared_value, tx_resource_exhausted, "transaction did not declare sufficient cpu usage: ${actual} > ${declared}", ("actual", actual_usage)("declared",declared_value) );
+      return declared_value;
    }
-   return meta.trx().kcpu_usage;
 }
 
 static uint32_t calculate_transaction_net_usage( const transaction_trace& trace, const transaction_metadata& meta, const chain_config& chain_configuration ) {
    // charge a system controlled per-lock overhead to account for shard bloat
    uint32_t lock_net_usage = uint32_t(trace.read_locks.size() + trace.write_locks.size()) * chain_configuration.per_lock_net_usage;
-   uint32_t trx_wire_net_usage = meta.trx().net_usage_words.value * 8U;
+
+   EOS_ASSERT(meta.trx().net_usage_words.value <= (UINT32_MAX - chain_configuration.base_per_transaction_net_usage - lock_net_usage) / 8UL, transaction_exception, "declared net_usage_words overflows when expanded to net usage");
+   uint32_t trx_wire_net_usage = (uint32_t)(meta.trx().net_usage_words.value * 8UL);
 
    return chain_configuration.base_per_transaction_net_usage +
           trx_wire_net_usage +

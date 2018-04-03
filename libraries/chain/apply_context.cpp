@@ -312,7 +312,7 @@ const contracts::table_id_object* apply_context::find_table( name code, name sco
    return db.find<table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));
 }
 
-const contracts::table_id_object& apply_context::find_or_create_table( name code, name scope, name table ) {
+const contracts::table_id_object& apply_context::find_or_create_table( name code, name scope, name table, const account_name &payer ) {
    require_read_lock(code, scope);
    const auto* existing_tid =  db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));
    if (existing_tid != nullptr) {
@@ -320,11 +320,20 @@ const contracts::table_id_object& apply_context::find_or_create_table( name code
    }
 
    require_write_lock(scope);
+
+   update_db_usage(payer, config::billable_size_v<contracts::table_id_object>, "New Table ${c},${s},${t}", _V("c",code)("s",scope)("t",table));
+
    return mutable_db.create<contracts::table_id_object>([&](contracts::table_id_object &t_id){
       t_id.code = code;
       t_id.scope = scope;
       t_id.table = table;
+      t_id.payer = payer;
    });
+}
+
+void apply_context::remove_table( const contracts::table_id_object& tid ) {
+   update_db_usage(tid.payer, - config::billable_size_v<contracts::table_id_object>);
+   mutable_db.remove(tid);
 }
 
 vector<account_name> apply_context::get_active_producers() const {
@@ -443,7 +452,7 @@ int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_n
 
 int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
    require_write_lock( scope );
-   const auto& tab = find_or_create_table( code, scope, table );
+   const auto& tab = find_or_create_table( code, scope, table, payer );
    auto tableid = tab.id;
 
    FC_ASSERT( payer != account_name(), "must specify a valid account to pay for new record" );
@@ -507,6 +516,10 @@ void apply_context::db_remove_i64( int iterator ) {
       --t.count;
    });
    mutable_db.remove( obj );
+
+   if (table_obj.count == 0) {
+      remove_table(table_obj);
+   }
 
    keyval_cache.remove( iterator );
 }

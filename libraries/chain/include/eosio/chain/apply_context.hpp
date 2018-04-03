@@ -187,7 +187,7 @@ class apply_context {
 
                context.require_write_lock( scope );
 
-               const auto& tab = context.find_or_create_table( context.receiver, scope, table );
+               const auto& tab = context.find_or_create_table( context.receiver, scope, table, payer );
 
                const auto& obj = context.mutable_db.create<ObjectType>( [&]( auto& o ){
                   o.t_id          = tab.id;
@@ -217,6 +217,10 @@ class apply_context {
                   --t.count;
                });
                context.mutable_db.remove( obj );
+
+               if (table_obj.count == 0) {
+                  context.remove_table(table_obj);
+               }
 
                itr_cache.remove( iterator );
             }
@@ -586,7 +590,8 @@ class apply_context {
 
       using table_id_object = contracts::table_id_object;
       const table_id_object* find_table( name code, name scope, name table );
-      const table_id_object& find_or_create_table( name code, name scope, name table );
+      const table_id_object& find_or_create_table( name code, name scope, name table, const account_name &payer );
+      void remove_table( const table_id_object& tid );
 
       int  db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
 
