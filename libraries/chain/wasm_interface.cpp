@@ -1059,8 +1059,6 @@ class transaction_api : public context_aware_api {
 
          try {
             fc::uint128_t sender_id(val>>64, uint64_t(val) );
-            const auto& gpo = context.controller.get_global_properties();
-            FC_ASSERT(data_len < gpo.configuration.max_generated_transaction_size, "generated transaction too big");
 
             deferred_transaction dtrx;
             fc::raw::unpack<transaction>(data, data_len, dtrx);

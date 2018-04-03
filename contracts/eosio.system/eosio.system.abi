@@ -102,7 +102,6 @@
          {"name":"max_authority_depth", "type":"uint16"},
          {"name":"max_inline_depth", "type":"uint16"},
          {"name":"max_inline_action_size", "type":"uint32"},
-         {"name":"max_generated_transaction_size", "type":"uint32"},
          {"name":"max_generated_transaction_count", "type":"uint32"},
          {"name":"percent_of_max_inflation_rate", "type":"uint32"},
          {"name":"storage_reserve_ratio", "type":"uint32"}
