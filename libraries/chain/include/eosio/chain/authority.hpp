@@ -17,21 +17,22 @@ struct permission_level_weight {
    weight_type       weight;
 };
 
-template<>
-struct config::billable_size<permission_level_weight> {
-   static const uint64_t value = 24; ///< over value of weight for safety
-};
-
 struct key_weight {
    public_key_type key;
    weight_type     weight;
 };
 
-template<>
-struct config::billable_size<key_weight> {
-   static const uint64_t value = 8; ///< over value of weight for safety, dynamically sizing key
-};
+namespace config {
+   template<>
+   struct billable_size<permission_level_weight> {
+      static const uint64_t value = 24; ///< over value of weight for safety
+   };
 
+   template<>
+   struct billable_size<key_weight> {
+      static const uint64_t value = 8; ///< over value of weight for safety, dynamically sizing key
+   };
+}
 
 struct authority {
   authority( public_key_type k ):threshold(1),keys({{k,1}}){}
