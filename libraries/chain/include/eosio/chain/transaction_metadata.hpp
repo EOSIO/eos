@@ -44,6 +44,7 @@ class transaction_metadata {
       uint32_t                              shard_index     = 0;
       uint32_t                              bandwidth_usage = 0;
       time_point                            published;
+      fc::microseconds                      delay;
 
       // things for processing deferred transactions
       optional<account_name>                sender;
@@ -54,9 +55,9 @@ class transaction_metadata {
       size_t                                raw_size = 0;
 
       vector<char>                          packed_trx;
-      
+
       // is this transaction implicit
-      bool                                  is_implicit = false; 
+      bool                                  is_implicit = false;
 
       // scopes available to this transaction if we are applying a block
       optional<const vector<shard_lock>*>   allowed_read_locks;
