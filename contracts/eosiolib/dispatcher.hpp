@@ -40,7 +40,7 @@ namespace eosio {
    template<typename T, typename... Args>
    bool execute_action( T* obj, void (T::*func)(Args...)  ) {
       size_t size = action_data_size();
-      char default_buffer[2048];
+      char default_buffer[512];
       //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
       char* buffer = size <= sizeof(default_buffer) ? default_buffer : (char*)malloc(size);
       read_action_data( buffer, size );
