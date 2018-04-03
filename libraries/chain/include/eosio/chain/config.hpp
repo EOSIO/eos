@@ -44,11 +44,11 @@ static const uint32_t block_cpu_usage_average_window_ms    = 60*1000l;
 static const uint32_t block_size_average_window_ms         = 60*1000l;
 
 
-const static uint32_t   default_max_block_size         = 1024 * 1024; /// at 500ms blocks and 200byte trx, this enables ~10,000 TPS burst
-const static uint32_t   default_target_block_size      = default_max_block_size / 10; /// we target 1000 TPS
+const static uint32_t   default_max_block_net_usage         = 1024 * 1024; /// at 500ms blocks and 200byte trx, this enables ~10,000 TPS burst
+const static int        default_target_block_net_usage_pct  = 10 * percent_1; /// we target 1000 TPS
 
-const static uint32_t   default_max_block_cpu_usage    = 100 * 1024 * 1024; /// at 500ms blocks and 20000instr trx, this enables ~10,000 TPS burst
-const static uint32_t   default_target_block_cpu_usage = default_max_block_cpu_usage / 10; /// target 1000 TPS
+const static uint32_t   default_max_block_cpu_usage         = 100 * 1024 * 1024; /// at 500ms blocks and 20000instr trx, this enables ~10,000 TPS burst
+const static int        default_target_block_cpu_usage_pct  = 10 * percent_1; /// target 1000 TPS
 
 const static uint64_t   default_max_storage_size       = 10 * 1024;
 const static uint32_t   default_max_trx_lifetime       = 60*60;
@@ -72,7 +72,7 @@ const static uint32_t   default_per_lock_net_usage                     = 32;
 const static uint64_t   default_context_free_discount_cpu_usage_num    = 20;
 const static uint64_t   default_context_free_discount_cpu_usage_den    = 100;
 const static uint32_t   default_max_transaction_cpu_usage              = default_max_block_cpu_usage / 10;
-const static uint32_t   default_max_transaction_net_usage              = default_max_block_size / 10;
+const static uint32_t   default_max_transaction_net_usage              = default_max_block_net_usage / 10;
 
 const static uint32_t   overhead_per_row_per_index_ram_bytes = 64;    ///< overhead accounts for basic tracking structures in a row per index
 const static uint32_t   overhead_per_account_ram_bytes     = 2*1024; ///< overhead accounts for basic account storage and pre-pays features like account recovery

@@ -591,6 +591,12 @@ void chain_controller::_finalize_block( const block_trace& trace, const producer
    update_last_irreversible_block();
    _resource_limits.process_account_limit_updates();
 
+   const auto& chain_config = this->get_global_properties().configuration;
+   _resource_limits.set_block_parameters(
+      {EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct), chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}},
+      {EOS_PERCENT(chain_config.max_block_net_usage, chain_config.target_block_net_usage_pct), chain_config.max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}}
+   );
+
    // trigger an update of our elastic values for block limits
    _resource_limits.process_block_usage(b.block_num());
 
