@@ -344,6 +344,11 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata&& da
    return wrap_transaction_processing( move(data), process_apply_transaction );
 } FC_CAPTURE_AND_RETHROW( ) }
 
+uint128_t chain_controller::transaction_id_to_sender_id( const transaction_id_type& tid )const {
+   fc::uint128_t _id(tid._hash[3], tid._hash[2]);
+   return (unsigned __int128)_id;
+}
+
 transaction_trace chain_controller::delayed_transaction_processing( const transaction_metadata& mtrx )
 { try {
    transaction_trace result(mtrx.id);
@@ -369,8 +374,7 @@ transaction_trace chain_controller::delayed_transaction_processing( const transa
    time_point_sec execute_after = head_block_time();
    execute_after += mtrx.delay;
    //TODO: !!! WHO GETS BILLED TO STORE THE DELAYED TX?
-   fc::uint128_t _id(trx.id()._hash[3], trx.id()._hash[2]);
-   deferred_transaction dtrx((unsigned __int128)_id, config::system_account_name, config::system_account_name, execute_after, trx);
+   deferred_transaction dtrx(transaction_id_to_sender_id( trx.id() ), config::system_account_name, config::system_account_name, execute_after, trx);
    FC_ASSERT( dtrx.execute_after < dtrx.expiration, "transaction expires before it can execute" );
 
    result.deferred_transaction_requests.push_back(std::move(dtrx));
