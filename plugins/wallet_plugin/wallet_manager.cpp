@@ -46,8 +46,7 @@ std::string wallet_manager::create(const std::string& name) {
    wallet->set_password(password);
    wallet->set_wallet_filename(wallet_filename.string());
    wallet->unlock(password);
-   static const std::string eosio_wif_key("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3");
-   wallet->import_key(eosio_wif_key);
+   wallet->import_key(eosio_key);
    wallet->lock();
    wallet->unlock(password);
    
