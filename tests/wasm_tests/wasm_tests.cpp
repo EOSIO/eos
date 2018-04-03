@@ -85,6 +85,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
       signed_transaction trx;
       trx.actions.emplace_back( vector<permission_level>{{N(asserter),config::active_name}},
                                 assertdef {1, "Should Not Assert!"} );
+      trx.actions[0].authorization = {{N(asserter),config::active_name}};
 
       set_transaction_headers(trx);
       trx.sign( get_private_key( N(asserter), "active" ), chain_id_type() );
@@ -212,7 +213,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, TESTER ) try {
 // test softfloat 32 bit operations
 BOOST_FIXTURE_TEST_CASE( f32_tests, TESTER ) try {
    produce_blocks(2);
-
+   account_name an = N(f_tests);
    create_accounts( {N(f32_tests)} );
    produce_block();
    {
@@ -364,7 +365,6 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_conversion_tests, tester ) try {
  */
 BOOST_FIXTURE_TEST_CASE( check_entry_behavior, TESTER ) try {
    produce_blocks(2);
-
    create_accounts( {N(entrycheck)} );
    produce_block();
 
@@ -468,7 +468,7 @@ BOOST_FIXTURE_TEST_CASE( stl_test, TESTER ) try {
         action msg_act;
         msg_act.account = N(stltest);
         msg_act.name = N(message);
-        msg_act.authorization = vector<permission_level>{{N(bob), config::active_name}};
+        msg_act.authorization = {{N(stltest), config::active_name}};
         msg_act.data = abi_ser.variant_to_binary("message", mutable_variant_object()
                                              ("from", "bob")
                                              ("to", "alice")
@@ -476,8 +476,8 @@ BOOST_FIXTURE_TEST_CASE( stl_test, TESTER ) try {
                                              );
         trx.actions.push_back(std::move(msg_act));
 
-       set_transaction_headers(trx);
-        trx.sign(get_private_key(N(bob), "active"), chain_id_type());
+        set_transaction_headers(trx);
+        trx.sign(get_private_key(N(stltest), "active"), chain_id_type());
         push_transaction(trx);
         produce_block();
 
@@ -488,6 +488,7 @@ BOOST_FIXTURE_TEST_CASE( stl_test, TESTER ) try {
 //Make sure we can create a wasm with maximum pages, but not grow it any
 BOOST_FIXTURE_TEST_CASE( big_memory, TESTER ) try {
    produce_blocks(2);
+
 
    create_accounts( {N(bigmem)} );
    produce_block();
@@ -765,7 +766,6 @@ BOOST_FIXTURE_TEST_CASE( test_table_key_validation, TESTER ) try {
 
 BOOST_FIXTURE_TEST_CASE( check_table_maximum, TESTER ) try {
    produce_blocks(2);
-
    create_accounts( {N(tbl)} );
    produce_block();
 
@@ -955,7 +955,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, TESTER ) try {
    std::stringstream ss;
    ss << "(module ";
    ss << "(export \"apply\" (func $apply))";
-   ss << "  (func $apply  (param $0 i64) (param $1 i64) (param $2 i64))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64))";
    ss << "  (func ";
    for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i+=4)
       ss << "(local i32)";
@@ -967,8 +967,9 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, TESTER ) try {
    {
    std::stringstream ss;
    ss << "(module ";
+   ss << "(import \"env\" \"require_auth\" (func $require_auth (param i64)))";
    ss << "(export \"apply\" (func $apply))";
-   ss << "  (func $apply  (param $0 i64) (param $1 i64) (param $2 i64))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64) (call $require_auth (i64.const 14288945783897063424)))";
    ss << "  (func ";
    for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i+=8)
       ss << "(local f64)";
@@ -1013,8 +1014,9 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack, TESTER ) try {
    {
    std::stringstream ss;
    ss << "(module ";
+   ss << "(import \"env\" \"require_auth\" (func $require_auth (param i64)))";
    ss << "(export \"apply\" (func $apply))";
-   ss << "  (func $apply  (param $0 i64) (param $1 i64) (param $2 i64))";
+   ss << "  (func $apply  (param $0 i64)(param $1 i64)(param $2 i64) (call $require_auth (i64.const 14288945783897063424)))";
    ss << "  (func ";
    for(unsigned int i = 0; i < wasm_constraints::maximum_func_local_bytes; i+=4)
       ss << "(param i32)";

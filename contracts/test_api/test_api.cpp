@@ -19,9 +19,15 @@
 #include "test_permission.cpp"
 
 extern "C" {
-
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
-      //eosio::print("==> CONTRACT: ", code, " ", action, "\n");
+      if ( action == N(cf_action) ) {
+         test_action::test_cf_action();
+         return;
+      }
+      WASM_TEST_HANDLER(test_action, assert_true_cf);
+
+      require_auth(code);
+
       //test_types
       WASM_TEST_HANDLER(test_types, types_size);
       WASM_TEST_HANDLER(test_types, char_to_symbol);
@@ -62,11 +68,7 @@ extern "C" {
       if ( action == N(dummy_action) ) {
          test_action::test_dummy_action();
          return;
-      } else if ( action == N(cf_action) ) {
-         test_action::test_cf_action();
-         return;
       }
-
       //test_print
       WASM_TEST_HANDLER(test_print, test_prints);
       WASM_TEST_HANDLER(test_print, test_prints_l);
@@ -150,15 +152,6 @@ extern "C" {
       // test checktime
       WASM_TEST_HANDLER(test_checktime, checktime_pass);
       WASM_TEST_HANDLER(test_checktime, checktime_failure);
-
-/*
-      // test softfloat
-      WASM_TEST_HANDLER(test_softfloat, test_f32_add);
-      WASM_TEST_HANDLER(test_softfloat, test_f32_sub);
-      WASM_TEST_HANDLER(test_softfloat, test_f32_mul);
-      WASM_TEST_HANDLER(test_softfloat, test_f32_div);
-      WASM_TEST_HANDLER(test_softfloat, test_f32_min);
-*/
 
       // test permission
       WASM_TEST_HANDLER_EX(test_permission, check_authorization);

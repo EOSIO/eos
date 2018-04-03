@@ -545,7 +545,7 @@ class softfloat_api : public context_aware_api {
       }
       int32_t _eosio_f32_trunc_i32s( float af ) {
          float32_t a = to_softfloat32(af);
-         if (_eosio_f32_ge(af, 2147483648.0f) || _eosio_f32_le(af, -2147483649.0f))             
+         if (_eosio_f32_ge(af, 2147483648.0f) || _eosio_f32_le(af, -2147483649.0f))
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow" );
 
          if (is_nan(a))
@@ -1066,7 +1066,9 @@ class transaction_api : public context_aware_api {
             fc::raw::unpack<transaction>(data, data_len, dtrx);
             dtrx.sender = context.receiver;
             dtrx.sender_id = (unsigned __int128)sender_id;
-            dtrx.execute_after = execute_after;
+            dtrx.execute_after = std::max( execute_after,
+                                           time_point_sec( (context.controller.head_block_time() + fc::seconds(dtrx.delay_sec))
+                                                             + fc::microseconds(999'999) ) /* rounds up to nearest second */ );
             dtrx.payer = actual_payer;
             context.execute_deferred(std::move(dtrx));
          } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
@@ -1555,7 +1557,7 @@ REGISTER_INTRINSICS(apply_context,
    (require_write_lock,    void(int64_t)          )
    (require_read_lock,     void(int64_t, int64_t) )
    (require_recipient,     void(int64_t)          )
-   (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&)const)
+   (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&))
    (has_authorization,     int(int64_t), "has_auth", bool(apply_context::*)(const account_name&)const)
    (is_account,            int(int64_t)           )
 );

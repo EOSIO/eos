@@ -105,12 +105,10 @@ void apply_eosio_newaccount(apply_context& context) {
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
-
 void apply_eosio_setcode(apply_context& context) {
    auto& db = context.mutable_db;
    auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
    auto  act = context.act.data_as<setcode>();
-
    context.require_authorization(act.account);
    context.require_write_lock( config::eosio_auth_scope );
 

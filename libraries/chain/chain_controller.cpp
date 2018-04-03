@@ -468,7 +468,7 @@ transaction chain_controller::_get_on_block_transaction()
 void chain_controller::_apply_on_block_transaction()
 {
    _pending_block_trace->implicit_transactions.emplace_back(_get_on_block_transaction());
-   transaction_metadata mtrx(packed_transaction(_pending_block_trace->implicit_transactions.back()), get_chain_id(), head_block_time());
+   transaction_metadata mtrx(packed_transaction(_pending_block_trace->implicit_transactions.back()), get_chain_id(), head_block_time(), true /*is implicit*/);
    _push_transaction(std::move(mtrx));
 }
 
@@ -747,14 +747,20 @@ void chain_controller::__apply_block(const signed_block& next_block)
 
    block_trace next_block_trace(next_block);
 
-   /// cache the input tranasction ids so that they can be looked up when executing the
+   /// cache the input transaction ids so that they can be looked up when executing the
    /// summary
    vector<transaction_metadata> input_metas;
-   input_metas.reserve(next_block.input_transactions.size() + 1);
+   // add all implicit transactions
    {
       next_block_trace.implicit_transactions.emplace_back(_get_on_block_transaction());
-      input_metas.emplace_back(packed_transaction(next_block_trace.implicit_transactions.back()), get_chain_id(), head_block_time());
    }
+
+   input_metas.reserve(next_block.input_transactions.size() + next_block_trace.implicit_transactions.size());
+
+   for ( const auto& t : next_block_trace.implicit_transactions ) {
+      input_metas.emplace_back(packed_transaction(t), get_chain_id(), head_block_time(), true /*implicit*/);
+   }
+
    map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
       input_metas.emplace_back(t, chain_id_type(), next_block.timestamp);
@@ -833,6 +839,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                   } else {
                      const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
                      if (gtrx != nullptr) {
+                        //ilog( "defer" );
                         auto trx = fc::raw::unpack<deferred_transaction>(gtrx->packed_trx.data(), gtrx->packed_trx.size());
                         FC_ASSERT( trx.execute_after <= head_block_time() , "deferred transaction executed prematurely" );
                         validate_not_expired( trx );
@@ -841,9 +848,12 @@ void chain_controller::__apply_block(const signed_block& next_block)
                         _destroy_generated_transaction(*gtrx);
                         return &*_temp;
                      } else {
-                        const auto& mtrx = input_metas[0];
-                        FC_ASSERT(mtrx.id == receipt.id, "on-block transaction id mismatch");
-                        return &input_metas[0];
+                        //ilog( "implicit" );
+                        for ( size_t i=0; i < next_block_trace.implicit_transactions.size(); i++ ) {
+                           if ( input_metas[i].id == receipt.id )
+                              return &input_metas[i];
+                        }
+                        FC_ASSERT(false, "implicit transaction not found ${trx}", ("trx", receipt));
                      }
                   }
                };
@@ -1272,27 +1282,46 @@ void chain_controller::validate_not_expired( const transaction& trx )const
 { try {
    fc::time_point now = head_block_time();
 
-   EOS_ASSERT( now <= time_point(trx.expiration),
+   EOS_ASSERT( now < time_point(trx.expiration),
                expired_tx_exception,
                "Transaction is expired, now is ${now}, expiration is ${trx.exp}",
-               ("now",now)("trx.exp",trx.expiration) );
+               ("now",now)("trx.expiration",trx.expiration) );
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
 void chain_controller::validate_expiration_not_too_far( const transaction& trx, fc::time_point reference_time )const
 { try {
-   fc::time_point now = head_block_time();
    const auto& chain_configuration = get_global_properties().configuration;
 
    EOS_ASSERT( time_point(trx.expiration) <= reference_time + fc::seconds(chain_configuration.max_transaction_lifetime),
                tx_exp_too_far_exception,
-               "Transaction expiration is too far in the future, expiration is ${trx.expiration} but max expiration is ${max_til_exp}",
-               ("trx.expiration",trx.expiration)("now",now)("max_til_exp",chain_configuration.max_transaction_lifetime) );
+               "Transaction expiration is too far in the future relative to the reference time of ${reference_time}, "
+               "expiration is ${trx.expiration} and the maximum transaction lifetime is ${max_til_exp} seconds",
+               ("trx.expiration",trx.expiration)("reference_time",reference_time)
+               ("max_til_exp",chain_configuration.max_transaction_lifetime) );
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
 
+void chain_controller::validate_transaction_without_state( const transaction& trx )const
+{ try {
+   EOS_ASSERT( !trx.actions.empty(), tx_no_action, "transaction must have at least one action" );
+
+   // Check for at least one authorization in the context-aware actions
+   bool has_auth = false;
+   for( const auto& act : trx.actions ) {
+      has_auth |= !act.authorization.empty();
+      if( has_auth ) break;
+   }
+   EOS_ASSERT( has_auth, tx_no_auths, "transaction must have at least one authorization" );
+
+   // Check that there are no authorizations in any of the context-free actions
+   for (const auto &act : trx.context_free_actions) {
+      EOS_ASSERT( act.authorization.empty(), cfa_irrelevant_auth, "context-free actions cannot require authorization" );
+   }
+} FC_CAPTURE_AND_RETHROW((trx)) }
+
 void chain_controller::validate_transaction_with_minimal_state( const transaction& trx )const
 { try {
-   EOS_ASSERT(trx.actions.size() > 0, transaction_exception, "A transaction must have at least one action");
+   validate_transaction_without_state(trx);
    validate_not_expired(trx);
    validate_tapos(trx);
 } FC_CAPTURE_AND_RETHROW((trx)) }
@@ -1892,7 +1921,6 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
    transaction_trace result(meta.id);
 
    for (const auto &act : meta.trx().context_free_actions) {
-      FC_ASSERT( act.authorization.size() == 0, "context free actions cannot require authorization" );
       apply_context context(*this, _db, act, meta);
       context.context_free = true;
       context.exec();
@@ -1903,9 +1931,7 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
    for (const auto &act : meta.trx().actions) {
       apply_context context(*this, _db, act, meta);
       context.exec();
-      context.used_context_free_api |= act.authorization.size();
-
-      FC_ASSERT( context.used_context_free_api, "action did not reference database state, it should be moved to context_free_actions", ("act",act) );
+      context.results.applied_actions.back().auths_used = act.authorization.size() - context.unused_authorizations().size();
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transaction_requests, std::move(context.results.deferred_transaction_requests));
    }
@@ -1925,6 +1951,12 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
          temp_session.squash();
          return result;
       } catch (...) {
+         if (meta.is_implicit) {
+            transaction_trace result(meta.id);
+            result.status = transaction_trace::hard_fail;
+            return result;
+         }
+
          // if there is no sender, there is no error handling possible, rethrow
          if (!meta.sender) {
             throw;

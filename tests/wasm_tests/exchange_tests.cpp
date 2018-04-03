@@ -60,8 +60,7 @@ FC_REFLECT( exchange_state, (manager)(supply)(fee)(base)(quote) );
 
 class exchange_tester : public TESTER {
    public:
-
-      auto push_action(account_name contract,
+       auto push_action(account_name contract,
                        const account_name& signer,
                        const action_name &name, const variant_object &data ) {
          string action_type_name = abi_ser.get_action_type(name);
