@@ -75,7 +75,7 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
 
    constexpr auto key1 = "5JktVNHnRX48BUdtewU7N1CyL4Z886c42x7wYW7XhNWkDQRhdcS";
    constexpr auto key2 = "5Ju5RTcVDo35ndtzHioPMgebvBM6LkJ6tvuU6LTNQv8yaz3ggZr";
-   constexpr auto key3 = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3";
+   constexpr auto key3 = "5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"; // eosio key
 
    wallet_manager wm;
    BOOST_CHECK_EQUAL(0, wm.list_wallets().size());
@@ -90,14 +90,15 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    BOOST_CHECK(!pw.empty());
    BOOST_CHECK_EQUAL(0, pw.find("PW")); // starts with PW
    BOOST_CHECK_EQUAL(1, wm.list_wallets().size());
-   BOOST_CHECK_EQUAL(0, wm.list_keys().size()); // no keys
+   // eosio key is imported automatically when a wallet is created
+   BOOST_CHECK_EQUAL(1, wm.list_keys().size());
    BOOST_CHECK(wm.list_wallets().at(0).find("*") != std::string::npos);
    wm.lock("test");
    BOOST_CHECK(wm.list_wallets().at(0).find("*") == std::string::npos);
    wm.unlock("test", pw);
    BOOST_CHECK(wm.list_wallets().at(0).find("*") != std::string::npos);
    wm.import_key("test", key1);
-   BOOST_CHECK_EQUAL(1, wm.list_keys().size());
+   BOOST_CHECK_EQUAL(2, wm.list_keys().size());
    auto keys = wm.list_keys();
    
    auto pub_pri_pair = [](const char *key) -> auto {
@@ -111,18 +112,21 @@ BOOST_AUTO_TEST_CASE(wallet_manager_test)
    keys = wm.list_keys();
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key1)) != keys.cend());
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key2)) != keys.cend());
+   // key3 was automatically imported
+   BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key3)) != keys.cend());
    wm.lock("test");
    BOOST_CHECK_EQUAL(0, wm.list_keys().size());
    wm.unlock("test", pw);
-   BOOST_CHECK_EQUAL(2, wm.list_keys().size());
+   BOOST_CHECK_EQUAL(3, wm.list_keys().size());
    wm.lock_all();
    BOOST_CHECK_EQUAL(0, wm.list_keys().size());
    BOOST_CHECK(wm.list_wallets().at(0).find("*") == std::string::npos);
 
    auto pw2 = wm.create("test2");
    BOOST_CHECK_EQUAL(2, wm.list_wallets().size());
-   BOOST_CHECK_EQUAL(0, wm.list_keys().size());
-   wm.import_key("test2", key3);
+   // eosio key is imported automatically when a wallet is created
+   BOOST_CHECK_EQUAL(1, wm.list_keys().size());
+   BOOST_CHECK_THROW(wm.import_key("test2", key3), fc::exception);
    keys = wm.list_keys();
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key1)) == keys.cend());
    BOOST_CHECK(std::find(keys.cbegin(), keys.cend(), pub_pri_pair(key2)) == keys.cend());
