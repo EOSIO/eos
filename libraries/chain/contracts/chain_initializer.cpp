@@ -315,7 +315,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"block_mroot", "checksum256"},
          {"producer", "account_name"},
          {"schedule_version", "uint32"},
-         {"new_producers", "producer_schedule?"}   
+         {"new_producers", "producer_schedule?"}
       }
    });
 
@@ -330,6 +330,10 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
 
 void chain_initializer::prepare_database( chain_controller& chain,
                                                          chainbase::database& db) {
+   /// Reserve id of 0 in permission_index by creating dummy permission_object as the very first object in the index:
+   db.create<permission_object>([&](permission_object& p) {
+   });
+
    /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    auto create_native_account = [this, &chain, &db](account_name name) {
       db.create<account_object>([this, &name](account_object& a) {

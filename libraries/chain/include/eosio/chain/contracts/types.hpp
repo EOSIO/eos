@@ -150,7 +150,7 @@ struct updateauth {
    permission_name                   permission;
    permission_name                   parent;
    authority                         data;
-   uint32                            delay;
+   uint32_t                          delay;
 
    static account_name get_account() {
       return config::system_account_name;
@@ -270,7 +270,7 @@ struct vetorecovery {
 };
 
 struct canceldelay {
-   uint32   sender_id;
+   uint128_t  sender_id;
 
    static account_name get_account() {
       return config::system_account_name;
@@ -282,7 +282,7 @@ struct canceldelay {
 };
 
 struct mindelay {
-   uint32   delay;
+   uint32_t   delay;
 
    static account_name get_account() {
       return config::system_account_name;

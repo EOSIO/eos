@@ -28,7 +28,7 @@ namespace eosio {
       :expiration(exp),region(r)
       {}
 
-      void send(uint64_t sender_id, account_name payer = account_name(0), time delay_until = 0) const {
+      void send(uint64_t sender_id, account_name payer = account_name(0), time delay_until = now()) const {
          auto serialize = pack(*this);
          send_deferred(sender_id, payer, delay_until, serialize.data(), serialize.size());
       }
