@@ -39,7 +39,7 @@ EOS.IO currently supports the following operating systems:
    4. [Install the executables](#installexecutables)
 3. [Running a node](#runanode)
    1. [Creating and launching a single-node testnet](#singlenode)
-   2. [Running local testnet](#localtestnet)
+   2. [Running a multi-node local testnet](#localtestnet)
    3. [Running on the public testnet](#publictestnet)
    4. [Next steps](#nextsteps)
 4. [Example Currency Contract Walkthrough](#smartcontracts)
@@ -49,9 +49,9 @@ EOS.IO currently supports the following operating systems:
    4. [Upload sample contract to blockchain](#uploadsmartcontract)
    5. [Pushing a message to a sample contract](#pushamessage)
    6. [Reading Currency Contract Balance](#readingcontract)
-7. [Doxygen documentation](#doxygen)
-8. [Running EOS in Docker](#docker)
-9. [Manual installation of the dependencies](#manualdep)
+5. [Doxygen documentation](#doxygen)
+6. [Running EOS in Docker](#docker)
+7. [Manual installation of the dependencies](#manualdep)
    1. [Clean install Amazon 2017.09 and higher](#manualdepamazon)
    2. [Clean install Centos 7 and higher](#manualdepcentos)
    3. [Clean install Fedora 25 and higher](#manualdepfedora)
@@ -91,7 +91,7 @@ EOS comes with a number of programs:
 * keosd - EOS wallet
 * eosio-launcher - application for nodes network composing and deployment; [more on eosio-launcher](https://github.com/EOSIO/eos/blob/master/testnet.md)
 
-The build places content in the `eos/build` folder.  The executables can be found in the `eos/build/programs` folder.
+The build places content in the `eos/build` folder.  The executables can be found in subfolders within the `eos/build/programs` folder.
 
 <a name="autobuild"></a>
 #### Automated build script
@@ -141,6 +141,7 @@ make test
 For ease of contract development, content can be installed in the `/usr/local` folder using the `make install` target.  This step is run from the `build` folder.  Adequate permission is required to install.
 
 ```bash
+cd build
 sudo make install
 ```
 
@@ -152,10 +153,10 @@ sudo make install
 
 After successfully building the project, the `nodeos` binary should be present in the `build/programs/nodeos` folder.  `nodeos` can be run directly from the `build` folder using `programs/nodeos/nodeos`.
 
-`nodeos` uses a custom configuration folder, the location of this folder is determined by your system.
+`nodeos` uses a custom configuration folder.  The location of this folder is determined by your system.
 
-- Mac OS: `~/Library/Application Support/eosio`
-- Linux: `~/.local/share/eosio`
+- Mac OS: `~/Library/Application Support/eosio/nodeos/config`
+- Linux: `~/.local/share/eosio/nodeos/config`
 
 The build seeds this folder with a default `genesis.json` file.  Alternatively, a configuration folder can be specified using the `--config-dir` command line argument to `nodeos`.  If you use this option, you will need to manually copy a genesis.json file to your config folder.
 
@@ -190,10 +191,15 @@ When running `nodeos` you should get log messages similar to below. It means the
 ...
 ```
 
-By default, `nodeos` uses `var/lib/eosio/node_00` as its data folder (where shared memory and log content are stored).  Alternatively, a data folder can be specified using the `--data-dir` command line argument to `nodeos`.
+`nodeos` stores runtime data (e.g., shared memory and log content) in a custom data folder.  The location of this folder is determined by your system.
+
+- Mac OS: `~/Library/Application Support/eosio/nodeos/data`
+- Linux: `~/.local/share/eosio/nodeos/data`
+
+A data folder can be specified using the `--data-dir` command line argument to `nodeos`.
 
 <a name="localtestnet"></a>
-### Running multi-node local testnet
+### Running a multi-node local testnet
 
 To run a local testnet you can use the `eosio-launcher` application provided in the `~/eos/build/programs/eosio-launcher` folder.
 
@@ -230,7 +236,7 @@ You can read more on eosio-launcher and its settings [here](https://github.com/E
 
 The `master` branch is no longer compatible with the `dawn-2.x` public testnet.  To run on the public testnet, please see [DAWN-2018-02-14/eos/README.md](https://github.com/EOSIO/eos/blob/dawn-2.x/README.md)
 
-### Next Steps
+## Next Steps
 <a name="nextsteps"></a>
 
 Further documentation is available in the [wiki](https://github.com/EOSIO/eos/wiki). Wiki pages include detailed reference documentation for all programs and tools and the database schema and API. The wiki also includes a section describing smart contract development. A simple walkthrough of the "currency" contract follows.
