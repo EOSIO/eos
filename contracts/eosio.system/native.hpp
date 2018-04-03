@@ -190,7 +190,7 @@ namespace eosiosystem {
          }
          
          ACTION( SystemAccount, canceldelay ) {
-            checksum256   trx_id;
+            transaction_id   trx_id;
             
             EOSLIB_SERIALIZE( canceldelay, (trx_id) )
          };

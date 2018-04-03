@@ -177,7 +177,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.structs.emplace_back( struct_def {
       "pending_recovery", "", {
          {"account",    "name"},
-         {"request_id", "sender_id_type"},
+         {"request_id", "uint128"},
          {"update",     "updateauth"},
          {"memo",       "string"}
       }
