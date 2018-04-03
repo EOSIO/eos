@@ -68,7 +68,7 @@ extern "C" {
       if ( action == N(dummy_action) ) {
          test_action::test_dummy_action();
          return;
-      } 
+      }
       //test_print
       WASM_TEST_HANDLER(test_print, test_prints);
       WASM_TEST_HANDLER(test_print, test_prints_l);
@@ -122,6 +122,7 @@ extern "C" {
       WASM_TEST_HANDLER(test_transaction, send_transaction_empty);
       WASM_TEST_HANDLER(test_transaction, send_transaction_large);
       WASM_TEST_HANDLER(test_transaction, send_action_sender);
+      WASM_TEST_HANDLER(test_transaction, send_transaction_expiring_late);
       WASM_TEST_HANDLER(test_transaction, deferred_print);
       WASM_TEST_HANDLER(test_transaction, send_deferred_transaction);
       WASM_TEST_HANDLER(test_transaction, cancel_deferred_transaction);

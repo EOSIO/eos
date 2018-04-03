@@ -361,7 +361,7 @@ BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
 		auto res = push_transaction(trx);
 		BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
    }
-   
+
    uint32_t now = control->head_block_time().sec_since_epoch();
    CALL_TEST_FUNCTION( *this, "test_action", "now", fc::raw::pack(now));
 
@@ -412,7 +412,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       // need at least one normal action
       BOOST_CHECK_EXCEPTION(push_transaction(trx), tx_no_action,
                             [](const fc::assert_exception& e) {
-                               return expect_assert_message(e, "transactions require at least one context-aware action");
+                               return expect_assert_message(e, "transaction must have at least one action");
                             }
       );
 
@@ -425,10 +425,9 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       // signing a transaction with only context_free_actions should not be allowed
       auto sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
 
-      BOOST_CHECK_EXCEPTION(push_transaction(trx), tx_irrelevant_sig,
+      BOOST_CHECK_EXCEPTION(push_transaction(trx), tx_no_action,
                             [](const fc::exception& e) {
-                               edump((e.what()));
-                               return expect_assert_message(e, "signatures");
+                               return expect_assert_message(e, "transaction must have at least one action");
                             }
       );
 
@@ -468,7 +467,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
          trx.context_free_actions.push_back(act);
          trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100)); // verify payload matches context free data
          trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(200));
-         
+
          trx.actions.push_back(act1);
          // attempt to access non context free api
          for (uint32_t i = 200; i <= 204; ++i) {
@@ -653,13 +652,13 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    {
       signed_transaction trx;
       auto tm = test_api_action<TEST_METHOD("test_action", "require_auth")>{};
-      action act({}, tm); 
+      action act({}, tm);
       trx.actions.push_back(act);
 
 		set_transaction_headers(trx);
       BOOST_CHECK_EXCEPTION(push_transaction(trx), transaction_exception,
          [](const fc::exception& e) {
-            return expect_assert_message(e, "transactions require at least one authorization");
+            return expect_assert_message(e, "transaction must have at least one authorization");
          }
       );
    }
@@ -716,6 +715,13 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
          [](const eosio::chain::transaction_exception& e) {
             return expect_assert_message(e, "inline action recursion depth reached");
          }
+      );
+
+   // test send_transaction_expiring_late
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_transaction", "send_transaction_expiring_late", fc::raw::pack(N(testapi))),
+                         eosio::chain::transaction_exception,  [](const eosio::chain::transaction_exception& e) {
+                                                                  return expect_assert_message(e, "Transaction expiration is too far");
+                                                               }
       );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
@@ -1310,7 +1316,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
    auto get_result_uint64 = [&]() -> uint64_t {
       const auto& db = control->get_database();
       const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(testapi), N(testapi), N(testapi)));
-      
+
       FC_ASSERT(t_id != 0, "Table id not found");
 
       const auto& idx = db.get_index<key_value_index, by_scope_primary>();
@@ -1358,18 +1364,16 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
       }
    );
 
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
+   CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
          .account    = N(noname),
          .permission = N(active),
          .pubkeys    = {
             get_public_key(N(testapi), "active")
          }
-      })), fc::exception,
-       [](const fc::exception& e) {
-         return expect_assert_message(e, "unknown key");
-      }
+      })
    );
+   BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() );
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1380,6 +1384,18 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
    );
    BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() );
 
+   CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
+      fc::raw::pack( check_auth {
+         .account    = N(testapi),
+         .permission = N(noname),
+         .pubkeys    = {
+            get_public_key(N(testapi), "active")
+         }
+      })
+   );
+   BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() );
+
+   /*
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
          .account    = N(testapi),
@@ -1392,6 +1408,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
          return expect_assert_message(e, "unknown key");
       }
    );
+   */
 
 } FC_LOG_AND_RETHROW() }
 

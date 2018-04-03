@@ -269,7 +269,7 @@ namespace eosio { namespace chain {
          uint32_t             head_block_num()const;
          block_id_type        head_block_id()const;
          account_name         head_block_producer()const;
-         block_header         head_block_header()const; 
+         block_header         head_block_header()const;
 
          uint32_t last_irreversible_block_num() const;
 
@@ -290,14 +290,14 @@ namespace eosio { namespace chain {
           * @param allow_unused_signatures - true if method should not assert on unused signatures
           * @param provided_accounts - the set of accounts which have authorized the transaction (presumed to be owner)
           *
-          * @return time_point set to the max delay that this authorization requires to complete
+          * @return fc::microseconds set to the max delay that this authorization requires to complete
           */
-         time_point check_authorization( const vector<action>& actions,
-                                         const vector<action>& context_free_actions,
-                                         const flat_set<public_key_type>& provided_keys,
-                                         bool                             allow_unused_signatures = false,
-                                         flat_set<account_name>           provided_accounts = flat_set<account_name>()
-                                         )const;
+         fc::microseconds check_authorization( const vector<action>& actions,
+                                               const vector<action>& context_free_actions,
+                                               const flat_set<public_key_type>& provided_keys,
+                                               bool                             allow_unused_signatures = false,
+                                               flat_set<account_name>           provided_accounts = flat_set<account_name>()
+                                             )const;
 
          /**
           * @param account - the account owner of the permission
@@ -339,6 +339,8 @@ namespace eosio { namespace chain {
          template<typename TransactionProcessing>
          transaction_trace wrap_transaction_processing( transaction_metadata&& data, TransactionProcessing trx_processing );
 
+         transaction_trace delayed_transaction_processing( const transaction_metadata& mtrx );
+
          /// Reset the object graph in-memory
          void _initialize_indexes();
          void _initialize_chain(contracts::chain_initializer& starter);
@@ -361,38 +363,29 @@ namespace eosio { namespace chain {
             return f();
          }
 
-         time_point check_transaction_authorization(const transaction& trx,
-                                                    const vector<signature_type>& signatures,
-                                                    const vector<bytes>&  cfd = vector<bytes>(),
-                                                    bool allow_unused_signatures = false)const;
+         fc::microseconds check_transaction_authorization(const transaction& trx,
+                                                          const vector<signature_type>& signatures,
+                                                          const vector<bytes>&  cfd = vector<bytes>(),
+                                                          bool allow_unused_signatures = false)const;
 
 
          void require_scope(const scope_name& name) const;
          void require_account(const account_name& name) const;
 
-         /**
-          * This method performs some consistency checks on a transaction.
-          * @throw transaction_exception if the transaction is invalid
-          */
-         template<typename T>
-         void validate_transaction(const T& trx) const {
-         try {
-            EOS_ASSERT(trx.actions.size() > 0, transaction_exception, "A transaction must have at least one action");
-
-            validate_expiration(trx);
-            validate_uniqueness(trx);
-            validate_tapos(trx);
-
-         } FC_CAPTURE_AND_RETHROW( (trx) ) }
-
          /// Validate transaction helpers @{
-         void validate_uniqueness(const transaction& trx)const;
-         void validate_tapos(const transaction& trx)const;
-         void validate_referenced_accounts(const transaction& trx)const;
-         void validate_expiration(const transaction& trx) const;
-         void record_transaction(const transaction& trx);
-         void update_resource_usage( transaction_trace& trace, const transaction_metadata& meta );
+         void validate_uniqueness( const transaction& trx )const;
+         void validate_tapos( const transaction& trx )const;
+         void validate_referenced_accounts( const transaction& trx )const;
+         void validate_not_expired( const transaction& trx )const;
+         void validate_expiration_not_too_far( const transaction& trx, fc::time_point reference_time )const;
+         void validate_transaction_without_state( const transaction& trx )const;
+         void validate_transaction_with_minimal_state( const transaction& trx )const;
+         void validate_transaction_with_minimal_state( const packed_transaction& packed_trx, const transaction* trx_ptr = nullptr )const;
          /// @}
+
+         void record_transaction( const transaction& trx );
+         void update_resource_usage( transaction_trace& trace, const transaction_metadata& meta );
+
 
          /**
           * @brief Find the lowest authority level required for @ref authorizer_account to authorize a message of the
@@ -418,11 +411,11 @@ namespace eosio { namespace chain {
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
          bool should_check_tapos()const                      { return !(_skip_flags&skip_tapos_check);            }
+         bool should_check_signatures()const                 { return !(_skip_flags&skip_transaction_signatures); }
 
          ///Steps involved in applying a new block
          ///@{
          const producer_object& validate_block_header(uint32_t skip, const signed_block& next_block)const;
-         const producer_object& _validate_block_header(const signed_block& next_block)const;
          void create_block_summary(const signed_block& next_block);
 
          void update_global_properties(const signed_block& b);
@@ -441,7 +434,7 @@ namespace eosio { namespace chain {
          void _start_pending_cycle();
          void _finalize_pending_cycle();
          void _apply_cycle_trace( const cycle_trace& trace );
-         void _finalize_block( const block_trace& b );
+         void _finalize_block( const block_trace& b, const producer_object& signing_producer );
 
          transaction _get_on_block_transaction();
          void _apply_on_block_transaction();

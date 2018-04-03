@@ -57,6 +57,55 @@ BOOST_AUTO_TEST_CASE( push_block ) { try {
    BOOST_REQUIRE_EQUAL( test1.validate(), true );
 } FC_LOG_AND_RETHROW() }/// schedule_test
 
+BOOST_AUTO_TEST_CASE( push_invalid_block ) { try {
+   TESTER chain;
+
+   // Create a new block
+   signed_block new_block;
+   auto head_time = chain.control->head_block_time();
+   auto next_time = head_time + fc::microseconds(config::block_interval_us);
+   uint32_t slot  = chain.control->get_slot_at_time( next_time );
+   auto sch_pro   = chain.control->get_scheduled_producer(slot);
+   auto priv_key  = chain.get_private_key( sch_pro, "active" );
+
+   // On block action
+   action on_block_act;
+   on_block_act.account = config::system_account_name;
+   on_block_act.name = N(onblock);
+   on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
+   on_block_act.data = fc::raw::pack(chain.control->head_block_header());
+   transaction trx;
+   trx.actions.emplace_back(std::move(on_block_act));
+   trx.set_reference_block(chain.control->head_block_id());
+   trx.expiration = chain.control->head_block_time() + fc::seconds(1);
+   trx.kcpu_usage = 2000; // 1 << 24;
+
+   // Add properties to block header
+   new_block.previous = chain.control->head_block_id();
+   new_block.timestamp = next_time;
+   new_block.producer = sch_pro;
+   new_block.block_mroot = chain.control->get_dynamic_global_properties().block_merkle_root.get_root();
+   vector<transaction_metadata> input_metas;
+   input_metas.emplace_back(packed_transaction(trx), chain.control->get_chain_id(), chain.control->head_block_time(), true);
+   new_block.transaction_mroot = transaction_metadata::calculate_transaction_merkle_root(input_metas);
+   new_block.sign(priv_key);
+
+   // Create a new empty region
+   new_block.regions.resize(new_block.regions.size() + 1);
+   // Pushing this block should fail, since every region inside a block should not be empty
+   BOOST_REQUIRE_THROW(chain.control->push_block(new_block), tx_empty_region);
+
+   // Create a new cycle inside the empty region
+   new_block.regions.back().cycles_summary.resize(new_block.regions.back().cycles_summary.size() + 1);
+   // Pushing this block should fail, since there should not be an empty cycle inside a block
+   BOOST_REQUIRE_THROW(chain.control->push_block(new_block), tx_empty_cycle);
+
+   // Create a new shard inside the empty cycle
+   new_block.regions.back().cycles_summary.back().resize(new_block.regions.back().cycles_summary.back().size() + 1);
+   // Pushing this block should fail, since there should not be an empty shard inside a block
+   BOOST_REQUIRE_THROW(chain.control->push_block(new_block), tx_empty_shard);
+} FC_LOG_AND_RETHROW() }/// push_invalid_block
+
 
 // Utility function to check expected irreversible block
 uint32_t calc_exp_last_irr_block_num(const base_tester& chain, const uint32_t& head_block_num) {
@@ -155,6 +204,61 @@ BOOST_AUTO_TEST_CASE(invalid_expiration) {
    // Expired transaction (January 1970) should throw
    BOOST_CHECK_THROW(chain.push_transaction(trx), transaction_exception);
    BOOST_REQUIRE_EQUAL( chain.validate(), true );
+}
+
+BOOST_AUTO_TEST_CASE(transaction_expiration) {
+
+   for (int i = 0; i < 2; ++i) {
+      TESTER chain;
+      signed_transaction trx;
+      name new_account_name = name("alice");
+      authority owner_auth = authority(chain.get_public_key( new_account_name, "owner"));
+      trx.actions.emplace_back(vector<permission_level>{{config::system_account_name, config::active_name}},
+                              contracts::newaccount{
+                                 .creator  = config::system_account_name,
+                                 .name     = new_account_name,
+                                 .owner    = owner_auth,
+                                 .active   = authority(chain.get_public_key(new_account_name, "active")),
+                                 .recovery = authority(chain.get_public_key(new_account_name, "recovery)),"))
+                              });
+      trx.ref_block_num = static_cast<uint16_t>(chain.control->head_block_num());
+      trx.ref_block_prefix = static_cast<uint32_t>(chain.control->head_block_id()._hash[1]);
+      trx.net_usage_words.value = 4096;
+      trx.expiration = chain.control->head_block_time() + fc::microseconds(i * 1000000);
+      trx.sign(chain.get_private_key(config::system_account_name, "active"), chain_id_type());
+
+      // expire in 1st time, pass in 2nd time
+      if (i == 0) 
+         BOOST_CHECK_THROW(chain.push_transaction(trx), expired_tx_exception);
+      else 
+         chain.push_transaction(trx);
+
+      BOOST_REQUIRE_EQUAL( chain.validate(), true );
+   }
+}
+
+BOOST_AUTO_TEST_CASE(invalid_tapos) {
+   TESTER chain;
+   signed_transaction trx;
+   name new_account_name = name("alice");
+   authority owner_auth = authority(chain.get_public_key( new_account_name, "owner"));
+   trx.actions.emplace_back(vector<permission_level>{{config::system_account_name, config::active_name}},
+                           contracts::newaccount{
+                              .creator  = config::system_account_name,
+                              .name     = new_account_name,
+                              .owner    = owner_auth,
+                              .active   = authority(chain.get_public_key(new_account_name, "active")),
+                              .recovery = authority(chain.get_public_key(new_account_name, "recovery)),"))
+                           });
+   trx.ref_block_num = static_cast<uint16_t>(chain.control->head_block_num() + 1);
+   trx.ref_block_prefix = static_cast<uint32_t>(chain.control->head_block_id()._hash[1]);
+   trx.net_usage_words.value = 4096;
+   trx.expiration = chain.control->head_block_time() + fc::microseconds(1000000);
+   trx.sign(chain.get_private_key(config::system_account_name, "active"), chain_id_type());
+
+   BOOST_CHECK_THROW(chain.push_transaction(trx), invalid_ref_block_exception);
+
+   BOOST_REQUIRE_EQUAL(chain.validate(), true );
 }
 
 BOOST_AUTO_TEST_CASE(irrelevant_auth) {
@@ -652,6 +756,7 @@ BOOST_AUTO_TEST_CASE(wipe)
       }
 
    } FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
    try {
       tester chain;
@@ -676,19 +781,99 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
       trx.sign( chain.get_private_key( name("random"), "active" ), chain_id_type()  );
 
       // Check that it throws for irrelevant signatures
-      BOOST_CHECK_THROW(chain.push_transaction( trx ), tx_irrelevant_sig);
+      BOOST_REQUIRE_THROW(chain.push_transaction( trx ), tx_irrelevant_sig);
 
-      // Push it through with a skip flag
-      chain.push_transaction( trx, skip_transaction_signatures);
+      // Check that it throws for multiple signatures by the same key
+      trx.signatures.clear();
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+      BOOST_REQUIRE_THROW(chain.push_transaction( trx ), tx_irrelevant_sig);
+
+      // Sign the transaction properly and push to the block
+      trx.signatures.clear();
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+      chain.push_transaction( trx );
+
       // Produce block so the transaction gets included in the block
       chain.produce_blocks();
 
-      // Now check that a second blockchain accepts the block with the oversigned transaction
+      // Now check that a second blockchain accepts the block
       tester newchain;
       tester_network net;
       net.connect_blockchain(chain);
       net.connect_blockchain(newchain);
       BOOST_TEST((newchain.find<account_object, by_name>("alice")) != nullptr);
+   } FC_LOG_AND_RETHROW()
+}
+
+//
+BOOST_AUTO_TEST_CASE(irrelevant_sig_hard_check) {
+   try {
+      {
+         tester chain;
+
+         // Make an account, but add an extra signature to the transaction
+         signed_transaction trx;
+
+         name new_account_name = name("alice");
+         authority owner_auth = authority( chain.get_public_key( new_account_name, "owner" ) );
+
+         trx.actions.emplace_back( vector<permission_level>{{ config::system_account_name, config::active_name}},
+                                   contracts::newaccount{
+                                           .creator  = config::system_account_name,
+                                           .name     = new_account_name,
+                                           .owner    = owner_auth,
+                                           .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
+                                           .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
+                                   });
+         chain.set_transaction_headers(trx);
+         trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
+         trx.sign( chain.get_private_key( name("random"), "active" ), chain_id_type()  );
+
+         // Force push transaction with irrelevant signatures using a skip flag
+         chain.push_transaction( trx, skip_transaction_signatures );
+         // Produce block so the transaction gets included in the block
+         chain.produce_blocks();
+
+         // Now check that a second blockchain rejects the block with the oversigned transaction
+         tester newchain;
+         tester_network net;
+         net.connect_blockchain(chain);
+         BOOST_CHECK_THROW(net.connect_blockchain(newchain), tx_irrelevant_sig);
+      }
+
+      {
+         tester chain;
+
+         // Make an account, but add an extra signature to the transaction
+         signed_transaction trx;
+
+         name new_account_name = name("alice");
+         authority owner_auth = authority( chain.get_public_key( new_account_name, "owner" ) );
+
+         trx.actions.emplace_back( vector<permission_level>{{ config::system_account_name, config::active_name}},
+                                   contracts::newaccount{
+                                           .creator  = config::system_account_name,
+                                           .name     = new_account_name,
+                                           .owner    = owner_auth,
+                                           .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
+                                           .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
+                                   });
+         chain.set_transaction_headers(trx);
+         trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+         trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+
+         // Force push transaction with multiple signatures by the same key using a skip flag
+         chain.push_transaction( trx, skip_transaction_signatures );
+         // Produce block so the transaction gets included in the block
+         chain.produce_blocks();
+
+         // Now check that a second blockchain rejects the block with the oversigned transaction
+         tester newchain;
+         tester_network net;
+         net.connect_blockchain(chain);
+         BOOST_CHECK_THROW(net.connect_blockchain(newchain), tx_irrelevant_sig);
+      }
    } FC_LOG_AND_RETHROW()
 }
 
