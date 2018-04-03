@@ -468,7 +468,7 @@ class apply_context {
       void execute_context_free_inline( action &&a );
       void execute_deferred( deferred_transaction &&trx );
       void cancel_deferred( const uint128_t& sender_id );
-      void cancel_deferred( const transaction_id_type& trx_id );
+      //void cancel_deferred( const transaction_id_type& trx_id );
 
       /**
        * @brief Require @ref account to have approved of this message
@@ -507,8 +507,6 @@ class apply_context {
       vector<account_name> get_active_producers() const;
 
       const bytes&         get_packed_transaction();
-
-      uint32_t get_next_sender_id();
 
       const chain_controller&       controller;
       const chainbase::database&    db;  ///< database where state is stored

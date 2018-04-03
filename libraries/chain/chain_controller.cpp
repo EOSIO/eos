@@ -333,7 +333,7 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
          time_point_sec execute_after = head_block_time();
          execute_after += time_point_sec(delay);
          //TODO: !!! WHO GETS BILLED TO STORE THE DELAYED TX?
-         deferred_transaction dtrx(context.get_next_sender_id(), config::system_account_name, config::system_account_name, execute_after, trx);
+         deferred_transaction dtrx(*reinterpret_cast<const uint128_t*>(trx.id()._hash), config::system_account_name, config::system_account_name, execute_after, trx);
          FC_ASSERT( dtrx.execute_after < dtrx.expiration, "transaction expires before it can execute" );
 
          result.deferred_transaction_requests.push_back(std::move(dtrx));

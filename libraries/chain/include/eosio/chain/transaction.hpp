@@ -236,15 +236,9 @@ namespace eosio { namespace chain {
       deferred_reference( const account_name& sender, const uint128_t& sender_id)
       :sender(sender),sender_id(sender_id)
       {}
-      deferred_reference( const account_name& sender, const uint128_t& sender_id, const transaction_id_type& trx_id)
-      :sender(sender),sender_id(sender_id),trx_id(trx_id)
-      {
-         FC_ASSERT( sender == config::system_account_name, "deferred reference from transaction id can only come from system account" );
-      }
 
       account_name                      sender;
       uint128_t                         sender_id;
-      fc::optional<transaction_id_type> trx_id;
    };
 } } // eosio::chain
 
@@ -258,7 +252,7 @@ FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction
 FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
 FC_REFLECT( eosio::chain::packed_transaction, (signatures)(context_free_data)(compression)(data) )
 FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(payer)(execute_after) )
-FC_REFLECT( eosio::chain::deferred_reference, (sender)(sender_id)(trx_id) )
+FC_REFLECT( eosio::chain::deferred_reference, (sender)(sender_id) )
 
 
 

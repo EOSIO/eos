@@ -466,8 +466,7 @@ void apply_eosio_postrecovery(apply_context& context) {
       .data = recover_act.data
    }, update);
 
-   auto& request_id = context.trx_meta.id;
-
+   auto& request_id = *reinterpret_cast<const uint128_t*>(context.trx_meta.id._hash);
    auto record_data = mutable_variant_object()
       ("account", account)
       ("request_id", request_id)
@@ -475,10 +474,10 @@ void apply_eosio_postrecovery(apply_context& context) {
       ("memo", recover_act.memo);
 
    deferred_transaction dtrx;
-   dtrx.sender = config::system_account_name;
-   dtrx.sender_id = static_cast<uint128_t>(account);
-   dtrx.payer = config::system_account_name; // NOTE: we pre-reserve capacity for this during create account
-   dtrx.region = 0;
+   dtrx.sender    = config::system_account_name;
+   dtrx.sender_id = request_id;
+   dtrx.payer     = config::system_account_name; // NOTE: we pre-reserve capacity for this during create account
+   dtrx.region    = 0;
    dtrx.execute_after = context.controller.head_block_time() + delay_lock;
    dtrx.set_reference_block(context.controller.head_block_id());
    dtrx.expiration = dtrx.execute_after + fc::seconds(60);
@@ -487,11 +486,11 @@ void apply_eosio_postrecovery(apply_context& context) {
 
    context.execute_deferred(std::move(dtrx));
 
-
    auto data = get_abi_serializer().variant_to_binary("pending_recovery", record_data);
-   const uint64_t id = account;
+   const uint128_t id = account;
    const uint64_t table = N(recovery);
    const auto payer = account;
+
    const auto iter = context.db_find_i64(config::system_account_name, account, table, id);
    if (iter == -1) {
       context.db_store_i64(account, table, payer, id, (const char*)data.data(), data.size());
@@ -528,7 +527,7 @@ void apply_eosio_passrecovery(apply_context& context) {
    context.execute_inline(move(act));
 
    remove_pending_recovery(context, account);
-   context.console_append_formatted("Account ${account} successfully recoverd!\n", mutable_variant_object()("account", account));
+   context.console_append_formatted("Account ${account} successfully recovered!\n", mutable_variant_object()("account", account));
 }
 
 void apply_eosio_vetorecovery(apply_context& context) {
@@ -541,7 +540,7 @@ void apply_eosio_vetorecovery(apply_context& context) {
    FC_ASSERT(maybe_recovery, "No pending recovery found for account ${account}", ("account", account));
    auto recovery = *maybe_recovery;
 
-   context.cancel_deferred(recovery["request_id"].as<transaction_id_type>());
+   context.cancel_deferred(recovery["account"].as<name>());
 
    remove_pending_recovery(context, account);
    context.console_append_formatted("Recovery for account ${account} vetoed!\n", mutable_variant_object()("account", account));
@@ -576,7 +575,7 @@ void apply_eosio_canceldelay(apply_context& context) {
    FC_ASSERT (found, "canceldelay action must be signed with the \"active\" permission for one of the actors"
                      " provided in the authorizations on the original transaction");
 
-   context.cancel_deferred(trx_id);
+   context.cancel_deferred(*reinterpret_cast<const uint128_t*>(trx_id._hash));
 }
 
 void apply_eosio_mindelay(apply_context& context) {
