@@ -234,7 +234,7 @@ You can read more on eosio-launcher and its settings [here](https://github.com/E
 <a name="publictestnet"></a>
 ### Running a local node connected to the public testnet
 
-The `master` branch is no longer compatible with the `dawn-2.x` public testnet.  To run on the public testnet, please see [DAWN-2018-02-14/eos/README.md](https://github.com/EOSIO/eos/blob/dawn-2.x/README.md)
+The `master` branch is no longer compatible with the `dawn-2.x` public testnet.  To run on the public testnet, please see [dawn-2.x/eos/README.md](https://github.com/EOSIO/eos/blob/dawn-2.x/README.md)
 
 ## Next Steps
 <a name="nextsteps"></a>
