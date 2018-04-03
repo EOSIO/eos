@@ -7,11 +7,16 @@ using namespace eosio::chain;
 using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
 
 BOOST_AUTO_TEST_SUITE(block_tests)
 
 BOOST_AUTO_TEST_CASE( schedule_test ) { try {
-  tester test;
+  TESTER test;
 
   for( uint32_t i = 0; i < 200; ++i )
      test.produce_block();
@@ -31,26 +36,30 @@ BOOST_AUTO_TEST_CASE( schedule_test ) { try {
   for( uint32_t i = 0; i < 1000; ++i )
      test.produce_block();
   ilog("exiting");
+  test.produce_block();
+  BOOST_REQUIRE_EQUAL( test.validate(), true );
 } FC_LOG_AND_RETHROW() }/// schedule_test
 
 BOOST_AUTO_TEST_CASE( push_block ) { try {
-   tester test1;
-   base_tester test2;
+   TESTER test1;
+   tester test2(false);
 
-   for (uint32 i = 0; i < 1000; ++i) {
-      test2.control->push_block(test1.produce_block());
-   }
-
-   test1.create_account(N(alice));
    test2.control->push_block(test1.produce_block());
+   for (uint32 i = 0; i < 1000; ++i) {
+      test2.push_block(test1.produce_block());
+   }
+   test1.create_account(N(alice));
+   test2.push_block(test1.produce_block());
 
    test1.push_dummy(N(alice), "Foo!");
-   test2.control->push_block(test1.produce_block());
+   test2.push_block(test1.produce_block());
+   test1.produce_block();
+   BOOST_REQUIRE_EQUAL( test1.validate(), true );
 } FC_LOG_AND_RETHROW() }/// schedule_test
 
 
 // Utility function to check expected irreversible block
-uint32_t calc_exp_last_irr_block_num(const tester& chain, const uint32_t& head_block_num) {
+uint32_t calc_exp_last_irr_block_num(const base_tester& chain, const uint32_t& head_block_num) {
    const auto producers_size = chain.control->get_global_properties().active_producers.producers.size();
    const auto max_reversible_rounds = EOS_PERCENT(producers_size, config::percent_100 - config::irreversible_threshold_percent);
    if( max_reversible_rounds == 0) {
@@ -64,7 +73,7 @@ uint32_t calc_exp_last_irr_block_num(const tester& chain, const uint32_t& head_b
 
 BOOST_AUTO_TEST_CASE(trx_variant ) {
    try {
-      tester chain;
+      TESTER chain;
 
       // Create account transaction
       signed_transaction trx;
@@ -90,22 +99,17 @@ BOOST_AUTO_TEST_CASE(trx_variant ) {
       contracts::abi_serializer::from_variant(var, from_var, chain.get_resolver());
       auto _process  = fc::raw::pack( from_var );
 
-      /*
-      idump((trx));
-      idump((var));
-      idump((from_var));
-      idump((original));
-      idump((_process));
-      */
       FC_ASSERT( original == _process, "Transaction serialization not reversible" );
+      BOOST_REQUIRE_EQUAL( chain.validate(), true );
    } catch ( const fc::exception& e ) {
       edump((e.to_detail_string()));
       throw;
    }
+
 }
 
 BOOST_AUTO_TEST_CASE(trx_uniqueness) {
-   tester chain;
+   TESTER chain;
 
    signed_transaction trx;
    name new_account_name = name("alice");
@@ -123,10 +127,11 @@ BOOST_AUTO_TEST_CASE(trx_uniqueness) {
    chain.push_transaction(trx);
 
    BOOST_CHECK_THROW(chain.push_transaction(trx), tx_duplicate);
+   BOOST_REQUIRE_EQUAL( chain.validate(), true );
 }
 
 BOOST_AUTO_TEST_CASE(invalid_expiration) {
-   tester chain;
+   TESTER chain;
 
    signed_transaction trx;
    name new_account_name = name("alice");
@@ -149,11 +154,12 @@ BOOST_AUTO_TEST_CASE(invalid_expiration) {
    trx.sign(chain.get_private_key(config::system_account_name, "active"), chain_id_type());
    // Expired transaction (January 1970) should throw
    BOOST_CHECK_THROW(chain.push_transaction(trx), transaction_exception);
+   BOOST_REQUIRE_EQUAL( chain.validate(), true );
 }
 
 BOOST_AUTO_TEST_CASE(irrelevant_auth) {
    try {
-      tester chain;
+      TESTER chain;
       chain.create_account(name("joe"));
 
       chain.produce_blocks();
@@ -182,6 +188,7 @@ BOOST_AUTO_TEST_CASE(irrelevant_auth) {
       // Check that it throws for irrelevant signatures
       BOOST_CHECK_THROW(chain.push_transaction( trx ), tx_irrelevant_sig);
 
+      BOOST_REQUIRE_EQUAL( chain.validate(), true );
    } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(name_test) {
@@ -198,7 +205,7 @@ BOOST_AUTO_TEST_CASE(name_test) {
 // Simple test of block production and head_block_num tracking
 BOOST_AUTO_TEST_CASE(produce_blocks)
 { try {
-      tester chain;
+      TESTER chain;
       BOOST_TEST(chain.control->head_block_num() == 0);
       chain.produce_blocks();
       BOOST_TEST(chain.control->head_block_num() == 1);
@@ -207,11 +214,12 @@ BOOST_AUTO_TEST_CASE(produce_blocks)
       const auto& producers_size = chain.control->get_global_properties().active_producers.producers.size();
       chain.produce_blocks((uint32_t)producers_size);
       BOOST_TEST(chain.control->head_block_num() == producers_size + 6);
+      BOOST_REQUIRE_EQUAL( chain.validate(), true );
    } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(order_dependent_transactions)
 { try {
-      tester chain;
+      TESTER chain;
 
       const auto& tester_account_name = name("tester");
       chain.create_account(name("tester"));
@@ -257,12 +265,13 @@ BOOST_AUTO_TEST_CASE(order_dependent_transactions)
       BOOST_TEST(!chain.control->fetch_block_by_number(11)->regions.front().cycles_summary.front().empty());
       BOOST_TEST(chain.control->fetch_block_by_number(11)->regions.front().cycles_summary.front().front().transactions.size() == 1);
       BOOST_TEST(chain.control->fetch_block_by_number(11)->regions.front().cycles_summary.at(1).front().transactions.size() == 2);
+      BOOST_REQUIRE_EQUAL( chain.validate(), true );
    } FC_LOG_AND_RETHROW() }
 
 // Simple test of block production when a block is missed
 BOOST_AUTO_TEST_CASE(missed_blocks)
 { try {
-      tester chain;
+      TESTER chain;
       // Set inita-initu to be producers
       vector<account_name> producer_names;
       for (char i = 'a'; i <= 'u'; i++) {
@@ -297,12 +306,14 @@ BOOST_AUTO_TEST_CASE(missed_blocks)
       for (auto producer : skipped_producers) {
          BOOST_TEST(chain.control->get_producer(producer).total_missed == config::producer_repetitions);
       }
+
+      BOOST_REQUIRE_EQUAL( chain.validate(), true );
    } FC_LOG_AND_RETHROW() }
 
 // Simple sanity test of test network: if databases aren't connected to the network, they don't sync to each other
 BOOST_AUTO_TEST_CASE(no_network)
 { try {
-      tester chain1, chain2;
+      TESTER chain1, chain2;
 
       BOOST_TEST(chain1.control->head_block_num() == 0);
       BOOST_TEST(chain2.control->head_block_num() == 0);
@@ -312,7 +323,13 @@ BOOST_AUTO_TEST_CASE(no_network)
       chain2.produce_blocks(5);
       BOOST_TEST(chain1.control->head_block_num() == 1);
       BOOST_TEST(chain2.control->head_block_num() == 5);
-   } FC_LOG_AND_RETHROW() }
+
+      chain1.produce_block();
+      chain2.produce_block();
+
+      BOOST_REQUIRE_EQUAL( chain1.validate(), true );
+      BOOST_REQUIRE_EQUAL( chain2.validate(), true );
+} FC_LOG_AND_RETHROW() }
 
 // Test that two databases on the same network do sync to each other
 BOOST_AUTO_TEST_CASE(simple_network)
@@ -333,7 +350,12 @@ BOOST_AUTO_TEST_CASE(simple_network)
       BOOST_TEST(chain1.control->head_block_num() == 6);
       BOOST_TEST(chain2.control->head_block_num() == 6);
       BOOST_TEST(chain1.control->head_block_id().str() == chain2.control->head_block_id().str());
-   } FC_LOG_AND_RETHROW() }
+
+      chain1.produce_block();
+      chain2.produce_block();
+      BOOST_REQUIRE_EQUAL( chain1.validate(), true );
+      BOOST_REQUIRE_EQUAL( chain2.validate(), true );
+} FC_LOG_AND_RETHROW() }
 
 
 //// Test that two databases joining and leaving a network sync correctly after a fork
@@ -505,7 +527,7 @@ BOOST_AUTO_TEST_CASE( rsf_missed_blocks )
 // Check that a db rewinds to the LIB after being closed and reopened
 BOOST_AUTO_TEST_CASE(restart_db)
 { try {
-      tester chain;
+      TESTER chain;
 
 
       {
@@ -529,7 +551,7 @@ BOOST_AUTO_TEST_CASE(restart_db)
 // that it missed while it was down
 BOOST_AUTO_TEST_CASE(sleepy_db)
 { try {
-      tester producer;
+      TESTER producer;
 
       tester_network net;
       net.connect_blockchain(producer);
@@ -560,7 +582,7 @@ BOOST_AUTO_TEST_CASE(sleepy_db)
    } FC_LOG_AND_RETHROW() }
 
 // Test reindexing the blockchain
-BOOST_FIXTURE_TEST_CASE(reindex, tester)
+BOOST_FIXTURE_TEST_CASE(reindex, validating_tester)
 { try {
       // Create shared configuration, so the new chain can be recreated from existing block log
       chain_controller::controller_config cfg;
@@ -630,6 +652,7 @@ BOOST_AUTO_TEST_CASE(wipe)
       }
 
    } FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
    try {
       tester chain;
@@ -654,19 +677,99 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
       trx.sign( chain.get_private_key( name("random"), "active" ), chain_id_type()  );
 
       // Check that it throws for irrelevant signatures
-      BOOST_CHECK_THROW(chain.push_transaction( trx ), tx_irrelevant_sig);
+      BOOST_REQUIRE_THROW(chain.push_transaction( trx ), tx_irrelevant_sig);
 
-      // Push it through with a skip flag
-      chain.push_transaction( trx, skip_transaction_signatures);
+      // Check that it throws for multiple signatures by the same key
+      trx.signatures.clear();
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+      BOOST_REQUIRE_THROW(chain.push_transaction( trx ), tx_irrelevant_sig);
+
+      // Sign the transaction properly and push to the block
+      trx.signatures.clear();
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+      chain.push_transaction( trx );
+
       // Produce block so the transaction gets included in the block
       chain.produce_blocks();
 
-      // Now check that a second blockchain accepts the block with the oversigned transaction
+      // Now check that a second blockchain accepts the block
       tester newchain;
       tester_network net;
       net.connect_blockchain(chain);
       net.connect_blockchain(newchain);
       BOOST_TEST((newchain.find<account_object, by_name>("alice")) != nullptr);
+   } FC_LOG_AND_RETHROW()
+}
+
+//
+BOOST_AUTO_TEST_CASE(irrelevant_sig_hard_check) {
+   try {
+      {
+         tester chain;
+
+         // Make an account, but add an extra signature to the transaction
+         signed_transaction trx;
+
+         name new_account_name = name("alice");
+         authority owner_auth = authority( chain.get_public_key( new_account_name, "owner" ) );
+
+         trx.actions.emplace_back( vector<permission_level>{{ config::system_account_name, config::active_name}},
+                                   contracts::newaccount{
+                                           .creator  = config::system_account_name,
+                                           .name     = new_account_name,
+                                           .owner    = owner_auth,
+                                           .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
+                                           .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
+                                   });
+         chain.set_transaction_headers(trx);
+         trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
+         trx.sign( chain.get_private_key( name("random"), "active" ), chain_id_type()  );
+
+         // Force push transaction with irrelevant signatures using a skip flag
+         chain.push_transaction( trx, skip_transaction_signatures );
+         // Produce block so the transaction gets included in the block
+         chain.produce_blocks();
+
+         // Now check that a second blockchain rejects the block with the oversigned transaction
+         tester newchain;
+         tester_network net;
+         net.connect_blockchain(chain);
+         BOOST_CHECK_THROW(net.connect_blockchain(newchain), tx_irrelevant_sig);
+      }
+
+      {
+         tester chain;
+
+         // Make an account, but add an extra signature to the transaction
+         signed_transaction trx;
+
+         name new_account_name = name("alice");
+         authority owner_auth = authority( chain.get_public_key( new_account_name, "owner" ) );
+
+         trx.actions.emplace_back( vector<permission_level>{{ config::system_account_name, config::active_name}},
+                                   contracts::newaccount{
+                                           .creator  = config::system_account_name,
+                                           .name     = new_account_name,
+                                           .owner    = owner_auth,
+                                           .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
+                                           .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
+                                   });
+         chain.set_transaction_headers(trx);
+         trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+         trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type() );
+
+         // Force push transaction with multiple signatures by the same key using a skip flag
+         chain.push_transaction( trx, skip_transaction_signatures );
+         // Produce block so the transaction gets included in the block
+         chain.produce_blocks();
+
+         // Now check that a second blockchain rejects the block with the oversigned transaction
+         tester newchain;
+         tester_network net;
+         net.connect_blockchain(chain);
+         BOOST_CHECK_THROW(net.connect_blockchain(newchain), tx_irrelevant_sig);
+      }
    } FC_LOG_AND_RETHROW()
 }
 

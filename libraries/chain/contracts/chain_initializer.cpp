@@ -34,7 +34,6 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
 
 #define SET_APP_HANDLER( contract, scope, action, nspace ) \
    chain._set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(contracts::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
-
    SET_APP_HANDLER( eosio, eosio, newaccount, eosio );
    SET_APP_HANDLER( eosio, eosio, setcode, eosio );
    SET_APP_HANDLER( eosio, eosio, setabi, eosio );
@@ -238,7 +237,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"expiration", "time_point_sec"},
          {"region", "uint16"},
          {"ref_block_num", "uint16"},
-         {"ref_block_prefix", "uint16"},
+         {"ref_block_prefix", "uint32"},
          {"net_usage_words", "varuint32"},
          {"kcpu_usage", "varuint32"},
          {"delay_sec", "varuint32"}
@@ -316,7 +315,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"block_mroot", "checksum256"},
          {"producer", "account_name"},
          {"schedule_version", "uint32"},
-         {"new_producers", "producer_schedule?"}   
+         {"new_producers", "producer_schedule?"}
       }
    });
 
@@ -331,6 +330,10 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
 
 void chain_initializer::prepare_database( chain_controller& chain,
                                                          chainbase::database& db) {
+   /// Reserve id of 0 in permission_index by creating dummy permission_object as the very first object in the index:
+   db.create<permission_object>([&](permission_object& p) {
+   });
+
    /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    auto create_native_account = [this, &chain, &db](account_name name) {
       db.create<account_object>([this, &name](account_object& a) {

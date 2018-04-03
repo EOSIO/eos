@@ -11,12 +11,18 @@
 #include <fc/variant_object.hpp>
 #include <fc/io/json.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
+
 using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 
 BOOST_AUTO_TEST_SUITE(multi_index_tests)
 
-BOOST_FIXTURE_TEST_CASE( multi_index_load, tester ) try {
+BOOST_FIXTURE_TEST_CASE( multi_index_load, TESTER ) try {
 
    produce_blocks(2);
    create_accounts( {N(multitest)} );

@@ -1,12 +1,18 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
+
 using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 
-auto make_postrecovery(const tester &t, account_name account, string role) {
+auto make_postrecovery(const TESTER &t, account_name account, string role) {
    signed_transaction trx;
    trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
                              postrecovery{
@@ -19,7 +25,7 @@ auto make_postrecovery(const tester &t, account_name account, string role) {
    return trx;
 }
 
-auto make_vetorecovery(const tester &t, account_name account, permission_name vetoperm = N(active), optional<private_key_type> signing_key = optional<private_key_type>()) {
+auto make_vetorecovery(const TESTER &t, account_name account, permission_name vetoperm = N(active), optional<private_key_type> signing_key = optional<private_key_type>()) {
    signed_transaction trx;
    trx.actions.emplace_back( vector<permission_level>{{account,vetoperm}},
                              vetorecovery{
@@ -37,7 +43,7 @@ auto make_vetorecovery(const tester &t, account_name account, permission_name ve
 
 BOOST_AUTO_TEST_SUITE(recovery_tests)
 
-BOOST_FIXTURE_TEST_CASE( test_recovery_multisig_owner, tester ) try {
+BOOST_FIXTURE_TEST_CASE( test_recovery_multisig_owner, TESTER ) try {
     produce_blocks(1000);
     create_account(N(alice), config::system_account_name, true);
     produce_block();
@@ -73,7 +79,7 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_multisig_owner, tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( test_recovery_owner, tester ) try {
+BOOST_FIXTURE_TEST_CASE( test_recovery_owner, TESTER ) try {
    produce_blocks(1000);
    create_account(N(alice));
    produce_block();
@@ -106,7 +112,7 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_owner, tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( test_recovery_owner_veto, tester ) try {
+BOOST_FIXTURE_TEST_CASE( test_recovery_owner_veto, TESTER ) try {
    produce_blocks(1000);
    create_account(N(alice));
    produce_block();
@@ -148,7 +154,7 @@ BOOST_FIXTURE_TEST_CASE( test_recovery_owner_veto, tester ) try {
 
 } FC_LOG_AND_RETHROW()
 
-BOOST_FIXTURE_TEST_CASE( test_recovery_bad_creator, tester ) try {
+BOOST_FIXTURE_TEST_CASE( test_recovery_bad_creator, TESTER ) try {
    produce_blocks(1000);
    create_account(N(alice), config::system_account_name, true);
    produce_block();

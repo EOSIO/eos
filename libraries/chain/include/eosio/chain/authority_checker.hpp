@@ -6,6 +6,7 @@
 
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/authority.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 #include <eosio/utilities/parallel_markers.hpp>
 
@@ -80,12 +81,20 @@ namespace detail {
             }
             uint32_t operator()(const permission_level_weight& permission) {
                if (recursion_depth < checker.recursion_depth_limit) {
+                  checker.permission_visitor.push_undo();
                   checker.permission_visitor(permission.permission);
 
-                  if( checker.has_permission( permission.permission.actor ) )
+                  if( checker.has_permission( permission.permission.actor ) ) {
                      total_weight += permission.weight;
-                  else if( checker.satisfied(permission.permission, recursion_depth + 1) )
+                     checker.permission_visitor.squash_undo();
+                     // Satisfied by owner may throw off visitor expectations...
+                     // TODO: Figure out what a permission_visitor actually needs and should expect.
+                  } else if( checker.satisfied(permission.permission, recursion_depth + 1) ) {
                      total_weight += permission.weight;
+                     checker.permission_visitor.squash_undo();
+                  } else {
+                     checker.permission_visitor.pop_undo();
+                  }
                }
                return total_weight;
             }
@@ -109,8 +118,13 @@ namespace detail {
          {}
 
          bool satisfied(const permission_level& permission, uint16_t depth = 0) {
-            return has_permission( permission.actor ) ||
-                   satisfied(permission_to_authority(permission), depth);
+            if( has_permission( permission.actor ) )
+               return true;
+            try {
+               return satisfied(permission_to_authority(permission), depth);
+            } catch( const permission_query_exception& e ) {
+               return false;
+            }
          }
 
          template<typename AuthorityType>
@@ -132,9 +146,9 @@ namespace detail {
 
             // Check all permissions, from highest weight to lowest, seeing if signing_keys satisfies them or not
             weight_tally_visitor visitor(*this, depth);
-            for (const auto& permission : permissions)
+            for( const auto& permission : permissions )
                // If we've got enough weight, to satisfy the authority, return!
-               if (permission.visit(visitor) >= authority.threshold) {
+               if( permission.visit(visitor) >= authority.threshold ) {
                   KeyReverter.cancel();
                   return true;
                }
@@ -155,15 +169,24 @@ namespace detail {
          const PermissionVisitorFunc& get_permission_visitor() {
             return permission_visitor;
          }
+
    }; /// authority_checker
 
    template<typename PermissionToAuthorityFunc, typename PermissionVisitorFunc>
    auto make_auth_checker(PermissionToAuthorityFunc&& pta,
                           PermissionVisitorFunc&& permission_visitor,
-                          uint16_t recursion_depth_limit, 
+                          uint16_t recursion_depth_limit,
                           const flat_set<public_key_type>& signing_keys,
                           const flat_set<account_name>& accounts = flat_set<account_name>() ) {
       return authority_checker<PermissionToAuthorityFunc, PermissionVisitorFunc>(std::forward<PermissionToAuthorityFunc>(pta), std::forward<PermissionVisitorFunc>(permission_visitor), recursion_depth_limit, signing_keys, accounts);
    }
+
+   class noop_permission_visitor {
+   public:
+      void push_undo()   {}
+      void pop_undo()    {}
+      void squash_undo() {}
+      void operator()(const permission_level& perm_level) {}
+   };
 
 } } // namespace eosio::chain

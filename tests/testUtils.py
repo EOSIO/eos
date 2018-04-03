@@ -132,7 +132,7 @@ class Account(object):
 
 
     def __str__(self):
-        return "Name; %s" % (self.name)
+        return "Name: %s" % (self.name)
 
 ###########################################################################################
 class Node(object):
@@ -243,7 +243,18 @@ class Node(object):
         return jsonData
 
     @staticmethod
+    def getTransId_nj(trans):
+        """Retrieve transaction id from cleos non-json output."""
+        # parse out transaction id
+        pattern="executed transaction:\s+(\w+)\s+"
+        m=re.search(pattern, trans, re.MULTILINE)
+        assert(m is not None)
+        return m.group(1)
+
+    @staticmethod
     def getTransId(trans):
+        """Retrieve transaction id from dictionary object."""
+        # TBD: add assert for trans is Dictionary
         #Utils.Print("%s" % trans)
         transId=trans["transaction_id"]
         return transId
@@ -443,10 +454,11 @@ class Node(object):
         # eosio = self.eosioAccount
 
         # publish system contract
+        contractDir="contracts/eosio.system"
         wastFile="contracts/eosio.system/eosio.system.wast"
         abiFile="contracts/eosio.system/eosio.system.abi"
         Utils.Print("Publish eosio.system contract")
-        trans=self.publishContract(eosio.name, wastFile, abiFile, waitForTransBlock=True)
+        trans=self.publishContract(eosio.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
         if trans is None:
            Utils.errorExit("Failed to publish eosio.system.")
 
@@ -459,11 +471,12 @@ class Node(object):
         transId=Node.getTransId(trans[1])
         self.waitForTransIdOnNode(transId)
 
-        expectedAmount=10000000000000
-        Utils.Print("Verify eosio issue, Expected: %d" % (expectedAmount))
-        actualAmount=self.getAccountBalance(eosio.name)
-        if expectedAmount != actualAmount:
-            Utils.errorExit("Issue verification failed. Excepted %d, actual: %d" % (expectedAmount, actualAmount))
+        # TBD: Commented until 'get currency balance' is functional
+        # expectedAmount=10000000000000
+        # Utils.Print("Verify eosio issue, Expected: %d" % (expectedAmount))
+        # actualAmount=self.getAccountBalance(eosio.name)
+        # if expectedAmount != actualAmount:
+        #     Utils.errorExit("Issue verification failed. Excepted %d, actual: %d" % (expectedAmount, actualAmount))
 
         trans=None
         for name, keys in producers.items():
@@ -492,7 +505,7 @@ class Node(object):
     def createAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False):
         cmd=None
         if Utils.amINoon:
-            cmd="%s %s create account %s %s %s %s" % (
+            cmd="%s %s create account -j %s %s %s %s" % (
                 Utils.EosClientPath, self.endpointArgs, creatorAccount.name, account.name,
                 account.ownerPublicKey, account.activePublicKey)
         else:
@@ -658,7 +671,7 @@ class Node(object):
 
     # Trasfer funds. Returns "transfer" json return object
     def transferFunds(self, source, destination, amount, memo="memo", force=False):
-        cmd="%s %s -v transfer %s %s %d" % (
+        cmd="%s %s -v transfer -j %s %s %d" % (
             Utils.EosClientPath, self.endpointArgs, source.name, destination.name, amount)
         cmdArr=cmd.split()
         cmdArr.append(memo)
@@ -735,7 +748,7 @@ class Node(object):
     def getAccountBalance(self, name):
         if not self.enableMongo:
             amount=self.getEosCurrencyBalance(name)
-            Utils.Debug and Utils.Print("getEosCurrencyBalance", name, amount)
+            Utils.Debug and Utils.Print("getEosCurrencyBalance %s %s", name, amount)
             balanceStr=amount.split()[0]
             balance=int(decimal.Decimal(balanceStr[1:])*10000)
             return balance
@@ -755,7 +768,7 @@ class Node(object):
 
     # transactions lookup by id. Returns json object
     def getTransactionsByAccount(self, name):
-        cmd="%s %s get transactions %s" % (Utils.EosClientPath, self.endpointArgs, name)
+        cmd="%s %s get transactions -j %s" % (Utils.EosClientPath, self.endpointArgs, name)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         try:
             trans=Node.runCmdReturnJson(cmd)
@@ -797,8 +810,10 @@ class Node(object):
             return None
 
     # publish contract and return transaction as json object
-    def publishContract(self, account, wastFile, abiFile, waitForTransBlock=False, shouldFail=False):
-        cmd="%s %s -v set contract %s %s %s" % (Utils.EosClientPath, self.endpointArgs, account, wastFile, abiFile)
+    def publishContract(self, account, contractDir, wastFile, abiFile, waitForTransBlock=False, shouldFail=False):
+        cmd="%s %s -v set contract -j %s %s" % (Utils.EosClientPath, self.endpointArgs, account, contractDir)
+        cmd += "" if wastFile is None else (" "+ wastFile)
+        cmd += "" if abiFile is None else (" " + abiFile)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         trans=None
         try:
@@ -882,7 +897,7 @@ class Node(object):
     def pushMessage(self, contract, action, data, opts, silentErrors=False):
         cmd=None
         if Utils.amINoon:
-            cmd="%s %s push action %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, action)
+            cmd="%s %s push action -j %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, action)
         else:
             cmd="%s %s push message %s %s" % (Utils.EosClientPath, self.endpointArgs, contract, action)
         cmdArr=cmd.split()
@@ -902,7 +917,7 @@ class Node(object):
             return (False, msg)
 
     def setPermission(self, account, code, pType, requirement, waitForTransBlock=False):
-        cmd="%s %s set action permission %s %s %s %s" % (
+        cmd="%s %s set action permission -j %s %s %s %s" % (
             Utils.EosClientPath, self.endpointArgs, account, code, pType, requirement)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         trans=None
@@ -1033,7 +1048,7 @@ class WalletMgr(object):
         return wallet
 
     def importKey(self, account, wallet):
-        warningMsg="This key is already imported into the wallet"
+        warningMsg="Key already in wallet"
         cmd="%s %s wallet import --name %s %s" % (
             Utils.EosClientPath, self.endpointArgs, wallet.name, account.ownerPrivateKey)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))

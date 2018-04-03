@@ -16,7 +16,6 @@ void apply_context::exec_one()
    try {
       const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
       privileged = a.privileged;
-
       auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
       if (native) {
          (*native)(*this);
@@ -121,20 +120,47 @@ bool apply_context::is_account( const account_name& account )const {
    return nullptr != db.find<account_object,by_name>( account );
 }
 
-void apply_context::require_authorization( const account_name& account )const {
-  EOS_ASSERT( has_authorization(account), tx_missing_auth, "missing authority of ${account}", ("account",account));
+bool apply_context::all_authorizations_used()const {
+   for ( bool has_auth : used_authorizations ) {
+      if ( !has_auth )
+         return false;
+   }
+   return true;
 }
+
+vector<permission_level> apply_context::unused_authorizations()const {
+   vector<permission_level> ret_auths;
+   for ( uint32_t i=0; i < act.authorization.size(); i++ )
+      if ( !used_authorizations[i] )
+         ret_auths.push_back( act.authorization[i] );
+   return ret_auths;
+}
+
+void apply_context::require_authorization( const account_name& account ) {
+   for( uint32_t i=0; i < act.authorization.size(); i++ ) {
+     if( act.authorization[i].actor == account ) {
+        used_authorizations[i] = true;
+        return;
+     }
+   }
+   EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}", ("account",account));
+}
+
 bool apply_context::has_authorization( const account_name& account )const {
-  for( const auto& auth : act.authorization )
-     if( auth.actor == account ) return true;
+   for( const auto& auth : act.authorization )
+     if( auth.actor == account )
+        return true;
   return false;
 }
 
 void apply_context::require_authorization(const account_name& account,
-                                          const permission_name& permission)const {
-  for( const auto& auth : act.authorization )
-     if( auth.actor == account ) {
-        if( auth.permission == permission ) return;
+                                          const permission_name& permission) {
+  for( uint32_t i=0; i < act.authorization.size(); i++ )
+     if( act.authorization[i].actor == account ) {
+        if( act.authorization[i].permission == permission ) {
+           used_authorizations[i] = true;
+           return;
+        }
      }
   EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}/${permission}",
               ("account",account)("permission",permission) );
@@ -205,8 +231,8 @@ void apply_context::execute_inline( action&& a ) {
       if( a.account != receiver ) {
          const auto delay = controller.check_authorization({a}, vector<action>(), flat_set<public_key_type>(), false, {receiver});
          FC_ASSERT( trx_meta.published + delay <= controller.head_block_time(),
-                    "inline action uses a permission that imposes a delay that is not met, add an action of mindelay with delay of atleast ${delay}",
-                    ("delay", delay.sec_since_epoch()) );
+                    "inline action uses a permission that imposes a delay that is not met, add an action of mindelay with delay of at least ${delay} seconds",
+                    ("delay", delay.to_seconds()) );
       }
    }
    _inline_actions.emplace_back( move(a) );
@@ -219,14 +245,25 @@ void apply_context::execute_context_free_inline( action&& a ) {
 
 void apply_context::execute_deferred( deferred_transaction&& trx ) {
    try {
-      FC_ASSERT( trx.expiration > (controller.head_block_time() + fc::milliseconds(2*config::block_interval_ms)),
-                                   "transaction is expired when created" );
+      trx.set_reference_block(controller.head_block_id()); // No TaPoS check necessary
+      trx.sender = receiver;
+      controller.validate_transaction_without_state(trx);
+      // transaction_api::send_deferred guarantees that trx.execute_after is at least head block time, so no need to check expiration.
+      // Any other called of this function needs to similarly meet that precondition.
+      EOS_ASSERT( trx.execute_after < trx.expiration,
+                  transaction_exception,
+                  "Transaction expires at ${trx.expiration} which is before the contract-imposed first allowed time to execute at ${trx.execute_after}",
+                  ("trx.expiration",trx.expiration)("trx.execute_after",trx.execute_after) );
 
-      FC_ASSERT( trx.execute_after < trx.expiration, "transaction expires before it can execute" );
-      FC_ASSERT( !trx.actions.empty(), "transaction must have at least one action");
+      controller.validate_expiration_not_too_far(trx, trx.execute_after);
+      controller.validate_referenced_accounts(trx);
+
+      controller.validate_uniqueness(trx); // TODO: Move this out of here when we have concurrent shards to somewhere we can check for conflicts between shards.
 
       const auto& gpo = controller.get_global_properties();
       FC_ASSERT( results.deferred_transactions_count < gpo.configuration.max_generated_transaction_count );
+
+      fc::microseconds delay;
 
       // privileged accounts can do anything, no need to check auth
       if( !privileged ) {
@@ -245,15 +282,21 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
             }
          }
          if( check_auth ) {
-            const auto delay = controller.check_authorization(trx.actions, vector<action>(), flat_set<public_key_type>(), false, {receiver});
+            delay = controller.check_authorization(trx.actions, vector<action>(), flat_set<public_key_type>(), false, {receiver});
             FC_ASSERT( trx_meta.published + delay <= controller.head_block_time(),
-                       "deferred transaction uses a permission that imposes a delay that is not met, add an action of mindelay with delay of atleast ${delay}",
-                       ("delay", delay.sec_since_epoch()) );
+                       "deferred transaction uses a permission that imposes a delay that is not met, add an action of mindelay with delay of at least ${delay} seconds",
+                       ("delay", delay.to_seconds()) );
          }
       }
 
-      trx.sender = receiver; //  "Attempting to send from another account"
-      trx.set_reference_block(controller.head_block_id());
+      auto now = controller.head_block_time();
+      if( delay.count() ) {
+         trx.execute_after = std::max(trx.execute_after, time_point_sec(now + delay + fc::microseconds(999'999)) /* rounds up nearest second */ );
+         EOS_ASSERT( trx.execute_after < trx.expiration,
+                     transaction_exception,
+                     "Transaction expires at ${trx.expiration} which is before the first allowed time to execute at ${trx.execute_after}",
+                     ("trx.expiration",trx.expiration)("trx.execute_after",trx.execute_after) );
+      }
 
       results.deferred_transaction_requests.push_back(move(trx));
       results.deferred_transactions_count++;

@@ -16,6 +16,12 @@
 
 #include <boost/test/unit_test.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
+
 using namespace eosio::chain;
 namespace eosio
 {
@@ -80,14 +86,42 @@ BOOST_AUTO_TEST_CASE(deterministic_distributions)
 
 struct permission_visitor {
    std::vector<permission_level> permissions;
+   std::vector<size_t> size_stack;
+   bool _log;
+
+   permission_visitor(bool log = false) : _log(log) {}
+
    void operator()(const permission_level& permission) {
       permissions.push_back(permission);
    }
+
+   void push_undo() {
+      if( _log )
+         ilog("push_undo called");
+      size_stack.push_back(permissions.size());
+   }
+
+   void pop_undo() {
+      if( _log )
+         ilog("pop_undo called");
+      FC_ASSERT( size_stack.back() <= permissions.size() && size_stack.size() >= 1,
+                 "invariant failure in test permission_visitor" );
+      permissions.erase( permissions.begin() + size_stack.back(), permissions.end() );
+      size_stack.pop_back();
+   }
+
+   void squash_undo() {
+      if( _log )
+         ilog("squash_undo called");
+      FC_ASSERT( size_stack.size() >= 1, "invariant failure in test permission_visitor" );
+      size_stack.pop_back();
+   }
+
 };
 
 BOOST_AUTO_TEST_CASE(authority_checker)
 { try {
-   testing::tester test;
+   testing::TESTER test;
    auto a = test.get_public_key("a", "active");
    auto b = test.get_public_key("b", "active");
    auto c = test.get_public_key("c", "active");
@@ -186,6 +220,33 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       BOOST_TEST(checker.unused_keys().count(b) == 1);
       BOOST_TEST(checker.unused_keys().count(c) == 1);
    }
+
+   A = authority(3, {key_weight{a, 2}, key_weight{b, 1}}, {permission_level_weight{{"hello",  "world"}, 3}});
+   pv._log = true;
+   {
+      pv.permissions.clear();
+      pv.size_stack.clear();
+      auto checker = make_auth_checker(GetCAuthority, pv, 2, {a, b});
+      BOOST_TEST(checker.satisfied(A));
+      BOOST_TEST(checker.all_keys_used());
+      BOOST_TEST(pv.permissions.size() == 0);
+   }
+   {
+      pv.permissions.clear();
+      pv.size_stack.clear();
+      auto checker = make_auth_checker(GetCAuthority, pv, 2, {a, b, c});
+      BOOST_TEST(checker.satisfied(A));
+      BOOST_TEST(!checker.all_keys_used());
+      BOOST_TEST(checker.used_keys().size() == 1);
+      BOOST_TEST(checker.used_keys().count(c) == 1);
+      BOOST_TEST(checker.unused_keys().size() == 2);
+      BOOST_TEST(checker.unused_keys().count(a) == 1);
+      BOOST_TEST(checker.unused_keys().count(b) == 1);
+      BOOST_TEST(pv.permissions.size() == 1);
+      BOOST_TEST(pv.permissions.back().actor == "hello");
+      BOOST_TEST(pv.permissions.back().permission == "world");
+   }
+   pv._log = false;
 
    A = authority(2, {key_weight{a, 1}, key_weight{b, 1}}, {permission_level_weight{{"hello",  "world"}, 1}});
    BOOST_TEST(!make_auth_checker(GetCAuthority, pv, 2, {a}).satisfied(A));

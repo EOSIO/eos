@@ -17,6 +17,12 @@
 
 #include <fc/variant_object.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
+
 
 using namespace eosio;
 using namespace eosio::chain;
@@ -26,7 +32,7 @@ using namespace fc;
 
 using mvo = fc::mutable_variant_object;
 
-class bootseq_tester : public tester
+class bootseq_tester : public TESTER
 {
 public:
 
@@ -224,7 +230,6 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         for (auto gen_acc : gen_accounts) {
         //    BOOST_REQUIRE_EQUAL(success(), regproducer(gen_acc));
         }
-
     } FC_LOG_AND_RETHROW()
 }
 

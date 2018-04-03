@@ -7,6 +7,8 @@
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/config.hpp>
 
+#include <type_traits>
+
 namespace eosio { namespace chain {
 
 
@@ -94,6 +96,15 @@ template<typename Authority>
 inline bool validate( const Authority& auth ) {
    const key_weight* prev = nullptr;
    decltype(auth.threshold) total_weight = 0;
+
+   static_assert( std::is_same<decltype(auth.threshold), uint32_t>::value &&
+                  std::is_same<weight_type, uint16_t>::value &&
+                  std::is_same<typename decltype(auth.keys)::value_type, key_weight>::value &&
+                  std::is_same<typename decltype(auth.accounts)::value_type, permission_level_weight>::value,
+                  "unexpected type for threshold and/or weight in authority" );
+
+   if( ( auth.keys.size() + auth.accounts.size() ) > (1 << 16) )
+      return false; // overflow protection (assumes weight_type is uint16_t and threshold is of type uint32_t)
 
    for( const auto& k : auth.keys ) {
       if( !prev ) prev = &k;

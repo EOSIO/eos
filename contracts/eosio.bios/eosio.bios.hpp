@@ -23,6 +23,7 @@ namespace eosio {
          }
 
          void setprods( producer_schedule sch ) {
+            require_auth( _self );
             char buffer[action_data_size()];
             read_action_data( buffer, sizeof(buffer) );
             set_active_producers(buffer, sizeof(buffer));

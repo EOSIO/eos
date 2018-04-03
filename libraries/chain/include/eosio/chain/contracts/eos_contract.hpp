@@ -14,8 +14,7 @@ namespace eosio { namespace chain { namespace contracts {
     * @defgroup native_action_handlers Native Action Handlers
     */
    ///@{
-   void apply_eosio_newaccount(apply_context& context);
-
+   void apply_eosio_newaccount(apply_context&);
    void apply_eosio_updateauth(apply_context&);
    void apply_eosio_deleteauth(apply_context&);
    void apply_eosio_linkauth(apply_context&);

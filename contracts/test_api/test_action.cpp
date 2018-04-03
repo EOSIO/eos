@@ -34,7 +34,7 @@ void test_action::read_action_normal() {
    eosio_assert(total == sizeof(dummy_action), "read_action(sizeof(dummy_action))" );
 
    dummy_action *dummy13 = reinterpret_cast<dummy_action *>(buffer);
-   
+
    eosio_assert(dummy13->a == DUMMY_ACTION_DEFAULT_A, "dummy13->a == DUMMY_ACTION_DEFAULT_A");
    eosio_assert(dummy13->b == DUMMY_ACTION_DEFAULT_B, "dummy13->b == DUMMY_ACTION_DEFAULT_B");
    eosio_assert(dummy13->c == DUMMY_ACTION_DEFAULT_C, "dummy13->c == DUMMY_ACTION_DEFAULT_C");
@@ -156,6 +156,10 @@ void test_action::assert_true() {
    eosio_assert(true, "test_action::assert_true");
 }
 
+void test_action::assert_true_cf() {
+   eosio_assert(true, "test_action::assert_true");
+}
+
 void test_action::test_abort() {
    abort();
    eosio_assert( false, "should've aborted" );
@@ -171,7 +175,7 @@ void test_action::test_current_receiver(uint64_t receiver, uint64_t code, uint64
    (void)code;(void)action;
    account_name cur_rec;
    read_action_data(&cur_rec, sizeof(account_name));
-   
+
    eosio_assert( receiver == cur_rec, "the current receiver does not match" );
 }
 
