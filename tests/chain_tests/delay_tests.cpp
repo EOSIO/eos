@@ -1501,8 +1501,9 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
 
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
    BOOST_REQUIRE_EQUAL(1, trace.deferred_transaction_requests.size());
-   BOOST_REQUIRE_EQUAL(std::string(uint128(sender_id_to_cancel)), std::string(uint128(sender_id_canceled)));
+
    const auto sender_id_canceled = trace.deferred_transaction_requests[0].get<deferred_reference>().sender_id;
+   BOOST_REQUIRE_EQUAL(std::string(uint128(sender_id_to_cancel)), std::string(uint128(sender_id_canceled)));
 
    chain.produce_blocks();
 
