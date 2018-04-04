@@ -180,6 +180,7 @@ namespace eosiosystem {
                                  typename native<SystemAccount>::postrecovery,
                                  typename native<SystemAccount>::passrecovery,
                                  typename native<SystemAccount>::vetorecovery,
+                                 typename native<SystemAccount>::setabi,
                                  typename native<SystemAccount>::onerror,
                                  typename native<SystemAccount>::canceldelay,
                                  typename native<SystemAccount>::mindelay,
