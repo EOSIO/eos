@@ -262,7 +262,7 @@ namespace eosiosystem {
             act.owner = del.from;
             transaction out( now() + refund_delay + refund_expiration_time );
             out.actions.emplace_back( permission_level{ del.from, N(active) }, self, N(refund), act );
-            out.send( del.from, 0, now() + refund_delay );
+            out.send( del.from, receiver, now() + refund_delay );
 
             if ( asset(0) < del.unstake_net_quantity + del.unstake_cpu_quantity ) {
                voting<SystemAccount>::decrease_voting_power( del.from, del.unstake_net_quantity + del.unstake_cpu_quantity );

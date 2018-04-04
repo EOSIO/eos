@@ -37,8 +37,8 @@ namespace eosio {
       return eosio::dispatch<Contract,SecondAction,Actions...>( code, act );
    }
 
-   template<typename T, typename... Args>
-   bool execute_action( T* obj, void (T::*func)(Args...)  ) {
+   template<typename T, typename Q, typename... Args>
+   bool execute_action( T* obj, void (Q::*func)(Args...)  ) {
       char buffer[action_data_size()];
       read_action_data( buffer, sizeof(buffer) );
 
