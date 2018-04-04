@@ -136,7 +136,6 @@ To do this we first generate a key for the accounts.
 $ cleos create key
 Private key: 5Jmsawgsp1tQ3GD6JyGCwy1dcvqKZgX6ugMVMdjirx85iv5VyPR
 Public key: EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
-
 ```
 
 Then we import this key into our wallet:
@@ -175,10 +174,9 @@ $ cleos get accounts EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 }
 ```
 
-
 ## Create Token Contract
 
-At this stage the blockchain doesn't do much, so lets deploy the `eosio.token` contract.  This contract enables the creation of many different tokens all running on the same contract but potentially managed by different users. 
+At this stage the blockchain doesn't do much, so let's deploy the `eosio.token` contract.  This contract enables the creation of many different tokens all running on the same contract but potentially managed by different users. 
 
 Before we can deploy the token contract we must create an account to deploy it to.
 
@@ -190,7 +188,6 @@ $ cleos create account eosio eosio.token  EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDv
 Then we can deploy the contract which can be found in `${EOSIO_SOURCE}/build/contracts/eosio.token`
 
 ```
-
 $ cleos set contract eosio.token build/contracts/eosio.token -p eosio.token
 Reading WAST...
 Assembling WASM...
@@ -226,7 +223,6 @@ The concise way to call this method, using positional arguments:
 $ cleos push action eosio.token create '[ "eosio", "1000000000.0000 EOS", 0, 0, 0]' -p eosio.token
 executed transaction: 0e49a421f6e75f4c5e09dd738a02d3f51bd18a0cf31894f68d335cd70d9c0e12  260 bytes  1000 cycles
 #   eosio.token <= eosio.token::create          {"issuer":"eosio","maximum_supply":"1000000000.0000 EOS","can_freeze":0,"can_recall":0,"can_whitelis...
-
 ```
 
 Alternatively, a more verbose way to call this method, using named arguments:
