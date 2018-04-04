@@ -46,6 +46,8 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
    SET_APP_HANDLER( eosio, eosio, postrecovery, eosio );
    SET_APP_HANDLER( eosio, eosio, passrecovery, eosio );
    SET_APP_HANDLER( eosio, eosio, vetorecovery, eosio );
+   SET_APP_HANDLER( eosio, eosio, canceldelay, eosio );
+   SET_APP_HANDLER( eosio, eosio, mindelay, eosio );
 }
 
 
@@ -72,6 +74,9 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.actions.push_back( action_def{name("passrecovery"), "passrecovery"} );
    eos_abi.actions.push_back( action_def{name("vetorecovery"), "vetorecovery"} );
    eos_abi.actions.push_back( action_def{name("onerror"), "onerror"} );
+   eos_abi.actions.push_back( action_def{name("onblock"), "onblock"} );
+   eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay"} );
+   eos_abi.actions.push_back( action_def{name("mindelay"), "mindelay"} );
 
    // ACTION PAYLOADS
 
@@ -98,6 +103,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"permission", "permission_name"},
          {"parent", "permission_name"},
          {"data", "authority"},
+         {"delay", "uint32"}
       }
    });
 
@@ -152,6 +158,18 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.structs.emplace_back( struct_def {
       "vetorecovery", "", {
          {"account", "account_name"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "canceldelay", "", {
+         {"sender_id", "uint32"},
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "mindelay", "", {
+         {"delay", "uint32"},
       }
    });
 
@@ -221,8 +239,8 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"region", "uint16"},
          {"ref_block_num", "uint16"},
          {"ref_block_prefix", "uint16"},
-         {"packed_bandwidth_words", "uint16"},
-         {"context_free_cpu_bandwidth", "uint16"}
+         {"net_usage_words", "varuint32"},
+         {"context_free_kilo_cpu_usage", "varuint32"}
       }
    });
 
@@ -252,25 +270,6 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"threshold", "uint32"},
          {"keys", "key_weight[]"},
          {"accounts", "permission_level_weight[]"}
-      }
-   });
-
-   eos_abi.structs.emplace_back( struct_def {
-      "chain_config", "", {
-         {"target_block_size", "uint32"},
-         {"max_block_size", "uint32"},
-         {"target_block_acts_per_scope", "uint32"},
-         {"max_block_acts_per_scope", "uint32"},
-         {"target_block_acts", "uint32"},
-         {"max_block_acts", "uint32"},
-         {"real_threads", "uint64"},
-         {"max_storage_size", "uint64"},
-         {"max_transaction_lifetime", "uint32"},
-         {"max_authority_depth", "uint16"},
-         {"max_transaction_exec_time", "uint32"},
-         {"max_inline_depth", "uint16"},
-         {"max_inline_action_size", "uint32"},
-         {"max_generated_transaction_size", "uint32"}
       }
    });
 
@@ -307,13 +306,32 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
+   eos_abi.structs.emplace_back( struct_def {
+      "block_header", "", {
+         {"previous", "checksum256"},
+         {"timestamp", "uint32"},
+         {"transaction_mroot", "checksum256"},
+         {"action_mroot", "checksum256"},
+         {"block_mroot", "checksum256"},
+         {"producer", "account_name"},
+         {"schedule_version", "uint32"},
+         {"new_producers", "producer_schedule?"}   
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+         "onblock", "", {
+            {"header", "block_header"}
+      }
+   });
+
    return eos_abi;
 }
 
 void chain_initializer::prepare_database( chain_controller& chain,
                                                          chainbase::database& db) {
    /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
-   auto create_native_account = [this, &db](account_name name) {
+   auto create_native_account = [this, &chain, &db](account_name name) {
       db.create<account_object>([this, &name](account_object& a) {
          a.name = name;
          a.creation_date = genesis.initial_timestamp;
@@ -336,12 +354,8 @@ void chain_initializer::prepare_database( chain_controller& chain,
          p.auth.threshold = 1;
          p.auth.keys.push_back( key_weight{ .key = genesis.initial_key, .weight = 1 } );
       });
-      db.create<bandwidth_usage_object>([&](auto& sb) { 
-         sb.owner = name;      
-         sb.net_weight  = -1;
-         sb.cpu_weight  = -1;
-         sb.db_reserved_capacity = -1;
-      });
+
+      chain.get_mutable_resource_limits_manager().initialize_account(name);
 
       db.create<producer_object>( [&]( auto& pro ) {
          pro.owner = config::system_account_name;

@@ -1,4 +1,4 @@
-version: "3"
+version: "4"
 
 services:
   nodeos:
@@ -16,7 +16,7 @@ services:
 
   walletd:
     image: eosio/eos
-    command: /opt/eosio/bin/eosiowd
+    command: /opt/eosio/bin/keosd
     links:
       - nodeos
     volumes:

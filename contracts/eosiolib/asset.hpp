@@ -133,20 +133,97 @@ namespace eosio {
          return r;
       }
 
-      friend asset operator + ( const asset& a, const asset& b ) {
-         eosio_assert( a.symbol == b.symbol, "type mismatch" );
-         int64_t sum = a.amount + b.amount;
-         eosio_assert( -max_amount <= sum, "underflow" );
-         eosio_assert( sum <= max_amount,  "overflow" );
-         return asset{sum, a.symbol};
+      asset& operator-=( const asset& a ) {
+         eosio_assert( a.symbol == symbol, "attempt to subtract asset with different symbol" );
+         amount -= a.amount;
+         eosio_assert( -max_amount <= amount, "subtraction underflow" );
+         eosio_assert( amount <= max_amount,  "subtraction overflow" );
+         return *this;
       }
 
-      friend asset operator - ( const asset& a, const asset& b ) {
-         eosio_assert( a.symbol == b.symbol, "type mismatch" );
-         int64_t difference = a.amount - b.amount;
-         eosio_assert( -max_amount <= difference, "underflow" );
-         eosio_assert( difference <= max_amount,  "overflow" );
-         return asset{difference, a.symbol};
+      asset& operator+=( const asset& a ) {
+         eosio_assert( a.symbol == symbol, "attempt to add asset with different symbol" );
+         amount += a.amount;
+         eosio_assert( -max_amount <= amount, "addition underflow" );
+         eosio_assert( amount <= max_amount,  "addition overflow" );
+         return *this;
+      }
+
+      inline friend asset operator+( const asset& a, const asset& b ) {
+         asset result = a;
+         result += b;
+         return result;
+      }
+
+      inline friend asset operator-( const asset& a, const asset& b ) {
+         asset result = a;
+         result -= b;
+         return result;
+      }
+
+      asset& operator*=( int64_t a ) {
+         eosio_assert( a == 0 || (amount * a) / a == amount, "multiplication overflow or underflow" );
+         eosio_assert( -max_amount <= amount, "multiplication underflow" );
+         eosio_assert( amount <= max_amount,  "multiplication overflow" );
+         amount *= a;
+         return *this;
+      }
+
+      friend asset operator*( const asset& a, int64_t b ) {
+         asset result = a;
+         result *= b;
+         return result;
+      }
+
+      friend asset operator*( int64_t b, const asset& a ) {
+         asset result = a;
+         result *= b;
+         return result;
+      }
+
+      asset& operator/=( int64_t a ) {
+         amount /= a;
+         return *this;
+      }
+
+      friend asset operator/( const asset& a, int64_t b ) {
+         asset result = a;
+         result /= b;
+         return result;
+      }
+
+      friend int64_t operator/( const asset& a, const asset& b ) {
+         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         return a.amount / b.amount;
+      }
+
+      friend bool operator==( const asset& a, const asset& b ) {
+         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         return a.amount < b.amount;
+      }
+
+      friend bool operator!=( const asset& a, const asset& b ) {
+         return !( a == b);
+      }
+
+      friend bool operator<( const asset& a, const asset& b ) {
+         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         return a.amount < b.amount;
+      }
+
+      friend bool operator<=( const asset& a, const asset& b ) {
+         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         return a.amount <= b.amount;
+      }
+
+      friend bool operator>( const asset& a, const asset& b ) {
+         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         return a.amount > b.amount;
+      }
+
+      friend bool operator>=( const asset& a, const asset& b ) {
+         eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
+         return a.amount >= b.amount;
       }
 
       void print()const {
@@ -170,10 +247,6 @@ namespace eosio {
          prints_l( fraction, uint32_t(p) );
          prints(" ");
          symbol.print(false);
-      }
-
-      asset& operator+=( const asset& a ) {
-         return *this = (*this + a);
       }
 
       EOSLIB_SERIALIZE( asset, (amount)(symbol) )

@@ -23,6 +23,9 @@ namespace eosio {
 
           ACTION( code, issue ) {
              typedef action_meta<code,N(issue)> meta;
+             
+             issue() { }
+             issue(account_name a, asset q): to(a), quantity(q) { } 
              account_name to;
              asset        quantity;
 
@@ -136,6 +139,17 @@ namespace eosio {
              act.send();
           }
 
+         static void inline_issue(account_name to, token_type quantity)
+         {
+            action act(permission_level(code, N(active)), issue(to, asset(quantity)));
+            act.send();
+         }
+
+          static token_type get_total_supply() {
+             stats t( code, code );
+             auto ptr = t.find( symbol );
+             return ptr != t.end() ? ptr->supply : token_type(0);
+          }
 
          static void apply( account_name c, action_name act) {
             eosio::dispatch<generic_currency, transfer, issue>(c,act);

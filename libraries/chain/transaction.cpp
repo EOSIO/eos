@@ -64,20 +64,22 @@ transaction_id_type transaction::id() const {
 }
 
 
-digest_type transaction::sig_digest( const chain_id_type& chain_id )const {
+digest_type transaction::sig_digest( const chain_id_type& chain_id, const vector<bytes>& cfd )const {
    digest_type::encoder enc;
    fc::raw::pack( enc, chain_id );
    fc::raw::pack( enc, *this );
+   if( cfd.size() )
+      fc::raw::pack( enc, cfd );
    return enc.result();
 }
 
-flat_set<public_key_type> transaction::get_signature_keys( const vector<signature_type>& signatures, const chain_id_type& chain_id )const
+flat_set<public_key_type> transaction::get_signature_keys( const vector<signature_type>& signatures, const chain_id_type& chain_id, const vector<bytes>& cfd  )const
 { try {
    using boost::adaptors::transformed;
 
    constexpr size_t recovery_cache_size = 100000;
    static recovery_cache_type recovery_cache;
-   const digest_type digest = sig_digest(chain_id);
+   const digest_type digest = sig_digest(chain_id, cfd);
 
    flat_set<public_key_type> recovered_pub_keys;
    for(const signature_type& sig : signatures) {
@@ -100,17 +102,17 @@ flat_set<public_key_type> transaction::get_signature_keys( const vector<signatur
 
 
 const signature_type& signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id) {
-   signatures.push_back(key.sign(sig_digest(chain_id)));
+   signatures.push_back(key.sign(sig_digest(chain_id, context_free_data)));
    return signatures.back();
 }
 
 signature_type signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id)const {
-   return key.sign(sig_digest(chain_id));
+   return key.sign(sig_digest(chain_id, context_free_data));
 }
 
 flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id_type& chain_id )const
 {
-   return transaction::get_signature_keys(signatures, chain_id);
+   return transaction::get_signature_keys(signatures, chain_id, context_free_data);
 }
 
 namespace bio = boost::iostreams;

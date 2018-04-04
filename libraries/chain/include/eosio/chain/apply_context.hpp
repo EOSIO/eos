@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/block.hpp>
+#include <eosio/chain/block_trace.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/transaction_metadata.hpp>
 #include <eosio/chain/contracts/contract_table_objects.hpp>
@@ -199,7 +199,7 @@ class apply_context {
                  ++t.count;
                });
 
-               context.update_db_usage( payer, contracts::get_key_memory_usage<secondary_key_type>()+base_row_fee );
+               context.update_db_usage( payer, sizeof(ObjectType) + config::overhead_per_row_ram_bytes );
 
                itr_cache.cache_table( tab );
                return itr_cache.add( obj );
@@ -207,7 +207,7 @@ class apply_context {
 
             void remove( int iterator ) {
                const auto& obj = itr_cache.get( iterator );
-               context.update_db_usage( obj.payer, -( contracts::get_key_memory_usage<secondary_key_type>()+base_row_fee ) );
+               context.update_db_usage( obj.payer, -( sizeof(ObjectType) + config::overhead_per_row_ram_bytes ) );
 
                const auto& table_obj = itr_cache.get_table( obj.t_id );
                context.require_write_lock( table_obj.scope );
@@ -227,9 +227,11 @@ class apply_context {
 
                if( payer == account_name() ) payer = obj.payer;
 
+               int64_t billing_size = sizeof(ObjectType) + config::overhead_per_row_ram_bytes;
+
                if( obj.payer != payer ) {
-                  context.update_db_usage( obj.payer, -(contracts::get_key_memory_usage<secondary_key_type>()+base_row_fee) );
-                  context.update_db_usage( payer, +(contracts::get_key_memory_usage<secondary_key_type>()+base_row_fee) );
+                  context.update_db_usage( obj.payer, -(billing_size) );
+                  context.update_db_usage( payer, +(billing_size) );
                }
 
                context.mutable_db.modify( obj, [&]( auto& o ) {
@@ -464,7 +466,7 @@ class apply_context {
       void execute_inline( action &&a );
       void execute_context_free_inline( action &&a );
       void execute_deferred( deferred_transaction &&trx );
-      void cancel_deferred( uint32_t sender_id );
+      void cancel_deferred( uint128_t sender_id );
 
       /**
        * @brief Require @ref account to have approved of this message
@@ -504,6 +506,8 @@ class apply_context {
 
       const bytes&         get_packed_transaction();
 
+      uint32_t get_next_sender_id();
+
       const chain_controller&       controller;
       const chainbase::database&    db;  ///< database where state is stored
       const action&                 act; ///< message being applied
@@ -522,9 +526,9 @@ class apply_context {
       const transaction_metadata&   trx_meta;
 
       struct apply_results {
-         vector<action_trace>          applied_actions;
-         vector<deferred_transaction>  generated_transactions;
-         vector<deferred_reference>    canceled_deferred;
+         vector<action_trace> applied_actions;
+         vector<fc::static_variant<deferred_transaction, deferred_reference>> deferred_transaction_requests;
+         size_t deferred_transactions_count = 0;
       };
 
       apply_results results;
@@ -544,12 +548,12 @@ class apply_context {
          console_append(fc::format_string(fmt, vo));
       }
 
-      void checktime(uint32_t instruction_count) const;
+      void checktime(uint32_t instruction_count);
 
       int get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const;
       int get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const;
 
-      void update_db_usage( const account_name& payer, int64_t delta );
+      void update_db_usage( const account_name& payer, int64_t delta, const char* use_format = "Unspecified", const fc::variant_object& args = fc::variant_object() );
       int  db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
       void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
       void db_remove_i64( int iterator );
@@ -568,15 +572,13 @@ class apply_context {
 
       uint32_t                                    recurse_depth;  // how deep inline actions can recurse
 
-      static constexpr uint32_t base_row_fee = 200;
-
    private:
       iterator_cache<key_value_object> keyval_cache;
 
       void append_results(apply_results &&other) {
-         fc::move_append(results.applied_actions, move(other.applied_actions));
-         fc::move_append(results.generated_transactions, move(other.generated_transactions));
-         fc::move_append(results.canceled_deferred, move(other.canceled_deferred));
+         fc::move_append(results.applied_actions, std::move(other.applied_actions));
+         fc::move_append(results.deferred_transaction_requests, std::move(other.deferred_transaction_requests));
+         results.deferred_transactions_count += other.deferred_transactions_count;
       }
 
       void exec_one();
@@ -584,6 +586,8 @@ class apply_context {
       using table_id_object = contracts::table_id_object;
       const table_id_object* find_table( name code, name scope, name table );
       const table_id_object& find_or_create_table( name code, name scope, name table );
+
+      int  db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
 
       vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
       vector<action>                      _inline_actions; ///< queued inline messages
@@ -593,168 +597,11 @@ class apply_context {
       vector<shard_lock>                  _read_locks;
       vector<scope_name>                  _write_scopes;
       bytes                               _cached_trx;
+      uint64_t                            _cpu_usage;
 };
 
 using apply_handler = std::function<void(apply_context&)>;
 
-   namespace impl {
-      template<typename Scope>
-      struct scope_to_key_index;
-
-      template<>
-      struct scope_to_key_index<contracts::by_scope_primary> {
-         static constexpr int value = 0;
-      };
-
-      template<>
-      struct scope_to_key_index<contracts::by_scope_secondary> {
-         static constexpr int value = 1;
-      };
-
-      template<>
-      struct scope_to_key_index<contracts::by_scope_tertiary> {
-         static constexpr int value = 2;
-      };
-
-      template<typename Scope>
-      constexpr int scope_to_key_index_v = scope_to_key_index<Scope>::value;
-
-      template<int>
-      struct object_key_value;
-
-      template<>
-      struct object_key_value<0> {
-         template<typename ObjectType>
-         static const auto& get(const ObjectType& o) {
-            return o.primary_key;
-         }
-
-         template<typename ObjectType>
-         static auto& get(ObjectType& o) {
-            return o.primary_key;
-         }
-      };
-
-      template<>
-      struct object_key_value<1> {
-         template<typename ObjectType>
-         static const auto& get(const ObjectType& o) {
-            return o.secondary_key;
-         }
-
-         template<typename ObjectType>
-         static auto& get(ObjectType& o) {
-            return o.secondary_key;
-         }
-      };
-
-      template<>
-      struct object_key_value<2> {
-         template<typename ObjectType>
-         static const auto& get(const ObjectType& o) {
-            return o.tertiary_key;
-         }
-
-         template<typename ObjectType>
-         static auto& get( ObjectType& o) {
-            return o.tertiary_key;
-         }
-      };
-
-      template<typename KeyType>
-      const KeyType& raw_key_value(const KeyType* keys, int index) {
-         return keys[index];
-      }
-
-      inline const char* raw_key_value(const std::string* keys, int index) {
-         return keys[index].data();
-      }
-
-      template<typename Type>
-      void set_key(Type& a, std::add_const_t<Type>& b) {
-         a = b;
-      }
-
-      inline void set_key(std::string& s, const shared_string& ss) {
-         s.assign(ss.data(), ss.size());
-      };
-
-      inline void set_key(shared_string& s, const std::string& ss) {
-         s.assign(ss.data(), ss.size());
-      };
-
-      template< typename ObjectType, int KeyIndex >
-      struct key_helper_impl {
-         using KeyType = typename ObjectType::key_type;
-         using KeyAccess = object_key_value<KeyIndex>;
-         using Next = key_helper_impl<ObjectType, KeyIndex - 1>;
-
-         static void set(ObjectType& o, const KeyType* keys) {
-            set_key(KeyAccess::get(o),*(keys + KeyIndex));
-            Next::set(o,keys);
-         }
-
-         static void get(KeyType* keys, const ObjectType& o) {
-            set_key(*(keys + KeyIndex),KeyAccess::get(o));
-            Next::get(keys, o);
-         }
-
-         static bool compare(const ObjectType& o, const KeyType* keys) {
-            return (KeyAccess::get(o) == raw_key_value(keys, KeyIndex)) && Next::compare(o, keys);
-         }
-      };
-
-      template< typename ObjectType >
-      struct key_helper_impl<ObjectType, -1> {
-         using KeyType = typename ObjectType::key_type;
-         static void set(ObjectType&, const KeyType*) {}
-         static void get(KeyType*, const ObjectType&) {}
-         static bool compare(const ObjectType&, const KeyType*) { return true; }
-      };
-
-      template< typename ObjectType >
-      using key_helper = key_helper_impl<ObjectType, ObjectType::number_of_keys - 1>;
-
-      template< typename KeyType, int KeyIndex, size_t Offset, typename ... Args >
-      struct partial_tuple_impl {
-         static auto get(const contracts::table_id_object& tid, const KeyType* keys, Args... args) {
-            return partial_tuple_impl<KeyType, KeyIndex - 1, Offset, KeyType, Args...>::get(tid, keys, raw_key_value(keys, Offset + KeyIndex), args...);
-         }
-      };
-
-      template< typename KeyType, size_t Offset, typename ... Args >
-      struct partial_tuple_impl<KeyType, 0, Offset, Args...> {
-         static auto get(const contracts::table_id_object& tid, const KeyType* keys, Args... args) {
-            return boost::make_tuple( tid.id, raw_key_value(keys, Offset), args...);
-         }
-      };
-
-      template< typename IndexType, typename Scope >
-      using partial_tuple = partial_tuple_impl<typename IndexType::value_type::key_type, IndexType::value_type::number_of_keys - impl::scope_to_key_index_v<Scope> - 1, impl::scope_to_key_index_v<Scope>>;
-
-      template <typename ObjectType>
-      using exact_tuple = partial_tuple_impl<typename ObjectType::key_type, ObjectType::number_of_keys - 1, 0>;
-
-      template <typename IndexType, typename Scope>
-      struct record_scope_compare {
-         using ObjectType = typename IndexType::value_type;
-         using KeyType = typename ObjectType::key_type;
-         static constexpr int KeyIndex = scope_to_key_index_v<Scope>;
-         using KeyAccess = object_key_value<KeyIndex>;
-
-         static bool compare(const ObjectType& o, const KeyType* keys) {
-            return KeyAccess::get(o) == raw_key_value(keys, KeyIndex);
-         }
-      };
-
-      template < typename IndexType, typename Scope >
-      struct front_record_tuple {
-         static auto get( const contracts::table_id_object& tid ) {
-            return boost::make_tuple( tid.id );
-         }
-      };
-   }
-
 } } // namespace eosio::chain
 
-FC_REFLECT(eosio::chain::apply_context::apply_results, (applied_actions)(generated_transactions))
+FC_REFLECT(eosio::chain::apply_context::apply_results, (applied_actions)(deferred_transaction_requests)(deferred_transactions_count))

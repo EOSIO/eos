@@ -70,14 +70,14 @@ struct limit_order {
 
                   print("Items sorted by primary key:\n");
                   for( const auto& item : orders ) {
-                     print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name(item.owner), "\n");
+                     print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name{item.owner}, "\n");
                   }
 
                   auto expidx = orders.get_index<N(byexp)>();
 
                   print("Items sorted by expiration:\n");
                   for( const auto& item : expidx ) {
-                     print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name(item.owner), "\n");
+                     print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name{item.owner}, "\n");
                   }
 
                   print("Modifying expiration of order with ID=2 to 400.\n");
@@ -87,7 +87,7 @@ struct limit_order {
 
                   print("Items sorted by expiration:\n");
                   for( const auto& item : expidx ) {
-                     print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name(item.owner), "\n");
+                     print(" ID=", item.id, ", expiration=", item.expiration, ", owner=", name{item.owner}, "\n");
                   }
 
                   auto lower = expidx.lower_bound(100);
@@ -170,7 +170,7 @@ struct limit_order {
 namespace multi_index_test {
    extern "C" {
       /// The apply method implements the dispatch of events to this contract
-      void apply( uint64_t code, uint64_t action ) {
+      void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
          eosio_assert(eosio::dispatch<multi_index_test, multi_index_test::trigger>(code, action),
                       "Could not dispatch");
       }

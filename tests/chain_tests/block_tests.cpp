@@ -10,8 +10,6 @@ using namespace eosio::testing;
 
 BOOST_AUTO_TEST_SUITE(block_tests)
 
-
-
 BOOST_AUTO_TEST_CASE( schedule_test ) { try {
   tester test;
 
@@ -106,6 +104,53 @@ BOOST_AUTO_TEST_CASE(trx_variant ) {
    }
 }
 
+BOOST_AUTO_TEST_CASE(trx_uniqueness) {
+   tester chain;
+
+   signed_transaction trx;
+   name new_account_name = name("alice");
+   authority owner_auth = authority(chain.get_public_key( new_account_name, "owner"));
+   trx.actions.emplace_back(vector<permission_level>{{config::system_account_name, config::active_name}},
+                            contracts::newaccount{
+                               .creator  = config::system_account_name,
+                               .name     = new_account_name,
+                               .owner    = owner_auth,
+                               .active   = authority(chain.get_public_key(new_account_name, "active")),
+                               .recovery = authority(chain.get_public_key(new_account_name, "recovery)),"))
+                            });
+   chain.set_transaction_headers(trx, 90);
+   trx.sign(chain.get_private_key(config::system_account_name, "active"), chain_id_type());
+   chain.push_transaction(trx);
+
+   BOOST_CHECK_THROW(chain.push_transaction(trx), tx_duplicate);
+}
+
+BOOST_AUTO_TEST_CASE(invalid_expiration) {
+   tester chain;
+
+   signed_transaction trx;
+   name new_account_name = name("alice");
+   authority owner_auth = authority(chain.get_public_key( new_account_name, "owner"));
+   trx.actions.emplace_back(vector<permission_level>{{config::system_account_name, config::active_name}},
+                            contracts::newaccount{
+                               .creator  = config::system_account_name,
+                               .name     = new_account_name,
+                               .owner    = owner_auth,
+                               .active   = authority(chain.get_public_key(new_account_name, "active")),
+                               .recovery = authority(chain.get_public_key(new_account_name, "recovery)),"))
+                            });
+   trx.ref_block_num = static_cast<uint16_t>(chain.control->head_block_num());
+   trx.ref_block_prefix = static_cast<uint32_t>(chain.control->head_block_id()._hash[1]);
+   trx.sign(chain.get_private_key(config::system_account_name, "active"), chain_id_type());
+   // Unset expiration should throw
+   BOOST_CHECK_THROW(chain.push_transaction(trx), transaction_exception);
+
+   memset(&trx.expiration, 0, sizeof(trx.expiration)); // currently redundant, as default is all zeros, but may not always be.
+   trx.sign(chain.get_private_key(config::system_account_name, "active"), chain_id_type());
+   // Expired transaction (January 1970) should throw
+   BOOST_CHECK_THROW(chain.push_transaction(trx), transaction_exception);
+}
+
 BOOST_AUTO_TEST_CASE(irrelevant_auth) {
    try {
       tester chain;
@@ -125,6 +170,7 @@ BOOST_AUTO_TEST_CASE(irrelevant_auth) {
                                         .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
                                         .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
                                 });
+      chain.set_transaction_headers(trx);
       trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
 
       chain.push_transaction(trx, skip_transaction_signatures);
@@ -177,12 +223,14 @@ BOOST_AUTO_TEST_CASE(order_dependent_transactions)
               ("account", "tester")
               ("permission", "first")
               ("parent", "active")
-              ("data",  authority(chain.get_public_key(name("tester"), "first"))));
+              ("data",  authority(chain.get_public_key(name("tester"), "first")))
+              ("delay", 0));
       chain.push_action(name("eosio"), name("updateauth"), name("tester"), fc::mutable_variant_object()
               ("account", "tester")
               ("permission", "second")
               ("parent", "first")
-              ("data",  authority(chain.get_public_key(name("tester"), "second"))));
+              ("data",  authority(chain.get_public_key(name("tester"), "second")))
+              ("delay", 0));
 
       // Ensure the related auths are created
       const auto* first_auth = chain.find<permission_object, by_owner>(boost::make_tuple(name("tester"), name("first")));
@@ -204,8 +252,11 @@ BOOST_AUTO_TEST_CASE(order_dependent_transactions)
       BOOST_TEST(chain.control->fetch_block_by_number(11).valid());
       BOOST_TEST_REQUIRE(!chain.control->fetch_block_by_number(11)->regions.empty());
       BOOST_TEST_REQUIRE(!chain.control->fetch_block_by_number(11)->regions.front().cycles_summary.empty());
+      BOOST_TEST_REQUIRE(chain.control->fetch_block_by_number(11)->regions.front().cycles_summary.size() >= 1);
+      // First cycle has only on-block transaction
       BOOST_TEST(!chain.control->fetch_block_by_number(11)->regions.front().cycles_summary.front().empty());
-      BOOST_TEST(chain.control->fetch_block_by_number(11)->regions.front().cycles_summary.front().front().transactions.size() == 2);
+      BOOST_TEST(chain.control->fetch_block_by_number(11)->regions.front().cycles_summary.front().front().transactions.size() == 1);
+      BOOST_TEST(chain.control->fetch_block_by_number(11)->regions.front().cycles_summary.at(1).front().transactions.size() == 2);
    } FC_LOG_AND_RETHROW() }
 
 // Simple test of block production when a block is missed
@@ -579,13 +630,14 @@ BOOST_AUTO_TEST_CASE(wipe)
       }
 
    } FC_LOG_AND_RETHROW() }
-
 BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
    try {
       tester chain;
 
       // Make an account, but add an extra signature to the transaction
       signed_transaction trx;
+      chain.set_transaction_headers(trx);
+
       name new_account_name = name("alice");
       authority owner_auth = authority( chain.get_public_key( new_account_name, "owner" ) );
 
@@ -597,6 +649,7 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
                                         .active   = authority( chain.get_public_key( new_account_name, "active" ) ),
                                         .recovery = authority( chain.get_public_key( new_account_name, "recovery" ) ),
                                 });
+      chain.set_transaction_headers(trx);
       trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
       trx.sign( chain.get_private_key( name("random"), "active" ), chain_id_type()  );
 
@@ -616,5 +669,6 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_soft_check) {
       BOOST_TEST((newchain.find<account_object, by_name>("alice")) != nullptr);
    } FC_LOG_AND_RETHROW()
 }
+
 
 BOOST_AUTO_TEST_SUITE_END()

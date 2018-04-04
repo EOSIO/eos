@@ -12,7 +12,7 @@ namespace eosio {
     */
    class currency {
       public:
-         currency( account_name contract = current_receiver() )
+         currency( account_name contract )
          :_contract(contract)
          { }
 

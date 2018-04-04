@@ -44,6 +44,8 @@
     { c(*this); }
 #define OBJECT_CTOR(...) BOOST_PP_OVERLOAD(OBJECT_CTOR, __VA_ARGS__)(__VA_ARGS__)
 
+#define _V(n, v)  fc::mutable_variant_object(n, v)
+
 namespace eosio { namespace chain {
    using                               std::map;
    using                               std::vector;
@@ -118,8 +120,6 @@ namespace eosio { namespace chain {
       permission_link_object_type,
       action_code_object_type,
       key_value_object_type,
-      key128x128_value_object_type,
-      key64x64_value_object_type,
       index64_object_type,
       index128_object_type,
       index256_object_type,
@@ -141,12 +141,12 @@ namespace eosio { namespace chain {
       producer_votes_object_type, ///< Defined by native_contract library
       producer_schedule_object_type, ///< Defined by native_contract library
       proxy_vote_object_type, ///< Defined by native_contract library
-      key64x64x64_value_object_type,
-      keystr_value_object_type,
       scope_sequence_object_type,
-      bandwidth_usage_object_type,
-      compute_usage_object_type,
       table_id_object_type,
+      resource_limits_object_type,
+      resource_usage_object_type,
+      resource_limits_state_object_type,
+      resource_limits_config_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -178,8 +178,6 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (permission_link_object_type)
                 (action_code_object_type)
                 (key_value_object_type)
-                (key128x128_value_object_type)
-                (key64x64_value_object_type)
                 (index64_object_type)
                 (index128_object_type)
                 (index256_object_type)
@@ -201,12 +199,12 @@ FC_REFLECT_ENUM(eosio::chain::object_type,
                 (producer_votes_object_type)
                 (producer_schedule_object_type)
                 (proxy_vote_object_type)
-                (key64x64x64_value_object_type)
-                (keystr_value_object_type)
                 (scope_sequence_object_type)
-                (bandwidth_usage_object_type)
-                (compute_usage_object_type)
                 (table_id_object_type)
+                (resource_limits_object_type)
+                (resource_usage_object_type)
+                (resource_limits_state_object_type)
+                (resource_limits_config_object_type)
                 (OBJECT_TYPE_COUNT)
                )
 FC_REFLECT( eosio::chain::void_t, )

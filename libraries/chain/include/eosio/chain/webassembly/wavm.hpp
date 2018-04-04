@@ -20,7 +20,13 @@ class wavm_runtime : public eosio::chain::wasm_runtime_interface {
       ~wavm_runtime();
       std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) override;
 
+      struct runtime_guard {
+         runtime_guard();
+         ~runtime_guard();
+      };
+
    private:
+      std::shared_ptr<runtime_guard> _runtime_guard;
 };
 
 //This is a temporary hack for the single threaded implementation
@@ -90,7 +96,7 @@ struct native_to_wasm<T *> {
 /*
 template<>
 struct native_to_wasm<float32_t> {
-   using type = F32; 
+   using type = F32;
 };
 template<>
 struct native_to_wasm<float64_t> {
@@ -99,7 +105,7 @@ struct native_to_wasm<float64_t> {
 */
 template<>
 struct native_to_wasm<float> {
-   using type = F32; 
+   using type = F32;
 };
 template<>
 struct native_to_wasm<double> {
@@ -689,9 +695,9 @@ struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const
 #define __INTRINSIC_NAME(LABEL, SUFFIX) LABEL##SUFFIX
 #define _INTRINSIC_NAME(LABEL, SUFFIX) __INTRINSIC_NAME(LABEL,SUFFIX)
 
-#define _REGISTER_WAVM_INTRINSIC(CLS, METHOD, WASM_SIG, NAME, SIG)\
+#define _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
    static Intrinsics::Function _INTRINSIC_NAME(__intrinsic_fn, __COUNTER__) (\
-      "env." NAME,\
+      MOD "." NAME,\
       eosio::chain::webassembly::wavm::wasm_function_type_provider<WASM_SIG>::type(),\
       (void *)eosio::chain::webassembly::wavm::intrinsic_function_invoker_wrapper<WASM_SIG, SIG>::type::fn<&CLS::METHOD>()\
    );\

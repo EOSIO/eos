@@ -17,20 +17,23 @@ namespace eosio { namespace chain { namespace contracts {
 
 struct genesis_state_type {
    chain_config   initial_configuration = {
-      .target_block_size              = config::default_target_block_size,
-      .max_block_size                 = config::default_max_block_size,
-      .target_block_acts_per_scope    = config::default_target_block_acts_per_scope,
-      .max_block_acts_per_scope       = config::default_max_block_acts_per_scope,
-      .target_block_acts              = config::default_target_block_acts,
-      .max_block_acts                 = config::default_max_block_acts,
-      .real_threads                   = 0, // TODO: unused?
-      .max_storage_size               = config::default_max_storage_size,
+      .base_per_transaction_net_usage = config::default_base_per_transaction_net_usage,
+      .base_per_transaction_cpu_usage = config::default_base_per_transaction_cpu_usage,
+      .base_per_action_cpu_usage      = config::default_base_per_action_cpu_usage,
+      .base_setcode_cpu_usage         = config::default_base_setcode_cpu_usage,
+      .per_signature_cpu_usage        = config::default_per_signature_cpu_usage,
+      .per_lock_net_usage             = config::default_per_lock_net_usage,
+      .context_free_discount_cpu_usage_num      = config::default_context_free_discount_cpu_usage_num,
+      .context_free_discount_cpu_usage_den      = config::default_context_free_discount_cpu_usage_den,
+      .max_transaction_cpu_usage      = config::default_max_transaction_cpu_usage,
+      .max_transaction_net_usage      = config::default_max_transaction_net_usage,
       .max_transaction_lifetime       = config::default_max_trx_lifetime,
-      .max_authority_depth            = config::default_max_auth_depth,
       .max_transaction_exec_time      = 0, // TODO: unused?
+      .max_authority_depth            = config::default_max_auth_depth,
       .max_inline_depth               = config::default_max_inline_depth,
       .max_inline_action_size         = config::default_max_inline_action_size,
-      .max_generated_transaction_size = config::default_max_gen_trx_size
+      .max_generated_transaction_size = config::default_max_gen_trx_size,
+      .max_generated_transaction_count = config::default_max_gen_trx_count
    };
 
    time_point                               initial_timestamp;

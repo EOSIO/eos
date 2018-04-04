@@ -1,4 +1,6 @@
+#include "datastream.hpp"
 #include "memory.hpp"
+#include "privileged.hpp"
 
 void* sbrk(size_t num_bytes) {
       constexpr uint32_t NBPPL2  = 16U;
@@ -38,6 +40,21 @@ void* sbrk(size_t num_bytes) {
 
 namespace eosio {
 
+   void set_blockchain_parameters(const eosio::blockchain_parameters& params) {
+      char buf[sizeof(eosio::blockchain_parameters)];
+      eosio::datastream<char *> ds( buf, sizeof(buf) );
+      ds << params;
+      set_blockchain_parameters_packed( buf, ds.tellp() );
+   }
+
+   void get_blockchain_parameters(eosio::blockchain_parameters& params) {
+      char buf[sizeof(eosio::blockchain_parameters)];
+      size_t size = get_blockchain_parameters_packed( buf, sizeof(buf) );
+      eosio_assert( size <= sizeof(buf), "buffer is too small" );
+      eosio::datastream<const char*> ds( buf, size_t(size) );
+      ds >> params;
+   }
+
    using ::memset;
    using ::memcpy;
 
@@ -76,7 +93,7 @@ namespace eosio {
          const uint32_t current_memory_size = reinterpret_cast<uint32_t>(sbrk(0));
          if(static_cast<int32_t>(current_memory_size) < 0)
             return nullptr;
-         
+
          //grab up to the end of the current WASM memory page provided that it has 1KiB remaining, otherwise
          // grow to end of next page
          uint32_t heap_adj;
@@ -324,7 +341,7 @@ namespace eosio {
                return nullptr;
             }
 
-            if( *orig_ptr_size > size ) 
+            if( *orig_ptr_size > size )
             {
                // use a buffer_ptr to allocate the memory to free
                char* const new_ptr = ptr + size + _size_marker;
@@ -515,7 +532,8 @@ namespace eosio {
    };
 
    memory_manager memory_heap;
-}
+
+} /// namespace eosio
 
 extern "C" {
 

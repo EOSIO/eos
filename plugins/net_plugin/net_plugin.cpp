@@ -2176,7 +2176,7 @@ namespace eosio {
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const packed_transaction &msg) {
-      fc_dlog(logger, "got a signed transaction from ${p}", ("p",c->peer_name()));
+      fc_dlog(logger, "got a packed transaction from ${p}", ("p",c->peer_name()));
       if( sync_master->is_active(c) ) {
          fc_dlog(logger, "got a txn during sync - dropping");
          return;
@@ -2201,6 +2201,7 @@ namespace eosio {
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const signed_transaction &msg) {
+      ilog("Got a signed transaction from ${p}",("p",c->peer_name()));
       c->cancel_wait();
    }
 
@@ -2232,14 +2233,12 @@ namespace eosio {
                for (const auto &recpt : shard.transactions) {
                   auto ltx = local_txns.get<by_id>().find(recpt.id);
                   switch (recpt.status) {
+                  case transaction_receipt::delayed:
                   case transaction_receipt::executed: {
-                     if( ltx == local_txns.end()) {
-                        fc_elog (logger,"summary references unknown transaction ${rid}",("rid",recpt.id));
-                        close (c); // close without go away allows reconnect
-                        return;
+                     if( ltx != local_txns.end()) {
+                        sb.input_transactions.push_back(ltx->packed_txn);
+                        local_txns.modify( ltx, ubn );
                      }
-                     sb.input_transactions.push_back(ltx->packed_txn);
-                     local_txns.modify( ltx, ubn );
                      break;
                   }
                   case transaction_receipt::soft_fail:
@@ -2253,7 +2252,8 @@ namespace eosio {
                         }
                      }
                      break;
-                  }}
+                  }
+                  }
                }
             }
          }
@@ -2443,6 +2443,7 @@ namespace eosio {
     * This one is necessary to hook into the boost notifier api
     **/
    void net_plugin_impl::transaction_ready(const transaction_metadata& md, const packed_transaction& txn) {
+      fc_dlog(logger,"transaction ready called, id = ${id}",("id",md.id));
       time_point_sec expire;
       if (md.decompressed_trx) {
          expire = md.decompressed_trx->expiration;
