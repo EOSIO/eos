@@ -316,16 +316,85 @@ BOOST_AUTO_TEST_CASE(authority_checker)
    // Fails due to short recursion depth limit
    BOOST_TEST(!make_auth_checker(GetAuthority, pv, 1, {d, e}).satisfied(A));
 
-   A = authority(2, {key_weight{c, 1}, key_weight{b, 1}, key_weight{a, 1}});
-   auto B =  authority(1, {key_weight{c, 1}, key_weight{b, 1}});
+   BOOST_TEST(b < a);
+   BOOST_TEST(b < c);
+   BOOST_TEST(a < c);
    {
+      // valid key order: c > a > b
+      A = authority(2, {key_weight{c, 1}, key_weight{a, 1}, key_weight{b, 1}});
+      // valid key order: c > b
+      auto B = authority(1, {key_weight{c, 1}, key_weight{b, 1}});
+      // invalid key order: b < c
+      auto C = authority(1, {key_weight{c, 1}, key_weight{b, 1}, key_weight{c, 1}});
+      // invalid key order: duplicate c
+      auto D = authority(1, {key_weight{c, 1}, key_weight{c, 1}, key_weight{b, 1}});
+      // invalid key order: duplicate b
+      auto E = authority(1, {key_weight{c, 1}, key_weight{b, 1}, key_weight{b, 1}});
+      // unvalid: insufficient weight
+      auto F = authority(4, {key_weight{c, 1}, key_weight{a, 1}, key_weight{b, 1}});
+
       auto checker = make_auth_checker(GetNullAuthority, pv, 2, {a, b, c});
       BOOST_TEST(validate(A));
       BOOST_TEST(validate(B));
+      BOOST_TEST(!validate(C));
+      BOOST_TEST(!validate(D));
+      BOOST_TEST(!validate(E));
+      BOOST_TEST(!validate(F));
+
+      BOOST_TEST(!checker.all_keys_used());
+      BOOST_TEST(checker.unused_keys().count(c) == 1);
+      BOOST_TEST(checker.unused_keys().count(a) == 1);
+      BOOST_TEST(checker.unused_keys().count(b) == 1);
       BOOST_TEST(checker.satisfied(A));
       BOOST_TEST(checker.satisfied(B));
       BOOST_TEST(!checker.all_keys_used());
-      BOOST_TEST(checker.unused_keys().count(a) == 1);
+      BOOST_TEST(checker.unused_keys().count(c) == 0);
+      BOOST_TEST(checker.unused_keys().count(a) == 0);
+      BOOST_TEST(checker.unused_keys().count(b) == 1);
+   }
+   {
+      auto A2 = authority(4, {key_weight{c, 1}, key_weight{a, 1}, key_weight{b, 1}},
+                          {permission_level_weight{{"hi",  "world"}, 1},
+                                permission_level_weight{{"hello",  "world"}, 1},
+                                   permission_level_weight{{"a",  "world"}, 1}
+                          });
+      auto B2 = authority(4, {key_weight{c, 1}, key_weight{a, 1}, key_weight{b, 1}},
+                          {permission_level_weight{{"hello",  "world"}, 1}
+                          });
+      auto C2 = authority(4, {key_weight{c, 1}, key_weight{a, 1}, key_weight{b, 1}},
+                          {permission_level_weight{{"hello",  "world"}, 1},
+                                permission_level_weight{{"hello",  "there"}, 1}
+                          });
+      // invalid: duplicate
+      auto D2 = authority(4, {key_weight{c, 1}, key_weight{a, 1}, key_weight{b, 1}},
+                          {permission_level_weight{{"hello",  "world"}, 1},
+                                permission_level_weight{{"hello",  "world"}, 2}
+                          });
+      // invalid: wrong order
+      auto E2 = authority(4, {key_weight{c, 1}, key_weight{a, 1}, key_weight{b, 1}},
+                          {permission_level_weight{{"hello",  "there"}, 1},
+                                permission_level_weight{{"hello",  "world"}, 2}
+                          });
+      // invalid: wrong order
+      auto F2 = authority(4, {key_weight{c, 1}, key_weight{a, 1}, key_weight{b, 1}},
+                          {permission_level_weight{{"hello",  "world"}, 1},
+                                permission_level_weight{{"hi",  "world"}, 2}
+                          });
+
+      // invalid: insufficient weight
+      auto G2 = authority(7, {key_weight{c, 1}, key_weight{a, 1}, key_weight{b, 1}},
+                          {permission_level_weight{{"hi",  "world"}, 1},
+                                permission_level_weight{{"hello",  "world"}, 1},
+                                   permission_level_weight{{"a",  "world"}, 1}
+                          });
+
+      BOOST_TEST(validate(A2));
+      BOOST_TEST(validate(B2));
+      BOOST_TEST(validate(C2));
+      BOOST_TEST(!validate(D2));
+      BOOST_TEST(!validate(E2));
+      BOOST_TEST(!validate(F2));
+      BOOST_TEST(!validate(G2));
    }
 } FC_LOG_AND_RETHROW() }
 

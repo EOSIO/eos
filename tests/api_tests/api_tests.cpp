@@ -696,13 +696,13 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    control->push_deferred_transactions( true );
 
    // test test_transaction_size
-   CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(57) );
+   CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(55) );
    control->push_deferred_transactions( true );
 
    // test test_read_transaction
    // this is a bit rough, but I couldn't figure out a better way to compare the hashes
    auto tx_trace = CALL_TEST_FUNCTION( *this, "test_transaction", "test_read_transaction", {} );
-   string sha_expect = "274e873c8b2e4de20de06e53c99fe703b5099ce4faaf5d78195a4a2538caba15";
+   string sha_expect = "f899d4ec365702f99607bc640ec21a21b109eee01504011769a9fd4f41a5b72c";
    BOOST_CHECK_EQUAL(tx_trace.action_traces.front().console == sha_expect, true);
    // test test_tapos_block_num
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_num", fc::raw::pack(control->head_block_num()) );

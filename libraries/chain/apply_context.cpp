@@ -260,10 +260,6 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
 
       controller.validate_uniqueness(trx); // TODO: Move this out of here when we have concurrent shards to somewhere we can check for conflicts between shards.
 
-      if (trx.payer != receiver) {
-         require_authorization(trx.payer);
-      }
-
       const auto& gpo = controller.get_global_properties();
       FC_ASSERT( results.deferred_transactions_count < gpo.configuration.max_generated_transaction_count );
 
@@ -271,6 +267,10 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
 
       // privileged accounts can do anything, no need to check auth
       if( !privileged ) {
+         // check to make sure the payer has authorized this deferred transaction's storage in RAM
+         if (trx.payer != receiver) {
+            require_authorization(trx.payer);
+         }
 
          // if a contract is deferring only actions to itself then there is no need
          // to check permissions, it could have done everything anyway.
@@ -312,7 +312,7 @@ const contracts::table_id_object* apply_context::find_table( name code, name sco
    return db.find<table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));
 }
 
-const contracts::table_id_object& apply_context::find_or_create_table( name code, name scope, name table ) {
+const contracts::table_id_object& apply_context::find_or_create_table( name code, name scope, name table, const account_name &payer ) {
    require_read_lock(code, scope);
    const auto* existing_tid =  db.find<contracts::table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));
    if (existing_tid != nullptr) {
@@ -320,11 +320,20 @@ const contracts::table_id_object& apply_context::find_or_create_table( name code
    }
 
    require_write_lock(scope);
+
+   update_db_usage(payer, config::billable_size_v<contracts::table_id_object>, "New Table ${c},${s},${t}", _V("c",code)("s",scope)("t",table));
+
    return mutable_db.create<contracts::table_id_object>([&](contracts::table_id_object &t_id){
       t_id.code = code;
       t_id.scope = scope;
       t_id.table = table;
+      t_id.payer = payer;
    });
+}
+
+void apply_context::remove_table( const contracts::table_id_object& tid ) {
+   update_db_usage(tid.payer, - config::billable_size_v<contracts::table_id_object>);
+   mutable_db.remove(tid);
 }
 
 vector<account_name> apply_context::get_active_producers() const {
@@ -362,7 +371,7 @@ const bytes& apply_context::get_packed_transaction() {
 void apply_context::update_db_usage( const account_name& payer, int64_t delta, const char* use_format, const fc::variant_object& args ) {
    require_write_lock( payer );
    if( (delta > 0) ) {
-      if (payer != account_name(receiver)) {
+      if (!(privileged || payer == account_name(receiver))) {
          require_authorization( payer );
       }
 
@@ -425,7 +434,7 @@ int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_n
 
 int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
    require_write_lock( scope );
-   const auto& tab = find_or_create_table( code, scope, table );
+   const auto& tab = find_or_create_table( code, scope, table, payer );
    auto tableid = tab.id;
 
    FC_ASSERT( payer != account_name(), "must specify a valid account to pay for new record" );
@@ -442,7 +451,7 @@ int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, 
      ++t.count;
    });
 
-   int64_t billable_size = (int64_t)(buffer_size + sizeof(key_value_object) + config::overhead_per_row_ram_bytes);
+   int64_t billable_size = (int64_t)(buffer_size + config::billable_size_v<key_value_object>);
    update_db_usage( payer, billable_size, "New Row ${id} in (${c},${s},${t})", _V("id", obj.primary_key)("c",receiver)("s",scope)("t",table));
 
    keyval_cache.cache_table( tab );
@@ -455,7 +464,7 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
    const auto& tab = keyval_cache.get_table( obj.t_id );
    require_write_lock( tab.scope );
 
-   const int64_t overhead = sizeof(key_value_object) + config::overhead_per_row_ram_bytes;
+   const int64_t overhead = config::billable_size_v<key_value_object>;
    int64_t old_size = (int64_t)(obj.value.size() + overhead);
    int64_t new_size = (int64_t)(buffer_size + overhead);
 
@@ -480,7 +489,7 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
 
 void apply_context::db_remove_i64( int iterator ) {
    const key_value_object& obj = keyval_cache.get( iterator );
-   update_db_usage( obj.payer,  -(obj.value.size() + config::overhead_per_row_ram_bytes) );
+   update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>) );
 
    const auto& table_obj = keyval_cache.get_table( obj.t_id );
    require_write_lock( table_obj.scope );
@@ -489,6 +498,10 @@ void apply_context::db_remove_i64( int iterator ) {
       --t.count;
    });
    mutable_db.remove( obj );
+
+   if (table_obj.count == 0) {
+      remove_table(table_obj);
+   }
 
    keyval_cache.remove( iterator );
 }

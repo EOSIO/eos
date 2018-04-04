@@ -70,6 +70,14 @@ namespace eosio { namespace chain {
    >;
 
    typedef chainbase::generic_index<generated_transaction_multi_index> generated_transaction_index;
+
+   namespace config {
+      template<>
+      struct billable_size<generated_transaction_object> {
+         static const uint64_t overhead = overhead_per_row_per_index_ram_bytes * 5;  ///< overhead for 5x indices internal-key, txid, expiration, delay, sender_id
+         static const uint64_t value = 96 + 4 + overhead; ///< 96 bytes for our constant size fields, 4 bytes for a varint for packed_trx size and 96 bytes of implementation overhead
+      };
+   }
 } } // eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::generated_transaction_object, eosio::chain::generated_transaction_multi_index)

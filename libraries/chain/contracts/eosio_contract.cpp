@@ -76,7 +76,7 @@ void apply_eosio_newaccount(apply_context& context) {
    });
    resources.initialize_account(create.name);
    resources.add_account_ram_usage(
-      create.name,
+      create.creator,
       (int64_t)config::overhead_per_account_ram_bytes,
       "New Account ${n}", _V("n", create.name)
    );
@@ -91,7 +91,7 @@ void apply_eosio_newaccount(apply_context& context) {
 
       resources.add_account_ram_usage(
          owner,
-         (int64_t)(sizeof(permission_object) + result.auth.get_billable_size()),
+         (int64_t)(config::billable_size_v<permission_object> + result.auth.get_billable_size()),
          "New Permission ${a}@${p}", _V("a", owner)("p",name)
       );
 
@@ -248,10 +248,7 @@ void apply_eosio_updateauth(apply_context& context) {
                  "Changing parent authority is not currently supported");
 
 
-      // TODO: Depending on an implementation detail like sizeof(permission_object) for consensus-affecting side effects like
-      //       RAM usage seems like a bad idea. For example, an upgrade of the implementation of boost::interprocess::vector
-      //       could cause a hardfork unless the old size calculation behavior was also carefully replicated in the same upgrade.
-      int64_t old_size = (int64_t)(sizeof(permission_object) + permission->auth.get_billable_size());
+      int64_t old_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
 
       // TODO/QUESTION: If we are updating an existing permission, should we check if the message declared
       // permission satisfies the permission we want to modify?
@@ -262,7 +259,7 @@ void apply_eosio_updateauth(apply_context& context) {
          po.delay = fc::seconds(update.delay);
       });
 
-      int64_t new_size = (int64_t)(sizeof(permission_object) + permission->auth.get_billable_size());
+      int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
 
       resources.add_account_ram_usage(
          permission->owner,
@@ -283,7 +280,7 @@ void apply_eosio_updateauth(apply_context& context) {
 
       resources.add_account_ram_usage(
          p.owner,
-         (int64_t)(sizeof(permission_object) + p.auth.get_billable_size()),
+         (int64_t)(config::billable_size_v<permission_object> + p.auth.get_billable_size()),
          "New Permission ${a}@${p}", _V("a", p.owner)("p",p.name)
       );
 
@@ -320,7 +317,7 @@ void apply_eosio_deleteauth(apply_context& context) {
 
    resources.add_account_ram_usage(
       permission.owner,
-      -(int64_t)(sizeof(permission_object) + permission.auth.get_billable_size())
+      -(int64_t)(config::billable_size_v<permission_object> + permission.auth.get_billable_size())
    );
    db.remove(permission);
 }
@@ -365,7 +362,7 @@ void apply_eosio_linkauth(apply_context& context) {
 
          resources.add_account_ram_usage(
             l.account,
-            (int64_t)(sizeof(permission_link_object)),
+            (int64_t)(config::billable_size_v<permission_link_object>),
             "New Permission Link ${code}::${act} -> ${a}@${p}", _V("code", l.code)("act",l.message_type)("a", l.account)("p",l.required_permission)
          );
       }
@@ -384,7 +381,7 @@ void apply_eosio_unlinkauth(apply_context& context) {
    EOS_ASSERT(link != nullptr, action_validate_exception, "Attempting to unlink authority, but no link found");
    resources.add_account_ram_usage(
       link->account,
-      -(int64_t)(sizeof(permission_link_object))
+      -(int64_t)(config::billable_size_v<permission_link_object>)
    );
 
    db.remove(*link);

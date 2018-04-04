@@ -13,6 +13,11 @@ namespace eosio { namespace chain {
       permission_name permission;
    };
 
+   inline bool operator== (const permission_level& lhs, const permission_level& rhs)
+   {
+      return (lhs.actor == rhs.actor) && (lhs.permission == rhs.permission);
+   }
+
    /**
     *  An action is performed by an actor, aka an account. It may
     *  be created explicitly and authorized by signatures or might be

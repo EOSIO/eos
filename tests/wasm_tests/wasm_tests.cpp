@@ -360,6 +360,110 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_conversion_tests, tester ) try {
    }
 } FC_LOG_AND_RETHROW()
 
+// test softfloat conversion operations
+BOOST_FIXTURE_TEST_CASE( f32_f64_overflow_tests, tester ) try {
+
+   int count = 0;
+   auto check = [&](const char *wast_template, const char *op, const char *param) -> bool {
+      count+=16;
+      create_accounts( {N(f_tests)+count} );
+      produce_blocks(1);
+      std::vector<char> wast;
+      wast.resize(strlen(wast_template) + 128);
+      sprintf(&(wast[0]), wast_template, op, param);
+      set_code(N(f_tests)+count, &(wast[0]));
+      produce_blocks(10);
+
+      signed_transaction trx;
+      action act;
+      act.account = N(f_tests)+count;
+      act.name = N();
+      act.authorization = vector<permission_level>{{N(f_tests)+count,config::active_name}};
+      trx.actions.push_back(act);
+
+      set_transaction_headers(trx);
+      trx.sign(get_private_key( N(f_tests)+count, "active" ), chain_id_type());
+
+      try {
+         push_transaction(trx);
+         produce_blocks(1);
+         BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+         const auto& receipt = get_transaction_receipt(trx.id());
+         return true;
+      } catch (eosio::chain::wasm_execution_error &) {
+         return false;
+      }
+   };
+   //
+   //// float32 => int32
+   // 2^31
+   BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_s_f32", "f32.const 2147483648"));
+   // the maximum value below 2^31 representable in IEEE float32
+   BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_s_f32", "f32.const 2147483520"));
+   // -2^31
+   BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_s_f32", "f32.const -2147483648"));  
+   // the maximum value below -2^31 in IEEE float32
+   BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_s_f32", "f32.const -2147483904"));   
+
+   //
+   //// float32 => uint32
+   BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_u_f32", "f32.const 0")); 
+   BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_u_f32", "f32.const -1")); 
+   // max value below 2^32 in IEEE float32
+   BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_u_f32", "f32.const 4294967040"));
+   BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_u_f32", "f32.const 4294967296"));
+
+   //
+   //// double => int32
+   BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_s_f64", "f64.const 2147483648"));
+   BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_s_f64", "f64.const 2147483647"));
+   BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_s_f64", "f64.const -2147483648"));  
+   BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_s_f64", "f64.const -2147483649"));   
+
+   //
+   //// double => uint32
+   BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_u_f64", "f64.const 0")); 
+   BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_u_f64", "f64.const -1")); 
+   BOOST_REQUIRE_EQUAL(true, check(i32_overflow_wast, "i32_trunc_u_f64", "f64.const 4294967295"));
+   BOOST_REQUIRE_EQUAL(false, check(i32_overflow_wast, "i32_trunc_u_f64", "f64.const 4294967296"));
+
+
+   //// float32 => int64
+   // 2^63
+   BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_s_f32", "f32.const 9223372036854775808"));
+   // the maximum value below 2^63 representable in IEEE float32
+   BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_s_f32", "f32.const 9223371487098961920"));
+   // -2^63
+   BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_s_f32", "f32.const -9223372036854775808"));  
+   // the maximum value below -2^63 in IEEE float32
+   BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_s_f32", "f32.const -9223373136366403584"));  
+
+   //// float32 => uint64
+   BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_u_f32", "f32.const -1"));
+   BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_u_f32", "f32.const 0"));
+   // max value below 2^64 in IEEE float32
+   BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_u_f32", "f32.const 18446742974197923840"));  
+   BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_u_f32", "f32.const 18446744073709551616")); 
+
+   //// double => int64
+   // 2^63
+   BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_s_f64", "f64.const 9223372036854775808"));
+   // the maximum value below 2^63 representable in IEEE float64
+   BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_s_f64", "f64.const 9223372036854774784"));
+   // -2^63
+   BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_s_f64", "f64.const -9223372036854775808"));  
+   // the maximum value below -2^63 in IEEE float64
+   BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_s_f64", "f64.const -9223372036854777856"));  
+
+   //// double => uint64
+   BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_u_f64", "f64.const -1"));
+   BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_u_f64", "f64.const 0"));
+   // max value below 2^64 in IEEE float64
+   BOOST_REQUIRE_EQUAL(true, check(i64_overflow_wast, "i64_trunc_u_f64", "f64.const 18446744073709549568"));  
+   BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_u_f64", "f64.const 18446744073709551616")); 
+} FC_LOG_AND_RETHROW()
+
+
 /**
  * Make sure WASM "start" method is used correctly
  */
