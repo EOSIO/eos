@@ -252,7 +252,7 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
       // Any other called of this function needs to similarly meet that precondition.
       EOS_ASSERT( trx.execute_after < trx.expiration,
                   transaction_exception,
-                  "Transaction expires at ${trx.expiration} which is before the contract-imposed first allowed time to execute at ${trx.execute_after}",
+                  "Transaction expires at ${trx.expiration} which is before the first allowed time to execute at ${trx.execute_after}",
                   ("trx.expiration",trx.expiration)("trx.execute_after",trx.execute_after) );
 
       controller.validate_expiration_not_too_far(trx, trx.execute_after);
@@ -291,11 +291,11 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
 
       auto now = controller.head_block_time();
       if( delay.count() ) {
-         trx.execute_after = std::max(trx.execute_after, time_point_sec(now + delay + fc::microseconds(999'999)) /* rounds up nearest second */ );
-         EOS_ASSERT( trx.execute_after < trx.expiration,
+         auto min_execute_after_time = time_point_sec(now + delay + fc::microseconds(999'999)); // rounds up nearest second
+         EOS_ASSERT( min_execute_after_time <= trx.execute_after,
                      transaction_exception,
-                     "Transaction expires at ${trx.expiration} which is before the first allowed time to execute at ${trx.execute_after}",
-                     ("trx.expiration",trx.expiration)("trx.execute_after",trx.execute_after) );
+                     "deferred transaction is specified to execute after ${trx.execute_after} which is earlier than the earliest time allowed by authorization checker",
+                     ("trx.execute_after",trx.execute_after)("min_execute_after_time",min_execute_after_time) );
       }
 
       results.deferred_transaction_requests.push_back(move(trx));

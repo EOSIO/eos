@@ -237,7 +237,8 @@ void test_transaction::send_deferred_transaction(uint64_t receiver, uint64_t, ui
    auto trx = transaction();
    test_action_action<N(testapi), WASM_TEST_ACTION("test_transaction", "deferred_print")> test_action;
    trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
-   trx.send( 0xffffffffffffffff, receiver, now()+2 );
+   trx.delay_sec = 2;
+   trx.send( 0xffffffffffffffff, receiver );
 }
 
 void test_transaction::cancel_deferred_transaction() {
