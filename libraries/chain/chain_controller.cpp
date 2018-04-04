@@ -997,13 +997,13 @@ private:
 fc::microseconds chain_controller::check_authorization( const vector<action>& actions,
                                                         const flat_set<public_key_type>& provided_keys,
                                                         bool allow_unused_signatures,
-                                                        flat_set<account_name> provided_accounts )const
-
+                                                        flat_set<account_name> provided_accounts,
+                                                        flat_set<permission_level> provided_levels)const
 {
    auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
                                      permission_visitor(*this),
                                      get_global_properties().configuration.max_authority_depth,
-                                     provided_keys, provided_accounts );
+                                     provided_keys, provided_accounts, provided_levels );
 
    fc::microseconds max_delay;
 

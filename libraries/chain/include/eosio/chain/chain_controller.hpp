@@ -295,7 +295,8 @@ namespace eosio { namespace chain {
          fc::microseconds check_authorization( const vector<action>& actions,
                                                const flat_set<public_key_type>& provided_keys,
                                                bool                             allow_unused_signatures = false,
-                                               flat_set<account_name>           provided_accounts = flat_set<account_name>()
+                                               flat_set<account_name>           provided_accounts = flat_set<account_name>(),
+                                               flat_set<permission_level>       provided_levels = flat_set<permission_level>()
                                              )const;
 
          /**
