@@ -132,8 +132,8 @@ namespace eosio { namespace testing {
 
      trx.net_usage_words = estimated_size / 8;
 
-     // estimate the usage of the context free actions
-     trx.kcpu_usage = 30000 + extra_cf_cpu_usage + (trx.context_free_actions.size() * config::default_base_per_action_cpu_usage * 10);
+     // dont estimate the cpu_usage
+     trx.kcpu_usage = 0;
   }
 
    

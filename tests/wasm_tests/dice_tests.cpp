@@ -417,13 +417,11 @@ BOOST_FIXTURE_TEST_CASE( dice_test, dice_tester ) try {
 
    // No games in table
    auto* game_tid = find_table(N(dice), N(dice), N(game));
-   BOOST_CHECK(game_tid != nullptr);
-   BOOST_CHECK(game_tid->count == 0);
+   BOOST_CHECK(game_tid == nullptr);
 
    // No offers in table
    auto* offer_tid = find_table(N(dice), N(dice), N(offer));
-   BOOST_CHECK(offer_tid != nullptr);
-   BOOST_CHECK(offer_tid->count == 0);
+   BOOST_CHECK(offer_tid == nullptr);
 
    // 2 records in account table (Bob & Carol)
    auto* account_tid = find_table(N(dice), N(dice), N(account));
