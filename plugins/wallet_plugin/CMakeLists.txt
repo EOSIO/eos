@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eos/wallet_plugin/*.hpp")
+file(GLOB HEADERS "include/eosio/wallet_plugin/*.hpp")
 add_library( wallet_plugin
              wallet.cpp
              wallet_plugin.cpp
