@@ -46,7 +46,6 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
    SET_APP_HANDLER( eosio, eosio, passrecovery, eosio );
    SET_APP_HANDLER( eosio, eosio, vetorecovery, eosio );
    SET_APP_HANDLER( eosio, eosio, canceldelay, eosio );
-   SET_APP_HANDLER( eosio, eosio, mindelay, eosio );
 }
 
 
@@ -76,7 +75,6 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.actions.push_back( action_def{name("onerror"), "onerror", ""} );
    eos_abi.actions.push_back( action_def{name("onblock"), "onblock", ""} );
    eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay", ""} );
-   eos_abi.actions.push_back( action_def{name("mindelay"), "mindelay", ""} );
    
    // TODO add any clauses 
    //
@@ -165,13 +163,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
 
    eos_abi.structs.emplace_back( struct_def {
       "canceldelay", "", {
-         {"sender_id", "uint32"},
-      }
-   });
-
-   eos_abi.structs.emplace_back( struct_def {
-      "mindelay", "", {
-         {"delay", "uint32"},
+         {"trx_id", "transaction_id_type"},
       }
    });
 
@@ -180,7 +172,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.structs.emplace_back( struct_def {
       "pending_recovery", "", {
          {"account",    "name"},
-         {"request_id", "uint32"},
+         {"request_id", "uint128"},
          {"update",     "updateauth"},
          {"memo",       "string"}
       }

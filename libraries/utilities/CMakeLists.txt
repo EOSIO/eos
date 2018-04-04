@@ -7,7 +7,7 @@ if(NOT EOS_GIT_REVISION_DESCRIPTION)
     set(EOS_GIT_REVISION_DESCRIPTION "unknown")
 endif(NOT EOS_GIT_REVISION_DESCRIPTION)
 
-file(GLOB HEADERS "include/eos/utilities/*.hpp")
+file(GLOB HEADERS "include/eosio/utilities/*.hpp")
 
 set(sources
    key_conversion.cpp

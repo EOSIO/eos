@@ -15,14 +15,14 @@ namespace eosiosystem {
    struct permission_level_weight {
       permission_level  permission;
       weight_type       weight;
-      
+
       EOSLIB_SERIALIZE( permission_level_weight, (permission)(weight) )
    };
 
    struct key_weight {
       public_key   key;
       weight_type  weight;
-      
+
       EOSLIB_SERIALIZE( key_weight, (key)(weight) )
    };
 
@@ -30,7 +30,7 @@ namespace eosiosystem {
       uint32_t                              threshold;
       std::vector<key_weight>               keys;
       std::vector<permission_level_weight>  accounts;
-         
+
       EOSLIB_SERIALIZE( authority, (threshold)(keys)(accounts) )
    };
    struct type_def {
@@ -51,7 +51,7 @@ namespace eosiosystem {
       type_name              name;
       type_name              base;
       std::vector<field_def> fields;
-         
+
       EOSLIB_SERIALIZE( struct_def, (name)(base)(fields) )
    };
 
@@ -68,7 +68,7 @@ namespace eosiosystem {
       std::vector<field_name> key_names;
       std::vector<type_name>  key_types;
       type_name               type;
-         
+
       EOSLIB_SERIALIZE(table_def, (name)(index_type)(key_names)(key_types)(type) )
    };
    
@@ -104,15 +104,6 @@ namespace eosiosystem {
 
          static void on( const newaccount& ) {
          }
-         ACTION( SystemAccount, setabi ) {
-            account_name                     account;
-            abi_def                          abi;
-            
-            EOSLIB_SERIALIZE( setabi, (account)(abi) )
-         };
-
-         static void on( const setabi& ) {
-         }
 
          ACTION( SystemAccount, updateauth ) {
             account_name                      account;
@@ -147,12 +138,12 @@ namespace eosiosystem {
 
          static void on( const linkauth& ) {
          }
-         
+
          ACTION( SystemAccount, unlinkauth ) {
             account_name                      account;
             account_name                      code;
             action_name                       type;
-            
+
             EOSLIB_SERIALIZE( unlinkauth, (account)(code)(type) )
          };
 
@@ -188,29 +179,31 @@ namespace eosiosystem {
          static void on( const vetorecovery& ) {
          }
 
+         ACTION( SystemAccount, setabi ) {
+            account_name                     account;
+            abi_def                          abi;
+
+            EOSLIB_SERIALIZE( setabi, (account)(abi) )
+         };
+
+         static void on( const setabi& ) {
+         }
+
          struct onerror: eosio::action_meta<SystemAccount, N(onerror)>, bytes {
             EOSLIB_SERIALIZE_DERIVED( onerror, bytes, BOOST_PP_SEQ_NIL )
          };
 
          static void on( const onerror& ) {
          }
-         
+
          ACTION( SystemAccount, canceldelay ) {
-            uint32_t   sender_id;
-            
-            EOSLIB_SERIALIZE( canceldelay, (sender_id) )
+            transaction_id_type   trx_id;
+
+            EOSLIB_SERIALIZE( canceldelay, (trx_id) )
          };
-         
+
          static void on( const canceldelay& ) {
          }
-         
-         ACTION ( SystemAccount, mindelay ) {
-            uint32_t   delay;
-            
-            EOSLIB_SERIALIZE( mindelay, (delay) )
-         };
-         
-         static void on( const mindelay& ) {
-         }
+
    };
 }

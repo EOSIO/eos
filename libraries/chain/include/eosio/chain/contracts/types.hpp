@@ -282,7 +282,7 @@ struct vetorecovery {
 };
 
 struct canceldelay {
-   uint128_t  sender_id;
+   transaction_id_type   trx_id;
 
    static account_name get_account() {
       return config::system_account_name;
@@ -290,18 +290,6 @@ struct canceldelay {
 
    static action_name get_name() {
       return N(canceldelay);
-   }
-};
-
-struct mindelay {
-   uint32_t   delay;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(mindelay);
    }
 };
 
@@ -325,5 +313,4 @@ FC_REFLECT( eosio::chain::contracts::unlinkauth                       , (account
 FC_REFLECT( eosio::chain::contracts::postrecovery                     , (account)(data)(memo) )
 FC_REFLECT( eosio::chain::contracts::passrecovery                     , (account) )
 FC_REFLECT( eosio::chain::contracts::vetorecovery                     , (account) )
-FC_REFLECT( eosio::chain::contracts::canceldelay                      , (sender_id) )
-FC_REFLECT( eosio::chain::contracts::mindelay                         , (delay) )
+FC_REFLECT( eosio::chain::contracts::canceldelay                      , (trx_id) )
