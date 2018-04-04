@@ -90,7 +90,6 @@ inline bool operator< (const permission_level& a, const permission_level& b) {
  */
 template<typename Authority>
 inline bool validate( const Authority& auth ) {
-   const key_weight* prev = nullptr;
    decltype(auth.threshold) total_weight = 0;
 
    static_assert( std::is_same<decltype(auth.threshold), uint32_t>::value &&
@@ -102,16 +101,17 @@ inline bool validate( const Authority& auth ) {
    if( ( auth.keys.size() + auth.accounts.size() ) > (1 << 16) )
       return false; // overflow protection (assumes weight_type is uint16_t and threshold is of type uint32_t)
 
+   const key_weight* prev = nullptr;
    for( const auto& k : auth.keys ) {
-      if( !prev ) prev = &k;
-      else if( prev->key < k.key ) return false;
+      if( prev && ( prev->key < k.key || prev->key == k.key ) ) return false;
       total_weight += k.weight;
+      prev = &k;
    }
    const permission_level_weight* pa = nullptr;
    for( const auto& a : auth.accounts ) {
-      if( !pa ) pa = &a;
-      else if( pa->permission < a.permission ) return false;
+      if(pa && ( pa->permission < a.permission || pa->permission == a.permission ) ) return false;
       total_weight += a.weight;
+      pa = &a;
    }
    return total_weight >= auth.threshold;
 }
