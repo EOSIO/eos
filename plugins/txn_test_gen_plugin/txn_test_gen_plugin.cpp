@@ -120,9 +120,9 @@ struct txn_test_gen_plugin_impl {
 
          trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountC, owner_auth, active_auth, recovery_auth});
          }
-      
+
          trx.expiration = cc.head_block_time() + fc::seconds(30);
-         trx.net_usage_words = 500;
+         trx.max_net_usage_words = 500;
          trx.set_reference_block(cc.head_block_id());
          trx.sign(creator_priv_key, chainid);
          cc.push_transaction(packed_transaction(trx));
@@ -184,7 +184,7 @@ struct txn_test_gen_plugin_impl {
 
          trx.expiration = cc.head_block_time() + fc::seconds(30);
          trx.set_reference_block(cc.head_block_id());
-         trx.net_usage_words = 5000;
+         trx.max_net_usage_words = 5000;
          trx.sign(txn_test_receiver_C_priv_key, chainid);
          cc.push_transaction(packed_transaction(trx));
       }
@@ -257,7 +257,7 @@ struct txn_test_gen_plugin_impl {
       trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", fc::raw::pack(nonce++)));
       trx.set_reference_block(cc.head_block_id());
       trx.expiration = cc.head_block_time() + fc::seconds(30);
-      trx.net_usage_words = 100;
+      trx.max_net_usage_words = 100;
       trx.sign(a_priv_key, chainid);
       cc.push_transaction(packed_transaction(trx));
       }
@@ -268,7 +268,7 @@ struct txn_test_gen_plugin_impl {
       trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", fc::raw::pack(nonce++)));
       trx.set_reference_block(cc.head_block_id());
       trx.expiration = cc.head_block_time() + fc::seconds(30);
-      trx.net_usage_words = 100;
+      trx.max_net_usage_words = 100;
       trx.sign(b_priv_key, chainid);
       cc.push_transaction(packed_transaction(trx));
       }
