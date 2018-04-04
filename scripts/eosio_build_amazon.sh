@@ -229,7 +229,7 @@ mongodconf
 		sudo rm -rf ${TEMP_DIR}/mongo-cxx-driver
 		git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 		if [ $? -ne 0 ]; then
-			printf "\tUnable to clone MondgDB C++ driver at this time.\n"
+			printf "\tUnable to clone MondgDB C++ repo @ https://github.com/mongodb/mongo-cxx-driver.git.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
@@ -265,7 +265,7 @@ mongodconf
 		cd ${TEMP_DIR}
 		git clone https://github.com/cryptonomex/secp256k1-zkp.git
 		if [ $? -ne 0 ]; then
-			printf "\tUnable to clone repo secp256k1-zkp.\n"
+			printf "\tUnable to clone repo secp256k1-zkp @ https://github.com/cryptonomex/secp256k1-zkp.git.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
