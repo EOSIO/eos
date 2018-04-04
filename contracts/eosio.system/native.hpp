@@ -58,8 +58,8 @@ namespace eosiosystem {
    struct action_def {
       action_name name;
       type_name   type;
-         
-      EOSLIB_SERIALIZE(action_def, (name)(type) )
+      std::string      ricardian_contract;         
+      EOSLIB_SERIALIZE(action_def, (name)(type)(ricardian_contract) )
    };
 
    struct table_def {
@@ -71,14 +71,20 @@ namespace eosiosystem {
          
       EOSLIB_SERIALIZE(table_def, (name)(index_type)(key_names)(key_types)(type) )
    };
-
+   
+   struct clause_pair {
+      std::string id;
+      std::string body;
+      EOSLIB_SERIALIZE( clause_pair, (id)(body) )
+   };
    struct abi_def {
       std::vector<type_def>     types;
       std::vector<struct_def>   structs;
       std::vector<action_def>   actions;
       std::vector<table_def>    tables;
+      std::vector<clause_pair>  clauses;
          
-      EOSLIB_SERIALIZE( abi_def, (types)(structs)(actions)(tables) )
+      EOSLIB_SERIALIZE( abi_def, (types)(structs)(actions)(tables)(clauses) )
    };
 
  

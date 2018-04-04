@@ -190,42 +190,55 @@
   ],
   "actions": [{
       "name": "transfer",
-      "type": "transfer"
+      "type": "transfer",
+      "ricardian_contract": ""
     },{
       "name": "issue",
-      "type": "issue"
+      "type": "issue",
+      "ricardian_contract": ""
     },{
       "name": "delegatebw",
-      "type": "delegatebw"
+      "type": "delegatebw",
+      "ricardian_contract": ""
     },{
       "name": "undelegatebw",
-      "type": "undelegatebw"
+      "type": "undelegatebw",
+      "ricardian_contract": ""
     },{
       "name": "refund",
-      "type": "refund"
+      "type": "refund",
+      "ricardian_contract": ""
     },{
       "name": "regproducer",
-      "type": "regproducer"
+      "type": "regproducer",
+      "ricardian_contract": ""
     },{
       "name": "unregprod",
-      "type": "unregprod"
+      "type": "unregprod",
+      "ricardian_contract": ""
     },{
       "name": "regproxy",
-      "type": "regproxy"
+      "type": "regproxy",
+      "ricardian_contract": ""
     },{
       "name": "unregproxy",
-      "type": "unregproxy"
+      "type": "unregproxy",
+      "ricardian_contract": ""
     },{
       "name": "voteproducer",
-      "type": "voteproducer"
+      "type": "voteproducer",
+      "ricardian_contract": ""
     },{
       "name": "claimrewards",
-      "type": "claimrewards"
+      "type": "claimrewards",
+      "ricardian_contract": ""
     },{
       "name": "nonce",
-      "type": "nonce"
+      "type": "nonce",
+      "ricardian_contract": ""
     }
   ],
   "tables": [
-  ]
+  ],
+  "clauses": [{}]
 }
