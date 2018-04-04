@@ -363,27 +363,12 @@ transaction_trace chain_controller::delayed_transaction_processing( const transa
 
    const auto& trx = mtrx.trx();
 
-   // add in the system account authorization
-   action for_deferred = trx.actions[0];
-   bool found = false;
-   for (const auto& auth : for_deferred.authorization) {
-      if (auth.actor == config::system_account_name &&
-          auth.permission == config::active_name) {
-         found = true;
-         break;
-      }
-   }
-   if (!found)
-      for_deferred.authorization.push_back(permission_level{config::system_account_name, config::active_name});
-
-   apply_context context(*this, _db, for_deferred, mtrx); // TODO: Better solution for getting next sender_id needed.
-
    time_point_sec execute_after = head_block_time();
    execute_after += mtrx.delay;
 
    // TODO: update to better method post RC1?
    account_name payer;
-   for(const auto& act : mtrx.trx().actions ) {
+   for(const auto& act : trx.actions ) {
       if (act.authorization.size() > 0) {
          payer = act.authorization.at(0).actor;
          break;
@@ -392,7 +377,15 @@ transaction_trace chain_controller::delayed_transaction_processing( const transa
 
    FC_ASSERT(!payer.empty(), "Failed to find a payer for delayed transaction!");
 
-   deferred_transaction dtrx(transaction_id_to_sender_id( trx.id() ), config::system_account_name, payer, execute_after, trx);
+   auto sender_id = transaction_id_to_sender_id( mtrx.id );
+
+   const auto& generated_index = _db.get_index<generated_transaction_multi_index, by_sender_id>();
+   auto colliding_trx = generated_index.find(boost::make_tuple(config::system_account_name, sender_id));
+   FC_ASSERT( colliding_trx == generated_index.end(),
+              "sender_id conflict between two delayed transactions: ${cur_trx_id} and ${prev_trx_id}",
+              ("cur_trx_id", mtrx.id)("prev_trx_id", colliding_trx->trx_id) );
+
+   deferred_transaction dtrx(sender_id, config::system_account_name, payer, execute_after, trx);
    FC_ASSERT( dtrx.execute_after < dtrx.expiration, "transaction expires before it can execute" );
 
    result.deferred_transaction_requests.push_back(std::move(dtrx));
