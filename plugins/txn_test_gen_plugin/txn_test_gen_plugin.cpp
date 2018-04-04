@@ -122,7 +122,6 @@ struct txn_test_gen_plugin_impl {
          }
 
          trx.expiration = cc.head_block_time() + fc::seconds(30);
-         trx.max_net_usage_words = 500;
          trx.set_reference_block(cc.head_block_id());
          trx.sign(creator_priv_key, chainid);
          cc.push_transaction(packed_transaction(trx));
