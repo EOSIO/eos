@@ -22,16 +22,11 @@ namespace eosio {
     * @{
     */
 
-   class transaction {
+   class transaction_header {
    public:
-      transaction(time exp = now() + 60, region_id r = 0)
-      :expiration(exp),region(r)
+      transaction_header( time exp = now() + 60, region_id r = 0 )
+         :expiration(exp),region(r)
       {}
-
-      void send(uint64_t sender_id, account_name payer) const {
-         auto serialize = pack(*this);
-         send_deferred(sender_id, payer, serialize.data(), serialize.size());
-      }
 
       time            expiration;
       region_id       region;
@@ -41,10 +36,22 @@ namespace eosio {
       unsigned_int    kcpu_usage = 0UL; /// number of CPU usage units to bill transaction for
       unsigned_int    delay_sec = 0UL; /// number of CPU usage units to bill transaction for
 
+      EOSLIB_SERIALIZE( transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix)(net_usage_words)(kcpu_usage)(delay_sec) )
+   };
+
+   class transaction : public transaction_header {
+   public:
+      transaction(time exp = now() + 60, region_id r = 0) : transaction_header( exp, r ) {}
+
+      void send(uint64_t sender_id, account_name payer) const {
+         auto serialize = pack(*this);
+         send_deferred(sender_id, payer, serialize.data(), serialize.size());
+      }
+
       vector<action>  context_free_actions;
       vector<action>  actions;
 
-      EOSLIB_SERIALIZE( transaction, (expiration)(region)(ref_block_num)(ref_block_prefix)(net_usage_words)(kcpu_usage)(delay_sec)(context_free_actions)(actions) )
+      EOSLIB_SERIALIZE_DERIVED( transaction, transaction_header, (context_free_actions)(actions) )
    };
 
    class deferred_transaction : public transaction {
@@ -67,13 +74,29 @@ namespace eosio {
     * @param index - the index of the requested action
     * @return the indicated action
     */
-   action get_action( uint32_t type, uint32_t index ) {
+   inline action get_action( uint32_t type, uint32_t index ) {
       auto size = ::get_action(type, index, nullptr, 0);
       eosio_assert( size > 0, "get_action size failed" );
       char buf[size];
       auto size2 = ::get_action(type, index, &buf[0], static_cast<size_t>(size) );
       eosio_assert( size == size2, "get_action failed" );
       return eosio::unpack<eosio::action>(&buf[0], static_cast<size_t>(size));
+   }
+
+   inline void check_auth(const bytes& trx_packed, const vector<permission_level>& permissions) {
+      auto perm_packed = pack(permissions);
+      ::check_auth( trx_packed.data(), trx_packed.size(), perm_packed.data(), perm_packed.size() );
+   }
+
+   inline void check_auth(const char *serialized_transaction, size_t size, const vector<permission_level>& permissions) {
+      auto perm_packed = pack(permissions);
+      ::check_auth( serialized_transaction, size, perm_packed.data(), perm_packed.size() );
+   }
+
+   inline void check_auth(const transaction& trx, const vector<permission_level>& permissions) {
+      auto trx_packed = pack(trx);
+      check_auth( trx_packed, permissions );
+      //return res > 0;
    }
 
    ///@} transactioncpp api

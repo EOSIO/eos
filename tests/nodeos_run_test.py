@@ -140,6 +140,8 @@ try:
         cmdError("eos wallet create")
         errorExit("Failed to create wallet %s." % (testWalletName))
 
+    Print("Wallet \"%s\" password=%s." % (testWalletName, testWallet.password.encode("utf-8")))
+
     for account in accounts:
         Print("Importing keys for account %s into wallet %s." % (account.name, testWallet.name))
         if not walletMgr.importKey(account, testWallet):
