@@ -254,11 +254,27 @@ DataStream& operator >> ( DataStream& ds, std::array<T,N>& v ) {
    return ds;
 }
 
+template<typename DataStream>
+DataStream& operator << ( DataStream& ds, const vector<char>& v ) {
+   ds << unsigned_int( v.size() );
+   ds.write( v.data(), v.size() );
+   return ds;
+}
+
 template<typename DataStream, typename T>
 DataStream& operator << ( DataStream& ds, const vector<T>& v ) {
    ds << unsigned_int( v.size() );
    for( const auto& i : v )
       ds << i;
+   return ds;
+}
+
+template<typename DataStream>
+DataStream& operator >> ( DataStream& ds, vector<char>& v ) {
+   unsigned_int s;
+   ds >> s;
+   v.resize( s.value );
+   ds.read( v.data(), v.size() );
    return ds;
 }
 
