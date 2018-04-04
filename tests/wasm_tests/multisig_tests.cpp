@@ -78,7 +78,7 @@ transaction eosio_msig_tester::reqauth( account_name from, const vector<permissi
       ("ref_block_num", 2)
       ("ref_block_prefix", 3)
       ("net_usage_words", 4)
-      ("kcpu_usage", 5)
+      ("kcpu_usage", 0)
       ("delay_sec", 0)
       ("actions", fc::variants({
             fc::mutable_variant_object()
@@ -229,7 +229,7 @@ BOOST_FIXTURE_TEST_CASE( big_transaction, eosio_msig_tester ) try {
       ("ref_block_num", 2)
       ("ref_block_prefix", 3)
       ("net_usage_words", 4)
-      ("kcpu_usage", 10485760)
+      ("kcpu_usage", 0)
       ("delay_sec", 0)
       ("actions", fc::variants({
             fc::mutable_variant_object()
