@@ -290,18 +290,25 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
    //idump((transaction_header(mtrx.trx())));
 
    const transaction& trx = mtrx.trx();
+   mtrx.delay =  fc::seconds(trx.delay_sec);
+
    validate_transaction_with_minimal_state( trx, mtrx.billable_packed_size );
+   validate_expiration_not_too_far(trx, head_block_time() + mtrx.delay);
    validate_referenced_accounts(trx);
    validate_uniqueness(trx);
-   auto delay = check_transaction_authorization(trx, packed_trx.signatures, mtrx.context_free_data);
-   validate_expiration_not_too_far(trx, head_block_time() + delay );
-   mtrx.delay = delay;
+   if( should_check_authorization() ) {
+      auto enforced_delay = check_transaction_authorization(trx, packed_trx.signatures, mtrx.context_free_data);
+      EOS_ASSERT( mtrx.delay >= enforced_delay,
+                  transaction_exception,
+                  "authorization imposes a delay (${enforced_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
+                  ("enforced_delay", enforced_delay.to_seconds())("specified_delay", mtrx.delay.to_seconds()) );
+   }
 
    auto setup_us = fc::time_point::now() - start;
 
    transaction_trace result(mtrx.id);
 
-   if( delay.count() == 0 ) {
+   if( mtrx.delay.count() == 0 ) {
       result = _push_transaction( std::move(mtrx) );
    } else {
       result = wrap_transaction_processing( std::move(mtrx),
@@ -461,7 +468,6 @@ transaction chain_controller::_get_on_block_transaction()
    trx.actions.emplace_back(std::move(on_block_act));
    trx.set_reference_block(head_block_id());
    trx.expiration = head_block_time() + fc::seconds(1);
-   trx.max_kcpu_usage = 2000; // 1 << 24;
    return trx;
 }
 
@@ -827,16 +833,24 @@ void chain_controller::__apply_block(const signed_block& next_block)
                   auto itr = trx_index.find(receipt.id);
                   if( itr != trx_index.end() ) {
                      auto& trx_meta = input_metas.at(itr->second);
-                     const auto& trx      = trx_meta.trx();
+                     const auto& trx = trx_meta.trx();
+                     trx_meta.delay = fc::seconds(trx.delay_sec);
+
+                     validate_expiration_not_too_far(trx, head_block_time() + trx_meta.delay);
                      validate_referenced_accounts(trx);
                      validate_uniqueness(trx);
-                     FC_ASSERT( !should_check_signatures() || trx_meta.signing_keys,
-                                "signing_keys missing from transaction_metadata of an input transaction" );
-                     auto delay = check_authorization( trx.actions, trx.context_free_actions,
-                                                       should_check_signatures() ? *trx_meta.signing_keys : flat_set<public_key_type>() );
-                     validate_expiration_not_too_far(trx, head_block_time() + delay );
+                     if( should_check_authorization() ) {
+                        FC_ASSERT( !should_check_signatures() || trx_meta.signing_keys,
+                                   "signing_keys missing from transaction_metadata of an input transaction" );
+                        auto enforced_delay = check_authorization( trx.actions,
+                                                                   should_check_signatures() ? *trx_meta.signing_keys
+                                                                                             : flat_set<public_key_type>() );
+                        EOS_ASSERT( trx_meta.delay >= enforced_delay,
+                                    transaction_exception,
+                                    "authorization imposes a delay (${enforced_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",
+                                    ("enforced_delay", enforced_delay.to_seconds())("specified_delay", trx_meta.delay.to_seconds()) );
+                     }
 
-                     trx_meta.delay = delay;
                      return &input_metas.at(itr->second);
                   } else {
                      const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
@@ -965,7 +979,6 @@ private:
 };
 
 fc::microseconds chain_controller::check_authorization( const vector<action>& actions,
-                                                        const vector<action>& context_free_actions,
                                                         const flat_set<public_key_type>& provided_keys,
                                                         bool allow_unused_signatures,
                                                         flat_set<account_name> provided_accounts )const
@@ -1044,15 +1057,6 @@ fc::microseconds chain_controller::check_authorization( const vector<action>& ac
       }
    }
 
-   for( const auto& act : context_free_actions ) {
-      if (act.account == config::system_account_name && act.name == contracts::mindelay::get_name()) {
-         const auto mindelay = act.data_as<contracts::mindelay>();
-         auto delay = fc::seconds(mindelay.delay);
-         if( max_delay < delay )
-            max_delay = delay;
-      }
-   }
-
    if( !allow_unused_signatures && should_check_signatures() ) {
       EOS_ASSERT( checker.all_keys_used(), tx_irrelevant_sig,
                   "transaction bears irrelevant signatures from these keys: ${keys}",
@@ -1092,11 +1096,11 @@ fc::microseconds chain_controller::check_transaction_authorization(const transac
                                                                    bool allow_unused_signatures)const
 {
    if( should_check_signatures() ) {
-      return check_authorization( trx.actions, trx.context_free_actions,
+      return check_authorization( trx.actions,
                                   trx.get_signature_keys( signatures, chain_id_type{}, cfd, allow_unused_signatures ),
                                   allow_unused_signatures );
    } else {
-      return check_authorization( trx.actions, trx.context_free_actions, flat_set<public_key_type>(), true );
+      return check_authorization( trx.actions, flat_set<public_key_type>(), true );
    }
 }
 

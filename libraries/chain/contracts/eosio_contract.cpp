@@ -595,8 +595,4 @@ void apply_eosio_canceldelay(apply_context& context) {
    context.cancel_deferred(sender_id);
 }
 
-void apply_eosio_mindelay(apply_context& context) {
-   // all processing is performed in chain_controller::check_authorization
-}
-
 } } } // namespace eosio::chain::contracts

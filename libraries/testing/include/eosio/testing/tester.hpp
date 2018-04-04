@@ -30,7 +30,7 @@ namespace boost { namespace test_tools { namespace tt_detail {
       {
          ::operator<<( osm, v );
       }
-   };                       
+   };
 
    template<>
    struct print_log_value<fc::variant_object> {
@@ -80,14 +80,14 @@ namespace eosio { namespace testing {
          transaction_trace    push_transaction( signed_transaction& trx, uint32_t skip_flag = skip_nothing  );
          action_result        push_action(action&& cert_act, uint64_t authorizer);
 
-         transaction_trace    push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA );
-         transaction_trace    push_action( const account_name& code, const action_name& acttype, const vector<account_name>& actors, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA );
+         transaction_trace    push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
+         transaction_trace    push_action( const account_name& code, const action_name& acttype, const vector<account_name>& actors, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
 
          void                 set_tapos( signed_transaction& trx, uint32_t expiration = DEFAULT_EXPIRATION_DELTA ) const;
 
          void                 set_transaction_headers(signed_transaction& trx,
-                                                   uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
-                                                   uint32_t extra_cf_cpu_usage = 0) const;
+                                                      uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
+                                                      uint32_t delay_sec = 0)const;
 
          void                 create_accounts( vector<account_name> names, bool multisig = false ) {
             for( auto n : names ) create_account(n, config::system_account_name, multisig );
@@ -193,7 +193,7 @@ namespace eosio { namespace testing {
       }
 
       tester(chain_controller::controller_config config) {
-         init(config); 
+         init(config);
       }
 
       signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty )override {
@@ -201,11 +201,11 @@ namespace eosio { namespace testing {
       }
 
       bool validate() { return true; }
-   };   
+   };
 
    class validating_tester : public base_tester {
    public:
-      virtual ~validating_tester() { 
+      virtual ~validating_tester() {
          produce_block();
          BOOST_REQUIRE_EQUAL( validate(), true );
       }
@@ -240,11 +240,11 @@ namespace eosio { namespace testing {
          validating_node->push_block( sb );
          return sb;
       }
-      
+
       bool validate() {
         auto hbh = control->head_block_header();
         auto vn_hbh = validating_node->head_block_header();
-        return control->head_block_id() == validating_node->head_block_id() && 
+        return control->head_block_id() == validating_node->head_block_id() &&
                hbh.previous == vn_hbh.previous &&
                hbh.timestamp == vn_hbh.timestamp &&
                hbh.transaction_mroot == vn_hbh.transaction_mroot &&
@@ -254,7 +254,7 @@ namespace eosio { namespace testing {
       }
 
       unique_ptr<chain_controller>                  validating_node;
-   };   
+   };
 
    /**
     * Utility predicate to check whether an FC_ASSERT message ends with a given string
@@ -272,6 +272,5 @@ namespace eosio { namespace testing {
       string expected;
    };
 
-   
-} } /// eosio::testing
 
+} } /// eosio::testing

@@ -121,19 +121,13 @@ namespace eosio { namespace testing {
    }
 
 
-  void base_tester::set_transaction_headers( signed_transaction& trx, uint32_t expiration, uint32_t extra_cf_cpu_usage ) const {
+  void base_tester::set_transaction_headers( signed_transaction& trx, uint32_t expiration, uint32_t delay_sec ) const {
      trx.expiration = control->head_block_time() + fc::seconds(expiration);
      trx.set_reference_block( control->head_block_id() );
 
-     // estimate the size of the uncompressed transaction
-     //uint32_t estimated_size = (uint32_t)fc::raw::pack_size(trx);
-     //estimated_size += trx.context_free_data.size();
-     //estimated_size += 4 * sizeof(signature_type); // hack to allow for 4 sigs
-
      trx.max_net_usage_words = 0; // No limit
-
-     // estimate the usage of the context free actions
-     trx.max_kcpu_usage = 30000 + extra_cf_cpu_usage + (trx.context_free_actions.size() * config::default_base_per_action_cpu_usage * 10);
+     trx.max_kcpu_usage = 0; // No limit
+     trx.delay_sec = delay_sec;
   }
 
 
@@ -198,10 +192,11 @@ namespace eosio { namespace testing {
                              const action_name& acttype,
                              const account_name& actor,
                              const variant_object& data,
-                             uint32_t expiration)
+                             uint32_t expiration,
+                             uint32_t delay_sec)
 
    { try {
-      return push_action(code, acttype, vector<account_name>{ actor }, data, expiration);
+      return push_action(code, acttype, vector<account_name>{ actor }, data, expiration, delay_sec);
    } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actor)(data)(expiration) ) }
 
 
@@ -209,7 +204,8 @@ namespace eosio { namespace testing {
                              const action_name& acttype,
                              const vector<account_name>& actors,
                              const variant_object& data,
-                             uint32_t expiration)
+                             uint32_t expiration,
+                             uint32_t delay_sec)
 
    { try {
       const auto& acnt = control->get_database().get<account_object,by_name>(code);
@@ -231,7 +227,7 @@ namespace eosio { namespace testing {
 
       signed_transaction trx;
       trx.actions.emplace_back(std::move(act));
-         set_transaction_headers(trx, expiration);
+      set_transaction_headers(trx, expiration, delay_sec);
       for (const auto& actor : actors) {
          trx.sign(get_private_key(actor, "active"), chain_id_type());
       }
