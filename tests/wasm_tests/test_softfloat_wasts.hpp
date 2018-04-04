@@ -21647,3 +21647,38 @@ static const char f32_f64_conv_wast[] = R"=====(
     (call $assert_returnf64 (call $f64_convert_u_i64 (i64.const 9007199254740995)) (f64.const 9007199254740996) (i32.const 1040))
 ))
 )=====";
+
+
+static const char i32_overflow_wast[] = R"=====(
+(module
+  (import "env" "require_auth" (func $require_auth (param i64)))
+  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+   (table 0 anyfunc)
+   (memory $0 1)
+   (export "apply" (func $apply))
+   (func $i32_trunc_s_f32 (param $0 f32) (result i32) (i32.trunc_s/f32 (get_local $0)))
+   (func $i32_trunc_u_f32 (param $0 f32) (result i32) (i32.trunc_u/f32 (get_local $0)))
+   (func $i32_trunc_s_f64 (param $0 f64) (result i32) (i32.trunc_s/f64 (get_local $0)))
+   (func $i32_trunc_u_f64 (param $0 f64) (result i32) (i32.trunc_u/f64 (get_local $0)))
+   (func $test (param $0 i32))
+   (func $apply (param $0 i64)(param $1 i64)(param $2 i64)
+    (call $test (call $%s (%s)))
+))
+)=====";
+
+static const char i64_overflow_wast[] = R"=====(
+(module
+  (import "env" "require_auth" (func $require_auth (param i64)))
+  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+   (table 0 anyfunc)
+   (memory $0 1)
+   (export "apply" (func $apply))
+   (func $i64_trunc_s_f32 (param $0 f32) (result i64) (i64.trunc_s/f32 (get_local $0)))
+   (func $i64_trunc_u_f32 (param $0 f32) (result i64) (i64.trunc_u/f32 (get_local $0)))
+   (func $i64_trunc_s_f64 (param $0 f64) (result i64) (i64.trunc_s/f64 (get_local $0)))
+   (func $i64_trunc_u_f64 (param $0 f64) (result i64) (i64.trunc_u/f64 (get_local $0)))
+   (func $test (param $0 i64))
+   (func $apply (param $0 i64)(param $1 i64)(param $2 i64)
+    (call $test (call $%s (%s)))
+))
+)=====";

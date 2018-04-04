@@ -545,7 +545,7 @@ class softfloat_api : public context_aware_api {
       }
       int32_t _eosio_f32_trunc_i32s( float af ) {
          float32_t a = to_softfloat32(af);
-         if (_eosio_f32_ge(af, 2147483648.0f) || _eosio_f32_le(af, -2147483649.0f))
+         if (_eosio_f32_ge(af, 2147483648.0f) || _eosio_f32_lt(af, -2147483648.0f))
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i32 overflow" );
 
          if (is_nan(a))
@@ -554,7 +554,7 @@ class softfloat_api : public context_aware_api {
       }
       int32_t _eosio_f64_trunc_i32s( double af ) {
          float64_t a = to_softfloat64(af);
-         if (_eosio_f64_ge(af, 2147483648.0) || _eosio_f64_le(af, -2147483649.0))
+         if (_eosio_f64_ge(af, 2147483648.0) || _eosio_f64_lt(af, -2147483648.0))
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i32 overflow");
          if (is_nan(a))
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i32 unrepresentable");
@@ -578,7 +578,7 @@ class softfloat_api : public context_aware_api {
       }
       int64_t _eosio_f32_trunc_i64s( float af ) {
          float32_t a = to_softfloat32(af);
-         if (_eosio_f32_ge(af, 9223372036854775808.0f) || _eosio_f32_le(af, -9223372036854775809.0f))
+         if (_eosio_f32_ge(af, 9223372036854775808.0f) || _eosio_f32_lt(af, -9223372036854775808.0f))
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i64 overflow");
          if (is_nan(a))
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f32.convert_s/i64 unrepresentable");
@@ -586,7 +586,7 @@ class softfloat_api : public context_aware_api {
       }
       int64_t _eosio_f64_trunc_i64s( double af ) {
          float64_t a = to_softfloat64(af);
-         if (_eosio_f64_ge(af, 9223372036854775808.0) || _eosio_f64_le(af, -9223372036854775809.0))
+         if (_eosio_f64_ge(af, 9223372036854775808.0) || _eosio_f64_lt(af, -9223372036854775808.0))
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i64 overflow");
          if (is_nan(a))
             FC_THROW_EXCEPTION( eosio::chain::wasm_execution_error, "Error, f64.convert_s/i64 unrepresentable");
