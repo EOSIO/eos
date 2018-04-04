@@ -13,7 +13,7 @@ tutorial will focus on:
 The second part of this tutorial will walk you through creating and deploying
 your own contracts.
 
-This tutorial assumes that you have installed eosio and that `nodeos` and 
+This tutorial assumes that you have installed EOSIO and that `nodeos` and 
 `cleos` are in your path. 
 
 
@@ -80,7 +80,7 @@ You will need your wallet unlocked for the rest of this tutorial.
 
 All new blockchains start out with a master key for the sole initial account, `eosio`. To interact with the blockchain you will need to import this initial account's private key into your wallet.
 
-Import the master key for the `eosio` account into your wallet.
+Import the master key for the `eosio` account into your wallet.  The master key can be found in the `config.ini` file in the config folder for `nodeos`.  In this example, the default config folder is used.  On Linux systems, this will be in `~/.local/share/eosio/nodeos/config` and on MacOS, this will be in `~/Library/Application Support/eosio/nodeos/config`.
 
 ```
 $ cleos wallet import 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
@@ -89,12 +89,12 @@ imported private key for: EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
 
 ## Load the Bios Contract
 
-Now that we have a wallet with the key for the `eosio` loaded, we can set a default system contract.  For the purposes of development, the default `eosio.bios` contract can be used.  This contract enables you to have direct control over the resource allocation of other accounts and to access other privileged API calls. In a public blockchain, this contract will manage the staking and unstaking of tokens to reserve bandwidth for CPU and network activity, and memory for contracts. 
+Now that we have a wallet with the key for the `eosio` account loaded, we can set a default system contract.  For the purposes of development, the default `eosio.bios` contract can be used.  This contract enables you to have direct control over the resource allocation of other accounts and to access other privileged API calls. In a public blockchain, this contract will manage the staking and unstaking of tokens to reserve bandwidth for CPU and network activity, and memory for contracts. 
 
-The `eosio.bios` contract can be found in the `contracts` folder of your eosio source code.  The command sequence below assumes it is being executed from the root of the eosio source, but you can execute it from anywhere by specifying the full path to `${EOSIO_SOURCE}/contracts/eosio.bios`.
+The `eosio.bios` contract can be found in the `contracts/eosio.bios` folder of your EOSIO source code.  The command sequence below assumes it is being executed from the root of the EOSIO source, but you can execute it from anywhere by specifying the full path to `${EOSIO_SOURCE}/build/contracts/eosio.bios`.
 
 ```
-$ cleos set contract eosio contracts/eosio.bios -p eosio
+$ cleos set contract eosio build/contracts/eosio.bios -p eosio
 Reading WAST...
 Assembling WASM...
 Publishing contract...
@@ -105,7 +105,7 @@ executed transaction: 414cf0dc7740d22474992779b2416b0eabdbc91522c16521307dd68205
 
 The result of this command sequence is that `cleos` generated a transaction with two actions, `eosio::setcode` and `eosio::setabi`.  
 
-The code defines how the contract runs and the abi describes how to convert between binary and json representations of the arguments. While an abi is technically optional, all of the eosio tooling depends upon it for ease of use.  
+The code defines how the contract runs and the abi describes how to convert between binary and json representations of the arguments.  While an abi is technically optional, all of the EOSIO tooling depends upon it for ease of use.  
 
 Any time you execute a transaction you will see output like:
 ```
@@ -117,18 +117,18 @@ executed transaction: 414cf0dc7740d22474992779b2416b0eabdbc91522c16521307dd68205
 This can be read as: The action `setcode` as defined by `eosio` was executed by `eosio` contract with `{args...}`.
 
 ```
-#         ${executeor} <= ${contract}:${action} ${args...}
+#         ${executor} <= ${contract}:${action} ${args...}
 > console output from this execution, if any
 ```
 
 As we will see in a bit, actions can be processed by more than one contract.
 
-The last argument to this call was `-p eosio`.  This tells `cleos` to sign this action with the active authority of the `eosio` account, that is, to sign the action using the private key that we imported earlier. 
+The last argument to this call was `-p eosio`.  This tells `cleos` to sign this action with the active authority of the `eosio` account, i.e., to sign the action using the private key for the `eosio` account that we imported earlier. 
 
 
 ## Create an Account
 
-Now that we have setup the basic system contract, we can start to create our own accounts.  We will create two accounts, `user` and `tester`, and we will need a key to associate with each account.  In this example, the same key will be used for both accounts.
+Now that we have setup the basic system contract, we can start to create our own accounts.  We will create two accounts, `user` and `tester`, and we will need to associate a key with each account.  In this example, the same key will be used for both accounts.
 
 To do this we first generate a key for the accounts. 
 
@@ -144,6 +144,7 @@ Then we import this key into our wallet:
 $ cleos wallet import 5Jmsawgsp1tQ3GD6JyGCwy1dcvqKZgX6ugMVMdjirx85iv5VyPR
 imported private key for: EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ```
+**NOTE:** Be sure to use the actual key value generated by the `cleos` command and not the one shown in the example above!
 
 Keys are not automatically added to a wallet, so skipping this step could result in losing control of your account.
 
@@ -160,6 +161,7 @@ $ cleos create account eosio tester EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq
 executed transaction: 414cf0dc7740d22474992779b2416b0eabdbc91522c16521307dd682051af083 366 bytes  1000 cycles
 #         eosio <= eosio::newaccount            {"creator":"eosio","name":"tester","owner":{"threshold":1,"keys":[{"key":"EOS7ijWCBmoXBi3CgtK7DJxentZZ...
 ```
+**NOTE:** The `create account` subcommand requires two keys, one for the OwnerKey (which in a production environment should be kept highly secure) and one for the ActiveKey.  In this tutorial example, the same key is used for both.
 
 Because we are using the `eosio::account_history_api_plugin` we can query all accounts that are controlled by our key:
 
