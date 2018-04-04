@@ -920,6 +920,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
             c_trace.shard_traces.emplace_back(move(s_trace));
          } /// for each shard
 
+         _resource_limits.synchronize_account_ram_usage();
          _apply_cycle_trace(c_trace);
          r_trace.cycle_traces.emplace_back(move(c_trace));
       } /// for each cycle
@@ -2028,17 +2029,16 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
 
 void chain_controller::_destroy_generated_transaction( const generated_transaction_object& gto ) {
    auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
-   _resource_limits.add_account_ram_usage(gto.payer, -( config::billable_size_v<generated_transaction_object> + gto.packed_trx.size()));
+   _resource_limits.add_pending_account_ram_usage(gto.payer, -( config::billable_size_v<generated_transaction_object> + gto.packed_trx.size()));
    generated_transaction_idx.remove(gto);
 
 }
 
 void chain_controller::_create_generated_transaction( const deferred_transaction& dto ) {
    size_t trx_size = fc::raw::pack_size(dto);
-   _resource_limits.add_account_ram_usage(
+   _resource_limits.add_pending_account_ram_usage(
       dto.payer,
-      (config::billable_size_v<generated_transaction_object> + (int64_t)trx_size),
-      "Generated Transaction ${id} from ${s}", _V("id", dto.sender_id)("s",dto.sender)
+      (config::billable_size_v<generated_transaction_object> + (int64_t)trx_size)
    );
 
    _db.create<generated_transaction_object>([&](generated_transaction_object &obj) {
@@ -2157,6 +2157,7 @@ transaction_trace chain_controller::wrap_transaction_processing( transaction_met
    // for now apply the transaction serially but schedule it according to those invariants
 
    auto result = trx_processing(data);
+   _resource_limits.synchronize_account_ram_usage();
 
    auto& bcycle = _pending_block->regions.back().cycles_summary.back();
    auto& bshard = bcycle.front();

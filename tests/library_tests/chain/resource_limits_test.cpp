@@ -245,10 +245,12 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       process_account_limit_updates();
 
       for (int idx = 0; idx < expected_iterations - 1; idx++) {
-         add_account_ram_usage(account, increment);
+         add_pending_account_ram_usage(account, increment);
+         synchronize_account_ram_usage( );
       }
 
-      BOOST_REQUIRE_THROW(add_account_ram_usage(account, increment), tx_resource_exhausted);
+      add_pending_account_ram_usage(account, increment);
+      BOOST_REQUIRE_THROW(synchronize_account_ram_usage( ), tx_resource_exhausted);
    } FC_LOG_AND_RETHROW();
 
    BOOST_FIXTURE_TEST_CASE(enforce_account_ram_commitment, resource_limits_fixture) try {
@@ -262,7 +264,8 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       initialize_account(account);
       set_account_limits(account, limit, -1, -1 );
       process_account_limit_updates();
-      add_account_ram_usage(account, commit);
+      add_pending_account_ram_usage(account, commit);
+      synchronize_account_ram_usage( );
 
       for (int idx = 0; idx < expected_iterations - 1; idx++) {
          set_account_limits(account, limit - increment * idx, -1, -1);
