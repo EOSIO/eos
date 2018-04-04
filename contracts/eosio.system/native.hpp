@@ -33,61 +33,6 @@ namespace eosiosystem {
 
       EOSLIB_SERIALIZE( authority, (threshold)(keys)(accounts) )
    };
-   struct type_def {
-      type_name   new_type_name;
-      type_name   type;
-
-      EOSLIB_SERIALIZE( type_def, (new_type_name)(type) )
-   };
-
-   struct field_def {
-      field_name name;
-      type_name  type;
-
-      EOSLIB_SERIALIZE( field_def, (name)(type) )
-   };
-
-   struct struct_def {
-      type_name              name;
-      type_name              base;
-      std::vector<field_def> fields;
-
-      EOSLIB_SERIALIZE( struct_def, (name)(base)(fields) )
-   };
-
-   struct action_def {
-      action_name name;
-      type_name   type;
-      std::string      ricardian_contract;         
-      EOSLIB_SERIALIZE(action_def, (name)(type)(ricardian_contract) )
-   };
-
-   struct table_def {
-      table_name              name;
-      type_name               index_type;
-      std::vector<field_name> key_names;
-      std::vector<type_name>  key_types;
-      type_name               type;
-
-      EOSLIB_SERIALIZE(table_def, (name)(index_type)(key_names)(key_types)(type) )
-   };
-   
-   struct clause_pair {
-      std::string id;
-      std::string body;
-      EOSLIB_SERIALIZE( clause_pair, (id)(body) )
-   };
-   struct abi_def {
-      std::vector<type_def>     types;
-      std::vector<struct_def>   structs;
-      std::vector<action_def>   actions;
-      std::vector<table_def>    tables;
-      std::vector<clause_pair>  clauses;
-         
-      EOSLIB_SERIALIZE( abi_def, (types)(structs)(actions)(tables)(clauses) )
-   };
-
- 
 
    template <account_name SystemAccount>
    class native {
@@ -177,16 +122,6 @@ namespace eosiosystem {
          };
 
          static void on( const vetorecovery& ) {
-         }
-
-         ACTION( SystemAccount, setabi ) {
-            account_name                     account;
-            abi_def                          abi;
-
-            EOSLIB_SERIALIZE( setabi, (account)(abi) )
-         };
-
-         static void on( const setabi& ) {
          }
 
          struct onerror: eosio::action_meta<SystemAccount, N(onerror)>, bytes {
