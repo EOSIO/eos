@@ -441,7 +441,7 @@ class Node(object):
 
         blockNum=None
         if not self.enableMongo:
-            blockNum=int(trans["transaction"]["data"]["ref_block_num"])
+            blockNum=int(trans["transaction"]["transaction"]["ref_block_num"])
         else:
             blockNum=int(trans["ref_block_num"])
 

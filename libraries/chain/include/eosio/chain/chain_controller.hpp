@@ -49,7 +49,7 @@ namespace eosio { namespace chain {
       skip_assert_evaluation      = 1 << 8,  ///< used while reindexing
       skip_undo_history_check     = 1 << 9,  ///< used while reindexing
       skip_producer_schedule_check= 1 << 10, ///< used while reindexing
-      skip_validate               = 1 << 11, ///< used prior to checkpoint, skips validate() call on transaction
+      skip_validate               = 1 << 11, ///< used prior to checkpoint, skips transaction validation
       skip_scope_check            = 1 << 12, ///< used to skip checks for proper scope
       skip_output_check           = 1 << 13, ///< used to skip checks for outputs in block exactly matching those created from apply
       pushed_transaction          = 1 << 14, ///< used to indicate that the origination of the call was from a push_transaction, to determine time allotment
@@ -286,7 +286,6 @@ namespace eosio { namespace chain {
 
          /**
           * @param actions - the actions to check authorization across
-          * @param context_free_actions - the context free actions to check for mindelays across
           * @param provided_keys - the set of public keys which have authorized the transaction
           * @param allow_unused_signatures - true if method should not assert on unused signatures
           * @param provided_accounts - the set of accounts which have authorized the transaction (presumed to be owner)
@@ -294,7 +293,6 @@ namespace eosio { namespace chain {
           * @return fc::microseconds set to the max delay that this authorization requires to complete
           */
          fc::microseconds check_authorization( const vector<action>& actions,
-                                               const vector<action>& context_free_actions,
                                                const flat_set<public_key_type>& provided_keys,
                                                bool                             allow_unused_signatures = false,
                                                flat_set<account_name>           provided_accounts = flat_set<account_name>()
@@ -380,7 +378,7 @@ namespace eosio { namespace chain {
          void validate_not_expired( const transaction& trx )const;
          void validate_expiration_not_too_far( const transaction& trx, fc::time_point reference_time )const;
          void validate_transaction_without_state( const transaction& trx )const;
-         void validate_transaction_with_minimal_state( const transaction& trx )const;
+         void validate_transaction_with_minimal_state( const transaction& trx, uint32_t min_net_usage = 0 )const;
          void validate_transaction_with_minimal_state( const packed_transaction& packed_trx, const transaction* trx_ptr = nullptr )const;
          /// @}
 
@@ -413,6 +411,7 @@ namespace eosio { namespace chain {
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
          bool should_check_tapos()const                      { return !(_skip_flags&skip_tapos_check);            }
          bool should_check_signatures()const                 { return !(_skip_flags&skip_transaction_signatures); }
+         bool should_check_authorization()const              { return !(_skip_flags&skip_authority_check);        }
 
          ///Steps involved in applying a new block
          ///@{

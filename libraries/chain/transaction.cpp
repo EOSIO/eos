@@ -121,6 +121,18 @@ flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id
    return transaction::get_signature_keys(signatures, chain_id, context_free_data, allow_duplicate_keys);
 }
 
+uint32_t packed_transaction::get_billable_size()const {
+   auto size = fc::raw::pack_size(*this);
+   FC_ASSERT( size <= std::numeric_limits<uint32_t>::max(), "packed_transaction is too big" );
+   return static_cast<uint32_t>(size);
+}
+
+digest_type packed_transaction::packed_digest()const {
+   digest_type::encoder enc;
+   fc::raw::pack( enc, *this );
+   return enc.result();
+}
+
 namespace bio = boost::iostreams;
 
 template<size_t Limit>
@@ -139,10 +151,16 @@ struct read_limiter {
    size_t _total = 0;
 };
 
+static vector<bytes> unpack_context_free_data(const bytes& data) {
+   if( data.size() == 0 )
+      return vector<bytes>();
+
+   return fc::raw::unpack< vector<bytes> >(data);
+}
+
 static transaction unpack_transaction(const bytes& data) {
    return fc::raw::unpack<transaction>(data);
 }
-
 
 static bytes zlib_decompress(const bytes& data) {
    try {
@@ -162,6 +180,14 @@ static bytes zlib_decompress(const bytes& data) {
    }
 }
 
+static vector<bytes> zlib_decompress_context_free_data(const bytes& data) {
+   if( data.size() == 0 )
+      return vector<bytes>();
+
+   bytes out = zlib_decompress(data);
+   return unpack_context_free_data(out);
+}
+
 static transaction zlib_decompress_transaction(const bytes& data) {
    bytes out = zlib_decompress(data);
    return unpack_transaction(out);
@@ -169,6 +195,27 @@ static transaction zlib_decompress_transaction(const bytes& data) {
 
 static bytes pack_transaction(const transaction& t) {
    return fc::raw::pack(t);
+}
+
+static bytes pack_context_free_data(const vector<bytes>& cfd ) {
+   if( cfd.size() == 0 )
+      return bytes();
+
+   return fc::raw::pack(cfd);
+}
+
+static bytes zlib_compress_context_free_data(const vector<bytes>& cfd ) {
+   if( cfd.size() == 0 )
+      return bytes();
+
+   bytes in = pack_context_free_data(cfd);
+   bytes out;
+   bio::filtering_ostream comp;
+   comp.push(bio::zlib_compressor(bio::zlib::best_compression));
+   comp.push(bio::back_inserter(out));
+   bio::write(comp, in.data(), in.size());
+   bio::close(comp);
+   return out;
 }
 
 static bytes zlib_compress_transaction(const transaction& t) {
@@ -187,13 +234,27 @@ bytes packed_transaction::get_raw_transaction() const
    try {
       switch(compression) {
          case none:
-            return data;
+            return packed_trx;
          case zlib:
-            return zlib_decompress(data);
+            return zlib_decompress(packed_trx);
          default:
             FC_THROW("Unknown transaction compression algorithm");
       }
-   } FC_CAPTURE_AND_RETHROW((compression)(data))
+   } FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
+}
+
+vector<bytes> packed_transaction::get_context_free_data()const
+{
+   try {
+      switch(compression) {
+         case none:
+            return unpack_context_free_data(packed_context_free_data);
+         case zlib:
+            return zlib_decompress_context_free_data(packed_context_free_data);
+         default:
+            FC_THROW("Unknown transaction compression algorithm");
+      }
+   } FC_CAPTURE_AND_RETHROW((compression)(packed_context_free_data))
 }
 
 transaction packed_transaction::get_transaction()const
@@ -201,18 +262,28 @@ transaction packed_transaction::get_transaction()const
    try {
       switch(compression) {
          case none:
-            return unpack_transaction(data);
+            return unpack_transaction(packed_trx);
          case zlib:
-            return zlib_decompress_transaction(data);
+            return zlib_decompress_transaction(packed_trx);
          default:
             FC_THROW("Unknown transaction compression algorithm");
       }
-   } FC_CAPTURE_AND_RETHROW((compression)(data))
+   } FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
 }
 
 signed_transaction packed_transaction::get_signed_transaction() const
 {
-   return signed_transaction(get_transaction(), signatures, context_free_data);
+   try {
+      switch(compression) {
+         case none:
+            return signed_transaction(get_transaction(), signatures, unpack_context_free_data(packed_context_free_data));
+         case zlib:
+            return signed_transaction(get_transaction(), signatures, zlib_decompress_context_free_data(packed_context_free_data));
+         default:
+            FC_THROW("Unknown transaction compression algorithm");
+      }
+   } FC_CAPTURE_AND_RETHROW((compression)(packed_trx)(packed_context_free_data))
+
 }
 
 void packed_transaction::set_transaction(const transaction& t, packed_transaction::compression_type _compression)
@@ -220,10 +291,30 @@ void packed_transaction::set_transaction(const transaction& t, packed_transactio
    try {
       switch(_compression) {
          case none:
-            data = pack_transaction(t);
+            packed_trx = pack_transaction(t);
             break;
          case zlib:
-            data = zlib_compress_transaction(t);
+            packed_trx = zlib_compress_transaction(t);
+            break;
+         default:
+            FC_THROW("Unknown transaction compression algorithm");
+      }
+   } FC_CAPTURE_AND_RETHROW((_compression)(t))
+   packed_context_free_data.clear();
+   compression = _compression;
+}
+
+void packed_transaction::set_transaction(const transaction& t, const vector<bytes>& cfd, packed_transaction::compression_type _compression)
+{
+   try {
+      switch(_compression) {
+         case none:
+            packed_trx = pack_transaction(t);
+            packed_context_free_data = pack_context_free_data(cfd);
+            break;
+         case zlib:
+            packed_trx = zlib_compress_transaction(t);
+            packed_context_free_data = zlib_compress_context_free_data(cfd);
             break;
          default:
             FC_THROW("Unknown transaction compression algorithm");

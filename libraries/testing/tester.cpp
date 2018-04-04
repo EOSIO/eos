@@ -28,7 +28,7 @@ namespace eosio { namespace testing {
       }
       return res;
    }
-   
+
    void base_tester::init(bool push_genesis, chain_controller::runtime_limits limits) {
       cfg.block_log_dir      = tempdir.path() / "blocklog";
       cfg.shared_memory_dir  = tempdir.path() / "shared";
@@ -51,29 +51,29 @@ namespace eosio { namespace testing {
          push_genesis_block();
    }
 
-   
+
    void base_tester::init(chain_controller::controller_config config) {
       cfg = config;
       open();
    }
 
-   
+
    public_key_type  base_tester::get_public_key( name keyname, string role ) const {
       return get_private_key( keyname, role ).get_public_key();
    }
 
-   
+
    private_key_type base_tester::get_private_key( name keyname, string role ) const {
       return private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(string(keyname)+role));
    }
 
-   
+
    void base_tester::close() {
       control.reset();
       chain_transactions.clear();
    }
 
-   
+
    void base_tester::open() {
       control.reset( new chain_controller(cfg) );
       chain_transactions.clear();
@@ -90,11 +90,11 @@ namespace eosio { namespace testing {
       });
    }
 
-   signed_block base_tester::push_block(signed_block b) { 
+   signed_block base_tester::push_block(signed_block b) {
       control->push_block(b, 2);
       return b;
    }
-   
+
    signed_block base_tester::_produce_block( fc::microseconds skip_time, uint32_t skip_flag) {
       auto head_time = control->head_block_time();
       auto next_time = head_time + skip_time;
@@ -104,13 +104,13 @@ namespace eosio { namespace testing {
 
       return control->generate_block( next_time, sch_pro, priv_key, skip_flag );
    }
-   
+
    void base_tester::produce_blocks( uint32_t n ) {
       for( uint32_t i = 0; i < n; ++i )
          produce_block();
    }
 
-   
+
    void base_tester::produce_blocks_until_end_of_round() {
       uint64_t blocks_per_round;
       while(true) {
@@ -120,23 +120,17 @@ namespace eosio { namespace testing {
       }
    }
 
-   
-  void base_tester::set_transaction_headers( signed_transaction& trx, uint32_t expiration, uint32_t extra_cf_cpu_usage ) const {
+
+  void base_tester::set_transaction_headers( signed_transaction& trx, uint32_t expiration, uint32_t delay_sec ) const {
      trx.expiration = control->head_block_time() + fc::seconds(expiration);
      trx.set_reference_block( control->head_block_id() );
 
-     // estimate the size of the uncompressed transaction
-     uint32_t estimated_size = (uint32_t)fc::raw::pack_size(trx);
-     estimated_size += trx.context_free_data.size();
-     estimated_size += 4 * sizeof(signature_type); // hack to allow for 4 sigs
-
-     trx.net_usage_words = estimated_size / 8;
-
-     // dont estimate the cpu_usage
-     trx.kcpu_usage = 0;
+     trx.max_net_usage_words = 0; // No limit
+     trx.max_kcpu_usage = 0; // No limit
+     trx.delay_sec = delay_sec;
   }
 
-   
+
    void base_tester::create_account( account_name a, account_name creator, bool multisig ) {
       signed_transaction trx;
       set_transaction_headers(trx);
@@ -172,7 +166,7 @@ namespace eosio { namespace testing {
       return push_transaction( ptrx, skip_flag );
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
 
-   
+
    typename base_tester::action_result base_tester::push_action(action&& act, uint64_t authorizer) {
       signed_transaction trx;
       if (authorizer) {
@@ -193,23 +187,25 @@ namespace eosio { namespace testing {
       return success();
    }
 
-   
+
    transaction_trace base_tester::push_action( const account_name& code,
                              const action_name& acttype,
                              const account_name& actor,
                              const variant_object& data,
-                             uint32_t expiration)
+                             uint32_t expiration,
+                             uint32_t delay_sec)
 
    { try {
-      return push_action(code, acttype, vector<account_name>{ actor }, data, expiration);
+      return push_action(code, acttype, vector<account_name>{ actor }, data, expiration, delay_sec);
    } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actor)(data)(expiration) ) }
 
-   
+
    transaction_trace base_tester::push_action( const account_name& code,
                              const action_name& acttype,
                              const vector<account_name>& actors,
                              const variant_object& data,
-                             uint32_t expiration)
+                             uint32_t expiration,
+                             uint32_t delay_sec)
 
    { try {
       const auto& acnt = control->get_database().get<account_object,by_name>(code);
@@ -219,7 +215,7 @@ namespace eosio { namespace testing {
 
       string action_type_name = abis.get_action_type(acttype);
       FC_ASSERT( action_type_name != string(), "unknown action type ${a}", ("a",acttype) );
-      
+
 
       action act;
       act.account = code;
@@ -231,7 +227,7 @@ namespace eosio { namespace testing {
 
       signed_transaction trx;
       trx.actions.emplace_back(std::move(act));
-         set_transaction_headers(trx, expiration);
+      set_transaction_headers(trx, expiration, delay_sec);
       for (const auto& actor : actors) {
          trx.sign(get_private_key(actor, "active"), chain_id_type());
       }
@@ -239,7 +235,7 @@ namespace eosio { namespace testing {
       return push_transaction(trx);
    } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actors)(data)(expiration) ) }
 
-   
+
    transaction_trace base_tester::push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys ) {
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
@@ -262,7 +258,7 @@ namespace eosio { namespace testing {
       return push_transaction( trx );
    }
 
-   
+
     transaction_trace base_tester::push_reqauth(account_name from, string role, bool multi_sig) {
         if (!multi_sig) {
             return push_reqauth(from, vector<permission_level>{{from, config::owner_name}},
@@ -273,7 +269,7 @@ namespace eosio { namespace testing {
         }
     }
 
-   
+
    transaction_trace base_tester::push_dummy(account_name from, const string& v) {
       // use reqauth for a normal action, this could be anything
       variant pretty_trx = fc::mutable_variant_object()
@@ -310,12 +306,12 @@ namespace eosio { namespace testing {
       return push_transaction( trx );
    }
 
-   
+
    transaction_trace base_tester::transfer( account_name from, account_name to, string amount, string memo, account_name currency ) {
       return transfer( from, to, asset::from_string(amount), memo, currency );
    }
 
-   
+
    transaction_trace base_tester::transfer( account_name from, account_name to, asset amount, string memo, account_name currency ) {
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
@@ -344,7 +340,7 @@ namespace eosio { namespace testing {
       return push_transaction( trx );
    }
 
-   
+
    transaction_trace base_tester::issue( account_name to, string amount, account_name currency ) {
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
@@ -371,7 +367,7 @@ namespace eosio { namespace testing {
       return push_transaction( trx );
    }
 
-   
+
    void base_tester::link_authority( account_name account, account_name code, permission_name req, action_name type ) {
       signed_transaction trx;
 
@@ -383,7 +379,7 @@ namespace eosio { namespace testing {
       push_transaction( trx );
    }
 
-   
+
    void base_tester::unlink_authority( account_name account, account_name code, action_name type ) {
       signed_transaction trx;
 
@@ -395,7 +391,7 @@ namespace eosio { namespace testing {
       push_transaction( trx );
    }
 
-   
+
    void base_tester::set_authority( account_name account,
                                permission_name perm,
                                authority auth,
@@ -420,7 +416,7 @@ namespace eosio { namespace testing {
       push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account)(perm)(auth)(parent) ) }
 
-   
+
    void base_tester::set_authority( account_name account,
                                     permission_name perm,
                                     authority auth,
@@ -429,7 +425,7 @@ namespace eosio { namespace testing {
    }
 
 
-   
+
    void base_tester::delete_authority( account_name account,
                                     permission_name perm,
                                     const vector<permission_level>& auths,
@@ -446,18 +442,18 @@ namespace eosio { namespace testing {
          push_transaction( trx );
       } FC_CAPTURE_AND_RETHROW( (account)(perm) ) }
 
-   
+
    void base_tester::delete_authority( account_name account,
                                        permission_name perm ) {
       delete_authority(account, perm, { permission_level{ account, config::owner_name } }, { get_private_key( account, "owner" ) });
    }
 
-   
+
    void base_tester::set_code( account_name account, const char* wast ) try {
       set_code(account, wast_to_wasm(wast));
    } FC_CAPTURE_AND_RETHROW( (account) )
 
-   
+
    void base_tester::set_code( account_name account, const vector<uint8_t> wasm ) try {
       signed_transaction trx;
       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
@@ -473,7 +469,7 @@ namespace eosio { namespace testing {
       push_transaction( trx );
    } FC_CAPTURE_AND_RETHROW( (account) )
 
-   
+
    void base_tester::set_abi( account_name account, const char* abi_json) {
       auto abi = fc::json::from_string(abi_json).template as<contracts::abi_def>();
       signed_transaction trx;
@@ -488,12 +484,12 @@ namespace eosio { namespace testing {
       push_transaction( trx );
    }
 
-   
+
    bool base_tester::chain_has_transaction( const transaction_id_type& txid ) const {
       return chain_transactions.count(txid) != 0;
    }
 
-   
+
    const transaction_receipt& base_tester::get_transaction_receipt( const transaction_id_type& txid ) const {
       return chain_transactions.at(txid);
    }
@@ -501,7 +497,7 @@ namespace eosio { namespace testing {
    /**
     *  Reads balance as stored by generic_currency contract
     */
-   
+
    asset base_tester::get_currency_balance( const account_name& code,
                                        const symbol&       asset_symbol,
                                        const account_name& account ) const {
@@ -521,7 +517,7 @@ namespace eosio { namespace testing {
       return asset(result, asset_symbol);
    }
 
-   
+
    vector<char> base_tester::get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act ) {
       vector<char> data;
       const auto& db = control->get_database();
@@ -542,21 +538,21 @@ namespace eosio { namespace testing {
       return data;
    }
 
-   
+
    vector<uint8_t> base_tester::to_uint8_vector(const string& s) {
       vector<uint8_t> v(s.size());
       copy(s.begin(), s.end(), v.begin());
       return v;
    };
 
-   
+
    vector<uint8_t> base_tester::to_uint8_vector(uint64_t x) {
       vector<uint8_t> v(sizeof(x));
       *reinterpret_cast<uint64_t*>(v.data()) = x;
       return v;
    };
 
-   
+
    uint64_t base_tester::to_uint64(fc::variant x) {
       vector<uint8_t> blob;
       fc::from_variant<uint8_t>(x, blob);
@@ -564,7 +560,7 @@ namespace eosio { namespace testing {
       return *reinterpret_cast<uint64_t*>(blob.data());
    }
 
-   
+
    string base_tester::to_string(fc::variant x) {
       vector<uint8_t> v;
       fc::from_variant<uint8_t>(x, v);
@@ -572,8 +568,8 @@ namespace eosio { namespace testing {
       copy(v.begin(), v.end(), s.begin());
       return s;
    }
-   
-   
+
+
    void base_tester::sync_with(base_tester& other) {
       // Already in sync?
       if (control->head_block_id() == other.control->head_block_id())

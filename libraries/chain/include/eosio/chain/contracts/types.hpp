@@ -281,18 +281,6 @@ struct canceldelay {
    }
 };
 
-struct mindelay {
-   uint32_t   delay;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(mindelay);
-   }
-};
-
 } } } /// namespace eosio::chain::contracts
 
 FC_REFLECT( eosio::chain::contracts::type_def                         , (new_type_name)(type) )
@@ -313,4 +301,3 @@ FC_REFLECT( eosio::chain::contracts::postrecovery                     , (account
 FC_REFLECT( eosio::chain::contracts::passrecovery                     , (account) )
 FC_REFLECT( eosio::chain::contracts::vetorecovery                     , (account) )
 FC_REFLECT( eosio::chain::contracts::canceldelay                      , (trx_id) )
-FC_REFLECT( eosio::chain::contracts::mindelay                         , (delay) )

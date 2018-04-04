@@ -229,9 +229,9 @@ void apply_context::require_recipient( account_name code ) {
 void apply_context::execute_inline( action&& a ) {
    if ( !privileged ) {
       if( a.account != receiver ) {
-         const auto delay = controller.check_authorization({a}, vector<action>(), flat_set<public_key_type>(), false, {receiver});
+         const auto delay = controller.check_authorization({a}, flat_set<public_key_type>(), false, {receiver});
          FC_ASSERT( trx_meta.published + delay <= controller.head_block_time(),
-                    "inline action uses a permission that imposes a delay that is not met, add an action of mindelay with delay of at least ${delay} seconds",
+                    "inline action uses a permission that imposes a delay that is not met, set delay_sec in transaction header to at least ${delay} seconds",
                     ("delay", delay.to_seconds()) );
       }
    }
@@ -252,7 +252,7 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
       // Any other called of this function needs to similarly meet that precondition.
       EOS_ASSERT( trx.execute_after < trx.expiration,
                   transaction_exception,
-                  "Transaction expires at ${trx.expiration} which is before the contract-imposed first allowed time to execute at ${trx.execute_after}",
+                  "Transaction expires at ${trx.expiration} which is before the first allowed time to execute at ${trx.execute_after}",
                   ("trx.expiration",trx.expiration)("trx.execute_after",trx.execute_after) );
 
       controller.validate_expiration_not_too_far(trx, trx.execute_after);
@@ -282,20 +282,20 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
             }
          }
          if( check_auth ) {
-            delay = controller.check_authorization(trx.actions, vector<action>(), flat_set<public_key_type>(), false, {receiver});
+            delay = controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
             FC_ASSERT( trx_meta.published + delay <= controller.head_block_time(),
-                       "deferred transaction uses a permission that imposes a delay that is not met, add an action of mindelay with delay of at least ${delay} seconds",
+                       "deferred transaction uses a permission that imposes a delay that is not met, set delay_sec in transaction header to at least ${delay} seconds",
                        ("delay", delay.to_seconds()) );
          }
       }
 
       auto now = controller.head_block_time();
       if( delay.count() ) {
-         trx.execute_after = std::max(trx.execute_after, time_point_sec(now + delay + fc::microseconds(999'999)) /* rounds up nearest second */ );
-         EOS_ASSERT( trx.execute_after < trx.expiration,
+         auto min_execute_after_time = time_point_sec(now + delay + fc::microseconds(999'999)); // rounds up nearest second
+         EOS_ASSERT( min_execute_after_time <= trx.execute_after,
                      transaction_exception,
-                     "Transaction expires at ${trx.expiration} which is before the first allowed time to execute at ${trx.execute_after}",
-                     ("trx.expiration",trx.expiration)("trx.execute_after",trx.execute_after) );
+                     "deferred transaction is specified to execute after ${trx.execute_after} which is earlier than the earliest time allowed by authorization checker",
+                     ("trx.execute_after",trx.execute_after)("min_execute_after_time",min_execute_after_time) );
       }
 
       results.deferred_transaction_requests.push_back(move(trx));

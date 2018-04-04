@@ -146,7 +146,7 @@ const char* error_advice_3120006 = R"=====(Ensure that your transaction JSON fol
   "region": "uint16_t",
   "read_scope":[ "account_name" ],
   "write_scope":[ "account_name" ],
-  "actions":[{ 
+  "actions":[{
     "account":"account_name",
     "name":"action_name",
     "authorization":[{ "actor":"account_name","permission":"permission_name" }],
@@ -161,7 +161,7 @@ e.g.
   "region": "0",
   "read_scope":[ "initb", "initc" ],
   "write_scope":[ "initb", "initc" ],
-  "actions":[{ 
+  "actions":[{
     "account":"eosio",
     "name":"transfer",
     "authorization":[{ "actor":"initb","permission":"active" }],
@@ -203,13 +203,13 @@ const char* error_advice_3120010 =  R"=====(Ensure that your packed transaction 
 {
   "signatures" : [ "signature" ],
   "compression" : enum("none", "zlib"),
-  "data" : "bytes"
+  "hex_transaction" : "bytes"
 }
 e.g.
 {
   "signatures" : [ "EOSJze4m1ZHQ4UjuHpBcX6uHPN4Xyggv52raQMTBZJghzDLepaPcSGCNYTxaP2NiaF4yRF5RaYwqsQYAwBwFtfuTJr34Z5GJX" ],
   "compression" : "none",
-  "data" : "6c36a25a00002602626c5e7f0000000000010000001e4d75af460000000000a53176010000000000ea305500000000a8ed3232180000001e4d75af4680969800000000000443555200000000"
+  "hex_transaction" : "6c36a25a00002602626c5e7f0000000000010000001e4d75af460000000000a53176010000000000ea305500000000a8ed3232180000001e4d75af4680969800000000000443555200000000"
 })=====";
 
 const char* error_advice_3130001 =  "Ensure that you have \033[2meosio::chain_api_plugin\033[0m\033[32m added to your node's configuration!";
@@ -326,7 +326,7 @@ bool print_help_text(const fc::exception& e) {
             auto args = smatch_to_variant(matches);
             for (const auto& msg: candidate.second) {
                std::cerr << localized_with_variant(msg, args) << std::endl;
-            }               
+            }
             result = true;
             break;
          }
@@ -335,7 +335,7 @@ bool print_help_text(const fc::exception& e) {
       std::cerr << localized(help_regex_error, ("code", e.code())("what", e.what())) << std::endl;
    }
 
-   return result;   
+   return result;
 }
 
 }}}

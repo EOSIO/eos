@@ -145,8 +145,8 @@ bool   tx_dont_broadcast = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
 
-uint32_t tx_cf_cpu_usage = 0;
-uint32_t tx_net_usage = 0;
+uint32_t tx_max_cpu_usage = 0;
+uint32_t tx_max_net_usage = 0;
 
 vector<string> tx_permission;
 
@@ -172,8 +172,8 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
       msg += " (defaults to '" + default_permission + "')";
    cmd->add_option("-p,--permission", tx_permission, localized(msg.c_str()));
 
-   cmd->add_option("--cf-cpu-usage", tx_cf_cpu_usage, localized("set the cpu usage budget, in instructions-retired, for the execution of all context free actions, defaults to an estimated value based on the transaction"));
-   cmd->add_option("--net-usage", tx_net_usage, localized("set the net usage budget, in bytes, for the storage of the transaction (compressed), signatures and any context-free data on the block chain"));
+   cmd->add_option("--max-cpu-usage", tx_max_cpu_usage, localized("set an upper limit on the cpu usage budget, in instructions-retired, for the execution of the transaction (defaults to 0 which means no limit)"));
+   cmd->add_option("--max-net-usage", tx_max_net_usage, localized("set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
 }
 
 string generate_nonce_value() {
@@ -229,32 +229,6 @@ void sign_transaction(signed_transaction& trx, fc::variant& required_keys) {
    trx = signed_trx.as<signed_transaction>();
 }
 
-static uint32_t estimate_transaction_context_free_kilo_cpu_usage( const signed_transaction& trx, int32_t extra_kcpu = 1000 ) {
-   if (tx_cf_cpu_usage != 0) {
-      return (uint32_t)(tx_cf_cpu_usage + 1023UL) / (uint32_t)1024UL;
-   }
-
-   const uint32_t estimated_per_action_usage = config::default_base_per_action_cpu_usage * 10;
-   return extra_kcpu + (uint32_t)(trx.context_free_actions.size() * estimated_per_action_usage + 1023) / (uint32_t)1024;
-}
-
-static uint32_t estimate_transaction_net_usage_words( const signed_transaction& trx, packed_transaction::compression_type compression, size_t num_keys ) {
-   if (tx_net_usage != 0) {
-      return tx_net_usage / (uint32_t)8UL;
-   }
-
-   uint32_t sigs =  (uint32_t)5 +  // the maximum encoded size of the unsigned_int for the size of the signature block
-                    (uint32_t)(num_keys * sizeof(signature_type));
-
-   uint32_t packed_size_drift = compression == packed_transaction::none ?
-           4 :  // there is 1 variably encoded ints we haven't set yet, this size it can grow by 4 bytes
-           256; // allow for drift in the compression due to new data
-
-   uint32_t estimated_packed_size = (uint32_t)packed_transaction(trx, compression).data.size() + packed_size_drift;
-
-   return (uint32_t)(sigs + estimated_packed_size + (uint32_t)trx.context_free_data.size() + 7) / (uint32_t)8;
-}
-
 fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
    auto info = get_info();
    trx.expiration = info.head_block_time + tx_expiration;
@@ -267,8 +241,8 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
    auto required_keys = determine_required_keys(trx);
    size_t num_keys = required_keys.is_array() ? required_keys.get_array().size() : 1;
 
-   trx.kcpu_usage = estimate_transaction_context_free_kilo_cpu_usage(trx, extra_kcpu );
-   trx.net_usage_words = estimate_transaction_net_usage_words(trx, compression, num_keys);
+   trx.max_kcpu_usage = (tx_max_cpu_usage + 1023)/1024;
+   trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
 
    if (!tx_skip_sign) {
       sign_transaction(trx, required_keys);
@@ -292,8 +266,8 @@ void print_result( const fc::variant& result ) {
       const auto& processed = result["processed"];
       const auto& transaction_id = processed["id"].as_string();
       const auto& status = processed["status"].as_string() ;
-      auto net = processed["net_usage"].as_int64(); 
-      auto cpu = processed["cpu_usage"].as_int64(); 
+      auto net = processed["net_usage"].as_int64();
+      auto cpu = processed["cpu_usage"].as_int64();
 
       cout << status << " transaction: " << transaction_id << "  " << net << " bytes  " << cpu << " cycles\n";
 
@@ -337,7 +311,7 @@ void send_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu = 100
 
 void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_transaction::compression_type compression = packed_transaction::none  ) {
    auto result = push_transaction(trx, extra_kcpu, compression);
-   
+
    if( tx_print_json ) {
       cout << fc::json::to_pretty_string( result );
    } else {
@@ -460,7 +434,7 @@ struct set_account_permission_subcommand {
                   }
                   auth = parsedAuthority.as<authority>();
                } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON")
-                 
+
             }
 
             name parent;
@@ -846,12 +820,12 @@ int main( int argc, char** argv ) {
       fc::path cpath(contractPath);
       if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
 
-      if( wastPath == string() ) 
+      if( wastPath == string() )
       {
          wastPath = (cpath / (cpath.filename().generic_string()+".wast")).generic_string();
       }
 
-      if( abiPath == string() ) 
+      if( abiPath == string() )
       {
          abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
       }
