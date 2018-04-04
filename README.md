@@ -166,7 +166,7 @@ already have a `config.ini` file ready to use, run `nodeos` and then close it im
 ```
 # Load the testnet genesis state, which creates some initial block producers with the default key
 genesis-json = /path/to/eos/source/genesis.json
- # Enable production on a stale chain, since a single-node test chain is pretty much always stale
+# Enable production on a stale chain, since a single-node test chain is pretty much always stale
 enable-stale-production = true
 # Enable block production with the testnet producers
 producer-name = eosio
