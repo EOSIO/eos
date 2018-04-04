@@ -63,23 +63,23 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.types.push_back( type_def{"time_point_sec","time"} );
 
    // TODO add ricardian contracts
-   eos_abi.actions.push_back( action_def{name("setcode"), "setcode", "ricardian"} );
-   eos_abi.actions.push_back( action_def{name("setabi"), "setabi", "ricardian"} );
-   eos_abi.actions.push_back( action_def{name("linkauth"), "linkauth", "ricardian"} );
-   eos_abi.actions.push_back( action_def{name("unlinkauth"), "unlinkauth", "ricardian"} );
-   eos_abi.actions.push_back( action_def{name("updateauth"), "updateauth", "ricardian"} );
-   eos_abi.actions.push_back( action_def{name("deleteauth"), "deleteauth", "ricardian"} );
-   eos_abi.actions.push_back( action_def{name("newaccount"), "newaccount", "ricardian"} );
-   eos_abi.actions.push_back( action_def{name("postrecovery"), "postrecovery", "ricardian"} );
-   eos_abi.actions.push_back( action_def{name("passrecovery"), "passrecovery", "ricardian"} );
-   eos_abi.actions.push_back( action_def{name("vetorecovery"), "vetorecovery", "ricardian"} );
-   eos_abi.actions.push_back( action_def{name("onerror"), "onerror", "ricardian"} );
-   eos_abi.actions.push_back( action_def{name("onblock"), "onblock", "ricardian"} );
-   eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay", "ricardian"} );
-   eos_abi.actions.push_back( action_def{name("mindelay"), "mindelay", "ricardian"} );
+   eos_abi.actions.push_back( action_def{name("setcode"), "setcode", ""} );
+   eos_abi.actions.push_back( action_def{name("setabi"), "setabi", ""} );
+   eos_abi.actions.push_back( action_def{name("linkauth"), "linkauth", ""} );
+   eos_abi.actions.push_back( action_def{name("unlinkauth"), "unlinkauth", ""} );
+   eos_abi.actions.push_back( action_def{name("updateauth"), "updateauth", ""} );
+   eos_abi.actions.push_back( action_def{name("deleteauth"), "deleteauth", ""} );
+   eos_abi.actions.push_back( action_def{name("newaccount"), "newaccount", ""} );
+   eos_abi.actions.push_back( action_def{name("postrecovery"), "postrecovery", ""} );
+   eos_abi.actions.push_back( action_def{name("passrecovery"), "passrecovery", ""} );
+   eos_abi.actions.push_back( action_def{name("vetorecovery"), "vetorecovery", ""} );
+   eos_abi.actions.push_back( action_def{name("onerror"), "onerror", ""} );
+   eos_abi.actions.push_back( action_def{name("onblock"), "onblock", ""} );
+   eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay", ""} );
+   eos_abi.actions.push_back( action_def{name("mindelay"), "mindelay", ""} );
    
-   // add any clauses 
-   eos_abi.clauses.push_back( {"clause A", "clause body"} );
+   // TODO add any clauses 
+   //
    // ACTION PAYLOADS
 
 

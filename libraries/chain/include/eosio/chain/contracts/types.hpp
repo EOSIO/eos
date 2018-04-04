@@ -92,11 +92,11 @@ struct table_def {
 struct clause_pair {
    clause_pair() = default;
    clause_pair( const string& id, const string& body )
-   : clause_id(id), clause_body(body) 
+   : id(id), body(body) 
    {}
 
-   string clause_id;
-   string clause_body;
+   string id;
+   string body;
 };
 
 struct abi_def {
@@ -311,7 +311,7 @@ FC_REFLECT( eosio::chain::contracts::type_def                         , (new_typ
 FC_REFLECT( eosio::chain::contracts::field_def                        , (name)(type) )
 FC_REFLECT( eosio::chain::contracts::struct_def                       , (name)(base)(fields) )
 FC_REFLECT( eosio::chain::contracts::action_def                       , (name)(type)(ricardian_contract) )
-FC_REFLECT( eosio::chain::contracts::clause_pair                      , (clause_id)(clause_body) )
+FC_REFLECT( eosio::chain::contracts::clause_pair                      , (id)(body) )
 FC_REFLECT( eosio::chain::contracts::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
 FC_REFLECT( eosio::chain::contracts::abi_def                          , (types)(structs)(actions)(tables)(clauses) )
 

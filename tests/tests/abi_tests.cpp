@@ -327,7 +327,9 @@ const char* my_abi = R"=====(
     }
   ],
   "actions": [],
-  "tables": []
+  "tables": [],
+  "clauses": [{"id": "clause A", "body": "clause body A"}, 
+              {"id": "clause B", "body": "clause body B"}]
 }
 )=====";
 
