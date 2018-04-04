@@ -72,7 +72,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Limits the maximum time (in milliseconds) that a reversible block is allowed to run before being considered invalid")
          ("max-pending-transaction-time", bpo::value<int32_t>()->default_value(-1),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
-         ("max-deferred-transaction-time", bpo::value<int32_t>()->default_value(-1),
+         ("max-deferred-transaction-time", bpo::value<int32_t>()->default_value(20),
           "Limits the maximum time (in milliseconds) that is allowed a to push deferred transactions at the start of a block")
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
 #warning TODO: rate limiting
