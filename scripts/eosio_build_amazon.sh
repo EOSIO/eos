@@ -198,7 +198,7 @@ mongodconf
 		STATUS=$(curl -LO -w '%{http_code}' https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz)
 		if [ $STATUS -ne 200 ]; then
 			rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz
-			printf "\tUnable to download MondgDB C driver at this time.\n"
+			printf "\tUnable to download MongoDB C driver at this time.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
@@ -207,19 +207,19 @@ mongodconf
 		cd mongo-c-driver-1.9.3
 		./configure --enable-static --with-libbson=bundled --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
 		if [ $? -ne 0 ]; then
-			printf "\tConfiguring MondgDB C driver has encountered the errors above.\n"
+			printf "\tConfiguring MongoDB C driver has encountered the errors above.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
 		make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
-			printf "\tError compiling MondgDB C driver.\n"
+			printf "\tError compiling MongoDB C driver.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
 		sudo make install
 		if [ $? -ne 0 ]; then
-			printf "\tError installing MondgDB C driver.\nMake sure you have sudo privileges.\n"
+			printf "\tError installing MongoDB C driver.\nMake sure you have sudo privileges.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
@@ -229,7 +229,7 @@ mongodconf
 		sudo rm -rf ${TEMP_DIR}/mongo-cxx-driver
 		git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 		if [ $? -ne 0 ]; then
-			printf "\tUnable to clone MondgDB C++ repo @ https://github.com/mongodb/mongo-cxx-driver.git.\n"
+			printf "\tUnable to clone MongoDB C++ driver at this time.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
@@ -242,13 +242,13 @@ mongodconf
 		fi
 		sudo make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
-			printf "\tError compiling MondgDB C++ driver.\n"
+			printf "\tError compiling MongoDB C++ driver.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
 		sudo make install
 		if [ $? -ne 0 ]; then
-			printf "\tError installing MondgDB C++ driver.\nMake sure you have sudo privileges.\n"
+			printf "\tError installing MongoDB C++ driver.\nMake sure you have sudo privileges.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
