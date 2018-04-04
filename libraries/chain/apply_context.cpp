@@ -321,7 +321,7 @@ const contracts::table_id_object& apply_context::find_or_create_table( name code
 
    require_write_lock(scope);
 
-   update_db_usage(payer, config::billable_size_v<contracts::table_id_object>, "New Table ${c},${s},${t}", _V("c",code)("s",scope)("t",table));
+   update_db_usage(payer, config::billable_size_v<contracts::table_id_object>);
 
    return mutable_db.create<contracts::table_id_object>([&](contracts::table_id_object &t_id){
       t_id.code = code;
@@ -368,14 +368,14 @@ const bytes& apply_context::get_packed_transaction() {
    return trx_meta.packed_trx;
 }
 
-void apply_context::update_db_usage( const account_name& payer, int64_t delta, const char* use_format, const fc::variant_object& args ) {
+void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
    require_write_lock( payer );
    if( (delta > 0) ) {
       if (!(privileged || payer == account_name(receiver))) {
          require_authorization( payer );
       }
 
-      mutable_controller.get_mutable_resource_limits_manager().add_account_ram_usage(payer, delta, use_format, args);
+      mutable_controller.get_mutable_resource_limits_manager().add_pending_account_ram_usage(payer, delta);
    }
 }
 
@@ -452,7 +452,7 @@ int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, 
    });
 
    int64_t billable_size = (int64_t)(buffer_size + config::billable_size_v<key_value_object>);
-   update_db_usage( payer, billable_size, "New Row ${id} in (${c},${s},${t})", _V("id", obj.primary_key)("c",receiver)("s",scope)("t",table));
+   update_db_usage( payer, billable_size);
 
    keyval_cache.cache_table( tab );
    return keyval_cache.add( obj );
@@ -474,10 +474,10 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
       // refund the existing payer
       update_db_usage( obj.payer,  -(old_size) );
       // charge the new payer
-      update_db_usage( payer,  (new_size), "Transfer Row ${id} in (${c},${s},${t})", _V("id", obj.primary_key)("c",tab.code)("s",tab.scope)("t",tab.table));
+      update_db_usage( payer,  (new_size));
    } else if(old_size != new_size) {
       // charge/refund the existing payer the difference
-      update_db_usage( obj.payer, new_size - old_size, "Update Row ${id} in (${c},${s},${t})", _V("id", obj.primary_key)("c",tab.code)("s",tab.scope)("t",tab.table));
+      update_db_usage( obj.payer, new_size - old_size);
    }
 
    mutable_db.modify( obj, [&]( auto& o ) {

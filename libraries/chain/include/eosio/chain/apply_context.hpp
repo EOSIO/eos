@@ -556,7 +556,7 @@ class apply_context {
       int get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const;
       int get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const;
 
-      void update_db_usage( const account_name& payer, int64_t delta, const char* use_format = "Unspecified", const fc::variant_object& args = fc::variant_object() );
+      void update_db_usage( const account_name& payer, int64_t delta );
       int  db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
       void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
       void db_remove_i64( int iterator );
