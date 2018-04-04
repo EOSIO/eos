@@ -36,6 +36,7 @@
 #include <websocketpp/logger/levels.hpp>
 
 #include <websocketpp/common/functional.hpp>
+#include <websocketpp/common/asio.hpp>
 
 #include <sstream>
 #include <string>
