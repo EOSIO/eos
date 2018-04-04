@@ -67,12 +67,13 @@ struct struct_def {
 
 struct action_def {
    action_def() = default;
-   action_def(const action_name& name, const type_name& type)
-   :name(name), type(type)
+   action_def(const action_name& name, const type_name& type, const string& ricardian_contract)
+   :name(name), type(type), ricardian_contract(ricardian_contract)
    {}
 
    action_name name;
-   type_name type;
+   type_name   type;
+   string      ricardian_contract; 
 };
 
 struct table_def {
@@ -88,16 +89,27 @@ struct table_def {
    type_name          type;        // type of binary data stored in this table
 };
 
+struct clause_pair {
+   clause_pair() = default;
+   clause_pair( const string& id, const string& body )
+   : clause_id(id), clause_body(body) 
+   {}
+
+   string clause_id;
+   string clause_body;
+};
+
 struct abi_def {
    abi_def() = default;
-   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables)
-   :types(types), structs(structs), actions(actions), tables(tables)
+   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables, const vector<clause_pair>& clauses)
+   :types(types), structs(structs), actions(actions), tables(tables), clauses(clauses)
    {}
 
    vector<type_def>     types;
    vector<struct_def>   structs;
    vector<action_def>   actions;
    vector<table_def>    tables;
+   vector<clause_pair>  clauses;
 };
 
 struct newaccount {
@@ -298,9 +310,10 @@ struct mindelay {
 FC_REFLECT( eosio::chain::contracts::type_def                         , (new_type_name)(type) )
 FC_REFLECT( eosio::chain::contracts::field_def                        , (name)(type) )
 FC_REFLECT( eosio::chain::contracts::struct_def                       , (name)(base)(fields) )
-FC_REFLECT( eosio::chain::contracts::action_def                       , (name)(type) )
+FC_REFLECT( eosio::chain::contracts::action_def                       , (name)(type)(ricardian_contract) )
+FC_REFLECT( eosio::chain::contracts::clause_pair                      , (clause_id)(clause_body) )
 FC_REFLECT( eosio::chain::contracts::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
-FC_REFLECT( eosio::chain::contracts::abi_def                          , (types)(structs)(actions)(tables) )
+FC_REFLECT( eosio::chain::contracts::abi_def                          , (types)(structs)(actions)(tables)(clauses) )
 
 FC_REFLECT( eosio::chain::contracts::newaccount                       , (creator)(name)(owner)(active)(recovery) )
 FC_REFLECT( eosio::chain::contracts::setcode                          , (account)(vmtype)(vmversion)(code) ) //abi

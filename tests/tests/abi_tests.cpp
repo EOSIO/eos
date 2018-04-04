@@ -712,10 +712,12 @@ BOOST_FIXTURE_TEST_CASE(abigen_double_action, abi_gen_helper)
        }],
        "actions": [{
           "name" : "action1",
-          "type" : "C"
+          "type" : "C",
+          "ricardian_contract" : "ricardian"
        },{
           "name" : "action2",
-          "type" : "C"
+          "type" : "C",
+          "ricardian_contract" : "ricardian"
        }],
        "tables": []
    }
@@ -1213,7 +1215,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_action_and_table, abi_gen_helper)
        }],
        "actions": [{
           "name" : "tableaction",
-          "type" : "table_action"
+          "type" : "table_action",
+          "ricardian_contract" : "ricardian"
        }],
        "tables": [
         {
@@ -1286,7 +1289,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_simple_typedef, abi_gen_helper)
        }],
        "actions": [{
           "name" : "mainaction",
-          "type" : "main_action"
+          "type" : "main_action",
+          "ricardian_contract" : "ricardian"
        }],
        "tables": []
    }
@@ -1601,7 +1605,8 @@ BOOST_FIXTURE_TEST_CASE(abgigen_vector_alias, abi_gen_helper)
      ],
      "actions": [{
          "name": "myaction",
-         "type": "my_action"
+         "type": "my_action",
+         "ricardian_contract": "ricardian"
        }
      ],
      "tables": []

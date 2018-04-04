@@ -135,16 +135,16 @@
     }
   ],
   "actions": [
-    { "name": "deposit", "type": "deposit" },
-    { "name": "transfer", "type": "transfer" },
-    { "name": "trade", "type": "trade" },
-    { "name": "createx", "type": "createx" },
-    { "name": "issue", "type": "issue" },
-    { "name": "lend", "type": "lend" },
-    { "name": "unlend", "type": "unlend" },
-    { "name": "upmargin", "type": "upmargin" },
-    { "name": "covermargin", "type": "covermargin" },
-    { "name": "create", "type": "create" }
+    { "name": "deposit", "type": "deposit", "ricardian_contract": "" },
+    { "name": "transfer", "type": "transfer", "ricardian_contract": "" },
+    { "name": "trade", "type": "trade", "ricardian_contract": "" },
+    { "name": "createx", "type": "createx", "ricardian_contract": "" },
+    { "name": "issue", "type": "issue", "ricardian_contract": "" },
+    { "name": "lend", "type": "lend", "ricardian_contract": "" },
+    { "name": "unlend", "type": "unlend", "ricardian_contract": "" },
+    { "name": "upmargin", "type": "upmargin", "ricardian_contract": "" },
+    { "name": "covermargin", "type": "covermargin", "ricardian_contract": "" },
+    { "name": "create", "type": "create", "ricardian_contract": "" }
   ],
   "tables": [{
       "name": "account",
@@ -159,5 +159,6 @@
       "key_names" : ["currency"],
       "key_types" : ["uint64"]
     }
-  ]
+  ],
+  "clauses": []
 }

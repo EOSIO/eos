@@ -129,7 +129,7 @@ bool abi_generator::inspect_type_methods_for_actions(const Decl* decl) { try {
 
       full_types[method_name] = method_name;
 
-      output->actions.push_back({method_name, method_name});
+      output->actions.push_back({method_name, method_name, ""});
       at_least_one_action = true;
     }
 
@@ -197,7 +197,7 @@ void abi_generator::handle_decl(const Decl* decl) { try {
             ABI_ASSERT(ac->type == type_name, "Same action name with different type ${action}",("action",action));
             continue;
           }
-          output->actions.push_back({action, type_name});
+          output->actions.push_back({action, type_name, ""});
         }
 
       } else if (type == "table") {
