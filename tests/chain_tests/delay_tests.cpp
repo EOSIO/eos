@@ -1362,7 +1362,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    TESTER chain;
 
    const auto& tester_account = N(tester);
-
+   std::vector<transaction_id_type> ids;
    chain.set_code(config::system_account_name, eosio_system_wast);
    chain.set_abi(config::system_account_name, eosio_system_abi);
 
@@ -1428,9 +1428,11 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
        ("memo", "hi" ),
        30, 10
    );
+   ids.push_back(trace.id);
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace.status);
    BOOST_REQUIRE_EQUAL(1, trace.deferred_transaction_requests.size());
    BOOST_REQUIRE_EQUAL(0, trace.action_traces.size());
+
    const auto sender_id_to_cancel = trace.deferred_transaction_requests[0].get<deferred_transaction>().sender_id;
 
    chain.produce_blocks();
@@ -1451,6 +1453,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
            ("delay", 0),
            30, 10
    );
+   ids.push_back(trace.id);
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace.status);
    BOOST_REQUIRE_EQUAL(1, trace.deferred_transaction_requests.size());
    BOOST_REQUIRE_EQUAL(0, trace.action_traces.size());
@@ -1477,6 +1480,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
        ("memo", "hi" ),
        30, 10
    );
+   ids.push_back(trace.id);
    BOOST_REQUIRE_EQUAL(transaction_receipt::delayed, trace.status);
    BOOST_REQUIRE_EQUAL(1, trace.deferred_transaction_requests.size());
    BOOST_REQUIRE_EQUAL(0, trace.action_traces.size());
@@ -1491,14 +1495,16 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    // send canceldelay for first delayed transaction
    signed_transaction trx;
    trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                            chain::contracts::canceldelay{sender_id_to_cancel});
+                            chain::contracts::canceldelay{ids[0]});
    trx.actions.back().authorization.push_back({N(tester), config::active_name});
 
    chain.set_transaction_headers(trx);
    trx.sign(chain.get_private_key(N(tester), "active"), chain_id_type());
    trace = chain.push_transaction(trx);
+
    BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace.status);
    BOOST_REQUIRE_EQUAL(1, trace.deferred_transaction_requests.size());
+
    const auto sender_id_canceled = trace.deferred_transaction_requests[0].get<deferred_reference>().sender_id;
    BOOST_REQUIRE_EQUAL(std::string(uint128(sender_id_to_cancel)), std::string(uint128(sender_id_canceled)));
 
@@ -1555,7 +1561,6 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    BOOST_REQUIRE_EQUAL(asset::from_string("85.0000 CUR"), liquid_balance);
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("15.0000 CUR"), liquid_balance);
-
 } FC_LOG_AND_RETHROW() }/// schedule_test
 
 BOOST_AUTO_TEST_SUITE_END()

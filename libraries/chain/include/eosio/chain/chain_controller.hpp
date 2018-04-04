@@ -91,7 +91,8 @@ namespace eosio { namespace chain {
          void push_block( const signed_block& b, uint32_t skip = skip_nothing );
          transaction_trace push_transaction( const packed_transaction& trx, uint32_t skip = skip_nothing );
          vector<transaction_trace> push_deferred_transactions( bool flush = false, uint32_t skip = skip_nothing );
-
+         
+         uint128_t transaction_id_to_sender_id( const transaction_id_type& tid )const;
 
       /**
           *  This signal is emitted after all operations and virtual operation for a

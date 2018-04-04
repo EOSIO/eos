@@ -190,13 +190,13 @@ namespace eosiosystem {
          }
 
          ACTION( SystemAccount, canceldelay ) {
-            uint32_t   sender_id;
+            transaction_id_type   trx_id;
 
-            EOSLIB_SERIALIZE( canceldelay, (sender_id) )
+            EOSLIB_SERIALIZE( canceldelay, (trx_id) )
          };
 
          static void on( const canceldelay& ) {
          }
-         
+
    };
 }

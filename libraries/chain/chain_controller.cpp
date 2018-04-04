@@ -311,6 +311,7 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
    if( mtrx.delay.count() == 0 ) {
       result = _push_transaction( std::move(mtrx) );
    } else {
+
       result = wrap_transaction_processing( std::move(mtrx),
                                             [this](transaction_metadata& meta) { return delayed_transaction_processing(meta); } );
    }
@@ -350,6 +351,11 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata&& da
    return wrap_transaction_processing( move(data), process_apply_transaction );
 } FC_CAPTURE_AND_RETHROW( ) }
 
+uint128_t chain_controller::transaction_id_to_sender_id( const transaction_id_type& tid )const {
+   fc::uint128_t _id(tid._hash[3], tid._hash[2]);
+   return (unsigned __int128)_id;
+}
+
 transaction_trace chain_controller::delayed_transaction_processing( const transaction_metadata& mtrx )
 { try {
    transaction_trace result(mtrx.id);
@@ -386,7 +392,7 @@ transaction_trace chain_controller::delayed_transaction_processing( const transa
 
    FC_ASSERT(!payer.empty(), "Failed to find a payer for delayed transaction!");
 
-   deferred_transaction dtrx(context.get_next_sender_id(), config::system_account_name, payer, execute_after, trx);
+   deferred_transaction dtrx(transaction_id_to_sender_id( trx.id() ), config::system_account_name, payer, execute_after, trx);
    FC_ASSERT( dtrx.execute_after < dtrx.expiration, "transaction expires before it can execute" );
 
    result.deferred_transaction_requests.push_back(std::move(dtrx));

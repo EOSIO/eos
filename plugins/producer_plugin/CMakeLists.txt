@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eos/producer_plugin/*.hpp")
+file(GLOB HEADERS "include/eosio/producer_plugin/*.hpp")
 
 add_library( producer_plugin
              producer_plugin.cpp
