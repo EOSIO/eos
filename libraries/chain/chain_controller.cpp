@@ -1204,8 +1204,8 @@ static uint32_t calculate_transaction_cpu_usage( const transaction_trace& trace,
 
    // charge a system controlled amount for signature verification/recovery
    uint32_t signature_cpu_usage = 0;
-   if( meta.signing_keys ) {
-      signature_cpu_usage = (uint32_t)meta.signing_keys->size() * chain_configuration.per_signature_cpu_usage;
+   if( meta.signature_count ) {
+      signature_cpu_usage = meta.signature_count * chain_configuration.per_signature_cpu_usage;
    }
 
    uint32_t context_free_cpu_usage = (uint32_t)((uint64_t)context_free_actual_cpu_usage * chain_configuration.context_free_discount_cpu_usage_num / chain_configuration.context_free_discount_cpu_usage_den);
