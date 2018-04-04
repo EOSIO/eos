@@ -1990,7 +1990,7 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    result.status = transaction_trace::soft_fail;
 
    transaction etrx;
-   etrx.actions.emplace_back(vector<permission_level>{{meta.sender_id,config::active_name}},
+   etrx.actions.emplace_back(vector<permission_level>{{*meta.sender,config::active_name}},
                              contracts::onerror(meta.raw_data, meta.raw_data + meta.raw_size) );
 
    try {
