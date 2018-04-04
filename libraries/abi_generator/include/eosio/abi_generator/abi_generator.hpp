@@ -23,13 +23,16 @@
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/CompilerInstance.h"
+#include "clang/Frontend/FrontendActions.h"
 #include "clang/Sema/Sema.h"
 #include "clang/Lex/Preprocessor.h"
+#include "clang/Lex/MacroArgs.h"
 #include "clang/Tooling/Tooling.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Core/QualTypeNames.h"
 #include "llvm/Support/raw_ostream.h"
 #include <boost/algorithm/string.hpp>
+#include <boost/range/algorithm_ext/erase.hpp>
 
 using namespace clang;
 using namespace std;
@@ -40,7 +43,7 @@ namespace cl = llvm::cl;
 namespace eosio {
 
    FC_DECLARE_EXCEPTION( abi_generation_exception, 999999, "Unable to generate abi" );
-   
+
    #define ABI_ASSERT( TEST, ... ) \
       FC_EXPAND_MACRO( \
        FC_MULTILINE_MACRO_BEGIN \
@@ -52,7 +55,7 @@ namespace eosio {
          }                                                                      \
        FC_MULTILINE_MACRO_END \
       )
-   
+
    /**
      * @brief Generates eosio::abi_def struct handling events from ASTConsumer
      */
@@ -66,33 +69,35 @@ namespace eosio {
          map<string, string>    full_types;
          string                 abi_context;
          clang::ASTContext*     ast_context;   
+         string                 target_contract;
+         vector<string>         target_actions;
       public:
-      
+
          enum optimization {
             OPT_SINGLE_FIELD_STRUCT
          };
-   
+
          abi_generator()
          :optimizations(0)
          , output(nullptr)
          , compiler_instance(nullptr)
          , ast_context(nullptr)
          {}
-      
+
          ~abi_generator() {}
-   
+
          /**
            * @brief Enable optimization when generating ABI
            * @param o optimization to enable
            */
          void enable_optimizaton(optimization o);
-   
+
          /**
            * @brief Check if an optimization is enabled
            * @param o optimization to check
            */
          bool is_opt_enabled(optimization o);
-   
+
          /**
           * @brief Set the destination ABI struct to write
           * @param output ABI destination
@@ -122,6 +127,8 @@ namespace eosio {
           * @param tag_decl declaration to handle
           */
          void handle_tagdecl_definition(TagDecl* tag_decl);
+
+         void set_target_contract(const string& contract, const vector<string>& actions);
 
       private:
          bool inspect_type_methods_for_actions(const Decl* decl);
@@ -186,37 +193,105 @@ namespace eosio {
 
          QualType get_vector_element_type(const clang::QualType& qt);
          string get_vector_element_type(const string& type_name);
-         
+
          clang::QualType get_named_type_if_elaborated(const clang::QualType& qt);
 
          const clang::RecordDecl::field_range get_struct_fields(const clang::QualType& qt);
          clang::CXXRecordDecl::base_class_range get_struct_bases(const clang::QualType& qt);
    };
-   
+
    struct abi_generator_astconsumer : public ASTConsumer {
       abi_generator& abi_gen;
-   
+
       abi_generator_astconsumer(CompilerInstance& compiler_instance, abi_generator& abi_gen)
       :abi_gen(abi_gen)
       {
          abi_gen.set_compiler_instance(compiler_instance);
       }
-   
+
       void HandleTagDeclDefinition(TagDecl* tag_decl) override {
          abi_gen.handle_tagdecl_definition(tag_decl);
       }
    };
-   
+
+   struct find_eosio_abi_macro_action : public PreprocessOnlyAction {
+
+         string& contract;
+         vector<string>& actions;
+         const string& abi_context;
+
+         find_eosio_abi_macro_action(string& contract, vector<string>& actions, const string& abi_context
+            ): contract(contract),
+            actions(actions), abi_context(abi_context) {
+         }
+
+         struct callback_handler : public PPCallbacks {
+
+            CompilerInstance& compiler_instance;
+            find_eosio_abi_macro_action& act;
+
+            callback_handler(CompilerInstance& compiler_instance, find_eosio_abi_macro_action& act)
+            : compiler_instance(compiler_instance), act(act) {}
+
+            void MacroExpands (const Token &token, const MacroDefinition &md, SourceRange range, const MacroArgs *args) override {
+
+               auto* id = token.getIdentifierInfo();
+               if( id == nullptr ) return;
+               if( id->getName() != "EOSIO_ABI" ) return;
+
+               const auto& sm = compiler_instance.getSourceManager();
+               auto file_name = sm.getFilename(range.getBegin());
+               if ( !act.abi_context.empty() && !file_name.startswith(act.abi_context) ) {
+                  return;
+               }
+
+               ABI_ASSERT( md.getMacroInfo()->getNumArgs() == 2 );
+
+               clang::SourceLocation b(range.getBegin()), _e(range.getEnd());
+               clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(_e, 0, sm, compiler_instance.getLangOpts()));
+               auto macrostr = string(sm.getCharacterData(b), sm.getCharacterData(e)-sm.getCharacterData(b));
+
+               regex r(R"(EOSIO_ABI\s*\(\s*(.+?)\s*,((?:.+?)*)\s*\))");
+               smatch smatch;
+               auto res = regex_search(macrostr, smatch, r);
+               ABI_ASSERT( res );
+
+               act.contract = smatch[1].str();
+
+               auto actions_str = smatch[2].str();
+               boost::trim(actions_str);
+               actions_str = actions_str.substr(1);
+               actions_str.pop_back();
+               boost::remove_erase_if(actions_str, boost::is_any_of(" ("));
+
+               boost::split(act.actions, actions_str, boost::is_any_of(")"));
+            }
+         };
+
+         void ExecuteAction() override {
+            getCompilerInstance().getPreprocessor().addPPCallbacks(
+               llvm::make_unique<callback_handler>(getCompilerInstance(), *this)
+            );
+            PreprocessOnlyAction::ExecuteAction();
+         };
+
+   };
+
    class generate_abi_action : public ASTFrontendAction {
+
       private:
          set<string> parsed_templates;
          abi_generator abi_gen;
 
       public:
-         generate_abi_action(bool verbose, bool opt_sfs, string abi_context, abi_def& output) {
+
+         generate_abi_action(bool verbose, bool opt_sfs, string abi_context,
+                             abi_def& output, const string& contract, const vector<string>& actions) {
+
             abi_gen.set_output(output);
             abi_gen.set_verbose(verbose);
             abi_gen.set_abi_context(abi_context);
+            abi_gen.set_target_contract(contract, actions);
 
             if(opt_sfs)
                abi_gen.enable_optimizaton(abi_generator::OPT_SINGLE_FIELD_STRUCT);

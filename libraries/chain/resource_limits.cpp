@@ -57,6 +57,14 @@ void resource_limits_manager::initialize_account(const account_name& account) {
    });
 }
 
+void resource_limits_manager::set_block_parameters(const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters ) {
+   const auto& config = _db.get<resource_limits_config_object>();
+   _db.modify(config, [&](resource_limits_config_object& c){
+      c.cpu_limit_parameters = cpu_limit_parameters;
+      c.net_limit_parameters = net_limit_parameters;
+   });
+}
+
 void resource_limits_manager::add_transaction_usage(const vector<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint32_t time_slot ) {
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& config = _db.get<resource_limits_config_object>();
@@ -240,6 +248,7 @@ void resource_limits_manager::process_block_usage(uint32_t block_num) {
       state.pending_net_usage = 0;
 
    });
+
 }
 
 uint64_t resource_limits_manager::get_virtual_block_cpu_limit() const {

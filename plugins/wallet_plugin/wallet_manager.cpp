@@ -40,16 +40,16 @@ std::string wallet_manager::create(const std::string& name) {
    if (fc::exists(wallet_filename)) {
       EOS_THROW(chain::wallet_exist_exception, "Wallet with name: '${n}' already exists at ${path}", ("n", name)("path",fc::path(wallet_filename)));
    }
-
+   
    wallet_data d;
    auto wallet = make_unique<wallet_api>(d);
    wallet->set_password(password);
    wallet->set_wallet_filename(wallet_filename.string());
    wallet->unlock(password);
-   wallet->save_wallet_file();
+   wallet->import_key(eosio_key);
    wallet->lock();
    wallet->unlock(password);
-
+   
    // If we have name in our map then remove it since we want the emplace below to replace.
    // This can happen if the wallet file is removed while eos-walletd is running.
    auto it = wallets.find(name);

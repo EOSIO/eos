@@ -27,6 +27,10 @@ struct genesis_state_type {
       .context_free_discount_cpu_usage_den      = config::default_context_free_discount_cpu_usage_den,
       .max_transaction_cpu_usage      = config::default_max_transaction_cpu_usage,
       .max_transaction_net_usage      = config::default_max_transaction_net_usage,
+      .max_block_cpu_usage            = config::default_max_block_cpu_usage,
+      .target_block_cpu_usage_pct     = config::default_target_block_cpu_usage_pct,
+      .max_block_net_usage            = config::default_max_block_net_usage,
+      .target_block_net_usage_pct     = config::default_target_block_net_usage_pct,
       .max_transaction_lifetime       = config::default_max_trx_lifetime,
       .max_transaction_exec_time      = 0, // TODO: unused?
       .max_authority_depth            = config::default_max_auth_depth,

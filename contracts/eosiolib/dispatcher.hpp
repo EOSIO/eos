@@ -37,8 +37,8 @@ namespace eosio {
       return eosio::dispatch<Contract,SecondAction,Actions...>( code, act );
    }
 
-   template<typename T, typename... Args>
-   bool execute_action( T* obj, void (T::*func)(Args...)  ) {
+   template<typename T, typename Q, typename... Args>
+   bool execute_action( T* obj, void (Q::*func)(Args...)  ) {
       size_t size = action_data_size();
 
       //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
