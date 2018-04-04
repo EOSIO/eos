@@ -41,15 +41,15 @@ docker run --name nodeos -v /path-to-data-dir:/opt/eosio/bin/data-dir -p 8888:88
 curl http://127.0.0.1:8888/v1/chain/get_info
 ```
 
-## Start both nodeos and walletd containers
+## Start both nodeos and keosd containers
 
 ```bash
 docker volume create --name=nodeos-data-volume
-docker volume create --name=walletd-data-volume
+docker volume create --name=keosd-data-volume
 docker-compose up -d
 ```
 
-After `docker-compose up -d`, two services named nodeos and walletd will be started. nodeos service would expose ports 8888 and 9876 to the host. walletd service does not expose any port to the host, it is only accessible to cleos when runing cleos is running inside the walletd container as described in "Execute cleos commands" section.
+After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be started. nodeos service would expose ports 8888 and 9876 to the host. keosd service does not expose any port to the host, it is only accessible to cleos when runing cleos is running inside the keosd container as described in "Execute cleos commands" section.
 
 
 ### Execute cleos commands
@@ -57,7 +57,7 @@ After `docker-compose up -d`, two services named nodeos and walletd will be star
 You can run the `cleos` commands via a bash alias.
 
 ```bash
-alias cleos='docker-compose exec walletd /opt/eosio/bin/cleos -H nodeosd'
+alias cleos='docker-compose exec keosd /opt/eosio/bin/cleos -H nodeosd'
 cleos get info
 cleos get account inita
 ```
@@ -68,10 +68,10 @@ Upload sample exchange contract
 cleos set contract exchange contracts/exchange/exchange.wast contracts/exchange/exchange.abi
 ```
 
-If you don't need walletd afterwards, you can stop the walletd service using
+If you don't need keosd afterwards, you can stop the keosd service using
 
 ```bash
-docker-compose stop walletd
+docker-compose stop keosd
 ```
 ### Change default configuration
 
@@ -98,5 +98,6 @@ docker-compose up
 The data volume created by docker-compose can be deleted as follows:
 
 ```bash
-docker volume rm docker_nodeos-data-volume
+docker volume rm nodeos-data-volume
+docker volume rm keosd-data-volume
 ```

@@ -20,17 +20,17 @@ services:
     volumes:
       - nodeos-data-volume:/opt/eosio/bin/data-dir
 
-  walletd:
+  keosd:
     image: eosio/eos
     command: /opt/eosio/bin/keosd
-    hostname: walletd
+    hostname: keosd
     links:
       - nodeosd
     volumes:
-      - walletd-data-volume:/opt/eosio/bin/data-dir
+      - keosd-data-volume:/opt/eosio/bin/data-dir
 
 volumes:
   nodeos-data-volume:
     external: true
-  walletd-data-volume:
+  keosd-data-volume:
     external: true
