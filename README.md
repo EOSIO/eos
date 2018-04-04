@@ -266,18 +266,10 @@ To create a wallet, you need to have the wallet_plugin loaded into the nodeos pr
 
 Use the wallet create command of the cleos tool, to create a wallet.
 
-
 ```bash
 cd ~/eos/build/programs/cleos/
 ./cleos wallet create # Outputs a password that you need to save to be able to lock/unlock the wallet
 ```
-
-Legacy Note (for the Old-Timers)
-
-In not so distant past, an additional step, importing of the private key of the eosio account, was required (i.e. `cleos wallet import <key>`)
-to enable invocation of API commands under the authority of an existing account. This step is currently not required any more.
-
-
 
 <a name="createaccounts"></a>
 ### Creating accounts for sample "currency" contract
