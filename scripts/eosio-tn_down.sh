@@ -10,54 +10,20 @@ if [ "$PWD" != "$EOSIO_HOME" ]; then
     exit -1
 fi
 
-prog=""
-RD=""
-for p in eosd eosiod nodeos; do
-    prog=$p
-    RD=bin
-    if [ -f $RD/$prog ]; then
-        break;
-    else
-        RD=programs/$prog
-        if [ -f $RD/$prog ]; then
-            break;
-        fi
-    fi
-    prog=""
-    RD=""
-done
+prog=nodeos
 
-if [ \( -z "$prog" \) -o \( -z "RD" \) ]; then
-    echo unable to locate binary for eosd or eosiod or nodeos
-    exit 1
-fi
-
-if [ -z "$EOSIO_TN_RESTART_DATA_DIR" ]; then
-    echo data directory not set
-    exit 1
-fi
-
-DD=$EOSIO_TN_RESTART_DATA_DIR;
-runtest=""
-if [ $DD = "all" ]; then
-    runtest=$prog
-else
-    runtest=`cat $DD/$prog.pid`
-fi
-echo runtest =  $runtest
+DD=var/lib/node_$EOSIO_NODE
+runtest=`cat $DD/$prog.pid`
+echo runtest = $runtest
 running=`ps -e | grep $runtest | grep -cv grep `
 
 if [ $running -ne 0 ]; then
     echo killing $prog
 
-    if [ $runtest = $prog ]; then
-        pkill -15 $runtest
-    else
-        kill -15 $runtest
-    fi
+    pkill -15 $prog
 
-    for (( a = 10; $a; a = $(($a - 1)) )); do
-        echo waiting for safe termination, pass $((11 - $a))
+    for (( a = 1;11-$a; a = $(($a + 1)) )); do
+        echo waiting for safe termination, pass $a
         sleep 2
         running=`ps -e | grep $runtest | grep -cv grep`
         echo running = $running
@@ -69,9 +35,5 @@ fi
 
 if [ $running -ne 0 ]; then
     echo killing $prog with SIGTERM failed, trying with SIGKILL
-    if [ $runtest = $prog ]; then
-        pkill -9 $runtest
-    else
-        kill -9 $runtest
-    fi
+    pkill -9 $runtest
 fi
