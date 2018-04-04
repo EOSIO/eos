@@ -9,12 +9,6 @@ namespace eosio { namespace chain { namespace resource_limits {
 
    namespace impl {
       template<typename T>
-      struct ratio {
-         T numerator;
-         T denominator;
-      };
-
-      template<typename T>
       ratio<T> make_ratio(T n, T d) {
          return ratio<T>{n, d};
       }
@@ -74,10 +68,10 @@ namespace eosio { namespace chain { namespace resource_limits {
             value_ex += units * Precision / (uint64_t)window_size;
          }
       };
+
    }
 
    using usage_accumulator = impl::exponential_moving_average_accumulator<>;
-   using ratio = impl::ratio<uint64_t>;
 
    /**
     * Every account that authorizes a transaction is billed for the full size of that transaction. This object
@@ -132,22 +126,12 @@ namespace eosio { namespace chain { namespace resource_limits {
       >
    >;
 
-   struct elastic_limit_parameters {
-      uint64_t target;           // the desired usage
-      uint64_t max;              // the maximum usage
-      uint32_t periods;          // the number of aggregation periods that contribute to the average usage
-
-      uint32_t max_multiplier;   // the multiplier by which virtual space can oversell usage when uncongested
-      ratio    contract_rate;    // the rate at which a congested resource contracts its limit
-      ratio    expand_rate;       // the rate at which an uncongested resource expands its limits
-   };
-
    class resource_limits_config_object : public chainbase::object<resource_limits_config_object_type, resource_limits_config_object> {
       OBJECT_CTOR(resource_limits_config_object);
       id_type id;
 
-      elastic_limit_parameters cpu_limit_parameters = {config::default_target_block_cpu_usage, config::default_max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}};
-      elastic_limit_parameters net_limit_parameters = {config::default_target_block_size, config::default_max_block_size, config::block_size_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}};
+      elastic_limit_parameters cpu_limit_parameters = {EOS_PERCENT(config::default_max_block_cpu_usage, config::default_target_block_cpu_usage_pct), config::default_max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}};
+      elastic_limit_parameters net_limit_parameters = {EOS_PERCENT(config::default_max_block_net_usage, config::default_target_block_net_usage_pct), config::default_max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}};
    };
 
    using resource_limits_config_index = chainbase::shared_multi_index_container<

@@ -111,6 +111,13 @@ namespace eosio { namespace chain {
       >
    >;
 
+   namespace config {
+      template<>
+      struct billable_size<permission_object> {
+         static const uint64_t  overhead = 6 * overhead_per_row_per_index_ram_bytes; ///< 6 indices 2x internal ID, parent, owner, name, name_usage
+         static const uint64_t  value = 80 + overhead;  ///< fixed field size + overhead
+      };
+   }
 } } // eosio::chain
 
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::permission_object, eosio::chain::permission_index)
