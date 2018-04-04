@@ -877,5 +877,47 @@ BOOST_AUTO_TEST_CASE(irrelevant_sig_hard_check) {
    } FC_LOG_AND_RETHROW()
 }
 
+// Test reindexing the blockchain
+BOOST_AUTO_TEST_CASE(block_id_sig_independent)
+{ try {
+      validating_tester chain;
+      // Create a new block
+      signed_block new_block;
+      auto next_time = chain.control->head_block_time() + fc::microseconds(config::block_interval_us);
+      uint32_t slot  = chain.control->get_slot_at_time( next_time );
+      auto sch_pro   = chain.control->get_scheduled_producer(slot);
+
+      // On block action
+      action on_block_act;
+      on_block_act.account = config::system_account_name;
+      on_block_act.name = N(onblock);
+      on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
+      on_block_act.data = fc::raw::pack(chain.control->head_block_header());
+      transaction trx;
+      trx.actions.emplace_back(std::move(on_block_act));
+      trx.set_reference_block(chain.control->head_block_id());
+      trx.expiration = chain.control->head_block_time() + fc::seconds(1);
+      trx.kcpu_usage = 2000; // 1 << 24;
+
+      // Add properties to block header
+      new_block.previous = chain.control->head_block_id();
+      new_block.timestamp = next_time;
+      new_block.producer = sch_pro;
+      new_block.block_mroot = chain.control->get_dynamic_global_properties().block_merkle_root.get_root();
+      vector<transaction_metadata> input_metas;
+      input_metas.emplace_back(packed_transaction(trx), chain.control->get_chain_id(), chain.control->head_block_time(), true);
+      new_block.transaction_mroot = transaction_metadata::calculate_transaction_merkle_root(input_metas);
+
+      // Sign the block with active signature
+      new_block.sign(chain.get_private_key( sch_pro, "active" ));
+      auto block_id_act_sig = new_block.id();
+
+      // Sign the block with other signature
+      new_block.sign(chain.get_private_key( sch_pro, "other" ));
+      auto block_id_othr_sig = new_block.id();
+
+      // The block id should be independent of the signature
+      BOOST_TEST(block_id_act_sig == block_id_othr_sig);
+   } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
