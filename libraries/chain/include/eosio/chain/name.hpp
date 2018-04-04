@@ -90,6 +90,7 @@ namespace eosio { namespace chain {
 
       operator bool()const            { return value; }
       operator uint64_t()const        { return value; }
+      operator unsigned __int128()const       { return value; }
    };
 
 

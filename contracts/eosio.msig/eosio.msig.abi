@@ -31,8 +31,8 @@
          {"name": "region", "type": "uint16"},
          {"name": "ref_block_num", "type": "uint32"},
          {"name": "ref_block_prefix", "type": "uint16"},
-         {"name": "net_usage_words", "type": "varuint32"},
-         {"name": "kcpu_usage", "type": "varuint32"},
+         {"name": "max_net_usage_words", "type": "varuint32"},
+         {"name": "max_kcpu_usage", "type": "varuint32"},
          {"name": "delay_sec", "type": "varuint32"}
       ]
    },{

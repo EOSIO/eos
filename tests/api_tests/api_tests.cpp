@@ -155,9 +155,9 @@ transaction_trace CallAction(TESTER& test, T ac, const vector<account_name>& sco
 }
 
 template <typename T>
-transaction_trace CallFunction(TESTER& test, T ac, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}, uint32_t extra_cf_cpu_usage = 0) {
-	{
-		signed_transaction trx;
+transaction_trace CallFunction(TESTER& test, T ac, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}) {
+   {
+      signed_transaction trx;
 
       auto pl = vector<permission_level>{{scope[0], config::active_name}};
       if (scope.size() > 1)
@@ -169,14 +169,14 @@ transaction_trace CallFunction(TESTER& test, T ac, const vector<char>& data, con
       act.authorization = {{N(testapi), config::active_name}};
       trx.actions.push_back(act);
 
-      test.set_transaction_headers(trx, test.DEFAULT_EXPIRATION_DELTA, extra_cf_cpu_usage );
-		auto sigs = trx.sign(test.get_private_key(scope[0], "active"), chain_id_type());
+      test.set_transaction_headers(trx, test.DEFAULT_EXPIRATION_DELTA);
+      auto sigs = trx.sign(test.get_private_key(scope[0], "active"), chain_id_type());
       trx.get_signature_keys(chain_id_type() );
-		auto res = test.push_transaction(trx);
-		BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
-		test.produce_block();
+      auto res = test.push_transaction(trx);
+      BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
+      test.produce_block();
       return res;
-	}
+   }
 }
 
 #define CALL_TEST_FUNCTION(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA)
@@ -491,7 +491,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       produce_block();
 
       // test send context free action
-      auto ttrace = CallFunction( *this, test_api_action<TEST_METHOD("test_transaction", "send_cf_action")>{}, {}, {N(testapi)}, 20000 );
+      auto ttrace = CALL_TEST_FUNCTION( *this, "test_transaction", "send_cf_action", {} );
       BOOST_CHECK_EQUAL(ttrace.action_traces.size(), 2);
       BOOST_CHECK_EQUAL(ttrace.action_traces[1].receiver == account_name("dummy"), true);
       BOOST_CHECK_EQUAL(ttrace.action_traces[1].act.account == account_name("dummy"), true);
@@ -506,7 +506,7 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
 
       CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_action", {} );
 
-      CallFunction( *this, test_api_action<TEST_METHOD("test_transaction", "read_inline_cf_action")>{}, {}, {N(testapi)}, 20000 );
+      CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_cf_action", {} );
 
       BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
@@ -696,13 +696,13 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    control->push_deferred_transactions( true );
 
    // test test_transaction_size
-   CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(55) );
+   CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(55) ); // TODO: Need a better way to test this.
    control->push_deferred_transactions( true );
 
    // test test_read_transaction
    // this is a bit rough, but I couldn't figure out a better way to compare the hashes
    auto tx_trace = CALL_TEST_FUNCTION( *this, "test_transaction", "test_read_transaction", {} );
-   string sha_expect = "f899d4ec365702f99607bc640ec21a21b109eee01504011769a9fd4f41a5b72c";
+   string sha_expect = "f899d4ec365702f99607bc640ec21a21b109eee01504011769a9fd4f41a5b72c"; // TODO: Need a better way to test this.
    BOOST_CHECK_EQUAL(tx_trace.action_traces.front().console == sha_expect, true);
    // test test_tapos_block_num
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_num", fc::raw::pack(control->head_block_num()) );

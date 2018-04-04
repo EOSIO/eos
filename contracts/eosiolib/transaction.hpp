@@ -28,9 +28,9 @@ namespace eosio {
       :expiration(exp),region(r)
       {}
 
-      void send(uint64_t sender_id, account_name payer, time delay_until = now()) const {
+      void send(uint64_t sender_id, account_name payer) const {
          auto serialize = pack(*this);
-         send_deferred(sender_id, payer, delay_until, serialize.data(), serialize.size());
+         send_deferred(sender_id, payer, serialize.data(), serialize.size());
       }
 
       time            expiration;
@@ -52,13 +52,13 @@ namespace eosio {
          uint128_t     sender_id;
          account_name  sender;
          account_name  payer;
-         time          delay_until;
+         time          execute_after;
 
          static deferred_transaction from_current_action() {
             return unpack_action_data<deferred_transaction>();
          }
 
-         EOSLIB_SERIALIZE_DERIVED( deferred_transaction, transaction, (sender_id)(sender)(payer)(delay_until) )
+         EOSLIB_SERIALIZE_DERIVED( deferred_transaction, transaction, (sender_id)(sender)(payer)(execute_after) )
    };
 
    /**

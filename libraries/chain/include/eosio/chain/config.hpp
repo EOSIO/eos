@@ -48,7 +48,7 @@ const static uint32_t   default_max_block_net_usage         = 1024 * 1024; /// a
 const static int        default_target_block_net_usage_pct  = 10 * percent_1; /// we target 1000 TPS
 
 const static uint32_t   default_max_block_cpu_usage         = 100 * 1024 * 1024; /// at 500ms blocks and 20000instr trx, this enables ~10,000 TPS burst
-const static int        default_target_block_cpu_usage_pct  = 10 * percent_1; /// target 1000 TPS
+const static uint32_t   default_target_block_cpu_usage_pct  = 10 * percent_1; /// target 1000 TPS
 
 const static uint64_t   default_max_storage_size       = 10 * 1024;
 const static uint32_t   default_max_trx_lifetime       = 60*60;
@@ -110,6 +110,6 @@ constexpr uint64_t billable_size_v = ((billable_size<T>::value + billable_alignm
 } } } // namespace eosio::chain::config
 
 template<typename Number>
-Number EOS_PERCENT(Number value, int percentage) {
+Number EOS_PERCENT(Number value, uint32_t percentage) {
    return value * percentage / eosio::chain::config::percent_100;
 }

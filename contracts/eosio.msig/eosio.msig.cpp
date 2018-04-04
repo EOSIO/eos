@@ -76,7 +76,7 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
    eosio_assert( prop_it != proptable.end(), "proposal not found" );
 
    check_auth( prop_it->packed_transaction, prop_it->provided_approvals );
-   send_deferred( (uint128_t(proposer) << 64) | proposal_name, executer, now(), prop_it->packed_transaction.data(), prop_it->packed_transaction.size() );
+   send_deferred( (uint128_t(proposer) << 64) | proposal_name, executer, prop_it->packed_transaction.data(), prop_it->packed_transaction.size() );
 
    proptable.erase(prop_it);
 }

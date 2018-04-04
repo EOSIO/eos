@@ -183,7 +183,6 @@ namespace eosiosystem {
                                  typename native<SystemAccount>::setabi,
                                  typename native<SystemAccount>::onerror,
                                  typename native<SystemAccount>::canceldelay,
-                                 typename native<SystemAccount>::mindelay,
                                  nonce>( code, act) ) {
                   //TODO: Small hack until we refactor eosio.system like eosio.token
                   using undelegatebw = typename delegate_bandwidth<SystemAccount>::undelegatebw;

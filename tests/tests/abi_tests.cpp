@@ -2714,8 +2714,8 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
    txn.actions.emplace_back(
          vector<permission_level>{{N(testapi4), config::active_name}},
          action2{ 61, 23, (uint8_t)2});
-   txn.net_usage_words = 15;
-   txn.kcpu_usage = 43;
+   txn.max_net_usage_words = 15;
+   txn.max_kcpu_usage = 43;
 
    // pack the transaction to verify that the var unpacking logic is correct
    auto packed_txn = chain::packed_transaction(txn);
@@ -2795,8 +2795,8 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
    BOOST_REQUIRE_EQUAL(txn.actions.size(), txn2.actions.size());
    for (unsigned int i = 0; i < txn.actions.size(); ++i)
       verify_action_equal<action2>(txn.actions[i], txn2.actions[i]);
-   BOOST_REQUIRE_EQUAL(txn.net_usage_words.value, txn2.net_usage_words.value);
-   BOOST_REQUIRE_EQUAL(txn.kcpu_usage.value, txn2.kcpu_usage.value);
+   BOOST_REQUIRE_EQUAL(txn.max_net_usage_words.value, txn2.max_net_usage_words.value);
+   BOOST_REQUIRE_EQUAL(txn.max_kcpu_usage.value, txn2.max_kcpu_usage.value);
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(abi_type_repeat)
