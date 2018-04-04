@@ -71,6 +71,7 @@ Options:
 */
 #include <string>
 #include <vector>
+#include <regex>
 #include <boost/asio.hpp>
 #include <boost/format.hpp>
 #include <iostream>
@@ -398,7 +399,8 @@ chain::action create_unlinkauth(const name& account, const name& code, const nam
 
 fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::legacy_parser)
 {
-   if ( !boost::istarts_with(file_or_str, "{") && is_regular_file(file_or_str) ) {
+   regex r("^[ \t]*[\{\[]");
+   if ( !regex_search(file_or_str, r) && is_regular_file(file_or_str) ) {
       return fc::json::from_file(file_or_str, ptype);
    } else {
       return fc::json::from_string(file_or_str, ptype);
