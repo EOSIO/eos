@@ -328,8 +328,8 @@ const char* my_abi = R"=====(
   ],
   "actions": [],
   "tables": [],
-  "clauses": [{"id": "clause A", "body": "clause body A"}, 
-              {"id": "clause B", "body": "clause body B"}]
+  "clauses": [{"id":"clause A","body":"clause body A"}, 
+              {"id":"clause B","body":"clause body B"}]
 }
 )=====";
 
@@ -357,7 +357,8 @@ BOOST_AUTO_TEST_CASE(uint_types)
            }]
        }],
        "actions": [],
-       "tables": []
+       "tables": [],
+       "clauses": []
    }
    )=====";
 
@@ -652,7 +653,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
               "name" : "teststruct",
               "type" : "test_struct"
            }],
-       "tables": []
+       "tables": [],
+       "clauses": []
    }
    )=====";
    BOOST_TEST( generate_abi(all_types, all_types_abi) == true);
@@ -892,7 +894,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_indexes, abi_gen_helper)
           ]
         },
 
-       ]
+       ],
+       "clauses": []
    }
    )=====";
 
@@ -1049,7 +1052,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_full_table_decl, abi_gen_helper)
           "key_types": [
             "uint64"
           ]
-        }]
+        }],
+       "clauses": []
    }
    )=====";
 
@@ -1100,7 +1104,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_str_table_decl, abi_gen_helper)
          ],
          "type": "table1"
        }
-     ]
+     ],
+     "clauses": []
    }
    )=====";
 
@@ -1197,7 +1202,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_template_base, abi_gen_helper)
           "key_types": [
             "uint64"
           ]
-        }]
+        }],
+       "clauses": []
    }
    )=====";
 
@@ -1248,7 +1254,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_action_and_table, abi_gen_helper)
           "key_types": [
             "uint64"
           ]
-        }]
+        }],
+       "clauses": []
    }
    )=====";
 
@@ -1311,7 +1318,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_simple_typedef, abi_gen_helper)
           "type" : "main_action",
           "ricardian_contract" : ""
        }],
-       "tables": []
+       "tables": [],
+       "clauses": []
    }
    )=====";
 
@@ -1388,7 +1396,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_field_typedef, abi_gen_helper)
           "key_types": [
             "uint64"
           ]
-        }]
+        }],
+       "clauses": []
    }
    )=====";
 
@@ -1455,7 +1464,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_of_POD, abi_gen_helper)
          ],
          "type": "table1"
        }
-     ]
+     ],
+    "clauses": []
    }
    )=====";
 
@@ -1538,7 +1548,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_of_structs, abi_gen_helper)
          ],
          "type": "table1"
        }
-     ]
+     ],
+    "clauses": []
    }
    )=====";
 
@@ -1628,7 +1639,8 @@ BOOST_FIXTURE_TEST_CASE(abgigen_vector_alias, abi_gen_helper)
          "ricardian_contract": ""
        }
      ],
-     "tables": []
+     "tables": [],
+     "clauses": []
    }
    )=====";
 
@@ -1687,7 +1699,8 @@ BOOST_FIXTURE_TEST_CASE(abgigen_eosioabi_macro, abi_gen_helper)
          "type": "hi"
        }
      ],
-     "tables": []
+     "tables": [],
+     "clauses": []
    }
    )=====";
 
@@ -1759,7 +1772,8 @@ BOOST_FIXTURE_TEST_CASE(abgigen_contract_inheritance, abi_gen_helper)
          "type": "bye"
        }
      ],
-     "tables": []
+     "tables": [],
+     "clauses": []
    }
    )=====";
 
@@ -1931,8 +1945,8 @@ BOOST_AUTO_TEST_CASE(general)
        }],
       "typedef" : {"new_type_name":"new", "type":"old"},
       "typedef_arr": [{"new_type_name":"new", "type":"old"},{"new_type_name":"new", "type":"old"}],
-      "actiondef"       : {"name":"actionname1", "type":"type1"},
-      "actiondef_arr"   : [{"name":"actionname1", "type":"type1"},{"name":"actionname2", "type":"type2"}],
+      "actiondef"       : {"name":"actionname1", "type":"type1", "ricardian_contract":"ricardian1"},
+      "actiondef_arr"   : [{"name":"actionname1", "type":"type1","ricardian_contract":"ricardian1"},{"name":"actionname2", "type":"type2","ricardian_contract":"ricardian2"}],
       "tabledef": {"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"},
       "tabledef_arr": [
          {"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"},
@@ -1941,19 +1955,22 @@ BOOST_AUTO_TEST_CASE(general)
       "abidef":{
         "types" : [{"new_type_name":"new", "type":"old"}],
         "structs" : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type": "type1"}, {"name":"name2", "type": "type2"}] }],
-        "actions" : [{"name":"action1","type":"type1"}],
-        "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}]
+        "actions" : [{"name":"action1","type":"type1", "ricardian_contract":""}],
+        "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}],
+        "clauses": []
       },
       "abidef_arr": [{
         "types" : [{"new_type_name":"new", "type":"old"}],
         "structs" : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type": "type1"}, {"name":"name2", "type": "type2"}] }],
-        "actions" : [{"name":"action1","type":"type1"}],
-        "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}]
+        "actions" : [{"name":"action1","type":"type1", "ricardian_contract":""}],
+        "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}],
+        "clauses": []
       },{
         "types" : [{"new_type_name":"new", "type":"old"}],
         "structs" : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type": "type1"}, {"name":"name2", "type": "type2"}] }],
-        "actions" : [{"name":"action1","type":"type1"}],
-        "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}]
+        "actions" : [{"name":"action1","type":"type1", "ricardian_contract": ""}],
+        "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}],
+        "clauses": []
       }]
     }
    )=====";
@@ -1977,7 +1994,8 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
         }],
        "structs": [],
        "actions": [],
-       "tables": []
+       "tables": [],
+       "clauses": []
    }
    )=====";
 
@@ -1998,7 +2016,8 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
          "fields": []
        }],
        "actions": [],
-       "tables": []
+       "tables": [],
+       "clauses": []
    }
    )=====";
 
@@ -2406,7 +2425,8 @@ BOOST_AUTO_TEST_CASE(setabi)
         ],
         "actions": [{
             "name": "transfer",
-            "type": "transfer"
+            "type": "transfer",
+            "ricardian_contract": "transfer contract"
           }
         ],
         "tables": [{
@@ -2416,7 +2436,8 @@ BOOST_AUTO_TEST_CASE(setabi)
             "key_names" : ["account"],
             "key_types" : ["name"]
           }
-        ]
+        ],
+       "clauses": []
       }
    }
    )=====";
@@ -2781,7 +2802,8 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
            "type": "action2"
          }
        ],
-       "tables": []
+       "tables": [],
+       "clauses": []
    }
    )=====";
    fc::variant var;
@@ -2856,7 +2878,8 @@ BOOST_AUTO_TEST_CASE(abi_type_repeat)
          "key_names" : ["account"],
          "key_types" : ["name"]
        }
-     ]
+     ],
+    "clauses": []
    }
    )=====";
 
@@ -2912,7 +2935,8 @@ BOOST_AUTO_TEST_CASE(abi_struct_repeat)
          "key_names" : ["account"],
          "key_types" : ["name"]
        }
-     ]
+     ],
+     "clauses": []
    }
    )=====";
 
@@ -2971,7 +2995,8 @@ BOOST_AUTO_TEST_CASE(abi_action_repeat)
          "key_names" : ["account"],
          "key_types" : ["name"]
        }
-     ]
+     ],
+    "clauses": []
    }
    )=====";
 
@@ -3017,7 +3042,8 @@ BOOST_AUTO_TEST_CASE(abi_table_repeat)
      ],
      "actions": [{
          "name": "transfer",
-         "type": "transfer"
+         "type": "transfer",
+         "ricardian_contract": "transfer contract"
        }
      ],
      "tables": [{
