@@ -371,12 +371,8 @@ transaction_trace chain_controller::delayed_transaction_processing( const transa
    // TODO: update to better method post RC1?
    account_name payer;
    for(const auto& act : mtrx.trx().actions ) {
-      for (const auto& auth : act.authorization) {
-         payer = auth.actor;
-         break;
-      }
-
-      if (!payer.empty()) {
+      if (act.authorization.size() > 0) {
+         payer = act.authorization.at(0).actor;
          break;
       }
    }
