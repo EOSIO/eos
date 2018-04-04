@@ -51,23 +51,30 @@
     }],
   "actions": [{
       "name": "setalimits",
-      "type": "set_account_limits"
+      "type": "set_account_limits",
+      "ricardian_contract": ""
     },{
       "name": "setglimits",
-      "type": "set_global_limits"
+      "type": "set_global_limits",
+      "ricardian_contract": ""
     },{
        "name": "setpriv",
-       "type": "setpriv"
+       "type": "setpriv",
+      "ricardian_contract": ""
     },{
       "name": "setprods",
-      "type": "set_producers"
+      "type": "set_producers",
+      "ricardian_contract": ""
     },{
       "name": "reqauth",
-      "type": "require_auth"
+      "type": "require_auth",
+      "ricardian_contract": ""
     },{
       "name": "nonce",
-      "type": "nonce"
+      "type": "nonce",
+      "ricardian_contract": ""
     }
   ],
-  "tables": []
+  "tables": [],
+  "clauses": []
 }

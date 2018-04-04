@@ -96,19 +96,24 @@
   ],
   "actions": [{
       "name": "propose",
-      "type": "propose"
+      "type": "propose",
+      "ricardian_contract": ""
     },{
       "name": "approve",
-      "type": "approve"
+      "type": "approve",
+      "ricardian_contract": ""
     },{
       "name": "unapprove",
-      "type": "unapprove"
+      "type": "unapprove",
+      "ricardian_contract": ""
     }, {
       "name": "cancel",
-      "type": "cancel"
+      "type": "cancel",
+      "ricardian_contract": ""
     }, {
       "name": "exec",
-      "type": "exec"
+      "type": "exec",
+      "ricardian_contract": ""
     }
 
   ],
@@ -119,5 +124,6 @@
       "key_names" : ["proposal_name"],
       "key_types" : ["name"]
     } 
-  ]
+  ],
+  "clauses": []
 }

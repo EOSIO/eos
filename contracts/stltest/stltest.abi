@@ -23,7 +23,8 @@
   ],
   "actions": [{
       "name": "message",
-      "type": "message"
+      "type": "message",
+      "ricardian_contract": ""
     }
   ],
   "tables": [{
@@ -39,5 +40,6 @@
       "key_names" : ["user"],
       "key_types" : ["my_account_name"]
     }
-  ]
+  ],
+  "clauses": []
 }

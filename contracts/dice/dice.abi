@@ -147,22 +147,28 @@
   ],
   "actions": [{
       "name": "offerbet",
-      "type": "offerbet"
+      "type": "offerbet",
+      "ricardian_contract": ""
     },{
       "name": "canceloffer",
-      "type": "canceloffer"
+      "type": "canceloffer",
+      "ricardian_contract": ""
     },{
       "name": "reveal",
-      "type": "reveal"
+      "type": "reveal",
+      "ricardian_contract": ""
     },{
       "name": "claimexpired",
-      "type": "claimexpired"
+      "type": "claimexpired",
+      "ricardian_contract": ""
     },{
       "name": "deposit",
-      "type": "deposit"
+      "type": "deposit",
+      "ricardian_contract": ""
     },{
       "name": "withdraw",
-      "type": "withdraw"
+      "type": "withdraw",
+      "ricardian_contract": ""
     }
   ],
   "tables": [{
@@ -206,5 +212,6 @@
       ],
       "type": "account"
     }
-  ]
+  ],
+  "clauses": []
 }
