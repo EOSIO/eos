@@ -29,9 +29,7 @@ eosio generated block 5e527ee2... #101528 @ 2018-04-01T14:24:58.500 with 0 trxs
 
 ```
 
-This command sets many flags and loads some optional plugins which we will need for
-the rest of this tutorial. Assuming everything worked properly you should see a 
-block generation message every 0.5 seconds.  
+This command sets many flags and loads some optional plugins which we will need for the rest of this tutorial. Assuming everything worked properly, you should see a block generation message every 0.5 seconds.  
 
 ```
 eosio generated block 046b9984... #101527 @ 2018-04-01T14:24:58.000 with 0 trxs
@@ -39,18 +37,15 @@ eosio generated block 046b9984... #101527 @ 2018-04-01T14:24:58.000 with 0 trxs
 
 This means your local blockchain is live, producing blocks, and ready to be used.
 
-For more information about the arguments to `nodeos` you can
-use:
+For more information about the arguments to `nodeos` you can use:
 
 ```
-nodes --help
+nodeos --help
 ```
 
 ## Creating a Wallet
 
-A wallet is a repository of private keys necessary to authorize actions on the blockchain.
-These keys are stored on disk encrypted using a password generated for you. This password
-should be stored in a secure password manager.
+A wallet is a repository of private keys necessary to authorize actions on the blockchain.  These keys are stored on disk encrypted using a password generated for you.  This password should be stored in a secure password manager.
 
 ```
 $ cleos wallet create
@@ -60,39 +55,32 @@ Without password imported keys will not be retrievable.
 "PW5JuBXoXJ8JHiCTXfXcYuJabjF9f9UNNqHJjqDVY7igVffe3pXub"
 ```
 
-For the purpose of this simple development environment, your wallet is being managed by
-your local `nodeos` via the `eosio::wallet_api_plugin` we enabled when we started `nodeos`. 
-Any time you restart `nodeos` you will have to unlock your wallet before you can use the
-keys within.
+For the purpose of this simple development environment, your wallet is being managed by your local `nodeos` via the `eosio::wallet_api_plugin` we enabled when we started `nodeos`.  Any time you restart `nodeos` you will have to unlock your wallet before you can use the keys within.
 
 ```
 $ cleos wallet unlock --password PW5JuBXoXJ8JHiCTXfXcYuJabjF9f9UNNqHJjqDVY7igVffe3pXub
 Unlocked: default
 ```
 
-It is generally not secure to use your password directly on the commandline where it gets
-logged to your bash history, so you could also unlock in interactive mode:
+It is generally not secure to use your password directly on the commandline where it gets logged to your bash history, so you can also unlock in interactive mode:
 
 ```
 $ cleos wallet unlock
 password:
 ```
 
-For security purposes it is generally best to leave your wallet locked when you are not
-using it.  To lock you wallet without shutting down `nodeos` you can do:
+For security purposes it is generally best to leave your wallet locked when you are not using it.  To lock your wallet without shutting down `nodeos` you can do:
 
 ```
 $ cleos wallet lock
 Locked: default
 ```
 
-You will need you wallet unlocked for the rest of this tutorial.
+You will need your wallet unlocked for the rest of this tutorial.
 
-All new blockchains start out with a master key for the sole initial account, `eosio`. To
-interact with the blockchain you will need to import this initial account's private key 
-into your wallet.
+All new blockchains start out with a master key for the sole initial account, `eosio`. To interact with the blockchain you will need to import this initial account's private key into your wallet.
 
-Import the master key for the eosio account into your wallet.
+Import the master key for the `eosio` account into your wallet.
 
 ```
 $ cleos wallet import 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
@@ -101,15 +89,9 @@ imported private key for: EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
 
 ## Load the Bios Contract
 
-Now that we have a wallet with the key for the `eosio` loaded we can set a default system contract.
-For the purposes of development, the default `eosio.bios` contract can be used. This contract enables
-you have direct control over the resoruce allocation of other accounts and access other privileged 
-api calls. In a public blockchain, this contract would manage the staking and unstaking of tokens to
-reserve bandwidth for cpu and network activity and memory for contracts. 
+Now that we have a wallet with the key for the `eosio` loaded, we can set a default system contract.  For the purposes of development, the default `eosio.bios` contract can be used.  This contract enables you to have direct control over the resource allocation of other accounts and to access other privileged API calls. In a public blockchain, this contract will manage the staking and unstaking of tokens to reserve bandwidth for CPU and network activity, and memory for contracts. 
 
-The eosio.bios contract can be found in the contracts folder of yoru eosio source code. This command assumes
-it is being executed from the root of the eosio source, but you could execute it from anywhere by specifying 
-the full path to ${EOSIO_SOURCE}/contracts/eosio.bios.
+The `eosio.bios` contract can be found in the `contracts` folder of your eosio source code.  The command sequence below assumes it is being executed from the root of the eosio source, but you can execute it from anywhere by specifying the full path to `${EOSIO_SOURCE}/contracts/eosio.bios`.
 
 ```
 $ cleos set contract eosio contracts/eosio.bios -p eosio
@@ -121,11 +103,9 @@ executed transaction: 414cf0dc7740d22474992779b2416b0eabdbc91522c16521307dd68205
 #         eosio <= eosio::setabi                {"account":"eosio","abi":{"types":[],"structs":[{"name":"set_account_limits","base":"","fields":[{"n...
 ```
 
-`cleos` generated a transaction with two actions, `eosio::setcode` and `eosio::setabi`.  
+The result of this command sequence is that `cleos` generated a transaction with two actions, `eosio::setcode` and `eosio::setabi`.  
 
-The code defines how the contract runs and the abi describes how to convert between binary and json
-representations of the arguments. While an abi is technically optional, all of the eosio tooling depends upon
-it for ease of use.  
+The code defines how the contract runs and the abi describes how to convert between binary and json representations of the arguments. While an abi is technically optional, all of the eosio tooling depends upon it for ease of use.  
 
 Any time you execute a transaction you will see output like:
 ```
@@ -134,7 +114,7 @@ executed transaction: 414cf0dc7740d22474992779b2416b0eabdbc91522c16521307dd68205
 #         eosio <= eosio::setabi                {"account":"eosio","abi":{"types":[],"structs":[{"name":"set_account_limits","base":"","fields":[{"n...
 ```
 
-This can be read as: The action 'setcode' as defined by `eosio` was executed by `eosio` contract with `{args...}`.
+This can be read as: The action `setcode` as defined by `eosio` was executed by `eosio` contract with `{args...}`.
 
 ```
 #         ${executeor} <= ${contract}:${action} ${args...}
@@ -143,16 +123,14 @@ This can be read as: The action 'setcode' as defined by `eosio` was executed by 
 
 As we will see in a bit, actions can be processed by more than one contract.
 
-The last argument to this call was `-p eosio`, this tells cleos to sign this 
-action with the active authority of the `eosio` account which will use the key
-we imported earlier. 
+The last argument to this call was `-p eosio`.  This tells `cleos` to sign this action with the active authority of the `eosio` account, that is, to sign the action using the private key that we imported earlier. 
 
 
 ## Create an Account
 
-Now that we have setup the basic system contract, we can start to create our own accounts.
+Now that we have setup the basic system contract, we can start to create our own accounts.  We will create two accounts, `user` and `tester`, and we will need a key to associate with each account.  In this example, the same key will be used for both accounts.
 
-To do this we first generate a key for the account. 
+To do this we first generate a key for the accounts. 
 
 ```
 $ cleos create key
@@ -167,15 +145,14 @@ $ cleos wallet import 5Jmsawgsp1tQ3GD6JyGCwy1dcvqKZgX6ugMVMdjirx85iv5VyPR
 imported private key for: EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 ```
 
-Keys are not automatically added to a wallet, so skipping this step could result in
-losing control of your account.
+Keys are not automatically added to a wallet, so skipping this step could result in losing control of your account.
 
 ## Create two User Accounts
 
 Next we will create two accounts, `user` and `tester`, using the key we created and imported above.
 
 ```
-$ cleos create account eosio user  EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
+$ cleos create account eosio user EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4 EOS7ijWCBmoXBi3CgtK7DJxentZZeTkeUnaSDvyro9dq7Sd1C3dC4
 executed transaction: 8aedb926cc1ca31642ada8daf4350833c95cbe98b869230f44da76d70f6d6242  364 bytes  1000 cycles
 #         eosio <= eosio::newaccount            {"creator":"eosio","name":"user","owner":{"threshold":1,"keys":[{"key":"EOS7ijWCBmoXBi3CgtK7DJxentZZ...
 
