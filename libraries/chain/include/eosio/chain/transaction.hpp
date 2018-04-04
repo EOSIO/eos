@@ -4,7 +4,6 @@
  */
 #pragma once
 #include <eosio/chain/types.hpp>
-
 #include <numeric>
 
 namespace eosio { namespace chain {
@@ -226,7 +225,7 @@ namespace eosio { namespace chain {
       uint128_t      sender_id; /// ID assigned by sender of generated, accessible via WASM api when executing normal or error
       account_name   sender; /// receives error handler callback
       account_name   payer;
-      time_point_sec execute_after; /// delayed exeuction
+      time_point_sec execute_after; /// delayed execution
 
       deferred_transaction() = default;
 
@@ -241,12 +240,12 @@ namespace eosio { namespace chain {
 
    struct deferred_reference {
       deferred_reference(){}
-      deferred_reference( const account_name& sender, uint128_t sender_id)
+      deferred_reference( const account_name& sender, const uint128_t& sender_id)
       :sender(sender),sender_id(sender_id)
       {}
 
-      account_name   sender;
-      uint128_t       sender_id;
+      account_name                      sender;
+      uint128_t                         sender_id;
    };
 } } // eosio::chain
 
@@ -260,4 +259,4 @@ FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction
 FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
 FC_REFLECT( eosio::chain::packed_transaction, (signatures)(context_free_data)(compression)(data) )
 FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(payer)(execute_after) )
-FC_REFLECT( eosio::chain::deferred_reference, (sender_id)(sender) )
+FC_REFLECT( eosio::chain::deferred_reference, (sender)(sender_id) )

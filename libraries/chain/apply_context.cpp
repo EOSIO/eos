@@ -303,7 +303,7 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
    } FC_CAPTURE_AND_RETHROW((trx));
 }
 
-void apply_context::cancel_deferred( uint128_t sender_id ) {
+void apply_context::cancel_deferred( const uint128_t& sender_id ) {
    results.deferred_transaction_requests.push_back(deferred_reference(receiver, sender_id));
 }
 
@@ -426,24 +426,6 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
       memcpy( buffer, trx_meta.context_free_data[index].data(), s );
 
    return s;
-}
-
-uint32_t apply_context::get_next_sender_id() {
-   const uint64_t id = N(config::eosio_auth_scope);
-   const auto table = N(deferred.seq);
-   const auto payer = config::system_account_name;
-   const auto iter = db_find_i64(config::system_account_name, config::eosio_auth_scope, table, id);
-   if (iter == -1) {
-      const uint32_t next_serial = 1;
-      db_store_i64(config::system_account_name, config::eosio_auth_scope, table, payer, id, (const char*)&next_serial, sizeof(next_serial));
-      return 0;
-   }
-
-   uint32_t next_serial = 0;
-   db_get_i64(iter, (char*)&next_serial, sizeof(next_serial));
-   const auto result = next_serial++;
-   db_update_i64(iter, payer, (const char*)&next_serial, sizeof(next_serial));
-   return result;
 }
 
 int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
