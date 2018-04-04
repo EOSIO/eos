@@ -1132,8 +1132,9 @@ class Cluster(object):
         self.initbAccount=Account("initb")
         self.eosioAccount=Account("eosio")
         self.initaAccount.ownerPrivateKey=initaPrvtKey
+        self.initaAccount.activePrivateKey=initaPrvtKey
         self.initbAccount.ownerPrivateKey=initbPrvtKey
-        self.producerKeys=None
+        self.initbAccount.activePrivateKey=initbPrvtKey
         self.nprodCount=nprodCount
 
 
@@ -1164,9 +1165,9 @@ class Cluster(object):
         if Utils.Debug:
             nodeosArgs += "--log-level-net-plugin debug"
         if not self.walletd:
-            nodeosArgs += "--plugin eosio::wallet_api_plugin"
+            nodeosArgs += " --plugin eosio::wallet_api_plugin"
         if self.enableMongo:
-            nodeosArgs += "--plugin eosio::mongo_db_plugin --resync --mongodb-uri %s" % self.mongoUri
+            nodeosArgs += " --plugin eosio::mongo_db_plugin --resync --mongodb-uri %s" % self.mongoUri
 
         if nodeosArgs:
             cmdArr.append("--nodeos")
@@ -1180,7 +1181,7 @@ class Cluster(object):
 
         self.nodes=range(total_nodes) # placeholder for cleanup purposes only
 
-        nodes=self.discoverLocalNodes(total_nodes)
+        nodes=self.discoverLocalNodes(total_nodes, timeout=Utils.systemWaitTimeout)
         if nodes is None or total_nodes != len(nodes):
             Utils.Print("ERROR: Unable to validate %s instances, expected: %d, actual: %d" %
                           (Utils.EosServerName, total_nodes, len(nodes)))
@@ -1217,18 +1218,25 @@ class Cluster(object):
         self.initbAccount.activePublicKey=initbKeys["public"]
         producerKeys.pop("eosio")
 
-        self.producerKeys=producerKeys
-
         return True
 
     # Initialize the default nodes (at present just the root node)
-    def initializeNodes(self):
+    def initializeNodes(self, initaPrvtKey=None, initbPrvtKey=None):
         node=Node(self.host, self.port, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
         node.setWalletEndpointArgs(self.walletEndpointArgs)
         Utils.Debug and Utils.Print("Node:", node)
 
         node.checkPulse()
         self.nodes=[node]
+
+        if initaPrvtKey is not None:
+            self.initaAccount.ownerPrivateKey=initaPrvtKey
+            self.initaAccount.activePrivateKey=initaPrvtKey
+
+        if initbPrvtKey is not None:
+            self.initbAccount.ownerPrivateKey=initbPrvtKey
+            self.initbAccount.activePrivateKey=initbPrvtKey
+
         return True
 
     # Initialize nodes from the Json nodes string
@@ -1744,19 +1752,36 @@ class Cluster(object):
 
     
     # Populates list of EosInstanceInfo objects, matched to actual running instances
-    def discoverLocalNodes(self, totalNodes):
+    def discoverLocalNodes(self, totalNodes, timeout=0):
         nodes=[]
 
-        try:
-            pgrepOpts="-fl"
-            if platform.linux_distribution()[0] == "Ubuntu" or platform.linux_distribution()[0] == "LinuxMint" or platform.linux_distribution()[0] == "Fedora":
-                pgrepOpts="-a"
+        pgrepOpts="-fl"
+        if platform.linux_distribution()[0] == "Ubuntu" or platform.linux_distribution()[0] == "LinuxMint" or platform.linux_distribution()[0] == "Fedora":
+            pgrepOpts="-a"
 
-            cmd="pgrep %s %s" % (pgrepOpts, Utils.EosServerName)
-            Utils.Debug and Utils.Print("cmd: %s" % (cmd))
-            psOut=subprocess.check_output(cmd.split()).decode("utf-8")
-            #Utils.Print("psOut: <%s>" % psOut)
+        startTime=time.time()
+        remainingTime=timeout
+        checkForNodes=True
 
+        psOut=None
+        while checkForNodes:
+            try:
+                cmd="pgrep %s %s" % (pgrepOpts, Utils.EosServerName)
+                Utils.Debug and Utils.Print("cmd: %s" % (cmd))
+                psOut=subprocess.check_output(cmd.split()).decode("utf-8")
+                Utils.Debug and Utils.Print("psOut: \"%s\"" % psOut)
+                break
+            except subprocess.CalledProcessError as ex:
+                pass
+
+            checkForNodes= (remainingTime > 0)
+            if checkForNodes:
+                sleepTime=3 if remainingTime > 3 else (3 - remainingTime)
+                remainingTime -= sleepTime
+                Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (sleepTime))
+                time.sleep(sleepTime)
+
+        if psOut is not None:
             for i in range(0, totalNodes):
                 pattern="[\n]?(\d+) (.* --data-dir var/lib/node_%02d)" % (i)
                 m=re.search(pattern, psOut, re.MULTILINE)
@@ -1767,9 +1792,8 @@ class Cluster(object):
                 instance.setWalletEndpointArgs(self.walletEndpointArgs)
                 Utils.Debug and Utils.Print("Node:", instance)
                 nodes.append(instance)
-        except subprocess.CalledProcessError as ex:
-            Utils.Print("ERROR: Exception during Nodes creation:", ex)
-            raise
+            else:
+                Utils.Print("ERROR: No nodes discovered.")
 
         return nodes
 

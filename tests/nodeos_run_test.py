@@ -95,7 +95,7 @@ try:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
-        cluster.initializeNodes()
+        cluster.initializeNodes(initaPrvtKey=initaPrvtKey, initbPrvtKey=initbPrvtKey)
         killEosInstances=False
 
     walletMgr.killall()

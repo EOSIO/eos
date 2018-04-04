@@ -55,7 +55,11 @@ try:
     if not cluster.waitOnClusterBlockNumSync(3):
         errorExit("Cluster never stabilized")
 
-    cmd="%s --dont-launch %s %s" % (actualTest, "-v" if debug else "", "" if amINoon else "--not-noon")
+    producerKeys=testUtils.Cluster.parseClusterKeys(1)
+    initaPrvtKey=producerKeys["inita"]["private"]
+    initbPrvtKey=producerKeys["initb"]["private"]
+
+    cmd="%s --dont-launch --inita_prvt_key %s --initb_prvt_key %s %s %s" % (actualTest, initaPrvtKey, initbPrvtKey, "-v" if debug else "", "" if amINoon else "--not-noon")
     Print("Starting up %s test: %s" % ("nodeos" if amINoon else "eosd", actualTest))
     Print("cmd: %s\n" % (cmd))
     if 0 != subprocess.call(cmd, shell=True):
