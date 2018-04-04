@@ -476,7 +476,7 @@ transaction chain_controller::_get_on_block_transaction()
    trx.actions.emplace_back(std::move(on_block_act));
    trx.set_reference_block(head_block_id());
    trx.expiration = head_block_time() + fc::seconds(1);
-   trx.kcpu_usage = 2000; // 1 << 24;
+   trx.kcpu_usage = 0;
    return trx;
 }
 
@@ -1977,6 +1977,9 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
          return result;
       } catch (...) {
          if (meta.is_implicit) {
+            try {
+               throw;
+            } FC_CAPTURE_AND_LOG((meta.id));
             transaction_trace result(meta.id);
             result.status = transaction_trace::hard_fail;
             return result;
