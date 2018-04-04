@@ -23,7 +23,8 @@
   ],
   "actions": [{
       "name": "setowner",
-      "type": "setowner"
+      "type": "setowner",
+      "ricardian_contract": ""
     }
   ],
   "tables": [{
@@ -33,5 +34,6 @@
       "key_names" : ["key"],
       "key_types" : ["name"]
     }
-  ]
+  ],
+  "clauses": []
 }

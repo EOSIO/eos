@@ -72,13 +72,16 @@
   ],
   "actions": [{
       "name": "create",
-      "type": "create"
+      "type": "create",
+      "ricardian_contract": ""
     },{
       "name": "certprop",
-      "type": "certprop"
+      "type": "certprop",
+      "ricardian_contract": ""
     },{
       "name": "settrust",
-      "type": "settrust"
+      "type": "settrust",
+      "ricardian_contract": ""
     }
   ],
   "tables": [{
@@ -108,5 +111,6 @@
       "key_names" : [ "account" ],
       "key_types": [ "account_name" ]
     }
-  ]
+  ],
+  "clauses": []
 }

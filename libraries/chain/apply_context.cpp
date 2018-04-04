@@ -272,6 +272,10 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
             require_authorization(trx.payer);
          }
 
+         if (trx.payer != receiver) {
+            require_authorization(trx.payer);
+         }
+
          // if a contract is deferring only actions to itself then there is no need
          // to check permissions, it could have done everything anyway.
          bool check_auth = false;
@@ -426,6 +430,14 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
       memcpy( buffer, trx_meta.context_free_data[index].data(), s );
 
    return s;
+}
+
+void apply_context::check_auth( const transaction& trx, const vector<permission_level>& perm ) {
+   controller.check_authorization( trx.actions,
+                                   {},
+                                   true,
+                                   {},
+                                   flat_set<permission_level>(perm.begin(), perm.end()) );
 }
 
 int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {

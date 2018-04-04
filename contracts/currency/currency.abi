@@ -56,13 +56,16 @@
   ],
   "actions": [{
       "name": "transfer",
-      "type": "transfer"
+      "type": "transfer",
+      "ricardian_contract": ""
     },{
       "name": "issue",
-      "type": "issue"
+      "type": "issue",
+      "ricardian_contract": ""
     }, {
       "name": "create",
-      "type": "create"
+      "type": "create",
+      "ricardian_contract": ""
     }
 
   ],
@@ -79,5 +82,6 @@
       "key_names" : ["currency"],
       "key_types" : ["uint64"]
     }
-  ]
+  ],
+  "clauses": []
 }

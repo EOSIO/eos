@@ -10,8 +10,10 @@
   ],
   "actions": [{
       "name": "trigger",
-      "type": "trigger"
+      "type": "trigger",
+      "ricaridian_contract": ""
     }
   ],
-  "tables": []
+  "tables": [],
+  "clauses": []
 }

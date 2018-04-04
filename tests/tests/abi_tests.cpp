@@ -327,7 +327,9 @@ const char* my_abi = R"=====(
     }
   ],
   "actions": [],
-  "tables": []
+  "tables": [],
+  "clauses": [{"id":"clause A","body":"clause body A"}, 
+              {"id":"clause B","body":"clause body B"}]
 }
 )=====";
 
@@ -355,7 +357,8 @@ BOOST_AUTO_TEST_CASE(uint_types)
            }]
        }],
        "actions": [],
-       "tables": []
+       "tables": [],
+       "clauses": []
    }
    )=====";
 
@@ -650,7 +653,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_types, abi_gen_helper)
               "name" : "teststruct",
               "type" : "test_struct"
            }],
-       "tables": []
+       "tables": [],
+       "clauses": []
    }
    )=====";
    BOOST_TEST( generate_abi(all_types, all_types_abi) == true);
@@ -729,10 +733,12 @@ BOOST_FIXTURE_TEST_CASE(abigen_double_action, abi_gen_helper)
        }],
        "actions": [{
           "name" : "action1",
-          "type" : "C"
+          "type" : "C",
+          "ricardian_contract" : ""
        },{
           "name" : "action2",
-          "type" : "C"
+          "type" : "C",
+          "ricardian_contract" : ""
        }],
        "tables": []
    }
@@ -888,7 +894,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_all_indexes, abi_gen_helper)
           ]
         },
 
-       ]
+       ],
+       "clauses": []
    }
    )=====";
 
@@ -1045,7 +1052,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_full_table_decl, abi_gen_helper)
           "key_types": [
             "uint64"
           ]
-        }]
+        }],
+       "clauses": []
    }
    )=====";
 
@@ -1096,7 +1104,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_str_table_decl, abi_gen_helper)
          ],
          "type": "table1"
        }
-     ]
+     ],
+     "clauses": []
    }
    )=====";
 
@@ -1193,7 +1202,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_template_base, abi_gen_helper)
           "key_types": [
             "uint64"
           ]
-        }]
+        }],
+       "clauses": []
    }
    )=====";
 
@@ -1230,7 +1240,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_action_and_table, abi_gen_helper)
        }],
        "actions": [{
           "name" : "tableaction",
-          "type" : "table_action"
+          "type" : "table_action",
+          "ricardian_contract" : ""
        }],
        "tables": [
         {
@@ -1243,7 +1254,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_action_and_table, abi_gen_helper)
           "key_types": [
             "uint64"
           ]
-        }]
+        }],
+       "clauses": []
    }
    )=====";
 
@@ -1303,9 +1315,11 @@ BOOST_FIXTURE_TEST_CASE(abigen_simple_typedef, abi_gen_helper)
        }],
        "actions": [{
           "name" : "mainaction",
-          "type" : "main_action"
+          "type" : "main_action",
+          "ricardian_contract" : ""
        }],
-       "tables": []
+       "tables": [],
+       "clauses": []
    }
    )=====";
 
@@ -1382,7 +1396,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_field_typedef, abi_gen_helper)
           "key_types": [
             "uint64"
           ]
-        }]
+        }],
+       "clauses": []
    }
    )=====";
 
@@ -1449,7 +1464,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_of_POD, abi_gen_helper)
          ],
          "type": "table1"
        }
-     ]
+     ],
+    "clauses": []
    }
    )=====";
 
@@ -1532,7 +1548,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_vector_of_structs, abi_gen_helper)
          ],
          "type": "table1"
        }
-     ]
+     ],
+    "clauses": []
    }
    )=====";
 
@@ -1618,10 +1635,12 @@ BOOST_FIXTURE_TEST_CASE(abgigen_vector_alias, abi_gen_helper)
      ],
      "actions": [{
          "name": "myaction",
-         "type": "my_action"
+         "type": "my_action",
+         "ricardian_contract": ""
        }
      ],
-     "tables": []
+     "tables": [],
+     "clauses": []
    }
    )=====";
 
@@ -1680,7 +1699,8 @@ BOOST_FIXTURE_TEST_CASE(abgigen_eosioabi_macro, abi_gen_helper)
          "type": "hi"
        }
      ],
-     "tables": []
+     "tables": [],
+     "clauses": []
    }
    )=====";
 
@@ -1752,7 +1772,8 @@ BOOST_FIXTURE_TEST_CASE(abgigen_contract_inheritance, abi_gen_helper)
          "type": "bye"
        }
      ],
-     "tables": []
+     "tables": [],
+     "clauses": []
    }
    )=====";
 
@@ -1843,8 +1864,8 @@ BOOST_AUTO_TEST_CASE(general)
         "region": "1",
         "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
         "actions":[{"account":"accountname1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
-        "net_usage_words":15,
-        "kcpu_usage":43,
+        "max_net_usage_words":15,
+        "max_kcpu_usage":43,
         "delay_sec":0
       },
       "transaction_arr": [{
@@ -1854,8 +1875,8 @@ BOOST_AUTO_TEST_CASE(general)
         "region": "1",
         "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
         "actions":[{"account":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
-        "net_usage_words":15,
-        "kcpu_usage":43,
+        "max_net_usage_words":15,
+        "max_kcpu_usage":43,
         "delay_sec":0
       },{
         "ref_block_num":"2",
@@ -1864,8 +1885,8 @@ BOOST_AUTO_TEST_CASE(general)
         "region": "1",
         "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
         "actions":[{"account":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}],
-        "net_usage_words":21,
-        "kcpu_usage":87,
+        "max_net_usage_words":21,
+        "max_kcpu_usage":87,
         "delay_sec":0
       }],
       "strx": {
@@ -1877,8 +1898,8 @@ BOOST_AUTO_TEST_CASE(general)
         "context_free_data" : ["abcdef","0123456789","ABCDEF0123456789abcdef"],
         "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
         "actions":[{"account":"accountname1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
-        "net_usage_words":15,
-        "kcpu_usage":43,
+        "max_net_usage_words":15,
+        "max_kcpu_usage":43,
         "delay_sec":0
       },
       "strx_arr": [{
@@ -1890,8 +1911,8 @@ BOOST_AUTO_TEST_CASE(general)
         "context_free_data" : ["abcdef","0123456789","ABCDEF0123456789abcdef"],
         "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
         "actions":[{"account":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
-        "net_usage_words":15,
-        "kcpu_usage":43,
+        "max_net_usage_words":15,
+        "max_kcpu_usage":43,
         "delay_sec":0
       },{
         "ref_block_num":"2",
@@ -1902,8 +1923,8 @@ BOOST_AUTO_TEST_CASE(general)
         "context_free_data" : ["abcdef","0123456789","ABCDEF0123456789abcdef"],
         "context_free_actions":[{"account":"contextfree2", "name":"cfactionname2", "authorization":[{"actor":"cfacc2","permission":"cfpermname2"}], "data":"667788"}],
         "actions":[{"account":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}],
-        "net_usage_words":15,
-        "kcpu_usage":43,
+        "max_net_usage_words":15,
+        "max_kcpu_usage":43,
         "delay_sec":0
       }],
       "keyweight": {"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},
@@ -1924,8 +1945,8 @@ BOOST_AUTO_TEST_CASE(general)
        }],
       "typedef" : {"new_type_name":"new", "type":"old"},
       "typedef_arr": [{"new_type_name":"new", "type":"old"},{"new_type_name":"new", "type":"old"}],
-      "actiondef"       : {"name":"actionname1", "type":"type1"},
-      "actiondef_arr"   : [{"name":"actionname1", "type":"type1"},{"name":"actionname2", "type":"type2"}],
+      "actiondef"       : {"name":"actionname1", "type":"type1", "ricardian_contract":"ricardian1"},
+      "actiondef_arr"   : [{"name":"actionname1", "type":"type1","ricardian_contract":"ricardian1"},{"name":"actionname2", "type":"type2","ricardian_contract":"ricardian2"}],
       "tabledef": {"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"},
       "tabledef_arr": [
          {"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"},
@@ -1934,19 +1955,22 @@ BOOST_AUTO_TEST_CASE(general)
       "abidef":{
         "types" : [{"new_type_name":"new", "type":"old"}],
         "structs" : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type": "type1"}, {"name":"name2", "type": "type2"}] }],
-        "actions" : [{"name":"action1","type":"type1"}],
-        "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}]
+        "actions" : [{"name":"action1","type":"type1", "ricardian_contract":""}],
+        "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}],
+        "clauses": []
       },
       "abidef_arr": [{
         "types" : [{"new_type_name":"new", "type":"old"}],
         "structs" : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type": "type1"}, {"name":"name2", "type": "type2"}] }],
-        "actions" : [{"name":"action1","type":"type1"}],
-        "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}]
+        "actions" : [{"name":"action1","type":"type1", "ricardian_contract":""}],
+        "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}],
+        "clauses": []
       },{
         "types" : [{"new_type_name":"new", "type":"old"}],
         "structs" : [{"name":"struct1", "base":"base1", "fields": [{"name":"name1", "type": "type1"}, {"name":"name2", "type": "type2"}] }],
-        "actions" : [{"name":"action1","type":"type1"}],
-        "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}]
+        "actions" : [{"name":"action1","type":"type1", "ricardian_contract": ""}],
+        "tables" : [{"name":"table1","index_type":"indextype1","key_names":["keyname1"],"key_types":["typename1"],"type":"type1"}],
+        "clauses": []
       }]
     }
    )=====";
@@ -1970,7 +1994,8 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
         }],
        "structs": [],
        "actions": [],
-       "tables": []
+       "tables": [],
+       "clauses": []
    }
    )=====";
 
@@ -1991,7 +2016,8 @@ BOOST_AUTO_TEST_CASE(abi_cycle)
          "fields": []
        }],
        "actions": [],
-       "tables": []
+       "tables": [],
+       "clauses": []
    }
    )=====";
 
@@ -2399,7 +2425,8 @@ BOOST_AUTO_TEST_CASE(setabi)
         ],
         "actions": [{
             "name": "transfer",
-            "type": "transfer"
+            "type": "transfer",
+            "ricardian_contract": "transfer contract"
           }
         ],
         "tables": [{
@@ -2409,7 +2436,8 @@ BOOST_AUTO_TEST_CASE(setabi)
             "key_names" : ["account"],
             "key_types" : ["name"]
           }
-        ]
+        ],
+       "clauses": []
       }
    }
    )=====";
@@ -2774,7 +2802,8 @@ BOOST_AUTO_TEST_CASE(packed_transaction)
            "type": "action2"
          }
        ],
-       "tables": []
+       "tables": [],
+       "clauses": []
    }
    )=====";
    fc::variant var;
@@ -2849,7 +2878,8 @@ BOOST_AUTO_TEST_CASE(abi_type_repeat)
          "key_names" : ["account"],
          "key_types" : ["name"]
        }
-     ]
+     ],
+    "clauses": []
    }
    )=====";
 
@@ -2905,7 +2935,8 @@ BOOST_AUTO_TEST_CASE(abi_struct_repeat)
          "key_names" : ["account"],
          "key_types" : ["name"]
        }
-     ]
+     ],
+     "clauses": []
    }
    )=====";
 
@@ -2964,7 +2995,8 @@ BOOST_AUTO_TEST_CASE(abi_action_repeat)
          "key_names" : ["account"],
          "key_types" : ["name"]
        }
-     ]
+     ],
+    "clauses": []
    }
    )=====";
 
@@ -3010,7 +3042,8 @@ BOOST_AUTO_TEST_CASE(abi_table_repeat)
      ],
      "actions": [{
          "name": "transfer",
-         "type": "transfer"
+         "type": "transfer",
+         "ricardian_contract": "transfer contract"
        }
      ],
      "tables": [{
