@@ -389,7 +389,7 @@ void apply_eosio_unlinkauth(apply_context& context) {
 
 
 void apply_eosio_onerror(apply_context& context) {
-   assert(context.trx_meta.sender);
+   FC_ASSERT(context.trx_meta.sender.valid(), "onerror action cannot be called directly");
    context.require_recipient(*context.trx_meta.sender);
 }
 
@@ -480,7 +480,7 @@ void apply_eosio_postrecovery(apply_context& context) {
       .parent = 0,
       .data = recover_act.data
    }, update);
-   
+
    const uint128_t request_id = context.controller.transaction_id_to_sender_id(context.trx_meta.id);
    auto record_data = mutable_variant_object()
       ("account", account)
@@ -589,7 +589,7 @@ void apply_eosio_canceldelay(apply_context& context) {
 
    FC_ASSERT (found, "canceldelay action must be signed with the \"active\" permission for one of the actors"
                      " provided in the authorizations on the original transaction");
-   
+
    context.cancel_deferred(context.controller.transaction_id_to_sender_id(trx_id));
 }
 
