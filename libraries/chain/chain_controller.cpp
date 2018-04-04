@@ -374,8 +374,19 @@ transaction_trace chain_controller::delayed_transaction_processing( const transa
 
    time_point_sec execute_after = head_block_time();
    execute_after += mtrx.delay;
-   //TODO: !!! WHO GETS BILLED TO STORE THE DELAYED TX?
-   deferred_transaction dtrx(context.get_next_sender_id(), config::system_account_name, config::system_account_name, execute_after, trx);
+
+   // TODO: update to better method post RC1?
+   account_name payer;
+   for(const auto& act : mtrx.trx().actions ) {
+      if (act.authorization.size() > 0) {
+         payer = act.authorization.at(0).actor;
+         break;
+      }
+   }
+
+   FC_ASSERT(!payer.empty(), "Failed to find a payer for delayed transaction!");
+
+   deferred_transaction dtrx(context.get_next_sender_id(), config::system_account_name, payer, execute_after, trx);
    FC_ASSERT( dtrx.execute_after < dtrx.expiration, "transaction expires before it can execute" );
 
    result.deferred_transaction_requests.push_back(std::move(dtrx));
@@ -592,6 +603,12 @@ void chain_controller::_finalize_block( const block_trace& trace, const producer
 
    update_last_irreversible_block();
    _resource_limits.process_account_limit_updates();
+
+   const auto& chain_config = this->get_global_properties().configuration;
+   _resource_limits.set_block_parameters(
+      {EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct), chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}},
+      {EOS_PERCENT(chain_config.max_block_net_usage, chain_config.target_block_net_usage_pct), chain_config.max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}}
+   );
 
    // trigger an update of our elastic values for block limits
    _resource_limits.process_block_usage(b.block_num());
@@ -1199,7 +1216,7 @@ static uint32_t calculate_transaction_cpu_usage( const transaction_trace& trace,
                            context_free_cpu_usage +
                            signature_cpu_usage;
 
-   uint32_t cpu_usage_limit = meta.trx().max_kcpu_usage.value * 1024; // overflow checked in validate_transaction_without_state
+   uint32_t cpu_usage_limit = meta.trx().max_kcpu_usage.value * 1024UL; // overflow checked in validate_transaction_without_state
    EOS_ASSERT( cpu_usage_limit == 0 || actual_cpu_usage <= cpu_usage_limit, tx_resource_exhausted,
                "declared cpu usage limit of transaction is too low: ${actual_cpu_usage} > ${declared_limit}",
                ("actual_cpu_usage", actual_cpu_usage)("declared_limit",cpu_usage_limit) );
@@ -1216,7 +1233,7 @@ static uint32_t calculate_transaction_net_usage( const transaction_trace& trace,
                            lock_net_usage;
 
 
-   uint32_t net_usage_limit = meta.trx().max_net_usage_words.value * 8; // overflow checked in validate_transaction_without_state
+   uint32_t net_usage_limit = meta.trx().max_net_usage_words.value * 8UL; // overflow checked in validate_transaction_without_state
    EOS_ASSERT( net_usage_limit == 0 || actual_net_usage <= net_usage_limit, tx_resource_exhausted,
                "declared net usage limit of transaction is too low: ${actual_net_usage} > ${declared_limit}",
                ("actual_net_usage", actual_net_usage)("declared_limit",net_usage_limit) );
@@ -1319,8 +1336,8 @@ void chain_controller::validate_transaction_without_state( const transaction& tr
       EOS_ASSERT( act.authorization.empty(), cfa_irrelevant_auth, "context-free actions cannot require authorization" );
    }
 
-   EOS_ASSERT( trx.max_net_usage_words.value < 0x20000000, transaction_exception, "overflow of max_net_usage_words" );
-   EOS_ASSERT( trx.max_kcpu_usage.value < 0x400000, transaction_exception, "overflow of max_kcpu_usage" );
+   EOS_ASSERT( trx.max_kcpu_usage.value < UINT32_MAX / 1024UL, transaction_exception, "declared max_kcpu_usage overflows when expanded to max cpu usage" );
+   EOS_ASSERT( trx.max_net_usage_words.value < UINT32_MAX / 8UL, transaction_exception, "declared max_net_usage_words overflows when expanded to max net usage" );
 
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
@@ -1943,6 +1960,9 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
          return result;
       } catch (...) {
          if (meta.is_implicit) {
+            try {
+               throw;
+            } FC_CAPTURE_AND_LOG((meta.id));
             transaction_trace result(meta.id);
             result.status = transaction_trace::hard_fail;
             return result;
@@ -2009,7 +2029,7 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
 
 void chain_controller::_destroy_generated_transaction( const generated_transaction_object& gto ) {
    auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
-   _resource_limits.add_account_ram_usage(gto.payer, -(sizeof(generated_transaction_object) + gto.packed_trx.size() + config::overhead_per_row_ram_bytes));
+   _resource_limits.add_account_ram_usage(gto.payer, -( config::billable_size_v<generated_transaction_object> + gto.packed_trx.size()));
    generated_transaction_idx.remove(gto);
 
 }
@@ -2018,7 +2038,7 @@ void chain_controller::_create_generated_transaction( const deferred_transaction
    size_t trx_size = fc::raw::pack_size(dto);
    _resource_limits.add_account_ram_usage(
       dto.payer,
-      (sizeof(generated_transaction_object) + (int64_t)trx_size + config::overhead_per_row_ram_bytes),
+      (config::billable_size_v<generated_transaction_object> + (int64_t)trx_size),
       "Generated Transaction ${id} from ${s}", _V("id", dto.sender_id)("s",dto.sender)
    );
 

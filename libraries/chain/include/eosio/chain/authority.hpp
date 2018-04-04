@@ -5,6 +5,7 @@
 #pragma once
 #include <chainbase/chainbase.hpp>
 #include <eosio/chain/transaction.hpp>
+#include <eosio/chain/config.hpp>
 
 #include <type_traits>
 
@@ -20,6 +21,18 @@ struct key_weight {
    public_key_type key;
    weight_type     weight;
 };
+
+namespace config {
+   template<>
+   struct billable_size<permission_level_weight> {
+      static const uint64_t value = 24; ///< over value of weight for safety
+   };
+
+   template<>
+   struct billable_size<key_weight> {
+      static const uint64_t value = 8; ///< over value of weight for safety, dynamically sizing key
+   };
+}
 
 struct authority {
   authority( public_key_type k ):threshold(1),keys({{k,1}}){}
@@ -61,22 +74,14 @@ struct shared_authority {
    }
 
    size_t get_billable_size() const {
-      /**
-       *  public_key_type contains a static_variant and so its size could change if we later wanted to add a new public key type of
-       *  of larger size, thus increasing the returned value from shared_authority::get_billable_size() for old authorities that
-       *  do not even use the new public key type.
-       *
-       * Although adding a new public key type is a hardforking change anyway, the current implementation means we would need to:
-       *  - track historical sizes of public_key_type,
-       *  - branch on hardfork versions within this function, and
-       *  - calculate billable size of the authority based on the appropriate historical size of public_key_type,
-       * all in order to avoid retroactively changing the billable size of authorities.
-       * TODO: Better implementation of get_billable_size()?
-       *       Perhaps it would require changes to how public_key_type is stored in shared_authority?
-       *       For example: change keys (of type shared_vector<key_weight>) to packed_keys (of type shared_vector<char>)
-       *                    which store the packed data of vector<key_weight>, and then charge based on that packed size.
-       */
-      return keys.size() * sizeof(key_weight) + accounts.size() * sizeof(permission_level_weight);
+      size_t accounts_size = accounts.size() * config::billable_size_v<permission_level_weight>;
+      size_t keys_size = 0;
+      for (const auto& k: keys) {
+         keys_size += config::billable_size_v<key_weight>;
+         keys_size += fc::raw::pack_size(k.key);  ///< serialized size of the key
+      }
+
+      return accounts_size + keys_size;
    }
 };
 

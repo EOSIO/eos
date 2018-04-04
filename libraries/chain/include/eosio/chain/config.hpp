@@ -44,11 +44,11 @@ static const uint32_t block_cpu_usage_average_window_ms    = 60*1000l;
 static const uint32_t block_size_average_window_ms         = 60*1000l;
 
 
-const static uint32_t   default_max_block_size         = 1024 * 1024; /// at 500ms blocks and 200byte trx, this enables ~10,000 TPS burst
-const static uint32_t   default_target_block_size      = default_max_block_size / 10; /// we target 1000 TPS
+const static uint32_t   default_max_block_net_usage         = 1024 * 1024; /// at 500ms blocks and 200byte trx, this enables ~10,000 TPS burst
+const static int        default_target_block_net_usage_pct  = 10 * percent_1; /// we target 1000 TPS
 
-const static uint32_t   default_max_block_cpu_usage    = 100 * 1024 * 1024; /// at 500ms blocks and 20000instr trx, this enables ~10,000 TPS burst
-const static uint32_t   default_target_block_cpu_usage = default_max_block_cpu_usage / 10; /// target 1000 TPS
+const static uint32_t   default_max_block_cpu_usage         = 100 * 1024 * 1024; /// at 500ms blocks and 20000instr trx, this enables ~10,000 TPS burst
+const static int        default_target_block_cpu_usage_pct  = 10 * percent_1; /// target 1000 TPS
 
 const static uint64_t   default_max_storage_size       = 10 * 1024;
 const static uint32_t   default_max_trx_lifetime       = 60*60;
@@ -72,9 +72,9 @@ const static uint32_t   default_per_lock_net_usage                     = 32;
 const static uint64_t   default_context_free_discount_cpu_usage_num    = 20;
 const static uint64_t   default_context_free_discount_cpu_usage_den    = 100;
 const static uint32_t   default_max_transaction_cpu_usage              = default_max_block_cpu_usage / 10;
-const static uint32_t   default_max_transaction_net_usage              = default_max_block_size / 10;
+const static uint32_t   default_max_transaction_net_usage              = default_max_block_net_usage / 10;
 
-const static uint32_t   overhead_per_row_ram_bytes         = 512;    ///< overhead accounts for basic tracking structures in a row
+const static uint32_t   overhead_per_row_per_index_ram_bytes = 32;    ///< overhead accounts for basic tracking structures in a row per index
 const static uint32_t   overhead_per_account_ram_bytes     = 2*1024; ///< overhead accounts for basic account storage and pre-pays features like account recovery
 const static uint32_t   setcode_ram_bytes_multiplier       = 10;     ///< multiplier on contract size to account for multiple copies and cached compilation
 
@@ -97,6 +97,15 @@ const static uint32_t deferred_transactions_max_time_per_block_us = 20*1000; //2
 //const static int blocks_per_round = producer_count * producer_repetitions;
 
 const static int irreversible_threshold_percent= 70 * percent_1;
+
+const static uint64_t billable_alignment = 16;
+
+template<typename T>
+struct billable_size;
+
+template<typename T>
+constexpr uint64_t billable_size_v = ((billable_size<T>::value + billable_alignment - 1) / billable_alignment) * billable_alignment;
+
 
 } } } // namespace eosio::chain::config
 
