@@ -379,7 +379,7 @@ namespace eosio { namespace chain {
          void validate_not_expired( const transaction& trx )const;
          void validate_expiration_not_too_far( const transaction& trx, fc::time_point reference_time )const;
          void validate_transaction_without_state( const transaction& trx )const;
-         void validate_transaction_with_minimal_state( const transaction& trx )const;
+         void validate_transaction_with_minimal_state( const transaction& trx, uint32_t min_net_usage = 0 )const;
          void validate_transaction_with_minimal_state( const packed_transaction& packed_trx, const transaction* trx_ptr = nullptr )const;
          /// @}
 

@@ -290,10 +290,10 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
    //idump((transaction_header(mtrx.trx())));
 
    const transaction& trx = mtrx.trx();
-   validate_transaction_with_minimal_state( packed_trx, &trx );
+   validate_transaction_with_minimal_state( trx, mtrx.billable_packed_size );
    validate_referenced_accounts(trx);
    validate_uniqueness(trx);
-   auto delay = check_transaction_authorization(trx, packed_trx.signatures, packed_trx.context_free_data);
+   auto delay = check_transaction_authorization(trx, packed_trx.signatures, mtrx.context_free_data);
    validate_expiration_not_too_far(trx, head_block_time() + delay );
    mtrx.delay = delay;
 
@@ -461,7 +461,7 @@ transaction chain_controller::_get_on_block_transaction()
    trx.actions.emplace_back(std::move(on_block_act));
    trx.set_reference_block(head_block_id());
    trx.expiration = head_block_time() + fc::seconds(1);
-   trx.kcpu_usage = 2000; // 1 << 24;
+   trx.max_kcpu_usage = 2000; // 1 << 24;
    return trx;
 }
 
@@ -764,9 +764,11 @@ void chain_controller::__apply_block(const signed_block& next_block)
    map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
       input_metas.emplace_back(t, chain_id_type(), next_block.timestamp);
-      validate_transaction_with_minimal_state( t, &input_metas.back().trx() );
-      if( should_check_signatures() )
-         input_metas.back().signing_keys = input_metas.back().trx().get_signature_keys( t.signatures, chain_id_type(), t.context_free_data, false );
+      validate_transaction_with_minimal_state( input_metas.back().trx(), input_metas.back().billable_packed_size );
+      if( should_check_signatures() ) {
+         input_metas.back().signing_keys = input_metas.back().trx().get_signature_keys( t.signatures, chain_id_type(),
+                                                                                        input_metas.back().context_free_data, false );
+      }
       trx_index[input_metas.back().id] =  input_metas.size() - 1;
    }
 
@@ -1180,47 +1182,42 @@ static uint32_t calculate_transaction_cpu_usage( const transaction_trace& trace,
       }
    }
 
-
    // charge a system controlled amount for signature verification/recovery
    uint32_t signature_cpu_usage = 0;
    if( meta.signing_keys ) {
       signature_cpu_usage = (uint32_t)meta.signing_keys->size() * chain_configuration.per_signature_cpu_usage;
    }
 
-   // charge a system discounted amount for context free cpu usage
-   //uint32_t context_free_cpu_commitment = (uint32_t)(meta.trx().kcpu_usage.value * 1024UL);
-   /*
-   EOS_ASSERT(context_free_actual_cpu_usage <= context_free_cpu_commitment,
-              tx_resource_exhausted,
-              "Transaction context free actions can not fit into the cpu usage committed to by the transaction's header! [usage=${usage},commitment=${commit}]",
-              ("usage", context_free_actual_cpu_usage)("commit", context_free_cpu_commitment) );
-              */
-
    uint32_t context_free_cpu_usage = (uint32_t)((uint64_t)context_free_actual_cpu_usage * chain_configuration.context_free_discount_cpu_usage_num / chain_configuration.context_free_discount_cpu_usage_den);
 
-   auto actual_usage = chain_configuration.base_per_transaction_cpu_usage +
-          action_cpu_usage +
-          context_free_cpu_usage +
-          signature_cpu_usage;
+   auto actual_cpu_usage = chain_configuration.base_per_transaction_cpu_usage +
+                           action_cpu_usage +
+                           context_free_cpu_usage +
+                           signature_cpu_usage;
 
+   uint32_t cpu_usage_limit = meta.trx().max_kcpu_usage.value * 1024; // overflow checked in validate_transaction_without_state
+   EOS_ASSERT( cpu_usage_limit == 0 || actual_cpu_usage <= cpu_usage_limit, tx_resource_exhausted,
+               "declared cpu usage limit of transaction is too low: ${actual_cpu_usage} > ${declared_limit}",
+               ("actual_cpu_usage", actual_cpu_usage)("declared_limit",cpu_usage_limit) );
 
-
-   if( meta.trx().kcpu_usage.value == 0 ) {
-      return actual_usage;
-   } else {
-      EOS_ASSERT( actual_usage <= meta.trx().kcpu_usage.value*1000ll, tx_resource_exhausted, "transaction did not declare sufficient cpu usage: ${actual} > ${declared}", ("actual", actual_usage)("declared",meta.trx().kcpu_usage.value*1000ll) );
-   }
-   return meta.trx().kcpu_usage;
+   return actual_cpu_usage;
 }
 
 static uint32_t calculate_transaction_net_usage( const transaction_trace& trace, const transaction_metadata& meta, const chain_config& chain_configuration ) {
    // charge a system controlled per-lock overhead to account for shard bloat
    uint32_t lock_net_usage = uint32_t(trace.read_locks.size() + trace.write_locks.size()) * chain_configuration.per_lock_net_usage;
-   uint32_t trx_wire_net_usage = meta.trx().net_usage_words.value * 8U;
 
-   return chain_configuration.base_per_transaction_net_usage +
-          trx_wire_net_usage +
-          lock_net_usage;
+   auto actual_net_usage = chain_configuration.base_per_transaction_net_usage +
+                           meta.billable_packed_size +
+                           lock_net_usage;
+
+
+   uint32_t net_usage_limit = meta.trx().max_net_usage_words.value * 8; // overflow checked in validate_transaction_without_state
+   EOS_ASSERT( net_usage_limit == 0 || actual_net_usage <= net_usage_limit, tx_resource_exhausted,
+               "declared net usage limit of transaction is too low: ${actual_net_usage} > ${declared_limit}",
+               ("actual_net_usage", actual_net_usage)("declared_limit",net_usage_limit) );
+
+   return actual_net_usage;
 }
 
 void chain_controller::update_resource_usage( transaction_trace& trace, const transaction_metadata& meta ) {
@@ -1317,35 +1314,25 @@ void chain_controller::validate_transaction_without_state( const transaction& tr
    for (const auto &act : trx.context_free_actions) {
       EOS_ASSERT( act.authorization.empty(), cfa_irrelevant_auth, "context-free actions cannot require authorization" );
    }
+
+   EOS_ASSERT( trx.max_net_usage_words.value < 0x20000000, transaction_exception, "overflow of max_net_usage_words" );
+   EOS_ASSERT( trx.max_kcpu_usage.value < 0x400000, transaction_exception, "overflow of max_kcpu_usage" );
+
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
-void chain_controller::validate_transaction_with_minimal_state( const transaction& trx )const
+void chain_controller::validate_transaction_with_minimal_state( const transaction& trx, uint32_t min_net_usage )const
 { try {
    validate_transaction_without_state(trx);
    validate_not_expired(trx);
    validate_tapos(trx);
+
+   uint32_t net_usage_limit = trx.max_net_usage_words.value * 8; // overflow checked in validate_transaction_without_state
+   EOS_ASSERT( net_usage_limit == 0 || min_net_usage <= net_usage_limit,
+               transaction_exception,
+               "Packed transaction and associated data does not fit into the space committed to by the transaction's header! [usage=${usage},commitment=${commit}]",
+               ("usage", min_net_usage)("commit", net_usage_limit));
+
 } FC_CAPTURE_AND_RETHROW((trx)) }
-
-void chain_controller::validate_transaction_with_minimal_state( const packed_transaction& packed_trx, const transaction* trx_ptr )const
-{ try {
-   transaction temp;
-   if( trx_ptr == nullptr ) {
-      temp = packed_trx.get_transaction();
-      trx_ptr = &temp;
-   }
-
-   validate_transaction_with_minimal_state(*trx_ptr);
-
-   // enforce that the header is accurate as a commitment to net_usage
-   uint32_t cfa_sig_net_usage = (uint32_t)(packed_trx.context_free_data.size() + fc::raw::pack_size(packed_trx.signatures));
-   uint32_t net_usage_commitment = trx_ptr->net_usage_words.value * 8U;
-   uint32_t packed_size = (uint32_t)packed_trx.data.size();
-   uint32_t net_usage = cfa_sig_net_usage + packed_size;
-   EOS_ASSERT(net_usage <= net_usage_commitment,
-                tx_resource_exhausted,
-                "Packed Transaction and associated data does not fit into the space committed to by the transaction's header! [usage=${usage},commitment=${commit}]",
-                ("usage", net_usage)("commit", net_usage_commitment));
-} FC_CAPTURE_AND_RETHROW((packed_trx)) }
 
 void chain_controller::require_scope( const scope_name& scope )const {
    switch( uint64_t(scope) ) {

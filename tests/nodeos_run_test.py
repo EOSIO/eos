@@ -379,8 +379,8 @@ try:
     amountVal=None
     if amINoon:
         if not enableMongo:
-            typeVal=  transaction["transaction"]["data"]["actions"][0]["name"]
-            amountVal=transaction["transaction"]["data"]["actions"][0]["data"]["quantity"]
+            typeVal=  transaction["transaction"]["transaction"]["actions"][0]["name"]
+            amountVal=transaction["transaction"]["transaction"]["actions"][0]["data"]["quantity"]
             amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
         else:
             typeVal=  transaction["name"]

@@ -113,12 +113,12 @@ namespace eosio { namespace chain {
     */
    struct transaction_header {
       time_point_sec         expiration;   ///< the time at which a transaction expires
-      uint16_t               region           = 0U; ///< the computational memory region this transaction applies to.
-      uint16_t               ref_block_num    = 0U; ///< specifies a block num in the last 2^16 blocks.
-      uint32_t               ref_block_prefix = 0UL; ///< specifies the lower 32 bits of the blockid at get_ref_blocknum
-      fc::unsigned_int       net_usage_words  = 0UL; /// number of 8 byte words this transaction serialize too taking any compression into account
-      fc::unsigned_int       kcpu_usage       = 0UL; /// number of kilo CPU usage units to bill transaction for to process all free actions
-      fc::unsigned_int       delay_sec        = 0UL; /// number of seconds to delay this transaction for during which it may be canceled.
+      uint16_t               region              = 0U; ///< the computational memory region this transaction applies to.
+      uint16_t               ref_block_num       = 0U; ///< specifies a block num in the last 2^16 blocks.
+      uint32_t               ref_block_prefix    = 0UL; ///< specifies the lower 32 bits of the blockid at get_ref_blocknum
+      fc::unsigned_int       max_net_usage_words = 0UL; /// upper limit on total network bandwidth (in 8 byte words) billed for this transaction
+      fc::unsigned_int       max_kcpu_usage      = 0UL; /// upper limit on the total number of kilo CPU usage units billed for this transaction
+      fc::unsigned_int       delay_sec           = 0UL; /// number of seconds to delay this transaction for during which it may be canceled.
 
       /**
        * @return the absolute block number given the relative ref_block_num
@@ -170,8 +170,8 @@ namespace eosio { namespace chain {
 
    struct packed_transaction {
       enum compression_type {
-         none,
-         zlib,
+         none = 0,
+         zlib = 1,
       };
 
       packed_transaction() = default;
@@ -183,28 +183,31 @@ namespace eosio { namespace chain {
 
       explicit packed_transaction(const signed_transaction& t, compression_type _compression = none)
       :signatures(t.signatures)
-      ,context_free_data(t.context_free_data)
       {
-         set_transaction(t, _compression);
+         set_transaction(t, t.context_free_data, _compression);
       }
 
       explicit packed_transaction(signed_transaction&& t, compression_type _compression = none)
       :signatures(std::move(t.signatures))
-      ,context_free_data(std::move(t.context_free_data))
       {
-         set_transaction(t, _compression);
+         set_transaction(t, std::move(t.context_free_data), _compression);
       }
 
-      vector<signature_type>    signatures;
-      vector<bytes>             context_free_data;
-      compression_type          compression;
-      bytes                     data;
+      uint32_t get_billable_size()const;
 
-      bytes                     get_raw_transaction()const;
-      transaction               get_transaction()const;
-      signed_transaction        get_signed_transaction()const;
-      void                      set_transaction(const transaction& t, compression_type _compression = none);
+      digest_type packed_digest()const;
 
+      vector<signature_type>                  signatures;
+      fc::enum_type<uint8_t,compression_type> compression;
+      bytes                                   packed_context_free_data;
+      bytes                                   packed_trx;
+
+      bytes              get_raw_transaction()const;
+      vector<bytes>      get_context_free_data()const;
+      transaction        get_transaction()const;
+      signed_transaction get_signed_transaction()const;
+      void               set_transaction(const transaction& t, compression_type _compression = none);
+      void               set_transaction(const transaction& t, const vector<bytes>& cfd, compression_type _compression = none);
    };
 
 
@@ -241,7 +244,7 @@ namespace eosio { namespace chain {
       {}
 
       account_name   sender;
-      uint128_t       sender_id;
+      uint128_t      sender_id;
    };
 } } // eosio::chain
 
@@ -249,10 +252,10 @@ FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
 FC_REFLECT( eosio::chain::action, (account)(name)(authorization)(data) )
 FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix)
-                                              (net_usage_words)(kcpu_usage)(delay_sec) )
+                                              (max_net_usage_words)(max_kcpu_usage)(delay_sec) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures)(context_free_data) )
 FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
-FC_REFLECT( eosio::chain::packed_transaction, (signatures)(context_free_data)(compression)(data) )
+FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(packed_context_free_data)(packed_trx) )
 FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(payer)(execute_after) )
 FC_REFLECT( eosio::chain::deferred_reference, (sender_id)(sender) )

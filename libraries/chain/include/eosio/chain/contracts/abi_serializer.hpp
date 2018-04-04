@@ -32,7 +32,7 @@ struct abi_serializer {
 
    typedef std::function<fc::variant(fc::datastream<const char*>&, bool, bool)>  unpack_function;
    typedef std::function<void(const fc::variant&, fc::datastream<char*>&, bool, bool)>  pack_function;
-   
+
    map<type_name, pair<unpack_function, pack_function>> built_in_types;
    void configure_built_in_types();
 
@@ -218,12 +218,12 @@ namespace impl {
       static void add(mutable_variant_object &out, const char* name, const packed_transaction& ptrx, Resolver resolver) {
          mutable_variant_object mvo;
          mvo("signatures", ptrx.signatures);
-         mvo("context_free_data", ptrx.context_free_data);
          mvo("compression", ptrx.compression);
-         mvo("hex_data", ptrx.data);
+         mvo("packed_context_free_data", ptrx.packed_context_free_data);
+         mvo("context_free_data", ptrx.get_context_free_data());
+         mvo("packed_trx", ptrx.packed_trx);
+         add(mvo, "transaction", ptrx.get_transaction(), resolver);
 
-         transaction trx = ptrx.get_transaction();
-         add(mvo, "data", trx, resolver);
          out(name, std::move(mvo));
       }
    };
@@ -346,25 +346,35 @@ namespace impl {
       template<typename Resolver>
       static void extract( const variant& v, packed_transaction& ptrx, Resolver resolver ) {
          const variant_object& vo = v.get_object();
+         wdump((vo));
          EOS_ASSERT(vo.contains("signatures"), packed_transaction_type_exception, "Missing signatures");
          EOS_ASSERT(vo.contains("compression"), packed_transaction_type_exception, "Missing compression");
          from_variant(vo["signatures"], ptrx.signatures);
-         if ( vo.contains("context_free_data")) {
-            from_variant(vo["context_free_data"], ptrx.context_free_data);
-         }
          from_variant(vo["compression"], ptrx.compression);
 
-         if (vo.contains("hex_data") && vo["hex_data"].is_string() && !vo["hex_data"].as_string().empty()) {
-            from_variant(vo["hex_data"], ptrx.data);
-         } else {
-            EOS_ASSERT(vo.contains("data"), packed_transaction_type_exception, "Missing data");
-            if (vo["data"].is_string()) {
-               from_variant(vo["data"], ptrx.data);
-            } else {
-               transaction trx;
-               extract(vo["data"], trx, resolver);
-               ptrx.set_transaction(trx, ptrx.compression);
+         // TODO: Make this nicer eventually. But for now, if it works... good enough.
+         if( vo.contains("packed_trx") && vo["packed_trx"].is_string() && !vo["packed_trx"].as_string().empty() ) {
+            from_variant(vo["packed_trx"], ptrx.packed_trx);
+            auto trx = ptrx.get_transaction(); // Validates transaction data provided.
+            if( vo.contains("packed_context_free_data") && vo["packed_context_free_data"].is_string() && !vo["packed_context_free_data"].as_string().empty() ) {
+               from_variant(vo["packed_context_free_data"], ptrx.packed_context_free_data );
+            } else if( vo.contains("context_free_data") ) {
+               vector<bytes> context_free_data;
+               from_variant(vo["context_free_data"], context_free_data);
+               ptrx.set_transaction(trx, context_free_data, ptrx.compression);
             }
+         } else {
+            EOS_ASSERT(vo.contains("transaction"), packed_transaction_type_exception, "Missing transaction");
+            transaction trx;
+            vector<bytes> context_free_data;
+            extract(vo["transaction"], trx, resolver);
+            if( vo.contains("packed_context_free_data") && vo["packed_context_free_data"].is_string() && !vo["packed_context_free_data"].as_string().empty() ) {
+               from_variant(vo["packed_context_free_data"], ptrx.packed_context_free_data );
+               context_free_data = ptrx.get_context_free_data();
+            } else if( vo.contains("context_free_data") ) {
+               from_variant(vo["context_free_data"], context_free_data);
+            }
+            ptrx.set_transaction(trx, context_free_data, ptrx.compression);
          }
       }
    };
