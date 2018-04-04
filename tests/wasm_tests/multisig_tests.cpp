@@ -218,7 +218,7 @@ BOOST_FIXTURE_TEST_CASE( propose_with_wrong_requested_auth, eosio_msig_tester ) 
                         ));
 } FC_LOG_AND_RETHROW()
 
-/*
+
 BOOST_FIXTURE_TEST_CASE( big_transaction, eosio_msig_tester ) try {
    vector<permission_level> perm = { { N(alice), config::active_name }, { N(bob), config::active_name } };
    auto wasm = wast_to_wasm( exchange_wast );
@@ -277,5 +277,5 @@ BOOST_FIXTURE_TEST_CASE( big_transaction, eosio_msig_tester ) try {
    BOOST_CHECK_EQUAL( 1, traces.at(0).action_traces.size() );
    BOOST_CHECK_EQUAL( transaction_receipt::executed, traces.at(0).status );
 } FC_LOG_AND_RETHROW()
-*/
+
 BOOST_AUTO_TEST_SUITE_END()

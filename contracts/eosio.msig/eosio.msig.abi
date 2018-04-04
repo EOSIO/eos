@@ -48,8 +48,8 @@
       "fields": [
         {"name":"proposer", "type":"account_name"},
         {"name":"proposal_name", "type":"name"},
-        {"name":"trx", "type":"transaction"},
-        {"name":"requested", "type":"permission_level[]"}
+        {"name":"requested", "type":"permission_level[]"},
+        {"name":"trx", "type":"transaction"}
       ]
     },{
      "name": "approve",

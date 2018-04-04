@@ -3,22 +3,47 @@
 
 namespace eosio {
 
+/*
+propose function manually parses input data (instead of taking parsed arguments from dispatcher)
+because parsing data in the dispatcher uses too much CPU in case if proposed transaction is big
+
+If we use dispatcher the function signature should be:
+
 void multisig::propose( account_name proposer, 
                         name proposal_name,
-                        transaction  trx,
-                        vector<permission_level> requested) {
+                        vector<permission_level> requested,
+                        transaction  trx)
+*/
+
+void multisig::propose() {
+   constexpr size_t max_stack_buffer_size = 512;
+   size_t size = action_data_size();
+   char* buffer = (char*)( max_stack_buffer_size < size ? malloc(size) : alloca(size) );
+   read_action_data( buffer, size );
+
+   account_name proposer;
+   name proposal_name;
+   vector<permission_level> requested;
+   transaction_header trx_header;
+
+   datastream<const char*> ds( buffer, size );
+   ds >> proposer >> proposal_name >> requested;
+
+   size_t trx_pos = ds.tellp();
+   ds >> trx_header;
+
    require_auth( proposer );
-   eosio_assert( trx.expiration > now(), "transaction expired" );
-   eosio_assert( trx.actions.size() > 0, "transaction must have at least one action" );
+   eosio_assert( trx_header.expiration > now(), "transaction expired" );
+   //eosio_assert( trx_header.actions.size() > 0, "transaction must have at least one action" );
 
    proposals proptable( _self, proposer );
    eosio_assert( proptable.find( proposal_name ) == proptable.end(), "proposal with the same name exists" );
 
-   check_auth( trx, requested );
+   check_auth( buffer+trx_pos, size-trx_pos, requested );
 
    proptable.emplace( proposer, [&]( auto& prop ) {
       prop.proposal_name       = proposal_name;
-      prop.packed_transaction  = pack( trx );
+      prop.packed_transaction  = bytes( buffer+trx_pos, buffer+size );
       prop.requested_approvals = std::move(requested);
    });
 }
