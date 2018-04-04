@@ -390,15 +390,32 @@ struct abi_gen_helper {
   bool generate_abi(const char* source, const char* abi, bool opt_sfs=false) {
 
     std::string include_param = std::string("-I") + eosiolib_path;
+    std::string pfr_include_param = std::string("-I") + pfr_include_path;
     std::string boost_include_param = std::string("-I") + boost_include_path;
     std::string stdcpp_include_param = std::string("-I") + eosiolib_path + "/libc++/upstream/include";
     std::string stdc_include_param = std::string("-I") + eosiolib_path +  "/musl/upstream/include";
 
-     abi_def output;
-    bool res = runToolOnCodeWithArgs(new generate_abi_action(false, opt_sfs, "", output), source,
-      {"-fparse-all-comments", "--std=c++14", "--target=wasm32", "-ffreestanding", "-nostdlib", "-nostdlibinc", "-fno-threadsafe-statics", "-fno-rtti",  "-fno-exceptions", include_param, boost_include_param, stdcpp_include_param, stdc_include_param });
+    abi_def output;
 
+    std::string contract;
+    std::vector<std::string> actions;
+
+    bool res = runToolOnCodeWithArgs(new find_eosio_abi_macro_action(contract, actions, ""), source,
+      {"-fparse-all-comments", "--std=c++14", "--target=wasm32", "-ffreestanding", "-nostdlib",
+      "-nostdlibinc", "-fno-threadsafe-statics", "-fno-rtti",  "-fno-exceptions",
+      include_param, boost_include_param, stdcpp_include_param,
+      stdc_include_param, pfr_include_param }
+    );
     FC_ASSERT(res == true);
+
+    res = runToolOnCodeWithArgs(new generate_abi_action(false, opt_sfs, "", output, contract, actions), source,
+      {"-fparse-all-comments", "--std=c++14", "--target=wasm32", "-ffreestanding", "-nostdlib",
+      "-nostdlibinc", "-fno-threadsafe-statics", "-fno-rtti",  "-fno-exceptions",
+      include_param, boost_include_param, stdcpp_include_param,
+      stdc_include_param, pfr_include_param }
+    );
+    FC_ASSERT(res == true);
+
     abi_serializer(chain_initializer::eos_contract_abi(output)).validate();
 
     auto abi1 = fc::json::from_string(abi).as<abi_def>();
@@ -1609,6 +1626,137 @@ BOOST_FIXTURE_TEST_CASE(abgigen_vector_alias, abi_gen_helper)
    )=====";
 
    BOOST_TEST( generate_abi(abgigen_vector_alias, abgigen_vector_alias_abi) == true );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abgigen_eosioabi_macro, abi_gen_helper)
+{ try {
+
+   const char* abgigen_eosioabi_macro = R"=====(
+
+      #pragma GCC diagnostic push
+      #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
+
+      #include <eosiolib/eosio.hpp>
+      #include <eosiolib/print.hpp>
+
+
+      using namespace eosio;
+
+      struct hello : public eosio::contract {
+        public:
+            using contract::contract;
+
+            void hi( account_name user ) {
+               print( "Hello, ", name{user} );
+            }
+
+            void bye( account_name user ) {
+               print( "Bye, ", name{user} );
+            }
+      };
+
+      EOSIO_ABI(hello,(hi))
+
+      #pragma GCC diagnostic pop
+
+   )=====";
+
+   const char* abgigen_eosioabi_macro_abi = R"=====(
+   {
+     "types": [],
+     "structs": [{
+         "name": "hi",
+         "base": "",
+         "fields": [{
+             "name": "user",
+             "type": "account_name"
+           }
+         ]
+       }
+     ],
+     "actions": [{
+         "name": "hi",
+         "type": "hi"
+       }
+     ],
+     "tables": []
+   }
+   )=====";
+
+   BOOST_TEST( generate_abi(abgigen_eosioabi_macro, abgigen_eosioabi_macro_abi) == true );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_FIXTURE_TEST_CASE(abgigen_contract_inheritance, abi_gen_helper)
+{ try {
+
+   const char* abgigen_contract_inheritance = R"=====(
+      #pragma GCC diagnostic push
+      #pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
+
+      #include <eosiolib/eosio.hpp>
+      #include <eosiolib/print.hpp>
+
+
+      using namespace eosio;
+
+      struct hello : public eosio::contract {
+        public:
+            using contract::contract;
+
+            void hi( account_name user ) {
+               print( "Hello, ", name{user} );
+            }
+      };
+
+      struct new_hello : hello {
+        public:
+            new_hello(account_name self) : hello(self) {}
+            void bye( account_name user ) {
+               print( "Bye, ", name{user} );
+            }
+      };
+
+      EOSIO_ABI(new_hello,(hi)(bye))
+
+      #pragma GCC diagnostic pop
+   )=====";
+
+   const char* abgigen_contract_inheritance_abi = R"=====(
+   {
+     "types": [],
+     "structs": [{
+         "name": "hi",
+         "base": "",
+         "fields": [{
+             "name": "user",
+             "type": "account_name"
+           }
+         ]
+       },{
+         "name": "bye",
+         "base": "",
+         "fields": [{
+             "name": "user",
+             "type": "account_name"
+           }
+         ]
+       }
+     ],
+     "actions": [{
+         "name": "hi",
+         "type": "hi"
+       },{
+         "name": "bye",
+         "type": "bye"
+       }
+     ],
+     "tables": []
+   }
+   )=====";
+
+   BOOST_TEST( generate_abi(abgigen_contract_inheritance, abgigen_contract_inheritance_abi) == true );
 
 } FC_LOG_AND_RETHROW() }
 
