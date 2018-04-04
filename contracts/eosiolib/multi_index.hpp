@@ -154,6 +154,8 @@ class multi_index
          return (n & 0x000000000000000FULL) == 0;
       }
 
+      constexpr static size_t max_stack_buffer_size = 512;
+
       static_assert( validate_table_name(TableName), "multi_index does not support table names with a length greater than 12");
 
       uint64_t _code;
@@ -440,16 +442,15 @@ class multi_index
          auto size = db_get_i64( itr, nullptr, 0 );
          eosio_assert( size >= 0, "error reading iterator" );
 
-         char default_buffer[512];
          //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
-         char* buffer = size_t(size) <= sizeof(default_buffer) ? default_buffer : (char*)malloc( size_t(size) );
+         void* buffer = max_stack_buffer_size < size_t(size) ? malloc(size_t(size)) : alloca(size_t(size));
 
          db_get_i64( itr, buffer, uint32_t(size) );
 
-         datastream<const char*> ds( buffer, uint32_t(size) );
+         datastream<const char*> ds( (char*)buffer, uint32_t(size) );
 
-         if (buffer != default_buffer) {
-            free( buffer );
+         if ( max_stack_buffer_size < size_t(size) ) {
+            free(buffer);
          }
 
          auto itm = std::make_unique<item>( this, [&]( auto& i ) {
@@ -628,19 +629,18 @@ class multi_index
 
             size_t size = pack_size( obj );
 
-            char default_buffer[512];
             //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
-            char* buffer = size <= sizeof(default_buffer) ? default_buffer : (char*)malloc(size);
+            void* buffer = max_stack_buffer_size < size ? malloc(size) : alloca(size);
 
-            datastream<char*> ds( buffer, size );
+            datastream<char*> ds( (char*)buffer, size );
             ds << obj;
 
             auto pk = obj.primary_key();
 
             i.__primary_itr = db_store_i64( _scope, TableName, payer, pk, buffer, size );
 
-            if (buffer != default_buffer) {
-               free( buffer );
+            if ( max_stack_buffer_size < size ) {
+               free(buffer);
             }
 
             if( pk >= _next_primary_key )
@@ -688,16 +688,15 @@ class multi_index
          eosio_assert( pk == obj.primary_key(), "updater cannot change primary key when modifying an object" );
 
          size_t size = pack_size( obj );
-         char default_buffer[512];
          //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
-         char* buffer = size <= sizeof(default_buffer) ? default_buffer : (char*)malloc(size);
+         void* buffer = max_stack_buffer_size < size ? malloc(size) : alloca(size);
 
-         datastream<char*> ds( buffer, size );
+         datastream<char*> ds( (char*)buffer, size );
          ds << obj;
 
          db_update_i64( objitem.__primary_itr, payer, buffer, size );
 
-         if (buffer != default_buffer) {
+         if ( max_stack_buffer_size < size ) {
             free( buffer );
          }
 

@@ -247,16 +247,7 @@ BOOST_FIXTURE_TEST_CASE( big_transaction, eosio_msig_tester ) try {
 
    transaction trx;
    contracts::abi_serializer::from_variant(pretty_trx, trx, get_resolver());
-   /*
-   trx.actions.emplace_back( perm,
-                             contracts::setcode{
-                                .account    = N(alice),
-                                   .vmtype     = 0,
-                                   .vmversion  = 0,
-                                   //.code       = bytes(eosio_msig_wast, eosio_msig_wast + strlen(eosio_msig_wast))
-                                   .code       = bytes( wasm.begin(), wasm.end() )
-                                   });
-   */
+
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(propose), mvo()
                                                 ("proposer",      "alice")
                                                 ("proposal_name", "first")
