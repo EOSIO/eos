@@ -59,7 +59,7 @@ struct fixed_string16 {
    char str[16];
 };
 
-typedef struct checksum256 transaction_id;
+typedef struct checksum256 transaction_id_type;
 
 typedef struct fixed_string16 field_name;
 
