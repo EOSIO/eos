@@ -1,16 +1,10 @@
 var searchData=
 [
-  ['secondary',['secondary',['../test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9',1,'test_db.cpp']]],
-  ['secondary_5flb',['secondary_lb',['../test__db_8cpp.html#a3a053cdd3b35a352f5411f860576d23c',1,'test_db.cpp']]],
-  ['secondary_5fub',['secondary_ub',['../test__db_8cpp.html#af3f9e631140dda536829f7fdcf98ebbb',1,'test_db.cpp']]],
-  ['sender',['sender',['../classeosio_1_1deferred__transaction.html#a82441339af3291e5425b338098d2f896',1,'eosio::deferred_transaction']]],
-  ['sender_5fid',['sender_id',['../classeosio_1_1deferred__transaction.html#a9d5ad2264a0f3d224786fa15dc6d9c8a',1,'eosio::deferred_transaction']]],
-  ['social',['social',['../structaccount.html#aae478ef655df0a8bf9b3ea6551f6fa10',1,'account']]],
-  ['social_5fpower',['social_power',['../structaccount.html#a8236971cdea04078b89cdac37e0d8597',1,'account']]],
-  ['source',['source',['../structdice_1_1reveal.html#a26e3faa41f7e661b1041a79772b6c9f6',1,'dice::reveal']]],
-  ['stats_5ftable_5fname',['stats_table_name',['../classeosio_1_1generic__currency.html#af9ff021f61805a1eec118685013c6952',1,'eosio::generic_currency']]],
-  ['str',['str',['../structfixed__string16.html#af4fbeb30c27826fab71be2a81d11eaeb',1,'fixed_string16::str()'],['../structfixed__string32.html#a7e091b3678b9e957f6d5ba42d443c217',1,'fixed_string32::str()']]],
-  ['supply',['supply',['../structbancor_1_1converter__contract_1_1converter__state.html#a3417275407c09f68e27dd3119bb82953',1,'bancor::converter_contract::converter_state::supply()'],['../structeosio_1_1generic__currency_1_1currency__stats.html#a93b65e8968371eac0278a4cfae11b343',1,'eosio::generic_currency::currency_stats::supply()']]],
-  ['symbol',['symbol',['../structeosio_1_1asset.html#af2958993908e4647d9101b84a0689ae3',1,'eosio::asset::symbol()'],['../classeosio_1_1generic__currency.html#af08bb98a1c7d7946844b716a4da6e951',1,'eosio::generic_currency::symbol()'],['../structeosio_1_1generic__currency_1_1account.html#a89518368bbfea762aa94dc2ec394c0a6',1,'eosio::generic_currency::account::symbol()'],['../structeosio_1_1generic__currency_1_1currency__stats.html#a29958d48ab5309e1a4c3b9aa7ac62213',1,'eosio::generic_currency::currency_stats::symbol()'],['../structeosio_1_1token.html#a7ec90460fd5a10d1d38c7033407bb52d',1,'eosio::token::symbol()']]],
-  ['system_5fcode',['system_code',['../namespaceeosiosystem.html#a26fc8e7b7744762a42ac2fc4cdd3fafd',1,'eosiosystem']]]
+  ['q',['q',['../class_x.html#a16fcd89ccaee32fc40f08d4a7668c17b',1,'X::q()'],['../class_x.html#afb827042c8515b0347bed535731c1b1d',1,'X::q()']]],
+  ['quals',['quals',['../struct_call_info.html#aafcc2c6c880a66783e90f4ff28c386c7',1,'CallInfo']]],
+  ['quantity',['quantity',['../structeosio_1_1currency_1_1transfer.html#a2c98d05dcaf51b8262b8fd3f2c143dd5',1,'eosio::currency::transfer::quantity()'],['../structeosio_1_1currency_1_1issue.html#a3a09833af6675faf5fac29510f1b0df7',1,'eosio::currency::issue::quantity()'],['../structeosio_1_1native__currency_1_1transfer.html#a3ac6da9f2c14813e6a02d39064caac7e',1,'eosio::native_currency::transfer::quantity()'],['../classeosio_1_1token.html#a41378f3d965a9e6a3b2c9be37c132b2f',1,'eosio::token::quantity()']]],
+  ['quot',['quot',['../structimaxdiv__t.html#a9339814cbb7610c72fb7d30c6573b393',1,'imaxdiv_t::quot()'],['../structdiv__t.html#a0b9dda2884048daa68ca4aaa12b17b9a',1,'div_t::quot()'],['../structldiv__t.html#a73efd59c176304c327cb4214d0e5e5c9',1,'ldiv_t::quot()'],['../structlldiv__t.html#ae4d4bccdf22f41e052073f5790c5ec37',1,'lldiv_t::quot()']]],
+  ['quote',['quote',['../structeosio_1_1price__ratio.html#ab7327aaf88b15c5f1c6adb7c4de680d4',1,'eosio::price_ratio::quote()'],['../structeosio_1_1exchange__state.html#a113d14fa6ef420fbcb91cff8f67633ef',1,'eosio::exchange_state::quote()'],['../structexchange__state.html#a72f37d7232ee04314ea2096e923c6ad5',1,'exchange_state::quote()']]],
+  ['quote_5floans',['quote_loans',['../structeosio_1_1market__state.html#a13ac7f3a5d0e9e5e2236f730772f8d61',1,'eosio::market_state']]],
+  ['quote_5fmargins',['quote_margins',['../structeosio_1_1market__state.html#a24430d358dfd38417ea4eabc148b506a',1,'eosio::market_state']]]
 ];

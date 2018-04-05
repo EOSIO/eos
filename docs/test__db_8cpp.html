@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.13"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>EOS.IO: contracts/test_api/test_db.cpp File Reference</title>
+<title>EOS.IO: contracts/test_api_db/test_db.cpp File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -60,7 +60,7 @@ $(function() {
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_4512a307eab2a9ca08d8433965f51830.html">test_api</a></li>  </ul>
+<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_4535e1b68822a7130cdb7cfdf6c2363e.html">test_api_db</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
@@ -73,12 +73,11 @@ $(function() {
 <div class="title">test_db.cpp File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;<a class="el" href="types_8hpp_source.html">eoslib/types.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="action_8hpp_source.html">eoslib/action.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="db_8h_source.html">eoslib/db.h</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="db_8hpp_source.html">eoslib/db.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="memory_8hpp_source.html">eoslib/memory.hpp</a>&gt;</code><br />
-<code>#include &quot;<a class="el" href="test__api_8hpp_source.html">test_api.hpp</a>&quot;</code><br />
+<div class="textblock"><code>#include &lt;<a class="el" href="types_8hpp_source.html">eosiolib/types.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="action_8hpp_source.html">eosiolib/action.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="db_8h_source.html">eosiolib/db.h</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="memory_8hpp_source.html">eosiolib/memory.hpp</a>&gt;</code><br />
+<code>#include &quot;<a class="el" href="test__api_8hpp_source.html">../test_api/test_api.hpp</a>&quot;</code><br />
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
@@ -99,61 +98,17 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="define-members"></a>
 Macros</h2></td></tr>
-<tr class="memitem:a916ffefe1fc74532d08102cca55d8e34"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a916ffefe1fc74532d08102cca55d8e34">STRLEN</a>(s)&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ab21a7927a82571cd1ecffebcd7d255ac">my_strlen</a>(s)</td></tr>
+<tr class="memitem:a916ffefe1fc74532d08102cca55d8e34"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a916ffefe1fc74532d08102cca55d8e34">STRLEN</a>(<a class="el" href="strings_2basic_8string_2string_8cons_2dtor__noexcept_8pass_8cpp.html#aa8270a1ba8295884567e0a0c93135f05">s</a>)&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ab21a7927a82571cd1ecffebcd7d255ac">my_strlen</a>(<a class="el" href="strings_2basic_8string_2string_8cons_2dtor__noexcept_8pass_8cpp.html#aa8270a1ba8295884567e0a0c93135f05">s</a>)</td></tr>
 <tr class="separator:a916ffefe1fc74532d08102cca55d8e34"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac7de19ad4bc17bd50b33ce932143040d"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#ac7de19ad4bc17bd50b33ce932143040d">CALL</a>(F,  O,  I,  T,  V)&#160;&#160;&#160;F##_##I##_##O(<a class="el" href="group__actioncapi.html#ga5fcca014b53b0f15b9f9636325bae976">current_receiver</a>(), <a class="el" href="group__actioncapi.html#ga5fcca014b53b0f15b9f9636325bae976">current_receiver</a>(), T, &amp;V, sizeof(V))</td></tr>
-<tr class="separator:ac7de19ad4bc17bd50b33ce932143040d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acdaafe56657d5eca906aa12cf84cff6b"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#acdaafe56657d5eca906aa12cf84cff6b">LOAD</a>(I,  O,  T,  V)&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ac7de19ad4bc17bd50b33ce932143040d">CALL</a>(load, O, I, T, V)</td></tr>
-<tr class="separator:acdaafe56657d5eca906aa12cf84cff6b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac0be879602c4b45e3df53578216370a3"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#ac0be879602c4b45e3df53578216370a3">FRONT</a>(I,  O,  T,  V)&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ac7de19ad4bc17bd50b33ce932143040d">CALL</a>(front, O, I, T, V)</td></tr>
-<tr class="separator:ac0be879602c4b45e3df53578216370a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7fa1c6f4751e4c316fe56e7887809dc7"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a7fa1c6f4751e4c316fe56e7887809dc7">BACK</a>(I,  O,  T,  V)&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ac7de19ad4bc17bd50b33ce932143040d">CALL</a>(back, O, I, T, V)</td></tr>
-<tr class="separator:a7fa1c6f4751e4c316fe56e7887809dc7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a87a5ab131baf6524d451f07162cd268d"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a87a5ab131baf6524d451f07162cd268d">NEXT</a>(I,  O,  T,  V)&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ac7de19ad4bc17bd50b33ce932143040d">CALL</a>(next, O, I, T, V)</td></tr>
-<tr class="separator:a87a5ab131baf6524d451f07162cd268d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a86e923d8be4eac12d223202fd64260d5"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a86e923d8be4eac12d223202fd64260d5">PREV</a>(I,  O,  T,  V)&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ac7de19ad4bc17bd50b33ce932143040d">CALL</a>(previous, O, I, T, V)</td></tr>
-<tr class="separator:a86e923d8be4eac12d223202fd64260d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aff57621f2a584e9e53f83fd932750989"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#aff57621f2a584e9e53f83fd932750989">UPPER</a>(I,  O,  T,  V)&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ac7de19ad4bc17bd50b33ce932143040d">CALL</a>(upper_bound, O, I, T, V)</td></tr>
-<tr class="separator:aff57621f2a584e9e53f83fd932750989"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6984729ea89f1467f1275dcf8e28d853"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a6984729ea89f1467f1275dcf8e28d853">LOWER</a>(I,  O,  T,  V)&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ac7de19ad4bc17bd50b33ce932143040d">CALL</a>(lower_bound, O, I, T, V)</td></tr>
-<tr class="separator:a6984729ea89f1467f1275dcf8e28d853"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a961a0be9e61ff9176db9558dbad74f17"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a961a0be9e61ff9176db9558dbad74f17">LOGME</a>&#160;&#160;&#160;0</td></tr>
-<tr class="separator:a961a0be9e61ff9176db9558dbad74f17"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a85f8a9ac2543ab620606382f9d8fb5ad"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a85f8a9ac2543ab620606382f9d8fb5ad">BS</a>(X)&#160;&#160;&#160;((X) ? &quot;true&quot; : &quot;false&quot;)</td></tr>
-<tr class="separator:a85f8a9ac2543ab620606382f9d8fb5ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a60994bec94a8a2c13e233aae04b74cae"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a60994bec94a8a2c13e233aae04b74cae">TABLE1_ASSERT</a>(I,  V,  msg)</td></tr>
-<tr class="separator:a60994bec94a8a2c13e233aae04b74cae"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab08156df2972fda273407e864ec9c725"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#ab08156df2972fda273407e864ec9c725">LOAD_OK</a>(I,  O,  T,  INX,  MSG)</td></tr>
-<tr class="separator:ab08156df2972fda273407e864ec9c725"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a73788f3e69686e90c964e29ddd72c53b"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a73788f3e69686e90c964e29ddd72c53b">LOAD_ER</a>(I,  O,  T,  MSG)</td></tr>
-<tr class="separator:a73788f3e69686e90c964e29ddd72c53b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a46932aeb1a6e694260f920b97cd7976e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a46932aeb1a6e694260f920b97cd7976e">FRONT_OK</a>(I,  O,  T,  INX,  MSG)</td></tr>
-<tr class="separator:a46932aeb1a6e694260f920b97cd7976e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac772123a8cde2d06c86f6a52a540f970"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#ac772123a8cde2d06c86f6a52a540f970">BACK_OK</a>(I,  O,  T,  INX,  MSG)</td></tr>
-<tr class="separator:ac772123a8cde2d06c86f6a52a540f970"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3338aa9cb11fd90befb2875be56a13fd"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a3338aa9cb11fd90befb2875be56a13fd">NEXT_ALL</a>(I,  O,  T)</td></tr>
-<tr class="separator:a3338aa9cb11fd90befb2875be56a13fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6c9058e1fee174e1ed090868c4884847"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a6c9058e1fee174e1ed090868c4884847">PREV_ALL</a>(I,  O,  T)</td></tr>
-<tr class="separator:a6c9058e1fee174e1ed090868c4884847"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae059bab3b7721b66243ae6cbf33b3261"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#ae059bab3b7721b66243ae6cbf33b3261">LOWER_ALL</a>(I,  O,  T)</td></tr>
-<tr class="separator:ae059bab3b7721b66243ae6cbf33b3261"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a205568c9e4f9106f94d1532570eac516"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a205568c9e4f9106f94d1532570eac516">UPPER_ALL</a>(I,  O,  T)</td></tr>
-<tr class="separator:a205568c9e4f9106f94d1532570eac516"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:ae6b47dcb272f3e27634412e42c4e3107"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#ae6b47dcb272f3e27634412e42c4e3107">my_memset</a> (void *vptr, unsigned char val, unsigned int size)</td></tr>
 <tr class="separator:ae6b47dcb272f3e27634412e42c4e3107"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab21a7927a82571cd1ecffebcd7d255ac"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#ab21a7927a82571cd1ecffebcd7d255ac">my_strlen</a> (const char *str)</td></tr>
+<tr class="memitem:ab21a7927a82571cd1ecffebcd7d255ac"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#ab21a7927a82571cd1ecffebcd7d255ac">my_strlen</a> (const char *<a class="el" href="iter__iter__iter__iter_8pass_8cpp.html#af25d6dc49269fa2003ac7c7fa6f13915">str</a>)</td></tr>
 <tr class="separator:ab21a7927a82571cd1ecffebcd7d255ac"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab7d8481ae8a9f7185f73c4454c3dae57"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#ab7d8481ae8a9f7185f73c4454c3dae57">my_memcmp</a> (void *s1, void *s2, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> n)</td></tr>
+<tr class="memitem:ab7d8481ae8a9f7185f73c4454c3dae57"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2stdbool_8h.html#abb452686968e48b67397da5f97445f5b">bool</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#ab7d8481ae8a9f7185f73c4454c3dae57">my_memcmp</a> (void *s1, void *s2, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> n)</td></tr>
 <tr class="separator:ab7d8481ae8a9f7185f73c4454c3dae57"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a140b0e67dccb10714dd5dd9ef97ebe21"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a140b0e67dccb10714dd5dd9ef97ebe21">store_set_in_table</a> (<a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>)</td></tr>
-<tr class="separator:a140b0e67dccb10714dd5dd9ef97ebe21"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7356d0aa824386b3f5f7d83e22072cd5"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a7356d0aa824386b3f5f7d83e22072cd5">store_set_in_table</a> (<a class="el" href="struct_test_model3xi64.html">TestModel3xi64</a> *records, int len, <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>)</td></tr>
-<tr class="separator:a7356d0aa824386b3f5f7d83e22072cd5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2213ff438043625b5690b8b97cf67e3b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__db_8cpp.html#a2213ff438043625b5690b8b97cf67e3b">set_key_str</a> (int i, char *key_4_digit)</td></tr>
-<tr class="separator:a2213ff438043625b5690b8b97cf67e3b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
 Variables</h2></td></tr>
@@ -177,627 +132,6 @@ Variables</h2></td></tr>
 <tr class="separator:a2daa1f65ef31c27b1f5a71a5f7cf030b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Macro Definition Documentation</h2>
-<a id="a7fa1c6f4751e4c316fe56e7887809dc7"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7fa1c6f4751e4c316fe56e7887809dc7">&#9670;&nbsp;</a></span>BACK</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define BACK</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">O, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">T, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">V&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td>&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ac7de19ad4bc17bd50b33ce932143040d">CALL</a>(back, O, I, T, V)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ac772123a8cde2d06c86f6a52a540f970"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac772123a8cde2d06c86f6a52a540f970">&#9670;&nbsp;</a></span>BACK_OK</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define BACK_OK</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">O, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">T, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">INX, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">MSG&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">{<a class="code" href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">eosio::remove_reference&lt;decltype(V)&gt;::type</a> tmp; <a class="code" href="test__db_8cpp.html#ae6b47dcb272f3e27634412e42c4e3107">my_memset</a>(&amp;tmp, 0, <span class="keyword">sizeof</span>(tmp));tmp = V; \</div><div class="line">    res = <a class="code" href="test__db_8cpp.html#a7fa1c6f4751e4c316fe56e7887809dc7">BACK</a>(I, O, T, tmp); \</div><div class="line">    TABLE1_ASSERT(INX, tmp, MSG)}</div><div class="ttc" id="test__db_8cpp_html_ae6b47dcb272f3e27634412e42c4e3107"><div class="ttname"><a href="test__db_8cpp.html#ae6b47dcb272f3e27634412e42c4e3107">my_memset</a></div><div class="ttdeci">void my_memset(void *vptr, unsigned char val, unsigned int size)</div><div class="ttdef"><b>Definition:</b> test_db.cpp:63</div></div>
-<div class="ttc" id="structeosio_1_1remove__reference_html_a72bf17c0b47dbe818c21596421c7d5ef"><div class="ttname"><a href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">eosio::remove_reference::type</a></div><div class="ttdeci">T type</div><div class="ttdef"><b>Definition:</b> types.hpp:97</div></div>
-<div class="ttc" id="test__db_8cpp_html_a7fa1c6f4751e4c316fe56e7887809dc7"><div class="ttname"><a href="test__db_8cpp.html#a7fa1c6f4751e4c316fe56e7887809dc7">BACK</a></div><div class="ttdeci">#define BACK(I, O, T, V)</div></div>
-</div><!-- fragment -->
-</div>
-</div>
-<a id="a85f8a9ac2543ab620606382f9d8fb5ad"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a85f8a9ac2543ab620606382f9d8fb5ad">&#9670;&nbsp;</a></span>BS</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define BS</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">X</td><td>)</td>
-          <td>&#160;&#160;&#160;((X) ? &quot;true&quot; : &quot;false&quot;)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ac7de19ad4bc17bd50b33ce932143040d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac7de19ad4bc17bd50b33ce932143040d">&#9670;&nbsp;</a></span>CALL</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define CALL</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">F, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">O, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">T, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">V&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td>&#160;&#160;&#160;F##_##I##_##O(<a class="el" href="group__actioncapi.html#ga5fcca014b53b0f15b9f9636325bae976">current_receiver</a>(), <a class="el" href="group__actioncapi.html#ga5fcca014b53b0f15b9f9636325bae976">current_receiver</a>(), T, &amp;V, sizeof(V))</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ac0be879602c4b45e3df53578216370a3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac0be879602c4b45e3df53578216370a3">&#9670;&nbsp;</a></span>FRONT</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define FRONT</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">O, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">T, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">V&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td>&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ac7de19ad4bc17bd50b33ce932143040d">CALL</a>(front, O, I, T, V)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a46932aeb1a6e694260f920b97cd7976e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a46932aeb1a6e694260f920b97cd7976e">&#9670;&nbsp;</a></span>FRONT_OK</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define FRONT_OK</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">O, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">T, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">INX, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">MSG&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">{<a class="code" href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">eosio::remove_reference&lt;decltype(V)&gt;::type</a> tmp; <a class="code" href="test__db_8cpp.html#ae6b47dcb272f3e27634412e42c4e3107">my_memset</a>(&amp;tmp, 0, <span class="keyword">sizeof</span>(tmp));tmp = V; \</div><div class="line">    res = <a class="code" href="test__db_8cpp.html#ac0be879602c4b45e3df53578216370a3">FRONT</a>(I, O, T, tmp); \</div><div class="line">    TABLE1_ASSERT(INX, tmp, MSG)}</div><div class="ttc" id="test__db_8cpp_html_ac0be879602c4b45e3df53578216370a3"><div class="ttname"><a href="test__db_8cpp.html#ac0be879602c4b45e3df53578216370a3">FRONT</a></div><div class="ttdeci">#define FRONT(I, O, T, V)</div></div>
-<div class="ttc" id="test__db_8cpp_html_ae6b47dcb272f3e27634412e42c4e3107"><div class="ttname"><a href="test__db_8cpp.html#ae6b47dcb272f3e27634412e42c4e3107">my_memset</a></div><div class="ttdeci">void my_memset(void *vptr, unsigned char val, unsigned int size)</div><div class="ttdef"><b>Definition:</b> test_db.cpp:63</div></div>
-<div class="ttc" id="structeosio_1_1remove__reference_html_a72bf17c0b47dbe818c21596421c7d5ef"><div class="ttname"><a href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">eosio::remove_reference::type</a></div><div class="ttdeci">T type</div><div class="ttdef"><b>Definition:</b> types.hpp:97</div></div>
-</div><!-- fragment -->
-</div>
-</div>
-<a id="acdaafe56657d5eca906aa12cf84cff6b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#acdaafe56657d5eca906aa12cf84cff6b">&#9670;&nbsp;</a></span>LOAD</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define LOAD</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">O, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">T, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">V&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td>&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ac7de19ad4bc17bd50b33ce932143040d">CALL</a>(load, O, I, T, V)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a73788f3e69686e90c964e29ddd72c53b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a73788f3e69686e90c964e29ddd72c53b">&#9670;&nbsp;</a></span>LOAD_ER</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define LOAD_ER</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">O, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">T, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">MSG&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">{<a class="code" href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">eosio::remove_reference&lt;decltype(V)&gt;::type</a> tmp; <a class="code" href="test__db_8cpp.html#ae6b47dcb272f3e27634412e42c4e3107">my_memset</a>(&amp;tmp, 0, <span class="keyword">sizeof</span>(tmp));tmp = V; \</div><div class="line">    res = <a class="code" href="test__db_8cpp.html#acdaafe56657d5eca906aa12cf84cff6b">LOAD</a>(I, O, T, tmp); \</div><div class="line">    WASM_ASSERT(res == -1, MSG)}</div><div class="ttc" id="test__db_8cpp_html_ae6b47dcb272f3e27634412e42c4e3107"><div class="ttname"><a href="test__db_8cpp.html#ae6b47dcb272f3e27634412e42c4e3107">my_memset</a></div><div class="ttdeci">void my_memset(void *vptr, unsigned char val, unsigned int size)</div><div class="ttdef"><b>Definition:</b> test_db.cpp:63</div></div>
-<div class="ttc" id="structeosio_1_1remove__reference_html_a72bf17c0b47dbe818c21596421c7d5ef"><div class="ttname"><a href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">eosio::remove_reference::type</a></div><div class="ttdeci">T type</div><div class="ttdef"><b>Definition:</b> types.hpp:97</div></div>
-<div class="ttc" id="test__db_8cpp_html_acdaafe56657d5eca906aa12cf84cff6b"><div class="ttname"><a href="test__db_8cpp.html#acdaafe56657d5eca906aa12cf84cff6b">LOAD</a></div><div class="ttdeci">#define LOAD(I, O, T, V)</div></div>
-</div><!-- fragment -->
-</div>
-</div>
-<a id="ab08156df2972fda273407e864ec9c725"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab08156df2972fda273407e864ec9c725">&#9670;&nbsp;</a></span>LOAD_OK</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define LOAD_OK</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">O, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">T, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">INX, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">MSG&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">{<a class="code" href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">eosio::remove_reference&lt;decltype(V)&gt;::type</a> tmp; <a class="code" href="test__db_8cpp.html#ae6b47dcb272f3e27634412e42c4e3107">my_memset</a>(&amp;tmp, 0, <span class="keyword">sizeof</span>(tmp));tmp = V; \</div><div class="line">    res = <a class="code" href="test__db_8cpp.html#acdaafe56657d5eca906aa12cf84cff6b">LOAD</a>(I, O, T, tmp); \</div><div class="line">    TABLE1_ASSERT(INX, tmp, MSG)}</div><div class="ttc" id="test__db_8cpp_html_ae6b47dcb272f3e27634412e42c4e3107"><div class="ttname"><a href="test__db_8cpp.html#ae6b47dcb272f3e27634412e42c4e3107">my_memset</a></div><div class="ttdeci">void my_memset(void *vptr, unsigned char val, unsigned int size)</div><div class="ttdef"><b>Definition:</b> test_db.cpp:63</div></div>
-<div class="ttc" id="structeosio_1_1remove__reference_html_a72bf17c0b47dbe818c21596421c7d5ef"><div class="ttname"><a href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">eosio::remove_reference::type</a></div><div class="ttdeci">T type</div><div class="ttdef"><b>Definition:</b> types.hpp:97</div></div>
-<div class="ttc" id="test__db_8cpp_html_acdaafe56657d5eca906aa12cf84cff6b"><div class="ttname"><a href="test__db_8cpp.html#acdaafe56657d5eca906aa12cf84cff6b">LOAD</a></div><div class="ttdeci">#define LOAD(I, O, T, V)</div></div>
-</div><!-- fragment -->
-</div>
-</div>
-<a id="a961a0be9e61ff9176db9558dbad74f17"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a961a0be9e61ff9176db9558dbad74f17">&#9670;&nbsp;</a></span>LOGME</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define LOGME&#160;&#160;&#160;0</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a6984729ea89f1467f1275dcf8e28d853"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6984729ea89f1467f1275dcf8e28d853">&#9670;&nbsp;</a></span>LOWER</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define LOWER</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">O, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">T, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">V&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td>&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ac7de19ad4bc17bd50b33ce932143040d">CALL</a>(lower_bound, O, I, T, V)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ae059bab3b7721b66243ae6cbf33b3261"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae059bab3b7721b66243ae6cbf33b3261">&#9670;&nbsp;</a></span>LOWER_ALL</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define LOWER_ALL</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">O, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">T&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">{ \</div><div class="line">    auto n = <span class="keyword">sizeof</span>(I##_lb)/<span class="keyword">sizeof</span>(I##_lb[0]); \</div><div class="line">    auto j = 0; \</div><div class="line">    do { <a class="code" href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">\</a></div><div class="line"><a class="code" href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">      eosio::remove_reference&lt;decltype(records[0])&gt;::type</a> tmp = records[j]; \</div><div class="line">      res = <a class="code" href="test__db_8cpp.html#a6984729ea89f1467f1275dcf8e28d853">LOWER</a>(I, i64i64i64, <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(table2), tmp);\</div><div class="line">      TABLE1_ASSERT(I##_lb[j], tmp, <span class="stringliteral">&quot;i64x3 LOWER &quot;</span> #I <span class="stringliteral">&quot; ok &quot;</span>);\</div><div class="line">    } <span class="keywordflow">while</span>(++j&lt;n); \</div><div class="line">  }</div><div class="ttc" id="group__types_html_gaf9c1edb0e0da55ec6ba09f32f6839529"><div class="ttname"><a href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a></div><div class="ttdeci">#define N(X)</div><div class="ttdoc">used to generate a compile time uint64_t from the base32 encoded string interpretation of X ...</div><div class="ttdef"><b>Definition:</b> types.hpp:62</div></div>
-<div class="ttc" id="test__db_8cpp_html_a6984729ea89f1467f1275dcf8e28d853"><div class="ttname"><a href="test__db_8cpp.html#a6984729ea89f1467f1275dcf8e28d853">LOWER</a></div><div class="ttdeci">#define LOWER(I, O, T, V)</div></div>
-<div class="ttc" id="structeosio_1_1remove__reference_html_a72bf17c0b47dbe818c21596421c7d5ef"><div class="ttname"><a href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">eosio::remove_reference::type</a></div><div class="ttdeci">T type</div><div class="ttdef"><b>Definition:</b> types.hpp:97</div></div>
-</div><!-- fragment -->
-</div>
-</div>
-<a id="a87a5ab131baf6524d451f07162cd268d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a87a5ab131baf6524d451f07162cd268d">&#9670;&nbsp;</a></span>NEXT</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define NEXT</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">O, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">T, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">V&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td>&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ac7de19ad4bc17bd50b33ce932143040d">CALL</a>(next, O, I, T, V)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a3338aa9cb11fd90befb2875be56a13fd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3338aa9cb11fd90befb2875be56a13fd">&#9670;&nbsp;</a></span>NEXT_ALL</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define NEXT_ALL</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">O, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">T&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">{ \</div><div class="line">    auto n = <span class="keyword">sizeof</span>(I)/<span class="keyword">sizeof</span>(I[0]); \</div><div class="line">    auto j = 0; \</div><div class="line">    do { <a class="code" href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">\</a></div><div class="line"><a class="code" href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">      eosio::remove_reference&lt;decltype(records[0])&gt;::type</a> tmp = records[I[j]]; \</div><div class="line">      res = <a class="code" href="test__db_8cpp.html#a87a5ab131baf6524d451f07162cd268d">NEXT</a>(I, i64i64i64, <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(table2), tmp);\</div><div class="line">      if(j+1&lt;n){ <a class="code" href="test__db_8cpp.html#a60994bec94a8a2c13e233aae04b74cae">TABLE1_ASSERT</a>(I[j+1], tmp, <span class="stringliteral">&quot;i64x3 NEXT &quot;</span> #I <span class="stringliteral">&quot; ok &quot;</span>); } \</div><div class="line">      else { WASM_ASSERT(res == -1, <span class="stringliteral">&quot;i64x3 NEXT &quot;</span> #I <span class="stringliteral">&quot; fail &quot;</span>); }\</div><div class="line">    } <span class="keywordflow">while</span>(++j&lt;n); \</div><div class="line">  }</div><div class="ttc" id="group__types_html_gaf9c1edb0e0da55ec6ba09f32f6839529"><div class="ttname"><a href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a></div><div class="ttdeci">#define N(X)</div><div class="ttdoc">used to generate a compile time uint64_t from the base32 encoded string interpretation of X ...</div><div class="ttdef"><b>Definition:</b> types.hpp:62</div></div>
-<div class="ttc" id="test__db_8cpp_html_a60994bec94a8a2c13e233aae04b74cae"><div class="ttname"><a href="test__db_8cpp.html#a60994bec94a8a2c13e233aae04b74cae">TABLE1_ASSERT</a></div><div class="ttdeci">#define TABLE1_ASSERT(I, V, msg)</div></div>
-<div class="ttc" id="test__db_8cpp_html_a87a5ab131baf6524d451f07162cd268d"><div class="ttname"><a href="test__db_8cpp.html#a87a5ab131baf6524d451f07162cd268d">NEXT</a></div><div class="ttdeci">#define NEXT(I, O, T, V)</div></div>
-<div class="ttc" id="structeosio_1_1remove__reference_html_a72bf17c0b47dbe818c21596421c7d5ef"><div class="ttname"><a href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">eosio::remove_reference::type</a></div><div class="ttdeci">T type</div><div class="ttdef"><b>Definition:</b> types.hpp:97</div></div>
-</div><!-- fragment -->
-</div>
-</div>
-<a id="a86e923d8be4eac12d223202fd64260d5"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a86e923d8be4eac12d223202fd64260d5">&#9670;&nbsp;</a></span>PREV</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define PREV</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">O, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">T, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">V&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td>&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ac7de19ad4bc17bd50b33ce932143040d">CALL</a>(previous, O, I, T, V)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a6c9058e1fee174e1ed090868c4884847"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6c9058e1fee174e1ed090868c4884847">&#9670;&nbsp;</a></span>PREV_ALL</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define PREV_ALL</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">O, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">T&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">{ \</div><div class="line">    auto n = <span class="keyword">sizeof</span>(I)/<span class="keyword">sizeof</span>(I[0]); \</div><div class="line">    auto j = n-1; \</div><div class="line">    do { <a class="code" href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">\</a></div><div class="line"><a class="code" href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">      eosio::remove_reference&lt;decltype(records[0])&gt;::type</a> tmp = records[I[j]]; \</div><div class="line">      res = <a class="code" href="test__db_8cpp.html#a86e923d8be4eac12d223202fd64260d5">PREV</a>(I, i64i64i64, <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(table2), tmp);\</div><div class="line">      if(j&gt;0){ <a class="code" href="test__db_8cpp.html#a60994bec94a8a2c13e233aae04b74cae">TABLE1_ASSERT</a>(I[j-1], tmp, <span class="stringliteral">&quot;i64x3 PREV &quot;</span> #I <span class="stringliteral">&quot; ok &quot;</span>); } \</div><div class="line">      else { WASM_ASSERT(res == -1, <span class="stringliteral">&quot;i64x3 PREV &quot;</span> #I <span class="stringliteral">&quot; fail &quot;</span>); }\</div><div class="line">    } <span class="keywordflow">while</span>(--j&gt;0); \</div><div class="line">  }</div><div class="ttc" id="group__types_html_gaf9c1edb0e0da55ec6ba09f32f6839529"><div class="ttname"><a href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a></div><div class="ttdeci">#define N(X)</div><div class="ttdoc">used to generate a compile time uint64_t from the base32 encoded string interpretation of X ...</div><div class="ttdef"><b>Definition:</b> types.hpp:62</div></div>
-<div class="ttc" id="test__db_8cpp_html_a86e923d8be4eac12d223202fd64260d5"><div class="ttname"><a href="test__db_8cpp.html#a86e923d8be4eac12d223202fd64260d5">PREV</a></div><div class="ttdeci">#define PREV(I, O, T, V)</div></div>
-<div class="ttc" id="test__db_8cpp_html_a60994bec94a8a2c13e233aae04b74cae"><div class="ttname"><a href="test__db_8cpp.html#a60994bec94a8a2c13e233aae04b74cae">TABLE1_ASSERT</a></div><div class="ttdeci">#define TABLE1_ASSERT(I, V, msg)</div></div>
-<div class="ttc" id="structeosio_1_1remove__reference_html_a72bf17c0b47dbe818c21596421c7d5ef"><div class="ttname"><a href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">eosio::remove_reference::type</a></div><div class="ttdeci">T type</div><div class="ttdef"><b>Definition:</b> types.hpp:97</div></div>
-</div><!-- fragment -->
-</div>
-</div>
 <a id="a916ffefe1fc74532d08102cca55d8e34"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a916ffefe1fc74532d08102cca55d8e34">&#9670;&nbsp;</a></span>STRLEN</h2>
 
@@ -808,129 +142,12 @@ Variables</h2></td></tr>
           <td class="memname">#define STRLEN</td>
           <td>(</td>
           <td class="paramtype">&#160;</td>
-          <td class="paramname">s</td><td>)</td>
-          <td>&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ab21a7927a82571cd1ecffebcd7d255ac">my_strlen</a>(s)</td>
+          <td class="paramname"><a class="el" href="strings_2basic_8string_2string_8cons_2dtor__noexcept_8pass_8cpp.html#aa8270a1ba8295884567e0a0c93135f05">s</a></td><td>)</td>
+          <td>&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ab21a7927a82571cd1ecffebcd7d255ac">my_strlen</a>(<a class="el" href="strings_2basic_8string_2string_8cons_2dtor__noexcept_8pass_8cpp.html#aa8270a1ba8295884567e0a0c93135f05">s</a>)</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-</div>
-</div>
-<a id="a60994bec94a8a2c13e233aae04b74cae"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a60994bec94a8a2c13e233aae04b74cae">&#9670;&nbsp;</a></span>TABLE1_ASSERT</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define TABLE1_ASSERT</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">V, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">msg&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line"><span class="keywordflow">if</span>(<a class="code" href="test__db_8cpp.html#a961a0be9e61ff9176db9558dbad74f17">LOGME</a>) {<a class="code" href="namespaceeosio.html#aa0a56fe314d032d027a1565d93a68b21">\</a></div><div class="line"><a class="code" href="namespaceeosio.html#aa0a56fe314d032d027a1565d93a68b21">      eosio::print</a>(msg, <span class="stringliteral">&quot; : &quot;</span>, res, <span class="stringliteral">&quot; a:&quot;</span>, V.a, <span class="stringliteral">&quot; b:&quot;</span>, V.b, <span class="stringliteral">&quot; c:&quot;</span>, V.c, <span class="stringliteral">&quot; t:&quot;</span>, V.table, <span class="stringliteral">&quot;inx:&quot;</span>, <a class="code" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>(I), <span class="stringliteral">&quot; (&quot;</span>); <a class="code" href="namespaceeosio.html#aa0a56fe314d032d027a1565d93a68b21">\</a></div><div class="line"><a class="code" href="namespaceeosio.html#aa0a56fe314d032d027a1565d93a68b21">      eosio::print</a>(<a class="code" href="test__db_8cpp.html#a85f8a9ac2543ab620606382f9d8fb5ad">BS</a>(res == <span class="keyword">sizeof</span>(V)), <span class="stringliteral">&quot; &quot;</span>, <a class="code" href="test__db_8cpp.html#a85f8a9ac2543ab620606382f9d8fb5ad">BS</a>(records[I].a == V.a), <span class="stringliteral">&quot; &quot;</span>, <a class="code" href="test__db_8cpp.html#a85f8a9ac2543ab620606382f9d8fb5ad">BS</a>(records[I].b == V.b), <span class="stringliteral">&quot; &quot;</span>, <a class="code" href="test__db_8cpp.html#a85f8a9ac2543ab620606382f9d8fb5ad">BS</a>(records[I].c == V.c), <span class="stringliteral">&quot; =&gt; &quot;</span>, <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(table2), <span class="stringliteral">&quot;)\n&quot;</span>); \</div><div class="line">    } \</div><div class="line">    WASM_ASSERT( res == <span class="keyword">sizeof</span>(V) &amp;&amp; records[I].a == V.a &amp;&amp; records[I].b == V.b &amp;&amp; \</div><div class="line">     records[I].c == V.c <span class="comment">/*&amp;&amp; records[I].table == uint64_t(N(table2))*/</span>, msg);</div><div class="ttc" id="group__types_html_gaf9c1edb0e0da55ec6ba09f32f6839529"><div class="ttname"><a href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a></div><div class="ttdeci">#define N(X)</div><div class="ttdoc">used to generate a compile time uint64_t from the base32 encoded string interpretation of X ...</div><div class="ttdef"><b>Definition:</b> types.hpp:62</div></div>
-<div class="ttc" id="group__types_html_gaaa5d1cd013383c889537491c3cfd9aad"><div class="ttname"><a href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a></div><div class="ttdeci">unsigned long long uint64_t</div><div class="ttdef"><b>Definition:</b> types.h:18</div></div>
-<div class="ttc" id="test__db_8cpp_html_a85f8a9ac2543ab620606382f9d8fb5ad"><div class="ttname"><a href="test__db_8cpp.html#a85f8a9ac2543ab620606382f9d8fb5ad">BS</a></div><div class="ttdeci">#define BS(X)</div></div>
-<div class="ttc" id="namespaceeosio_html_aa0a56fe314d032d027a1565d93a68b21"><div class="ttname"><a href="namespaceeosio.html#aa0a56fe314d032d027a1565d93a68b21">eosio::print</a></div><div class="ttdeci">void print(const char *ptr)</div><div class="ttdoc">Prints string. </div><div class="ttdef"><b>Definition:</b> print.hpp:19</div></div>
-<div class="ttc" id="test__db_8cpp_html_a961a0be9e61ff9176db9558dbad74f17"><div class="ttname"><a href="test__db_8cpp.html#a961a0be9e61ff9176db9558dbad74f17">LOGME</a></div><div class="ttdeci">#define LOGME</div></div>
-</div><!-- fragment -->
-</div>
-</div>
-<a id="aff57621f2a584e9e53f83fd932750989"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aff57621f2a584e9e53f83fd932750989">&#9670;&nbsp;</a></span>UPPER</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define UPPER</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">O, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">T, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">V&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td>&#160;&#160;&#160;<a class="el" href="test__db_8cpp.html#ac7de19ad4bc17bd50b33ce932143040d">CALL</a>(upper_bound, O, I, T, V)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a205568c9e4f9106f94d1532570eac516"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a205568c9e4f9106f94d1532570eac516">&#9670;&nbsp;</a></span>UPPER_ALL</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define UPPER_ALL</td>
-          <td>(</td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">I, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">O, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">&#160;</td>
-          <td class="paramname">T&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">{ \</div><div class="line">    auto n = <span class="keyword">sizeof</span>(I##_ub)/<span class="keyword">sizeof</span>(I##_ub[0]); \</div><div class="line">    auto j = 0; \</div><div class="line">    do { <a class="code" href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">\</a></div><div class="line"><a class="code" href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">      eosio::remove_reference&lt;decltype(records[0])&gt;::type</a> tmp = records[j]; \</div><div class="line">      res = <a class="code" href="test__db_8cpp.html#aff57621f2a584e9e53f83fd932750989">UPPER</a>(I, i64i64i64, <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(table2), tmp);\</div><div class="line">      if(res == -1) { WASM_ASSERT(I##_ub[j]==-1,<span class="stringliteral">&quot;i64x3 UPPER &quot;</span> #I <span class="stringliteral">&quot; fail &quot;</span>) } \</div><div class="line">      else { <a class="code" href="test__db_8cpp.html#a60994bec94a8a2c13e233aae04b74cae">TABLE1_ASSERT</a>(I##_ub[j], tmp, <span class="stringliteral">&quot;i64x3 UPPER &quot;</span> #I <span class="stringliteral">&quot; ok &quot;</span>); } \</div><div class="line">    } <span class="keywordflow">while</span>(++j&lt;n); \</div><div class="line">  }</div><div class="ttc" id="group__types_html_gaf9c1edb0e0da55ec6ba09f32f6839529"><div class="ttname"><a href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a></div><div class="ttdeci">#define N(X)</div><div class="ttdoc">used to generate a compile time uint64_t from the base32 encoded string interpretation of X ...</div><div class="ttdef"><b>Definition:</b> types.hpp:62</div></div>
-<div class="ttc" id="test__db_8cpp_html_a60994bec94a8a2c13e233aae04b74cae"><div class="ttname"><a href="test__db_8cpp.html#a60994bec94a8a2c13e233aae04b74cae">TABLE1_ASSERT</a></div><div class="ttdeci">#define TABLE1_ASSERT(I, V, msg)</div></div>
-<div class="ttc" id="test__db_8cpp_html_aff57621f2a584e9e53f83fd932750989"><div class="ttname"><a href="test__db_8cpp.html#aff57621f2a584e9e53f83fd932750989">UPPER</a></div><div class="ttdeci">#define UPPER(I, O, T, V)</div></div>
-<div class="ttc" id="structeosio_1_1remove__reference_html_a72bf17c0b47dbe818c21596421c7d5ef"><div class="ttname"><a href="structeosio_1_1remove__reference.html#a72bf17c0b47dbe818c21596421c7d5ef">eosio::remove_reference::type</a></div><div class="ttdeci">T type</div><div class="ttdef"><b>Definition:</b> types.hpp:97</div></div>
-</div><!-- fragment -->
 </div>
 </div>
 <h2 class="groupheader">Function Documentation</h2>
@@ -941,7 +158,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">bool my_memcmp </td>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2stdbool_8h.html#abb452686968e48b67397da5f97445f5b">bool</a> my_memcmp </td>
           <td>(</td>
           <td class="paramtype">void *&#160;</td>
           <td class="paramname"><em>s1</em>, </td>
@@ -955,7 +172,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
           <td class="paramname"><em>n</em>&#160;</td>
         </tr>
         <tr>
@@ -1009,91 +226,11 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> my_strlen </td>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> my_strlen </td>
           <td>(</td>
           <td class="paramtype">const char *&#160;</td>
           <td class="paramname"><em>str</em></td><td>)</td>
           <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a2213ff438043625b5690b8b97cf67e3b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2213ff438043625b5690b8b97cf67e3b">&#9670;&nbsp;</a></span>set_key_str()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">void set_key_str </td>
-          <td>(</td>
-          <td class="paramtype">int&#160;</td>
-          <td class="paramname"><em>i</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">char *&#160;</td>
-          <td class="paramname"><em>key_4_digit</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a140b0e67dccb10714dd5dd9ef97ebe21"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a140b0e67dccb10714dd5dd9ef97ebe21">&#9670;&nbsp;</a></span>store_set_in_table() <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">unsigned int store_set_in_table </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
-          <td class="paramname"><em>table_name</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a7356d0aa824386b3f5f7d83e22072cd5"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7356d0aa824386b3f5f7d83e22072cd5">&#9670;&nbsp;</a></span>store_set_in_table() <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">unsigned int store_set_in_table </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="struct_test_model3xi64.html">TestModel3xi64</a> *&#160;</td>
-          <td class="paramname"><em>records</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">int&#160;</td>
-          <td class="paramname"><em>len</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype"><a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
-          <td class="paramname"><em>table_name</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">

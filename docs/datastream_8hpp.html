@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.13"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>EOS.IO: contracts/eoslib/datastream.hpp File Reference</title>
+<title>EOS.IO: contracts/eosiolib/datastream.hpp File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -60,7 +60,7 @@ $(function() {
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_3fea0bf1ce879ce73e6ecec98007efcd.html">eoslib</a></li>  </ul>
+<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_3f710958649a39c6bbfa7039c0dc0464.html">eosiolib</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
@@ -72,15 +72,24 @@ $(function() {
 <div class="title">datastream.hpp File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;<a class="el" href="system_8h_source.html">eoslib/system.h</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="memory_8h_source.html">eoslib/memory.h</a>&gt;</code><br />
+<div class="textblock"><code>#include &lt;<a class="el" href="system_8h_source.html">eosiolib/system.h</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="eosiolib_2memory_8h_source.html">eosiolib/memory.h</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="vector_8hpp_source.html">eosiolib/vector.hpp</a>&gt;</code><br />
+<code>#include &lt;boost/container/flat_map.hpp&gt;</code><br />
+<code>#include &lt;<a class="el" href="varint_8hpp_source.html">eosiolib/varint.hpp</a>&gt;</code><br />
+<code>#include &lt;array&gt;</code><br />
+<code>#include &lt;map&gt;</code><br />
+<code>#include &lt;string&gt;</code><br />
+<code>#include &lt;boost/fusion/algorithm/iteration/for_each.hpp&gt;</code><br />
+<code>#include &lt;boost/fusion/include/for_each.hpp&gt;</code><br />
+<code>#include &lt;boost/pfr.hpp&gt;</code><br />
 </div>
 <p><a href="datastream_8hpp_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1datastream.html">eosio::datastream&lt; T &gt;</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">A data stream for reading and writing data in the form of bytes.  <a href="classeosio_1_1datastream.html#details">More...</a><br /></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="struct_a.html">A</a> data stream for reading and writing data in the form of bytes.  <a href="classeosio_1_1datastream.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1datastream_3_01size__t_01_4.html">eosio::datastream&lt; size_t &gt;</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Specialization of datastream used to help determine the final size of a serialized value.  <a href="classeosio_1_1datastream_3_01size__t_01_4.html#details">More...</a><br /></td></tr>
@@ -89,101 +98,116 @@ Classes</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="namespaces"></a>
 Namespaces</h2></td></tr>
 <tr class="memitem:namespaceeosio"><td class="memItemLeft" align="right" valign="top"> &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html">eosio</a></td></tr>
-<tr class="memdesc:namespaceeosio"><td class="mdescLeft">&#160;</td><td class="mdescRight">Used to forward declare raw functions. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a260b28d50d78aebe5b9cdc25c3a5619c"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:a260b28d50d78aebe5b9cdc25c3a5619c"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a260b28d50d78aebe5b9cdc25c3a5619c">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const <a class="el" href="structuint256.html">uint256</a> d)</td></tr>
-<tr class="memdesc:a260b28d50d78aebe5b9cdc25c3a5619c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serialize a <a class="el" href="structuint256.html">uint256</a>.  <a href="namespaceeosio.html#a260b28d50d78aebe5b9cdc25c3a5619c">More...</a><br /></td></tr>
-<tr class="separator:a260b28d50d78aebe5b9cdc25c3a5619c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab917f541b9a3f18929c11aadff5ca695"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:ab917f541b9a3f18929c11aadff5ca695"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#ab917f541b9a3f18929c11aadff5ca695">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, <a class="el" href="structuint256.html">uint256</a> &amp;d)</td></tr>
-<tr class="memdesc:ab917f541b9a3f18929c11aadff5ca695"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deserialize a <a class="el" href="structuint256.html">uint256</a>.  <a href="namespaceeosio.html#ab917f541b9a3f18929c11aadff5ca695">More...</a><br /></td></tr>
-<tr class="separator:ab917f541b9a3f18929c11aadff5ca695"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab9ea2aaefd17ab1b127b1dc674148ba2"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:ab9ea2aaefd17ab1b127b1dc674148ba2"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#ab9ea2aaefd17ab1b127b1dc674148ba2">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const <a class="el" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> d)</td></tr>
-<tr class="memdesc:ab9ea2aaefd17ab1b127b1dc674148ba2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serialize a uint128_t.  <a href="namespaceeosio.html#ab9ea2aaefd17ab1b127b1dc674148ba2">More...</a><br /></td></tr>
-<tr class="separator:ab9ea2aaefd17ab1b127b1dc674148ba2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2ddea0ec64119a3c06c08ab18f07312b"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:a2ddea0ec64119a3c06c08ab18f07312b"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a2ddea0ec64119a3c06c08ab18f07312b">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, <a class="el" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> &amp;d)</td></tr>
-<tr class="memdesc:a2ddea0ec64119a3c06c08ab18f07312b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deserialize a uint128_t.  <a href="namespaceeosio.html#a2ddea0ec64119a3c06c08ab18f07312b">More...</a><br /></td></tr>
-<tr class="separator:a2ddea0ec64119a3c06c08ab18f07312b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5b1fd83c8a5b99c467a26047940335b9"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:a5b1fd83c8a5b99c467a26047940335b9"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a5b1fd83c8a5b99c467a26047940335b9">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const <a class="el" href="group__types.html#ga811ec3b3c805bfd6b8ec302d59fc5a94">int128_t</a> d)</td></tr>
-<tr class="memdesc:a5b1fd83c8a5b99c467a26047940335b9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serialize a int128_t.  <a href="namespaceeosio.html#a5b1fd83c8a5b99c467a26047940335b9">More...</a><br /></td></tr>
-<tr class="separator:a5b1fd83c8a5b99c467a26047940335b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0ab4de6927af4262abaa8d88b7611e8e"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:a0ab4de6927af4262abaa8d88b7611e8e"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a0ab4de6927af4262abaa8d88b7611e8e">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, <a class="el" href="group__types.html#ga811ec3b3c805bfd6b8ec302d59fc5a94">int128_t</a> &amp;d)</td></tr>
-<tr class="memdesc:a0ab4de6927af4262abaa8d88b7611e8e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deserialize a int128_t.  <a href="namespaceeosio.html#a0ab4de6927af4262abaa8d88b7611e8e">More...</a><br /></td></tr>
-<tr class="separator:a0ab4de6927af4262abaa8d88b7611e8e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4151debacdc18d7011b33f0b745e9edd"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:a4151debacdc18d7011b33f0b745e9edd"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a4151debacdc18d7011b33f0b745e9edd">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const <a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> d)</td></tr>
-<tr class="memdesc:a4151debacdc18d7011b33f0b745e9edd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serialize a int32_t.  <a href="namespaceeosio.html#a4151debacdc18d7011b33f0b745e9edd">More...</a><br /></td></tr>
-<tr class="separator:a4151debacdc18d7011b33f0b745e9edd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a27b0dcee0db4b6a7fae7abd88f9f530b"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:a27b0dcee0db4b6a7fae7abd88f9f530b"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a27b0dcee0db4b6a7fae7abd88f9f530b">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, <a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> &amp;d)</td></tr>
-<tr class="memdesc:a27b0dcee0db4b6a7fae7abd88f9f530b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deserialize a int32_t.  <a href="namespaceeosio.html#a27b0dcee0db4b6a7fae7abd88f9f530b">More...</a><br /></td></tr>
-<tr class="separator:a27b0dcee0db4b6a7fae7abd88f9f530b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6c2f2bfe3070d4761c66863b6273f0b9"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:a6c2f2bfe3070d4761c66863b6273f0b9"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a6c2f2bfe3070d4761c66863b6273f0b9">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> d)</td></tr>
-<tr class="memdesc:a6c2f2bfe3070d4761c66863b6273f0b9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serialize a uint32_t.  <a href="namespaceeosio.html#a6c2f2bfe3070d4761c66863b6273f0b9">More...</a><br /></td></tr>
-<tr class="separator:a6c2f2bfe3070d4761c66863b6273f0b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a567774ecb3112c06339e77cd577b0491"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:a567774ecb3112c06339e77cd577b0491"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a567774ecb3112c06339e77cd577b0491">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> &amp;d)</td></tr>
-<tr class="memdesc:a567774ecb3112c06339e77cd577b0491"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deserialize a uint32_t.  <a href="namespaceeosio.html#a567774ecb3112c06339e77cd577b0491">More...</a><br /></td></tr>
-<tr class="separator:a567774ecb3112c06339e77cd577b0491"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7e2e9f4c6f72ffc1cf853f73100a751f"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:a7e2e9f4c6f72ffc1cf853f73100a751f"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a7e2e9f4c6f72ffc1cf853f73100a751f">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const <a class="el" href="group__types.html#ga996e72f71b11a5bb8b3b7b6936b1516d">int64_t</a> d)</td></tr>
-<tr class="memdesc:a7e2e9f4c6f72ffc1cf853f73100a751f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serialize a int64_t.  <a href="namespaceeosio.html#a7e2e9f4c6f72ffc1cf853f73100a751f">More...</a><br /></td></tr>
-<tr class="separator:a7e2e9f4c6f72ffc1cf853f73100a751f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ade0d039b91a8bd365d20dd49d35806ab"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:ade0d039b91a8bd365d20dd49d35806ab"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#ade0d039b91a8bd365d20dd49d35806ab">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, <a class="el" href="group__types.html#ga996e72f71b11a5bb8b3b7b6936b1516d">int64_t</a> &amp;d)</td></tr>
-<tr class="memdesc:ade0d039b91a8bd365d20dd49d35806ab"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deserialize a int64_t.  <a href="namespaceeosio.html#ade0d039b91a8bd365d20dd49d35806ab">More...</a><br /></td></tr>
-<tr class="separator:ade0d039b91a8bd365d20dd49d35806ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a288640b6d761f8a01632bb9370933571"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:a288640b6d761f8a01632bb9370933571"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a288640b6d761f8a01632bb9370933571">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> d)</td></tr>
-<tr class="memdesc:a288640b6d761f8a01632bb9370933571"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serialize a uint64_t.  <a href="namespaceeosio.html#a288640b6d761f8a01632bb9370933571">More...</a><br /></td></tr>
-<tr class="separator:a288640b6d761f8a01632bb9370933571"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afee2cf83746d8a254fa534114188246e"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:afee2cf83746d8a254fa534114188246e"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#afee2cf83746d8a254fa534114188246e">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> &amp;d)</td></tr>
-<tr class="memdesc:afee2cf83746d8a254fa534114188246e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deserialize a uint64_t.  <a href="namespaceeosio.html#afee2cf83746d8a254fa534114188246e">More...</a><br /></td></tr>
-<tr class="separator:afee2cf83746d8a254fa534114188246e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae8a3241ee0c6a39d227b89aed0b4d18f"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:ae8a3241ee0c6a39d227b89aed0b4d18f"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#ae8a3241ee0c6a39d227b89aed0b4d18f">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const <a class="el" href="group__types.html#gaa343fa3b3d06292b959ffdd4c4703b06">int16_t</a> d)</td></tr>
-<tr class="memdesc:ae8a3241ee0c6a39d227b89aed0b4d18f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serialize a int16_t.  <a href="namespaceeosio.html#ae8a3241ee0c6a39d227b89aed0b4d18f">More...</a><br /></td></tr>
-<tr class="separator:ae8a3241ee0c6a39d227b89aed0b4d18f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8b5e651a7f09efba3834c7c372d80d47"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:a8b5e651a7f09efba3834c7c372d80d47"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a8b5e651a7f09efba3834c7c372d80d47">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, <a class="el" href="group__types.html#gaa343fa3b3d06292b959ffdd4c4703b06">int16_t</a> &amp;d)</td></tr>
-<tr class="memdesc:a8b5e651a7f09efba3834c7c372d80d47"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deserialize a int16_t.  <a href="namespaceeosio.html#a8b5e651a7f09efba3834c7c372d80d47">More...</a><br /></td></tr>
-<tr class="separator:a8b5e651a7f09efba3834c7c372d80d47"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af7a7b64f55970d82dfc6ecfa2c6529f4"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:af7a7b64f55970d82dfc6ecfa2c6529f4"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#af7a7b64f55970d82dfc6ecfa2c6529f4">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const <a class="el" href="group__types.html#ga273cf69d639a59973b6019625df33e30">uint16_t</a> d)</td></tr>
-<tr class="memdesc:af7a7b64f55970d82dfc6ecfa2c6529f4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serialize a uint16_t.  <a href="namespaceeosio.html#af7a7b64f55970d82dfc6ecfa2c6529f4">More...</a><br /></td></tr>
-<tr class="separator:af7a7b64f55970d82dfc6ecfa2c6529f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3a5d070afc2de777601104f39e91faeb"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:a3a5d070afc2de777601104f39e91faeb"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a3a5d070afc2de777601104f39e91faeb">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, <a class="el" href="group__types.html#ga273cf69d639a59973b6019625df33e30">uint16_t</a> &amp;d)</td></tr>
-<tr class="memdesc:a3a5d070afc2de777601104f39e91faeb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deserialize a uint16_t.  <a href="namespaceeosio.html#a3a5d070afc2de777601104f39e91faeb">More...</a><br /></td></tr>
-<tr class="separator:a3a5d070afc2de777601104f39e91faeb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a08e73b7e09b2ef4311a132c6f34dccc7"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:a08e73b7e09b2ef4311a132c6f34dccc7"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a08e73b7e09b2ef4311a132c6f34dccc7">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const <a class="el" href="group__types.html#gad566f6541e98b74246db1a3a3a85ad49">int8_t</a> d)</td></tr>
-<tr class="memdesc:a08e73b7e09b2ef4311a132c6f34dccc7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serialize a int8_t.  <a href="namespaceeosio.html#a08e73b7e09b2ef4311a132c6f34dccc7">More...</a><br /></td></tr>
-<tr class="separator:a08e73b7e09b2ef4311a132c6f34dccc7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aee2bba4019b9f88adac89311a8a25501"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:aee2bba4019b9f88adac89311a8a25501"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#aee2bba4019b9f88adac89311a8a25501">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, <a class="el" href="group__types.html#gad566f6541e98b74246db1a3a3a85ad49">int8_t</a> &amp;d)</td></tr>
-<tr class="memdesc:aee2bba4019b9f88adac89311a8a25501"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deserialize a int8_t.  <a href="namespaceeosio.html#aee2bba4019b9f88adac89311a8a25501">More...</a><br /></td></tr>
-<tr class="separator:aee2bba4019b9f88adac89311a8a25501"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abfc006cd56934f497b751950a409d07e"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:abfc006cd56934f497b751950a409d07e"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#abfc006cd56934f497b751950a409d07e">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const <a class="el" href="group__types.html#gaba7bc1797add20fe3efdf37ced1182c5">uint8_t</a> d)</td></tr>
-<tr class="memdesc:abfc006cd56934f497b751950a409d07e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serialize a uint8_t.  <a href="namespaceeosio.html#abfc006cd56934f497b751950a409d07e">More...</a><br /></td></tr>
-<tr class="separator:abfc006cd56934f497b751950a409d07e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5487eb6a2a3c7b31c4ea2cc3c67106ca"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
-<tr class="memitem:a5487eb6a2a3c7b31c4ea2cc3c67106ca"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a5487eb6a2a3c7b31c4ea2cc3c67106ca">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, <a class="el" href="group__types.html#gaba7bc1797add20fe3efdf37ced1182c5">uint8_t</a> &amp;d)</td></tr>
-<tr class="memdesc:a5487eb6a2a3c7b31c4ea2cc3c67106ca"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deserialize a uint8_t.  <a href="namespaceeosio.html#a5487eb6a2a3c7b31c4ea2cc3c67106ca">More...</a><br /></td></tr>
-<tr class="separator:a5487eb6a2a3c7b31c4ea2cc3c67106ca"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a024d988b2409539e241c0d072e0d1368"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
+<tr class="memitem:a024d988b2409539e241c0d072e0d1368"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a024d988b2409539e241c0d072e0d1368">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const <a class="el" href="structpublic__key.html">public_key</a> pubkey)</td></tr>
+<tr class="memdesc:a024d988b2409539e241c0d072e0d1368"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serialize a <a class="el" href="structeosio_1_1public__key.html">public_key</a>.  <a href="namespaceeosio.html#a024d988b2409539e241c0d072e0d1368">More...</a><br /></td></tr>
+<tr class="separator:a024d988b2409539e241c0d072e0d1368"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acf73b6d3ed7606e174d6e8795eab4408"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
+<tr class="memitem:acf73b6d3ed7606e174d6e8795eab4408"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#acf73b6d3ed7606e174d6e8795eab4408">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, <a class="el" href="structpublic__key.html">public_key</a> &amp;pubkey)</td></tr>
+<tr class="memdesc:acf73b6d3ed7606e174d6e8795eab4408"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deserialize a <a class="el" href="structeosio_1_1public__key.html">public_key</a>.  <a href="namespaceeosio.html#acf73b6d3ed7606e174d6e8795eab4408">More...</a><br /></td></tr>
+<tr class="separator:acf73b6d3ed7606e174d6e8795eab4408"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aed3bc5bd372251b9cb90aff4cf85be5f"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
+<tr class="memitem:aed3bc5bd372251b9cb90aff4cf85be5f"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#aed3bc5bd372251b9cb90aff4cf85be5f">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const key256 &amp;<a class="el" href="fullexpr-dtor_8pass_8cpp.html#aab8f4e84ca86a527d0d748c243175496">d</a>)</td></tr>
+<tr class="memdesc:aed3bc5bd372251b9cb90aff4cf85be5f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serialize a key256.  <a href="namespaceeosio.html#aed3bc5bd372251b9cb90aff4cf85be5f">More...</a><br /></td></tr>
+<tr class="separator:aed3bc5bd372251b9cb90aff4cf85be5f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a74974be2214a4e50e463ae866f9297d4"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
+<tr class="memitem:a74974be2214a4e50e463ae866f9297d4"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a74974be2214a4e50e463ae866f9297d4">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, key256 &amp;<a class="el" href="fullexpr-dtor_8pass_8cpp.html#aab8f4e84ca86a527d0d748c243175496">d</a>)</td></tr>
+<tr class="memdesc:a74974be2214a4e50e463ae866f9297d4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deserialize a key256.  <a href="namespaceeosio.html#a74974be2214a4e50e463ae866f9297d4">More...</a><br /></td></tr>
+<tr class="separator:a74974be2214a4e50e463ae866f9297d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7875cabe436fe6756c4b30eec326fe16"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
+<tr class="memitem:a7875cabe436fe6756c4b30eec326fe16"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a7875cabe436fe6756c4b30eec326fe16">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const <a class="el" href="musl_2upstream_2include_2stdbool_8h.html#abb452686968e48b67397da5f97445f5b">bool</a> &amp;<a class="el" href="fullexpr-dtor_8pass_8cpp.html#aab8f4e84ca86a527d0d748c243175496">d</a>)</td></tr>
+<tr class="separator:a7875cabe436fe6756c4b30eec326fe16"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a860a2cac0f4f00dacdade421c303ea9c"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
+<tr class="memitem:a860a2cac0f4f00dacdade421c303ea9c"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a860a2cac0f4f00dacdade421c303ea9c">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, <a class="el" href="musl_2upstream_2include_2stdbool_8h.html#abb452686968e48b67397da5f97445f5b">bool</a> &amp;<a class="el" href="fullexpr-dtor_8pass_8cpp.html#aab8f4e84ca86a527d0d748c243175496">d</a>)</td></tr>
+<tr class="separator:a860a2cac0f4f00dacdade421c303ea9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6a3e8cf0bdbb6a1fce41173a8f75c0cd"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
+<tr class="memitem:a6a3e8cf0bdbb6a1fce41173a8f75c0cd"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a6a3e8cf0bdbb6a1fce41173a8f75c0cd">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const <a class="el" href="structchecksum256.html">checksum256</a> &amp;<a class="el" href="fullexpr-dtor_8pass_8cpp.html#aab8f4e84ca86a527d0d748c243175496">d</a>)</td></tr>
+<tr class="memdesc:a6a3e8cf0bdbb6a1fce41173a8f75c0cd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serialize a <a class="el" href="structchecksum256.html">checksum256</a>.  <a href="namespaceeosio.html#a6a3e8cf0bdbb6a1fce41173a8f75c0cd">More...</a><br /></td></tr>
+<tr class="separator:a6a3e8cf0bdbb6a1fce41173a8f75c0cd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7c5dd92c86279c5893292a2d1c521200"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
+<tr class="memitem:a7c5dd92c86279c5893292a2d1c521200"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a7c5dd92c86279c5893292a2d1c521200">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, <a class="el" href="structchecksum256.html">checksum256</a> &amp;<a class="el" href="fullexpr-dtor_8pass_8cpp.html#aab8f4e84ca86a527d0d748c243175496">d</a>)</td></tr>
+<tr class="memdesc:a7c5dd92c86279c5893292a2d1c521200"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deserialize a <a class="el" href="structchecksum256.html">checksum256</a>.  <a href="namespaceeosio.html#a7c5dd92c86279c5893292a2d1c521200">More...</a><br /></td></tr>
+<tr class="separator:a7c5dd92c86279c5893292a2d1c521200"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab1dffa510122bd62ce3975e7b302c2c1"><td class="memTemplParams" colspan="2">template&lt;typename DataStream &gt; </td></tr>
+<tr class="memitem:ab1dffa510122bd62ce3975e7b302c2c1"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#ab1dffa510122bd62ce3975e7b302c2c1">eosio::operator&lt;&lt;</a> (DataStream &amp;ds, const std::string &amp;v)</td></tr>
+<tr class="separator:ab1dffa510122bd62ce3975e7b302c2c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa02846796253d9db1064e43fadbecb8e"><td class="memTemplParams" colspan="2">template&lt;typename DataStream &gt; </td></tr>
+<tr class="memitem:aa02846796253d9db1064e43fadbecb8e"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#aa02846796253d9db1064e43fadbecb8e">eosio::operator&gt;&gt;</a> (DataStream &amp;ds, std::string &amp;v)</td></tr>
+<tr class="separator:aa02846796253d9db1064e43fadbecb8e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a86c994b49d0af580c72f4d966baca75b"><td class="memTemplParams" colspan="2">template&lt;typename DataStream , typename T , std::size_t N&gt; </td></tr>
+<tr class="memitem:a86c994b49d0af580c72f4d966baca75b"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a86c994b49d0af580c72f4d966baca75b">eosio::operator&lt;&lt;</a> (DataStream &amp;ds, const <a class="el" href="utilities_2meta_2meta_8unary_2meta_8unary_8comp_2array_8pass_8cpp.html#ab83400364ff0e91c14fca44f1818a345">std::array</a>&lt; <a class="el" href="struct_t.html">T</a>, <a class="el" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a> &gt; &amp;v)</td></tr>
+<tr class="separator:a86c994b49d0af580c72f4d966baca75b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a60d3eb6bab6da17bd2986a051126d471"><td class="memTemplParams" colspan="2">template&lt;typename DataStream , typename T , std::size_t N&gt; </td></tr>
+<tr class="memitem:a60d3eb6bab6da17bd2986a051126d471"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a60d3eb6bab6da17bd2986a051126d471">eosio::operator&gt;&gt;</a> (DataStream &amp;ds, <a class="el" href="utilities_2meta_2meta_8unary_2meta_8unary_8comp_2array_8pass_8cpp.html#ab83400364ff0e91c14fca44f1818a345">std::array</a>&lt; <a class="el" href="struct_t.html">T</a>, <a class="el" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a> &gt; &amp;v)</td></tr>
+<tr class="separator:a60d3eb6bab6da17bd2986a051126d471"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9301c73de09f1c1517a2a6b58411a193"><td class="memTemplParams" colspan="2">template&lt;typename DataStream &gt; </td></tr>
+<tr class="memitem:a9301c73de09f1c1517a2a6b58411a193"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a9301c73de09f1c1517a2a6b58411a193">eosio::operator&lt;&lt;</a> (DataStream &amp;ds, const vector&lt; char &gt; &amp;v)</td></tr>
+<tr class="separator:a9301c73de09f1c1517a2a6b58411a193"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae9d5fbed5b9130647cfdb0464878e00c"><td class="memTemplParams" colspan="2">template&lt;typename DataStream , typename T &gt; </td></tr>
+<tr class="memitem:ae9d5fbed5b9130647cfdb0464878e00c"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#ae9d5fbed5b9130647cfdb0464878e00c">eosio::operator&lt;&lt;</a> (DataStream &amp;ds, const vector&lt; <a class="el" href="struct_t.html">T</a> &gt; &amp;v)</td></tr>
+<tr class="separator:ae9d5fbed5b9130647cfdb0464878e00c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aff57f287cf0f14e7c7074affe10383c4"><td class="memTemplParams" colspan="2">template&lt;typename DataStream &gt; </td></tr>
+<tr class="memitem:aff57f287cf0f14e7c7074affe10383c4"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#aff57f287cf0f14e7c7074affe10383c4">eosio::operator&gt;&gt;</a> (DataStream &amp;ds, vector&lt; char &gt; &amp;v)</td></tr>
+<tr class="separator:aff57f287cf0f14e7c7074affe10383c4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8f5cf812047558da4344ae71486e2607"><td class="memTemplParams" colspan="2">template&lt;typename DataStream , typename T &gt; </td></tr>
+<tr class="memitem:a8f5cf812047558da4344ae71486e2607"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a8f5cf812047558da4344ae71486e2607">eosio::operator&gt;&gt;</a> (DataStream &amp;ds, vector&lt; <a class="el" href="struct_t.html">T</a> &gt; &amp;v)</td></tr>
+<tr class="separator:a8f5cf812047558da4344ae71486e2607"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0bb2cdf062825f96551ba663f3d74e17"><td class="memTemplParams" colspan="2">template&lt;typename DataStream , typename K , typename V &gt; </td></tr>
+<tr class="memitem:a0bb2cdf062825f96551ba663f3d74e17"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a0bb2cdf062825f96551ba663f3d74e17">eosio::operator&lt;&lt;</a> (DataStream &amp;ds, const <a class="el" href="classstd_1_1map.html">std::map</a>&lt; K, <a class="el" href="struct_v.html">V</a> &gt; &amp;<a class="el" href="thread_8mutex_8requirements_2thread_8timedmutex_8requirements_2thread_8timedmutex_8recursive_2try__lock__until_8pass_8cpp.html#a3e1c7bcfb13256f65a9585956f5728d8">m</a>)</td></tr>
+<tr class="separator:a0bb2cdf062825f96551ba663f3d74e17"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a63b7d3e0c99e4f049574fd366a1c528a"><td class="memTemplParams" colspan="2">template&lt;typename DataStream , typename K , typename V &gt; </td></tr>
+<tr class="memitem:a63b7d3e0c99e4f049574fd366a1c528a"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a63b7d3e0c99e4f049574fd366a1c528a">eosio::operator&gt;&gt;</a> (DataStream &amp;ds, <a class="el" href="classstd_1_1map.html">std::map</a>&lt; K, <a class="el" href="struct_v.html">V</a> &gt; &amp;<a class="el" href="thread_8mutex_8requirements_2thread_8timedmutex_8requirements_2thread_8timedmutex_8recursive_2try__lock__until_8pass_8cpp.html#a3e1c7bcfb13256f65a9585956f5728d8">m</a>)</td></tr>
+<tr class="separator:a63b7d3e0c99e4f049574fd366a1c528a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a85b47a27bb41a2854d2b8daea9e7b9f0"><td class="memTemplParams" colspan="2">template&lt;typename DataStream , typename K , typename V &gt; </td></tr>
+<tr class="memitem:a85b47a27bb41a2854d2b8daea9e7b9f0"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a85b47a27bb41a2854d2b8daea9e7b9f0">eosio::operator&lt;&lt;</a> (DataStream &amp;ds, const boost::container::flat_map&lt; K, <a class="el" href="struct_v.html">V</a> &gt; &amp;<a class="el" href="thread_8mutex_8requirements_2thread_8timedmutex_8requirements_2thread_8timedmutex_8recursive_2try__lock__until_8pass_8cpp.html#a3e1c7bcfb13256f65a9585956f5728d8">m</a>)</td></tr>
+<tr class="separator:a85b47a27bb41a2854d2b8daea9e7b9f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3b973878181cef2bdad7139958bd6ecf"><td class="memTemplParams" colspan="2">template&lt;typename DataStream , typename K , typename V &gt; </td></tr>
+<tr class="memitem:a3b973878181cef2bdad7139958bd6ecf"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a3b973878181cef2bdad7139958bd6ecf">eosio::operator&gt;&gt;</a> (DataStream &amp;ds, boost::container::flat_map&lt; K, <a class="el" href="struct_v.html">V</a> &gt; &amp;<a class="el" href="thread_8mutex_8requirements_2thread_8timedmutex_8requirements_2thread_8timedmutex_8recursive_2try__lock__until_8pass_8cpp.html#a3e1c7bcfb13256f65a9585956f5728d8">m</a>)</td></tr>
+<tr class="separator:a3b973878181cef2bdad7139958bd6ecf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a124a00ba4d603044ef25be84a9fade48"><td class="memTemplParams" colspan="2">template&lt;typename DataStream , typename... Args&gt; </td></tr>
+<tr class="memitem:a124a00ba4d603044ef25be84a9fade48"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a124a00ba4d603044ef25be84a9fade48">eosio::operator&lt;&lt;</a> (DataStream &amp;ds, const std::tuple&lt; Args... &gt; &amp;t)</td></tr>
+<tr class="separator:a124a00ba4d603044ef25be84a9fade48"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac2e5487f43a496d7c263071e2502b986"><td class="memTemplParams" colspan="2">template&lt;typename DataStream , typename... Args&gt; </td></tr>
+<tr class="memitem:ac2e5487f43a496d7c263071e2502b986"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#ac2e5487f43a496d7c263071e2502b986">eosio::operator&gt;&gt;</a> (DataStream &amp;ds, std::tuple&lt; Args... &gt; &amp;t)</td></tr>
+<tr class="separator:ac2e5487f43a496d7c263071e2502b986"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a59511f8552dbf4a2aced270041c17f04"><td class="memTemplParams" colspan="2">template&lt;typename DataStream , typename T , std::enable_if_t&lt; std::is_fundamental&lt; T &gt;::value==false, int &gt;  = 0&gt; </td></tr>
+<tr class="memitem:a59511f8552dbf4a2aced270041c17f04"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a59511f8552dbf4a2aced270041c17f04">eosio::operator&lt;&lt;</a> (DataStream &amp;ds, const <a class="el" href="struct_t.html">T</a> &amp;v)</td></tr>
+<tr class="separator:a59511f8552dbf4a2aced270041c17f04"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7d64e2f48bca13601cf6606934e6e8e6"><td class="memTemplParams" colspan="2">template&lt;typename DataStream , typename T , std::enable_if_t&lt; std::is_fundamental&lt; T &gt;::value==false, int &gt;  = 0&gt; </td></tr>
+<tr class="memitem:a7d64e2f48bca13601cf6606934e6e8e6"><td class="memTemplItemLeft" align="right" valign="top">DataStream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a7d64e2f48bca13601cf6606934e6e8e6">eosio::operator&gt;&gt;</a> (DataStream &amp;ds, <a class="el" href="struct_t.html">T</a> &amp;v)</td></tr>
+<tr class="separator:a7d64e2f48bca13601cf6606934e6e8e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2ffaa5bd18836b7d40db601fb20965bb"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
+<tr class="memitem:a2ffaa5bd18836b7d40db601fb20965bb"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="struct_t.html">T</a>&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a2ffaa5bd18836b7d40db601fb20965bb">eosio::unpack</a> (const char *buffer, <a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a> <a class="el" href="towctrans_8c.html#a8bb3e1dd5fd30402c69fd8a9f7dd0950">len</a>)</td></tr>
+<tr class="separator:a2ffaa5bd18836b7d40db601fb20965bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a242928d37de56064f54a01eae305024e"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
+<tr class="memitem:a242928d37de56064f54a01eae305024e"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="struct_t.html">T</a>&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a242928d37de56064f54a01eae305024e">eosio::unpack</a> (const vector&lt; char &gt; &amp;bytes)</td></tr>
+<tr class="separator:a242928d37de56064f54a01eae305024e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a30aa7d1c92792afc7f78af37372d68b7"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
+<tr class="memitem:a30aa7d1c92792afc7f78af37372d68b7"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a>&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a30aa7d1c92792afc7f78af37372d68b7">eosio::pack_size</a> (const <a class="el" href="struct_t.html">T</a> &amp;<a class="el" href="convert__to__integral_8pass_8cpp.html#a92806d6198ff196ea935b0973f419e01a97de9ab6885342a574053b8f64a563a9">value</a>)</td></tr>
+<tr class="separator:a30aa7d1c92792afc7f78af37372d68b7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af3126d828cc1de8044838a1f007b2e34"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
+<tr class="memitem:af3126d828cc1de8044838a1f007b2e34"><td class="memTemplItemLeft" align="right" valign="top">bytes&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#af3126d828cc1de8044838a1f007b2e34">eosio::pack</a> (const <a class="el" href="struct_t.html">T</a> &amp;<a class="el" href="convert__to__integral_8pass_8cpp.html#a92806d6198ff196ea935b0973f419e01a97de9ab6885342a574053b8f64a563a9">value</a>)</td></tr>
+<tr class="separator:af3126d828cc1de8044838a1f007b2e34"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adecfd7d85121e75654ee8284f2d7a315"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
+<tr class="memitem:adecfd7d85121e75654ee8284f2d7a315"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#adecfd7d85121e75654ee8284f2d7a315">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const <a class="el" href="structchecksum160.html">checksum160</a> &amp;cs)</td></tr>
+<tr class="separator:adecfd7d85121e75654ee8284f2d7a315"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8bd77b27b64c47f948ad0435d916e89a"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
+<tr class="memitem:a8bd77b27b64c47f948ad0435d916e89a"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a8bd77b27b64c47f948ad0435d916e89a">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, <a class="el" href="structchecksum160.html">checksum160</a> &amp;cs)</td></tr>
+<tr class="separator:a8bd77b27b64c47f948ad0435d916e89a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a18762ca20490e65541a72ca22b63667a"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
+<tr class="memitem:a18762ca20490e65541a72ca22b63667a"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a18762ca20490e65541a72ca22b63667a">eosio::operator&lt;&lt;</a> (datastream&lt; Stream &gt; &amp;ds, const <a class="el" href="structchecksum512.html">checksum512</a> &amp;cs)</td></tr>
+<tr class="separator:a18762ca20490e65541a72ca22b63667a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a27ceccc9cbafe994b2824ba112cae372"><td class="memTemplParams" colspan="2">template&lt;typename Stream &gt; </td></tr>
+<tr class="memitem:a27ceccc9cbafe994b2824ba112cae372"><td class="memTemplItemLeft" align="right" valign="top">datastream&lt; Stream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a27ceccc9cbafe994b2824ba112cae372">eosio::operator&gt;&gt;</a> (datastream&lt; Stream &gt; &amp;ds, <a class="el" href="structchecksum512.html">checksum512</a> &amp;cs)</td></tr>
+<tr class="separator:a27ceccc9cbafe994b2824ba112cae372"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-</div><!-- contents -->
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><dl class="section copyright"><dt>Copyright</dt><dd>defined in eos/LICENSE.txt </dd></dl>
+</div></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
 Generated by &#160;<a href="http://www.doxygen.org/index.html">

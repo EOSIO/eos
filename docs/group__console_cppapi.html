@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -68,7 +68,7 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
-<p>C++ wrapper for Console C API.  
+<p>C++ wrapper for Console <a class="el" href="struct_c.html">C</a> API.  
 <a href="#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
@@ -78,12 +78,12 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:ga56f9111930e3c8ee043a8502ab35c342"><td class="memTemplParams" colspan="2">template&lt;typename Arg , typename... Args&gt; </td></tr>
-<tr class="memitem:ga56f9111930e3c8ee043a8502ab35c342"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="group__console_cppapi.html#ga56f9111930e3c8ee043a8502ab35c342">eosio::print</a> (Arg a, Args... args)</td></tr>
-<tr class="memdesc:ga56f9111930e3c8ee043a8502ab35c342"><td class="mdescLeft">&#160;</td><td class="mdescRight">Print out value / list of values.  <a href="group__console_cppapi.html#ga56f9111930e3c8ee043a8502ab35c342">More...</a><br /></td></tr>
-<tr class="separator:ga56f9111930e3c8ee043a8502ab35c342"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gab5232cf7452d463948eac1179f31d9f0"><td class="memTemplParams" colspan="2">template&lt;typename Arg , typename... Args&gt; </td></tr>
+<tr class="memitem:gab5232cf7452d463948eac1179f31d9f0"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="group__console_cppapi.html#gab5232cf7452d463948eac1179f31d9f0">eosio::print</a> (Arg &amp;&amp;<a class="el" href="fullexpr-dtor_8pass_8cpp.html#a5b16ce259cb972b0c089996d3c981d5a">a</a>, <a class="el" href="multiple__ranges__test_8cc.html#a12050b5cc9a6fc0f4f8983cfe092fd8e">Args</a> &amp;&amp;... args)</td></tr>
+<tr class="memdesc:gab5232cf7452d463948eac1179f31d9f0"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="struct_print.html">Print</a> out value / list of values.  <a href="group__console_cppapi.html#gab5232cf7452d463948eac1179f31d9f0">More...</a><br /></td></tr>
+<tr class="separator:gab5232cf7452d463948eac1179f31d9f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga827f0aac6315e7963bcd52656cd7eeed"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
-<tr class="memitem:ga827f0aac6315e7963bcd52656cd7eeed"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classeosio_1_1iostream.html">iostream</a> &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="group__console_cppapi.html#ga827f0aac6315e7963bcd52656cd7eeed">eosio::operator&lt;&lt;</a> (<a class="el" href="classeosio_1_1iostream.html">iostream</a> &amp;out, const T &amp;v)</td></tr>
+<tr class="memitem:ga827f0aac6315e7963bcd52656cd7eeed"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classeosio_1_1iostream.html">iostream</a> &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="group__console_cppapi.html#ga827f0aac6315e7963bcd52656cd7eeed">eosio::operator&lt;&lt;</a> (<a class="el" href="classeosio_1_1iostream.html">iostream</a> &amp;out, const <a class="el" href="struct_t.html">T</a> &amp;v)</td></tr>
 <tr class="memdesc:ga827f0aac6315e7963bcd52656cd7eeed"><td class="mdescLeft">&#160;</td><td class="mdescRight">Overload c++ iostream.  <a href="group__console_cppapi.html#ga827f0aac6315e7963bcd52656cd7eeed">More...</a><br /></td></tr>
 <tr class="separator:ga827f0aac6315e7963bcd52656cd7eeed"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
@@ -116,7 +116,7 @@ template&lt;typename T &gt; </div>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const T &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="struct_t.html">T</a> &amp;&#160;</td>
           <td class="paramname"><em>v</em>&#160;</td>
         </tr>
         <tr>
@@ -134,15 +134,15 @@ template&lt;typename T &gt; </div>
 <p>Overload c++ iostream </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">out</td><td>Output strem </td></tr>
-    <tr><td class="paramname">v</td><td>Value to be printed</td></tr>
+    <tr><td class="paramname">v</td><td><a class="el" href="struct_value.html">Value</a> to be printed</td></tr>
   </table>
   </dd>
 </dl>
-<p>Example: </p><div class="fragment"><div class="line"><span class="keyword">const</span> <span class="keywordtype">char</span> *s = <span class="stringliteral">&quot;Hello World!&quot;</span>;</div><div class="line"><a class="code" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> unsigned_64_bit_int = 1e+18;</div><div class="line"><a class="code" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> unsigned_128_bit_int (87654323456);</div><div class="line"><a class="code" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> string_as_unsigned_64_bit = <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(abcde);</div><div class="line">std::out &lt;&lt; s &lt;&lt; <span class="stringliteral">&quot; &quot;</span> &lt;&lt; unsigned_64_bit_int &lt;&lt; <span class="stringliteral">&quot; &quot;</span>  &lt;&lt; unsigned_128_bit_int &lt;&lt; <span class="stringliteral">&quot; &quot;</span> &lt;&lt; string_as_unsigned_64_bit;</div><div class="line"><span class="comment">// Output: Hello World! 1000000000000000000 87654323456 abcde</span></div></div><!-- fragment --> 
+<p>Example: </p><div class="fragment"><div class="line"><span class="keyword">const</span> <span class="keywordtype">char</span> *<a class="code" href="strings_2basic_8string_2string_8cons_2dtor__noexcept_8pass_8cpp.html#aa8270a1ba8295884567e0a0c93135f05">s</a> = <span class="stringliteral">&quot;Hello World!&quot;</span>;</div><div class="line"><a class="code" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> unsigned_64_bit_int = 1e+18;</div><div class="line"><a class="code" href="test__exchange_8cpp.html#a2d00695da4b0795588770b839f9f280e">uint128_t</a> unsigned_128_bit_int (87654323456);</div><div class="line"><a class="code" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> string_as_unsigned_64_bit = <a class="code" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(abcde);</div><div class="line">std::out &lt;&lt; s &lt;&lt; <span class="stringliteral">&quot; &quot;</span> &lt;&lt; unsigned_64_bit_int &lt;&lt; <span class="stringliteral">&quot; &quot;</span>  &lt;&lt; unsigned_128_bit_int &lt;&lt; <span class="stringliteral">&quot; &quot;</span> &lt;&lt; string_as_unsigned_64_bit;</div><div class="line"><span class="comment">// Output: Hello World! 1000000000000000000 87654323456 abcde</span></div></div><!-- fragment --> 
 </div>
 </div>
-<a id="ga56f9111930e3c8ee043a8502ab35c342"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ga56f9111930e3c8ee043a8502ab35c342">&#9670;&nbsp;</a></span>print()</h2>
+<a id="gab5232cf7452d463948eac1179f31d9f0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#gab5232cf7452d463948eac1179f31d9f0">&#9670;&nbsp;</a></span>print()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -152,13 +152,13 @@ template&lt;typename Arg , typename... Args&gt; </div>
         <tr>
           <td class="memname">void eosio::print </td>
           <td>(</td>
-          <td class="paramtype">Arg&#160;</td>
+          <td class="paramtype">Arg &amp;&amp;&#160;</td>
           <td class="paramname"><em>a</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">Args...&#160;</td>
+          <td class="paramtype"><a class="el" href="multiple__ranges__test_8cc.html#a12050b5cc9a6fc0f4f8983cfe092fd8e">Args</a> &amp;&amp;...&#160;</td>
           <td class="paramname"><em>args</em>&#160;</td>
         </tr>
         <tr>
@@ -168,14 +168,14 @@ template&lt;typename Arg , typename... Args&gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Print out value / list of values (except double) </p><dl class="params"><dt>Parameters</dt><dd>
+<p><a class="el" href="struct_print.html">Print</a> out value / list of values (except double) </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">a</td><td>Value to be printed </td></tr>
+    <tr><td class="paramname">a</td><td><a class="el" href="struct_value.html">Value</a> to be printed </td></tr>
     <tr><td class="paramname">args</td><td>Other values to be printed</td></tr>
   </table>
   </dd>
 </dl>
-<p>Example: </p><div class="fragment"><div class="line"><span class="keyword">const</span> <span class="keywordtype">char</span> *s = <span class="stringliteral">&quot;Hello World!&quot;</span>;</div><div class="line"><a class="code" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> unsigned_64_bit_int = 1e+18;</div><div class="line"><a class="code" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> unsigned_128_bit_int (87654323456);</div><div class="line"><a class="code" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> string_as_unsigned_64_bit = <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(abcde);</div><div class="line"><a class="code" href="namespaceeosio.html#aa0a56fe314d032d027a1565d93a68b21">print</a>(s , unsigned_64_bit_int, unsigned_128_bit_int, string_as_unsigned_64_bit);</div><div class="line"><span class="comment">// Ouput: Hello World!100000000000000000087654323456abcde</span></div></div><!-- fragment --> 
+<p>Example: </p><div class="fragment"><div class="line"><span class="keyword">const</span> <span class="keywordtype">char</span> *s = <span class="stringliteral">&quot;Hello World!&quot;</span>;</div><div class="line"><a class="code" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> unsigned_64_bit_int = 1e+18;</div><div class="line"><a class="code" href="test__exchange_8cpp.html#a2d00695da4b0795588770b839f9f280e">uint128_t</a> unsigned_128_bit_int (87654323456);</div><div class="line"><a class="code" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> string_as_unsigned_64_bit = <a class="code" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(abcde);</div><div class="line"><a class="code" href="namespaceeosio.html#aa0a56fe314d032d027a1565d93a68b21">print</a>(s , unsigned_64_bit_int, unsigned_128_bit_int, string_as_unsigned_64_bit);</div><div class="line"><span class="comment">// Ouput: Hello World!100000000000000000087654323456abcde</span></div></div><!-- fragment --> 
 </div>
 </div>
 </div><!-- contents -->

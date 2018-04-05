@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.13"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>EOS.IO: contracts/eoslib/memory.hpp File Reference</title>
+<title>EOS.IO: contracts/eosiolib/memory.hpp File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -60,55 +60,148 @@ $(function() {
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_3fea0bf1ce879ce73e6ecec98007efcd.html">eoslib</a></li>  </ul>
+<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_3f710958649a39c6bbfa7039c0dc0464.html">eosiolib</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
   <div class="summary">
-<a href="#nested-classes">Classes</a> &#124;
-<a href="#namespaces">Namespaces</a> &#124;
-<a href="#func-members">Functions</a> &#124;
-<a href="#var-members">Variables</a>  </div>
+<a href="#func-members">Functions</a>  </div>
   <div class="headertitle">
 <div class="title">memory.hpp File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;<a class="el" href="memory_8h_source.html">eoslib/memory.h</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="print_8hpp_source.html">eoslib/print.hpp</a>&gt;</code><br />
+<div class="textblock"><code>#include &lt;<a class="el" href="eosiolib_2memory_8h_source.html">eosiolib/memory.h</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="print_8hpp_source.html">eosiolib/print.hpp</a>&gt;</code><br />
 </div>
 <p><a href="memory_8hpp_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
-Classes</h2></td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classeosio_1_1memory__manager.html">eosio::memory_manager</a></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="namespaces"></a>
-Namespaces</h2></td></tr>
-<tr class="memitem:namespaceeosio"><td class="memItemLeft" align="right" valign="top"> &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html">eosio</a></td></tr>
-<tr class="memdesc:namespaceeosio"><td class="mdescLeft">&#160;</td><td class="mdescRight">Used to forward declare raw functions. <br /></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:gac4387e5dad9585f885c0c0bf8d353739"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__memorycppapi.html#gac4387e5dad9585f885c0c0bf8d353739">eosio::malloc</a> (<a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> size)</td></tr>
-<tr class="memdesc:gac4387e5dad9585f885c0c0bf8d353739"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocate a block of memory.  <a href="group__memorycppapi.html#gac4387e5dad9585f885c0c0bf8d353739">More...</a><br /></td></tr>
-<tr class="separator:gac4387e5dad9585f885c0c0bf8d353739"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gac115b820d2ce5d099c809e9cdd547f04"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__memorycppapi.html#gac115b820d2ce5d099c809e9cdd547f04">eosio::realloc</a> (void *ptr, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> size)</td></tr>
-<tr class="memdesc:gac115b820d2ce5d099c809e9cdd547f04"><td class="mdescLeft">&#160;</td><td class="mdescRight">Allocate a block of memory.  <a href="group__memorycppapi.html#gac115b820d2ce5d099c809e9cdd547f04">More...</a><br /></td></tr>
-<tr class="separator:gac115b820d2ce5d099c809e9cdd547f04"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gadc937e4380b5ab7212b4b603ccc516c5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__memorycppapi.html#gadc937e4380b5ab7212b4b603ccc516c5">eosio::free</a> (void *ptr)</td></tr>
-<tr class="memdesc:gadc937e4380b5ab7212b4b603ccc516c5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Free a block of memory.  <a href="group__memorycppapi.html#gadc937e4380b5ab7212b4b603ccc516c5">More...</a><br /></td></tr>
-<tr class="separator:gadc937e4380b5ab7212b4b603ccc516c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
-Variables</h2></td></tr>
-<tr class="memitem:ga92fafed038dc971cb8742fce00f27b61"><td class="memItemLeft" align="right" valign="top">class <a class="el" href="classeosio_1_1memory__manager.html">eosio::memory_manager</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__memorycppapi.html#ga92fafed038dc971cb8742fce00f27b61">eosio::memory_heap</a></td></tr>
-<tr class="separator:ga92fafed038dc971cb8742fce00f27b61"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aeda051d5eb402437e0d2289cc6321fcd"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="memory_8hpp.html#aeda051d5eb402437e0d2289cc6321fcd">sbrk</a> (<a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a> num_bytes)</td></tr>
+<tr class="separator:aeda051d5eb402437e0d2289cc6321fcd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7ac38fce3243a7dcf448301ee9ffd392"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="memory_8hpp.html#a7ac38fce3243a7dcf448301ee9ffd392">malloc</a> (<a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a> size)</td></tr>
+<tr class="separator:a7ac38fce3243a7dcf448301ee9ffd392"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:add8a2c74f2c5f5e3db163234988f61d6"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="memory_8hpp.html#add8a2c74f2c5f5e3db163234988f61d6">calloc</a> (<a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a> <a class="el" href="generator_8pass_8cpp.html#af38694d3020b1ed3a7a68d0de395e0b3">count</a>, <a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a> size)</td></tr>
+<tr class="separator:add8a2c74f2c5f5e3db163234988f61d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1a6b5e8d2f1c37e5b43e4345586075be"><td class="memItemLeft" align="right" valign="top">void *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="memory_8hpp.html#a1a6b5e8d2f1c37e5b43e4345586075be">realloc</a> (void *ptr, <a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a> size)</td></tr>
+<tr class="separator:a1a6b5e8d2f1c37e5b43e4345586075be"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afbedc913aa4651b3c3b4b3aecd9b4711"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="memory_8hpp.html#afbedc913aa4651b3c3b4b3aecd9b4711">free</a> (void *ptr)</td></tr>
+<tr class="separator:afbedc913aa4651b3c3b4b3aecd9b4711"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><dl class="section copyright"><dt>Copyright</dt><dd>defined in eos/LICENSE.txt </dd></dl>
-</div></div><!-- contents -->
+</div><h2 class="groupheader">Function Documentation</h2>
+<a id="add8a2c74f2c5f5e3db163234988f61d6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#add8a2c74f2c5f5e3db163234988f61d6">&#9670;&nbsp;</a></span>calloc()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void* calloc </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a>&#160;</td>
+          <td class="paramname"><em>count</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a>&#160;</td>
+          <td class="paramname"><em>size</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="afbedc913aa4651b3c3b4b3aecd9b4711"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afbedc913aa4651b3c3b4b3aecd9b4711">&#9670;&nbsp;</a></span>free()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void free </td>
+          <td>(</td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>ptr</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a7ac38fce3243a7dcf448301ee9ffd392"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7ac38fce3243a7dcf448301ee9ffd392">&#9670;&nbsp;</a></span>malloc()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void* malloc </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a>&#160;</td>
+          <td class="paramname"><em>size</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a1a6b5e8d2f1c37e5b43e4345586075be"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1a6b5e8d2f1c37e5b43e4345586075be">&#9670;&nbsp;</a></span>realloc()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void* realloc </td>
+          <td>(</td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>ptr</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a>&#160;</td>
+          <td class="paramname"><em>size</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aeda051d5eb402437e0d2289cc6321fcd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aeda051d5eb402437e0d2289cc6321fcd">&#9670;&nbsp;</a></span>sbrk()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void* sbrk </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stddef_8h.html#a7c94ea6f8948649f8d181ae55911eeaf">size_t</a>&#160;</td>
+          <td class="paramname"><em>num_bytes</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+</div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
 Generated by &#160;<a href="http://www.doxygen.org/index.html">

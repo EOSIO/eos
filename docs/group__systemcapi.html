@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -67,30 +67,32 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
-<p>Define API for interating with system level intrinsics.  
+<p>Define API for interacting with system level intrinsics.  
 <a href="#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:gae2a6ebaf48fe7c69f847ae18f109d09a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__systemcapi.html#gae2a6ebaf48fe7c69f847ae18f109d09a">assert</a> (<a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> test, const char *cstr)</td></tr>
-<tr class="memdesc:gae2a6ebaf48fe7c69f847ae18f109d09a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Aborts processing of this action and unwinds all pending changes.  <a href="#gae2a6ebaf48fe7c69f847ae18f109d09a">More...</a><br /></td></tr>
-<tr class="separator:gae2a6ebaf48fe7c69f847ae18f109d09a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga5eef43c9589d6ef54a0ece1dda5e0ffe"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga44479e2657d126b44ca53d30c3e670d8">time</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__systemcapi.html#ga5eef43c9589d6ef54a0ece1dda5e0ffe">now</a> ()</td></tr>
+<tr class="memitem:ga8566f3999bfc932b2190d05e97abbe1f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__systemcapi.html#ga8566f3999bfc932b2190d05e97abbe1f">eosio_assert</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> <a class="el" href="structtest.html">test</a>, const char *cstr)</td></tr>
+<tr class="memdesc:ga8566f3999bfc932b2190d05e97abbe1f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Aborts processing of this action and unwinds all pending changes.  <a href="#ga8566f3999bfc932b2190d05e97abbe1f">More...</a><br /></td></tr>
+<tr class="separator:ga8566f3999bfc932b2190d05e97abbe1f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gae6b0de62b1edad98f29873b53f75dda0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__systemcapi.html#gae6b0de62b1edad98f29873b53f75dda0">eosio_exit</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> code)</td></tr>
+<tr class="separator:gae6b0de62b1edad98f29873b53f75dda0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga5eef43c9589d6ef54a0ece1dda5e0ffe"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga1d2f3c0b7d3e40dcd34ee51b80f9da25">time</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__systemcapi.html#ga5eef43c9589d6ef54a0ece1dda5e0ffe">now</a> ()</td></tr>
 <tr class="memdesc:ga5eef43c9589d6ef54a0ece1dda5e0ffe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get time of the last accepted block.  <a href="#ga5eef43c9589d6ef54a0ece1dda5e0ffe">More...</a><br /></td></tr>
 <tr class="separator:ga5eef43c9589d6ef54a0ece1dda5e0ffe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <h2 class="groupheader">Function Documentation</h2>
-<a id="gae2a6ebaf48fe7c69f847ae18f109d09a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#gae2a6ebaf48fe7c69f847ae18f109d09a">&#9670;&nbsp;</a></span>assert()</h2>
+<a id="ga8566f3999bfc932b2190d05e97abbe1f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ga8566f3999bfc932b2190d05e97abbe1f">&#9670;&nbsp;</a></span>eosio_assert()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void assert </td>
+          <td class="memname">void eosio_assert </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
           <td class="paramname"><em>test</em>, </td>
         </tr>
         <tr>
@@ -116,6 +118,25 @@ Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="gae6b0de62b1edad98f29873b53f75dda0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#gae6b0de62b1edad98f29873b53f75dda0">&#9670;&nbsp;</a></span>eosio_exit()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void eosio_exit </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>code</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>This method will abort execution of wasm without failing the contract. This is used to bypass all cleanup / destructors that would normally be called. </p>
+
+</div>
+</div>
 <a id="ga5eef43c9589d6ef54a0ece1dda5e0ffe"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ga5eef43c9589d6ef54a0ece1dda5e0ffe">&#9670;&nbsp;</a></span>now()</h2>
 
@@ -123,7 +144,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="group__types.html#ga44479e2657d126b44ca53d30c3e670d8">time</a> now </td>
+          <td class="memname"><a class="el" href="group__types.html#ga1d2f3c0b7d3e40dcd34ee51b80f9da25">time</a> now </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>

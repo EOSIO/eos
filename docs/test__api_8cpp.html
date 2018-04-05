@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -65,28 +65,43 @@ $(function() {
 </div><!-- top -->
 <div class="header">
   <div class="summary">
-<a href="#func-members">Functions</a>  </div>
+<a href="#func-members">Functions</a> &#124;
+<a href="#var-members">Variables</a>  </div>
   <div class="headertitle">
 <div class="title">test_api.cpp File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;<a class="el" href="eos_8hpp_source.html">eoslib/eos.hpp</a>&gt;</code><br />
+<div class="textblock"><code>#include &lt;<a class="el" href="eosio_8hpp_source.html">eosiolib/eosio.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="transaction_8hpp_source.html">eosiolib/transaction.hpp</a>&gt;</code><br />
 <code>#include &quot;<a class="el" href="test__api_8hpp_source.html">test_api.hpp</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="test__action_8cpp.html">test_action.cpp</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="test__print_8cpp.html">test_print.cpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="test__types_8cpp.html">test_types.cpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="test__fixedpoint_8cpp.html">test_fixedpoint.cpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="test__math_8cpp.html">test_math.cpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="test__compiler__builtins_8cpp.html">test_compiler_builtins.cpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="test__real_8cpp.html">test_real.cpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="test__crypto_8cpp.html">test_crypto.cpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="test__chain_8cpp.html">test_chain.cpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="test__transaction_8cpp.html">test_transaction.cpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="test__checktime_8cpp.html">test_checktime.cpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="test__permission_8cpp.html">test_permission.cpp</a>&quot;</code><br />
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a02fd73d861ef2e4aabb38c0c9ff82947"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8cpp.html#a02fd73d861ef2e4aabb38c0c9ff82947">init</a> ()</td></tr>
-<tr class="separator:a02fd73d861ef2e4aabb38c0c9ff82947"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae515545cb26793406ab2ae133bb5be3f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8cpp.html#ae515545cb26793406ab2ae133bb5be3f">apply</a> (unsigned long long code, unsigned long long action)</td></tr>
-<tr class="separator:ae515545cb26793406ab2ae133bb5be3f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a569d3d0ca7b56fb8c580faaa3d73179a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8cpp.html#a569d3d0ca7b56fb8c580faaa3d73179a">apply</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> receiver, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> code, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> action)</td></tr>
+<tr class="separator:a569d3d0ca7b56fb8c580faaa3d73179a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
+Variables</h2></td></tr>
+<tr class="memitem:acd23295e1690126a9bb13db128282d4d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8cpp.html#acd23295e1690126a9bb13db128282d4d">global_receiver</a></td></tr>
+<tr class="separator:acd23295e1690126a9bb13db128282d4d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><dl class="section copyright"><dt>Copyright</dt><dd>defined in eos/LICENSE.txt </dd></dl>
 </div><h2 class="groupheader">Function Documentation</h2>
-<a id="ae515545cb26793406ab2ae133bb5be3f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae515545cb26793406ab2ae133bb5be3f">&#9670;&nbsp;</a></span>apply()</h2>
+<a id="a569d3d0ca7b56fb8c580faaa3d73179a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a569d3d0ca7b56fb8c580faaa3d73179a">&#9670;&nbsp;</a></span>apply()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -94,13 +109,19 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void apply </td>
           <td>(</td>
-          <td class="paramtype">unsigned long long&#160;</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
+          <td class="paramname"><em>receiver</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
           <td class="paramname"><em>code</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">unsigned long long&#160;</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
           <td class="paramname"><em>action</em>&#160;</td>
         </tr>
         <tr>
@@ -113,17 +134,15 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a02fd73d861ef2e4aabb38c0c9ff82947"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a02fd73d861ef2e4aabb38c0c9ff82947">&#9670;&nbsp;</a></span>init()</h2>
+<h2 class="groupheader">Variable Documentation</h2>
+<a id="acd23295e1690126a9bb13db128282d4d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acd23295e1690126a9bb13db128282d4d">&#9670;&nbsp;</a></span>global_receiver</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void init </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
+          <td class="memname"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> global_receiver</td>
         </tr>
       </table>
 </div><div class="memdoc">
