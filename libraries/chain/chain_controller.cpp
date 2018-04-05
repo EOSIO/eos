@@ -2027,11 +2027,6 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
 
       uint32_t act_usage = result.action_traces.size();
 
-      for (auto &at: result.action_traces) {
-         at.region_id = meta.region_id;
-         at.cycle_index = meta.cycle_index;
-      }
-
       update_resource_usage(result, meta);
       record_transaction(meta.trx());
 

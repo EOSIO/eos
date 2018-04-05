@@ -19,13 +19,15 @@ namespace eosio { namespace chain {
          for (const auto& tx :transaction_traces) {
             for (const auto& at: tx.action_traces) {
                digest_type::encoder enc;
+               uint64_t region_id   = tx.region_id;
+               uint64_t cycle_index = tx.cycle_index;
 
                fc::raw::pack(enc, at.receiver);
                fc::raw::pack(enc, at.act.account);
                fc::raw::pack(enc, at.act.name);
                fc::raw::pack(enc, at.act.data);
-               fc::raw::pack(enc, at.region_id);
-               fc::raw::pack(enc, at.cycle_index);
+               fc::raw::pack(enc, region_id);
+               fc::raw::pack(enc, cycle_index);
                fc::raw::pack(enc, at.data_access);
 
                action_roots.emplace_back(enc.result());
@@ -61,16 +63,18 @@ namespace eosio { namespace chain {
    }
 
    digest_type block_trace::calculate_action_merkle_root()const {
-      vector<digest_type> shard_roots;
-      shard_roots.reserve(1024);
+      vector<digest_type> merkle_root_of_each_region; // Extra level of indirection is to allow parallel computation of region merkle roots
       for(const auto& rt: region_traces ) {
+         vector<digest_type> merkle_list_for_region;
+         merkle_list_for_region.reserve(64);
          for(const auto& ct: rt.cycle_traces ) {
             for(const auto& st: ct.shard_traces) {
-               shard_roots.emplace_back(st.shard_action_root);
+               merkle_list_for_region.emplace_back(st.shard_action_root);
             }
          }
+         merkle_root_of_each_region.emplace_back( merkle(std::move(merkle_list_for_region)) );
       }
-      return merkle(shard_roots);
+      return merkle( std::move(merkle_root_of_each_region) );
    }
 
    uint64_t block_trace::calculate_cpu_usage() const {
