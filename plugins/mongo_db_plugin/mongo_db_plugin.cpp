@@ -405,7 +405,7 @@ void mongo_db_plugin_impl::_process_block(const block_trace& bt, const signed_bl
                      kvp("transaction_id", trans_id_str),
                      kvp("receiver", act.receiver.to_string()),
                      kvp("action", b_oid{msg_oid}),
-                     kvp("console", act.console);
+                     kvp("console", act.console));
       act_doc.append(kvp("data_access", [&act](bsoncxx::builder::basic::sub_array subarr) {
          for (const auto& data : act.data_access) {
             subarr.append([&data](bsoncxx::builder::basic::sub_document subdoc) {
