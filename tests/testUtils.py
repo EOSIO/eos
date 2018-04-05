@@ -1090,7 +1090,7 @@ class Cluster(object):
     
     
     # walletd [True|False] Is walletd running. If not load the wallet plugin
-    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", initaPrvtKey=None, initbPrvtKey=None, staging=False, nprodCount=1):
+    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", initaPrvtKey=None, initbPrvtKey=None, staging=False):
         """Cluster container.
         walletd [True|False] Is walletd running. If not load the wallet plugin
         localCluster [True|False] Is cluster local to host.
@@ -1135,7 +1135,6 @@ class Cluster(object):
         self.initaAccount.activePrivateKey=initaPrvtKey
         self.initbAccount.ownerPrivateKey=initbPrvtKey
         self.initbAccount.activePrivateKey=initbPrvtKey
-        self.nprodCount=nprodCount
 
 
     def setChainStrategy(self, chainSyncStrategy=Utils.SyncReplayTag):
@@ -1147,7 +1146,14 @@ class Cluster(object):
         self.walletMgr=walletMgr
 
     # launch local nodes and set self.nodes
-    def launch(self, pnodes=1, total_nodes=1, topo="mesh", delay=0):
+    def launch(self, pnodes=1, totalNodes=1, prodCount=1, topo="mesh", delay=0):
+        """Launch cluster.
+        pnodes: producer nodes count
+        totalNodes: producer + non-producer nodes count
+        prodCount: producers per prodcuer node count
+        topo: cluster topology (as defined by launcher)
+        delay: delay between individual nodes laucnh (as defined by launcher)
+        """
         if not self.localCluster:
             Utils.Print("WARNING: Cluster not local, not launching %s." % (Utils.EosServerName))
             return True
@@ -1156,7 +1162,7 @@ class Cluster(object):
             raise RuntimeError("Cluster already running.")
 
         cmd="%s -p %s -n %s -s %s -d %s -f" % (
-            Utils.EosLauncherPath, pnodes, total_nodes, topo, delay)
+            Utils.EosLauncherPath, pnodes, totalNodes, topo, delay)
         cmdArr=cmd.split()
         if self.staging:
             cmdArr.append("--nogen")
@@ -1179,27 +1185,27 @@ class Cluster(object):
             Utils.Print("ERROR: Launcher failed to launch.")
             return False
 
-        self.nodes=range(total_nodes) # placeholder for cleanup purposes only
+        self.nodes=range(totalNodes) # placeholder for cleanup purposes only
 
-        nodes=self.discoverLocalNodes(total_nodes, timeout=Utils.systemWaitTimeout)
-        if nodes is None or total_nodes != len(nodes):
+        nodes=self.discoverLocalNodes(totalNodes, timeout=Utils.systemWaitTimeout)
+        if nodes is None or totalNodes != len(nodes):
             Utils.Print("ERROR: Unable to validate %s instances, expected: %d, actual: %d" %
-                          (Utils.EosServerName, total_nodes, len(nodes)))
+                          (Utils.EosServerName, totalNodes, len(nodes)))
             return False
 
         self.nodes=nodes
 
-        # ensure cluster inter-connect by bensuring everyone has block 1
+        # ensure cluster inter-connect by ensuring everyone has block 1
         if not self.waitOnClusterBlockNumSync(1):
             Utils.Print("ERROR: Cluster doesn't seem to be in sync. Some nodes missing block 1")
             return False
 
         Utils.Print("Bootstrap cluster.")
-        if not Cluster.bootstrap(total_nodes, self.nprodCount, Cluster.__BiosHost, Cluster.__BiosPort):
+        if not Cluster.bootstrap(totalNodes, prodCount, Cluster.__BiosHost, Cluster.__BiosPort):
             Utils.Print("ERROR: Bootstrap failed.")
             return False
-        
-        producerKeys=Cluster.parseClusterKeys(total_nodes)
+
+        producerKeys=Cluster.parseClusterKeys(totalNodes)
         if producerKeys is None:
             Utils.Print("ERROR: Unable to parse cluster info")
             return False
@@ -1566,7 +1572,6 @@ class Cluster(object):
 
         return producerKeys
 
-
     @staticmethod
     def parseClusterKeys(totalNodes):
         """Parse cluster config file. Updates producer keys data members."""
@@ -1591,8 +1596,8 @@ class Cluster(object):
         return producerKeys
 
     @staticmethod
-    def bootstrap(totalNodes, nprodCount, biosHost, biosPort):
-        """Create 'nprodCount' init accounts and deposits 10000000000 EOS in each. If nprodCount is -1 will initialize all possible producers."""
+    def bootstrap(totalNodes, prodCount, biosHost, biosPort):
+        """Create 'prodCount' init accounts and deposits 10000000000 EOS in each. If prodCount is -1 will initialize all possible producers."""
         biosNode=Node(biosHost, biosPort)
         if not biosNode.checkPulse():
             Utils.Print("ERROR: Bios node doesn't appear to be running...")
@@ -1628,6 +1633,16 @@ class Cluster(object):
                 Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (eosioName))
                 return False
 
+            contract="eosio.bios"
+            contractDir="contracts/%s" % (contract)
+            wastFile="contracts/%s/%s.wast" % (contract, contract)
+            abiFile="contracts/%s/%s.abi" % (contract, contract)
+            Utils.Print("Publish %s contract" % (contract))
+            trans=biosNode.publishContract(eosioAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
+            if trans is None:
+                Utils.Print("ERROR: Failed to publish contract %s." % (contract))
+                return False
+
             Utils.Print("Creating accounts: %s " % ", ".join(producerKeys.keys()))
             producerKeys.pop(eosioName)
             for name, keys in producerKeys.items():
@@ -1643,17 +1658,7 @@ class Cluster(object):
             transId=Node.getTransId(trans)
             biosNode.waitForTransIdOnNode(transId)
 
-            contract="eosio.bios"
-            contractDir="contracts/%s" % (contract)
-            wastFile="contracts/%s/%s.wast" % (contract, contract)
-            abiFile="contracts/%s/%s.abi" % (contract, contract)
-            Utils.Print("Publish %s contract" % (contract))
-            trans=biosNode.publishContract(eosioAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
-            if trans is None:
-                Utils.Print("ERROR: Failed to publish contract %s." % (contract))
-                return False
-
-            if nprodCount == -1:
+            if prodCount == -1:
                 setProdsFile="setprods.json"
                 Utils.Debug and Utils.Print("Reading in setprods file %s." % (setProdsFile))
                 with open(setProdsFile, "r") as f:
@@ -1671,7 +1676,7 @@ class Cluster(object):
                 firstTime=True
                 prodNames=[]
                 for name, keys in producerKeys.items():
-                    if counts[keys["node"]] >= nprodCount:
+                    if counts[keys["node"]] >= prodCount:
                         continue
                     if firstTime:
                         firstTime = False
@@ -1722,6 +1727,8 @@ class Cluster(object):
             # transId=Node.getTransId(trans[1])
             # biosNode.waitForTransIdOnNode(transId)
 
+            # TDB: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
+            #  Uncomment when functional
             # expectedAmount=10000000000000
             # Utils.Print("Verify eosio issue, Expected: %d" % (expectedAmount))
             # actualAmount=biosNode.getAccountBalance(eosioAccount.name)

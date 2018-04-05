@@ -37,8 +37,7 @@ parser.add_argument("-h", "--host", type=str, help="%s host name" % (testUtils.U
                     default=LOCAL_HOST)
 parser.add_argument("-p", "--port", type=int, help="%s host port" % testUtils.Utils.EosServerName,
                     default=DEFAULT_PORT)
-parser.add_argument("-c", "--nprod-count", type=int, help="Per node producer count",
-                    default=1)
+parser.add_argument("-c", "--prod-count", type=int, help="Per node producer count", default=1)
 parser.add_argument("--inita_prvt_key", type=str, help="Inita private key.")
 parser.add_argument("--initb_prvt_key", type=str, help="Initb private key.")
 parser.add_argument("--mongodb", help="Configure a MongoDb instance", action='store_true')
@@ -64,11 +63,11 @@ dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontLaunch=args.dont_launch
 dontKill=args.dont_kill
-nprodCount=args.nprod_count
+prodCount=args.prod_count
 
 testUtils.Utils.Debug=debug
 localTest=True if server == LOCAL_HOST else False
-cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, initaPrvtKey=initaPrvtKey, initbPrvtKey=initbPrvtKey, nprodCount=nprodCount)
+cluster=testUtils.Cluster(walletd=True, enableMongo=enableMongo, initaPrvtKey=initaPrvtKey, initbPrvtKey=initbPrvtKey)
 walletMgr=testUtils.WalletMgr(True)
 testSuccessful=False
 killEosInstances=not dontKill
@@ -91,7 +90,7 @@ try:
         cluster.killall()
         cluster.cleanup()
         Print("Stand up cluster")
-        if cluster.launch() is False:
+        if cluster.launch(prodCount=prodCount) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:
@@ -239,7 +238,7 @@ try:
             transferAmount, initaAccount.name, testeraAccount.name))
 
     # TDB: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
-    #  Uncomment is functional
+    #  Uncomment when functional
     # expectedAmount=transferAmount
     # Print("Verify transfer, Expected: %d" % (expectedAmount))
     # actualAmount=node.getAccountBalance(testeraAccount.name)
@@ -256,7 +255,7 @@ try:
             transferAmount, initaAccount.name, testeraAccount.name))
 
     # TDB: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
-    #  Uncomment is functional
+    #  Uncomment when functional
     # expectedAmount=975421
     # Print("Verify transfer, Expected: %d" % (expectedAmount))
     # actualAmount=node.getAccountBalance(testeraAccount.name)
@@ -297,7 +296,7 @@ try:
     transId=testUtils.Node.getTransId(trans)
 
     # TDB: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
-    #  Uncomment is functional
+    #  Uncomment when functional
     # expectedAmount=975311+5000 # 5000 initial deposit
     # Print("Verify transfer, Expected: %d" % (expectedAmount))
     # actualAmount=node.getAccountBalance(currencyAccount.name)
