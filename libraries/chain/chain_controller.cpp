@@ -1486,19 +1486,24 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
          }
       });
 
-
-      auto active_producers_authority = authority(config::producers_authority_threshold, {}, {});
-      for(auto& name : gpo.active_producers.producers ) {
-         active_producers_authority.accounts.push_back({{name.producer_name, config::active_name}, 1});
-      }
-
-      auto& po = _db.get<permission_object, by_owner>( boost::make_tuple(config::producers_account_name,
-                                                                         config::active_name ) );
-      _db.modify(po,[active_producers_authority] (permission_object& po) {
-         po.auth = active_producers_authority;
-      });
+      _update_producers_authority();
    }
 } FC_CAPTURE_AND_RETHROW() }
+
+void chain_controller::_update_producers_authority() {
+   const auto& gpo = get_global_properties();
+   uint32_t authority_threshold = EOS_PERCENT_CEIL(gpo.active_producers.producers.size(), config::producers_authority_threshold_pct);
+   auto active_producers_authority = authority(authority_threshold, {}, {});
+   for(auto& name : gpo.active_producers.producers ) {
+      active_producers_authority.accounts.push_back({{name.producer_name, config::active_name}, 1});
+   }
+
+   auto& po = _db.get<permission_object, by_owner>( boost::make_tuple(config::producers_account_name,
+                                                                      config::active_name ) );
+   _db.modify(po,[active_producers_authority] (permission_object& po) {
+      po.auth = active_producers_authority;
+   });
+}
 
 void chain_controller::add_checkpoints( const flat_map<uint32_t,block_id_type>& checkpts ) {
    for (const auto& i : checkpts)
@@ -1606,6 +1611,7 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
             _db.create<block_summary_object>([&](block_summary_object&) {});
 
          starter.prepare_database(*this, _db);
+         _update_producers_authority();
       });
    }
 } FC_CAPTURE_AND_RETHROW() }

@@ -391,7 +391,7 @@ void chain_initializer::prepare_database( chain_controller& chain,
    };
 
    auto empty_authority = authority(0, {}, {});
-   auto active_producers_authority = authority(config::producers_authority_threshold, {}, {});
+   auto active_producers_authority = authority(0, {}, {});
    active_producers_authority.accounts.push_back({{config::system_account_name, config::active_name}, 1});
 
    create_special_account(config::nobody_account_name, empty_authority, empty_authority);

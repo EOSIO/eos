@@ -58,8 +58,9 @@ const static uint16_t   default_max_inline_depth       = 4;
 const static uint32_t   default_max_inline_action_size = 4 * 1024;
 const static uint32_t   default_max_gen_trx_size       = 64 * 1024; ///
 const static uint32_t   default_max_gen_trx_count      = 16; ///< the number of generated transactions per action
-const static uint32_t   producers_authority_threshold  = 14;
 const static uint32_t   rate_limiting_precision        = 1000*1000;
+
+const static uint32_t   producers_authority_threshold_pct  = 66 * config::percent_1;
 
 const static uint16_t   max_recursion_depth = 6;
 
@@ -107,4 +108,9 @@ constexpr uint64_t billable_size_v = ((billable_size<T>::value + billable_alignm
 template<typename Number>
 Number EOS_PERCENT(Number value, uint32_t percentage) {
    return value * percentage / eosio::chain::config::percent_100;
+}
+
+template<typename Number>
+Number EOS_PERCENT_CEIL(Number value, uint32_t percentage) {
+   return ((value * percentage) + eosio::chain::config::percent_100 - eosio::chain::config::percent_1)  / eosio::chain::config::percent_100;
 }
