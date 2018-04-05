@@ -712,7 +712,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    // test test_read_transaction
    // this is a bit rough, but I couldn't figure out a better way to compare the hashes
    auto tx_trace = CALL_TEST_FUNCTION( *this, "test_transaction", "test_read_transaction", {} );
-   string sha_expect = "18c3c234b933dd330bf55bec327f76a7885ae3f6ea83a7dec3b1a4fde01bbc04"; // TODO: Need a better way to test this.
+   string sha_expect = tx_trace.id;
    BOOST_CHECK_EQUAL(tx_trace.action_traces.front().console == sha_expect, true);
    // test test_tapos_block_num
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_num", fc::raw::pack(control->head_block_num()) );
