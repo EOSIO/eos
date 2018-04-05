@@ -20,7 +20,7 @@ EOSIO currently supports the following operating systems:
 # Resources
 1. [eos.io Website](https://eos.io)
 3. [EOSIO Blog](https://medium.com/eosio)
-8. [EOSIO Documentation Wiki](https://github.com/EOSIO/privatewiki/wiki)
+8. [EOSIO Documentation Wiki](https://github.com/EOSIO/eos/wiki)
 2. [EOSIO API Documentation](https://eosio.github.io/eos/)
 4. [Community Telegram Group](https://t.me/EOSProject)
 5. [Developer Telegram Group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ)
@@ -29,4 +29,4 @@ EOSIO currently supports the following operating systems:
 
 <a name="gettingstarted"></a>
 ## Getting Started
-Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found on the [Wiki](https://github.com/EOSIO/privatewiki/wiki) for this GitHub repository.
+Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, account creation and uploading a sample contract to the blockchain can be found on the [Wiki](https://github.com/EOSIO/eos/wiki) for this GitHub repository.
