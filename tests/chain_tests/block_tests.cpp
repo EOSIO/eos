@@ -917,4 +917,46 @@ BOOST_AUTO_TEST_CASE(block_id_sig_independent)
       BOOST_TEST(block_id_act_sig == block_id_othr_sig);
    } FC_LOG_AND_RETHROW() }
 
+
+// Test transaction signature chain_controller::get_required_keys
+BOOST_AUTO_TEST_CASE(get_required_keys)
+{ try {
+      validating_tester chain;
+
+      account_name a = N(kevin);
+      account_name creator = config::system_account_name;
+      signed_transaction trx;
+
+      authority owner_auth = authority( chain.get_public_key( a, "owner" ) );
+
+      // any transaction will do
+      trx.actions.emplace_back( std::vector<permission_level>{{creator,config::active_name}},
+                                contracts::newaccount{
+                                      .creator  = creator,
+                                      .name     = a,
+                                      .owner    = owner_auth,
+                                      .active   = authority( chain.get_public_key( a, "active" ) ),
+                                      .recovery = authority( chain.get_public_key( a, "recovery" ) ),
+                                });
+
+      chain.set_transaction_headers(trx);
+      BOOST_REQUIRE_THROW(chain.push_transaction(trx), tx_missing_sigs);
+
+      const auto priv_key_not_needed_1 = chain.get_private_key("alice", "blah");
+      const auto priv_key_not_needed_2 = chain.get_private_key("alice", "owner");
+      const auto priv_key_needed = chain.get_private_key(creator, "active");
+
+      flat_set<public_key_type> available_keys = { priv_key_not_needed_1.get_public_key(),
+                                                   priv_key_not_needed_2.get_public_key(),
+                                                   priv_key_needed.get_public_key() };
+      auto required_keys = chain.validating_node->get_required_keys(trx, available_keys);
+      BOOST_TEST( required_keys.size() == 1 );
+      BOOST_TEST( *required_keys.begin() == priv_key_needed.get_public_key() );
+      trx.sign( priv_key_needed, chain_id_type() );
+      chain.push_transaction(trx);
+
+      chain.produce_blocks();
+
+   } FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
