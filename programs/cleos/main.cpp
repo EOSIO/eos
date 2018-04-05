@@ -215,7 +215,7 @@ eosio::chain_apis::read_only::get_info_results get_info() {
 
 fc::variant determine_required_keys(const signed_transaction& trx) {
    // TODO better error checking
-   wdump((trx));
+   //wdump((trx));
    const auto& public_keys = call(wallet_host, wallet_port, wallet_public_keys);
    auto get_arg = fc::mutable_variant_object
            ("transaction", (transaction)trx)
@@ -1157,28 +1157,53 @@ int main( int argc, char** argv ) {
       fc::variant trx_var;
       try {
          trx_var = json_from_file_or_string(proposed_transaction);
-         //std::cout << "proposed_transaction: " << proposed_transaction << std::endl;
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",proposed_transaction))
       transaction proposed_trx = trx_var.as<transaction>();
+
+      auto arg= fc::mutable_variant_object()
+         ("code", proposed_contract)
+         ("action", proposed_action)
+         ("args", trx_var);
+
+      auto result = call(json_to_bin_func, arg);
+
+      //std::cout << "Result: "; fc::json::to_stream(std::cout, result); std::cout << std::endl;
+
+      bytes proposed_trx_serialized = result.get_object()["binargs"].as<bytes>();
+      //std::cout << "Trx: " << fc::to_hex(proposed_trx_serialized) << std::endl;
 
       vector<permission_level> reqperm = requested_var.as<vector<permission_level>>();
 
       signed_transaction trx;
-      bytes proposed_trx_serialized;
-
       auto accountPermissions = tx_permission.empty() ? vector<chain::permission_level>{{sender,config::active_name}} : get_account_permissions(tx_permission);
 
-      auto arg= fc::mutable_variant_object()
+      arg= fc::mutable_variant_object()
          ("code", "eosio.msig")
          ("action", "propose")
          ("args", fc::mutable_variant_object()
           ("proposer", name(accountPermissions.at(0).actor).to_string() )
           ("proposal_name", proposal_name)
           ("requested", requested_var)
-          ("trx", proposed_trx_serialized)
+          ("trx", fc::mutable_variant_object()
+           ("expiration", "2018-05-01T00:00:00")
+           ("region", 1)
+           ("ref_block_num", 0)
+           ("ref_block_prefix", 0)
+           ("max_net_usage_words", 0)
+           ("max_kcpu_usage",0)
+           ("delay_sec", 0)
+           ("context_free_actions", fc::variants() )
+           ("actions", fc::variants{ fc::mutable_variant_object()
+                                     ("account", proposed_contract)
+                                     ("name", proposed_action)
+                                     ("authorization", requested_var)
+                                     ("data", proposed_trx_serialized)
+                 }
+           )
+          )
          );
-      auto result = call(json_to_bin_func, arg);
-      wdump((result));
+      result = call(json_to_bin_func, arg);
+      //wdump((result));
       send_actions({chain::action{accountPermissions, "eosio.msig", "propose", result.get_object()["binargs"].as<bytes>()}});
       /*
       trx.actions.emplace_back( accountPermissions, N(eosio.msig), N(propose), result.get_object()["binargs"].as<bytes>() );
@@ -1186,6 +1211,7 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
       */
    });
+
 
    try {
        app.parse(argc, argv);
