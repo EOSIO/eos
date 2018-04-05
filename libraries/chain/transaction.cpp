@@ -56,13 +56,11 @@ bool transaction_header::verify_reference_block( const block_id_type& reference_
           ref_block_prefix == (decltype(ref_block_prefix))reference_block._hash[1];
 }
 
-
 transaction_id_type transaction::id() const {
    digest_type::encoder enc;
    fc::raw::pack( enc, *this );
    return enc.result();
 }
-
 
 digest_type transaction::sig_digest( const chain_id_type& chain_id, const vector<bytes>& cfd )const {
    digest_type::encoder enc;

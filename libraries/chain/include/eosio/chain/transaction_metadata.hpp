@@ -27,6 +27,7 @@ class transaction_metadata {
       optional<bytes>                       raw_trx;
       optional<transaction>                 decompressed_trx;
       vector<bytes>                         context_free_data;
+      digest_type                           packed_digest;
 
       // things for signed/packed transactions
       optional<flat_set<public_key_type>>   signing_keys;
@@ -69,7 +70,6 @@ class transaction_metadata {
       // limits
       optional<time_point>                  processing_deadline;
 
-      static digest_type calculate_transaction_merkle_root( const vector<transaction_metadata>& metas );
    private:
       const transaction* _trx = nullptr;
 };
