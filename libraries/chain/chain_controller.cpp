@@ -484,7 +484,7 @@ transaction chain_controller::_get_on_block_transaction()
 void chain_controller::_apply_on_block_transaction()
 {
    _pending_block_trace->implicit_transactions.emplace_back(_get_on_block_transaction());
-   transaction_metadata mtrx(packed_transaction(_pending_block_trace->implicit_transactions.back()), get_chain_id(), head_block_time(), true /*is implicit*/);
+   transaction_metadata mtrx(packed_transaction(_pending_block_trace->implicit_transactions.back()), get_chain_id(), head_block_time(), optional<time_point>(), true /*is implicit*/);
    _push_transaction(std::move(mtrx));
 }
 
@@ -780,12 +780,12 @@ void chain_controller::__apply_block(const signed_block& next_block)
    input_metas.reserve(next_block.input_transactions.size() + next_block_trace.implicit_transactions.size());
 
    for ( const auto& t : next_block_trace.implicit_transactions ) {
-      input_metas.emplace_back(packed_transaction(t), get_chain_id(), head_block_time(), true /*implicit*/);
+      input_metas.emplace_back(packed_transaction(t), get_chain_id(), head_block_time(), processing_deadline, true /*implicit*/);
    }
 
    map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
-      input_metas.emplace_back(t, chain_id_type(), next_block.timestamp);
+      input_metas.emplace_back(t, chain_id_type(), next_block.timestamp, processing_deadline);
       validate_transaction_with_minimal_state( input_metas.back().trx(), input_metas.back().billable_packed_size );
       if( should_check_signatures() ) {
          input_metas.back().signing_keys = input_metas.back().trx().get_signature_keys( t.signatures, chain_id_type(),
@@ -876,7 +876,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                         FC_ASSERT( trx.execute_after <= head_block_time() , "deferred transaction executed prematurely" );
                         validate_not_expired( trx );
                         validate_uniqueness( trx );
-                        _temp.emplace(trx, gtrx->published, trx.sender, trx.sender_id, gtrx->packed_trx.data(), gtrx->packed_trx.size() );
+                        _temp.emplace(trx, gtrx->published, trx.sender, trx.sender_id, gtrx->packed_trx.data(), gtrx->packed_trx.size(), processing_deadline );
                         _destroy_generated_transaction(*gtrx);
                         return &*_temp;
                      } else {
@@ -897,7 +897,6 @@ void chain_controller::__apply_block(const signed_block& next_block)
                mtrx->shard_index = shard_index;
                mtrx->allowed_read_locks.emplace(&shard.read_locks);
                mtrx->allowed_write_locks.emplace(&shard.write_locks);
-               mtrx->processing_deadline = processing_deadline;
 
                if( mtrx->delay.count() == 0 ) {
                   s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
@@ -2105,20 +2104,24 @@ vector<transaction_trace> chain_controller::_push_deferred_transactions( bool fl
       candidates.emplace_back(&gtrx);
    }
 
-   auto deferred_transactions_deadline = fc::time_point::now() + fc::microseconds(config::deferred_transactions_max_time_per_block_us);
+   optional<fc::time_point> processing_deadline;
+   if (_limits.max_deferred_transactions_us.count() > 0) {
+      processing_deadline = fc::time_point::now() + _limits.max_deferred_transactions_us;
+   }
+
    vector<transaction_trace> res;
    for (const auto* trx_p: candidates) {
       if (!is_known_transaction(trx_p->trx_id)) {
          try {
             auto trx = fc::raw::unpack<deferred_transaction>(trx_p->packed_trx.data(), trx_p->packed_trx.size());
-            transaction_metadata mtrx (trx, trx_p->published, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size(), deferred_transactions_deadline);
+            transaction_metadata mtrx (trx, trx_p->published, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size(), processing_deadline);
             res.push_back( _push_transaction(std::move(mtrx)) );
          } FC_CAPTURE_AND_LOG((trx_p->trx_id)(trx_p->sender));
       }
 
       _destroy_generated_transaction(*trx_p);
 
-      if ( deferred_transactions_deadline <= fc::time_point::now() ) {
+      if ( !processing_deadline || *processing_deadline <= fc::time_point::now() ) {
          break;
       }
    }
