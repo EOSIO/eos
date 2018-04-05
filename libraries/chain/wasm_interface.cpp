@@ -835,6 +835,10 @@ class action_api : public context_aware_api {
             return name();
          }
       }
+
+      name current_receiver() {
+         return context.receiver;
+      }
 };
 
 class console_api : public context_aware_api {
@@ -1542,6 +1546,7 @@ REGISTER_INTRINSICS(action_api,
    (action_data_size,       int()          )
    (publication_time,   int32_t()          )
    (current_sender,     int64_t()          )
+   (current_receiver,   int64_t()          )
 );
 
 REGISTER_INTRINSICS(apply_context,
