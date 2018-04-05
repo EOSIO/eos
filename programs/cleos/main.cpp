@@ -821,6 +821,7 @@ int main( int argc, char** argv ) {
       std::string wast;
       std::cout << localized("Reading WAST...") << std::endl;
       fc::path cpath(contractPath);
+
       if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
 
       if( wastPath == string() )
@@ -832,9 +833,10 @@ int main( int argc, char** argv ) {
       {
          abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
       }
-
+      
+      
       fc::read_file_contents(wastPath, wast);
-
+      FC_ASSERT( wast != string(), "no wast file found ${f}", ("f", wastPath) );
       vector<uint8_t> wasm;
       const string binary_wasm_header("\x00\x61\x73\x6d", 4);
       if(wast.compare(0, 4, binary_wasm_header) == 0) {
