@@ -894,6 +894,8 @@ void chain_controller::__apply_block(const signed_block& next_block)
 
                auto *mtrx = make_metadata();
 
+               FC_ASSERT( mtrx->trx().region == r.region, "transaction was scheduled into wrong region" );
+
                mtrx->region_id = r.region;
                mtrx->cycle_index = cycle_index;
                mtrx->shard_index = shard_index;
@@ -907,9 +909,14 @@ void chain_controller::__apply_block(const signed_block& next_block)
                } else {
                   s_trace.transaction_traces.emplace_back(delayed_transaction_processing(*mtrx));
                }
+
+               auto& t_trace = s_trace.transaction_traces.back();
                if( mtrx->raw_trx.valid() && !mtrx->is_implicit ) { // if an input transaction
-                  s_trace.transaction_traces.back().packed_trx_digest = mtrx->packed_digest;
+                  t_trace.packed_trx_digest = mtrx->packed_digest;
                }
+               t_trace.region_id = r.region;
+               t_trace.cycle_index = cycle_index;
+               t_trace.shard_index = shard_index;
 
                EOS_ASSERT( receipt.status == s_trace.transaction_traces.back().status, tx_receipt_inconsistent_status,
                            "Received status of transaction from block (${rstatus}) does not match the applied transaction's status (${astatus})",
@@ -2166,6 +2173,8 @@ transaction_trace chain_controller::wrap_transaction_processing( transaction_met
 
    const transaction& trx = data.trx();
 
+   FC_ASSERT( trx.region == 0, "currently only region 0 is supported" );
+
    //wdump((transaction_header(trx)));
 
    auto temp_session = _db.start_undo_session(true);
@@ -2186,6 +2195,10 @@ transaction_trace chain_controller::wrap_transaction_processing( transaction_met
    if( data.raw_trx.valid() && !data.is_implicit ) { // if an input transaction
       result.packed_trx_digest = data.packed_digest;
    }
+
+   result.region_id   = 0; // Currently we only support region 0.
+   result.cycle_index = _pending_block->regions.back().cycles_summary.size() - 1;
+   result.shard_index = 0; // Currently we only have one shard per cycle.
 
    bshard_trace.append(result);
 

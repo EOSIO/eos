@@ -18,15 +18,4 @@ transaction_metadata::transaction_metadata( const packed_transaction& t, chain_i
    ,is_implicit(implicit)
 { }
 
-digest_type transaction_metadata::calculate_transaction_merkle_root( const vector<transaction_metadata>& metas ) {
-   vector<digest_type> ids;
-   ids.reserve(metas.size());
-
-   for( const auto& t : metas ) {
-      ids.emplace_back(t.id);
-   }
-
-   return merkle( std::move(ids) );
-}
-
 } } // eosio::chain

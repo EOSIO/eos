@@ -51,6 +51,9 @@ namespace eosio { namespace chain {
       uint64_t                      net_usage;
 
       optional<digest_type>         packed_trx_digest;
+      uint64_t                      region_id;
+      uint64_t                      cycle_index;
+      uint64_t                      shard_index;
 
       fc::microseconds              _profiling_us = fc::microseconds(0);
       fc::microseconds              _setup_profiling_us = fc::microseconds(0);
@@ -61,4 +64,4 @@ FC_REFLECT_ENUM( eosio::chain::data_access_info::access_type, (read)(write))
 FC_REFLECT( eosio::chain::data_access_info, (type)(code)(scope)(sequence))
 FC_REFLECT( eosio::chain::action_trace, (receiver)(context_free)(cpu_usage)(act)(console)(region_id)(cycle_index)(data_access)(_profiling_us) )
 FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail)(delayed) )
-FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transaction_requests)(read_locks)(write_locks)(cpu_usage)(net_usage)(_profiling_us)(_setup_profiling_us) )
+FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transaction_requests)(read_locks)(write_locks)(cpu_usage)(net_usage)(packed_trx_digest)(region_id)(cycle_index)(shard_index)(_profiling_us)(_setup_profiling_us) )

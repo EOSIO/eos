@@ -39,12 +39,21 @@ namespace eosio { namespace chain {
       {
          vector<digest_type> trx_roots;
          trx_roots.reserve(transaction_traces.size());
-         for( const auto& tx : transaction_traces ) {
+         for( uint64_t trx_index = 0, num_trxs = transaction_traces.size(); trx_index < num_trxs; ++trx_index ) {
+            const auto& tx = transaction_traces[trx_index];
+            digest_type::encoder enc;
+            uint64_t region_id   = tx.region_id;
+            uint64_t cycle_index = tx.cycle_index;
+            uint64_t shard_index = tx.shard_index;
+            fc::raw::pack( enc, region_id ); // Technically redundant since it is included in the trx header, but can still be useful here.
+            fc::raw::pack( enc, cycle_index );
+            fc::raw::pack( enc, shard_index );
+            fc::raw::pack( enc, trx_index );
+            fc::raw::pack( enc, *static_cast<const transaction_receipt*>(&tx) );
             if( tx.packed_trx_digest.valid() ) {
-               trx_roots.emplace_back(tx.proof_digest(*tx.packed_trx_digest));
-            } else {
-               trx_roots.emplace_back(tx.proof_digest());
+               fc::raw::pack( enc, *tx.packed_trx_digest );
             }
+            trx_roots.emplace_back(enc.result());
          }
          shard_transaction_root = merkle(trx_roots);
       }

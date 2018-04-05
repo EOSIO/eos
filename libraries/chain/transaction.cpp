@@ -56,22 +56,6 @@ bool transaction_header::verify_reference_block( const block_id_type& reference_
           ref_block_prefix == (decltype(ref_block_prefix))reference_block._hash[1];
 }
 
-digest_type transaction_receipt::proof_digest()const {
-   FC_ASSERT( status != delayed, "calculating delayed transaction receipt digests requires the digest of the associated packed_transaction" );
-   digest_type::encoder enc;
-   fc::raw::pack( enc, *this );
-   return enc.result();
-}
-
-digest_type transaction_receipt::proof_digest( const digest_type& packed_trx_digest )const {
-   FC_ASSERT( status == executed || status == delayed,
-              "transaction receipts for processed deferred transactions should not be passed a digest of a packed_transaction" );
-   digest_type::encoder enc;
-   fc::raw::pack( enc, *this );
-   fc::raw::pack( enc, packed_trx_digest );
-   return enc.result();
-}
-
 transaction_id_type transaction::id() const {
    digest_type::encoder enc;
    fc::raw::pack( enc, *this );

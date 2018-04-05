@@ -93,9 +93,6 @@ namespace eosio { namespace chain {
       transaction_receipt() : status(hard_fail) {}
       transaction_receipt( transaction_id_type tid ):status(executed),id(tid){}
 
-      digest_type proof_digest()const;
-      digest_type proof_digest( const digest_type& packed_trx_digest )const;
-
       fc::enum_type<uint8_t,status_enum>  status;
       fc::unsigned_int                    kcpu_usage;
       fc::unsigned_int                    net_usage_words;

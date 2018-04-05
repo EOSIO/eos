@@ -85,8 +85,8 @@ BOOST_AUTO_TEST_CASE( push_invalid_block ) { try {
    new_block.producer = sch_pro;
    new_block.block_mroot = chain.control->get_dynamic_global_properties().block_merkle_root.get_root();
    vector<transaction_metadata> input_metas;
-   input_metas.emplace_back(packed_transaction(trx), chain.control->get_chain_id(), chain.control->head_block_time(), true);
-   new_block.transaction_mroot = transaction_metadata::calculate_transaction_merkle_root(input_metas);
+   //input_metas.emplace_back(packed_transaction(trx), chain.control->get_chain_id(), chain.control->head_block_time(), true);
+   //new_block.transaction_mroot = transaction_metadata::calculate_transaction_merkle_root(input_metas);
    new_block.sign(priv_key);
 
    // Create a new empty region
@@ -902,8 +902,8 @@ BOOST_AUTO_TEST_CASE(block_id_sig_independent)
       new_block.producer = sch_pro;
       new_block.block_mroot = chain.control->get_dynamic_global_properties().block_merkle_root.get_root();
       vector<transaction_metadata> input_metas;
-      input_metas.emplace_back(packed_transaction(trx), chain.control->get_chain_id(), chain.control->head_block_time(), true);
-      new_block.transaction_mroot = transaction_metadata::calculate_transaction_merkle_root(input_metas);
+      //input_metas.emplace_back(packed_transaction(trx), chain.control->get_chain_id(), chain.control->head_block_time(), true);
+      //new_block.transaction_mroot = transaction_metadata::calculate_transaction_merkle_root(input_metas);
 
       // Sign the block with active signature
       new_block.sign(chain.get_private_key( sch_pro, "active" ));
