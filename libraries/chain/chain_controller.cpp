@@ -173,6 +173,7 @@ void chain_controller::push_block(const signed_block& new_block, uint32_t skip)
          } );
       });
    });
+   ilog( "\rpush block #${n} from ${pro} ${time}  ${id} lib: ${l} success", ("n",new_block.block_num())("pro",name(new_block.producer))("time",new_block.timestamp)("id",new_block.id())("l",last_irreversible_block_num()));
 } FC_CAPTURE_AND_RETHROW((new_block)) }
 
 bool chain_controller::_push_block(const signed_block& new_block)
@@ -614,6 +615,7 @@ void chain_controller::_finalize_block( const block_trace& trace, const producer
    // trigger an update of our elastic values for block limits
    _resource_limits.process_block_usage(b.block_num());
 
+  // validate_block_header( _skip_flags, b );
    applied_block( trace ); //emit
    if (_currently_replaying_blocks)
      applied_irreversible_block(b);
@@ -703,10 +705,12 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
  */
 void chain_controller::pop_block()
 { try {
-   _pending_block_session.reset();
+   clear_pending();
    auto head_id = head_block_id();
    optional<signed_block> head_block = fetch_block_by_id( head_id );
+
    EOS_ASSERT( head_block.valid(), pop_empty_chain, "there are no blocks to pop" );
+   wlog( "\rpop block #${n} from ${pro} ${time}  ${id}", ("n",head_block->block_num())("pro",name(head_block->producer))("time",head_block->timestamp)("id",head_block->id()));
 
    _fork_db.pop_block();
    _db.undo();
@@ -1392,7 +1396,7 @@ void chain_controller::require_account(const account_name& name) const {
    FC_ASSERT(account != nullptr, "Account not found: ${name}", ("name", name));
 }
 
-const producer_object& chain_controller::validate_block_header(uint32_t skip, const signed_block& next_block)const {
+const producer_object& chain_controller::validate_block_header(uint32_t skip, const signed_block& next_block)const { try {
    EOS_ASSERT(head_block_id() == next_block.previous, block_validate_exception, "",
               ("head_block_id",head_block_id())("next.prev",next_block.previous));
    EOS_ASSERT(head_block_time() < (fc::time_point)next_block.timestamp, block_validate_exception, "",
@@ -1423,10 +1427,12 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
                  ("block producer",next_block.producer)("scheduled producer",producer.owner));
    }
 
-   EOS_ASSERT( next_block.schedule_version == get_global_properties().active_producers.version, block_validate_exception, "wrong producer schedule version specified" );
+   auto expected_schedule_version = get_global_properties().active_producers.version;
+   EOS_ASSERT( next_block.schedule_version == expected_schedule_version , block_validate_exception,"wrong producer schedule version specified ${x} expectd ${y}",
+               ("x", next_block.schedule_version)("y",expected_schedule_version) );
 
    return producer;
-}
+} FC_CAPTURE_AND_RETHROW( (block_header(next_block))) }
 
 void chain_controller::create_block_summary(const signed_block& next_block) {
    auto sid = next_block.block_num() & 0xffff;
@@ -1471,6 +1477,7 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
       const auto& gpo = get_global_properties();
 
       if( _head_producer_schedule() != schedule ) {
+         //wlog( "change in producer schedule pending irreversible: ${s}",  ("s", b.new_producers ) );
          FC_ASSERT( b.new_producers, "pending producer set changed but block didn't indicate it" );
       }
       _db.modify( gpo, [&]( auto& props ) {
@@ -1478,7 +1485,8 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
             props.pending_active_producers.back().second = schedule;
          else
          {
-            props.pending_active_producers.emplace_back( props.pending_active_producers.get_allocator() );// props.pending_active_producers.size()+1, props.pending_active_producers.get_allocator() );
+            props.pending_active_producers.emplace_back( props.pending_active_producers.get_allocator() );
+            // props.pending_active_producers.size()+1, props.pending_active_producers.get_allocator() );
             auto& back = props.pending_active_producers.back();
             back.first = b.block_num();
             back.second = schedule;
@@ -1846,24 +1854,24 @@ void chain_controller::update_last_irreversible_block()
       }
    }
 
-   if( new_last_irreversible_block_num > last_block_on_disk ) {
-      /// TODO: use upper / lower bound to find
-      optional<producer_schedule_type> new_producer_schedule;
-      for( const auto& item : gpo.pending_active_producers ) {
-         if( item.first < new_last_irreversible_block_num ) {
-            new_producer_schedule = item.second;
-         }
+   /// TODO: use upper / lower bound to find
+   optional<producer_schedule_type> new_producer_schedule;
+   for( const auto& item : gpo.pending_active_producers ) {
+      if( item.first < new_last_irreversible_block_num ) {
+         new_producer_schedule = item.second;
       }
-      if( new_producer_schedule ) {
-         update_or_create_producers( *new_producer_schedule );
-         _db.modify( gpo, [&]( auto& props ){
-              boost::range::remove_erase_if(props.pending_active_producers,
-                                            [new_last_irreversible_block_num](const typename decltype(props.pending_active_producers)::value_type& v) -> bool {
-                                               return v.first < new_last_irreversible_block_num;
-                                            });
+   }
+   if( new_producer_schedule ) {
+      update_or_create_producers( *new_producer_schedule );
+      _db.modify( gpo, [&]( auto& props ){
+           boost::range::remove_erase_if(props.pending_active_producers,
+                                         [new_last_irreversible_block_num](const typename decltype(props.pending_active_producers)::value_type& v) -> bool {
+                                            return v.first <= new_last_irreversible_block_num;
+                                         });
+           if( props.active_producers.version != new_producer_schedule->version ) {
               props.active_producers = *new_producer_schedule;
-         });
-      }
+           }
+      });
    }
 
    // Trim fork_database and undo histories

@@ -1407,7 +1407,7 @@ namespace eosio {
             send_handshakes();
          }
          else {
-            ilog ("a second attenpt to retrive block ${n} failed",
+            ilog ("second attempt to retrive block ${n} failed",
                   ("n", head_num + 1));
             last_repeated = 0;
             c->close();

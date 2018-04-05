@@ -222,9 +222,11 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       _prev_result_count++;
    }
    else {
+      /*
       if (_prev_result_count > 1) {
          ilog("Previous result occurred ${r} times",("r", _prev_result_count));
       }
+      */
       _prev_result_count = 1;
       _prev_result = result;
       switch(result)
@@ -234,17 +236,17 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
             auto producer  = db.head_block_producer();
             //          auto pending   = db.pending().size();
 
-            wlog("\r${p} generated block ${id}... #${n} @ ${t} with ${count} trxs", ("p", producer)(capture) );
+            wlog("\r${p} generated block ${id}... #${n} @ ${t} with ${count} trxs, lib: ${lib}", ("p", producer)("lib",db.last_irreversible_block_num())(capture) );
             break;
          }
          case block_production_condition::not_synced:
             ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");
             break;
          case block_production_condition::not_my_turn:
-            ilog("Not producing block because it isn't my turn, its ${scheduled_producer}", (capture) );
+       //     ilog("Not producing block because it isn't my turn, its ${scheduled_producer}", (capture) );
             break;
          case block_production_condition::not_time_yet:
-            ilog("Not producing block because slot has not yet arrived");
+        //    ilog("Not producing block because slot has not yet arrived");
             break;
          case block_production_condition::no_private_key:
             ilog("Not producing block because I don't have the private key for ${scheduled_key}", (capture) );
