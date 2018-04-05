@@ -97,6 +97,7 @@ namespace eosio { namespace chain { namespace contracts {
       built_in_types.emplace("action_name",               pack_unpack<action_name>());
       built_in_types.emplace("scope_name",                pack_unpack<scope_name>());
       built_in_types.emplace("producer_schedule",         pack_unpack<producer_schedule_type>());
+      built_in_types.emplace("newaccount",                pack_unpack<newaccount>());
    }
 
    void abi_serializer::set_abi(const abi_def& abi) {
@@ -123,6 +124,7 @@ namespace eosio { namespace chain { namespace contracts {
        *  The ABI vector may contain duplicates which would make it
        *  an invalid ABI
        */
+      for( const auto& tt : typedefs )
       FC_ASSERT( typedefs.size() == abi.types.size() );
       FC_ASSERT( structs.size() == abi.structs.size() );
       FC_ASSERT( actions.size() == abi.actions.size() );
