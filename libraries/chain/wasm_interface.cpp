@@ -142,6 +142,13 @@ class privileged_api : public context_aware_api {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          producer_schedule_type psch;
          fc::raw::unpack(ds, psch);
+         // check that producers are unique
+         std::set<account_name> unique_producers;
+         for (const auto& p: psch.producers) {
+            EOS_ASSERT(context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account");
+            unique_producers.insert(p.producer_name);
+         }
+         EOS_ASSERT(psch.producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule");
          context.mutable_db.modify( context.controller.get_global_properties(),
             [&]( auto& gprops ) {
                  gprops.new_active_producers = psch;
