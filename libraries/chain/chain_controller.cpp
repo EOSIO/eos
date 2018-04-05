@@ -574,14 +574,14 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
          for (const auto &ar : tr.action_traces) {
             if (!ar.console.empty()) {
                auto prefix = fc::format_string(
-                  "[(${a},${n})->${r}]",
+                  "\n[(${a},${n})->${r}]",
                   fc::mutable_variant_object()
                      ("a", ar.act.account)
                      ("n", ar.act.name)
                      ("r", ar.receiver));
-               ilog(prefix + ": CONSOLE OUTPUT BEGIN =====================");
-               ilog(ar.console);
-               ilog(prefix + ": CONSOLE OUTPUT END   =====================");
+               ilog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
+                    + ar.console
+                    + prefix + ": CONSOLE OUTPUT END   =====================" );
             }
          }
       }
@@ -2007,7 +2007,7 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    result.status = transaction_trace::soft_fail;
 
    transaction etrx;
-   etrx.actions.emplace_back(vector<permission_level>{{meta.sender_id,config::active_name}},
+   etrx.actions.emplace_back(vector<permission_level>{{*meta.sender,config::active_name}},
                              contracts::onerror(meta.raw_data, meta.raw_data + meta.raw_size) );
 
    try {
