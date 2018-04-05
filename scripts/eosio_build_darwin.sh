@@ -118,7 +118,7 @@
 	done < scripts/eosio_build_dep
 	IFS=${var_ifs}
 		
-	printf "\tChecking Python3 ... "
+	printf "\tChecking Python3 installation ... "
 	if [  -z `python3 -c 'import sys; print(sys.version_info.major)' 2>/dev/null` ]; then
 		DEP=$DEP"python@3 "
 		DISPLAY="${DISPLAY}${COUNT}. Python 3\n\t"
@@ -153,14 +153,14 @@
 		printf "\n\tNo required Home Brew dependencies to install.\n"
 	fi
 		
-	printf "\n\tChecking for MongoDB C++ driver\n"
+	printf "\n\tChecking MongoDB C++ driver installation.\n"
     # install libmongocxx.dylib
     if [ ! -e /usr/local/lib/libmongocxx-static.a ]; then
 		cd ${TEMP_DIR}
 		brew install --force pkgconfig
 		brew unlink pkgconfig && brew link --force pkgconfig
-		curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
-		if [ $? -ne 0 ]; then
+		STATUS=$(curl -LO -w '%{http_code}' https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz)
+		if [ $STATUS -ne 200 ]; then
 			rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz
 			printf "\tUnable to download MongoDB C driver at this time.\n"
 			printf "\tExiting now.\n\n"
@@ -222,11 +222,16 @@
 		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx-static.a.\n"
 	fi
 
-	printf "\n\tChecking for secp256k1-zkp\n"
+	printf "\n\tChecking secp256k1-zkp installation.\n"
     # install secp256k1-zkp (Cryptonomex branch)
     if [ ! -e /usr/local/lib/libsecp256k1.a ]; then
 		cd ${TEMP_DIR}
 		git clone https://github.com/cryptonomex/secp256k1-zkp.git
+		if [ $? -ne 0 ]; then
+			printf "\tUnable to clone repo secp256k1-zkp @ https://github.com/cryptonomex/secp256k1-zkp.git.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
 		cd secp256k1-zkp
 		./autogen.sh
 		if [ $? -ne 0 ]; then
@@ -247,15 +252,25 @@
 		printf "\tsecp256k1 found at /usr/local/lib/\n"
 	fi
   
-	printf "\n\tChecking for WASM\n"
+	printf "\n\tChecking LLVM with WASM support.\n"
 	if [ ! -d /usr/local/wasm/bin ]; then
 		# Build LLVM and clang for WASM:
 		cd ${TEMP_DIR}
 		mkdir wasm-compiler
 		cd wasm-compiler
 		git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git
+		if [ $? -ne 0 ]; then
+			printf "\tUnable to clone llvm repo @ https://github.com/llvm-mirror/llvm.git.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
 		cd llvm/tools
 		git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git
+		if [ $? -ne 0 ]; then
+			printf "\tUnable to clone clang repo @ https://github.com/llvm-mirror/clang.git.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
 		cd ..
 		mkdir build
 		cd build
