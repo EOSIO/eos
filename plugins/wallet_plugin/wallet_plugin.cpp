@@ -8,6 +8,8 @@
 #include <boost/filesystem/path.hpp>
 #include <chrono>
 
+#include <fc/io/json.hpp>
+
 namespace fc { class variant; }
 
 namespace eosio {
@@ -23,7 +25,7 @@ wallet_manager& wallet_plugin::get_wallet_manager() {
 }
 
 void wallet_plugin::set_program_options(options_description& cli, options_description& cfg) {
-   cli.add_options()
+   cfg.add_options()
          ("wallet-dir", bpo::value<boost::filesystem::path>()->default_value("."),
           "The path of the wallet files (absolute path or relative to application data dir)")
          ("unlock-timeout", bpo::value<int64_t>(),
@@ -51,7 +53,8 @@ void wallet_plugin::plugin_initialize(const variables_map& options) {
       wallet_manager_ptr->set_timeout(t);
    }
    if (options.count("eosio-key")) {
-      auto eosio_wif_key = options.at("eosio-key").as<std::string>();
+      std::string eosio_wif_key = options.at("eosio-key").as<std::string>();
+      eosio_wif_key = fc::json::from_string(eosio_wif_key).as<std::string>();
       wallet_manager_ptr->set_eosio_key(eosio_wif_key);
    }
 }
