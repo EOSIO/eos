@@ -56,7 +56,7 @@ relaunch() {
 
 if [ -z "$EOSIO_LEVEL" ]; then
     echo starting with no modifiers
-    relaunch $prog $rundir $*
+    relaunch $*
     if [ "$connected" -eq 0 ]; then
         EOSIO_LEVEL=replay
     else
@@ -66,7 +66,7 @@ fi
 
 if [ "$EOSIO_LEVEL" == replay ]; then
     echo starting with replay
-    relaunch $prog $rundir $* --replay
+    relaunch $* --replay
     if [  "$connected" -eq 0 ]; then
         EOSIO_LEVEL=resync
     else

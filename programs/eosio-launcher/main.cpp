@@ -32,6 +32,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <net/if.h>
+#include <eosio/chain/contracts/genesis_state.hpp>
 
 #include "config.hpp"
 
@@ -1053,8 +1054,9 @@ launcher_def::init_genesis () {
   bfs::path genesis_path = bfs::current_path() / "genesis.json";
    bfs::ifstream src(genesis_path);
    if (!src.good()) {
-      cerr << "unable to open " << genesis_path << "\n";
-      exit(9);
+      cout << "generating default genesis file " << genesis_path << endl;
+      eosio::chain::contracts::genesis_state_type default_genesis;
+      fc::json::save_to_file( default_genesis, genesis_path, true );
    }
    string bioskey = string(network.nodes["bios"].keys[0].get_public_key());
    string str;
