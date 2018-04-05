@@ -152,7 +152,6 @@
 	fi
 		
 	printf "\n\tChecking MongoDB C++ driver installation.\n"
-    # install libmongocxx.dylib
     if [ ! -e /usr/local/lib/libmongocxx-static.a ]; then
 		cd ${TEMP_DIR}
 		brew install --force pkgconfig
@@ -252,7 +251,6 @@
   
 	printf "\n\tChecking LLVM with WASM support.\n"
 	if [ ! -d /usr/local/wasm/bin ]; then
-		# Build LLVM and clang for WASM:
 		cd ${TEMP_DIR}
 		mkdir wasm-compiler
 		cd wasm-compiler
