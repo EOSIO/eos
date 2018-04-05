@@ -163,11 +163,6 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		if [ $? -ne 0 ]; then
-			printf "\tUnable to download MongoDB at this time.\n"
-			printf "\tExiting now.\n\n"
-			exit;
-		fi
 		tar xf mongodb-linux-x86_64-amazon-3.6.3.tgz
 		rm -f mongodb-linux-x86_64-amazon-3.6.3.tgz
 		ln -s mongodb-linux-x86_64-amazon-3.6.3/ mongodb
