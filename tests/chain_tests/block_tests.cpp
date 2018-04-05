@@ -376,6 +376,7 @@ BOOST_AUTO_TEST_CASE(missed_blocks)
       for (char i = 'a'; i <= 'u'; i++) {
          producer_names.emplace_back(std::string("init") + i);
       }
+      chain.create_accounts(producer_names);
       chain.set_producers(producer_names);
 
       // Produce blocks until the next block production will use the new set of producers from beginning
