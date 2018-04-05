@@ -838,7 +838,7 @@ int main( int argc, char** argv ) {
       
       
       fc::read_file_contents(wastPath, wast);
-      FC_ASSERT( wast.empty(), "no wast file found ${f}", ("f", wastPath) );
+      FC_ASSERT( !wast.empty(), "no wast file found ${f}", ("f", wastPath) );
       vector<uint8_t> wasm;
       const string binary_wasm_header("\x00\x61\x73\x6d", 4);
       if(wast.compare(0, 4, binary_wasm_header) == 0) {
