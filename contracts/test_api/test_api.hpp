@@ -3,22 +3,23 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosiolib/serialize.hpp>
+#include "test_api_common.hpp"
 #include <string>
 
-typedef unsigned long long u64;
-typedef unsigned int u32;
-static constexpr u32 DJBH(const char* cp)
-{
-  u32 hash = 5381;
-  while (*cp)
-      hash = 33 * hash ^ (unsigned char) *cp++;
-  return hash;
+
+namespace eosio {
+   class deferred_transaction;
 }
 
-static constexpr u64 WASM_TEST_ACTION(const char* cls, const char* method)
+
+// #include <eosiolib/transaction.hpp>
+
+// NOTE: including eosiolib/transaction.hpp here causes !"unresolvable": env._ZNKSt3__120__vector_base_commonILb1EE20__throw_length_errorEv
+//       errors in api_tests/memory_tests
+
+static constexpr unsigned long long WASM_TEST_ACTION(const char* cls, const char* method)
 {
-  return u64(DJBH(cls)) << 32 | u64(DJBH(method));
+  return static_cast<unsigned long long>(DJBH(cls)) << 32 | static_cast<unsigned long long>(DJBH(method));
 }
 
 #define WASM_TEST_HANDLER(CLASS, METHOD) \
@@ -33,43 +34,11 @@ static constexpr u64 WASM_TEST_ACTION(const char* cls, const char* method)
      return; \
   }
 
-#pragma pack(push, 1)
-struct dummy_action {
-   static uint64_t get_name() {
-      return N(dummy_action);
-   }
-   static uint64_t get_account() {
-      return N(testapi);
-   }
-
-  char a; //1
-  uint64_t b; //8
-  int32_t  c; //4
-
-  EOSLIB_SERIALIZE( dummy_action, (a)(b)(c) )
-};
-
-struct u128_action {
-  unsigned __int128  values[3]; //16*3
-};
-
-struct cf_action {
-   static uint64_t get_name() {
-      return N(cf_action);
-   }
-   static uint64_t get_account() {
-      return N(testapi);
-   }
-
-   uint32_t       payload = 100;
-   uint32_t       cfd_idx = 0; // context free data index
-
-   EOSLIB_SERIALIZE( cf_action, (payload)(cfd_idx) )
-};
-#pragma pack(pop)
-
-static_assert( sizeof(dummy_action) == 13 , "unexpected packing" );
-static_assert( sizeof(u128_action) == 16*3 , "unexpected packing" );
+#define WASM_TEST_ERROR_HANDLER(CALLED_CLASS_STR, CALLED_METHOD_STR, HANDLER_CLASS, HANDLER_METHOD) \
+if( error_action == WASM_TEST_ACTION(CALLED_CLASS_STR, CALLED_METHOD_STR) ) { \
+   HANDLER_CLASS::HANDLER_METHOD(error_dtrx); \
+   return; \
+}
 
 struct test_types {
   static void types_size();
@@ -86,10 +55,6 @@ struct test_print {
   static void test_printi128();
   static void test_printn();
 };
-
-#define DUMMY_ACTION_DEFAULT_A 0x45
-#define DUMMY_ACTION_DEFAULT_B 0xab11cd1244556677
-#define DUMMY_ACTION_DEFAULT_C 0x7451ae12
 
 struct test_action {
 
@@ -198,6 +163,8 @@ struct test_transaction {
   static void test_transaction_size();
   static void send_transaction(uint64_t receiver, uint64_t code, uint64_t action);
   static void send_transaction_empty(uint64_t receiver, uint64_t code, uint64_t action);
+  static void send_transaction_trigger_error_handler(uint64_t receiver, uint64_t code, uint64_t action);
+  static void assert_false_error_handler(const eosio::deferred_transaction&);
   static void send_transaction_max();
   static void send_transaction_large(uint64_t receiver, uint64_t code, uint64_t action);
   static void send_transaction_expiring_late(uint64_t receiver, uint64_t code, uint64_t action);
