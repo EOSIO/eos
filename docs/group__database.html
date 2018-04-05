@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -73,16 +73,13 @@ $(function() {
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="groups"></a>
 Modules</h2></td></tr>
 <tr class="memitem:group__database_c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__database_c.html">Database C API</a></td></tr>
-<tr class="memdesc:group__database_c"><td class="mdescLeft">&#160;</td><td class="mdescRight">C APIs for interfacing with the database. <br /></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:group__database_cpp"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__database_cpp.html">Database C++ API</a></td></tr>
-<tr class="memdesc:group__database_cpp"><td class="mdescLeft">&#160;</td><td class="mdescRight">C++ APIs for interfacing with the database. It is based on pimpl idiom. <br /></td></tr>
+<tr class="memdesc:group__database_c"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="struct_c.html">C</a> APIs for interfacing with the database. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <ul>
-<li><b>scope</b> - an account where the data is stored<ul>
 <li><b>code</b> - the account name which has write permission<ul>
+<li><b>scope</b> - an account where the data is stored<ul>
 <li><b>table</b> - a name for the table that is being stored<ul>
 <li><b>record</b> - a row in the table</li>
 </ul>
@@ -96,13 +93,11 @@ Modules</h2></td></tr>
 <dl class="section note"><dt>Note</dt><dd>Attempts to read and/or write outside the valid scope and/or code sections will cause your transaction to fail.</dd></dl>
 <h1><a class="anchor" id="tabletypes"></a>
 table Types</h1>
-<p>There are several supported table types identified by the number and size of the index.</p>
+<p>These are the supported table types identified by the number and size of the index:</p>
 <ol type="1">
-<li><a class="el" href="group__dbi64.html">Single 64 bit Index table</a></li>
-<li><a class="el" href="group__dbi128i128.html">Dual 128 bit Index table</a></li>
+<li>dbi64</li>
 </ol>
-<p>The database APIs assume that the first bytes of each record represent the primary and/or secondary keys followed by an arbitrary amount of data.</p>
-<p>The <a class="el" href="group__database_cpp.html">Database C++ API</a> provides a simple interface for storing any fixed-size struct as a database row. </p>
+<p>The databaseCpp provides a simple interface for storing any fixed-size struct as a database row. </p>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

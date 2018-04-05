@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -67,12 +67,12 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
-<p>C API for querying account data.  
+<p><a class="el" href="struct_c.html">C</a> API for querying account data.  
 <a href="#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:gabc0d83c30cea31ccd9c5155f5292eab7"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__accountcapi.html#gabc0d83c30cea31ccd9c5155f5292eab7">account_balance_get</a> (void *balance, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
+<tr class="memitem:gabc0d83c30cea31ccd9c5155f5292eab7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2stdbool_8h.html#abb452686968e48b67397da5f97445f5b">bool</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__accountcapi.html#gabc0d83c30cea31ccd9c5155f5292eab7">account_balance_get</a> (void *balance, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> <a class="el" href="towctrans_8c.html#a8bb3e1dd5fd30402c69fd8a9f7dd0950">len</a>)</td></tr>
 <tr class="memdesc:gabc0d83c30cea31ccd9c5155f5292eab7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieve the balance for the provided account.  <a href="#gabc0d83c30cea31ccd9c5155f5292eab7">More...</a><br /></td></tr>
 <tr class="separator:gabc0d83c30cea31ccd9c5155f5292eab7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
@@ -85,7 +85,7 @@ Functions</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">bool account_balance_get </td>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2stdbool_8h.html#abb452686968e48b67397da5f97445f5b">bool</a> account_balance_get </td>
           <td>(</td>
           <td class="paramtype">void *&#160;</td>
           <td class="paramname"><em>balance</em>, </td>
@@ -93,7 +93,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
           <td class="paramname"><em>len</em>&#160;</td>
         </tr>
         <tr>
@@ -117,7 +117,7 @@ Functions</h2></td></tr>
 data is a pointer to a balance object </dd>
 <dd>
 *((uint64_t*)data) stores the primary key</dd></dl>
-<p>Example: </p><div class="fragment"><div class="line">balance b;</div><div class="line">b.account = <a class="code" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(myaccount);</div><div class="line">balance(b, <span class="keyword">sizeof</span>(balance));</div></div><!-- fragment --> 
+<p>Example: </p><div class="fragment"><div class="line">balance <a class="code" href="new_8delete_8array_2delete__align__val__t__replace_8pass_8cpp.html#acf297e3d7ba2094dbfbfded490404315">b</a>;</div><div class="line"><a class="code" href="new_8delete_8array_2delete__align__val__t__replace_8pass_8cpp.html#acf297e3d7ba2094dbfbfded490404315">b</a>.account = <a class="code" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(myaccount);</div><div class="line">balance(<a class="code" href="new_8delete_8array_2delete__align__val__t__replace_8pass_8cpp.html#acf297e3d7ba2094dbfbfded490404315">b</a>, <span class="keyword">sizeof</span>(balance));</div></div><!-- fragment --> 
 </div>
 </div>
 </div><!-- contents -->
