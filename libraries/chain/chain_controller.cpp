@@ -1487,7 +1487,8 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
       });
 
 
-      auto active_producers_authority = authority(config::producers_authority_threshold, {}, {});
+      uint32_t authority_threshold = EOS_PERCENT_CEIL(gpo.active_producers.producers.size(), config::producers_authority_threshold_pct);
+      auto active_producers_authority = authority(authority_threshold, {}, {});
       for(auto& name : gpo.active_producers.producers ) {
          active_producers_authority.accounts.push_back({{name.producer_name, config::active_name}, 1});
       }
