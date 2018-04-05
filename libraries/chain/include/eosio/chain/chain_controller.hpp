@@ -345,6 +345,7 @@ namespace eosio { namespace chain {
          /// Reset the object graph in-memory
          void _initialize_indexes();
          void _initialize_chain(contracts::chain_initializer& starter);
+         void _update_producers_authority();
 
          producer_schedule_type _calculate_producer_schedule()const;
          const shared_producer_schedule_type& _head_producer_schedule()const;
