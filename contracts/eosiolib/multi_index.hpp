@@ -668,6 +668,7 @@ class multi_index
       template<typename Lambda>
       void modify( const T& obj, uint64_t payer, Lambda&& updater ) {
          const auto& objitem = static_cast<const item&>(obj);
+         eosio_assert( objitem.__idx == this, "object passed to modify is not in multi_index" );
          auto& mutableitem = const_cast<item&>(objitem);
 
          auto secondary_keys = boost::hana::transform( _indices, [&]( auto&& idx ) {
