@@ -12,6 +12,7 @@ transaction_metadata::transaction_metadata( const packed_transaction& t, chain_i
    ,billable_packed_size( t.get_billable_size() )
    ,signature_count(t.signatures.size())
    ,published(published)
+   ,packed_digest(t.packed_digest())
    ,raw_data(raw_trx->data())
    ,raw_size(raw_trx->size())
    ,is_implicit(implicit)

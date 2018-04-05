@@ -98,7 +98,6 @@ namespace eosio { namespace chain {
     */
    struct signed_block_summary : public signed_block_header {
       vector<region_summary>    regions;
-      checksum256_type          calculate_transaction_mroot() const;
    };
 
    /**

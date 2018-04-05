@@ -663,7 +663,7 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
       _pending_block->producer    = producer_obj.owner;
       _pending_block->previous    = head_block_id();
       _pending_block->block_mroot = get_dynamic_global_properties().block_merkle_root.get_root();
-      _pending_block->transaction_mroot = transaction_metadata::calculate_transaction_merkle_root( _pending_transaction_metas );
+      _pending_block->transaction_mroot = _pending_block_trace->calculate_transaction_merkle_root();
       _pending_block->action_mroot = _pending_block_trace->calculate_action_merkle_root();
 
       if( is_start_of_round( _pending_block->block_num() ) ) {
@@ -907,6 +907,10 @@ void chain_controller::__apply_block(const signed_block& next_block)
                } else {
                   s_trace.transaction_traces.emplace_back(delayed_transaction_processing(*mtrx));
                }
+               if( mtrx->raw_trx.valid() && !mtrx->is_implicit ) { // if an input transaction
+                  s_trace.transaction_traces.back().packed_trx_digest = mtrx->packed_digest;
+               }
+
                EOS_ASSERT( receipt.status == s_trace.transaction_traces.back().status, tx_receipt_inconsistent_status,
                            "Received status of transaction from block (${rstatus}) does not match the applied transaction's status (${astatus})",
                            ("rstatus",receipt.status)("astatus",s_trace.transaction_traces.back().status) );
@@ -936,8 +940,8 @@ void chain_controller::__apply_block(const signed_block& next_block)
       next_block_trace.region_traces.emplace_back(move(r_trace));
    } /// for each region
 
-   FC_ASSERT(next_block.action_mroot == next_block_trace.calculate_action_merkle_root());
-   FC_ASSERT( transaction_metadata::calculate_transaction_merkle_root(input_metas) == next_block.transaction_mroot, "merkle root does not match" );
+   FC_ASSERT( next_block.action_mroot == next_block_trace.calculate_action_merkle_root(), "action merkle root does not match");
+   FC_ASSERT( next_block.transaction_mroot == next_block_trace.calculate_transaction_merkle_root(), "transaction merkle root does not match" );
 
    _finalize_block( next_block_trace, signing_producer );
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
@@ -2178,6 +2182,10 @@ transaction_trace chain_controller::wrap_transaction_processing( transaction_met
    record_locks_for_data_access(result, bshard_trace.read_locks, bshard_trace.write_locks);
 
    bshard.transactions.emplace_back( result );
+
+   if( data.raw_trx.valid() && !data.is_implicit ) { // if an input transaction
+      result.packed_trx_digest = data.packed_digest;
+   }
 
    bshard_trace.append(result);
 

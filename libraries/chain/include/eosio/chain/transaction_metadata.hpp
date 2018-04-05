@@ -33,6 +33,7 @@ class transaction_metadata {
       optional<bytes>                       raw_trx;
       optional<transaction>                 decompressed_trx;
       vector<bytes>                         context_free_data;
+      digest_type                           packed_digest;
 
       // things for signed/packed transactions
       optional<flat_set<public_key_type>>   signing_keys;
