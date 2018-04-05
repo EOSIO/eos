@@ -10,6 +10,7 @@ transaction_metadata::transaction_metadata( const packed_transaction& t, chain_i
    ,context_free_data(t.get_context_free_data())
    ,id(decompressed_trx->id())
    ,billable_packed_size( t.get_billable_size() )
+   ,signature_count(t.signatures.size())
    ,published(published)
    ,raw_data(raw_trx->data())
    ,raw_size(raw_trx->size())

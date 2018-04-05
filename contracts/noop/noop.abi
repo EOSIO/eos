@@ -16,8 +16,10 @@
   ],
   "actions": [{
   "name":"anyaction",
-  "type":"anyaction"
+  "type":"anyaction",
+  "ricardian_contract": ""
   }
 ],
-  "tables": []
+  "tables": [],
+  "clauses": []
 }

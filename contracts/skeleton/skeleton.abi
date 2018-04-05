@@ -23,7 +23,8 @@
   ],
   "actions": [{
       "name": "transfer",
-      "type": "transfer"
+      "type": "transfer",
+      "ricardian_contract": ""
     }
   ],
   "tables": [{
@@ -33,5 +34,6 @@
       "key_names" : ["account"],
       "key_types" : ["name"]
     }
-  ]
+  ],
+  "clauses": []
 }

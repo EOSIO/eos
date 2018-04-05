@@ -572,14 +572,14 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
          for (const auto &ar : tr.action_traces) {
             if (!ar.console.empty()) {
                auto prefix = fc::format_string(
-                  "[(${a},${n})->${r}]",
+                  "\n[(${a},${n})->${r}]",
                   fc::mutable_variant_object()
                      ("a", ar.act.account)
                      ("n", ar.act.name)
                      ("r", ar.receiver));
-               ilog(prefix + ": CONSOLE OUTPUT BEGIN =====================");
-               ilog(ar.console);
-               ilog(prefix + ": CONSOLE OUTPUT END   =====================");
+               ilog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
+                    + ar.console
+                    + prefix + ": CONSOLE OUTPUT END   =====================" );
             }
          }
       }
@@ -920,6 +920,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
             c_trace.shard_traces.emplace_back(move(s_trace));
          } /// for each shard
 
+         _resource_limits.synchronize_account_ram_usage();
          _apply_cycle_trace(c_trace);
          r_trace.cycle_traces.emplace_back(move(c_trace));
       } /// for each cycle
@@ -1204,8 +1205,8 @@ static uint32_t calculate_transaction_cpu_usage( const transaction_trace& trace,
 
    // charge a system controlled amount for signature verification/recovery
    uint32_t signature_cpu_usage = 0;
-   if( meta.signing_keys ) {
-      signature_cpu_usage = (uint32_t)meta.signing_keys->size() * chain_configuration.per_signature_cpu_usage;
+   if( meta.signature_count ) {
+      signature_cpu_usage = meta.signature_count * chain_configuration.per_signature_cpu_usage;
    }
 
    uint32_t context_free_cpu_usage = (uint32_t)((uint64_t)context_free_actual_cpu_usage * chain_configuration.context_free_discount_cpu_usage_num / chain_configuration.context_free_discount_cpu_usage_den);
@@ -1990,7 +1991,7 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    result.status = transaction_trace::soft_fail;
 
    transaction etrx;
-   etrx.actions.emplace_back(vector<permission_level>{{meta.sender_id,config::active_name}},
+   etrx.actions.emplace_back(vector<permission_level>{{*meta.sender,config::active_name}},
                              contracts::onerror(meta.raw_data, meta.raw_data + meta.raw_size) );
 
    try {
@@ -2028,17 +2029,16 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
 
 void chain_controller::_destroy_generated_transaction( const generated_transaction_object& gto ) {
    auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
-   _resource_limits.add_account_ram_usage(gto.payer, -( config::billable_size_v<generated_transaction_object> + gto.packed_trx.size()));
+   _resource_limits.add_pending_account_ram_usage(gto.payer, -( config::billable_size_v<generated_transaction_object> + gto.packed_trx.size()));
    generated_transaction_idx.remove(gto);
 
 }
 
 void chain_controller::_create_generated_transaction( const deferred_transaction& dto ) {
    size_t trx_size = fc::raw::pack_size(dto);
-   _resource_limits.add_account_ram_usage(
+   _resource_limits.add_pending_account_ram_usage(
       dto.payer,
-      (config::billable_size_v<generated_transaction_object> + (int64_t)trx_size),
-      "Generated Transaction ${id} from ${s}", _V("id", dto.sender_id)("s",dto.sender)
+      (config::billable_size_v<generated_transaction_object> + (int64_t)trx_size)
    );
 
    _db.create<generated_transaction_object>([&](generated_transaction_object &obj) {
@@ -2157,6 +2157,7 @@ transaction_trace chain_controller::wrap_transaction_processing( transaction_met
    // for now apply the transaction serially but schedule it according to those invariants
 
    auto result = trx_processing(data);
+   _resource_limits.synchronize_account_ram_usage();
 
    auto& bcycle = _pending_block->regions.back().cycles_summary.back();
    auto& bshard = bcycle.front();

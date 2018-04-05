@@ -85,17 +85,17 @@ wcmd create -n ignition
 ###INSERT cacmd
 
 
-ecmd set contract eosio contracts/eosio.bios/eosio.bios.wast contracts/eosio.bios/eosio.bios.abi
+ecmd set contract eosio contracts/eosio.bios contracts/eosio.bios/eosio.bios.wast contracts/eosio.bios/eosio.bios.abi
 
 #the setprods.json argument cannot pass through the function call due to embedded quotes
 echo ===== Start: $step ============ >> $logfile
-echo executing: cleos --wallet-port $wdport -p $biosport -H $bioshost push action eosio setprods \"$(cat setprods.json)\" -p eosio@active | tee -a $logfile
+echo executing: cleos --wallet-port $wdport -p $biosport -H $bioshost push action eosio setprods setprods.json -p eosio@active | tee -a $logfile
 echo ----------------------- >> $logfile
-programs/cleos/cleos --wallet-port $wdport --wallet-host $wdhost -p $biosport -H $bioshost push action eosio setprods "$(cat setprods.json)" -p eosio@active >> $logfile 2>&1
+programs/cleos/cleos --wallet-port $wdport --wallet-host $wdhost -p $biosport -H $bioshost push action eosio setprods setprods.json -p eosio@active >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
-ecmd set contract eosio contracts/eosio.system/eosio.system.wast contracts/eosio.system/eosio.system.abi
+ecmd set contract eosio contracts/eosio.system contracts/eosio.system/eosio.system.wast contracts/eosio.system/eosio.system.abi
 
 echo ===== Start: $step ============ >> $logfile
 echo executing: cleos --wallet-port $wdport -p $biosport -H $bioshost push action eosio issue '{"to":"eosio","quantity":"1000000000.0000 EOS","memo":"init"}' -p eosio@active | tee -a $logfile
@@ -104,6 +104,6 @@ programs/cleos/cleos --wallet-port $wdport --wallet-host $wdhost -p $biosport -H
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
-for a in {a..u}; do ecmd transfer eosio init$a 1000000.0000 "\"fund producer init$a\""; done
+for a in {a..u}; do ecmd transfer eosio init$a 1000000.0000 "\"fund_producer_init$a\""; done
 
 pkill -15 keosd

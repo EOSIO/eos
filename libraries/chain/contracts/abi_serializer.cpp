@@ -66,6 +66,7 @@ namespace eosio { namespace chain { namespace contracts {
 
       //native.hpp
       built_in_types.emplace("string",                    pack_unpack<string>());
+      built_in_types.emplace("clause_pair",               pack_unpack<clause_pair>());
       built_in_types.emplace("time",                      pack_unpack<fc::time_point_sec>());
       built_in_types.emplace("signature",                 pack_unpack<signature_type>());
       built_in_types.emplace("checksum160",               pack_unpack<checksum160_type>());

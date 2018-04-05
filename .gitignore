@@ -49,6 +49,8 @@ programs/eosioc/eosioc
 programs/launcher/launcher
 programs/eosio-abigen/eosio-abigen
 
+scripts/tn_init.sh
+
 tests/app_test
 tests/chain_bench
 tests/chain_test

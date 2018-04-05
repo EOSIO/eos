@@ -43,6 +43,7 @@ class transaction_metadata {
       uint32_t                              cycle_index           = 0;
       uint32_t                              shard_index           = 0;
       uint32_t                              billable_packed_size  = 0;
+      uint32_t                              signature_count       = 0;
       time_point                            published;
       fc::microseconds                      delay;
 
