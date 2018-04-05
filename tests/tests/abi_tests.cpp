@@ -1864,8 +1864,8 @@ BOOST_AUTO_TEST_CASE(general)
         "region": "1",
         "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
         "actions":[{"account":"accountname1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
-        "net_usage_words":15,
-        "kcpu_usage":43,
+        "max_net_usage_words":15,
+        "max_kcpu_usage":43,
         "delay_sec":0
       },
       "transaction_arr": [{
@@ -1875,8 +1875,8 @@ BOOST_AUTO_TEST_CASE(general)
         "region": "1",
         "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
         "actions":[{"account":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
-        "net_usage_words":15,
-        "kcpu_usage":43,
+        "max_net_usage_words":15,
+        "max_kcpu_usage":43,
         "delay_sec":0
       },{
         "ref_block_num":"2",
@@ -1885,8 +1885,8 @@ BOOST_AUTO_TEST_CASE(general)
         "region": "1",
         "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
         "actions":[{"account":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}],
-        "net_usage_words":21,
-        "kcpu_usage":87,
+        "max_net_usage_words":21,
+        "max_kcpu_usage":87,
         "delay_sec":0
       }],
       "strx": {
@@ -1898,8 +1898,8 @@ BOOST_AUTO_TEST_CASE(general)
         "context_free_data" : ["abcdef","0123456789","ABCDEF0123456789abcdef"],
         "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
         "actions":[{"account":"accountname1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
-        "net_usage_words":15,
-        "kcpu_usage":43,
+        "max_net_usage_words":15,
+        "max_kcpu_usage":43,
         "delay_sec":0
       },
       "strx_arr": [{
@@ -1911,8 +1911,8 @@ BOOST_AUTO_TEST_CASE(general)
         "context_free_data" : ["abcdef","0123456789","ABCDEF0123456789abcdef"],
         "context_free_actions":[{"account":"contextfree1", "name":"cfactionname1", "authorization":[{"actor":"cfacc1","permission":"cfpermname1"}], "data":"778899"}],
         "actions":[{"account":"acc1", "name":"actionname1", "authorization":[{"actor":"acc1","permission":"permname1"}], "data":"445566"}],
-        "net_usage_words":15,
-        "kcpu_usage":43,
+        "max_net_usage_words":15,
+        "max_kcpu_usage":43,
         "delay_sec":0
       },{
         "ref_block_num":"2",
@@ -1923,8 +1923,8 @@ BOOST_AUTO_TEST_CASE(general)
         "context_free_data" : ["abcdef","0123456789","ABCDEF0123456789abcdef"],
         "context_free_actions":[{"account":"contextfree2", "name":"cfactionname2", "authorization":[{"actor":"cfacc2","permission":"cfpermname2"}], "data":"667788"}],
         "actions":[{"account":"acc2", "name":"actionname2", "authorization":[{"actor":"acc2","permission":"permname2"}], "data":""}],
-        "net_usage_words":15,
-        "kcpu_usage":43,
+        "max_net_usage_words":15,
+        "max_kcpu_usage":43,
         "delay_sec":0
       }],
       "keyweight": {"key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV", "weight":"100"},

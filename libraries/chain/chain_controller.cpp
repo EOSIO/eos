@@ -484,7 +484,7 @@ transaction chain_controller::_get_on_block_transaction()
 void chain_controller::_apply_on_block_transaction()
 {
    _pending_block_trace->implicit_transactions.emplace_back(_get_on_block_transaction());
-   transaction_metadata mtrx(packed_transaction(_pending_block_trace->implicit_transactions.back()), get_chain_id(), head_block_time(), true /*is implicit*/);
+   transaction_metadata mtrx(packed_transaction(_pending_block_trace->implicit_transactions.back()), get_chain_id(), head_block_time(), optional<time_point>(), true /*is implicit*/);
    _push_transaction(std::move(mtrx));
 }
 
@@ -572,14 +572,14 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
          for (const auto &ar : tr.action_traces) {
             if (!ar.console.empty()) {
                auto prefix = fc::format_string(
-                  "[(${a},${n})->${r}]",
+                  "\n[(${a},${n})->${r}]",
                   fc::mutable_variant_object()
                      ("a", ar.act.account)
                      ("n", ar.act.name)
                      ("r", ar.receiver));
-               ilog(prefix + ": CONSOLE OUTPUT BEGIN =====================");
-               ilog(ar.console);
-               ilog(prefix + ": CONSOLE OUTPUT END   =====================");
+               ilog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
+                    + ar.console
+                    + prefix + ": CONSOLE OUTPUT END   =====================" );
             }
          }
       }
@@ -780,12 +780,12 @@ void chain_controller::__apply_block(const signed_block& next_block)
    input_metas.reserve(next_block.input_transactions.size() + next_block_trace.implicit_transactions.size());
 
    for ( const auto& t : next_block_trace.implicit_transactions ) {
-      input_metas.emplace_back(packed_transaction(t), get_chain_id(), head_block_time(), true /*implicit*/);
+      input_metas.emplace_back(packed_transaction(t), get_chain_id(), head_block_time(), processing_deadline, true /*implicit*/);
    }
 
    map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
-      input_metas.emplace_back(t, chain_id_type(), next_block.timestamp);
+      input_metas.emplace_back(t, chain_id_type(), next_block.timestamp, processing_deadline);
       validate_transaction_with_minimal_state( input_metas.back().trx(), input_metas.back().billable_packed_size );
       if( should_check_signatures() ) {
          input_metas.back().signing_keys = input_metas.back().trx().get_signature_keys( t.signatures, chain_id_type(),
@@ -876,7 +876,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                         FC_ASSERT( trx.execute_after <= head_block_time() , "deferred transaction executed prematurely" );
                         validate_not_expired( trx );
                         validate_uniqueness( trx );
-                        _temp.emplace(trx, gtrx->published, trx.sender, trx.sender_id, gtrx->packed_trx.data(), gtrx->packed_trx.size() );
+                        _temp.emplace(trx, gtrx->published, trx.sender, trx.sender_id, gtrx->packed_trx.data(), gtrx->packed_trx.size(), processing_deadline );
                         _destroy_generated_transaction(*gtrx);
                         return &*_temp;
                      } else {
@@ -897,7 +897,6 @@ void chain_controller::__apply_block(const signed_block& next_block)
                mtrx->shard_index = shard_index;
                mtrx->allowed_read_locks.emplace(&shard.read_locks);
                mtrx->allowed_write_locks.emplace(&shard.write_locks);
-               mtrx->processing_deadline = processing_deadline;
 
                if( mtrx->delay.count() == 0 ) {
                   s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
@@ -920,6 +919,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
             c_trace.shard_traces.emplace_back(move(s_trace));
          } /// for each shard
 
+         _resource_limits.synchronize_account_ram_usage();
          _apply_cycle_trace(c_trace);
          r_trace.cycle_traces.emplace_back(move(c_trace));
       } /// for each cycle
@@ -1990,7 +1990,7 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    result.status = transaction_trace::soft_fail;
 
    transaction etrx;
-   etrx.actions.emplace_back(vector<permission_level>{{meta.sender_id,config::active_name}},
+   etrx.actions.emplace_back(vector<permission_level>{{*meta.sender,config::active_name}},
                              contracts::onerror(meta.raw_data, meta.raw_data + meta.raw_size) );
 
    try {
@@ -2028,17 +2028,16 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
 
 void chain_controller::_destroy_generated_transaction( const generated_transaction_object& gto ) {
    auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
-   _resource_limits.add_account_ram_usage(gto.payer, -( config::billable_size_v<generated_transaction_object> + gto.packed_trx.size()));
+   _resource_limits.add_pending_account_ram_usage(gto.payer, -( config::billable_size_v<generated_transaction_object> + gto.packed_trx.size()));
    generated_transaction_idx.remove(gto);
 
 }
 
 void chain_controller::_create_generated_transaction( const deferred_transaction& dto ) {
    size_t trx_size = fc::raw::pack_size(dto);
-   _resource_limits.add_account_ram_usage(
+   _resource_limits.add_pending_account_ram_usage(
       dto.payer,
-      (config::billable_size_v<generated_transaction_object> + (int64_t)trx_size),
-      "Generated Transaction ${id} from ${s}", _V("id", dto.sender_id)("s",dto.sender)
+      (config::billable_size_v<generated_transaction_object> + (int64_t)trx_size)
    );
 
    _db.create<generated_transaction_object>([&](generated_transaction_object &obj) {
@@ -2105,20 +2104,24 @@ vector<transaction_trace> chain_controller::_push_deferred_transactions( bool fl
       candidates.emplace_back(&gtrx);
    }
 
-   auto deferred_transactions_deadline = fc::time_point::now() + fc::microseconds(config::deferred_transactions_max_time_per_block_us);
+   optional<fc::time_point> processing_deadline;
+   if (_limits.max_deferred_transactions_us.count() > 0) {
+      processing_deadline = fc::time_point::now() + _limits.max_deferred_transactions_us;
+   }
+
    vector<transaction_trace> res;
    for (const auto* trx_p: candidates) {
       if (!is_known_transaction(trx_p->trx_id)) {
          try {
             auto trx = fc::raw::unpack<deferred_transaction>(trx_p->packed_trx.data(), trx_p->packed_trx.size());
-            transaction_metadata mtrx (trx, trx_p->published, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size(), deferred_transactions_deadline);
+            transaction_metadata mtrx (trx, trx_p->published, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size(), processing_deadline);
             res.push_back( _push_transaction(std::move(mtrx)) );
          } FC_CAPTURE_AND_LOG((trx_p->trx_id)(trx_p->sender));
       }
 
       _destroy_generated_transaction(*trx_p);
 
-      if ( deferred_transactions_deadline <= fc::time_point::now() ) {
+      if ( !processing_deadline || *processing_deadline <= fc::time_point::now() ) {
          break;
       }
    }
@@ -2157,6 +2160,7 @@ transaction_trace chain_controller::wrap_transaction_processing( transaction_met
    // for now apply the transaction serially but schedule it according to those invariants
 
    auto result = trx_processing(data);
+   _resource_limits.synchronize_account_ram_usage();
 
    auto& bcycle = _pending_block->regions.back().cycles_summary.back();
    auto& bshard = bcycle.front();

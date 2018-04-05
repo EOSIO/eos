@@ -42,16 +42,19 @@
 #include <test_api_mem/test_api_mem.wast.hpp>
 #include <test_api_db/test_api_db.wast.hpp>
 #include <test_api_multi_index/test_api_multi_index.wast.hpp>
-#include <test_api/test_api.hpp>
+
+#define DISABLE_EOSLIB_SERIALIZE
+#include <test_api/test_api_common.hpp>
+
+FC_REFLECT( dummy_action, (a)(b)(c) );
+FC_REFLECT( u128_action, (values) );
+FC_REFLECT( cf_action, (payload)(cfd_idx) );
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
 #else
 #define TESTER validating_tester
 #endif
-
-FC_REFLECT( dummy_action, (a)(b)(c) );
-FC_REFLECT( u128_action, (values) );
 
 using namespace eosio;
 using namespace eosio::testing;
@@ -553,7 +556,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 	//       1) compilation of the smart contract should probably not count towards the CPU time of a transaction that first uses it;
 	//       2) checktime should eventually switch to a deterministic metric which should hopefully fix the inconsistencies
 	//          of this test succeeding/failing on different machines (for example, succeeding on our local dev machines but failing on Jenkins).
-   TESTER t( {fc::milliseconds(5000), fc::milliseconds(5000)} );
+   TESTER t( {fc::milliseconds(5000), fc::milliseconds(5000), fc::milliseconds(-1)} );
    t.produce_blocks(2);
 
    t.create_account( N(testapi) );
@@ -695,6 +698,13 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
       );
    control->push_deferred_transactions( true );
 
+   // test error handling on deferred transaction failure
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_trigger_error_handler", {});
+   auto tx_traces = control->push_deferred_transactions( true );
+   BOOST_CHECK_EQUAL(tx_traces.size(), 1);
+   BOOST_CHECK_EQUAL(tx_traces.at(0).action_traces.size(), 2);
+   BOOST_CHECK_EQUAL(tx_traces.at(0).status, transaction_receipt::soft_fail);
+
    // test test_transaction_size
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(55) ); // TODO: Need a better way to test this.
    control->push_deferred_transactions( true );
@@ -702,7 +712,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    // test test_read_transaction
    // this is a bit rough, but I couldn't figure out a better way to compare the hashes
    auto tx_trace = CALL_TEST_FUNCTION( *this, "test_transaction", "test_read_transaction", {} );
-   string sha_expect = "f899d4ec365702f99607bc640ec21a21b109eee01504011769a9fd4f41a5b72c"; // TODO: Need a better way to test this.
+   string sha_expect = tx_trace.id;
    BOOST_CHECK_EQUAL(tx_trace.action_traces.front().console == sha_expect, true);
    // test test_tapos_block_num
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_num", fc::raw::pack(control->head_block_num()) );

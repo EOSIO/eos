@@ -2,9 +2,9 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <eosiolib/transaction.hpp>
 #include <eosiolib/action.hpp>
 #include <eosiolib/crypto.h>
+#include <eosiolib/transaction.hpp>
 
 #include "test_api.hpp"
 
@@ -146,10 +146,10 @@ void test_transaction::test_tapos_block_num() {
 void test_transaction::test_read_transaction() {
    using namespace eosio;
    checksum256 h;
-   transaction t;
-   char* p = (char*)&t;
-   uint32_t read = read_transaction( (char*)&t, sizeof(t) );
-   sha256(p, read, &h);
+   auto size = transaction_size();
+   char buf[size];
+   uint32_t read = read_transaction( buf, size );
+   sha256(buf, read, &h);
    printhex( &h, sizeof(h) );
 }
 
@@ -191,6 +191,20 @@ void test_transaction::send_transaction_empty(uint64_t receiver, uint64_t, uint6
    trx.send(0, receiver);
 
    eosio_assert(false, "send_transaction_empty() should've thrown an error");
+}
+
+void test_transaction::send_transaction_trigger_error_handler(uint64_t receiver, uint64_t, uint64_t) {
+   using namespace eosio;
+   auto trx = transaction();
+   test_action_action<N(testapi), WASM_TEST_ACTION("test_action", "assert_false")> test_action;
+   trx.actions.emplace_back(vector<permission_level>{{N(testapi), N(active)}}, test_action);
+   trx.send(0, receiver);
+}
+
+void test_transaction::assert_false_error_handler(const eosio::deferred_transaction& dtrx) {
+   auto onerror_action = eosio::get_action(1, 0);
+   eosio_assert( onerror_action.authorization.at(0).actor == dtrx.actions.at(0).account,
+                "authorizer of onerror action does not match receiver of original action in the deferred transaction" );
 }
 
 /**

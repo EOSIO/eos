@@ -75,10 +75,9 @@ void apply_eosio_newaccount(apply_context& context) {
       a.creation_date = context.controller.head_block_time();
    });
    resources.initialize_account(create.name);
-   resources.add_account_ram_usage(
+   resources.add_pending_account_ram_usage(
       create.creator,
-      (int64_t)config::overhead_per_account_ram_bytes,
-      "New Account ${n}", _V("n", create.name)
+      (int64_t)config::overhead_per_account_ram_bytes
    );
 
    auto create_permission = [owner=create.name, &db, &context, &resources](const permission_name& name, permission_object::id_type parent, authority &&auth) {
@@ -89,10 +88,9 @@ void apply_eosio_newaccount(apply_context& context) {
          p.auth = std::move(auth);
       });
 
-      resources.add_account_ram_usage(
+      resources.add_pending_account_ram_usage(
          owner,
-         (int64_t)(config::billable_size_v<permission_object> + result.auth.get_billable_size()),
-         "New Permission ${a}@${p}", _V("a", owner)("p",name)
+         (int64_t)(config::billable_size_v<permission_object> + result.auth.get_billable_size())
       );
 
       return result;
@@ -141,10 +139,9 @@ void apply_eosio_setcode(apply_context& context) {
    });
 
    if (new_size != old_size) {
-      resources.add_account_ram_usage(
+      resources.add_pending_account_ram_usage(
          act.account,
-         new_size - old_size,
-         "Update Contract Code to ${v} [new size=${new}, old size=${old}]", _V("v",account.code_version)("new", new_size)("old",old_size)
+         new_size - old_size
       );
    }
 }
@@ -175,10 +172,9 @@ void apply_eosio_setabi(apply_context& context) {
    });
 
    if (new_size != old_size) {
-      resources.add_account_ram_usage(
+      resources.add_pending_account_ram_usage(
          act.account,
-         new_size - old_size,
-         "Update Contract ABI [new size=${new}, old size=${old}]", _V("new", new_size)("old",old_size)
+         new_size - old_size
       );
    }
 }
@@ -261,10 +257,9 @@ void apply_eosio_updateauth(apply_context& context) {
 
       int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
 
-      resources.add_account_ram_usage(
+      resources.add_pending_account_ram_usage(
          permission->owner,
-         new_size - old_size,
-         "Update Permission ${a}@${p} [new size=${new}, old size=${old}] ", _V("a", permission->owner)("p",permission->name)
+         new_size - old_size
       );
    } else {
       // TODO/QUESTION: If we are creating a new permission, should we check if the message declared
@@ -278,10 +273,9 @@ void apply_eosio_updateauth(apply_context& context) {
          po.delay = fc::seconds(update.delay);
       });
 
-      resources.add_account_ram_usage(
+      resources.add_pending_account_ram_usage(
          p.owner,
-         (int64_t)(config::billable_size_v<permission_object> + p.auth.get_billable_size()),
-         "New Permission ${a}@${p}", _V("a", p.owner)("p",p.name)
+         (int64_t)(config::billable_size_v<permission_object> + p.auth.get_billable_size())
       );
 
    }
@@ -315,7 +309,7 @@ void apply_eosio_deleteauth(apply_context& context) {
                  "Cannot delete a linked authority. Unlink the authority first");
    }
 
-   resources.add_account_ram_usage(
+   resources.add_pending_account_ram_usage(
       permission.owner,
       -(int64_t)(config::billable_size_v<permission_object> + permission.auth.get_billable_size())
    );
@@ -360,10 +354,9 @@ void apply_eosio_linkauth(apply_context& context) {
             link.required_permission = requirement.requirement;
          });
 
-         resources.add_account_ram_usage(
+         resources.add_pending_account_ram_usage(
             l.account,
-            (int64_t)(config::billable_size_v<permission_link_object>),
-            "New Permission Link ${code}::${act} -> ${a}@${p}", _V("code", l.code)("act",l.message_type)("a", l.account)("p",l.required_permission)
+            (int64_t)(config::billable_size_v<permission_link_object>)
          );
       }
   } FC_CAPTURE_AND_RETHROW((requirement))
@@ -379,7 +372,7 @@ void apply_eosio_unlinkauth(apply_context& context) {
    auto link_key = boost::make_tuple(unlink.account, unlink.code, unlink.type);
    auto link = db.find<permission_link_object, by_action_name>(link_key);
    EOS_ASSERT(link != nullptr, action_validate_exception, "Attempting to unlink authority, but no link found");
-   resources.add_account_ram_usage(
+   resources.add_pending_account_ram_usage(
       link->account,
       -(int64_t)(config::billable_size_v<permission_link_object>)
    );
@@ -389,7 +382,7 @@ void apply_eosio_unlinkauth(apply_context& context) {
 
 
 void apply_eosio_onerror(apply_context& context) {
-   assert(context.trx_meta.sender);
+   FC_ASSERT(context.trx_meta.sender.valid(), "onerror action cannot be called directly");
    context.require_recipient(*context.trx_meta.sender);
 }
 
@@ -480,7 +473,7 @@ void apply_eosio_postrecovery(apply_context& context) {
       .parent = 0,
       .data = recover_act.data
    }, update);
-   
+
    const uint128_t request_id = context.controller.transaction_id_to_sender_id(context.trx_meta.id);
    auto record_data = mutable_variant_object()
       ("account", account)
@@ -589,7 +582,7 @@ void apply_eosio_canceldelay(apply_context& context) {
 
    FC_ASSERT (found, "canceldelay action must be signed with the \"active\" permission for one of the actors"
                      " provided in the authorizations on the original transaction");
-   
+
    context.cancel_deferred(context.controller.transaction_id_to_sender_id(trx_id));
 }
 

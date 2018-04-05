@@ -25,26 +25,6 @@ if [ -z "$EOSIO_NODE" ]; then
     exit -1
 fi
 
-relaunch() {
-    nohup $rundir/$prog $* --data-dir $datadir --config-dir etc/eosio/node_$EOSIO_NODE > $datadir/stdout.txt  2>> $log &
-    pid=$!
-
-    echo $pid > $datadir/$prog.pid
-
-    for (( a = 10; $a; a = $(($a - 1)) )); do
-        echo checking viability pass $((11 - $a))
-        sleep 2
-        running=`ps -hp $pid`
-        if [ -z "$running" ]; then
-            break;
-        fi
-        connected=`grep -c "net_plugin.cpp:.*connection" $log`
-        if [ "$connected" -ne 0 ]; then
-            break;
-        fi
-    done
-}
-
 datadir=var/lib/node_$EOSIO_NODE
 now=`date +'%Y_%m_%d_%H_%M_%S'`
 log=stderr.$now.txt
@@ -52,11 +32,32 @@ touch $datadir/$log
 rm $datadir/stderr.txt
 ln -s $log $datadir/stderr.txt
 
+relaunch() {
+    echo "$rundir/$prog $* --data-dir $datadir --config-dir etc/eosio/node_$EOSIO_NODE > $datadir/stdout.txt  2>> $datadir/$log "
+    nohup $rundir/$prog $* --data-dir $datadir --config-dir etc/eosio/node_$EOSIO_NODE > $datadir/stdout.txt  2>> $datadir/$log &
+    pid=$!
+    echo pid = $pid
+    echo $pid > $datadir/$prog.pid
+
+    for (( a = 10; $a; a = $(($a - 1)) )); do
+        echo checking viability pass $((11 - $a))
+        sleep 2
+        running=$(pgrep $prog | grep -c $pid)
+        echo running = $running
+        if [ -z "$running" ]; then
+            break;
+        fi
+        connected=`grep -c "net_plugin.cpp:.*connection" $datadir/$log`
+        if [ "$connected" -ne 0 ]; then
+            break;
+        fi
+    done
+}
 
 if [ -z "$EOSIO_LEVEL" ]; then
     echo starting with no modifiers
     relaunch $prog $rundir $*
-    if [ \( -z "$running" \) -o \( "$connected" -eq 0 \) ]; then
+    if [ "$connected" -eq 0 ]; then
         EOSIO_LEVEL=replay
     else
         exit 0
@@ -66,7 +67,7 @@ fi
 if [ "$EOSIO_LEVEL" == replay ]; then
     echo starting with replay
     relaunch $prog $rundir $* --replay
-    if [ \( -z "$running" \) -o \( "$connected" -eq 0 \) ]; then
+    if [  "$connected" -eq 0 ]; then
         EOSIO_LEVEL=resync
     else
         exit 0
