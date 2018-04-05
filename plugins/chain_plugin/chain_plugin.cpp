@@ -47,8 +47,9 @@ public:
    fc::optional<chain_controller::controller_config> chain_config = chain_controller::controller_config();
    fc::optional<chain_controller>   chain;
    chain_id_type                    chain_id;
-   uint32_t                         max_reversible_block_time_ms;
-   uint32_t                         max_pending_transaction_time_ms;
+   int32_t                          max_reversible_block_time_ms;
+   int32_t                          max_pending_transaction_time_ms;
+   int32_t                          max_deferred_transaction_time_ms;
    //txn_msg_rate_limits              rate_limits;
    fc::optional<vm_type>            wasm_runtime;
 };
@@ -71,6 +72,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Limits the maximum time (in milliseconds) that a reversible block is allowed to run before being considered invalid")
          ("max-pending-transaction-time", bpo::value<int32_t>()->default_value(-1),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
+         ("max-deferred-transaction-time", bpo::value<int32_t>()->default_value(20),
+          "Limits the maximum time (in milliseconds) that is allowed a to push deferred transactions at the start of a block")
          ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/binaryen"), "Override default WASM runtime")
 #warning TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
@@ -163,6 +166,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
    my->max_reversible_block_time_ms = options.at("max-reversible-block-time").as<int32_t>();
    my->max_pending_transaction_time_ms = options.at("max-pending-transaction-time").as<int32_t>();
+   my->max_deferred_transaction_time_ms = options.at("max-deferred-transaction-time").as<int32_t>();
 
    if(options.count("wasm-runtime"))
       my->wasm_runtime = options.at("wasm-runtime").as<vm_type>();
@@ -189,6 +193,10 @@ void chain_plugin::plugin_startup()
 
    if (my->max_pending_transaction_time_ms > 0) {
       my->chain_config->limits.max_push_transaction_us = fc::milliseconds(my->max_pending_transaction_time_ms);
+   }
+
+   if (my->max_deferred_transaction_time_ms > 0 ) {
+      my->chain_config->limits.max_deferred_transactions_us = fc::milliseconds(my->max_deferred_transaction_time_ms);
    }
 
    if(my->wasm_runtime)
