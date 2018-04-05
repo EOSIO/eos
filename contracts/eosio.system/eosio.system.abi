@@ -106,7 +106,6 @@
          {"name":"max_authority_depth", "type":"uint16"},
          {"name":"max_inline_depth", "type":"uint16"},
          {"name":"max_inline_action_size", "type":"uint32"},
-         {"name":"max_generated_transaction_size", "type":"uint32"},
          {"name":"max_generated_transaction_count", "type":"uint32"},
          {"name":"percent_of_max_inflation_rate", "type":"uint32"},
          {"name":"storage_reserve_ratio", "type":"uint32"}
@@ -190,42 +189,55 @@
   ],
   "actions": [{
       "name": "transfer",
-      "type": "transfer"
+      "type": "transfer",
+      "ricardian_contract": ""
     },{
       "name": "issue",
-      "type": "issue"
+      "type": "issue",
+      "ricardian_contract": ""
     },{
       "name": "delegatebw",
-      "type": "delegatebw"
+      "type": "delegatebw",
+      "ricardian_contract": ""
     },{
       "name": "undelegatebw",
-      "type": "undelegatebw"
+      "type": "undelegatebw",
+      "ricardian_contract": ""
     },{
       "name": "refund",
-      "type": "refund"
+      "type": "refund",
+      "ricardian_contract": ""
     },{
       "name": "regproducer",
-      "type": "regproducer"
+      "type": "regproducer",
+      "ricardian_contract": ""
     },{
       "name": "unregprod",
-      "type": "unregprod"
+      "type": "unregprod",
+      "ricardian_contract": ""
     },{
       "name": "regproxy",
-      "type": "regproxy"
+      "type": "regproxy",
+      "ricardian_contract": ""
     },{
       "name": "unregproxy",
-      "type": "unregproxy"
+      "type": "unregproxy",
+      "ricardian_contract": ""
     },{
       "name": "voteproducer",
-      "type": "voteproducer"
+      "type": "voteproducer",
+      "ricardian_contract": ""
     },{
       "name": "claimrewards",
-      "type": "claimrewards"
+      "type": "claimrewards",
+      "ricardian_contract": ""
     },{
       "name": "nonce",
-      "type": "nonce"
+      "type": "nonce",
+      "ricardian_contract": ""
     }
   ],
   "tables": [
-  ]
+  ],
+  "clauses": []
 }

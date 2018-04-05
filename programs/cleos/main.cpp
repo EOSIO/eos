@@ -71,6 +71,7 @@ Options:
 */
 #include <string>
 #include <vector>
+#include <regex>
 #include <boost/asio.hpp>
 #include <boost/format.hpp>
 #include <iostream>
@@ -396,6 +397,16 @@ chain::action create_unlinkauth(const name& account, const name& code, const nam
                    contracts::unlinkauth{account, code, type}};
 }
 
+fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::legacy_parser)
+{
+   regex r("^[ \t]*[\{\[]");
+   if ( !regex_search(file_or_str, r) && is_regular_file(file_or_str) ) {
+      return fc::json::from_file(file_or_str, ptype);
+   } else {
+      return fc::json::from_string(file_or_str, ptype);
+   }
+}
+
 struct set_account_permission_subcommand {
    string accountStr;
    string permissionStr;
@@ -425,15 +436,9 @@ struct set_account_permission_subcommand {
                   auth = authority(public_key_type(authorityJsonOrFile));
                } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
             } else {
-               fc::variant parsedAuthority;
                try {
-                  if (boost::istarts_with(authorityJsonOrFile, "{")) {
-                     parsedAuthority = fc::json::from_string(authorityJsonOrFile);
-                  } else {
-                     parsedAuthority = fc::json::from_file(authorityJsonOrFile);
-                  }
-                  auth = parsedAuthority.as<authority>();
-               } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON")
+                  auth = json_from_file_or_string(authorityJsonOrFile).as<authority>();
+               } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON '${data}'", ("data",authorityJsonOrFile))
 
             }
 
@@ -1035,17 +1040,12 @@ int main( int argc, char** argv ) {
 
    auto sign = app.add_subcommand("sign", localized("Sign a transaction"), false);
    sign->add_option("transaction", trx_json_to_sign,
-                                 localized("The JSON of the transaction to sign, or the name of a JSON file containing the transaction"), true)->required();
+                                 localized("The JSON string or filename defining the transaction to sign"), true)->required();
    sign->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
    sign->add_flag( "-p,--push-transaction", push_trx, localized("Push transaction after signing"));
 
    sign->set_callback([&] {
-      signed_transaction trx;
-      if ( is_regular_file(trx_json_to_sign) ) {
-         trx = fc::json::from_file(trx_json_to_sign).as<signed_transaction>();
-      } else {
-         trx = fc::json::from_string(trx_json_to_sign).as<signed_transaction>();
-      }
+      signed_transaction trx = json_from_file_or_string(trx_json_to_sign).as<signed_transaction>();
 
       if( str_private_key.size() == 0 ) {
          std::cerr << localized("private key: ");
@@ -1078,16 +1078,16 @@ int main( int argc, char** argv ) {
    actionsSubcommand->fallthrough(false);
    actionsSubcommand->add_option("contract", contract,
                                  localized("The account providing the contract to execute"), true)->required();
-   actionsSubcommand->add_option("action", action, localized("The action to execute on the contract"), true)
-         ->required();
+   actionsSubcommand->add_option("action", action,
+                                 localized("A JSON string or filename defining the action to execute on the contract"), true)->required();
    actionsSubcommand->add_option("data", data, localized("The arguments to the contract"))->required();
 
    add_standard_transaction_options(actionsSubcommand);
    actionsSubcommand->set_callback([&] {
       fc::variant action_args_var;
       try {
-         action_args_var = fc::json::from_string(data, fc::json::relaxed_parser);
-      } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON")
+         action_args_var = json_from_file_or_string(data, fc::json::relaxed_parser);
+      } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON data='${data}'", ("data",data))
 
       auto arg= fc::mutable_variant_object
                 ("code", contract)
@@ -1103,17 +1103,13 @@ int main( int argc, char** argv ) {
    // push transaction
    string trx_to_push;
    auto trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
-   trxSubcommand->add_option("transaction", trx_to_push, localized("The JSON of the transaction to push, or the name of a JSON file containing the transaction"))->required();
+   trxSubcommand->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
 
    trxSubcommand->set_callback([&] {
       fc::variant trx_var;
       try {
-         if ( is_regular_file(trx_to_push) ) {
-            trx_var = fc::json::from_file(trx_to_push);
-         } else {
-            trx_var = fc::json::from_string(trx_to_push);
-         }
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON")
+         trx_var = json_from_file_or_string(trx_to_push);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_push))
       signed_transaction trx = trx_var.as<signed_transaction>();
       auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
@@ -1122,12 +1118,12 @@ int main( int argc, char** argv ) {
 
    string trxsJson;
    auto trxsSubcommand = push->add_subcommand("transactions", localized("Push an array of arbitrary JSON transactions"));
-   trxsSubcommand->add_option("transactions", trxsJson, localized("The JSON array of the transactions to push"))->required();
+   trxsSubcommand->add_option("transactions", trxsJson, localized("The JSON string or filename defining the array of the transactions to push"))->required();
    trxsSubcommand->set_callback([&] {
       fc::variant trx_var;
       try {
-         trx_var = fc::json::from_string(trxsJson);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON")
+         trx_var = json_from_file_or_string(trxsJson);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trxsJson))
       auto trxs_result = call(push_txns_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });

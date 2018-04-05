@@ -2,16 +2,54 @@
   "types": [{
       "new_type_name": "account_name",
       "type": "name"
+    },{
+      "new_type_name": "time_point_sec",
+      "type": "time"
     }
   ],
   "structs": [{
+      "name": "permission_level",
+      "base": "",
+      "fields": [
+        {"name": "actor", "type": "account_name"},
+        {"name": "permission", "type": "permission_name"}
+      ]
+    },{
+      "name": "action",
+      "base": "",
+      "fields": [
+         {"name": "account", "type": "account_name"},
+         {"name": "name", "type": "action_name"},
+         {"name": "authorization", "type": "permission_level[]"},
+         {"name": "data", "type": "bytes"}
+      ]
+    },{
+      "name": "transaction_header",
+      "base": "",
+      "fields": [
+         {"name": "expiration", "type": "time_point_sec"},
+         {"name": "region", "type": "uint16"},
+         {"name": "ref_block_num", "type": "uint32"},
+         {"name": "ref_block_prefix", "type": "uint16"},
+         {"name": "max_net_usage_words", "type": "varuint32"},
+         {"name": "max_kcpu_usage", "type": "varuint32"},
+         {"name": "delay_sec", "type": "varuint32"}
+      ]
+   },{
+      "name": "transaction",
+      "base": "transaction_header",
+      "fields": [
+         {"name": "context_free_actions", "type": "action[]"},
+         {"name": "actions", "type": "action[]"}
+      ]
+   },{
       "name": "propose",
       "base": "",
       "fields": [
         {"name":"proposer", "type":"account_name"},
         {"name":"proposal_name", "type":"name"},
-        {"name":"trx", "type":"transaction"},
-        {"name":"requested", "type":"permission_level[]"}
+        {"name":"requested", "type":"permission_level[]"},
+        {"name":"trx", "type":"transaction"}
       ]
     },{
      "name": "approve",
@@ -21,7 +59,7 @@
         {"name":"proposal_name", "type":"name"},
         {"name":"level", "type":"permission_level"}
      ]
-  },{
+    },{
      "name": "unapprove",
      "base": "",
      "fields": [
@@ -29,7 +67,7 @@
         {"name":"proposal_name", "type":"name"},
         {"name":"level", "type":"permission_level"}
      ]
-  },{
+    },{
       "name": "cancel",
       "base": "",
       "fields": [
@@ -43,25 +81,39 @@
       "fields": [
         {"name":"proposer", "type":"account_name"},
         {"name":"proposal_name", "type":"name"},
-        {"name":"canceler", "type":"executer"}
+        {"name":"executer", "type":"account_name"}
+      ]
+    },{
+      "name": "proposal",
+      "base": "",
+      "fields": [
+        {"name": "proposal_name", "type": "name"},
+        {"name": "requested_approvals", "type": "permission_level[]"},
+        {"name": "provided_approvals", "type": "permission_level[]"},
+        {"name": "packed_transaction", "type": "bytes"}
       ]
     }
   ],
   "actions": [{
       "name": "propose",
-      "type": "propose"
+      "type": "propose",
+      "ricardian_contract": ""
     },{
       "name": "approve",
-      "type": "approve"
+      "type": "approve",
+      "ricardian_contract": ""
     },{
       "name": "unapprove",
-      "type": "unapprove"
+      "type": "unapprove",
+      "ricardian_contract": ""
     }, {
       "name": "cancel",
-      "type": "cancel"
+      "type": "cancel",
+      "ricardian_contract": ""
     }, {
       "name": "exec",
-      "type": "exec"
+      "type": "exec",
+      "ricardian_contract": ""
     }
 
   ],
@@ -72,5 +124,6 @@
       "key_names" : ["proposal_name"],
       "key_types" : ["name"]
     } 
-  ]
+  ],
+  "clauses": []
 }

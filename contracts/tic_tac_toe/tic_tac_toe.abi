@@ -52,16 +52,20 @@
   ],
   "actions": [{
       "name": "create",
-      "type": "create"
+      "type": "create",
+      "ricardian_contract": ""
     },{
       "name": "restart",
-      "type": "restart"
+      "type": "restart",
+      "ricardian_contract": ""
     },{
       "name": "close",
-      "type": "close"
+      "type": "close",
+      "ricardian_contract": ""
     },{
       "name": "move",
-      "type": "move"
+      "type": "move",
+      "ricardian_contract": ""
     }
   ],
   "tables": [{
@@ -71,5 +75,6 @@
         "key_names" : ["challenger"],
         "key_types" : ["account_name"]
       }
-  ]
+  ],
+  "clauses": []
 }

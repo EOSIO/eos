@@ -8,10 +8,7 @@ namespace eosio {
       public:
          multisig( account_name self ):contract(self){}
 
-         void propose( account_name proposer, 
-                       name proposal_name,
-                       transaction  trx,
-                       vector<permission_level> requested );
+         void propose();
          void approve( account_name proposer, name proposal_name, permission_level level );
          void unapprove( account_name proposer, name proposal_name, permission_level level );
          void cancel( account_name proposer, name proposal_name, account_name canceler );
