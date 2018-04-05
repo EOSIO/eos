@@ -84,7 +84,6 @@
 	fi
 
 	printf "\tHome Brew installation found.\n\n"
-	DCOUNT=0
 	COUNT=1
 	PERMISSION_GETTEXT=0
 	DISPLAY=""
@@ -107,7 +106,6 @@
 				continue
 			fi
 		fi
-		let DCOUNT++
 		if [ $brewname = "gettext" ]; then
 			PERMISSION_GETTEXT=1
 		fi
@@ -118,7 +116,7 @@
 	done < scripts/eosio_build_dep
 	IFS=${var_ifs}
 		
-	printf "\tChecking Python3 installation ... "
+	printf "\tChecking Python3 ... "
 	if [  -z `python3 -c 'import sys; print(sys.version_info.major)' 2>/dev/null` ]; then
 		DEP=$DEP"python@3 "
 		DISPLAY="${DISPLAY}${COUNT}. Python 3\n\t"
@@ -128,7 +126,7 @@
 		printf "\t\t Python3 found\n"
 	fi
 
-	if [ $DCOUNT -ne 0 ]; then
+	if [ $COUNT -gt 1 ]; then
 		printf "\n\tThe following dependencies are required to install EOSIO.\n"
 		printf "\n\t$DISPLAY\n\n"
 		echo "Do you wish to install these packages?"
