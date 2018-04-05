@@ -94,6 +94,8 @@ namespace eosio { namespace chain {
       transaction_receipt( transaction_id_type tid ):status(executed),id(tid){}
 
       fc::enum_type<uint8_t,status_enum>  status;
+      fc::unsigned_int                    kcpu_usage;
+      fc::unsigned_int                    net_usage_words;
       transaction_id_type                 id;
    };
 
@@ -254,7 +256,7 @@ namespace eosio { namespace chain {
 
 FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
 FC_REFLECT( eosio::chain::action, (account)(name)(authorization)(data) )
-FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
+FC_REFLECT( eosio::chain::transaction_receipt, (status)(kcpu_usage)(net_usage_words)(id))
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix)
                                               (max_net_usage_words)(max_kcpu_usage)(delay_sec) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions) )
