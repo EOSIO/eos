@@ -32,6 +32,13 @@ namespace eosio { namespace chain {
       optional<producer_schedule_type>  new_producers;
    };
 
+   struct producer_confirmation {
+      block_id_type   block_id;
+      digest_type     block_digest;
+      account_name    producer;
+      signature_type  sig;
+   };
+
    struct signed_block_header : public block_header
    {
       block_id_type              id() const;
