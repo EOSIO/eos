@@ -20,7 +20,7 @@ set( CXX_STANDARD_REQUIRED ON)
 
 set(VERSION_MAJOR 3)
 set(VERSION_MINOR 0)
-set(VERSION_PATCH 1)
+set(VERSION_PATCH 0)
 
 set( CLI_CLIENT_EXECUTABLE_NAME cleos )
 set( GUI_CLIENT_EXECUTABLE_NAME eosio )
@@ -189,9 +189,6 @@ add_subdirectory( scripts )
 add_subdirectory( tests )
 add_subdirectory( tools )
 add_subdirectory( debian )
-
-install(FILES genesis.json DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis.json ${CMAKE_CURRENT_BINARY_DIR}/genesis.json COPYONLY)
 
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)
 

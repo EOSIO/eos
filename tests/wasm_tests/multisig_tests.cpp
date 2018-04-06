@@ -31,7 +31,7 @@ public:
       create_accounts( { N(eosio.msig), N(alice), N(bob), N(carol) } );
       produce_block();
 
-      auto trace = base_tester::push_action(config::system_account_name, N(setpriv), 
+      auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
                                             config::system_account_name,  mutable_variant_object()
                                             ("account", "eosio.msig")
                                             ("is_priv", 1)
@@ -74,7 +74,7 @@ transaction eosio_msig_tester::reqauth( account_name from, const vector<permissi
    }
    variant pretty_trx = fc::mutable_variant_object()
       ("expiration", "2020-01-01T00:30")
-      ("region", 1)
+      ("region", 0)
       ("ref_block_num", 2)
       ("ref_block_prefix", 3)
       ("max_net_usage_words", 0)
@@ -119,7 +119,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_execute, eosio_msig_tester ) try {
                                                 ("proposal_name", "first")
                                                 ("level",         permission_level{ N(alice), config::active_name })
                         ));
-   
+
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(exec), mvo()
                                                 ("proposer",      "alice")
                                                 ("proposal_name", "first")
@@ -148,7 +148,7 @@ BOOST_FIXTURE_TEST_CASE( propose_approve_unapprove, eosio_msig_tester ) try {
                                                 ("proposal_name", "first")
                                                 ("level",         permission_level{ N(alice), config::active_name })
                         ));
-   
+
    BOOST_REQUIRE_EQUAL( success(), push_action( N(alice), N(unapprove), mvo()
                                                 ("proposer",      "alice")
                                                 ("proposal_name", "first")
@@ -225,7 +225,7 @@ BOOST_FIXTURE_TEST_CASE( big_transaction, eosio_msig_tester ) try {
 
    variant pretty_trx = fc::mutable_variant_object()
       ("expiration", "2020-01-01T00:30")
-      ("region", 1)
+      ("region", 0)
       ("ref_block_num", 2)
       ("ref_block_prefix", 3)
       ("max_net_usage_words", 0)

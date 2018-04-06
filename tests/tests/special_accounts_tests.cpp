@@ -54,7 +54,8 @@ BOOST_FIXTURE_TEST_CASE(accounts_exists, tester)
       auto& gpo = chain1_db.get<global_property_object>();
 
       const auto& producers_active_authority = chain1_db.get<permission_object, by_owner>(boost::make_tuple(config::producers_account_name, config::active_name));
-      BOOST_CHECK_EQUAL(producers_active_authority.auth.threshold, config::producers_authority_threshold);
+      auto expected_threshold = EOS_PERCENT_CEIL(gpo.active_producers.producers.size(), config::producers_authority_threshold_pct);
+      BOOST_CHECK_EQUAL(producers_active_authority.auth.threshold, expected_threshold);
       BOOST_CHECK_EQUAL(producers_active_authority.auth.accounts.size(), gpo.active_producers.producers.size());
       BOOST_CHECK_EQUAL(producers_active_authority.auth.keys.size(), 0);
 

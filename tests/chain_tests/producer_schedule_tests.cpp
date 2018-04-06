@@ -114,6 +114,31 @@ BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
    } FC_LOG_AND_RETHROW()
 
 
+   BOOST_FIXTURE_TEST_CASE( verify_producers, TESTER ) try {
+      
+      vector<account_name> valid_producers = {
+         "inita", "initb", "initc", "initd", "inite", "initf", "initg",
+         "inith", "initi", "initj", "initk", "initl", "initm", "initn",
+         "inito", "initp", "initq", "initr", "inits", "initt", "initu"
+      };
+      create_accounts(valid_producers);
+      set_producers(valid_producers);
+
+      // account initz does not exist
+      vector<account_name> nonexisting_producer = { "initz" };
+      BOOST_CHECK_THROW(set_producers(nonexisting_producer), wasm_execution_error);
+      
+      // replace initg with inita, inita is now duplicate
+      vector<account_name> invalid_producers = {
+         "inita", "initb", "initc", "initd", "inite", "initf", "inita",
+         "inith", "initi", "initj", "initk", "initl", "initm", "initn",
+         "inito", "initp", "initq", "initr", "inits", "initt", "initu"
+      };
+
+      BOOST_CHECK_THROW(set_producers(invalid_producers), wasm_execution_error);
+
+   } FC_LOG_AND_RETHROW()
+
    BOOST_FIXTURE_TEST_CASE( verify_header_schedule_version, TESTER ) try {
 
       // Utility function to ensure that producer schedule version in the header is correct

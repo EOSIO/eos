@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.13"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>EOS.IO: contracts/eoslib/asset.hpp File Reference</title>
+<title>EOS.IO: contracts/eosiolib/asset.hpp File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -60,7 +60,7 @@ $(function() {
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_3fea0bf1ce879ce73e6ecec98007efcd.html">eoslib</a></li>  </ul>
+<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_3f710958649a39c6bbfa7039c0dc0464.html">eosiolib</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
@@ -73,28 +73,38 @@ $(function() {
 <div class="title">asset.hpp File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-
+<div class="textblock"><code>#include &lt;<a class="el" href="serialize_8hpp_source.html">eosiolib/serialize.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="print_8hpp_source.html">eosiolib/print.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="system_8h_source.html">eosiolib/system.h</a>&gt;</code><br />
+<code>#include &lt;tuple&gt;</code><br />
+<code>#include &lt;limits&gt;</code><br />
+</div>
 <p><a href="asset_8hpp_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeosio_1_1symbol__type.html">eosio::symbol_type</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeosio_1_1extended__symbol.html">eosio::extended_symbol</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeosio_1_1asset.html">eosio::asset</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structeosio_1_1extended__asset.html">eosio::extended_asset</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="namespaces"></a>
 Namespaces</h2></td></tr>
 <tr class="memitem:namespaceeosio"><td class="memItemLeft" align="right" valign="top"> &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html">eosio</a></td></tr>
-<tr class="memdesc:namespaceeosio"><td class="mdescLeft">&#160;</td><td class="mdescRight">Used to forward declare raw functions. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="define-members"></a>
 Macros</h2></td></tr>
-<tr class="memitem:ad5302024534140403fec6a1770e381c3"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="asset_8hpp.html#ad5302024534140403fec6a1770e381c3">S</a>(P,  X)&#160;&#160;&#160;::eosio::string_to_symbol(P,#X)</td></tr>
+<tr class="memitem:ad5302024534140403fec6a1770e381c3"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="asset_8hpp.html#ad5302024534140403fec6a1770e381c3">S</a>(<a class="el" href="struct_p.html">P</a>,  <a class="el" href="class_x.html">X</a>)&#160;&#160;&#160;::eosio::string_to_symbol(<a class="el" href="struct_p.html">P</a>,#<a class="el" href="class_x.html">X</a>)</td></tr>
 <tr class="separator:ad5302024534140403fec6a1770e381c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
 Typedefs</h2></td></tr>
-<tr class="memitem:a86c678dc3ab8fd54400ddf371782d14e"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a86c678dc3ab8fd54400ddf371782d14e">eosio::symbol_name</a></td></tr>
+<tr class="memitem:a86c678dc3ab8fd54400ddf371782d14e"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a86c678dc3ab8fd54400ddf371782d14e">eosio::symbol_name</a></td></tr>
 <tr class="separator:a86c678dc3ab8fd54400ddf371782d14e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Macro Definition Documentation</h2>
@@ -105,21 +115,21 @@ Typedefs</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define S</td>
+          <td class="memname">#define <a class="el" href="struct_s.html">S</a></td>
           <td>(</td>
           <td class="paramtype">&#160;</td>
-          <td class="paramname">P, </td>
+          <td class="paramname"><a class="el" href="struct_p.html">P</a>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">&#160;</td>
-          <td class="paramname">X&#160;</td>
+          <td class="paramname"><a class="el" href="class_x.html">X</a>&#160;</td>
         </tr>
         <tr>
           <td></td>
           <td>)</td>
-          <td></td><td>&#160;&#160;&#160;::eosio::string_to_symbol(P,#X)</td>
+          <td></td><td>&#160;&#160;&#160;::eosio::string_to_symbol(<a class="el" href="struct_p.html">P</a>,#<a class="el" href="class_x.html">X</a>)</td>
         </tr>
       </table>
 </div><div class="memdoc">

@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.13"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>EOS.IO: contracts/eoslib/print.hpp File Reference</title>
+<title>EOS.IO: contracts/eosiolib/print.hpp File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -60,7 +60,7 @@ $(function() {
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_3fea0bf1ce879ce73e6ecec98007efcd.html">eoslib</a></li>  </ul>
+<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_3f710958649a39c6bbfa7039c0dc0464.html">eosiolib</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
@@ -72,9 +72,11 @@ $(function() {
 <div class="title">print.hpp File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;<a class="el" href="print_8h_source.html">eoslib/print.h</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="types_8hpp_source.html">eoslib/types.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="math_8hpp_source.html">eoslib/math.hpp</a>&gt;</code><br />
+<div class="textblock"><code>#include &lt;<a class="el" href="print_8h_source.html">eosiolib/print.h</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="types_8hpp_source.html">eosiolib/types.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="math_8hpp_source.html">eosiolib/math.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="fixed__key_8hpp_source.html">eosiolib/fixed_key.hpp</a>&gt;</code><br />
+<code>#include &lt;utility&gt;</code><br />
 </div>
 <p><a href="print_8hpp_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
@@ -86,7 +88,6 @@ Classes</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="namespaces"></a>
 Namespaces</h2></td></tr>
 <tr class="memitem:namespaceeosio"><td class="memItemLeft" align="right" valign="top"> &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html">eosio</a></td></tr>
-<tr class="memdesc:namespaceeosio"><td class="mdescLeft">&#160;</td><td class="mdescRight">Used to forward declare raw functions. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
@@ -94,38 +95,55 @@ Functions</h2></td></tr>
 <tr class="memitem:aa0a56fe314d032d027a1565d93a68b21"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#aa0a56fe314d032d027a1565d93a68b21">eosio::print</a> (const char *ptr)</td></tr>
 <tr class="memdesc:aa0a56fe314d032d027a1565d93a68b21"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints string.  <a href="namespaceeosio.html#aa0a56fe314d032d027a1565d93a68b21">More...</a><br /></td></tr>
 <tr class="separator:aa0a56fe314d032d027a1565d93a68b21"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9bdf0bd18006f43820d73ec9f8cc50b8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a9bdf0bd18006f43820d73ec9f8cc50b8">eosio::print</a> (<a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> num)</td></tr>
+<tr class="memitem:a9bdf0bd18006f43820d73ec9f8cc50b8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a9bdf0bd18006f43820d73ec9f8cc50b8">eosio::print</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="structnum.html">num</a>)</td></tr>
 <tr class="memdesc:a9bdf0bd18006f43820d73ec9f8cc50b8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints integer 64 bit unsigned integer.  <a href="namespaceeosio.html#a9bdf0bd18006f43820d73ec9f8cc50b8">More...</a><br /></td></tr>
 <tr class="separator:a9bdf0bd18006f43820d73ec9f8cc50b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0c95ab36e2c3f91a627270c09ff9140f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a0c95ab36e2c3f91a627270c09ff9140f">eosio::print</a> (<a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> num)</td></tr>
+<tr class="memitem:aad90d9aa7b7ba103d2e943bf38c91072"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#aad90d9aa7b7ba103d2e943bf38c91072">eosio::print</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a996e72f71b11a5bb8b3b7b6936b1516d">int64_t</a> <a class="el" href="structnum.html">num</a>)</td></tr>
+<tr class="separator:aad90d9aa7b7ba103d2e943bf38c91072"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af74f950ef70b0ad2579a5edeb5979711"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#af74f950ef70b0ad2579a5edeb5979711">eosio::print</a> (double <a class="el" href="fullexpr-dtor_8pass_8cpp.html#aab8f4e84ca86a527d0d748c243175496">d</a>)</td></tr>
+<tr class="separator:af74f950ef70b0ad2579a5edeb5979711"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad7e7b4aa27384bd690035d7809b5e22b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#ad7e7b4aa27384bd690035d7809b5e22b">eosio::print</a> (float <a class="el" href="convert__overflow_8pass_8cpp.html#afbab6dcbf18d50d32b5caab7a8840192">f</a>)</td></tr>
+<tr class="separator:ad7e7b4aa27384bd690035d7809b5e22b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0c95ab36e2c3f91a627270c09ff9140f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a0c95ab36e2c3f91a627270c09ff9140f">eosio::print</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> <a class="el" href="structnum.html">num</a>)</td></tr>
 <tr class="memdesc:a0c95ab36e2c3f91a627270c09ff9140f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints integer 32 bit unsigned integer.  <a href="namespaceeosio.html#a0c95ab36e2c3f91a627270c09ff9140f">More...</a><br /></td></tr>
 <tr class="separator:a0c95ab36e2c3f91a627270c09ff9140f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad0342d58fa17a7bea359607c6cfcf0cf"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#ad0342d58fa17a7bea359607c6cfcf0cf">eosio::print</a> (int num)</td></tr>
+<tr class="memitem:ad0342d58fa17a7bea359607c6cfcf0cf"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#ad0342d58fa17a7bea359607c6cfcf0cf">eosio::print</a> (int <a class="el" href="structnum.html">num</a>)</td></tr>
 <tr class="memdesc:ad0342d58fa17a7bea359607c6cfcf0cf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints integer.  <a href="namespaceeosio.html#ad0342d58fa17a7bea359607c6cfcf0cf">More...</a><br /></td></tr>
 <tr class="separator:ad0342d58fa17a7bea359607c6cfcf0cf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3c85835d3c6e556b5da524030e70e971"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a3c85835d3c6e556b5da524030e70e971">eosio::print</a> (unsigned int num)</td></tr>
+<tr class="memitem:a73f624c18f7794c1a4f093643f5c9664"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a73f624c18f7794c1a4f093643f5c9664">eosio::print</a> (long <a class="el" href="structnum.html">num</a>)</td></tr>
+<tr class="separator:a73f624c18f7794c1a4f093643f5c9664"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3c85835d3c6e556b5da524030e70e971"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a3c85835d3c6e556b5da524030e70e971">eosio::print</a> (unsigned int <a class="el" href="structnum.html">num</a>)</td></tr>
 <tr class="memdesc:a3c85835d3c6e556b5da524030e70e971"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints unsigned integer.  <a href="namespaceeosio.html#a3c85835d3c6e556b5da524030e70e971">More...</a><br /></td></tr>
 <tr class="separator:a3c85835d3c6e556b5da524030e70e971"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a632b6538d9a2d090957c51c265bb8268"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a632b6538d9a2d090957c51c265bb8268">eosio::print</a> (uint128 num)</td></tr>
+<tr class="memitem:a632b6538d9a2d090957c51c265bb8268"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a632b6538d9a2d090957c51c265bb8268">eosio::print</a> (uint128 <a class="el" href="structnum.html">num</a>)</td></tr>
 <tr class="memdesc:a632b6538d9a2d090957c51c265bb8268"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints <a class="el" href="structeosio_1_1uint128.html" title="A struct that wraps uint128 integer and defines common operator overloads. ">uint128</a> struct.  <a href="namespaceeosio.html#a632b6538d9a2d090957c51c265bb8268">More...</a><br /></td></tr>
 <tr class="separator:a632b6538d9a2d090957c51c265bb8268"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acbb116ac61f216fafa100011bce090ee"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#acbb116ac61f216fafa100011bce090ee">eosio::print</a> (<a class="el" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> num)</td></tr>
+<tr class="memitem:acbb116ac61f216fafa100011bce090ee"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#acbb116ac61f216fafa100011bce090ee">eosio::print</a> (<a class="el" href="test__exchange_8cpp.html#a2d00695da4b0795588770b839f9f280e">uint128_t</a> <a class="el" href="structnum.html">num</a>)</td></tr>
 <tr class="memdesc:acbb116ac61f216fafa100011bce090ee"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints 128 bit unsigned integer.  <a href="namespaceeosio.html#acbb116ac61f216fafa100011bce090ee">More...</a><br /></td></tr>
 <tr class="separator:acbb116ac61f216fafa100011bce090ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2785282e4babb79499ba03e719e20aa1"><td class="memTemplParams" colspan="2">template&lt;size_t Size&gt; </td></tr>
+<tr class="memitem:a2785282e4babb79499ba03e719e20aa1"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a2785282e4babb79499ba03e719e20aa1">eosio::print</a> (const fixed_key&lt; Size &gt; &amp;val)</td></tr>
+<tr class="memdesc:a2785282e4babb79499ba03e719e20aa1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints <a class="el" href="classeosio_1_1fixed__key.html">fixed_key</a> as a hexidecimal string.  <a href="namespaceeosio.html#a2785282e4babb79499ba03e719e20aa1">More...</a><br /></td></tr>
+<tr class="separator:a2785282e4babb79499ba03e719e20aa1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:addacdc539ef6e6fb4f55bf04d1a0d22c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#addacdc539ef6e6fb4f55bf04d1a0d22c">eosio::print</a> (name name)</td></tr>
 <tr class="memdesc:addacdc539ef6e6fb4f55bf04d1a0d22c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints a 64 bit names as base32 encoded string.  <a href="namespaceeosio.html#addacdc539ef6e6fb4f55bf04d1a0d22c">More...</a><br /></td></tr>
 <tr class="separator:addacdc539ef6e6fb4f55bf04d1a0d22c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3b7dd9bbca5a20bad3acb94b6b7354be"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a3b7dd9bbca5a20bad3acb94b6b7354be">eosio::print</a> (bool val)</td></tr>
+<tr class="memitem:a3b7dd9bbca5a20bad3acb94b6b7354be"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#a3b7dd9bbca5a20bad3acb94b6b7354be">eosio::print</a> (<a class="el" href="musl_2upstream_2include_2stdbool_8h.html#abb452686968e48b67397da5f97445f5b">bool</a> val)</td></tr>
 <tr class="separator:a3b7dd9bbca5a20bad3acb94b6b7354be"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa09d15641c76813eea61b876d8266400"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
-<tr class="memitem:aa09d15641c76813eea61b876d8266400"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#aa09d15641c76813eea61b876d8266400">eosio::print</a> (T &amp;&amp;t)</td></tr>
+<tr class="memitem:aa09d15641c76813eea61b876d8266400"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#aa09d15641c76813eea61b876d8266400">eosio::print</a> (<a class="el" href="struct_t.html">T</a> &amp;&amp;t)</td></tr>
 <tr class="separator:aa09d15641c76813eea61b876d8266400"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga56f9111930e3c8ee043a8502ab35c342"><td class="memTemplParams" colspan="2">template&lt;typename Arg , typename... Args&gt; </td></tr>
-<tr class="memitem:ga56f9111930e3c8ee043a8502ab35c342"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="group__console_cppapi.html#ga56f9111930e3c8ee043a8502ab35c342">eosio::print</a> (Arg a, Args... args)</td></tr>
-<tr class="memdesc:ga56f9111930e3c8ee043a8502ab35c342"><td class="mdescLeft">&#160;</td><td class="mdescRight">Print out value / list of values.  <a href="group__console_cppapi.html#ga56f9111930e3c8ee043a8502ab35c342">More...</a><br /></td></tr>
-<tr class="separator:ga56f9111930e3c8ee043a8502ab35c342"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab9715bf002b919701d38e3ff931feabf"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#ab9715bf002b919701d38e3ff931feabf">eosio::print_f</a> (const char *<a class="el" href="strings_2basic_8string_2string_8cons_2dtor__noexcept_8pass_8cpp.html#aa8270a1ba8295884567e0a0c93135f05">s</a>)</td></tr>
+<tr class="separator:ab9715bf002b919701d38e3ff931feabf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afcfae01c6d714474da8407a1c195c836"><td class="memTemplParams" colspan="2">template&lt;typename Arg , typename... Args&gt; </td></tr>
+<tr class="memitem:afcfae01c6d714474da8407a1c195c836"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceeosio.html#afcfae01c6d714474da8407a1c195c836">eosio::print_f</a> (const char *<a class="el" href="strings_2basic_8string_2string_8cons_2dtor__noexcept_8pass_8cpp.html#aa8270a1ba8295884567e0a0c93135f05">s</a>, Arg val, Args... rest)</td></tr>
+<tr class="separator:afcfae01c6d714474da8407a1c195c836"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gab5232cf7452d463948eac1179f31d9f0"><td class="memTemplParams" colspan="2">template&lt;typename Arg , typename... Args&gt; </td></tr>
+<tr class="memitem:gab5232cf7452d463948eac1179f31d9f0"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="group__console_cppapi.html#gab5232cf7452d463948eac1179f31d9f0">eosio::print</a> (Arg &amp;&amp;<a class="el" href="fullexpr-dtor_8pass_8cpp.html#a5b16ce259cb972b0c089996d3c981d5a">a</a>, <a class="el" href="multiple__ranges__test_8cc.html#a12050b5cc9a6fc0f4f8983cfe092fd8e">Args</a> &amp;&amp;... args)</td></tr>
+<tr class="memdesc:gab5232cf7452d463948eac1179f31d9f0"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="struct_print.html">Print</a> out value / list of values.  <a href="group__console_cppapi.html#gab5232cf7452d463948eac1179f31d9f0">More...</a><br /></td></tr>
+<tr class="separator:gab5232cf7452d463948eac1179f31d9f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga827f0aac6315e7963bcd52656cd7eeed"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
-<tr class="memitem:ga827f0aac6315e7963bcd52656cd7eeed"><td class="memTemplItemLeft" align="right" valign="top">iostream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="group__console_cppapi.html#ga827f0aac6315e7963bcd52656cd7eeed">eosio::operator&lt;&lt;</a> (iostream &amp;out, const T &amp;v)</td></tr>
+<tr class="memitem:ga827f0aac6315e7963bcd52656cd7eeed"><td class="memTemplItemLeft" align="right" valign="top">iostream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="group__console_cppapi.html#ga827f0aac6315e7963bcd52656cd7eeed">eosio::operator&lt;&lt;</a> (iostream &amp;out, const <a class="el" href="struct_t.html">T</a> &amp;v)</td></tr>
 <tr class="memdesc:ga827f0aac6315e7963bcd52656cd7eeed"><td class="mdescLeft">&#160;</td><td class="mdescRight">Overload c++ iostream.  <a href="group__console_cppapi.html#ga827f0aac6315e7963bcd52656cd7eeed">More...</a><br /></td></tr>
 <tr class="separator:ga827f0aac6315e7963bcd52656cd7eeed"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>

@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -76,11 +76,11 @@ Modules</h2></td></tr>
 <tr class="memdesc:group__transactioncapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Define API for sending transactions. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:group__transactioncppapi"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__transactioncppapi.html">Transaction C++ API</a></td></tr>
-<tr class="memdesc:group__transactioncppapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type-safe C++ wrappers for transaction C API. <br /></td></tr>
+<tr class="memdesc:group__transactioncppapi"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type-safe C++ wrappers for transaction <a class="el" href="struct_c.html">C</a> API. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<p>A EOS.IO transaction has the following abstract structure:</p>
+<p><a class="el" href="struct_a.html">A</a> EOS.IO transaction has the following abstract structure:</p>
 <div class="fragment"><div class="line"><span class="keyword">struct </span>transaction {</div><div class="line">  Name scope[]; </div><div class="line">  Name readScope[]; </div><div class="line">  message messages[]; </div><div class="line">};</div></div><!-- fragment --><p>This API enables your contract to construct and send transactions</p>
 <p>Deferred transactions will not be processed until a future block. They can therefore have no effect on the success of failure of their parent transaction so long as they appear well formed. If any other condition causes the parent transaction to be marked as failing, then the deferred transaction will never be processed.</p>
 <p>Deferred transactions must adhere to the permissions available to the parent transaction or, in the future, delegated to the contract account for future use.</p>

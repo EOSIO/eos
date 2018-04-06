@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -66,21 +66,19 @@ $(function() {
 <div class="header">
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
-<a href="#define-members">Macros</a> &#124;
-<a href="#typedef-members">Typedefs</a>  </div>
+<a href="#namespaces">Namespaces</a> &#124;
+<a href="#define-members">Macros</a>  </div>
   <div class="headertitle">
 <div class="title">test_api.hpp File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-
+<div class="textblock"><code>#include &quot;<a class="el" href="test__api__common_8hpp_source.html">test_api_common.hpp</a>&quot;</code><br />
+<code>#include &lt;string&gt;</code><br />
+</div>
 <p><a href="test__api_8hpp_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structdummy__action.html">dummy_action</a></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structu128__msg.html">u128_msg</a></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__types.html">test_types</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__print.html">test_print</a></td></tr>
@@ -91,82 +89,84 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__db.html">test_db</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__multi__index.html">test_multi_index</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__crypto.html">test_crypto</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__transaction.html">test_transaction</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__chain.html">test_chain</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__string.html">test_string</a></td></tr>
-<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__fixedpoint.html">test_fixedpoint</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__real.html">test_real</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__account.html">test_account</a></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__compiler__builtins.html">test_compiler_builtins</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__extended__memory.html">test_extended_memory</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__memory.html">test_memory</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__checktime.html">test_checktime</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structtest__permission.html">test_permission</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="namespaces"></a>
+Namespaces</h2></td></tr>
+<tr class="memitem:namespaceeosio"><td class="memItemLeft" align="right" valign="top"> &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html">eosio</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="define-members"></a>
 Macros</h2></td></tr>
 <tr class="memitem:ac8741fa467f356e73d52f63521612abe"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8hpp.html#ac8741fa467f356e73d52f63521612abe">WASM_TEST_HANDLER</a>(CLASS,  METHOD)</td></tr>
 <tr class="separator:ac8741fa467f356e73d52f63521612abe"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5e433756dd4c8a2f61db21799a2f64a4"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8hpp.html#a5e433756dd4c8a2f61db21799a2f64a4">DUMMY_MESSAGE_DEFAULT_A</a>&#160;&#160;&#160;0x45</td></tr>
-<tr class="separator:a5e433756dd4c8a2f61db21799a2f64a4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac57a64f6d53bebcbdaa9f8f012022047"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8hpp.html#ac57a64f6d53bebcbdaa9f8f012022047">DUMMY_MESSAGE_DEFAULT_B</a>&#160;&#160;&#160;0xab11cd1244556677</td></tr>
-<tr class="separator:ac57a64f6d53bebcbdaa9f8f012022047"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a700d88c2445988c3928fa65cfb33e51f"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8hpp.html#a700d88c2445988c3928fa65cfb33e51f">DUMMY_MESSAGE_DEFAULT_C</a>&#160;&#160;&#160;0x7451ae12</td></tr>
-<tr class="separator:a700d88c2445988c3928fa65cfb33e51f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
-Typedefs</h2></td></tr>
-<tr class="memitem:ad758b7a5c3f18ed79d2fcd23d9f16357"><td class="memItemLeft" align="right" valign="top">typedef unsigned long long&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8hpp.html#ad758b7a5c3f18ed79d2fcd23d9f16357">u64</a></td></tr>
-<tr class="separator:ad758b7a5c3f18ed79d2fcd23d9f16357"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a10e94b422ef0c20dcdec20d31a1f5049"><td class="memItemLeft" align="right" valign="top">typedef unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8hpp.html#a10e94b422ef0c20dcdec20d31a1f5049">u32</a></td></tr>
-<tr class="separator:a10e94b422ef0c20dcdec20d31a1f5049"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6d9aeee4e8c7f3fa05a17fb27a1531a3"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8hpp.html#a6d9aeee4e8c7f3fa05a17fb27a1531a3">WASM_TEST_HANDLER_EX</a>(CLASS,  METHOD)</td></tr>
+<tr class="separator:a6d9aeee4e8c7f3fa05a17fb27a1531a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa992d93a7e922952db76abcbe45d3f1a"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="test__api_8hpp.html#aa992d93a7e922952db76abcbe45d3f1a">WASM_TEST_ERROR_HANDLER</a>(CALLED_CLASS_STR,  CALLED_METHOD_STR,  HANDLER_CLASS,  HANDLER_METHOD)</td></tr>
+<tr class="separator:aa992d93a7e922952db76abcbe45d3f1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><dl class="section copyright"><dt>Copyright</dt><dd>defined in eos/LICENSE.txt </dd></dl>
 </div><h2 class="groupheader">Macro Definition Documentation</h2>
-<a id="a5e433756dd4c8a2f61db21799a2f64a4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a5e433756dd4c8a2f61db21799a2f64a4">&#9670;&nbsp;</a></span>DUMMY_MESSAGE_DEFAULT_A</h2>
+<a id="aa992d93a7e922952db76abcbe45d3f1a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa992d93a7e922952db76abcbe45d3f1a">&#9670;&nbsp;</a></span>WASM_TEST_ERROR_HANDLER</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define DUMMY_MESSAGE_DEFAULT_A&#160;&#160;&#160;0x45</td>
+          <td class="memname">#define WASM_TEST_ERROR_HANDLER</td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">CALLED_CLASS_STR, </td>
         </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ac57a64f6d53bebcbdaa9f8f012022047"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac57a64f6d53bebcbdaa9f8f012022047">&#9670;&nbsp;</a></span>DUMMY_MESSAGE_DEFAULT_B</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
         <tr>
-          <td class="memname">#define DUMMY_MESSAGE_DEFAULT_B&#160;&#160;&#160;0xab11cd1244556677</td>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">CALLED_METHOD_STR, </td>
         </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a700d88c2445988c3928fa65cfb33e51f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a700d88c2445988c3928fa65cfb33e51f">&#9670;&nbsp;</a></span>DUMMY_MESSAGE_DEFAULT_C</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
         <tr>
-          <td class="memname">#define DUMMY_MESSAGE_DEFAULT_C&#160;&#160;&#160;0x7451ae12</td>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">HANDLER_CLASS, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">HANDLER_METHOD&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
-
+<b>Value:</b><div class="fragment"><div class="line"><span class="keywordflow">if</span>( error_action == WASM_TEST_ACTION(CALLED_CLASS_STR, CALLED_METHOD_STR) ) { \</div><div class="line">   HANDLER_CLASS::HANDLER_METHOD(error_dtrx); \</div><div class="line">   return; \</div><div class="line">}</div></div><!-- fragment -->
 </div>
 </div>
 <a id="ac8741fa467f356e73d52f63521612abe"></a>
@@ -197,33 +197,32 @@ Typedefs</h2></td></tr>
 <b>Value:</b><div class="fragment"><div class="line"><span class="keywordflow">if</span>( action == WASM_TEST_ACTION(#CLASS, #METHOD) ) { \</div><div class="line">     CLASS::METHOD(); \</div><div class="line">     return; \</div><div class="line">  }</div></div><!-- fragment -->
 </div>
 </div>
-<h2 class="groupheader">Typedef Documentation</h2>
-<a id="a10e94b422ef0c20dcdec20d31a1f5049"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a10e94b422ef0c20dcdec20d31a1f5049">&#9670;&nbsp;</a></span>u32</h2>
+<a id="a6d9aeee4e8c7f3fa05a17fb27a1531a3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6d9aeee4e8c7f3fa05a17fb27a1531a3">&#9670;&nbsp;</a></span>WASM_TEST_HANDLER_EX</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">typedef unsigned int <a class="el" href="test__api_8hpp.html#a10e94b422ef0c20dcdec20d31a1f5049">u32</a></td>
+          <td class="memname">#define WASM_TEST_HANDLER_EX</td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">CLASS, </td>
         </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ad758b7a5c3f18ed79d2fcd23d9f16357"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad758b7a5c3f18ed79d2fcd23d9f16357">&#9670;&nbsp;</a></span>u64</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
         <tr>
-          <td class="memname">typedef unsigned long long <a class="el" href="test__api_8hpp.html#ad758b7a5c3f18ed79d2fcd23d9f16357">u64</a></td>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">METHOD&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
-
+<b>Value:</b><div class="fragment"><div class="line"><span class="keywordflow">if</span>( action == WASM_TEST_ACTION(#CLASS, #METHOD) ) { \</div><div class="line">     CLASS::METHOD(receiver, code, action); \</div><div class="line">     return; \</div><div class="line">  }</div></div><!-- fragment -->
 </div>
 </div>
 </div><!-- contents -->

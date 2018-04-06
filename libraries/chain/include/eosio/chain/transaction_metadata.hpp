@@ -10,21 +10,15 @@ namespace eosio { namespace chain {
 
 class transaction_metadata {
    public:
-      transaction_metadata( const transaction& t, const time_point& published, const account_name& sender, uint128_t sender_id, const char* raw_data, size_t raw_size )
-         :id(t.id())
-         ,published(published)
-         ,sender(sender),sender_id(sender_id),raw_data(raw_data),raw_size(raw_size),_trx(&t)
-      {}
-
-      transaction_metadata( const transaction& t, const time_point& published, const account_name& sender, uint128_t sender_id, const char* raw_data, size_t raw_size, fc::time_point deadline )
+      transaction_metadata( const transaction& t, const time_point& published, const account_name& sender, uint128_t sender_id, const char* raw_data, size_t raw_size, const optional<time_point>& processing_deadline )
          :id(t.id())
          ,published(published)
          ,sender(sender),sender_id(sender_id),raw_data(raw_data),raw_size(raw_size)
-         ,processing_deadline(deadline)
+         ,processing_deadline(processing_deadline)
          ,_trx(&t)
       {}
 
-      transaction_metadata( const packed_transaction& t, chain_id_type chainid, const time_point& published, bool implicit=false );
+      transaction_metadata( const packed_transaction& t, chain_id_type chainid, const time_point& published, const optional<time_point>& processing_deadline = optional<time_point>(), bool implicit=false );
 
       transaction_metadata( transaction_metadata && ) = default;
       transaction_metadata& operator= (transaction_metadata &&) = default;
@@ -33,6 +27,7 @@ class transaction_metadata {
       optional<bytes>                       raw_trx;
       optional<transaction>                 decompressed_trx;
       vector<bytes>                         context_free_data;
+      digest_type                           packed_digest;
 
       // things for signed/packed transactions
       optional<flat_set<public_key_type>>   signing_keys;
@@ -75,7 +70,6 @@ class transaction_metadata {
       // limits
       optional<time_point>                  processing_deadline;
 
-      static digest_type calculate_transaction_merkle_root( const vector<transaction_metadata>& metas );
    private:
       const transaction* _trx = nullptr;
 };

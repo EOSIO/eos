@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['value_5ftype',['value_type',['../classstd_1_1initializer__list.html#a90e1dbb133867ca6222d2f5b98e36307',1,'std::initializer_list']]]
+  ['quote_5ftoken_5ftype',['quote_token_type',['../structeosio_1_1price.html#aef7d0e4f45187d59ebc40b0d91a1d358',1,'eosio::price']]]
 ];

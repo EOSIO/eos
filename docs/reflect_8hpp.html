@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.13"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>EOS.IO: contracts/eoslib/reflect.hpp File Reference</title>
+<title>EOS.IO: contracts/eosiolib/reflect.hpp File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -60,7 +60,7 @@ $(function() {
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_3fea0bf1ce879ce73e6ecec98007efcd.html">eoslib</a></li>  </ul>
+<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_3f710958649a39c6bbfa7039c0dc0464.html">eosiolib</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
@@ -72,12 +72,11 @@ $(function() {
 <div class="title">reflect.hpp File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;<a class="el" href="utility_8hpp_source.html">eoslib/utility.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="seq_2for__each_8hpp_source.html">eoslib/preprocessor/seq/for_each.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="seq_2enum_8hpp_source.html">eoslib/preprocessor/seq/enum.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="seq_2size_8hpp_source.html">eoslib/preprocessor/seq/size.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="seq_2seq_8hpp_source.html">eoslib/preprocessor/seq/seq.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="stringize_8hpp_source.html">eoslib/preprocessor/stringize.hpp</a>&gt;</code><br />
+<div class="textblock"><code>#include &lt;boost/preprocessor/seq/for_each.hpp&gt;</code><br />
+<code>#include &lt;boost/preprocessor/seq/enum.hpp&gt;</code><br />
+<code>#include &lt;boost/preprocessor/seq/size.hpp&gt;</code><br />
+<code>#include &lt;boost/preprocessor/seq/seq.hpp&gt;</code><br />
+<code>#include &lt;boost/preprocessor/stringize.hpp&gt;</code><br />
 </div>
 <p><a href="reflect_8hpp_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
@@ -89,15 +88,14 @@ Classes</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="namespaces"></a>
 Namespaces</h2></td></tr>
 <tr class="memitem:namespaceeosio"><td class="memItemLeft" align="right" valign="top"> &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceeosio.html">eosio</a></td></tr>
-<tr class="memdesc:namespaceeosio"><td class="mdescLeft">&#160;</td><td class="mdescRight">Used to forward declare raw functions. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="define-members"></a>
 Macros</h2></td></tr>
-<tr class="memitem:a6269ed771378e6ab12a6507ce5c5efd6"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#a6269ed771378e6ab12a6507ce5c5efd6">EOSLIB_REFLECT_VISIT_BASE</a>(r,  visitor,  base)&#160;&#160;&#160;<a class="el" href="structeosio_1_1reflector.html">eosio::reflector</a>&lt;base&gt;::visit( visitor );</td></tr>
+<tr class="memitem:a6269ed771378e6ab12a6507ce5c5efd6"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#a6269ed771378e6ab12a6507ce5c5efd6">EOSLIB_REFLECT_VISIT_BASE</a>(r,  visitor,  <a class="el" href="structbase.html">base</a>)&#160;&#160;&#160;<a class="el" href="structeosio_1_1reflector.html">eosio::reflector</a>&lt;<a class="el" href="structbase.html">base</a>&gt;::visit( visitor );</td></tr>
 <tr class="memdesc:a6269ed771378e6ab12a6507ce5c5efd6"><td class="mdescLeft">&#160;</td><td class="mdescRight">eosio  <a href="#a6269ed771378e6ab12a6507ce5c5efd6">More...</a><br /></td></tr>
 <tr class="separator:a6269ed771378e6ab12a6507ce5c5efd6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2503e9c2314b9e45ac3c5c537a3d14a0"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#a2503e9c2314b9e45ac3c5c537a3d14a0">EOSLIB_REFLECT_VISIT2_BASE</a>(r,  visitor,  base)&#160;&#160;&#160;<a class="el" href="structeosio_1_1reflector.html">eosio::reflector</a>&lt;base&gt;::visit( t, forward&lt;Visitor&gt;(visitor) );</td></tr>
+<tr class="memitem:a2503e9c2314b9e45ac3c5c537a3d14a0"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#a2503e9c2314b9e45ac3c5c537a3d14a0">EOSLIB_REFLECT_VISIT2_BASE</a>(r,  visitor,  <a class="el" href="structbase.html">base</a>)&#160;&#160;&#160;<a class="el" href="structeosio_1_1reflector.html">eosio::reflector</a>&lt;<a class="el" href="structbase.html">base</a>&gt;::visit( t, forward&lt;Visitor&gt;(visitor) );</td></tr>
 <tr class="separator:a2503e9c2314b9e45ac3c5c537a3d14a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae6f443a0fcd4af9b3e1c9d6a257cdc84"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#ae6f443a0fcd4af9b3e1c9d6a257cdc84">EOSLIB_REFLECT_VISIT_MEMBER</a>(r,  visitor,  elem)</td></tr>
 <tr class="separator:ae6f443a0fcd4af9b3e1c9d6a257cdc84"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -111,18 +109,18 @@ Macros</h2></td></tr>
 <tr class="separator:a65097ea3682f03935c5e4aad63d233a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5c0d178e9d1ff2305d466221c81ad4de"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#a5c0d178e9d1ff2305d466221c81ad4de">EOSLIB_REFLECT_DERIVED_IMPL_EXT</a>(TYPE,  INHERITS,  MEMBERS)</td></tr>
 <tr class="separator:a5c0d178e9d1ff2305d466221c81ad4de"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa532922cd1c727af2a18a36f944afcc0"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#aa532922cd1c727af2a18a36f944afcc0">EOSLIB_REFLECT</a>(TYPE,  MEMBERS)&#160;&#160;&#160;<a class="el" href="reflect_8hpp.html#abc9537986c7dc6fabbebe7a23aca35a3">EOSLIB_REFLECT_DERIVED</a>( TYPE, <a class="el" href="seq_2seq_8hpp.html#a3e0aa3b8328b4a77225f65b03059912e">BOOST_PP_SEQ_NIL</a>, MEMBERS )</td></tr>
+<tr class="memitem:aa532922cd1c727af2a18a36f944afcc0"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#aa532922cd1c727af2a18a36f944afcc0">EOSLIB_REFLECT</a>(TYPE,  MEMBERS)&#160;&#160;&#160;<a class="el" href="reflect_8hpp.html#abc9537986c7dc6fabbebe7a23aca35a3">EOSLIB_REFLECT_DERIVED</a>( TYPE, BOOST_PP_SEQ_NIL, MEMBERS )</td></tr>
 <tr class="memdesc:aa532922cd1c727af2a18a36f944afcc0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Specializes <a class="el" href="structeosio_1_1reflector.html">eosio::reflector</a> for TYPE.  <a href="#aa532922cd1c727af2a18a36f944afcc0">More...</a><br /></td></tr>
 <tr class="separator:aa532922cd1c727af2a18a36f944afcc0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab66b44183a61e5df85154151f1261b05"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#ab66b44183a61e5df85154151f1261b05">EOSLIB_REFLECT_TEMPLATE</a>(TEMPLATE_ARGS,  TYPE,  MEMBERS)&#160;&#160;&#160;<a class="el" href="reflect_8hpp.html#a19ecb289e4fa0b10e1947eb7d582c672">EOSLIB_REFLECT_DERIVED_TEMPLATE</a>( TEMPLATE_ARGS, TYPE, <a class="el" href="seq_2seq_8hpp.html#a3e0aa3b8328b4a77225f65b03059912e">BOOST_PP_SEQ_NIL</a>, MEMBERS )</td></tr>
+<tr class="memitem:ab66b44183a61e5df85154151f1261b05"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#ab66b44183a61e5df85154151f1261b05">EOSLIB_REFLECT_TEMPLATE</a>(TEMPLATE_ARGS,  TYPE,  MEMBERS)&#160;&#160;&#160;<a class="el" href="reflect_8hpp.html#a19ecb289e4fa0b10e1947eb7d582c672">EOSLIB_REFLECT_DERIVED_TEMPLATE</a>( TEMPLATE_ARGS, TYPE, BOOST_PP_SEQ_NIL, MEMBERS )</td></tr>
 <tr class="separator:ab66b44183a61e5df85154151f1261b05"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a00f4751a0ec9d3b190e29107b8e5efce"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#a00f4751a0ec9d3b190e29107b8e5efce">EOSLIB_REFLECT_EMPTY</a>(TYPE)&#160;&#160;&#160;<a class="el" href="reflect_8hpp.html#abc9537986c7dc6fabbebe7a23aca35a3">EOSLIB_REFLECT_DERIVED</a>( TYPE, <a class="el" href="seq_2seq_8hpp.html#a3e0aa3b8328b4a77225f65b03059912e">BOOST_PP_SEQ_NIL</a>, <a class="el" href="seq_2seq_8hpp.html#a3e0aa3b8328b4a77225f65b03059912e">BOOST_PP_SEQ_NIL</a> )</td></tr>
+<tr class="memitem:a00f4751a0ec9d3b190e29107b8e5efce"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#a00f4751a0ec9d3b190e29107b8e5efce">EOSLIB_REFLECT_EMPTY</a>(TYPE)&#160;&#160;&#160;<a class="el" href="reflect_8hpp.html#abc9537986c7dc6fabbebe7a23aca35a3">EOSLIB_REFLECT_DERIVED</a>( TYPE, BOOST_PP_SEQ_NIL, BOOST_PP_SEQ_NIL )</td></tr>
 <tr class="separator:a00f4751a0ec9d3b190e29107b8e5efce"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9032c65cd45de9ed1a16f96412370328"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#a9032c65cd45de9ed1a16f96412370328">EOSLIB_REFLECT_FWD</a>(TYPE)</td></tr>
 <tr class="separator:a9032c65cd45de9ed1a16f96412370328"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3502f13e293ee42c85b7cdebf6bbc608"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#a3502f13e293ee42c85b7cdebf6bbc608">EOSLIB_REFLECT_DERIVED_IMPL</a>(TYPE,  MEMBERS)&#160;&#160;&#160;EOSLIB_REFLECT_IMPL_DERIVED_EXT( TYPE, <a class="el" href="seq_2seq_8hpp.html#a3e0aa3b8328b4a77225f65b03059912e">BOOST_PP_SEQ_NIL</a>, MEMBERS )</td></tr>
+<tr class="memitem:a3502f13e293ee42c85b7cdebf6bbc608"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#a3502f13e293ee42c85b7cdebf6bbc608">EOSLIB_REFLECT_DERIVED_IMPL</a>(TYPE,  MEMBERS)&#160;&#160;&#160;EOSLIB_REFLECT_IMPL_DERIVED_EXT( TYPE, BOOST_PP_SEQ_NIL, MEMBERS )</td></tr>
 <tr class="separator:a3502f13e293ee42c85b7cdebf6bbc608"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa3d44ca862b4ddbe4a594440ffa7ec6e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#aa3d44ca862b4ddbe4a594440ffa7ec6e">EOSLIB_REFLECT_IMPL</a>(TYPE,  MEMBERS)&#160;&#160;&#160;<a class="el" href="reflect_8hpp.html#a5c0d178e9d1ff2305d466221c81ad4de">EOSLIB_REFLECT_DERIVED_IMPL_EXT</a>( TYPE, <a class="el" href="seq_2seq_8hpp.html#a3e0aa3b8328b4a77225f65b03059912e">BOOST_PP_SEQ_NIL</a>, MEMBERS )</td></tr>
+<tr class="memitem:aa3d44ca862b4ddbe4a594440ffa7ec6e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#aa3d44ca862b4ddbe4a594440ffa7ec6e">EOSLIB_REFLECT_IMPL</a>(TYPE,  MEMBERS)&#160;&#160;&#160;<a class="el" href="reflect_8hpp.html#a5c0d178e9d1ff2305d466221c81ad4de">EOSLIB_REFLECT_DERIVED_IMPL_EXT</a>( TYPE, BOOST_PP_SEQ_NIL, MEMBERS )</td></tr>
 <tr class="separator:aa3d44ca862b4ddbe4a594440ffa7ec6e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abc9537986c7dc6fabbebe7a23aca35a3"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="reflect_8hpp.html#abc9537986c7dc6fabbebe7a23aca35a3">EOSLIB_REFLECT_DERIVED</a>(TYPE,  INHERITS,  MEMBERS)</td></tr>
 <tr class="memdesc:abc9537986c7dc6fabbebe7a23aca35a3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Specializes <a class="el" href="structeosio_1_1reflector.html">eosio::reflector</a> for TYPE where type inherits other reflected classes.  <a href="#abc9537986c7dc6fabbebe7a23aca35a3">More...</a><br /></td></tr>
@@ -152,7 +150,7 @@ Macros</h2></td></tr>
         <tr>
           <td></td>
           <td>)</td>
-          <td></td><td>&#160;&#160;&#160;<a class="el" href="reflect_8hpp.html#abc9537986c7dc6fabbebe7a23aca35a3">EOSLIB_REFLECT_DERIVED</a>( TYPE, <a class="el" href="seq_2seq_8hpp.html#a3e0aa3b8328b4a77225f65b03059912e">BOOST_PP_SEQ_NIL</a>, MEMBERS )</td>
+          <td></td><td>&#160;&#160;&#160;<a class="el" href="reflect_8hpp.html#abc9537986c7dc6fabbebe7a23aca35a3">EOSLIB_REFLECT_DERIVED</a>( TYPE, BOOST_PP_SEQ_NIL, MEMBERS )</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -231,14 +229,11 @@ Macros</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line"><span class="keyword">namespace </span><a class="code" href="namespaceeosio.html">eosio</a> {  \</div><div class="line">template&lt;&gt; <span class="keyword">struct </span>reflector&lt;TYPE&gt; {\</div><div class="line">    typedef TYPE type; \</div><div class="line">    typedef <a class="code" href="structeosio_1_1true__type.html">eosio::true_type</a>  <a class="code" href="structeosio_1_1reflector.html#ad3b342f6409c1bd7ec18c8ed60c16831">is_reflected</a>; \</div><div class="line">    typedef <a class="code" href="structeosio_1_1false__type.html">eosio::false_type</a> <a class="code" href="structeosio_1_1reflector.html#a49a28a4d6cd2528a53b0b8f3a8d2d022">is_enum</a>; \</div><div class="line">    enum  member_count_enum {  \</div><div class="line">      local_member_count = 0  <a class="code" href="seq_2for__each_8hpp.html#a9d6c94d4e25be91965ad44a828beecf1">BOOST_PP_SEQ_FOR_EACH</a>( <a class="code" href="reflect_8hpp.html#af10a833881d03fb0f67ea89e0dabf049">EOSLIB_REFLECT_MEMBER_COUNT</a>, +, MEMBERS ),\</div><div class="line">      total_member_count = local_member_count <a class="code" href="seq_2for__each_8hpp.html#a9d6c94d4e25be91965ad44a828beecf1">BOOST_PP_SEQ_FOR_EACH</a>( <a class="code" href="reflect_8hpp.html#a8b82e86bebd96205c2b523054ac322c8">EOSLIB_REFLECT_BASE_MEMBER_COUNT</a>, +, INHERITS )\</div><div class="line">    }; \</div><div class="line">    EOSLIB_REFLECT_DERIVED_IMPL_INLINE( TYPE, INHERITS, MEMBERS ) \</div><div class="line">}; }</div><div class="ttc" id="namespaceeosio_html"><div class="ttname"><a href="namespaceeosio.html">eosio</a></div><div class="ttdoc">Used to forward declare raw functions. </div><div class="ttdef"><b>Definition:</b> account.hpp:12</div></div>
-<div class="ttc" id="seq_2for__each_8hpp_html_a9d6c94d4e25be91965ad44a828beecf1"><div class="ttname"><a href="seq_2for__each_8hpp.html#a9d6c94d4e25be91965ad44a828beecf1">BOOST_PP_SEQ_FOR_EACH</a></div><div class="ttdeci">#define BOOST_PP_SEQ_FOR_EACH(macro, data, seq)</div><div class="ttdef"><b>Definition:</b> for_each.hpp:31</div></div>
-<div class="ttc" id="reflect_8hpp_html_a8b82e86bebd96205c2b523054ac322c8"><div class="ttname"><a href="reflect_8hpp.html#a8b82e86bebd96205c2b523054ac322c8">EOSLIB_REFLECT_BASE_MEMBER_COUNT</a></div><div class="ttdeci">#define EOSLIB_REFLECT_BASE_MEMBER_COUNT(r, OP, elem)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:38</div></div>
-<div class="ttc" id="structeosio_1_1reflector_html_a49a28a4d6cd2528a53b0b8f3a8d2d022"><div class="ttname"><a href="structeosio_1_1reflector.html#a49a28a4d6cd2528a53b0b8f3a8d2d022">eosio::reflector::is_enum</a></div><div class="ttdeci">false_type is_enum</div><div class="ttdef"><b>Definition:</b> reflect.hpp:13</div></div>
-<div class="ttc" id="reflect_8hpp_html_af10a833881d03fb0f67ea89e0dabf049"><div class="ttname"><a href="reflect_8hpp.html#af10a833881d03fb0f67ea89e0dabf049">EOSLIB_REFLECT_MEMBER_COUNT</a></div><div class="ttdeci">#define EOSLIB_REFLECT_MEMBER_COUNT(r, OP, elem)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:41</div></div>
-<div class="ttc" id="structeosio_1_1reflector_html_ad3b342f6409c1bd7ec18c8ed60c16831"><div class="ttname"><a href="structeosio_1_1reflector.html#ad3b342f6409c1bd7ec18c8ed60c16831">eosio::reflector::is_reflected</a></div><div class="ttdeci">false_type is_reflected</div><div class="ttdef"><b>Definition:</b> reflect.hpp:12</div></div>
-<div class="ttc" id="structeosio_1_1false__type_html"><div class="ttname"><a href="structeosio_1_1false__type.html">eosio::false_type</a></div><div class="ttdef"><b>Definition:</b> types.hpp:105</div></div>
-<div class="ttc" id="structeosio_1_1true__type_html"><div class="ttname"><a href="structeosio_1_1true__type.html">eosio::true_type</a></div><div class="ttdef"><b>Definition:</b> types.hpp:104</div></div>
+<b>Value:</b><div class="fragment"><div class="line"><span class="keyword">namespace </span><a class="code" href="namespaceeosio.html">eosio</a> {  \</div><div class="line">template&lt;&gt; <span class="keyword">struct </span>reflector&lt;TYPE&gt; {\</div><div class="line">    typedef TYPE type; \</div><div class="line">    typedef eosio::true_type  <a class="code" href="structeosio_1_1reflector.html#a642bea2f4842299215de8f7505022135">is_reflected</a>; \</div><div class="line">    typedef eosio::false_type <a class="code" href="structeosio_1_1reflector.html#ab18b93ea4e042a5f12b66dac14122734">is_enum</a>; \</div><div class="line">    enum  member_count_enum {  \</div><div class="line">      local_member_count = 0  BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#af10a833881d03fb0f67ea89e0dabf049">EOSLIB_REFLECT_MEMBER_COUNT</a>, +, MEMBERS ),\</div><div class="line">      total_member_count = local_member_count BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#a8b82e86bebd96205c2b523054ac322c8">EOSLIB_REFLECT_BASE_MEMBER_COUNT</a>, +, INHERITS )\</div><div class="line">    }; \</div><div class="line">    EOSLIB_REFLECT_DERIVED_IMPL_INLINE( TYPE, INHERITS, MEMBERS ) \</div><div class="line">}; }</div><div class="ttc" id="namespaceeosio_html"><div class="ttname"><a href="namespaceeosio.html">eosio</a></div><div class="ttdef"><b>Definition:</b> eosio.bios.hpp:5</div></div>
+<div class="ttc" id="reflect_8hpp_html_a8b82e86bebd96205c2b523054ac322c8"><div class="ttname"><a href="reflect_8hpp.html#a8b82e86bebd96205c2b523054ac322c8">EOSLIB_REFLECT_BASE_MEMBER_COUNT</a></div><div class="ttdeci">#define EOSLIB_REFLECT_BASE_MEMBER_COUNT(r, OP, elem)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:37</div></div>
+<div class="ttc" id="structeosio_1_1reflector_html_ab18b93ea4e042a5f12b66dac14122734"><div class="ttname"><a href="structeosio_1_1reflector.html#ab18b93ea4e042a5f12b66dac14122734">eosio::reflector::is_enum</a></div><div class="ttdeci">std::false_type is_enum</div><div class="ttdef"><b>Definition:</b> reflect.hpp:12</div></div>
+<div class="ttc" id="reflect_8hpp_html_af10a833881d03fb0f67ea89e0dabf049"><div class="ttname"><a href="reflect_8hpp.html#af10a833881d03fb0f67ea89e0dabf049">EOSLIB_REFLECT_MEMBER_COUNT</a></div><div class="ttdeci">#define EOSLIB_REFLECT_MEMBER_COUNT(r, OP, elem)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:40</div></div>
+<div class="ttc" id="structeosio_1_1reflector_html_a642bea2f4842299215de8f7505022135"><div class="ttname"><a href="structeosio_1_1reflector.html#a642bea2f4842299215de8f7505022135">eosio::reflector::is_reflected</a></div><div class="ttdeci">std::false_type is_reflected</div><div class="ttdef"><b>Definition:</b> reflect.hpp:11</div></div>
 </div><!-- fragment --><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">INHERITS</td><td>- a sequence of base class names (basea)(baseb)(basec) </td></tr>
@@ -270,7 +265,7 @@ Macros</h2></td></tr>
         <tr>
           <td></td>
           <td>)</td>
-          <td></td><td>&#160;&#160;&#160;EOSLIB_REFLECT_IMPL_DERIVED_EXT( TYPE, <a class="el" href="seq_2seq_8hpp.html#a3e0aa3b8328b4a77225f65b03059912e">BOOST_PP_SEQ_NIL</a>, MEMBERS )</td>
+          <td></td><td>&#160;&#160;&#160;EOSLIB_REFLECT_IMPL_DERIVED_EXT( TYPE, BOOST_PP_SEQ_NIL, MEMBERS )</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -308,9 +303,9 @@ Macros</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Visitor&gt;\</div><div class="line">void <a class="code" href="structeosio_1_1reflector.html">eosio::reflector&lt;TYPE&gt;::visit</a>( Visitor&amp;&amp; v ) { \</div><div class="line">    BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#a6269ed771378e6ab12a6507ce5c5efd6">EOSLIB_REFLECT_VISIT_BASE</a>, v, INHERITS ) \</div><div class="line">    BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#ae6f443a0fcd4af9b3e1c9d6a257cdc84">EOSLIB_REFLECT_VISIT_MEMBER</a>, v, MEMBERS ) \</div><div class="line">}</div><div class="ttc" id="structeosio_1_1reflector_html"><div class="ttname"><a href="structeosio_1_1reflector.html">eosio::reflector</a></div><div class="ttdef"><b>Definition:</b> reflect.hpp:11</div></div>
-<div class="ttc" id="reflect_8hpp_html_a6269ed771378e6ab12a6507ce5c5efd6"><div class="ttname"><a href="reflect_8hpp.html#a6269ed771378e6ab12a6507ce5c5efd6">EOSLIB_REFLECT_VISIT_BASE</a></div><div class="ttdeci">#define EOSLIB_REFLECT_VISIT_BASE(r, visitor, base)</div><div class="ttdoc">eosio </div><div class="ttdef"><b>Definition:</b> reflect.hpp:20</div></div>
-<div class="ttc" id="reflect_8hpp_html_ae6f443a0fcd4af9b3e1c9d6a257cdc84"><div class="ttname"><a href="reflect_8hpp.html#ae6f443a0fcd4af9b3e1c9d6a257cdc84">EOSLIB_REFLECT_VISIT_MEMBER</a></div><div class="ttdeci">#define EOSLIB_REFLECT_VISIT_MEMBER(r, visitor, elem)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:27</div></div>
+<b>Value:</b><div class="fragment"><div class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Visitor&gt;\</div><div class="line">void <a class="code" href="structeosio_1_1reflector.html">eosio::reflector&lt;TYPE&gt;::visit</a>( Visitor&amp;&amp; v ) { \</div><div class="line">    BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#a6269ed771378e6ab12a6507ce5c5efd6">EOSLIB_REFLECT_VISIT_BASE</a>, v, INHERITS ) \</div><div class="line">    BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#ae6f443a0fcd4af9b3e1c9d6a257cdc84">EOSLIB_REFLECT_VISIT_MEMBER</a>, v, MEMBERS ) \</div><div class="line">}</div><div class="ttc" id="structeosio_1_1reflector_html"><div class="ttname"><a href="structeosio_1_1reflector.html">eosio::reflector</a></div><div class="ttdef"><b>Definition:</b> reflect.hpp:10</div></div>
+<div class="ttc" id="reflect_8hpp_html_a6269ed771378e6ab12a6507ce5c5efd6"><div class="ttname"><a href="reflect_8hpp.html#a6269ed771378e6ab12a6507ce5c5efd6">EOSLIB_REFLECT_VISIT_BASE</a></div><div class="ttdeci">#define EOSLIB_REFLECT_VISIT_BASE(r, visitor, base)</div><div class="ttdoc">eosio </div><div class="ttdef"><b>Definition:</b> reflect.hpp:19</div></div>
+<div class="ttc" id="reflect_8hpp_html_ae6f443a0fcd4af9b3e1c9d6a257cdc84"><div class="ttname"><a href="reflect_8hpp.html#ae6f443a0fcd4af9b3e1c9d6a257cdc84">EOSLIB_REFLECT_VISIT_MEMBER</a></div><div class="ttdeci">#define EOSLIB_REFLECT_VISIT_MEMBER(r, visitor, elem)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:26</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -345,10 +340,10 @@ Macros</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Visitor&gt;\</div><div class="line">static <span class="keyword">inline</span> <span class="keywordtype">void</span> visit( Visitor&amp;&amp; v ) { \</div><div class="line">    BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#a6269ed771378e6ab12a6507ce5c5efd6">EOSLIB_REFLECT_VISIT_BASE</a>, v, INHERITS ) \</div><div class="line">    BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#ae6f443a0fcd4af9b3e1c9d6a257cdc84">EOSLIB_REFLECT_VISIT_MEMBER</a>, v, MEMBERS ) \</div><div class="line">} \</div><div class="line">template&lt;typename Visitor&gt;\</div><div class="line">static <span class="keyword">inline</span> <span class="keywordtype">void</span> visit( <span class="keyword">const</span> type&amp; t, Visitor&amp;&amp; v ) { \</div><div class="line">    BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#a2503e9c2314b9e45ac3c5c537a3d14a0">EOSLIB_REFLECT_VISIT2_BASE</a>, v, INHERITS ) \</div><div class="line">    BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#a60d5d77e2baad66c15753762be20230a">EOSLIB_REFLECT_VISIT2_MEMBER</a>, v, MEMBERS ) \</div><div class="line">} \</div><div class="line">template&lt;typename Visitor&gt;\</div><div class="line">static <span class="keyword">inline</span> <span class="keywordtype">void</span> visit( type&amp; t, Visitor&amp;&amp; v ) { \</div><div class="line">    BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#a2503e9c2314b9e45ac3c5c537a3d14a0">EOSLIB_REFLECT_VISIT2_BASE</a>, v, INHERITS ) \</div><div class="line">    BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#a60d5d77e2baad66c15753762be20230a">EOSLIB_REFLECT_VISIT2_MEMBER</a>, v, MEMBERS ) \</div><div class="line">}</div><div class="ttc" id="reflect_8hpp_html_a6269ed771378e6ab12a6507ce5c5efd6"><div class="ttname"><a href="reflect_8hpp.html#a6269ed771378e6ab12a6507ce5c5efd6">EOSLIB_REFLECT_VISIT_BASE</a></div><div class="ttdeci">#define EOSLIB_REFLECT_VISIT_BASE(r, visitor, base)</div><div class="ttdoc">eosio </div><div class="ttdef"><b>Definition:</b> reflect.hpp:20</div></div>
-<div class="ttc" id="reflect_8hpp_html_a60d5d77e2baad66c15753762be20230a"><div class="ttname"><a href="reflect_8hpp.html#a60d5d77e2baad66c15753762be20230a">EOSLIB_REFLECT_VISIT2_MEMBER</a></div><div class="ttdeci">#define EOSLIB_REFLECT_VISIT2_MEMBER(r, visitor, elem)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:32</div></div>
-<div class="ttc" id="reflect_8hpp_html_ae6f443a0fcd4af9b3e1c9d6a257cdc84"><div class="ttname"><a href="reflect_8hpp.html#ae6f443a0fcd4af9b3e1c9d6a257cdc84">EOSLIB_REFLECT_VISIT_MEMBER</a></div><div class="ttdeci">#define EOSLIB_REFLECT_VISIT_MEMBER(r, visitor, elem)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:27</div></div>
-<div class="ttc" id="reflect_8hpp_html_a2503e9c2314b9e45ac3c5c537a3d14a0"><div class="ttname"><a href="reflect_8hpp.html#a2503e9c2314b9e45ac3c5c537a3d14a0">EOSLIB_REFLECT_VISIT2_BASE</a></div><div class="ttdeci">#define EOSLIB_REFLECT_VISIT2_BASE(r, visitor, base)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:23</div></div>
+<b>Value:</b><div class="fragment"><div class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Visitor&gt;\</div><div class="line">static <span class="keyword">inline</span> <span class="keywordtype">void</span> visit( Visitor&amp;&amp; v ) { \</div><div class="line">    BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#a6269ed771378e6ab12a6507ce5c5efd6">EOSLIB_REFLECT_VISIT_BASE</a>, v, INHERITS ) \</div><div class="line">    BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#ae6f443a0fcd4af9b3e1c9d6a257cdc84">EOSLIB_REFLECT_VISIT_MEMBER</a>, v, MEMBERS ) \</div><div class="line">} \</div><div class="line">template&lt;typename Visitor&gt;\</div><div class="line">static <span class="keyword">inline</span> <span class="keywordtype">void</span> visit( <span class="keyword">const</span> type&amp; t, Visitor&amp;&amp; v ) { \</div><div class="line">    BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#a2503e9c2314b9e45ac3c5c537a3d14a0">EOSLIB_REFLECT_VISIT2_BASE</a>, v, INHERITS ) \</div><div class="line">    BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#a60d5d77e2baad66c15753762be20230a">EOSLIB_REFLECT_VISIT2_MEMBER</a>, v, MEMBERS ) \</div><div class="line">} \</div><div class="line">template&lt;typename Visitor&gt;\</div><div class="line">static <span class="keyword">inline</span> <span class="keywordtype">void</span> visit( type&amp; t, Visitor&amp;&amp; v ) { \</div><div class="line">    BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#a2503e9c2314b9e45ac3c5c537a3d14a0">EOSLIB_REFLECT_VISIT2_BASE</a>, v, INHERITS ) \</div><div class="line">    BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#a60d5d77e2baad66c15753762be20230a">EOSLIB_REFLECT_VISIT2_MEMBER</a>, v, MEMBERS ) \</div><div class="line">}</div><div class="ttc" id="reflect_8hpp_html_a6269ed771378e6ab12a6507ce5c5efd6"><div class="ttname"><a href="reflect_8hpp.html#a6269ed771378e6ab12a6507ce5c5efd6">EOSLIB_REFLECT_VISIT_BASE</a></div><div class="ttdeci">#define EOSLIB_REFLECT_VISIT_BASE(r, visitor, base)</div><div class="ttdoc">eosio </div><div class="ttdef"><b>Definition:</b> reflect.hpp:19</div></div>
+<div class="ttc" id="reflect_8hpp_html_a60d5d77e2baad66c15753762be20230a"><div class="ttname"><a href="reflect_8hpp.html#a60d5d77e2baad66c15753762be20230a">EOSLIB_REFLECT_VISIT2_MEMBER</a></div><div class="ttdeci">#define EOSLIB_REFLECT_VISIT2_MEMBER(r, visitor, elem)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:31</div></div>
+<div class="ttc" id="reflect_8hpp_html_ae6f443a0fcd4af9b3e1c9d6a257cdc84"><div class="ttname"><a href="reflect_8hpp.html#ae6f443a0fcd4af9b3e1c9d6a257cdc84">EOSLIB_REFLECT_VISIT_MEMBER</a></div><div class="ttdeci">#define EOSLIB_REFLECT_VISIT_MEMBER(r, visitor, elem)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:26</div></div>
+<div class="ttc" id="reflect_8hpp_html_a2503e9c2314b9e45ac3c5c537a3d14a0"><div class="ttname"><a href="reflect_8hpp.html#a2503e9c2314b9e45ac3c5c537a3d14a0">EOSLIB_REFLECT_VISIT2_BASE</a></div><div class="ttdeci">#define EOSLIB_REFLECT_VISIT2_BASE(r, visitor, base)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:22</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -389,13 +384,10 @@ Macros</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line"><span class="keyword">namespace </span><a class="code" href="namespaceeosio.html">eosio</a> {  \</div><div class="line">template&lt;BOOST_PP_SEQ_ENUM(TEMPLATE_ARGS)&gt; <span class="keyword">struct </span>reflector&lt;TYPE&gt; {\</div><div class="line">    typedef TYPE type; \</div><div class="line">    typedef <a class="code" href="structeosio_1_1true__type.html">eosio::true_type</a>  is_defined; \</div><div class="line">    typedef <a class="code" href="structeosio_1_1false__type.html">eosio::false_type</a> <a class="code" href="structeosio_1_1reflector.html#a49a28a4d6cd2528a53b0b8f3a8d2d022">is_enum</a>; \</div><div class="line">    enum  member_count_enum {  \</div><div class="line">      local_member_count = 0  <a class="code" href="seq_2for__each_8hpp.html#a9d6c94d4e25be91965ad44a828beecf1">BOOST_PP_SEQ_FOR_EACH</a>( <a class="code" href="reflect_8hpp.html#af10a833881d03fb0f67ea89e0dabf049">EOSLIB_REFLECT_MEMBER_COUNT</a>, +, MEMBERS ),\</div><div class="line">      total_member_count = local_member_count <a class="code" href="seq_2for__each_8hpp.html#a9d6c94d4e25be91965ad44a828beecf1">BOOST_PP_SEQ_FOR_EACH</a>( <a class="code" href="reflect_8hpp.html#a8b82e86bebd96205c2b523054ac322c8">EOSLIB_REFLECT_BASE_MEMBER_COUNT</a>, +, INHERITS )\</div><div class="line">    }; \</div><div class="line">    EOSLIB_REFLECT_DERIVED_IMPL_INLINE( TYPE, INHERITS, MEMBERS ) \</div><div class="line">}; }</div><div class="ttc" id="namespaceeosio_html"><div class="ttname"><a href="namespaceeosio.html">eosio</a></div><div class="ttdoc">Used to forward declare raw functions. </div><div class="ttdef"><b>Definition:</b> account.hpp:12</div></div>
-<div class="ttc" id="seq_2for__each_8hpp_html_a9d6c94d4e25be91965ad44a828beecf1"><div class="ttname"><a href="seq_2for__each_8hpp.html#a9d6c94d4e25be91965ad44a828beecf1">BOOST_PP_SEQ_FOR_EACH</a></div><div class="ttdeci">#define BOOST_PP_SEQ_FOR_EACH(macro, data, seq)</div><div class="ttdef"><b>Definition:</b> for_each.hpp:31</div></div>
-<div class="ttc" id="reflect_8hpp_html_a8b82e86bebd96205c2b523054ac322c8"><div class="ttname"><a href="reflect_8hpp.html#a8b82e86bebd96205c2b523054ac322c8">EOSLIB_REFLECT_BASE_MEMBER_COUNT</a></div><div class="ttdeci">#define EOSLIB_REFLECT_BASE_MEMBER_COUNT(r, OP, elem)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:38</div></div>
-<div class="ttc" id="structeosio_1_1reflector_html_a49a28a4d6cd2528a53b0b8f3a8d2d022"><div class="ttname"><a href="structeosio_1_1reflector.html#a49a28a4d6cd2528a53b0b8f3a8d2d022">eosio::reflector::is_enum</a></div><div class="ttdeci">false_type is_enum</div><div class="ttdef"><b>Definition:</b> reflect.hpp:13</div></div>
-<div class="ttc" id="reflect_8hpp_html_af10a833881d03fb0f67ea89e0dabf049"><div class="ttname"><a href="reflect_8hpp.html#af10a833881d03fb0f67ea89e0dabf049">EOSLIB_REFLECT_MEMBER_COUNT</a></div><div class="ttdeci">#define EOSLIB_REFLECT_MEMBER_COUNT(r, OP, elem)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:41</div></div>
-<div class="ttc" id="structeosio_1_1false__type_html"><div class="ttname"><a href="structeosio_1_1false__type.html">eosio::false_type</a></div><div class="ttdef"><b>Definition:</b> types.hpp:105</div></div>
-<div class="ttc" id="structeosio_1_1true__type_html"><div class="ttname"><a href="structeosio_1_1true__type.html">eosio::true_type</a></div><div class="ttdef"><b>Definition:</b> types.hpp:104</div></div>
+<b>Value:</b><div class="fragment"><div class="line"><span class="keyword">namespace </span><a class="code" href="namespaceeosio.html">eosio</a> {  \</div><div class="line">template&lt;BOOST_PP_SEQ_ENUM(TEMPLATE_ARGS)&gt; <span class="keyword">struct </span>reflector&lt;TYPE&gt; {\</div><div class="line">    typedef TYPE type; \</div><div class="line">    typedef eosio::true_type  is_defined; \</div><div class="line">    typedef eosio::false_type <a class="code" href="structeosio_1_1reflector.html#ab18b93ea4e042a5f12b66dac14122734">is_enum</a>; \</div><div class="line">    enum  member_count_enum {  \</div><div class="line">      local_member_count = 0  BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#af10a833881d03fb0f67ea89e0dabf049">EOSLIB_REFLECT_MEMBER_COUNT</a>, +, MEMBERS ),\</div><div class="line">      total_member_count = local_member_count BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#a8b82e86bebd96205c2b523054ac322c8">EOSLIB_REFLECT_BASE_MEMBER_COUNT</a>, +, INHERITS )\</div><div class="line">    }; \</div><div class="line">    EOSLIB_REFLECT_DERIVED_IMPL_INLINE( TYPE, INHERITS, MEMBERS ) \</div><div class="line">}; }</div><div class="ttc" id="namespaceeosio_html"><div class="ttname"><a href="namespaceeosio.html">eosio</a></div><div class="ttdef"><b>Definition:</b> eosio.bios.hpp:5</div></div>
+<div class="ttc" id="reflect_8hpp_html_a8b82e86bebd96205c2b523054ac322c8"><div class="ttname"><a href="reflect_8hpp.html#a8b82e86bebd96205c2b523054ac322c8">EOSLIB_REFLECT_BASE_MEMBER_COUNT</a></div><div class="ttdeci">#define EOSLIB_REFLECT_BASE_MEMBER_COUNT(r, OP, elem)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:37</div></div>
+<div class="ttc" id="structeosio_1_1reflector_html_ab18b93ea4e042a5f12b66dac14122734"><div class="ttname"><a href="structeosio_1_1reflector.html#ab18b93ea4e042a5f12b66dac14122734">eosio::reflector::is_enum</a></div><div class="ttdeci">std::false_type is_enum</div><div class="ttdef"><b>Definition:</b> reflect.hpp:12</div></div>
+<div class="ttc" id="reflect_8hpp_html_af10a833881d03fb0f67ea89e0dabf049"><div class="ttname"><a href="reflect_8hpp.html#af10a833881d03fb0f67ea89e0dabf049">EOSLIB_REFLECT_MEMBER_COUNT</a></div><div class="ttdeci">#define EOSLIB_REFLECT_MEMBER_COUNT(r, OP, elem)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:40</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -410,7 +402,7 @@ Macros</h2></td></tr>
           <td>(</td>
           <td class="paramtype">&#160;</td>
           <td class="paramname">TYPE</td><td>)</td>
-          <td>&#160;&#160;&#160;<a class="el" href="reflect_8hpp.html#abc9537986c7dc6fabbebe7a23aca35a3">EOSLIB_REFLECT_DERIVED</a>( TYPE, <a class="el" href="seq_2seq_8hpp.html#a3e0aa3b8328b4a77225f65b03059912e">BOOST_PP_SEQ_NIL</a>, <a class="el" href="seq_2seq_8hpp.html#a3e0aa3b8328b4a77225f65b03059912e">BOOST_PP_SEQ_NIL</a> )</td>
+          <td>&#160;&#160;&#160;<a class="el" href="reflect_8hpp.html#abc9537986c7dc6fabbebe7a23aca35a3">EOSLIB_REFLECT_DERIVED</a>( TYPE, BOOST_PP_SEQ_NIL, BOOST_PP_SEQ_NIL )</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -432,12 +424,9 @@ Macros</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line"><span class="keyword">namespace </span><a class="code" href="namespaceeosio.html">eosio</a> { \</div><div class="line">  template&lt;&gt; <span class="keyword">struct </span>reflector&lt;TYPE&gt; {\</div><div class="line">       typedef TYPE type; \</div><div class="line">       typedef <a class="code" href="structeosio_1_1true__type.html">eosio::true_type</a> <a class="code" href="structeosio_1_1reflector.html#ad3b342f6409c1bd7ec18c8ed60c16831">is_reflected</a>; \</div><div class="line">       enum  member_count_enum {  \</div><div class="line">         local_member_count = <a class="code" href="seq_2size_8hpp.html#aeefbacdbf937338e9f7b67044c4a3c96">BOOST_PP_SEQ_SIZE</a>(MEMBERS), \</div><div class="line">         total_member_count = local_member_count <a class="code" href="seq_2for__each_8hpp.html#a9d6c94d4e25be91965ad44a828beecf1">BOOST_PP_SEQ_FOR_EACH</a>( <a class="code" href="reflect_8hpp.html#a8b82e86bebd96205c2b523054ac322c8">EOSLIB_REFLECT_BASE_MEMBER_COUNT</a>, +, INHERITS )\</div><div class="line">       }; \</div><div class="line">       template&lt;typename Visitor&gt; <span class="keyword">static</span> <span class="keywordtype">void</span> visit( Visitor&amp;&amp; v ); \</div><div class="line">       template&lt;typename Visitor&gt; <span class="keyword">static</span> <span class="keywordtype">void</span> visit( <span class="keyword">const</span> type&amp; t, Visitor&amp;&amp; v ); \</div><div class="line">       template&lt;typename Visitor&gt; <span class="keyword">static</span> <span class="keywordtype">void</span> visit( type&amp; t, Visitor&amp;&amp; v ); \</div><div class="line">  }; }</div><div class="ttc" id="namespaceeosio_html"><div class="ttname"><a href="namespaceeosio.html">eosio</a></div><div class="ttdoc">Used to forward declare raw functions. </div><div class="ttdef"><b>Definition:</b> account.hpp:12</div></div>
-<div class="ttc" id="seq_2for__each_8hpp_html_a9d6c94d4e25be91965ad44a828beecf1"><div class="ttname"><a href="seq_2for__each_8hpp.html#a9d6c94d4e25be91965ad44a828beecf1">BOOST_PP_SEQ_FOR_EACH</a></div><div class="ttdeci">#define BOOST_PP_SEQ_FOR_EACH(macro, data, seq)</div><div class="ttdef"><b>Definition:</b> for_each.hpp:31</div></div>
-<div class="ttc" id="reflect_8hpp_html_a8b82e86bebd96205c2b523054ac322c8"><div class="ttname"><a href="reflect_8hpp.html#a8b82e86bebd96205c2b523054ac322c8">EOSLIB_REFLECT_BASE_MEMBER_COUNT</a></div><div class="ttdeci">#define EOSLIB_REFLECT_BASE_MEMBER_COUNT(r, OP, elem)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:38</div></div>
-<div class="ttc" id="structeosio_1_1reflector_html_ad3b342f6409c1bd7ec18c8ed60c16831"><div class="ttname"><a href="structeosio_1_1reflector.html#ad3b342f6409c1bd7ec18c8ed60c16831">eosio::reflector::is_reflected</a></div><div class="ttdeci">false_type is_reflected</div><div class="ttdef"><b>Definition:</b> reflect.hpp:12</div></div>
-<div class="ttc" id="seq_2size_8hpp_html_aeefbacdbf937338e9f7b67044c4a3c96"><div class="ttname"><a href="seq_2size_8hpp.html#aeefbacdbf937338e9f7b67044c4a3c96">BOOST_PP_SEQ_SIZE</a></div><div class="ttdeci">#define BOOST_PP_SEQ_SIZE(seq)</div><div class="ttdef"><b>Definition:</b> size.hpp:28</div></div>
-<div class="ttc" id="structeosio_1_1true__type_html"><div class="ttname"><a href="structeosio_1_1true__type.html">eosio::true_type</a></div><div class="ttdef"><b>Definition:</b> types.hpp:104</div></div>
+<b>Value:</b><div class="fragment"><div class="line"><span class="keyword">namespace </span><a class="code" href="namespaceeosio.html">eosio</a> { \</div><div class="line">  template&lt;&gt; <span class="keyword">struct </span>reflector&lt;TYPE&gt; {\</div><div class="line">       typedef TYPE type; \</div><div class="line">       typedef eosio::true_type <a class="code" href="structeosio_1_1reflector.html#a642bea2f4842299215de8f7505022135">is_reflected</a>; \</div><div class="line">       enum  member_count_enum {  \</div><div class="line">         local_member_count = BOOST_PP_SEQ_SIZE(MEMBERS), \</div><div class="line">         total_member_count = local_member_count BOOST_PP_SEQ_FOR_EACH( <a class="code" href="reflect_8hpp.html#a8b82e86bebd96205c2b523054ac322c8">EOSLIB_REFLECT_BASE_MEMBER_COUNT</a>, +, INHERITS )\</div><div class="line">       }; \</div><div class="line">       template&lt;typename Visitor&gt; <span class="keyword">static</span> <span class="keywordtype">void</span> visit( Visitor&amp;&amp; v ); \</div><div class="line">       template&lt;typename Visitor&gt; <span class="keyword">static</span> <span class="keywordtype">void</span> visit( <span class="keyword">const</span> type&amp; t, Visitor&amp;&amp; v ); \</div><div class="line">       template&lt;typename Visitor&gt; <span class="keyword">static</span> <span class="keywordtype">void</span> visit( type&amp; t, Visitor&amp;&amp; v ); \</div><div class="line">  }; }</div><div class="ttc" id="namespaceeosio_html"><div class="ttname"><a href="namespaceeosio.html">eosio</a></div><div class="ttdef"><b>Definition:</b> eosio.bios.hpp:5</div></div>
+<div class="ttc" id="reflect_8hpp_html_a8b82e86bebd96205c2b523054ac322c8"><div class="ttname"><a href="reflect_8hpp.html#a8b82e86bebd96205c2b523054ac322c8">EOSLIB_REFLECT_BASE_MEMBER_COUNT</a></div><div class="ttdeci">#define EOSLIB_REFLECT_BASE_MEMBER_COUNT(r, OP, elem)</div><div class="ttdef"><b>Definition:</b> reflect.hpp:37</div></div>
+<div class="ttc" id="structeosio_1_1reflector_html_a642bea2f4842299215de8f7505022135"><div class="ttname"><a href="structeosio_1_1reflector.html#a642bea2f4842299215de8f7505022135">eosio::reflector::is_reflected</a></div><div class="ttdeci">std::false_type is_reflected</div><div class="ttdef"><b>Definition:</b> reflect.hpp:11</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -462,7 +451,7 @@ Macros</h2></td></tr>
         <tr>
           <td></td>
           <td>)</td>
-          <td></td><td>&#160;&#160;&#160;<a class="el" href="reflect_8hpp.html#a5c0d178e9d1ff2305d466221c81ad4de">EOSLIB_REFLECT_DERIVED_IMPL_EXT</a>( TYPE, <a class="el" href="seq_2seq_8hpp.html#a3e0aa3b8328b4a77225f65b03059912e">BOOST_PP_SEQ_NIL</a>, MEMBERS )</td>
+          <td></td><td>&#160;&#160;&#160;<a class="el" href="reflect_8hpp.html#a5c0d178e9d1ff2305d466221c81ad4de">EOSLIB_REFLECT_DERIVED_IMPL_EXT</a>( TYPE, BOOST_PP_SEQ_NIL, MEMBERS )</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -530,7 +519,7 @@ Macros</h2></td></tr>
         <tr>
           <td></td>
           <td>)</td>
-          <td></td><td>&#160;&#160;&#160;<a class="el" href="reflect_8hpp.html#a19ecb289e4fa0b10e1947eb7d582c672">EOSLIB_REFLECT_DERIVED_TEMPLATE</a>( TEMPLATE_ARGS, TYPE, <a class="el" href="seq_2seq_8hpp.html#a3e0aa3b8328b4a77225f65b03059912e">BOOST_PP_SEQ_NIL</a>, MEMBERS )</td>
+          <td></td><td>&#160;&#160;&#160;<a class="el" href="reflect_8hpp.html#a19ecb289e4fa0b10e1947eb7d582c672">EOSLIB_REFLECT_DERIVED_TEMPLATE</a>( TEMPLATE_ARGS, TYPE, BOOST_PP_SEQ_NIL, MEMBERS )</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -559,12 +548,12 @@ Macros</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">&#160;</td>
-          <td class="paramname">base&#160;</td>
+          <td class="paramname"><a class="el" href="structbase.html">base</a>&#160;</td>
         </tr>
         <tr>
           <td></td>
           <td>)</td>
-          <td></td><td>&#160;&#160;&#160;<a class="el" href="structeosio_1_1reflector.html">eosio::reflector</a>&lt;base&gt;::visit( t, forward&lt;Visitor&gt;(visitor) );</td>
+          <td></td><td>&#160;&#160;&#160;<a class="el" href="structeosio_1_1reflector.html">eosio::reflector</a>&lt;<a class="el" href="structbase.html">base</a>&gt;::visit( t, forward&lt;Visitor&gt;(visitor) );</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -627,12 +616,12 @@ Macros</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">&#160;</td>
-          <td class="paramname">base&#160;</td>
+          <td class="paramname"><a class="el" href="structbase.html">base</a>&#160;</td>
         </tr>
         <tr>
           <td></td>
           <td>)</td>
-          <td></td><td>&#160;&#160;&#160;<a class="el" href="structeosio_1_1reflector.html">eosio::reflector</a>&lt;base&gt;::visit( visitor );</td>
+          <td></td><td>&#160;&#160;&#160;<a class="el" href="structeosio_1_1reflector.html">eosio::reflector</a>&lt;<a class="el" href="structbase.html">base</a>&gt;::visit( visitor );</td>
         </tr>
       </table>
 </div><div class="memdoc">
