@@ -139,9 +139,24 @@
 					$XCODESELECT --install 2>/dev/null;
 					printf "\tUpdating Home Brew.\n"
 					brew update
+					if [ $? -ne 0 ]; then
+						printf "\tUnable to update Home Brew at this time.\n"
+						printf "\tExiting now.\n\n"
+						exit;
+					fi
 					printf "\tInstalling Dependencies.\n"
 					brew install --force $DEP
+					if [ $? -ne 0 ]; then
+						printf "\tHomebrew exited with the above errors.\n"
+						printf "\tExiting now.\n\n"
+						exit;
+					fi
 					brew unlink $DEP && brew link --force $DEP
+					if [ $? -ne 0 ]; then
+						printf "\tHomebrew exited with the above errors.\n"
+						printf "\tExiting now.\n\n"
+						exit;
+					fi
 				break;;
 				[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
 				* ) echo "Please type 1 for yes or 2 for no.";;
