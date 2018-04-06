@@ -22,16 +22,23 @@ namespace eosio { namespace chain {
       :num(d.block_num()),id(d.id()),data( std::move(d) ){}
 
       block_id_type previous_id()const { return data.previous; }
+      bool is_irreversible()const {
+         if( !schedule ) 
+            return false;
+         return (schedule->producers.size() * 2) / 3 < confirmations.size();
+      }
 
-      weak_ptr< fork_item > prev;
-      uint32_t              num;    // initialized in ctor
+      weak_ptr< fork_item >                prev;
+      shared_ptr< producer_schedule_type > schedule;
+      uint32_t                             num;    // initialized in ctor
       /**
        * Used to flag a block as invalid and prevent other blocks from
        * building on top of it.
        */
-      bool                  invalid = false;
-      block_id_type         id;
-      signed_block          data;
+      bool                          invalid = false;
+      block_id_type                 id;
+      signed_block                  data;
+      vector<producer_confirmation> confirmations;
    };
    typedef shared_ptr<fork_item> item_ptr;
 
@@ -64,9 +71,15 @@ namespace eosio { namespace chain {
          vector<item_ptr>                 fetch_block_by_number(uint32_t n)const;
 
          /**
+          * @return the block that the signature was added to
+          * throw exception if signature was not from producer in schedule for said block
+          */
+         shared_ptr<fork_item>            push_confirmation( const producer_confirmation& c );
+
+         /**
           *  @return the new head block ( the longest fork )
           */
-         shared_ptr<fork_item>            push_block(const signed_block& b);
+         shared_ptr<fork_item>            push_block(const signed_block& b, const producer_schedule_type& s = producer_schedule_type() );
          shared_ptr<fork_item>            head()const { return _head; }
          void                             pop_block();
 
@@ -93,8 +106,7 @@ namespace eosio { namespace chain {
 
       private:
          /** @return a pointer to the newly pushed item */
-         void _push_block(const item_ptr& b );
-         void _push_next(const item_ptr& newly_inserted);
+         void _push_block(const item_ptr& b, const producer_schedule_type& s );
 
          uint32_t                 _max_size = 1024;
 

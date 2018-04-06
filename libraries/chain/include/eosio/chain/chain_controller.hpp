@@ -89,6 +89,7 @@ namespace eosio { namespace chain {
          ~chain_controller();
 
 
+         void push_confirmation( const producer_confirmation& c );
          void push_block( const signed_block& b, uint32_t skip = skip_nothing );
          transaction_trace push_transaction( const packed_transaction& trx, uint32_t skip = skip_nothing );
          vector<transaction_trace> push_deferred_transactions( bool flush = false, uint32_t skip = skip_nothing );

@@ -37,6 +37,10 @@ namespace eosio { namespace chain {
       digest_type     block_digest;
       account_name    producer;
       signature_type  sig;
+
+      friend bool operator == ( const producer_confirmation& a, const producer_confirmation& b ) {
+         return std::tie(a.block_id,a.block_digest,a.producer,a.sig) == std::tie(b.block_id,b.block_digest,b.producer,b.sig);
+      }
    };
 
    struct signed_block_header : public block_header

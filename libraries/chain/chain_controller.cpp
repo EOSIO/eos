@@ -158,6 +158,15 @@ std::vector<block_id_type> chain_controller::get_block_ids_on_fork(block_id_type
 }
 
 
+void chain_controller::push_confirmation( const producer_confirmation& c ) {
+   auto blk = _fork_db.push_confirmation(c);
+   if( blk ) {
+      if( blk->is_irreversible() ) {
+         /// then we want to advance the undo database
+      }
+   }
+}
+
 /**
  * Push block "may fail" in which case every partial change is unwound.  After
  * push block is successful the block is appended to the chain database on disk.
@@ -180,10 +189,9 @@ bool chain_controller::_push_block(const signed_block& new_block)
 { try {
    uint32_t skip = _skip_flags;
    if (!(skip&skip_fork_db)) {
-      /// TODO: if the block is greater than the head block and before the next maintenance interval
-      // verify that the block signer is in the current set of active producers.
+      /// TODO: active producers is only valid if new_block extends the current block, and even then it might be off-by-one
 
-      shared_ptr<fork_item> new_head = _fork_db.push_block(new_block);
+      shared_ptr<fork_item> new_head = _fork_db.push_block(new_block, get_global_properties().active_producers );
       //If the head block from the longest chain does not build off of the current head, we need to switch forks.
       if (new_head->data.previous != head_block_id()) {
          //If the newly pushed block is the same height as head, we get head back in new_head

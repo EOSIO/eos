@@ -35,11 +35,11 @@ void     fork_database::start_block(signed_block b)
  * Pushes the block into the fork database and caches it if it doesn't link
  *
  */
-shared_ptr<fork_item>  fork_database::push_block(const signed_block& b)
+shared_ptr<fork_item>  fork_database::push_block(const signed_block& b, const producer_schedule_type& sch )
 {
    auto item = std::make_shared<fork_item>(b);
    try {
-      _push_block(item);
+      _push_block(item, sch);
    }
    catch ( const unlinkable_block_exception& e )
    {
@@ -51,7 +51,7 @@ shared_ptr<fork_item>  fork_database::push_block(const signed_block& b)
    return _head;
 }
 
-void  fork_database::_push_block(const item_ptr& item)
+void  fork_database::_push_block(const item_ptr& item, const producer_schedule_type& sch)
 {
    if( _head ) // make sure the block is within the range that we are caching
    {
@@ -66,6 +66,10 @@ void  fork_database::_push_block(const item_ptr& item)
       auto itr = index.find(item->previous_id());
       EOS_ASSERT(itr != index.end(), unlinkable_block_exception, "block does not link to known chain");
       FC_ASSERT(!(*itr)->invalid);
+      if( *(*itr)->schedule == sch )
+         item->schedule = (*itr)->schedule;
+      else
+         item->schedule = std::make_shared<producer_schedule_type>( sch );
       item->prev = *itr;
    }
 
@@ -85,29 +89,8 @@ void  fork_database::_push_block(const item_ptr& item)
       
       _unlinked_index.get<block_num>().erase(_head->num - _max_size);
    }
-   //_push_next( item );
 }
 
-/**
- *  Iterate through the unlinked cache and insert anything that
- *  links to the newly inserted item.  This will start a recursive
- *  set of calls performing a depth-first insertion of pending blocks as
- *  _push_next(..) calls _push_block(...) which will in turn call _push_next
- */
-void fork_database::_push_next( const item_ptr& new_item )
-{
-    auto& prev_idx = _unlinked_index.get<by_previous>();
-
-    auto itr = prev_idx.find( new_item->id );
-    while( itr != prev_idx.end() )
-    {
-       auto tmp = *itr;
-       prev_idx.erase( itr );
-       _push_block( tmp );
-
-       itr = prev_idx.find( new_item->id );
-    }
-}
 
 void fork_database::set_max_size( uint32_t s )
 {
@@ -231,6 +214,32 @@ void fork_database::set_head(shared_ptr<fork_item> h)
 void fork_database::remove(block_id_type id)
 {
    _index.get<block_id>().erase(id);
+}
+
+shared_ptr<fork_item>   fork_database::push_confirmation( const producer_confirmation& c ) {
+   /*
+   auto b = fetch_block( c.block_id );
+   if( !b->schedule ) return shared_ptr<fork_item>();
+
+   bool found = false;
+   for( const auto& pro : b->schedule->producers ) {
+      if( pro.producer_name == c.producer ){ 
+         public_key_type pub( c.digest, c.sig );
+         FC_ASSERT( pub == pro.block_signing_key, "not signed by expected key" );
+         /// TODO: recover key and compare keys
+         found = true; break;  
+      }
+   }
+
+   FC_ASSERT( found, "Producer signed who wasn't in schedule" );
+
+   for( const auto& con : b->confirmations ) {
+      if( con == c ) return shared_ptr<fork_item>();
+      FC_ASSERT( con.producer != c.producer, "DOUBLE SIGN FOUND" ); 
+   }
+   b->confirmations.push_back(c);
+   return b;
+   */
 }
 
 } } // eosio::chain
