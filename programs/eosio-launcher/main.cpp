@@ -1057,6 +1057,7 @@ launcher_def::init_genesis () {
       cout << "generating default genesis file " << genesis_path << endl;
       eosio::chain::contracts::genesis_state_type default_genesis;
       fc::json::save_to_file( default_genesis, genesis_path, true );
+      src.open(genesis_path);
    }
    string bioskey = string(network.nodes["bios"].keys[0].get_public_key());
    string str;
