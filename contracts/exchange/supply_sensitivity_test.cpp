@@ -134,7 +134,7 @@ void print_supply_price(const exchange_state &e) {
 void sensitivity_analysis(exchange_state &state) {
     auto start = fc::time_point::now();
     std::cerr << "\n------------" << "state.supply (collateral): " << state.supply << "-----------------\n";
-    std::cerr << "XYZ, USD" << "\n";
+    std::cerr << "USD, XYZ" << "\n";
     for (int i = 0; i < 10; i++) {
         state = convert(state, "dan", asset{1000000, "USD"}, asset{0, "XYZ"}); // convert 1 million USD to XYZ
         print_csf(state);
@@ -178,6 +178,7 @@ int main(int argc, char **argv) {
     origin_state.base.balance.symbol = "USD";
     origin_state.quote.balance.symbol = "XYZ";
     print_state(origin_state);
+    std::cerr << "\n------------" << "origin_state.base.weight="<< origin_state.base.weight << "-----------------\n";
     collateral_elasticity_test(origin_state);
 
 }

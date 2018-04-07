@@ -131,7 +131,7 @@ void print_csf(const exchange_state &e) {
 void sensitivity_analysis(exchange_state &state) {
     auto start = fc::time_point::now();
     std::cerr << "\n------------" << "state.base.weight: " << state.base.weight << "-----------------\n";
-    std::cerr << "XYZ, USD" << "\n";
+    std::cerr << "USD, XYZ" << "\n";
     for (int i = 0; i < 10; i++) {
         state = convert(state, "dan", asset{1000000, "USD"}, asset{0, "XYZ"});
         print_csf(state);
@@ -142,11 +142,6 @@ void sensitivity_analysis(exchange_state &state) {
 
 void connector_weight_test(exchange_state &origin_state) {
     exchange_state state = origin_state;
-    state.base.weight = 0.001;
-    state.quote.weight = 0.999;
-    sensitivity_analysis(state);
-
-    state = origin_state;
     state.base.weight = 0.01;
     state.quote.weight = 0.99;
     sensitivity_analysis(state);
@@ -170,18 +165,12 @@ void connector_weight_test(exchange_state &origin_state) {
     state.base.weight = 0.99;
     state.quote.weight = 0.01;
     sensitivity_analysis(state);
-
-
-//    state = origin_state;
-//    state.base.weight = 0.999;
-//    state.quote.weight = 0.001;
-//    sensitivity_analysis(state);
 }
 
 int main(int argc, char **argv) {
     //  std::cerr << "root: " << double(root.numerator())/root.denominator() << "\n";
     exchange_state origin_state;
-    origin_state.supply = ; // 0.1B
+    origin_state.supply = 100000000ll; // 0.1B
     //state.base.weight  = state.total_weight / 2.;
     origin_state.base.balance.amount = 100000000;
     origin_state.base.balance.symbol = "USD";
@@ -189,5 +178,6 @@ int main(int argc, char **argv) {
     origin_state.quote.balance.amount = origin_state.base.balance.amount;
     origin_state.quote.balance.symbol = "XYZ";
     print_state(origin_state);
+    std::cerr << "\n------------" << "origin_state.supply="<< origin_state.supply << "-----------------\n";
     connector_weight_test(origin_state);
 }
