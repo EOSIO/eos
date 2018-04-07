@@ -187,13 +187,13 @@ void  connector::borrow( exchange_state& ex, account_name user,
 
 asset connector::convert_to_exchange( exchange_state& ex, const asset& input ) {
 
-    real_type R(ex.supply);
-    real_type S(balance.amount+input.amount);
-    real_type F(weight);
-    real_type T(input.amount);
+    real_type EXC_AMT(ex.supply);
+    real_type ADDED_EXC_AMT(balance.amount+input.amount);
+    real_type WEIGHT(weight);
+    real_type CONNECTOR_TO_CONVERT(input.amount);
     real_type ONE(1.0);
 
-    auto E = R * (ONE - std::pow( ONE + T / S, F) );
+    auto CONNECTOR_TOKEN_ISSUED = EXC_AMT * (ONE - std::pow( ONE + CONNECTOR_TO_CONVERT / ADDED_EXC_AMT, WEIGHT) );
 
 
     //auto real_issued = real_type(ex.supply) * (sqrt_safe( 1.0 + (real_type(input.amount) / (balance.amount+input.amount))) - 1.0);
@@ -201,7 +201,7 @@ asset connector::convert_to_exchange( exchange_state& ex, const asset& input ) {
     //auto real_issued = R * (std::pow( ONE + (T / S), F) - ONE);
 
     //wdump((double(E))(double(real_issued)));
-    token_type issued = -E; //real_issued;
+    token_type issued = -CONNECTOR_TOKEN_ISSUED; //real_issued;
 
 
     ex.supply      += issued;
@@ -212,20 +212,20 @@ asset connector::convert_to_exchange( exchange_state& ex, const asset& input ) {
 
 asset connector::convert_from_exchange( exchange_state& ex, const asset& input ) {
 
-    real_type R(ex.supply - input.amount);
-    real_type S(balance.amount);
-    real_type F(weight);
-    real_type E(input.amount);
+    real_type DEDUCTED_EXC_AMT(ex.supply - input.amount);
+    real_type CONNECTOR_AMT(balance.amount);
+    real_type WEIGHT(weight);
+    real_type EXC_TO_CONVERT(input.amount);
     real_type ONE(1.0);
 
-    real_type T = S * (std::pow( ONE + E/R, ONE/F) - ONE);
+    real_type EXC_PAID_OUT = CONNECTOR_AMT * (std::pow( ONE + EXC_TO_CONVERT/DEDUCTED_EXC_AMT, ONE/WEIGHT) - ONE);
 
 
     /*
     real_type base = real_type(1.0) + ( real_type(input.amount) / real_type(ex.supply-input.amount));
     auto out = (balance.amount * ( std::pow(base,1.0/weight) - real_type(1.0) ));
     */
-    auto out = T;
+    auto out = EXC_PAID_OUT;
 
 //   edump((double(out-T))(double(out))(double(T)));
 
@@ -513,4 +513,4 @@ if( margin_fault ) assert( false, "busy calling" );
    Defer Trx to finish margin call
 
 
-#endif 
+#endif

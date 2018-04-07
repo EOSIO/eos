@@ -29,14 +29,14 @@ asset connector::convert_from_exchange(exchange_state &ex, const asset &input) {
     real_type EXC_TO_CONVERT(input.amount);
     real_type ONE(1.0);
 
-    real_type CONNECTOR_PAID_OUT = CONNECTOR_AMT * (std::pow(ONE + EXC_TO_CONVERT / DEDUCTED_EXC_AMT, ONE / WEIGHT) - ONE);
+    real_type EXC_PAID_OUT = CONNECTOR_AMT * (std::pow(ONE + EXC_TO_CONVERT / DEDUCTED_EXC_AMT, ONE / WEIGHT) - ONE);
 
 
     /*
     real_type base = real_type(1.0) + ( real_type(input.amount) / real_type(ex.supply-input.amount));
     auto out = (balance.amount * ( std::pow(base,1.0/weight) - real_type(1.0) ));
     */
-    auto out = CONNECTOR_PAID_OUT;
+    auto out = EXC_PAID_OUT;
 
 //   edump((double(out-T))(double(out))(double(T)));
 
