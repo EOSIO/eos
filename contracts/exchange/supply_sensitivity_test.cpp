@@ -9,8 +9,9 @@
 #include <fc/time.hpp>
 #include <fc/log/logger.hpp>
 /*
- * This file is to plot the diagram between token XYZ and pegged USD with different supply amount: 0.01, 0.1, 0.5, 0.9, 0.99
- *
+ * This file is to simulate the bancor algorithm and
+ * plot diagram between amount of token XYZ can be bought with stepped-incremental pegged USD to attempt to convert
+ * with different supply amount: 10B, 1B, 100M, 10M and fixed connector weight = 0.5
  */
 
 using namespace std;

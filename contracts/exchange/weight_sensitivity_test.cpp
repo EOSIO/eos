@@ -9,7 +9,9 @@
 #include <fc/time.hpp>
 #include <fc/log/logger.hpp>
 /*
- * this file is to test the how does the connector weight changes affect the
+ * This file is to simulate the bancor algorithm and
+ * plot diagram between amount of token XYZ can be bought with stepped-incremental pegged USD to attempt to convert
+ * with different connector weight: 0.01, 0.1, 0.5, 0.9, 0.99 and fixed supply amount = 100000000 (1 billion)
  */
 
 using namespace std;
@@ -179,7 +181,7 @@ void connector_weight_test(exchange_state &origin_state) {
 int main(int argc, char **argv) {
     //  std::cerr << "root: " << double(root.numerator())/root.denominator() << "\n";
     exchange_state origin_state;
-    origin_state.supply = 100000000ll;
+    origin_state.supply = ; // 0.1B
     //state.base.weight  = state.total_weight / 2.;
     origin_state.base.balance.amount = 100000000;
     origin_state.base.balance.symbol = "USD";
@@ -188,6 +190,4 @@ int main(int argc, char **argv) {
     origin_state.quote.balance.symbol = "XYZ";
     print_state(origin_state);
     connector_weight_test(origin_state);
-
-
 }
