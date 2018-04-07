@@ -473,8 +473,10 @@ int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, 
 void apply_context::db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size ) {
    const key_value_object& obj = keyval_cache.get( iterator );
 
-   const auto& tab = keyval_cache.get_table( obj.t_id );
-   require_write_lock( tab.scope );
+   const auto& table_obj = keyval_cache.get_table( obj.t_id );
+   FC_ASSERT( table_obj.code == receiver, "db access violation" );
+
+   require_write_lock( table_obj.scope );
 
    const int64_t overhead = config::billable_size_v<key_value_object>;
    int64_t old_size = (int64_t)(obj.value.size() + overhead);
@@ -501,10 +503,13 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
 
 void apply_context::db_remove_i64( int iterator ) {
    const key_value_object& obj = keyval_cache.get( iterator );
-   update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>) );
 
    const auto& table_obj = keyval_cache.get_table( obj.t_id );
+   FC_ASSERT( table_obj.code == receiver, "db access violation" );
+
    require_write_lock( table_obj.scope );
+
+   update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>) );
 
    mutable_db.modify( table_obj, [&]( auto& t ) {
       --t.count;

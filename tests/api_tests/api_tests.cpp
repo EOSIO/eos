@@ -46,9 +46,10 @@
 #define DISABLE_EOSLIB_SERIALIZE
 #include <test_api/test_api_common.hpp>
 
-FC_REFLECT( dummy_action, (a)(b)(c) );
-FC_REFLECT( u128_action, (values) );
-FC_REFLECT( cf_action, (payload)(cfd_idx) );
+FC_REFLECT( dummy_action, (a)(b)(c) )
+FC_REFLECT( u128_action, (values) )
+FC_REFLECT( cf_action, (payload)(cfd_idx) )
+FC_REFLECT( invalid_access_action, (code)(val)(index)(store) )
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -880,18 +881,69 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, TESTER) { try {
  * db_tests test case
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
-	produce_blocks(2);
-	create_account( N(testapi) );
-	produce_blocks(1000);
-	set_code( N(testapi), test_api_db_wast );
-	produce_blocks(1);
+   produce_blocks(2);
+   create_account( N(testapi) );
+   create_account( N(testapi2) );
+   produce_blocks(1000);
+   set_code( N(testapi), test_api_db_wast );
+   set_code( N(testapi2), test_api_db_wast );
+   produce_blocks(1);
 
-	CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_general", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_lowerbound", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_upperbound", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "idx64_general", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "idx64_lowerbound", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "idx64_upperbound", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_general", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_lowerbound", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_upperbound", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "idx64_general", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "idx64_lowerbound", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "idx64_upperbound", {});
+
+   // Store value in primary table
+   invalid_access_action ia1{.code = N(testapi), .val = 10, .index = 0, .store = true};
+   auto res = push_action( action({{N(testapi), config::active_name}},
+                                  N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                                  fc::raw::pack(ia1)),
+                           N(testapi) );
+   BOOST_CHECK_EQUAL( res, success() );
+
+   // Attempt to change the value stored in the primary table under the code of N(testapi)
+   invalid_access_action ia2{.code = ia1.code, .val = 20, .index = 0, .store = true};
+   res = push_action( action({{N(testapi2), config::active_name}},
+                             N(testapi2), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             fc::raw::pack(ia2)),
+                      N(testapi2) );
+   BOOST_CHECK_EQUAL( boost::algorithm::ends_with(res, "db access violation"), true );
+
+
+   // Verify that the value has not changed.
+   ia1.store = false;
+   res = push_action( action({{N(testapi), config::active_name}},
+                             N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             fc::raw::pack(ia1)),
+                      N(testapi) );
+   BOOST_CHECK_EQUAL( res, success() );
+
+   // Store value in secondary table
+   ia1.store = true; ia1.index = 1;
+   res = push_action( action({{N(testapi), config::active_name}},
+                             N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             fc::raw::pack(ia1)),
+                      N(testapi) );
+   BOOST_CHECK_EQUAL( res, success() );
+
+   // Attempt to change the value stored in the secondary table under the code of N(testapi)
+   ia2.index = 1;
+   res = push_action( action({{N(testapi2), config::active_name}},
+                             N(testapi2), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             fc::raw::pack(ia2)),
+                      N(testapi2) );
+   BOOST_CHECK_EQUAL( boost::algorithm::ends_with(res, "db access violation"), true );
+
+   // Verify that the value has not changed.
+   ia1.store = false;
+   res = push_action( action({{N(testapi), config::active_name}},
+                             N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             fc::raw::pack(ia1)),
+                      N(testapi) );
+   BOOST_CHECK_EQUAL( res, success() );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
