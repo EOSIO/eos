@@ -259,14 +259,30 @@ namespace eosio { namespace testing {
    /**
     * Utility predicate to check whether an FC_ASSERT message ends with a given string
     */
-   struct assert_message_is {
-      assert_message_is(string expected)
+   struct assert_message_ends_with {
+      assert_message_ends_with(string expected)
          :expected(expected)
       {}
 
       bool operator()( const fc::exception& ex ) {
          auto message = ex.get_log().at(0).get_message();
          return boost::algorithm::ends_with(message, expected);
+      }
+
+      string expected;
+   };
+
+   /**
+    * Utility predicate to check whether an FC_ASSERT message contains a given string
+    */
+   struct assert_message_contains {
+      assert_message_contains(string expected)
+         :expected(expected)
+      {}
+
+      bool operator()( const fc::exception& ex ) {
+         auto message = ex.get_log().at(0).get_message();
+         return boost::algorithm::contains(message, expected);
       }
 
       string expected;

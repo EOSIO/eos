@@ -193,7 +193,7 @@ BOOST_FIXTURE_TEST_CASE( test_overspend, currency_tester ) try {
          ("quantity", "101.0000 CUR")
          ("memo", "overspend! Alice");
 
-      BOOST_CHECK_EXCEPTION(push_action(N(alice), N(transfer), data), transaction_exception, assert_message_is("overdrawn balance"));
+      BOOST_CHECK_EXCEPTION(push_action(N(alice), N(transfer), data), transaction_exception, assert_message_ends_with("overdrawn balance"));
       produce_block();
 
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ));
@@ -274,13 +274,13 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
    // from empty string
    {
       BOOST_CHECK_EXCEPTION(symbol::from_string(""),
-                            fc::assert_exception, assert_message_is("creating symbol from empty string"));
+                            fc::assert_exception, assert_message_ends_with("creating symbol from empty string"));
    }
 
    // precision part missing
    {
       BOOST_CHECK_EXCEPTION(symbol::from_string("RND"),
-                            fc::assert_exception, assert_message_is("missing comma in symbol"));
+                            fc::assert_exception, assert_message_ends_with("missing comma in symbol"));
    }
 
    // 0 decimals part
@@ -301,7 +301,7 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
    // invalid - contains lower case characters, exception thrown 
    {
       BOOST_CHECK_EXCEPTION(symbol(5,"EoS"),
-                            fc::assert_exception, assert_message_is("invalid character in symbol name"));
+                            fc::assert_exception, assert_message_ends_with("invalid character in symbol name"));
    }
 
    // Missing decimal point, should create asset with 0 decimals
@@ -316,19 +316,19 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
    // Missing space
    {
       BOOST_CHECK_EXCEPTION(asset::from_string("10CUR"),
-                            asset_type_exception, assert_message_is("Asset's amount and symbol should be separated with space"));
+                            asset_type_exception, assert_message_ends_with("Asset's amount and symbol should be separated with space"));
    }
 
    // Precision is not specified when decimal separator is introduced
    {
       BOOST_CHECK_EXCEPTION(asset::from_string("10. CUR"),
-                            asset_type_exception, assert_message_is("Missing decimal fraction after decimal point"));
+                            asset_type_exception, assert_message_ends_with("Missing decimal fraction after decimal point"));
    }
 
    // Missing symbol
    {
       BOOST_CHECK_EXCEPTION(asset::from_string("10"),
-                            asset_type_exception, assert_message_is("Asset's amount and symbol should be separated with space"));
+                            asset_type_exception, assert_message_ends_with("Asset's amount and symbol should be separated with space"));
    }
 
    // Multiple spaces

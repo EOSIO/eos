@@ -103,15 +103,6 @@ bool expect_assert_message(const fc::exception& ex, string expected) {
    return (ex.get_log().at(0).get_message().find(expected) != std::string::npos);
 }
 
-struct assert_message_is {
-	bool operator()( const fc::exception& ex, string expected) {
-		auto act = ex.get_log().at(0).get_message();
-		return boost::algorithm::ends_with(act, expected);
-	}
-
-	string expected;
-};
-
 constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
 }

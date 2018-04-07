@@ -267,18 +267,18 @@ try {
 
    // Create duplicate name
    BOOST_CHECK_EXCEPTION(chain.create_account("joe"), action_validate_exception,
-                         assert_message_is("Cannot create account named joe, as that name is already taken"));
+                         assert_message_ends_with("Cannot create account named joe, as that name is already taken"));
 
    // Creating account with name more than 12 chars
    BOOST_CHECK_EXCEPTION(chain.create_account("aaaaaaaaaaaaa"), action_validate_exception,
-                         assert_message_is("account names can only be 12 chars long"));
+                         assert_message_ends_with("account names can only be 12 chars long"));
 
    // Creating account with eosio. prefix with privileged account
    chain.create_account("eosio.test1");
 
    // Creating account with eosio. prefix with non-privileged account, should fail
    BOOST_CHECK_EXCEPTION(chain.create_account("eosio.test2", "joe"), action_validate_exception,
-                         assert_message_is("only privileged accounts can have names that start with 'eosio.'"));
+                         assert_message_ends_with("only privileged accounts can have names that start with 'eosio.'"));
 
 } FC_LOG_AND_RETHROW() }
 
