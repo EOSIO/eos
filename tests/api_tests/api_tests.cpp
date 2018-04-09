@@ -754,6 +754,8 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    //check that it gets executed afterwards
    traces = control->push_deferred_transactions( true );
    BOOST_CHECK_EQUAL( 1, traces.size() );
+   //confirm printed message
+   BOOST_TEST(traces.back().action_traces.back().console == "deferred executed\n");
 
    //schedule twice (second deferred transaction should replace first one)
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
@@ -776,6 +778,13 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    produce_block( fc::seconds(2) );
    traces = control->push_deferred_transactions( true );
    BOOST_CHECK_EQUAL( 1, traces.size() );
+
+   //verify that deferred transaction is dependent on max_generated_transaction_count configuration property
+   const auto& gpo = control->get_global_properties();
+   control->get_mutable_database().modify(gpo, [&]( auto& props ) {
+      props.configuration.max_generated_transaction_count = 0;
+   });
+   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {}), transaction_exception);
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
