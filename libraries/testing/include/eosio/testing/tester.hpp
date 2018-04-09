@@ -176,6 +176,8 @@ namespace eosio { namespace testing {
 
        void sync_with(base_tester& other);
 
+       const contracts::table_id_object* find_table( name code, name scope, name table );
+
    protected:
          signed_block _produce_block( fc::microseconds skip_time, uint32_t skip_flag);
          fc::temp_directory                            tempdir;

@@ -96,11 +96,6 @@ FC_REFLECT(game_t, (gameid)(bet)(deadline)(player1)(player2));
 
 struct dice_tester : TESTER {
 
-   const contracts::table_id_object* find_table( name code, name scope, name table ) {
-      auto tid = control->get_database().find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
-      return tid;
-   }
-
    template<typename IndexType, typename Scope>
    const auto& get_index() {
       return control->get_database().get_index<IndexType,Scope>();
