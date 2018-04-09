@@ -89,8 +89,11 @@ namespace eosio { namespace testing {
                                                       uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
                                                       uint32_t delay_sec = 0)const;
 
-         void                 create_accounts( vector<account_name> names, bool multisig = false ) {
-            for( auto n : names ) create_account(n, config::system_account_name, multisig );
+         vector<transaction_trace>  create_accounts( vector<account_name> names, bool multisig = false ) {
+            vector<transaction_trace> traces;
+            traces.reserve(names.size());
+            for( auto n : names ) traces.emplace_back(create_account(n, config::system_account_name, multisig ));
+            return traces;
          }
 
          void                 push_genesis_block();
@@ -105,7 +108,7 @@ namespace eosio { namespace testing {
          void delete_authority( account_name account, permission_name perm,  const vector<permission_level>& auths, const vector<private_key_type>& keys );
          void delete_authority( account_name account, permission_name perm );
 
-         void create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
+         transaction_trace create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
 
          transaction_trace push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys );
          transaction_trace push_reqauth(account_name from, string role, bool multi_sig = false);
