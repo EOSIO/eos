@@ -25,7 +25,7 @@ struct impl {
     */
    bool is_valid_movement(const movement& mvt, const game& game_for_movement) {
       uint32_t movement_location = mvt.row * 3 + mvt.column;
-      bool is_valid = movement_location < game_for_movement.board_len && is_empty_cell(game_for_movement.board[movement_location]);
+      bool is_valid = movement_location < board_len && is_empty_cell(game_for_movement.board[movement_location]);
       return is_valid;
    }
 
@@ -71,7 +71,7 @@ struct impl {
          }
       } else {
          bool is_board_full = true;
-         for (uint8_t i = 0; i < current_game.board_len; i++) {
+         for (uint8_t i = 0; i < board_len; i++) {
             if (is_empty_cell(current_game.board[i])) {
                is_board_full = false;
                break;
@@ -97,7 +97,6 @@ struct impl {
       auto itr = existing_host_games.find( c.challenger );
       eosio_assert(itr == existing_host_games.end(), "game already exists");
 
-      game game_to_create(c.challenger, c.host);
       existing_host_games.emplace(c.host, [&]( auto& g ) {
          g.challenger = c.challenger;
          g.host = c.host;

@@ -50,18 +50,18 @@ namespace tic_tac_toe {
    /**
     * @brief Data structure to hold game information
     */
+   static const uint32_t board_len = 9;
    struct game {
-      game() {};
+      game() { initialize_board(); }
       game(account_name challenger, account_name host):challenger(challenger), host(host), turn(host) {
          // Initialize board
          initialize_board();
-      };
+      }
       account_name     challenger;
       account_name     host;
       account_name     turn; // = account name of host/ challenger
       account_name     winner = N(none); // = none/ draw/ account name of host/ challenger
-      uint8_t          board_len = 9;
-      uint8_t          board[9]; //
+      uint8_t          board[board_len];
 
       // Initialize board with empty cell
       void initialize_board() {
@@ -79,7 +79,7 @@ namespace tic_tac_toe {
 
       auto primary_key() const { return challenger; }
 
-      EOSLIB_SERIALIZE( game, (challenger)(host)(turn)(winner)(board_len)(board) )
+      EOSLIB_SERIALIZE( game, (challenger)(host)(turn)(winner)(board) )
    };
 
    /**
@@ -136,7 +136,7 @@ namespace tic_tac_toe {
    };
 
    /**
-    * @brief table to store list of games
+    * @brief table definition, used to store existing games and their current state
     */
    typedef eosio::multi_index< games_account, game> games;
 }
