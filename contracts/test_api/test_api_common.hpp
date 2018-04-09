@@ -18,6 +18,11 @@ static constexpr unsigned int DJBH(const char* cp)
   return hash;
 }
 
+static constexpr unsigned long long WASM_TEST_ACTION(const char* cls, const char* method)
+{
+  return static_cast<unsigned long long>(DJBH(cls)) << 32 | static_cast<unsigned long long>(DJBH(method));
+}
+
 #pragma pack(push, 1)
 struct dummy_action {
    static uint64_t get_name() {
@@ -59,3 +64,12 @@ static_assert( sizeof(u128_action) == 16*3 , "unexpected packing" );
 #define DUMMY_ACTION_DEFAULT_A 0x45
 #define DUMMY_ACTION_DEFAULT_B 0xab11cd1244556677
 #define DUMMY_ACTION_DEFAULT_C 0x7451ae12
+
+struct invalid_access_action {
+   uint64_t code;
+   uint64_t val;
+   uint32_t index;
+   bool store;
+
+   EOSLIB_SERIALIZE( invalid_access_action, (code)(val)(index)(store) )
+};
