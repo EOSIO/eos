@@ -349,6 +349,7 @@ DataStream& operator>>( DataStream& ds, std::tuple<Args...>& t ) {
 
 template<typename DataStream, typename T, std::enable_if_t<std::is_fundamental<T>::value == false, int> = 0>
 DataStream& operator<<( DataStream& ds, const T& v ) {
+   static_assert(!std::is_pointer<T>::value, "Pointers should not be serialized" );
    boost::pfr::for_each_field(v, [&](const auto& field) {
       ds << field;
    });
@@ -356,6 +357,7 @@ DataStream& operator<<( DataStream& ds, const T& v ) {
 }
 template<typename DataStream, typename T, std::enable_if_t<std::is_fundamental<T>::value == false, int> = 0>
 DataStream& operator>>( DataStream& ds, T& v ) {
+   static_assert(!std::is_pointer<T>::value, "Pointers should not be serialized" );
    boost::pfr::for_each_field(v, [&](auto& field) {
       ds >> field;
    });
