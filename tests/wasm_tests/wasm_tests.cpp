@@ -464,6 +464,62 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_overflow_tests, tester ) try {
    BOOST_REQUIRE_EQUAL(false, check(i64_overflow_wast, "i64_trunc_u_f64", "f64.const 18446744073709551616")); 
 } FC_LOG_AND_RETHROW()
 
+// test cpu usage
+BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
+
+   create_accounts( {N(f_tests)} );
+   int limit = 100;
+   bool pass = false;
+
+   std::string code = R"=====(
+(module
+  (import "env" "require_auth" (func $require_auth (param i64)))
+  (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+   (table 0 anyfunc)
+   (memory $0 1)
+   (export "apply" (func $apply))
+   (func $i64_trunc_u_f64 (param $0 f64) (result i64) (i64.trunc_u/f64 (get_local $0)))
+   (func $test (param $0 i64))
+   (func $apply (param $0 i64)(param $1 i64)(param $2 i64)
+   )=====";
+   for (int i = 0; i < 1024; ++i) {
+      code += "(call $test (call $i64_trunc_u_f64 (f64.const 1)))\n";
+   }
+   code += "))";
+
+   produce_blocks(1);
+   set_code(N(f_tests), code.c_str());
+   produce_blocks(10);
+
+   while (!pass && limit < 250) {
+      signed_transaction trx;
+
+      for (int i = 0; i < 100; ++i) {
+         action act;
+         act.account = N(f_tests);
+         act.name = N() + (i * 16);
+         act.authorization = vector<permission_level>{{N(f_tests),config::active_name}};
+         trx.actions.push_back(act);
+      }
+
+      set_transaction_headers(trx);
+      trx.max_kcpu_usage = limit++;
+      trx.sign(get_private_key( N(f_tests), "active" ), chain_id_type());
+
+      try {
+         push_transaction(trx);
+         produce_blocks(1);
+         BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+         pass = true;
+      } catch (eosio::chain::tx_resource_exhausted &) {
+         produce_blocks(1);
+      }
+
+      BOOST_REQUIRE_EQUAL(true, validate());
+   }
+// NOTE: limit is 197
+   BOOST_REQUIRE_EQUAL(true, limit > 101 && limit < 250);
+} FC_LOG_AND_RETHROW()
 
 /**
  * Make sure WASM "start" method is used correctly
