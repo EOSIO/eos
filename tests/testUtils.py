@@ -1711,7 +1711,7 @@ class Cluster(object):
 
         return self.updateNodesStatus()
 
-    def dumpErrorDEtailImpl(self,fileName):
+    def dumpErrorDetailImpl(self,fileName):
         Utils.Print("=================================================================")
         Utils.Print("Contents of %s:" % (fileName))
         with open(fileName, "r") as f:
