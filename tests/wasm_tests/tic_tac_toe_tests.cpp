@@ -31,17 +31,34 @@ using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 using namespace fc;
 
+const static uint32_t board_len = 9;
+struct game {
+   account_name     challenger;
+   account_name     host;
+   account_name     turn; // = account name of host/ challenger
+   account_name     winner = N(none); // = none/ draw/ account name of host/ challenger
+   uint8_t          board[board_len];
+};
+FC_REFLECT(game, (challenger)(host)(turn)(winner)(board));
+
+
 struct movement {
    uint32_t    row;
    uint32_t    column;
+};
+FC_REFLECT(movement, (row)(column));
 
-   template<typename DataStream>
-   friend DataStream& operator << ( DataStream& ds, const movement& t ){ \
-      return ds << t.row << t.column;
-   }
-   template<typename DataStream>
-   friend DataStream& operator >> ( DataStream& ds, movement& t ){
-      return ds >> t.row >> t.column;
+struct ttt_tester : TESTER {
+   void get_game(game& game, account_name scope, account_name key) {
+      auto* maybe_tid = find_table(N(tic.tac.toe), scope, N(games));
+      if(maybe_tid == nullptr)
+         BOOST_FAIL("table for code=\"tic.tac.toe\" scope=\"" + scope.to_string() + "\" table=\"games\" does not exist");
+
+      auto* o = control->get_database().find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(maybe_tid->id, key));
+      if(o == nullptr)
+         BOOST_FAIL("game for  does not exist for challenger=\"" + key.to_string() + "\"");
+
+      fc::raw::unpack(o->value.data(), o->value.size(), game);
    }
 };
 
@@ -50,11 +67,6 @@ BOOST_AUTO_TEST_SUITE(tic_tac_toe_tests)
 BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
    TESTER chain;
    abi_serializer abi_ser = json::from_string(tic_tac_toe_abi).as<abi_def>();
-
-   chain.set_code(config::system_account_name, eosio_system_wast);
-   chain.set_abi(config::system_account_name, eosio_system_abi);
-
-   chain.produce_blocks();
    chain.create_account(N(tic.tac.toe));
    chain.produce_blocks(10);
 
@@ -152,6 +164,10 @@ BOOST_AUTO_TEST_CASE( tic_tac_toe_game ) try {
          ("by", "player2")
          ("mvt", mvt)
       ), transaction_exception, assert_message_contains("the game has ended"));
+
+   game current;
+   chain.get_table_entry(current, N(tic.tac.toe), N(player1), N(games), N(player2));
+   BOOST_REQUIRE_EQUAL("player1", account_name(current.winner).to_string());
 
    chain.push_action(N(tic.tac.toe), N(close), N(player1), mutable_variant_object()
            ("challenger", "player2")
