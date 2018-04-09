@@ -510,7 +510,7 @@ namespace fc { namespace crypto { namespace r1 {
             nV -= 4;
 //            fprintf( stderr, "compressed\n" );
         }
-        
+
         if (ECDSA_SIG_recover_key_GFp(my->_key, sig, (unsigned char*)&digest, sizeof(digest), nV - 27, 0) == 1)
             return;
         FC_THROW_EXCEPTION( exception, "unable to reconstruct public key from signature" );
