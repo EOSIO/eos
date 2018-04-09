@@ -131,7 +131,7 @@ namespace eosio { namespace testing {
   }
 
 
-   void base_tester::create_account( account_name a, account_name creator, bool multisig ) {
+   transaction_trace base_tester::create_account( account_name a, account_name creator, bool multisig ) {
       signed_transaction trx;
       set_transaction_headers(trx);
 
@@ -154,7 +154,7 @@ namespace eosio { namespace testing {
 
       set_transaction_headers(trx);
       trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
-      push_transaction( trx );
+      return push_transaction( trx );
    }
 
    transaction_trace base_tester::push_transaction( packed_transaction& trx, uint32_t skip_flag ) { try {
