@@ -250,3 +250,7 @@ struct test_softfloat {
 struct test_permission {
   static void check_authorization(uint64_t receiver, uint64_t code, uint64_t action);
 };
+
+struct test_datastream {
+  static void test_basic();
+};

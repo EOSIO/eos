@@ -1486,4 +1486,19 @@ BOOST_FIXTURE_TEST_CASE(privileged_tests, tester) { try {
 } FC_LOG_AND_RETHROW() }
 #endif
 
+/*************************************************************************************
+ * real_tests test cases
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(datastream_tests, TESTER) { try {
+   produce_blocks(1000);
+   create_account(N(testapi) );
+   produce_blocks(1000);
+   set_code(N(testapi), test_api_wast);
+   produce_blocks(1000);
+
+   CALL_TEST_FUNCTION( *this, "test_datastream", "test_basic", {} );
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
