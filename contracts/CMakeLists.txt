@@ -30,6 +30,7 @@ add_subdirectory(test_api_multi_index)
 add_subdirectory(eosio.bios)
 add_subdirectory(noop)
 add_subdirectory(dice)
+add_subdirectory(tic_tac_toe)
 
 file(GLOB SKELETONS RELATIVE ${CMAKE_SOURCE_DIR}/contracts "skeleton/*")
 

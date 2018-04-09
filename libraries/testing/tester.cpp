@@ -18,6 +18,8 @@
 #include "IR/Module.h"
 #include "IR/Validate.h"
 
+using namespace eosio::chain::contracts;
+
 namespace eosio { namespace testing {
 
    fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value) {
@@ -610,6 +612,11 @@ namespace eosio { namespace testing {
                   fc::mutable_variant_object()("version", schedule.version)("producers", schedule.producers));
 
       return schedule;
+   }
+
+   const contracts::table_id_object* base_tester::find_table( name code, name scope, name table ) {
+      auto tid = control->get_database().find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
+      return tid;
    }
 
 } }  /// eosio::test
