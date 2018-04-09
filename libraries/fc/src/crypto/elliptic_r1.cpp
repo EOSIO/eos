@@ -510,7 +510,7 @@ namespace fc { namespace crypto { namespace r1 {
             nV -= 4;
 //            fprintf( stderr, "compressed\n" );
         }
-
+        
         if (ECDSA_SIG_recover_key_GFp(my->_key, sig, (unsigned char*)&digest, sizeof(digest), nV - 27, 0) == 1)
             return;
         FC_THROW_EXCEPTION( exception, "unable to reconstruct public key from signature" );
@@ -526,9 +526,11 @@ namespace fc { namespace crypto { namespace r1 {
         if (sig==nullptr)
           FC_THROW_EXCEPTION( exception, "Unable to sign" );
 
-        const BIGNUM *r, *sig_s;
-        ssl_bignum s;
-        ECDSA_SIG_get0(sig, &r, &sig_s);
+        //We can't use ssl_bignum here; _get0() does not transfer ownership to us; _set0() does transfer ownership to fc::ecdsa_sig
+        const BIGNUM *sig_r, *sig_s;
+        BIGNUM *r = BN_new(), *s = BN_new();
+        ECDSA_SIG_get0(sig, &sig_r, &sig_s);
+        BN_copy(r, sig_r);
         BN_copy(s, sig_s);
 
         //want to always use the low S value
@@ -545,6 +547,8 @@ namespace fc { namespace crypto { namespace r1 {
         int nBitsS = BN_num_bits(s);
         if(nBitsR > 256 || nBitsS > 256)
           FC_THROW_EXCEPTION( exception, "Unable to sign" );
+
+        ECDSA_SIG_set0(sig, r, s);
         
         int nRecId = -1;
         for (int i=0; i<4; i++)
