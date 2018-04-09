@@ -1720,9 +1720,9 @@ class Cluster(object):
     def dumpErrorDetails(self):
         for i in range(0, len(self.nodes)):
             fileName="etc/eosio/node_$02d/config.ini" % (i)
-            dumpErrorDetailImpl(filenme)
+            self.dumpErrorDetailImpl(fileName)
             fileName="var/lib/node_%02d/stderr.txt" % (i)
-            dumpErrorDetailImpl(filenme)
+            self.dumpErrorDetailImpl(fileName)
 
     def killall(self, silent=True):
         cmd="%s -k 15" % (Utils.EosLauncherPath)
