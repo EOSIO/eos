@@ -1,4 +1,4 @@
-add_executable( nodeos main.cpp )
+add_executable( nodeos main.cpp httpc.cpp)
 if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()

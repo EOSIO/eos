@@ -17,6 +17,7 @@
 #include <boost/exception/diagnostic_information.hpp>
 
 #include "config.hpp"
+#include "httpc.hpp"
 
 using namespace appbase;
 using namespace eosio;
@@ -79,6 +80,11 @@ void initialize_logging()
 
 int main(int argc, char** argv)
 {
+  string server;
+  uint16_t port;
+  string path;
+  fc::variant postdata;
+  eosio::client::http::call(server, port, path, postdata);
    try {
       app().set_version(eosio::nodeos::config::version);
       auto root = fc::app_path(); 
