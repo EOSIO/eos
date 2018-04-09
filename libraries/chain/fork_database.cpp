@@ -66,7 +66,8 @@ void  fork_database::_push_block(const item_ptr& item, const producer_schedule_t
       auto itr = index.find(item->previous_id());
       EOS_ASSERT(itr != index.end(), unlinkable_block_exception, "block does not link to known chain");
       FC_ASSERT(!(*itr)->invalid);
-      if( *(*itr)->schedule == sch )
+
+      if( (*itr)->schedule && *(*itr)->schedule == sch )
          item->schedule = (*itr)->schedule;
       else
          item->schedule = std::make_shared<producer_schedule_type>( sch );
@@ -240,6 +241,7 @@ shared_ptr<fork_item>   fork_database::push_confirmation( const producer_confirm
    b->confirmations.push_back(c);
    return b;
    */
+   return shared_ptr<fork_item>();
 }
 
 } } // eosio::chain
