@@ -873,7 +873,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                                     ("enforced_delay", enforced_delay.to_seconds())("specified_delay", trx_meta.delay.to_seconds()) );
                      }
 
-                     return &input_metas.at(itr->second);
+                     return &trx_meta;
                   } else {
                      const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
                      if (gtrx != nullptr) {
