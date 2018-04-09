@@ -178,6 +178,25 @@ namespace eosio { namespace testing {
 
        const contracts::table_id_object* find_table( name code, name scope, name table );
 
+       // method treats key as a name type, if this is not appropriate in your case, pass require == false and report the correct behavior
+       template<typename Object>
+       bool get_table_entry(Object& obj, account_name code, account_name scope, account_name table, uint64_t key, bool require = true) {
+          auto* maybe_tid = find_table(code, scope, table);
+          if(maybe_tid == nullptr)
+             BOOST_FAIL("table for code=\"" + code.to_string() + "\" scope=\"" + scope.to_string() + "\" table=\"" + table.to_string() + "\" does not exist");
+
+          auto* o = control->get_database().find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(maybe_tid->id, key));
+          if(o == nullptr) {
+             if (require)
+                BOOST_FAIL("object does not exist for primary_key=\"" + name(key).to_string() + "\"");
+
+             return false;
+          }
+
+          fc::raw::unpack(o->value.data(), o->value.size(), obj);
+          return true;
+       }
+
    protected:
          signed_block _produce_block( fc::microseconds skip_time, uint32_t skip_flag);
          fc::temp_directory                            tempdir;

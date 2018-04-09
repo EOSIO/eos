@@ -165,14 +165,8 @@ struct dice_tester : TESTER {
    }
 
    bool dice_game(uint64_t game_id, game_t& game) {
-      auto* maybe_tid = find_table(N(dice), N(dice), N(game));
-      if(maybe_tid == nullptr) return false;
-
-      auto* o = control->get_database().find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(maybe_tid->id, game_id));
-      if(o == nullptr) return false;
-
-      fc::raw::unpack(o->value.data(), o->value.size(), game);
-      return true;
+      const bool not_required = false;
+      return get_table_entry(game, N(dice), N(dice), N(game), game_id, not_required);
    }
 
    uint32_t open_games(account_name account) {
