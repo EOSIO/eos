@@ -28,18 +28,26 @@ namespace eosio { namespace chain {
          return (schedule->producers.size() * 2) / 3 < confirmations.size();
       }
 
-      weak_ptr< fork_item >                prev;
-      shared_ptr< producer_schedule_type > schedule;
-      uint32_t                             num;    // initialized in ctor
+      weak_ptr< fork_item >                   prev;
+      shared_ptr< producer_schedule_type >    active_schedule;
+      shared_ptr< producer_schedule_type >    pending_schedule;
+      uint32_t                                pending_schedule_block;
+      uint32_t                                last_irreversible_block = 0;
+      vector<uint32_t,account_name>           last_block_per_producer;
+
+
+      uint32_t                                num;    // initialized in ctor
       /**
        * Used to flag a block as invalid and prevent other blocks from
        * building on top of it.
        */
       bool                          invalid = false;
       block_id_type                 id;
-      signed_block                  data;
+      block_header                  header;
+      shared_ptr<signed_block>      data;
       vector<producer_confirmation> confirmations;
    };
+
    typedef shared_ptr<fork_item> item_ptr;
 
 
@@ -79,7 +87,9 @@ namespace eosio { namespace chain {
          /**
           *  @return the new head block ( the longest fork )
           */
-         shared_ptr<fork_item>            push_block(const signed_block& b, const producer_schedule_type& s = producer_schedule_type() );
+         shared_ptr<fork_item>            push_block( const signed_block& b );
+         shared_ptr<fork_item>            push_block_header( const signed_block_header& b );
+
          shared_ptr<fork_item>            head()const { return _head; }
          void                             pop_block();
 
@@ -90,15 +100,15 @@ namespace eosio { namespace chain {
          pair< branch_type, branch_type >  fetch_branch_from(block_id_type first,
                                                              block_id_type second)const;
 
-         struct block_id;
-         struct block_num;
+         struct by_block_id;
+         struct by_block_num;
          struct by_previous;
          typedef multi_index_container<
             item_ptr,
             indexed_by<
-               hashed_unique<tag<block_id>, member<fork_item, block_id_type, &fork_item::id>, std::hash<block_id_type>>,
+               hashed_unique<tag<by_block_id>, member<fork_item, block_id_type, &fork_item::id>, std::hash<block_id_type>>,
                hashed_non_unique<tag<by_previous>, const_mem_fun<fork_item, block_id_type, &fork_item::previous_id>, std::hash<block_id_type>>,
-               ordered_non_unique<tag<block_num>, member<fork_item,uint32_t,&fork_item::num>>
+               ordered_non_unique<tag<by_block_num>, member<fork_item,uint32_t,&fork_item::num>>
             >
          > fork_multi_index_type;
 
@@ -110,7 +120,6 @@ namespace eosio { namespace chain {
 
          uint32_t                 _max_size = 1024;
 
-         fork_multi_index_type    _unlinked_index;
          fork_multi_index_type    _index;
          shared_ptr<fork_item>    _head;
    };

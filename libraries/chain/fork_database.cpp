@@ -35,23 +35,83 @@ void     fork_database::start_block(signed_block b)
  * Pushes the block into the fork database and caches it if it doesn't link
  *
  */
-shared_ptr<fork_item>  fork_database::push_block(const signed_block& b, const producer_schedule_type& sch )
+shared_ptr<fork_item>  fork_database::push_block( const signed_block& b )
 {
-   auto item = std::make_shared<fork_item>(b);
-   try {
-      _push_block(item, sch);
-   }
-   catch ( const unlinkable_block_exception& e )
-   {
+   auto item = push_block_header( b );
+   item->data = std::make_shared<signed_block>(b);
+   return item;
+
+shared_ptr<fork_item> fork_database::push_block_header( const signed_block_header& b ) { try {
+   const auto& by_id_idx = _index.get<by_block_id>();
+   auto existing = by_id_idx.find( b.id() );
+
+   if( existing != by_id_idx.end() ) return *existing;
+
+   auto previous = by_id_idx.find( b.previous );
+   if( previous == by_id_idx.end() ) {
       wlog( "Pushing block to fork database that failed to link: ${id}, ${num}", ("id",b.id())("num",b.block_num()) );
       wlog( "Head: ${num}, ${id}", ("num",_head->data.block_num())("id",_head->data.id()) );
-      throw;
-      _unlinked_index.insert( item );
+      EOS_ASSERT(itr != index.end(), unlinkable_block_exception, "block does not link to known chain");
    }
-   return _head;
-}
 
-void  fork_database::_push_block(const item_ptr& item, const producer_schedule_type& sch)
+   FC_ASSERT( !previous->invalid, unlinkable_block_exception, "unable to link to a known invalid block" );
+
+   auto next = std::make_shared<fork_item>( *previous );
+   next->confirmations.clear();
+   next->data.reset();
+
+   next->previous  = previous;
+   next->header    = b;
+   next->id        = b.id();
+   next->invalid   = false;
+   next->num       = previous->num + 1;
+   next->last_block_per_producer[b.producer] = next->num;
+
+   FC_ASSERT( b.timestamp > previous->header.timestamp, "block must advance time" );
+
+   // next->last_irreversible_block = next->calculate_last_irr
+
+   if( next->last_irreversible_block >= next->pending_schedule_block )
+      next->active_schedule = std::move(next->pending_schedule );
+
+   if( b.new_producers ) {
+      FC_ASSERT( !next->pending_schedule, "there is already an unconfirmed pending schedule" );
+      next->pending_schedule = std::make_shared<producer_schedule_type>( *b.new_producers );
+   }
+
+   FC_ASSERT( b.schedule_version == next->active_schedule->version, "wrong schedule version provided" );
+
+   auto schedule_hash = fc::sha256::hash( *next->active_schedule );
+   auto signee = b.signee( schedule_digest );
+
+   auto num_producers = next->active_schedule->producers.size();
+   vector<uint32_t>                    ibb;
+   flat_map<account_name, uint32_t>    new_block_per_producer;
+   ibb.reserve( num_producers );
+
+   size_t offset = EOS_PERCENT(ibb.size(), config::percent_100- config::irreversible_threshold_percent);
+
+   for( const auto& item : next->active_schedule->producers ) {
+      ibb.push_back( last_block_per_producer[item.producer_name] );
+      new_block_per_producer[item.producer_name] = ibb.back();
+   }
+   next->last_block_per_producer = move(new_block_per_producer);
+
+   std::nth_element( ibb.begin(), ibb.begin() + offset, ibb.end() );
+   next->last_irreversible_block = ibb[offset];
+
+   auto index = b.timestamp.slot % (num_producers * config::producer_repetitions);
+   index /= config::producer_repetitions;
+
+   auto prod =  next->active_schedule->producers[index];
+   FC_ASSERT( prod.producer_name == b.producer, "unexpected producer specified" );
+   FC_ASSERT( prod.block_signing_key == signee, "block not signed by expected key" );
+
+   _push_block( next );
+   return _head;
+} FC_CAPTURE_AND_RETHROW( (b) ) }
+
+void  fork_database::_push_block(const item_ptr& item )
 {
    if( _head ) // make sure the block is within the range that we are caching
    {
@@ -67,10 +127,6 @@ void  fork_database::_push_block(const item_ptr& item, const producer_schedule_t
       EOS_ASSERT(itr != index.end(), unlinkable_block_exception, "block does not link to known chain");
       FC_ASSERT(!(*itr)->invalid);
 
-      if( (*itr)->schedule && *(*itr)->schedule == sch )
-         item->schedule = (*itr)->schedule;
-      else
-         item->schedule = std::make_shared<producer_schedule_type>( sch );
       item->prev = *itr;
    }
 
@@ -82,13 +138,12 @@ void  fork_database::_push_block(const item_ptr& item, const producer_schedule_t
       if (delta > 1)
          wlog("Number of missed blocks: ${num}", ("num", delta-1));
       _head = item;
-      uint32_t min_num = _head->num - std::min( _max_size, _head->num );
+
+      uint32_t min_num = _head->last_irreversible_block - 1; //_head->num - std::min( _max_size, _head->num );
 //      ilog( "min block in fork DB ${n}, max_size: ${m}", ("n",min_num)("m",_max_size) );
       auto& num_idx = _index.get<block_num>();
       while( num_idx.size() && (*num_idx.begin())->num < min_num )
          num_idx.erase( num_idx.begin() );
-      
-      _unlinked_index.get<block_num>().erase(_head->num - _max_size);
    }
 }
 

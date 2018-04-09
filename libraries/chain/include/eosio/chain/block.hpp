@@ -46,9 +46,10 @@ namespace eosio { namespace chain {
    struct signed_block_header : public block_header
    {
       block_id_type              id() const;
-      public_key_type            signee() const;
-      void                       sign(const private_key_type& signer);
-      bool                       validate_signee(const public_key_type& expected_signee) const;
+      public_key_type            signee( const digest_type& schedule_digest ) const;
+      void                       sign(const private_key_type& signer, const digest_type& schedule_digest );
+      bool                       validate_signee(const public_key_type& expected_signee, const digest_type& schedule_digest ) const;
+      digest_type                signed_digest( const digest_type& schedule_digest )const;
 
       signature_type             producer_signature;
    };

@@ -28,19 +28,26 @@ namespace eosio { namespace chain {
       return result;
    }
 
-   public_key_type signed_block_header::signee()const
+   public_key_type signed_block_header::signee( const digest_type& schedule_digest )const
    {
-      return fc::crypto::public_key(producer_signature, digest(), true/*enforce canonical*/);
+      return fc::crypto::public_key(producer_signature, signed_digest( schedule_digest ), true/*enforce canonical*/);
    }
 
-   void signed_block_header::sign(const private_key_type& signer)
-   {
-      producer_signature = signer.sign(digest());
+   digest_type signed_block_header::signed_digest( const digest_type& schedule_digest )const {
+      schedule_digest::encoder enc;
+      fc::raw::pack( enc, schedule_digest );
+      fc::raw::pack( enc, digest() );
+      return enc.result();
    }
 
-   bool signed_block_header::validate_signee(const public_key_type& expected_signee)const
+   void signed_block_header::sign(const private_key_type& signer, const fc::sha256& schedule_digest )
    {
-      return signee() == expected_signee;
+      producer_signature = signer.sign( signed_digest( schedule_digest ) );
+   }
+
+   bool signed_block_header::validate_signee(const public_key_type& expected_signee, const fc::sha256& schedule_digest )const
+   {
+      return signee( schedule_digest ) == expected_signee;
    }
 
 } }
