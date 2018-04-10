@@ -191,7 +191,7 @@ bool chain_controller::_push_block(const signed_block& new_block)
    if (!(skip&skip_fork_db)) {
       /// TODO: active producers is only valid if new_block extends the current block, and even then it might be off-by-one
 
-      shared_ptr<fork_item> new_head = _fork_db.push_block( new_block );
+      shared_ptr<header_state> new_head = _fork_db.push_block( new_block );
       //If the head block from the longest chain does not build off of the current head, we need to switch forks.
       if (new_head->data->previous != head_block_id()) {
          //If the newly pushed block is the same height as head, we get head back in new_head

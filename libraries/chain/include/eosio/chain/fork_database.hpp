@@ -16,24 +16,25 @@ namespace eosio { namespace chain {
    using boost::multi_index_container;
    using namespace boost::multi_index;
 
-   struct fork_item
+   struct header_state
    {
-      fork_item( signed_block d )
+      header_state( signed_block d )
       :num(d.block_num()),id(d.id()),data( std::make_shared<signed_block>(std::move(d)) ){}
 
-      fork_item( const fork_item& cpy ) = default;
+      header_state( const header_state& cpy ) = default;
 
       block_id_type previous_id()const { return data->previous; }
       bool is_irreversible()const {
          return num < last_irreversible_block;
       }
 
-      weak_ptr< fork_item >                   prev;
+      weak_ptr< header_state >                prev;
       shared_ptr< producer_schedule_type >    active_schedule;
       shared_ptr< producer_schedule_type >    pending_schedule;
       uint32_t                                pending_schedule_block;
       uint32_t                                last_irreversible_block = 0;
       flat_map<account_name,uint32_t>         last_block_per_producer;
+      digest_type                             active_schedule_digest;
 
 
       uint32_t                                num;    // initialized in ctor
@@ -48,7 +49,7 @@ namespace eosio { namespace chain {
       vector<producer_confirmation> confirmations;
    };
 
-   typedef shared_ptr<fork_item> item_ptr;
+   typedef shared_ptr<header_state> item_ptr;
 
 
    /**
@@ -73,25 +74,25 @@ namespace eosio { namespace chain {
 
          void                             start_block(signed_block b);
          void                             remove(block_id_type b);
-         void                             set_head(shared_ptr<fork_item> h);
+         void                             set_head(shared_ptr<header_state> h);
          bool                             is_known_block(const block_id_type& id)const;
-         shared_ptr<fork_item>            fetch_block(const block_id_type& id)const;
+         shared_ptr<header_state>         fetch_block(const block_id_type& id)const;
          vector<item_ptr>                 fetch_block_by_number(uint32_t n)const;
 
          /**
           * @return the block that the signature was added to
           * throw exception if signature was not from producer in schedule for said block
           */
-         shared_ptr<fork_item>            push_confirmation( const producer_confirmation& c );
+         shared_ptr<header_state>         push_confirmation( const producer_confirmation& c );
 
          /**
           *  @return the new head block ( the longest fork )
           */
-         shared_ptr<fork_item>            push_block( const signed_block& b );
-         shared_ptr<fork_item>            push_block_header( const signed_block_header& b );
+         shared_ptr<header_state>          push_block( const signed_block& b );
+         shared_ptr<header_state>          push_block_header( const signed_block_header& b );
 
-         shared_ptr<fork_item>            head()const { return _head; }
-         void                             pop_block();
+         shared_ptr<header_state>          head()const { return _head; }
+         void                              pop_block();
 
          /**
           *  Given two head blocks, return two branches of the fork graph that
@@ -106,9 +107,9 @@ namespace eosio { namespace chain {
          typedef multi_index_container<
             item_ptr,
             indexed_by<
-               hashed_unique<tag<by_block_id>, member<fork_item, block_id_type, &fork_item::id>, std::hash<block_id_type>>,
-               hashed_non_unique<tag<by_previous>, const_mem_fun<fork_item, block_id_type, &fork_item::previous_id>, std::hash<block_id_type>>,
-               ordered_non_unique<tag<by_block_num>, member<fork_item,uint32_t,&fork_item::num>>
+               hashed_unique<tag<by_block_id>, member<header_state, block_id_type, &header_state::id>, std::hash<block_id_type>>,
+               hashed_non_unique<tag<by_previous>, const_mem_fun<header_state, block_id_type, &header_state::previous_id>, std::hash<block_id_type>>,
+               ordered_non_unique<tag<by_block_num>, member<header_state,uint32_t,&header_state::num>>
             >
          > fork_multi_index_type;
 
@@ -120,7 +121,7 @@ namespace eosio { namespace chain {
 
          uint32_t                 _max_size = 1024;
 
-         fork_multi_index_type    _index;
-         shared_ptr<fork_item>    _head;
+         fork_multi_index_type       _index;
+         shared_ptr<header_state>    _head;
    };
 } } // eosio::chain
