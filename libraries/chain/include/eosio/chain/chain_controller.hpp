@@ -312,6 +312,9 @@ namespace eosio { namespace chain {
                                 flat_set<public_key_type> provided_keys,
                                 bool allow_unused_signatures)const;
 
+         const producer_schedule_type& active_producer_schedule()const {
+            return *_fork_db.head()->active_schedule;
+         }
       private:
          const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
 

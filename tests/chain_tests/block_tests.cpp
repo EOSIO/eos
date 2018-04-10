@@ -85,7 +85,9 @@ BOOST_AUTO_TEST_CASE( push_invalid_block ) { try {
    new_block.producer = sch_pro;
    new_block.block_mroot = chain.control->get_dynamic_global_properties().block_merkle_root.get_root();
    vector<transaction_metadata> input_metas;
-   new_block.sign(priv_key);
+
+   auto schedule = chain.control->active_producer_schedule();
+   new_block.sign(priv_key, digest_type::hash(schedule) );
 
    // Create a new empty region
    new_block.regions.resize(new_block.regions.size() + 1);
@@ -902,12 +904,14 @@ BOOST_AUTO_TEST_CASE(block_id_sig_independent)
       new_block.block_mroot = chain.control->get_dynamic_global_properties().block_merkle_root.get_root();
       vector<transaction_metadata> input_metas;
 
+      auto sch = chain.control->active_producer_schedule();
+
       // Sign the block with active signature
-      new_block.sign(chain.get_private_key( sch_pro, "active" ));
+      new_block.sign(chain.get_private_key( sch_pro, "active" ), digest_type::hash(sch) );
       auto block_id_act_sig = new_block.id();
 
       // Sign the block with other signature
-      new_block.sign(chain.get_private_key( sch_pro, "other" ));
+      new_block.sign(chain.get_private_key( sch_pro, "other" ), digest_type::hash(sch) );
       auto block_id_othr_sig = new_block.id();
 
       // The block id should be independent of the signature

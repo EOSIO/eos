@@ -34,7 +34,7 @@ namespace eosio { namespace chain {
    }
 
    digest_type signed_block_header::signed_digest( const digest_type& schedule_digest )const {
-      schedule_digest::encoder enc;
+      digest_type::encoder enc;
       fc::raw::pack( enc, schedule_digest );
       fc::raw::pack( enc, digest() );
       return enc.result();

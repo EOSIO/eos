@@ -206,8 +206,12 @@ namespace eosio { namespace testing {
    class validating_tester : public base_tester {
    public:
       virtual ~validating_tester() {
-         produce_block();
-         BOOST_REQUIRE_EQUAL( validate(), true );
+         try {
+            produce_block();
+            BOOST_REQUIRE_EQUAL( validate(), true );
+         } catch( const fc::exception& e ) {
+            wdump((e.to_detail_string()));
+         }
       }
       validating_tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits()) {
          chain_controller::controller_config vcfg;

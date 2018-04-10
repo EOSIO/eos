@@ -118,7 +118,7 @@ block_id_type chain_controller::get_block_id_for_num(uint32_t block_num)const
 optional<signed_block> chain_controller::fetch_block_by_id(const block_id_type& id)const
 {
    auto b = _fork_db.fetch_block(id);
-   if(b) return b->data;
+   if(b) return *b->data;
    return _block_log.read_block_by_id(id);
 }
 
@@ -133,7 +133,7 @@ optional<signed_block> chain_controller::fetch_block_by_number(uint32_t num)cons
       while (block && block->num > num)
          block = block->prev.lock();
       if (block && block->num == num)
-         return block->data;
+         return *block->data;
    }
 
    return optional<signed_block>();
@@ -191,30 +191,30 @@ bool chain_controller::_push_block(const signed_block& new_block)
    if (!(skip&skip_fork_db)) {
       /// TODO: active producers is only valid if new_block extends the current block, and even then it might be off-by-one
 
-      shared_ptr<fork_item> new_head = _fork_db.push_block(new_block, get_global_properties().active_producers );
+      shared_ptr<fork_item> new_head = _fork_db.push_block( new_block );
       //If the head block from the longest chain does not build off of the current head, we need to switch forks.
-      if (new_head->data.previous != head_block_id()) {
+      if (new_head->data->previous != head_block_id()) {
          //If the newly pushed block is the same height as head, we get head back in new_head
          //Only switch forks if new_head is actually higher than head
-         if (new_head->data.block_num() > head_block_num()) {
-            wlog("Switching to fork: ${id}", ("id",new_head->data.id()));
-            auto branches = _fork_db.fetch_branch_from(new_head->data.id(), head_block_id());
+         if (new_head->num > head_block_num()) {
+            wlog("Switching to fork: ${id}", ("id",new_head->id));
+            auto branches = _fork_db.fetch_branch_from(new_head->id, head_block_id());
 
             // pop blocks until we hit the forked block
-            while (head_block_id() != branches.second.back()->data.previous)
+            while (head_block_id() != branches.second.back()->header.previous)
                pop_block();
 
             // push all blocks on the new fork
             for (auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
-                ilog("pushing blocks from fork ${n} ${id}", ("n",(*ritr)->data.block_num())("id",(*ritr)->data.id()));
+                ilog("pushing blocks from fork ${n} ${id}", ("n",(*ritr)->num)("id",(*ritr)->id));
                 {
                    uint32_t delta = 0;
                    if (ritr != branches.first.rbegin()) {
-                      delta = (*ritr)->data.timestamp.slot - (*std::prev(ritr))->data.timestamp.slot;
+                      delta = (*ritr)->header.timestamp.slot - (*std::prev(ritr))->header.timestamp.slot;
                    } else {
-                      optional<signed_block> prev = fetch_block_by_id((*ritr)->data.previous);
+                      optional<signed_block> prev = fetch_block_by_id((*ritr)->header.previous);
                       if (prev)
-                         delta = (*ritr)->data.timestamp.slot - prev->timestamp.slot;
+                         delta = (*ritr)->header.timestamp.slot - prev->timestamp.slot;
                    }
                    if (delta > 1)
                       wlog("Number of missed blocks: ${num}", ("num", delta-1));
@@ -222,7 +222,7 @@ bool chain_controller::_push_block(const signed_block& new_block)
                 optional<fc::exception> except;
                 try {
                    auto session = _db.start_undo_session(true);
-                   _apply_block((*ritr)->data, skip);
+                   _apply_block( *(*ritr)->data, skip);
                    session.push();
                 }
                 catch (const fc::exception& e) { except = e; }
@@ -230,19 +230,19 @@ bool chain_controller::_push_block(const signed_block& new_block)
                    wlog("exception thrown while switching forks ${e}", ("e",except->to_detail_string()));
                    // remove the rest of branches.first from the fork_db, those blocks are invalid
                    while (ritr != branches.first.rend()) {
-                      _fork_db.remove((*ritr)->data.id());
+                      _fork_db.remove((*ritr)->id);
                       ++ritr;
                    }
                    _fork_db.set_head(branches.second.front());
 
                    // pop all blocks from the bad fork
-                   while (head_block_id() != branches.second.back()->data.previous)
+                   while (head_block_id() != branches.second.back()->header.previous)
                       pop_block();
 
                    // restore all blocks from the good fork
                    for (auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr) {
                       auto session = _db.start_undo_session(true);
-                      _apply_block((*ritr)->data, skip);
+                      _apply_block( *(*ritr)->data, skip);
                       session.push();
                    }
                    throw *except;
@@ -446,7 +446,7 @@ static void record_locks_for_data_access(transaction_trace& trace, flat_set<shar
 block_header chain_controller::head_block_header() const
 {
    auto b = _fork_db.fetch_block(head_block_id());
-   if( b ) return b->data;
+   if( b ) return b->header;
 
    if (auto head_block = fetch_block_by_id(head_block_id()))
       return *head_block;
@@ -645,8 +645,8 @@ signed_block chain_controller::generate_block(
 } FC_CAPTURE_AND_RETHROW( (when) ) }
 
 signed_block chain_controller::_generate_block( block_timestamp_type when,
-                                              account_name producer,
-                                              const private_key_type& block_signing_key )
+                                                account_name producer,
+                                                const private_key_type& block_signing_key )
 { try {
 
    try {
@@ -674,17 +674,20 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
       _pending_block->previous    = head_block_id();
       _pending_block->block_mroot = get_dynamic_global_properties().block_merkle_root.get_root();
       _pending_block->transaction_mroot = _pending_block_trace->calculate_transaction_merkle_root();
-      _pending_block->action_mroot = _pending_block_trace->calculate_action_merkle_root();
+      _pending_block->action_mroot      = _pending_block_trace->calculate_action_merkle_root();
 
+      digest_type producer_hash;
       if( is_start_of_round( _pending_block->block_num() ) ) {
          auto latest_producer_schedule = _calculate_producer_schedule();
+         producer_hash = digest_type::hash( latest_producer_schedule );
          if( latest_producer_schedule != _head_producer_schedule() )
             _pending_block->new_producers = latest_producer_schedule;
       }
       _pending_block->schedule_version = get_global_properties().active_producers.version;
 
+      auto head = _fork_db.head();
       if( !(skip & skip_producer_signature) )
-         _pending_block->sign( block_signing_key );
+         _pending_block->sign( block_signing_key, producer_hash );
 
       _finalize_block( *_pending_block_trace, producer_obj );
 
@@ -1424,10 +1427,12 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
 
    const producer_object& producer = get_producer(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
 
+   /*
    if(!(skip&skip_producer_signature))
       EOS_ASSERT(next_block.validate_signee(producer.signing_key), block_validate_exception,
                  "Incorrect block producer key: expected ${e} but got ${a}",
                  ("e", producer.signing_key)("a", public_key_type(next_block.signee())));
+   */
 
    if(!(skip&skip_producer_schedule_check)) {
       EOS_ASSERT(next_block.producer == producer.owner, block_validate_exception,
@@ -1552,7 +1557,7 @@ block_id_type chain_controller::head_block_id()const {
 
 account_name chain_controller::head_block_producer() const {
    auto b = _fork_db.fetch_block(head_block_id());
-   if( b ) return b->data.producer;
+   if( b ) return b->header.producer;
 
    if (auto head_block = fetch_block_by_id(head_block_id()))
       return head_block->producer;

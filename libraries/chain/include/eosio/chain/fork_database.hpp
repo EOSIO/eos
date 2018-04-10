@@ -19,13 +19,13 @@ namespace eosio { namespace chain {
    struct fork_item
    {
       fork_item( signed_block d )
-      :num(d.block_num()),id(d.id()),data( std::move(d) ){}
+      :num(d.block_num()),id(d.id()),data( std::make_shared<signed_block>(std::move(d)) ){}
 
-      block_id_type previous_id()const { return data.previous; }
+      fork_item( const fork_item& cpy ) = default;
+
+      block_id_type previous_id()const { return data->previous; }
       bool is_irreversible()const {
-         if( !schedule ) 
-            return false;
-         return (schedule->producers.size() * 2) / 3 < confirmations.size();
+         return num < last_irreversible_block;
       }
 
       weak_ptr< fork_item >                   prev;
@@ -33,7 +33,7 @@ namespace eosio { namespace chain {
       shared_ptr< producer_schedule_type >    pending_schedule;
       uint32_t                                pending_schedule_block;
       uint32_t                                last_irreversible_block = 0;
-      vector<uint32_t,account_name>           last_block_per_producer;
+      flat_map<account_name,uint32_t>         last_block_per_producer;
 
 
       uint32_t                                num;    // initialized in ctor
@@ -116,7 +116,7 @@ namespace eosio { namespace chain {
 
       private:
          /** @return a pointer to the newly pushed item */
-         void _push_block(const item_ptr& b, const producer_schedule_type& s );
+         void _push_block( const item_ptr& b );
 
          uint32_t                 _max_size = 1024;
 
