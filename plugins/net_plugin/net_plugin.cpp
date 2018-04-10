@@ -263,8 +263,6 @@ namespace eosio {
        */
       chain::signature_type sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const;
 
-      // static const fc::string logger_name;
-      // static fc::logger logger;
    };
 
    const fc::string logger_name("net_plugin_impl");
@@ -492,7 +490,6 @@ namespace eosio {
       void enqueue( transaction_id_type id );
       void enqueue( const net_message &msg, bool trigger_send = true );
       void cancel_sync(go_away_reason);
-      void cancel_fetch();
       void flush_queues();
       bool enqueue_sync_block();
       void request_sync_blocks (uint32_t start, uint32_t end);
@@ -518,8 +515,6 @@ namespace eosio {
        * encountered unpacking or processing the message.
        */
       bool process_next_message(net_plugin_impl& impl, uint32_t message_length);
-      // static const fc::string logger_name;
-      // static fc::logger logger;
    };
 
    struct msgHandler : public fc::visitor<void> {
@@ -568,8 +563,6 @@ namespace eosio {
       void recv_handshake(connection_ptr c, const handshake_message& msg);
       void recv_notice(connection_ptr c, const notice_message& msg);
 
-      // static const fc::string logger_name;
-      // static fc::logger logger;
    };
 
    class big_msg_manager {
@@ -589,18 +582,7 @@ namespace eosio {
       void recv_notice (connection_ptr conn, const notice_message& msg);
 
       void retry_fetch (connection_ptr conn);
-      // static const fc::string logger_name;
-      // static fc::logger logger;
    };
-
-   // const fc::string net_plugin_impl::logger_name("net_plugin_impl");
-   // fc::logger net_plugin_impl::logger(net_plugin_impl::logger_name);
-   // const fc::string connection::logger_name("connection");
-   // fc::logger connection::logger(connection::logger_name);
-   // const fc::string sync_manager::logger_name("sync_manager");
-   // fc::logger sync_manager::logger(sync_manager::logger_name);
-   // const fc::string big_msg_manager::logger_name("big_msg_manager");
-   // fc::logger big_msg_manager::logger(big_msg_manager::logger_name);
 
    //---------------------------------------------------------------------------
 
@@ -946,10 +928,6 @@ namespace eosio {
       }
    }
 
-   void connection::cancel_fetch() {
-      my_impl->big_msg_master->retry_fetch(shared_from_this() );
-   }
-
    bool connection::enqueue_sync_block() {
       chain_controller& cc = app().find_plugin<chain_plugin>()->chain();
       if (!peer_requested)
@@ -1109,7 +1087,7 @@ namespace eosio {
 
    //-----------------------------------------------------------
 
-   sync_manager::sync_manager( uint32_t req_span )
+    sync_manager::sync_manager( uint32_t req_span )
       :sync_known_lib_num( 0 )
       ,sync_last_requested_num( 0 )
       ,sync_next_expected_num( 1 )
@@ -2650,20 +2628,12 @@ namespace eosio {
 
       // Housekeeping so fc::logger::get() will work as expected
       fc::get_logger_map()[logger_name] = logger;
-      // fc::get_logger_map()[connection::logger_name] = connection::logger;
-      // fc::get_logger_map()[net_plugin_impl::logger_name] = net_plugin_impl::logger;
-      // fc::get_logger_map()[sync_manager::logger_name] = sync_manager::logger;
-      // fc::get_logger_map()[big_msg_manager::logger_name] = big_msg_manager::logger;
 
       // Setting a parent would in theory get us the default appenders for free but
       // a) the parent's log level overrides our own in that case; and
       // b) fc library's logger was never finished - the _additivity flag tested is never true.
       for(fc::shared_ptr<fc::appender>& appender : fc::logger::get().get_appenders()) {
          logger.add_appender(appender);
-         // connection::logger.add_appender(appender);
-         // net_plugin_impl::logger.add_appender(appender);
-         // sync_manager::logger.add_appender(appender);
-         // big_msg_manager::logger.add_appender(appender);
       }
 
       if( options.count( "log-level-net-plugin" ) ) {
@@ -2672,10 +2642,6 @@ namespace eosio {
          fc::from_variant(options.at("log-level-net-plugin").as<string>(), logl);
          ilog("Setting net_plugin logging level to ${level}", ("level", logl));
          logger.set_log_level(logl);
-         // connection::logger.set_log_level(logl);
-         // net_plugin_impl::logger.set_log_level(logl);
-         // sync_manager::logger.set_log_level(logl);
-         // big_msg_manager::logger.set_log_level(logl);
       }
 
       my->network_version = static_cast<uint16_t>(app().version());
