@@ -52,12 +52,14 @@ namespace proxy {
 
          transaction out;
          out.actions.emplace_back(permission_level{self, N(active)}, N(currency), N(transfer), new_transfer);
-         out.send(id, 0, now() + code_config.delay);
+         out.delay_sec = code_config.delay;
+         out.send(id, self);
       }
    }
 
    void apply_setowner(uint64_t receiver, set_owner params) {
       const auto self = receiver;
+      require_auth(params.owner);
       config code_config;
       configs::get(code_config, self);
       code_config.owner = params.owner;
@@ -77,7 +79,9 @@ namespace proxy {
       configs::store(code_config, self);
 
       eosio::print("Resending Transaction: ", failed_dtrx.sender_id, " as ", id, "\n");
-      failed_dtrx.send(id, 0, now() + code_config.delay);
+      deferred_transaction failed_dtrx_copy = failed_dtrx;
+      failed_dtrx_copy.delay_sec = code_config.delay;
+      failed_dtrx_copy.send(id, self);
    }
 }
 

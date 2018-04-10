@@ -31,107 +31,106 @@ using boost::multi_index::const_mem_fun;
 namespace hana = boost::hana;
 
 template<typename T>
-struct secondary_iterator;
+struct secondary_index_db_functions;
 
 #define WRAP_SECONDARY_SIMPLE_TYPE(IDX, TYPE)\
 template<>\
-struct secondary_iterator<TYPE> {\
-   static int32_t db_idx_next( int32_t iterator, uint64_t* primary )     { return db_##IDX##_next( iterator, primary ); }\
-   static int32_t db_idx_previous( int32_t iterator, uint64_t* primary ) { return db_##IDX##_previous( iterator, primary ); }\
-   static void    db_idx_remove( int32_t iterator  )                     { db_##IDX##_remove( iterator ); }\
+struct secondary_index_db_functions<TYPE> {\
+   static int32_t db_idx_next( int32_t iterator, uint64_t* primary )          { return db_##IDX##_next( iterator, primary ); }\
+   static int32_t db_idx_previous( int32_t iterator, uint64_t* primary )      { return db_##IDX##_previous( iterator, primary ); }\
+   static void    db_idx_remove( int32_t iterator  )                          { db_##IDX##_remove( iterator ); }\
    static int32_t db_idx_end( uint64_t code, uint64_t scope, uint64_t table ) { return db_##IDX##_end( code, scope, table ); }\
-};\
-int32_t db_idx_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
-   return db_##IDX##_store( scope, table, payer, id, &secondary );\
-}\
-void    db_idx_update( int32_t iterator, uint64_t payer, const TYPE& secondary ) {\
-   db_##IDX##_update( iterator, payer, &secondary );\
-}\
-int32_t db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary, TYPE& secondary ) {\
-   return db_##IDX##_find_primary( code, scope, table, &secondary, primary );\
-}\
-int32_t db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
-   return db_##IDX##_find_secondary( code, scope, table, &secondary, &primary );\
-}\
-int32_t db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
-   return db_##IDX##_lowerbound( code, scope, table, &secondary, &primary );\
-}\
-int32_t db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
-   return db_##IDX##_upperbound( code, scope, table, &secondary, &primary );\
-}
+   static int32_t db_idx_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
+      return db_##IDX##_store( scope, table, payer, id, &secondary );\
+   }\
+   static void    db_idx_update( int32_t iterator, uint64_t payer, const TYPE& secondary ) {\
+      db_##IDX##_update( iterator, payer, &secondary );\
+   }\
+   static int32_t db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary, TYPE& secondary ) {\
+      return db_##IDX##_find_primary( code, scope, table, &secondary, primary );\
+   }\
+   static int32_t db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
+      return db_##IDX##_find_secondary( code, scope, table, &secondary, &primary );\
+   }\
+   static int32_t db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
+      return db_##IDX##_lowerbound( code, scope, table, &secondary, &primary );\
+   }\
+   static int32_t db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
+      return db_##IDX##_upperbound( code, scope, table, &secondary, &primary );\
+   }\
+};
 
 #define WRAP_SECONDARY_ARRAY_TYPE(IDX, TYPE)\
 template<>\
-struct secondary_iterator<TYPE> {\
-   static int32_t db_idx_next( int32_t iterator, uint64_t* primary )     { return db_##IDX##_next( iterator, primary ); }\
-   static int32_t db_idx_previous( int32_t iterator, uint64_t* primary ) { return db_##IDX##_previous( iterator, primary ); }\
-   static void    db_idx_remove( int32_t iterator )                      { db_##IDX##_remove( iterator ); }\
+struct secondary_index_db_functions<TYPE> {\
+   static int32_t db_idx_next( int32_t iterator, uint64_t* primary )          { return db_##IDX##_next( iterator, primary ); }\
+   static int32_t db_idx_previous( int32_t iterator, uint64_t* primary )      { return db_##IDX##_previous( iterator, primary ); }\
+   static void    db_idx_remove( int32_t iterator )                           { db_##IDX##_remove( iterator ); }\
    static int32_t db_idx_end( uint64_t code, uint64_t scope, uint64_t table ) { return db_##IDX##_end( code, scope, table ); }\
+   static int32_t db_idx_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
+      return db_##IDX##_store( scope, table, payer, id, secondary.data(), TYPE::num_words() );\
+   }\
+   static void    db_idx_update( int32_t iterator, uint64_t payer, const TYPE& secondary ) {\
+      db_##IDX##_update( iterator, payer, secondary.data(), TYPE::num_words() );\
+   }\
+   static int32_t db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary, TYPE& secondary ) {\
+      return db_##IDX##_find_primary( code, scope, table, secondary.data(), TYPE::num_words(), primary );\
+   }\
+   static int32_t db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
+      return db_##IDX##_find_secondary( code, scope, table, secondary.data(), TYPE::num_words(), &primary );\
+   }\
+   static int32_t db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
+      return db_##IDX##_lowerbound( code, scope, table, secondary.data(), TYPE::num_words(), &primary );\
+   }\
+   static int32_t db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
+      return db_##IDX##_upperbound( code, scope, table, secondary.data(), TYPE::num_words(), &primary );\
+   }\
 };\
-int32_t db_idx_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
-   return db_##IDX##_store( scope, table, payer, id, secondary.data(), TYPE::num_words() );\
-}\
-void    db_idx_update( int32_t iterator, uint64_t payer, const TYPE& secondary ) {\
-   db_##IDX##_update( iterator, payer, secondary.data(), TYPE::num_words() );\
-}\
-int32_t db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary, TYPE& secondary ) {\
-   return db_##IDX##_find_primary( code, scope, table, secondary.data(), TYPE::num_words(), primary );\
-}\
-int32_t db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
-   return db_##IDX##_find_secondary( code, scope, table, secondary.data(), TYPE::num_words(), &primary );\
-}\
-int32_t db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
-   return db_##IDX##_lowerbound( code, scope, table, secondary.data(), TYPE::num_words(), &primary );\
-}\
-int32_t db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
-   return db_##IDX##_upperbound( code, scope, table, secondary.data(), TYPE::num_words(), &primary );\
-}
 
 WRAP_SECONDARY_SIMPLE_TYPE(idx64,  uint64_t)
 WRAP_SECONDARY_SIMPLE_TYPE(idx128, uint128_t)
 WRAP_SECONDARY_ARRAY_TYPE(idx256, key256)
 
 template<>
-struct secondary_iterator<double> {
-   static int32_t db_idx_next( int32_t iterator, uint64_t* primary )     { return db_idx_double_next( iterator, primary ); }
-   static int32_t db_idx_previous( int32_t iterator, uint64_t* primary ) { return db_idx_double_previous( iterator, primary ); }
-   static void db_idx_remove( int32_t iterator  )                        { db_idx_double_remove( iterator ); }
+struct secondary_index_db_functions<double> {
+   static int32_t db_idx_next( int32_t iterator, uint64_t* primary )          { return db_idx_double_next( iterator, primary ); }
+   static int32_t db_idx_previous( int32_t iterator, uint64_t* primary )      { return db_idx_double_previous( iterator, primary ); }
+   static void    db_idx_remove( int32_t iterator  )                          { db_idx_double_remove( iterator ); }
    static int32_t db_idx_end( uint64_t code, uint64_t scope, uint64_t table ) { return db_idx_double_end( code, scope, table ); }
+   static int32_t db_idx_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, double secondary ) {
+      uint64_t val = *(uint64_t*)(&secondary); // Get uint64_t representation of double secondary
+      return db_idx_double_store( scope, table, payer, id, &val );
+   }
+   static void    db_idx_update( int32_t iterator, uint64_t payer, double secondary ) {
+      uint64_t val = *(uint64_t*)(&secondary); // Get uint64_t representation of double secondary
+      db_idx_double_update( iterator, payer, &val );
+   }
+   static int32_t db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary, double& secondary ) {
+      uint64_t val = 0;
+      auto itr = db_idx_double_find_primary( code, scope, table, &val, primary );
+      if( itr >= 0 )
+         secondary = *(double*)(&val); // Store double secondary from uint64_t representation stored in val
+      return itr;
+   }
+   static int32_t db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, double secondary, uint64_t& primary ) {
+      uint64_t val = *(uint64_t*)(&secondary);
+      return db_idx_double_find_secondary( code, scope, table, &val, &primary );
+   }
+   static int32_t db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, double& secondary, uint64_t& primary ) {
+      uint64_t val = *(uint64_t*)(&secondary); // Get uint64_t representation of double secondary
+      auto itr = db_idx_double_lowerbound( code, scope, table, &val, &primary );
+      if( itr >= 0 )
+         secondary = *(double*)(&val); // Store double secondary from uint64_t representation stored in val
+      return itr;
+   }
+   static int32_t db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, double& secondary, uint64_t& primary ) {
+      uint64_t val = *(uint64_t*)(&secondary); // Get uint64_t representation of double secondary
+      auto itr = db_idx_double_upperbound( code, scope, table, &val, &primary );
+      if( itr >= 0 )
+         secondary = *(double*)(&val); // Store double secondary from uint64_t representation stored in val
+      return itr;
+   }
 };
-int32_t db_idx_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, double secondary ) {
-   uint64_t val = *(uint64_t*)(&secondary); // Get uint64_t representation of double secondary
-   return db_idx_double_store( scope, table, payer, id, &val );
-}
-void    db_idx_update( int32_t iterator, uint64_t payer, double secondary ) {
-   uint64_t val = *(uint64_t*)(&secondary); // Get uint64_t representation of double secondary
-   db_idx_double_update( iterator, payer, &val );
-}
-int32_t db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary, double& secondary ) {
-   uint64_t val = 0;
-   auto itr = db_idx_double_find_primary( code, scope, table, &val, primary );
-   if( itr >= 0 )
-      secondary = *(double*)(&val); // Store double secondary from uint64_t representation stored in val
-   return itr;
-}
-int32_t db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, double secondary, uint64_t& primary ) {
-   uint64_t val = *(uint64_t*)(&secondary);
-   return db_idx_double_find_secondary( code, scope, table, &val, &primary );
-}
-int32_t db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, double& secondary, uint64_t& primary ) {
-   uint64_t val = *(uint64_t*)(&secondary); // Get uint64_t representation of double secondary
-   auto itr = db_idx_double_lowerbound( code, scope, table, &val, &primary );
-   if( itr >= 0 )
-      secondary = *(double*)(&val); // Store double secondary from uint64_t representation stored in val
-   return itr;
-}
-int32_t db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, double& secondary, uint64_t& primary ) {
-   uint64_t val = *(uint64_t*)(&secondary); // Get uint64_t representation of double secondary
-   auto itr = db_idx_double_upperbound( code, scope, table, &val, &primary );
-   if( itr >= 0 )
-      secondary = *(double*)(&val); // Store double secondary from uint64_t representation stored in val
-   return itr;
-}
-
 
 template<uint64_t TableName, typename T, typename... Indices>
 class multi_index;
@@ -153,6 +152,8 @@ class multi_index
          // Limit table names to 12 characters so that the last character (4 bits) can be used to distinguish between the secondary indices.
          return (n & 0x000000000000000FULL) == 0;
       }
+
+      constexpr static size_t max_stack_buffer_size = 512;
 
       static_assert( validate_table_name(TableName), "multi_index does not support table names with a length greater than 12");
 
@@ -238,14 +239,13 @@ class multi_index
 
                      if( _item->__iters[Number] == -1 ) {
                         secondary_key_type temp_secondary_key;
-                        auto idxitr = db_idx_find_primary(_idx->get_code(), _idx->get_scope(), _idx->name(),
-                                                          _item->primary_key(), temp_secondary_key);
+                        auto idxitr = secondary_index_db_functions<secondary_key_type>::db_idx_find_primary(_idx->get_code(), _idx->get_scope(), _idx->name(), _item->primary_key(), temp_secondary_key);
                         auto& mi = const_cast<item&>( *_item );
                         mi.__iters[Number] = idxitr;
                      }
 
                      uint64_t next_pk = 0;
-                     auto next_itr = secondary_iterator<secondary_key_type>::db_idx_next( _item->__iters[Number], &next_pk );
+                     auto next_itr = secondary_index_db_functions<secondary_key_type>::db_idx_next( _item->__iters[Number], &next_pk );
                      if( next_itr < 0 ) {
                         _item = nullptr;
                         return *this;
@@ -264,19 +264,18 @@ class multi_index
                      int32_t  prev_itr = -1;
 
                      if( !_item ) {
-                        auto ei = secondary_iterator<secondary_key_type>::db_idx_end(_idx->get_code(), _idx->get_scope(), _idx->name());
+                        auto ei = secondary_index_db_functions<secondary_key_type>::db_idx_end(_idx->get_code(), _idx->get_scope(), _idx->name());
                         eosio_assert( ei != -1, "cannot decrement end iterator when the index is empty" );
-                        prev_itr = secondary_iterator<secondary_key_type>::db_idx_previous( ei , &prev_pk );
+                        prev_itr = secondary_index_db_functions<secondary_key_type>::db_idx_previous( ei , &prev_pk );
                         eosio_assert( prev_itr >= 0, "cannot decrement end iterator when the index is empty" );
                      } else {
                         if( _item->__iters[Number] == -1 ) {
                            secondary_key_type temp_secondary_key;
-                           auto idxitr = db_idx_find_primary(_idx->get_code(), _idx->get_scope(), _idx->name(),
-                                                             _item->primary_key(), temp_secondary_key);
+                           auto idxitr = secondary_index_db_functions<secondary_key_type>::db_idx_find_primary(_idx->get_code(), _idx->get_scope(), _idx->name(), _item->primary_key(), temp_secondary_key);
                            auto& mi = const_cast<item&>( *_item );
                            mi.__iters[Number] = idxitr;
                         }
-                        prev_itr = secondary_iterator<secondary_key_type>::db_idx_previous( _item->__iters[Number], &prev_pk );
+                        prev_itr = secondary_index_db_functions<secondary_key_type>::db_idx_previous( _item->__iters[Number], &prev_pk );
                         eosio_assert( prev_itr >= 0, "cannot decrement iterator at beginning of index" );
                      }
 
@@ -330,7 +329,7 @@ class multi_index
             const_iterator lower_bound( const secondary_key_type& secondary )const {
                uint64_t primary = 0;
                secondary_key_type secondary_copy(secondary);
-               auto itr = db_idx_lowerbound( get_code(), get_scope(), name(), secondary_copy, primary );
+               auto itr = secondary_index_db_functions<secondary_key_type>::db_idx_lowerbound( get_code(), get_scope(), name(), secondary_copy, primary );
                if( itr < 0 ) return cend();
 
                const T& obj = *_multidx->find( primary );
@@ -346,7 +345,7 @@ class multi_index
             const_iterator upper_bound( const secondary_key_type& secondary )const {
                uint64_t primary = 0;
                secondary_key_type secondary_copy(secondary);
-               auto itr = db_idx_upperbound( get_code(), get_scope(), name(), secondary_copy, primary );
+               auto itr = secondary_index_db_functions<secondary_key_type>::db_idx_upperbound( get_code(), get_scope(), name(), secondary_copy, primary );
                if( itr < 0 ) return cend();
 
                const T& obj = *_multidx->find( primary );
@@ -362,8 +361,7 @@ class multi_index
 
                if( objitem.__iters[Number] == -1 ) {
                   secondary_key_type temp_secondary_key;
-                  auto idxitr = db_idx_find_primary(get_code(), get_scope(), name(),
-                                                    objitem.primary_key(), temp_secondary_key);
+                  auto idxitr = secondary_index_db_functions<secondary_key_type>::db_idx_find_primary(get_code(), get_scope(), name(), objitem.primary_key(), temp_secondary_key);
                   auto& mi = const_cast<item&>( objitem );
                   mi.__iters[Number] = idxitr;
                }
@@ -439,10 +437,17 @@ class multi_index
 
          auto size = db_get_i64( itr, nullptr, 0 );
          eosio_assert( size >= 0, "error reading iterator" );
-         char tmp[size];
-         db_get_i64( itr, tmp, uint32_t(size) );
 
-         datastream<const char*> ds(tmp,uint32_t(size));
+         //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
+         void* buffer = max_stack_buffer_size < size_t(size) ? malloc(size_t(size)) : alloca(size_t(size));
+
+         db_get_i64( itr, buffer, uint32_t(size) );
+
+         datastream<const char*> ds( (char*)buffer, uint32_t(size) );
+
+         if ( max_stack_buffer_size < size_t(size) ) {
+            free(buffer);
+         }
 
          auto itm = std::make_unique<item>( this, [&]( auto& i ) {
             T& val = static_cast<T&>(i);
@@ -614,17 +619,27 @@ class multi_index
 
       template<typename Lambda>
       const_iterator emplace( uint64_t payer, Lambda&& constructor ) {
+         eosio_assert( _code == current_receiver(), "cannot create objects in table of another contract" ); // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
+
          auto itm = std::make_unique<item>( this, [&]( auto& i ){
             T& obj = static_cast<T&>(i);
             constructor( obj );
 
-            char tmp[ pack_size( obj ) ];
-            datastream<char*> ds( tmp, sizeof(tmp) );
+            size_t size = pack_size( obj );
+
+            //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
+            void* buffer = max_stack_buffer_size < size ? malloc(size) : alloca(size);
+
+            datastream<char*> ds( (char*)buffer, size );
             ds << obj;
 
             auto pk = obj.primary_key();
 
-            i.__primary_itr = db_store_i64( _scope, TableName, payer, pk, tmp, sizeof(tmp) );
+            i.__primary_itr = db_store_i64( _scope, TableName, payer, pk, buffer, size );
+
+            if ( max_stack_buffer_size < size ) {
+               free(buffer);
+            }
 
             if( pk >= _next_primary_key )
                _next_primary_key = (pk >= no_available_primary_key) ? no_available_primary_key : (pk + 1);
@@ -632,7 +647,7 @@ class multi_index
             boost::hana::for_each( _indices, [&]( auto& idx ) {
                typedef typename decltype(+hana::at_c<0>(idx))::type index_type;
 
-               i.__iters[index_type::number()] = db_idx_store( _scope, index_type::name(), payer, obj.primary_key(), index_type::extract_secondary_key(obj) );
+               i.__iters[index_type::number()] = secondary_index_db_functions<typename index_type::secondary_key_type>::db_idx_store( _scope, index_type::name(), payer, obj.primary_key(), index_type::extract_secondary_key(obj) );
             });
          });
 
@@ -655,7 +670,9 @@ class multi_index
       template<typename Lambda>
       void modify( const T& obj, uint64_t payer, Lambda&& updater ) {
          const auto& objitem = static_cast<const item&>(obj);
+         eosio_assert( objitem.__idx == this, "object passed to modify is not in multi_index" );
          auto& mutableitem = const_cast<item&>(objitem);
+         eosio_assert( _code == current_receiver(), "cannot modify objects in table of another contract" ); // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
 
          auto secondary_keys = boost::hana::transform( _indices, [&]( auto&& idx ) {
             typedef typename decltype(+hana::at_c<0>(idx))::type index_type;
@@ -670,11 +687,18 @@ class multi_index
 
          eosio_assert( pk == obj.primary_key(), "updater cannot change primary key when modifying an object" );
 
-         char tmp[ pack_size( obj ) ];
-         datastream<char*> ds( tmp, sizeof(tmp) );
+         size_t size = pack_size( obj );
+         //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
+         void* buffer = max_stack_buffer_size < size ? malloc(size) : alloca(size);
+
+         datastream<char*> ds( (char*)buffer, size );
          ds << obj;
 
-         db_update_i64( objitem.__primary_itr, payer, tmp, sizeof(tmp) );
+         db_update_i64( objitem.__primary_itr, payer, buffer, size );
+
+         if ( max_stack_buffer_size < size ) {
+            free( buffer );
+         }
 
          if( pk >= _next_primary_key )
             _next_primary_key = (pk >= no_available_primary_key) ? no_available_primary_key : (pk + 1);
@@ -688,10 +712,11 @@ class multi_index
 
                if( indexitr < 0 ) {
                   typename index_type::secondary_key_type temp_secondary_key;
-                  indexitr = mutableitem.__iters[index_type::number()] = db_idx_find_primary( _code, _scope, index_type::name(), pk,  temp_secondary_key );
+                  indexitr = mutableitem.__iters[index_type::number()]
+                           = secondary_index_db_functions<typename index_type::secondary_key_type>::db_idx_find_primary( _code, _scope, index_type::name(), pk,  temp_secondary_key );
                }
 
-               db_idx_update( indexitr, payer, secondary );
+               secondary_index_db_functions<typename index_type::secondary_key_type>::db_idx_update( indexitr, payer, secondary );
             }
          });
       }
@@ -730,6 +755,7 @@ class multi_index
       void erase( const T& obj ) {
          const auto& objitem = static_cast<const item&>(obj);
          eosio_assert( objitem.__idx == this, "object passed to erase is not in multi_index" );
+         eosio_assert( _code == current_receiver(), "cannot erase objects in table of another contract" ); // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
 
          auto pk = objitem.primary_key();
          auto itr2 = std::find_if(_items_vector.rbegin(), _items_vector.rend(), [&](const item_ptr& ptr) {
@@ -748,10 +774,10 @@ class multi_index
             auto i = objitem.__iters[index_type::number()];
             if( i < 0 ) {
               typename index_type::secondary_key_type secondary;
-              i = db_idx_find_primary( _code, _scope, index_type::name(), objitem.primary_key(),  secondary );
+              i = secondary_index_db_functions<typename index_type::secondary_key_type>::db_idx_find_primary( _code, _scope, index_type::name(), objitem.primary_key(),  secondary );
             }
             if( i >= 0 )
-               secondary_iterator<typename index_type::secondary_key_type>::db_idx_remove( i );
+               secondary_index_db_functions<typename index_type::secondary_key_type>::db_idx_remove( i );
          });
       }
 

@@ -100,7 +100,7 @@
 		printf "\n\tExiting now.\n"
 		exit 1
 	fi
-	printf "\n\tCentos devtoolset-7 successfully enabled.\n"
+	printf "\tCentos devtoolset-7 successfully enabled.\n"
 
 	printf "\n\tEnabling Centos python3 installation.\n"
 	source /opt/rh/python33/enable
@@ -109,7 +109,7 @@
 		printf "\n\tExiting now.\n"
 		exit 1
 	fi
-	printf "\n\tCentos python3 successfully enabled.\n"
+	printf "\tCentos python3 successfully enabled.\n"
 	
 	printf "\n\tUpdating YUM repository.\n"
 
@@ -123,8 +123,8 @@
 
 	printf "\n\tYUM repository successfully updated.\n"
 
-	DEP_ARRAY=( git autoconf automake libtool ocaml.x86_64 doxygen libicu-devel.x86_64 bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 python-devel.x86_64 gettext-devel.x86_64)
-	DCOUNT=0
+	DEP_ARRAY=( git autoconf automake libtool ocaml.x86_64 doxygen libicu-devel.x86_64 \
+	bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 python-devel.x86_64 gettext-devel.x86_64)
 	COUNT=1
 	DISPLAY=""
 	DEP=""
@@ -140,14 +140,13 @@
 			DISPLAY="${DISPLAY}${COUNT}. ${DEP_ARRAY[$i]}\n\t"
 			printf "\tPackage ${DEP_ARRAY[$i]} ${bldred} NOT ${txtrst} found.\n"
 			let COUNT++
-			let DCOUNT++
 		else
 			printf "\tPackage ${DEP_ARRAY[$i]} found.\n"
 			continue
 		fi
 	done		
 
-	if [ ${DCOUNT} -ne 0 ]; then
+	if [ ${COUNT} -gt 1 ]; then
 		printf "\n\tThe following dependencies are required to install EOSIO.\n"
 		printf "\n\t$DISPLAY\n\n"
 		printf "\tDo you wish to install these dependencies?\n"
@@ -172,8 +171,7 @@
 		printf "\n\tNo required YUM dependencies to install.\n"
 	fi
 
-	printf "\n\tChecking for CMAKE.\n"
-    # install CMAKE 3.10.2
+	printf "\n\tChecking CMAKE installation.\n"
     if [ ! -e ${CMAKE} ]; then
 		printf "\tInstalling CMAKE\n"
 		mkdir -p ${HOME}/opt/ 2>/dev/null
@@ -199,7 +197,7 @@
 		printf "\tCMAKE found\n"
 	fi
 
-	printf "\n\tChecking for boost libraries\n"
+	printf "\n\tChecking boost library installation.\n"
 	if [ ! -d ${HOME}/opt/boost_1_66_0 ]; then
 		printf "\tInstalling boost libraries\n"
 		cd ${TEMP_DIR}
@@ -214,7 +212,7 @@
 		printf "\tBoost 1.66 found at ${HOME}/opt/boost_1_66_0\n"
 	fi
 
-	printf "\n\tChecking for MongoDB installation.\n"
+	printf "\n\tChecking MongoDB installation.\n"
     if [ ! -e ${MONGOD_CONF} ]; then
 		printf "\n\tInstalling MongoDB 3.6.3.\n"
 		cd ${HOME}/opt
@@ -248,14 +246,14 @@ mongodconf
 		printf "\tMongoDB config found at ${MONGOD_CONF}.\n"
 	fi
 
-	printf "\n\tChecking for MongoDB C++ driver.\n"
+	printf "\n\tChecking MongoDB C++ driver installation.\n"
     if [ ! -e /usr/local/lib/libmongocxx-static.a ]; then
 		printf "\n\tInstalling MongoDB C & C++ drivers.\n"
 		cd ${TEMP_DIR}
 		curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz
 		if [ $? -ne 0 ]; then
 			rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz 2>/dev/null
-			printf "\tUnable to download MondgDB C driver at this time.\n"
+			printf "\tUnable to download MongoDB C driver at this time.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
@@ -264,19 +262,19 @@ mongodconf
 		cd mongo-c-driver-1.9.3
 		./configure --enable-static --with-libbson=bundled --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local
 		if [ $? -ne 0 ]; then
-			printf "\tConfiguring MondgDB C driver has encountered the errors above.\n"
+			printf "\tConfiguring MongoDB C driver has encountered the errors above.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
 		make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
-			printf "\tError compiling MondgDB C driver.\n"
+			printf "\tError compiling MongoDB C driver.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
 		sudo make install
 		if [ $? -ne 0 ]; then
-			printf "\tError installing MondgDB C driver.\nMake sure you have sudo privileges.\n"
+			printf "\tError installing MongoDB C driver.\nMake sure you have sudo privileges.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
@@ -286,7 +284,7 @@ mongodconf
 		sudo rm -rf ${TEMP_DIR}/mongo-cxx-driver
 		git clone https://github.com/mongodb/mongo-cxx-driver.git --branch releases/stable --depth 1
 		if [ $? -ne 0 ]; then
-			printf "\tUnable to clone MondgDB C++ driver at this time.\n"
+			printf "\tUnable to clone MongoDB C++ driver at this time.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
@@ -299,13 +297,13 @@ mongodconf
 		fi
 		sudo make -j${CPU_CORE}
 		if [ $? -ne 0 ]; then
-			printf "\tError compiling MondgDB C++ driver.\n"
+			printf "\tError compiling MongoDB C++ driver.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
 		sudo make install
 		if [ $? -ne 0 ]; then
-			printf "\tError installing MondgDB C++ driver.\nMake sure you have sudo privileges.\n"
+			printf "\tError installing MongoDB C++ driver.\nMake sure you have sudo privileges.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
@@ -314,7 +312,8 @@ mongodconf
 	else
 		printf "\tMongo C++ driver found at /usr/local/lib/libmongocxx-static.a.\n"
 	fi	
-	printf "\n\tChecking for secp256k1-zkp\n"
+
+	printf "\n\tChecking secp256k1-zkp installation.\n"
     if [ ! -e /usr/local/lib/libsecp256k1.a ]; then
 		printf "\tInstalling secp256k1-zkp (Cryptonomex branch)\n"
 		cd ${TEMP_DIR}
@@ -339,7 +338,7 @@ mongodconf
 		printf "\tsecp256k1 found\n"
 	fi
 	
-	printf "\n\tChecking for binaryen\n"
+	printf "\n\tChecking binaryen installation.\n"
 	if [ ! -d ${HOME}/opt/binaryen ]; then
 		printf "\tInstalling binaryen v1.37.14:\n"
 		cd ${TEMP_DIR}
@@ -359,7 +358,7 @@ mongodconf
 		printf "\tBinaryen found at ${HOME}/opt/binaryen\n"
 	fi
 
-	printf "\n\tChecking for LLVM with WASM support.\n"
+	printf "\n\tChecking LLVM with WASM support installation.\n"
 	if [ ! -d ${HOME}/opt/wasm/bin ]; then
 		printf "\tInstalling LLVM & WASM\n"
 		cd ${TEMP_DIR}

@@ -37,12 +37,20 @@ namespace eosio {
       return eosio::dispatch<Contract,SecondAction,Actions...>( code, act );
    }
 
-   template<typename T, typename... Args>
-   bool execute_action( T* obj, void (T::*func)(Args...)  ) {
-      char buffer[action_data_size()];
-      read_action_data( buffer, sizeof(buffer) );
+   template<typename T, typename Q, typename... Args>
+   bool execute_action( T* obj, void (Q::*func)(Args...)  ) {
+      size_t size = action_data_size();
 
-      auto args = unpack<std::tuple<std::decay_t<Args>...>>( buffer, sizeof(buffer) );
+      //using malloc/free here potentially is not exception-safe, although WASM doesn't support exceptions
+      constexpr size_t max_stack_buffer_size = 512;
+      void* buffer = max_stack_buffer_size < size ? malloc(size) : alloca(size);
+      read_action_data( buffer, size );
+
+      auto args = unpack<std::tuple<std::decay_t<Args>...>>( (char*)buffer, size );
+
+      if ( max_stack_buffer_size < size ) {
+         free(buffer);
+      }
 
       auto f2 = [&]( auto... a ){  
          (obj->*func)( a... ); 

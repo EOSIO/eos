@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -72,13 +72,13 @@ $(function() {
 </ol>
 <p>Because Player 1 and 2 bet equal amounts their orders are matched and the game begins.</p>
 <ol type="1">
-<li>A Player reveales their secret</li>
-<li>A 5 minute deadline starts whereby the first to reveal automatically wins unless the other player reveals</li>
-<li>The other player reveals and a winner is chosen and paid based upon the value of sha256( cat(secret1,secret2) )</li>
+<li><a class="el" href="struct_a.html">A</a> Player reveales their secret</li>
+<li><a class="el" href="struct_a.html">A</a> 5 minute deadline starts whereby the first to reveal automatically wins unless the other player reveals</li>
+<li>The other player reveals and a winner is chosen and paid based upon the value of <a class="el" href="structsha256.html">sha256( cat(secret1,secret2) )</a></li>
 <li>After the deadline anyone can trigger a default claim and the rewards</li>
 </ol>
 <h2>Economic Incentive for Interface Developers </h2>
-<p>A variation on this game would be to add an additional information on offer creation that will get paid a commission when the player wins. With this commission in place there is financial incentive for a service provider to continue to execute the game in a timely manner as well as provide quality and entertaining interfaces on top of this game.</p>
+<p><a class="el" href="struct_a.html">A</a> variation on this game would be to add an additional information on offer creation that will get paid a commission when the player wins. With this commission in place there is financial incentive for a service provider to continue to execute the game in a timely manner as well as provide quality and entertaining interfaces on top of this game.</p>
 <h2>Other Games </h2>
 <p>This same basic model can be used to build more robust games.</p>
 <h2>Potential Vulnerabilities </h2>
@@ -87,7 +87,7 @@ $(function() {
 <li>Losers may force winner to wait 5 minutes to get rewards</li>
 <li>Service providers may fail to auto-reveal on your behalf</li>
 <li>You may lose internet connectivity mid-game</li>
-<li>A blockhain reorganization could cause some havock if secrets are revealed too quickly<ul>
+<li><a class="el" href="struct_a.html">A</a> blockhain reorganization could cause some havock if secrets are revealed too quickly<ul>
 <li>could protect users by rejecting reveals until a game creation is irreversible (about 45 seconds max)</li>
 <li>users could take risk themselves by deciding how many confirmations are required</li>
 <li>for small amounts it probably doesn't matter</li>

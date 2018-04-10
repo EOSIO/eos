@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       // this is enough iterations for the average to reach/exceed the target (triggering congestion handling) and then the iterations to contract down to the min
       // subtracting 1 for the iteration that pulls double duty as reaching/exceeding the target and starting congestion handling
       const uint64_t expected_contract_iterations =
-              expected_exponential_average_iterations(0, config::default_target_block_cpu_usage, config::default_max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms ) +
+              expected_exponential_average_iterations(0, EOS_PERCENT(config::default_max_block_cpu_usage, config::default_target_block_cpu_usage_pct), config::default_max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms ) +
               expected_elastic_iterations( desired_virtual_limit, config::default_max_block_cpu_usage, 99, 100 ) - 1;
 
       const account_name account(1);
@@ -100,14 +100,14 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
     * Test to make sure that the elastic limits for blocks relax and contract as expected
     */
    BOOST_FIXTURE_TEST_CASE(elastic_net_relax_contract, resource_limits_fixture) try {
-      const uint64_t desired_virtual_limit = config::default_max_block_size * 1000ULL;
-      const uint64_t expected_relax_iterations = expected_elastic_iterations( config::default_max_block_size, desired_virtual_limit, 1000, 999 );
+      const uint64_t desired_virtual_limit = config::default_max_block_net_usage * 1000ULL;
+      const uint64_t expected_relax_iterations = expected_elastic_iterations( config::default_max_block_net_usage, desired_virtual_limit, 1000, 999 );
 
       // this is enough iterations for the average to reach/exceed the target (triggering congestion handling) and then the iterations to contract down to the min
       // subtracting 1 for the iteration that pulls double duty as reaching/exceeding the target and starting congestion handling
       const uint64_t expected_contract_iterations =
-              expected_exponential_average_iterations(0, config::default_target_block_size, config::default_max_block_size, config::block_size_average_window_ms / config::block_interval_ms ) +
-              expected_elastic_iterations( desired_virtual_limit, config::default_max_block_size, 99, 100 ) - 1;
+              expected_exponential_average_iterations(0, EOS_PERCENT(config::default_max_block_net_usage, config::default_target_block_net_usage_pct), config::default_max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms ) +
+              expected_elastic_iterations( desired_virtual_limit, config::default_max_block_net_usage, 99, 100 ) - 1;
 
       const account_name account(1);
       initialize_account(account);
@@ -126,13 +126,13 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
 
       // push maximum resources to go from idle back to congested as fast as possible
       iterations = 0;
-      while (get_virtual_block_net_limit() > config::default_max_block_size && iterations <= expected_contract_iterations) {
-         add_transaction_usage({account},0, config::default_max_block_size, iterations);
+      while (get_virtual_block_net_limit() > config::default_max_block_net_usage && iterations <= expected_contract_iterations) {
+         add_transaction_usage({account},0, config::default_max_block_net_usage, iterations);
          process_block_usage(iterations++);
       }
 
       BOOST_REQUIRE_EQUAL(iterations, expected_contract_iterations);
-      BOOST_REQUIRE_EQUAL(get_virtual_block_net_limit(), config::default_max_block_size);
+      BOOST_REQUIRE_EQUAL(get_virtual_block_net_limit(), config::default_max_block_net_usage);
    } FC_LOG_AND_RETHROW();
 
    /**
@@ -174,7 +174,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       const vector<int64_t> weights = { 234, 511, 672, 800, 1213 };
       const int64_t total = std::accumulate(std::begin(weights), std::end(weights), 0LL);
       vector<int64_t> expected_limits;
-      std::transform(std::begin(weights), std::end(weights), std::back_inserter(expected_limits), [total](const auto& v){ return v * config::default_max_block_size / total; });
+      std::transform(std::begin(weights), std::end(weights), std::back_inserter(expected_limits), [total](const auto& v){ return v * config::default_max_block_net_usage / total; });
 
       for (int64_t idx = 0; idx < weights.size(); idx++) {
          const account_name account(idx + 100);
@@ -223,7 +223,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       process_account_limit_updates();
 
       const uint64_t increment = 1000;
-      const uint64_t expected_iterations = (config::default_max_block_size + increment - 1 ) / increment;
+      const uint64_t expected_iterations = (config::default_max_block_net_usage + increment - 1 ) / increment;
 
       for (int idx = 0; idx < expected_iterations - 1; idx++) {
          add_transaction_usage({account}, 0, increment, 0);
@@ -245,10 +245,12 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       process_account_limit_updates();
 
       for (int idx = 0; idx < expected_iterations - 1; idx++) {
-         add_account_ram_usage(account, increment);
+         add_pending_account_ram_usage(account, increment);
+         synchronize_account_ram_usage( );
       }
 
-      BOOST_REQUIRE_THROW(add_account_ram_usage(account, increment), tx_resource_exhausted);
+      add_pending_account_ram_usage(account, increment);
+      BOOST_REQUIRE_THROW(synchronize_account_ram_usage( ), tx_resource_exhausted);
    } FC_LOG_AND_RETHROW();
 
    BOOST_FIXTURE_TEST_CASE(enforce_account_ram_commitment, resource_limits_fixture) try {
@@ -262,7 +264,8 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
       initialize_account(account);
       set_account_limits(account, limit, -1, -1 );
       process_account_limit_updates();
-      add_account_ram_usage(account, commit);
+      add_pending_account_ram_usage(account, commit);
+      synchronize_account_ram_usage( );
 
       for (int idx = 0; idx < expected_iterations - 1; idx++) {
          set_account_limits(account, limit - increment * idx, -1, -1);

@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosiolib/eosio.hpp>
+#include <eosiolib/transaction.hpp>
 
 #include "test_api.hpp"
 #include "test_action.cpp"
@@ -17,11 +18,33 @@
 #include "test_transaction.cpp"
 #include "test_checktime.cpp"
 #include "test_permission.cpp"
+#include "test_datastream.cpp"
+
+account_name global_receiver;
 
 extern "C" {
-
    void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
-      //eosio::print("==> CONTRACT: ", code, " ", action, "\n");
+      if( code == N(eosio) && action == N(onerror) ) {
+         auto error_dtrx = eosio::deferred_transaction::from_current_action();
+         eosio::print("onerror called\n");
+         auto error_action = error_dtrx.actions.at(0).name;
+
+         // Error handlers for deferred transactions in these tests currently only support the first action
+
+         WASM_TEST_ERROR_HANDLER("test_action", "assert_false", test_transaction, assert_false_error_handler );
+
+
+         return;
+      }
+
+      if ( action == N(cf_action) ) {
+         test_action::test_cf_action();
+         return;
+      }
+      WASM_TEST_HANDLER(test_action, assert_true_cf);
+
+      require_auth(code);
+
       //test_types
       WASM_TEST_HANDLER(test_types, types_size);
       WASM_TEST_HANDLER(test_types, char_to_symbol);
@@ -62,11 +85,7 @@ extern "C" {
       if ( action == N(dummy_action) ) {
          test_action::test_dummy_action();
          return;
-      } else if ( action == N(cf_action) ) {
-         test_action::test_cf_action();
-         return;
       }
-
       //test_print
       WASM_TEST_HANDLER(test_print, test_prints);
       WASM_TEST_HANDLER(test_print, test_prints_l);
@@ -116,12 +135,14 @@ extern "C" {
       WASM_TEST_HANDLER(test_transaction, send_action_recurse);
       WASM_TEST_HANDLER(test_transaction, test_read_transaction);
       WASM_TEST_HANDLER(test_transaction, test_transaction_size);
-      WASM_TEST_HANDLER(test_transaction, send_transaction);
-      WASM_TEST_HANDLER(test_transaction, send_transaction_empty);
-      WASM_TEST_HANDLER(test_transaction, send_transaction_large);
-      WASM_TEST_HANDLER(test_transaction, send_action_sender);
+      WASM_TEST_HANDLER_EX(test_transaction, send_transaction);
+      WASM_TEST_HANDLER_EX(test_transaction, send_transaction_empty);
+      WASM_TEST_HANDLER_EX(test_transaction, send_transaction_trigger_error_handler);
+      WASM_TEST_HANDLER_EX(test_transaction, send_transaction_large);
+      WASM_TEST_HANDLER_EX(test_transaction, send_action_sender);
+      WASM_TEST_HANDLER_EX(test_transaction, send_transaction_expiring_late);
       WASM_TEST_HANDLER(test_transaction, deferred_print);
-      WASM_TEST_HANDLER(test_transaction, send_deferred_transaction);
+      WASM_TEST_HANDLER_EX(test_transaction, send_deferred_transaction);
       WASM_TEST_HANDLER(test_transaction, cancel_deferred_transaction);
       WASM_TEST_HANDLER(test_transaction, send_cf_action);
       WASM_TEST_HANDLER(test_transaction, send_cf_action_fail);
@@ -150,14 +171,8 @@ extern "C" {
       WASM_TEST_HANDLER(test_checktime, checktime_pass);
       WASM_TEST_HANDLER(test_checktime, checktime_failure);
 
-/*      
-      // test softfloat
-      WASM_TEST_HANDLER(test_softfloat, test_f32_add);
-      WASM_TEST_HANDLER(test_softfloat, test_f32_sub);
-      WASM_TEST_HANDLER(test_softfloat, test_f32_mul);
-      WASM_TEST_HANDLER(test_softfloat, test_f32_div);
-      WASM_TEST_HANDLER(test_softfloat, test_f32_min);
-*/
+      // test datastream
+      WASM_TEST_HANDLER(test_datastream, test_basic);
 
       // test permission
       WASM_TEST_HANDLER_EX(test_permission, check_authorization);

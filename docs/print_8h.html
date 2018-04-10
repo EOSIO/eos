@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.13"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>EOS.IO: contracts/eoslib/print.h File Reference</title>
+<title>EOS.IO: contracts/eosiolib/print.h File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -60,7 +60,7 @@ $(function() {
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_3fea0bf1ce879ce73e6ecec98007efcd.html">eoslib</a></li>  </ul>
+<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_3f710958649a39c6bbfa7039c0dc0464.html">eosiolib</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
@@ -70,7 +70,8 @@ $(function() {
 <div class="title">print.h File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-
+<div class="textblock"><code>#include &lt;<a class="el" href="types_8h_source.html">eosiolib/types.h</a>&gt;</code><br />
+</div>
 <p><a href="print_8h_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
@@ -78,23 +79,29 @@ Functions</h2></td></tr>
 <tr class="memitem:gaa99be0cc1b9e5cbbc2b12a43537e7ed3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#gaa99be0cc1b9e5cbbc2b12a43537e7ed3">prints</a> (const char *cstr)</td></tr>
 <tr class="memdesc:gaa99be0cc1b9e5cbbc2b12a43537e7ed3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints string.  <a href="group__consolecapi.html#gaa99be0cc1b9e5cbbc2b12a43537e7ed3">More...</a><br /></td></tr>
 <tr class="separator:gaa99be0cc1b9e5cbbc2b12a43537e7ed3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga63ff8a7c0b046968ab2864df7284c910"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#ga63ff8a7c0b046968ab2864df7284c910">prints_l</a> (const char *cstr, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
+<tr class="memitem:ga63ff8a7c0b046968ab2864df7284c910"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#ga63ff8a7c0b046968ab2864df7284c910">prints_l</a> (const char *cstr, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> <a class="el" href="towctrans_8c.html#a8bb3e1dd5fd30402c69fd8a9f7dd0950">len</a>)</td></tr>
 <tr class="memdesc:ga63ff8a7c0b046968ab2864df7284c910"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints string.  <a href="group__consolecapi.html#ga63ff8a7c0b046968ab2864df7284c910">More...</a><br /></td></tr>
 <tr class="separator:ga63ff8a7c0b046968ab2864df7284c910"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga23902e1572b43c290fed01d9ae736a78"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#ga23902e1572b43c290fed01d9ae736a78">printi</a> (<a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> value)</td></tr>
-<tr class="memdesc:ga23902e1572b43c290fed01d9ae736a78"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints value as a 64 bit unsigned integer.  <a href="group__consolecapi.html#ga23902e1572b43c290fed01d9ae736a78">More...</a><br /></td></tr>
-<tr class="separator:ga23902e1572b43c290fed01d9ae736a78"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga0ac41ae1c31cf87a4adc14d9edb3e6a5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#ga0ac41ae1c31cf87a4adc14d9edb3e6a5">printi128</a> (const <a class="el" href="group__types.html#ga396787e5ec029b1205bd3e4cd9763e7d">uint128_t</a> *value)</td></tr>
+<tr class="memitem:gaac924af668edbf421d478edf203fdbd1"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#gaac924af668edbf421d478edf203fdbd1">printi</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a996e72f71b11a5bb8b3b7b6936b1516d">int64_t</a> <a class="el" href="convert__to__integral_8pass_8cpp.html#a92806d6198ff196ea935b0973f419e01a97de9ab6885342a574053b8f64a563a9">value</a>)</td></tr>
+<tr class="memdesc:gaac924af668edbf421d478edf203fdbd1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints value as a 64 bit unsigned integer.  <a href="group__consolecapi.html#gaac924af668edbf421d478edf203fdbd1">More...</a><br /></td></tr>
+<tr class="separator:gaac924af668edbf421d478edf203fdbd1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:gaaf5e50a1ade4fa863b171b6d5d35a124"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#gaaf5e50a1ade4fa863b171b6d5d35a124">printui</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="convert__to__integral_8pass_8cpp.html#a92806d6198ff196ea935b0973f419e01a97de9ab6885342a574053b8f64a563a9">value</a>)</td></tr>
+<tr class="separator:gaaf5e50a1ade4fa863b171b6d5d35a124"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga0ac41ae1c31cf87a4adc14d9edb3e6a5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#ga0ac41ae1c31cf87a4adc14d9edb3e6a5">printi128</a> (const <a class="el" href="test__exchange_8cpp.html#a2d00695da4b0795588770b839f9f280e">uint128_t</a> *<a class="el" href="convert__to__integral_8pass_8cpp.html#a92806d6198ff196ea935b0973f419e01a97de9ab6885342a574053b8f64a563a9">value</a>)</td></tr>
 <tr class="memdesc:ga0ac41ae1c31cf87a4adc14d9edb3e6a5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints value as a 128 bit unsigned integer.  <a href="group__consolecapi.html#ga0ac41ae1c31cf87a4adc14d9edb3e6a5">More...</a><br /></td></tr>
 <tr class="separator:ga0ac41ae1c31cf87a4adc14d9edb3e6a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gae533b1ec1f098222339ad296a7d882c8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#gae533b1ec1f098222339ad296a7d882c8">printd</a> (<a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> value)</td></tr>
-<tr class="memdesc:gae533b1ec1f098222339ad296a7d882c8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints value as double.  <a href="group__consolecapi.html#gae533b1ec1f098222339ad296a7d882c8">More...</a><br /></td></tr>
-<tr class="separator:gae533b1ec1f098222339ad296a7d882c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga9ec6a2d163a27b98984065d55fb41475"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#ga9ec6a2d163a27b98984065d55fb41475">printn</a> (<a class="el" href="group__types.html#gaaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> name)</td></tr>
+<tr class="memitem:gaea777842a3946bf2936e0d2d0ba95df2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#gaea777842a3946bf2936e0d2d0ba95df2">printdf</a> (double <a class="el" href="convert__to__integral_8pass_8cpp.html#a92806d6198ff196ea935b0973f419e01a97de9ab6885342a574053b8f64a563a9">value</a>)</td></tr>
+<tr class="memdesc:gaea777842a3946bf2936e0d2d0ba95df2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints value as double.  <a href="group__consolecapi.html#gaea777842a3946bf2936e0d2d0ba95df2">More...</a><br /></td></tr>
+<tr class="separator:gaea777842a3946bf2936e0d2d0ba95df2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga1e3999c8ae72ad1920c25583b59d4a78"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#ga1e3999c8ae72ad1920c25583b59d4a78">printff</a> (float <a class="el" href="convert__to__integral_8pass_8cpp.html#a92806d6198ff196ea935b0973f419e01a97de9ab6885342a574053b8f64a563a9">value</a>)</td></tr>
+<tr class="separator:ga1e3999c8ae72ad1920c25583b59d4a78"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga077086d260a56e7ac05dd03342698765"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#ga077086d260a56e7ac05dd03342698765">printdi</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a996e72f71b11a5bb8b3b7b6936b1516d">int64_t</a> <a class="el" href="convert__to__integral_8pass_8cpp.html#a92806d6198ff196ea935b0973f419e01a97de9ab6885342a574053b8f64a563a9">value</a>)</td></tr>
+<tr class="separator:ga077086d260a56e7ac05dd03342698765"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga9ec6a2d163a27b98984065d55fb41475"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#ga9ec6a2d163a27b98984065d55fb41475">printn</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> name)</td></tr>
 <tr class="memdesc:ga9ec6a2d163a27b98984065d55fb41475"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prints a 64 bit names as base32 encoded string.  <a href="group__consolecapi.html#ga9ec6a2d163a27b98984065d55fb41475">More...</a><br /></td></tr>
 <tr class="separator:ga9ec6a2d163a27b98984065d55fb41475"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga5d51117e490e3d0309d821b2d9dd55a5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#ga5d51117e490e3d0309d821b2d9dd55a5">printhex</a> (void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> datalen)</td></tr>
-<tr class="separator:ga5d51117e490e3d0309d821b2d9dd55a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga578a703ccc378e8e24f62016b06cbc27"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__consolecapi.html#ga578a703ccc378e8e24f62016b06cbc27">printhex</a> (const void *data, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> datalen)</td></tr>
+<tr class="separator:ga578a703ccc378e8e24f62016b06cbc27"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><dl class="section copyright"><dt>Copyright</dt><dd>defined in eos/LICENSE.txt </dd></dl>

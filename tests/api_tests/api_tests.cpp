@@ -42,10 +42,20 @@
 #include <test_api_mem/test_api_mem.wast.hpp>
 #include <test_api_db/test_api_db.wast.hpp>
 #include <test_api_multi_index/test_api_multi_index.wast.hpp>
-#include <test_api/test_api.hpp>
 
-FC_REFLECT( dummy_action, (a)(b)(c) );
-FC_REFLECT( u128_action, (values) );
+#define DISABLE_EOSLIB_SERIALIZE
+#include <test_api/test_api_common.hpp>
+
+FC_REFLECT( dummy_action, (a)(b)(c) )
+FC_REFLECT( u128_action, (values) )
+FC_REFLECT( cf_action, (payload)(cfd_idx) )
+FC_REFLECT( invalid_access_action, (code)(val)(index)(store) )
+
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
 
 using namespace eosio;
 using namespace eosio::testing;
@@ -94,15 +104,6 @@ bool expect_assert_message(const fc::exception& ex, string expected) {
    return (ex.get_log().at(0).get_message().find(expected) != std::string::npos);
 }
 
-struct assert_message_is {
-	bool operator()( const fc::exception& ex, string expected) {
-		auto act = ex.get_log().at(0).get_message();
-		return boost::algorithm::ends_with(act, expected);
-	}
-
-	string expected;
-};
-
 constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
 }
@@ -127,7 +128,7 @@ string U128Str(unsigned __int128 i)
 }
 
 template <typename T>
-transaction_trace CallAction(tester& test, T ac, const vector<account_name>& scope = {N(testapi)}) {
+transaction_trace CallAction(TESTER& test, T ac, const vector<account_name>& scope = {N(testapi)}) {
    signed_transaction trx;
 
 
@@ -149,9 +150,9 @@ transaction_trace CallAction(tester& test, T ac, const vector<account_name>& sco
 }
 
 template <typename T>
-transaction_trace CallFunction(tester& test, T ac, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}, uint32_t extra_cf_cpu_usage = 0) {
-	{
-		signed_transaction trx;
+transaction_trace CallFunction(TESTER& test, T ac, const vector<char>& data, const vector<account_name>& scope = {N(testapi)}) {
+   {
+      signed_transaction trx;
 
       auto pl = vector<permission_level>{{scope[0], config::active_name}};
       if (scope.size() > 1)
@@ -160,24 +161,25 @@ transaction_trace CallFunction(tester& test, T ac, const vector<char>& data, con
 
       action act(pl, ac);
       act.data = data;
+      act.authorization = {{N(testapi), config::active_name}};
       trx.actions.push_back(act);
 
-      test.set_transaction_headers(trx, test.DEFAULT_EXPIRATION_DELTA, extra_cf_cpu_usage );
-		auto sigs = trx.sign(test.get_private_key(scope[0], "active"), chain_id_type());
+      test.set_transaction_headers(trx, test.DEFAULT_EXPIRATION_DELTA);
+      auto sigs = trx.sign(test.get_private_key(scope[0], "active"), chain_id_type());
       trx.get_signature_keys(chain_id_type() );
-		auto res = test.push_transaction(trx);
-		BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
-		test.produce_block();
+      auto res = test.push_transaction(trx);
+      BOOST_CHECK_EQUAL(res.status, transaction_receipt::executed);
+      test.produce_block();
       return res;
-	}
+   }
 }
 
-#define CALL_TEST_FUNCTION(TESTER, CLS, MTH, DATA) CallFunction(TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA)
-#define CALL_TEST_FUNCTION_SYSTEM(TESTER, CLS, MTH, DATA) CallFunction(TESTER, test_chain_action<TEST_METHOD(CLS, MTH)>{}, DATA, {N(eosio)} )
-#define CALL_TEST_FUNCTION_SCOPE(TESTER, CLS, MTH, DATA, ACCOUNT) CallFunction(TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA, ACCOUNT)
-#define CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION(TESTER, CLS, MTH, DATA, EXC, EXC_MESSAGE) \
+#define CALL_TEST_FUNCTION(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA)
+#define CALL_TEST_FUNCTION_SYSTEM(_TESTER, CLS, MTH, DATA) CallFunction(_TESTER, test_chain_action<TEST_METHOD(CLS, MTH)>{}, DATA, {N(eosio)} )
+#define CALL_TEST_FUNCTION_SCOPE(_TESTER, CLS, MTH, DATA, ACCOUNT) CallFunction(_TESTER, test_api_action<TEST_METHOD(CLS, MTH)>{}, DATA, ACCOUNT)
+#define CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION(_TESTER, CLS, MTH, DATA, EXC, EXC_MESSAGE) \
 BOOST_CHECK_EXCEPTION( \
-   CALL_TEST_FUNCTION( TESTER, CLS, MTH, DATA), \
+   CALL_TEST_FUNCTION( _TESTER, CLS, MTH, DATA), \
                        EXC, \
                        [](const EXC& e) { \
                           return expect_assert_message(e, EXC_MESSAGE); \
@@ -235,7 +237,7 @@ uint32_t last_fnc_err = 0;
 /*************************************************************************************
  * action_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(action_tests, TESTER) { try {
 	produce_blocks(2);
 	create_account( N(testapi) );
 	create_account( N(acc1) );
@@ -344,9 +346,11 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
       auto dat = fc::raw::pack(a3a4);
       vector<char>& dest = *(vector<char> *)(&act.data);
       std::copy(dat.begin(), dat.end(), std::back_inserter(dest));
+      act.authorization = {{N(testapi), config::active_name}, {N(acc3), config::active_name}, {N(acc4), config::active_name}};
       trx.actions.push_back(act);
 
       set_transaction_headers(trx);
+		trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
 		trx.sign(get_private_key(N(acc3), "active"), chain_id_type());
 		trx.sign(get_private_key(N(acc4), "active"), chain_id_type());
 		auto res = push_transaction(trx);
@@ -384,22 +388,29 @@ BOOST_FIXTURE_TEST_CASE(action_tests, tester) { try {
 
    dummy_action da = { DUMMY_ACTION_DEFAULT_A, DUMMY_ACTION_DEFAULT_B, DUMMY_ACTION_DEFAULT_C };
    CallAction(*this, da);
-
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
  * context free action tests
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(cf_action_tests, TESTER) { try {
       produce_blocks(2);
       create_account( N(testapi) );
       create_account( N(dummy) );
       produce_blocks(1000);
       set_code( N(testapi), test_api_wast );
       produce_blocks(1);
-
       cf_action cfa;
       signed_transaction trx;
+      set_transaction_headers(trx);
+      // need at least one normal action
+      BOOST_CHECK_EXCEPTION(push_transaction(trx), tx_no_action,
+                            [](const fc::assert_exception& e) {
+                               return expect_assert_message(e, "transaction must have at least one action");
+                            }
+      );
+
       action act({}, cfa);
       trx.context_free_actions.push_back(act);
       trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100)); // verify payload matches context free data
@@ -409,10 +420,9 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       // signing a transaction with only context_free_actions should not be allowed
       auto sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
 
-      BOOST_CHECK_EXCEPTION(push_transaction(trx), tx_irrelevant_sig,
+      BOOST_CHECK_EXCEPTION(push_transaction(trx), tx_no_action,
                             [](const fc::exception& e) {
-                               edump((e.what()));
-                               return expect_assert_message(e, "signatures");
+                               return expect_assert_message(e, "transaction must have at least one action");
                             }
       );
 
@@ -445,34 +455,38 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
                                return expect_assert_message(e, "may only be called from context_free");
                             }
       );
+      {
+         // back to normal action
+         action act1(pl, da);
+         signed_transaction trx;
+         trx.context_free_actions.push_back(act);
+         trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(100)); // verify payload matches context free data
+         trx.context_free_data.emplace_back(fc::raw::pack<uint32_t>(200));
 
-      // back to normal action
-      trx.signatures.clear();
-      trx.actions.clear();
-      trx.actions.push_back(act1);
+         trx.actions.push_back(act1);
+         // attempt to access non context free api
+         for (uint32_t i = 200; i <= 204; ++i) {
+            trx.context_free_actions.clear();
+            trx.context_free_data.clear();
+            cfa.payload = i;
+            cfa.cfd_idx = 1;
+            action cfa_act({}, cfa);
+            trx.context_free_actions.emplace_back(cfa_act);
+            trx.signatures.clear();
+            set_transaction_headers(trx);
+            sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
+            BOOST_CHECK_EXCEPTION(push_transaction(trx), transaction_exception,
+                 [](const fc::exception& e) {
+                    return expect_assert_message(e, "context_free: only context free api's can be used in this context");
+                 }
+            );
+         }
 
-      // attempt to access non context free api
-      for (uint32_t i = 200; i <= 204; ++i) {
-         trx.context_free_actions.clear();
-         trx.context_free_data.clear();
-         cfa.payload = i;
-         cfa.cfd_idx = 1;
-         action cfa_act({}, cfa);
-         trx.context_free_actions.emplace_back(cfa_act);
-         trx.signatures.clear();
-         set_transaction_headers(trx);
-         sigs = trx.sign(get_private_key(N(testapi), "active"), chain_id_type());
-         BOOST_CHECK_EXCEPTION(push_transaction(trx), transaction_exception,
-              [](const fc::exception& e) {
-                 return expect_assert_message(e, "context_free: only context free api's can be used in this context");
-              }
-         );
       }
-
       produce_block();
 
       // test send context free action
-      auto ttrace = CallFunction( *this, test_api_action<TEST_METHOD("test_transaction", "send_cf_action")>{}, {}, {N(testapi)}, 20000 );
+      auto ttrace = CALL_TEST_FUNCTION( *this, "test_transaction", "send_cf_action", {} );
       BOOST_CHECK_EQUAL(ttrace.action_traces.size(), 2);
       BOOST_CHECK_EQUAL(ttrace.action_traces[1].receiver == account_name("dummy"), true);
       BOOST_CHECK_EQUAL(ttrace.action_traces[1].act.account == account_name("dummy"), true);
@@ -486,12 +500,14 @@ BOOST_FIXTURE_TEST_CASE(cf_action_tests, tester) { try {
       );
 
       CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_action", {} );
-      CallFunction( *this, test_api_action<TEST_METHOD("test_transaction", "read_inline_cf_action")>{}, {}, {N(testapi)}, 20000 );
 
+      CALL_TEST_FUNCTION( *this, "test_transaction", "read_inline_cf_action", {} );
+
+      BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 
-BOOST_FIXTURE_TEST_CASE(cfa_tx_signature, tester)  try {
+BOOST_FIXTURE_TEST_CASE(cfa_tx_signature, TESTER)  try {
 
    action cfa({}, cf_action());
 
@@ -508,12 +524,13 @@ BOOST_FIXTURE_TEST_CASE(cfa_tx_signature, tester)  try {
    const private_key_type& priv_key = get_private_key("dummy", "active");
    BOOST_TEST((std::string)tx1.sign(priv_key, chain_id_type()) != (std::string)tx2.sign(priv_key, chain_id_type()));
 
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW()
 
 /*************************************************************************************
  * checktime_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(checktime_pass_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(checktime_pass_tests, TESTER) { try {
 	produce_blocks(2);
 	create_account( N(testapi) );
 	produce_blocks(1000);
@@ -523,6 +540,7 @@ BOOST_FIXTURE_TEST_CASE(checktime_pass_tests, tester) { try {
    // test checktime_pass
    CALL_TEST_FUNCTION( *this, "test_checktime", "checktime_pass", {});
 
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
@@ -530,14 +548,14 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 	//       1) compilation of the smart contract should probably not count towards the CPU time of a transaction that first uses it;
 	//       2) checktime should eventually switch to a deterministic metric which should hopefully fix the inconsistencies
 	//          of this test succeeding/failing on different machines (for example, succeeding on our local dev machines but failing on Jenkins).
-   tester t( {fc::milliseconds(5000), fc::milliseconds(5000)} );
+   TESTER t( {fc::milliseconds(5000), fc::milliseconds(5000), fc::milliseconds(-1)} );
    t.produce_blocks(2);
 
    t.create_account( N(testapi) );
    t.set_code( N(testapi), test_api_wast );
    t.produce_blocks(1);
 
-   auto call_test = [](tester& test, auto ac) {
+   auto call_test = [](TESTER& test, auto ac) {
 		signed_transaction trx;
 
       auto pl = vector<permission_level>{{N(testapi), config::active_name}};
@@ -554,12 +572,13 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 
    BOOST_CHECK_EXCEPTION(call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{}), checktime_exceeded, is_checktime_exceeded);
 
+   BOOST_REQUIRE_EQUAL( t.validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
  * compiler_builtins_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, TESTER) { try {
 	produce_blocks(2);
 	create_account( N(testapi) );
 	produce_blocks(1000);
@@ -610,18 +629,34 @@ BOOST_FIXTURE_TEST_CASE(compiler_builtins_tests, tester) { try {
 
    // test test_ashrti3
    CALL_TEST_FUNCTION( *this, "test_compiler_builtins", "test_ashrti3", {});
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 
 /*************************************************************************************
  * transaction_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
    produce_blocks(2);
    create_account( N(testapi) );
    produce_blocks(100);
    set_code( N(testapi), test_api_wast );
    produce_blocks(1);
+   // test for zero auth
+   {
+      signed_transaction trx;
+      auto tm = test_api_action<TEST_METHOD("test_action", "require_auth")>{};
+      action act({}, tm);
+      trx.actions.push_back(act);
+
+		set_transaction_headers(trx);
+      BOOST_CHECK_EXCEPTION(push_transaction(trx), transaction_exception,
+         [](const fc::exception& e) {
+            return expect_assert_message(e, "transaction must have at least one authorization");
+         }
+      );
+   }
 
    // test send_action
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_action", {});
@@ -632,10 +667,9 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
    // test send_action_large
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_large", {}), transaction_exception,
          [](const fc::exception& e) {
-            return expect_assert_message(e, "data_len < config::default_max_inline_action_size: inline action too big");
+            return expect_assert_message(e, "data_len < config::default_max_inline_action_size");
          }
       );
-
    // test send_action_inline_fail
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION(*this, "test_transaction", "send_action_inline_fail", {}), transaction_exception,
          [](const fc::exception& e) {
@@ -656,14 +690,21 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
       );
    control->push_deferred_transactions( true );
 
+   // test error handling on deferred transaction failure
+   CALL_TEST_FUNCTION(*this, "test_transaction", "send_transaction_trigger_error_handler", {});
+   auto tx_traces = control->push_deferred_transactions( true );
+   BOOST_CHECK_EQUAL(tx_traces.size(), 1);
+   BOOST_CHECK_EQUAL(tx_traces.at(0).action_traces.size(), 2);
+   BOOST_CHECK_EQUAL(tx_traces.at(0).status, transaction_receipt::soft_fail);
+
    // test test_transaction_size
-   CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(57) );
+   CALL_TEST_FUNCTION(*this, "test_transaction", "test_transaction_size", fc::raw::pack(55) ); // TODO: Need a better way to test this.
    control->push_deferred_transactions( true );
 
    // test test_read_transaction
    // this is a bit rough, but I couldn't figure out a better way to compare the hashes
    auto tx_trace = CALL_TEST_FUNCTION( *this, "test_transaction", "test_read_transaction", {} );
-   string sha_expect = "274e873c8b2e4de20de06e53c99fe703b5099ce4faaf5d78195a4a2538caba15";
+   string sha_expect = tx_trace.id;
    BOOST_CHECK_EQUAL(tx_trace.action_traces.front().console == sha_expect, true);
    // test test_tapos_block_num
    CALL_TEST_FUNCTION(*this, "test_transaction", "test_tapos_block_num", fc::raw::pack(control->head_block_num()) );
@@ -678,9 +719,17 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, tester) { try {
          }
       );
 
+   // test send_transaction_expiring_late
+   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_transaction", "send_transaction_expiring_late", fc::raw::pack(N(testapi))),
+                         eosio::chain::transaction_exception,  [](const eosio::chain::transaction_exception& e) {
+                                                                  return expect_assert_message(e, "Transaction expiration is too far");
+                                                               }
+      );
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    produce_blocks(2);
    create_account( N(testapi) );
    produce_blocks(100);
@@ -696,6 +745,8 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, tester) { try {
    //check that it gets executed afterwards
    traces = control->push_deferred_transactions( true );
    BOOST_CHECK_EQUAL( 1, traces.size() );
+   //confirm printed message
+   BOOST_TEST(traces.back().action_traces.back().console == "deferred executed\n");
 
    //schedule twice (second deferred transaction should replace first one)
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
@@ -718,6 +769,15 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, tester) { try {
    produce_block( fc::seconds(2) );
    traces = control->push_deferred_transactions( true );
    BOOST_CHECK_EQUAL( 1, traces.size() );
+
+   //verify that deferred transaction is dependent on max_generated_transaction_count configuration property
+   const auto& gpo = control->get_global_properties();
+   control->get_mutable_database().modify(gpo, [&]( auto& props ) {
+      props.configuration.max_generated_transaction_count = 0;
+   });
+   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {}), transaction_exception);
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 template <uint64_t NAME>
@@ -734,7 +794,7 @@ struct setprod_act {
 /*************************************************************************************
  * chain_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(chain_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(chain_tests, TESTER) { try {
 	produce_blocks(2);
    create_account( N(inita) );
    create_account( N(initb) );
@@ -813,30 +873,85 @@ BOOST_FIXTURE_TEST_CASE(chain_tests, tester) { try {
    }
 
 	CALL_TEST_FUNCTION( *this, "test_chain", "test_activeprods", fc::raw::pack(prods));
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
  * db_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(db_tests, tester) { try {
-	produce_blocks(2);
-	create_account( N(testapi) );
-	produce_blocks(1000);
-	set_code( N(testapi), test_api_db_wast );
-	produce_blocks(1);
+BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
+   produce_blocks(2);
+   create_account( N(testapi) );
+   create_account( N(testapi2) );
+   produce_blocks(1000);
+   set_code( N(testapi), test_api_db_wast );
+   set_code( N(testapi2), test_api_db_wast );
+   produce_blocks(1);
 
-	CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_general", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_lowerbound", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_upperbound", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "idx64_general", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "idx64_lowerbound", {});
-	CALL_TEST_FUNCTION( *this, "test_db", "idx64_upperbound", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_general", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_lowerbound", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_upperbound", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "idx64_general", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "idx64_lowerbound", {});
+   CALL_TEST_FUNCTION( *this, "test_db", "idx64_upperbound", {});
 
+   // Store value in primary table
+   invalid_access_action ia1{.code = N(testapi), .val = 10, .index = 0, .store = true};
+   auto res = push_action( action({{N(testapi), config::active_name}},
+                                  N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                                  fc::raw::pack(ia1)),
+                           N(testapi) );
+   BOOST_CHECK_EQUAL( res, success() );
+
+   // Attempt to change the value stored in the primary table under the code of N(testapi)
+   invalid_access_action ia2{.code = ia1.code, .val = 20, .index = 0, .store = true};
+   res = push_action( action({{N(testapi2), config::active_name}},
+                             N(testapi2), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             fc::raw::pack(ia2)),
+                      N(testapi2) );
+   BOOST_CHECK_EQUAL( boost::algorithm::ends_with(res, "db access violation"), true );
+
+
+   // Verify that the value has not changed.
+   ia1.store = false;
+   res = push_action( action({{N(testapi), config::active_name}},
+                             N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             fc::raw::pack(ia1)),
+                      N(testapi) );
+   BOOST_CHECK_EQUAL( res, success() );
+
+   // Store value in secondary table
+   ia1.store = true; ia1.index = 1;
+   res = push_action( action({{N(testapi), config::active_name}},
+                             N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             fc::raw::pack(ia1)),
+                      N(testapi) );
+   BOOST_CHECK_EQUAL( res, success() );
+
+   // Attempt to change the value stored in the secondary table under the code of N(testapi)
+   ia2.index = 1;
+   res = push_action( action({{N(testapi2), config::active_name}},
+                             N(testapi2), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             fc::raw::pack(ia2)),
+                      N(testapi2) );
+   BOOST_CHECK_EQUAL( boost::algorithm::ends_with(res, "db access violation"), true );
+
+   // Verify that the value has not changed.
+   ia1.store = false;
+   res = push_action( action({{N(testapi), config::active_name}},
+                             N(testapi), WASM_TEST_ACTION("test_db", "test_invalid_access"),
+                             fc::raw::pack(ia1)),
+                      N(testapi) );
+   BOOST_CHECK_EQUAL( res, success() );
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
+
 /*************************************************************************************
  * multi_index_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(multi_index_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
    produce_blocks(1);
    create_account( N(testapi) );
    produce_blocks(1);
@@ -885,12 +1000,13 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, tester) { try {
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_sk_cache_pk_lookup", {});
    CALL_TEST_FUNCTION( *this, "test_multi_index", "idx64_pk_cache_sk_lookup", {});
 
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
  * fixedpoint_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(fixedpoint_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(fixedpoint_tests, TESTER) { try {
 	produce_blocks(2);
 	create_account( N(testapi) );
 	produce_blocks(1000);
@@ -908,13 +1024,14 @@ BOOST_FIXTURE_TEST_CASE(fixedpoint_tests, tester) { try {
          }
       );
 
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 
 /*************************************************************************************
  * real_tests test cases
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(real_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(real_tests, TESTER) { try {
    produce_blocks(1000);
    create_account(N(testapi) );
    produce_blocks(1000);
@@ -932,6 +1049,7 @@ BOOST_FIXTURE_TEST_CASE(real_tests, tester) { try {
       );
 
 
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 
@@ -939,7 +1057,7 @@ BOOST_FIXTURE_TEST_CASE(real_tests, tester) { try {
 /*************************************************************************************
  * crypto_tests test cases
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(crypto_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(crypto_tests, TESTER) { try {
    produce_blocks(1000);
    create_account(N(testapi) );
    produce_blocks(1000);
@@ -1020,13 +1138,14 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, tester) { try {
 
    CALL_TEST_FUNCTION( *this, "test_crypto", "assert_ripemd160_true", {} );
 
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 
 /*************************************************************************************
  * memory_tests test cases
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(memory_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(memory_tests, TESTER) { try {
    produce_blocks(1000);
    create_account(N(testapi) );
    produce_blocks(1000);
@@ -1051,31 +1170,37 @@ BOOST_FIXTURE_TEST_CASE(memory_tests, tester) { try {
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memcpy_overlap_end", {} );
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memcmp", {} );
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 
 /*************************************************************************************
  * extended_memory_tests test cases
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(extended_memory_test_initial_memory, tester) { try {
+BOOST_FIXTURE_TEST_CASE(extended_memory_test_initial_memory, TESTER) { try {
    produce_blocks(1000);
    create_account(N(testapi) );
    produce_blocks(1000);
    set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_extended_memory", "test_initial_buffer", {} );
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory, tester) { try {
+BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory, TESTER) { try {
    produce_blocks(1000);
    create_account(N(testapi) );
    produce_blocks(1000);
    set_code(N(testapi), test_api_mem_wast);
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_extended_memory", "test_page_memory", {} );
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_exceeded, tester) { try {
+BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_exceeded, TESTER) { try {
    produce_blocks(1000);
    create_account(N(testapi) );
    produce_blocks(1000);
@@ -1083,9 +1208,10 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_exceeded, tester) { try
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_extended_memory", "test_page_memory_exceeded", {} );
 
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_negative_bytes, tester) { try {
+BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_negative_bytes, TESTER) { try {
    produce_blocks(1000);
    create_account(N(testapi) );
    produce_blocks(1000);
@@ -1093,12 +1219,13 @@ BOOST_FIXTURE_TEST_CASE(extended_memory_test_page_memory_negative_bytes, tester)
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_extended_memory", "test_page_memory_negative_bytes", {} );
 
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
  * print_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(print_tests, TESTER) { try {
 	produce_blocks(2);
 	create_account(N(testapi) );
 	produce_blocks(1000);
@@ -1151,13 +1278,14 @@ BOOST_FIXTURE_TEST_CASE(print_tests, tester) { try {
    BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(39, 1), U128Str(0) );
    BOOST_CHECK_EQUAL( tx6_act_cnsl.substr(40, 11), U128Str(87654323456) );
 
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 
 /*************************************************************************************
  * math_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(math_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(math_tests, TESTER) { try {
 	produce_blocks(1000);
 	create_account( N(testapi) );
 	produce_blocks(1000);
@@ -1213,13 +1341,14 @@ BOOST_FIXTURE_TEST_CASE(math_tests, tester) { try {
          }
       );
 
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 
 /*************************************************************************************
  * types_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(types_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(types_tests, TESTER) { try {
 	produce_blocks(1000);
 	create_account( N(testapi) );
 
@@ -1231,12 +1360,14 @@ BOOST_FIXTURE_TEST_CASE(types_tests, tester) { try {
 	CALL_TEST_FUNCTION( *this, "test_types", "char_to_symbol", {});
 	CALL_TEST_FUNCTION( *this, "test_types", "string_to_name", {});
 	CALL_TEST_FUNCTION( *this, "test_types", "name_class", {});
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
  * permission_tests test case
  *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(permission_tests, tester) { try {
+BOOST_FIXTURE_TEST_CASE(permission_tests, TESTER) { try {
    produce_blocks(1);
    create_account( N(testapi) );
 
@@ -1247,7 +1378,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, tester) { try {
    auto get_result_uint64 = [&]() -> uint64_t {
       const auto& db = control->get_database();
       const auto* t_id = db.find<table_id_object, by_code_scope_table>(boost::make_tuple(N(testapi), N(testapi), N(testapi)));
-      
+
       FC_ASSERT(t_id != 0, "Table id not found");
 
       const auto& idx = db.get_index<key_value_index, by_scope_primary>();
@@ -1295,18 +1426,16 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, tester) { try {
       }
    );
 
-   BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
+   CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
          .account    = N(noname),
          .permission = N(active),
          .pubkeys    = {
             get_public_key(N(testapi), "active")
          }
-      })), fc::exception,
-       [](const fc::exception& e) {
-         return expect_assert_message(e, "unknown key");
-      }
+      })
    );
+   BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() );
 
    CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
@@ -1317,6 +1446,18 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, tester) { try {
    );
    BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() );
 
+   CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
+      fc::raw::pack( check_auth {
+         .account    = N(testapi),
+         .permission = N(noname),
+         .pubkeys    = {
+            get_public_key(N(testapi), "active")
+         }
+      })
+   );
+   BOOST_CHECK_EQUAL( uint64_t(0), get_result_uint64() );
+
+   /*
    BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_permission", "check_authorization",
       fc::raw::pack( check_auth {
          .account    = N(testapi),
@@ -1329,6 +1470,7 @@ BOOST_FIXTURE_TEST_CASE(permission_tests, tester) { try {
          return expect_assert_message(e, "unknown key");
       }
    );
+   */
 
 } FC_LOG_AND_RETHROW() }
 
@@ -1395,5 +1537,20 @@ BOOST_FIXTURE_TEST_CASE(privileged_tests, tester) { try {
 
 } FC_LOG_AND_RETHROW() }
 #endif
+
+/*************************************************************************************
+ * real_tests test cases
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(datastream_tests, TESTER) { try {
+   produce_blocks(1000);
+   create_account(N(testapi) );
+   produce_blocks(1000);
+   set_code(N(testapi), test_api_wast);
+   produce_blocks(1000);
+
+   CALL_TEST_FUNCTION( *this, "test_datastream", "test_basic", {} );
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

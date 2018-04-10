@@ -71,6 +71,7 @@ Options:
 */
 #include <string>
 #include <vector>
+#include <regex>
 #include <boost/asio.hpp>
 #include <boost/format.hpp>
 #include <iostream>
@@ -145,8 +146,8 @@ bool   tx_dont_broadcast = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
 
-uint32_t tx_cf_cpu_usage = 0;
-uint32_t tx_net_usage = 0;
+uint32_t tx_max_cpu_usage = 0;
+uint32_t tx_max_net_usage = 0;
 
 vector<string> tx_permission;
 
@@ -172,8 +173,8 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
       msg += " (defaults to '" + default_permission + "')";
    cmd->add_option("-p,--permission", tx_permission, localized(msg.c_str()));
 
-   cmd->add_option("--cf-cpu-usage", tx_cf_cpu_usage, localized("set the cpu usage budget, in instructions-retired, for the execution of all context free actions, defaults to an estimated value based on the transaction"));
-   cmd->add_option("--net-usage", tx_net_usage, localized("set the net usage budget, in bytes, for the storage of the transaction (compressed), signatures and any context-free data on the block chain"));
+   cmd->add_option("--max-cpu-usage", tx_max_cpu_usage, localized("set an upper limit on the cpu usage budget, in instructions-retired, for the execution of the transaction (defaults to 0 which means no limit)"));
+   cmd->add_option("--max-net-usage", tx_max_net_usage, localized("set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
 }
 
 string generate_nonce_value() {
@@ -191,7 +192,7 @@ vector<chain::permission_level> get_account_permissions(const vector<string>& pe
    auto fixedPermissions = permissions | boost::adaptors::transformed([](const string& p) {
       vector<string> pieces;
       split(pieces, p, boost::algorithm::is_any_of("@"));
-      EOSC_ASSERT(pieces.size() == 2, "Invalid permission: ${p}", ("p", p));
+      if( pieces.size() == 1 ) pieces.push_back( "active" );
       return chain::permission_level{ .actor = pieces[0], .permission = pieces[1] };
    });
    vector<chain::permission_level> accountPermissions;
@@ -229,32 +230,6 @@ void sign_transaction(signed_transaction& trx, fc::variant& required_keys) {
    trx = signed_trx.as<signed_transaction>();
 }
 
-static uint32_t estimate_transaction_context_free_kilo_cpu_usage( const signed_transaction& trx, int32_t extra_kcpu = 1000 ) {
-   if (tx_cf_cpu_usage != 0) {
-      return (uint32_t)(tx_cf_cpu_usage + 1023UL) / (uint32_t)1024UL;
-   }
-
-   const uint32_t estimated_per_action_usage = config::default_base_per_action_cpu_usage * 10;
-   return extra_kcpu + (uint32_t)(trx.context_free_actions.size() * estimated_per_action_usage + 1023) / (uint32_t)1024;
-}
-
-static uint32_t estimate_transaction_net_usage_words( const signed_transaction& trx, packed_transaction::compression_type compression, size_t num_keys ) {
-   if (tx_net_usage != 0) {
-      return tx_net_usage / (uint32_t)8UL;
-   }
-
-   uint32_t sigs =  (uint32_t)5 +  // the maximum encoded size of the unsigned_int for the size of the signature block
-                    (uint32_t)(num_keys * sizeof(signature_type));
-
-   uint32_t packed_size_drift = compression == packed_transaction::none ?
-           4 :  // there is 1 variably encoded ints we haven't set yet, this size it can grow by 4 bytes
-           256; // allow for drift in the compression due to new data
-
-   uint32_t estimated_packed_size = (uint32_t)packed_transaction(trx, compression).data.size() + packed_size_drift;
-
-   return (uint32_t)(sigs + estimated_packed_size + (uint32_t)trx.context_free_data.size() + 7) / (uint32_t)8;
-}
-
 fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
    auto info = get_info();
    trx.expiration = info.head_block_time + tx_expiration;
@@ -267,8 +242,8 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
    auto required_keys = determine_required_keys(trx);
    size_t num_keys = required_keys.is_array() ? required_keys.get_array().size() : 1;
 
-   trx.kcpu_usage = estimate_transaction_context_free_kilo_cpu_usage(trx, extra_kcpu );
-   trx.net_usage_words = estimate_transaction_net_usage_words(trx, compression, num_keys);
+   trx.max_kcpu_usage = (tx_max_cpu_usage + 1023)/1024;
+   trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
 
    if (!tx_skip_sign) {
       sign_transaction(trx, required_keys);
@@ -292,8 +267,8 @@ void print_result( const fc::variant& result ) {
       const auto& processed = result["processed"];
       const auto& transaction_id = processed["id"].as_string();
       const auto& status = processed["status"].as_string() ;
-      auto net = processed["net_usage"].as_int64(); 
-      auto cpu = processed["cpu_usage"].as_int64(); 
+      auto net = processed["net_usage"].as_int64();
+      auto cpu = processed["cpu_usage"].as_int64();
 
       cout << status << " transaction: " << transaction_id << "  " << net << " bytes  " << cpu << " cycles\n";
 
@@ -337,7 +312,7 @@ void send_actions(std::vector<chain::action>&& actions, int32_t extra_kcpu = 100
 
 void send_transaction( signed_transaction& trx, int32_t extra_kcpu, packed_transaction::compression_type compression = packed_transaction::none  ) {
    auto result = push_transaction(trx, extra_kcpu, compression);
-   
+
    if( tx_print_json ) {
       cout << fc::json::to_pretty_string( result );
    } else {
@@ -422,6 +397,16 @@ chain::action create_unlinkauth(const name& account, const name& code, const nam
                    contracts::unlinkauth{account, code, type}};
 }
 
+fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::legacy_parser)
+{
+   regex r("^[ \t]*[\{\[]");
+   if ( !regex_search(file_or_str, r) && is_regular_file(file_or_str) ) {
+      return fc::json::from_file(file_or_str, ptype);
+   } else {
+      return fc::json::from_string(file_or_str, ptype);
+   }
+}
+
 struct set_account_permission_subcommand {
    string accountStr;
    string permissionStr;
@@ -451,16 +436,10 @@ struct set_account_permission_subcommand {
                   auth = authority(public_key_type(authorityJsonOrFile));
                } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
             } else {
-               fc::variant parsedAuthority;
                try {
-                  if (boost::istarts_with(authorityJsonOrFile, "{")) {
-                     parsedAuthority = fc::json::from_string(authorityJsonOrFile);
-                  } else {
-                     parsedAuthority = fc::json::from_file(authorityJsonOrFile);
-                  }
-                  auth = parsedAuthority.as<authority>();
-               } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON")
-                 
+                  auth = json_from_file_or_string(authorityJsonOrFile).as<authority>();
+               } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON '${data}'", ("data",authorityJsonOrFile))
+
             }
 
             name parent;
@@ -844,20 +823,22 @@ int main( int argc, char** argv ) {
       std::string wast;
       std::cout << localized("Reading WAST...") << std::endl;
       fc::path cpath(contractPath);
+
       if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
 
-      if( wastPath == string() ) 
+      if( wastPath.empty() )
       {
          wastPath = (cpath / (cpath.filename().generic_string()+".wast")).generic_string();
       }
 
-      if( abiPath == string() ) 
+      if( abiPath.empty() )
       {
          abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
       }
-
+      
+      
       fc::read_file_contents(wastPath, wast);
-
+      FC_ASSERT( !wast.empty(), "no wast file found ${f}", ("f", wastPath) );
       vector<uint8_t> wasm;
       const string binary_wasm_header("\x00\x61\x73\x6d", 4);
       if(wast.compare(0, 4, binary_wasm_header) == 0) {
@@ -1061,17 +1042,12 @@ int main( int argc, char** argv ) {
 
    auto sign = app.add_subcommand("sign", localized("Sign a transaction"), false);
    sign->add_option("transaction", trx_json_to_sign,
-                                 localized("The JSON of the transaction to sign, or the name of a JSON file containing the transaction"), true)->required();
+                                 localized("The JSON string or filename defining the transaction to sign"), true)->required();
    sign->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
    sign->add_flag( "-p,--push-transaction", push_trx, localized("Push transaction after signing"));
 
    sign->set_callback([&] {
-      signed_transaction trx;
-      if ( is_regular_file(trx_json_to_sign) ) {
-         trx = fc::json::from_file(trx_json_to_sign).as<signed_transaction>();
-      } else {
-         trx = fc::json::from_string(trx_json_to_sign).as<signed_transaction>();
-      }
+      signed_transaction trx = json_from_file_or_string(trx_json_to_sign).as<signed_transaction>();
 
       if( str_private_key.size() == 0 ) {
          std::cerr << localized("private key: ");
@@ -1104,16 +1080,16 @@ int main( int argc, char** argv ) {
    actionsSubcommand->fallthrough(false);
    actionsSubcommand->add_option("contract", contract,
                                  localized("The account providing the contract to execute"), true)->required();
-   actionsSubcommand->add_option("action", action, localized("The action to execute on the contract"), true)
-         ->required();
+   actionsSubcommand->add_option("action", action,
+                                 localized("A JSON string or filename defining the action to execute on the contract"), true)->required();
    actionsSubcommand->add_option("data", data, localized("The arguments to the contract"))->required();
 
    add_standard_transaction_options(actionsSubcommand);
    actionsSubcommand->set_callback([&] {
       fc::variant action_args_var;
       try {
-         action_args_var = fc::json::from_string(data, fc::json::relaxed_parser);
-      } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON")
+         action_args_var = json_from_file_or_string(data, fc::json::relaxed_parser);
+      } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON data='${data}'", ("data",data))
 
       auto arg= fc::mutable_variant_object
                 ("code", contract)
@@ -1129,17 +1105,13 @@ int main( int argc, char** argv ) {
    // push transaction
    string trx_to_push;
    auto trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
-   trxSubcommand->add_option("transaction", trx_to_push, localized("The JSON of the transaction to push, or the name of a JSON file containing the transaction"))->required();
+   trxSubcommand->add_option("transaction", trx_to_push, localized("The JSON string or filename defining the transaction to push"))->required();
 
    trxSubcommand->set_callback([&] {
       fc::variant trx_var;
       try {
-         if ( is_regular_file(trx_to_push) ) {
-            trx_var = fc::json::from_file(trx_to_push);
-         } else {
-            trx_var = fc::json::from_string(trx_to_push);
-         }
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON")
+         trx_var = json_from_file_or_string(trx_to_push);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_push))
       signed_transaction trx = trx_var.as<signed_transaction>();
       auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
       std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
@@ -1148,12 +1120,12 @@ int main( int argc, char** argv ) {
 
    string trxsJson;
    auto trxsSubcommand = push->add_subcommand("transactions", localized("Push an array of arbitrary JSON transactions"));
-   trxsSubcommand->add_option("transactions", trxsJson, localized("The JSON array of the transactions to push"))->required();
+   trxsSubcommand->add_option("transactions", trxsJson, localized("The JSON string or filename defining the array of the transactions to push"))->required();
    trxsSubcommand->set_callback([&] {
       fc::variant trx_var;
       try {
-         trx_var = fc::json::from_string(trxsJson);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON")
+         trx_var = json_from_file_or_string(trxsJson);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trxsJson))
       auto trxs_result = call(push_txns_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });

@@ -32,12 +32,24 @@ namespace eosio { namespace chain {
       optional<producer_schedule_type>  new_producers;
    };
 
+   struct producer_confirmation {
+      block_id_type   block_id;
+      digest_type     block_digest;
+      account_name    producer;
+      signature_type  sig;
+
+      friend bool operator == ( const producer_confirmation& a, const producer_confirmation& b ) {
+         return std::tie(a.block_id,a.block_digest,a.producer,a.sig) == std::tie(b.block_id,b.block_digest,b.producer,b.sig);
+      }
+   };
+
    struct signed_block_header : public block_header
    {
       block_id_type              id() const;
-      public_key_type            signee() const;
-      void                       sign(const private_key_type& signer);
-      bool                       validate_signee(const public_key_type& expected_signee) const;
+      public_key_type            signee( const digest_type& schedule_digest ) const;
+      void                       sign(const private_key_type& signer, const digest_type& schedule_digest );
+      bool                       validate_signee(const public_key_type& expected_signee, const digest_type& schedule_digest ) const;
+      digest_type                signed_digest( const digest_type& schedule_digest )const;
 
       signature_type             producer_signature;
    };
@@ -98,7 +110,6 @@ namespace eosio { namespace chain {
     */
    struct signed_block_summary : public signed_block_header {
       vector<region_summary>    regions;
-      checksum256_type          calculate_transaction_mroot() const;
    };
 
    /**

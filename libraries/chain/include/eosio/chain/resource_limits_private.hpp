@@ -9,12 +9,6 @@ namespace eosio { namespace chain { namespace resource_limits {
 
    namespace impl {
       template<typename T>
-      struct ratio {
-         T numerator;
-         T denominator;
-      };
-
-      template<typename T>
       ratio<T> make_ratio(T n, T d) {
          return ratio<T>{n, d};
       }
@@ -74,10 +68,10 @@ namespace eosio { namespace chain { namespace resource_limits {
             value_ex += units * Precision / (uint64_t)window_size;
          }
       };
+
    }
 
    using usage_accumulator = impl::exponential_moving_average_accumulator<>;
-   using ratio = impl::ratio<uint64_t>;
 
    /**
     * Every account that authorizes a transaction is billed for the full size of that transaction. This object
@@ -98,6 +92,7 @@ namespace eosio { namespace chain { namespace resource_limits {
    };
 
    struct by_owner;
+   struct by_dirty;
 
    using resource_limits_index = chainbase::shared_multi_index_container<
       resource_limits_object,
@@ -122,32 +117,34 @@ namespace eosio { namespace chain { namespace resource_limits {
       usage_accumulator        cpu_usage;
 
       uint64_t                 ram_usage = 0;
+      uint64_t                 pending_ram_usage = 0;
+
+      bool is_dirty() const {
+         // checks for ram_usage overflowing a signed int are maintained in the update step
+         return ram_usage != pending_ram_usage;
+      }
    };
 
    using resource_usage_index = chainbase::shared_multi_index_container<
       resource_usage_object,
       indexed_by<
          ordered_unique<tag<by_id>, member<resource_usage_object, resource_usage_object::id_type, &resource_usage_object::id>>,
-         ordered_unique<tag<by_owner>, member<resource_usage_object, account_name, &resource_usage_object::owner> >
+         ordered_unique<tag<by_owner>, member<resource_usage_object, account_name, &resource_usage_object::owner> >,
+         ordered_unique<tag<by_dirty>,
+            composite_key<resource_usage_object,
+               BOOST_MULTI_INDEX_CONST_MEM_FUN(resource_usage_object, bool, is_dirty),
+               BOOST_MULTI_INDEX_MEMBER(resource_usage_object, resource_usage_object::id_type, id)
+            >
+         >
       >
    >;
-
-   struct elastic_limit_parameters {
-      uint64_t target;           // the desired usage
-      uint64_t max;              // the maximum usage
-      uint32_t periods;          // the number of aggregation periods that contribute to the average usage
-
-      uint32_t max_multiplier;   // the multiplier by which virtual space can oversell usage when uncongested
-      ratio    contract_rate;    // the rate at which a congested resource contracts its limit
-      ratio    expand_rate;       // the rate at which an uncongested resource expands its limits
-   };
 
    class resource_limits_config_object : public chainbase::object<resource_limits_config_object_type, resource_limits_config_object> {
       OBJECT_CTOR(resource_limits_config_object);
       id_type id;
 
-      elastic_limit_parameters cpu_limit_parameters = {config::default_target_block_cpu_usage, config::default_max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}};
-      elastic_limit_parameters net_limit_parameters = {config::default_target_block_size, config::default_max_block_size, config::block_size_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}};
+      elastic_limit_parameters cpu_limit_parameters = {EOS_PERCENT(config::default_max_block_cpu_usage, config::default_target_block_cpu_usage_pct), config::default_max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}};
+      elastic_limit_parameters net_limit_parameters = {EOS_PERCENT(config::default_max_block_net_usage, config::default_target_block_net_usage_pct), config::default_max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}};
    };
 
    using resource_limits_config_index = chainbase::shared_multi_index_container<

@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -71,13 +71,12 @@ $(function() {
 <div class="title">bancor.hpp File Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;<a class="el" href="eos_8hpp_source.html">eoslib/eos.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="token_8hpp_source.html">eoslib/token.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="db_8hpp_source.html">eoslib/db.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="reflect_8hpp_source.html">eoslib/reflect.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="generic__currency_8hpp_source.html">eoslib/generic_currency.hpp</a>&gt;</code><br />
+<div class="textblock"><code>#include &lt;eosiolib/eos.hpp&gt;</code><br />
+<code>#include &lt;<a class="el" href="token_8hpp_source.html">eosiolib/token.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="reflect_8hpp_source.html">eosiolib/reflect.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="generic__currency_8hpp_source.html">eosiolib/generic_currency.hpp</a>&gt;</code><br />
 <code>#include &lt;<a class="el" href="converter_8hpp_source.html">bancor/converter.hpp</a>&gt;</code><br />
-<code>#include &lt;<a class="el" href="currency_8hpp_source.html">currency/currency.hpp</a>&gt;</code><br />
+<code>#include &lt;<a class="el" href="currency_2currency_8hpp_source.html">currency/currency.hpp</a>&gt;</code><br />
 </div>
 <p><a href="bancor_8hpp_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
@@ -88,11 +87,11 @@ Namespaces</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="typedef-members"></a>
 Typedefs</h2></td></tr>
-<tr class="memitem:a9f9b21ac6bd6f6257a96dc058106341d"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="classeosio_1_1generic__currency.html">eosio::generic_currency</a>&lt; <a class="el" href="structeosio_1_1token.html">eosio::token</a>&lt; <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(other), <a class="el" href="asset_8hpp.html#ad5302024534140403fec6a1770e381c3">S</a>(4, OTHER)&gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacebancor.html#a9f9b21ac6bd6f6257a96dc058106341d">bancor::other_currency</a></td></tr>
+<tr class="memitem:a9f9b21ac6bd6f6257a96dc058106341d"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="classeosio_1_1generic__currency.html">eosio::generic_currency</a>&lt; <a class="el" href="classeosio_1_1token.html">eosio::token</a>&lt; <a class="el" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(<a class="el" href="structother.html">other</a>), <a class="el" href="struct_s.html">S</a>(4, OTHER)&gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacebancor.html#a9f9b21ac6bd6f6257a96dc058106341d">bancor::other_currency</a></td></tr>
 <tr class="separator:a9f9b21ac6bd6f6257a96dc058106341d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aea6f53e9c5f646f2cb55e93fadaf39c6"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="classeosio_1_1generic__currency.html">eosio::generic_currency</a>&lt; <a class="el" href="structeosio_1_1token.html">eosio::token</a>&lt; <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(bancor), <a class="el" href="asset_8hpp.html#ad5302024534140403fec6a1770e381c3">S</a>(4, RELAY)&gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacebancor.html#aea6f53e9c5f646f2cb55e93fadaf39c6">bancor::relay_currency</a></td></tr>
+<tr class="memitem:aea6f53e9c5f646f2cb55e93fadaf39c6"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="classeosio_1_1generic__currency.html">eosio::generic_currency</a>&lt; <a class="el" href="classeosio_1_1token.html">eosio::token</a>&lt; <a class="el" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(bancor), <a class="el" href="struct_s.html">S</a>(4, RELAY)&gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacebancor.html#aea6f53e9c5f646f2cb55e93fadaf39c6">bancor::relay_currency</a></td></tr>
 <tr class="separator:aea6f53e9c5f646f2cb55e93fadaf39c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a67a295dc91ccbf186740df1e76f9779f"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="classeosio_1_1generic__currency.html">eosio::generic_currency</a>&lt; <a class="el" href="structeosio_1_1token.html">eosio::token</a>&lt; <a class="el" href="group__types.html#gaf9c1edb0e0da55ec6ba09f32f6839529">N</a>(currency), <a class="el" href="asset_8hpp.html#ad5302024534140403fec6a1770e381c3">S</a>(4, CUR)&gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacebancor.html#a67a295dc91ccbf186740df1e76f9779f">bancor::cur_currency</a></td></tr>
+<tr class="memitem:a67a295dc91ccbf186740df1e76f9779f"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="classeosio_1_1generic__currency.html">eosio::generic_currency</a>&lt; <a class="el" href="classeosio_1_1token.html">eosio::token</a>&lt; <a class="el" href="go_8pass_8cpp.html#ab2b6b0c222cd1ce70d6a831f57241e59">N</a>(currency), <a class="el" href="struct_s.html">S</a>(4, CUR)&gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacebancor.html#a67a295dc91ccbf186740df1e76f9779f">bancor::cur_currency</a></td></tr>
 <tr class="separator:a67a295dc91ccbf186740df1e76f9779f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4c0d9a6bc63a6ab849f69a82b5f20a2f"><td class="memItemLeft" align="right" valign="top">typedef converter&lt; relay_currency, other_currency, cur_currency &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacebancor.html#a4c0d9a6bc63a6ab849f69a82b5f20a2f">bancor::example_converter</a></td></tr>
 <tr class="separator:a4c0d9a6bc63a6ab849f69a82b5f20a2f"><td class="memSeparator" colspan="2">&#160;</td></tr>

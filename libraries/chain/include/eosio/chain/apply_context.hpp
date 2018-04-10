@@ -10,6 +10,7 @@
 #include <fc/utility.hpp>
 #include <sstream>
 #include <algorithm>
+#include <set>
 
 namespace chainbase { class database; }
 
@@ -186,7 +187,7 @@ class apply_context {
 
                context.require_write_lock( scope );
 
-               const auto& tab = context.find_or_create_table( context.receiver, scope, table );
+               const auto& tab = context.find_or_create_table( context.receiver, scope, table, payer );
 
                const auto& obj = context.mutable_db.create<ObjectType>( [&]( auto& o ){
                   o.t_id          = tab.id;
@@ -199,7 +200,7 @@ class apply_context {
                  ++t.count;
                });
 
-               context.update_db_usage( payer, sizeof(ObjectType) + config::overhead_per_row_ram_bytes );
+               context.update_db_usage( payer, config::billable_size_v<ObjectType> );
 
                itr_cache.cache_table( tab );
                return itr_cache.add( obj );
@@ -207,9 +208,11 @@ class apply_context {
 
             void remove( int iterator ) {
                const auto& obj = itr_cache.get( iterator );
-               context.update_db_usage( obj.payer, -( sizeof(ObjectType) + config::overhead_per_row_ram_bytes ) );
+               context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ) );
 
                const auto& table_obj = itr_cache.get_table( obj.t_id );
+               FC_ASSERT( table_obj.code == context.receiver, "db access violation" );
+
                context.require_write_lock( table_obj.scope );
 
                context.mutable_db.modify( table_obj, [&]( auto& t ) {
@@ -217,17 +220,24 @@ class apply_context {
                });
                context.mutable_db.remove( obj );
 
+               if (table_obj.count == 0) {
+                  context.remove_table(table_obj);
+               }
+
                itr_cache.remove( iterator );
             }
 
             void update( int iterator, account_name payer, secondary_key_proxy_const_type secondary ) {
                const auto& obj = itr_cache.get( iterator );
 
-               context.require_write_lock( itr_cache.get_table( obj.t_id ).scope );
+               const auto& table_obj = itr_cache.get_table( obj.t_id );
+               FC_ASSERT( table_obj.code == context.receiver, "db access violation" );
+
+               context.require_write_lock( table_obj.scope );
 
                if( payer == account_name() ) payer = obj.payer;
 
-               int64_t billing_size = sizeof(ObjectType) + config::overhead_per_row_ram_bytes;
+               int64_t billing_size =  config::billable_size_v<ObjectType>;
 
                if( obj.payer != payer ) {
                   context.update_db_usage( obj.payer, -(billing_size) );
@@ -466,7 +476,7 @@ class apply_context {
       void execute_inline( action &&a );
       void execute_context_free_inline( action &&a );
       void execute_deferred( deferred_transaction &&trx );
-      void cancel_deferred( uint128_t sender_id );
+      void cancel_deferred( const uint128_t& sender_id );
 
       /**
        * @brief Require @ref account to have approved of this message
@@ -477,9 +487,9 @@ class apply_context {
        *
        * @throws tx_missing_auth If no sufficient permission was found
        */
-      void require_authorization(const account_name& account)const;
-      bool has_authorization(const account_name& account)const;
-      void require_authorization(const account_name& account, const permission_name& permission)const;
+      void require_authorization(const account_name& account);
+      bool has_authorization(const account_name& account) const;
+      void require_authorization(const account_name& account, const permission_name& permission);
       void require_write_lock(const scope_name& scope);
       void require_read_lock(const account_name& account, const scope_name& scope);
 
@@ -505,8 +515,6 @@ class apply_context {
       vector<account_name> get_active_producers() const;
 
       const bytes&         get_packed_transaction();
-
-      uint32_t get_next_sender_id();
 
       const chain_controller&       controller;
       const chainbase::database&    db;  ///< database where state is stored
@@ -553,7 +561,9 @@ class apply_context {
       int get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const;
       int get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const;
 
-      void update_db_usage( const account_name& payer, int64_t delta, const char* use_format = "Unspecified", const fc::variant_object& args = fc::variant_object() );
+      void update_db_usage( const account_name& payer, int64_t delta );
+      void check_auth( const transaction& trx, const vector<permission_level>& perm );
+
       int  db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
       void db_update_i64( int iterator, account_name payer, const char* buffer, size_t buffer_size );
       void db_remove_i64( int iterator );
@@ -585,7 +595,8 @@ class apply_context {
 
       using table_id_object = contracts::table_id_object;
       const table_id_object* find_table( name code, name scope, name table );
-      const table_id_object& find_or_create_table( name code, name scope, name table );
+      const table_id_object& find_or_create_table( name code, name scope, name table, const account_name &payer );
+      void remove_table( const table_id_object& tid );
 
       int  db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
 

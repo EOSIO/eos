@@ -89,6 +89,10 @@ namespace eosio {
       EOSLIB_SERIALIZE( permission_level, (actor)(permission) )
    };
 
+   void require_auth(const permission_level& level) {
+      require_auth2( level.actor, level.permission );
+   }
+
    /**
     * This is the packed representation of an action along with
     * meta-data about the authorization levels.

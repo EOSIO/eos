@@ -17,13 +17,19 @@
 #include <fc/variant_object.hpp>
 #include <fc/io/json.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
+
 using namespace eosio;
 using namespace eosio::chain;
 using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 using namespace fc;
 
-class currency_tester : public tester {
+class currency_tester : public TESTER {
    public:
 
       auto push_action(const account_name& signer, const action_name &name, const variant_object &data ) {
@@ -48,7 +54,7 @@ class currency_tester : public tester {
 
 
       currency_tester()
-      :tester(),abi_ser(json::from_string(currency_abi).as<abi_def>())
+      :TESTER(),abi_ser(json::from_string(currency_abi).as<abi_def>())
       {
          create_account( N(currency));
          set_code( N(currency), currency_wast );
@@ -187,7 +193,7 @@ BOOST_FIXTURE_TEST_CASE( test_overspend, currency_tester ) try {
          ("quantity", "101.0000 CUR")
          ("memo", "overspend! Alice");
 
-      BOOST_CHECK_EXCEPTION(push_action(N(alice), N(transfer), data), transaction_exception, assert_message_is("overdrawn balance"));
+      BOOST_CHECK_EXCEPTION(push_action(N(alice), N(transfer), data), transaction_exception, assert_message_ends_with("overdrawn balance"));
       produce_block();
 
       BOOST_REQUIRE_EQUAL(get_balance(N(alice)), asset::from_string( "100.0000 CUR" ));
@@ -233,7 +239,7 @@ BOOST_FIXTURE_TEST_CASE( test_fullspend, currency_tester ) try {
 
 
 
-BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
+BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
 
    {
       symbol dollar(2, "DLLR");
@@ -268,13 +274,13 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
    // from empty string
    {
       BOOST_CHECK_EXCEPTION(symbol::from_string(""),
-                            fc::assert_exception, assert_message_is("creating symbol from empty string"));
+                            fc::assert_exception, assert_message_ends_with("creating symbol from empty string"));
    }
 
    // precision part missing
    {
       BOOST_CHECK_EXCEPTION(symbol::from_string("RND"),
-                            fc::assert_exception, assert_message_is("missing comma in symbol"));
+                            fc::assert_exception, assert_message_ends_with("missing comma in symbol"));
    }
 
    // 0 decimals part
@@ -295,7 +301,7 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
    // invalid - contains lower case characters, exception thrown 
    {
       BOOST_CHECK_EXCEPTION(symbol(5,"EoS"),
-                            fc::assert_exception, assert_message_is("invalid character in symbol name"));
+                            fc::assert_exception, assert_message_ends_with("invalid character in symbol name"));
    }
 
    // Missing decimal point, should create asset with 0 decimals
@@ -310,19 +316,19 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, tester) try {
    // Missing space
    {
       BOOST_CHECK_EXCEPTION(asset::from_string("10CUR"),
-                            asset_type_exception, assert_message_is("Asset's amount and symbol should be separated with space"));
+                            asset_type_exception, assert_message_ends_with("Asset's amount and symbol should be separated with space"));
    }
 
    // Precision is not specified when decimal separator is introduced
    {
       BOOST_CHECK_EXCEPTION(asset::from_string("10. CUR"),
-                            asset_type_exception, assert_message_is("Missing decimal fraction after decimal point"));
+                            asset_type_exception, assert_message_ends_with("Missing decimal fraction after decimal point"));
    }
 
    // Missing symbol
    {
       BOOST_CHECK_EXCEPTION(asset::from_string("10"),
-                            asset_type_exception, assert_message_is("Asset's amount and symbol should be separated with space"));
+                            asset_type_exception, assert_message_ends_with("Asset's amount and symbol should be separated with space"));
    }
 
    // Multiple spaces
@@ -376,7 +382,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
       action setowner_act;
       setowner_act.account = N(proxy);
       setowner_act.name = N(setowner);
-      setowner_act.authorization = vector<permission_level>{{N(proxy), config::active_name}};
+      setowner_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "alice")
          ("delay", 10)
@@ -384,7 +390,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
       trx.actions.emplace_back(std::move(setowner_act));
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key(N(proxy), "active"), chain_id_type());
+      trx.sign(get_private_key(N(alice), "active"), chain_id_type());
       push_transaction(trx);
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -431,7 +437,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       action setowner_act;
       setowner_act.account = N(proxy);
       setowner_act.name = N(setowner);
-      setowner_act.authorization = vector<permission_level>{{N(proxy), config::active_name}};
+      setowner_act.authorization = vector<permission_level>{{N(bob), config::active_name}};
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "bob")
          ("delay", 10)
@@ -439,7 +445,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       trx.actions.emplace_back(std::move(setowner_act));
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key(N(proxy), "active"), chain_id_type());
+      trx.sign(get_private_key(N(bob), "active"), chain_id_type());
       push_transaction(trx);
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
@@ -476,7 +482,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       action setowner_act;
       setowner_act.account = N(bob);
       setowner_act.name = N(setowner);
-      setowner_act.authorization = vector<permission_level>{{N(bob), config::active_name}};
+      setowner_act.authorization = vector<permission_level>{{N(alice), config::active_name}};
       setowner_act.data = proxy_abi_ser.variant_to_binary("setowner", mutable_variant_object()
          ("owner", "alice")
          ("delay", 0)
@@ -484,7 +490,7 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
       trx.actions.emplace_back(std::move(setowner_act));
 
       set_transaction_headers(trx);
-      trx.sign(get_private_key(N(bob), "active"), chain_id_type());
+      trx.sign(get_private_key(N(alice), "active"), chain_id_type());
       push_transaction(trx);
       produce_block();
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));

@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.13"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>EOS.IO: contracts/eoslib/db.h File Reference</title>
+<title>EOS.IO: contracts/eosiolib/db.h File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -23,7 +23,7 @@
   <td id="projectlogo"><img alt="Logo" src="eos-logo.png"/></td>
   <td id="projectalign" style="padding-left: 0.5em;">
    <div id="projectname">EOS.IO
-   &#160;<span id="projectnumber">DAWN3.0.1</span>
+   &#160;<span id="projectnumber">DAWN 3.0</span>
    </div>
   </td>
  </tr>
@@ -60,7 +60,7 @@ $(function() {
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_3fea0bf1ce879ce73e6ecec98007efcd.html">eoslib</a></li>  </ul>
+<li class="navelem"><a class="el" href="dir_ae9b15dd87e066e1908bbd90e8f38627.html">contracts</a></li><li class="navelem"><a class="el" href="dir_3f710958649a39c6bbfa7039c0dc0464.html">eosiolib</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
@@ -71,140 +71,1997 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
-<p>Defines C API for interfacing with blockchain database.  
+<p>Defines <a class="el" href="struct_c.html">C</a> API for interfacing with blockchain database.  
 <a href="#details">More...</a></p>
-<div class="textblock"><code>#include &lt;<a class="el" href="types_8h_source.html">eoslib/types.h</a>&gt;</code><br />
+<div class="textblock"><code>#include &lt;<a class="el" href="types_8h_source.html">eosiolib/types.h</a>&gt;</code><br />
 </div>
 <p><a href="db_8h_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:gab722acdec925f6ac9c7a8a38f42c78d6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64.html#gab722acdec925f6ac9c7a8a38f42c78d6">store_i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, const void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> datalen)</td></tr>
-<tr class="separator:gab722acdec925f6ac9c7a8a38f42c78d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gad2546b4764f3728f9bc7ffaf3953fb60"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64.html#gad2546b4764f3728f9bc7ffaf3953fb60">update_i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, const void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> datalen)</td></tr>
-<tr class="separator:gad2546b4764f3728f9bc7ffaf3953fb60"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gad3fd3e46fff8f036d13405ffea3694ef"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64.html#gad3fd3e46fff8f036d13405ffea3694ef">load_i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> datalen)</td></tr>
-<tr class="separator:gad3fd3e46fff8f036d13405ffea3694ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga75fc1182cf2fc76604bfce4b6066bd62"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64.html#ga75fc1182cf2fc76604bfce4b6066bd62">front_i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> datalen)</td></tr>
-<tr class="separator:ga75fc1182cf2fc76604bfce4b6066bd62"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gae7756b507e7dfc530127a936de8af77d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64.html#gae7756b507e7dfc530127a936de8af77d">back_i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> datalen)</td></tr>
-<tr class="separator:gae7756b507e7dfc530127a936de8af77d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gab092362b1095ea7712a8cd3c5e23432d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64.html#gab092362b1095ea7712a8cd3c5e23432d">next_i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> datalen)</td></tr>
-<tr class="separator:gab092362b1095ea7712a8cd3c5e23432d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga2c28d72f6d9a769fd009e520aba1a23f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64.html#ga2c28d72f6d9a769fd009e520aba1a23f">previous_i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> datalen)</td></tr>
-<tr class="separator:ga2c28d72f6d9a769fd009e520aba1a23f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga85171d550af40df7704b02c16fef3e29"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64.html#ga85171d550af40df7704b02c16fef3e29">lower_bound_i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> datalen)</td></tr>
-<tr class="separator:ga85171d550af40df7704b02c16fef3e29"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gae5a73591c3962aea98e02d42948865b8"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64.html#gae5a73591c3962aea98e02d42948865b8">upper_bound_i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> datalen)</td></tr>
-<tr class="separator:gae5a73591c3962aea98e02d42948865b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gafc8eea376abd5f3807e3361ea0c455e1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64.html#gafc8eea376abd5f3807e3361ea0c455e1">remove_i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data)</td></tr>
-<tr class="separator:gafc8eea376abd5f3807e3361ea0c455e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga1094b9ec775a7ee73e1ef1d14710dc5c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbstr.html#ga1094b9ec775a7ee73e1ef1d14710dc5c">store_str</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, char *key, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> keylen, char *value, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> valuelen)</td></tr>
-<tr class="separator:ga1094b9ec775a7ee73e1ef1d14710dc5c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaae68a34eecfef147c41c36d34a7f7887"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbstr.html#gaae68a34eecfef147c41c36d34a7f7887">update_str</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, char *key, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> keylen, char *value, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> valuelen)</td></tr>
-<tr class="separator:gaae68a34eecfef147c41c36d34a7f7887"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gac87dd131f6ae378be362144f7b068284"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbstr.html#gac87dd131f6ae378be362144f7b068284">load_str</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, char *key, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> keylen, char *value, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> valuelen)</td></tr>
-<tr class="separator:gac87dd131f6ae378be362144f7b068284"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaa22211a254d878ab4aa78bcd93f1ca85"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbstr.html#gaa22211a254d878ab4aa78bcd93f1ca85">front_str</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, char *value, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> valuelen)</td></tr>
-<tr class="separator:gaa22211a254d878ab4aa78bcd93f1ca85"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga9c8473a7fd1e3d179d5f202ad744b1c7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbstr.html#ga9c8473a7fd1e3d179d5f202ad744b1c7">back_str</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, char *value, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> valuelen)</td></tr>
-<tr class="separator:ga9c8473a7fd1e3d179d5f202ad744b1c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga29fb2e3e8b45b5fe07ef3c4049b1ee79"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbstr.html#ga29fb2e3e8b45b5fe07ef3c4049b1ee79">next_str</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, char *key, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> keylen, char *value, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> valuelen)</td></tr>
-<tr class="separator:ga29fb2e3e8b45b5fe07ef3c4049b1ee79"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga8b891f35f20aee1941bb2f9eef5f43ef"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbstr.html#ga8b891f35f20aee1941bb2f9eef5f43ef">previous_str</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, char *key, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> keylen, char *value, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> valuelen)</td></tr>
-<tr class="separator:ga8b891f35f20aee1941bb2f9eef5f43ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga671bed299aa2b85916f4819bfa2f7465"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbstr.html#ga671bed299aa2b85916f4819bfa2f7465">lower_bound_str</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, char *key, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> keylen, char *value, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> valuelen)</td></tr>
-<tr class="separator:ga671bed299aa2b85916f4819bfa2f7465"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga355396e5c382b2056bb8b159928b4517"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbstr.html#ga355396e5c382b2056bb8b159928b4517">upper_bound_str</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, char *key, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> keylen, char *value, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> valuelen)</td></tr>
-<tr class="separator:ga355396e5c382b2056bb8b159928b4517"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaa468d0143c8e74dfad42915214cd2218"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbstr.html#gaa468d0143c8e74dfad42915214cd2218">remove_str</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, char *key, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> keylen)</td></tr>
-<tr class="separator:gaa468d0143c8e74dfad42915214cd2218"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga0f1d38db45982bb5d4d1befef0fa71de"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#ga0f1d38db45982bb5d4d1befef0fa71de">load_primary_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga0f1d38db45982bb5d4d1befef0fa71de"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga8859d7c4b352b66002cf5702a764c464"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#ga8859d7c4b352b66002cf5702a764c464">front_primary_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga8859d7c4b352b66002cf5702a764c464"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga093ef261efdf4ba1f92804ef8df3fcb2"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#ga093ef261efdf4ba1f92804ef8df3fcb2">back_primary_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga093ef261efdf4ba1f92804ef8df3fcb2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga0244e6b697281bc05d94764af17a936b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#ga0244e6b697281bc05d94764af17a936b">next_primary_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga0244e6b697281bc05d94764af17a936b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gada7912d463fa7fcada424c66548491aa"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#gada7912d463fa7fcada424c66548491aa">previous_primary_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:gada7912d463fa7fcada424c66548491aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga1e1fc6293eddd10cd4155ef9ee2d945b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#ga1e1fc6293eddd10cd4155ef9ee2d945b">upper_bound_primary_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga1e1fc6293eddd10cd4155ef9ee2d945b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gae929bc3cdb953dcddf027198b7edfb87"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#gae929bc3cdb953dcddf027198b7edfb87">lower_bound_primary_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:gae929bc3cdb953dcddf027198b7edfb87"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga00f17a7da0946ae71ab7d240c3dc3ecb"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#ga00f17a7da0946ae71ab7d240c3dc3ecb">load_secondary_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga00f17a7da0946ae71ab7d240c3dc3ecb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaf4aabe650dd7a2e795acb6635255af2c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#gaf4aabe650dd7a2e795acb6635255af2c">front_secondary_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:gaf4aabe650dd7a2e795acb6635255af2c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga9902025d081dff9690f78402c45a81a7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#ga9902025d081dff9690f78402c45a81a7">back_secondary_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga9902025d081dff9690f78402c45a81a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gac421e93fee948b316e6d60d634600bfb"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#gac421e93fee948b316e6d60d634600bfb">next_secondary_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:gac421e93fee948b316e6d60d634600bfb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga17c3922c81016650988af89e22090b9d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#ga17c3922c81016650988af89e22090b9d">previous_secondary_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga17c3922c81016650988af89e22090b9d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga4251461fc0fcb2e9d19e5a367c1e487b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#ga4251461fc0fcb2e9d19e5a367c1e487b">upper_bound_secondary_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga4251461fc0fcb2e9d19e5a367c1e487b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gabeb18d4d78cc24e01d9f2a93c57fc09a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#gabeb18d4d78cc24e01d9f2a93c57fc09a">lower_bound_secondary_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:gabeb18d4d78cc24e01d9f2a93c57fc09a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga31cc0c52eccc34d97d28cfd373a2a356"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#ga31cc0c52eccc34d97d28cfd373a2a356">remove_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, const void *data)</td></tr>
-<tr class="separator:ga31cc0c52eccc34d97d28cfd373a2a356"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga86c181758bb05e5e85a5e5ea245feeab"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#ga86c181758bb05e5e85a5e5ea245feeab">store_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, const void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga86c181758bb05e5e85a5e5ea245feeab"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga39a96fa6ebf0c2d43c2314f658a5604d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi128i128.html#ga39a96fa6ebf0c2d43c2314f658a5604d">update_i128i128</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, const void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga39a96fa6ebf0c2d43c2314f658a5604d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga01635f6acf04b63d1ba8efa81db6b003"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#ga01635f6acf04b63d1ba8efa81db6b003">load_primary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga01635f6acf04b63d1ba8efa81db6b003"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga5ae15730515f331c4e1d1dd5d02dc160"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#ga5ae15730515f331c4e1d1dd5d02dc160">front_primary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga5ae15730515f331c4e1d1dd5d02dc160"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga51210242733b25847e97225724ce7ac9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#ga51210242733b25847e97225724ce7ac9">back_primary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga51210242733b25847e97225724ce7ac9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gab03215ccaa5a76aca298266ce7dfb0d6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#gab03215ccaa5a76aca298266ce7dfb0d6">next_primary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:gab03215ccaa5a76aca298266ce7dfb0d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gab30e4e337334eb98fe8fbf3a1a521380"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#gab30e4e337334eb98fe8fbf3a1a521380">previous_primary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:gab30e4e337334eb98fe8fbf3a1a521380"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga42595d1521dd0d2fe897a9e2021862d4"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#ga42595d1521dd0d2fe897a9e2021862d4">upper_bound_primary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga42595d1521dd0d2fe897a9e2021862d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gae79fac14cf7663f6f3bfe00e596a51ab"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#gae79fac14cf7663f6f3bfe00e596a51ab">lower_bound_primary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:gae79fac14cf7663f6f3bfe00e596a51ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga4d803a0fedeebd7150197ff413d40a31"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#ga4d803a0fedeebd7150197ff413d40a31">load_secondary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga4d803a0fedeebd7150197ff413d40a31"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga51c7c0087b2678936f373d693b1a9dfa"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#ga51c7c0087b2678936f373d693b1a9dfa">front_secondary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga51c7c0087b2678936f373d693b1a9dfa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gabded09164d73258b0fd285c7951a2865"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#gabded09164d73258b0fd285c7951a2865">back_secondary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:gabded09164d73258b0fd285c7951a2865"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga5b49dbf56515e8b9882e16487933f285"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#ga5b49dbf56515e8b9882e16487933f285">next_secondary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga5b49dbf56515e8b9882e16487933f285"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gad1e7623f00886ea7949ef847cace8947"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#gad1e7623f00886ea7949ef847cace8947">previous_secondary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:gad1e7623f00886ea7949ef847cace8947"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gadadec8e92ad50daf900a44650f137168"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#gadadec8e92ad50daf900a44650f137168">upper_bound_secondary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:gadadec8e92ad50daf900a44650f137168"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaf07ff5227e1a5dc66af64aa86283bb1f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#gaf07ff5227e1a5dc66af64aa86283bb1f">lower_bound_secondary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:gaf07ff5227e1a5dc66af64aa86283bb1f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga5c475ca829a9942f0b96e8713b34a36f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#ga5c475ca829a9942f0b96e8713b34a36f">load_tertiary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga5c475ca829a9942f0b96e8713b34a36f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gacace2311525bf33b77d6c1d04a143ff4"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#gacace2311525bf33b77d6c1d04a143ff4">front_tertiary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:gacace2311525bf33b77d6c1d04a143ff4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga5fc2c2520a253d610e9ab3e794b78f14"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#ga5fc2c2520a253d610e9ab3e794b78f14">back_tertiary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga5fc2c2520a253d610e9ab3e794b78f14"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga6262b58cb6d3ee96844c4c25ed2241bf"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#ga6262b58cb6d3ee96844c4c25ed2241bf">next_tertiary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga6262b58cb6d3ee96844c4c25ed2241bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga9d7f001f2582328cbd61177311066e71"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#ga9d7f001f2582328cbd61177311066e71">previous_tertiary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga9d7f001f2582328cbd61177311066e71"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga950cf0b7ba80d3f9bd02b48e011d493e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#ga950cf0b7ba80d3f9bd02b48e011d493e">upper_bound_tertiary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga950cf0b7ba80d3f9bd02b48e011d493e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga7dbaf71d72f050d6d442e97461a81e36"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#ga7dbaf71d72f050d6d442e97461a81e36">lower_bound_tertiary_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga7dbaf71d72f050d6d442e97461a81e36"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga0346066edabfa6e07a7d0f60e54e2cdf"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#ga0346066edabfa6e07a7d0f60e54e2cdf">remove_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, const void *data)</td></tr>
-<tr class="separator:ga0346066edabfa6e07a7d0f60e54e2cdf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga712c96b9076bbdcec2b9a0d9aac8f46a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#ga712c96b9076bbdcec2b9a0d9aac8f46a">store_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, const void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga712c96b9076bbdcec2b9a0d9aac8f46a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga1afe705f8fa34e609a4a774eec3affd0"><td class="memItemLeft" align="right" valign="top"><a class="el" href="group__types.html#ga0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__dbi64i64i64.html#ga1afe705f8fa34e609a4a774eec3affd0">update_i64i64i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, const void *data, <a class="el" href="group__types.html#ga06896e8c53f721507066c079052171f8">uint32_t</a> len)</td></tr>
-<tr class="separator:ga1afe705f8fa34e609a4a774eec3affd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a72d4fbbf993b4d4bf6156684103384ae"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a72d4fbbf993b4d4bf6156684103384ae">db_store_i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> payer, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> id, const void *data, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> <a class="el" href="towctrans_8c.html#a8bb3e1dd5fd30402c69fd8a9f7dd0950">len</a>)</td></tr>
+<tr class="separator:a72d4fbbf993b4d4bf6156684103384ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3444fe1d9b4dbbeb296021c459d4a1ab"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a3444fe1d9b4dbbeb296021c459d4a1ab">db_update_i64</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> payer, const void *data, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> <a class="el" href="towctrans_8c.html#a8bb3e1dd5fd30402c69fd8a9f7dd0950">len</a>)</td></tr>
+<tr class="separator:a3444fe1d9b4dbbeb296021c459d4a1ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3b3d2cb9baaffcca277aceafe15f885f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a3b3d2cb9baaffcca277aceafe15f885f">db_remove_i64</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator)</td></tr>
+<tr class="separator:a3b3d2cb9baaffcca277aceafe15f885f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae030353968fb545531c5286da8778808"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#ae030353968fb545531c5286da8778808">db_get_i64</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator, const void *data, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> <a class="el" href="towctrans_8c.html#a8bb3e1dd5fd30402c69fd8a9f7dd0950">len</a>)</td></tr>
+<tr class="separator:ae030353968fb545531c5286da8778808"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab8a30f733c6cd6c9111f25adae685899"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#ab8a30f733c6cd6c9111f25adae685899">db_next_i64</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:ab8a30f733c6cd6c9111f25adae685899"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2ffe62dd0ab43732ccebc441a2186139"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a2ffe62dd0ab43732ccebc441a2186139">db_previous_i64</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:a2ffe62dd0ab43732ccebc441a2186139"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad48667d12e2ed981a277575eb9ef3434"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#ad48667d12e2ed981a277575eb9ef3434">db_find_i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> id)</td></tr>
+<tr class="separator:ad48667d12e2ed981a277575eb9ef3434"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a461f3ff7972f3afcdfbd2af32d451e86"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a461f3ff7972f3afcdfbd2af32d451e86">db_lowerbound_i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> id)</td></tr>
+<tr class="separator:a461f3ff7972f3afcdfbd2af32d451e86"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a116d72c95598422eda8caace36b9921e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a116d72c95598422eda8caace36b9921e">db_upperbound_i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> id)</td></tr>
+<tr class="separator:a116d72c95598422eda8caace36b9921e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3991b26185b5a853c667cbac2c59b9ce"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a3991b26185b5a853c667cbac2c59b9ce">db_end_i64</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table)</td></tr>
+<tr class="separator:a3991b26185b5a853c667cbac2c59b9ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a626e5649862fbee2508977f9afe381e0"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a626e5649862fbee2508977f9afe381e0">db_idx64_store</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> payer, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> id, const <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>)</td></tr>
+<tr class="separator:a626e5649862fbee2508977f9afe381e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0edd0510cf07ae8421fbad0db8473de4"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a0edd0510cf07ae8421fbad0db8473de4">db_idx64_update</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> payer, const <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>)</td></tr>
+<tr class="separator:a0edd0510cf07ae8421fbad0db8473de4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aae117d50bba68c7a1f3b8f8828dc1699"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#aae117d50bba68c7a1f3b8f8828dc1699">db_idx64_remove</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator)</td></tr>
+<tr class="separator:aae117d50bba68c7a1f3b8f8828dc1699"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5fc70218dc661865823e57055801df24"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a5fc70218dc661865823e57055801df24">db_idx64_next</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:a5fc70218dc661865823e57055801df24"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a243746a77546a54ce85345a537872cb7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a243746a77546a54ce85345a537872cb7">db_idx64_previous</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:a243746a77546a54ce85345a537872cb7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab3bb9ec4c2d8f2d71a697adec8ca81be"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#ab3bb9ec4c2d8f2d71a697adec8ca81be">db_idx64_find_primary</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:ab3bb9ec4c2d8f2d71a697adec8ca81be"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a55699e03067dc88498ca0e79dc412af6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a55699e03067dc88498ca0e79dc412af6">db_idx64_find_secondary</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, const <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:a55699e03067dc88498ca0e79dc412af6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a806fdbf3e24c7bf6d4177a62ec1edb9e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a806fdbf3e24c7bf6d4177a62ec1edb9e">db_idx64_lowerbound</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:a806fdbf3e24c7bf6d4177a62ec1edb9e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0099c471fae53ca9b6cef71a307ee731"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a0099c471fae53ca9b6cef71a307ee731">db_idx64_upperbound</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:a0099c471fae53ca9b6cef71a307ee731"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1541473ae89480da96f328f605101c5a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a1541473ae89480da96f328f605101c5a">db_idx64_end</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table)</td></tr>
+<tr class="separator:a1541473ae89480da96f328f605101c5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad9138bc9ee43f174bc2d865fdfcd4d27"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#ad9138bc9ee43f174bc2d865fdfcd4d27">db_idx128_store</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> payer, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> id, const <a class="el" href="test__exchange_8cpp.html#a2d00695da4b0795588770b839f9f280e">uint128_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>)</td></tr>
+<tr class="separator:ad9138bc9ee43f174bc2d865fdfcd4d27"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa53188e3ea6e927baaa13743399a57f4"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#aa53188e3ea6e927baaa13743399a57f4">db_idx128_update</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> payer, const <a class="el" href="test__exchange_8cpp.html#a2d00695da4b0795588770b839f9f280e">uint128_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>)</td></tr>
+<tr class="separator:aa53188e3ea6e927baaa13743399a57f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a60e66048c40043424581fe8e507a353b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a60e66048c40043424581fe8e507a353b">db_idx128_remove</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator)</td></tr>
+<tr class="separator:a60e66048c40043424581fe8e507a353b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aac074a8b2d42865e7ca1b7932e234655"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#aac074a8b2d42865e7ca1b7932e234655">db_idx128_next</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:aac074a8b2d42865e7ca1b7932e234655"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae56365d133e8c27ba709121ed1ad0db9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#ae56365d133e8c27ba709121ed1ad0db9">db_idx128_previous</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:ae56365d133e8c27ba709121ed1ad0db9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad7178abb67672d8e940d0b7652ec4c69"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#ad7178abb67672d8e940d0b7652ec4c69">db_idx128_find_primary</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="test__exchange_8cpp.html#a2d00695da4b0795588770b839f9f280e">uint128_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:ad7178abb67672d8e940d0b7652ec4c69"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a268842d224a0738d6ffd6755b0f04899"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a268842d224a0738d6ffd6755b0f04899">db_idx128_find_secondary</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, const <a class="el" href="test__exchange_8cpp.html#a2d00695da4b0795588770b839f9f280e">uint128_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:a268842d224a0738d6ffd6755b0f04899"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac2a27a913f8817ed83a7f384b71588bf"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#ac2a27a913f8817ed83a7f384b71588bf">db_idx128_lowerbound</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="test__exchange_8cpp.html#a2d00695da4b0795588770b839f9f280e">uint128_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:ac2a27a913f8817ed83a7f384b71588bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae931ec7bde308e0e4dc66e3dfd38138d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#ae931ec7bde308e0e4dc66e3dfd38138d">db_idx128_upperbound</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="test__exchange_8cpp.html#a2d00695da4b0795588770b839f9f280e">uint128_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:ae931ec7bde308e0e4dc66e3dfd38138d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab14439f8effc6a53db22063e50958389"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#ab14439f8effc6a53db22063e50958389">db_idx128_end</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table)</td></tr>
+<tr class="separator:ab14439f8effc6a53db22063e50958389"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a15bd040c261203b57ff2c8863f5a02e7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a15bd040c261203b57ff2c8863f5a02e7">db_idx256_store</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> payer, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> id, const void *data, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> data_len)</td></tr>
+<tr class="separator:a15bd040c261203b57ff2c8863f5a02e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a443fdda7756aa64f9cd120806aaa77d8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a443fdda7756aa64f9cd120806aaa77d8">db_idx256_update</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> payer, const void *data, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> data_len)</td></tr>
+<tr class="separator:a443fdda7756aa64f9cd120806aaa77d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a08729f61864b60499a55cc226bf9d51f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a08729f61864b60499a55cc226bf9d51f">db_idx256_remove</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator)</td></tr>
+<tr class="separator:a08729f61864b60499a55cc226bf9d51f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a50b09ae563e297d986852b639fc569c4"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a50b09ae563e297d986852b639fc569c4">db_idx256_next</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:a50b09ae563e297d986852b639fc569c4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a658db41ae01fd5f9350dead6d90c301e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a658db41ae01fd5f9350dead6d90c301e">db_idx256_previous</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:a658db41ae01fd5f9350dead6d90c301e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9b9131dd11824e3177d8f8edf4a7a874"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a9b9131dd11824e3177d8f8edf4a7a874">db_idx256_find_primary</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> data_len, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:a9b9131dd11824e3177d8f8edf4a7a874"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a403f2575c90f858cfe3d6ee5175647d7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a403f2575c90f858cfe3d6ee5175647d7">db_idx256_find_secondary</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, const void *data, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> data_len, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:a403f2575c90f858cfe3d6ee5175647d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7e980a82739f5066cc50e5e1bfb67c44"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a7e980a82739f5066cc50e5e1bfb67c44">db_idx256_lowerbound</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> data_len, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:a7e980a82739f5066cc50e5e1bfb67c44"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1753f0d0d94c974cdab75a741c881949"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a1753f0d0d94c974cdab75a741c881949">db_idx256_upperbound</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, void *data, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a> data_len, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:a1753f0d0d94c974cdab75a741c881949"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6ad03c182f22794ecadeba58d7b16217"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a6ad03c182f22794ecadeba58d7b16217">db_idx256_end</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table)</td></tr>
+<tr class="separator:a6ad03c182f22794ecadeba58d7b16217"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aca1b37d3690a44e8e9cd72ae3218a5af"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#aca1b37d3690a44e8e9cd72ae3218a5af">db_idx_double_store</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> payer, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> id, const <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>)</td></tr>
+<tr class="separator:aca1b37d3690a44e8e9cd72ae3218a5af"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad009f3ae2fd07892dc3193941ba3d953"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#ad009f3ae2fd07892dc3193941ba3d953">db_idx_double_update</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> payer, const <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>)</td></tr>
+<tr class="separator:ad009f3ae2fd07892dc3193941ba3d953"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7879ef20b38df7a936152cd875307002"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a7879ef20b38df7a936152cd875307002">db_idx_double_remove</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator)</td></tr>
+<tr class="separator:a7879ef20b38df7a936152cd875307002"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a47f20afce175cd339e73bd124b756c8f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a47f20afce175cd339e73bd124b756c8f">db_idx_double_next</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:a47f20afce175cd339e73bd124b756c8f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a19bc2a710628fd89639c7ffbb8c63607"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a19bc2a710628fd89639c7ffbb8c63607">db_idx_double_previous</a> (<a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> iterator, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:a19bc2a710628fd89639c7ffbb8c63607"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab07cf7be73b9ebf2f9427d72bb7f589c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#ab07cf7be73b9ebf2f9427d72bb7f589c">db_idx_double_find_primary</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> <a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:ab07cf7be73b9ebf2f9427d72bb7f589c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa059b5d33385a6ed04be754dd818eb5b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#aa059b5d33385a6ed04be754dd818eb5b">db_idx_double_find_secondary</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, const <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:aa059b5d33385a6ed04be754dd818eb5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aac5344fbb389980c78e9c855fe3e546c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#aac5344fbb389980c78e9c855fe3e546c">db_idx_double_lowerbound</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:aac5344fbb389980c78e9c855fe3e546c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3390212ee7f684035ecf7755cfef9e8b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a3390212ee7f684035ecf7755cfef9e8b">db_idx_double_upperbound</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#a52c20999685338b5763f129033f2c1d9">secondary</a>, <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *<a class="el" href="test__db_8cpp.html#af15b5e608a0fbe8c184ab90b3791413f">primary</a>)</td></tr>
+<tr class="separator:a3390212ee7f684035ecf7755cfef9e8b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a73bba4b7323439fb8c4431ad2997a078"><td class="memItemLeft" align="right" valign="top"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="db_8h.html#a73bba4b7323439fb8c4431ad2997a078">db_idx_double_end</a> (<a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> code, <a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a> scope, <a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a> table)</td></tr>
+<tr class="separator:a73bba4b7323439fb8c4431ad2997a078"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><dl class="section copyright"><dt>Copyright</dt><dd>defined in eos/LICENSE.txt </dd></dl>
-</div></div><!-- contents -->
+</div><h2 class="groupheader">Function Documentation</h2>
+<a id="a3991b26185b5a853c667cbac2c59b9ce"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3991b26185b5a853c667cbac2c59b9ce">&#9670;&nbsp;</a></span>db_end_i64()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_end_i64 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ad48667d12e2ed981a277575eb9ef3434"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad48667d12e2ed981a277575eb9ef3434">&#9670;&nbsp;</a></span>db_find_i64()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_find_i64 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
+          <td class="paramname"><em>id</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae030353968fb545531c5286da8778808"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae030353968fb545531c5286da8778808">&#9670;&nbsp;</a></span>db_get_i64()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_get_i64 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const void *&#160;</td>
+          <td class="paramname"><em>data</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramname"><em>len</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ab14439f8effc6a53db22063e50958389"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab14439f8effc6a53db22063e50958389">&#9670;&nbsp;</a></span>db_idx128_end()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx128_end </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ad7178abb67672d8e940d0b7652ec4c69"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad7178abb67672d8e940d0b7652ec4c69">&#9670;&nbsp;</a></span>db_idx128_find_primary()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx128_find_primary </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="test__exchange_8cpp.html#a2d00695da4b0795588770b839f9f280e">uint128_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a268842d224a0738d6ffd6755b0f04899"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a268842d224a0738d6ffd6755b0f04899">&#9670;&nbsp;</a></span>db_idx128_find_secondary()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx128_find_secondary </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="test__exchange_8cpp.html#a2d00695da4b0795588770b839f9f280e">uint128_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ac2a27a913f8817ed83a7f384b71588bf"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac2a27a913f8817ed83a7f384b71588bf">&#9670;&nbsp;</a></span>db_idx128_lowerbound()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx128_lowerbound </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="test__exchange_8cpp.html#a2d00695da4b0795588770b839f9f280e">uint128_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aac074a8b2d42865e7ca1b7932e234655"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aac074a8b2d42865e7ca1b7932e234655">&#9670;&nbsp;</a></span>db_idx128_next()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx128_next </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae56365d133e8c27ba709121ed1ad0db9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae56365d133e8c27ba709121ed1ad0db9">&#9670;&nbsp;</a></span>db_idx128_previous()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx128_previous </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a60e66048c40043424581fe8e507a353b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a60e66048c40043424581fe8e507a353b">&#9670;&nbsp;</a></span>db_idx128_remove()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void db_idx128_remove </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ad9138bc9ee43f174bc2d865fdfcd4d27"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad9138bc9ee43f174bc2d865fdfcd4d27">&#9670;&nbsp;</a></span>db_idx128_store()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx128_store </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>payer</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
+          <td class="paramname"><em>id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="test__exchange_8cpp.html#a2d00695da4b0795588770b839f9f280e">uint128_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aa53188e3ea6e927baaa13743399a57f4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa53188e3ea6e927baaa13743399a57f4">&#9670;&nbsp;</a></span>db_idx128_update()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void db_idx128_update </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>payer</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="test__exchange_8cpp.html#a2d00695da4b0795588770b839f9f280e">uint128_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae931ec7bde308e0e4dc66e3dfd38138d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae931ec7bde308e0e4dc66e3dfd38138d">&#9670;&nbsp;</a></span>db_idx128_upperbound()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx128_upperbound </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="test__exchange_8cpp.html#a2d00695da4b0795588770b839f9f280e">uint128_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a6ad03c182f22794ecadeba58d7b16217"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6ad03c182f22794ecadeba58d7b16217">&#9670;&nbsp;</a></span>db_idx256_end()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx256_end </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a9b9131dd11824e3177d8f8edf4a7a874"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9b9131dd11824e3177d8f8edf4a7a874">&#9670;&nbsp;</a></span>db_idx256_find_primary()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx256_find_primary </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>data</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramname"><em>data_len</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a403f2575c90f858cfe3d6ee5175647d7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a403f2575c90f858cfe3d6ee5175647d7">&#9670;&nbsp;</a></span>db_idx256_find_secondary()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx256_find_secondary </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const void *&#160;</td>
+          <td class="paramname"><em>data</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramname"><em>data_len</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a7e980a82739f5066cc50e5e1bfb67c44"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7e980a82739f5066cc50e5e1bfb67c44">&#9670;&nbsp;</a></span>db_idx256_lowerbound()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx256_lowerbound </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>data</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramname"><em>data_len</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a50b09ae563e297d986852b639fc569c4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a50b09ae563e297d986852b639fc569c4">&#9670;&nbsp;</a></span>db_idx256_next()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx256_next </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a658db41ae01fd5f9350dead6d90c301e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a658db41ae01fd5f9350dead6d90c301e">&#9670;&nbsp;</a></span>db_idx256_previous()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx256_previous </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a08729f61864b60499a55cc226bf9d51f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a08729f61864b60499a55cc226bf9d51f">&#9670;&nbsp;</a></span>db_idx256_remove()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void db_idx256_remove </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a15bd040c261203b57ff2c8863f5a02e7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a15bd040c261203b57ff2c8863f5a02e7">&#9670;&nbsp;</a></span>db_idx256_store()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx256_store </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>payer</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
+          <td class="paramname"><em>id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const void *&#160;</td>
+          <td class="paramname"><em>data</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramname"><em>data_len</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a443fdda7756aa64f9cd120806aaa77d8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a443fdda7756aa64f9cd120806aaa77d8">&#9670;&nbsp;</a></span>db_idx256_update()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void db_idx256_update </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>payer</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const void *&#160;</td>
+          <td class="paramname"><em>data</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramname"><em>data_len</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a1753f0d0d94c974cdab75a741c881949"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1753f0d0d94c974cdab75a741c881949">&#9670;&nbsp;</a></span>db_idx256_upperbound()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx256_upperbound </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>data</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramname"><em>data_len</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a1541473ae89480da96f328f605101c5a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1541473ae89480da96f328f605101c5a">&#9670;&nbsp;</a></span>db_idx64_end()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx64_end </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ab3bb9ec4c2d8f2d71a697adec8ca81be"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab3bb9ec4c2d8f2d71a697adec8ca81be">&#9670;&nbsp;</a></span>db_idx64_find_primary()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx64_find_primary </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a55699e03067dc88498ca0e79dc412af6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a55699e03067dc88498ca0e79dc412af6">&#9670;&nbsp;</a></span>db_idx64_find_secondary()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx64_find_secondary </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a806fdbf3e24c7bf6d4177a62ec1edb9e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a806fdbf3e24c7bf6d4177a62ec1edb9e">&#9670;&nbsp;</a></span>db_idx64_lowerbound()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx64_lowerbound </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a5fc70218dc661865823e57055801df24"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5fc70218dc661865823e57055801df24">&#9670;&nbsp;</a></span>db_idx64_next()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx64_next </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a243746a77546a54ce85345a537872cb7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a243746a77546a54ce85345a537872cb7">&#9670;&nbsp;</a></span>db_idx64_previous()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx64_previous </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aae117d50bba68c7a1f3b8f8828dc1699"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aae117d50bba68c7a1f3b8f8828dc1699">&#9670;&nbsp;</a></span>db_idx64_remove()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void db_idx64_remove </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a626e5649862fbee2508977f9afe381e0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a626e5649862fbee2508977f9afe381e0">&#9670;&nbsp;</a></span>db_idx64_store()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx64_store </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>payer</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
+          <td class="paramname"><em>id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a0edd0510cf07ae8421fbad0db8473de4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0edd0510cf07ae8421fbad0db8473de4">&#9670;&nbsp;</a></span>db_idx64_update()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void db_idx64_update </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>payer</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a0099c471fae53ca9b6cef71a307ee731"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0099c471fae53ca9b6cef71a307ee731">&#9670;&nbsp;</a></span>db_idx64_upperbound()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx64_upperbound </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a73bba4b7323439fb8c4431ad2997a078"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a73bba4b7323439fb8c4431ad2997a078">&#9670;&nbsp;</a></span>db_idx_double_end()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx_double_end </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ab07cf7be73b9ebf2f9427d72bb7f589c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab07cf7be73b9ebf2f9427d72bb7f589c">&#9670;&nbsp;</a></span>db_idx_double_find_primary()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx_double_find_primary </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aa059b5d33385a6ed04be754dd818eb5b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa059b5d33385a6ed04be754dd818eb5b">&#9670;&nbsp;</a></span>db_idx_double_find_secondary()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx_double_find_secondary </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aac5344fbb389980c78e9c855fe3e546c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aac5344fbb389980c78e9c855fe3e546c">&#9670;&nbsp;</a></span>db_idx_double_lowerbound()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx_double_lowerbound </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a47f20afce175cd339e73bd124b756c8f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a47f20afce175cd339e73bd124b756c8f">&#9670;&nbsp;</a></span>db_idx_double_next()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx_double_next </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a19bc2a710628fd89639c7ffbb8c63607"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a19bc2a710628fd89639c7ffbb8c63607">&#9670;&nbsp;</a></span>db_idx_double_previous()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx_double_previous </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a7879ef20b38df7a936152cd875307002"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7879ef20b38df7a936152cd875307002">&#9670;&nbsp;</a></span>db_idx_double_remove()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void db_idx_double_remove </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aca1b37d3690a44e8e9cd72ae3218a5af"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aca1b37d3690a44e8e9cd72ae3218a5af">&#9670;&nbsp;</a></span>db_idx_double_store()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx_double_store </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>payer</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
+          <td class="paramname"><em>id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ad009f3ae2fd07892dc3193941ba3d953"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad009f3ae2fd07892dc3193941ba3d953">&#9670;&nbsp;</a></span>db_idx_double_update()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void db_idx_double_update </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>payer</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a3390212ee7f684035ecf7755cfef9e8b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3390212ee7f684035ecf7755cfef9e8b">&#9670;&nbsp;</a></span>db_idx_double_upperbound()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_idx_double_upperbound </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>secondary</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a461f3ff7972f3afcdfbd2af32d451e86"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a461f3ff7972f3afcdfbd2af32d451e86">&#9670;&nbsp;</a></span>db_lowerbound_i64()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_lowerbound_i64 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
+          <td class="paramname"><em>id</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ab8a30f733c6cd6c9111f25adae685899"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab8a30f733c6cd6c9111f25adae685899">&#9670;&nbsp;</a></span>db_next_i64()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_next_i64 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a2ffe62dd0ab43732ccebc441a2186139"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2ffe62dd0ab43732ccebc441a2186139">&#9670;&nbsp;</a></span>db_previous_i64()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_previous_i64 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a> *&#160;</td>
+          <td class="paramname"><em>primary</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a3b3d2cb9baaffcca277aceafe15f885f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3b3d2cb9baaffcca277aceafe15f885f">&#9670;&nbsp;</a></span>db_remove_i64()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void db_remove_i64 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a72d4fbbf993b4d4bf6156684103384ae"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a72d4fbbf993b4d4bf6156684103384ae">&#9670;&nbsp;</a></span>db_store_i64()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_store_i64 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>payer</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
+          <td class="paramname"><em>id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const void *&#160;</td>
+          <td class="paramname"><em>data</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramname"><em>len</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a3444fe1d9b4dbbeb296021c459d4a1ab"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3444fe1d9b4dbbeb296021c459d4a1ab">&#9670;&nbsp;</a></span>db_update_i64()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void db_update_i64 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a>&#160;</td>
+          <td class="paramname"><em>iterator</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>payer</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const void *&#160;</td>
+          <td class="paramname"><em>data</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a06896e8c53f721507066c079052171f8">uint32_t</a>&#160;</td>
+          <td class="paramname"><em>len</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a116d72c95598422eda8caace36b9921e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a116d72c95598422eda8caace36b9921e">&#9670;&nbsp;</a></span>db_upperbound_i64()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#a0d2e949ab6a1bb62f1b295cc79bc1f60">int32_t</a> db_upperbound_i64 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>code</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga3b44deb4b3b8d6ebab339d1263692117">account_name</a>&#160;</td>
+          <td class="paramname"><em>scope</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__types.html#ga330cbf48637c876c57f78d03fd4730bb">table_name</a>&#160;</td>
+          <td class="paramname"><em>table</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="musl_2upstream_2include_2bits_2stdint_8h.html#aaa5d1cd013383c889537491c3cfd9aad">uint64_t</a>&#160;</td>
+          <td class="paramname"><em>id</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+</div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
 Generated by &#160;<a href="http://www.doxygen.org/index.html">

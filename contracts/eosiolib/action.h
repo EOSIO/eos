@@ -99,8 +99,16 @@ extern "C" {
    bool has_auth( account_name name );
 
    /**
+    *  Verifies that @ref name exists in the set of provided auths on a action. Throws if not found
+    *  @brief Verify specified account exists in the set of provided auths
+    *  @param name - name of the account to be verified
+    *  @param permission - permission level to be verified
+    */
+   void require_auth2( account_name name, permission_name permission );
+
+   /**
     *  Send an inline action in the context of this action's parent transaction
-    * @param serialized_action - serialized action 
+    * @param serialized_action - serialized action
     * @param size - size of serialized action in bytes
     */
    void send_inline(char *serialized_action, size_t size);
@@ -139,5 +147,12 @@ extern "C" {
     *  @return the account which specifies the sender of the action
     */
    account_name current_sender();
+
+   /**
+    *  Get the current receiver of the action
+    *  @brief Get the current receiver of the action
+    *  @return the account which specifies the current receiver of the action
+    */
+   account_name current_receiver();
    ///@ } actioncapi
 }

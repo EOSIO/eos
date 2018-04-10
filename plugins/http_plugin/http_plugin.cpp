@@ -153,7 +153,7 @@ namespace eosio {
       if(my->listen_endpoint) {
 
          //my->http_thread = std::make_shared<std::thread>([&](){
-            ilog("start processing http thread");
+         //ilog("start processing http thread");
             try {
                my->server.clear_access_channels(websocketpp::log::alevel::all);
                my->server.init_asio(&app().get_io_service()); //&my->http_ios);
@@ -215,7 +215,7 @@ namespace eosio {
                my->server.start_accept();
 
            //    my->http_ios.run();
-               ilog("http io service exit");
+           //    ilog("http io service exit");
             } catch ( const fc::exception& e ){
                elog( "http: ${e}", ("e",e.to_detail_string()));
             } catch ( const std::exception& e ){

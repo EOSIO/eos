@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eos/chain_plugin/*.hpp")
+file(GLOB HEADERS "include/eosio/chain_api_plugin/*.hpp")
 add_library( chain_api_plugin
              chain_api_plugin.cpp
              ${HEADERS} )

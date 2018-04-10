@@ -26,6 +26,7 @@ const static uint64_t eosio_all_scope        = N(eosio.all);
 
 const static uint64_t active_name = N(active);
 const static uint64_t owner_name  = N(owner);
+const static uint64_t eosio_any_name = N(eosio.any);
 
 const static int      block_interval_ms = 500;
 const static int      block_interval_us = block_interval_ms*1000;
@@ -43,11 +44,11 @@ static const uint32_t block_cpu_usage_average_window_ms    = 60*1000l;
 static const uint32_t block_size_average_window_ms         = 60*1000l;
 
 
-const static uint32_t   default_max_block_size         = 1024 * 1024; /// at 500ms blocks and 200byte trx, this enables ~10,000 TPS burst
-const static uint32_t   default_target_block_size      = default_max_block_size / 10; /// we target 1000 TPS
+const static uint32_t   default_max_block_net_usage         = 1024 * 1024; /// at 500ms blocks and 200byte trx, this enables ~10,000 TPS burst
+const static int        default_target_block_net_usage_pct  = 10 * percent_1; /// we target 1000 TPS
 
-const static uint32_t   default_max_block_cpu_usage    = 100 * 1024 * 1024; /// at 500ms blocks and 20000instr trx, this enables ~10,000 TPS burst
-const static uint32_t   default_target_block_cpu_usage = default_max_block_cpu_usage / 10; /// target 1000 TPS
+const static uint32_t   default_max_block_cpu_usage         = 100 * 1024 * 1024; /// at 500ms blocks and 20000instr trx, this enables ~10,000 TPS burst
+const static uint32_t   default_target_block_cpu_usage_pct  = 10 * percent_1; /// target 1000 TPS
 
 const static uint64_t   default_max_storage_size       = 10 * 1024;
 const static uint32_t   default_max_trx_lifetime       = 60*60;
@@ -57,8 +58,9 @@ const static uint16_t   default_max_inline_depth       = 4;
 const static uint32_t   default_max_inline_action_size = 4 * 1024;
 const static uint32_t   default_max_gen_trx_size       = 64 * 1024; ///
 const static uint32_t   default_max_gen_trx_count      = 16; ///< the number of generated transactions per action
-const static uint32_t   producers_authority_threshold  = 14;
 const static uint32_t   rate_limiting_precision        = 1000*1000;
+
+const static uint32_t   producers_authority_threshold_pct  = 66 * config::percent_1;
 
 const static uint16_t   max_recursion_depth = 6;
 
@@ -71,9 +73,9 @@ const static uint32_t   default_per_lock_net_usage                     = 32;
 const static uint64_t   default_context_free_discount_cpu_usage_num    = 20;
 const static uint64_t   default_context_free_discount_cpu_usage_den    = 100;
 const static uint32_t   default_max_transaction_cpu_usage              = default_max_block_cpu_usage / 10;
-const static uint32_t   default_max_transaction_net_usage              = default_max_block_size / 10;
+const static uint32_t   default_max_transaction_net_usage              = default_max_block_net_usage / 10;
 
-const static uint32_t   overhead_per_row_ram_bytes         = 512;    ///< overhead accounts for basic tracking structures in a row
+const static uint32_t   overhead_per_row_per_index_ram_bytes = 32;    ///< overhead accounts for basic tracking structures in a row per index
 const static uint32_t   overhead_per_account_ram_bytes     = 2*1024; ///< overhead accounts for basic account storage and pre-pays features like account recovery
 const static uint32_t   setcode_ram_bytes_multiplier       = 10;     ///< multiplier on contract size to account for multiple copies and cached compilation
 
@@ -85,11 +87,6 @@ const static eosio::chain::wasm_interface::vm_type default_wasm_runtime = eosio:
 const static int producer_repetitions = 12;
 
 /**
- * In block production, at the begining of each block we schedule deferred transactions until reach this time
- */
-const static uint32_t deffered_transactions_max_time_per_block_us = 20*1000; //20ms
-
-/**
  * The number of blocks produced per round is based upon all producers having a chance
  * to produce all of their consecutive blocks.
  */
@@ -97,9 +94,23 @@ const static uint32_t deffered_transactions_max_time_per_block_us = 20*1000; //2
 
 const static int irreversible_threshold_percent= 70 * percent_1;
 
+const static uint64_t billable_alignment = 16;
+
+template<typename T>
+struct billable_size;
+
+template<typename T>
+constexpr uint64_t billable_size_v = ((billable_size<T>::value + billable_alignment - 1) / billable_alignment) * billable_alignment;
+
+
 } } } // namespace eosio::chain::config
 
 template<typename Number>
-Number EOS_PERCENT(Number value, int percentage) {
+Number EOS_PERCENT(Number value, uint32_t percentage) {
    return value * percentage / eosio::chain::config::percent_100;
+}
+
+template<typename Number>
+Number EOS_PERCENT_CEIL(Number value, uint32_t percentage) {
+   return ((value * percentage) + eosio::chain::config::percent_100 - eosio::chain::config::percent_1)  / eosio::chain::config::percent_100;
 }

@@ -56,13 +56,11 @@ bool transaction_header::verify_reference_block( const block_id_type& reference_
           ref_block_prefix == (decltype(ref_block_prefix))reference_block._hash[1];
 }
 
-
-transaction_id_type transaction::id() const { 
+transaction_id_type transaction::id() const {
    digest_type::encoder enc;
    fc::raw::pack( enc, *this );
    return enc.result();
 }
-
 
 digest_type transaction::sig_digest( const chain_id_type& chain_id, const vector<bytes>& cfd )const {
    digest_type::encoder enc;
@@ -73,7 +71,7 @@ digest_type transaction::sig_digest( const chain_id_type& chain_id, const vector
    return enc.result();
 }
 
-flat_set<public_key_type> transaction::get_signature_keys( const vector<signature_type>& signatures, const chain_id_type& chain_id, const vector<bytes>& cfd  )const
+flat_set<public_key_type> transaction::get_signature_keys( const vector<signature_type>& signatures, const chain_id_type& chain_id, const vector<bytes>& cfd, bool allow_duplicate_keys )const
 { try {
    using boost::adaptors::transformed;
 
@@ -85,13 +83,19 @@ flat_set<public_key_type> transaction::get_signature_keys( const vector<signatur
    for(const signature_type& sig : signatures) {
       recovery_cache_type::index<by_sig>::type::iterator it = recovery_cache.get<by_sig>().find(sig);
 
+      public_key_type recov;
       if(it == recovery_cache.get<by_sig>().end() || it->trx_id != id()) {
-         public_key_type recov = public_key_type(sig, digest);
+         recov = public_key_type(sig, digest);
          recovery_cache.emplace_back( cached_pub_key{id(), recov, sig} ); //could fail on dup signatures; not a problem
-         recovered_pub_keys.insert(recov);
-         continue;
+      } else {
+         recov = it->pub_key;
       }
-      recovered_pub_keys.insert(it->pub_key);
+      bool successful_insertion = false;
+      std::tie(std::ignore, successful_insertion) = recovered_pub_keys.insert(recov);
+      EOS_ASSERT( allow_duplicate_keys || successful_insertion, tx_irrelevant_sig,
+                  "transaction includes more than one signature signed using the same key associated with public key: ${key}",
+                  ("key", recov)
+               );
    }
 
    while(recovery_cache.size() > recovery_cache_size)
@@ -110,9 +114,21 @@ signature_type signed_transaction::sign(const private_key_type& key, const chain
    return key.sign(sig_digest(chain_id, context_free_data));
 }
 
-flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id_type& chain_id )const
+flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id_type& chain_id, bool allow_duplicate_keys )const
 {
-   return transaction::get_signature_keys(signatures, chain_id, context_free_data);
+   return transaction::get_signature_keys(signatures, chain_id, context_free_data, allow_duplicate_keys);
+}
+
+uint32_t packed_transaction::get_billable_size()const {
+   auto size = fc::raw::pack_size(*this);
+   FC_ASSERT( size <= std::numeric_limits<uint32_t>::max(), "packed_transaction is too big" );
+   return static_cast<uint32_t>(size);
+}
+
+digest_type packed_transaction::packed_digest()const {
+   digest_type::encoder enc;
+   fc::raw::pack( enc, *this );
+   return enc.result();
 }
 
 namespace bio = boost::iostreams;
@@ -133,10 +149,16 @@ struct read_limiter {
    size_t _total = 0;
 };
 
+static vector<bytes> unpack_context_free_data(const bytes& data) {
+   if( data.size() == 0 )
+      return vector<bytes>();
+
+   return fc::raw::unpack< vector<bytes> >(data);
+}
+
 static transaction unpack_transaction(const bytes& data) {
    return fc::raw::unpack<transaction>(data);
 }
-
 
 static bytes zlib_decompress(const bytes& data) {
    try {
@@ -156,6 +178,14 @@ static bytes zlib_decompress(const bytes& data) {
    }
 }
 
+static vector<bytes> zlib_decompress_context_free_data(const bytes& data) {
+   if( data.size() == 0 )
+      return vector<bytes>();
+
+   bytes out = zlib_decompress(data);
+   return unpack_context_free_data(out);
+}
+
 static transaction zlib_decompress_transaction(const bytes& data) {
    bytes out = zlib_decompress(data);
    return unpack_transaction(out);
@@ -163,6 +193,27 @@ static transaction zlib_decompress_transaction(const bytes& data) {
 
 static bytes pack_transaction(const transaction& t) {
    return fc::raw::pack(t);
+}
+
+static bytes pack_context_free_data(const vector<bytes>& cfd ) {
+   if( cfd.size() == 0 )
+      return bytes();
+
+   return fc::raw::pack(cfd);
+}
+
+static bytes zlib_compress_context_free_data(const vector<bytes>& cfd ) {
+   if( cfd.size() == 0 )
+      return bytes();
+
+   bytes in = pack_context_free_data(cfd);
+   bytes out;
+   bio::filtering_ostream comp;
+   comp.push(bio::zlib_compressor(bio::zlib::best_compression));
+   comp.push(bio::back_inserter(out));
+   bio::write(comp, in.data(), in.size());
+   bio::close(comp);
+   return out;
 }
 
 static bytes zlib_compress_transaction(const transaction& t) {
@@ -181,13 +232,27 @@ bytes packed_transaction::get_raw_transaction() const
    try {
       switch(compression) {
          case none:
-            return data;
+            return packed_trx;
          case zlib:
-            return zlib_decompress(data);
+            return zlib_decompress(packed_trx);
          default:
             FC_THROW("Unknown transaction compression algorithm");
       }
-   } FC_CAPTURE_AND_RETHROW((compression)(data))
+   } FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
+}
+
+vector<bytes> packed_transaction::get_context_free_data()const
+{
+   try {
+      switch(compression) {
+         case none:
+            return unpack_context_free_data(packed_context_free_data);
+         case zlib:
+            return zlib_decompress_context_free_data(packed_context_free_data);
+         default:
+            FC_THROW("Unknown transaction compression algorithm");
+      }
+   } FC_CAPTURE_AND_RETHROW((compression)(packed_context_free_data))
 }
 
 transaction packed_transaction::get_transaction()const
@@ -195,18 +260,28 @@ transaction packed_transaction::get_transaction()const
    try {
       switch(compression) {
          case none:
-            return unpack_transaction(data);
+            return unpack_transaction(packed_trx);
          case zlib:
-            return zlib_decompress_transaction(data);
+            return zlib_decompress_transaction(packed_trx);
          default:
             FC_THROW("Unknown transaction compression algorithm");
       }
-   } FC_CAPTURE_AND_RETHROW((compression)(data))
+   } FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
 }
 
 signed_transaction packed_transaction::get_signed_transaction() const
 {
-   return signed_transaction(get_transaction(), signatures, context_free_data);
+   try {
+      switch(compression) {
+         case none:
+            return signed_transaction(get_transaction(), signatures, unpack_context_free_data(packed_context_free_data));
+         case zlib:
+            return signed_transaction(get_transaction(), signatures, zlib_decompress_context_free_data(packed_context_free_data));
+         default:
+            FC_THROW("Unknown transaction compression algorithm");
+      }
+   } FC_CAPTURE_AND_RETHROW((compression)(packed_trx)(packed_context_free_data))
+
 }
 
 void packed_transaction::set_transaction(const transaction& t, packed_transaction::compression_type _compression)
@@ -214,10 +289,30 @@ void packed_transaction::set_transaction(const transaction& t, packed_transactio
    try {
       switch(_compression) {
          case none:
-            data = pack_transaction(t);
+            packed_trx = pack_transaction(t);
             break;
          case zlib:
-            data = zlib_compress_transaction(t);
+            packed_trx = zlib_compress_transaction(t);
+            break;
+         default:
+            FC_THROW("Unknown transaction compression algorithm");
+      }
+   } FC_CAPTURE_AND_RETHROW((_compression)(t))
+   packed_context_free_data.clear();
+   compression = _compression;
+}
+
+void packed_transaction::set_transaction(const transaction& t, const vector<bytes>& cfd, packed_transaction::compression_type _compression)
+{
+   try {
+      switch(_compression) {
+         case none:
+            packed_trx = pack_transaction(t);
+            packed_context_free_data = pack_context_free_data(cfd);
+            break;
+         case zlib:
+            packed_trx = zlib_compress_transaction(t);
+            packed_context_free_data = zlib_compress_context_free_data(cfd);
             break;
          default:
             FC_THROW("Unknown transaction compression algorithm");

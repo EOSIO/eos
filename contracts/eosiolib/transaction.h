@@ -20,46 +20,46 @@ extern "C" {
     *     message messages[]; ///< accounts that have approved this message
     *   };
     * ```
-    * 
+    *
     * This API enables your contract to construct and send transactions
     *
     * Deferred transactions will not be processed until a future block.  They
-    * can therefore have no effect on the success of failure of their parent 
+    * can therefore have no effect on the success of failure of their parent
     * transaction so long as they appear well formed.  If any other condition
     * causes the parent transaction to be marked as failing, then the deferred
-    * transaction will never be processed. 
+    * transaction will never be processed.
     *
-    * Deferred transactions must adhere to the permissions available to the 
-    * parent transaction or, in the future, delegated to the contract account 
+    * Deferred transactions must adhere to the permissions available to the
+    * parent transaction or, in the future, delegated to the contract account
     * for future use.
-    * 
+    *
     * An inline message allows one contract to send another contract a message
     * which is processed immediately after the current message's processing
-    * ends such that the success or failure of the parent transaction is 
-    * dependent on the success of the message. If an inline message fails in 
+    * ends such that the success or failure of the parent transaction is
+    * dependent on the success of the message. If an inline message fails in
     * processing then the whole tree of transactions and messages rooted in the
     * block will me marked as failing and none of effects on the database will
-    * persist.  
+    * persist.
     *
-    * Because of this and the parallel nature of transaction application, 
-    * inline messages may not affect any `scope` which is not listed in 
+    * Because of this and the parallel nature of transaction application,
+    * inline messages may not affect any `scope` which is not listed in
     * their parent transaction's `scope`.  They also may not read any `scope`
     * not listed in either their parent transaction's `scope` or `readScope`.
     *
     * Inline messages and Deferred transactions must adhere to the permissions
-    * available to the parent transaction or, in the future, delegated to the 
+    * available to the parent transaction or, in the future, delegated to the
     * contract account for future use.
     */
 
-   /** 
+   /**
     * @defgroup transactioncapi Transaction C API
     * @ingroup transactionapi
-    * @brief Define API for sending transactions 
+    * @brief Define API for sending transactions
     *
     * @{
     */
 
-   void send_deferred(const uint128_t& sender_id, account_name payer, time delay_until, char *serialized_transaction, size_t size);
+   void send_deferred(const uint128_t& sender_id, account_name payer, const char *serialized_transaction, size_t size);
 
    void cancel_deferred(const uint128_t& sender_id);
 
@@ -111,6 +111,11 @@ extern "C" {
     * @return signed_transaction.context_free_data[index].size() or -1 if index not valid
     */
    int get_context_free_data( uint32_t index, char* buff, size_t size );
+
+   /**
+    * Check that prodived authorizations is enough to execute the transaction
+    */
+   void check_auth( const char *serialized_transaction, size_t size, const char* permissions, size_t psize );
 
    ///@ } transactioncapi
 }

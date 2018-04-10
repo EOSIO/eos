@@ -82,7 +82,6 @@ struct txn_test_gen_plugin_impl {
       chain_controller& cc = app().get_plugin<chain_plugin>().chain();
       chain::chain_id_type chainid;
       app().get_plugin<chain_plugin>().get_chain_id(chainid);
-      asset stake(10000);
 
       fc::crypto::private_key txn_test_receiver_A_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
       fc::crypto::private_key txn_test_receiver_B_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
@@ -94,104 +93,99 @@ struct txn_test_gen_plugin_impl {
 
 
       //create some test accounts
-      auto memo = fc::variant(fc::time_point::now()).as_string() + " " + fc::variant(fc::time_point::now().time_since_epoch()).as_string();
-      signed_transaction trx;
-      trx.expiration = cc.head_block_time() + fc::seconds(30);
-      trx.set_reference_block(cc.head_block_id());
-
-      //create "A" account
       {
-      auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
-      auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
-      auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
-      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountA, owner_auth, active_auth, recovery_auth});
-      }
-      //create "B" account
-      {
-      auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
-      auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
-      auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
+         signed_transaction trx;
 
-      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountB, owner_auth, active_auth, recovery_auth});
-      }
-      //create "currency" account
-      {
-      auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
-      auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
-      auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
+         //create "A" account
+         {
+         auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
+         auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
+         auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
 
-      trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountC, owner_auth, active_auth, recovery_auth});
-      }
-      
-      trx.sign(creator_priv_key, chainid);
-      cc.push_transaction(packed_transaction(trx));
+         trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountA, owner_auth, active_auth, recovery_auth});
+         }
+         //create "B" account
+         {
+         auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
+         auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
+         auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
 
-      //create currency contract
-      {
-      signed_transaction trx;
-      vector<uint8_t> wasm = wast_to_wasm(std::string(currency_wast));
+         trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountB, owner_auth, active_auth, recovery_auth});
+         }
+         //create "currency" account
+         {
+         auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
+         auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
+         auto recovery_auth = eosio::chain::authority{1, {}, {{{creator, "active"}, 1}}};
 
-      contracts::setcode handler;
-      handler.account = newaccountC;
-      handler.code.assign(wasm.begin(), wasm.end());
+         trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, contracts::newaccount{creator, newaccountC, owner_auth, active_auth, recovery_auth});
+         }
 
-      trx.actions.emplace_back( vector<chain::permission_level>{{newaccountC,"active"}}, handler);
-
-      {
-      contracts::setabi handler;
-      handler.account = newaccountC;
-      handler.abi = currency_abi_def;
-      trx.actions.emplace_back( vector<chain::permission_level>{{newaccountC,"active"}}, handler);
+         trx.expiration = cc.head_block_time() + fc::seconds(30);
+         trx.set_reference_block(cc.head_block_id());
+         trx.sign(creator_priv_key, chainid);
+         cc.push_transaction(packed_transaction(trx));
       }
 
-      trx.expiration = cc.head_block_time() + fc::seconds(30);
-      trx.set_reference_block(cc.head_block_id());
-      trx.sign(txn_test_receiver_C_priv_key, chainid);
-      cc.push_transaction(packed_transaction(trx));
-      }
+      //set currency contract & initialize it
+      {
+         signed_transaction trx;
 
-      //issue & fund the two accounts with currency contract currency
-      {
-      signed_transaction trx;
-      abi_serializer currency_serializer(currency_abi_def);
+         vector<uint8_t> wasm = wast_to_wasm(std::string(currency_wast));
 
-      {
-      action act;
-      act.account = N(currency);
-      act.name = N(create);
-      act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-      act.data = currency_serializer.variant_to_binary("create", fc::json::from_string("{\"issuer\":\"currency\",\"maximum_supply\":\"1000000000.0000 CUR\", \"can_freeze\":0, \"can_recall\":0, \"can_whitelist\":0}}"));
-      trx.actions.push_back(act);
-      }
-      {
-      action act;
-      act.account = N(currency);
-      act.name = N(issue);
-      act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-      act.data = currency_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"currency\",\"quantity\":\"600.0000 CUR\",\"memo\":\"\"}"));
-      trx.actions.push_back(act);
-      }
-      {
-      action act;
-      act.account = N(currency);
-      act.name = N(transfer);
-      act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-      act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"currency\",\"to\":\"txn.test.a\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
-      trx.actions.push_back(act);
-      }
-      {
-      action act;
-      act.account = N(currency);
-      act.name = N(transfer);
-      act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
-      act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"currency\",\"to\":\"txn.test.b\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
-      trx.actions.push_back(act);
-      }
+         contracts::setcode handler;
+         handler.account = newaccountC;
+         handler.code.assign(wasm.begin(), wasm.end());
 
-      trx.expiration = cc.head_block_time() + fc::seconds(30);
-      trx.set_reference_block(cc.head_block_id());
-      trx.sign(txn_test_receiver_C_priv_key, chainid);
-      cc.push_transaction(packed_transaction(trx));
+         trx.actions.emplace_back( vector<chain::permission_level>{{newaccountC,"active"}}, handler);
+
+         {
+            contracts::setabi handler;
+            handler.account = newaccountC;
+            handler.abi = currency_abi_def;
+            trx.actions.emplace_back( vector<chain::permission_level>{{newaccountC,"active"}}, handler);
+         }
+
+         abi_serializer currency_serializer(currency_abi_def);
+
+         {
+            action act;
+            act.account = N(currency);
+            act.name = N(create);
+            act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
+            act.data = currency_serializer.variant_to_binary("create", fc::json::from_string("{\"issuer\":\"currency\",\"maximum_supply\":\"1000000000.0000 CUR\", \"can_freeze\":0, \"can_recall\":0, \"can_whitelist\":0}}"));
+            trx.actions.push_back(act);
+         }
+         {
+            action act;
+            act.account = N(currency);
+            act.name = N(issue);
+            act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
+            act.data = currency_serializer.variant_to_binary("issue", fc::json::from_string("{\"to\":\"currency\",\"quantity\":\"600.0000 CUR\",\"memo\":\"\"}"));
+            trx.actions.push_back(act);
+         }
+         {
+            action act;
+            act.account = N(currency);
+            act.name = N(transfer);
+            act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
+            act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"currency\",\"to\":\"txn.test.a\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
+            trx.actions.push_back(act);
+         }
+         {
+            action act;
+            act.account = N(currency);
+            act.name = N(transfer);
+            act.authorization = vector<permission_level>{{newaccountC,config::active_name}};
+            act.data = currency_serializer.variant_to_binary("transfer", fc::json::from_string("{\"from\":\"currency\",\"to\":\"txn.test.b\",\"quantity\":\"200.0000 CUR\",\"memo\":\"\"}"));
+            trx.actions.push_back(act);
+         }
+
+         trx.expiration = cc.head_block_time() + fc::seconds(30);
+         trx.set_reference_block(cc.head_block_id());
+         trx.max_net_usage_words = 5000;
+         trx.sign(txn_test_receiver_C_priv_key, chainid);
+         cc.push_transaction(packed_transaction(trx));
       }
    }
 
@@ -262,6 +256,7 @@ struct txn_test_gen_plugin_impl {
       trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", fc::raw::pack(nonce++)));
       trx.set_reference_block(cc.head_block_id());
       trx.expiration = cc.head_block_time() + fc::seconds(30);
+      trx.max_net_usage_words = 100;
       trx.sign(a_priv_key, chainid);
       cc.push_transaction(packed_transaction(trx));
       }
@@ -272,6 +267,7 @@ struct txn_test_gen_plugin_impl {
       trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", fc::raw::pack(nonce++)));
       trx.set_reference_block(cc.head_block_id());
       trx.expiration = cc.head_block_time() + fc::seconds(30);
+      trx.max_net_usage_words = 100;
       trx.sign(b_priv_key, chainid);
       cc.push_transaction(packed_transaction(trx));
       }

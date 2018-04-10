@@ -1,5 +1,7 @@
 #include <eosiolib/types.hpp>
 #include <eosiolib/action.hpp>
+#include <eosiolib/transaction.hpp>
+#include <eosiolib/datastream.hpp>
 #include <eosiolib/db.h>
 #include <eosiolib/memory.hpp>
 #include "../test_api/test_api.hpp"
@@ -431,5 +433,65 @@ void test_db::idx64_upperbound(uint64_t receiver, uint64_t code, uint64_t action
       int ub = db_idx64_upperbound(receiver, receiver, table, &ub_sec, &ub_prim);
       eosio_assert(ub_prim == 0 && ub_sec == N(kevin), err.c_str());
       eosio_assert(ub < 0, err.c_str());
+   }
+}
+
+void test_db::test_invalid_access(uint64_t receiver, uint64_t code, uint64_t action)
+{
+   (void)code;(void)action;
+   auto act = eosio::get_action(1, 0);
+   auto ia = eosio::unpack<invalid_access_action>(act.data);
+   uint64_t scope = N(access);
+   uint64_t table = scope;
+   uint64_t pk    = scope;
+
+   int32_t itr = -1;
+   uint64_t value;
+   switch( ia.index ) {
+      case 1:
+         itr = db_idx64_find_primary(ia.code, scope, table, &value, pk);
+      break;
+      case 0:
+      default:
+         itr = db_find_i64(ia.code, scope, table, pk);
+      break;
+   }
+   if( ia.store ) {
+      uint64_t value_to_store = ia.val;
+      if( itr < 0 ) {
+         switch( ia.index ) {
+            case 1:
+               db_idx64_store( scope, table, receiver, pk, &value_to_store );
+            break;
+            case 0:
+            default:
+               db_store_i64( scope, table, receiver, pk, &value_to_store, sizeof(value_to_store) );
+            break;
+         }
+      } else {
+         switch( ia.index ) {
+            case 1:
+               db_idx64_update( itr, receiver, &value_to_store);
+            break;
+            case 0:
+            default:
+               db_update_i64( itr, receiver, &value_to_store, sizeof(value_to_store) );
+            break;
+         }
+      }
+      //eosio::print("test_invalid_access: stored ", value_to_store, "\n");
+   } else {
+      eosio_assert( itr >= 0, "test_invalid_access: could not find row" );
+      switch( ia.index ) {
+         case 1:
+         break;
+         case 0:
+         default:
+            eosio_assert( db_get_i64( itr, &value, sizeof(value) ) == sizeof(value),
+                          "test_invalid_access: value in primary table was incorrect size" );
+         break;
+      }
+      //eosio::print("test_invalid_access: expected ", ia.val, " and retrieved ", value, "\n");
+      eosio_assert( value == ia.val, "test_invalid_access: value did not match" );
    }
 }

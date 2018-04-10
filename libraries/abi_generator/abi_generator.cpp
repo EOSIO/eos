@@ -2,6 +2,11 @@
 
 namespace eosio {
 
+void abi_generator::set_target_contract(const string& contract, const vector<string>& actions) {
+  target_contract = contract;
+  target_actions  = actions;
+}
+
 void abi_generator::enable_optimizaton(abi_generator::optimization o) {
   optimizations |= o;
 } 
@@ -82,58 +87,77 @@ bool abi_generator::inspect_type_methods_for_actions(const Decl* decl) { try {
   const auto* rec_decl = dyn_cast<CXXRecordDecl>(decl);
   if(rec_decl == nullptr) return false;
 
+  if( rec_decl->getName().str() != target_contract )
+    return false;
+
   const auto* type = rec_decl->getTypeForDecl();
   ABI_ASSERT(type != nullptr);
-  if( !type->isStructureOrClassType() ) {
-    return false;
-  }
 
   bool at_least_one_action = false;
-  for(const auto* method : rec_decl->methods()) {
 
-    const RawComment* raw_comment = ast_context->getRawCommentForDeclNoCache(method);
-    if( raw_comment == nullptr) continue;
+  auto export_method = [&](const CXXMethodDecl* method) {
 
-    SourceManager& source_manager = ast_context->getSourceManager();
-    string raw_text = raw_comment->getRawText(source_manager);
-    regex r(R"(@abi (action))");
+    auto method_name = method->getNameAsString();
 
-    smatch smatch;
-    if(regex_search(raw_text, smatch, r)){
 
-      auto method_name = method->getNameAsString();
-      ABI_ASSERT(find_struct(method_name) == nullptr, "action already exists ${method_name}", ("method_name",method_name));
+    if( std::find(target_actions.begin(), target_actions.end(), method_name) == target_actions.end() )
+      return;
 
-      struct_def abi_struct;
-      for(const auto* p : method->parameters() ) {
-        clang::QualType qt = p->getOriginalType().getNonReferenceType();
-        qt.setLocalFastQualifiers(0);
+    ABI_ASSERT(find_struct(method_name) == nullptr, "action already exists ${method_name}", ("method_name",method_name));
 
-        string field_name = p->getNameAsString();
-        string field_type_name = add_type(qt);
+    struct_def abi_struct;
+    for(const auto* p : method->parameters() ) {
+      clang::QualType qt = p->getOriginalType().getNonReferenceType();
+      qt.setLocalFastQualifiers(0);
 
-        field_def struct_field{field_name, field_type_name};
-        ABI_ASSERT(is_builtin_type(get_vector_element_type(struct_field.type)) 
-          || find_struct(get_vector_element_type(struct_field.type))
-          || find_type(get_vector_element_type(struct_field.type))
-          , "Unknown type ${type} [${abi}]",("type",struct_field.type)("abi",*output));
+      string field_name = p->getNameAsString();
+      string field_type_name = add_type(qt);
 
-        type_size[string(struct_field.type)] = is_vector(struct_field.type) ? 0 : ast_context->getTypeSize(qt);
-        abi_struct.fields.push_back(struct_field);
-      }
+      field_def struct_field{field_name, field_type_name};
+      ABI_ASSERT(is_builtin_type(get_vector_element_type(struct_field.type)) 
+        || find_struct(get_vector_element_type(struct_field.type))
+        || find_type(get_vector_element_type(struct_field.type))
+        , "Unknown type ${type} [${abi}]",("type",struct_field.type)("abi",*output));
 
-      abi_struct.name = method_name;
-      abi_struct.base = "";
-
-      output->structs.push_back(abi_struct);
-
-      full_types[method_name] = method_name;
-
-      output->actions.push_back({method_name, method_name});
-      at_least_one_action = true;
+      type_size[string(struct_field.type)] = is_vector(struct_field.type) ? 0 : ast_context->getTypeSize(qt);
+      abi_struct.fields.push_back(struct_field);
     }
 
-  }
+    abi_struct.name = method_name;
+    abi_struct.base = "";
+
+    output->structs.push_back(abi_struct);
+
+    full_types[method_name] = method_name;
+
+    output->actions.push_back({method_name, method_name, ""});
+    at_least_one_action = true;
+  };
+
+  const auto export_methods = [&export_method](const CXXRecordDecl* rec_decl) {
+
+
+    auto export_methods_impl = [&export_method](const CXXRecordDecl* rec_decl, auto& ref) -> void {
+
+
+      auto tmp = rec_decl->bases();
+      auto rec_name = rec_decl->getName().str();
+
+      rec_decl->forallBases([&ref](const CXXRecordDecl* base) -> bool {
+        ref(base, ref);
+        return true;
+      });
+
+      for(const auto* method : rec_decl->methods()) {
+        export_method(method);
+      }
+
+    };
+
+    export_methods_impl(rec_decl, export_methods_impl);
+  };
+
+  export_methods(rec_decl);
 
   return at_least_one_action;
 
@@ -145,23 +169,39 @@ void abi_generator::handle_decl(const Decl* decl) { try {
   ABI_ASSERT(output != nullptr);
   ABI_ASSERT(ast_context != nullptr);
 
+  // Only process declarations that has the `abi_context` folder as parent.
   SourceManager& source_manager = ast_context->getSourceManager();
   auto file_name = source_manager.getFilename(decl->getLocStart());
   if ( !abi_context.empty() && !file_name.startswith(abi_context) ) {
     return;
   }
 
-  if(inspect_type_methods_for_actions(decl)) {
-    return;
+  // If EOSIO_ABI macro was found, check if the current declaration
+  // is of the type specified in the macro and export their methods (actions).
+  bool type_has_actions = false;
+  if( target_contract.size() ) {
+    type_has_actions = inspect_type_methods_for_actions(decl);
   }
 
+  // The current Decl was the type referenced in EOSIO_ABI macro
+  if( type_has_actions ) return;
+
+  // The current Decl was not the type referenced in EOSIO_ABI macro
+  // so we try to see if it has comments attached to the declaration
   const RawComment* raw_comment = ast_context->getRawCommentForDeclNoCache(decl);
   if(raw_comment == nullptr) {
     return;
   }
 
   string raw_text = raw_comment->getRawText(source_manager);
-  regex r(R"(@abi (action|table)((?: [a-z0-9]+)*))");
+  regex r;
+
+  // If EOSIO_ABI macro was found, we will only check if the current Decl
+  // is intented to be an ABI table record, otherwise we check for both (action or table)
+  if( target_contract.size() )
+    r = regex(R"(@abi (table)((?: [a-z0-9]+)*))");
+  else
+    r = regex(R"(@abi (action|table)((?: [a-z0-9]+)*))");
 
   smatch smatch;
   while(regex_search(raw_text, smatch, r))
@@ -197,7 +237,7 @@ void abi_generator::handle_decl(const Decl* decl) { try {
             ABI_ASSERT(ac->type == type_name, "Same action name with different type ${action}",("action",action));
             continue;
           }
-          output->actions.push_back({action, type_name});
+          output->actions.push_back({action, type_name, ""});
         }
 
       } else if (type == "table") {

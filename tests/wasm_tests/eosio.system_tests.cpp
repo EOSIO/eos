@@ -10,6 +10,12 @@
 
 #include <fc/variant_object.hpp>
 
+#ifdef NON_VALIDATING_TEST
+#define TESTER tester
+#else
+#define TESTER validating_tester
+#endif
+
 using namespace eosio::testing;
 using namespace eosio;
 using namespace eosio::chain;
@@ -20,7 +26,7 @@ using namespace fc;
 
 using mvo = fc::mutable_variant_object;
 
-class eosio_system_tester : public tester {
+class eosio_system_tester : public TESTER {
 public:
 
    eosio_system_tester() {
@@ -53,7 +59,7 @@ public:
          act.name = name;
          act.data = abi_ser.variant_to_binary( action_type_name, data );
 
-         return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : 0 );
+         return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : signer == N(bob) ? N(alice) : N(bob) );
    }
 
    action_result stake( const account_name& from, const account_name& to, const string& net, const string& cpu, const string& storage ) {
@@ -96,12 +102,15 @@ public:
          ("context_free_discount_cpu_usage_den", 100 + n )
          ("max_transaction_cpu_usage", 1000000 + n )
          ("max_transaction_net_usage", 1000000 + n )
+         ("max_block_cpu_usage", 10000000 + n )
+         ("target_block_cpu_usage_pct", 10 + n )
+         ("max_block_net_usage", 10000000 + n )
+         ("target_block_net_usage_pct", 10 + n )
          ("max_transaction_lifetime", 3600 + n)
          ("max_transaction_exec_time", 9900 + n)
          ("max_authority_depth", 6 + n)
          ("max_inline_depth", 4 + n)
          ("max_inline_action_size", 4096 + n)
-         ("max_generated_transaction_size", 64*1024 + n)
          ("max_generated_transaction_count", 10 + n)
          ("percent_of_max_inflation_rate", 50 + n)
          ("storage_reserve_ratio", 100 + n);
@@ -1057,7 +1066,7 @@ BOOST_FIXTURE_TEST_CASE( proxy_actions_affect_producers, eosio_system_tester ) t
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
-   issue( "alice", "1000000.0000 EOS",  config::system_account_name );
+   issue( "alice", "10000000.0000 EOS",  config::system_account_name );
    fc::variant params = producer_parameters_example(50);
    vector<char> key = fc::raw::pack(get_public_key(N(alice), "active"));
 
@@ -1375,12 +1384,15 @@ fc::mutable_variant_object config_to_variant( const eosio::chain::chain_config& 
       ( "context_free_discount_cpu_usage_den", config.context_free_discount_cpu_usage_den )
       ( "max_transaction_cpu_usage", config.max_transaction_cpu_usage )
       ( "max_transaction_net_usage", config.max_transaction_net_usage )
+      ( "max_block_cpu_usage", config.max_block_cpu_usage )
+      ( "target_block_cpu_usage_pct", config.target_block_cpu_usage_pct )
+      ( "max_block_net_usage", config.max_block_net_usage )
+      ( "target_block_net_usage_pct", config.target_block_net_usage_pct )
       ( "max_transaction_lifetime", config.max_transaction_lifetime )
       ( "max_transaction_exec_time", config.max_transaction_exec_time )
       ( "max_authority_depth", config.max_authority_depth )
       ( "max_inline_depth", config.max_inline_depth )
       ( "max_inline_action_size", config.max_inline_action_size )
-      ( "max_generated_transaction_size", config.max_generated_transaction_size )
       ( "max_generated_transaction_count", config.max_generated_transaction_count );
 }
 

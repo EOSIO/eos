@@ -25,25 +25,55 @@ static appbase::abstract_plugin& _producer_plugin = app().register_plugin<produc
 using namespace eosio::chain;
 
 class producer_plugin_impl {
-public:
-   producer_plugin_impl(boost::asio::io_service& io)
-      : _timer(io) {}
+   public:
+      producer_plugin_impl(boost::asio::io_service& io)
+         : _timer(io) {}
 
-   void schedule_production_loop();
-   block_production_condition::block_production_condition_enum block_production_loop();
-   block_production_condition::block_production_condition_enum maybe_produce_block(fc::mutable_variant_object& capture);
+      void schedule_production_loop();
+      block_production_condition::block_production_condition_enum block_production_loop();
+      block_production_condition::block_production_condition_enum maybe_produce_block(fc::mutable_variant_object& capture);
 
-   boost::program_options::variables_map _options;
-   bool     _production_enabled                 = false;
-   uint32_t _required_producer_participation    = uint32_t(config::required_producer_participation);
-   uint32_t _production_skip_flags              = eosio::chain::skip_nothing;
+      boost::program_options::variables_map _options;
+      bool     _production_enabled                 = false;
+      uint32_t _required_producer_participation    = uint32_t(config::required_producer_participation);
+      uint32_t _production_skip_flags              = eosio::chain::skip_nothing;
 
-   std::map<chain::public_key_type, chain::private_key_type> _private_keys;
-   std::set<chain::account_name>                             _producers;
-   boost::asio::deadline_timer                               _timer;
+      std::map<chain::public_key_type, chain::private_key_type> _private_keys;
+      std::set<chain::account_name>                             _producers;
+      boost::asio::deadline_timer                               _timer;
 
-   block_production_condition::block_production_condition_enum _prev_result = block_production_condition::produced;
-   uint32_t _prev_result_count = 0;
+      block_production_condition::block_production_condition_enum _prev_result = block_production_condition::produced;
+      uint32_t _prev_result_count = 0;
+
+      time_point _last_signed_block_time;
+      time_point _start_time = fc::time_point::now();
+      uint32_t   _last_signed_block_num = 0;
+
+      producer_plugin* _self = nullptr;
+
+      void on_block( const block_trace& bt ) {
+         chain::chain_controller& chain = app().get_plugin<chain_plugin>().chain();
+
+         if( bt.block.timestamp <= _last_signed_block_time ) return;
+         if( bt.block.timestamp <= _start_time ) return;
+         if( bt.block.block_num() <= _last_signed_block_num ) return;
+         if( _producers.find( bt.block.producer ) != _producers.end() ) return;
+
+         const auto& active_pro = chain.get_global_properties().active_producers;
+         for( const auto& pro : active_pro.producers ) {
+            if( _producers.find( pro.producer_name ) != _producers.end() ) {
+               auto private_key_itr = _private_keys.find(pro.block_signing_key);
+               if( private_key_itr != _private_keys.end() ) {
+                  auto sig = private_key_itr->second.sign( bt.block.digest() );
+                  _last_signed_block_time = bt.block.timestamp;
+                  _last_signed_block_num  = bt.block.block_num();
+
+//                  ilog( "${n} confirmed", ("n",name(pro.producer_name)) );
+                  _self->confirmed_block( { bt.block.id(), bt.block.digest(), pro.producer_name, sig } );
+               }
+            }
+         }
+      }
 };
 
 void new_chain_banner(const eosio::chain::chain_controller& db)
@@ -68,7 +98,9 @@ void new_chain_banner(const eosio::chain::chain_controller& db)
 }
 
 producer_plugin::producer_plugin()
-   : my(new producer_plugin_impl(app().get_io_service())){}
+   : my(new producer_plugin_impl(app().get_io_service())){
+      my->_self = this;
+   }
 
 producer_plugin::~producer_plugin() {}
 
@@ -160,6 +192,7 @@ void producer_plugin::plugin_startup()
 { try {
    ilog("producer plugin:  plugin_startup() begin");
    chain::chain_controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain.applied_block.connect( [&]( const auto& btrace ){ my->on_block( btrace ); } );
 
    if (!my->_producers.empty())
    {
@@ -222,9 +255,11 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
       _prev_result_count++;
    }
    else {
+      /*
       if (_prev_result_count > 1) {
          ilog("Previous result occurred ${r} times",("r", _prev_result_count));
       }
+      */
       _prev_result_count = 1;
       _prev_result = result;
       switch(result)
@@ -234,17 +269,17 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
             auto producer  = db.head_block_producer();
             //          auto pending   = db.pending().size();
 
-            wlog("\r${p} generated block ${id}... #${n} @ ${t} with ${count} trxs", ("p", producer)(capture) );
+            wlog("\r${p} generated block ${id}... #${n} @ ${t} with ${count} trxs, lib: ${lib}", ("p", producer)("lib",db.last_irreversible_block_num())(capture) );
             break;
          }
          case block_production_condition::not_synced:
             ilog("Not producing block because production is disabled until we receive a recent block (see: --enable-stale-production)");
             break;
          case block_production_condition::not_my_turn:
-            ilog("Not producing block because it isn't my turn, its ${scheduled_producer}", (capture) );
+       //     ilog("Not producing block because it isn't my turn, its ${scheduled_producer}", (capture) );
             break;
          case block_production_condition::not_time_yet:
-            ilog("Not producing block because slot has not yet arrived");
+        //    ilog("Not producing block because slot has not yet arrived");
             break;
          case block_production_condition::no_private_key:
             ilog("Not producing block because I don't have the private key for ${scheduled_key}", (capture) );

@@ -34,7 +34,6 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
 
 #define SET_APP_HANDLER( contract, scope, action, nspace ) \
    chain._set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(contracts::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
-
    SET_APP_HANDLER( eosio, eosio, newaccount, eosio );
    SET_APP_HANDLER( eosio, eosio, setcode, eosio );
    SET_APP_HANDLER( eosio, eosio, setabi, eosio );
@@ -47,7 +46,6 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
    SET_APP_HANDLER( eosio, eosio, passrecovery, eosio );
    SET_APP_HANDLER( eosio, eosio, vetorecovery, eosio );
    SET_APP_HANDLER( eosio, eosio, canceldelay, eosio );
-   SET_APP_HANDLER( eosio, eosio, mindelay, eosio );
 }
 
 
@@ -63,21 +61,23 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.types.push_back( type_def{"fields","field[]"} );
    eos_abi.types.push_back( type_def{"time_point_sec","time"} );
 
-   eos_abi.actions.push_back( action_def{name("setcode"), "setcode"} );
-   eos_abi.actions.push_back( action_def{name("setabi"), "setabi"} );
-   eos_abi.actions.push_back( action_def{name("linkauth"), "linkauth"} );
-   eos_abi.actions.push_back( action_def{name("unlinkauth"), "unlinkauth"} );
-   eos_abi.actions.push_back( action_def{name("updateauth"), "updateauth"} );
-   eos_abi.actions.push_back( action_def{name("deleteauth"), "deleteauth"} );
-   eos_abi.actions.push_back( action_def{name("newaccount"), "newaccount"} );
-   eos_abi.actions.push_back( action_def{name("postrecovery"), "postrecovery"} );
-   eos_abi.actions.push_back( action_def{name("passrecovery"), "passrecovery"} );
-   eos_abi.actions.push_back( action_def{name("vetorecovery"), "vetorecovery"} );
-   eos_abi.actions.push_back( action_def{name("onerror"), "onerror"} );
-   eos_abi.actions.push_back( action_def{name("onblock"), "onblock"} );
-   eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay"} );
-   eos_abi.actions.push_back( action_def{name("mindelay"), "mindelay"} );
-
+   // TODO add ricardian contracts
+   eos_abi.actions.push_back( action_def{name("setcode"), "setcode",""} );
+   eos_abi.actions.push_back( action_def{name("setabi"), "setabi",""} );
+   eos_abi.actions.push_back( action_def{name("linkauth"), "linkauth",""} );
+   eos_abi.actions.push_back( action_def{name("unlinkauth"), "unlinkauth",""} );
+   eos_abi.actions.push_back( action_def{name("updateauth"), "updateauth",""} );
+   eos_abi.actions.push_back( action_def{name("deleteauth"), "deleteauth",""} );
+   eos_abi.actions.push_back( action_def{name("newaccount"), "newaccount",""} );
+   eos_abi.actions.push_back( action_def{name("postrecovery"), "postrecovery",""} );
+   eos_abi.actions.push_back( action_def{name("passrecovery"), "passrecovery",""} );
+   eos_abi.actions.push_back( action_def{name("vetorecovery"), "vetorecovery",""} );
+   eos_abi.actions.push_back( action_def{name("onerror"), "onerror",""} );
+   eos_abi.actions.push_back( action_def{name("onblock"), "onblock",""} );
+   eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay",""} );
+   
+   // TODO add any clauses 
+   //
    // ACTION PAYLOADS
 
 
@@ -163,13 +163,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
 
    eos_abi.structs.emplace_back( struct_def {
       "canceldelay", "", {
-         {"sender_id", "uint32"},
-      }
-   });
-
-   eos_abi.structs.emplace_back( struct_def {
-      "mindelay", "", {
-         {"delay", "uint32"},
+         {"trx_id", "transaction_id_type"},
       }
    });
 
@@ -178,7 +172,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.structs.emplace_back( struct_def {
       "pending_recovery", "", {
          {"account",    "name"},
-         {"request_id", "uint32"},
+         {"request_id", "uint128"},
          {"update",     "updateauth"},
          {"memo",       "string"}
       }
@@ -238,9 +232,9 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"expiration", "time_point_sec"},
          {"region", "uint16"},
          {"ref_block_num", "uint16"},
-         {"ref_block_prefix", "uint16"},
-         {"net_usage_words", "varuint32"},
-         {"kcpu_usage", "varuint32"},
+         {"ref_block_prefix", "uint32"},
+         {"max_net_usage_words", "varuint32"},
+         {"max_kcpu_usage", "varuint32"},
          {"delay_sec", "varuint32"}
       }
    });
@@ -273,7 +267,12 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"accounts", "permission_level_weight[]"}
       }
    });
-
+   eos_abi.structs.emplace_back( struct_def {
+         "clause_pair", "", {
+            {"id", "string"},
+            {"body", "string"} 
+         }
+   });
    eos_abi.structs.emplace_back( struct_def {
       "type_def", "", {
          {"new_type_name", "type_name"},
@@ -284,7 +283,8 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.structs.emplace_back( struct_def {
       "action_def", "", {
          {"name", "action_name"},
-         {"type", "type_name"}
+         {"type", "type_name"},
+         {"ricardian_contract", "string"}
       }
    });
 
@@ -303,7 +303,8 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"types", "type_def[]"},
          {"structs", "struct_def[]"},
          {"actions", "action_def[]"},
-         {"tables", "table_def[]"}
+         {"tables", "table_def[]"},
+         {"clauses", "clause_pair[]"}
       }
    });
 
@@ -316,7 +317,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"block_mroot", "checksum256"},
          {"producer", "account_name"},
          {"schedule_version", "uint32"},
-         {"new_producers", "producer_schedule?"}   
+         {"new_producers", "producer_schedule?"}
       }
    });
 
@@ -331,6 +332,10 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
 
 void chain_initializer::prepare_database( chain_controller& chain,
                                                          chainbase::database& db) {
+   /// Reserve id of 0 in permission_index by creating dummy permission_object as the very first object in the index:
+   db.create<permission_object>([&](permission_object& p) {
+   });
+
    /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
    auto create_native_account = [this, &chain, &db](account_name name) {
       db.create<account_object>([this, &name](account_object& a) {
@@ -386,7 +391,7 @@ void chain_initializer::prepare_database( chain_controller& chain,
    };
 
    auto empty_authority = authority(0, {}, {});
-   auto active_producers_authority = authority(config::producers_authority_threshold, {}, {});
+   auto active_producers_authority = authority(0, {}, {});
    active_producers_authority.accounts.push_back({{config::system_account_name, config::active_name}, 1});
 
    create_special_account(config::nobody_account_name, empty_authority, empty_authority);
