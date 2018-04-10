@@ -1725,8 +1725,8 @@ class Cluster(object):
                 return False
 
             # Since a single producer is involved commenting the transaction wait for now
-            # transId=Node.getTransId(trans[1])
-            # biosNode.waitForTransIdOnNode(transId)
+            transId=Node.getTransId(trans[1])
+            biosNode.waitForTransIdOnNode(transId)
 
             # TDB: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
             #  Uncomment when functional
