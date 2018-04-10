@@ -1001,4 +1001,34 @@ BOOST_AUTO_TEST_CASE(transaction_mroot)
 } FC_LOG_AND_RETHROW() }
 
 
+BOOST_AUTO_TEST_CASE(millions_of_tx)
+{ try {
+      validating_tester chain;
+      chain.produce_block();
+
+      // Create 10! accounts which is roughly 3 millions tx
+      std::string charmap = "abcdefghij";
+      vector<account_name> new_names;
+      do {
+         new_names.emplace_back(account_name(charmap));
+      } while(std::next_permutation(charmap.begin(), charmap.end()));
+
+      for (uint32_t i = 0; i < new_names.size(); i++) {
+         auto& new_name = new_names[i];
+         chain.push_action("eosio", "newaccount", "eosio", fc::mutable_variant_object()
+               ("creator", "eosio")
+               ("name", new_name)
+               ("owner", authority(chain.get_public_key(new_name, "owner")))
+               ("active", authority(chain.get_public_key(new_name, "active")))
+               ("recovery", authority(chain.get_public_key(new_name, "recovery"))), 
+               base_tester::DEFAULT_EXPIRATION_DELTA + (i % 1000), 
+               (i % 1000));
+         if (i % 1000 == 0) chain.produce_block();
+         std::cout <<  i << " tx(s) sent" << std::endl;
+      }
+      // Should reach this line
+      BOOST_TEST(true);
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
