@@ -104,15 +104,6 @@ bool expect_assert_message(const fc::exception& ex, string expected) {
    return (ex.get_log().at(0).get_message().find(expected) != std::string::npos);
 }
 
-struct assert_message_is {
-	bool operator()( const fc::exception& ex, string expected) {
-		auto act = ex.get_log().at(0).get_message();
-		return boost::algorithm::ends_with(act, expected);
-	}
-
-	string expected;
-};
-
 constexpr uint64_t TEST_METHOD(const char* CLASS, const char *METHOD) {
   return ( (uint64_t(DJBH(CLASS))<<32) | uint32_t(DJBH(METHOD)) );
 }
@@ -754,6 +745,8 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    //check that it gets executed afterwards
    traces = control->push_deferred_transactions( true );
    BOOST_CHECK_EQUAL( 1, traces.size() );
+   //confirm printed message
+   BOOST_TEST(traces.back().action_traces.back().console == "deferred executed\n");
 
    //schedule twice (second deferred transaction should replace first one)
    CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {});
@@ -776,6 +769,13 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    produce_block( fc::seconds(2) );
    traces = control->push_deferred_transactions( true );
    BOOST_CHECK_EQUAL( 1, traces.size() );
+
+   //verify that deferred transaction is dependent on max_generated_transaction_count configuration property
+   const auto& gpo = control->get_global_properties();
+   control->get_mutable_database().modify(gpo, [&]( auto& props ) {
+      props.configuration.max_generated_transaction_count = 0;
+   });
+   BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {}), transaction_exception);
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
@@ -1537,5 +1537,20 @@ BOOST_FIXTURE_TEST_CASE(privileged_tests, tester) { try {
 
 } FC_LOG_AND_RETHROW() }
 #endif
+
+/*************************************************************************************
+ * real_tests test cases
+ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(datastream_tests, TESTER) { try {
+   produce_blocks(1000);
+   create_account(N(testapi) );
+   produce_blocks(1000);
+   set_code(N(testapi), test_api_wast);
+   produce_blocks(1000);
+
+   CALL_TEST_FUNCTION( *this, "test_datastream", "test_basic", {} );
+
+   BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()

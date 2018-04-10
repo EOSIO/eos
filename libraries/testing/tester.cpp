@@ -18,6 +18,8 @@
 #include "IR/Module.h"
 #include "IR/Validate.h"
 
+using namespace eosio::chain::contracts;
+
 namespace eosio { namespace testing {
 
    fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value) {
@@ -131,7 +133,7 @@ namespace eosio { namespace testing {
   }
 
 
-   void base_tester::create_account( account_name a, account_name creator, bool multisig ) {
+   transaction_trace base_tester::create_account( account_name a, account_name creator, bool multisig ) {
       signed_transaction trx;
       set_transaction_headers(trx);
 
@@ -154,7 +156,7 @@ namespace eosio { namespace testing {
 
       set_transaction_headers(trx);
       trx.sign( get_private_key( creator, "active" ), chain_id_type()  );
-      push_transaction( trx );
+      return push_transaction( trx );
    }
 
    transaction_trace base_tester::push_transaction( packed_transaction& trx, uint32_t skip_flag ) { try {
@@ -610,6 +612,11 @@ namespace eosio { namespace testing {
                   fc::mutable_variant_object()("version", schedule.version)("producers", schedule.producers));
 
       return schedule;
+   }
+
+   const contracts::table_id_object* base_tester::find_table( name code, name scope, name table ) {
+      auto tid = control->get_database().find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
+      return tid;
    }
 
 } }  /// eosio::test

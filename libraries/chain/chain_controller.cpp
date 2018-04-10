@@ -580,17 +580,19 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
             }
          }
          ///TODO: hook this up as a signal handler in a de-coupled "logger" that may just silently drop them
-         for (const auto &ar : tr.action_traces) {
-            if (!ar.console.empty()) {
-               auto prefix = fc::format_string(
-                  "\n[(${a},${n})->${r}]",
-                  fc::mutable_variant_object()
-                     ("a", ar.act.account)
-                     ("n", ar.act.name)
-                     ("r", ar.receiver));
-               ilog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
-                    + ar.console
-                    + prefix + ": CONSOLE OUTPUT END   =====================" );
+         if(fc::logger::get(DEFAULT_LOGGER).is_enabled(fc::log_level::debug)) {
+            for (const auto &ar : tr.action_traces) {
+               if (!ar.console.empty()) {
+                  auto prefix = fc::format_string(
+                     "\n[(${a},${n})->${r}]",
+                     fc::mutable_variant_object()
+                        ("a", ar.act.account)
+                        ("n", ar.act.name)
+                        ("r", ar.receiver));
+                  dlog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
+                       + ar.console
+                       + prefix + ": CONSOLE OUTPUT END   =====================" );
+               }
             }
          }
       }
@@ -884,7 +886,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                                     ("enforced_delay", enforced_delay.to_seconds())("specified_delay", trx_meta.delay.to_seconds()) );
                      }
 
-                     return &input_metas.at(itr->second);
+                     return &trx_meta;
                   } else {
                      const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
                      if (gtrx != nullptr) {
