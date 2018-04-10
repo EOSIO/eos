@@ -109,7 +109,8 @@
 	fi
 
 	printf "\n\tChecking boost library installation.\n"
-	BVERSION=`cat "${BOOST_ROOT}/include/boost/version.hpp" 2>/dev/null | grep BOOST_LIB_VERSION | tail -1 | tr -s ' ' | cut -d\  -f3 | sed 's/[^0-9\._]//gI'`
+	BVERSION=`cat "${BOOST_ROOT}/include/boost/version.hpp" 2>/dev/null | grep BOOST_LIB_VERSION \
+	| tail -1 | tr -s ' ' | cut -d\  -f3 | sed 's/[^0-9\._]//gI'`
 	if [ $BVERSION != "1_66" ]; then
 		printf "\tRemoving existing boost libraries in ../opt/boost* .\n"
 		rm -rf ${HOME}/opt/boost*
