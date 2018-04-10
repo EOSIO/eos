@@ -192,6 +192,7 @@ class Node(object):
     def stdinAndCheckOutput(cmd, subcommand):
         outs=None
         errs=None
+        ret=0
         try:
             popen=subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             outs,errs=popen.communicate(input=subcommand.encode("utf-8"))
@@ -200,7 +201,7 @@ class Node(object):
             msg=ex.output
             return (ex.returncode, msg, None)
 
-        return (0, outs, errs)
+        return (ret, outs, errs)
 
     @staticmethod
     def normalizeJsonObject(extJStr):
@@ -458,6 +459,7 @@ class Node(object):
         #     return None
 
         if stakedDeposit > 0:
+            self.waitForTransIdOnNode(transId) # seems like account creation needs to be finlized before transfer can happen
             trans = self.transferFunds(creatorAccount, account, stakedDeposit, "init")
             transId=Node.getTransId(trans)
             # if waitForTransBlock and not self.waitForTransIdOnNode(transId):
@@ -553,15 +555,14 @@ class Node(object):
     def waitForBlockNumOnNode(self, blockNum, timeout=None):
         if timeout is None:
             timeout=Utils.systemWaitTimeout
-        startTime=time.time()
-        remainingTime=timeout
-        Utils.Debug and Utils.Print("cmd: remaining time %d seconds" % (remainingTime))
-        while time.time()-startTime < timeout:
+
+        endTime=time.time()+timeout
+        while endTime > time.time():
             if self.doesNodeHaveBlockNum(blockNum):
                 return True
-            sleepTime=3 if remainingTime > 3 else (3 - remainingTime)
-            remainingTime -= sleepTime
-            Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (sleepTime))
+            sleepTime=3
+            Utils.Debug and Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
+                                        (sleepTime, endTime - time.time()))
             time.sleep(sleepTime)
 
         return False
@@ -569,15 +570,14 @@ class Node(object):
     def waitForTransIdOnNode(self, transId, timeout=None):
         if timeout is None:
             timeout=Utils.systemWaitTimeout
-        startTime=time.time()
-        remainingTime=timeout
-        Utils.Debug and Utils.Print("cmd: remaining time %d seconds" % (remainingTime))
-        while time.time()-startTime < timeout:
+
+        endTime=time.time()+timeout
+        while endTime > time.time():
             if self.doesNodeHaveTransId(transId):
                 return True
-            sleepTime=3 if remainingTime > 3 else (3 - remainingTime)
-            remainingTime -= sleepTime
-            Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (sleepTime))
+            sleepTime=3
+            Utils.Debug and Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
+                                        (sleepTime, endTime - time.time()))
             time.sleep(sleepTime)
 
         return False
@@ -585,21 +585,20 @@ class Node(object):
     def waitForNextBlock(self, timeout=None):
         if timeout is None:
             timeout=Utils.systemWaitTimeout
-        startTime=time.time()
-        remainingTime=timeout
-        Utils.Debug and Utils.Print("cmd: remaining time %d seconds" % (remainingTime))
+
+        endTime=time.time()+timeout
         num=self.getIrreversibleBlockNum()
         Utils.Debug and Utils.Print("Current block number: %s" % (num))
 
-        while time.time()-startTime < timeout:
+        while endTime > time.time():
             nextNum=self.getIrreversibleBlockNum()
             if nextNum > num:
                 Utils.Debug and Utils.Print("Next block number: %s" % (nextNum))
                 return True
 
-            sleepTime=.5 if remainingTime > .5 else (.5 - remainingTime)
-            remainingTime -= sleepTime
-            Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (sleepTime))
+            sleepTime=.5
+            Utils.Debug and Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
+                                        (sleepTime, endTime - time.time()))
             time.sleep(sleepTime)
 
         return False
@@ -1146,13 +1145,14 @@ class Cluster(object):
         self.walletMgr=walletMgr
 
     # launch local nodes and set self.nodes
-    def launch(self, pnodes=1, totalNodes=1, prodCount=1, topo="mesh", delay=0):
+    def launch(self, pnodes=1, totalNodes=1, prodCount=1, topo="mesh", delay=1):
         """Launch cluster.
         pnodes: producer nodes count
         totalNodes: producer + non-producer nodes count
         prodCount: producers per prodcuer node count
         topo: cluster topology (as defined by launcher)
-        delay: delay between individual nodes laucnh (as defined by launcher)
+        delay: delay between individual nodes launch (as defined by launcher)
+          delay 0 exposes a bootstrap bug where producer handover may have a large gap confusing nodes and bringing system to a halt.
         """
         if not self.localCluster:
             Utils.Print("WARNING: Cluster not local, not launching %s." % (Utils.EosServerName))
@@ -1195,7 +1195,8 @@ class Cluster(object):
 
         self.nodes=nodes
 
-        # ensure cluster inter-connect by ensuring everyone has block 1
+        # ensure cluster node are inter-connected by ensuring everyone has block 1
+        Utils.Debug and Utils.Print("Cluster viability smoke test. Validate every cluster node has block 1. ")
         if not self.waitOnClusterBlockNumSync(1):
             Utils.Print("ERROR: Cluster doesn't seem to be in sync. Some nodes missing block 1")
             return False
@@ -1210,18 +1211,18 @@ class Cluster(object):
             Utils.Print("ERROR: Unable to parse cluster info")
             return False
 
-        initaKeys=producerKeys["inita"]
-        initbKeys=producerKeys["initb"]
-        if initaKeys is None or initbKeys is None:
+        init1Keys=producerKeys["inita"]
+        init2Keys=producerKeys["initb"]
+        if init1Keys is None or init2Keys is None:
             Utils.Print("ERROR: Failed to parse inita or intb private keys from cluster config files.")
-        self.initaAccount.ownerPrivateKey=initaKeys["private"]
-        self.initaAccount.ownerPublicKey=initaKeys["public"]
-        self.initaAccount.activePrivateKey=initaKeys["private"]
-        self.initaAccount.activePublicKey=initaKeys["public"]
-        self.initbAccount.ownerPrivateKey=initbKeys["private"]
-        self.initbAccount.ownerPublicKey=initbKeys["public"]
-        self.initbAccount.activePrivateKey=initbKeys["private"]
-        self.initbAccount.activePublicKey=initbKeys["public"]
+        self.initaAccount.ownerPrivateKey=init1Keys["private"]
+        self.initaAccount.ownerPublicKey=init1Keys["public"]
+        self.initaAccount.activePrivateKey=init1Keys["private"]
+        self.initaAccount.activePublicKey=init1Keys["public"]
+        self.initbAccount.ownerPrivateKey=init2Keys["private"]
+        self.initbAccount.ownerPublicKey=init2Keys["public"]
+        self.initbAccount.activePrivateKey=init2Keys["private"]
+        self.initbAccount.activePublicKey=init2Keys["public"]
         producerKeys.pop("eosio")
 
         return True
@@ -1310,10 +1311,9 @@ class Cluster(object):
     def waitOnClusterBlockNumSync(self, targetHeadBlockNum, timeout=None):
         if timeout is None:
             timeout=Utils.systemWaitTimeout
-        startTime=time.time()
-        remainingTime=timeout
-        Utils.Debug and Utils.Print("cmd: remaining time %d seconds" % (remainingTime))
-        while time.time()-startTime < timeout:
+
+        endTime=time.time()+timeout
+        while endTime > time.time():
             synced=True
             for node in self.nodes:
                 if node.alive:
@@ -1323,10 +1323,9 @@ class Cluster(object):
 
             if synced is True:
                 return True
-            #Utils.Debug and Utils.Print("Brief pause to allow nodes to catch up.")
-            sleepTime=3 if remainingTime > 3 else (3 - remainingTime)
-            remainingTime -= sleepTime
-            Utils.Debug and Utils.Print("cmd: remaining time %d seconds" % (remainingTime))
+            sleepTime=3
+            Utils.Debug and Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
+                                        (sleepTime, endTime - time.time()))
             time.sleep(sleepTime)
 
         return False
@@ -1597,7 +1596,9 @@ class Cluster(object):
 
     @staticmethod
     def bootstrap(totalNodes, prodCount, biosHost, biosPort):
-        """Create 'prodCount' init accounts and deposits 10000000000 EOS in each. If prodCount is -1 will initialize all possible producers."""
+        """Create 'prodCount' init accounts and deposits 10000000000 EOS in each. If prodCount is -1 will initialize all possible producers.
+        Ensure nodes are inter-connected prior to this call. One way to validate this will be to check if every node has block 1."""
+
         biosNode=Node(biosHost, biosPort)
         if not biosNode.checkPulse():
             Utils.Print("ERROR: Bios node doesn't appear to be running...")
@@ -1766,8 +1767,7 @@ class Cluster(object):
         if platform.linux_distribution()[0] == "Ubuntu" or platform.linux_distribution()[0] == "LinuxMint" or platform.linux_distribution()[0] == "Fedora":
             pgrepOpts="-a"
 
-        startTime=time.time()
-        remainingTime=timeout
+        endTime=time.time()+timeout
         checkForNodes=True
 
         psOut=None
@@ -1781,11 +1781,11 @@ class Cluster(object):
             except subprocess.CalledProcessError as ex:
                 pass
 
-            checkForNodes= (remainingTime > 0)
+            checkForNodes= (endTime > time.time())
             if checkForNodes:
-                sleepTime=3 if remainingTime > 3 else (3 - remainingTime)
-                remainingTime -= sleepTime
-                Utils.Debug and Utils.Print("cmd: sleep %d seconds" % (sleepTime))
+                sleepTime=3
+                Utils.Debug and Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
+                                        (sleepTime, endTime - time.time()))
                 time.sleep(sleepTime)
 
         if psOut is not None:
@@ -1797,10 +1797,10 @@ class Cluster(object):
                     break
                 instance=Node(self.host, self.port + i, pid=int(m.group(1)), cmd=m.group(2), alive=True, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
                 instance.setWalletEndpointArgs(self.walletEndpointArgs)
-                Utils.Debug and Utils.Print("Node:", instance)
+                Utils.Debug and Utils.Print("Node>", instance)
                 nodes.append(instance)
-            else:
-                Utils.Print("ERROR: No nodes discovered.")
+        else:
+            Utils.Print("ERROR: No nodes discovered.")
 
         return nodes
 
@@ -1889,6 +1889,17 @@ class Cluster(object):
                 os.kill(node.pid, signal.SIGKILL)
             except:
                 pass
+
+    def isMongodDbRunning(self):
+        cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
+        subcommand="db.version()"
+        Utils.Debug and Utils.Print("echo %s | %s" % (subcommand, cmd))
+        ret,outs,errs=Node.stdinAndCheckOutput(cmd.split(), subcommand)
+        if ret is not 0:
+            Utils.Print("ERROR: Failed to check database version: %s" % (Node.byteArrToStr(errs)) )
+            return False
+        Utils.Debug and Utils.Print("MongoDb response: %s" % (outs))
+        return True
 
     def waitForNextBlock(self, timeout=None):
         if timeout is None:

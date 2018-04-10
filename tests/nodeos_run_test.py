@@ -86,6 +86,9 @@ try:
     print("SERVER: %s" % (server))
     print("PORT: %d" % (port))
 
+    if enableMongo and not cluster.isMongodDbRunning():
+        errorExit("MongoDb doesn't seem to be running.")
+
     if localTest and not dontLaunch:
         cluster.killall()
         cluster.cleanup()
@@ -415,7 +418,7 @@ try:
         Print("verify abi is set")
         account=node.getEosAccountFromDb(currencyAccount.name)
         abiName=account["abi"]["structs"][0]["name"]
-        abiActionName=account["abi"]["actions"][0]["action_name"]
+        abiActionName=account["abi"]["actions"][0]["name"]
         abiType=account["abi"]["actions"][0]["type"]
         if abiName != "transfer" or abiActionName != "transfer" or abiType != "transfer":
             errorExit("FAILURE - get table currency account failed", raw=True)
