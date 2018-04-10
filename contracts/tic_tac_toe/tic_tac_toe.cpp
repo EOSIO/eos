@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <tic_tac_toe/tic_tac_toe.hpp>
+#include "tic_tac_toe.hpp"
 
 using namespace eosio;
 namespace tic_tac_toe {
