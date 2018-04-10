@@ -637,8 +637,7 @@ std::vector<instr*>* get_cached_ops_vec() {
 
    if ( _cached_ops.empty() ) {
       // prefill with error
-      for ( int i=0; i < 0xFF; i++ )
-         _cached_ops.push_back( cached_error.get() );
+      _cached_ops.resize( 256, cached_error.get() );
       BOOST_PP_SEQ_FOR_EACH( PUSH_BACK_OP, cached_ , WASM_OP_SEQ )
    }
 #undef PUSH_BACK_OP
