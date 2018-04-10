@@ -330,9 +330,12 @@ class Node(object):
                 trans=Node.runCmdReturnJson(cmd)
                 return trans
             except subprocess.CalledProcessError as ex:
+                msg=ex.output.decode("utf-8")
+                if "Failed to connect" in msg:
+                    Utils.Print("ERROR: Node is unreachable. %s" % (msg))
+                    raise
                 if not silentErrors:
-                    msg=ex.output.decode("utf-8")
-                    Utils.Print("ERROR: Exception during account by transaction retrieval. %s" % (msg))
+                    Utils.Print("ERROR: Exception during transaction retrieval. %s" % (msg))
                 return None
         else:
             for i in range(2):
@@ -455,15 +458,10 @@ class Node(object):
             Utils.Print("ERROR: Exception during account creation. %s" % (msg))
             return None
 
-        # if waitForTransBlock and not self.waitForTransIdOnNode(transId):
-        #     return None
-
         if stakedDeposit > 0:
             self.waitForTransIdOnNode(transId) # seems like account creation needs to be finlized before transfer can happen
             trans = self.transferFunds(creatorAccount, account, stakedDeposit, "init")
             transId=Node.getTransId(trans)
-            # if waitForTransBlock and not self.waitForTransIdOnNode(transId):
-            #     return None
 
         if waitForTransBlock and not self.waitForTransIdOnNode(transId):
             return None
@@ -908,10 +906,10 @@ class Node(object):
 
 Wallet=namedtuple("Wallet", "name password host port")
 class WalletMgr(object):
-    __walletLogFile="test_walletd_output.log"
+    __walletLogFile="test_keosd_output.log"
     __walletDataDir="test_wallet_0"
 
-    # walletd [True|False] Will wallet me in a standalone process
+    # walletd [True|False] True=Launch wallet(keosd) process; False=Manage launch process externally.
     def __init__(self, walletd, nodeosPort=8888, nodeosHost="localhost", port=8899, host="localhost"):
         self.walletd=walletd
         self.nodeosPort=nodeosPort
@@ -928,7 +926,7 @@ class WalletMgr(object):
 
     def launch(self):
         if not self.walletd:
-            Utils.Print("ERROR: Wallet Manager wasn't configured to launch walletd")
+            Utils.Print("ERROR: Wallet Manager wasn't configured to launch keosd")
             return False
 
         cmd="%s --data-dir %s --config-dir %s --http-server-address=%s:%d" % (
@@ -938,7 +936,7 @@ class WalletMgr(object):
             popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
             self.__walletPid=popen.pid
 
-        # Give walletd time to warm up
+        # Give keosd time to warm up
         time.sleep(1)
         return True
 
@@ -1088,10 +1086,10 @@ class Cluster(object):
     __BiosPort=8788
     
     
-    # walletd [True|False] Is walletd running. If not load the wallet plugin
+    # walletd [True|False] Is keosd running. If not load the wallet plugin
     def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=8899, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", initaPrvtKey=None, initbPrvtKey=None, staging=False):
         """Cluster container.
-        walletd [True|False] Is walletd running. If not load the wallet plugin
+        walletd [True|False] Is wallet keosd running. If not load the wallet plugin
         localCluster [True|False] Is cluster local to host.
         host: eos server host
         port: eos server port
@@ -1196,7 +1194,7 @@ class Cluster(object):
         self.nodes=nodes
 
         # ensure cluster node are inter-connected by ensuring everyone has block 1
-        Utils.Debug and Utils.Print("Cluster viability smoke test. Validate every cluster node has block 1. ")
+        Utils.Print("Cluster viability smoke test. Validate every cluster node has block 1. ")
         if not self.waitOnClusterBlockNumSync(1):
             Utils.Print("ERROR: Cluster doesn't seem to be in sync. Some nodes missing block 1")
             return False
@@ -1599,6 +1597,7 @@ class Cluster(object):
         """Create 'prodCount' init accounts and deposits 10000000000 EOS in each. If prodCount is -1 will initialize all possible producers.
         Ensure nodes are inter-connected prior to this call. One way to validate this will be to check if every node has block 1."""
 
+        Utils.Print("Starting cluster bootstrap.")
         biosNode=Node(biosHost, biosPort)
         if not biosNode.checkPulse():
             Utils.Print("ERROR: Bios node doesn't appear to be running...")
@@ -1712,7 +1711,7 @@ class Cluster(object):
                 Utils.Print("ERROR: Failed to publish contract %s." % (contract))
                 return False
 
-            # TBD: Potentially create currency
+            # TBD: Create currency, followed by issue currency
             
             Utils.Print("push issue action to eosio contract")
             contract=eosioAccount.name
@@ -1724,7 +1723,7 @@ class Cluster(object):
                 Utils.Print("ERROR: Failed to push issue action to eosio contract.")
                 return False
 
-            # Since a single producer is involved commenting the transaction wait for now
+            Utils.Print("Wait for issue action transaction to become finalized.")
             transId=Node.getTransId(trans[1])
             biosNode.waitForTransIdOnNode(transId)
 
@@ -1738,6 +1737,8 @@ class Cluster(object):
             #                 (expectedAmount, actualAmount))
             #     return False
 
+            initialFunds=10000000000
+            Utils.Print("Transfer initial fund %d to individual accounts." % (initialFunds))
             trans=None
             for name, keys in producerKeys.items():
                 initx = Account(name)
@@ -1745,13 +1746,17 @@ class Cluster(object):
                 initx.ownerPublicKey=keys["public"]
                 initx.activePrivateKey=keys["private"]
                 initx.activePublicKey=keys["public"]
-                trans = biosNode.transferFunds(eosioAccount, initx, 10000000000, "init transfer")
+                trans = biosNode.transferFunds(eosioAccount, initx, initialFunds, "init transfer")
                 if trans is None:
                     Utils.Print("ERROR: Failed to transfer funds from %s to %s." % (eosioAccount.name, name))
                     return False
+
+            Utils.Print("Wait for last transfer transaction to become finalized.")
             transId=Node.getTransId(trans)
             if not biosNode.waitForTransIdOnNode(transId):
                 return False
+
+            Utils.Print("Cluster bootstrap done.")
         finally:
             walletMgr.killall()
             walletMgr.cleanup()
