@@ -13,7 +13,6 @@ def errorExit(msg="", errorCode=1):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-v", help="verbose", action='store_true')
-parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
 parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
 parser.add_argument("--dump-error-details",
                     help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
@@ -21,7 +20,6 @@ parser.add_argument("--dump-error-details",
 
 args = parser.parse_args()
 debug=args.v
-amINoon=not args.not_noon
 dontKill=args.dont_kill
 dumpErrorDetails=args.dump_error_details
 
@@ -34,12 +32,7 @@ prodCount=1 # producers per producer node
 pnodes=1
 total_nodes=pnodes
 actualTest="tests/nodeos_run_test.py"
-if not amINoon:
-    actualTest="tests/eosd_run_test.py"
 testSuccessful=False
-
-if not amINoon:
-    testUtils.Utils.iAmNotNoon()
 
 cluster=testUtils.Cluster()
 try:
@@ -62,7 +55,7 @@ try:
     initaPrvtKey=producerKeys["inita"]["private"]
     initbPrvtKey=producerKeys["initb"]["private"]
 
-    cmd="%s --dont-launch --inita_prvt_key %s --initb_prvt_key %s %s %s %s" % (actualTest, initaPrvtKey, initbPrvtKey, "-v" if debug else "", "" if amINoon else "--not-noon", "--dont-kill" if dontKill else "")
+    cmd="%s --dont-launch --inita_prvt_key %s --initb_prvt_key %s %s %s %s" % (actualTest, initaPrvtKey, initbPrvtKey, "-v" if debug else "", "--dont-kill" if dontKill else "")
     Print("Starting up %s test: %s" % ("nodeos" if amINoon else "eosd", actualTest))
     Print("cmd: %s\n" % (cmd))
     if 0 != subprocess.call(cmd, shell=True):

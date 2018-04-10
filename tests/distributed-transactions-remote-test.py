@@ -18,8 +18,6 @@ pnodes=3
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", type=int, help="producing nodes count", default=pnodes)
 parser.add_argument("-v", help="verbose", action='store_true')
-# parser.add_argument("--nodes-file", type=str, help="File containing nodes info in JSON format.", default=nodesFile)
-parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
 parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
 parser.add_argument("--dump-error-details",
                     help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
@@ -29,7 +27,6 @@ args = parser.parse_args()
 pnodes=args.p
 # nodesFile=args.nodes_file
 debug=args.v
-amINoon=not args.not_noon
 dontKill=args.dont_kill
 dumpErrorDetails=args.dump_error_details
 
@@ -56,8 +53,6 @@ clusterMapJsonTemplate="""{
 }
 """
 
-if not amINoon:
-    testUtils.Utils.iAmNotNoon()
 cluster=testUtils.Cluster()
 
 (fd, nodesFile) = tempfile.mkstemp()
@@ -87,7 +82,7 @@ try:
     tfile.write(clusterMapJson)
     tfile.close()
 
-    cmd="%s --nodes-file %s %s %s %s" % (actualTest, nodesFile, "-v" if debug else "", "" if amINoon else "--not-noon", "--dont-kill" if dontKill else "")
+    cmd="%s --nodes-file %s %s %s" % (actualTest, nodesFile, "-v" if debug else "", "--dont-kill" if dontKill else "")
     Print("Starting up distributed transactions test: %s" % (actualTest))
     Print("cmd: %s\n" % (cmd))
     if 0 != subprocess.call(cmd, shell=True):
