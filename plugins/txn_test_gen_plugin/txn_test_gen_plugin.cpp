@@ -249,12 +249,12 @@ struct txn_test_gen_plugin_impl {
 
       static uint64_t nonce = static_cast<uint64_t>(fc::time_point::now().sec_since_epoch()) << 32;
       abi_serializer eosio_serializer(cc.get_database().find<account_object, by_name>(config::system_account_name)->get_abi());
-      variant nonce_vo = fc::mutable_variant_object()
-         ("value", fc::to_string(nonce++));
 
 
       for(unsigned int i = 0; i < batch; ++i) {
       {
+      variant nonce_vo = fc::mutable_variant_object()
+         ("value", fc::to_string(nonce++));
       signed_transaction trx;
       trx.actions.push_back(act_a_to_b);
       trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", eosio_serializer.variant_to_binary("nonce", nonce_vo)));
@@ -266,6 +266,8 @@ struct txn_test_gen_plugin_impl {
       }
 
       {
+      variant nonce_vo = fc::mutable_variant_object()
+         ("value", fc::to_string(nonce++));
       signed_transaction trx;
       trx.actions.push_back(act_b_to_a);
       trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", eosio_serializer.variant_to_binary("nonce", nonce_vo)));
