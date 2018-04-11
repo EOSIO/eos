@@ -1006,8 +1006,8 @@ BOOST_AUTO_TEST_CASE(millions_of_tx)
       validating_tester chain;
       chain.produce_block();
 
-      // Create 10! accounts which is roughly 3 millions tx
-      std::string charmap = "abcdefghij";
+      // Create 11! accounts which is roughly 39 millions tx
+      std::string charmap = "abcdefghijk";
       vector<account_name> new_names;
       do {
          new_names.emplace_back(account_name(charmap));
