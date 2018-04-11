@@ -1,3 +1,4 @@
+#if 0
 /**
  *  @file
  *  @copyright defined in eos/LICENSE.txt
@@ -109,3 +110,4 @@ extern "C" {
        }
     }
 }
+#endif

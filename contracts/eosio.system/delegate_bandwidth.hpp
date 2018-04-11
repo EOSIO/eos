@@ -7,10 +7,10 @@
 #include "voting.hpp"
 
 #include <eosiolib/eosio.hpp>
-#include <eosiolib/token.hpp>
+//#include <eosiolib/token.hpp>
 #include <eosiolib/print.hpp>
 
-#include <eosiolib/generic_currency.hpp>
+//#include <eosiolib/generic_currency.hpp>
 #include <eosiolib/datastream.hpp>
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/multi_index.hpp>
@@ -35,17 +35,20 @@ namespace eosiosystem {
          static constexpr account_name system_account = SystemAccount;
          static constexpr time refund_delay = 3*24*3600;
          static constexpr time refund_expiration_time = 3600;
-         using currency = typename common<SystemAccount>::currency;
-         using system_token_type = typename common<SystemAccount>::system_token_type;
+         //         using currency = typename common<SystemAccount>::currency;
+         //         using system_token_type = typename common<SystemAccount>::system_token_type;
          using eosio_parameters = typename common<SystemAccount>::eosio_parameters;
          using global_state_singleton = typename common<SystemAccount>::global_state_singleton;
 
          struct total_resources {
-            account_name owner;
-            typename currency::token_type net_weight;
-            typename currency::token_type cpu_weight;
-            typename currency::token_type storage_stake;
-            uint64_t storage_bytes = 0;
+            account_name  owner;
+               //            typename currency::token_type net_weight;
+               //            typename currency::token_type cpu_weight;
+               //            typename currency::token_type storage_stake;
+            eosio::asset  net_weight;
+            eosio::asset  cpu_weight;
+            eosio::asset  storage_stake;   
+            uint64_t      storage_bytes = 0;
 
             uint64_t primary_key()const { return owner; }
 
@@ -57,12 +60,15 @@ namespace eosiosystem {
           *  Every user 'from' has a scope/table that uses every receipient 'to' as the primary key.
           */
          struct delegated_bandwidth {
-            account_name from;
-            account_name to;
-            typename currency::token_type net_weight;
-            typename currency::token_type cpu_weight;
-            typename currency::token_type storage_stake;
-            uint64_t storage_bytes = 0;
+            account_name  from;
+            account_name  to;
+               //            typename currency::token_type net_weight;
+               //            typename currency::token_type cpu_weight;
+               //            typename currency::token_type storage_stake;
+            eosio::asset  net_weight;
+            eosio::asset  cpu_weight;
+            eosio::asset  storage_stake;
+            uint64_t      storage_bytes = 0;
 
             uint64_t  primary_key()const { return to; }
 
@@ -71,9 +77,10 @@ namespace eosiosystem {
          };
 
          struct refund_request {
-            account_name owner;
-            time request_time;
-            typename currency::token_type amount;
+            account_name  owner;
+            time          request_time;
+               //        typename currency::token_type amount;
+            eosio::asset  amount;
 
             uint64_t  primary_key()const { return owner; }
 
@@ -116,8 +123,9 @@ namespace eosiosystem {
             eosio_assert( del.stake_net_quantity.amount >= 0, "must stake a positive amount" );
             eosio_assert( del.stake_storage_quantity.amount >= 0, "must stake a positive amount" );
 
-            system_token_type total_stake = del.stake_cpu_quantity + del.stake_net_quantity + del.stake_storage_quantity;
-            eosio_assert( total_stake.quantity > 0, "must stake a positive amount" );
+            //            system_token_type total_stake = del.stake_cpu_quantity + del.stake_net_quantity + del.stake_storage_quantity;
+            asset total_stake = del.stake_cpu_quantity + del.stake_net_quantity + del.stake_storage_quantity;
+            eosio_assert( total_stake.amount > 0, "must stake a positive amount" );
 
             require_auth( del.from );
 
@@ -126,15 +134,25 @@ namespace eosiosystem {
             if ( 0 < del.stake_storage_quantity.amount ) {
                auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
                   : common<SystemAccount>::get_default_parameters();
-               auto token_supply = currency::get_total_supply();
+#warning "FIX THIS!"
+               //               auto token_supply = currency::get_total_supply();
+               eosio::asset token_supply(0, S(4,EOS));
 
                //make sure that there is no posibility of overflow here
+               //               uint64_t storage_bytes_estimated = ( parameters.max_storage_size - parameters.total_storage_bytes_reserved )
+               //                  * parameters.storage_reserve_ratio * system_token_type(del.stake_storage_quantity)
+               //                  / ( token_supply - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient */;
+
                uint64_t storage_bytes_estimated = ( parameters.max_storage_size - parameters.total_storage_bytes_reserved )
-                  * parameters.storage_reserve_ratio * system_token_type(del.stake_storage_quantity)
+                  * parameters.storage_reserve_ratio * del.stake_storage_quantity
                   / ( token_supply - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient */;
 
+               //               storage_bytes = ( parameters.max_storage_size - parameters.total_storage_bytes_reserved - storage_bytes_estimated )
+               //                  * parameters.storage_reserve_ratio * system_token_type(del.stake_storage_quantity)
+               //                  / ( token_supply - del.stake_storage_quantity - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient */;
+
                storage_bytes = ( parameters.max_storage_size - parameters.total_storage_bytes_reserved - storage_bytes_estimated )
-                  * parameters.storage_reserve_ratio * system_token_type(del.stake_storage_quantity)
+                  * parameters.storage_reserve_ratio * del.stake_storage_quantity
                   / ( token_supply - del.stake_storage_quantity - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient */;
 
                eosio_assert( 0 < storage_bytes, "stake is too small to increase storage even by 1 byte" );
@@ -186,7 +204,8 @@ namespace eosiosystem {
 
             //set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, tot_itr->net_weight.quantity, tot_itr->cpu_weight.quantity );
 
-            currency::inline_transfer( del.from, SystemAccount, total_stake, "stake bandwidth" );
+            //            currency::inline_transfer( del.from, SystemAccount, total_stake, "stake bandwidth" );
+            _system_token.inline_transfer( del.from, SystemAccount, total_stake, "stake bandwidth" );
             if ( asset(0) < del.stake_net_quantity + del.stake_cpu_quantity ) {
                voting<SystemAccount>::increase_voting_power( del.from, del.stake_net_quantity + del.stake_cpu_quantity );
             }
@@ -206,11 +225,12 @@ namespace eosiosystem {
             eosio_assert( dbw.cpu_weight >= del.unstake_cpu_quantity, "insufficient staked cpu bandwidth" );
             eosio_assert( dbw.storage_bytes >= del.unstake_storage_bytes, "insufficient staked storage" );
 
-            system_token_type storage_stake_decrease = system_token_type(0);
+            //            system_token_type storage_stake_decrease = system_token_type(0);
+            eosio::asset storage_stake_decrease(0, S(4,EOS));
             if ( 0 < del.unstake_storage_bytes ) {
                storage_stake_decrease = 0 < dbw.storage_bytes ?
                                             dbw.storage_stake * del.unstake_storage_bytes / dbw.storage_bytes
-                                            : system_token_type(0);
+                                            : eosio::asset(0, S(4,EOS));
 
                auto parameters = global_state_singleton::get();
                parameters.total_storage_bytes_reserved -= del.unstake_storage_bytes;
@@ -218,10 +238,12 @@ namespace eosiosystem {
                global_state_singleton::set( parameters );
             }
 
-            auto total_refund = system_token_type(del.unstake_cpu_quantity)
-               + system_token_type(del.unstake_net_quantity) + storage_stake_decrease;
+            //            auto total_refund = system_token_type(del.unstake_cpu_quantity)
+            //               + system_token_type(del.unstake_net_quantity) + storage_stake_decrease;
 
-            eosio_assert( total_refund.quantity > 0, "must unstake a positive amount" );
+            eosio::asset total_refund = del.unstake_cpu_quantity + del.unstake_net_quantity + storage_stake_decrease;
+
+            eosio_assert( total_refund.amount > 0, "must unstake a positive amount" );
 
             del_tbl.modify( dbw, del.from, [&]( auto& dbo ){
                dbo.net_weight -= del.unstake_net_quantity;
@@ -282,7 +304,8 @@ namespace eosiosystem {
             // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
             // consecutive missed blocks.
 
-            currency::inline_transfer( SystemAccount, req->owner, req->amount, "unstake" );
+            //            currency::inline_transfer( SystemAccount, req->owner, req->amount, "unstake" );
+            _system_token.inline_transfer( SystemAccount, req->owner, req->amount, "unstake" );
             refunds_tbl.erase( req );
          }
    };

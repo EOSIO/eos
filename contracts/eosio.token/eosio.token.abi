@@ -28,6 +28,13 @@
         {"name":"memo", "type":"string"}
      ]
   },{
+     "name": "inlineissue",
+     "base": "",
+     "fields": [
+        {"name":"quantity", "type":"asset"},
+        {"name":"memo", "type":"string"}
+     ]
+  },{
       "name": "account",
       "base": "",
       "fields": [

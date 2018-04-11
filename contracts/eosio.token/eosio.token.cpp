@@ -56,6 +56,19 @@ void token::issue( account_name to, asset quantity, string memo )
     }
 }
 
+void token::inlineissue( asset quantity, string memo )
+{
+   auto sym = quantity.symbol.name();
+   stats statstable( _self, sym );
+   const auto& st = statstable.get( sym );
+   
+   require_auth( st.issuer );
+   eosio_assert( quantity.is_valid(), "invalid quantity" );
+   eosio_assert( quantity.amount > 0, "must issue positive quantity" );
+   
+   dispatch_inline( permission_level{st.issuer,N(active)}, _self, N(issue), &token::issue, { st.issuer, quantity, memo } );
+}
+
 void token::transfer( account_name from, 
                       account_name to,
                       asset        quantity,
@@ -77,6 +90,26 @@ void token::transfer( account_name from,
     add_balance( to, quantity, st, from );
 }
 
+void token::inline_transfer( account_name from,
+                             account_name to,
+                             asset        quantity,
+                             string       memo)
+{
+   require_auth( from );
+   
+   require_recipient( from );
+   require_recipient( to );
+   
+   dispatch_inline( permission_level{from,N(active)}, _self, N(transfer), &token::transfer, { from, to, quantity, memo } );
+}
+
+asset token::get_total_supply( const symbol_type& symbol )
+{
+   auto symbol_name = symbol.name();
+   stats statstable( _self, symbol_name );
+   const auto& st = statstable.get( symbol_name );
+   return st.supply;
+}
 
 void token::sub_balance( account_name owner, asset value, const currency_stats& st ) {
    accounts from_acnts( _self, owner );
@@ -118,4 +151,4 @@ void token::add_balance( account_name owner, asset value, const currency_stats& 
 
 } /// namespace eosio
 
-EOSIO_ABI( eosio::token, (create)(issue)(transfer) )
+EOSIO_ABI( eosio::token, (create)(issue)(inlineissue)(transfer) )

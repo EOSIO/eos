@@ -2,9 +2,11 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
+#pragma once
 
-#include <eosiolib/eosio.hpp>
 #include <eosiolib/asset.hpp>
+#include <eosiolib/eosio.hpp>
+//#include <eosiolib/asset.hpp>
 #include <string>
 
 namespace eosio {
@@ -24,11 +26,19 @@ namespace eosio {
 
          void issue( account_name to, asset quantity, string memo );
 
+         void inlineissue( asset quantity, string memo );
+
          void transfer( account_name from, 
                         account_name to,
                         asset        quantity,
                         string       memo );
 
+         void inline_transfer( account_name from,
+                               account_name to,
+                               asset        quantity,
+                               string       memo );
+
+         asset get_total_supply( const symbol_type& symbol );
 
       private:
          struct account {
