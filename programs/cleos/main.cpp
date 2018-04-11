@@ -212,7 +212,7 @@ chain::action generate_nonce() {
          ("value", v);
 
    try {
-      auto result = call(get_code_func, fc::mutable_variant_object("account_name", config::system_account_name));
+      auto result = call(get_code_func, fc::mutable_variant_object("account_name", name(config::system_account_name)));
       abi_serializer eosio_serializer(result["abi"].as<contracts::abi_def>());
       return chain::action( {}, config::system_account_name, "nonce", eosio_serializer.variant_to_binary("nonce", nonce));
    }
