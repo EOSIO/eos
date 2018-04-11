@@ -141,6 +141,7 @@ string wallet_host = "localhost";
 uint32_t wallet_port = 8888;
 
 auto   tx_expiration = fc::seconds(30);
+string tx_ref_block_num_or_id;
 bool   tx_force_unique = false;
 bool   tx_dont_broadcast = false;
 bool   tx_skip_sign = false;
@@ -167,6 +168,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
    cmd->add_flag("-j,--json", tx_print_json, localized("print result as json"));
    cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("don't broadcast transaction to the network (just print to stdout)"));
+   cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
 
    string msg = "An account and permission level to authorize, as in 'account@permission'";
    if(!default_permission.empty())
@@ -241,7 +243,19 @@ void sign_transaction(signed_transaction& trx, fc::variant& required_keys) {
 fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
    auto info = get_info();
    trx.expiration = info.head_block_time + tx_expiration;
-   trx.set_reference_block(info.head_block_id);
+
+   // Set tapos, default to last irreversible block if it's not specified by the user
+   block_id_type ref_block_id;
+   try {
+      fc::variant ref_block;
+      if (!tx_ref_block_num_or_id.empty()) {
+         ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", tx_ref_block_num_or_id));
+      } else {
+         ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", info.last_irreversible_block_num));
+      }
+      ref_block_id = ref_block["id"].as<block_id_type>();
+   } EOS_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
+   trx.set_reference_block(ref_block_id);
 
    if (tx_force_unique) {
       trx.context_free_actions.emplace_back( generate_nonce() );
