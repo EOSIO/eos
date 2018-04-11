@@ -4,35 +4,27 @@
 namespace eosio { namespace chain {
 
   uint32_t block_header_state::calc_dpos_last_irreversible()const {
-     vector<uint32_t> irb;
-     irb.reserve( producer_to_last_produced.size() );
-     for( const auto& item : producer_to_last_produced ) 
-        irb.push_back(item.second);
+    vector<uint32_t> irb;
+    irb.reserve( producer_to_last_produced.size() );
+    for( const auto& item : producer_to_last_produced ) 
+       irb.push_back(item.second);
 
-     size_t offset = EOS_PERCENT(irb.size(), config::percent_100- config::irreversible_threshold_percent);
-     std::nth_element( irb.begin(), irb.begin() + offset, irb.end() );
+    size_t offset = EOS_PERCENT(irb.size(), config::percent_100- config::irreversible_threshold_percent);
+    std::nth_element( irb.begin(), irb.begin() + offset, irb.end() );
 
-     return irb[offset];
+    return irb[offset];
   }
 
 
   bool block_header_state::is_active_producer( account_name n )const {
-     return producer_to_last_produced.find(n) != producer_to_last_produced.end();
+    return producer_to_last_produced.find(n) != producer_to_last_produced.end();
   }
 
   producer_key block_header_state::scheduled_producer( block_timestamp_type t )const {
-      auto index = t.slot % (active_schedule.producers.size() * config::producer_repetitions);
-      index /= config::producer_repetitions;
-      return active_schedule.producers[index];
+    auto index = t.slot % (active_schedule.producers.size() * config::producer_repetitions);
+    index /= config::producer_repetitions;
+    return active_schedule.producers[index];
   }
-
-   bool block_header_state::is_start_of_round( uint32_t block_num )const  {
-     return 0 == (block_num % blocks_per_round());
-   }
-
-   uint32_t block_header_state::blocks_per_round()const {
-     return active_schedule.producers.size()*config::producer_repetitions;
-   }
 
 
   /**
@@ -60,30 +52,28 @@ namespace eosio { namespace chain {
     FC_ASSERT( h.block_mroot == result.blockroot_merkle.get_root(), "unexpected block merkle root" );
 
     if( result.dpos_last_irreversible_blocknum >= pending_schedule_lib_num ) {
-       result.active_schedule = move(result.pending_schedule);
+      result.active_schedule = move(result.pending_schedule);
 
-       flat_map<account_name,uint32_t> new_producer_to_last_produced;
-       for( const auto& pro : result.active_schedule.producers ) {
-          auto existing = producer_to_last_produced.find( pro.producer_name );
-          if( existing != producer_to_last_produced.end() ) {
-             new_producer_to_last_produced[pro.producer_name] = existing->second;
-          } else {
-             new_producer_to_last_produced[pro.producer_name] = result.dpos_last_irreversible_blocknum;
-          }
-       }
-       result.producer_to_last_produced = move( new_producer_to_last_produced );
+      flat_map<account_name,uint32_t> new_producer_to_last_produced;
+      for( const auto& pro : result.active_schedule.producers ) {
+        auto existing = producer_to_last_produced.find( pro.producer_name );
+        if( existing != producer_to_last_produced.end() ) {
+          new_producer_to_last_produced[pro.producer_name] = existing->second;
+        } else {
+          new_producer_to_last_produced[pro.producer_name] = result.dpos_last_irreversible_blocknum;
+        }
+      }
+      result.producer_to_last_produced = move( new_producer_to_last_produced );
     }
 
     if( h.new_producers ) {
-       EOS_ASSERT( is_start_of_round( result.block_num ), block_validate_exception,
-                    "Producer changes may only occur at the end of a round.");
 
-       FC_ASSERT( h.new_producers->version == result.active_schedule.version + 1, "wrong producer schedule version specified" );
-       FC_ASSERT( result.pending_schedule.producers.size() == 0, 
-                  "cannot set new pending producers until last pending is confirmed" );
-       result.pending_schedule         = *h.new_producers;
-       result.pending_schedule_hash    = digest_type::hash( result.pending_schedule );
-       result.pending_schedule_lib_num = h.block_num();
+      FC_ASSERT( h.new_producers->version == result.active_schedule.version + 1, "wrong producer schedule version specified" );
+      FC_ASSERT( result.pending_schedule.producers.size() == 0, 
+                 "cannot set new pending producers until last pending is confirmed" );
+      result.pending_schedule         = *h.new_producers;
+      result.pending_schedule_hash    = digest_type::hash( result.pending_schedule );
+      result.pending_schedule_lib_num = h.block_num();
     } 
 
     result.header = h;

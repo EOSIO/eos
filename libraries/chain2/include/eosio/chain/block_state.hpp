@@ -13,6 +13,8 @@ namespace eosio { namespace chain {
       map<transaction_id_type,transaction_metadata_ptr>   input_transactions;
       bool                                                validated = false;
       block_trace_ptr                                     trace;
+
+      void reset_trace();
    };
 
    typedef std::shared_ptr<block_state> block_state_ptr;

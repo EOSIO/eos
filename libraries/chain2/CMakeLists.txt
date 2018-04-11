@@ -9,6 +9,7 @@ add_library( eosio_chain2
              block_header_state.cpp
              block_state.cpp
              fork_database.cpp
+             controller.cpp
 #             chain_config.cpp
 #             block_trace.cpp
 #             wast_to_wasm.cpp

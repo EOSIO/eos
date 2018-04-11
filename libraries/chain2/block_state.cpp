@@ -91,28 +91,42 @@ namespace eosio { namespace chain {
          for( uint32_t i = 1; i < block->regions.size(); ++i )
             FC_ASSERT( block->regions[i-1].region < block->regions[i].region );
 
-
-         bool found_trx = false;
-         trace = std::make_shared<block_trace>( block );
-         /// reserve region_trace
-         for( uint32_t r = 0; r < block->regions.size(); ++r ) {
-            // FC_ASSERT( block->regions[r].cycles_summary.size() >= 1, "must be at least one cycle" );
-            /// reserve cycle traces
-            for( uint32_t c = 0; c < block->regions[r].cycles_summary.size(); c++ ) {
-               // FC_ASSERT( block->regions[r].cycles_summary.size() >= 1, "must be at least one shard" );
-               /// reserve shard traces
-               for( uint32_t s = 0; s < block->regions[r].cycles_summary[c][s].transactions.size(); s++ ) {
-                  found_trx = true;
-                 // FC_ASSERT( block->regions[r].cycles.size() >= 1, "must be at least one trx" ); /// 
-                  //validate_shard_locks( block->.... )
-                  /// reserve transaction trace...
-               }
-            }
-         }
-         FC_ASSERT( found_trx, "a block must contain at least one transaction (the implicit on block trx)" );
+         reset_trace();
 
       } // end if block
    } 
+
+   void block_state::reset_trace() {
+      validated      = false;
+      bool found_trx = false;
+      trace = std::make_shared<block_trace>( block );
+
+      auto num_regions = block->regions.size();
+      trace->region_traces.resize( num_regions );
+      /// reserve region_trace
+      for( uint32_t r = 0; r < num_regions; ++r ) {
+         auto num_cycles = block->regions[r].cycles_summary.size();
+         trace->region_traces[r].cycle_traces.resize( num_cycles );
+         // FC_ASSERT( block->regions[r].cycles_summary.size() >= 1, "must be at least one cycle" );
+         /// reserve cycle traces
+         for( uint32_t c = 0; c < num_cycles; c++ ) {
+            auto num_shards = block->regions[r].cycles_summary[c].size();
+            trace->region_traces[r].cycle_traces[c].shard_traces.resize( num_shards );
+            // FC_ASSERT( block->regions[r].cycles_summary.size() >= 1, "must be at least one shard" );
+            /// reserve shard traces
+            for( uint32_t s = 0; s < num_shards; ++s ) {
+               validate_shard_locks( block->regions[r].cycles_summary[c][s], s );
+
+               auto num_trx = block->regions[r].cycles_summary[c][s].transactions.size();
+               trace->region_traces[r].cycle_traces[c].shard_traces[s].transaction_traces.resize(num_trx);
+               for( uint32_t t = 0; t < num_trx; ++t ) {
+                  found_trx = true;
+               }
+            }
+         }
+      }
+      FC_ASSERT( found_trx, "a block must contain at least one transaction (the implicit on block trx)" );
+   }
 
 
 

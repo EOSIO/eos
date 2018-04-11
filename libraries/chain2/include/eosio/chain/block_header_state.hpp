@@ -21,11 +21,10 @@ struct block_header_state {
     flat_map<account_name,uint32_t> producer_to_last_produced;
     
     block_header_state   next( const signed_block_header& h )const;
+
     uint32_t             calc_dpos_last_irreversible()const;
     bool                 is_active_producer( account_name n )const;
     producer_key         scheduled_producer( block_timestamp_type t )const;
-    bool                 is_start_of_round( uint32_t block_num )const;
-    uint32_t             blocks_per_round()const;
 };
 
 

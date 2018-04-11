@@ -1,5 +1,8 @@
 #include <eosio/chain/controller.hpp>
-#include <chainbase/database.hpp>
+#include <chainbase/chainbase.hpp>
+
+#include <eosio/chain/block_log.hpp>
+#include <eosio/chain/fork_database.hpp>
 
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
@@ -18,7 +21,7 @@ using resource_limits::resource_limits_manager;
 
 struct pending_state {
    pending_state( database::session&& s )
-   :_db_session(s){}
+   :_db_session( move(s) ){}
 
    block_timestamp_type           _pending_time;
    database::session              _db_session;
@@ -35,6 +38,19 @@ struct controller_impl {
    resource_limits_manager        resource_limits;
    controller::config             conf;
    controller&                    self;
+
+   block_id_type head_block_id()const {
+      return head->id;
+   }
+   time_point head_block_time()const {
+      return head->header.timestamp;
+   }
+   const block_header& head_block_header()const {
+      return head->header;
+   }
+
+   void pop_block() {
+   }
 
 
    controller_impl( const controller::config& cfg, controller& s  )
@@ -66,6 +82,7 @@ struct controller_impl {
    }
 
    void initialize_indicies() {
+      /*
       db.add_index<account_index>();
       db.add_index<permission_index>();
       db.add_index<permission_usage_index>();
@@ -86,6 +103,7 @@ struct controller_impl {
       db.add_index<generated_transaction_multi_index>();
       db.add_index<producer_multi_index>();
       db.add_index<scope_sequence_multi_index>();
+      */
 
       resource_limits.initialize_database();
    }
@@ -114,6 +132,39 @@ struct controller_impl {
 
    }
 
+
+   /**
+    *  This method will backup all tranasctions in the current pending block,
+    *  undo the pending block, call f(), and then push the pending transactions
+    *  on top of the new state.
+    */
+   template<typename Function>
+   auto without_pending_transactions( Function&& f )
+   {
+#if 0
+      vector<transaction_metadata> old_input;
+
+      if( _pending_block )
+         old_input = move(_pending_transaction_metas);
+
+      clear_pending();
+
+      /** after applying f() push previously input transactions on top */
+      auto on_exit = fc::make_scoped_exit( [&](){
+         for( auto& t : old_input ) {
+            try {
+               if (!is_known_transaction(t.id))
+                  _push_transaction( std::move(t) );
+            } catch ( ... ){}
+         }
+      });
+#endif
+      pending.reset();
+      return f();
+   }
+
+
+
    block_state_ptr push_block( const signed_block_ptr& b ) {
       return without_pending_transactions( [&](){ 
          return db.with_write_lock( [&](){ 
@@ -121,6 +172,7 @@ struct controller_impl {
          });
       });
    }
+
 
    block_state_ptr push_block_impl( const signed_block_ptr& b ) {
       auto head_state = fork_db.add( b );
@@ -149,7 +201,8 @@ struct controller_impl {
                 // pop all blocks from the bad fork
                 while( head_block_id() != branches.second.back()->header.previous )
                    pop_block();
-
+                
+                // re-apply good blocks
                 for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
                    apply_block( (*ritr) );
                 }
@@ -167,6 +220,7 @@ struct controller_impl {
          fork_db.set_validity( head_state, false );
          throw;
       }
+      return head;
    } /// push_block_impl
 
    bool should_enforce_runtime_limits()const {
@@ -185,6 +239,7 @@ struct controller_impl {
    { try {
       const auto& b = trace.block;
 
+      /* TODO RESTORE 
       update_global_properties( b );
       update_global_dynamic_data( b );
       update_signing_producer(signing_producer, b);
@@ -193,18 +248,21 @@ struct controller_impl {
       clear_expired_transactions();
 
       update_last_irreversible_block();
+
       resource_limits.process_account_limit_updates();
 
       const auto& chain_config = self.get_global_properties().configuration;
-      _resource_limits.set_block_parameters(
+      resource_limits.set_block_parameters(
          {EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct), chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}},
          {EOS_PERCENT(chain_config.max_block_net_usage, chain_config.target_block_net_usage_pct), chain_config.max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, 1000, {99, 100}, {1000, 999}}
       );
+
+      */
    } FC_CAPTURE_AND_RETHROW() }
 
    void clear_expired_transactions() {
       //Look for expired transactions in the deduplication list, and remove them.
-      auto& transaction_idx = _db.get_mutable_index<transaction_multi_index>();
+      auto& transaction_idx = db.get_mutable_index<transaction_multi_index>();
       const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
       while( (!dedupe_index.empty()) && (head_block_time() > fc::time_point(dedupe_index.begin()->expiration) ) ) {
          transaction_idx.remove(*dedupe_index.begin());
@@ -212,10 +270,10 @@ struct controller_impl {
 
       // Look for expired transactions in the pending generated list, and remove them.
       // TODO: expire these by sending error to handler
-      auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
+      auto& generated_transaction_idx = db.get_mutable_index<generated_transaction_multi_index>();
       const auto& generated_index = generated_transaction_idx.indices().get<by_expiration>();
       while( (!generated_index.empty()) && (head_block_time() > generated_index.begin()->expiration) ) {
-         _destroy_generated_transaction(*generated_index.begin());
+      // TODO:   destroy_generated_transaction(*generated_index.begin());
       }
    }
 
@@ -224,7 +282,7 @@ struct controller_impl {
    void validate_tapos( const transaction& trx )const {
       if( !should_check_tapos() ) return;
 
-      const auto& tapos_block_summary = _db.get<block_summary_object>((uint16_t)trx.ref_block_num);
+      const auto& tapos_block_summary = db.get<block_summary_object>((uint16_t)trx.ref_block_num);
 
       //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
       EOS_ASSERT(trx.verify_reference_block(tapos_block_summary.block_id), invalid_ref_block_exception,
@@ -232,12 +290,44 @@ struct controller_impl {
                  ("tapos_summary", tapos_block_summary));
    }
 
+
+   /**
+    *  At the start of each block we notify the system contract with a transaction that passes in
+    *  the block header of the prior block (which is currently our head block)
+    */
+   transaction get_on_block_transaction()
+   {
+      action on_block_act;
+      on_block_act.account = config::system_account_name;
+      on_block_act.name = N(onblock);
+      on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
+      on_block_act.data = fc::raw::pack(head_block_header());
+
+      transaction trx;
+      trx.actions.emplace_back(std::move(on_block_act));
+      trx.set_reference_block(head_block_id());
+      trx.expiration = head_block_time() + fc::seconds(1);
+      return trx;
+   }
+
+
+   /**
+    *  apply_block 
+    *
+    *  This method starts an undo session, whose revision number should match 
+    *  the block number. 
+    *
+    *  It first does some parallel read-only sanity checks on all input transactions.
+    *
+    *  It then follows the transaction delivery schedule defined by the block_summary. 
+    *
+    */
    void apply_block( block_state_ptr bstate ) {
-       auto session = _db.start_undo_session(true);
+       auto session = db.start_undo_session(true);
 
        optional<fc::time_point> processing_deadline;
        if( should_enforce_runtime_limits() ) {
-          processing_deadline = fc::time_point::now() + cfg.limits.max_push_block_us;
+          processing_deadline = fc::time_point::now() + conf.limits.max_push_block_us;
        }
 
        auto& next_block_trace = bstate->trace;
@@ -251,22 +341,22 @@ struct controller_impl {
           validate_net_usage( trx, item.second->billable_packed_size );
        }
 
-       for( uint32_t region_index = 0; region_index < next_block.regions.size(); ++region_index ) {
-         apply_region( region_index, next_block_trace, bstate->block.regions[region_index] );
+       for( uint32_t region_index = 0; region_index < bstate->block->regions.size(); ++region_index ) {
+         apply_region( region_index, *bstate );
        }
 
        FC_ASSERT( bstate->header.action_mroot == next_block_trace.calculate_action_merkle_root(), 
-                  "action merkle root does not match" );
-
-       finalize_block( *next_block_trace );
+                  "action merkle root does not match" ); finalize_block( *next_block_trace );
        fork_db.set_validity( bstate, true );
 
-       applied_block( next_block_trace ); /// emit signal to plugins before exiting undo state
+       self.applied_block( next_block_trace ); /// emit signal to plugins before exiting undo state
        session.push();
+
+       head = move(bstate);
    } /// apply_block
 
 
-   void apply_region( uint32_t region_index, block_trace& b_trace, const block_state& bstate ) {
+   void apply_region( uint32_t region_index, const block_state& bstate ) {
       const auto& r = bstate.block->regions[region_index];
 
       EOS_ASSERT(!r.cycles_summary.empty(), tx_empty_region,"region[${r_index}] has no cycles", ("r_index",region_index));
