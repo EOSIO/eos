@@ -25,7 +25,7 @@ namespace eosio { namespace chain {
          fork_database();
          ~fork_database();
 
-         block_state_ptr            get_block(const block_id_type& id)const;
+         block_state_ptr  get_block(const block_id_type& id)const;
 //         vector<block_state_ptr>    get_blocks_by_number(uint32_t n)const;
 
          /**

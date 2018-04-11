@@ -25,6 +25,14 @@ namespace eosio { namespace chain {
       return active_schedule.producers[index];
   }
 
+   bool block_header_state::is_start_of_round( uint32_t block_num )const  {
+     return 0 == (block_num % blocks_per_round());
+   }
+
+   uint32_t block_header_state::blocks_per_round()const {
+     return active_producers.producers.size()*config::producer_repetitions;
+   }
+
 
   /**
    *  Transitions the current header state into the next header state given the supplied signed block header.
@@ -43,7 +51,8 @@ namespace eosio { namespace chain {
 
     block_header_state result(*this);
     result.id = h.id();
-    result.producer_to_last_produced[h.producer] = h.block_num();
+    result.block_num = h.block_num();
+    result.producer_to_last_produced[h.producer] = result.block_num;
     result.dpos_last_irreversible_blocknum = result.calc_dpos_last_irreversible();
 
     result.blockroot_merkle.append( result.id );
@@ -65,6 +74,9 @@ namespace eosio { namespace chain {
     }
 
     if( h.new_producers ) {
+       EOS_ASSERT( is_start_of_round( result.block_num ), block_validate_exception,
+                    "Producer changes may only occur at the end of a round.");
+
        FC_ASSERT( h.new_producers->version == result.active_schedule.version + 1, "wrong producer schedule version specified" );
        FC_ASSERT( result.pending_schedule.producers.size() == 0, 
                   "cannot set new pending producers until last pending is confirmed" );

@@ -24,6 +24,7 @@ struct block_header_state {
     uint32_t             calc_dpos_last_irreversible()const;
     bool                 is_active_producer( account_name n )const;
     producer_key         scheduled_producer( block_timestamp_type t )const;
+    bool                 is_start_of_round( uint32_t block_num )const;
 };
 
 

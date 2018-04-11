@@ -25,14 +25,14 @@ namespace eosio { namespace chain {
 
             contracts::genesis_state_type  genesis;
             runtime_limits                 limits;
-            wasm_interface::vm_type        wasm_runtime        =  config::default_wasm_runtime;
+            wasm_interface::vm_type        wasm_runtime = config::default_wasm_runtime;
          };
 
 
-         controller();
+         controller( const config& cfg );
          ~controller();
 
-         void startup( const config& cfg );
+         void startup();
 
          /**
           * Starts a new pending block session upon which new transactions can
@@ -46,6 +46,8 @@ namespace eosio { namespace chain {
          optional<transaction_trace> push_deferred_transaction();
 
          const chainbase::database& db()const;
+
+         uint32_t head_block_num();
 
          signal<void(const block_trace&)>  applied_block;
          signal<void(const signed_block&)> applied_irreversible_block;
