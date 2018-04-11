@@ -1033,7 +1033,7 @@ namespace eosio {
 
    void connection::fetch_timeout( boost::system::error_code ec ) {
       if( !ec ) {
-         if( !( pending_fetch->req_trx.empty( ) || pending_fetch->req_blocks.empty( ) ) ) {
+         if( pending_fetch.valid() && !( pending_fetch->req_trx.empty( ) || pending_fetch->req_blocks.empty( ) ) ) {
             my_impl->big_msg_master->retry_fetch (shared_from_this() );
          }
       }
