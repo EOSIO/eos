@@ -1,4 +1,5 @@
 #include <eosio/chain/block_header_state.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 namespace eosio { namespace chain {
 
@@ -30,7 +31,7 @@ namespace eosio { namespace chain {
    }
 
    uint32_t block_header_state::blocks_per_round()const {
-     return active_producers.producers.size()*config::producer_repetitions;
+     return active_schedule.producers.size()*config::producer_repetitions;
    }
 
 

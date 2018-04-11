@@ -1,4 +1,5 @@
 #include <eosio/chain/block_state.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 namespace eosio { namespace chain {
 
@@ -6,7 +7,7 @@ namespace eosio { namespace chain {
    /**
     *  Perform context free validation of transaction state
     */
-   void validate( const transaction& trx )const {
+   void validate_transaction( const transaction& trx ) {
       EOS_ASSERT( !trx.actions.empty(), tx_no_action, "transaction must have at least one action" );
 
       // Check for at least one authorization in the context-aware actions
@@ -25,7 +26,7 @@ namespace eosio { namespace chain {
 
       EOS_ASSERT( trx.max_kcpu_usage.value < UINT32_MAX / 1024UL, transaction_exception, "declared max_kcpu_usage overflows when expanded to max cpu usage" );
       EOS_ASSERT( trx.max_net_usage_words.value < UINT32_MAX / 8UL, transaction_exception, "declared max_net_usage_words overflows when expanded to max net usage" );
-   } /// validate
+   } /// validate_transaction
 
 
    void validate_shard_locks_unique(const vector<shard_lock>& locks, const string& tag) {
@@ -41,7 +42,7 @@ namespace eosio { namespace chain {
    }
 
 
-   void validate_shard_locks( const shard_summary& shard ) {
+   void validate_shard_locks( const shard_summary& shard, uint32_t shard_index ) {
       validate_shard_locks_unique( shard.read_locks, "read" );
       validate_shard_locks_unique( shard.write_locks, "write" );
 
@@ -74,12 +75,12 @@ namespace eosio { namespace chain {
    {
       if( block ) {
          for( const auto& packed : b->input_transactions ) {
-            auto meta_ptr = std::make_shared<transaction_metadata>( packed, chain_id_type() );
+            auto meta_ptr = std::make_shared<transaction_metadata>( packed, chain_id_type(), block->timestamp );
 
             /** perform context-free validation of transactions */
             const auto& trx = meta_ptr->trx();
             FC_ASSERT( time_point(trx.expiration) > header.timestamp, "transaction is expired" );
-            validate( trx );
+            validate_transaction( trx );
 
             auto id = meta_ptr->id;
             input_transactions[id] = move(meta_ptr);
@@ -90,21 +91,25 @@ namespace eosio { namespace chain {
          for( uint32_t i = 1; i < block->regions.size(); ++i )
             FC_ASSERT( block->regions[i-1].region < block->regions[i].region );
 
-         trace = std::make_shared<block_trace>();
+
+         bool found_trx = false;
+         trace = std::make_shared<block_trace>( block );
          /// reserve region_trace
          for( uint32_t r = 0; r < block->regions.size(); ++r ) {
-            FC_ASSERT( block->regions[r].cycles.size() >= 1, "must be at least one cycle" );
+            // FC_ASSERT( block->regions[r].cycles_summary.size() >= 1, "must be at least one cycle" );
             /// reserve cycle traces
-            for( uint32_t c = 0; c < block->regions[r].cycles.size(); c++ ) {
-               FC_ASSERT( block->regions[r].cycles.size() >= 1, "must be at least one shard" );
+            for( uint32_t c = 0; c < block->regions[r].cycles_summary.size(); c++ ) {
+               // FC_ASSERT( block->regions[r].cycles_summary.size() >= 1, "must be at least one shard" );
                /// reserve shard traces
-               for( uint32_t s = 0; s < block->regions[r].cycles[c][s].size(); s++ ) {
+               for( uint32_t s = 0; s < block->regions[r].cycles_summary[c][s].transactions.size(); s++ ) {
+                  found_trx = true;
                  // FC_ASSERT( block->regions[r].cycles.size() >= 1, "must be at least one trx" ); /// 
                   //validate_shard_locks( block->.... )
                   /// reserve transaction trace...
                }
             }
          }
+         FC_ASSERT( found_trx, "a block must contain at least one transaction (the implicit on block trx)" );
 
       } // end if block
    } 

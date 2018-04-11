@@ -1,6 +1,8 @@
 #pragma once
 #include <eosio/chain/block_header_state.hpp>
 #include <eosio/chain/block.hpp>
+#include <eosio/chain/transaction_metadata.hpp>
+#include <eosio/chain/block_trace.hpp>
 
 namespace eosio { namespace chain {
 
