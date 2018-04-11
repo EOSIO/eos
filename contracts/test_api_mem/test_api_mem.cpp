@@ -27,6 +27,10 @@ extern "C" {
       WASM_TEST_HANDLER(test_memory, test_memcpy_overlap_start);
       WASM_TEST_HANDLER(test_memory, test_memcpy_overlap_end);
       WASM_TEST_HANDLER(test_memory, test_memcmp);
+      WASM_TEST_HANDLER(test_memory, test_outofbound_0);
+      WASM_TEST_HANDLER(test_memory, test_outofbound_1);
+      WASM_TEST_HANDLER(test_memory, test_outofbound_2);
+      WASM_TEST_HANDLER(test_memory, test_outofbound_3);
 
       //unhandled test call
       eosio_assert(false, "Unknown Test");

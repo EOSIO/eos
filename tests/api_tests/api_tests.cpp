@@ -1170,6 +1170,35 @@ BOOST_FIXTURE_TEST_CASE(memory_tests, TESTER) { try {
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memcpy_overlap_end", {} );
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memcmp", {} );
+   produce_blocks(1000);
+
+  BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_memory", "test_outofbound_0", {} ), transaction_exception,
+         [](const fc::exception& e) {
+            return expect_assert_message(e, "access violation");
+         }
+      );
+  BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_memory", "test_outofbound_1", {} ), transaction_exception,
+         [](const fc::exception& e) {
+            return expect_assert_message(e, "access violation");
+         }
+      );
+  BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_memory", "test_outofbound_2", {} ), transaction_exception,
+         [](const fc::exception& e) {
+            return expect_assert_message(e, "access violation");
+         }
+      );
+  BOOST_CHECK_EXCEPTION(CALL_TEST_FUNCTION( *this, "test_memory", "test_outofbound_3", {} ), transaction_exception,
+        [](const fc::exception& e) {
+           return expect_assert_message(e, "access violation");
+        }
+      );
+//    CALL_TEST_FUNCTION( *this, "test_memory", "test_outofbound_0", {} );
+//    produce_blocks(1000);
+//    CALL_TEST_FUNCTION( *this, "test_memory", "test_outofbound_1", {} );
+//    produce_blocks(1000);
+//    CALL_TEST_FUNCTION( *this, "test_memory", "test_outofbound_2", {} );
+//    produce_blocks(1000);
+//    CALL_TEST_FUNCTION( *this, "test_memory", "test_outofbound_3", {} );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }

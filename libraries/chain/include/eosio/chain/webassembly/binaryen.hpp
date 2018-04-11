@@ -76,7 +76,7 @@ struct interpreter_interface : ModuleInstance::ExternalInterface {
    }
 
    void assert_memory_is_accessible(uint32_t offset, size_t size) {
-      if(offset + size > current_memory_size)
+      if (offset + size > current_memory_size || offset + size < offset)
          FC_THROW_EXCEPTION(wasm_execution_error, "access violation");
    }
 

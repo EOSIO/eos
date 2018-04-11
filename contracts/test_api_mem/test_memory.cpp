@@ -310,3 +310,31 @@ void test_memory::test_memcmp()
    int32_t res3 = memcmp(buf5, buf6, 6);
    eosio_assert(res3 > 0, "first data should be larger than second data");
 }
+
+void test_memory::test_outofbound_0()
+{
+    memset((char *)0, 0xff, 1024 * 1024 * 1024); // big memory
+    eosio_assert(false, "should not reach here");
+}
+
+void test_memory::test_outofbound_1()
+{
+    memset((char *)16, 0xff, 0xffffffff); // memory wrap around
+    eosio_assert(false, "should not reach here");
+}
+
+void test_memory::test_outofbound_2()
+{
+    char buf[1024] = {0};
+    char *ptr = (char *)malloc(1048576);
+    eosio_assert(ptr < buf, "heap memory should be in lower addr");
+    memcpy(buf, ptr, 1048576); // stack memory out of bound
+    eosio_assert(false, "should not reach here");
+}
+
+void test_memory::test_outofbound_3()
+{
+    char *ptr = (char *)malloc(128);
+    memset(ptr, 0xcc, 1048576); // heap memory out of bound
+    eosio_assert(false, "should not reach here");
+}
