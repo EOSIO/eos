@@ -821,14 +821,15 @@ int main( int argc, char** argv ) {
    add_standard_transaction_options(contractSubcommand, "account@active");
    contractSubcommand->set_callback([&] {
       std::string wast;
-      std::cout << localized("Reading WAST...") << std::endl;
       fc::path cpath(contractPath);
 
       if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
 
       if( wastPath.empty() )
       {
-         wastPath = (cpath / (cpath.filename().generic_string()+".wast")).generic_string();
+         wastPath = (cpath / (cpath.filename().generic_string()+".wasm")).generic_string();
+         if (!fc::exists(wastPath))
+            wastPath = (cpath / (cpath.filename().generic_string()+".wast")).generic_string();
       }
 
       if( abiPath.empty() )
@@ -836,7 +837,7 @@ int main( int argc, char** argv ) {
          abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
       }
       
-      
+      std::cout << localized(("Reading WAST/WASM from " + wastPath + "...").c_str()) << std::endl;
       fc::read_file_contents(wastPath, wast);
       FC_ASSERT( !wast.empty(), "no wast file found ${f}", ("f", wastPath) );
       vector<uint8_t> wasm;
