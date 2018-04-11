@@ -177,17 +177,6 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_option("--max-net-usage", tx_max_net_usage, localized("set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
 }
 
-string generate_nonce_value() {
-   return fc::to_string(fc::time_point::now().time_since_epoch().count());
-}
-
-chain::action generate_nonce() {
-   auto v = generate_nonce_value();
-   variant nonce = fc::mutable_variant_object()
-         ("value", v);
-   return chain::action( {}, config::system_account_name, "nonce", fc::raw::pack(nonce));
-}
-
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
    auto fixedPermissions = permissions | boost::adaptors::transformed([](const string& p) {
       vector<string> pieces;
@@ -211,6 +200,25 @@ fc::variant call( const std::string& path,
 
 eosio::chain_apis::read_only::get_info_results get_info() {
   return call(host, port, get_info_func ).as<eosio::chain_apis::read_only::get_info_results>();
+}
+
+string generate_nonce_value() {
+   return fc::to_string(fc::time_point::now().time_since_epoch().count());
+}
+
+chain::action generate_nonce() {
+   auto v = generate_nonce_value();
+   variant nonce = fc::mutable_variant_object()
+         ("value", v);
+
+   try {
+      auto result = call(get_code_func, fc::mutable_variant_object("account_name", name(config::system_account_name)));
+      abi_serializer eosio_serializer(result["abi"].as<contracts::abi_def>());
+      return chain::action( {}, config::system_account_name, "nonce", eosio_serializer.variant_to_binary("nonce", nonce));
+   }
+   catch (...) {
+      EOS_THROW(account_query_exception, "A system contract is required to use nonce");
+   }
 }
 
 fc::variant determine_required_keys(const signed_transaction& trx) {
