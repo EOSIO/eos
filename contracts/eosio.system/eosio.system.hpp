@@ -8,7 +8,9 @@
 #include "native.hpp"
 #include <eosiolib/optional.hpp>
 
-#include <eosiolib/generic_currency.hpp>
+//#include <eosiolib/generic_currency.hpp>
+
+#include <eosio.token/eosio.token.hpp>
 
 namespace eosiosystem {
 
@@ -27,15 +29,23 @@ namespace eosiosystem {
    };
 
    template<account_name SystemAccount>
-   class contract : public delegate_bandwidth<SystemAccount>, public native<SystemAccount> {
+   class contract : eosio::contract, public delegate_bandwidth<SystemAccount>, public native<SystemAccount> {
+         //      private:
+         //         eosio::token _system_token;
       public:
+         
+         contract(account_name self = SystemAccount): 
+            eosio::contract(self)
+         {
+         }
+
          using voting<SystemAccount>::on;
          using delegate_bandwidth<SystemAccount>::on;
          using native<SystemAccount>::on;
          using pe = voting<SystemAccount>;
          using db = delegate_bandwidth<SystemAccount>;
-         using currency = typename common<SystemAccount>::currency;
-         using system_token_type = typename common<SystemAccount>::system_token_type;
+         //         using currency = typename common<SystemAccount>::currency;
+         //         using system_token_type = typename common<SystemAccount>::system_token_type;
          using producers_table = typename pe::producers_table;
          using global_state_singleton = typename voting<SystemAccount>::global_state_singleton;
          static const uint32_t max_inflation_rate = common<SystemAccount>::max_inflation_rate;
@@ -87,7 +97,8 @@ namespace eosiosystem {
             account_name producer = ob.header.producer;
             auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
                   : common<SystemAccount>::get_default_parameters();
-            const system_token_type block_payment = parameters.payment_per_block;
+            //            const system_token_type block_payment = parameters.payment_per_block;
+            const asset block_payment = parameters.payment_per_block;
             auto prod = producers_tbl.find(producer);
             if ( prod != producers_tbl.end() ) {
                producers_tbl.modify( prod, 0, [&](auto& p) {
@@ -97,7 +108,8 @@ namespace eosiosystem {
             }
 
             const uint32_t num_of_payments = ob.header.timestamp - parameters.last_bucket_fill_time;
-            const system_token_type to_eos_bucket = num_of_payments * parameters.payment_to_eos_bucket;
+            //            const system_token_type to_eos_bucket = num_of_payments * parameters.payment_to_eos_bucket;
+            const asset to_eos_bucket = num_of_payments * parameters.payment_to_eos_bucket;
             parameters.last_bucket_fill_time = ob.header.timestamp;
             parameters.eos_bucket += to_eos_bucket;
             global_state_singleton::set(parameters);
@@ -119,7 +131,8 @@ namespace eosiosystem {
             if( prod->last_rewards_claim > 0 ) {
                eosio_assert(now() >= prod->last_rewards_claim + seconds_per_day, "already claimed rewards within a day");
             }
-            system_token_type rewards = prod->per_block_payments;
+            //            system_token_type rewards = prod->per_block_payments;
+            eosio::asset rewards = prod->per_block_payments;
             auto idx = producers_tbl.template get_index<N(prototalvote)>();
             auto itr = --idx.end();
 
@@ -144,25 +157,27 @@ namespace eosiosystem {
             if (is_among_payed_producers && total_producer_votes > 0) {
                if( global_state_singleton::exists() ) {
                   auto parameters = global_state_singleton::get();
-                  auto share_of_eos_bucket = system_token_type( static_cast<uint64_t>( (prod->total_votes * parameters.eos_bucket.quantity) / total_producer_votes ) ); // This will be improved in the future when total_votes becomes a double type.
+                  //                  auto share_of_eos_bucket = system_token_type( static_cast<uint64_t>( (prod->total_votes * parameters.eos_bucket.quantity) / total_producer_votes ) ); // This will be improved in the future when total_votes becomes a double type.
+                  auto share_of_eos_bucket = eosio::asset( static_cast<int64_t>( (prod->total_votes * parameters.eos_bucket.amount) / total_producer_votes ) );
                   rewards += share_of_eos_bucket;
                   parameters.eos_bucket -= share_of_eos_bucket;
                   global_state_singleton::set(parameters);
                }
             }
 
-            eosio_assert( rewards > system_token_type(), "no rewards available to claim" );
+            //            eosio_assert( rewards > system_token_type(), "no rewards available to claim" );
+            eosio_assert( rewards > asset(0, S(4,EOS)), "no rewards available to claim" );
 
             producers_tbl.modify( prod, 0, [&](auto& p) {
                   p.last_rewards_claim = now();
-                  p.per_block_payments.quantity = 0;
+                  p.per_block_payments.amount = 0;
                });
 
-            currency::inline_transfer(cr.owner, SystemAccount, rewards, "producer claiming rewards");
+            _system_token.inline_transfer(SystemAccount, cr.owner, rewards, "producer claiming rewards");
          }
 
          static void apply( account_name receiver, account_name code, action_name act ) {
-            if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
+            //            if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                if( !eosio::dispatch<contract, typename delegate_bandwidth<SystemAccount>::delegatebw,
                                  typename delegate_bandwidth<SystemAccount>::refund,
                                  typename voting<SystemAccount>::regproxy,
@@ -189,7 +204,7 @@ namespace eosiosystem {
                      contract().on( receiver, eosio::unpack_action_data<undelegatebw>() );
                   }
                }
-            }
+               //         }
 
          } /// apply
    };

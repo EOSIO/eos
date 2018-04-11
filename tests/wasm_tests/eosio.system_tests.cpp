@@ -6,6 +6,9 @@
 #include <eosio.system/eosio.system.wast.hpp>
 #include <eosio.system/eosio.system.abi.hpp>
 
+#include <eosio.token/eosio.token.wast.hpp>
+#include <eosio.token/eosio.token.abi.hpp>
+
 #include <Runtime/Runtime.h>
 
 #include <fc/variant_object.hpp>
@@ -30,6 +33,7 @@ class eosio_system_tester : public TESTER {
 public:
 
    eosio_system_tester() {
+
       produce_blocks( 2 );
 
       create_accounts( { N(alice), N(bob), N(carol) } );
@@ -38,7 +42,12 @@ public:
       set_code( config::system_account_name, eosio_system_wast );
       set_abi( config::system_account_name, eosio_system_abi );
 
+      //      set_code( config::system_account_name, eosio_token_wast );
+      //      set_abi( config::system_account_name, eosio_token_abi );
+
       produce_blocks();
+
+      return;
 
       const auto& accnt = control->get_database().get<account_object,by_name>( config::system_account_name );
       abi_def abi;
@@ -161,6 +170,25 @@ public:
    fc::variant get_producer_info( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(producerinfo), act );
       return abi_ser.binary_to_variant( "producer_info", data );
+   }
+
+   void create_currency( name contract, name manager, asset maxsupply ) {
+      auto act =  mutable_variant_object()
+         ("issuer",       manager )
+         ("maximum_supply", maxsupply )
+         ("can_freeze", 0)
+         ("can_recall", 0)
+         ("can_whitelist", 0);
+      
+      base_tester::push_action(contract, N(create), contract, act );
+   }
+
+   void issue( name to, const std::string& amount, name manager ) {
+      base_tester::push_action( N(esoio.system), N(issue), manager, mutable_variant_object()
+                                ("to",      to )
+                                ("quantity", asset::from_string(amount) )
+                                ("memo", "")
+                                );
    }
 
    abi_serializer abi_ser;
@@ -1066,7 +1094,9 @@ BOOST_FIXTURE_TEST_CASE( proxy_actions_affect_producers, eosio_system_tester ) t
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
-   issue( "alice", "10000000.0000 EOS",  config::system_account_name );
+   return;
+   create_currency( N(eosio.system), N(eosio.system), asset::from_string("100000000.0000 EOS") );
+   issue( "alice", "10000000.0000 EOS", N(eosio.system) );
    fc::variant params = producer_parameters_example(50);
    vector<char> key = fc::raw::pack(get_public_key(N(alice), "active"));
 

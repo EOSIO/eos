@@ -53,7 +53,7 @@ macro(compile_wast)
       set(STDFLAG "--std=c++14")
     endif()
 
-    set(WASM_COMMAND ${WASM_CLANG} -emit-llvm -O3 ${STDFLAG} --target=wasm32 -ffreestanding
+    set(WASM_COMMAND ${WASM_CLANG} -emit-llvm -O2 ${STDFLAG} --target=wasm32 -ffreestanding
               -nostdlib -nostdlibinc -fno-threadsafe-statics -fno-rtti -fno-exceptions  
               -c ${infile} -o ${outfile}.bc
     )
