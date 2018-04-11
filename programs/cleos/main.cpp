@@ -141,6 +141,7 @@ string wallet_host = "localhost";
 uint32_t wallet_port = 8888;
 
 auto   tx_expiration = fc::seconds(30);
+string tx_ref_block_num_or_id;
 bool   tx_force_unique = false;
 bool   tx_dont_broadcast = false;
 bool   tx_skip_sign = false;
@@ -167,6 +168,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
    cmd->add_flag("-j,--json", tx_print_json, localized("print result as json"));
    cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("don't broadcast transaction to the network (just print to stdout)"));
+   cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
 
    string msg = "An account and permission level to authorize, as in 'account@permission'";
    if(!default_permission.empty())
@@ -175,17 +177,6 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
 
    cmd->add_option("--max-cpu-usage", tx_max_cpu_usage, localized("set an upper limit on the cpu usage budget, in instructions-retired, for the execution of the transaction (defaults to 0 which means no limit)"));
    cmd->add_option("--max-net-usage", tx_max_net_usage, localized("set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
-}
-
-string generate_nonce_value() {
-   return fc::to_string(fc::time_point::now().time_since_epoch().count());
-}
-
-chain::action generate_nonce() {
-   auto v = generate_nonce_value();
-   variant nonce = fc::mutable_variant_object()
-         ("value", v);
-   return chain::action( {}, config::system_account_name, "nonce", fc::raw::pack(nonce));
 }
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
@@ -213,6 +204,25 @@ eosio::chain_apis::read_only::get_info_results get_info() {
   return call(host, port, get_info_func ).as<eosio::chain_apis::read_only::get_info_results>();
 }
 
+string generate_nonce_value() {
+   return fc::to_string(fc::time_point::now().time_since_epoch().count());
+}
+
+chain::action generate_nonce() {
+   auto v = generate_nonce_value();
+   variant nonce = fc::mutable_variant_object()
+         ("value", v);
+
+   try {
+      auto result = call(get_code_func, fc::mutable_variant_object("account_name", name(config::system_account_name)));
+      abi_serializer eosio_serializer(result["abi"].as<contracts::abi_def>());
+      return chain::action( {}, config::system_account_name, "nonce", eosio_serializer.variant_to_binary("nonce", nonce));
+   }
+   catch (...) {
+      EOS_THROW(account_query_exception, "A system contract is required to use nonce");
+   }
+}
+
 fc::variant determine_required_keys(const signed_transaction& trx) {
    // TODO better error checking
    const auto& public_keys = call(wallet_host, wallet_port, wallet_public_keys);
@@ -233,7 +243,19 @@ void sign_transaction(signed_transaction& trx, fc::variant& required_keys) {
 fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000, packed_transaction::compression_type compression = packed_transaction::none ) {
    auto info = get_info();
    trx.expiration = info.head_block_time + tx_expiration;
-   trx.set_reference_block(info.head_block_id);
+
+   // Set tapos, default to last irreversible block if it's not specified by the user
+   block_id_type ref_block_id;
+   try {
+      fc::variant ref_block;
+      if (!tx_ref_block_num_or_id.empty()) {
+         ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", tx_ref_block_num_or_id));
+      } else {
+         ref_block = call(get_block_func, fc::mutable_variant_object("block_num_or_id", info.last_irreversible_block_num));
+      }
+      ref_block_id = ref_block["id"].as<block_id_type>();
+   } EOS_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
+   trx.set_reference_block(ref_block_id);
 
    if (tx_force_unique) {
       trx.context_free_actions.emplace_back( generate_nonce() );
@@ -821,14 +843,15 @@ int main( int argc, char** argv ) {
    add_standard_transaction_options(contractSubcommand, "account@active");
    contractSubcommand->set_callback([&] {
       std::string wast;
-      std::cout << localized("Reading WAST...") << std::endl;
       fc::path cpath(contractPath);
 
       if( cpath.filename().generic_string() == "." ) cpath = cpath.parent_path();
 
       if( wastPath.empty() )
       {
-         wastPath = (cpath / (cpath.filename().generic_string()+".wast")).generic_string();
+         wastPath = (cpath / (cpath.filename().generic_string()+".wasm")).generic_string();
+         if (!fc::exists(wastPath))
+            wastPath = (cpath / (cpath.filename().generic_string()+".wast")).generic_string();
       }
 
       if( abiPath.empty() )
@@ -836,7 +859,7 @@ int main( int argc, char** argv ) {
          abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
       }
       
-      
+      std::cout << localized(("Reading WAST/WASM from " + wastPath + "...").c_str()) << std::endl;
       fc::read_file_contents(wastPath, wast);
       FC_ASSERT( !wast.empty(), "no wast file found ${f}", ("f", wastPath) );
       vector<uint8_t> wasm;
