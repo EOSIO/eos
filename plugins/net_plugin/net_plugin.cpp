@@ -1525,9 +1525,10 @@ namespace eosio {
                                        0, 0, 0};
          my_impl->local_txns.insert(std::move(nts));
       }
-      if( !skip && bufsiz <= just_send_it_max) {
-         my_impl->send_all( txn, [remember,txnid](connection_ptr c) -> bool {
-               if( c->syncing ) {
+
+      if(bufsiz <= just_send_it_max) {
+         my_impl->send_all( txn, [skip, remember,txnid](connection_ptr c) -> bool {
+               if(c == skip || c->syncing ) {
                   return false;
                }
                const auto& bs = c->trx_state.find(txnid);
@@ -1553,7 +1554,7 @@ namespace eosio {
                const auto& bs = c->trx_state.find(txnid);
                bool unknown = bs == c->trx_state.end();
                if( unknown) {
-                  fc_ilog(logger, "sending notice to ${n}", ("n",c->peer_name() ) );
+                  fc_dlog(logger, "sending notice to ${n}", ("n",c->peer_name() ) );
                   if (remember) {
                      c->trx_state.insert(transaction_state({txnid,false,true,0, time_point() }));
                   }
