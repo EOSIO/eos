@@ -38,6 +38,7 @@
 	ARCH=$( uname )
 	DISK_MIN=20
 	TIME_BEGIN=$( date -u +%s )
+	DOXYGEN=false #set to true to build docs
 
 	txtbld=$(tput bold)
 	bldred=${txtbld}$(tput setaf 1)
@@ -156,6 +157,7 @@
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
 	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
 	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DBUILD_MONGO_DB_PLUGIN=true \
+	-DBUILD_DOXYGEN=${DOXYGEN} \
 	..
 	
 	if [ $? -ne 0 ]; then
