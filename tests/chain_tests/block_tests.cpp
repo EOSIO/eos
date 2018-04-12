@@ -290,6 +290,35 @@ BOOST_AUTO_TEST_CASE(irrelevant_auth) {
       BOOST_REQUIRE_EQUAL( chain.validate(), true );
    } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(no_auth) {
+   try {
+      TESTER chain;
+      chain.create_account(name("joe"));
+
+      chain.produce_blocks();
+
+      // Use create account transaction as example
+      signed_transaction trx;
+      name new_account_name = name("alice");
+      authority owner_auth = authority( chain.get_public_key( new_account_name, "owner" ) );
+      trx.actions.emplace_back( vector<permission_level>{{ config::system_account_name, config::active_name}},
+                                contracts::newaccount{
+                                      .creator  = config::system_account_name,
+                                      .name     = new_account_name,
+                                      .owner    = owner_auth,
+                                      .active   = authority(),
+                                      .recovery = authority(),
+                                });
+      chain.set_transaction_headers(trx);
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
+
+      // Check that it throws for no auth
+      BOOST_CHECK_THROW(chain.push_transaction( trx ), action_validate_exception);
+      chain.control->clear_pending();
+
+      BOOST_REQUIRE_EQUAL( chain.validate(), true );
+   } FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_CASE(name_test) {
    name temp;
    temp = "temp";

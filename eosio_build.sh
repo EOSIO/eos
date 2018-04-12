@@ -37,13 +37,19 @@
 	TEMP_DIR=/tmp
 	ARCH=$( uname )
 	DISK_MIN=20
-	MEM_MIN=4000
 	TIME_BEGIN=$( date -u +%s )
+	DOXYGEN=false #set to true to build docs
 
 	txtbld=$(tput bold)
 	bldred=${txtbld}$(tput setaf 1)
 	txtrst=$(tput sgr0)
 
+	if [ ! -d .git ]; then
+		printf "\nThis build script only works with sources cloned from git\n"
+		printf "\tPlease clone a new eos directory with 'git clone https://github.com/EOSIO/eos --recursive'\n"
+		printf "\tSee the wiki for instructions: https://github.com/EOSIO/eos/wiki\n"
+		exit 1
+	fi
 
 	printf "\n\tBeginning build version: ${VERSION}\n"
 	printf "\t$( date -u )\n"
@@ -157,6 +163,7 @@
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
 	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
 	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DBUILD_MONGO_DB_PLUGIN=true \
+	-DBUILD_DOXYGEN=${DOXYGEN} \
 	..
 	
 	if [ $? -ne 0 ]; then
@@ -204,6 +211,9 @@
 	printf "\n\t$( which mongod ) -f ${MONGOD_CONF} &\n"
 	if [ "$OS_NAME" == "CentOS Linux" ]; then
 		printf "\tsource /opt/rh/python33/enable\n"
+	fi
+	if [ "$OS_NAME" != "Fedora" ]; then
+		printf '\texport PATH=${HOME}/opt/mongodb/bin:$PATH\n'
 	fi
 	printf "\tcd ${HOME}/eos/build; make test\n\n"
 	printf "\tFor more information:\n"

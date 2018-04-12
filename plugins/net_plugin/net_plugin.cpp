@@ -121,7 +121,6 @@ namespace eosio {
                     fc::time_point_sec,
                     &node_transaction_state::expires >
             >,
-
          ordered_non_unique<
             tag<by_block_num>,
             member< node_transaction_state,
@@ -263,8 +262,6 @@ namespace eosio {
        */
       chain::signature_type sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const;
 
-      // static const fc::string logger_name;
-      // static fc::logger logger;
    };
 
    const fc::string logger_name("net_plugin_impl");
@@ -287,7 +284,7 @@ namespace eosio {
    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
    constexpr auto     def_conn_retry_wait = 30;
    constexpr auto     def_txn_expire_wait = std::chrono::seconds(3);
-   constexpr auto     def_resp_expected_wait = std::chrono::seconds(1);
+   constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
    constexpr auto     def_sync_fetch_span = 100;
    constexpr auto     def_max_just_send = 1500; // "mtu" * 1
    constexpr auto     def_send_whole_blocks = true;
@@ -328,8 +325,14 @@ namespace eosio {
    typedef multi_index_container<
       transaction_state,
       indexed_by<
-         ordered_unique< tag<by_id>, member<transaction_state, transaction_id_type, &transaction_state::id > >
+         ordered_unique< tag<by_id>, member<transaction_state, transaction_id_type, &transaction_state::id > >,
+         ordered_non_unique<
+            tag<by_block_num>,
+            member< transaction_state,
+                    uint32_t,
+                    &transaction_state::block_num > >
          >
+
       > transaction_state_index;
 
    /**
@@ -337,6 +340,7 @@ namespace eosio {
     */
    struct block_state {
       block_id_type id;
+      uint32_t      block_num;
       bool          is_known;
       bool          is_noticed;
       time_point    requested_time;
@@ -354,7 +358,8 @@ namespace eosio {
    typedef multi_index_container<
       block_state,
       indexed_by<
-         ordered_unique< tag<by_id>, member<block_state, block_id_type, &block_state::id > >
+         ordered_unique< tag<by_id>, member<block_state, block_id_type, &block_state::id > >,
+         ordered_unique< tag<by_block_num>, member<block_state, uint32_t, &block_state::block_num > >
          >
       > block_state_index;
 
@@ -492,7 +497,6 @@ namespace eosio {
       void enqueue( transaction_id_type id );
       void enqueue( const net_message &msg, bool trigger_send = true );
       void cancel_sync(go_away_reason);
-      void cancel_fetch();
       void flush_queues();
       bool enqueue_sync_block();
       void request_sync_blocks (uint32_t start, uint32_t end);
@@ -518,8 +522,6 @@ namespace eosio {
        * encountered unpacking or processing the message.
        */
       bool process_next_message(net_plugin_impl& impl, uint32_t message_length);
-      // static const fc::string logger_name;
-      // static fc::logger logger;
    };
 
    struct msgHandler : public fc::visitor<void> {
@@ -568,8 +570,6 @@ namespace eosio {
       void recv_handshake(connection_ptr c, const handshake_message& msg);
       void recv_notice(connection_ptr c, const notice_message& msg);
 
-      // static const fc::string logger_name;
-      // static fc::logger logger;
    };
 
    class big_msg_manager {
@@ -583,24 +583,13 @@ namespace eosio {
       void bcast_transaction (const transaction_id_type& id,
                               time_point_sec expiration,
                               const packed_transaction& msg);
-      void bcast_rejected_transaction (const packed_transaction& msg, uint64_t code);
+      void rejected_transaction (const packed_transaction& msg);
       void recv_block (connection_ptr conn, const signed_block_summary& msg);
       void recv_transaction(connection_ptr c);
       void recv_notice (connection_ptr conn, const notice_message& msg);
 
       void retry_fetch (connection_ptr conn);
-      // static const fc::string logger_name;
-      // static fc::logger logger;
    };
-
-   // const fc::string net_plugin_impl::logger_name("net_plugin_impl");
-   // fc::logger net_plugin_impl::logger(net_plugin_impl::logger_name);
-   // const fc::string connection::logger_name("connection");
-   // fc::logger connection::logger(connection::logger_name);
-   // const fc::string sync_manager::logger_name("sync_manager");
-   // fc::logger sync_manager::logger(sync_manager::logger_name);
-   // const fc::string big_msg_manager::logger_name("big_msg_manager");
-   // fc::logger big_msg_manager::logger(big_msg_manager::logger_name);
 
    //---------------------------------------------------------------------------
 
@@ -946,10 +935,6 @@ namespace eosio {
       }
    }
 
-   void connection::cancel_fetch() {
-      my_impl->big_msg_master->retry_fetch(shared_from_this() );
-   }
-
    bool connection::enqueue_sync_block() {
       chain_controller& cc = app().find_plugin<chain_plugin>()->chain();
       if (!peer_requested)
@@ -1055,7 +1040,7 @@ namespace eosio {
 
    void connection::fetch_timeout( boost::system::error_code ec ) {
       if( !ec ) {
-         if( !( pending_fetch->req_trx.empty( ) || pending_fetch->req_blocks.empty( ) ) ) {
+         if( pending_fetch.valid() && !( pending_fetch->req_trx.empty( ) || pending_fetch->req_blocks.empty( ) ) ) {
             my_impl->big_msg_master->retry_fetch (shared_from_this() );
          }
       }
@@ -1109,7 +1094,7 @@ namespace eosio {
 
    //-----------------------------------------------------------
 
-   sync_manager::sync_manager( uint32_t req_span )
+    sync_manager::sync_manager( uint32_t req_span )
       :sync_known_lib_num( 0 )
       ,sync_last_requested_num( 0 )
       ,sync_next_expected_num( 1 )
@@ -1419,6 +1404,7 @@ namespace eosio {
          if (blk_num != sync_next_expected_num) {
             fc_ilog (logger, "expected block ${ne} but got ${bn}",("ne",sync_next_expected_num)("bn",blk_num));
             c->close();
+            return;
          }
          sync_next_expected_num = blk_num + 1;
       }
@@ -1465,18 +1451,19 @@ namespace eosio {
       uint32_t msgsiz = packsiz + sizeof(packsiz);
       notice_message pending_notify;
       block_id_type bid = bsum.id();
+      uint32_t bnum = bsum.block_num();
       pending_notify.known_blocks.mode = normal;
       pending_notify.known_blocks.ids.push_back( bid );
       pending_notify.known_trx.mode = none;
       if (msgsiz > just_send_it_max) {
          fc_ilog(logger, "block size is ${ms}, sending notify",("ms", msgsiz));
-         my_impl->send_all(pending_notify, [skip, bid](connection_ptr c) -> bool {
+         my_impl->send_all(pending_notify, [skip, bid, bnum](connection_ptr c) -> bool {
                if (c == skip || !c->current())
                   return false;
                const auto& bs = c->blk_state.find(bid);
                bool unknown = bs == c->blk_state.end();
                if (unknown) {
-                  c->blk_state.insert((block_state){bid,false,true,time_point()});
+                  c->blk_state.insert((block_state){bid,bnum,false,true,time_point()});
                }
                else {
                   elog("${p} already has knowledge of block ${b}", ("p",c->peer_name())("b",bid));
@@ -1491,25 +1478,22 @@ namespace eosio {
             }
             const auto& prev = cp->blk_state.find (bsum.previous);
             if (prev != cp->blk_state.end() && !prev->is_known) {
-               cp->blk_state.insert((block_state){bid,false,true,time_point()});
+               cp->blk_state.insert((block_state){bid,bnum,false,true,time_point()});
                cp->enqueue( pending_notify );
             }
             else {
-               cp->blk_state.insert((block_state){bid,true,true,time_point()});
+               cp->blk_state.insert((block_state){bid,bnum,true,true,time_point()});
                cp->enqueue( bsum );
             }
          }
       }
    }
 
-   void big_msg_manager::bcast_rejected_transaction (const packed_transaction& txn, uint64_t code) {
-      if (code == 0 || code == eosio::chain::tx_duplicate::code_value) {
-         //do not forward duplicates or those with unknown exception types
-         return;
-      }
+   void big_msg_manager::rejected_transaction (const packed_transaction& txn) {
       transaction_id_type tid = txn.get_transaction().id();
-      fc_wlog(logger,"sending rejected transaction ${tid}",("tid",tid));
-      bcast_transaction (tid, time_point_sec(), txn);
+      fc_dlog(logger,"not sending rejected transaction ${tid}",("tid",tid));
+      pending_txn_source.reset();
+
    }
 
    void big_msg_manager::bcast_transaction (const transaction_id_type & txnid,
@@ -1529,35 +1513,32 @@ namespace eosio {
          fc_dlog(logger, "found txnid in local_txns" );
          return;
       }
-      bool remember = expiration != time_point_sec();
       uint32_t packsiz = 0;
       uint32_t bufsiz = 0;
-      if (remember) {
-         net_message msg(txn);
-         packsiz = fc::raw::pack_size(msg);
-         bufsiz = packsiz + sizeof(packsiz);
-         vector<char> buff(bufsiz);
-         fc::datastream<char*> ds( buff.data(), bufsiz);
-         ds.write( reinterpret_cast<char*>(&packsiz), sizeof(packsiz) );
-         fc::raw::pack( ds, msg );
-         node_transaction_state nts = {txnid,
-                                       expiration,
-                                       txn,
-                                       std::move(buff),
-                                       0, 0, 0};
-         my_impl->local_txns.insert(std::move(nts));
-      }
-      if( !skip && bufsiz <= just_send_it_max) {
-         my_impl->send_all( txn, [remember,txnid](connection_ptr c) -> bool {
-               if( c->syncing ) {
+
+      net_message msg(txn);
+      packsiz = fc::raw::pack_size(msg);
+      bufsiz = packsiz + sizeof(packsiz);
+      vector<char> buff(bufsiz);
+      fc::datastream<char*> ds( buff.data(), bufsiz);
+      ds.write( reinterpret_cast<char*>(&packsiz), sizeof(packsiz) );
+      fc::raw::pack( ds, msg );
+      node_transaction_state nts = {txnid,
+                                    expiration,
+                                    txn,
+                                    std::move(buff),
+                                    0, 0, 0};
+      my_impl->local_txns.insert(std::move(nts));
+
+      if(bufsiz <= just_send_it_max) {
+         my_impl->send_all( txn, [skip, txnid](connection_ptr c) -> bool {
+               if(c == skip || c->syncing ) {
                   return false;
                }
                const auto& bs = c->trx_state.find(txnid);
                bool unknown = bs == c->trx_state.end();
                if( unknown) {
-                  if (remember) {
-                     c->trx_state.insert(transaction_state({txnid,true,true,0,time_point() }));
-                  }
+                  c->trx_state.insert(transaction_state({txnid,true,true,0,time_point() }));
                   fc_dlog(logger, "sending whole txn to ${n}", ("n",c->peer_name() ) );
                }
                return unknown;
@@ -1568,17 +1549,15 @@ namespace eosio {
          pending_notify.known_trx.mode = normal;
          pending_notify.known_trx.ids.push_back( txnid );
          pending_notify.known_blocks.mode = none;
-         my_impl->send_all(pending_notify, [skip, remember, txnid](connection_ptr c) -> bool {
+         my_impl->send_all(pending_notify, [skip, txnid](connection_ptr c) -> bool {
                if (c == skip || c->syncing) {
                   return false;
                }
                const auto& bs = c->trx_state.find(txnid);
                bool unknown = bs == c->trx_state.end();
                if( unknown) {
-                  fc_ilog(logger, "sending notice to ${n}", ("n",c->peer_name() ) );
-                  if (remember) {
-                     c->trx_state.insert(transaction_state({txnid,false,true,0, time_point() }));
-                  }
+                  fc_dlog(logger, "sending notice to ${n}", ("n",c->peer_name() ) );
+                  c->trx_state.insert(transaction_state({txnid,false,true,0, time_point() }));
                }
                return unknown;
             });
@@ -1597,11 +1576,11 @@ namespace eosio {
             note.known_blocks.mode = normal;
             note.known_blocks.ids.push_back( blk_id );
             note.known_trx.mode = none;
-            my_impl->send_all(note, [blk_id](connection_ptr conn) -> bool {
+            my_impl->send_all(note, [blk_id, num](connection_ptr conn) -> bool {
                   const auto& bs = conn->blk_state.find(blk_id);
                   bool unknown = bs == conn->blk_state.end();
                   if (unknown) {
-                     conn->blk_state.insert(block_state({blk_id,false,true,fc::time_point() }));
+                     conn->blk_state.insert(block_state({blk_id,num,false,true,fc::time_point() }));
                   }
                   return unknown;
                });
@@ -1619,7 +1598,7 @@ namespace eosio {
                   if( c != conn && !conn->syncing ) {
                      auto b = conn->blk_state.get<by_id>().find(blk_id);
                      if(b == conn->blk_state.end()) {
-                        conn->blk_state.insert( (block_state){blk_id,true,true,fc::time_point()});
+                        conn->blk_state.insert( (block_state){blk_id,num,true,true,fc::time_point()});
                         sendit = true;
                      } else if (!b->is_known) {
                         conn->blk_state.modify(b,set_is_known);
@@ -1638,11 +1617,11 @@ namespace eosio {
             note.known_blocks.mode = normal;
             note.known_blocks.ids.push_back( blk_id );
             note.known_trx.mode = none;
-            my_impl->send_all(note, [blk_id](connection_ptr conn) -> bool {
+            my_impl->send_all(note, [blk_id, num](connection_ptr conn) -> bool {
                   const auto& bs = conn->blk_state.find(blk_id);
                   bool unknown = bs == conn->blk_state.end();
                   if (unknown) {
-                     conn->blk_state.insert(block_state({blk_id,false,true,fc::time_point() }));
+                     conn->blk_state.insert(block_state({blk_id,num,false,true,fc::time_point() }));
                   }
                   return unknown;
                });
@@ -1702,7 +1681,6 @@ namespace eosio {
                elog( "failed to retrieve block for id");
             }
             if (!b) {
-               c->blk_state.insert((block_state){blkid,true,true,time_point::now()});
                send_req = true;
                req.req_blocks.ids.push_back( blkid );
                req_blks.push_back( blkid );
@@ -2221,7 +2199,7 @@ namespace eosio {
          elog( " caught something attempting to accept transaction");
       }
 
-      big_msg_master->bcast_rejected_transaction(msg, code);
+      big_msg_master->rejected_transaction(msg);
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const signed_transaction &msg) {
@@ -2427,9 +2405,13 @@ namespace eosio {
       auto &stale = local_txns.get<by_block_num>();
       chain_controller &cc = chain_plug->chain();
       uint32_t bn = cc.last_irreversible_block_num();
-      auto bn_up = stale.upper_bound(bn);
-      auto bn_lo = stale.lower_bound(1);
-      stale.erase( bn_lo, bn_up);
+      stale.erase( stale.lower_bound(1), stale.upper_bound(bn) );
+      for ( auto &c : connections ) {
+         auto &stale_txn = c->trx_state.get<by_block_num>();
+         stale_txn.erase( stale_txn.lower_bound(1), stale_txn.upper_bound(bn) );
+         auto &stale_blk = c->blk_state.get<by_block_num>();
+         stale_blk.erase( stale_blk.lower_bound(1), stale_blk.upper_bound(bn) );
+      }
    }
 
    void net_plugin_impl::connection_monitor( ) {
@@ -2650,20 +2632,12 @@ namespace eosio {
 
       // Housekeeping so fc::logger::get() will work as expected
       fc::get_logger_map()[logger_name] = logger;
-      // fc::get_logger_map()[connection::logger_name] = connection::logger;
-      // fc::get_logger_map()[net_plugin_impl::logger_name] = net_plugin_impl::logger;
-      // fc::get_logger_map()[sync_manager::logger_name] = sync_manager::logger;
-      // fc::get_logger_map()[big_msg_manager::logger_name] = big_msg_manager::logger;
 
       // Setting a parent would in theory get us the default appenders for free but
       // a) the parent's log level overrides our own in that case; and
       // b) fc library's logger was never finished - the _additivity flag tested is never true.
       for(fc::shared_ptr<fc::appender>& appender : fc::logger::get().get_appenders()) {
          logger.add_appender(appender);
-         // connection::logger.add_appender(appender);
-         // net_plugin_impl::logger.add_appender(appender);
-         // sync_manager::logger.add_appender(appender);
-         // big_msg_manager::logger.add_appender(appender);
       }
 
       if( options.count( "log-level-net-plugin" ) ) {
@@ -2672,10 +2646,6 @@ namespace eosio {
          fc::from_variant(options.at("log-level-net-plugin").as<string>(), logl);
          ilog("Setting net_plugin logging level to ${level}", ("level", logl));
          logger.set_log_level(logl);
-         // connection::logger.set_log_level(logl);
-         // net_plugin_impl::logger.set_log_level(logl);
-         // sync_manager::logger.set_log_level(logl);
-         // big_msg_manager::logger.set_log_level(logl);
       }
 
       my->network_version = static_cast<uint16_t>(app().version());

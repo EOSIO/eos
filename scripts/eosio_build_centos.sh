@@ -21,8 +21,8 @@
 	printf "\tDisk space total: ${DISK_TOTAL%.*}G\n"
 	printf "\tDisk space available: ${DISK_AVAIL%.*}G\n"
 
-	if [ $MEM_MEG -lt 4000 ]; then
-		echo "Your system must have 4 or more Gigabytes of physical memory installed."
+	if [ $MEM_MEG -lt 7000 ]; then
+		echo "Your system must have 7 or more Gigabytes of physical memory installed."
 		echo "exiting now."
 		exit 1
 	fi
