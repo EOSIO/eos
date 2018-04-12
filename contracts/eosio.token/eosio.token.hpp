@@ -26,7 +26,7 @@ namespace eosio {
 
          void issue( account_name to, asset quantity, string memo );
 
-         void inlineissue( asset quantity, string memo );
+         void inline_issue( asset quantity, string memo );
 
          void transfer( account_name from, 
                         account_name to,

@@ -382,7 +382,7 @@ namespace eosiosystem {
             auto issue_quantity = parameters.blocks_per_cycle * (parameters.payment_per_block + parameters.payment_to_eos_bucket);
             //            currency::inline_issue(SystemAccount, issue_quantity);
 #warning "FIX THIS!"
-            _system_token.inlineissue(issue_quantity, "producer pay");
+            _system_token.inline_issue(issue_quantity, "producer pay");
             set_blockchain_parameters(parameters);
             global_state_singleton::set(parameters);
          }

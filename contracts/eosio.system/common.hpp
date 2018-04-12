@@ -11,7 +11,7 @@
 
 namespace eosiosystem {
 
-   eosio::token _system_token(N(eosio));
+   eosio::token _system_token(N(eosio.system));
 
    template<account_name SystemAccount>
    class common {
