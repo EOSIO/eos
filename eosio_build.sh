@@ -37,6 +37,7 @@
 	TEMP_DIR=/tmp
 	ARCH=$( uname )
 	DISK_MIN=20
+	MEM_MIN=4000
 	TIME_BEGIN=$( date -u +%s )
 
 	txtbld=$(tput bold)
