@@ -143,7 +143,10 @@ volumes:
 
 ```
 
-run `docker pull eosio/eos:latest` *NOTE:* the defalut version is the latest, you can change it to what you want
+*NOTE:* the defalut version is the latest, you can change it to what you want
+
+run `docker pull eosio/eos:latest` 
+
 run `docker-compose up`
 
 and  enjoy it.
