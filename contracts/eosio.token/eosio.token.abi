@@ -28,7 +28,7 @@
         {"name":"memo", "type":"string"}
      ]
   },{
-     "name": "inlineissue",
+     "name": "inline_issue",
      "base": "",
      "fields": [
         {"name":"quantity", "type":"asset"},

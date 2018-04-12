@@ -59,7 +59,7 @@ void token::issue( account_name to, asset quantity, string memo )
     }
 }
 
-void token::inlineissue( asset quantity, string memo )
+void token::inline_issue( asset quantity, string memo )
 {
    auto sym = quantity.symbol.name();
    stats statstable( _self, sym );
@@ -154,4 +154,4 @@ void token::add_balance( account_name owner, asset value, const currency_stats& 
 
 } /// namespace eosio
 
-EOSIO_ABI( eosio::token, (create)(issue)(inlineissue)(transfer) )
+EOSIO_ABI( eosio::token, (create)(issue)(inline_issue)(transfer) )
