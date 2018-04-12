@@ -23,7 +23,7 @@
 	printf "\tDisk space available: ${DISK_AVAIL%.*}G\n"
 
 	if [ $MEM_MEG -lt 4000 ]; then
-		printf "\tYour system must have 8 or more Gigabytes of physical memory installed.\n"
+		printf "\tYour system must have 4 or more Gigabytes of physical memory installed.\n"
 		printf "\tExiting now.\n"
 		exit 1
 	fi

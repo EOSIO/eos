@@ -23,8 +23,8 @@
 	printf "\tDisk space total: ${DISK_TOTAL}G\n"
 	printf "\tDisk space available: ${DISK_AVAIL}G\n\n"
 
-	if [ $MEM_GIG -lt 8 ]; then
-		echo "Your system must have 8 or more Gigabytes of physical memory installed."
+	if [ $MEM_GIG -lt 4 ]; then
+		echo "Your system must have 4 or more Gigabytes of physical memory installed."
 		echo "Exiting now."
 		exit 1
 	fi
