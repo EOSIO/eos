@@ -4,82 +4,43 @@
 
 namespace eosio { namespace chain {
 
-   struct shard_lock {
-      account_name   account;
-      scope_name     scope;
+   /**
+    * When a transaction is referenced by a block it could imply one of several outcomes which
+    * describe the state-transition undertaken by the block producer.
+    */
+   struct transaction_receipt {
+      enum status_enum {
+         executed  = 0, ///< succeed, no error handler executed
+         soft_fail = 1, ///< objectively failed (not executed), error handler executed
+         hard_fail = 2, ///< objectively failed and error handler objectively failed thus no state change
+         delayed   = 3, ///< transaction delayed/deferred/scheduled for future execution
+         implicit  = 4  ///< transaction that is implied or implicit with the block generation (such as on block action)
+      };
 
-      friend bool operator <  ( const shard_lock& a, const shard_lock& b ) { return std::tie(a.account, a.scope) <  std::tie(b.account, b.scope); }
-      friend bool operator <= ( const shard_lock& a, const shard_lock& b ) { return std::tie(a.account, a.scope) <= std::tie(b.account, b.scope); }
-      friend bool operator >  ( const shard_lock& a, const shard_lock& b ) { return std::tie(a.account, a.scope) >  std::tie(b.account, b.scope); }
-      friend bool operator >= ( const shard_lock& a, const shard_lock& b ) { return std::tie(a.account, a.scope) >= std::tie(b.account, b.scope); }
-      friend bool operator == ( const shard_lock& a, const shard_lock& b ) { return std::tie(a.account, a.scope) == std::tie(b.account, b.scope); }
-      friend bool operator != ( const shard_lock& a, const shard_lock& b ) { return std::tie(a.account, a.scope) != std::tie(b.account, b.scope); }
-   };
+      transaction_receipt() : status(hard_fail) {}
+      transaction_receipt( transaction_id_type tid ):status(executed),id(tid){}
 
-   struct shard_summary {
-      vector<shard_lock>            read_locks;
-      vector<shard_lock>            write_locks;
-      vector<transaction_receipt>   transactions; /// new or generated transactions
+      fc::enum_type<uint8_t,status_enum>                          status;
+      fc::unsigned_int                                            kcpu_usage; ///< total billed CPU usage 
+      fc::unsigned_int                                            net_usage_words; ///<  total billed NET usage, so we can reconstruct resource state when skipping context free data... hard failures...
+      fc::static_variant<transaction_id_type, packed_transaction> trx;
 
-      bool empty() const {
-         return read_locks.empty() && write_locks.empty() && transactions.empty();
+
+      digest_type digest()const {
+         /* TODO
+         if( packed_trx ) { 
+            return hash(status, usage, packed.trx().id(), packed.packed_digest() )
+         }
+         */
+         return digest_type::hash(*this);
       }
    };
 
-   typedef vector<shard_summary>    cycle;
-
-   struct region_summary {
-      uint16_t region = 0;
-      vector<cycle>    cycles_summary;
-   };
 
    /**
-    *  The block_summary defines the set of transactions that were successfully applied as they
-    *  are organized into cycles and shards. A shard contains the set of transactions IDs which
-    *  are either user generated transactions or code-generated transactions.
-    *
-    *
-    *  The primary purpose of a block is to define the order in which messages are processed.
-    *
-    *  The secodnary purpose of a block is certify that the messages are valid according to
-    *  a group of 3rd party validators (producers).
-    *
-    *  The next purpose of a block is to enable light-weight proofs that a transaction occured
-    *  and was considered valid.
-    *
-    *  The next purpose is to enable code to generate messages that are certified by the
-    *  producers to be authorized.
-    *
-    *  A block is therefore defined by the ordered set of executed and generated transactions,
-    *  and the merkle proof is over set of messages delivered as a result of executing the
-    *  transactions.
-    *
-    *  A message is defined by { receiver, code, function, permission, data }, the merkle
-    *  tree of a block should be generated over a set of message IDs rather than a set of
-    *  transaction ids.
     */
-   struct signed_block_summary : public signed_block_header {
-      vector<region_summary>    regions;
-   };
-
-   /**
-    * This structure contains the set of signed transactions referenced by the
-    * block summary. This inherits from block_summary/signed_block_header and is
-    * what would be logged to disk to enable the regeneration of blockchain state.
-    *
-    * The transactions are grouped to mirror the cycles in block_summary, generated
-    * transactions are not included.
-    */
-   struct signed_block : public signed_block_summary {
-      signed_block () = default;
-      signed_block (const signed_block& ) = default;
-      signed_block (const signed_block_summary& base)
-         :signed_block_summary (base),
-          input_transactions()
-      {}
-
-      /// this is loaded and indexed into map<id,trx> that is referenced by summary; order doesn't matter
-      vector<packed_transaction>   input_transactions;
+   struct signed_block : public signed_block_header {
+      vector<transaction_receipt>   transactions; /// new or generated transactions
    };
 
    typedef std::shared_ptr<signed_block> signed_block_ptr;
@@ -87,8 +48,5 @@ namespace eosio { namespace chain {
 
 } } /// eosio::chain
 
-FC_REFLECT( eosio::chain::shard_lock, (account)(scope))
-FC_REFLECT( eosio::chain::shard_summary, (read_locks)(write_locks)(transactions))
-FC_REFLECT( eosio::chain::region_summary, (region)(cycles_summary) )
-FC_REFLECT_DERIVED(eosio::chain::signed_block_summary, (eosio::chain::signed_block_header), (regions))
-FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_summary), (input_transactions))
+FC_REFLECT(eosio::chain::transaction_receipt, (status)(kcpu_usage)(net_usage_words)(trx) )
+FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_header), (transactions))

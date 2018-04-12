@@ -42,19 +42,33 @@ namespace eosio { namespace chain {
           * Starts a new pending block session upon which new transactions can
           * be pushed.
           */
-         void start_block( block_timestamp_type time );
-         // void finalize_block( signing_lambda );
+         void start_block( block_timestamp_type time  = block_timestamp_type() );
+
+         vector<transaction_metadata_ptr> abort_block();
+
+         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx  = transaction_metadata_ptr() );
+         transaction_trace_ptr push_transaction( transaction_id_type scheduled );
+
+         void finalize_block();
+         void sign_block( std::function<signature_type( const digest_type& )> signer_callback );
+         void commit_block();
                              
-         block_state_ptr             push_block( const signed_block_ptr& b );
-         transaction_trace           push_transaction( const signed_transaction& t );
-         optional<transaction_trace> push_deferred_transaction();
+
+         void push_block( const signed_block_ptr& b );
 
          const chainbase::database& db()const;
 
          uint32_t head_block_num();
 
-         signal<void(const block_trace_ptr&)>  applied_block;
-         signal<void(const signed_block&)> applied_irreversible_block;
+         /*
+         signal<void()>                                  pre_apply_block;
+         signal<void()>                                  post_apply_block;
+         signal<void()>                                  abort_apply_block;
+         signal<void(const transaction_metadata_ptr&)>   pre_apply_transaction;
+         signal<void(const transaction_trace_ptr&)>      post_apply_transaction;
+         signal<void(const transaction_trace_ptr&)>  pre_apply_action;
+         signal<void(const transaction_trace_ptr&)>  post_apply_action;
+         */
 
       private:
          std::unique_ptr<controller_impl> my;

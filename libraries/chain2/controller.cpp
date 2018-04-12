@@ -23,9 +23,15 @@ struct pending_state {
    pending_state( database::session&& s )
    :_db_session( move(s) ){}
 
-   block_timestamp_type           _pending_time;
-   database::session              _db_session;
-   vector<transaction_metadata>   _transaction_metas;
+   database::session                  _db_session;
+   vector<transaction_metadata_ptr>   _applied_transaction_metas;
+
+   block_state_ptr                    _pending_block_state;
+   block_state_ptr                    _expected_block_state;
+
+   void push() {
+      _db_session.push();
+   }
 };
 
 struct controller_impl {
@@ -50,6 +56,8 @@ struct controller_impl {
    }
 
    void pop_block() {
+      /// head = fork_db.get( head->previous );
+      /// db.undo();
    }
 
 
@@ -73,7 +81,7 @@ struct controller_impl {
        * when we catch up to the head block later.
        */
       clear_all_undo(); 
-      initialize_fork_db();
+//      initialize_fork_db();
    }
 
    ~controller_impl() {
@@ -311,6 +319,9 @@ struct controller_impl {
    }
 
 
+   void start_block( block_timestamp_type when ) {
+   }
+
    /**
     *  apply_block 
     *
@@ -323,6 +334,52 @@ struct controller_impl {
     *
     */
    void apply_block( block_state_ptr bstate ) {
+      try {
+         start_block();
+         for( const auto& receipt : bstate.block->transactions ) {
+            receipt.trx.visit( [&]( const auto& t ){ 
+               apply_transaction( t );
+            });
+         }
+         finalize_block();
+         validate_signature();
+         commit_block();
+      } catch ( const fc::exception& e ) {
+         abort_block();
+         edump((e.to_detail_string()));
+         throw;
+      }
+   }
+
+   void start_block( block_timestamp_type time ) {
+      FC_ASSERT( !pending );
+      pending = _db.start_undo_session();
+      /// TODO: FC_ASSERT( _db.revision() == blocknum );
+
+      auto trx = get_on_block_transaction();
+      apply_transaction( trx );
+
+   }
+
+   vector<transaction_metadata> abort_block() {
+      FC_ASSERT( pending.valid() );
+      self.abort_apply_block();
+      auto tmp = move( pending->_transaction_metas );
+      pending.reset();
+      return tmp;
+   }
+
+   void commit_block() {
+      FC_ASSERT( pending.valid() );
+
+      self.applied_block( pending->_pending_block_state );
+      pending->push();
+      pending.reset();
+   }
+
+
+
+
        auto session = db.start_undo_session(true);
 
        optional<fc::time_point> processing_deadline;
@@ -356,55 +413,6 @@ struct controller_impl {
    } /// apply_block
 
 
-   void apply_region( uint32_t region_index, const block_state& bstate ) {
-      const auto& r = bstate.block->regions[region_index];
-
-      EOS_ASSERT(!r.cycles_summary.empty(), tx_empty_region,"region[${r_index}] has no cycles", ("r_index",region_index));
-      for( uint32_t cycle_index = 0; cycle_index < r.cycles_summary.size(); cycle_index++ ) {
-         apply_cycle( region_index, cycle_index, bstate );
-      }
-   }
-
-   void apply_cycle( uint32_t region_index, uint32_t cycle_index,  const block_state& bstate ) {
-      const auto& c = bstate.block->regions[region_index].cycles_summary[cycle_index];
-
-      for( uint32_t shard_index = 0; shard_index < c.size(); ++shard_index ) {
-         apply_shard( region_index, cycle_index, shard_index, bstate );
-      }
-      resource_limits.synchronize_account_ram_usage();
-      //auto& c_trace = bstate.trace->region_traces[region_index].cycle_traces[cycle_index];
-      //_apply_cycle_trace(c_trace);
-   }
-
-   void apply_shard( uint32_t region_index, 
-                     uint32_t cycle_index, 
-                     uint32_t shard_index, 
-                      const block_state& bstate ) {
-
-      shard_trace& s_trace = bstate.trace->region_traces[region_index].cycle_traces[cycle_index].shard_traces[shard_index];
-
-      const auto& shard = bstate.block->regions[region_index].cycles_summary[cycle_index][shard_index];
-      EOS_ASSERT(!shard.empty(), tx_empty_shard,"region[${r_index}] cycle[${c_index}] shard[${s_index}] is empty",
-                 ("r_index",region_index)("c_index",cycle_index)("s_index",shard_index));
-
-      flat_set<shard_lock> used_read_locks;
-      flat_set<shard_lock> used_write_locks;
-
-      for( const auto& receipt : shard.transactions ) {
-         // apply_transaction( ... );
-      }
-
-      EOS_ASSERT( boost::equal( used_read_locks, shard.read_locks ),
-         block_lock_exception, "Read locks for executing shard: ${s} do not match those listed in the block", 
-                               ("s", shard_index));
-
-      EOS_ASSERT( boost::equal( used_write_locks, shard.write_locks ),
-         block_lock_exception, "Write locks for executing shard: ${s} do not match those listed in the block", 
-                               ("s", shard_index));
-
-      s_trace.finalize_shard();
-   }
-
 
 };
 
@@ -430,7 +438,7 @@ void controller::startup() {
 const chainbase::database& controller::db()const { return my->db; }
 
 
-block_state_ptr controller::push_block( const signed_block_ptr& b ) {
+void controller::push_block( const signed_block_ptr& b ) {
   return my->push_block( b );  
 }
 
