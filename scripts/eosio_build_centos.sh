@@ -12,6 +12,9 @@
 	DISK_TOTAL=$(( $DISK_TOTAL_KB / 1048576 ))
 	DISK_AVAIL=$(( $DISK_AVAIL_KB / 1048576 ))
 
+	MEM_GIG=$(( (($MEM_MEG / 1000) / 2) ))
+	JOBS=$(( ${MEM_GIG} > ${CPU_CORE} ? ${CPU_CORE} : ${MEM_GIG} ))
+
 	printf "\n\tOS name: $OS_NAME\n"
 	printf "\tOS Version: ${OS_VER}\n"
 	printf "\tCPU speed: ${CPU_SPEED}Mhz\n"
@@ -102,14 +105,14 @@
 	fi
 	printf "\tCentos devtoolset-7 successfully enabled.\n"
 
-	printf "\n\tEnabling Centos python3 installation.\n"
-	source /opt/rh/python33/enable
-	if [ $? -ne 0 ]; then
-		printf "\n\tUnable to enable Centos python3 at this time.\n"
-		printf "\n\tExiting now.\n"
-		exit 1
-	fi
-	printf "\tCentos python3 successfully enabled.\n"
+# 	printf "\n\tEnabling Centos python3 installation.\n"
+# 	source /opt/rh/python33/enable
+# 	if [ $? -ne 0 ]; then
+# 		printf "\n\tUnable to enable Centos python3 at this time.\n"
+# 		printf "\n\tExiting now.\n"
+# 		exit 1
+# 	fi
+# 	printf "\tCentos python3 successfully enabled.\n"
 	
 	printf "\n\tUpdating YUM repository.\n"
 
@@ -192,7 +195,7 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling CMAKE.\n"
 			printf "\tExiting now.\n\n"
@@ -295,7 +298,7 @@ mongodconf
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling MongoDB C driver.\n"
 			printf "\tExiting now.\n\n"
@@ -324,7 +327,7 @@ mongodconf
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		sudo make -j${CPU_CORE}
+		sudo make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling MongoDB C++ driver.\n"
 			printf "\tExiting now.\n\n"
@@ -402,7 +405,7 @@ mongodconf
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
 			printf "\tExiting now.\n\n"
