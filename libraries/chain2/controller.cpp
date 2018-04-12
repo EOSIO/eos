@@ -345,7 +345,7 @@ struct controller_impl {
          apply_region( region_index, *bstate );
        }
 
-       FC_ASSERT( bstate->header.action_mroot == next_block_trace.calculate_action_merkle_root(), 
+       FC_ASSERT( bstate->header.action_mroot == next_block_trace->calculate_action_merkle_root(), 
                   "action merkle root does not match" ); finalize_block( *next_block_trace );
        fork_db.set_validity( bstate, true );
 
@@ -361,35 +361,36 @@ struct controller_impl {
 
       EOS_ASSERT(!r.cycles_summary.empty(), tx_empty_region,"region[${r_index}] has no cycles", ("r_index",region_index));
       for( uint32_t cycle_index = 0; cycle_index < r.cycles_summary.size(); cycle_index++ ) {
-         apply_cycle( region_index, cycle_index, b_trace, bstate );
+         apply_cycle( region_index, cycle_index, bstate );
       }
    }
 
-   void apply_cycle( uint32_t region_index, uint32_t cycle_index, block_trace& b_trace, const block_state& bstate ) {
-      const auto& c = bstate.block->regions[region_index].cycles[cycle_index];
+   void apply_cycle( uint32_t region_index, uint32_t cycle_index,  const block_state& bstate ) {
+      const auto& c = bstate.block->regions[region_index].cycles_summary[cycle_index];
 
       for( uint32_t shard_index = 0; shard_index < c.size(); ++shard_index ) {
-         apply_shard( region_index, cycle_index, shard_index, b_trace, bstate );
+         apply_shard( region_index, cycle_index, shard_index, bstate );
       }
       resource_limits.synchronize_account_ram_usage();
-      _apply_cycle_trace(c_trace);
+      //auto& c_trace = bstate.trace->region_traces[region_index].cycle_traces[cycle_index];
+      //_apply_cycle_trace(c_trace);
    }
 
    void apply_shard( uint32_t region_index, 
                      uint32_t cycle_index, 
                      uint32_t shard_index, 
-                     block_trace& b_trace, const block_state& bstate ) {
+                      const block_state& bstate ) {
 
-      shard_trace& s_trace = b_trace.region_traces[region_index].cycle_traces[cycle_index].shard_traces[shard_index];
+      shard_trace& s_trace = bstate.trace->region_traces[region_index].cycle_traces[cycle_index].shard_traces[shard_index];
 
-      const auto& shard = bstate.block->regions[region_index].cycles[cycle_index][shard_index];
+      const auto& shard = bstate.block->regions[region_index].cycles_summary[cycle_index][shard_index];
       EOS_ASSERT(!shard.empty(), tx_empty_shard,"region[${r_index}] cycle[${c_index}] shard[${s_index}] is empty",
                  ("r_index",region_index)("c_index",cycle_index)("s_index",shard_index));
 
       flat_set<shard_lock> used_read_locks;
       flat_set<shard_lock> used_write_locks;
 
-      for( const auto& receipt : shard.transitions ) {
+      for( const auto& receipt : shard.transactions ) {
          // apply_transaction( ... );
       }
 
@@ -420,9 +421,9 @@ controller::~controller() {
 
 void controller::startup() {
    auto head = my->blog.read_head();
-   if( head && head_block_num() < head->bock_num() ) {
+   if( head && head_block_num() < head->block_num() ) {
       wlog( "\nDatabase in inconsistant state, replaying block log..." );
-      replay();
+      //replay();
    }
 }
 
