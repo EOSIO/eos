@@ -3,11 +3,13 @@
 Simple and fast setup of EOS.IO on Docker is also available.
 
 ## Install Dependencies
- - [Docker](https://docs.docker.com) Docker 17.05 or higher is required
- - [docker-compose](https://docs.docker.com/compose/) version >= 1.10.0
+
+- [Docker](https://docs.docker.com) Docker 17.05 or higher is required
+- [docker-compose](https://docs.docker.com/compose/) version >= 1.10.0
 
 ## Docker Requirement
- - At least 8GB RAM (Docker -> Preferences -> Advanced -> Memory -> 8GB or above)
+
+- At least 8GB RAM (Docker -> Preferences -> Advanced -> Memory -> 8GB or above)
 
 ## Build eos image
 
@@ -24,13 +26,15 @@ docker run --name nodeos -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh arg1 
 ```
 
 By default, all data is persisted in a docker volume. It can be deleted if the data is outdated or corrupted:
-``` bash
+
+```bash
 $ docker inspect --format '{{ range .Mounts }}{{ .Name }} {{ end }}' nodeos
 fdc265730a4f697346fa8b078c176e315b959e79365fc9cbd11f090ea0cb5cbc
 $ docker volume rm fdc265730a4f697346fa8b078c176e315b959e79365fc9cbd11f090ea0cb5cbc
 ```
 
 Alternately, you can directly mount host directory into the container
+
 ```bash
 docker run --name nodeos -v /path-to-data-dir:/opt/eosio/bin/data-dir -p 8888:8888 -p 9876:9876 -t eosio/eos nodeosd.sh arg1 arg2
 ```
@@ -50,7 +54,6 @@ docker-compose up -d
 ```
 
 After `docker-compose up -d`, two services named `nodeosd` and `keosd` will be started. nodeos service would expose ports 8888 and 9876 to the host. keosd service does not expose any port to the host, it is only accessible to cleos when runing cleos is running inside the keosd container as described in "Execute cleos commands" section.
-
 
 ### Execute cleos commands
 
@@ -73,6 +76,7 @@ If you don't need keosd afterwards, you can stop the keosd service using
 ```bash
 docker-compose stop keosd
 ```
+
 ### Change default configuration
 
 You can use docker compose override file to change the default configurations. For example, create an alternate config file `config2.ini` and a `docker-compose.override.yml` with the following content.
@@ -95,9 +99,51 @@ docker-compose up
 ```
 
 ### Clear data-dir
+
 The data volume created by docker-compose can be deleted as follows:
 
 ```bash
 docker volume rm nodeos-data-volume
 docker volume rm keosd-data-volume
 ```
+
+### More easily mode
+
+ Sometimes, it's still hard for you to build it locally, for some reasons such as bad network, not strong enough cpu, and so on, and then you can use the image from [docker hub](https://hub.docker.com/r/eosio/eos/).
+Just replace the `docker-compose.yaml` file with the content below
+
+```bash
+version: "3"
+
+services:
+  nodeosd:
+    image: eosio/eos:latest
+    command: /opt/eosio/bin/nodeosd.sh
+    hostname: nodeosd
+    ports:
+      - 8888:8888
+      - 9876:9876
+    expose:
+      - "8888"
+    volumes:
+      - nodeos-data-volume:/opt/eosio/bin/data-dir
+
+  keosd:
+    image: eosio/eos:latest
+    command: /opt/eosio/bin/keosd
+    hostname: keosd
+    links:
+      - nodeosd
+    volumes:
+      - keosd-data-volume:/opt/eosio/bin/data-dir
+
+volumes:
+  nodeos-data-volume:
+  keosd-data-volume:
+
+```
+
+run `docker pull eosio/eos:latest` *NOTE:* the defalut version is the latest, you can change it to what you want
+run `docker-compose up`
+
+and  enjoy it.
