@@ -44,6 +44,12 @@
 	bldred=${txtbld}$(tput setaf 1)
 	txtrst=$(tput sgr0)
 
+	if [ ! -d .git ]; then
+		printf "\nThis build script only works with sources cloned from git\n"
+		printf "\tPlease clone a new eos directory with 'git clone https://github.com/EOSIO/eos --recursive'\n"
+		printf "\tSee the wiki for instructions: https://github.com/EOSIO/eos/wiki\n"
+		exit 1
+	fi
 
 	printf "\n\tBeginning build version: ${VERSION}\n"
 	printf "\t$( date -u )\n"
