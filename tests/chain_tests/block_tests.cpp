@@ -1,6 +1,7 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester_network.hpp>
 #include <eosio/chain/producer_object.hpp>
+#include <eosio/chain/name.hpp>
 
 using namespace eosio;
 using namespace eosio::chain;
@@ -14,6 +15,214 @@ using namespace eosio::testing;
 #endif
 
 BOOST_AUTO_TEST_SUITE(block_tests)
+
+void sync_with_fail(base_tester& fork, base_tester& other) {
+   if (fork.control->head_block_id() == other.control->head_block_id())
+      return;
+   if (fork.control->head_block_num() < other.control->head_block_num())
+      return other.sync_with(fork);
+
+   auto sync_dbs = [](base_tester& a, base_tester& b) {
+      for (int i = 1; i <= a.control->head_block_num()-2; ++i) {
+         auto block = a.control->fetch_block_by_number(i);
+         if (block && !b.control->is_known_block(block->id())) {
+            b.control->push_block(*block, eosio::chain::validation_steps::created_block);
+         }
+      }
+      auto block = a.control->fetch_block_by_number(0);
+      b.control->push_block(*block, eosio::chain::validation_steps::created_block);
+   };
+   
+   sync_dbs(fork, other);
+   sync_dbs(other, fork);
+}
+
+void sync_with(base_tester& fork, base_tester& other, int offset) {
+   if (fork.control->head_block_id() == other.control->head_block_id())
+      return;
+   if (fork.control->head_block_num() < other.control->head_block_num())
+      return other.sync_with(fork);
+
+   auto sync_dbs = [&](base_tester& a, base_tester& b) {
+      for (int i = 1; i <= a.control->head_block_num() - offset; ++i) {
+         auto block = a.control->fetch_block_by_number(i);
+         if (block && !b.control->is_known_block(block->id())) {
+            b.control->push_block(*block, eosio::chain::validation_steps::created_block);
+         }
+      }
+      for ( int i=0; i < 2; i++ )
+         a.produce_block();
+      for (int i = a.control->head_block_num()-offset; i <= a.control->head_block_num(); ++i) {
+         auto block = a.control->fetch_block_by_number(i);
+         if (block && !b.control->is_known_block(block->id())) {
+            b.control->push_block(*block, eosio::chain::validation_steps::created_block);
+         }
+
+      }
+   };
+   
+   sync_dbs(fork, other);
+   sync_dbs(other, fork);
+}
+
+void produce_blocks_connected( vector<tester>& nodes, uint8_t which_connected ) {
+   for ( int i=0; i < 12; i++ ) {
+      auto block = nodes[i%nodes.size()].produce_block();
+      for ( int j=0; j < nodes.size(); j++ ) {
+         if ( (which_connected >> j) & 0x1 )
+            nodes[j].push_block( block );
+      }
+   }
+}
+BOOST_AUTO_TEST_CASE( block_too_old_test ) { try {
+   vector<TESTER> producers(5);
+
+   vector<account_name> producer_names;
+   for (char i = 'a'; i <= 'a'+producers.size(); i++) {
+      producer_names.emplace_back(std::string("init")+i);
+   }
+   producers[0].create_accounts(producer_names);
+   producers[0].set_producers(producer_names);
+
+   signed_block old_block;
+   for ( int i=0; i < 12; i++ ) {
+      for ( int j=0; j < producers.size(); j++ ) {
+         auto block = producers[j].produce_block();
+         old_block = block;
+         producers[j].push_block( block );
+      }
+   }
+
+   for ( int i=0; i < producers.size()*2; i++ ) {
+      producers[i%producers.size()].produce_block();
+   }
+   BOOST_REQUIRE_THROW( producers[1].push_block(old_block), block_too_old_exception);
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( last_irreversible_test ) { try {
+   tester producers;
+   vector<account_name> producer_names = {N(inita), N(initb), N(initc), N(initd)};
+   producers.create_accounts(producer_names);
+   producers.set_producers(producer_names);
+   
+   auto block = producers.produce_block();
+   while (true) {
+      block = producers.produce_block();
+      if ( block.producer == N(inita) )
+         break;
+   }
+
+   auto produce_one_block = [&]( auto& t, int i ) {
+      signed_block new_block = t.control->generate_block( block_timestamp_type{block.timestamp.slot + 12}, 
+                                                          producer_names[i],
+                                                          t.get_private_key( producer_names[i], "active" ) );
+      new_block.previous = block.id();
+      t.push_block( new_block );
+      block = new_block;
+   };
+
+   // lets start at inita
+   BOOST_CHECK_EQUAL( block.block_num(), 48 );
+   BOOST_CHECK_EQUAL( block.producer, N(inita) );
+   for ( int i=0; i < 4; i++ )
+      BOOST_TEST_MESSAGE( "ID "+string(producers.get_private_key( producer_names[i], "active" ).get_public_key()) );
+   for ( int i=1; i < 4; i++ )
+      produce_one_block( producers, i );
+
+   BOOST_CHECK_EQUAL( block.block_num(), 55 );
+   BOOST_CHECK_EQUAL( block.producer, N(inita) );
+   BOOST_CHECK_EQUAL( producers.control->last_irreversible_block_num(), 53 );
+
+   produce_one_block( producers, 0 );
+   BOOST_CHECK_EQUAL( block.producer, N(inita) );
+   BOOST_CHECK_EQUAL( producers.control->last_irreversible_block_num(), 59 );
+   BOOST_TEST_MESSAGE( "NUM : " + std::to_string(block.block_num()) );
+   return;
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( sync_test ) { try {
+   constexpr uint8_t NUM_OF_TESTERS = 7;
+   tester testers[NUM_OF_TESTERS];
+   tester_network net;
+   for ( int i=0; i < NUM_OF_TESTERS; i++ )
+      net.connect_blockchain( testers[i] );
+
+   vector<account_name> producer_names;
+   for (char i = 'a'; i <= 'a'+NUM_OF_TESTERS; i++) {
+      producer_names.emplace_back(std::string("init") + i);
+   }
+   testers[0].create_accounts(producer_names);
+   testers[0].set_producers(producer_names);
+   
+   for ( int i = 0; i < NUM_OF_TESTERS*2; i++ )
+      testers[i%NUM_OF_TESTERS].produce_blocks_until_end_of_round();
+   net.disconnect_blockchain( testers[1] );
+   net.disconnect_blockchain( testers[3] );
+   net.disconnect_blockchain( testers[5] );
+   BOOST_CHECK(testers[3].control->head_block_num() == testers[1].control->head_block_num());
+   for ( int i = 0; i < NUM_OF_TESTERS*10; i++ )
+      testers[i%NUM_OF_TESTERS].produce_blocks_until_end_of_round();
+   
+   for ( int i = 0; i < 100; i++ ) {
+      testers[1].produce_blocks_until_end_of_round();
+      testers[3].produce_blocks_until_end_of_round();
+      testers[5].produce_blocks_until_end_of_round();
+   }
+
+   BOOST_CHECK(testers[1].control->head_block_num() > testers[2].control->head_block_num());
+   BOOST_CHECK(testers[3].control->head_block_num() > testers[4].control->head_block_num());
+   BOOST_CHECK(testers[5].control->head_block_num() > testers[6].control->head_block_num());
+   BOOST_CHECK( !testers[1].is_same_chain(testers[2]) );
+   sync_with( testers[1], testers[2], 10 );
+   sync_with( testers[3], testers[2], 10 );
+   sync_with( testers[5], testers[2], 10 );
+   net.connect_blockchain( testers[1] );
+   net.connect_blockchain( testers[3] );
+   net.connect_blockchain( testers[5] );
+   BOOST_CHECK( testers[1].is_same_chain(testers[2]) );
+   for ( int i = 0; i < NUM_OF_TESTERS*2; i++ )
+      testers[i%NUM_OF_TESTERS].produce_blocks_until_end_of_round();
+   BOOST_CHECK( testers[1].is_same_chain(testers[2]) );
+} FC_LOG_AND_RETHROW() } // sync_test
+
+BOOST_AUTO_TEST_CASE( sync_after_closing_test ) { try {
+   constexpr uint8_t NUM_OF_TESTERS = 5;
+   tester testers[NUM_OF_TESTERS];
+   tester_network net;
+   for ( int i=0; i < NUM_OF_TESTERS; i++ )
+      net.connect_blockchain( testers[i] );
+
+   vector<account_name> producer_names;
+   for (char i = 'a'; i <= 'a'+NUM_OF_TESTERS; i++) {
+      producer_names.emplace_back(std::string("init") + i);
+   }
+   testers[0].create_accounts(producer_names);
+   testers[0].set_producers(producer_names);
+
+      
+   for ( int i = 0; i < NUM_OF_TESTERS*2; i++ )
+      testers[i%NUM_OF_TESTERS].produce_blocks_until_end_of_round();
+   BOOST_CHECK(testers[3].control->head_block_num() == testers[1].control->head_block_num());
+   net.disconnect_blockchain( testers[3] );
+   for ( int i = 0; i < NUM_OF_TESTERS*10; i++ )
+      testers[i%NUM_OF_TESTERS].produce_blocks_until_end_of_round();
+   
+   for ( int i = 0; i < 10; i++ )
+      testers[3].produce_block();
+
+   BOOST_CHECK(testers[3].control->head_block_num() < testers[1].control->head_block_num());
+   BOOST_CHECK( !testers[3].is_same_chain(testers[1]) );
+   testers[3].close();
+   testers[3].open();
+   BOOST_CHECK( !testers[3].is_same_chain(testers[1]) );
+   sync_with( testers[3], testers[1], 10 );
+   net.connect_blockchain( testers[3] );
+   BOOST_CHECK( testers[3].is_same_chain(testers[1]) );
+   for ( int i = 0; i < NUM_OF_TESTERS*2; i++ )
+      testers[i%NUM_OF_TESTERS].produce_blocks_until_end_of_round();
+   BOOST_CHECK( testers[3].is_same_chain(testers[1]) );
+
+} FC_LOG_AND_RETHROW() } // sync_after_closing_test
 
 BOOST_AUTO_TEST_CASE( schedule_test ) { try {
   TESTER test;

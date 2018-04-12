@@ -54,7 +54,8 @@ void  fork_database::_push_block(const item_ptr& item)
 {
    if( _head ) // make sure the block is within the range that we are caching
    {
-      FC_ASSERT( item->num > std::max<int64_t>( 0, int64_t(_head->num) - (_max_size) ),
+      EOS_ASSERT( item->num > std::max<int64_t>( 0, int64_t(_head->num) - (_max_size) ),
+                 block_too_old_exception,
                  "attempting to push a block that is too old", 
                  ("item->num",item->num)("head",_head->num)("max_size",_max_size));
    }
@@ -79,8 +80,9 @@ void  fork_database::_push_block(const item_ptr& item)
       uint32_t min_num = _head->num - std::min( _max_size, _head->num );
 //      ilog( "min block in fork DB ${n}, max_size: ${m}", ("n",min_num)("m",_max_size) );
       auto& num_idx = _index.get<block_num>();
-      while( num_idx.size() && (*num_idx.begin())->num < min_num )
+      while( num_idx.size() && (*num_idx.begin())->num < min_num ) {
          num_idx.erase( num_idx.begin() );
+      }
       
       _unlinked_index.get<block_num>().erase(_head->num - _max_size);
    }
@@ -118,8 +120,9 @@ void fork_database::set_max_size( uint32_t s )
       auto itr = by_num_idx.begin();
       while( itr != by_num_idx.end() )
       {
-         if( (*itr)->num < std::max(int64_t(0),int64_t(_head->num) - _max_size) )
+         if( (*itr)->num < std::max(int64_t(0),int64_t(_head->num) - _max_size) ) {
             by_num_idx.erase(itr);
+         }
          else
             break;
          itr = by_num_idx.begin();
@@ -130,8 +133,9 @@ void fork_database::set_max_size( uint32_t s )
       auto itr = by_num_idx.begin();
       while( itr != by_num_idx.end() )
       {
-         if( (*itr)->num < std::max(int64_t(0),int64_t(_head->num) - _max_size) )
+         if( (*itr)->num < std::max(int64_t(0),int64_t(_head->num) - _max_size) ) {
             by_num_idx.erase(itr);
+         }
          else
             break;
          itr = by_num_idx.begin();

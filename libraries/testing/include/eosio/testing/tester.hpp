@@ -71,6 +71,7 @@ namespace eosio { namespace testing {
 
          void              close();
          void              open();
+         bool              is_same_chain( base_tester& other );
 
          virtual signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty ) = 0;
          void                 produce_blocks( uint32_t n = 1 );
