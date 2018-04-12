@@ -38,17 +38,31 @@
 	ARCH=$( uname )
 	DISK_MIN=20
 	TIME_BEGIN=$( date -u +%s )
+	DOXYGEN=false #set to true to build docs
 
 	txtbld=$(tput bold)
 	bldred=${txtbld}$(tput setaf 1)
 	txtrst=$(tput sgr0)
 
+	if [ ! -d .git ]; then
+		printf "\nThis build script only works with sources cloned from git\n"
+		printf "\tPlease clone a new eos directory with 'git clone https://github.com/EOSIO/eos --recursive'\n"
+		printf "\tSee the wiki for instructions: https://github.com/EOSIO/eos/wiki\n"
+		exit 1
+	fi
 
 	printf "\n\tBeginning build version: ${VERSION}\n"
 	printf "\t$( date -u )\n"
 	printf "\tgit head id: $( cat .git/refs/heads/master )\n"
 	printf "\tCurrent branch: $( git branch | grep \* )\n"
 	printf "\n\tARCHITECTURE: ${ARCH}\n"
+
+	STALE_SUBMODS=$(( `git submodule status | grep -c "^[+\-]"` ))
+	if [ $STALE_SUBMODS -gt 0 ]; then
+		printf "\ngit submodules are not up to date\n"
+		printf "\tPlease run the command 'git submodule update --init --recursive'\n"
+		exit 1
+	fi
 
 	if [ $ARCH == "Linux" ]; then
 		
@@ -149,6 +163,7 @@
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
 	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
 	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DBUILD_MONGO_DB_PLUGIN=true \
+	-DBUILD_DOXYGEN=${DOXYGEN} \
 	..
 	
 	if [ $? -ne 0 ]; then

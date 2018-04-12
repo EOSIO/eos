@@ -252,6 +252,7 @@ bool chain_controller::_push_block(const signed_block& new_block)
       session.push();
    } catch ( const fc::exception& e ) {
       elog("Failed to push new block:\n${e}", ("e", e.to_detail_string()));
+      _fork_db.pop_block();
       _fork_db.remove(new_block.id());
       throw;
    }
@@ -572,17 +573,19 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
             }
          }
          ///TODO: hook this up as a signal handler in a de-coupled "logger" that may just silently drop them
-         for (const auto &ar : tr.action_traces) {
-            if (!ar.console.empty()) {
-               auto prefix = fc::format_string(
-                  "\n[(${a},${n})->${r}]",
-                  fc::mutable_variant_object()
-                     ("a", ar.act.account)
-                     ("n", ar.act.name)
-                     ("r", ar.receiver));
-               ilog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
-                    + ar.console
-                    + prefix + ": CONSOLE OUTPUT END   =====================" );
+         if(fc::logger::get(DEFAULT_LOGGER).is_enabled(fc::log_level::debug)) {
+            for (const auto &ar : tr.action_traces) {
+               if (!ar.console.empty()) {
+                  auto prefix = fc::format_string(
+                     "\n[(${a},${n})->${r}]",
+                     fc::mutable_variant_object()
+                        ("a", ar.act.account)
+                        ("n", ar.act.name)
+                        ("r", ar.receiver));
+                  dlog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
+                       + ar.console
+                       + prefix + ": CONSOLE OUTPUT END   =====================" );
+               }
             }
          }
       }
@@ -873,7 +876,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                                     ("enforced_delay", enforced_delay.to_seconds())("specified_delay", trx_meta.delay.to_seconds()) );
                      }
 
-                     return &input_metas.at(itr->second);
+                     return &trx_meta;
                   } else {
                      const auto* gtrx = _db.find<generated_transaction_object,by_trx_id>(receipt.id);
                      if (gtrx != nullptr) {
@@ -1283,17 +1286,10 @@ void chain_controller::update_resource_usage( transaction_trace& trace, const tr
               ("used", trace.net_usage)("max", chain_configuration.max_transaction_net_usage));
 
    // determine the accounts to bill
-   set<std::pair<account_name, permission_name>> authorizations;
+   flat_set<account_name> bill_to_accounts;
    for( const auto& act : meta.trx().actions )
       for( const auto& auth : act.authorization )
-         authorizations.emplace( auth.actor, auth.permission );
-
-
-   vector<account_name> bill_to_accounts;
-   bill_to_accounts.reserve(authorizations.size());
-   for( const auto& ap : authorizations ) {
-      bill_to_accounts.push_back(ap.first);
-   }
+         bill_to_accounts.insert( auth.actor );
 
    // for account usage, the ordinal is based on possible blocks not actual blocks.  This means that as blocks are
    // skipped account usage will still decay.

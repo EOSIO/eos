@@ -314,13 +314,15 @@ namespace eosio { namespace chain { namespace contracts {
             }
             */
             uint32_t i = 0;
-            for( const auto& field : st.fields ) {
-               idump((field.type)(va[i])(i));
-               if( va.size() > i )
-                  variant_to_binary(field.type, va[i], ds);
-               else
-                  variant_to_binary(field.type, fc::variant(), ds);
-               ++i;
+            if (va.size() > 0) {
+               for( const auto& field : st.fields ) {
+                  idump((field.type)(va[i])(i));
+                  if( va.size() > i )
+                     variant_to_binary(field.type, va[i], ds);
+                  else
+                     variant_to_binary(field.type, fc::variant(), ds);
+                  ++i;
+               }
             }
          }
       }

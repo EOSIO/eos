@@ -17,11 +17,6 @@ namespace eosio {
 // NOTE: including eosiolib/transaction.hpp here causes !"unresolvable": env._ZNKSt3__120__vector_base_commonILb1EE20__throw_length_errorEv
 //       errors in api_tests/memory_tests
 
-static constexpr unsigned long long WASM_TEST_ACTION(const char* cls, const char* method)
-{
-  return static_cast<unsigned long long>(DJBH(cls)) << 32 | static_cast<unsigned long long>(DJBH(method));
-}
-
 #define WASM_TEST_HANDLER(CLASS, METHOD) \
   if( action == WASM_TEST_ACTION(#CLASS, #METHOD) ) { \
      CLASS::METHOD(); \
@@ -93,6 +88,8 @@ struct test_db {
    static void idx64_general(uint64_t receiver, uint64_t code, uint64_t action);
    static void idx64_lowerbound(uint64_t receiver, uint64_t code, uint64_t action);
    static void idx64_upperbound(uint64_t receiver, uint64_t code, uint64_t action);
+
+   static void test_invalid_access(uint64_t receiver, uint64_t code, uint64_t action);
 };
 
 struct test_multi_index {
@@ -249,4 +246,8 @@ struct test_softfloat {
 
 struct test_permission {
   static void check_authorization(uint64_t receiver, uint64_t code, uint64_t action);
+};
+
+struct test_datastream {
+  static void test_basic();
 };

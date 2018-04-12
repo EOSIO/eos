@@ -3,7 +3,7 @@ FROM eosio/builder as builder
 RUN git clone -b master --depth 1 https://github.com/EOSIO/eos.git --recursive \
     && cd eos \
     && cmake -H. -B"/tmp/build" -GNinja -DCMAKE_BUILD_TYPE=Release -DWASM_ROOT=/opt/wasm -DCMAKE_CXX_COMPILER=clang++ \
-       -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/tmp/build  -DSecp256k1_ROOT_DIR=/usr/local \
+       -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/tmp/build  -DSecp256k1_ROOT_DIR=/usr/local -DBUILD_MONGO_DB_PLUGIN=true \
     && cmake --build /tmp/build --target install
 
 
@@ -13,7 +13,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install openssl 
 COPY --from=builder /usr/local/lib/* /usr/local/lib/
 COPY --from=builder /tmp/build/bin /opt/eosio/bin
 COPY --from=builder /tmp/build/contracts /contracts
-COPY --from=builder /eos/Docker/config.ini /eos/genesis.json /
+COPY --from=builder /eos/Docker/config.ini /
 COPY nodeosd.sh /opt/eosio/bin/nodeosd.sh
 ENV EOSIO_ROOT=/opt/eosio
 RUN chmod +x /opt/eosio/bin/nodeosd.sh

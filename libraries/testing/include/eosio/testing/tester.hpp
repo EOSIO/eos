@@ -89,8 +89,11 @@ namespace eosio { namespace testing {
                                                       uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
                                                       uint32_t delay_sec = 0)const;
 
-         void                 create_accounts( vector<account_name> names, bool multisig = false ) {
-            for( auto n : names ) create_account(n, config::system_account_name, multisig );
+         vector<transaction_trace>  create_accounts( vector<account_name> names, bool multisig = false ) {
+            vector<transaction_trace> traces;
+            traces.reserve(names.size());
+            for( auto n : names ) traces.emplace_back(create_account(n, config::system_account_name, multisig ));
+            return traces;
          }
 
          void                 push_genesis_block();
@@ -105,7 +108,7 @@ namespace eosio { namespace testing {
          void delete_authority( account_name account, permission_name perm,  const vector<permission_level>& auths, const vector<private_key_type>& keys );
          void delete_authority( account_name account, permission_name perm );
 
-         void create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
+         transaction_trace create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
 
          transaction_trace push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys );
          transaction_trace push_reqauth(account_name from, string role, bool multi_sig = false);
@@ -175,6 +178,27 @@ namespace eosio { namespace testing {
         }
 
        void sync_with(base_tester& other);
+
+       const contracts::table_id_object* find_table( name code, name scope, name table );
+
+       // method treats key as a name type, if this is not appropriate in your case, pass require == false and report the correct behavior
+       template<typename Object>
+       bool get_table_entry(Object& obj, account_name code, account_name scope, account_name table, uint64_t key, bool require = true) {
+          auto* maybe_tid = find_table(code, scope, table);
+          if(maybe_tid == nullptr)
+             BOOST_FAIL("table for code=\"" + code.to_string() + "\" scope=\"" + scope.to_string() + "\" table=\"" + table.to_string() + "\" does not exist");
+
+          auto* o = control->get_database().find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(maybe_tid->id, key));
+          if(o == nullptr) {
+             if (require)
+                BOOST_FAIL("object does not exist for primary_key=\"" + name(key).to_string() + "\"");
+
+             return false;
+          }
+
+          fc::raw::unpack(o->value.data(), o->value.size(), obj);
+          return true;
+       }
 
    protected:
          signed_block _produce_block( fc::microseconds skip_time, uint32_t skip_flag);
@@ -259,14 +283,30 @@ namespace eosio { namespace testing {
    /**
     * Utility predicate to check whether an FC_ASSERT message ends with a given string
     */
-   struct assert_message_is {
-      assert_message_is(string expected)
+   struct assert_message_ends_with {
+      assert_message_ends_with(string expected)
          :expected(expected)
       {}
 
       bool operator()( const fc::exception& ex ) {
          auto message = ex.get_log().at(0).get_message();
          return boost::algorithm::ends_with(message, expected);
+      }
+
+      string expected;
+   };
+
+   /**
+    * Utility predicate to check whether an FC_ASSERT message contains a given string
+    */
+   struct assert_message_contains {
+      assert_message_contains(string expected)
+         :expected(expected)
+      {}
+
+      bool operator()( const fc::exception& ex ) {
+         auto message = ex.get_log().at(0).get_message();
+         return boost::algorithm::contains(message, expected);
       }
 
       string expected;

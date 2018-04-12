@@ -36,7 +36,7 @@ RUN wget https://dl.bintray.com/boostorg/release/1.66.0/source/boost_1_66_0.tar.
 
 RUN wget https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz -O - | tar -xz \
     && cd mongo-c-driver-1.9.3 \
-    && ./configure --disable-automatic-init-and-cleanup --prefix=/usr/local \
+    && ./configure --enable-static --with-libbson=bundled --enable-ssl=openssl --disable-automatic-init-and-cleanup --prefix=/usr/local \
     && make -j$(nproc) install \
     && cd .. && rm -rf mongo-c-driver-1.9.3
 
@@ -62,7 +62,7 @@ RUN git clone --depth 1 git://github.com/cryptonomex/secp256k1-zkp \
 
 RUN git clone --depth 1 -b releases/stable git://github.com/mongodb/mongo-cxx-driver \
     && cd mongo-cxx-driver \
-    && cmake -H. -Bbuild -G Ninja -DCMAKE_BUILD_TYPE=Release  -DCMAKE_INSTALL_PREFIX=/usr/local\
+    && cmake -H. -Bbuild -G Ninja -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release  -DCMAKE_INSTALL_PREFIX=/usr/local\
     && cmake --build build --target install \
     && cd .. && rm -rf mongo-cxx-driver
 

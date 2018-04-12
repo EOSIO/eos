@@ -96,11 +96,6 @@ FC_REFLECT(game_t, (gameid)(bet)(deadline)(player1)(player2));
 
 struct dice_tester : TESTER {
 
-   const contracts::table_id_object* find_table( name code, name scope, name table ) {
-      auto tid = control->get_database().find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
-      return tid;
-   }
-
    template<typename IndexType, typename Scope>
    const auto& get_index() {
       return control->get_database().get_index<IndexType,Scope>();
@@ -170,14 +165,8 @@ struct dice_tester : TESTER {
    }
 
    bool dice_game(uint64_t game_id, game_t& game) {
-      auto* maybe_tid = find_table(N(dice), N(dice), N(game));
-      if(maybe_tid == nullptr) return false;
-
-      auto* o = control->get_database().find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(maybe_tid->id, game_id));
-      if(o == nullptr) return false;
-
-      fc::raw::unpack(o->value.data(), o->value.size(), game);
-      return true;
+      const bool not_required = false;
+      return get_table_entry(game, N(dice), N(dice), N(game), game_id, not_required);
    }
 
    uint32_t open_games(account_name account) {

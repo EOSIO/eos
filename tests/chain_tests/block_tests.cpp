@@ -290,6 +290,35 @@ BOOST_AUTO_TEST_CASE(irrelevant_auth) {
       BOOST_REQUIRE_EQUAL( chain.validate(), true );
    } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(no_auth) {
+   try {
+      TESTER chain;
+      chain.create_account(name("joe"));
+
+      chain.produce_blocks();
+
+      // Use create account transaction as example
+      signed_transaction trx;
+      name new_account_name = name("alice");
+      authority owner_auth = authority( chain.get_public_key( new_account_name, "owner" ) );
+      trx.actions.emplace_back( vector<permission_level>{{ config::system_account_name, config::active_name}},
+                                contracts::newaccount{
+                                      .creator  = config::system_account_name,
+                                      .name     = new_account_name,
+                                      .owner    = owner_auth,
+                                      .active   = authority(),
+                                      .recovery = authority(),
+                                });
+      chain.set_transaction_headers(trx);
+      trx.sign( chain.get_private_key( config::system_account_name, "active" ), chain_id_type()  );
+
+      // Check that it throws for no auth
+      BOOST_CHECK_THROW(chain.push_transaction( trx ), action_validate_exception);
+      chain.control->clear_pending();
+
+      BOOST_REQUIRE_EQUAL( chain.validate(), true );
+   } FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_CASE(name_test) {
    name temp;
    temp = "temp";
@@ -955,5 +984,50 @@ BOOST_AUTO_TEST_CASE(get_required_keys)
       chain.produce_blocks();
 
    } FC_LOG_AND_RETHROW() }
+
+
+// Test transaction_mroot matches with the specification in Github #1972 https://github.com/EOSIO/eos/issues/1972
+// Which is a root of a Merkle tree over commitments for each region processed in the block ordered in ascending region id order.
+// Commitment for each region is a merkle tree over commitments for each shard inside the cycle of that region.
+// Commitment for the shard itself is a merkle tree over the transactions commitments inside that shard.
+// The transaction commitment is digest of the concentanation of region_id, cycle_index, shard_index, tx_index,
+// transaction_receipt and packed_trx_digest (if the tx is an input tx, which doesn't include implicit/ deferred tx)
+BOOST_AUTO_TEST_CASE(transaction_mroot)
+{ try {
+   validating_tester chain;
+   // Finalize current block (which has set contract transaction for eosio)
+   chain.produce_block();
+
+   // any transaction will do
+   vector<transaction_trace> traces = chain.create_accounts({"test1", "test2", "test3"});
+
+   // Calculate expected tx roots
+   vector<digest_type> tx_roots;
+   for( uint64_t tx_index = 0; tx_index < traces.size(); tx_index++ ) {
+      const auto& tx = traces[tx_index];
+      digest_type::encoder enc;
+      // region_id, cycle_index, shard_index, tx_index, transaction_receipt and packed_trx_digest (if the tx is an input tx)
+      fc::raw::pack( enc, tx.region_id );
+      fc::raw::pack( enc, tx.cycle_index );
+      fc::raw::pack( enc, tx.shard_index );
+      fc::raw::pack( enc, tx_index );
+      fc::raw::pack( enc, *static_cast<const transaction_receipt*>(&tx) );
+      if( tx.packed_trx_digest.valid() ) fc::raw::pack( enc, *tx.packed_trx_digest );
+      tx_roots.emplace_back(enc.result());
+   }
+   auto expected_shard_tx_root = merkle(tx_roots);
+
+   // Hardcoded on_block tx_root, since there's no easy way to calculate the tx_root with current interface
+   auto on_block_tx_root = digest_type("aa63d366cc2ef41746bb150258d1c0662c8133469f785425cb996dbe2a227086");
+   // There is only 1 region, 2 cycle, 1 shard in first cycle, 1 shard in second cycle
+   auto expected_tx_mroot = merkle({on_block_tx_root, expected_shard_tx_root});
+
+   // Compare with head block tx mroot
+   chain.produce_block();
+   auto head_block_tx_mroot = chain.control->head_block_header().transaction_mroot;
+   BOOST_TEST(expected_tx_mroot.str() == head_block_tx_mroot.str());
+
+} FC_LOG_AND_RETHROW() }
+
 
 BOOST_AUTO_TEST_SUITE_END()

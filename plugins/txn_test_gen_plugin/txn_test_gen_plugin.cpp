@@ -247,13 +247,17 @@ struct txn_test_gen_plugin_impl {
       fc::crypto::private_key a_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'a')));
       fc::crypto::private_key b_priv_key = fc::crypto::private_key::regenerate(fc::sha256(std::string(64, 'b')));
 
-      static uint64_t nonce = 0;
+      static uint64_t nonce = static_cast<uint64_t>(fc::time_point::now().sec_since_epoch()) << 32;
+      abi_serializer eosio_serializer(cc.get_database().find<account_object, by_name>(config::system_account_name)->get_abi());
+
 
       for(unsigned int i = 0; i < batch; ++i) {
       {
+      variant nonce_vo = fc::mutable_variant_object()
+         ("value", fc::to_string(nonce++));
       signed_transaction trx;
       trx.actions.push_back(act_a_to_b);
-      trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", fc::raw::pack(nonce++)));
+      trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", eosio_serializer.variant_to_binary("nonce", nonce_vo)));
       trx.set_reference_block(cc.head_block_id());
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.max_net_usage_words = 100;
@@ -262,9 +266,11 @@ struct txn_test_gen_plugin_impl {
       }
 
       {
+      variant nonce_vo = fc::mutable_variant_object()
+         ("value", fc::to_string(nonce++));
       signed_transaction trx;
       trx.actions.push_back(act_b_to_a);
-      trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", fc::raw::pack(nonce++)));
+      trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", eosio_serializer.variant_to_binary("nonce", nonce_vo)));
       trx.set_reference_block(cc.head_block_id());
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.max_net_usage_words = 100;

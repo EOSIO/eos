@@ -211,6 +211,8 @@ class apply_context {
                context.update_db_usage( obj.payer, -( config::billable_size_v<ObjectType> ) );
 
                const auto& table_obj = itr_cache.get_table( obj.t_id );
+               FC_ASSERT( table_obj.code == context.receiver, "db access violation" );
+
                context.require_write_lock( table_obj.scope );
 
                context.mutable_db.modify( table_obj, [&]( auto& t ) {
@@ -228,7 +230,10 @@ class apply_context {
             void update( int iterator, account_name payer, secondary_key_proxy_const_type secondary ) {
                const auto& obj = itr_cache.get( iterator );
 
-               context.require_write_lock( itr_cache.get_table( obj.t_id ).scope );
+               const auto& table_obj = itr_cache.get_table( obj.t_id );
+               FC_ASSERT( table_obj.code == context.receiver, "db access violation" );
+
+               context.require_write_lock( table_obj.scope );
 
                if( payer == account_name() ) payer = obj.payer;
 
