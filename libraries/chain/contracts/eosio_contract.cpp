@@ -322,6 +322,11 @@ void apply_eosio_linkauth(apply_context& context) {
    try {
       EOS_ASSERT(!requirement.requirement.empty(), action_validate_exception, "Required permission cannot be empty");
 
+      EOS_ASSERT( ( requirement.code != config::system_account_name )
+                   || ( requirement.type != updateauth::get_name() && requirement.type != linkauth::get_name() ),
+                   action_validate_exception,
+                   "Cannot link eosio::updateauth or eosio::linkauth to a minimum permission" );
+
       context.require_authorization(requirement.account);
 
       auto& db = context.mutable_db;
@@ -565,23 +570,18 @@ void apply_eosio_canceldelay(apply_context& context) {
               "cannot cancel trx_id=${tid}, there is no deferred transaction with that transaction id",("tid", trx_id));
 
    auto dtrx = fc::raw::unpack<deferred_transaction>(itr->packed_trx.data(), itr->packed_trx.size());
-   set<account_name> accounts;
-   for (const auto& act : dtrx.actions) {
-      for (const auto& auth : act.authorization) {
-         accounts.insert(auth.actor);
-      }
-   }
-
    bool found = false;
-   for (const auto& auth : context.act.authorization) {
-      if (auth.permission == config::active_name && accounts.count(auth.actor)) {
-         found = true;
-         break;
+   for( const auto& act : dtrx.actions ) {
+      for( const auto& auth : act.authorization ) {
+         if( auth == cancel.canceling_auth ) {
+            found = true;
+            break;
+         }
       }
+      if( found ) break;
    }
 
-   FC_ASSERT (found, "canceldelay action must be signed with the \"active\" permission for one of the actors"
-                     " provided in the authorizations on the original transaction");
+   FC_ASSERT (found, "canceling_auth in canceldelay action was not found as authorization in the original delayed transaction");
 
    context.cancel_deferred(context.controller.transaction_id_to_sender_id(trx_id));
 }

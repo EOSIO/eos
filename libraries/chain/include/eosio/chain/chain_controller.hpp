@@ -92,7 +92,7 @@ namespace eosio { namespace chain {
          void push_block( const signed_block& b, uint32_t skip = skip_nothing );
          transaction_trace push_transaction( const packed_transaction& trx, uint32_t skip = skip_nothing );
          vector<transaction_trace> push_deferred_transactions( bool flush = false, uint32_t skip = skip_nothing );
-         
+
          uint128_t transaction_id_to_sender_id( const transaction_id_type& tid )const;
 
       /**
@@ -265,6 +265,7 @@ namespace eosio { namespace chain {
          const global_property_object&          get_global_properties()const;
          const dynamic_global_property_object&  get_dynamic_global_properties()const;
          const producer_object&                 get_producer(const account_name& ownername)const;
+         const permission_object*               find_permission( const permission_level& level )const;
          const permission_object&               get_permission( const permission_level& level )const;
 
          time_point           head_block_time()const;

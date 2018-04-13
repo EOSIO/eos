@@ -1042,15 +1042,27 @@ fc::microseconds chain_controller::check_authorization( const vector<action>& ac
             // for updateauth actions, need to determine the permission that is changing
             if( act.account == config::system_account_name && act.name == contracts::updateauth::get_name() ) {
                auto update = act.data_as<contracts::updateauth>();
-               const auto permission_to_change = _db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
+               const auto permission_to_change = find_permission({update.account, update.permission});
                if( permission_to_change != nullptr ) {
                   // Only changes to permissions need to possibly be delayed. New permissions can be added immediately.
                   min_permission_name = update.permission;
                }
+            } else if( act.account == config::system_account_name && act.name == contracts::canceldelay::get_name() ) {
+               EOS_ASSERT( act.authorization.size() == 1, tx_irrelevant_auth,
+                           "canceldelay action should only have one declared authorization" );
+               auto cancel_delay = act.data_as<contracts::canceldelay>();
+               const auto& min_permission = get_permission(cancel_delay.canceling_auth);
+               const auto& index = _db.get_index<permission_index>().indices();
+               const optional<fc::microseconds> delay = get_permission(declared_auth).satisfies(min_permission, index);
+               EOS_ASSERT( delay.valid(),
+                           tx_irrelevant_auth,
+                           "canceldelay action declares irrelevant authority '${auth}'; specified authority to satisfy is ${min}",
+                           ("auth", declared_auth)("min", cancel_delay.canceling_auth) );
+               // Intentionally ignore value of delay. A canceldelay action alone never needs to be delayed.
             }
          }
          if( min_permission_name ) {
-            const auto& min_permission = _db.get<permission_object, by_owner>(boost::make_tuple(declared_auth.actor, *min_permission_name));
+            const auto& min_permission = get_permission({declared_auth.actor, *min_permission_name});
             const auto& index = _db.get_index<permission_index>().indices();
             const optional<fc::microseconds> delay = get_permission(declared_auth).satisfies(min_permission, index);
             EOS_ASSERT( delay.valid(),
@@ -1069,7 +1081,7 @@ fc::microseconds chain_controller::check_authorization( const vector<action>& ac
                if( declared_auth.actor == link.account ) {
                   const auto linked_permission_name = lookup_linked_permission(link.account, link.code, link.type);
                   if( linked_permission_name.valid() && *linked_permission_name != config::eosio_any_name ) {
-                     const auto& linked_permission = _db.get<permission_object, by_owner>(boost::make_tuple(link.account, *linked_permission_name));
+                     const auto& linked_permission = get_permission({link.account, *linked_permission_name});
                      const auto& index = _db.get_index<permission_index>().indices();
                      const optional<fc::microseconds> delay = get_permission(declared_auth).satisfies(linked_permission, index);
                      if( delay.valid() && max_delay < *delay )
@@ -1081,7 +1093,7 @@ fc::microseconds chain_controller::check_authorization( const vector<action>& ac
                if( declared_auth.actor == unlink.account ) {
                   const auto unlinked_permission_name = lookup_linked_permission(unlink.account, unlink.code, unlink.type);
                   if( unlinked_permission_name.valid() && *unlinked_permission_name != config::eosio_any_name ) {
-                     const auto& unlinked_permission = _db.get<permission_object, by_owner>(boost::make_tuple(unlink.account, *unlinked_permission_name));
+                     const auto& unlinked_permission = get_permission({unlink.account, *unlinked_permission_name});
                      const auto& index = _db.get_index<permission_index>().indices();
                      const optional<fc::microseconds> delay = get_permission(declared_auth).satisfies(unlinked_permission, index);
                      if( delay.valid() && max_delay < *delay )
@@ -1152,7 +1164,8 @@ optional<permission_name> chain_controller::lookup_minimum_permission(account_na
 #warning TODO: this comment sounds like it is expecting a check ("may") somewhere else, but I have not found anything else
    // updateauth is a special case where any permission _may_ be suitable depending
    // on the contents of the action
-   if( scope == config::system_account_name && act_name == contracts::updateauth::get_name() ) {
+   if( scope == config::system_account_name &&
+       ( act_name == contracts::updateauth::get_name() || act_name == contracts::canceldelay::get_name() ) ) {
       return optional<permission_name>();
    }
 
@@ -1502,8 +1515,7 @@ void chain_controller::_update_producers_authority() {
       active_producers_authority.accounts.push_back({{name.producer_name, config::active_name}, 1});
    }
 
-   auto& po = _db.get<permission_object, by_owner>( boost::make_tuple(config::producers_account_name,
-                                                                      config::active_name ) );
+   auto& po = get_permission({config::producers_account_name, config::active_name});
    _db.modify(po,[active_producers_authority] (permission_object& po) {
       po.auth = active_producers_authority;
    });
@@ -1551,6 +1563,12 @@ const producer_object& chain_controller::get_producer(const account_name& owner_
 { try {
    return _db.get<producer_object, by_owner>(owner_name);
 } FC_CAPTURE_AND_RETHROW( (owner_name) ) }
+
+const permission_object*   chain_controller::find_permission( const permission_level& level )const
+{ try {
+   FC_ASSERT( !level.actor.empty() && !level.permission.empty(), "Invalid permission" );
+   return _db.find<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
+} EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Failed to retrieve permission: ${level}", ("level", level) ) }
 
 const permission_object&   chain_controller::get_permission( const permission_level& level )const
 { try {
