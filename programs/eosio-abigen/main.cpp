@@ -56,6 +56,10 @@ std::unique_ptr<FrontendActionFactory> create_find_macro_factory(string& contrac
   );
 }
 
+void add_ricardian_contracts( abi_def& abi ) {
+   abi.ricardian_clauses.push_back({"hello", "hello"});
+}
+
 static cl::OptionCategory abi_generator_category("ABI generator options");
 
 static cl::opt<std::string> abi_context(
@@ -89,6 +93,8 @@ int main(int argc, const char **argv) { abi_def output; try {
       result = Tool.run(create_factory(abi_verbose, abi_opt_sfs, abi_context, output, contract, actions).get());
       if(!result) {
          abi_serializer(output).validate();
+         
+         add_ricardian_contracts( output ); 
 
          fc::variant vabi;
          to_variant(output, vabi);
@@ -98,7 +104,6 @@ int main(int argc, const char **argv) { abi_def output; try {
            mvo("ts",fc::time_point_sec(fc::time_point::now()).to_iso_string()));
 
          auto abi_with_comment = mvo("____comment", comment)(mvo(vabi));
-
          fc::json::save_to_file(abi_with_comment, abi_destination, true);
       }
    }
