@@ -86,6 +86,7 @@
 	printf "\tHome Brew installation found.\n\n"
 	COUNT=1
 	PERMISSION_GETTEXT=0
+	BOOST_CHECK=0
 	DISPLAY=""
 	DEP=""
 
@@ -96,6 +97,19 @@
 	do
 		printf "\tChecking $name ... "
 		if [ ${tester} ${testee} ]; then
+			# check boost version, it should be 1_66
+			if [ "${brewname}" = "boost" ]; then
+				BVERSION=`cat "${testee}" 2>/dev/null | grep BOOST_LIB_VERSION | tail -1 \
+				| tr -s ' ' | cut -d\  -f3 | sed 's/[^0-9_]//g'`
+				if [ "${BVERSION}" != "1_66" ]; then
+					BOOST_CHECK=1
+					DEP=$DEP"${brewname} "
+					DISPLAY="${DISPLAY}${COUNT}. ${name}\n\t"
+					printf "\t\t ${name} ${bldred}needs updating.${txtrst}.\n"
+					let COUNT++
+					continue
+				fi
+			fi
 			printf '\t\t %s found\n' "$name"
 			continue
 		fi
@@ -145,6 +159,9 @@
 						exit;
 					fi
 					printf "\tInstalling Dependencies.\n"
+					if [ "${BOOST_CHECK}" = 1 ]; then
+						brew remove boost
+					fi 
 					brew install --force $DEP
 					if [ $? -ne 0 ]; then
 						printf "\tHomebrew exited with the above errors.\n"
