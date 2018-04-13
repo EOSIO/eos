@@ -1286,17 +1286,10 @@ void chain_controller::update_resource_usage( transaction_trace& trace, const tr
               ("used", trace.net_usage)("max", chain_configuration.max_transaction_net_usage));
 
    // determine the accounts to bill
-   set<std::pair<account_name, permission_name>> authorizations;
+   flat_set<account_name> bill_to_accounts;
    for( const auto& act : meta.trx().actions )
       for( const auto& auth : act.authorization )
-         authorizations.emplace( auth.actor, auth.permission );
-
-
-   vector<account_name> bill_to_accounts;
-   bill_to_accounts.reserve(authorizations.size());
-   for( const auto& ap : authorizations ) {
-      bill_to_accounts.push_back(ap.first);
-   }
+         bill_to_accounts.insert( auth.actor );
 
    // for account usage, the ordinal is based on possible blocks not actual blocks.  This means that as blocks are
    // skipped account usage will still decay.
