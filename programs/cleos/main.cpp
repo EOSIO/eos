@@ -75,7 +75,9 @@ Options:
 #include <boost/asio.hpp>
 #include <boost/format.hpp>
 #include <iostream>
+#include <fc/crypto/hex.hpp>
 #include <fc/variant.hpp>
+#include <fc/io/datastream.hpp>
 #include <fc/io/json.hpp>
 #include <fc/io/console.hpp>
 #include <fc/exception/exception.hpp>
@@ -1161,7 +1163,8 @@ int main( int argc, char** argv ) {
 
    // multisig propose
    string proposal_name;
-   string requested;
+   string requested_perm;
+   string transaction_perm;
    string proposed_transaction;
    string proposed_contract;
    string proposed_action;
@@ -1169,16 +1172,21 @@ int main( int argc, char** argv ) {
    //auto propose_action = msig->add_subcommand("action", localized("Propose action"));
    add_standard_transaction_options(propose_action);
    propose_action->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
-   propose_action->add_option("requested_permissions", requested, localized("The JSON string of filename defining requested permissions"))->required();
+   propose_action->add_option("requested_permissions", requested_perm, localized("The JSON string of filename defining requested permissions"))->required();
+   propose_action->add_option("trx_permissions", transaction_perm, localized("The JSON string of filename defining transaction permissions"))->required();
    propose_action->add_option("contract", proposed_contract, localized("contract to wich deferred transaction should be delivered"))->required();
    propose_action->add_option("action", proposed_action, localized("action of deferred transaction"))->required();
    propose_action->add_option("data", proposed_transaction, localized("The JSON string or filename defining the action to propose"))->required();
 
    propose_action->set_callback([&] {
-      fc::variant requested_var;
+      fc::variant requested_perm_var;
       try {
-         requested_var = json_from_file_or_string(requested);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested))
+         requested_perm_var = json_from_file_or_string(requested_perm);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_perm))
+      fc::variant transaction_perm_var;
+      try {
+         transaction_perm_var = json_from_file_or_string(transaction_perm);
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",transaction_perm))
       fc::variant trx_var;
       try {
          trx_var = json_from_file_or_string(proposed_transaction);
@@ -1192,23 +1200,30 @@ int main( int argc, char** argv ) {
 
       auto result = call(json_to_bin_func, arg);
 
-      //std::cout << "Result: "; fc::json::to_stream(std::cout, result); std::cout << std::endl;
+      std::cout << "Result: "; fc::json::to_stream(std::cout, result); std::cout << std::endl;
 
       bytes proposed_trx_serialized = result.get_object()["binargs"].as<bytes>();
       //std::cout << "Trx: " << fc::to_hex(proposed_trx_serialized) << std::endl;
 
-      vector<permission_level> reqperm = requested_var.as<vector<permission_level>>();
+      vector<permission_level> reqperm;
+      try {
+         reqperm = requested_perm_var.as<vector<permission_level>>();
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '${data}'", ("data",requested_perm_var));
+
+      try {
+         transaction_perm_var.as<vector<permission_level>>();
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong transaction permissions format: '${data}'", ("data",transaction_perm_var));
 
       signed_transaction trx;
       auto accountPermissions = tx_permission.empty() ? vector<chain::permission_level>{{sender,config::active_name}} : get_account_permissions(tx_permission);
 
-      arg= fc::mutable_variant_object()
+      arg = fc::mutable_variant_object()
          ("code", "eosio.msig")
          ("action", "propose")
          ("args", fc::mutable_variant_object()
           ("proposer", name(accountPermissions.at(0).actor).to_string() )
           ("proposal_name", proposal_name)
-          ("requested", requested_var)
+          ("requested", requested_perm_var)
           ("trx", fc::mutable_variant_object()
            ("expiration", "2018-05-01T00:00:00")
            ("region", 1)
@@ -1221,20 +1236,70 @@ int main( int argc, char** argv ) {
            ("actions", fc::variants{ fc::mutable_variant_object()
                                      ("account", proposed_contract)
                                      ("name", proposed_action)
-                                     ("authorization", requested_var)
+                                     ("authorization", transaction_perm_var)
                                      ("data", proposed_trx_serialized)
                  }
            )
           )
          );
       result = call(json_to_bin_func, arg);
-      //wdump((result));
       send_actions({chain::action{accountPermissions, "eosio.msig", "propose", result.get_object()["binargs"].as<bytes>()}});
+   });
+
+   // multisig review
+   string proposer;
+   auto review = msig->add_subcommand("review", localized("Review transaction"));
+   add_standard_transaction_options(review);
+   review->add_option("proposer", proposer, localized("proposer name (string)"))->required();
+   review->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
+
+   review->set_callback([&] {
+      auto result = call(get_table_func, fc::mutable_variant_object("json", true)
+                         ("code", "eosio.msig")
+                         ("scope", proposer)
+                         ("table", "proposal")
+                         ("table_key", "")
+                         ("lower_bound", string_to_name(proposal_name))
+                         ("upper_bound", "")
+                         ("limit", 1)
+                         );
+      std::cout << fc::json::to_pretty_string(result)
+                << std::endl;
+
+      fc::variants rows = result.get_object()["rows"].get_array();
+      if (rows.empty()) {
+         std::cerr << "Proposal not found" << std::endl;
+      }
+      fc::mutable_variant_object obj = rows[0].get_object();
+      auto trx_hex = obj["packed_transaction"].as_string();
+      vector<char> trx_blob(trx_hex.size()/2);
+      fc::from_hex(trx_hex, trx_blob.data(), trx_blob.size());
+      transaction trx = fc::raw::unpack<transaction>(trx_blob);
+      abi_serializer abi;
+
+      auto resolver = [](const name& code) -> optional<contracts::abi_serializer> {
+         std::cout << "Code:" << code.to_string() << std::endl;
+         auto result = call(get_code_func, fc::mutable_variant_object("account_name", code.to_string()));
+         //std::cout << "ABI: " << fc::json::to_pretty_string(result)
+         //<< std::endl;
+         return optional<contracts::abi_serializer>(abi_serializer(result["abi"].as<contracts::abi_def>()));
+         //return chain::action( {}, config::system_account_name, "nonce", eosio_serializer.variant_to_binary("nonce", nonce));
+         //return optional<contracts::abi_serializer>();
+      };
+      fc::variant trx_var;
+      abi.to_variant(trx, trx_var, resolver);
+      obj["transaction"] = trx_var;
       /*
-      trx.actions.emplace_back( accountPermissions, N(eosio.msig), N(propose), result.get_object()["binargs"].as<bytes>() );
-      auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
-      std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
+      vector<char> trx_blob(trx_hex.size()/2);
+      fc::from_hex(trx_hex, trx_blob.data(), trx_blob.size());
+      for (auto x : trx_blob) {
+         std::cout << x << ' ';
+      }
+      transaction trx = fc::raw::unpack<transaction>(trx_blob);
+      std::cout << std::endl;
       */
+      std::cout << fc::json::to_pretty_string(obj)
+                << std::endl;
    });
 
 
