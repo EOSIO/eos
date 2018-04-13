@@ -380,4 +380,55 @@ try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(stricter_auth) {
+try {
+   TESTER chain;
+
+   chain.produce_block();
+
+   account_name acc1 = N("acc1");
+   account_name acc2 = N("acc2");
+   account_name acc3 = N("acc3");
+   account_name acc4 = N("acc4");
+
+   chain.create_account(acc1);
+   chain.produce_block();
+
+   auto create_acc = [&](account_name a, account_name creator, int threshold) {
+
+      signed_transaction trx;
+      chain.set_transaction_headers(trx);
+
+      authority invalid_auth = authority(threshold, {key_weight{chain.get_public_key( a, "owner" ), 1}}, {permission_level_weight{{creator, config::active_name}, 1}});
+      
+      vector<permission_level> pls;
+      pls.push_back({creator, "active"});
+      trx.actions.emplace_back( pls,
+                                contracts::newaccount{
+                                   .creator  = creator,
+                                   .name     = a,
+                                   .owner    = authority( chain.get_public_key( a, "owner" ) ),
+                                   .active   = invalid_auth,//authority( chain.get_public_key( a, "active" ) ),
+                                   .recovery = authority( chain.get_public_key( a, "recovery" ) ),
+                                });
+
+      chain.set_transaction_headers(trx);
+      trx.sign( chain.get_private_key( creator, "active" ), chain_id_type()  );
+      return chain.push_transaction( trx );
+   };
+
+   try { 
+     create_acc(acc2, acc1, 0);
+     BOOST_FAIL("threshold can't be zero");
+   } catch (...) { }
+
+   try { 
+     create_acc(acc4, acc1, 3);
+     BOOST_FAIL("threshold can't be more than total weight");
+   } catch (...) { }
+
+   create_acc(acc3, acc1, 1);
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
