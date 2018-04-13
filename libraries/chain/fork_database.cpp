@@ -35,7 +35,6 @@ namespace eosio { namespace chain {
    }
 
    void fork_database::set( block_state_ptr s ) {
-      wdump((s->id)(s->header.id())(s->header.previous)(s->header.block_num())(s->block_num));
       auto result = my->index.insert( s );
       FC_ASSERT( s->id == s->header.id() );
       FC_ASSERT( s->block_num == s->header.block_num() );
@@ -47,14 +46,18 @@ namespace eosio { namespace chain {
       }
    }
 
+   block_state_ptr fork_database::add( block_state_ptr n ) {
+      my->index.insert(n);
+
+      if( n->block_num > my->head->block_num ) {
+         my->head = n;
+      }
+
+      return my->head;
+   }
+
    block_state_ptr fork_database::add( signed_block_ptr b ) {
-      wdump((b->id())(b->previous)(b->block_num()));
       FC_ASSERT( my->head, "no head block set" );
-
-      for( const auto& x : my->index )
-         idump( (x->id)(x->header.id())(x->block_num)(x->header.block_num()) );
-      wdump((b->previous));
-
 
       const auto& by_id_idx = my->index.get<by_block_id>();
       auto existing = by_id_idx.find( b->id() );
@@ -64,16 +67,9 @@ namespace eosio { namespace chain {
       FC_ASSERT( prior != by_id_idx.end(), "unlinkable block" );
 
       auto result = std::make_shared<block_state>( **prior, move(b) );
-      my->index.insert(result);
-
-      idump((result->block_num)(my->head->block_num));
-      if( result->block_num > my->head->block_num ) {
-         my->head = result;
-      }
-
-
-      return my->head;
+      return add(result);
    }
+
    const block_state_ptr& fork_database::head()const { return my->head; }
 
    /**

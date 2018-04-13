@@ -151,16 +151,15 @@ struct controller_impl {
       block_header_state genheader;
       genheader.active_schedule       = initial_schedule;
       genheader.pending_schedule      = initial_schedule;
+      wdump((genheader.active_schedule));
       genheader.pending_schedule_hash = fc::sha256::hash(initial_schedule);
       genheader.header.timestamp      = conf.genesis.initial_timestamp;
       genheader.header.action_mroot   = conf.genesis.compute_chain_id();
       genheader.id                    = genheader.header.id();
       genheader.block_num             = genheader.header.block_num();
-      idump((genheader));
 
-      head = std::make_shared<block_state>( genheader, std::make_shared<signed_block>() );
+      head = std::make_shared<block_state>( genheader );
       fork_db.set( head );
-      FC_ASSERT( head );
    }
 
 
@@ -410,7 +409,6 @@ controller::controller( const controller::config& cfg )
 :my( new controller_impl( cfg, *this ) )
 {
    my->init();
-   idump((int64_t(this)));
 }
 
 controller::~controller() {
@@ -435,13 +433,12 @@ const chainbase::database& controller::db()const { return my->db; }
 
 
 void controller::start_block( block_timestamp_type when ) {
+  wlog( "start_block" );
   FC_ASSERT( !my->pending );
 
   my->pending = my->db.start_undo_session(true);
 
-  my->pending->_pending_block_state = std::make_shared<block_state>( my->head->generate_next(when), 
-                                                                     std::make_shared<signed_block>() );
-
+  my->pending->_pending_block_state = std::make_shared<block_state>( *my->head, when );
 }
 
 void controller::finalize_block() {
@@ -453,20 +450,26 @@ void controller::finalize_block() {
 
 void controller::sign_block( std::function<signature_type( const digest_type& )> signer_callback ) {
    auto p = my->pending->_pending_block_state;
-   //p->header.sign( signer_callback, p->pending_schedule_hash );
-   static_cast<block_header&>(*p->block) = p->header;
+   p->header.sign( signer_callback, p->pending_schedule_hash );
+   FC_ASSERT( p->block_signing_key == p->header.signee( p->pending_schedule_hash ),
+              "block was not signed by expected producer key" );
+   static_cast<signed_block_header&>(*p->block) = p->header;
 }
 
 void controller::commit_block() {
-   my->head = my->fork_db.add( my->pending->_pending_block_state->block );
+   my->head = my->fork_db.add( my->pending->_pending_block_state );
    my->pending->push();
    my->pending.reset();
-   edump((my->head->header.block_num()));
+   edump((my->head->header.block_num())(my->head->block_num));
+}
+
+block_state_ptr controller::head_block_state()const {
+   return my->head;
 }
 
 
-
 void controller::push_block( const signed_block_ptr& b ) {
+   my->head = my->fork_db.add( b );
   //return my->push_block( b );  
 }
 
@@ -483,8 +486,6 @@ transaction_trace_ptr controller::push_transaction( const transaction_id_type& t
 }
 
 uint32_t controller::head_block_num()const {
-   idump((int64_t(my.get())));
-   FC_ASSERT( my->head );
    return my->head->block_num;
 }
    

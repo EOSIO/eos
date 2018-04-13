@@ -9,21 +9,23 @@ namespace eosio { namespace chain {
  *  @brief defines the minimum state necessary to validate transaction headers
  */
 struct block_header_state {
-    block_id_type                   id;
-    uint32_t                        block_num = 0;
-    signed_block_header             header;
-    uint32_t                        dpos_last_irreversible_blocknum = 0;
-    uint32_t                        pending_schedule_lib_num = 0; /// last irr block num
-    digest_type                     prior_pending_schedule_hash;
-    digest_type                     pending_schedule_hash;
-    producer_schedule_type          pending_schedule;
-    producer_schedule_type          active_schedule;
-    incremental_merkle              blockroot_merkle;
-    flat_map<account_name,uint32_t> producer_to_last_produced;
-    public_key_type                 block_signing_key;
+    block_id_type                     id;
+    uint32_t                          block_num = 0;
+    signed_block_header               header;
+    uint32_t                          dpos_last_irreversible_blocknum = 0;
+    uint32_t                          pending_schedule_lib_num = 0; /// last irr block num
+    digest_type                       prior_pending_schedule_hash;
+    digest_type                       pending_schedule_hash;
+    producer_schedule_type            pending_schedule;
+    producer_schedule_type            active_schedule;
+    incremental_merkle                blockroot_merkle;
+    flat_map<account_name,uint32_t>   producer_to_last_produced;
+    public_key_type                   block_signing_key;
     
     block_header_state   next( const signed_block_header& h )const;
     block_header_state   generate_next( block_timestamp_type when )const;
+
+    void set_new_producers( producer_schedule_type next_pending );
 
     uint32_t             calc_dpos_last_irreversible()const;
     bool                 is_active_producer( account_name n )const;

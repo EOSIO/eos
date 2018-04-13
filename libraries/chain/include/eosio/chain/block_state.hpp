@@ -44,7 +44,9 @@ namespace eosio { namespace chain {
 
 
    struct block_state : public block_header_state {
-      block_state( block_header_state h, signed_block_ptr b );
+      block_state( const block_header_state& cur ):block_header_state(cur){}
+      block_state( const block_header_state& prev, signed_block_ptr b );
+      block_state( const block_header_state& prev, block_timestamp_type when );
 
       /// weak_ptr prev_block_state....
       signed_block_ptr                                    block;

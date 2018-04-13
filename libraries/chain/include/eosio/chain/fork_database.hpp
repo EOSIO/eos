@@ -38,6 +38,7 @@ namespace eosio { namespace chain {
           * throw on error.
           */
          block_state_ptr add( signed_block_ptr b ); 
+         block_state_ptr add( block_state_ptr next_block ); 
 
          const block_state_ptr& head()const;
 

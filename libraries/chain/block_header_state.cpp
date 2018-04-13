@@ -45,7 +45,6 @@ namespace eosio { namespace chain {
      }
      result.header.timestamp = when;
      result.header.previous  = id;
-     idump((id));
 
 
     auto prokey                                  = scheduled_producer(when);
@@ -55,15 +54,19 @@ namespace eosio { namespace chain {
     result.pending_schedule_hash                 = pending_schedule_hash;
     result.block_num                             = block_num + 1;
     result.producer_to_last_produced             = producer_to_last_produced;
-    result.producer_to_last_produced[prokey.producer_name] = result.block_num;
     result.dpos_last_irreversible_blocknum       = result.calc_dpos_last_irreversible();
+    result.producer_to_last_produced[prokey.producer_name] = result.block_num;
     result.blockroot_merkle = blockroot_merkle;
     result.blockroot_merkle.append( id );
     result.header.block_mroot = result.blockroot_merkle.get_root();
-    idump((result.header));
 
-    if( result.dpos_last_irreversible_blocknum >= pending_schedule_lib_num ) {
-      result.active_schedule = pending_schedule; 
+    result.active_schedule  = active_schedule;
+    result.pending_schedule = pending_schedule;
+
+
+    if( result.pending_schedule.producers.size() && 
+        result.dpos_last_irreversible_blocknum >= pending_schedule_lib_num ) {
+      result.active_schedule = move( result.pending_schedule ); 
 
       flat_map<account_name,uint32_t> new_producer_to_last_produced;
       for( const auto& pro : result.active_schedule.producers ) {
@@ -76,14 +79,21 @@ namespace eosio { namespace chain {
       }
       result.producer_to_last_produced = move( new_producer_to_last_produced );
       result.producer_to_last_produced[prokey.producer_name] = result.block_num;
-    } else {
-      result.active_schedule  = active_schedule;
-      result.pending_schedule = pending_schedule;
-    }
+    } 
 
     return result;
   } /// generate_next
 
+
+  void block_header_state::set_new_producers( producer_schedule_type pending ) {
+      FC_ASSERT( pending.version == active_schedule.version + 1, "wrong producer schedule version specified" );
+      FC_ASSERT( pending_schedule.producers.size() == 0, 
+                 "cannot set new pending producers until last pending is confirmed" );
+      header.new_producers     = move(pending);
+      pending_schedule_hash    = digest_type::hash( *header.new_producers );
+      pending_schedule         = *header.new_producers;
+      pending_schedule_lib_num = block_num;
+  }
 
 
   /**
@@ -95,28 +105,27 @@ namespace eosio { namespace chain {
    *  If the header specifies new_producers then apply them accordingly. 
    */
   block_header_state block_header_state::next( const signed_block_header& h )const {
-    FC_ASSERT( h.timestamp != block_timestamp_type() );
+    FC_ASSERT( h.timestamp != block_timestamp_type(), "", ("h",h) );
 
     auto result = generate_next( h.timestamp );
     FC_ASSERT( result.header.producer = h.producer, "wrong producer specified" );
     FC_ASSERT( h.previous == id, "block must link to current state" );
     FC_ASSERT( h.timestamp > header.timestamp, "block must be later in time" );
 
+    FC_ASSERT( result.header.producer   == h.producer, "producer is not scheduled for this time slot" );
     FC_ASSERT( result.block_signing_key == h.signee( pending_schedule_hash ), "block not signed by expected key" );
-    result.id = h.id();
 
     FC_ASSERT( result.header.block_mroot == h.block_mroot, "mistmatch block merkle root" );
 
+     /// below this point is state changes that cannot be validated with headers alone, but never-the-less, 
+     /// must result in header state changes
     if( h.new_producers ) {
-      FC_ASSERT( h.new_producers->version == result.active_schedule.version + 1, "wrong producer schedule version specified" );
-      FC_ASSERT( result.pending_schedule.producers.size() == 0, 
-                 "cannot set new pending producers until last pending is confirmed" );
-      result.pending_schedule         = *h.new_producers;
-      result.pending_schedule_hash    = digest_type::hash( result.pending_schedule );
-      result.pending_schedule_lib_num = h.block_num();
+       result.set_new_producers( *h.new_producers );
     } 
 
-    result.header = h;
+    result.header.action_mroot      = h.action_mroot;
+    result.header.transaction_mroot = h.transaction_mroot;
+    result.id                       = h.id();
 
     return result;
   } /// next

@@ -60,6 +60,8 @@ namespace eosio { namespace chain {
 
          uint32_t head_block_num()const;
 
+         block_state_ptr head_block_state()const;
+
          /*
          signal<void()>                                  pre_apply_block;
          signal<void()>                                  post_apply_block;

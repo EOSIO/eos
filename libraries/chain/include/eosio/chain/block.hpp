@@ -49,5 +49,8 @@ namespace eosio { namespace chain {
 
 } } /// eosio::chain
 
+FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, 
+                 (executed)(soft_fail)(hard_fail)(delayed)(implicit) )
+
 FC_REFLECT(eosio::chain::transaction_receipt, (status)(kcpu_usage)(net_usage_words)(trx) )
 FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_header), (transactions))
