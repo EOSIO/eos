@@ -36,7 +36,7 @@ namespace eosio { namespace chain { namespace resource_limits {
 
          uint32_t   last_ordinal;  ///< The ordinal of the last period which has contributed to the average
          uint64_t   value_ex;      ///< The current average pre-multiplied by Precision
-         uint64_t   consumed;       ///< The the last periods average + the current periods contribution so far
+         uint64_t   consumed;       ///< The last periods average + the current periods contribution so far
 
          /**
           * return the average value
