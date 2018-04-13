@@ -163,6 +163,7 @@ struct controller_impl {
    }
 
 
+
    /**
     *  This method will backup all tranasctions in the current pending block,
     *  undo the pending block, call f(), and then push the pending transactions
@@ -202,6 +203,73 @@ struct controller_impl {
          });
       });
    }
+
+   transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx ) {
+      return db.with_write_lock( [&](){ 
+         return apply_transaction( trx );
+      });
+   }
+
+   void record_transaction( const transaction_metadata_ptr& trx ) {
+      try {
+          _db.create<transaction_object>([&](transaction_object& transaction) {
+              transaction.trx_id = trx->id;
+              transaction.expiration = trx->trx.expiration;
+          });
+      } catch ( ... ) {
+          EOS_ASSERT( false, transaction_exception,
+                     "duplicate transaction ${id}",
+                     ("id", trx.id() ) );
+      }
+   }
+
+   void start_transaction( const transaction_metadata_ptr& trx ) {
+      record_transaction( trx );
+   }
+
+   transaction_trace_ptr apply_transaction( const transaction_metadata_ptr& trx, bool implicit = false ) {
+      auto trx_session = db.start_undo_session();
+      // TODO: notify pre transaction
+
+      start_transaction( trx );
+
+
+      for( const auto& act : trx->trx.context_free_actions ) {
+         apply_action( act,  ... ); 
+         /*
+         apply_context context( self, db, act, trx );
+         context.context_free = true;
+         context.exec();
+         receipt.kcpu_usage += context.kcpu_usage
+         */
+
+      }
+
+      for( const auto& act : trx->trx.actions ) {
+         auto act_session = db.start_undo_session();
+         // TODO: notify pre action
+
+         /*
+         apply_context context( self, db, act, trx );
+         context.exec();
+         receipt.kcpu_usage += context.kcpu_usage
+         */
+
+         // TODO: notify post action
+         act_session.squash();
+      }
+
+      finalize_transaction();
+
+      // TODO: notify post transaction
+      trx_session.squash();
+
+      push_transaction_receipt( trx, type );
+   }
+
+
+
+
 
 
    block_state_ptr push_block_impl( const signed_block_ptr& b ) {
@@ -267,6 +335,20 @@ struct controller_impl {
                   ("usage", min_net_usage)("commit", net_usage_limit));
    } /// validate_net_usage
    */
+
+
+
+   transaction_trace_ptr apply_transaction( const transaction_metadata_ptr& trx ) {
+      auto trx_trace = std::make_shared<transaction_trace>();
+      trx_trace->action_traces.reserve( trx->trx.actions.size() );
+      trx_trace->action_receipts.reserve( trx->trx.actions.size() );
+
+      for( const auto& act : trx->trx.actions ) {
+//         trx_trace->action_receipts.emplace_back( apply_action( act 
+      }
+      return trx_trace;
+   }
+
 
    void finalize_block( const block_trace& trace ) 
    { try {
@@ -437,15 +519,18 @@ void controller::start_block( block_timestamp_type when ) {
   FC_ASSERT( !my->pending );
 
   my->pending = my->db.start_undo_session(true);
-
   my->pending->_pending_block_state = std::make_shared<block_state>( *my->head, when );
+
+  auto t = my->get_on_block_transaction();
+ // apply_transaction( 
+ // idump((t));
 }
 
 void controller::finalize_block() {
    auto p = my->pending->_pending_block_state;
 
-   /// set trx mroot and act mroot
-   my->pending->_pending_block_state->id = my->pending->_pending_block_state->header.id();
+  /// set trx mroot and act mroot on pending.header and pending.block (which also has copy of header)
+  // my->pending->_pending_block_state->id = my->pending->_pending_block_state->header.id();
 }
 
 void controller::sign_block( std::function<signature_type( const digest_type& )> signer_callback ) {
@@ -474,7 +559,7 @@ void controller::push_block( const signed_block_ptr& b ) {
 }
 
 transaction_trace_ptr   controller::push_transaction( const transaction_metadata_ptr& trx ) { 
-
+   return my->push_transaction();
 }
 
 transaction_trace_ptr controller::push_transaction() {

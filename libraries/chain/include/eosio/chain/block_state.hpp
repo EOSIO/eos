@@ -11,12 +11,10 @@ namespace eosio { namespace chain {
    struct action_receipt {
       account_name    receiver;
       action          act;
-      uint32_t        block_sequence;
-      uint32_t        sender_sequence;
-      fc::sha256      transaction_id_type;  /// the trx that started this action
-      uint16_t        trx_action_dispatch_seq; ///< the relative order for implied trx
-      uint16_t        trx_action_creator_seq; ///< the dispatch seq of the action that created this dispatch
-      uint16_t        trx_action_dispatch_count; ///< the total number of actions dispatched by transaction when this action was dispatched
+      uint32_t        block_sequence; /// block num
+      uint32_t        sender_sequence; 
+      transaction_id_type trx_id;  /// the trx that started this action
+      uint16_t            trx_action_dispatch_seq; ///< the relative order for implied trx
       /// TODO: add code/scope/rw sequence numbers
    };
 
@@ -36,9 +34,9 @@ namespace eosio { namespace chain {
    typedef std::shared_ptr<transaction_trace> transaction_trace_ptr;
 
    struct block_trace {
-      fc::microseconds            ellapsed;
-      uint64_t                    cpu_usage;
-      vector<transaction_trace>   trx_traces;
+      fc::microseconds                ellapsed;
+      uint64_t                        cpu_usage;
+      vector<transaction_trace_ptr>   trx_traces;
    };
    typedef std::shared_ptr<block_trace> block_trace_ptr;
 
