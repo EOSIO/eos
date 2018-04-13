@@ -1259,7 +1259,7 @@ int main( int argc, char** argv ) {
                          ("scope", proposer)
                          ("table", "proposal")
                          ("table_key", "")
-                         ("lower_bound", string_to_name(proposal_name))
+                         ("lower_bound", eosio::chain::string_to_name(proposal_name.c_str()))
                          ("upper_bound", "")
                          ("limit", 1)
                          );
