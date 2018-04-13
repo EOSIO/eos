@@ -100,6 +100,13 @@ void multisig::exec( account_name proposer, name proposal_name, account_name exe
    auto prop_it = proptable.find( proposal_name );
    eosio_assert( prop_it != proptable.end(), "proposal not found" );
 
+   transaction_header trx_header;
+   datastream<const char*> ds( prop_it->packed_transaction.data(), prop_it->packed_transaction.size() );
+   ds >> trx_header;
+   trx_header.expiration = now() + 60;
+   ds.seekp(0);
+   ds << trx_header;
+
    check_auth( prop_it->packed_transaction, prop_it->provided_approvals );
    send_deferred( (uint128_t(proposer) << 64) | proposal_name, executer, prop_it->packed_transaction.data(), prop_it->packed_transaction.size() );
 
