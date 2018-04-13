@@ -2,6 +2,9 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 
+#include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/resource_limits_private.hpp>
+
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
 #else
@@ -314,6 +317,65 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
                         tx_missing_auth );
 
 
+   chain.produce_block();
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(no_double_billing) {
+try {
+   TESTER chain;
+
+   chain.produce_block();
+
+   account_name acc1 = N("bill1");
+   account_name acc2 = N("bill2");
+   account_name acc1a = N("bill1a");
+
+   chain.create_account(acc1);
+   chain.create_account(acc1a);
+   chain.produce_block();
+
+   chainbase::database &db = chain.control->get_mutable_database();
+
+   using resource_usage_object = eosio::chain::resource_limits::resource_usage_object;
+   using by_owner = eosio::chain::resource_limits::by_owner;
+
+   auto create_acc = [&](account_name a) {
+
+      signed_transaction trx;
+      chain.set_transaction_headers(trx);
+
+      authority owner_auth =  authority( chain.get_public_key( a, "owner" ) );
+      
+      vector<permission_level> pls = {{acc1, "active"}};
+      pls.push_back({acc1, "owner"}); // same account but different permission names
+      pls.push_back({acc1a, "owner"});
+      trx.actions.emplace_back( pls,
+                                contracts::newaccount{
+                                   .creator  = acc1,
+                                   .name     = a,
+                                   .owner    = owner_auth,
+                                   .active   = authority( chain.get_public_key( a, "active" ) ),
+                                   .recovery = authority( chain.get_public_key( a, "recovery" ) ),
+                                });
+
+      chain.set_transaction_headers(trx);
+      trx.sign( chain.get_private_key( acc1, "active" ), chain_id_type()  );
+      trx.sign( chain.get_private_key( acc1, "owner" ), chain_id_type()  );
+      trx.sign( chain.get_private_key( acc1a, "owner" ), chain_id_type()  );
+      return chain.push_transaction( trx );
+   };
+
+   create_acc(acc2);
+
+   const auto &usage = db.get<resource_usage_object,by_owner>(acc1);
+
+   const auto &usage2 = db.get<resource_usage_object,by_owner>(acc1a);
+
+   BOOST_TEST(usage.cpu_usage.average() > 0);
+   BOOST_TEST(usage.net_usage.average() > 0);
+   BOOST_REQUIRE_EQUAL(usage.cpu_usage.average(), usage2.cpu_usage.average());
+   BOOST_REQUIRE_EQUAL(usage.net_usage.average(), usage2.net_usage.average());
    chain.produce_block();
 
 } FC_LOG_AND_RETHROW() }
