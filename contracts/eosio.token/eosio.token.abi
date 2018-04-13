@@ -35,6 +35,15 @@
         {"name":"memo", "type":"string"}
      ]
   },{
+     "name": "inlinetransfer",
+     "base": "",
+     "fields": [
+        {"name":"from", "type":"account_name"},
+        {"name":"to", "type":"account_name"},
+        {"name":"quantity", "type":"asset"},
+        {"name":"memo", "type":"string"}
+      ]
+  },{
       "name": "account",
       "base": "",
       "fields": [

@@ -90,17 +90,21 @@ void token::transfer( account_name from,
     add_balance( to, quantity, st, from );
 }
 
-void token::inline_transfer( account_name from,
+void token::inlinetransfer( account_name from,
                              account_name to,
                              asset        quantity,
                              string       memo)
 {
    require_auth( from );
-   
+
    require_recipient( from );
    require_recipient( to );
-   
-   dispatch_inline( permission_level{from,N(active)}, _self, N(transfer), &token::transfer, { from, to, quantity, memo } );
+
+  
+
+   //   dispatch_inline( permission_level{from,N(active)}, _self, N(transfer), &token::transfer, { from, to, quantity, memo } );
+   action act(permission_level{from,N(active)}, _self, N(transfer), std::make_tuple(from, to, quantity, memo));
+   act.send();
 }
 
 asset token::get_total_supply( const symbol_type& symbol )
@@ -151,4 +155,4 @@ void token::add_balance( account_name owner, asset value, const currency_stats& 
 
 } /// namespace eosio
 
-EOSIO_ABI( eosio::token, (create)(issue)(inline_issue)(transfer) )
+EOSIO_ABI( eosio::token, (create)(issue)(inline_issue)(transfer)(inlinetransfer) )

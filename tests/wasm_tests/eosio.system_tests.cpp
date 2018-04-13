@@ -36,20 +36,19 @@ public:
 
       produce_blocks( 2 );
 
+      create_accounts( { N(eosio.system), N(eosio.token) } );
       create_accounts( { N(alice), N(bob), N(carol) } );
       produce_blocks( 1000 );
 
       set_code( config::system_account_name, eosio_system_wast );
       set_abi( config::system_account_name, eosio_system_abi );
 
-      //      set_code( config::system_account_name, eosio_token_wast );
-      //      set_abi( config::system_account_name, eosio_token_abi );
+      set_code( N(eosio.token), eosio_token_wast );
+      set_abi( N(eosio.token), eosio_token_abi );
 
       produce_blocks();
 
-      return;
-
-      const auto& accnt = control->get_database().get<account_object,by_name>( config::system_account_name );
+      const auto& accnt = control->get_database().get<account_object,by_name>( config::system_account_name /*N(eosio.system)*/ );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi);
@@ -75,9 +74,9 @@ public:
       return push_action( name(from), N(delegatebw), mvo()
                           ("from",     from)
                           ("receiver", to)
-                          ("stake_net", net)
-                          ("stake_cpu", cpu)
-                          ("stake_storage", storage)
+                          ("stake_net", eosio::asset::from_string(net))
+                          ("stake_cpu", eosio::asset::from_string(cpu))
+                          ("stake_storage", eosio::asset::from_string(storage))
       );
    }
 
@@ -121,13 +120,14 @@ public:
          ("max_inline_depth", 4 + n)
          ("max_inline_action_size", 4096 + n)
          ("max_generated_transaction_count", 10 + n)
+         ("max_storage_size", (n % 10 + 1) * 1024 * 1024)
          ("percent_of_max_inflation_rate", 50 + n)
          ("storage_reserve_ratio", 100 + n);
    }
 
    action_result regproducer( const account_name& acnt, int params_fixture = 1 ) {
       return push_action( acnt, N(regproducer), mvo()
-                          ("producer",  name(acnt).to_string() )
+                          ("producer",  acnt /*name(acnt).to_string()*/ )
                           ("producer_key", fc::raw::pack( get_public_key( acnt, "active" ) ) )
                           ("prefs", producer_parameters_example( params_fixture ) )
       );
@@ -169,6 +169,7 @@ public:
 
    fc::variant get_producer_info( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(producerinfo), act );
+      std::cout << "data.size() " << data.size() << std::endl;
       return abi_ser.binary_to_variant( "producer_info", data );
    }
 
@@ -182,14 +183,22 @@ public:
       
       base_tester::push_action(contract, N(create), contract, act );
    }
+     
+      void issue( name to, const std::string& amount, name manager = config::system_account_name/*N(eosio.system)*/) {
+         auto act = mutable_variant_object()
+            ("to",       to )
+            ("quantity", asset::from_string(amount) )
+            ("memo",     "");
+         base_tester::push_action( N(esoio.token), N(issue), N(eosio.system), act );
+      }
 
-   void issue( name to, const std::string& amount, name manager ) {
-      base_tester::push_action( N(esoio.system), N(issue), manager, mutable_variant_object()
-                                ("to",      to )
-                                ("quantity", asset::from_string(amount) )
-                                ("memo", "")
-                                );
-   }
+      void issue2( name to, const string& amount ) {
+         base_tester::push_action( N(eosio.token), N(issue), config::system_account_name, mutable_variant_object()
+                                   ("to",      to )
+                                   ("quantity", asset::from_string(amount) )
+                                   ("memo", "")
+                                   );
+      }
 
    abi_serializer abi_ser;
 };
@@ -1094,30 +1103,39 @@ BOOST_FIXTURE_TEST_CASE( proxy_actions_affect_producers, eosio_system_tester ) t
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
-   return;
-   create_currency( N(eosio.system), N(eosio.system), asset::from_string("100000000.0000 EOS") );
-   issue( "alice", "10000000.0000 EOS", N(eosio.system) );
+
+   //   set_code_abi(N(eosio.token), eosio_token_wast, eosio_token_abi);
+   create_currency( N(eosio.token), config::system_account_name /*N(eosio.system)*/, asset::from_string("20000000.0000 EOS") );
+
+   produce_blocks(1);
+
+   issue2( "alice", "10000000.0000 EOS");
+
    fc::variant params = producer_parameters_example(50);
    vector<char> key = fc::raw::pack(get_public_key(N(alice), "active"));
 
    // 1 block produced
+   
    BOOST_REQUIRE_EQUAL(success(), push_action(N(alice), N(regproducer), mvo()
                                               ("producer",  "alice")
                                               ("producer_key", key )
                                               ("prefs", params)
                                               )
                        );
+   
+   auto prod = get_producer_info( N(alice) );
 
-   auto prod = get_producer_info( "alice" );
    BOOST_REQUIRE_EQUAL("alice", prod["owner"].as_string());
    BOOST_REQUIRE_EQUAL(0, prod["total_votes"].as_uint64());
    REQUIRE_EQUAL_OBJECTS(params, prod["prefs"]);
    BOOST_REQUIRE_EQUAL(string(key.begin(), key.end()), to_string(prod["packed_key"]));
 
-   issue("bob", "2000.0000 EOS", config::system_account_name);
+
+   issue2("bob", "2000.0000 EOS");
 
    // bob makes stake
    // 1 block produced
+   /*
    BOOST_REQUIRE_EQUAL(success(), push_action(N(bob), N(delegatebw), mvo()
                                               ("from",     "bob")
                                               ("receiver", "bob")
@@ -1126,7 +1144,10 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
                                               ("stake_storage", "0.0000 EOS")
                                               )
                        );
+   */
 
+   BOOST_REQUIRE_EQUAL(success(), stake("bob", "11.0000 EOS", "00.1111 EOS", "00.1111 EOS"));
+   
    // bob votes for alice
    // 1 block produced
    BOOST_REQUIRE_EQUAL(success(), push_action(N(bob), N(voteproducer), mvo()
@@ -1135,6 +1156,8 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
                                               ("producers", vector<account_name>{ N(alice) })
                                               )
                        );
+   
+   return;
 
    produce_blocks(10);
    prod = get_producer_info("alice");

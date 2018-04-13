@@ -173,7 +173,11 @@ namespace eosiosystem {
                   p.per_block_payments.amount = 0;
                });
 
-            _system_token.inline_transfer(SystemAccount, cr.owner, rewards, "producer claiming rewards");
+            {
+               eosio::action act( eosio::permission_level{N(eosio),N(active)}, N(eosio.token), N(inlinetransfer),
+                                  std::make_tuple( N(eosio), cr.owner, rewards, std::string("producer claiming rewards") ) );
+               act.send();
+            }
          }
 
          static void apply( account_name receiver, account_name code, action_name act ) {

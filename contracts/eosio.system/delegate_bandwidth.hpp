@@ -65,9 +65,9 @@ namespace eosiosystem {
                //            typename currency::token_type net_weight;
                //            typename currency::token_type cpu_weight;
                //            typename currency::token_type storage_stake;
-            eosio::asset  net_weight;
-            eosio::asset  cpu_weight;
-            eosio::asset  storage_stake;
+            asset         net_weight;
+            asset         cpu_weight;
+            asset         storage_stake;
             uint64_t      storage_bytes = 0;
 
             uint64_t  primary_key()const { return to; }
@@ -136,7 +136,7 @@ namespace eosiosystem {
                   : common<SystemAccount>::get_default_parameters();
 #warning "FIX THIS!"
                //               auto token_supply = currency::get_total_supply();
-               eosio::asset token_supply(0, S(4,EOS));
+               asset token_supply(1000000000, S(4,EOS));
 
                //make sure that there is no posibility of overflow here
                //               uint64_t storage_bytes_estimated = ( parameters.max_storage_size - parameters.total_storage_bytes_reserved )
@@ -205,10 +205,15 @@ namespace eosiosystem {
             //set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, tot_itr->net_weight.quantity, tot_itr->cpu_weight.quantity );
 
             //            currency::inline_transfer( del.from, SystemAccount, total_stake, "stake bandwidth" );
-            _system_token.inline_transfer( del.from, SystemAccount, total_stake, "stake bandwidth" );
+            
+            eosio::action act( eosio::permission_level{/*N(eosio.system)*//* N(eosio)*/ del.from,N(active)}, N(eosio.token), N(inlinetransfer),
+                               std::make_tuple( del.from, /*N(eosio.system)*/ N(eosio), total_stake, std::string("stake bandwidth") ) );
+            act.send();
+
             if ( asset(0) < del.stake_net_quantity + del.stake_cpu_quantity ) {
                voting<SystemAccount>::increase_voting_power( del.from, del.stake_net_quantity + del.stake_cpu_quantity );
             }
+
          } // delegatebw
 
          static void on( account_name receiver, const undelegatebw& del ) {
@@ -305,7 +310,11 @@ namespace eosiosystem {
             // consecutive missed blocks.
 
             //            currency::inline_transfer( SystemAccount, req->owner, req->amount, "unstake" );
-            _system_token.inline_transfer( SystemAccount, req->owner, req->amount, "unstake" );
+            {
+               eosio::action act( eosio::permission_level{N(eosio.system),N(active)}, N(eosio.token), N(inlinetransfer),
+                                  std::make_tuple( N(eosio.system), req->owner, req->amount, std::string("unstake") ) );
+               act.send();
+            }
             refunds_tbl.erase( req );
          }
    };

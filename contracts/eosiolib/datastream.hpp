@@ -347,14 +347,14 @@ DataStream& operator>>( DataStream& ds, std::tuple<Args...>& t ) {
    return ds;
 }
 
-template<typename DataStream, typename T, std::enable_if_t<std::is_fundamental<T>::value == false, int> = 0>
+template<typename DataStream, typename T, std::enable_if_t<std::is_scalar<T>::value == false, int> = 0>
 DataStream& operator<<( DataStream& ds, const T& v ) {
    boost::pfr::for_each_field(v, [&](const auto& field) {
       ds << field;
    });
    return ds;
 }
-template<typename DataStream, typename T, std::enable_if_t<std::is_fundamental<T>::value == false, int> = 0>
+template<typename DataStream, typename T, std::enable_if_t<std::is_scalar<T>::value == false, int> = 0>
 DataStream& operator>>( DataStream& ds, T& v ) {
    boost::pfr::for_each_field(v, [&](auto& field) {
       ds >> field;
@@ -362,14 +362,14 @@ DataStream& operator>>( DataStream& ds, T& v ) {
    return ds;
 }
 
-template<typename DataStream, typename T, std::enable_if_t<std::is_fundamental<T>::value == true, int> = 0>
+template<typename DataStream, typename T, std::enable_if_t<std::is_scalar<T>::value == true, int> = 0>
 DataStream& operator<<( DataStream& ds, const T& v ) {
    static_assert(!std::is_pointer<T>::value, "Pointers should not be serialized" );
    ds.write( (const char*)&v, sizeof(T) );
    return ds;
 }
 
-template<typename DataStream, typename T, std::enable_if_t<std::is_fundamental<T>::value == true, int> = 0>
+template<typename DataStream, typename T, std::enable_if_t<std::is_scalar<T>::value == true, int> = 0>
 DataStream& operator>>( DataStream& ds, T& v ) {
    static_assert(!std::is_pointer<T>::value, "Pointers should not be serialized" );
    ds.read( (char*)&v, sizeof(T) );
