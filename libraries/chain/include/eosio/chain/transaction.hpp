@@ -78,26 +78,6 @@ namespace eosio { namespace chain {
    };
 
 
-   /**
-    * When a transaction is referenced by a block it could imply one of several outcomes which
-    * describe the state-transition undertaken by the block producer.
-    */
-   struct transaction_receipt {
-      enum status_enum {
-         executed  = 0, ///< succeed, no error handler executed
-         soft_fail = 1, ///< objectively failed (not executed), error handler executed
-         hard_fail = 2, ///< objectively failed and error handler objectively failed thus no state change
-         delayed   = 3  ///< transaction delayed
-      };
-
-      transaction_receipt() : status(hard_fail) {}
-      transaction_receipt( transaction_id_type tid ):status(executed),id(tid){}
-
-      fc::enum_type<uint8_t,status_enum>  status;
-      fc::unsigned_int                    kcpu_usage;
-      fc::unsigned_int                    net_usage_words;
-      transaction_id_type                 id;
-   };
 
    /**
     *  The transaction header contains the fixed-sized data
@@ -256,7 +236,6 @@ namespace eosio { namespace chain {
 
 FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
 FC_REFLECT( eosio::chain::action, (account)(name)(authorization)(data) )
-FC_REFLECT( eosio::chain::transaction_receipt, (status)(kcpu_usage)(net_usage_words)(id))
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix)
                                               (max_net_usage_words)(max_kcpu_usage)(delay_sec) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions) )

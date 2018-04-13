@@ -3,7 +3,6 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/asset.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <fc/time.hpp>
 

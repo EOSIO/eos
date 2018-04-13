@@ -6,7 +6,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/authority.hpp>
 #include <eosio/chain/block_timestamp.hpp>
-#include <eosio/chain/contracts/types.hpp>
+#include <eosio/chain/contract_types.hpp>
 
 #include "multi_index_includes.hpp"
 
@@ -28,7 +28,7 @@ namespace eosio { namespace chain {
       shared_vector<char>  code;
       shared_vector<char>  abi;
 
-      void set_abi( const eosio::chain::contracts::abi_def& a ) {
+      void set_abi( const eosio::chain::abi_def& a ) {
          // Added resize(0) here to avoid bug in boost vector container
          abi.resize( 0 );
          abi.resize( fc::raw::pack_size( a ) );
@@ -36,8 +36,8 @@ namespace eosio { namespace chain {
          fc::raw::pack( ds, a );
       }
 
-      eosio::chain::contracts::abi_def get_abi()const {
-         eosio::chain::contracts::abi_def a;
+      eosio::chain::abi_def get_abi()const {
+         eosio::chain::abi_def a;
          fc::datastream<const char*> ds( abi.data(), abi.size() );
          fc::raw::unpack( ds, a );
          return a;
