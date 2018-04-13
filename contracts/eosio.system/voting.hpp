@@ -236,11 +236,13 @@ namespace eosiosystem {
          static eosio::asset payment_per_block(uint32_t percent_of_max_inflation_rate) {
 #warning "FIX THIS!"
             //            const system_token_type token_supply = currency::get_total_supply();
-            const eosio::asset token_supply = _system_token.get_total_supply(S(4,EOS));
+            const eosio::asset token_supply(10000000000, S(4,EOS)); // = _system_token.get_total_supply(S(4,EOS));
             const double annual_rate = double(max_inflation_rate * percent_of_max_inflation_rate) / double(10000);
             double continuous_rate = std::log1p(annual_rate);
+            print("rate = ");
+            print(continuous_rate);
             int64_t payment = static_cast<int64_t>((continuous_rate * double(token_supply.amount)) / double(blocks_per_year));
-            return (eosio::asset(payment, S(4,EOS)));
+            return eosio::asset(payment, S(4,EOS));
          }
 
          static void update_elected_producers(time cycle_time) {
@@ -382,7 +384,11 @@ namespace eosiosystem {
             auto issue_quantity = parameters.blocks_per_cycle * (parameters.payment_per_block + parameters.payment_to_eos_bucket);
             //            currency::inline_issue(SystemAccount, issue_quantity);
 #warning "FIX THIS!"
-            _system_token.inline_issue(issue_quantity, "producer pay");
+            {
+               eosio::action act( eosio::permission_level{N(eosio.system),N(active)}, N(eosio.token), N(inline_issue),
+                                  std::make_tuple( issue_quantity, std::string("producer pay") ) );
+               act.send();
+            }
             set_blockchain_parameters(parameters);
             global_state_singleton::set(parameters);
          }

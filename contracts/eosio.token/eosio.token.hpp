@@ -33,7 +33,7 @@ namespace eosio {
                         asset        quantity,
                         string       memo );
 
-         void inline_transfer( account_name from,
+         void inlinetransfer( account_name from,
                                account_name to,
                                asset        quantity,
                                string       memo );

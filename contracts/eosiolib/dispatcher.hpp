@@ -77,7 +77,6 @@ extern "C" { \
          switch( action ) { \
             EOSIO_API( TYPE, MEMBERS ) \
          } \
-         eosio_exit(0); \
       } \
    } \
 } \
