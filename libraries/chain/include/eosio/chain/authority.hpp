@@ -118,7 +118,7 @@ inline bool validate( const Authority& auth ) {
       total_weight += a.weight;
       pa = &a;
    }
-   return total_weight > 0 && total_weight >= auth.threshold;
+   return auth.threshold > 0 && total_weight >= auth.threshold;
 }
 
 } } // namespace eosio::chain

@@ -1769,8 +1769,7 @@ class Cluster(object):
         nodes=[]
 
         pgrepOpts="-fl"
-        if platform.linux_distribution()[0] == "Ubuntu" or platform.linux_distribution()[0] == "LinuxMint" or platform.linux_distribution()[0] == "Fedora" or\
-                platform.linux_distribution()[0] == "arch":
+        if platform.linux_distribution()[0] in ["Ubuntu", "LinuxMint", "Fedora","CentOS Linux","arch"]:
             pgrepOpts="-a"
 
         endTime=time.time()+timeout
