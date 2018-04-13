@@ -177,25 +177,8 @@
 		printf "\n\t>>>>>>>>>>>>>>>>>>>> MAKE building EOSIO has exited with the above error.\n\n"
 		exit -1
 	fi
-
-# 	printf "\n\tVerifying MongoDB is running.\n"
-# 	MONGODB_PID=$( pgrep -x mongod )
-# 	if [ -z $MONGODB_PID ]; then
-# 		printf "\tMongoDB is not currently running.\n"
-# 		printf "\tStarting MongoDB.\n"
-# 		mongod -f ${MONGOD_CONF} &
-# 		if [ $? -ne 0 ]; then
-# 			printf "\tUnable to start MongoDB.\nExiting now.\n\n"
-# 			exit -1
-# 		fi
-# 		MONGODB_PID=$( pgrep -x mongod )
-# 		printf "\tSuccessfully started MongoDB PID = ${MONGODB_PID}.\n\n"
-# 	else
-# 		printf "\tMongoDB is running PID=${MONGODB_PID}.\n\n"
-# 	fi
 	
 	TIME_END=$(( `date -u +%s` - $TIME_BEGIN ))
-
 
 	printf "\n\n${bldred}\t _______  _______  _______ _________ _______\n"
 	printf '\t(  ____ \(  ___  )(  ____ \\\\__   __/(  ___  )\n'
@@ -208,14 +191,9 @@
 
 	printf "\n\tEOS.IO has been successfully built. %d:%d:%d\n\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
 	printf "\tTo verify your installation run the following commands:\n"
-	printf "\n\t$( which mongod ) -f ${MONGOD_CONF} &\n"
-	if [ "$OS_NAME" == "CentOS Linux" ]; then
-		printf "\tsource /opt/rh/python33/enable\n"
-	fi
-	if [ "$OS_NAME" != "Fedora" ]; then
-		printf '\texport PATH=${HOME}/opt/mongodb/bin:$PATH\n'
-	fi
-	printf "\tcd ${HOME}/eos/build; make test\n\n"
+	
+	print_instructions
+
 	printf "\tFor more information:\n"
 	printf "\tEOS.IO website: https://eos.io\n"
 	printf "\tEOS.IO Telegram channel @ https://t.me/EOSProject\n"
