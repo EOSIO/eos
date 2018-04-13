@@ -45,6 +45,7 @@ namespace eosio { namespace chain {
      }
      result.header.timestamp = when;
      result.header.previous  = id;
+     idump((id));
 
 
     auto prokey                                  = scheduled_producer(when);
@@ -59,6 +60,7 @@ namespace eosio { namespace chain {
     result.blockroot_merkle = blockroot_merkle;
     result.blockroot_merkle.append( id );
     result.header.block_mroot = result.blockroot_merkle.get_root();
+    idump((result.header));
 
     if( result.dpos_last_irreversible_blocknum >= pending_schedule_lib_num ) {
       result.active_schedule = pending_schedule; 

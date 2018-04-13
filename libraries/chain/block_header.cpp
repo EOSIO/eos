@@ -40,9 +40,15 @@ namespace eosio { namespace chain {
       return enc.result();
    }
 
-   void signed_block_header::sign(const private_key_type& signer, const fc::sha256& schedule_digest )
+   void signed_block_header::sign(const private_key_type& signer, const fc::sha256& pending_producer_schedule_hash )
    {
-      producer_signature = signer.sign( signed_digest( schedule_digest ) );
+      /// wrap the private key in lambda to pass to sign function
+      sign( [&]( const auto& d ){ return signer.sign( d ); }, pending_producer_schedule_hash );
+   }
+
+   void  signed_block_header::sign( std::function<signature_type(const digest_type&)> signer, const digest_type& pending_producer_schedule_hash ) 
+   {
+      producer_signature = signer( signed_digest( pending_producer_schedule_hash ) );
    }
 
    bool signed_block_header::validate_signee(const public_key_type& expected_signee, const fc::sha256& schedule_digest )const

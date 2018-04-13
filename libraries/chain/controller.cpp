@@ -154,7 +154,8 @@ struct controller_impl {
       genheader.pending_schedule_hash = fc::sha256::hash(initial_schedule);
       genheader.header.timestamp      = conf.genesis.initial_timestamp;
       genheader.header.action_mroot   = conf.genesis.compute_chain_id();
-   //   genheader.id                    = genheader.header.id();
+      genheader.id                    = genheader.header.id();
+      genheader.block_num             = genheader.header.block_num();
       idump((genheader));
 
       head = std::make_shared<block_state>( genheader, std::make_shared<signed_block>() );
@@ -435,25 +436,32 @@ const chainbase::database& controller::db()const { return my->db; }
 
 void controller::start_block( block_timestamp_type when ) {
   FC_ASSERT( !my->pending );
+
   my->pending = my->db.start_undo_session(true);
 
   my->pending->_pending_block_state = std::make_shared<block_state>( my->head->generate_next(when), 
                                                                      std::make_shared<signed_block>() );
-  idump((fc::json::to_pretty_string(*my->pending->_pending_block_state)));
+
 }
 
 void controller::finalize_block() {
+   auto p = my->pending->_pending_block_state;
+
    /// set trx mroot and act mroot
+   my->pending->_pending_block_state->id = my->pending->_pending_block_state->header.id();
 }
 
 void controller::sign_block( std::function<signature_type( const digest_type& )> signer_callback ) {
-
+   auto p = my->pending->_pending_block_state;
+   //p->header.sign( signer_callback, p->pending_schedule_hash );
+   static_cast<block_header&>(*p->block) = p->header;
 }
 
 void controller::commit_block() {
-   my->fork_db.add( my->pending->_pending_block_state->block );
+   my->head = my->fork_db.add( my->pending->_pending_block_state->block );
    my->pending->push();
    my->pending.reset();
+   edump((my->head->header.block_num()));
 }
 
 

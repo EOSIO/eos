@@ -34,7 +34,11 @@ namespace eosio { namespace chain {
    {
       block_id_type              id() const;
       public_key_type            signee( const digest_type& schedule_digest ) const;
+
+
       void                       sign(const private_key_type& signer, const digest_type& pending_producer_schedule_hash );
+      void                       sign( std::function<signature_type(const digest_type&)> signer, const digest_type& pending_producer_schedule_hash );
+
       bool                       validate_signee(const public_key_type& expected_signee, const digest_type& pending_producer_schedule_hash ) const;
       digest_type                signed_digest( const digest_type& pending_producer_schedule_hash )const;
 
