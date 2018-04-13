@@ -76,7 +76,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.actions.push_back( action_def{name("onblock"), "onblock",""} );
    eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay",""} );
    
-   // TODO add any clauses 
+   // TODO add any ricardian_clauses 
    //
    // ACTION PAYLOADS
 
@@ -304,7 +304,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
          {"structs", "struct_def[]"},
          {"actions", "action_def[]"},
          {"tables", "table_def[]"},
-         {"clauses", "clause_pair[]"}
+         {"ricardian_clauses", "clause_pair[]"}
       }
    });
 

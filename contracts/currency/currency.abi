@@ -83,5 +83,5 @@
       "key_types" : ["uint64"]
     }
   ],
-  "clauses": []
+  "ricardian_clauses": []
 }

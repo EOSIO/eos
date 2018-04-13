@@ -112,5 +112,5 @@
       "key_types": [ "account_name" ]
     }
   ],
-  "clauses": []
+  "ricardian_clauses": []
 }

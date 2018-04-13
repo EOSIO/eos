@@ -41,5 +41,5 @@
       "key_types" : ["my_account_name"]
     }
   ],
-  "clauses": []
+  "ricardian_clauses": []
 }
