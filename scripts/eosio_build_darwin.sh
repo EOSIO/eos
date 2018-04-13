@@ -23,8 +23,8 @@
 	printf "\tDisk space total: ${DISK_TOTAL}G\n"
 	printf "\tDisk space available: ${DISK_AVAIL}G\n\n"
 
-	if [ $MEM_GIG -lt 8 ]; then
-		echo "Your system must have 8 or more Gigabytes of physical memory installed."
+	if [ $MEM_GIG -lt 7 ]; then
+		echo "Your system must have 7 or more Gigabytes of physical memory installed."
 		echo "Exiting now."
 		exit 1
 	fi
@@ -172,7 +172,7 @@
 		brew install --force pkgconfig
 		brew unlink pkgconfig && brew link --force pkgconfig
 		STATUS=$(curl -LO -w '%{http_code}' --connect-timeout 30 https://github.com/mongodb/mongo-c-driver/releases/download/1.9.3/mongo-c-driver-1.9.3.tar.gz)
-		if [ $STATUS -ne 200 ]; then
+		if [ "${STATUS}" -ne 200 ]; then
 			rm -f ${TEMP_DIR}/mongo-c-driver-1.9.3.tar.gz
 			printf "\tUnable to download MongoDB C driver at this time.\n"
 			printf "\tExiting now.\n\n"
