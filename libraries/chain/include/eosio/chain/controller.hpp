@@ -53,6 +53,7 @@ namespace eosio { namespace chain {
          void finalize_block();
          void sign_block( std::function<signature_type( const digest_type& )> signer_callback );
          void commit_block();
+         void log_irreversible_blocks();
                              
          void push_block( const signed_block_ptr& b );
 

@@ -6,8 +6,9 @@ using namespace eosio::chain;
 int main( int argc, char** argv ) {
 
    try { try {
-      controller c( {} );
-      controller c2( {.shared_memory_dir = "c2dir", .block_log_dir = "c2dir" } );
+      controller c( { .shared_memory_size = 8*1024*1024, .block_log_dir="c1dir", .shared_memory_dir="c1dir"} );
+
+      //controller c2( { .shared_memory_size = 8*1024*1024, .shared_memory_dir = "c2dir", .block_log_dir = "c2dir" } );
 
       for( uint32_t i = 0; i < 4; ++i ) {
           c.start_block();
@@ -34,9 +35,12 @@ int main( int argc, char** argv ) {
           c.commit_block();
           idump((c.head_block_state()->header.id())(c.head_block_state()->block_num));
 
+          c.log_irreversible_blocks();
+
           ilog( "\n START CLONE  " );
-          c2.push_block( c.head_block_state()->block );
-          idump((c2.head_block_state()->header.id())(c2.head_block_state()->block_num));
+          //c2.push_block( c.head_block_state()->block );
+          //c2.log_irreversible_blocks();
+          //idump((c2.head_block_state()->header.id())(c2.head_block_state()->block_num));
           ilog( "\n END CLONE  \n" );
       }
 

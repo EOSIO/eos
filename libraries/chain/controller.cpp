@@ -168,6 +168,12 @@ struct controller_impl {
          genheader.block_num             = genheader.header.block_num();
 
          head = std::make_shared<block_state>( genheader );
+         signed_block genblock(genheader.header);
+
+         edump((genheader.header));
+         edump((genblock));
+         blog.append( genblock );
+
          db.set_revision( head->block_num );
          fork_db.set( head );
   
@@ -669,5 +675,34 @@ void     controller::record_transaction( const transaction_metadata_ptr& trx ) {
    my->record_transaction( trx );
 }
 
+
+/**
+ *  This method reads the current dpos_irreverible block number, if it is higher
+ *  than the last block number of the log, it grabs the next block from the
+ *  fork database, saves it to disk, then removes the block from the fork database. 
+ *
+ *  Any forks built off of a different block with the same number are also pruned.
+ */
+void controller::log_irreversible_blocks() {
+   if( !my->blog.head() ) 
+      my->blog.read_head();
+ 
+   const auto& log_head = my->blog.head();
+   auto lib = my->head->dpos_last_irreversible_blocknum;
+
+   idump((lib));
+
+   if( lib > 1 ) {
+      while( log_head && log_head->block_num() < lib ) {
+         auto lhead = log_head->block_num();
+         edump((lib)(lhead));
+         auto blk_id = my->get_block_id_for_num( lhead + 1 );
+         wdump((blk_id));
+         auto blk = my->fork_db.get_block( blk_id );
+         FC_ASSERT( blk, "unable to find block state", ("id",blk_id));
+         my->blog.append( *blk->block );
+      }
+   }
+}
    
 } } /// eosio::chain

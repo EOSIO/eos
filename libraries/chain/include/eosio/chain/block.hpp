@@ -41,6 +41,10 @@ namespace eosio { namespace chain {
    /**
     */
    struct signed_block : public signed_block_header {
+      using signed_block_header::signed_block_header;
+      signed_block() = default;
+      signed_block( const signed_block_header& h ):signed_block_header(h){}
+
       vector<transaction_receipt>   transactions; /// new or generated transactions
    };
 

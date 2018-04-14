@@ -45,6 +45,7 @@ namespace eosio { namespace chain {
       block_state( const block_header_state& cur ):block_header_state(cur){}
       block_state( const block_header_state& prev, signed_block_ptr b );
       block_state( const block_header_state& prev, block_timestamp_type when );
+      block_state() = default;
 
       /// weak_ptr prev_block_state....
       signed_block_ptr                                    block;
@@ -58,4 +59,4 @@ namespace eosio { namespace chain {
 } } /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::action_receipt, (receiver)(act)(global_sequence)(recv_sequence)(auth_sequence) )
-FC_REFLECT_DERIVED( eosio::chain::block_state, (eosio::chain::block_header_state),  )
+FC_REFLECT_DERIVED( eosio::chain::block_state, (eosio::chain::block_header_state), (block)(validated) )

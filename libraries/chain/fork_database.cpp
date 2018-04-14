@@ -47,7 +47,7 @@ namespace eosio { namespace chain {
          fc::read_file_contents( fork_db_dat, content );
 
          fc::datastream<const char*> ds( content.data(), content.size() );
-         vector<block_header_state>  states;
+         vector<block_state>  states;
          fc::raw::unpack( ds, states );
 
          for( auto& s : states ) {
@@ -62,7 +62,7 @@ namespace eosio { namespace chain {
 
    fork_database::~fork_database() {
       fc::datastream<size_t> ps;
-      vector<block_header_state>  states;
+      vector<block_state>  states;
       states.reserve( my->index.size() );
       for( const auto& s : my->index ) {
          states.push_back( *s );
@@ -80,7 +80,9 @@ namespace eosio { namespace chain {
    void fork_database::set( block_state_ptr s ) {
       auto result = my->index.insert( s );
       FC_ASSERT( s->id == s->header.id() );
-      FC_ASSERT( s->block_num == s->header.block_num() );
+
+         //FC_ASSERT( s->block_num == s->header.block_num() );
+
       FC_ASSERT( result.second, "unable to insert block state, duplicate state detected" );
       if( !my->head ) {
          my->head =  s;
