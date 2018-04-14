@@ -153,7 +153,7 @@ uint32_t tx_max_net_usage = 0;
 vector<string> tx_permission;
 
 void add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
-   CLI::callback_t parse_exipration = [](CLI::results_t res) -> bool {
+   CLI::callback_t parse_expiration = [](CLI::results_t res) -> bool {
       double value_s;
       if (res.size() == 0 || !CLI::detail::lexical_cast(res[0], value_s)) {
          return false;
@@ -163,7 +163,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
       return true;
    };
 
-   cmd->add_option("-x,--expiration", parse_exipration, localized("set the time in seconds before a transaction expires, defaults to 30s"));
+   cmd->add_option("-x,--expiration", parse_expiration, localized("set the time in seconds before a transaction expires, defaults to 30s"));
    cmd->add_flag("-f,--force-unique", tx_force_unique, localized("force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"));
    cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
    cmd->add_flag("-j,--json", tx_print_json, localized("print result as json"));
