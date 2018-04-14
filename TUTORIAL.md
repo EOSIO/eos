@@ -80,7 +80,7 @@ You will need your wallet unlocked for the rest of this tutorial.
 
 All new blockchains start out with a master key for the sole initial account, `eosio`. To interact with the blockchain you will need to import this initial account's private key into your wallet.
 
-Import the master key for the `eosio` account into your wallet.  The master key can be found in the `config.ini` file in the config folder for `nodeos`.  In this example, the default config folder is used.  On Linux systems, this will be in `~/.local/share/eosio/nodeos/config` and on MacOS, this will be in `~/Library/Application Support/eosio/nodeos/config`.
+Import the master key for the `eosio` account into your wallet.  The master key can be found in the `config.ini` file in the config folder for `nodeos`.  In this example, the default config folder is used.  On Linux systems, this will be in `~/.local/share/eosio/nodeos/config` and on MacOS, this will be in `~/Library/Application\ Support/eosio/nodeos/config`.
 
 ```
 $ cleos wallet import 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3

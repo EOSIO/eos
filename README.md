@@ -155,7 +155,7 @@ After successfully building the project, the `nodeos` binary should be present i
 
 `nodeos` uses a custom configuration folder.  The location of this folder is determined by your system.
 
-- Mac OS: `~/Library/Application Support/eosio/nodeos/config`
+- Mac OS: `~/Library/Application\ Support/eosio/nodeos/config`
 - Linux: `~/.local/share/eosio/nodeos/config`
 
 The build seeds this folder with a default `genesis.json` file.  Alternatively, a configuration folder can be specified using the `--config-dir` command line argument to `nodeos`.  If you use this option, you will need to manually copy a genesis.json file to your config folder.
@@ -193,7 +193,7 @@ When running `nodeos` you should get log messages similar to below. It means the
 
 `nodeos` stores runtime data (e.g., shared memory and log content) in a custom data folder.  The location of this folder is determined by your system.
 
-- Mac OS: `~/Library/Application Support/eosio/nodeos/data`
+- Mac OS: `~/Library/Application\ Support/eosio/nodeos/data`
 - Linux: `~/.local/share/eosio/nodeos/data`
 
 A data folder can be specified using the `--data-dir` command line argument to `nodeos`.
