@@ -148,7 +148,8 @@ namespace fc {
     template<typename Stream, typename T>
     inline void pack( Stream& s, const std::shared_ptr<T>& v)
     {
-      fc::raw::pack( s, *v );
+      fc::raw::pack( s, bool(!!v) );
+      if( !!v ) fc::raw::pack( s, *v );
     }
 
     template<typename Stream, typename T, size_t N>
@@ -160,8 +161,8 @@ namespace fc {
     template<typename Stream, typename T>
     inline void unpack( Stream& s, std::shared_ptr<T>& v)
     { try {
-      v = std::make_shared<T>();
-      fc::raw::unpack( s, *v );
+      bool b; fc::raw::unpack( s, b );
+      if( b ) { v = std::make_shared<T>(); fc::raw::unpack( s, *v ); }
     } FC_RETHROW_EXCEPTIONS( warn, "std::shared_ptr<T>", ("type",fc::get_typename<T>::name()) ) }
 
     template<typename Stream> inline void pack( Stream& s, const signed_int& v ) {
