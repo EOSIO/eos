@@ -35,7 +35,7 @@ struct pending_state {
    block_state_ptr                    _expected_block_state;
 
    vector<action_receipt>             _actions;
-   vector<transaction_receipt>        _transaction_receipts;
+
 
    void push() {
       _db_session.push();
@@ -100,6 +100,9 @@ struct controller_impl {
 
    ~controller_impl() {
       pending.reset();
+
+      edump((db.revision())(head->block_num));
+
       db.flush();
    }
 
@@ -169,7 +172,8 @@ struct controller_impl {
          db.set_revision( head->block_num );
          fork_db.set( head );
       }
-      FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistant with shared memory" );
+      FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistant with shared memory",
+                 ("db",db.revision())("head",head->block_num) );
    }
 
 
@@ -215,6 +219,11 @@ struct controller_impl {
    }
 
 
+   void push_transaction( const transaction_metadata_ptr& trx ) {
+      return db.with_write_lock( [&](){ 
+         return apply_transaction( trx );
+      });
+   }
 
    void apply_transaction( const transaction_metadata_ptr& trx, bool implicit = false ) {
       transaction_context trx_context( self, trx );
@@ -224,14 +233,9 @@ struct controller_impl {
       fc::move_append( acts, move(trx_context.executed) );
 
       if( !implicit ) {
+         pending->_pending_block_state->block->transactions.emplace_back( trx->packed_trx );
          pending->_applied_transaction_metas.emplace_back( trx );
       }
-   }
-
-   void push_transaction( const transaction_metadata_ptr& trx ) {
-      return db.with_write_lock( [&](){ 
-         return apply_transaction( trx );
-      });
    }
 
 
@@ -329,8 +333,9 @@ struct controller_impl {
 
    void set_trx_merkle() {
       vector<digest_type> trx_digests;
-      trx_digests.reserve( pending->_transaction_receipts.size() );
-      for( const auto& a : pending->_transaction_receipts)
+      const auto& trxs = pending->_pending_block_state->block->transactions;
+      trx_digests.reserve( trxs.size() );
+      for( const auto& a : trxs )
          trx_digests.emplace_back( a.digest() );
 
       pending->_pending_block_state->header.transaction_mroot = merkle( move(trx_digests) );
@@ -548,6 +553,7 @@ void controller::commit_block() {
    my->pending.reset();
    edump((my->head->header.block_num())(my->head->block_num));
    idump((my->head->id));
+   idump((my->head->block));
 }
 
 block_state_ptr controller::head_block_state()const {
@@ -555,10 +561,49 @@ block_state_ptr controller::head_block_state()const {
 }
 
 
+void controller::apply_block( const signed_block_ptr& b ) {
+   try {
+      wlog( "-----------------------------" );
+      idump((*b));
+
+      start_block( b->timestamp );
+
+      for( const auto& receipt : b->transactions ) {
+         edump((receipt));
+         if( receipt.trx.contains<packed_transaction>() ) {
+            ilog(".");
+            auto& pt = receipt.trx.get<packed_transaction>();
+            auto mtrx = std::make_shared<transaction_metadata>(pt);
+            push_transaction( mtrx );
+         }
+      }
+
+      finalize_block();
+      sign_block( [&]( const auto& ){ return b->producer_signature; } );
+      commit_block();
+      wlog( "-----------------------------" );
+      return;
+   } catch ( const fc::exception& e ) {
+      edump((e.to_detail_string()));
+      abort_block();
+      throw;
+   }
+}
+
+vector<transaction_metadata_ptr> controller::abort_block() {
+   vector<transaction_metadata_ptr> pushed = move(my->pending->_applied_transaction_metas);
+   my->pending.reset();
+   return pushed;
+}
+
 void controller::push_block( const signed_block_ptr& b ) {
-   wdump((my->head->header.block_num())(my->head->block_num));
-   my->head = my->fork_db.add( b );
-   wdump((my->head->header.block_num())(my->head->block_num));
+   auto new_head = my->fork_db.add( b );
+   if( new_head->header.previous == my->head->id ) {
+      apply_block( b );
+   } else {
+      /// potential forking logic
+      elog( "new head??? not building on current head?" );
+   }
 }
 
 void controller::push_transaction( const transaction_metadata_ptr& trx ) { 
@@ -573,6 +618,10 @@ void controller::push_transaction( const transaction_id_type& trxid ) {
 
 uint32_t controller::head_block_num()const {
    return my->head->block_num;
+}
+
+time_point controller::head_block_time()const {
+   return my->head->header.timestamp;
 }
 
 uint64_t controller::next_global_sequence() {

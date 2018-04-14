@@ -99,7 +99,6 @@ namespace eosio { namespace chain {
     */
    struct transaction_header {
       time_point_sec         expiration;   ///< the time at which a transaction expires
-      uint16_t               region              = 0U; ///< the computational memory region this transaction applies to.
       uint16_t               ref_block_num       = 0U; ///< specifies a block num in the last 2^16 blocks.
       uint32_t               ref_block_prefix    = 0UL; ///< specifies the lower 32 bits of the blockid at get_ref_blocknum
       fc::unsigned_int       max_net_usage_words = 0UL; /// upper limit on total network bandwidth (in 8 byte words) billed for this transaction
@@ -236,7 +235,7 @@ namespace eosio { namespace chain {
 
 FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
 FC_REFLECT( eosio::chain::action, (account)(name)(authorization)(data) )
-FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix)
+FC_REFLECT( eosio::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix)
                                               (max_net_usage_words)(max_kcpu_usage)(delay_sec) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures)(context_free_data) )

@@ -58,7 +58,8 @@ namespace eosio { namespace chain {
 
          chainbase::database& db()const;
 
-         uint32_t head_block_num()const;
+         uint32_t   head_block_num()const;
+         time_point head_block_time()const;
 
          block_state_ptr head_block_state()const;
 
@@ -84,6 +85,7 @@ namespace eosio { namespace chain {
 
       private:
          std::unique_ptr<controller_impl> my;
+         void apply_block( const signed_block_ptr& b );
 
    };
 
