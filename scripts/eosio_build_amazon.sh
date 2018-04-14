@@ -115,7 +115,7 @@
 		fi
 		tar xf cmake-3.10.2.tar.gz
 		rm -f cmake-3.10.2.tar.gz
-		ln -s cmake-3.10.2/ cmake
+		ln -s ${HOME}/opt/cmake-3.10.2/ cmake
 		cd cmake
 		./bootstrap
 		if [ $? -ne 0 ]; then
@@ -184,7 +184,7 @@
 		fi
 		tar xf mongodb-linux-x86_64-amazon-3.6.3.tgz
 		rm -f mongodb-linux-x86_64-amazon-3.6.3.tgz
-		ln -s ${HOME}/opt/mongodb-linux-x86_64-3.6.3/ mongodb
+		ln -s ${HOME}/opt/mongodb-linux-x86_64-amazon-3.6.3/ mongodb
 		mkdir ${HOME}/opt/mongodb/data
 		mkdir ${HOME}/opt/mongodb/log
 		touch ${HOME}/opt/mongodb/log/mongodb.log
