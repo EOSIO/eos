@@ -555,6 +555,8 @@ namespace eosio {
       deque<block_id_type> _blocks;
       chain_plugin * chain_plug;
 
+      constexpr auto stage_str(stages s );
+
    public:
       sync_manager(uint32_t span);
       void set_state(stages s);
@@ -1106,14 +1108,21 @@ namespace eosio {
       chain_plug = app( ).find_plugin<chain_plugin>( );
    }
 
+   constexpr auto sync_manager::stage_str(stages s ) {
+    switch (s) {
+    case in_sync : return "in sync";
+    case lib_catchup: return "lib catchup";
+    case head_catchup : return "head catchup";
+    default : return "unkown";
+    }
+  }
+
    void sync_manager::set_state(stages newstate) {
       if (state == newstate) {
          return;
       }
-      string os = state == in_sync ? "in sync" : state == lib_catchup ? "lib catchup" : "head catchup";
+      fc_dlog(logger, "old state ${os} becoming ${ns}",("os",stage_str (state))("ns",stage_str (newstate)));
       state = newstate;
-      string ns = state == in_sync ? "in sync" : state == lib_catchup ? "lib catchup" : "head catchup";
-      fc_dlog(logger, "old state ${os} becoming ${ns}",("os",os)("ns",ns));
    }
 
    bool sync_manager::is_active(connection_ptr c) {
@@ -1208,6 +1217,7 @@ namespace eosio {
          elog("Unable to continue syncing at this time");
          sync_known_lib_num = chain_plug->chain().last_irreversible_block_num();
          sync_last_requested_num = 0;
+         set_state(in_sync); // probably not, but we can't do anything else
          return;
       }
 
@@ -1302,41 +1312,34 @@ namespace eosio {
       }
       if (head < peer_lib) {
          fc_dlog(logger, "sync check state 1");
-         start_sync( c, peer_lib);
+         // wait for receipt of a notice message before initiating sync
          return;
       }
       if (lib_num > msg.head_num ) {
          fc_dlog(logger, "sync check state 2");
-         // for generation 1, we wlso sent a handshake so they will treat this as state 1
-         if ( msg.generation > 1 ) {
-            notice_message note;
-            note.known_trx.pending = lib_num;
-            note.known_trx.mode = last_irr_catch_up;
-            note.known_blocks.mode = last_irr_catch_up;
-            note.known_blocks.pending = head;
-            c->enqueue( note );
-         }
+         notice_message note;
+         note.known_trx.pending = lib_num;
+         note.known_trx.mode = last_irr_catch_up;
+         note.known_blocks.mode = last_irr_catch_up;
+         note.known_blocks.pending = head;
+         c->enqueue( note );
          c->syncing = true;
          return;
       }
 
       if (head <= msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
-         //         if (state == in_sync ) {
-            verify_catchup (c, msg.head_num, msg.head_id);
-            //         }
+         verify_catchup (c, msg.head_num, msg.head_id);
          return;
       }
       else {
          fc_dlog(logger, "sync check state 4");
-         if ( msg.generation > 1 ) {
-            notice_message note;
-            note.known_trx.mode = none;
-            note.known_blocks.mode = catch_up;
-            note.known_blocks.pending = head;
-            note.known_blocks.ids.push_back(head_id);
-            c->enqueue( note );
-         }
+         notice_message note;
+         note.known_trx.mode = none;
+         note.known_blocks.mode = catch_up;
+         note.known_blocks.pending = head;
+         note.known_blocks.ids.push_back(head_id);
+         c->enqueue( note );
          c->syncing = true;
          return;
       }
