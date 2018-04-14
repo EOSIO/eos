@@ -31,6 +31,8 @@ target_include_directories( chain_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/includ
 add_dependencies(chain_test asserter test_api test_api_mem test_api_db test_api_multi_index exchange currency proxy identity identity_test stltest infinite eosio.system eosio.token eosio.bios test.inline multi_index_test noop dice eosio.msig)
 
 #
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/llvm-gcov.sh ${CMAKE_CURRENT_BINARY_DIR}/../llvm-gcov.sh COPYONLY)
+
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/p2p_tests/sync/test.sh ${CMAKE_CURRENT_BINARY_DIR}/p2p_tests/sync/test.sh COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/p2p_tests/dawn_515/test.sh ${CMAKE_CURRENT_BINARY_DIR}/p2p_tests/dawn_515/test.sh COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/trans_sync_across_mixed_cluster_test.sh ${CMAKE_CURRENT_BINARY_DIR}/trans_sync_across_mixed_cluster_test.sh COPYONLY)
@@ -68,7 +70,6 @@ add_test(NAME distributed-transactions-remote-test COMMAND tests/distributed-tra
 if(ENABLE_COVERAGE_TESTING)
 
   set(Coverage_NAME ${PROJECT_NAME}_coverage)
-  set(Coverage_EXECUTABLE chain_test)
 
   if(NOT LCOV_PATH)
     message(FATAL_ERROR "lcov not found! Aborting...")
@@ -78,27 +79,26 @@ if(ENABLE_COVERAGE_TESTING)
     message(FATAL_ERROR "genhtml not found! Aborting...")
   endif() # NOT GENHTML_PATH
 
+  # no spaces allowed within tests list
+  set(ctest_tests 'chain_test_binaryen|chain_test_wavm|p2p_dawn515_test')
+  set(ctest_exclude_tests 'nodeos_run_test|nodeos_run_remote_test|nodeos_run_test-mongodb|distributed-transactions-test|distributed-transactions-remote-test')
+
   # Setup target
   add_custom_target(${Coverage_NAME}
 
-    # Cleanup lcov
     COMMAND ${LCOV_PATH} --directory . --zerocounters
-    # Create baseline to make sure untouched files show up in the report
-    COMMAND ${LCOV_PATH} -c -i -d . -o ${Coverage_NAME}.base
 
-    # Run tests
-    COMMAND ${Coverage_EXECUTABLE}
+    COMMAND ctest -R ${ctest_tests} -E ${ctest_exclude_tests}
 
-    # Capturing lcov counters and generating report
-    COMMAND ${LCOV_PATH} --directory . --capture --output-file ${Coverage_NAME}.info
-    # add baseline counters
-    COMMAND ${LCOV_PATH} -a ${Coverage_NAME}.base -a ${Coverage_NAME}.info --output-file ${Coverage_NAME}.total
-    COMMAND ${LCOV_PATH} --remove ${Coverage_NAME}.total ${COVERAGE_EXCLUDES} --output-file ${PROJECT_BINARY_DIR}/${Coverage_NAME}.info.cleaned
-    COMMAND ${GENHTML_PATH} -o ${Coverage_NAME} ${PROJECT_BINARY_DIR}/${Coverage_NAME}.info.cleaned
+    COMMENT "Capturing lcov counters and generating report"
+    COMMAND ${LCOV_PATH} --directory . --capture --gcov-tool ./tests/llvm-gcov.sh --output-file ${Coverage_NAME}.info
+
+    COMMENT "Processing code coverage counters and generating report."
+    COMMAND ${GENHTML_PATH} -o ${Coverage_NAME} ${PROJECT_BINARY_DIR}/${Coverage_NAME}.info
     COMMAND ${CMAKE_COMMAND} -E remove ${Coverage_NAME}.base ${Coverage_NAME}.info ${Coverage_NAME}.total ${PROJECT_BINARY_DIR}/${Coverage_NAME}.info.cleaned
 
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-    COMMENT "Resetting code coverage counters to zero.\nProcessing code coverage counters and generating report."
+    COMMENT "Resetting code coverage counters to zero. Processing code coverage counters and generating report."
     )
 
   # Show info where to find the report
