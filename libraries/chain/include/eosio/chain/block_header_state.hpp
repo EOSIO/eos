@@ -30,6 +30,7 @@ struct block_header_state {
     uint32_t             calc_dpos_last_irreversible()const;
     bool                 is_active_producer( account_name n )const;
     producer_key         scheduled_producer( block_timestamp_type t )const;
+    const block_id_type& prev()const { return header.previous; }
 };
 
 

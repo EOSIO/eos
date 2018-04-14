@@ -32,10 +32,12 @@ int main( int argc, char** argv ) {
 
 
           c.commit_block();
+          idump((c.head_block_state()->header.id())(c.head_block_state()->block_num));
 
+          ilog( "\n START CLONE  " );
           c2.push_block( c.head_block_state()->block );
-          idump((c.head_block_state()->header));
-        //  idump((c2.head_block_state()->header));
+          idump((c2.head_block_state()->header.id())(c2.head_block_state()->block_num));
+          ilog( "\n END CLONE  \n" );
       }
 
 

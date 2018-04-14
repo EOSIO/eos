@@ -32,7 +32,6 @@ struct pending_state {
    vector<transaction_metadata_ptr>   _applied_transaction_metas;
 
    block_state_ptr                    _pending_block_state;
-   block_state_ptr                    _expected_block_state;
 
    vector<action_receipt>             _actions;
 
@@ -171,6 +170,11 @@ struct controller_impl {
          head = std::make_shared<block_state>( genheader );
          db.set_revision( head->block_num );
          fork_db.set( head );
+  
+         // Initialize block summary index
+         for (int i = 0; i < 0x10000; i++)
+            db.create<block_summary_object>([&](block_summary_object&) {});
+
       }
       FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistant with shared memory",
                  ("db",db.revision())("head",head->block_num) );
@@ -218,6 +222,14 @@ struct controller_impl {
       });
    }
 
+   void commit_block( bool add_to_fork_db ) {
+      if( add_to_fork_db ) {
+         pending->_pending_block_state->validated = true;
+         head = fork_db.add( pending->_pending_block_state );
+      } 
+      pending->push();
+      pending.reset();
+   }
 
    void push_transaction( const transaction_metadata_ptr& trx ) {
       return db.with_write_lock( [&](){ 
@@ -352,6 +364,7 @@ struct controller_impl {
       auto p = pending->_pending_block_state;
       p->id = p->header.id();
 
+      create_block_summary();
 
 
       /* TODO RESTORE 
@@ -375,6 +388,27 @@ struct controller_impl {
 
       */
    } FC_CAPTURE_AND_RETHROW() }
+
+
+   void create_block_summary() {
+      auto p = pending->_pending_block_state;
+      auto sid = p->block_num & 0xffff;
+      db.modify( db.get<block_summary_object,by_id>(sid), [&](block_summary_object& bso ) {
+          bso.block_id = p->id;
+      });
+   }
+
+   /**
+    *  This method only works for blocks within the TAPOS range, (last 65K blocks). It
+    *  will return block_id_type() for older blocks.
+    */
+   block_id_type get_block_id_for_num( uint32_t block_num ) {
+      auto sid = block_num & 0xffff;
+      auto id  = db.get<block_summary_object,by_id>(sid).block_id;
+      auto num = block_header::num_from_id( id );
+      if( num == block_num ) return id;
+      return block_id_type();
+   }
 
    void clear_expired_transactions() {
       //Look for expired transactions in the deduplication list, and remove them.
@@ -519,15 +553,10 @@ void controller::start_block( block_timestamp_type when ) {
   wlog( "start_block" );
   FC_ASSERT( !my->pending );
 
-  idump( (my->db.revision())(my->head->block_num) );
+  FC_ASSERT( my->db.revision() == my->head->block_num );
 
   my->pending = my->db.start_undo_session(true);
   my->pending->_pending_block_state = std::make_shared<block_state>( *my->head, when );
-
-  idump( (my->db.revision())(my->pending->_pending_block_state->block_num) );
-
-  idump((my->head->id));
-  idump((my->pending->_pending_block_state->header));
 
   auto onbtrx = std::make_shared<transaction_metadata>( my->get_on_block_transaction() );
   my->apply_transaction( onbtrx, true );
@@ -538,7 +567,6 @@ void controller::finalize_block() {
 }
 
 void controller::sign_block( std::function<signature_type( const digest_type& )> signer_callback ) {
-   ilog( "sign block" );
    auto p = my->pending->_pending_block_state;
    p->header.sign( signer_callback, p->pending_schedule_hash );
    FC_ASSERT( p->block_signing_key == p->header.signee( p->pending_schedule_hash ),
@@ -547,13 +575,7 @@ void controller::sign_block( std::function<signature_type( const digest_type& )>
 }
 
 void controller::commit_block() {
-   ilog( "commit block ${b}", ("b", my->pending->_pending_block_state->header) );
-   my->head = my->fork_db.add( my->pending->_pending_block_state );
-   my->pending->push();
-   my->pending.reset();
-   edump((my->head->header.block_num())(my->head->block_num));
-   idump((my->head->id));
-   idump((my->head->block));
+   my->commit_block(true);
 }
 
 block_state_ptr controller::head_block_state()const {
@@ -563,15 +585,10 @@ block_state_ptr controller::head_block_state()const {
 
 void controller::apply_block( const signed_block_ptr& b ) {
    try {
-      wlog( "-----------------------------" );
-      idump((*b));
-
       start_block( b->timestamp );
 
       for( const auto& receipt : b->transactions ) {
-         edump((receipt));
          if( receipt.trx.contains<packed_transaction>() ) {
-            ilog(".");
             auto& pt = receipt.trx.get<packed_transaction>();
             auto mtrx = std::make_shared<transaction_metadata>(pt);
             push_transaction( mtrx );
@@ -580,8 +597,11 @@ void controller::apply_block( const signed_block_ptr& b ) {
 
       finalize_block();
       sign_block( [&]( const auto& ){ return b->producer_signature; } );
-      commit_block();
-      wlog( "-----------------------------" );
+
+      FC_ASSERT( b->id() == my->pending->_pending_block_state->block->id(),
+                 "applying block didn't produce expected block id" );
+
+      my->commit_block(false);
       return;
    } catch ( const fc::exception& e ) {
       edump((e.to_detail_string()));
@@ -597,9 +617,21 @@ vector<transaction_metadata_ptr> controller::abort_block() {
 }
 
 void controller::push_block( const signed_block_ptr& b ) {
+   FC_ASSERT( !my->pending );
+
    auto new_head = my->fork_db.add( b );
+
+
+   edump((new_head->block_num));
    if( new_head->header.previous == my->head->id ) {
-      apply_block( b );
+      try {
+         apply_block( b );
+         my->fork_db.set_validity( new_head, true );
+         my->head = new_head;
+      } catch ( const fc::exception& e ) {
+         my->fork_db.set_validity( new_head, false );
+         throw;
+      }
    } else {
       /// potential forking logic
       elog( "new head??? not building on current head?" );

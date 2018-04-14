@@ -29,6 +29,7 @@ class transaction_metadata {
       transaction_metadata( const packed_transaction& ptrx )
       :trx( ptrx.get_signed_transaction() ), packed_trx(ptrx) {
          raw_packed = fc::raw::pack( trx );
+         id = trx.id();
       }
 
       void recover_keys( chain_id_type cid = chain_id_type() ) {

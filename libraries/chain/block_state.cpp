@@ -3,7 +3,7 @@
 
 namespace eosio { namespace chain {
 
-
+#if 0
    /**
     *  Perform context free validation of transaction state
     */
@@ -28,6 +28,9 @@ namespace eosio { namespace chain {
       EOS_ASSERT( trx.max_net_usage_words.value < UINT32_MAX / 8UL, transaction_exception, "declared max_net_usage_words overflows when expanded to max net usage" );
    } /// validate_transaction
 
+#endif
+
+
    block_state::block_state( const block_header_state& prev, block_timestamp_type when )
    :block_header_state( prev.generate_next( when ) ), 
     block( std::make_shared<signed_block>()  )
@@ -37,31 +40,7 @@ namespace eosio { namespace chain {
 
    block_state::block_state( const block_header_state& prev, signed_block_ptr b )
    :block_header_state( prev.next( *b )), block( move(b) )
-   {
-#if 0
-      ilog("");
-      if( block ) {
-      ilog("");
-         for( const auto& packed : block->transactions ) {
-      ilog("");
-            auto meta_ptr = std::make_shared<transaction_metadata>( packed, chain_id_type(), block->timestamp );
-
-            /** perform context-free validation of transactions */
-            const auto& trx = meta_ptr->trx();
-            FC_ASSERT( time_point(trx.expiration) > header.timestamp, "transaction is expired" );
-            validate_transaction( trx );
-
-            auto id = meta_ptr->id;
-            input_transactions[id] = move(meta_ptr);
-         }
-
-      } // end if block
-#endif
-   } 
-
-   void block_state::reset_trace() {
-      trace = std::make_shared<block_trace>();
-   }
+   { } 
 
 
 

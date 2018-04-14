@@ -39,6 +39,7 @@ namespace eosio { namespace chain {
           */
          block_state_ptr add( signed_block_ptr b ); 
          block_state_ptr add( block_state_ptr next_block ); 
+         void            remove( const block_id_type& id );
 
          const block_state_ptr& head()const;
 
@@ -46,8 +47,8 @@ namespace eosio { namespace chain {
           *  Given two head blocks, return two branches of the fork graph that
           *  end with a common ancestor (same prior block)
           */
-         pair< branch_type, branch_type >  fetch_branch_from( block_id_type first,
-                                                              block_id_type second )const;
+         pair< branch_type, branch_type >  fetch_branch_from( const block_id_type& first,
+                                                              const block_id_type& second )const;
 
 
          /**

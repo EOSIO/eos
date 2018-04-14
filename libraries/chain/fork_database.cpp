@@ -15,10 +15,14 @@ namespace eosio { namespace chain {
 
    struct by_block_id;
    struct by_block_num;
+   struct by_prev;
    typedef multi_index_container<
       block_state_ptr,
       indexed_by<
          hashed_unique<tag<by_block_id>, member<block_header_state, block_id_type, &block_header_state::id>, std::hash<block_id_type>>,
+         hashed_non_unique<tag<by_prev>, const_mem_fun<block_header_state, 
+                                         const block_id_type&, &block_header_state::prev>, 
+                                         std::hash<block_id_type>>,
          ordered_non_unique<tag<by_block_num>, member<block_header_state,uint32_t,&block_header_state::block_num>>
       >
    > fork_multi_index_type;
@@ -86,7 +90,8 @@ namespace eosio { namespace chain {
    }
 
    block_state_ptr fork_database::add( block_state_ptr n ) {
-      my->index.insert(n);
+      auto inserted = my->index.insert(n);
+      FC_ASSERT( inserted.second, "duplicate block added?" );
 
       if( n->block_num > my->head->block_num ) {
          my->head = n;
@@ -115,8 +120,8 @@ namespace eosio { namespace chain {
     *  Given two head blocks, return two branches of the fork graph that
     *  end with a common ancestor (same prior block)
     */
-   pair< branch_type, branch_type >  fork_database::fetch_branch_from( block_id_type first,
-                                                                       block_id_type second )const {
+   pair< branch_type, branch_type >  fork_database::fetch_branch_from( const block_id_type& first,
+                                                                       const block_id_type& second )const {
       pair<branch_type,branch_type> result;
       auto first_branch = get_block(first);
       auto second_branch = get_block(second);
@@ -152,14 +157,32 @@ namespace eosio { namespace chain {
       return result;
    } /// fetch_branch_from
 
-   void fork_database::set_validity( const block_state_ptr& h, bool valid ) {
-      if( !valid ) {
-         auto itr = my->index.find( h->id );
+   /// remove all of the invalid forks built of this id including this id
+   void fork_database::remove( const block_id_type& id ) {
+      vector<block_id_type> remove_queue{id};
+
+      for( uint32_t i = 0; i < remove_queue.size(); ++i ) {
+         auto itr = my->index.find( remove_queue[i] );
          if( itr != my->index.end() )
             my->index.erase(itr);
+
+         auto& previdx = my->index.get<by_prev>();
+         auto  previtr = previdx.find(id);
+         while( previtr != previdx.end() ) {
+            remove_queue.push_back( (*previtr)->id );
+            previdx.erase(previtr);
+            previtr = previdx.find(id);
+         }
+      }
+   }
+
+   void fork_database::set_validity( const block_state_ptr& h, bool valid ) {
+      if( !valid ) {
+         remove( h->id ); 
       } else {
          /// remove older than irreversible and mark block as valid
          h->validated = true;
+         /*
          auto& idx = my->index.get<by_block_num>();
          for( auto itr = idx.begin(); itr != idx.end(); ++itr ) {
             if( (*itr)->block_num < h->dpos_last_irreversible_blocknum ) {
@@ -173,6 +196,7 @@ namespace eosio { namespace chain {
                break;
             }
          }
+         */
       }
    }
 
