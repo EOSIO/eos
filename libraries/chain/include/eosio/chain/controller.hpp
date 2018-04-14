@@ -13,6 +13,9 @@ namespace eosio { namespace chain {
    using chainbase::database;
    using boost::signals2::signal;
 
+   class dynamic_global_property_object;
+   class permission_object;
+
    class controller {
       public:
          struct config {
@@ -54,6 +57,7 @@ namespace eosio { namespace chain {
          void sign_block( std::function<signature_type( const digest_type& )> signer_callback );
          void commit_block();
          void log_irreversible_blocks();
+         void pop_block();
                              
          void push_block( const signed_block_ptr& b );
 
@@ -73,6 +77,15 @@ namespace eosio { namespace chain {
          uint64_t next_recv_sequence( account_name receiver );
          uint64_t next_auth_sequence( account_name actor );
          void     record_transaction( const transaction_metadata_ptr& trx );
+
+         const dynamic_global_property_object& get_dynamic_global_properties()const;
+         const permission_object&              get_permission( const permission_level& level )const;
+
+         block_id_type        head_block_id()const;
+         account_name         head_block_producer()const;
+         const block_header&  head_block_header()const;
+
+         uint32_t last_irreversible_block_num() const;
 
          /*
          signal<void()>                                  pre_apply_block;

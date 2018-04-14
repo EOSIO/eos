@@ -75,6 +75,7 @@ namespace eosio { namespace chain {
          fc::raw::pack( out, my->head->id );
       else
          fc::raw::pack( out, block_id_type() );
+      idump((states.size()));
    }
 
    void fork_database::set( block_state_ptr s ) {
@@ -184,23 +185,22 @@ namespace eosio { namespace chain {
       } else {
          /// remove older than irreversible and mark block as valid
          h->validated = true;
-         /*
-         auto& idx = my->index.get<by_block_num>();
-         for( auto itr = idx.begin(); itr != idx.end(); ++itr ) {
-            if( (*itr)->block_num < h->dpos_last_irreversible_blocknum ) {
-               /// TODO: if block is part of head chain, then emit irreversible, we don't
-               /// currently have an easy way to track which blocks are part of the head chain,
-               /// to implement that we would need to track every time the head changes and update
-               /// all blocks not on the head.
-               idx.erase( itr );
-               itr = idx.begin();
-            } else {
-               break;
-            }
-         }
-         */
       }
    }
+   void fork_database::prune( const block_state_ptr& h ) {
+      auto num = h->block_num;
+      
+      auto itr = my->index.find( h->id );
+      if( itr != my->index.end() )
+         my->index.erase(itr);
+
+      auto& numidx = my->index.get<by_block_num>();
+      auto nitr = numidx.find( num );
+      if( nitr != numidx.end() ) {
+         remove( (*nitr)->id );
+      }
+   }
+
 
    block_state_ptr   fork_database::get_block(const block_id_type& id)const {
       auto itr = my->index.find( id );

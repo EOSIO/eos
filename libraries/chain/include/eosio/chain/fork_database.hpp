@@ -56,6 +56,7 @@ namespace eosio { namespace chain {
           * than the LIB are pruned after emitting irreversible signal.
           */
          void set_validity( const block_state_ptr& h, bool valid );
+         void prune( const block_state_ptr& h );
 
          /**
           * This signal is emited when a block state becomes irreversible, once irreversible
