@@ -123,9 +123,10 @@ namespace eosio { namespace chain {
        result.set_new_producers( *h.new_producers );
     } 
 
-    result.header.action_mroot      = h.action_mroot;
-    result.header.transaction_mroot = h.transaction_mroot;
-    result.id                       = h.id();
+    result.header.action_mroot       = h.action_mroot;
+    result.header.transaction_mroot  = h.transaction_mroot;
+    result.header.producer_signature = h.producer_signature;
+    result.id                        = h.id();
 
     return result;
   } /// next

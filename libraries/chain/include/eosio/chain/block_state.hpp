@@ -9,13 +9,13 @@ namespace eosio { namespace chain {
     *  For each action dispatched this receipt is generated
     */
    struct action_receipt {
-      account_name    receiver;
-      action          act;
-      uint32_t        block_sequence; /// block num
-      uint32_t        sender_sequence; 
-      transaction_id_type trx_id;  /// the trx that started this action
-      uint16_t            trx_action_dispatch_seq; ///< the relative order for implied trx
-      /// TODO: add code/scope/rw sequence numbers
+      account_name                    receiver;
+      action                          act;
+      uint64_t                        global_sequence; ///< total number of actions dispatched since genesis
+      uint64_t                        recv_sequence; ///< total number of actions with this receiver since genesis
+      flat_map<account_name,uint32_t> auth_sequence; 
+
+      digest_type digest()const { return digest_type::hash(*this); }
    };
 
    struct action_trace {
@@ -61,4 +61,5 @@ namespace eosio { namespace chain {
 
 } } /// namespace eosio::chain
 
+FC_REFLECT( eosio::chain::action_receipt, (receiver)(act)(global_sequence)(recv_sequence)(auth_sequence) )
 FC_REFLECT_DERIVED( eosio::chain::block_state, (eosio::chain::block_header_state),  )

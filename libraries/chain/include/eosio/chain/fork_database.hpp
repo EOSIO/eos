@@ -22,7 +22,7 @@ namespace eosio { namespace chain {
    class fork_database {
       public:
 
-         fork_database();
+         fork_database( const fc::path& data_dir );
          ~fork_database();
 
          block_state_ptr  get_block(const block_id_type& id)const;

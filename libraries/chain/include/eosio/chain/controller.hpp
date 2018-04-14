@@ -46,9 +46,9 @@ namespace eosio { namespace chain {
 
          vector<transaction_metadata_ptr> abort_block();
 
-         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx  = transaction_metadata_ptr() );
-         transaction_trace_ptr push_transaction( const transaction_id_type& scheduled );
-         transaction_trace_ptr push_transaction();
+         void push_transaction( const transaction_metadata_ptr& trx  = transaction_metadata_ptr() );
+         void push_transaction( const transaction_id_type& scheduled );
+         void push_transaction();
 
          void finalize_block();
          void sign_block( std::function<signature_type( const digest_type& )> signer_callback );
@@ -56,11 +56,21 @@ namespace eosio { namespace chain {
                              
          void push_block( const signed_block_ptr& b );
 
-         const chainbase::database& db()const;
+         chainbase::database& db()const;
 
          uint32_t head_block_num()const;
 
          block_state_ptr head_block_state()const;
+
+
+
+
+
+
+         uint64_t next_global_sequence();
+         uint64_t next_recv_sequence( account_name receiver );
+         uint64_t next_auth_sequence( account_name actor );
+         void     record_transaction( const transaction_metadata_ptr& trx );
 
          /*
          signal<void()>                                  pre_apply_block;

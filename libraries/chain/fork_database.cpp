@@ -5,6 +5,8 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
+#include <fc/io/fstream.hpp>
+#include <fstream>
 
 namespace eosio { namespace chain {
    using boost::multi_index_container;
@@ -25,13 +27,50 @@ namespace eosio { namespace chain {
    struct fork_database_impl {
       fork_multi_index_type index;
       block_state_ptr       head;
+      fc::path              datadir;
    };
 
 
-   fork_database::fork_database():my( new fork_database_impl() ) {
+   fork_database::fork_database( const fc::path& data_dir ):my( new fork_database_impl() ) {
+      my->datadir = data_dir;
+
+      if (!fc::is_directory(my->datadir))
+         fc::create_directories(my->datadir);
+
+      auto fork_db_dat = my->datadir / "forkdb.dat";
+      if( fc::exists( fork_db_dat ) ) {
+         string content;
+         fc::read_file_contents( fork_db_dat, content );
+
+         fc::datastream<const char*> ds( content.data(), content.size() );
+         vector<block_header_state>  states;
+         fc::raw::unpack( ds, states );
+
+         for( auto& s : states ) {
+            set( std::make_shared<block_state>( move( s ) ) );
+         }
+         block_id_type head_id;
+         fc::raw::unpack( ds, head_id );
+
+         my->head = get_block( head_id );
+      }
    }
 
    fork_database::~fork_database() {
+      fc::datastream<size_t> ps;
+      vector<block_header_state>  states;
+      states.reserve( my->index.size() );
+      for( const auto& s : my->index ) {
+         states.push_back( *s );
+      }
+
+      auto fork_db_dat = my->datadir / "forkdb.dat";
+      std::ofstream out( fork_db_dat.generic_string().c_str(), std::ios::out | std::ios::binary | std::ofstream::trunc );
+      fc::raw::pack( out, states );
+      if( my->head )
+         fc::raw::pack( out, my->head->id );
+      else
+         fc::raw::pack( out, block_id_type() );
    }
 
    void fork_database::set( block_state_ptr s ) {

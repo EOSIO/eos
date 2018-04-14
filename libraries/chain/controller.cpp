@@ -1,5 +1,5 @@
 #include <eosio/chain/controller.hpp>
-#include <chainbase/chainbase.hpp>
+#include <eosio/chain/context.hpp>
 
 #include <eosio/chain/block_log.hpp>
 #include <eosio/chain/fork_database.hpp>
@@ -17,6 +17,7 @@
 
 #include <eosio/chain/resource_limits.hpp>
 
+#include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
 
 namespace eosio { namespace chain {
@@ -32,6 +33,9 @@ struct pending_state {
 
    block_state_ptr                    _pending_block_state;
    block_state_ptr                    _expected_block_state;
+
+   vector<action_receipt>             _actions;
+   vector<transaction_receipt>        _transaction_receipts;
 
    void push() {
       _db_session.push();
@@ -70,11 +74,13 @@ struct controller_impl {
         cfg.read_only ? database::read_only : database::read_write,
         cfg.shared_memory_size ),
     blog( cfg.block_log_dir ),
+    fork_db( cfg.shared_memory_dir ),
     //wasmif( cfg.wasm_runtime ),
     resource_limits( db ),
     conf( cfg ),
     self( s )
    {
+      head = fork_db.head();
    }
 
    void init() {
@@ -89,7 +95,7 @@ struct controller_impl {
        * unwind that pending state. This state will be regenerated
        * when we catch up to the head block later.
        */
-      clear_all_undo(); 
+      //clear_all_undo(); 
    }
 
    ~controller_impl() {
@@ -145,21 +151,25 @@ struct controller_impl {
     *  it would be the genesis state.
     */
    void initialize_fork_db() {
-      wlog( " Initializing new blockchain with genesis state                  " );
-      producer_schedule_type initial_schedule{ 0, {{N(eosio), conf.genesis.initial_key}} };
+      head = fork_db.head();
+      if( !head ) {
+         wlog( " Initializing new blockchain with genesis state                  " );
+         producer_schedule_type initial_schedule{ 0, {{N(eosio), conf.genesis.initial_key}} };
 
-      block_header_state genheader;
-      genheader.active_schedule       = initial_schedule;
-      genheader.pending_schedule      = initial_schedule;
-      wdump((genheader.active_schedule));
-      genheader.pending_schedule_hash = fc::sha256::hash(initial_schedule);
-      genheader.header.timestamp      = conf.genesis.initial_timestamp;
-      genheader.header.action_mroot   = conf.genesis.compute_chain_id();
-      genheader.id                    = genheader.header.id();
-      genheader.block_num             = genheader.header.block_num();
+         block_header_state genheader;
+         genheader.active_schedule       = initial_schedule;
+         genheader.pending_schedule      = initial_schedule;
+         genheader.pending_schedule_hash = fc::sha256::hash(initial_schedule);
+         genheader.header.timestamp      = conf.genesis.initial_timestamp;
+         genheader.header.action_mroot   = conf.genesis.compute_chain_id();
+         genheader.id                    = genheader.header.id();
+         genheader.block_num             = genheader.header.block_num();
 
-      head = std::make_shared<block_state>( genheader );
-      fork_db.set( head );
+         head = std::make_shared<block_state>( genheader );
+         db.set_revision( head->block_num );
+         fork_db.set( head );
+      }
+      FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistant with shared memory" );
    }
 
 
@@ -204,68 +214,39 @@ struct controller_impl {
       });
    }
 
-   transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx ) {
+
+
+   void apply_transaction( const transaction_metadata_ptr& trx, bool implicit = false ) {
+      transaction_context trx_context( self, trx );
+      trx_context.exec();
+
+      auto& acts = pending->_actions;
+      fc::move_append( acts, move(trx_context.executed) );
+
+      if( !implicit ) {
+         pending->_applied_transaction_metas.emplace_back( trx );
+      }
+   }
+
+   void push_transaction( const transaction_metadata_ptr& trx ) {
       return db.with_write_lock( [&](){ 
          return apply_transaction( trx );
       });
    }
 
+
    void record_transaction( const transaction_metadata_ptr& trx ) {
       try {
-          _db.create<transaction_object>([&](transaction_object& transaction) {
+          db.create<transaction_object>([&](transaction_object& transaction) {
               transaction.trx_id = trx->id;
               transaction.expiration = trx->trx.expiration;
           });
       } catch ( ... ) {
           EOS_ASSERT( false, transaction_exception,
-                     "duplicate transaction ${id}",
-                     ("id", trx.id() ) );
+                     "duplicate transaction ${id}", ("id", trx->id ) );
       }
    }
 
-   void start_transaction( const transaction_metadata_ptr& trx ) {
-      record_transaction( trx );
-   }
-
-   transaction_trace_ptr apply_transaction( const transaction_metadata_ptr& trx, bool implicit = false ) {
-      auto trx_session = db.start_undo_session();
-      // TODO: notify pre transaction
-
-      start_transaction( trx );
-
-
-      for( const auto& act : trx->trx.context_free_actions ) {
-         apply_action( act,  ... ); 
-         /*
-         apply_context context( self, db, act, trx );
-         context.context_free = true;
-         context.exec();
-         receipt.kcpu_usage += context.kcpu_usage
-         */
-
-      }
-
-      for( const auto& act : trx->trx.actions ) {
-         auto act_session = db.start_undo_session();
-         // TODO: notify pre action
-
-         /*
-         apply_context context( self, db, act, trx );
-         context.exec();
-         receipt.kcpu_usage += context.kcpu_usage
-         */
-
-         // TODO: notify post action
-         act_session.squash();
-      }
-
-      finalize_transaction();
-
-      // TODO: notify post transaction
-      trx_session.squash();
-
-      push_transaction_receipt( trx, type );
-   }
 
 
 
@@ -337,21 +318,36 @@ struct controller_impl {
    */
 
 
+   void set_action_merkle() {
+      vector<digest_type> action_digests;
+      action_digests.reserve( pending->_actions.size() );
+      for( const auto& a : pending->_actions )
+         action_digests.emplace_back( a.digest() );
 
-   transaction_trace_ptr apply_transaction( const transaction_metadata_ptr& trx ) {
-      auto trx_trace = std::make_shared<transaction_trace>();
-      trx_trace->action_traces.reserve( trx->trx.actions.size() );
-      trx_trace->action_receipts.reserve( trx->trx.actions.size() );
+      pending->_pending_block_state->header.action_mroot = merkle( move(action_digests) );
+   }
 
-      for( const auto& act : trx->trx.actions ) {
-//         trx_trace->action_receipts.emplace_back( apply_action( act 
-      }
-      return trx_trace;
+   void set_trx_merkle() {
+      vector<digest_type> trx_digests;
+      trx_digests.reserve( pending->_transaction_receipts.size() );
+      for( const auto& a : pending->_transaction_receipts)
+         trx_digests.emplace_back( a.digest() );
+
+      pending->_pending_block_state->header.transaction_mroot = merkle( move(trx_digests) );
    }
 
 
-   void finalize_block( const block_trace& trace ) 
+   void finalize_block() 
    { try {
+      ilog( "finalize block" );
+
+      set_action_merkle();
+      set_trx_merkle();
+
+      auto p = pending->_pending_block_state;
+      p->id = p->header.id();
+
+
 
       /* TODO RESTORE 
       const auto& b = trace.block;
@@ -412,7 +408,7 @@ struct controller_impl {
     *  At the start of each block we notify the system contract with a transaction that passes in
     *  the block header of the prior block (which is currently our head block)
     */
-   transaction get_on_block_transaction()
+   signed_transaction get_on_block_transaction()
    {
       action on_block_act;
       on_block_act.account = config::system_account_name;
@@ -420,7 +416,7 @@ struct controller_impl {
       on_block_act.authorization = vector<permission_level>{{config::system_account_name, config::active_name}};
       on_block_act.data = fc::raw::pack(head_block_header());
 
-      transaction trx;
+      signed_transaction trx;
       trx.actions.emplace_back(std::move(on_block_act));
       trx.set_reference_block(head_block_id());
       trx.expiration = head_block_time() + fc::seconds(1);
@@ -511,29 +507,33 @@ void controller::startup() {
    */
 }
 
-const chainbase::database& controller::db()const { return my->db; }
+chainbase::database& controller::db()const { return my->db; }
 
 
 void controller::start_block( block_timestamp_type when ) {
   wlog( "start_block" );
   FC_ASSERT( !my->pending );
 
+  idump( (my->db.revision())(my->head->block_num) );
+
   my->pending = my->db.start_undo_session(true);
   my->pending->_pending_block_state = std::make_shared<block_state>( *my->head, when );
 
-  auto t = my->get_on_block_transaction();
- // apply_transaction( 
- // idump((t));
+  idump( (my->db.revision())(my->pending->_pending_block_state->block_num) );
+
+  idump((my->head->id));
+  idump((my->pending->_pending_block_state->header));
+
+  auto onbtrx = std::make_shared<transaction_metadata>( my->get_on_block_transaction() );
+  my->apply_transaction( onbtrx, true );
 }
 
 void controller::finalize_block() {
-   auto p = my->pending->_pending_block_state;
-
-  /// set trx mroot and act mroot on pending.header and pending.block (which also has copy of header)
-  // my->pending->_pending_block_state->id = my->pending->_pending_block_state->header.id();
+   my->finalize_block();
 }
 
 void controller::sign_block( std::function<signature_type( const digest_type& )> signer_callback ) {
+   ilog( "sign block" );
    auto p = my->pending->_pending_block_state;
    p->header.sign( signer_callback, p->pending_schedule_hash );
    FC_ASSERT( p->block_signing_key == p->header.signee( p->pending_schedule_hash ),
@@ -542,10 +542,12 @@ void controller::sign_block( std::function<signature_type( const digest_type& )>
 }
 
 void controller::commit_block() {
+   ilog( "commit block ${b}", ("b", my->pending->_pending_block_state->header) );
    my->head = my->fork_db.add( my->pending->_pending_block_state );
    my->pending->push();
    my->pending.reset();
    edump((my->head->header.block_num())(my->head->block_num));
+   idump((my->head->id));
 }
 
 block_state_ptr controller::head_block_state()const {
@@ -554,24 +556,37 @@ block_state_ptr controller::head_block_state()const {
 
 
 void controller::push_block( const signed_block_ptr& b ) {
+   wdump((my->head->header.block_num())(my->head->block_num));
    my->head = my->fork_db.add( b );
-  //return my->push_block( b );  
+   wdump((my->head->header.block_num())(my->head->block_num));
 }
 
-transaction_trace_ptr   controller::push_transaction( const transaction_metadata_ptr& trx ) { 
-   return my->push_transaction();
+void controller::push_transaction( const transaction_metadata_ptr& trx ) { 
+   my->push_transaction(trx);
 }
 
-transaction_trace_ptr controller::push_transaction() {
-   return transaction_trace_ptr();
+void controller::push_transaction() {
 }
-transaction_trace_ptr controller::push_transaction( const transaction_id_type& trxid ) {
-   return transaction_trace_ptr();
+void controller::push_transaction( const transaction_id_type& trxid ) {
    /// lookup scheduled trx and then apply it...
 }
 
 uint32_t controller::head_block_num()const {
    return my->head->block_num;
 }
+
+uint64_t controller::next_global_sequence() {
+   return 0;
+}
+uint64_t controller::next_recv_sequence( account_name receiver ) {
+   return 0;
+}
+uint64_t controller::next_auth_sequence( account_name actor ) {
+   return 0;
+}
+void     controller::record_transaction( const transaction_metadata_ptr& trx ) {
+   my->record_transaction( trx );
+}
+
    
 } } /// eosio::chain

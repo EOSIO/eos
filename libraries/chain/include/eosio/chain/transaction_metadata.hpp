@@ -35,6 +35,8 @@ class transaction_metadata {
 
       }
 
+      uint32_t total_actions()const { return trx.context_free_actions.size() + trx.actions.size(); }
+
 
       /*
       transaction_metadata( const transaction& t, 
