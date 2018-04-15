@@ -1,8 +1,7 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/apply_context.hpp>
-#include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/controller.hpp>
 #include <eosio/chain/producer_schedule.hpp>
-#include <eosio/chain/asset.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/multiprecision/cpp_bin_float.hpp>
@@ -10,6 +9,8 @@
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <eosio/chain/wasm_eosio_validation.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
+#include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/account_object.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
@@ -22,7 +23,6 @@
 #include <fstream>
 
 namespace eosio { namespace chain {
-   using namespace contracts;
    using namespace webassembly;
    using namespace webassembly::common;
 
@@ -135,7 +135,7 @@ class privileged_api : public context_aware_api {
       }
 
       void get_resource_limits( account_name account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight ) {
-         context.controller.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
+         context.control.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
       }
 
       void set_active_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
@@ -149,14 +149,11 @@ class privileged_api : public context_aware_api {
             unique_producers.insert(p.producer_name);
          }
          EOS_ASSERT(psch.producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule");
-         context.mutable_db.modify( context.controller.get_global_properties(),
-            [&]( auto& gprops ) {
-                 gprops.new_active_producers = psch;
-         });
+         context.mutable_controller.set_active_producers( psch );
       }
 
       uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t datalen) {
-         auto& gpo = context.controller.get_global_properties();
+         auto& gpo = context.control.get_global_properties();
          auto size = fc::raw::pack_size( gpo.configuration );
          if ( size <= datalen ) {
             datastream<char*> ds( packed_blockchain_parameters, datalen );
@@ -170,7 +167,7 @@ class privileged_api : public context_aware_api {
          datastream<const char*> ds( packed_blockchain_parameters, datalen );
          chain::chain_config cfg;
          fc::raw::unpack(ds, cfg);
-         context.mutable_db.modify( context.controller.get_global_properties(),
+         context.mutable_db.modify( context.control.get_global_properties(),
             [&]( auto& gprops ) {
                  gprops.configuration = cfg;
          });
@@ -769,7 +766,7 @@ class permission_api : public context_aware_api {
             pub_keys.emplace_back(pub);
          }
 
-         return context.controller.check_authorization(
+         return context.control.check_authorization(
             account, permission,
             {pub_keys.begin(), pub_keys.end()},
             false
@@ -811,7 +808,7 @@ class system_api : public context_aware_api {
       }
 
       fc::time_point_sec now() {
-         return context.controller.head_block_time();
+         return context.control.head_block_time();
       }
 };
 
@@ -832,15 +829,11 @@ class action_api : public context_aware_api {
       }
 
       fc::time_point_sec publication_time() {
-         return context.trx_meta.published;
+         return context.published_time;
       }
 
       name current_sender() {
-         if (context.trx_meta.sender) {
-            return *context.trx_meta.sender;
-         } else {
-            return name();
-         }
+         return context.sender;
       }
 
       name current_receiver() {
@@ -1065,7 +1058,7 @@ class transaction_api : public context_aware_api {
             fc::raw::unpack<transaction>(data, data_len, dtrx);
             dtrx.sender = context.receiver;
             dtrx.sender_id = sender_id;
-            dtrx.execute_after = time_point_sec( (context.controller.head_block_time() + fc::seconds(dtrx.delay_sec)) + fc::microseconds(999'999) ); // rounds up to nearest second
+            dtrx.execute_after = time_point_sec( (context.control.head_block_time() + fc::seconds(dtrx.delay_sec)) + fc::microseconds(999'999) ); // rounds up to nearest second
             dtrx.payer = payer;
             context.execute_deferred(std::move(dtrx));
          } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
@@ -1096,14 +1089,14 @@ class context_free_transaction_api : public context_aware_api {
       }
 
       int expiration() {
-        return context.trx_meta.trx().expiration.sec_since_epoch();
+        return context.trx_meta.trx.expiration.sec_since_epoch();
       }
 
       int tapos_block_num() {
-        return context.trx_meta.trx().ref_block_num;
+        return context.trx_meta.trx.ref_block_num;
       }
       int tapos_block_prefix() {
-        return context.trx_meta.trx().ref_block_prefix;
+        return context.trx_meta.trx.ref_block_prefix;
       }
 
       int get_action( uint32_t type, uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
@@ -1557,8 +1550,8 @@ REGISTER_INTRINSICS(action_api,
 );
 
 REGISTER_INTRINSICS(apply_context,
-   (require_write_lock,    void(int64_t)          )
-   (require_read_lock,     void(int64_t, int64_t) )
+//   (require_write_lock,    void(int64_t)          )
+//   (require_read_lock,     void(int64_t, int64_t) )
    (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(apply_context::*)(const account_name&))
    (require_authorization, void(int64_t, int64_t), "require_auth2", void(apply_context::*)(const account_name&, const permission_name& permission))

@@ -13,7 +13,7 @@
 #include <array>
 #include <type_traits>
 
-namespace eosio { namespace chain { namespace contracts {
+namespace eosio { namespace chain { 
 
    /**
     * @brief The table_id_object class tracks the mapping of (scope, code, table) to an opaque identifier
@@ -148,56 +148,54 @@ namespace eosio { namespace chain { namespace contracts {
    typedef secondary_index<uint64_t,index_double_object_type,soft_double_less>::index_object  index_double_object;
    typedef secondary_index<uint64_t,index_double_object_type,soft_double_less>::index_index   index_double_index;
 
-} // ::contracts
-
 namespace config {
    template<>
-   struct billable_size<contracts::table_id_object> {
+   struct billable_size<table_id_object> {
       static const uint64_t overhead = overhead_per_row_per_index_ram_bytes * 2;  ///< overhead for 2x indices internal-key and code,scope,table
       static const uint64_t value = 44 + overhead; ///< 36 bytes for constant size fields + overhead
    };
 
    template<>
-   struct billable_size<contracts::key_value_object> {
+   struct billable_size<key_value_object> {
       static const uint64_t overhead = overhead_per_row_per_index_ram_bytes * 2;  ///< overhead for potentially single-row table, 2x indices internal-key and primary key
       static const uint64_t value = 32 + 8 + 4 + overhead; ///< 32 bytes for our constant size fields, 8 for pointer to vector data, 4 bytes for a size of vector + overhead
    };
 
    template<>
-   struct billable_size<contracts::index64_object> {
+   struct billable_size<index64_object> {
       static const uint64_t overhead = overhead_per_row_per_index_ram_bytes * 3;  ///< overhead for potentially single-row table, 3x indices internal-key, primary key and primary+secondary key
       static const uint64_t value = 24 + 8 + overhead; ///< 24 bytes for fixed fields + 8 bytes key + overhead
    };
 
    template<>
-   struct billable_size<contracts::index128_object> {
+   struct billable_size<index128_object> {
       static const uint64_t overhead = overhead_per_row_per_index_ram_bytes * 3;  ///< overhead for potentially single-row table, 3x indices internal-key, primary key and primary+secondary key
       static const uint64_t value = 24 + 16 + overhead; ///< 24 bytes for fixed fields + 16 bytes key + overhead
    };
 
    template<>
-   struct billable_size<contracts::index256_object> {
+   struct billable_size<index256_object> {
       static const uint64_t overhead = overhead_per_row_per_index_ram_bytes * 3;  ///< overhead for potentially single-row table, 3x indices internal-key, primary key and primary+secondary key
       static const uint64_t value = 24 + 32 + overhead; ///< 24 bytes for fixed fields + 32 bytes key + overhead
    };
 
    template<>
-   struct billable_size<contracts::index_double_object> {
+   struct billable_size<index_double_object> {
       static const uint64_t overhead = overhead_per_row_per_index_ram_bytes * 3;  ///< overhead for potentially single-row table, 3x indices internal-key, primary key and primary+secondary key
       static const uint64_t value = 24 + 8 + overhead; ///< 24 bytes for fixed fields + 32 bytes key + overhead
    };
 
-}
+} // namespace config
 
 } }  // namespace eosio::chain
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::table_id_object, eosio::chain::contracts::table_id_multi_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::key_value_object, eosio::chain::contracts::key_value_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::table_id_object, eosio::chain::table_id_multi_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::key_value_object, eosio::chain::key_value_index)
 
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index64_object, eosio::chain::contracts::index64_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index128_object, eosio::chain::contracts::index128_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index256_object, eosio::chain::contracts::index256_index)
-CHAINBASE_SET_INDEX_TYPE(eosio::chain::contracts::index_double_object, eosio::chain::contracts::index_double_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::index64_object, eosio::chain::index64_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::index128_object, eosio::chain::index128_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::index256_object, eosio::chain::index256_index)
+CHAINBASE_SET_INDEX_TYPE(eosio::chain::index_double_object, eosio::chain::index_double_index)
 
-FC_REFLECT(eosio::chain::contracts::table_id_object, (id)(code)(scope)(table) )
-FC_REFLECT(eosio::chain::contracts::key_value_object, (id)(t_id)(primary_key)(value)(payer) )
+FC_REFLECT(eosio::chain::table_id_object, (id)(code)(scope)(table) )
+FC_REFLECT(eosio::chain::key_value_object, (id)(t_id)(primary_key)(value)(payer) )

@@ -71,7 +71,6 @@ class transaction_metadata {
       size_t                                raw_size = 0;
 
       optional<transaction>                 decompressed_trx;
-      vector<bytes>                         context_free_data;
       digest_type                           packed_digest;
 
       // things for signed/packed transactions

@@ -14,16 +14,14 @@ add_library( eosio_chain
              block_log.cpp
              genesis_state.cpp
 
-
 #             chain_config.cpp
 #             block_trace.cpp
-#             wast_to_wasm.cpp
-#             wasm_interface.cpp
-#             wasm_eosio_validation.cpp
-#             wasm_eosio_injection.cpp
-#             apply_context.cpp
+              wast_to_wasm.cpp
+              wasm_interface.cpp
+              wasm_eosio_validation.cpp
+              wasm_eosio_injection.cpp
+              apply_context.cpp
 
-#             fork_database.cpp
 #             get_config.cpp
 #             asset.cpp
 
@@ -35,8 +33,8 @@ add_library( eosio_chain
 #             contracts/chain_initializer.cpp
 #             contracts/abi_serializer.cpp
 
-#             webassembly/wavm.cpp
-#             webassembly/binaryen.cpp
+             webassembly/wavm.cpp
+             webassembly/binaryen.cpp
 
 #             transaction_metadata.cpp
              ${HEADERS}

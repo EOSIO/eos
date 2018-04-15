@@ -50,12 +50,11 @@ struct controller_impl {
    optional<pending_state>        pending;
    block_state_ptr                head; 
    fork_database                  fork_db;            
-   //wasm_interface                 wasmif;
+   wasm_interface                 wasmif;
    resource_limits_manager        resource_limits;
    controller::config             conf;
    controller&                    self;
 
-   using apply_handler = std::function<void(apply_context&)>;
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
 
@@ -85,7 +84,7 @@ struct controller_impl {
         cfg.shared_memory_size ),
     blog( cfg.block_log_dir ),
     fork_db( cfg.shared_memory_dir ),
-    //wasmif( cfg.wasm_runtime ),
+    wasmif( cfg.wasm_runtime ),
     resource_limits( db ),
     conf( cfg ),
     self( s )
@@ -143,12 +142,12 @@ struct controller_impl {
       db.add_index<permission_link_index>();
       db.add_index<action_permission_index>();
 
-      db.add_index<contracts::table_id_multi_index>();
-      db.add_index<contracts::key_value_index>();
-      db.add_index<contracts::index64_index>();
-      db.add_index<contracts::index128_index>();
-      db.add_index<contracts::index256_index>();
-      db.add_index<contracts::index_double_index>();
+      db.add_index<table_id_multi_index>();
+      db.add_index<key_value_index>();
+      db.add_index<index64_index>();
+      db.add_index<index128_index>();
+      db.add_index<index256_index>();
+      db.add_index<index_double_index>();
 
       db.add_index<global_property_multi_index>();
       db.add_index<dynamic_global_property_multi_index>();
@@ -621,6 +620,14 @@ struct controller_impl {
 
 };
 
+const resource_limits_manager&   controller::get_resource_limits_manager()const 
+{
+   return my->resource_limits;
+}
+resource_limits_manager&         controller::get_mutable_resource_limits_manager() 
+{
+   return my->resource_limits;
+}
 
 
 controller::controller( const controller::config& cfg )
@@ -776,6 +783,9 @@ void     controller::record_transaction( const transaction_metadata_ptr& trx ) {
 
 const dynamic_global_property_object& controller::get_dynamic_global_properties()const {
   return my->db.get<dynamic_global_property_object>();
+}
+const global_property_object& controller::get_global_properties()const {
+  return my->db.get<global_property_object>();
 }
 
 /**
@@ -1093,6 +1103,61 @@ abi_def eos_contract_abi(const abi_def& eosio_system_abi)
 
    return eos_abi;
 }
+/**
+ * @param actions - the actions to check authorization across
+ * @param provided_keys - the set of public keys which have authorized the transaction
+ * @param allow_unused_signatures - true if method should not assert on unused signatures
+ * @param provided_accounts - the set of accounts which have authorized the transaction (presumed to be owner)
+ *
+ * @return fc::microseconds set to the max delay that this authorization requires to complete
+ */
+fc::microseconds controller::check_authorization( const vector<action>& actions,
+                                      const flat_set<public_key_type>& provided_keys,
+                                      bool                             allow_unused_signatures,
+                                      flat_set<account_name>           provided_accounts,
+                                      flat_set<permission_level>       provided_levels
+                                    )const {
+   return fc::microseconds();
+}
 
+/**
+ * @param account - the account owner of the permission
+ * @param permission - the permission name to check for authorization
+ * @param provided_keys - a set of public keys
+ *
+ * @return true if the provided keys are sufficient to authorize the account permission
+ */
+bool controller::check_authorization( account_name account, permission_name permission,
+                       flat_set<public_key_type> provided_keys,
+                       bool allow_unused_signatures)const {
+   return true;
+}
+
+void controller::set_active_producers( const producer_schedule_type& sch ) {
+   FC_ASSERT( !my->pending->_pending_block_state->header.new_producers, "this block has already set new producers" );
+   FC_ASSERT( !my->pending->_pending_block_state->pending_schedule.producers.size(), "there is already a pending schedule, wait for it to become active" );
+   my->pending->_pending_block_state->header.new_producers = sch;
+}
+const producer_schedule_type& controller::active_producers()const {
+   return my->pending->_pending_block_state->active_schedule;
+}
+
+const producer_schedule_type& controller::pending_producers()const {
+   return my->pending->_pending_block_state->pending_schedule;
+}
+
+const apply_handler* controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const
+{
+   auto native_handler_scope = my->apply_handlers.find( receiver );
+   if( native_handler_scope != my->apply_handlers.end() ) {
+      auto handler = native_handler_scope->second.find( make_pair( scope, act ) );
+      if( handler != native_handler_scope->second.end() )
+         return &handler->second;
+   }
+   return nullptr;
+}
+wasm_interface& controller::get_wasm_interface() {
+   return my->wasmif;
+}
    
 } } /// eosio::chain

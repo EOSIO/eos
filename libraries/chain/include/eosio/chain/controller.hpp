@@ -7,14 +7,22 @@ namespace chainbase {
    class database;
 }
 
+
 namespace eosio { namespace chain {
+
+   namespace resource_limits {
+      class resource_limits_manager;
+   };
 
    struct controller_impl;
    using chainbase::database;
    using boost::signals2::signal;
 
    class dynamic_global_property_object;
+   class global_property_object;
    class permission_object;
+   using resource_limits::resource_limits_manager;
+   using apply_handler = std::function<void(apply_context&)>;
 
    class controller {
       public:
@@ -78,14 +86,49 @@ namespace eosio { namespace chain {
          uint64_t next_auth_sequence( account_name actor );
          void     record_transaction( const transaction_metadata_ptr& trx );
 
+         const global_property_object&         get_global_properties()const;
          const dynamic_global_property_object& get_dynamic_global_properties()const;
          const permission_object&              get_permission( const permission_level& level )const;
+         const resource_limits_manager&        get_resource_limits_manager()const;
+         resource_limits_manager&              get_mutable_resource_limits_manager();
 
          block_id_type        head_block_id()const;
          account_name         head_block_producer()const;
          const block_header&  head_block_header()const;
 
+         const producer_schedule_type& active_producers()const;
+         const producer_schedule_type& pending_producers()const;
+
          uint32_t last_irreversible_block_num() const;
+
+
+         /**
+          * @param actions - the actions to check authorization across
+          * @param provided_keys - the set of public keys which have authorized the transaction
+          * @param allow_unused_signatures - true if method should not assert on unused signatures
+          * @param provided_accounts - the set of accounts which have authorized the transaction (presumed to be owner)
+          *
+          * @return fc::microseconds set to the max delay that this authorization requires to complete
+          */
+         fc::microseconds check_authorization( const vector<action>& actions,
+                                               const flat_set<public_key_type>& provided_keys,
+                                               bool                             allow_unused_signatures = false,
+                                               flat_set<account_name>           provided_accounts = flat_set<account_name>(),
+                                               flat_set<permission_level>       provided_levels = flat_set<permission_level>()
+                                             )const;
+
+         /**
+          * @param account - the account owner of the permission
+          * @param permission - the permission name to check for authorization
+          * @param provided_keys - a set of public keys
+          *
+          * @return true if the provided keys are sufficient to authorize the account permission
+          */
+         bool check_authorization( account_name account, permission_name permission,
+                                   flat_set<public_key_type> provided_keys,
+                                   bool allow_unused_signatures )const;
+
+         void set_active_producers( const producer_schedule_type& sch );
 
          /*
          signal<void()>                                  pre_apply_block;
@@ -96,6 +139,9 @@ namespace eosio { namespace chain {
          signal<void(const transaction_trace_ptr&)>  pre_apply_action;
          signal<void(const transaction_trace_ptr&)>  post_apply_action;
          */
+
+         const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
+         wasm_interface& get_wasm_interface();
 
       private:
          std::unique_ptr<controller_impl> my;
