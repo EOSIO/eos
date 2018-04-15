@@ -56,10 +56,6 @@ std::unique_ptr<FrontendActionFactory> create_find_macro_factory(string& contrac
   );
 }
 
-void add_ricardian_contracts( abi_def& abi ) {
-   abi.ricardian_clauses.push_back({"hello", "hello"});
-}
-
 static cl::OptionCategory abi_generator_category("ABI generator options");
 
 static cl::opt<std::string> abi_context(
@@ -94,8 +90,6 @@ int main(int argc, const char **argv) { abi_def output; try {
       if(!result) {
          abi_serializer(output).validate();
          
-         add_ricardian_contracts( output ); 
-
          fc::variant vabi;
          to_variant(output, vabi);
 

@@ -4,6 +4,9 @@
 #include <regex>
 #include <algorithm>
 #include <memory>
+#include <map>
+#include <fstream>
+#include <sstream>
 
 #include <eosio/chain/contracts/abi_serializer.hpp>
 #include <eosio/chain/contracts/types.hpp>
@@ -276,6 +279,67 @@ namespace eosio {
          };
 
    };
+   
+   class ricardian_contracts {
+      public:
+         ricardian_contracts( const string& context, const string& contract, const vector<string>& actions ) {
+            ifstream contract_file( context+"/"+contract+"_rc.md");
+            if ( !contract_file.good() )
+               std::cerr << "Warning, no ricardian clauses found for this contract\n";
+            else {
+               parse_clauses( contract_file );
+            }
+            
+         }
+         vector<clause_pair> get_clauses() {
+            return _clauses;
+         }
+      private:
+         inline bool is_clause_decl( string line ) {
+            return regex_match( line, regex("###.*") );
+         }
+
+         inline string get_name( string line ) {
+            int index;
+            for ( index=0; index > line.size(); index++ ) {
+               if ( !(line[index] == ' ' || line[index] == '#') )
+                  return line.substr( index );
+            }
+
+            FC_ASSERT( "Error, invalid input in ricardian clauses, no name found" );
+         }
+         void parse_contracts( string action ) {
+         }
+
+         void parse_clauses( ifstream& clause_file ) {
+            string line;
+            string name;
+            stringstream body;
+            bool first_time = true;
+            while ( clause_file.peek() != EOF ) {
+               getline( clause_file, line );
+
+               if ( is_clause_decl( line ) ) {
+                  if ( !first_time ) {
+                     cout << body.str().size() << "\n";
+                     if (body.str().empty() ) {
+                        FC_ASSERT( "Error, invalid input in ricardian clauses, no body found" );
+                     }
+                     _clauses.emplace_back( name, body.str() );
+                     body.str("");
+                  }
+
+                  name = get_name( line );
+                  first_time = false;
+               }
+               else
+                  body << line;
+            }
+
+         }
+         vector<clause_pair> _clauses;
+         map<string, string> _contracts;
+   };
 
    class generate_abi_action : public ASTFrontendAction {
 
@@ -293,6 +357,9 @@ namespace eosio {
             abi_gen.set_abi_context(abi_context);
             abi_gen.set_target_contract(contract, actions);
 
+            ricardian_contracts rc( abi_context, contract, actions );
+            output.ricardian_clauses = rc.get_clauses();
+           
             if(opt_sfs)
                abi_gen.enable_optimizaton(abi_generator::OPT_SINGLE_FIELD_STRUCT);
          }
