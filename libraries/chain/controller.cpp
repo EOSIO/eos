@@ -1159,5 +1159,10 @@ const apply_handler* controller::find_apply_handler( account_name receiver, acco
 wasm_interface& controller::get_wasm_interface() {
    return my->wasmif;
 }
+
+const account_object& controller::get_account( account_name name )const 
+{ try {
+   return my->db.get<account_object, by_name>(name);
+} FC_CAPTURE_AND_RETHROW( (name) ) }
    
 } } /// eosio::chain

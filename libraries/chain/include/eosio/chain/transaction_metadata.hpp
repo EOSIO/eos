@@ -18,17 +18,18 @@ class transaction_metadata {
       signed_transaction                    trx;
       packed_transaction                    packed_trx;
       bytes                                 raw_packed; /// fc::raw::pack(trx)
+      bytes                                 raw_packed_with_cfd; /// fc::raw::pack(trx)
       optional<flat_set<public_key_type>>   signing_keys;
 
       transaction_metadata( const signed_transaction& t )
       :trx(t),packed_trx(t,packed_transaction::zlib) {
          id = trx.id();
-         raw_packed = fc::raw::pack( trx );
+         raw_packed = fc::raw::pack( static_cast<const transaction&>(trx) );
       }
 
       transaction_metadata( const packed_transaction& ptrx )
       :trx( ptrx.get_signed_transaction() ), packed_trx(ptrx) {
-         raw_packed = fc::raw::pack( trx );
+         raw_packed = fc::raw::pack( static_cast<const transaction&>(trx) );
          id = trx.id();
       }
 

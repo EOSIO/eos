@@ -15,8 +15,8 @@ int main( int argc, char** argv ) {
 
           signed_transaction trx;
           trx.actions.resize(1);
-          trx.actions[0].account = N(exchange);
-          trx.actions[0].name    = N(transfer);
+          trx.actions[0].account = N(eosio);
+          trx.actions[0].name    = N(setcode);
           trx.actions[0].authorization = { {N(dan),N(active) } };
           trx.expiration = c.head_block_time() + fc::seconds(3);
           trx.ref_block_num = c.head_block_num();

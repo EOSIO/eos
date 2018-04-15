@@ -21,6 +21,7 @@ namespace eosio { namespace chain {
    class dynamic_global_property_object;
    class global_property_object;
    class permission_object;
+   class account_object;
    using resource_limits::resource_limits_manager;
    using apply_handler = std::function<void(apply_context&)>;
 
@@ -86,6 +87,7 @@ namespace eosio { namespace chain {
          uint64_t next_auth_sequence( account_name actor );
          void     record_transaction( const transaction_metadata_ptr& trx );
 
+         const account_object&                 get_account( account_name n )const;
          const global_property_object&         get_global_properties()const;
          const dynamic_global_property_object& get_dynamic_global_properties()const;
          const permission_object&              get_permission( const permission_level& level )const;

@@ -13,6 +13,7 @@ add_library( eosio_chain
              resource_limits.cpp
              block_log.cpp
              genesis_state.cpp
+             context.cpp
 
 #             chain_config.cpp
 #             block_trace.cpp
