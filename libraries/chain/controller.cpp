@@ -94,7 +94,6 @@ struct controller_impl {
 
 #define SET_APP_HANDLER( contract, scope, action, nspace ) \
    set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
-      /*
    SET_APP_HANDLER( eosio, eosio, newaccount, eosio );
    SET_APP_HANDLER( eosio, eosio, setcode, eosio );
    SET_APP_HANDLER( eosio, eosio, setabi, eosio );
@@ -107,7 +106,6 @@ struct controller_impl {
    SET_APP_HANDLER( eosio, eosio, passrecovery, eosio );
    SET_APP_HANDLER( eosio, eosio, vetorecovery, eosio );
    SET_APP_HANDLER( eosio, eosio, canceldelay, eosio );
-   */
 
 
    }
@@ -758,6 +756,9 @@ void controller::push_transaction( const transaction_id_type& trxid ) {
 uint32_t controller::head_block_num()const {
    return my->head->block_num;
 }
+block_id_type controller::head_block_id()const {
+   return my->head->id;
+}
 
 time_point controller::head_block_time()const {
    return my->head->header.timestamp;
@@ -1164,5 +1165,6 @@ const account_object& controller::get_account( account_name name )const
 { try {
    return my->db.get<account_object, by_name>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
+
    
 } } /// eosio::chain

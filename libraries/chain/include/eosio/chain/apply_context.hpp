@@ -585,6 +585,8 @@ class apply_context {
 
       vector<action_receipt>                      executed;
 
+      uint64_t                                    cpu_usage;
+      uint64_t                                    total_cpu_usage;
    private:
       iterator_cache<key_value_object> keyval_cache;
 
@@ -610,10 +612,7 @@ class apply_context {
       std::ostringstream                  _pending_console_output;
 
 
-
-
-      bytes                               _cached_trx;
-      uint64_t                            _cpu_usage;
+      //bytes                               _cached_trx;
 };
 
 using apply_handler = std::function<void(apply_context&)>;

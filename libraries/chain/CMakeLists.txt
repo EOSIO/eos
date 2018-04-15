@@ -14,6 +14,7 @@ add_library( eosio_chain
              block_log.cpp
              genesis_state.cpp
              context.cpp
+             eosio_contract.cpp
 
 #             chain_config.cpp
 #             block_trace.cpp
@@ -22,20 +23,17 @@ add_library( eosio_chain
               wasm_eosio_validation.cpp
               wasm_eosio_injection.cpp
               apply_context.cpp
-
-#             get_config.cpp
-#             asset.cpp
-
-
-#             global_property_object.cpp
-#             chain_controller.cpp
-#
-#             contracts/eosio_contract.cpp
-#             contracts/chain_initializer.cpp
-#             contracts/abi_serializer.cpp
+              abi_serializer.cpp
+              asset.cpp
 
              webassembly/wavm.cpp
              webassembly/binaryen.cpp
+
+#             get_config.cpp
+#             global_property_object.cpp
+#
+#             contracts/chain_initializer.cpp
+
 
 #             transaction_metadata.cpp
              ${HEADERS}

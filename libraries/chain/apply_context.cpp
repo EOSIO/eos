@@ -15,7 +15,7 @@ namespace eosio { namespace chain {
 void apply_context::exec_one()
 {
    auto start = fc::time_point::now();
-   _cpu_usage = 0;
+   cpu_usage = 0;
    try {
       const auto &a = control.get_account(receiver);// mutable_controller.db().get<account_object, by_name>(receiver);
       privileged = a.privileged;
@@ -43,6 +43,7 @@ void apply_context::exec_one()
       r.auth_sequence[auth.actor] = control.next_auth_sequence( auth.actor );
    }
    executed.emplace_back( move(r) );
+   total_cpu_usage += cpu_usage;
 
 
 
@@ -65,6 +66,7 @@ void apply_context::exec()
       ncontext.context_free = true;
       ncontext.exec();
       fc::move_append( executed, move(ncontext.executed) );
+      total_cpu_usage += ncontext.total_cpu_usage;
       //append_results(move(ncontext.results));
    }
 
@@ -73,6 +75,7 @@ void apply_context::exec()
       apply_context ncontext( mutable_controller, _inline_actions[i], trx_meta, recurse_depth + 1 );
       ncontext.exec();
       fc::move_append( executed, move(ncontext.executed) );
+      total_cpu_usage += ncontext.total_cpu_usage;
       //append_results(move(ncontext.results));
    }
 
@@ -320,7 +323,7 @@ void apply_context::checktime(uint32_t instruction_count) {
    if( fc::time_point::now() > processing_deadline ) {
       throw checktime_exceeded();
    }
-   _cpu_usage += instruction_count;
+   cpu_usage += instruction_count;
 }
 
 

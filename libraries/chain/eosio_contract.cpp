@@ -3,10 +3,9 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eosio/chain/eosio_contract.hpp>
-#include <eosio/chain/contracts/contract_table_objects.hpp>
-#include <eosio/chain/contracts/chain_initializer.hpp>
+#include <eosio/chain/contract_table_objects.hpp>
 
-#include <eosio/chain/chain_controller.hpp>
+#include <eosio/chain/controller.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/exceptions.hpp>
@@ -16,15 +15,23 @@
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/contracts/types.hpp>
+#include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/producer_object.hpp>
 
 #include <eosio/chain/wasm_interface.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 
 #include <eosio/chain/resource_limits.hpp>
 
-namespace eosio { namespace chain { namespace contracts {
+namespace eosio { namespace chain { 
+
+
+abi_def eos_contract_abi(const abi_def& eosio_system_abi);
+
+uint128_t transaction_id_to_sender_id( const transaction_id_type& tid ) {
+   fc::uint128_t _id(tid._hash[3], tid._hash[2]);
+   return (unsigned __int128)_id;
+}
 
 void validate_authority_precondition( const apply_context& context, const authority& auth ) {
    for(const auto& a : auth.accounts) {
@@ -40,7 +47,7 @@ void apply_eosio_newaccount(apply_context& context) {
    auto create = context.act.data_as<newaccount>();
    try {
    context.require_authorization(create.creator);
-   context.require_write_lock( config::eosio_auth_scope );
+//   context.require_write_lock( config::eosio_auth_scope );
    auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
 
    EOS_ASSERT( validate(create.owner), action_validate_exception, "Invalid owner authority");
@@ -72,7 +79,7 @@ void apply_eosio_newaccount(apply_context& context) {
 
    const auto& new_account = db.create<account_object>([&create, &context](account_object& a) {
       a.name = create.name;
-      a.creation_date = context.controller.head_block_time();
+      a.creation_date = context.control.head_block_time();
    });
    resources.initialize_account(create.name);
    resources.add_pending_account_ram_usage(
@@ -108,7 +115,7 @@ void apply_eosio_setcode(apply_context& context) {
    auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
    auto  act = context.act.data_as<setcode>();
    context.require_authorization(act.account);
-   context.require_write_lock( config::eosio_auth_scope );
+//   context.require_write_lock( config::eosio_auth_scope );
 
    FC_ASSERT( act.vmtype == 0 );
    FC_ASSERT( act.vmversion == 0 );
@@ -133,7 +140,7 @@ void apply_eosio_setcode(apply_context& context) {
       // Added resize(0) here to avoid bug in boost vector container
       a.code.resize( 0 );
       a.code.resize( code_size );
-      a.last_code_update = context.controller.head_block_time();
+      a.last_code_update = context.control.head_block_time();
       memcpy( a.code.data(), act.code.data(), code_size );
 
    });
@@ -155,7 +162,7 @@ void apply_eosio_setabi(apply_context& context) {
 
    // if system account append native abi
    if ( act.account == eosio::chain::config::system_account_name ) {
-      act.abi = chain_initializer::eos_contract_abi(act.abi);
+      act.abi = eos_contract_abi(act.abi);
    }
    /// if an ABI is specified make sure it is well formed and doesn't
    /// reference any undefined types
@@ -181,7 +188,7 @@ void apply_eosio_setabi(apply_context& context) {
 
 void apply_eosio_updateauth(apply_context& context) {
    auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
-   context.require_write_lock( config::eosio_auth_scope );
+//   context.require_write_lock( config::eosio_auth_scope );
 
    auto& db = context.mutable_db;
 
@@ -251,7 +258,7 @@ void apply_eosio_updateauth(apply_context& context) {
       db.modify(*permission, [&update, &parent_id, &context](permission_object& po) {
          po.auth = update.data;
          po.parent = parent_id;
-         po.last_updated = context.controller.head_block_time();
+         po.last_updated = context.control.head_block_time();
          po.delay = fc::seconds(update.delay);
       });
 
@@ -269,7 +276,7 @@ void apply_eosio_updateauth(apply_context& context) {
          po.owner = update.account;
          po.auth = update.data;
          po.parent = parent_id;
-         po.last_updated = context.controller.head_block_time();
+         po.last_updated = context.control.head_block_time();
          po.delay = fc::seconds(update.delay);
       });
 
@@ -382,14 +389,14 @@ void apply_eosio_unlinkauth(apply_context& context) {
 
 
 void apply_eosio_onerror(apply_context& context) {
-   FC_ASSERT(context.trx_meta.sender.valid(), "onerror action cannot be called directly");
-   context.require_recipient(*context.trx_meta.sender);
+   FC_ASSERT(context.sender != account_name(), "onerror action cannot be called directly");
+   context.require_recipient(context.sender);
 }
 
 static const abi_serializer& get_abi_serializer() {
    static optional<abi_serializer> _abi_serializer;
    if (!_abi_serializer) {
-      _abi_serializer.emplace(chain_initializer::eos_contract_abi(abi_def()));
+      _abi_serializer.emplace(eos_contract_abi(abi_def()));
    }
 
    return *_abi_serializer;
@@ -427,19 +434,19 @@ static auto get_permission_last_used(const apply_context& context, const account
 };
 
 void apply_eosio_postrecovery(apply_context& context) {
-   context.require_write_lock( config::eosio_auth_scope );
+//   context.require_write_lock( config::eosio_auth_scope );
 
    FC_ASSERT(context.act.authorization.size() == 1, "Recovery Message must have exactly one authorization");
 
    auto recover_act = context.act.data_as<postrecovery>();
    const auto &auth = context.act.authorization.front();
    const auto& account = recover_act.account;
-   context.require_write_lock(account);
+//   context.require_write_lock(account);
 
    FC_ASSERT(!get_pending_recovery(context, account), "Account ${account} already has a pending recovery request!", ("account",account));
 
    fc::microseconds delay_lock;
-   auto now = context.controller.head_block_time();
+   auto now = context.control.head_block_time();
    if (auth.actor == account && auth.permission == N(active)) {
       // process owner recovery from active
       delay_lock = fc::days(30);
@@ -474,7 +481,7 @@ void apply_eosio_postrecovery(apply_context& context) {
       .data = recover_act.data
    }, update);
 
-   const uint128_t request_id = context.controller.transaction_id_to_sender_id(context.trx_meta.id);
+   const uint128_t request_id = transaction_id_to_sender_id(context.trx_meta.id);
    auto record_data = mutable_variant_object()
       ("account", account)
       ("request_id", request_id)
@@ -485,9 +492,8 @@ void apply_eosio_postrecovery(apply_context& context) {
    dtrx.sender    = config::system_account_name;
    dtrx.sender_id = request_id;
    dtrx.payer     = config::system_account_name; // NOTE: we pre-reserve capacity for this during create account
-   dtrx.region    = 0;
-   dtrx.execute_after = context.controller.head_block_time() + delay_lock;
-   dtrx.set_reference_block(context.controller.head_block_id());
+   dtrx.execute_after = context.control.head_block_time() + delay_lock;
+   dtrx.set_reference_block(context.control.head_block_id());
    dtrx.expiration = dtrx.execute_after + fc::seconds(60);
    dtrx.actions.emplace_back(vector<permission_level>{{account,config::active_name}},
                              passrecovery { account });
@@ -521,7 +527,8 @@ void apply_eosio_passrecovery(apply_context& context) {
    const auto& account = pass_act.account;
 
    // ensure this is only processed if it is a deferred transaction from the system account
-   FC_ASSERT(context.trx_meta.sender && *context.trx_meta.sender == config::system_account_name);
+   // TODO: verify this works with any PRIVILEGED account
+   FC_ASSERT( context.sender == config::system_account_name );
    context.require_authorization(account);
 
    auto maybe_recovery = get_pending_recovery(context, account);
@@ -539,7 +546,7 @@ void apply_eosio_passrecovery(apply_context& context) {
 }
 
 void apply_eosio_vetorecovery(apply_context& context) {
-   context.require_write_lock( config::eosio_auth_scope );
+//   context.require_write_lock( config::eosio_auth_scope );
    auto pass_act = context.act.data_as<vetorecovery>();
    const auto& account = pass_act.account;
    context.require_authorization(account);
@@ -558,7 +565,7 @@ void apply_eosio_canceldelay(apply_context& context) {
    auto cancel = context.act.data_as<canceldelay>();
    const auto& trx_id = cancel.trx_id;
 
-   const auto& generated_transaction_idx = context.controller.get_database().get_index<generated_transaction_multi_index>();
+   const auto& generated_transaction_idx = context.control.db().get_index<generated_transaction_multi_index>();
    const auto& generated_index = generated_transaction_idx.indices().get<by_trx_id>();
    const auto& itr = generated_index.lower_bound(trx_id);
    FC_ASSERT (itr != generated_index.end() && itr->sender == config::system_account_name && itr->trx_id == trx_id,
@@ -583,7 +590,7 @@ void apply_eosio_canceldelay(apply_context& context) {
    FC_ASSERT (found, "canceldelay action must be signed with the \"active\" permission for one of the actors"
                      " provided in the authorizations on the original transaction");
 
-   context.cancel_deferred(context.controller.transaction_id_to_sender_id(trx_id));
+   context.cancel_deferred(transaction_id_to_sender_id(trx_id));
 }
 
-} } } // namespace eosio::chain::contracts
+} } // namespace eosio::chain
