@@ -27,6 +27,7 @@ struct block_header_state {
 
     void set_new_producers( producer_schedule_type next_pending );
 
+    bool                 has_pending_producers()const { return pending_schedule.producers.size(); }
     uint32_t             calc_dpos_last_irreversible()const;
     bool                 is_active_producer( account_name n )const;
     producer_key         scheduled_producer( block_timestamp_type t )const;

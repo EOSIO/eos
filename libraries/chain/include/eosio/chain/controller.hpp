@@ -76,6 +76,7 @@ namespace eosio { namespace chain {
          time_point head_block_time()const;
 
          block_state_ptr head_block_state()const;
+         block_state_ptr pending_block_state()const;
 
 
 
@@ -103,6 +104,7 @@ namespace eosio { namespace chain {
 
          uint32_t last_irreversible_block_num() const;
 
+         signed_block_ptr fetch_block_by_number( uint32_t block_num );
 
          /**
           * @param actions - the actions to check authorization across

@@ -607,20 +607,16 @@ namespace fc {
     inline T unpack( const std::vector<char>& s )
     { try  {
       T tmp;
-      if( s.size() ) {
-        datastream<const char*>  ds( s.data(), size_t(s.size()) );
-        fc::raw::unpack(ds,tmp);
-      }
+      datastream<const char*>  ds( s.data(), size_t(s.size()) );
+      fc::raw::unpack(ds,tmp);
       return tmp;
     } FC_RETHROW_EXCEPTIONS( warn, "error unpacking ${type}", ("type",fc::get_typename<T>::name() ) ) }
 
     template<typename T>
     inline void unpack( const std::vector<char>& s, T& tmp )
     { try  {
-      if( s.size() ) {
-        datastream<const char*>  ds( s.data(), size_t(s.size()) );
-        fc::raw::unpack(ds,tmp);
-      }
+      datastream<const char*>  ds( s.data(), size_t(s.size()) );
+      fc::raw::unpack(ds,tmp);
     } FC_RETHROW_EXCEPTIONS( warn, "error unpacking ${type}", ("type",fc::get_typename<T>::name() ) ) }
 
     template<typename T>

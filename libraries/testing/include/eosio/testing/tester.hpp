@@ -1,6 +1,9 @@
 #pragma once
-#include <eosio/chain/chain_controller.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/controller.hpp>
+#include <eosio/chain/asset.hpp>
+#include <eosio/chain/contract_table_objects.hpp>
+#include <eosio/chain/account_object.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 #include <fc/io/json.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/test/unit_test.hpp>
@@ -66,18 +69,18 @@ namespace eosio { namespace testing {
 
          static const uint32_t DEFAULT_EXPIRATION_DELTA = 6;
 
-         void              init(bool push_genesis = true, chain_controller::runtime_limits limits = chain_controller::runtime_limits());
-         void              init(chain_controller::controller_config config);
+         void              init(bool push_genesis = true, controller::config::runtime_limits limits = controller::config::runtime_limits());
+         void              init(controller::config config);
 
          void              close();
          void              open();
 
-         virtual signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty ) = 0;
+         virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
          void                 produce_blocks( uint32_t n = 1 );
          void                 produce_blocks_until_end_of_round();
-         signed_block         push_block(signed_block b);
-         transaction_trace    push_transaction( packed_transaction& trx, uint32_t skip_flag = skip_nothing  );
-         transaction_trace    push_transaction( signed_transaction& trx, uint32_t skip_flag = skip_nothing  );
+         signed_block_ptr     push_block(signed_block_ptr b);
+         transaction_trace    push_transaction( packed_transaction& trx, uint32_t skip_flag = 0/*skip_nothing */ );
+         transaction_trace    push_transaction( signed_transaction& trx, uint32_t skip_flag = 0/*skip_nothing*/  );
          action_result        push_action(action&& cert_act, uint64_t authorizer);
 
          transaction_trace    push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
@@ -120,17 +123,17 @@ namespace eosio { namespace testing {
 
          template<typename ObjectType>
          const auto& get(const chainbase::oid< ObjectType >& key) {
-            return control->get_database().get<ObjectType>(key);
+            return control->db().get<ObjectType>(key);
          }
 
          template<typename ObjectType, typename IndexBy, typename... Args>
          const auto& get( Args&&... args ) {
-            return control->get_database().get<ObjectType,IndexBy>( forward<Args>(args)... );
+            return control->db().get<ObjectType,IndexBy>( forward<Args>(args)... );
          }
 
          template<typename ObjectType, typename IndexBy, typename... Args>
          const auto* find( Args&&... args ) {
-            return control->get_database().find<ObjectType,IndexBy>( forward<Args>(args)... );
+            return control->db().find<ObjectType,IndexBy>( forward<Args>(args)... );
          }
 
          public_key_type   get_public_key( name keyname, string role = "owner" ) const;
@@ -141,7 +144,7 @@ namespace eosio { namespace testing {
          void              set_abi( account_name name, const char* abi_json );
 
 
-         unique_ptr<chain_controller> control;
+         unique_ptr<controller> control;
 
          bool                          chain_has_transaction( const transaction_id_type& txid ) const;
          const transaction_receipt&    get_transaction_receipt( const transaction_id_type& txid ) const;
@@ -165,21 +168,21 @@ namespace eosio { namespace testing {
         static action_result error(const string& msg) { return msg; }
 
         auto get_resolver() {
-           return [this](const account_name &name) -> optional<contracts::abi_serializer> {
+           return [this](const account_name &name) -> optional<abi_serializer> {
               try {
-                 const auto &accnt = control->get_database().get<account_object, by_name>(name);
-                 contracts::abi_def abi;
-                 if (contracts::abi_serializer::to_abi(accnt.abi, abi)) {
-                    return contracts::abi_serializer(abi);
+                 const auto &accnt = control->db().get<account_object, by_name>(name);
+                 abi_def abi;
+                 if (abi_serializer::to_abi(accnt.abi, abi)) {
+                    return abi_serializer(abi);
                  }
-                 return optional<contracts::abi_serializer>();
+                 return optional<abi_serializer>();
               } FC_RETHROW_EXCEPTIONS(error, "Failed to find or parse ABI for ${name}", ("name", name))
            };
         }
 
        void sync_with(base_tester& other);
 
-       const contracts::table_id_object* find_table( name code, name scope, name table );
+       const table_id_object* find_table( name code, name scope, name table );
 
        // method treats key as a name type, if this is not appropriate in your case, pass require == false and report the correct behavior
        template<typename Object>
@@ -188,7 +191,7 @@ namespace eosio { namespace testing {
           if(maybe_tid == nullptr)
              BOOST_FAIL("table for code=\"" + code.to_string() + "\" scope=\"" + scope.to_string() + "\" table=\"" + table.to_string() + "\" does not exist");
 
-          auto* o = control->get_database().find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(maybe_tid->id, key));
+          auto* o = control->db().find<key_value_object, by_scope_primary>(boost::make_tuple(maybe_tid->id, key));
           if(o == nullptr) {
              if (require)
                 BOOST_FAIL("object does not exist for primary_key=\"" + name(key).to_string() + "\"");
@@ -201,26 +204,26 @@ namespace eosio { namespace testing {
        }
 
    protected:
-         signed_block _produce_block( fc::microseconds skip_time, uint32_t skip_flag);
+         signed_block_ptr _produce_block( fc::microseconds skip_time, uint32_t skip_flag = 0);
          fc::temp_directory                            tempdir;
-         chain_controller::controller_config           cfg;
+         controller::config           cfg;
          map<transaction_id_type, transaction_receipt> chain_transactions;
    };
 
    class tester : public base_tester {
    public:
-      tester(bool push_genesis, chain_controller::runtime_limits limits = chain_controller::runtime_limits()) {
+      tester(bool push_genesis, controller::config::runtime_limits limits = controller::config::runtime_limits()) {
          init(push_genesis, limits);
       }
-      tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits()) {
+      tester(controller::config::runtime_limits limits = controller::config::runtime_limits()) {
          init(true, limits);
       }
 
-      tester(chain_controller::controller_config config) {
+      tester(controller::config config) {
          init(config);
       }
 
-      signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty )override {
+      signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ )override {
          return _produce_block(skip_time, skip_flag);
       }
 
@@ -237,8 +240,8 @@ namespace eosio { namespace testing {
             wdump((e.to_detail_string()));
          }
       }
-      validating_tester(chain_controller::runtime_limits limits = chain_controller::runtime_limits()) {
-         chain_controller::controller_config vcfg;
+      validating_tester(controller::config::runtime_limits limits = controller::config::runtime_limits()) {
+         controller::config vcfg;
          vcfg.block_log_dir      = tempdir.path() / "blocklog";
          vcfg.shared_memory_dir  = tempdir.path() / "shared";
          vcfg.shared_memory_size = 1024*1024*8;
@@ -254,16 +257,16 @@ namespace eosio { namespace testing {
                vcfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
          }
 
-         validating_node = std::make_unique<chain_controller>(vcfg);
+         validating_node = std::make_unique<controller>(vcfg);
          init(true, limits);
       }
 
-      validating_tester(chain_controller::controller_config config) {
-         validating_node = std::make_unique<chain_controller>(config);
+      validating_tester(controller::config config) {
+         validating_node = std::make_unique<controller>(config);
          init(config);
       }
 
-      signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty )override {
+      signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ )override {
          auto sb = _produce_block(skip_time, skip_flag | 2);
          validating_node->push_block( sb );
          return sb;
@@ -281,7 +284,7 @@ namespace eosio { namespace testing {
                hbh.producer == vn_hbh.producer;
       }
 
-      unique_ptr<chain_controller>                  validating_node;
+      unique_ptr<controller>                  validating_node;
    };
 
    /**

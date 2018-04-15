@@ -687,6 +687,10 @@ void controller::commit_block() {
 block_state_ptr controller::head_block_state()const {
    return my->head;
 }
+block_state_ptr controller::pending_block_state()const {
+   if( my->pending ) return my->pending->_pending_block_state;
+   return block_state_ptr();
+}
 
 
 void controller::apply_block( const signed_block_ptr& b ) {
@@ -814,6 +818,15 @@ void controller::log_irreversible_blocks() {
          my->db.commit( lhead );
       }
    }
+}
+signed_block_ptr controller::fetch_block_by_number( uint32_t block_num ) {
+   optional<signed_block> b = my->blog.read_block_by_num(block_num);
+   if( b ) return std::make_shared<signed_block>( move(*b) );
+
+   auto blk_id = my->get_block_id_for_num( block_num );
+   auto blk_state =  my->fork_db.get_block( blk_id );
+   if( blk_state ) return blk_state->block;
+   return signed_block_ptr();
 }
 
 void controller::pop_block() {
