@@ -265,7 +265,7 @@ namespace eosio {
    };
 
    const fc::string logger_name("net_plugin_impl");
-   fc::logger logger(logger_name);
+   fc::logger logger;
 
    template<class enum_type, class=typename std::enable_if<std::is_enum<enum_type>::value>::type>
    inline enum_type& operator|=(enum_type& lhs, const enum_type& rhs)
@@ -555,6 +555,8 @@ namespace eosio {
       deque<block_id_type> _blocks;
       chain_plugin * chain_plug;
 
+      constexpr auto stage_str(stages s );
+
    public:
       sync_manager(uint32_t span);
       void set_state(stages s);
@@ -576,7 +578,11 @@ namespace eosio {
    public:
       uint32_t just_send_it_max;
       connection_ptr pending_txn_source;
-      vector<block_id_type> req_blks;
+      struct block_request {
+         block_id_type id;
+         bool local_retry;
+      };
+      vector<block_request> req_blks;
       vector<transaction_id_type> req_txn;
 
       void bcast_block (const signed_block_summary& msg, connection_ptr skip = connection_ptr());
@@ -586,7 +592,7 @@ namespace eosio {
       void rejected_transaction (const packed_transaction& msg);
       void recv_block (connection_ptr conn, const signed_block_summary& msg);
       void recv_transaction(connection_ptr c);
-      void recv_notice (connection_ptr conn, const notice_message& msg);
+      void recv_notice (connection_ptr conn, const notice_message& msg, bool generated);
 
       void retry_fetch (connection_ptr conn);
    };
@@ -1106,14 +1112,21 @@ namespace eosio {
       chain_plug = app( ).find_plugin<chain_plugin>( );
    }
 
+   constexpr auto sync_manager::stage_str(stages s ) {
+    switch (s) {
+    case in_sync : return "in sync";
+    case lib_catchup: return "lib catchup";
+    case head_catchup : return "head catchup";
+    default : return "unkown";
+    }
+  }
+
    void sync_manager::set_state(stages newstate) {
       if (state == newstate) {
          return;
       }
-      string os = state == in_sync ? "in sync" : state == lib_catchup ? "lib catchup" : "head catchup";
+      fc_dlog(logger, "old state ${os} becoming ${ns}",("os",stage_str (state))("ns",stage_str (newstate)));
       state = newstate;
-      string ns = state == in_sync ? "in sync" : state == lib_catchup ? "lib catchup" : "head catchup";
-      fc_dlog(logger, "old state ${os} becoming ${ns}",("os",os)("ns",ns));
    }
 
    bool sync_manager::is_active(connection_ptr c) {
@@ -1208,6 +1221,7 @@ namespace eosio {
          elog("Unable to continue syncing at this time");
          sync_known_lib_num = chain_plug->chain().last_irreversible_block_num();
          sync_last_requested_num = 0;
+         set_state(in_sync); // probably not, but we can't do anything else
          return;
       }
 
@@ -1302,41 +1316,34 @@ namespace eosio {
       }
       if (head < peer_lib) {
          fc_dlog(logger, "sync check state 1");
-         start_sync( c, peer_lib);
+         // wait for receipt of a notice message before initiating sync
          return;
       }
       if (lib_num > msg.head_num ) {
          fc_dlog(logger, "sync check state 2");
-         // for generation 1, we wlso sent a handshake so they will treat this as state 1
-         if ( msg.generation > 1 ) {
-            notice_message note;
-            note.known_trx.pending = lib_num;
-            note.known_trx.mode = last_irr_catch_up;
-            note.known_blocks.mode = last_irr_catch_up;
-            note.known_blocks.pending = head;
-            c->enqueue( note );
-         }
+         notice_message note;
+         note.known_trx.pending = lib_num;
+         note.known_trx.mode = last_irr_catch_up;
+         note.known_blocks.mode = last_irr_catch_up;
+         note.known_blocks.pending = head;
+         c->enqueue( note );
          c->syncing = true;
          return;
       }
 
       if (head <= msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
-         //         if (state == in_sync ) {
-            verify_catchup (c, msg.head_num, msg.head_id);
-            //         }
+         verify_catchup (c, msg.head_num, msg.head_id);
          return;
       }
       else {
          fc_dlog(logger, "sync check state 4");
-         if ( msg.generation > 1 ) {
-            notice_message note;
-            note.known_trx.mode = none;
-            note.known_blocks.mode = catch_up;
-            note.known_blocks.pending = head;
-            note.known_blocks.ids.push_back(head_id);
-            c->enqueue( note );
-         }
+         notice_message note;
+         note.known_trx.mode = none;
+         note.known_blocks.mode = catch_up;
+         note.known_blocks.pending = head;
+         note.known_blocks.ids.push_back(head_id);
+         c->enqueue( note );
          c->syncing = true;
          return;
       }
@@ -1569,9 +1576,16 @@ namespace eosio {
       block_id_type blk_id = msg.id();
       uint32_t num = msg.block_num();
       for (auto ref = req_blks.begin(); ref != req_blks.end(); ++ref) {
-         if (*ref == blk_id) {
-            req_blks.erase(ref);
-            fc_dlog(logger, "received a requested block");
+         if (ref->id != blk_id)
+            continue;
+         bool is_retry = ref->local_retry;
+         req_blks.erase(ref);
+         fc_dlog(logger, "received a requested block");
+
+         if (is_retry) {
+            bcast_block(msg);
+         }
+         else {
             notice_message note;
             note.known_blocks.mode = normal;
             note.known_blocks.ids.push_back( blk_id );
@@ -1638,8 +1652,10 @@ namespace eosio {
       c->cancel_wait();
    }
 
-   void big_msg_manager::recv_notice (connection_ptr c, const notice_message& msg) {
+   void big_msg_manager::recv_notice (connection_ptr c, const notice_message& msg, bool generated) {
       request_message req;
+      req.req_trx.mode = none;
+      req.req_blocks.mode = none;
       bool send_req = false;
       chain_controller &cc = my_impl->chain_plug->chain();
       if (msg.known_trx.mode == normal) {
@@ -1683,7 +1699,7 @@ namespace eosio {
             if (!b) {
                send_req = true;
                req.req_blocks.ids.push_back( blkid );
-               req_blks.push_back( blkid );
+               req_blks.push_back( {blkid, generated} );
             }
          }
       }
@@ -2082,6 +2098,9 @@ namespace eosio {
       fc_dlog(logger, "got a notice_message from ${p}", ("p",c->peer_name()));
       request_message req;
       bool send_req = false;
+      if (msg.known_trx.mode != none) {
+         fc_dlog(logger,"this is a ${m} notice with ${n} blocks", ("m",modes_str(msg.known_trx.mode))("n",msg.known_trx.pending));
+      }
       switch (msg.known_trx.mode) {
       case none:
          break;
@@ -2105,12 +2124,13 @@ namespace eosio {
          break;
       }
       case normal: {
-         big_msg_master->recv_notice (c, msg);
+         big_msg_master->recv_notice (c, msg, false);
       }
       }
 
-      fc_dlog(logger,"this is a ${m} notice with ${n} blocks", ("m",modes_str(msg.known_blocks.mode))("n",msg.known_blocks.pending));
-
+      if (msg.known_blocks.mode != none) {
+         fc_dlog(logger,"this is a ${m} notice with ${n} blocks", ("m",modes_str(msg.known_blocks.mode))("n",msg.known_blocks.pending));
+      }
       switch (msg.known_blocks.mode) {
       case none : {
          if (msg.known_trx.mode != normal) {
@@ -2124,7 +2144,7 @@ namespace eosio {
          break;
       }
       case normal : {
-         big_msg_master->recv_notice (c, msg);
+         big_msg_master->recv_notice (c, msg, false);
          break;
       }
       default: {
@@ -2184,6 +2204,10 @@ namespace eosio {
          return;
       }
       c->cancel_wait();
+      if(local_txns.get<by_id>().find(msg.id()) != local_txns.end()) {
+         fc_dlog(logger, "got a duplicate transaction - dropping");
+         return;
+      }
       big_msg_master->recv_transaction(c);
       uint64_t code = 0;
       try {
@@ -2236,7 +2260,18 @@ namespace eosio {
                for (const auto &recpt : shard.transactions) {
                   auto ltx = local_txns.get<by_id>().find(recpt.id);
                   switch (recpt.status) {
-                  case transaction_receipt::delayed:
+                  case transaction_receipt::delayed: {
+                     if (ltx == local_txns.end()) {
+                        fc_dlog(logger, "got a delayed transaction, treat it like a notify");
+                        notice_message pending_notify;
+                        pending_notify.known_blocks.mode = normal;
+                        pending_notify.known_blocks.ids.push_back( blk_id );
+                        pending_notify.known_trx.mode = none;
+                        big_msg_master->recv_notice (c, pending_notify, true);
+                        return;
+                     }
+                     // else fall through to executed.
+                  }
                   case transaction_receipt::executed: {
                      if( ltx != local_txns.end()) {
                         sb.input_transactions.push_back(ltx->packed_txn);
@@ -2262,26 +2297,27 @@ namespace eosio {
          }
       }
 
-      go_away_reason reason = fatal_other;
       try {
          chain_plug->accept_block(sb, sync_master->is_active(c));
-         reason = no_reason;
+         big_msg_master->recv_block(c, msg);
+         sync_master->recv_block(c, blk_id, blk_num, true);
+         return;
       } catch( const unlinkable_block_exception &ex) {
          elog( "unlinkable_block_exception accept block #${n} syncing from ${p}",("n",blk_num)("p",c->peer_name()));
-         reason = unlinkable;
       } catch( const block_validate_exception &ex) {
          elog( "block_validate_exception accept block #${n} syncing from ${p}",("n",blk_num)("p",c->peer_name()));
-         reason = validation;
       } catch( const assert_exception &ex) {
          elog( "unable to accept block on assert exception ${n} from ${p}",("n",ex.to_string())("p",c->peer_name()));
       } catch( const fc::exception &ex) {
          elog( "accept_block threw a non-assert exception ${x} from ${p}",( "x",ex.to_string())("p",c->peer_name()));
-         reason = no_reason;
       } catch( ...) {
          elog( "handle sync block caught something else from ${p}",("num",blk_num)("p",c->peer_name()));
       }
-      big_msg_master->recv_block(c, msg);
-      sync_master->recv_block(c, blk_id, blk_num, reason == no_reason);
+      notice_message pending_notify;
+      pending_notify.known_blocks.mode = normal;
+      pending_notify.known_blocks.ids.push_back( blk_id );
+      pending_notify.known_trx.mode = none;
+      big_msg_master->recv_notice (c, pending_notify, true);
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const signed_block &msg) {
@@ -2630,24 +2666,6 @@ namespace eosio {
    void net_plugin::plugin_initialize( const variables_map& options ) {
       ilog("Initialize net plugin");
 
-      // Housekeeping so fc::logger::get() will work as expected
-      fc::get_logger_map()[logger_name] = logger;
-
-      // Setting a parent would in theory get us the default appenders for free but
-      // a) the parent's log level overrides our own in that case; and
-      // b) fc library's logger was never finished - the _additivity flag tested is never true.
-      for(fc::shared_ptr<fc::appender>& appender : fc::logger::get().get_appenders()) {
-         logger.add_appender(appender);
-      }
-
-      if( options.count( "log-level-net-plugin" ) ) {
-         fc::log_level logl;
-
-         fc::from_variant(options.at("log-level-net-plugin").as<string>(), logl);
-         ilog("Setting net_plugin logging level to ${level}", ("level", logl));
-         logger.set_log_level(logl);
-      }
-
       my->network_version = static_cast<uint16_t>(app().version());
       my->network_version_match = options.at("network-version-match").as<bool>();
       my->send_whole_blocks = def_send_whole_blocks;
@@ -2767,6 +2785,9 @@ namespace eosio {
       for( auto seed_node : my->supplied_peers ) {
          connect( seed_node );
       }
+
+      if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
+         logger = fc::get_logger_map()[logger_name];
    }
 
    void net_plugin::plugin_shutdown() {

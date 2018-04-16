@@ -1170,6 +1170,37 @@ BOOST_FIXTURE_TEST_CASE(memory_tests, TESTER) { try {
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memcpy_overlap_end", {} );
    produce_blocks(1000);
    CALL_TEST_FUNCTION( *this, "test_memory", "test_memcmp", {} );
+   produce_blocks(1000);
+
+#define test_memory_oob(func) \
+   try { \
+      CALL_TEST_FUNCTION( *this, "test_memory", func, {} ); \
+      BOOST_FAIL("assert failed in test out of bound memory in " func); \
+   } catch (...) { \
+      BOOST_REQUIRE_EQUAL(true, true); \
+   }
+
+#define test_memory_oob2(func) \
+   try { \
+      CALL_TEST_FUNCTION( *this, "test_memory", func, {} );\
+   } catch (const fc::exception& e) {\
+     if (!expect_assert_message(e, "access violation")) throw; \
+   }
+
+   test_memory_oob("test_outofbound_0");
+   test_memory_oob("test_outofbound_1");
+   test_memory_oob("test_outofbound_2");
+   test_memory_oob("test_outofbound_3");
+   test_memory_oob("test_outofbound_4");
+   test_memory_oob("test_outofbound_5");
+   test_memory_oob("test_outofbound_6");
+   test_memory_oob("test_outofbound_7");
+   test_memory_oob("test_outofbound_8");
+   test_memory_oob("test_outofbound_9");
+   test_memory_oob("test_outofbound_10");
+   test_memory_oob("test_outofbound_11");
+   test_memory_oob("test_outofbound_12");
+   test_memory_oob("test_outofbound_13");
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
