@@ -197,18 +197,6 @@ template<typename T>
 T convert_literal_to_native(Literal& v);
 
 template<>
-inline float64_t convert_literal_to_native<float64_t>(Literal& v) {
-   auto val = v.getf64();
-   return reinterpret_cast<float64_t&>(val);
-}
-
-template<>
-inline float32_t convert_literal_to_native<float32_t>(Literal& v) {
-   auto val = v.getf32();
-   return reinterpret_cast<float32_t&>(val);
-}
-
-template<>
 inline double convert_literal_to_native<double>(Literal& v) {
    return v.getf64();
 }
@@ -253,15 +241,6 @@ template<typename T>
 inline auto convert_native_to_literal(const interpreter_interface*, T val) {
    return Literal(val);
 }
-
-inline auto convert_native_to_literal(const interpreter_interface*, const float64_t& val) {
-   return Literal( *((double*)(&val)) );
-}
-
-inline auto convert_native_to_literal(const interpreter_interface*, const float32_t& val) {
-   return Literal( *((float*)(&val)) );
-}
-
 
 inline auto convert_native_to_literal(const interpreter_interface*, const name &val) {
    return Literal(val.value);
@@ -476,6 +455,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
    static Ret translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) {
       uint32_t ptr = args.at(offset).geti32();
       T* base = array_ptr_impl<T>(interface, ptr, 1);
+      FC_ASSERT( reinterpret_cast<uintptr_t>(base) % config::eosio_alignment == 0, "Misaligned pointer" );
       return Then(interface, base, rest..., args, offset - 1);
    };
 
@@ -557,6 +537,8 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
       uint32_t ptr = args.at(offset).geti32();
       FC_ASSERT(ptr != 0);
       T* base = array_ptr_impl<T>(interface, ptr, 1);
+      std::cout << "TYPER " << typeid(T).name() << " " << alignof(T) << std::endl;
+      FC_ASSERT( reinterpret_cast<uintptr_t>(base) % config::eosio_alignment == 0, "Misaligned pointer" );
       return Then(interface, *base, rest..., args, offset - 1);
    }
 

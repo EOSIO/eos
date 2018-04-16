@@ -249,7 +249,7 @@ void test_db::idx64_general(uint64_t receiver, uint64_t code, uint64_t action)
 
    struct record {
       uint64_t ssn;
-      secondary_type name;
+      EOS_ALIGNED(secondary_type) name;
    };
 
    record records[] = {{265, N(alice)},
@@ -260,33 +260,32 @@ void test_db::idx64_general(uint64_t receiver, uint64_t code, uint64_t action)
                        {976, N(emily)},
                        {110, N(joe)}
    };
-
    for (uint32_t i = 0; i < sizeof(records)/sizeof(records[0]); ++i) {
       db_idx64_store(receiver, table, receiver, records[i].ssn, &records[i].name);
    }
 
    // find_primary
    {
-      secondary_type sec = 0;
+      EOS_ALIGNED(secondary_type) sec = 0;
       int itr = db_idx64_find_primary(receiver, receiver, table, &sec, 999);
       eosio_assert(itr < 0 && sec == 0, "idx64_general - db_idx64_find_primary");
       itr = db_idx64_find_primary(receiver, receiver, table, &sec, 110);
       eosio_assert(itr >= 0 && sec == N(joe), "idx64_general - db_idx64_find_primary");
-      uint64_t prim_next = 0;
+      EOS_ALIGNED(uint64_t) prim_next = 0;
       int itr_next = db_idx64_next(itr, &prim_next);
       eosio_assert(itr_next < 0 && prim_next == 0, "idx64_general - db_idx64_find_primary");
    }
 
    // iterate forward starting with charlie
    {
-      secondary_type sec = 0;
+      EOS_ALIGNED(secondary_type) sec = 0;
       int itr = db_idx64_find_primary(receiver, receiver, table, &sec, 234);
       eosio_assert(itr >= 0 && sec == N(charlie), "idx64_general - db_idx64_find_primary");
 
-      uint64_t prim_next = 0;
+      EOS_ALIGNED(uint64_t) prim_next = 0;
       int itr_next = db_idx64_next(itr, &prim_next);
       eosio_assert(itr_next >= 0 && prim_next == 976, "idx64_general - db_idx64_next");
-      secondary_type sec_next = 0;
+      EOS_ALIGNED(secondary_type) sec_next = 0;
       int itr_next_expected = db_idx64_find_primary(receiver, receiver, table, &sec_next, prim_next);
       eosio_assert(itr_next == itr_next_expected && sec_next == N(emily), "idx64_general - db_idx64_next");
 
@@ -301,11 +300,11 @@ void test_db::idx64_general(uint64_t receiver, uint64_t code, uint64_t action)
 
    // iterate backward staring with second bob
    {
-      secondary_type sec = 0;
+      EOS_ALIGNED(secondary_type) sec = 0;
       int itr = db_idx64_find_primary(receiver, receiver, table, &sec, 781);
       eosio_assert(itr >= 0 && sec == N(bob), "idx64_general - db_idx64_find_primary");
 
-      uint64_t prim_prev = 0;
+      EOS_ALIGNED(uint64_t) prim_prev = 0;
       int itr_prev = db_idx64_previous(itr, &prim_prev);
       eosio_assert(itr_prev >= 0 && prim_prev == 540, "idx64_general - db_idx64_previous");
 

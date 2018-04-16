@@ -32,6 +32,9 @@ const static int      block_interval_ms = 500;
 const static int      block_interval_us = block_interval_ms*1000;
 const static uint64_t block_timestamp_epoch = 946684800000ll; // epoch is year 2000.
 
+/** alignment needed for pointer/reference types to wasm_interface */
+const static uint8_t  eosio_alignment = 16; 
+
 /** Percentages are fixed point with a denominator of 10,000 */
 const static int percent_100 = 10000;
 const static int percent_1   = 100;
