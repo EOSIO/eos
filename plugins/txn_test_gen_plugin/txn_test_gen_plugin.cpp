@@ -250,6 +250,17 @@ struct txn_test_gen_plugin_impl {
       static uint64_t nonce = static_cast<uint64_t>(fc::time_point::now().sec_since_epoch()) << 32;
       abi_serializer eosio_serializer(cc.get_database().find<account_object, by_name>(config::system_account_name)->get_abi());
 
+      uint32_t reference_block_num = cc.last_irreversible_block_num();
+      if (txn_reference_block_lag >= 0) {
+         reference_block_num = cc.head_block_num();
+         if (reference_block_num <= (uint32_t)txn_reference_block_lag) {
+            reference_block_num = 0;
+         } else {
+            reference_block_num -= (uint32_t)txn_reference_block_lag;
+         }
+      }
+
+      block_id_type reference_block_id = cc.get_block_id_for_num(reference_block_num);
 
       for(unsigned int i = 0; i < batch; ++i) {
       {
@@ -258,7 +269,7 @@ struct txn_test_gen_plugin_impl {
       signed_transaction trx;
       trx.actions.push_back(act_a_to_b);
       trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", eosio_serializer.variant_to_binary("nonce", nonce_vo)));
-      trx.set_reference_block(cc.head_block_id());
+      trx.set_reference_block(reference_block_id);
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.max_net_usage_words = 100;
       trx.sign(a_priv_key, chainid);
@@ -271,7 +282,7 @@ struct txn_test_gen_plugin_impl {
       signed_transaction trx;
       trx.actions.push_back(act_b_to_a);
       trx.context_free_actions.emplace_back(action({}, config::system_account_name, "nonce", eosio_serializer.variant_to_binary("nonce", nonce_vo)));
-      trx.set_reference_block(cc.head_block_id());
+      trx.set_reference_block(reference_block_id);
       trx.expiration = cc.head_block_time() + fc::seconds(30);
       trx.max_net_usage_words = 100;
       trx.sign(b_priv_key, chainid);
@@ -297,6 +308,8 @@ struct txn_test_gen_plugin_impl {
    action act_a_to_b;
    action act_b_to_a;
 
+   int32_t txn_reference_block_lag;
+
    abi_serializer currency_serializer = fc::json::from_string(currency_abi).as<contracts::abi_def>();
 };
 
@@ -304,9 +317,14 @@ txn_test_gen_plugin::txn_test_gen_plugin() {}
 txn_test_gen_plugin::~txn_test_gen_plugin() {}
 
 void txn_test_gen_plugin::set_program_options(options_description&, options_description& cfg) {
+   cfg.add_options()
+      ("txn-reference-block-lag", bpo::value<int32_t>()->default_value(0), "Lag in number of blocks from the head block when selecting the reference block for transactions (-1 means Last Irreversible Block)")
+   ;
 }
 
 void txn_test_gen_plugin::plugin_initialize(const variables_map& options) {
+   my.reset(new txn_test_gen_plugin_impl);
+   my->txn_reference_block_lag = options.at("txn-reference-block-lag").as<int32_t>();
 }
 
 void txn_test_gen_plugin::plugin_startup() {
@@ -315,7 +333,6 @@ void txn_test_gen_plugin::plugin_startup() {
       CALL(txn_test_gen, my, stop_generation, INVOKE_V_V(my, stop_generation), 200),
       CALL(txn_test_gen, my, start_generation, INVOKE_V_R_R_R(my, start_generation, std::string, uint64_t, uint64_t), 200)
    });
-   my.reset(new txn_test_gen_plugin_impl);
 }
 
 void txn_test_gen_plugin::plugin_shutdown() {
