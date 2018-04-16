@@ -88,7 +88,7 @@ namespace eosio {
       private:
          inline string is_clause_decl( string line ) {
             smatch match;
-            if ( regex_match( line, match, regex("(###[ ]+CLAUSE[ ]*:[ ]*)(.*)", regex_constants::ECMAScript) ) ) {
+            if ( regex_match( line, match, regex("(###[ ]+CLAUSE[ ]+NAME[ ]*:[ ]*)(.*)", regex_constants::ECMAScript) ) ) {
                FC_ASSERT( match.size() == 3, "Error, malformed clause declaration" );
                return match[2].str();
             }
