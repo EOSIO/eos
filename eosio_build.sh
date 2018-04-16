@@ -99,6 +99,13 @@
 				export CMAKE=${HOME}/opt/cmake/bin/cmake
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
+			"elementary OS")
+				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
+				CXX_COMPILER=clang++-4.0
+				C_COMPILER=clang-4.0
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
+			;;
 			"Fedora")
 				FILE=${WORK_DIR}/scripts/eosio_build_fedora.sh
 				CXX_COMPILER=g++
@@ -114,13 +121,6 @@
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
 			"Ubuntu")
-				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
-				CXX_COMPILER=clang++-4.0
-				C_COMPILER=clang-4.0
-				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
-				export PATH=${HOME}/opt/mongodb/bin:$PATH
-			;;
-			"elementary OS")
 				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
 				CXX_COMPILER=clang++-4.0
 				C_COMPILER=clang-4.0
