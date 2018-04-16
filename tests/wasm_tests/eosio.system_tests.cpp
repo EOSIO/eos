@@ -123,6 +123,7 @@ public:
          ("max_inline_depth", 4 + n)
          ("max_inline_action_size", 4096 + n)
          ("max_generated_transaction_count", 10 + n)
+         ("max_transaction_delay", 10*86400+n)
          ("max_storage_size", (n % 10 + 1) * 1024 * 1024)
          ("percent_of_max_inflation_rate", 50 + n)
          ("storage_reserve_ratio", 100 + n);

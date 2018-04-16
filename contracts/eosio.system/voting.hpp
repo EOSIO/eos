@@ -263,6 +263,7 @@ namespace eosiosystem {
             std::array<uint16_t, 21> max_inline_depth;
             std::array<uint32_t, 21> max_inline_action_size;
             std::array<uint32_t, 21> max_generated_transaction_count;
+            std::array<uint32_t, 21> max_transaction_delay;
             std::array<uint32_t, 21> percent_of_max_inflation_rate;
             std::array<uint32_t, 21> storage_reserve_ratio;
 
@@ -296,6 +297,7 @@ namespace eosiosystem {
                   max_inline_depth[n] = it->prefs.max_inline_depth;
                   max_inline_action_size[n] = it->prefs.max_inline_action_size;
                   max_generated_transaction_count[n] = it->prefs.max_generated_transaction_count;
+                  max_transaction_delay[n] = it->prefs.max_transaction_delay;
 
                   storage_reserve_ratio[n] = it->prefs.storage_reserve_ratio;
                   percent_of_max_inflation_rate[n] = it->prefs.percent_of_max_inflation_rate;
@@ -326,6 +328,7 @@ namespace eosiosystem {
                std::sort( max_inline_depth.begin(), max_inline_depth.begin()+n );
                std::sort( max_inline_action_size.begin(), max_inline_action_size.begin()+n );
                std::sort( max_generated_transaction_count.begin(), max_generated_transaction_count.begin()+n );
+               std::sort( max_transaction_delay.begin(), max_transaction_delay.begin()+n );
                std::sort( storage_reserve_ratio.begin(), storage_reserve_ratio.begin()+n );
                std::sort( percent_of_max_inflation_rate.begin(), percent_of_max_inflation_rate.begin()+n );
             }
@@ -358,6 +361,7 @@ namespace eosiosystem {
             parameters.max_inline_depth = max_inline_depth[median];
             parameters.max_inline_action_size = max_inline_action_size[median];
             parameters.max_generated_transaction_count = max_generated_transaction_count[median];
+            parameters.max_transaction_delay = max_transaction_delay[median];
             parameters.storage_reserve_ratio = storage_reserve_ratio[median];
             parameters.percent_of_max_inflation_rate = percent_of_max_inflation_rate[median];
 
