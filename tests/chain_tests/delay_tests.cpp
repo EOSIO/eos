@@ -1563,4 +1563,33 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    BOOST_REQUIRE_EQUAL(asset::from_string("15.0000 CUR"), liquid_balance);
 } FC_LOG_AND_RETHROW() }/// schedule_test
 
+
+BOOST_AUTO_TEST_CASE( max_transaction_delay ) { try {
+   //assuming max transaction delay is 45 days (default in confgi.hpp)
+   TESTER chain;
+
+   const auto& tester_account = N(tester);
+
+   chain.set_code(config::system_account_name, eosio_system_wast);
+   chain.set_abi(config::system_account_name, eosio_system_abi);
+
+   chain.produce_blocks();
+   chain.create_account(N(tester));
+   chain.produce_blocks(10);
+
+   BOOST_REQUIRE_EXCEPTION(
+      chain.push_action(config::system_account_name, contracts::updateauth::get_name(), tester_account, fc::mutable_variant_object()
+                        ("account", "tester")
+                        ("permission", "first")
+                        ("parent", "active")
+                        ("data",  authority(chain.get_public_key(tester_account, "first")))
+                        ("delay", 50*86400)), //50 days
+      chain::action_validate_exception,
+      [&](const chain::transaction_exception& ex) {
+         string expected = "message validation exception (3040000)\nCannot set delay longer than max_transacton_delay, which is 3888000 seconds";
+         return expected == string(ex.to_string()).substr(0, expected.size());
+      }
+   );
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
