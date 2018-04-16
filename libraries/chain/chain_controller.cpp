@@ -984,13 +984,13 @@ flat_set<public_key_type> chain_controller::get_required_keys(const transaction&
 class permission_visitor {
 public:
    permission_visitor(const chain_controller& controller)
-   : _chain_controller(controller) {
+   : _chain_controller(controller), _track_delay(true) {
       _max_delay_stack.emplace_back();
    }
 
    void operator()(const permission_level& perm_level) {
       const auto obj = _chain_controller.get_permission(perm_level);
-      if( _max_delay_stack.back() < obj.delay )
+      if( _track_delay && _max_delay_stack.back() < obj.delay )
          _max_delay_stack.back() = obj.delay;
    }
 
@@ -1010,15 +1010,149 @@ public:
       _max_delay_stack.back() = delay_to_keep;
    }
 
-   fc::microseconds get_max_delay() const {
+   fc::microseconds get_max_delay()const {
       FC_ASSERT( _max_delay_stack.size() == 1, "invariant failure in permission_visitor" );
       return _max_delay_stack.back();
+   }
+
+   void pause_delay_tracking() {
+      _track_delay = false;
+   }
+
+   void resume_delay_tracking() {
+      _track_delay = true;
    }
 
 private:
    const chain_controller& _chain_controller;
    vector<fc::microseconds> _max_delay_stack;
+   bool _track_delay;
 };
+
+optional<fc::microseconds> chain_controller::check_updateauth_authorization( const contracts::updateauth& update,
+                                                                             const vector<permission_level>& auths )const
+{
+   EOS_ASSERT( auths.size() == 1, tx_irrelevant_auth,
+               "updateauth action should only have one declared authorization" );
+   const auto& auth = auths[0];
+   EOS_ASSERT( auth.actor == update.account, tx_irrelevant_auth,
+               "the owner of the affected permission needs to be the actor of the declared authorization" );
+
+   const auto* min_permission = find_permission({update.account, update.permission});
+   bool ignore_delay = false;
+   if( !min_permission ) { // creating a new permission
+      ignore_delay = true;
+      min_permission = &get_permission({update.account, update.parent});
+
+   }
+   const auto delay = get_permission(auth).satisfies( *min_permission,
+                                                      _db.get_index<permission_index>().indices() );
+   EOS_ASSERT( delay.valid(),
+               tx_irrelevant_auth,
+               "updateauth action declares irrelevant authority '${auth}'; minimum authority is ${min}",
+               ("auth", auth)("min", permission_level{update.account, min_permission->name}) );
+
+   return (ignore_delay ? optional<fc::microseconds>() : *delay);
+}
+
+fc::microseconds chain_controller::check_deleteauth_authorization( const contracts::deleteauth& del,
+                                                                   const vector<permission_level>& auths )const
+{
+   EOS_ASSERT( auths.size() == 1, tx_irrelevant_auth,
+               "deleteauth action should only have one declared authorization" );
+   const auto& auth = auths[0];
+   EOS_ASSERT( auth.actor == del.account, tx_irrelevant_auth,
+               "the owner of the permission to delete needs to be the actor of the declared authorization" );
+
+   const auto& min_permission = get_permission({del.account, del.permission});
+   const auto delay = get_permission(auth).satisfies( min_permission,
+                                                      _db.get_index<permission_index>().indices() );
+   EOS_ASSERT( delay.valid(),
+               tx_irrelevant_auth,
+               "updateauth action declares irrelevant authority '${auth}'; minimum authority is ${min}",
+               ("auth", auth)("min", permission_level{min_permission.owner, min_permission.name}) );
+
+   return *delay;
+}
+
+fc::microseconds chain_controller::check_linkauth_authorization( const contracts::linkauth& link,
+                                                                 const vector<permission_level>& auths )const
+{
+   EOS_ASSERT( auths.size() == 1, tx_irrelevant_auth,
+               "link action should only have one declared authorization" );
+   const auto& auth = auths[0];
+   EOS_ASSERT( auth.actor == link.account, tx_irrelevant_auth,
+               "the owner of the linked permission needs to be the actor of the declared authorization" );
+
+   EOS_ASSERT( link.type != contracts::updateauth::get_name(),  action_validate_exception,
+               "Cannot link eosio::updateauth to a minimum permission" );
+   EOS_ASSERT( link.type != contracts::deleteauth::get_name(),  action_validate_exception,
+               "Cannot link eosio::deleteauth to a minimum permission" );
+   EOS_ASSERT( link.type != contracts::linkauth::get_name(),    action_validate_exception,
+               "Cannot link eosio::linkauth to a minimum permission" );
+   EOS_ASSERT( link.type != contracts::unlinkauth::get_name(),  action_validate_exception,
+               "Cannot link eosio::unlinkauth to a minimum permission" );
+   EOS_ASSERT( link.type != contracts::canceldelay::get_name(), action_validate_exception,
+               "Cannot link eosio::canceldelay to a minimum permission" );
+
+   const auto linked_permission_name = lookup_minimum_permission(link.account, link.code, link.type);
+
+   if( !linked_permission_name ) // if action is linked to eosio.any permission
+      return fc::microseconds(0);
+
+   const auto delay = get_permission(auth).satisfies( get_permission({link.account, *linked_permission_name}),
+                                                      _db.get_index<permission_index>().indices() );
+
+   EOS_ASSERT( delay.valid(),
+               tx_irrelevant_auth,
+               "link action declares irrelevant authority '${auth}'; minimum authority is ${min}",
+               ("auth", auth)("min", permission_level{link.account, *linked_permission_name}) );
+
+   return *delay;
+}
+
+fc::microseconds chain_controller::check_unlinkauth_authorization( const contracts::unlinkauth& unlink,
+                                                                   const vector<permission_level>& auths )const
+{
+   EOS_ASSERT( auths.size() == 1, tx_irrelevant_auth,
+               "unlink action should only have one declared authorization" );
+   const auto& auth = auths[0];
+   EOS_ASSERT( auth.actor == unlink.account, tx_irrelevant_auth,
+               "the owner of the linked permission needs to be the actor of the declared authorization" );
+
+   const auto unlinked_permission_name = lookup_linked_permission(unlink.account, unlink.code, unlink.type);
+   EOS_ASSERT( unlinked_permission_name.valid(), transaction_exception,
+               "cannot unlink non-existent permission link of account '${account}' for actions matching '${code}::${action}'",
+               ("account", unlink.account)("code", unlink.code)("action", unlink.type) );
+
+   if( *unlinked_permission_name == config::eosio_any_name )
+      return fc::microseconds(0);
+
+   const auto delay = get_permission(auth).satisfies( get_permission({unlink.account, *unlinked_permission_name}),
+                                                      _db.get_index<permission_index>().indices() );
+
+   EOS_ASSERT( delay.valid(),
+               tx_irrelevant_auth,
+               "unlink action declares irrelevant authority '${auth}'; minimum authority is ${min}",
+               ("auth", auth)("min", permission_level{unlink.account, *unlinked_permission_name}) );
+
+   return *delay;
+}
+
+void chain_controller::check_canceldelay_authorization( const contracts::canceldelay& cancel,
+                                                        const vector<permission_level>& auths )const
+{
+   EOS_ASSERT( auths.size() == 1, tx_irrelevant_auth,
+               "canceldelay action should only have one declared authorization" );
+   const auto& auth = auths[0];
+
+   const auto delay = get_permission(auth).satisfies( get_permission(cancel.canceling_auth),
+                                                      _db.get_index<permission_index>().indices() );
+   EOS_ASSERT( delay.valid(),
+               tx_irrelevant_auth,
+               "canceldelay action declares irrelevant authority '${auth}'; specified authority to satisfy is ${min}",
+               ("auth", auth)("min", cancel.canceling_auth) );
+}
 
 fc::microseconds chain_controller::check_authorization( const vector<action>& actions,
                                                         const flat_set<public_key_type>& provided_keys,
@@ -1034,79 +1168,59 @@ fc::microseconds chain_controller::check_authorization( const vector<action>& ac
    fc::microseconds max_delay;
 
    for( const auto& act : actions ) {
+      bool special_case = false;
+      bool ignore_delay = false;
+
+      if( act.account == config::system_account_name ) {
+         special_case = true;
+
+         if( act.name == contracts::updateauth::get_name() ) {
+            const auto delay = check_updateauth_authorization(act.data_as<contracts::updateauth>(), act.authorization);
+            if( delay.valid() ) // update auth is used to modify an existing permission
+               max_delay = std::max( max_delay, *delay );
+            else // updateauth is used to create a new permission
+               ignore_delay = true;
+         } else if( act.name == contracts::deleteauth::get_name() ) {
+            max_delay = std::max( max_delay,
+                                  check_deleteauth_authorization(act.data_as<contracts::deleteauth>(), act.authorization) );
+         } else if( act.name == contracts::linkauth::get_name() ) {
+            max_delay = std::max( max_delay,
+                                  check_linkauth_authorization(act.data_as<contracts::linkauth>(), act.authorization) );
+         } else if( act.name == contracts::unlinkauth::get_name() ) {
+            max_delay = std::max( max_delay,
+                                  check_unlinkauth_authorization(act.data_as<contracts::unlinkauth>(), act.authorization) );
+         } else if( act.name == contracts::canceldelay::get_name() ) {
+            check_canceldelay_authorization(act.data_as<contracts::canceldelay>(), act.authorization);
+            ignore_delay = true;
+         } else {
+            special_case = false;
+         }
+      }
+
       for( const auto& declared_auth : act.authorization ) {
 
-         // check a minimum permission if one is set, otherwise assume the contract code will validate
-         auto min_permission_name = lookup_minimum_permission(declared_auth.actor, act.account, act.name);
-         if( !min_permission_name ) {
-            // for updateauth actions, need to determine the permission that is changing
-            if( act.account == config::system_account_name && act.name == contracts::updateauth::get_name() ) {
-               auto update = act.data_as<contracts::updateauth>();
-               const auto permission_to_change = find_permission({update.account, update.permission});
-               if( permission_to_change != nullptr ) {
-                  // Only changes to permissions need to possibly be delayed. New permissions can be added immediately.
-                  min_permission_name = update.permission;
-               }
-            } else if( act.account == config::system_account_name && act.name == contracts::canceldelay::get_name() ) {
-               EOS_ASSERT( act.authorization.size() == 1, tx_irrelevant_auth,
-                           "canceldelay action should only have one declared authorization" );
-               auto cancel_delay = act.data_as<contracts::canceldelay>();
-               const auto& min_permission = get_permission(cancel_delay.canceling_auth);
-               const auto& index = _db.get_index<permission_index>().indices();
-               const optional<fc::microseconds> delay = get_permission(declared_auth).satisfies(min_permission, index);
+         if( !special_case ) {
+            auto min_permission_name = lookup_minimum_permission(declared_auth.actor, act.account, act.name);
+            if( min_permission_name ) { // since special cases were already handled, it should only be false if the permission is eosio.any
+               const auto& min_permission = get_permission({declared_auth.actor, *min_permission_name});
+               auto delay = get_permission(declared_auth).satisfies( min_permission,
+                                                                     _db.get_index<permission_index>().indices() );
                EOS_ASSERT( delay.valid(),
                            tx_irrelevant_auth,
-                           "canceldelay action declares irrelevant authority '${auth}'; specified authority to satisfy is ${min}",
-                           ("auth", declared_auth)("min", cancel_delay.canceling_auth) );
-               // Intentionally ignore value of delay. A canceldelay action alone never needs to be delayed.
-            }
-         }
-         if( min_permission_name ) {
-            const auto& min_permission = get_permission({declared_auth.actor, *min_permission_name});
-            const auto& index = _db.get_index<permission_index>().indices();
-            const optional<fc::microseconds> delay = get_permission(declared_auth).satisfies(min_permission, index);
-            EOS_ASSERT( delay.valid(),
-                        tx_irrelevant_auth,
-                        "action declares irrelevant authority '${auth}'; minimum authority is ${min}",
-                        ("auth", declared_auth)("min", min_permission.name) );
-            if( max_delay < *delay )
-               max_delay = *delay;
-         }
-
-         if( act.account == config::system_account_name ) {
-            // for link changes, we need to also determine the delay associated with an existing link that is being
-            // moved or removed
-            if( act.name == contracts::linkauth::get_name() ) {
-               auto link = act.data_as<contracts::linkauth>();
-               if( declared_auth.actor == link.account ) {
-                  const auto linked_permission_name = lookup_linked_permission(link.account, link.code, link.type);
-                  if( linked_permission_name.valid() && *linked_permission_name != config::eosio_any_name ) {
-                     const auto& linked_permission = get_permission({link.account, *linked_permission_name});
-                     const auto& index = _db.get_index<permission_index>().indices();
-                     const optional<fc::microseconds> delay = get_permission(declared_auth).satisfies(linked_permission, index);
-                     if( delay.valid() && max_delay < *delay )
-                        max_delay = *delay;
-                  } // else it is only a new link, so don't need to delay
-               }
-            } else if( act.name == contracts::unlinkauth::get_name() ) {
-               auto unlink = act.data_as<contracts::unlinkauth>();
-               if( declared_auth.actor == unlink.account ) {
-                  const auto unlinked_permission_name = lookup_linked_permission(unlink.account, unlink.code, unlink.type);
-                  if( unlinked_permission_name.valid() && *unlinked_permission_name != config::eosio_any_name ) {
-                     const auto& unlinked_permission = get_permission({unlink.account, *unlinked_permission_name});
-                     const auto& index = _db.get_index<permission_index>().indices();
-                     const optional<fc::microseconds> delay = get_permission(declared_auth).satisfies(unlinked_permission, index);
-                     if( delay.valid() && max_delay < *delay )
-                        max_delay = *delay;
-                  }
-               }
+                           "action declares irrelevant authority '${auth}'; minimum authority is ${min}",
+                           ("auth", declared_auth)("min", permission_level{min_permission.owner, min_permission.name}) );
+               max_delay = std::max( max_delay, *delay );
             }
          }
 
          if( should_check_signatures() ) {
+            if( ignore_delay )
+               checker.get_permission_visitor().pause_delay_tracking();
             EOS_ASSERT(checker.satisfied(declared_auth), tx_missing_sigs,
                        "transaction declares authority '${auth}', but does not have signatures for it.",
                        ("auth", declared_auth));
+            if( ignore_delay )
+               checker.get_permission_visitor().resume_delay_tracking();
          }
       }
    }
@@ -1118,10 +1232,8 @@ fc::microseconds chain_controller::check_authorization( const vector<action>& ac
    }
 
    const auto checker_max_delay = checker.get_permission_visitor().get_max_delay();
-   if( max_delay < checker_max_delay )
-      max_delay = checker_max_delay;
 
-   return max_delay;
+   return std::max(max_delay, checker_max_delay);
 }
 
 bool chain_controller::check_authorization( account_name account, permission_name permission,
@@ -1162,11 +1274,14 @@ optional<permission_name> chain_controller::lookup_minimum_permission(account_na
                                                                     account_name scope,
                                                                     action_name act_name) const {
 #warning TODO: this comment sounds like it is expecting a check ("may") somewhere else, but I have not found anything else
-   // updateauth is a special case where any permission _may_ be suitable depending
-   // on the contents of the action
-   if( scope == config::system_account_name &&
-       ( act_name == contracts::updateauth::get_name() || act_name == contracts::canceldelay::get_name() ) ) {
-      return optional<permission_name>();
+   // Special case native actions cannot be linked to a minimum permission, so there is no need to check.
+   if( scope == config::system_account_name ) {
+       FC_ASSERT( act_name != contracts::updateauth::get_name() &&
+                  act_name != contracts::deleteauth::get_name() &&
+                  act_name != contracts::linkauth::get_name() &&
+                  act_name != contracts::unlinkauth::get_name() &&
+                  act_name != contracts::canceldelay::get_name(),
+                  "cannot call lookup_minimum_permission on native actions that are not allowed to be linked to minimum permissions" );
    }
 
    try {

@@ -301,6 +301,12 @@ namespace eosio { namespace chain {
                                                flat_set<permission_level>       provided_levels = flat_set<permission_level>()
                                              )const;
 
+         optional<fc::microseconds> check_updateauth_authorization( const contracts::updateauth& update, const vector<permission_level>& auths )const;
+         fc::microseconds check_deleteauth_authorization( const contracts::deleteauth& del, const vector<permission_level>& auths )const;
+         fc::microseconds check_linkauth_authorization( const contracts::linkauth& link, const vector<permission_level>& auths )const;
+         fc::microseconds check_unlinkauth_authorization( const contracts::unlinkauth& unlink, const vector<permission_level>& auths )const;
+         void             check_canceldelay_authorization( const contracts::canceldelay& cancel, const vector<permission_level>& auths )const;
+
          /**
           * @param account - the account owner of the permission
           * @param permission - the permission name to check for authorization
