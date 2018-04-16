@@ -449,6 +449,7 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
 
    abi_def abi;
    if( abi_serializer::to_abi(accnt.abi, abi) ) {
+
       result.abi = std::move(abi);
    }
 

@@ -120,11 +120,18 @@
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
+			"elementary OS")
+				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
+				CXX_COMPILER=clang++-4.0
+				C_COMPILER=clang-4.0
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
+			;;
 			*)
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
 				exit 1
 		esac
-		
+
 		export BOOST_ROOT=${HOME}/opt/boost_1_66_0
 		export OPENSSL_ROOT_DIR=/usr/include/openssl
 		export WASM_ROOT=${HOME}/opt/wasm
@@ -212,13 +219,16 @@
 	if [ "$OS_NAME" == "CentOS Linux" ]; then
 		printf "\tsource /opt/rh/python33/enable\n"
 	fi
+	if [ "$OS_NAME" != "Fedora" ]; then
+		printf '\texport PATH=${HOME}/opt/mongodb/bin:$PATH\n'
+	fi
 	printf "\tcd ${HOME}/eos/build; make test\n\n"
 	printf "\tFor more information:\n"
 	printf "\tEOS.IO website: https://eos.io\n"
 	printf "\tEOS.IO Telegram channel @ https://t.me/EOSProject\n"
 	printf "\tEOS.IO resources: https://eos.io/resources/\n"
 	printf "\tEOS.IO wiki: https://github.com/EOSIO/eos/wiki\n\n\n"
-		 
+				
    if [ "x${EOSIO_BUILD_PACKAGE}" != "x" ]; then
       # Build eos.io package
       $CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \

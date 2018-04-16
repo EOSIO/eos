@@ -228,6 +228,20 @@ struct test_memory {
    static void test_memcpy_overlap_start();
    static void test_memcpy_overlap_end();
    static void test_memcmp();
+   static void test_outofbound_0();
+   static void test_outofbound_1();
+   static void test_outofbound_2();
+   static void test_outofbound_3();
+   static void test_outofbound_4();
+   static void test_outofbound_5();
+   static void test_outofbound_6();
+   static void test_outofbound_7();
+   static void test_outofbound_8();
+   static void test_outofbound_9();
+   static void test_outofbound_10();
+   static void test_outofbound_11();
+   static void test_outofbound_12();
+   static void test_outofbound_13();
 };
 
 struct test_checktime {
