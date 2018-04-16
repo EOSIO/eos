@@ -299,6 +299,10 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
    validate_uniqueness(trx);
    if( should_check_authorization() ) {
       auto enforced_delay = check_transaction_authorization(trx, packed_trx.signatures, mtrx.context_free_data);
+      auto max_delay = fc::seconds( get_global_properties().configuration.max_transaction_delay );
+      if ( max_delay < enforced_delay ) {
+         enforced_delay = max_delay;
+      }
       EOS_ASSERT( mtrx.delay >= enforced_delay,
                   transaction_exception,
                   "authorization imposes a delay (${enforced_delay} sec) greater than the delay specified in transaction header (${specified_delay} sec)",

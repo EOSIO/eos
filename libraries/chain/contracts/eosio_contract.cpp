@@ -200,6 +200,9 @@ void apply_eosio_updateauth(apply_context& context) {
    else
       EOS_ASSERT(!update.parent.empty(), action_validate_exception, "Only owner permission can have empty parent" );
 
+   auto max_delay = context.controller.get_global_properties().configuration.max_transaction_delay;
+   EOS_ASSERT( update.delay <= max_delay, action_validate_exception, "Cannot set delay longer than max_transacton_delay, which is ${max_delay} seconds", ("max_delay", max_delay) );
+
    FC_ASSERT(context.act.authorization.size(), "updateauth can only have one action authorization");
    const auto& act_auth = context.act.authorization.front();
    // lazy evaluating loop

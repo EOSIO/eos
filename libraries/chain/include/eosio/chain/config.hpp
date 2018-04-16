@@ -58,6 +58,7 @@ const static uint16_t   default_max_inline_depth       = 4;
 const static uint32_t   default_max_inline_action_size = 4 * 1024;
 const static uint32_t   default_max_gen_trx_size       = 64 * 1024; ///
 const static uint32_t   default_max_gen_trx_count      = 16; ///< the number of generated transactions per action
+const static uint32_t   default_max_trx_delay          = 45*12*3600; // 45 days
 const static uint32_t   rate_limiting_precision        = 1000*1000;
 
 const static uint32_t   producers_authority_threshold_pct  = 66 * config::percent_1;
