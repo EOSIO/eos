@@ -26,8 +26,6 @@
 #include <currency/currency.wast.hpp>
 #include <currency/currency.abi.hpp>
 
-#include <algorithm>
-
 namespace eosio { namespace detail {
   struct txn_test_gen_empty {};
 }}
