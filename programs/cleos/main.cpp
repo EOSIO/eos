@@ -1343,6 +1343,38 @@ int main( int argc, char** argv ) {
    unapprove->add_option("permissions", perm, localized("The JSON string of filename defining approving permissions"))->required();
    unapprove->set_callback([&] { approve_or_unapprove("unapprove"); });
 
+   // multisig cancel
+   string canceler;
+   auto cancel = msig->add_subcommand("cancel", localized("Cancel proposed transaction"));
+   add_standard_transaction_options(cancel);
+   cancel->add_option("proposer", proposer, localized("proposer name (string)"))->required();
+   cancel->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
+   cancel->add_option("canceler", canceler, localized("canceler name (string)"));
+   cancel->set_callback([&]() {
+      auto accountPermissions = get_account_permissions(tx_permission);
+      if (accountPermissions.empty()) {
+         if (!canceler.empty()) {
+            accountPermissions = vector<permission_level>{{canceler, config::active_name}};
+         } else {
+            EOS_THROW(tx_missing_auth, "Authority is not provided (either by multisig parameter <canceler> or -p)");
+         }
+      }
+      if (canceler.empty()) {
+         canceler = name(accountPermissions.at(0).actor).to_string();
+      }
+      auto arg = fc::mutable_variant_object()
+         ("code", "eosio.msig")
+         ("action", "cancel")
+         ("args", fc::mutable_variant_object()
+          ("proposer", proposer)
+          ("proposal_name", proposal_name)
+          ("canceler", canceler)
+         );
+      auto result = call(json_to_bin_func, arg);
+      send_actions({chain::action{accountPermissions, "eosio.msig", "cancel", result.get_object()["binargs"].as<bytes>()}});
+      }
+   );
+
    // multisig exec
    string executer;
    auto exec = msig->add_subcommand("exec", localized("Execute proposed transaction"));
