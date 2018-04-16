@@ -174,6 +174,7 @@ set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build Eos for code coverage analys
 if(ENABLE_COVERAGE_TESTING)
   SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
   find_program( LCOV_PATH  lcov )
+  find_program( LLVMCOV_PATH  llvm-cov )
   find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
