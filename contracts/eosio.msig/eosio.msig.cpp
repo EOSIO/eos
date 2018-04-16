@@ -87,7 +87,7 @@ void multisig::cancel( account_name proposer, name proposal_name, account_name c
    eosio_assert( prop_it != proptable.end(), "proposal not found" );
 
    if( canceler != proposer ) {
-      eosio_assert( unpack<transaction>( prop_it->packed_transaction ).expiration < now(), "cannot cancel until expiration" );
+      eosio_assert( unpack<transaction_header>( prop_it->packed_transaction ).expiration < now(), "cannot cancel until expiration" );
    }
 
    proptable.erase(prop_it);
