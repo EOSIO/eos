@@ -740,7 +740,8 @@ BOOST_FIXTURE_TEST_CASE(abigen_double_action, abi_gen_helper)
           "type" : "C",
           "ricardian_contract" : ""
        }],
-       "tables": []
+       "tables": [],
+       "ricardian_clauses":[]
    }
    )=====";
 

@@ -65,14 +65,14 @@ namespace eosio {
          ricardian_contracts( const string& context, const string& contract, const vector<string>& actions ) {
             ifstream clauses_file( context+"/"+contract+"_rc.md");
             if ( !clauses_file.good() )
-               std::cerr << "Warning, no ricardian clauses found for " << contract << "\n";
+               wlog("Warning, no ricardian clauses found for ${con}\n", ("con", contract));
             else
                parse_clauses( clauses_file );
 
             for ( auto act : actions ) {
                ifstream contract_file( context+"/"+contract+"."+act+"_rc.md" );
                if ( !contract_file.good() )
-                  std::cerr << "Warning, no ricardian contract found for " << act << "\n";
+                  wlog("Warning, no ricardian contract found for ${act}\n", ("act", act));
                else {
                   parse_contract( contract_file );
                }
