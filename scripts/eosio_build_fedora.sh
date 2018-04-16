@@ -1,9 +1,10 @@
 	OS_VER=$( cat /etc/os-release | grep VERSION_ID | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' )
 
 	MEM_MEG=$( free -m | grep Mem | tr -s ' ' | cut -d\  -f2 )
-
 	CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 )
+	MEM_GIG=$(( (($MEM_MEG / 1000) / 2) ))
+	JOBS=$(( ${MEM_GIG} > ${CPU_CORE} ? ${CPU_CORE} : ${MEM_GIG} ))
 
 	DISK_INSTALL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f1`
 	DISK_TOTAL_KB=`df . | tail -1 | awk '{print $2}'`
@@ -167,7 +168,7 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling MongoDB C driver.\n"
 			printf "\tExiting now.\n\n"
@@ -196,7 +197,7 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		sudo make -j${CPU_CORE}
+		sudo make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling MongoDB C++ driver.\n"
 			printf "\tExiting now.\n\n"
@@ -232,7 +233,7 @@
 			exit;
 		fi
 		./configure
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling secp256k1-zkp.\n"
 			printf "\tExiting now.\n\n"
@@ -273,7 +274,7 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
 			printf "\tExiting now.\n\n"
@@ -284,3 +285,10 @@
 	else
 		printf "\tWASM found at ${HOME}/opt/wasm\n"
 	fi
+
+	function print_instructions()
+	{
+		printf "\n\t$( which mongod ) -f ${MONGOD_CONF} &\n"
+		printf "\tcd ${HOME}/eos/build; make test\n\n"
+	return 0
+	}
