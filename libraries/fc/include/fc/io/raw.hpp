@@ -146,6 +146,22 @@ namespace fc {
          fc::raw::pack(s, v.data[i]);
     }
 
+    template<typename Stream, typename T, size_t N>
+    inline void pack( Stream& s, T (&v)[N]) {
+      fc::raw::pack( s, unsigned_int((uint32_t)N) );
+      for (uint64_t i = 0; i < N; ++i)
+         fc::raw::pack(s, v[i]);
+    }
+
+    template<typename Stream, typename T, size_t N>
+    inline void unpack( Stream& s, T (&v)[N])
+    { try {
+      unsigned_int size; fc::raw::unpack( s, size );
+      FC_ASSERT( size.value == N );
+      for (uint64_t i = 0; i < N; ++i)
+         fc::raw::unpack(s, v[i]);
+    } FC_RETHROW_EXCEPTIONS( warn, "fc::array<type,length>", ("type",fc::get_typename<T>::name())("length",N) ) }
+
     template<typename Stream, typename T>
     inline void pack( Stream& s, const std::shared_ptr<T>& v)
     {

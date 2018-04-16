@@ -254,6 +254,24 @@ DataStream& operator >> ( DataStream& ds, std::array<T,N>& v ) {
    return ds;
 }
 
+template<typename DataStream, typename T, std::size_t N>
+DataStream& operator << ( DataStream& ds, const T (&v)[N] ) {
+   ds << unsigned_int( N );
+   for( uint32_t i = 0; i < N; ++i )
+      ds << v[i];
+   return ds;
+}
+
+template<typename DataStream, typename T, std::size_t N>
+DataStream& operator >> ( DataStream& ds, T (&v)[N] ) {
+   unsigned_int s;
+   ds >> s;
+   eosio_assert( N == s.value, "T[] size and unpacked size don't match");
+   for( uint32_t i = 0; i < N; ++i )
+      ds >> v[i];
+   return ds;
+}
+
 template<typename DataStream>
 DataStream& operator << ( DataStream& ds, const vector<char>& v ) {
    ds << unsigned_int( v.size() );
