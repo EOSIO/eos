@@ -910,7 +910,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_unable_to_determine_index, abi_gen_helper)
    #include <eosiolib/types.h>
 
    //@abi table
-   struct PACKED(table1) {
+   struct table1 {
       uint32_t field1;
       uint64_t field2;
    };
@@ -930,7 +930,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_long_field_name, abi_gen_helper)
    #include <eosiolib/types.h>
 
    //@abi table
-   struct PACKED(table1) {
+   struct table1 {
       uint64_t thisisaverylongfieldname;
    };
 
@@ -951,7 +951,7 @@ BOOST_FIXTURE_TEST_CASE(abigen_long_type_name, abi_gen_helper)
    };
 
    //@abi table
-   struct PACKED(table1) {
+   struct table1 {
       this_is_a_very_very_very_very_long_type_name field1;
    };
 
@@ -1344,10 +1344,10 @@ BOOST_FIXTURE_TEST_CASE(abigen_field_typedef, abi_gen_helper)
    typedef complex_field my_complex_field_alias;
 
    //@abi table
-   struct PACKED(table1) {
-      uint64_t            field1;
+   struct table1 {
+      uint64_t               field1;
       my_complex_field_alias field2;
-      my_name_alias         name;
+      my_name_alias          name;
    };
 
    )=====";

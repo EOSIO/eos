@@ -5,9 +5,7 @@
 #include "test_api.hpp"
 
 void test_math::test_multeq() {
-  u128_action act;
-  auto n = read_action_data(&act, sizeof(u128_action));
-  eosio_assert( n == sizeof(u128_action), "test_multeq n == sizeof(u128_action)" );
+  u128_action act = eosio::unpack_action_data<u128_action>();
 
   uint128_t self  = *(act.values);
   uint128_t other = *(act.values+1);
@@ -16,9 +14,7 @@ void test_math::test_multeq() {
 }
 
 void test_math::test_diveq() {
-  u128_action act;
-  auto n = read_action_data(&act, sizeof(u128_action));
-  eosio_assert( n == sizeof(u128_action), "test_diveq n == sizeof(u128_action)" );
+  u128_action act = eosio::unpack_action_data<u128_action>();
 
   uint128_t self  = *(act.values);
   uint128_t other = *(act.values+1);
