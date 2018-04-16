@@ -265,7 +265,7 @@ namespace eosio {
    };
 
    const fc::string logger_name("net_plugin_impl");
-   fc::logger logger(logger_name);
+   fc::logger logger;
 
    template<class enum_type, class=typename std::enable_if<std::is_enum<enum_type>::value>::type>
    inline enum_type& operator|=(enum_type& lhs, const enum_type& rhs)
@@ -2630,24 +2630,6 @@ namespace eosio {
    void net_plugin::plugin_initialize( const variables_map& options ) {
       ilog("Initialize net plugin");
 
-      // Housekeeping so fc::logger::get() will work as expected
-      fc::get_logger_map()[logger_name] = logger;
-
-      // Setting a parent would in theory get us the default appenders for free but
-      // a) the parent's log level overrides our own in that case; and
-      // b) fc library's logger was never finished - the _additivity flag tested is never true.
-      for(fc::shared_ptr<fc::appender>& appender : fc::logger::get().get_appenders()) {
-         logger.add_appender(appender);
-      }
-
-      if( options.count( "log-level-net-plugin" ) ) {
-         fc::log_level logl;
-
-         fc::from_variant(options.at("log-level-net-plugin").as<string>(), logl);
-         ilog("Setting net_plugin logging level to ${level}", ("level", logl));
-         logger.set_log_level(logl);
-      }
-
       my->network_version = static_cast<uint16_t>(app().version());
       my->network_version_match = options.at("network-version-match").as<bool>();
       my->send_whole_blocks = def_send_whole_blocks;
@@ -2767,6 +2749,9 @@ namespace eosio {
       for( auto seed_node : my->supplied_peers ) {
          connect( seed_node );
       }
+
+      if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
+         logger = fc::get_logger_map()[logger_name];
    }
 
    void net_plugin::plugin_shutdown() {
