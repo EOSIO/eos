@@ -30,8 +30,6 @@ namespace eosiosystem {
 
    template<account_name SystemAccount>
    class contract : eosio::contract, public delegate_bandwidth<SystemAccount>, public native<SystemAccount> {
-         //      private:
-         //         eosio::token _system_token;
       public:
          
          contract(account_name self = SystemAccount): 
@@ -97,7 +95,6 @@ namespace eosiosystem {
             account_name producer = ob.header.producer;
             auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
                   : common<SystemAccount>::get_default_parameters();
-            //            const system_token_type block_payment = parameters.payment_per_block;
             const asset block_payment = parameters.payment_per_block;
             auto prod = producers_tbl.find(producer);
             if ( prod != producers_tbl.end() ) {
@@ -108,7 +105,6 @@ namespace eosiosystem {
             }
 
             const uint32_t num_of_payments = ob.header.timestamp - parameters.last_bucket_fill_time;
-            //            const system_token_type to_eos_bucket = num_of_payments * parameters.payment_to_eos_bucket;
             const asset to_eos_bucket = num_of_payments * parameters.payment_to_eos_bucket;
             parameters.last_bucket_fill_time = ob.header.timestamp;
             parameters.eos_bucket += to_eos_bucket;
@@ -165,7 +161,6 @@ namespace eosiosystem {
                }
             }
 
-            //            eosio_assert( rewards > system_token_type(), "no rewards available to claim" );
             eosio_assert( rewards > asset(0, S(4,EOS)), "no rewards available to claim" );
 
             producers_tbl.modify( prod, 0, [&](auto& p) {
