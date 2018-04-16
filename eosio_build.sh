@@ -120,11 +120,18 @@
 				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
 				export PATH=${HOME}/opt/mongodb/bin:$PATH
 			;;
+			"elementary OS")
+				FILE=${WORK_DIR}/scripts/eosio_build_ubuntu.sh
+				CXX_COMPILER=clang++-4.0
+				C_COMPILER=clang-4.0
+				MONGOD_CONF=${HOME}/opt/mongodb/mongod.conf
+				export PATH=${HOME}/opt/mongodb/bin:$PATH
+			;;
 			*)
 				printf "\n\tUnsupported Linux Distribution. Exiting now.\n\n"
 				exit 1
 		esac
-		
+
 		export BOOST_ROOT=${HOME}/opt/boost_1_66_0
 		export OPENSSL_ROOT_DIR=/usr/include/openssl
 		export WASM_ROOT=${HOME}/opt/wasm

@@ -344,7 +344,7 @@ void chain_initializer::prepare_database( chain_controller& chain,
          a.privileged = true;
 
          if( name == config::system_account_name ) {
-            a.set_abi(abi_def());
+            a.set_abi(eos_contract_abi(abi_def()));
          }
       });
       const auto& owner = db.create<permission_object>([&](permission_object& p) {
