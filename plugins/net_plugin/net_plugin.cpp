@@ -578,7 +578,11 @@ namespace eosio {
    public:
       uint32_t just_send_it_max;
       connection_ptr pending_txn_source;
-      vector<block_id_type> req_blks;
+      struct block_request {
+         block_id_type id;
+         bool local_retry;
+      };
+      vector<block_request> req_blks;
       vector<transaction_id_type> req_txn;
 
       void bcast_block (const signed_block_summary& msg, connection_ptr skip = connection_ptr());
@@ -588,7 +592,7 @@ namespace eosio {
       void rejected_transaction (const packed_transaction& msg);
       void recv_block (connection_ptr conn, const signed_block_summary& msg);
       void recv_transaction(connection_ptr c);
-      void recv_notice (connection_ptr conn, const notice_message& msg);
+      void recv_notice (connection_ptr conn, const notice_message& msg, bool generated);
 
       void retry_fetch (connection_ptr conn);
    };
@@ -1572,9 +1576,16 @@ namespace eosio {
       block_id_type blk_id = msg.id();
       uint32_t num = msg.block_num();
       for (auto ref = req_blks.begin(); ref != req_blks.end(); ++ref) {
-         if (*ref == blk_id) {
-            req_blks.erase(ref);
-            fc_dlog(logger, "received a requested block");
+         if (ref->id != blk_id)
+            continue;
+         bool is_retry = ref->local_retry;
+         req_blks.erase(ref);
+         fc_dlog(logger, "received a requested block");
+
+         if (is_retry) {
+            bcast_block(msg);
+         }
+         else {
             notice_message note;
             note.known_blocks.mode = normal;
             note.known_blocks.ids.push_back( blk_id );
@@ -1641,8 +1652,10 @@ namespace eosio {
       c->cancel_wait();
    }
 
-   void big_msg_manager::recv_notice (connection_ptr c, const notice_message& msg) {
+   void big_msg_manager::recv_notice (connection_ptr c, const notice_message& msg, bool generated) {
       request_message req;
+      req.req_trx.mode = none;
+      req.req_blocks.mode = none;
       bool send_req = false;
       chain_controller &cc = my_impl->chain_plug->chain();
       if (msg.known_trx.mode == normal) {
@@ -1686,7 +1699,7 @@ namespace eosio {
             if (!b) {
                send_req = true;
                req.req_blocks.ids.push_back( blkid );
-               req_blks.push_back( blkid );
+               req_blks.push_back( {blkid, generated} );
             }
          }
       }
@@ -2085,6 +2098,9 @@ namespace eosio {
       fc_dlog(logger, "got a notice_message from ${p}", ("p",c->peer_name()));
       request_message req;
       bool send_req = false;
+      if (msg.known_trx.mode != none) {
+         fc_dlog(logger,"this is a ${m} notice with ${n} blocks", ("m",modes_str(msg.known_trx.mode))("n",msg.known_trx.pending));
+      }
       switch (msg.known_trx.mode) {
       case none:
          break;
@@ -2108,12 +2124,13 @@ namespace eosio {
          break;
       }
       case normal: {
-         big_msg_master->recv_notice (c, msg);
+         big_msg_master->recv_notice (c, msg, false);
       }
       }
 
-      fc_dlog(logger,"this is a ${m} notice with ${n} blocks", ("m",modes_str(msg.known_blocks.mode))("n",msg.known_blocks.pending));
-
+      if (msg.known_blocks.mode != none) {
+         fc_dlog(logger,"this is a ${m} notice with ${n} blocks", ("m",modes_str(msg.known_blocks.mode))("n",msg.known_blocks.pending));
+      }
       switch (msg.known_blocks.mode) {
       case none : {
          if (msg.known_trx.mode != normal) {
@@ -2127,7 +2144,7 @@ namespace eosio {
          break;
       }
       case normal : {
-         big_msg_master->recv_notice (c, msg);
+         big_msg_master->recv_notice (c, msg, false);
          break;
       }
       default: {
@@ -2187,6 +2204,10 @@ namespace eosio {
          return;
       }
       c->cancel_wait();
+      if(local_txns.get<by_id>().find(msg.id()) != local_txns.end()) {
+         fc_dlog(logger, "got a duplicate transaction - dropping");
+         return;
+      }
       big_msg_master->recv_transaction(c);
       uint64_t code = 0;
       try {
@@ -2239,7 +2260,18 @@ namespace eosio {
                for (const auto &recpt : shard.transactions) {
                   auto ltx = local_txns.get<by_id>().find(recpt.id);
                   switch (recpt.status) {
-                  case transaction_receipt::delayed:
+                  case transaction_receipt::delayed: {
+                     if (ltx == local_txns.end()) {
+                        fc_dlog(logger, "got a delayed transaction, treat it like a notify");
+                        notice_message pending_notify;
+                        pending_notify.known_blocks.mode = normal;
+                        pending_notify.known_blocks.ids.push_back( blk_id );
+                        pending_notify.known_trx.mode = none;
+                        big_msg_master->recv_notice (c, pending_notify, true);
+                        return;
+                     }
+                     // else fall through to executed.
+                  }
                   case transaction_receipt::executed: {
                      if( ltx != local_txns.end()) {
                         sb.input_transactions.push_back(ltx->packed_txn);
@@ -2265,26 +2297,27 @@ namespace eosio {
          }
       }
 
-      go_away_reason reason = fatal_other;
       try {
          chain_plug->accept_block(sb, sync_master->is_active(c));
-         reason = no_reason;
+         big_msg_master->recv_block(c, msg);
+         sync_master->recv_block(c, blk_id, blk_num, true);
+         return;
       } catch( const unlinkable_block_exception &ex) {
          elog( "unlinkable_block_exception accept block #${n} syncing from ${p}",("n",blk_num)("p",c->peer_name()));
-         reason = unlinkable;
       } catch( const block_validate_exception &ex) {
          elog( "block_validate_exception accept block #${n} syncing from ${p}",("n",blk_num)("p",c->peer_name()));
-         reason = validation;
       } catch( const assert_exception &ex) {
          elog( "unable to accept block on assert exception ${n} from ${p}",("n",ex.to_string())("p",c->peer_name()));
       } catch( const fc::exception &ex) {
          elog( "accept_block threw a non-assert exception ${x} from ${p}",( "x",ex.to_string())("p",c->peer_name()));
-         reason = no_reason;
       } catch( ...) {
          elog( "handle sync block caught something else from ${p}",("num",blk_num)("p",c->peer_name()));
       }
-      big_msg_master->recv_block(c, msg);
-      sync_master->recv_block(c, blk_id, blk_num, reason == no_reason);
+      notice_message pending_notify;
+      pending_notify.known_blocks.mode = normal;
+      pending_notify.known_blocks.ids.push_back( blk_id );
+      pending_notify.known_trx.mode = none;
+      big_msg_master->recv_notice (c, pending_notify, true);
    }
 
    void net_plugin_impl::handle_message( connection_ptr c, const signed_block &msg) {
