@@ -45,9 +45,9 @@ namespace eosiosystem {
                //            typename currency::token_type net_weight;
                //            typename currency::token_type cpu_weight;
                //            typename currency::token_type storage_stake;
-            eosio::asset  net_weight;
-            eosio::asset  cpu_weight;
-            eosio::asset  storage_stake;   
+            asset         net_weight;
+            asset         cpu_weight;
+            asset         storage_stake;   
             uint64_t      storage_bytes = 0;
 
             uint64_t primary_key()const { return owner; }
@@ -206,8 +206,8 @@ namespace eosiosystem {
 
             //            currency::inline_transfer( del.from, SystemAccount, total_stake, "stake bandwidth" );
             
-            eosio::action act( eosio::permission_level{/*N(eosio.system)*//* N(eosio)*/ del.from,N(active)}, N(eosio.token), N(inlinetransfer),
-                               std::make_tuple( del.from, /*N(eosio.system)*/ N(eosio), total_stake, std::string("stake bandwidth") ) );
+            eosio::action act( eosio::permission_level{del.from,N(active)}, N(eosio.token), N(inlinetransfer),
+                               std::make_tuple( del.from, N(eosio), total_stake, std::string("stake bandwidth") ) );
             act.send();
 
             if ( asset(0) < del.stake_net_quantity + del.stake_cpu_quantity ) {
@@ -311,8 +311,8 @@ namespace eosiosystem {
 
             //            currency::inline_transfer( SystemAccount, req->owner, req->amount, "unstake" );
             {
-               eosio::action act( eosio::permission_level{N(eosio.system),N(active)}, N(eosio.token), N(inlinetransfer),
-                                  std::make_tuple( N(eosio.system), req->owner, req->amount, std::string("unstake") ) );
+               eosio::action act( eosio::permission_level{N(eosio),N(active)}, N(eosio.token), N(inlinetransfer),
+                                  std::make_tuple( N(eosio), req->owner, req->amount, std::string("unstake") ) );
                act.send();
             }
             refunds_tbl.erase( req );
