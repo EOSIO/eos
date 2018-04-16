@@ -2,18 +2,16 @@
 	| cut -d'.' -f1 )
 
 	MEM_MEG=$( free -m | grep Mem | tr -s ' ' | cut -d\  -f2 )
-
 	CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 )
+	MEM_GIG=$(( (($MEM_MEG / 1000) / 2) ))
+	JOBS=$(( ${MEM_GIG} > ${CPU_CORE} ? ${CPU_CORE} : ${MEM_GIG} ))
 
 	DISK_INSTALL=`df -h . | tail -1 | tr -s ' ' | cut -d\  -f1`
 	DISK_TOTAL_KB=`df . | tail -1 | awk '{print $2}'`
 	DISK_AVAIL_KB=`df . | tail -1 | awk '{print $4}'`
 	DISK_TOTAL=$(( $DISK_TOTAL_KB / 1048576 ))
 	DISK_AVAIL=$(( $DISK_AVAIL_KB / 1048576 ))
-
-	MEM_GIG=$(( (($MEM_MEG / 1000) / 2) ))
-	JOBS=$(( ${MEM_GIG} > ${CPU_CORE} ? ${CPU_CORE} : ${MEM_GIG} ))
 
 	printf "\n\tOS name: $OS_NAME\n"
 	printf "\tOS Version: ${OS_VER}\n"
@@ -363,7 +361,7 @@ mongodconf
 			exit;
 		fi
 		./configure
-		make
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling secp256k1-zkp.\n"
 			printf "\tExiting now.\n\n"
@@ -407,12 +405,26 @@ mongodconf
 		fi
 		make -j${JOBS}
 		if [ $? -ne 0 ]; then
-			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
+			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support. 0\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
 		make install
+		if [ $? -ne 0 ]; then
+			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support. 1\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
 		rm -rf ${TEMP_DIR}/llvm-compiler 2>/dev/null
 	else
 		printf "\tWASM found at ${HOME}/opt/wasm\n"
 	fi
+
+	function print_instructions()
+	{
+		printf "\n\t$( which mongod ) -f ${MONGOD_CONF} &\n"
+		printf "\tsource /opt/rh/python33/enable\n"
+		printf '\texport PATH=${HOME}/opt/mongodb/bin:$PATH\n'
+		printf "\tcd ${HOME}/eos/build; make test\n\n"
+	return 0
+	}
