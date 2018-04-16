@@ -1699,7 +1699,7 @@ namespace eosio {
             if (!b) {
                send_req = true;
                req.req_blocks.ids.push_back( blkid );
-               req_blks.push_back( (block_request){blkid, generated} );
+               req_blks.push_back( {blkid, generated} );
             }
          }
       }
@@ -2204,6 +2204,10 @@ namespace eosio {
          return;
       }
       c->cancel_wait();
+      if(local_txns.get<by_id>().find(msg.id()) != local_txns.end()) {
+         fc_dlog(logger, "got a duplicate transaction - dropping");
+         return;
+      }
       big_msg_master->recv_transaction(c);
       uint64_t code = 0;
       try {
