@@ -1,9 +1,10 @@
 	OS_VER=$( cat /etc/os-release | grep VERSION_ID | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' | cut -d'.' -f1 )
 
 	MEM_MEG=$( free -m | grep Mem | tr -s ' ' | cut -d\  -f2 )
-
 	CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
 	CPU_CORE=$( lscpu | grep "^CPU(s)" | tr -s ' ' | cut -d\  -f2 )
+	MEM_GIG=$(( (($MEM_MEG / 1000) / 2) ))
+	JOBS=$(( ${MEM_GIG} > ${CPU_CORE} ? ${CPU_CORE} : ${MEM_GIG} ))
 
 	DISK_TOTAL=`df -h . | grep /dev | tr -s ' ' | cut -d\  -f2 | sed 's/[^0-9]//'`
 	DISK_AVAIL=`df -h . | grep /dev | tr -s ' ' | cut -d\  -f4 | sed 's/[^0-9]//'`
@@ -123,7 +124,7 @@
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling CMAKE.\n"
 			printf "\tExiting now.\n\n"
@@ -184,7 +185,7 @@
 		fi
 		tar xf mongodb-linux-x86_64-amazon-3.6.3.tgz
 		rm -f mongodb-linux-x86_64-amazon-3.6.3.tgz
-		ln -s ${HOME}/opt/mongodb-linux-x86_64-3.6.3/ mongodb
+		ln -s ${HOME}/opt/mongodb-linux-x86_64-amazon-3.6.3/ mongodb
 		mkdir ${HOME}/opt/mongodb/data
 		mkdir ${HOME}/opt/mongodb/log
 		touch ${HOME}/opt/mongodb/log/mongodb.log
@@ -225,7 +226,7 @@ mongodconf
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling MongoDB C driver.\n"
 			printf "\tExiting now.\n\n"
@@ -254,7 +255,7 @@ mongodconf
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		sudo make -j${CPU_CORE}
+		sudo make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling MongoDB C++ driver.\n"
 			printf "\tExiting now.\n\n"
@@ -291,7 +292,7 @@ mongodconf
 			exit;
 		fi
 		./configure
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling secp256k1-zkp.\n"
 			printf "\tExiting now.\n\n"
@@ -333,7 +334,7 @@ mongodconf
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
-		make -j${CPU_CORE}
+		make -j${JOBS}
 		if [ $? -ne 0 ]; then
 			printf "\tError compiling LLVM and clang with EXPERIMENTAL WASM support.\n"
 			printf "\tExiting now.\n\n"
@@ -344,3 +345,11 @@ mongodconf
 	else
 		printf "\tWASM found at ${HOME}/opt/wasm\n"
 	fi
+
+	function print_instructions()
+	{
+		printf "\n\t$( which mongod ) -f ${MONGOD_CONF} &\n"
+		printf '\texport PATH=${HOME}/opt/mongodb/bin:$PATH\n'
+		printf "\tcd ${HOME}/eos/build; make test\n\n"
+	return 0
+	}
