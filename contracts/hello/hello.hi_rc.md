@@ -1,6 +1,6 @@
-# CONTRACT FOR HELLO WORLD::HI
+# CONTRACT FOR hello::hi
 
-## ACTION NAME: HI
+## ACTION NAME: hi
 
 ### Parameters
 Input paramters:
