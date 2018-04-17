@@ -225,18 +225,19 @@ inline datastream<Stream>& operator>>(datastream<Stream>& ds, checksum256& d) {
 template<typename DataStream>
 DataStream& operator << ( DataStream& ds, const std::string& v ) {
    ds << unsigned_int( v.size() );
-   for( const auto& i : v )
-      ds << i;
+   if (v.size())
+      ds.write(v.data(), v.size());
    return ds;
 }
 
 template<typename DataStream>
 DataStream& operator >> ( DataStream& ds, std::string& v ) {
-   unsigned_int s;
-   ds >> s;
-   v.resize(s.value);
-   for( auto& i : v )
-      ds >> i;
+   std::vector<char> tmp;
+   ds >> tmp;
+   if( tmp.size() )
+      v = std::string(tmp.data(),tmp.data()+tmp.size());
+   else
+      v = std::string();
    return ds;
 }
 
