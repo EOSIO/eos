@@ -973,6 +973,15 @@ class console_api : public context_aware_api {
          return context.IDX.previous_secondary(iterator, primary);\
       }
 
+void set_softfloat_from_long_double( float128_t& out, const uint128_t& in ) {
+   out.v[0] = static_cast<uint64_t>(in >> 64);
+   out.v[1] = static_cast<uint64_t>( in & 0xFFFFFFFFFFFFFFFFULL );
+}
+
+void set_long_double_from_softfloat( uint128_t& out, const float128_t& in ) {
+   out = static_cast<uint128_t>(in.v[0]) << 64;
+   out |= in.v[1];
+}
 
 class database_api : public context_aware_api {
    public:
@@ -1013,6 +1022,51 @@ class database_api : public context_aware_api {
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx128, uint128_t)
       DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(idx256, 2, uint128_t)
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx_double, float64_t)
+
+      int db_idx_long_double_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const uint128_t& secondary ) {
+         float128_t val;
+         set_softfloat_from_long_double(val, secondary);
+         return context.idx_long_double.store( scope, table, payer, id, val );
+      }
+      void db_idx_long_double_update( int iterator, uint64_t payer, const uint128_t& secondary ) {
+         float128_t val;
+         set_softfloat_from_long_double(val, secondary);
+         return context.idx_long_double.update( iterator, payer, val );
+      }
+      void db_idx_long_double_remove( int iterator ) {
+         return context.idx_long_double.remove( iterator );
+      }
+      int db_idx_long_double_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const uint128_t& secondary, uint64_t& primary ) {
+         float128_t val;
+         set_softfloat_from_long_double(val, secondary);
+         return context.idx_long_double.find_secondary(code, scope, table, val, primary);
+      }
+      int db_idx_long_double_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t primary ) {
+         float128_t val; val.v[0] = 0; val.v[1] = 0;
+         return context.idx_long_double.find_primary(code, scope, table, val, primary);
+         set_long_double_from_softfloat(secondary, val);
+      }
+      int db_idx_long_double_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  uint128_t& secondary, uint64_t& primary ) {
+         float128_t val;
+         set_softfloat_from_long_double(val, secondary);
+         return context.idx_long_double.lowerbound_secondary(code, scope, table, val, primary);
+         set_long_double_from_softfloat(secondary, val);
+      }
+      int db_idx_long_double_upperbound( uint64_t code, uint64_t scope, uint64_t table,  uint128_t& secondary, uint64_t& primary ) {
+         float128_t val;
+         set_softfloat_from_long_double(val, secondary);
+         return context.idx_long_double.upperbound_secondary(code, scope, table, val, primary);
+         set_long_double_from_softfloat(secondary, val);
+      }
+      int db_idx_long_double_end( uint64_t code, uint64_t scope, uint64_t table ) {
+         return context.idx_long_double.end_secondary(code, scope, table);
+      }
+      int db_idx_long_double_next( int iterator, uint64_t& primary  ) {
+         return context.idx_long_double.next_secondary(iterator, primary);
+      }
+      int db_idx_long_double_previous( int iterator, uint64_t& primary ) {
+         return context.idx_long_double.previous_secondary(iterator, primary);
+      }
 };
 
 class memory_api : public context_aware_api {

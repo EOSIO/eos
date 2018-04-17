@@ -91,6 +91,7 @@ WRAP_SECONDARY_SIMPLE_TYPE(idx64,  uint64_t)
 WRAP_SECONDARY_SIMPLE_TYPE(idx128, uint128_t)
 WRAP_SECONDARY_ARRAY_TYPE(idx256, key256)
 WRAP_SECONDARY_SIMPLE_TYPE(idx_double, double)
+WRAP_SECONDARY_SIMPLE_TYPE(idx_long_double, long double)
 
 template<uint64_t TableName, typename T, typename... Indices>
 class multi_index;
