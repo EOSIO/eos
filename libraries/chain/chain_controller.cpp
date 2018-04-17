@@ -1917,7 +1917,7 @@ block_timestamp_type chain_controller::get_slot_time(uint32_t slot_num)const
 
    const dynamic_global_property_object& dpo = get_dynamic_global_properties();
 
-   if( head_block_num() == 0 )
+   if( dpo.head_block_number == 0 )
    {
       // n.b. first block is at genesis_time plus one block interval
       auto genesis_time = block_timestamp_type(dpo.time);
@@ -1925,7 +1925,7 @@ block_timestamp_type chain_controller::get_slot_time(uint32_t slot_num)const
       return (fc::time_point)genesis_time;
    }
 
-   auto head_block_abs_slot = block_timestamp_type(head_block_time());
+   auto head_block_abs_slot = block_timestamp_type(dpo.time);
    head_block_abs_slot.slot += slot_num;
    return head_block_abs_slot;
 }
