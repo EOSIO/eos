@@ -31,6 +31,17 @@ namespace eosio { namespace testing {
       return res;
    }
 
+   bool base_tester::is_same_chain( base_tester& other ) {
+     auto hbh = control->head_block_header();
+     auto vn_hbh = other.control->head_block_header();
+     return control->head_block_id() == other.control->head_block_id() &&
+            hbh.previous == vn_hbh.previous &&
+            hbh.timestamp == vn_hbh.timestamp &&
+            hbh.transaction_mroot == vn_hbh.transaction_mroot &&
+            hbh.action_mroot == vn_hbh.action_mroot &&
+            hbh.block_mroot == vn_hbh.block_mroot &&
+            hbh.producer == vn_hbh.producer;
+   }
    void base_tester::init(bool push_genesis, chain_controller::runtime_limits limits) {
       cfg.block_log_dir      = tempdir.path() / "blocklog";
       cfg.shared_memory_dir  = tempdir.path() / "shared";
