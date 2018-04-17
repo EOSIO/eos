@@ -494,8 +494,7 @@ void test_multi_index::idx256_general(uint64_t receiver, uint64_t code, uint64_t
 
    print("Items sorted by secondary key (key256):\n");
    for( const auto& item : secidx ) {
-      print(" ID=", item.primary_key(), ", secondary=");
-      cout << item.sec << "\n";
+      print(" ID=", item.primary_key(), ", secondary=", item.sec, "\n");
    }
 
    {
