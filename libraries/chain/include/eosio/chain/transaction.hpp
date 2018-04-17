@@ -208,6 +208,7 @@ namespace eosio { namespace chain {
       bytes                                   packed_context_free_data;
       bytes                                   packed_trx;
 
+      transaction_id_type id()const;
       bytes              get_raw_transaction()const;
       vector<bytes>      get_context_free_data()const;
       transaction        get_transaction()const;

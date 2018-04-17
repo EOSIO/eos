@@ -71,6 +71,7 @@ namespace eosio { namespace testing {
 
          void              close();
          void              open();
+         bool              is_same_chain( base_tester& other );
 
          virtual signed_block produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = skip_missed_block_penalty ) = 0;
          void                 produce_blocks( uint32_t n = 1 );
@@ -82,8 +83,7 @@ namespace eosio { namespace testing {
 
          transaction_trace    push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
          transaction_trace    push_action( const account_name& code, const action_name& acttype, const vector<account_name>& actors, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
-
-         void                 set_tapos( signed_transaction& trx, uint32_t expiration = DEFAULT_EXPIRATION_DELTA ) const;
+         transaction_trace    push_action( const account_name& code, const action_name& acttype, const vector<permission_level>& auths, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
 
          void                 set_transaction_headers(signed_transaction& trx,
                                                       uint32_t expiration = DEFAULT_EXPIRATION_DELTA,

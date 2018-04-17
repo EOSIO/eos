@@ -97,16 +97,6 @@ struct native_to_wasm<T *> {
 /**
  * Mappings for native types
  */
-/*
-template<>
-struct native_to_wasm<float32_t> {
-   using type = F32;
-};
-template<>
-struct native_to_wasm<float64_t> {
-   using type = F64;
-};
-*/
 template<>
 struct native_to_wasm<float> {
    using type = F32;
@@ -190,18 +180,8 @@ template<typename T>
 struct wasm_to_value_type;
 
 template<>
-struct wasm_to_value_type<float32_t> {
-   static constexpr auto value = ValueType::f32;
-};
-
-template<>
 struct wasm_to_value_type<F32> {
    static constexpr auto value = ValueType::f32;
-};
-
-template<>
-struct wasm_to_value_type<float64_t> {
-   static constexpr auto value = ValueType::f64;
 };
 
 template<>
@@ -226,15 +206,6 @@ template<>
 struct wasm_to_rvalue_type<F32> {
    static constexpr auto value = ResultType::f32;
 };
-template<>
-struct wasm_to_rvalue_type<float32_t> {
-   static constexpr auto value = ResultType::f32;
-};
-template<>
-struct wasm_to_rvalue_type<float64_t> {
-   static constexpr auto value = ResultType::f64;
-};
-
 template<>
 struct wasm_to_rvalue_type<F64> {
    static constexpr auto value = ResultType::f64;

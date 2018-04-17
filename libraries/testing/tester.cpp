@@ -31,6 +31,17 @@ namespace eosio { namespace testing {
       return res;
    }
 
+   bool base_tester::is_same_chain( base_tester& other ) {
+     auto hbh = control->head_block_header();
+     auto vn_hbh = other.control->head_block_header();
+     return control->head_block_id() == other.control->head_block_id() &&
+            hbh.previous == vn_hbh.previous &&
+            hbh.timestamp == vn_hbh.timestamp &&
+            hbh.transaction_mroot == vn_hbh.transaction_mroot &&
+            hbh.action_mroot == vn_hbh.action_mroot &&
+            hbh.block_mroot == vn_hbh.block_mroot &&
+            hbh.producer == vn_hbh.producer;
+   }
    void base_tester::init(bool push_genesis, chain_controller::runtime_limits limits) {
       cfg.block_log_dir      = tempdir.path() / "blocklog";
       cfg.shared_memory_dir  = tempdir.path() / "shared";
@@ -198,13 +209,30 @@ namespace eosio { namespace testing {
                              uint32_t delay_sec)
 
    { try {
-      return push_action(code, acttype, vector<account_name>{ actor }, data, expiration, delay_sec);
+      vector<permission_level> auths;
+      auths.push_back(permission_level{actor, config::active_name});
+      return push_action(code, acttype, auths, data, expiration, delay_sec);
    } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actor)(data)(expiration) ) }
 
 
    transaction_trace base_tester::push_action( const account_name& code,
                              const action_name& acttype,
                              const vector<account_name>& actors,
+                             const variant_object& data,
+                             uint32_t expiration,
+                             uint32_t delay_sec)
+
+   { try {
+      vector<permission_level> auths;
+      for (const auto& actor : actors) {
+         auths.push_back(permission_level{actor, config::active_name});
+      }
+      return push_action(code, acttype, auths, data, expiration, delay_sec);
+   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actors)(data)(expiration) ) }
+
+   transaction_trace base_tester::push_action( const account_name& code,
+                             const action_name& acttype,
+                             const vector<permission_level>& auths,
                              const variant_object& data,
                              uint32_t expiration,
                              uint32_t delay_sec)
@@ -222,21 +250,18 @@ namespace eosio { namespace testing {
       action act;
       act.account = code;
       act.name = acttype;
-      for (const auto& actor : actors) {
-         act.authorization.push_back(permission_level{actor, config::active_name});
-      }
+      act.authorization = auths;
       act.data = abis.variant_to_binary(action_type_name, data);
 
       signed_transaction trx;
       trx.actions.emplace_back(std::move(act));
       set_transaction_headers(trx, expiration, delay_sec);
-      for (const auto& actor : actors) {
-         trx.sign(get_private_key(actor, "active"), chain_id_type());
+      for (const auto& auth : auths) {
+         trx.sign(get_private_key(auth.actor, auth.permission.to_string()), chain_id_type());
       }
 
       return push_transaction(trx);
-   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actors)(data)(expiration) ) }
-
+   } FC_CAPTURE_AND_RETHROW( (code)(acttype)(auths)(data)(expiration) ) }
 
    transaction_trace base_tester::push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys ) {
       variant pretty_trx = fc::mutable_variant_object()
@@ -509,7 +534,7 @@ namespace eosio { namespace testing {
 
       // the balance is implied to be 0 if either the table or row does not exist
       if (tbl) {
-         const auto *obj = db.template find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, asset_symbol.value()));
+         const auto *obj = db.template find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, asset_symbol.to_symbol_code().value));
          if (obj) {
             //balance is the second field after symbol, so skip the symbol
             fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
