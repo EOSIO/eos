@@ -107,10 +107,10 @@ docker volume rm nodeos-data-volume
 docker volume rm keosd-data-volume
 ```
 
-### More easily mode
+### Docker Hub
 
- Sometimes, it's still hard for you to build it locally, for some reasons such as bad network, not strong enough cpu, and so on, and then you can use the image from [docker hub](https://hub.docker.com/r/eosio/eos/).
-Just replace the `docker-compose.yaml` file with the content below
+Docker Hub image available from [docker hub](https://hub.docker.com/r/eosio/eos/).
+Replace the `docker-compose.yaml` file with the content below
 
 ```bash
 version: "3"
@@ -149,4 +149,3 @@ run `docker pull eosio/eos:latest`
 
 run `docker-compose up`
 
-and  enjoy it.
