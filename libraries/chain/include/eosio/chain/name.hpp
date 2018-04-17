@@ -6,7 +6,7 @@
 namespace eosio { namespace chain {
    using std::string;
 
-   static constexpr char char_to_symbol( char c ) {
+   static constexpr uint64_t char_to_symbol( char c ) {
       if( c >= 'a' && c <= 'z' )
          return (c - 'a') + 6;
       if( c >= '1' && c <= '5' )
@@ -26,7 +26,7 @@ namespace eosio { namespace chain {
           // NOTE: char_to_symbol() returns char type, and without this explicit
           // expansion to uint64 type, the compilation fails at the point of usage
           // of string_to_name(), where the usage requires constant (compile time) expression.
-           name |= (uint64_t) (char_to_symbol(str[i]) & 0x1f) << (64 - 5 * (i + 1));
+           name |= (char_to_symbol(str[i]) & 0x1f) << (64 - 5 * (i + 1));
        }
 
       // The for-loop encoded up to 60 high bits into uint64 'name' variable,
