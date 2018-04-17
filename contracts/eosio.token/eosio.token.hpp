@@ -34,17 +34,10 @@ namespace eosio {
 
          void issue( account_name to, asset quantity, string memo );
 
-         void inlineissue( asset quantity, string memo );
-
          void transfer( account_name from, 
                         account_name to,
                         asset        quantity,
                         string       memo );
-
-         void inlinetransfer( account_name from,
-                              account_name to,
-                              asset        quantity,
-                              string       memo );
 
          asset get_total_supply( const symbol_type& symbol );
 

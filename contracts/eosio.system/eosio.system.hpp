@@ -165,7 +165,7 @@ namespace eosiosystem {
                });
 
             {
-               eosio::action act( eosio::permission_level{N(eosio),N(active)}, N(eosio.token), N(inlinetransfer),
+               eosio::action act( eosio::permission_level{N(eosio),N(active)}, N(eosio.token), N(transfer),
                                   std::make_tuple( N(eosio), cr.owner, rewards, std::string("producer claiming rewards") ) );
                act.send();
             }

@@ -184,7 +184,7 @@ namespace eosiosystem {
 
             //set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, tot_itr->net_weight.quantity, tot_itr->cpu_weight.quantity );
             
-            eosio::action act( eosio::permission_level{del.from,N(active)}, N(eosio.token), N(inlinetransfer),
+            eosio::action act( eosio::permission_level{del.from,N(active)}, N(eosio.token), N(transfer),
                                std::make_tuple( del.from, N(eosio), total_stake, std::string("stake bandwidth") ) );
             act.send();
 
@@ -284,7 +284,7 @@ namespace eosiosystem {
             // consecutive missed blocks.
 
             {
-               eosio::action act( eosio::permission_level{N(eosio),N(active)}, N(eosio.token), N(inlinetransfer),
+               eosio::action act( eosio::permission_level{N(eosio),N(active)}, N(eosio.token), N(transfer),
                                   std::make_tuple( N(eosio), req->owner, req->amount, std::string("unstake") ) );
                act.send();
             }
