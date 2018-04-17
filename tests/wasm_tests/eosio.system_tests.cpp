@@ -150,7 +150,7 @@ public:
 
       // the balance is implied to be 0 if either the table or row does not exist
       if (tbl) {
-         const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, symbol(SY(4,EOS)).value()));
+         const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, symbol(SY(4,EOS)).value() >> 8));
          if (obj) {
             //balance is the second field after symbol, so skip the symbol
             fc::datastream<const char *> ds(obj->value.data(), obj->value.size());

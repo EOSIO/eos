@@ -2,7 +2,6 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#if 0
 #include <utility>
 #include <vector>
 #include <string>
@@ -389,4 +388,3 @@ class dice : public eosio::contract {
 };
 
 EOSIO_ABI( dice, (offerbet)(canceloffer)(reveal)(claimexpired)(deposit)(withdraw) )
-#endif

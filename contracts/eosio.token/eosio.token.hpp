@@ -75,4 +75,18 @@ namespace eosio {
                            account_name ram_payer );
    };
 
+   typedef std::tuple<account_name, account_name, asset, string> transfer_args;
+   void inline_transfer( permission_level permissions, account_name code, transfer_args args )
+   {
+      action act( permissions, code, N(transfer), args );
+      act.send();
+   }
+
+   typedef std::tuple<account_name, asset, string> issue_args;
+   void inline_issue( permission_level permissions, account_name code, issue_args args )
+   {
+      action act( permissions, code, N(issue), args );
+      act.send();
+   }
+
 } /// namespace eosio

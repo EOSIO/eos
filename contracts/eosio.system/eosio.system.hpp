@@ -164,15 +164,11 @@ namespace eosiosystem {
                   p.per_block_payments.amount = 0;
                });
 
-            {
-               eosio::action act( eosio::permission_level{N(eosio),N(active)}, N(eosio.token), N(transfer),
-                                  std::make_tuple( N(eosio), cr.owner, rewards, std::string("producer claiming rewards") ) );
-               act.send();
-            }
+            eosio::inline_transfer(eosio::permission_level{N(eosio),N(active)}, N(eosio.token),
+                                   { N(eosio), cr.owner, rewards, std::string("producer claiming rewards") } );
          }
 
          static void apply( account_name receiver, account_name code, action_name act ) {
-            //            if ( !eosio::dispatch<currency, typename currency::transfer, typename currency::issue>( code, act ) ) {
                if( !eosio::dispatch<contract, typename delegate_bandwidth<SystemAccount>::delegatebw,
                                  typename delegate_bandwidth<SystemAccount>::refund,
                                  typename voting<SystemAccount>::regproxy,
@@ -199,8 +195,6 @@ namespace eosiosystem {
                      contract().on( receiver, eosio::unpack_action_data<undelegatebw>() );
                   }
                }
-               //         }
-
          } /// apply
    };
 

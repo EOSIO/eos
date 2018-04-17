@@ -184,9 +184,8 @@ namespace eosiosystem {
 
             //set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, tot_itr->net_weight.quantity, tot_itr->cpu_weight.quantity );
             
-            eosio::action act( eosio::permission_level{del.from,N(active)}, N(eosio.token), N(transfer),
-                               std::make_tuple( del.from, N(eosio), total_stake, std::string("stake bandwidth") ) );
-            act.send();
+            eosio::inline_transfer(eosio::permission_level{del.from,N(active)}, N(eosio.token),
+                                   { del.from, N(eosio), total_stake, std::string("stake bandwidth") } );
 
             if ( asset(0) < del.stake_net_quantity + del.stake_cpu_quantity ) {
                voting<SystemAccount>::increase_voting_power( del.from, del.stake_net_quantity + del.stake_cpu_quantity );
@@ -283,11 +282,9 @@ namespace eosiosystem {
             // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
             // consecutive missed blocks.
 
-            {
-               eosio::action act( eosio::permission_level{N(eosio),N(active)}, N(eosio.token), N(transfer),
-                                  std::make_tuple( N(eosio), req->owner, req->amount, std::string("unstake") ) );
-               act.send();
-            }
+            eosio::inline_transfer( eosio::permission_level{N(eosio),N(active)}, N(eosio.token),
+                                    { N(eosio), req->owner, req->amount, std::string("unstake") });
+
             refunds_tbl.erase( req );
          }
    };
