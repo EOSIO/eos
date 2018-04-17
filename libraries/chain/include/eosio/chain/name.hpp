@@ -21,14 +21,13 @@ namespace eosio { namespace chain {
    static constexpr uint64_t string_to_name( const char* str )
    {
       uint64_t name = 0;
-      int i;
-      for (i = 0; str[i] && i < 12; ++i) {
-         // Retrieve the encoding of str[i] (see 'charmap'
-         // operator string() method, in the .cpp file) and left-shift it
-         // to the 5-bit slot corresponding to the str[i] ordinal counted
-         // counted from the top, down.
-          name |= char_to_symbol(str[i]) << (64 - 5 * (i + 1));
-      }
+      int i = 0;
+      for ( ; str[i] && i < 12; ++i) {
+          // NOTE: char_to_symbol() returns char type, and without this explicit
+          // expansion to uint64 type, the compilation fails at the point of usage
+          // of string_to_name(), where the usage requires constant (compile time) expression.
+           name |= (uint64_t) (char_to_symbol(str[i]) & 0x1f) << (64 - 5 * (i + 1));
+       }
 
       // The for-loop encoded up to 60 high bits into uint64 'name' variable,
       // if (strlen(str) > 12) then encode str[12] into the low (remaining)
