@@ -86,14 +86,12 @@ namespace eosio {
             uint8_t decimals() const { return m_value & 0xFF; }
             uint64_t precision() const
             {
-               static int64_t table[] = {
-                  1, 10, 100, 1000, 10000,
-                  100000, 1000000, 10000000, 100000000ll,
-                  1000000000ll, 10000000000ll,
-                  100000000000ll, 1000000000000ll,
-                  10000000000000ll, 100000000000000ll
-               };
-               return table[ decimals() ];
+               uint64_t p10 = 1;
+               uint64_t p = decimals();
+               while( p > 0  ) {
+                  p10 *= 10; --p;
+               }
+               return p10;
             }
             string name() const
             {
