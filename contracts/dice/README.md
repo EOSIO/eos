@@ -264,6 +264,6 @@ cleos push action dice withdraw '[ "alice", "103.0000 EOS" ]' -p alice
 ##### Balance of alice after withdraw
 ````bash
 cleos get currency balance eosio.token alice eos
-1003.0000 EOS
+103.0000 EOS
 ````
 
