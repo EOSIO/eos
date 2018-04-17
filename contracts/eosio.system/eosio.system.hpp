@@ -6,10 +6,8 @@
 
 #include "delegate_bandwidth.hpp"
 #include "native.hpp"
+
 #include <eosiolib/optional.hpp>
-
-//#include <eosiolib/generic_currency.hpp>
-
 #include <eosio.token/eosio.token.hpp>
 
 namespace eosiosystem {
@@ -42,8 +40,6 @@ namespace eosiosystem {
          using native<SystemAccount>::on;
          using pe = voting<SystemAccount>;
          using db = delegate_bandwidth<SystemAccount>;
-         //         using currency = typename common<SystemAccount>::currency;
-         //         using system_token_type = typename common<SystemAccount>::system_token_type;
          using producers_table = typename pe::producers_table;
          using global_state_singleton = typename voting<SystemAccount>::global_state_singleton;
          static const uint32_t max_inflation_rate = common<SystemAccount>::max_inflation_rate;
@@ -127,7 +123,7 @@ namespace eosiosystem {
             if( prod->last_rewards_claim > 0 ) {
                eosio_assert(now() >= prod->last_rewards_claim + seconds_per_day, "already claimed rewards within a day");
             }
-            //            system_token_type rewards = prod->per_block_payments;
+
             eosio::asset rewards = prod->per_block_payments;
             auto idx = producers_tbl.template get_index<N(prototalvote)>();
             auto itr = --idx.end();
@@ -153,7 +149,7 @@ namespace eosiosystem {
             if (is_among_payed_producers && total_producer_votes > 0) {
                if( global_state_singleton::exists() ) {
                   auto parameters = global_state_singleton::get();
-                  //                  auto share_of_eos_bucket = system_token_type( static_cast<uint64_t>( (prod->total_votes * parameters.eos_bucket.quantity) / total_producer_votes ) ); // This will be improved in the future when total_votes becomes a double type.
+                  // This will be improved in the future when total_votes becomes a double type.
                   auto share_of_eos_bucket = eosio::asset( static_cast<int64_t>( (prod->total_votes * parameters.eos_bucket.amount) / total_producer_votes ) );
                   rewards += share_of_eos_bucket;
                   parameters.eos_bucket -= share_of_eos_bucket;

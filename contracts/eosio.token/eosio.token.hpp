@@ -6,8 +6,16 @@
 
 #include <eosiolib/asset.hpp>
 #include <eosiolib/eosio.hpp>
-//#include <eosiolib/asset.hpp>
+
 #include <string>
+
+namespace eosiosystem {
+   template <account_name Account>
+   class voting;
+
+   template <account_name Account>
+   class delegate_bandwidth;
+}
 
 namespace eosio {
 
@@ -34,13 +42,17 @@ namespace eosio {
                         string       memo );
 
          void inlinetransfer( account_name from,
-                               account_name to,
-                               asset        quantity,
-                               string       memo );
+                              account_name to,
+                              asset        quantity,
+                              string       memo );
 
          asset get_total_supply( const symbol_type& symbol );
 
       private:
+
+         friend eosiosystem::voting<N(eosio)>;
+         friend eosiosystem::delegate_bandwidth<N(eosio)>;
+
          struct account {
             asset    balance;
             bool     frozen    = false;

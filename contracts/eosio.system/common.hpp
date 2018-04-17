@@ -1,7 +1,10 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
-#include <eosiolib/eosio.hpp>
 
-//#include <eosiolib/generic_currency.hpp>
+#include <eosiolib/eosio.hpp>
 #include <eosiolib/multi_index.hpp>
 #include <eosiolib/privileged.hpp>
 #include <eosiolib/singleton.hpp>
@@ -11,22 +14,15 @@
 
 namespace eosiosystem {
 
-   eosio::token _system_token(N(eosio.system));
-
    template<account_name SystemAccount>
    class common {
       public:
          static constexpr account_name system_account = SystemAccount;
-         //         typedef eosio::generic_currency< eosio::token<system_account,S(4,EOS)> > currency;
-         //         typedef typename currency::token_type                                    system_token_type;
+         static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
 
-         //         static constexpr eosio::symbol_type system_symbol(S(4,EOS));
-
-         static constexpr uint32_t   max_inflation_rate = 5;                        // 5% annual inflation
-
-         static constexpr uint32_t   blocks_per_producer = 12;
-         static constexpr uint32_t   seconds_per_day = 24 * 3600;
-         static constexpr uint32_t   days_per_4years = 1461;
+         static constexpr uint32_t     blocks_per_producer = 12;
+         static constexpr uint32_t     seconds_per_day = 24 * 3600;
+         static constexpr uint32_t     days_per_4years = 1461;
 
          struct eosio_parameters : eosio::blockchain_parameters {
             uint64_t          max_storage_size = 10 * 1024 * 1024;

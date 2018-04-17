@@ -99,15 +99,10 @@ void token::inlinetransfer( account_name from,
                              string       memo)
 {
    require_auth( from );
-
    require_recipient( from );
    require_recipient( to );
 
-  
-
-   //   dispatch_inline( permission_level{from,N(active)}, _self, N(transfer), &token::transfer, { from, to, quantity, memo } );
-   action act(permission_level{from,N(active)}, _self, N(transfer), std::make_tuple(from, to, quantity, memo));
-   act.send();
+   dispatch_inline( permission_level{from,N(active)}, _self, N(transfer), &token::transfer, { from, to, quantity, memo } );
 }
 
 asset token::get_total_supply( const symbol_type& symbol )

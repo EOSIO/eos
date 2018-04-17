@@ -3,21 +3,17 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
+
 #include "common.hpp"
 
 #include <eosiolib/eosio.hpp>
-//#include <eosiolib/token.hpp>
 #include <eosiolib/print.hpp>
-
-//#include <eosiolib/generic_currency.hpp>
 #include <eosiolib/datastream.hpp>
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/multi_index.hpp>
 #include <eosiolib/privileged.hpp>
 #include <eosiolib/singleton.hpp>
 #include <eosiolib/transaction.hpp>
-
-#include <eosio.token/eosio.token.hpp>
 
 #include <algorithm>
 #include <array>
@@ -35,10 +31,7 @@ namespace eosiosystem {
    template<account_name SystemAccount>
    class voting {
       public:
-
          static constexpr account_name system_account = SystemAccount;
-         //         using currency = typename common<SystemAccount>::currency;
-         //         using system_token_type = typename common<SystemAccount>::system_token_type;
          using eosio_parameters = typename common<SystemAccount>::eosio_parameters;
          using global_state_singleton = typename common<SystemAccount>::global_state_singleton;
 
@@ -234,9 +227,10 @@ namespace eosiosystem {
          }
 
          static eosio::asset payment_per_block(uint32_t percent_of_max_inflation_rate) {
-#warning "FIX THIS!"
-            //            const system_token_type token_supply = currency::get_total_supply();
-            const eosio::asset token_supply(10000000000, S(4,EOS)); // = _system_token.get_total_supply(S(4,EOS));
+            eosio::symbol_name sym = eosio::symbol_type(S(4,EOS)).name();
+            eosio::token::stats stats_tbl(N(eosio.token), sym);
+            const auto& st = stats_tbl.get(sym);
+            const eosio::asset token_supply = st.supply;
             const double annual_rate = double(max_inflation_rate * percent_of_max_inflation_rate) / double(10000);
             double continuous_rate = std::log1p(annual_rate);
             int64_t payment = static_cast<int64_t>((continuous_rate * double(token_supply.amount)) / double(blocks_per_year));
@@ -383,7 +377,7 @@ namespace eosiosystem {
             //            currency::inline_issue(SystemAccount, issue_quantity);
 #warning "FIX THIS!"
             {
-               eosio::action act( eosio::permission_level{N(eosio.system),N(active)}, N(eosio.token), N(inline_issue),
+               eosio::action act( eosio::permission_level{N(eosio),N(active)}, N(eosio.token), N(inlineissue),
                                   std::make_tuple( issue_quantity, std::string("producer pay") ) );
                act.send();
             }

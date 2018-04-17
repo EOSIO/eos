@@ -47,10 +47,11 @@ public:
       set_abi( N(eosio.token), eosio_token_abi );
 
       create_currency( N(eosio.token), config::system_account_name, asset::from_string("20000000.0000 EOS") );
+      issue(config::system_account_name, "10000000.0000 EOS");
 
       produce_blocks();
 
-      const auto& accnt = control->get_database().get<account_object,by_name>( config::system_account_name /*N(eosio.system)*/ );
+      const auto& accnt = control->get_database().get<account_object,by_name>( config::system_account_name );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi);
@@ -129,7 +130,7 @@ public:
 
    action_result regproducer( const account_name& acnt, int params_fixture = 1 ) {
       return push_action( acnt, N(regproducer), mvo()
-                          ("producer",  acnt /*name(acnt).to_string()*/ )
+                          ("producer",  acnt )
                           ("producer_key", fc::raw::pack( get_public_key( acnt, "active" ) ) )
                           ("prefs", producer_parameters_example( params_fixture ) )
       );
@@ -1098,8 +1099,8 @@ BOOST_FIXTURE_TEST_CASE( proxy_actions_affect_producers, eosio_system_tester ) t
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
-   issue( "alice", "10000000.0000 EOS", config::system_account_name);
-   BOOST_REQUIRE_EQUAL( asset::from_string("10000000.0000 EOS"), get_balance( "alice" ) );
+   issue( "alice", "100.0000 EOS", config::system_account_name);
+   BOOST_REQUIRE_EQUAL( asset::from_string("100.0000 EOS"), get_balance( "alice" ) );
 
    fc::variant params = producer_parameters_example(50);
    vector<char> key = fc::raw::pack(get_public_key(N(alice), "active"));
@@ -1127,7 +1128,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
    // bob makes stake
    // 1 block produced
 
-   BOOST_REQUIRE_EQUAL(success(), stake("bob", "11.0000 EOS", "00.1111 EOS", "00.1111 EOS"));
+   BOOST_REQUIRE_EQUAL(success(), stake("bob", "11.0000 EOS", "10.1111 EOS", "10.1111 EOS"));
    
    // bob votes for alice
    // 1 block produced
@@ -1141,12 +1142,10 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
    produce_blocks(10);
    prod = get_producer_info("alice");
    BOOST_REQUIRE(prod["per_block_payments"].as_uint64() > 0);
-
    BOOST_REQUIRE_EQUAL(success(), push_action(N(alice), N(claimrewards), mvo()
                                               ("owner",     "alice")
                                               )
                        );
-
    prod = get_producer_info("alice");
    BOOST_REQUIRE_EQUAL(0, prod["per_block_payments"].as_uint64());
 
