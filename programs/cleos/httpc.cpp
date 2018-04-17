@@ -49,8 +49,11 @@ namespace eosio { namespace client { namespace http {
             if( endpoint_iterator != end ) {
                continue;
             } else {
-               FC_THROW_EXCEPTION(connection_exception, "Connection to ${server}:${port}${path} is refused",
-                                                         ("server", server)("port", port)("path", path));
+               throw connection_exception(fc::log_messages{
+                  FC_LOG_MESSAGE( error, "Connection to ${server}:${port}${path} is refused",
+                                  ("server", server)("port", port)("path", path) ),
+                  FC_LOG_MESSAGE( error, e.what())
+               });
             }
          }
 
