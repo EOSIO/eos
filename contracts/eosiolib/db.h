@@ -88,15 +88,15 @@ int32_t db_idx256_lowerbound(account_name code, account_name scope, table_name t
 int32_t db_idx256_upperbound(account_name code, account_name scope, table_name table, void* data, uint32_t data_len, uint64_t* primary);
 int32_t db_idx256_end(account_name code, account_name scope, table_name table);
 
-int32_t db_idx_double_store(account_name scope, table_name table, account_name payer, uint64_t id, const uint64_t* secondary);
-void db_idx_double_update(int32_t iterator, account_name payer, const uint64_t* secondary);
+int32_t db_idx_double_store(account_name scope, table_name table, account_name payer, uint64_t id, const double* secondary);
+void db_idx_double_update(int32_t iterator, account_name payer, const double* secondary);
 void db_idx_double_remove(int32_t iterator);
 int32_t db_idx_double_next(int32_t iterator, uint64_t* primary);
 int32_t db_idx_double_previous(int32_t iterator, uint64_t* primary);
-int32_t db_idx_double_find_primary(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t primary);
-int32_t db_idx_double_find_secondary(account_name code, account_name scope, table_name table, const uint64_t* secondary, uint64_t* primary);
-int32_t db_idx_double_lowerbound(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t* primary);
-int32_t db_idx_double_upperbound(account_name code, account_name scope, table_name table, uint64_t* secondary, uint64_t* primary);
+int32_t db_idx_double_find_primary(account_name code, account_name scope, table_name table, double* secondary, uint64_t primary);
+int32_t db_idx_double_find_secondary(account_name code, account_name scope, table_name table, const double* secondary, uint64_t* primary);
+int32_t db_idx_double_lowerbound(account_name code, account_name scope, table_name table, double* secondary, uint64_t* primary);
+int32_t db_idx_double_upperbound(account_name code, account_name scope, table_name table, double* secondary, uint64_t* primary);
 int32_t db_idx_double_end(account_name code, account_name scope, table_name table);
 
 }

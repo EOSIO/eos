@@ -1710,6 +1710,7 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<contracts::index128_index>();
    _db.add_index<contracts::index256_index>();
    _db.add_index<contracts::index_double_index>();
+   _db.add_index<contracts::index_long_double_index>();
 
    _db.add_index<global_property_multi_index>();
    _db.add_index<dynamic_global_property_multi_index>();

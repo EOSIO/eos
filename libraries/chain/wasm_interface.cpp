@@ -1012,7 +1012,7 @@ class database_api : public context_aware_api {
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx128, uint128_t)
       DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(idx256, 2, uint128_t)
-      DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx_double, uint64_t)
+      DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx_double, float64_t)
 };
 
 class memory_api : public context_aware_api {
