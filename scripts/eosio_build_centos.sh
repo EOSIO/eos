@@ -179,7 +179,7 @@
 		cd ${HOME}/opt
 		STATUS=$(curl -LO -w '%{http_code}' --connect-timeout 30 https://cmake.org/files/v3.10/cmake-3.10.2.tar.gz)
 		if [ "${STATUS}" -ne 200 ]; then
-			printf "\tUnable to download Boost libraries at this time.\n"
+			printf "\tUnable to download CMAKE at this time.\n"
 			printf "\tExiting now.\n\n"
 			exit;
 		fi
