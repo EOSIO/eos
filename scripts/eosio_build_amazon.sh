@@ -116,7 +116,7 @@
 		fi
 		tar xf cmake-3.10.2.tar.gz
 		rm -f cmake-3.10.2.tar.gz
-		ln -s cmake-3.10.2/ cmake
+		ln -s ${HOME}/opt/cmake-3.10.2/ cmake
 		cd cmake
 		./bootstrap
 		if [ $? -ne 0 ]; then
