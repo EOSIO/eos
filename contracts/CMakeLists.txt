@@ -32,6 +32,7 @@ add_subdirectory(noop)
 add_subdirectory(dice)
 add_subdirectory(tic_tac_toe)
 
+
 file(GLOB SKELETONS RELATIVE ${CMAKE_SOURCE_DIR}/contracts "skeleton/*")
 
 # Documented multiple output support is broken, so properly setting up the multiple

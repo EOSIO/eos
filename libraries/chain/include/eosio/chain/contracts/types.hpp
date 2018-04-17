@@ -73,7 +73,7 @@ struct action_def {
 
    action_name name;
    type_name   type;
-   string      ricardian_contract; 
+   string      ricardian_contract;
 };
 
 struct table_def {
@@ -92,7 +92,7 @@ struct table_def {
 struct clause_pair {
    clause_pair() = default;
    clause_pair( const string& id, const string& body )
-   : id(id), body(body) 
+   : id(id), body(body)
    {}
 
    string id;
@@ -282,6 +282,7 @@ struct vetorecovery {
 };
 
 struct canceldelay {
+   permission_level      canceling_auth;
    transaction_id_type   trx_id;
 
    static account_name get_account() {
@@ -313,4 +314,4 @@ FC_REFLECT( eosio::chain::contracts::unlinkauth                       , (account
 FC_REFLECT( eosio::chain::contracts::postrecovery                     , (account)(data)(memo) )
 FC_REFLECT( eosio::chain::contracts::passrecovery                     , (account) )
 FC_REFLECT( eosio::chain::contracts::vetorecovery                     , (account) )
-FC_REFLECT( eosio::chain::contracts::canceldelay                      , (trx_id) )
+FC_REFLECT( eosio::chain::contracts::canceldelay                      , (canceling_auth)(trx_id) )

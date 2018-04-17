@@ -12,7 +12,7 @@ namespace eosio {
 }
 
 
-// #include <eosiolib/transaction.hpp>
+//#include <eosiolib/transaction.hpp>
 
 // NOTE: including eosiolib/transaction.hpp here causes !"unresolvable": env._ZNKSt3__120__vector_base_commonILb1EE20__throw_length_errorEv
 //       errors in api_tests/memory_tests

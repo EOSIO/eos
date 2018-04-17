@@ -36,7 +36,7 @@ namespace eosio {
             bool     frozen    = false;
             bool     whitelist = true;
 
-            uint64_t primary_key()const { return balance.symbol; }
+            uint64_t primary_key()const { return balance.symbol.name(); }
          };
 
          struct currency_stats {

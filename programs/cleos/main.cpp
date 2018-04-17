@@ -1419,9 +1419,8 @@ int main( int argc, char** argv ) {
        return app.exit(e);
    } catch (const explained_exception& e) {
       return 1;
-   } catch (const fc::exception& e) {
+   } catch (connection_exception& e) {
       auto errorString = e.to_detail_string();
-      if (errorString.find("Connection refused") != string::npos) {
          if (errorString.find(fc::json::to_string(port)) != string::npos) {
             std::cerr << localized("Failed to connect to nodeos at ${ip}:${port}; is nodeos running?", ("ip", host)("port", port)) << std::endl;
          } else if (errorString.find(fc::json::to_string(wallet_port)) != string::npos) {
@@ -1433,13 +1432,12 @@ int main( int argc, char** argv ) {
          if (verbose_errors) {
             elog("connect error: ${e}", ("e", errorString));
          }
-      } else {
-         // attempt to extract the error code if one is present
-         if (!print_recognized_errors(e, verbose_errors)) {
-            // Error is not recognized
-            if (!print_help_text(e) || verbose_errors) {
-               elog("Failed with error: ${e}", ("e", verbose_errors ? e.to_detail_string() : e.to_string()));
-            }
+   } catch (const fc::exception& e) {
+      // attempt to extract the error code if one is present
+      if (!print_recognized_errors(e, verbose_errors)) {
+         // Error is not recognized
+         if (!print_help_text(e) || verbose_errors) {
+            elog("Failed with error: ${e}", ("e", verbose_errors ? e.to_detail_string() : e.to_string()));
          }
       }
       return 1;

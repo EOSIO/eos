@@ -44,6 +44,7 @@ namespace fc
     try 
     {
       my->_sock->send_to(boost::asio::buffer(buffer, length), to);
+      return;
     } 
     catch(const boost::system::system_error& e)
     {
@@ -66,6 +67,7 @@ namespace fc
     try
     {
       my->_sock->send_to(boost::asio::buffer(buffer.get(), length), to);
+      return;
     } 
     catch(const boost::system::system_error& e)
     {
