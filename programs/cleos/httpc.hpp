@@ -46,4 +46,6 @@ namespace eosio { namespace client { namespace http {
    const string wallet_unlock = wallet_func_base + "/unlock";
    const string wallet_import_key = wallet_func_base + "/import_key";
    const string wallet_sign_trx = wallet_func_base + "/sign_transaction";
+
+   FC_DECLARE_EXCEPTION( connection_exception, 1100000, "Connection Exception" );
  }}}
