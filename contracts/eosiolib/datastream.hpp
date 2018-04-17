@@ -254,21 +254,43 @@ DataStream& operator >> ( DataStream& ds, std::array<T,N>& v ) {
    return ds;
 }
 
-template<typename DataStream, typename T, std::size_t N>
+template<typename DataStream, typename T, std::size_t N,
+         std::enable_if_t<std::is_scalar<T>::value == false || std::is_pointer<T>::value == true, int> = 0>
 DataStream& operator << ( DataStream& ds, const T (&v)[N] ) {
+   static_assert(!std::is_pointer<T>::value, "Pointers should not be serialized" );
    ds << unsigned_int( N );
    for( uint32_t i = 0; i < N; ++i )
       ds << v[i];
    return ds;
 }
 
-template<typename DataStream, typename T, std::size_t N>
+template<typename DataStream, typename T, std::size_t N,
+         std::enable_if_t<std::is_scalar<T>::value == true && std::is_pointer<T>::value == false, int> = 0>
+DataStream& operator << ( DataStream& ds, const T (&v)[N] ) {
+   ds << unsigned_int( N );
+   ds.write((char*)&v[0], sizeof(v));
+   return ds;
+}
+
+template<typename DataStream, typename T, std::size_t N,
+         std::enable_if_t<std::is_scalar<T>::value == false || std::is_pointer<T>::value == true, int> = 0>
 DataStream& operator >> ( DataStream& ds, T (&v)[N] ) {
+   static_assert(!std::is_pointer<T>::value, "Pointers should not be serialized" );
    unsigned_int s;
    ds >> s;
    eosio_assert( N == s.value, "T[] size and unpacked size don't match");
    for( uint32_t i = 0; i < N; ++i )
       ds >> v[i];
+   return ds;
+}
+
+template<typename DataStream, typename T, std::size_t N,
+         std::enable_if_t<std::is_scalar<T>::value == true && std::is_pointer<T>::value == false, int> = 0>
+DataStream& operator >> ( DataStream& ds, T (&v)[N] ) {
+   unsigned_int s;
+   ds >> s;
+   eosio_assert( N == s.value, "T[] size and unpacked size don't match");
+   ds.read((char*)&v[0], sizeof(v));
    return ds;
 }
 
