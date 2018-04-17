@@ -103,6 +103,32 @@
 		printf "\n\tNo required YUM dependencies to install.\n"
 	fi
 
+	if [[ $ENABLE_CODE_COVERAGE == true ]]; then
+		printf "\n\tChecking LCOV installation.\n"
+		if [ ! -e /usr/local/bin/lcov ]; then
+			printf "\n\tLCOV installation not found.\n"
+			printf "\tInstalling LCOV.\n"
+			cd ${TEMP_DIR}
+			git clone https://github.com/linux-test-project/lcov.git
+			if [ $? -ne 0 ]; then
+				printf "\tUnable to clone LCOV at this time.\n"
+				printf "\tExiting now.\n\n"
+				exit;
+			fi
+			cd lcov
+			sudo make install
+			if [ $? -ne 0 ]; then
+				printf "\tUnable to install LCOV at this time.\n"
+				printf "\tExiting now.\n\n"
+				exit;
+			fi
+			rm -rf ${TEMP_DIR}/lcov
+			printf "\tSuccessfully installed LCOV.\n"
+		else
+			printf "\n\tLCOV installation found @ /usr/local/bin/lcov.\n"
+		fi
+	fi
+	exit
 	printf "\n\tChecking CMAKE installation.\n"
     if [ ! -e ${CMAKE} ]; then
 		printf "\tInstalling CMAKE\n"

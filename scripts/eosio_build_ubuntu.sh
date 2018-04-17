@@ -59,6 +59,10 @@
 	DISPLAY=""
 	DEP=""
 
+	if [[ $ENABLE_CODE_COVERAGE == true ]]; then
+		DEP_ARRAY+=(lcov)
+	fi
+
 	printf "\n\tChecking for installed dependencies.\n\n"
 
 	for (( i=0; i<${#DEP_ARRAY[@]}; i++ ));
