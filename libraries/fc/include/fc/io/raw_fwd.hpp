@@ -111,8 +111,14 @@ namespace fc {
     template<typename Stream> inline void pack( Stream& s, const std::vector<char>& value );
     template<typename Stream> inline void unpack( Stream& s, std::vector<char>& value );
 
-    template<typename Stream, typename T, size_t N> inline void pack( Stream& s, const fc::array<T,N>& v);
-    template<typename Stream, typename T, size_t N> inline void unpack( Stream& s, fc::array<T,N>& v);
+    template<typename Stream, typename T, std::size_t N,
+             std::enable_if_t<std::is_scalar<T>::value == false || std::is_pointer<T>::value == true, int> = 0> inline void pack( Stream& s, const fc::array<T,N>& v);
+    template<typename Stream, typename T, std::size_t N,
+             std::enable_if_t<std::is_scalar<T>::value == true && std::is_pointer<T>::value == false, int> = 0> inline void pack( Stream& s, const fc::array<T,N>& v);
+    template<typename Stream, typename T, std::size_t N,
+                 std::enable_if_t<std::is_scalar<T>::value == false || std::is_pointer<T>::value == true, int> = 0> inline void unpack( Stream& s, fc::array<T,N>& v);
+    template<typename Stream, typename T, std::size_t N,
+                 std::enable_if_t<std::is_scalar<T>::value == true && std::is_pointer<T>::value == false, int> = 0> inline void unpack( Stream& s, fc::array<T,N>& v);
 
     template<typename Stream> inline void pack( Stream& s, const bool& v );
     template<typename Stream> inline void unpack( Stream& s, bool& v );

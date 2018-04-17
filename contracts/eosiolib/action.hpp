@@ -21,8 +21,7 @@ namespace eosio {
 
    /**
     *
-    *  This method attempts to reinterpret the action body as type T. This will only work
-    *  if the action has no dynamic fields and the struct packing on type T is properly defined.
+    *  This method unpacks the current action at type T.
     *
     *  @brief Interpret the action body as type T
     *  
@@ -32,18 +31,12 @@ namespace eosio {
     *    char a; //1
     *    unsigned long long b; //8
     *    int  c; //4
+    *
+    *    EOSLIB_SERIALIZE( dummy_action, (a)(b)(c) )
     *  };
-    *  dummy_action msg = current_action_data<dummy_action>();
+    *  dummy_action msg = unpack_action_data<dummy_action>();
     *  @endcode
     */
-   template<typename T>
-   T current_action_data() {
-      T value;
-      auto read = read_action_data( &value, sizeof(value) );
-      eosio_assert( read >= sizeof(value), "action shorter than expected" );
-      return value;
-   }
-
    template<typename T>
    T unpack_action_data() {
       char buffer[action_data_size()];
