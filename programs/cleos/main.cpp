@@ -1169,6 +1169,17 @@ int main( int argc, char** argv ) {
    string proposed_contract;
    string proposed_action;
    string proposer;
+   unsigned int proposal_expiration_hours = 24;
+   CLI::callback_t parse_expiration_hours = [&](CLI::results_t res) -> bool {
+      unsigned int value_s;
+      if (res.size() == 0 || !CLI::detail::lexical_cast(res[0], value_s)) {
+         return false;
+      }
+
+      proposal_expiration_hours = static_cast<uint64_t>(value_s);
+      return true;
+   };
+
    auto propose_action = msig->add_subcommand("propose", localized("Propose transaction"));
    //auto propose_action = msig->add_subcommand("action", localized("Propose action"));
    add_standard_transaction_options(propose_action);
@@ -1179,6 +1190,7 @@ int main( int argc, char** argv ) {
    propose_action->add_option("action", proposed_action, localized("action of deferred transaction"))->required();
    propose_action->add_option("data", proposed_transaction, localized("The JSON string or filename defining the action to propose"))->required();
    propose_action->add_option("proposer", proposer, localized("Account proposing the transaction"));
+   propose_action->add_option("proposal_expiration", parse_expiration_hours, localized("Proposal expiration interval in hours"));
 
    propose_action->set_callback([&] {
       fc::variant requested_perm_var;
@@ -1234,7 +1246,7 @@ int main( int argc, char** argv ) {
           ("proposal_name", proposal_name)
           ("requested", requested_perm_var)
           ("trx", fc::mutable_variant_object()
-           ("expiration", "2018-05-01T00:00:00")
+           ("expiration", fc::time_point_sec( fc::time_point::now() + fc::hours(proposal_expiration_hours) ).to_iso_string())
            ("region", 0)
            ("ref_block_num", 0)
            ("ref_block_prefix", 0)
