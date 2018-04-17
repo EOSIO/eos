@@ -1029,5 +1029,34 @@ BOOST_AUTO_TEST_CASE(transaction_mroot)
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(account_ram_limit) { try {
+
+   const int64_t ramlimit = 5000;
+   validating_tester chain;
+   resource_limits_manager mgr = chain.control->get_mutable_resource_limits_manager();
+
+   account_name acc1 = N(test1);
+   chain.create_account(acc1);
+
+   mgr.set_account_limits(acc1, ramlimit, -1, -1 );
+
+   transaction_trace trace = chain.create_account(N(acc2), acc1);
+   chain.produce_block();
+   BOOST_ASSERT(trace.status == transaction_trace::executed);
+
+   trace = chain.create_account(N(acc3), acc1);
+   chain.produce_block();
+   BOOST_ASSERT(trace.status == transaction_trace::executed);
+   
+   BOOST_REQUIRE_EXCEPTION(
+      chain.create_account(N(acc4), acc1), 
+      tx_resource_exhausted, 
+      [] (const tx_resource_exhausted &e)->bool {
+         BOOST_REQUIRE_EQUAL(std::string("transaction exhausted allowed resources"), e.what());
+         return true;
+      }
+   );
+
+} FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
