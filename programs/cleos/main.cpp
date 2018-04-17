@@ -1222,8 +1222,9 @@ int main( int argc, char** argv ) {
          reqperm = requested_perm_var.as<vector<permission_level>>();
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong requested permissions format: '${data}'", ("data",requested_perm_var));
 
+      vector<permission_level> trxperm;
       try {
-         transaction_perm_var.as<vector<permission_level>>();
+         trxperm = transaction_perm_var.as<vector<permission_level>>();
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Wrong transaction permissions format: '${data}'", ("data",transaction_perm_var));
 
       auto accountPermissions = get_account_permissions(tx_permission);
@@ -1238,6 +1239,19 @@ int main( int argc, char** argv ) {
          proposer = name(accountPermissions.at(0).actor).to_string();
       }
 
+      transaction trx;
+
+      trx.expiration = fc::time_point_sec( fc::time_point::now() + fc::hours(proposal_expiration_hours) );
+      trx.region = 0;
+      trx.ref_block_num = 0;
+      trx.ref_block_prefix = 0;
+      trx.max_net_usage_words = 0;
+      trx.max_kcpu_usage = 0;
+      trx.delay_sec = 0;
+      trx.actions = { chain::action(trxperm, name(proposed_contract), name(proposed_action), proposed_trx_serialized) };
+
+      fc::to_variant(trx, trx_var);
+
       arg = fc::mutable_variant_object()
          ("code", "eosio.msig")
          ("action", "propose")
@@ -1245,23 +1259,7 @@ int main( int argc, char** argv ) {
           ("proposer", proposer )
           ("proposal_name", proposal_name)
           ("requested", requested_perm_var)
-          ("trx", fc::mutable_variant_object()
-           ("expiration", fc::time_point_sec( fc::time_point::now() + fc::hours(proposal_expiration_hours) ).to_iso_string())
-           ("region", 0)
-           ("ref_block_num", 0)
-           ("ref_block_prefix", 0)
-           ("max_net_usage_words", 0)
-           ("max_kcpu_usage",0)
-           ("delay_sec", 0)
-           ("context_free_actions", fc::variants() )
-           ("actions", fc::variants{ fc::mutable_variant_object()
-                                     ("account", proposed_contract)
-                                     ("name", proposed_action)
-                                     ("authorization", transaction_perm_var)
-                                     ("data", proposed_trx_serialized)
-                 }
-           )
-          )
+          ("trx", trx_var)
          );
       result = call(json_to_bin_func, arg);
       send_actions({chain::action{accountPermissions, "eosio.msig", "propose", result.get_object()["binargs"].as<bytes>()}});
