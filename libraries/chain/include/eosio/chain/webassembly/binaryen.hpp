@@ -455,7 +455,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
    static Ret translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) {
       uint32_t ptr = args.at(offset).geti32();
       T* base = array_ptr_impl<T>(interface, ptr, 1);
-      FC_ASSERT( reinterpret_cast<uintptr_t>(base) % config::eosio_alignment == 0, "Misaligned pointer" );
+      FC_ASSERT( reinterpret_cast<uintptr_t>(base) % alignof(T) == 0, "Misaligned pointer" );
       return Then(interface, base, rest..., args, offset - 1);
    };
 
@@ -538,7 +538,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
       FC_ASSERT(ptr != 0);
       T* base = array_ptr_impl<T>(interface, ptr, 1);
       std::cout << "TYPER " << typeid(T).name() << " " << alignof(T) << std::endl;
-      FC_ASSERT( reinterpret_cast<uintptr_t>(base) % config::eosio_alignment == 0, "Misaligned pointer" );
+      FC_ASSERT( reinterpret_cast<uintptr_t>(base) % alignof(T) == 0, "Misaligned pointer" );
       return Then(interface, *base, rest..., args, offset - 1);
    }
 

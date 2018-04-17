@@ -59,7 +59,7 @@ namespace _test_multi_index {
 
       typedef record_idx64 record;
 
-      EOS_ALIGNED(record) records[] = {{265, N(alice)},
+      record records[] = {{265, N(alice)},
                           {781, N(bob)},
                           {234, N(charlie)},
                           {650, N(allyson)},
@@ -73,7 +73,6 @@ namespace _test_multi_index {
       multi_index<TableName, record,
          indexed_by< N(bysecondary), const_mem_fun<record, uint64_t, &record::get_secondary> >
       > table( receiver, receiver );
-      return;
       auto payer = receiver;
 
       for (size_t i = 0; i < num_records; ++i) {

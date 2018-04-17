@@ -33,7 +33,7 @@ typedef int64_t share_type;
 typedef uint16_t weight_type;
 
 #define PACKED(X) __attribute((packed)) X
-#define EOS_ALIGNED(X) alignas(16) X
+#define ALIGNED(X, A) alignas(A) X
 
 struct public_key {
    char data[34];
@@ -43,15 +43,15 @@ struct signature {
    uint8_t data[66];
 };
 
-struct EOS_ALIGNED(checksum256) {
+struct ALIGNED(checksum256, 4) {
    uint8_t hash[32];
 };
 
-struct EOS_ALIGNED(checksum160) {
+struct ALIGNED(checksum160, 4) {
    uint8_t hash[20];
 };
 
-struct EOS_ALIGNED(checksum512) {
+struct ALIGNED(checksum512, 4) {
    uint8_t hash[64];
 };
 
