@@ -59,6 +59,15 @@ namespace eosio {
 
    using net_message_ptr = shared_ptr<net_message>;
 
+   template<typename I>
+   std::string itoh(I n, size_t hlen = sizeof(I)<<1) {
+      static const char* digits = "0123456789abcdef";
+      std::string r(hlen, '0');
+      for(size_t i = 0, j = (hlen - 1) * 4 ; i < hlen; ++i, j -= 4)
+         r[i] = digits[(n>>j) & 0x0f];
+      return r;
+   }
+
    struct node_transaction_state {
       transaction_id_type id;
       time_point_sec  expires;  /// time after which this may be purged.
@@ -2000,8 +2009,8 @@ namespace eosio {
                c->enqueue(go_away_message(wrong_version));
                return;
             } else {
-               wlog("Peer network version does not match expected ${nv} but got ${mnv}",
-                    ("nv", network_version)("mnv", msg.network_version));
+               ilog("Local network version: ${nv} Remote version: ${mnv}",
+                    ("nv", eosio::itoh(network_version))("mnv", eosio::itoh(msg.network_version)));
             }
          }
 
