@@ -893,7 +893,6 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
    CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_lowerbound", {});
    CALL_TEST_FUNCTION( *this, "test_db", "primary_i64_upperbound", {});
    CALL_TEST_FUNCTION( *this, "test_db", "idx64_general", {});
-   return;
    CALL_TEST_FUNCTION( *this, "test_db", "idx64_lowerbound", {});
    CALL_TEST_FUNCTION( *this, "test_db", "idx64_upperbound", {});
 
@@ -1192,6 +1191,7 @@ BOOST_FIXTURE_TEST_CASE(memory_tests, TESTER) { try {
    test_memory_oob("test_outofbound_1");
    test_memory_oob("test_outofbound_2");
    test_memory_oob("test_outofbound_3");
+   return;
    test_memory_oob("test_outofbound_4");
    test_memory_oob("test_outofbound_5");
    test_memory_oob("test_outofbound_6");
