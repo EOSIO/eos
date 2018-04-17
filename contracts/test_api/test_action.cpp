@@ -77,7 +77,6 @@ void test_action::test_cf_action() {
 
    eosio::action act = eosio::get_action( 0, 0 );
    cf_action cfa = act.data_as<cf_action>();
-
    if ( cfa.payload == 100 ) {
       // verify read of get_context_free_data, also verifies system api access
       int size = get_context_free_data( cfa.cfd_idx, nullptr, 0 );
