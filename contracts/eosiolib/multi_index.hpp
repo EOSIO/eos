@@ -297,6 +297,10 @@ class multi_index
             const_reverse_iterator rend()const    { return crend(); }
 
             const_iterator find( secondary_key_type&& secondary )const {
+               return find( secondary );
+            }
+
+            const_iterator find( const secondary_key_type& secondary )const {
                auto lb = lower_bound( secondary );
                auto e = cend();
                if( lb == e ) return e;
@@ -304,6 +308,16 @@ class multi_index
                if( secondary != secondary_extractor_type()(*lb) )
                   return e;
                return lb;
+            }
+
+            const T& get( secondary_key_type&& secondary )const {
+               return get( secondary );
+            }
+
+            const T& get( const secondary_key_type& secondary )const {
+               auto result = find( secondary );
+               eosio_assert( result != cend(), "unable to find secondary key" );
+               return *result;
             }
 
             const_iterator lower_bound( secondary_key_type&& secondary )const {
@@ -598,7 +612,7 @@ class multi_index
       template<uint64_t IndexName>
       auto get_index()const {
          using namespace _multi_index_detail;
-         
+
          auto res = hana::find_if( _indices, []( auto&& in ) {
             return std::integral_constant<bool, std::decay<typename decltype(+hana::at_c<1>(in))::type>::type::index_name == IndexName>();
          });
@@ -724,7 +738,7 @@ class multi_index
 
       const T& get( uint64_t primary )const {
          auto result = find( primary );
-         eosio_assert( result != end(), "unable to find key" );
+         eosio_assert( result != cend(), "unable to find key" );
          return *result;
       }
 
