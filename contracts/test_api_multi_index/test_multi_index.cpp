@@ -462,6 +462,11 @@ void test_multi_index::idx256_general(uint64_t receiver, uint64_t code, uint64_t
 
    auto e = table.find( 2 );
 
+   key256 default_key256;
+   print("key256() = ", default_key256, "\n");
+   auto lowest =  std::numeric_limits<key256>::lowest();
+   print("numeric_limits<key256>::lowest() = ", lowest, "\n");
+
    print("Items sorted by primary key:\n");
    for( const auto& item : table ) {
       print(" ID=", item.primary_key(), ", secondary=", item.sec, "\n");
@@ -769,4 +774,3 @@ void test_multi_index::idx64_pk_cache_sk_lookup(uint64_t receiver, uint64_t code
 }
 
 #pragma GCC diagnostic pop
-

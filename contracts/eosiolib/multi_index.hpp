@@ -27,12 +27,6 @@ namespace eosio {
 
 using boost::multi_index::const_mem_fun;
 
-
-namespace hana = boost::hana;
-
-template<typename T>
-struct secondary_index_db_functions;
-
 #define WRAP_SECONDARY_SIMPLE_TYPE(IDX, TYPE)\
 template<>\
 struct secondary_index_db_functions<TYPE> {\
@@ -87,13 +81,37 @@ struct secondary_index_db_functions<TYPE> {\
    }\
 };\
 
-WRAP_SECONDARY_SIMPLE_TYPE(idx64,  uint64_t)
-WRAP_SECONDARY_SIMPLE_TYPE(idx128, uint128_t)
-WRAP_SECONDARY_ARRAY_TYPE(idx256, key256)
-WRAP_SECONDARY_SIMPLE_TYPE(idx_double, double)
+#define MAKE_TRAITS_FOR_ARITHMETIC_SECONDARY_KEY(TYPE)\
+template<>\
+struct secondary_key_traits<TYPE> {\
+   static TYPE lowest() { return std::numeric_limits<TYPE>::lowest(); }\
+};
 
-template<uint64_t TableName, typename T, typename... Indices>
-class multi_index;
+namespace _multi_index_detail {
+
+   namespace hana = boost::hana;
+
+   template<typename T>
+   struct secondary_index_db_functions;
+
+   template<typename T>
+   struct secondary_key_traits;
+
+   WRAP_SECONDARY_SIMPLE_TYPE(idx64,  uint64_t)
+   MAKE_TRAITS_FOR_ARITHMETIC_SECONDARY_KEY(uint64_t)
+
+   WRAP_SECONDARY_SIMPLE_TYPE(idx128, uint128_t)
+   MAKE_TRAITS_FOR_ARITHMETIC_SECONDARY_KEY(uint128_t)
+
+   WRAP_SECONDARY_SIMPLE_TYPE(idx_double, double)
+   MAKE_TRAITS_FOR_ARITHMETIC_SECONDARY_KEY(double)
+
+   WRAP_SECONDARY_ARRAY_TYPE(idx256, key256)
+   template<>
+   struct secondary_key_traits<key256> {
+      static key256 lowest() { return key256(); }
+   };
+}
 
 template<uint64_t IndexName, typename Extractor>
 struct indexed_by {
@@ -195,6 +213,8 @@ class multi_index
                   }
 
                   const_iterator& operator++() {
+                     using namespace _multi_index_detail;
+
                      eosio_assert( _item != nullptr, "cannot increment end iterator" );
 
                      if( _item->__iters[Number] == -1 ) {
@@ -220,6 +240,8 @@ class multi_index
                   }
 
                   const_iterator& operator--() {
+                     using namespace _multi_index_detail;
+
                      uint64_t prev_pk = 0;
                      int32_t  prev_itr = -1;
 
@@ -260,7 +282,8 @@ class multi_index
             typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
             const_iterator cbegin()const {
-               return lower_bound(std::numeric_limits<secondary_key_type>::lowest());
+               using namespace _multi_index_detail;
+               return lower_bound( secondary_key_traits<secondary_key_type>::lowest() );
             }
             const_iterator begin()const  { return cbegin(); }
 
@@ -287,6 +310,8 @@ class multi_index
                return lower_bound( secondary );
             }
             const_iterator lower_bound( const secondary_key_type& secondary )const {
+               using namespace _multi_index_detail;
+
                uint64_t primary = 0;
                secondary_key_type secondary_copy(secondary);
                auto itr = secondary_index_db_functions<secondary_key_type>::db_idx_lowerbound( get_code(), get_scope(), name(), secondary_copy, primary );
@@ -303,6 +328,8 @@ class multi_index
                return upper_bound( secondary );
             }
             const_iterator upper_bound( const secondary_key_type& secondary )const {
+               using namespace _multi_index_detail;
+
                uint64_t primary = 0;
                secondary_key_type secondary_copy(secondary);
                auto itr = secondary_index_db_functions<secondary_key_type>::db_idx_upperbound( get_code(), get_scope(), name(), secondary_copy, primary );
@@ -316,6 +343,8 @@ class multi_index
             }
 
             const_iterator iterator_to( const T& obj ) {
+               using namespace _multi_index_detail;
+
                const auto& objitem = static_cast<const item&>(obj);
                eosio_assert( objitem.__idx == _multidx, "object passed to iterator_to is not in multi_index" );
 
@@ -365,6 +394,8 @@ class multi_index
       struct intc { enum e{ value = I }; operator uint64_t()const{ return I; }  };
 
       static constexpr auto transform_indices( ) {
+         using namespace _multi_index_detail;
+
          typedef decltype( hana::zip_shortest(
                              hana::make_tuple( intc<0>(), intc<1>(), intc<2>(), intc<3>(), intc<4>(), intc<5>(),
                                                intc<6>(), intc<7>(), intc<8>(), intc<9>(), intc<10>(), intc<11>(),
@@ -389,6 +420,8 @@ class multi_index
       indices_type _indices;
 
       const item& load_object_by_primary_iterator( int32_t itr )const {
+         using namespace _multi_index_detail;
+
          auto itr2 = std::find_if(_items_vector.rbegin(), _items_vector.rend(), [&](const item_ptr& ptr) {
             return ptr._primary_itr == itr;
          });
@@ -414,7 +447,7 @@ class multi_index
             ds >> val;
 
             i.__primary_itr = itr;
-            boost::hana::for_each( _indices, [&]( auto& idx ) {
+            hana::for_each( _indices, [&]( auto& idx ) {
                typedef typename decltype(+hana::at_c<1>(idx))::type index_type;
 
                i.__iters[ index_type::number() ] = -1;
@@ -551,24 +584,28 @@ class multi_index
 
       template<uint64_t IndexName>
       auto get_index() {
-        auto res = boost::hana::find_if( _indices, []( auto&& in ) {
+         using namespace _multi_index_detail;
+
+         auto res = hana::find_if( _indices, []( auto&& in ) {
             return std::integral_constant<bool, std::decay<typename decltype(+hana::at_c<0>(in))::type>::type::index_name == IndexName>();
-        });
+         });
 
-        static_assert( res != hana::nothing, "name provided is not the name of any secondary index within multi_index" );
+         static_assert( res != hana::nothing, "name provided is not the name of any secondary index within multi_index" );
 
-        return typename decltype(+hana::at_c<0>(res.value()))::type(this);
+         return typename decltype(+hana::at_c<0>(res.value()))::type(this);
       }
 
       template<uint64_t IndexName>
       auto get_index()const {
-        auto res = boost::hana::find_if( _indices, []( auto&& in ) {
+         using namespace _multi_index_detail;
+         
+         auto res = hana::find_if( _indices, []( auto&& in ) {
             return std::integral_constant<bool, std::decay<typename decltype(+hana::at_c<1>(in))::type>::type::index_name == IndexName>();
-        });
+         });
 
-        static_assert( res != hana::nothing, "name provided is not the name of any secondary index within multi_index" );
+         static_assert( res != hana::nothing, "name provided is not the name of any secondary index within multi_index" );
 
-        return typename decltype(+hana::at_c<1>(res.value()))::type(this);
+         return typename decltype(+hana::at_c<1>(res.value()))::type(this);
       }
 
       const_iterator iterator_to( const T& obj )const {
@@ -579,6 +616,8 @@ class multi_index
 
       template<typename Lambda>
       const_iterator emplace( uint64_t payer, Lambda&& constructor ) {
+         using namespace _multi_index_detail;
+
          eosio_assert( _code == current_receiver(), "cannot create objects in table of another contract" ); // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
 
          auto itm = std::make_unique<item>( this, [&]( auto& i ){
@@ -604,7 +643,7 @@ class multi_index
             if( pk >= _next_primary_key )
                _next_primary_key = (pk >= no_available_primary_key) ? no_available_primary_key : (pk + 1);
 
-            boost::hana::for_each( _indices, [&]( auto& idx ) {
+            hana::for_each( _indices, [&]( auto& idx ) {
                typedef typename decltype(+hana::at_c<0>(idx))::type index_type;
 
                i.__iters[index_type::number()] = secondary_index_db_functions<typename index_type::secondary_key_type>::db_idx_store( _scope, index_type::name(), payer, obj.primary_key(), index_type::extract_secondary_key(obj) );
@@ -629,12 +668,14 @@ class multi_index
 
       template<typename Lambda>
       void modify( const T& obj, uint64_t payer, Lambda&& updater ) {
+         using namespace _multi_index_detail;
+
          const auto& objitem = static_cast<const item&>(obj);
          eosio_assert( objitem.__idx == this, "object passed to modify is not in multi_index" );
          auto& mutableitem = const_cast<item&>(objitem);
          eosio_assert( _code == current_receiver(), "cannot modify objects in table of another contract" ); // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
 
-         auto secondary_keys = boost::hana::transform( _indices, [&]( auto&& idx ) {
+         auto secondary_keys = hana::transform( _indices, [&]( auto&& idx ) {
             typedef typename decltype(+hana::at_c<0>(idx))::type index_type;
 
             return index_type::extract_secondary_key( obj );
@@ -663,7 +704,7 @@ class multi_index
          if( pk >= _next_primary_key )
             _next_primary_key = (pk >= no_available_primary_key) ? no_available_primary_key : (pk + 1);
 
-         boost::hana::for_each( _indices, [&]( auto& idx ) {
+         hana::for_each( _indices, [&]( auto& idx ) {
             typedef typename decltype(+hana::at_c<0>(idx))::type index_type;
 
             auto secondary = index_type::extract_secondary_key( obj );
@@ -713,6 +754,8 @@ class multi_index
       }
 
       void erase( const T& obj ) {
+         using namespace _multi_index_detail;
+
          const auto& objitem = static_cast<const item&>(obj);
          eosio_assert( objitem.__idx == this, "object passed to erase is not in multi_index" );
          eosio_assert( _code == current_receiver(), "cannot erase objects in table of another contract" ); // Quick fix for mutating db using multi_index that shouldn't allow mutation. Real fix can come in RC2.
@@ -728,7 +771,7 @@ class multi_index
 
          db_remove_i64( objitem.__primary_itr );
 
-         boost::hana::for_each( _indices, [&]( auto& idx ) {
+         hana::for_each( _indices, [&]( auto& idx ) {
             typedef typename decltype(+hana::at_c<0>(idx))::type index_type;
 
             auto i = objitem.__iters[index_type::number()];
