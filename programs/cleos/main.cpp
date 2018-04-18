@@ -559,10 +559,9 @@ void start_keosd( uint16_t wallet_port ) {
    if ( !boost::filesystem::exists(keosPath) ) {
       keosPath = binPath.parent_path().parent_path().append("keosd").append("keosd");
    }
-   keosPath = boost::filesystem::canonical( keosPath );
-
    if ( boost::filesystem::exists( keosPath ) ) {
       namespace bp = boost::process;
+      keosPath = boost::filesystem::canonical( keosPath );
       ::boost::process::child keos( keosPath, "--http-server-address=127.0.0.1:"+std::to_string(wallet_port),
                                     bp::std_in.close(),
                                     bp::std_out > bp::null, //so it can be written without anything
@@ -574,7 +573,7 @@ void start_keosd( uint16_t wallet_port ) {
          std::cerr << "Failed to launch " << keosPath << std::endl;
       }
    } else {
-      std::cerr << "keos not found" << std::endl;
+      std::cerr << "keosd not found" << std::endl;
    }
 }
 
