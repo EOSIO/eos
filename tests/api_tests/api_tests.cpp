@@ -945,6 +945,22 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
                       N(testapi) );
    BOOST_CHECK_EQUAL( res, success() );
 
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_create_fail", {},
+                                           transaction_exception, "NaN is not an allowed value for a secondary key");
+   CALL_TEST_FUNCTION( *this, "test_db", "idx_double_nan_setup", {});
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_modify_fail", {},
+                                           transaction_exception, "NaN is not an allowed value for a secondary key");
+
+   uint32_t lookup_type = 0; // 0 for find, 1 for lower bound, and 2 for upper bound;
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_lookup_fail", fc::raw::pack(lookup_type),
+                                           transaction_exception, "NaN is not an allowed value for a secondary key");
+   lookup_type = 1;
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_lookup_fail", fc::raw::pack(lookup_type),
+                                           transaction_exception, "NaN is not an allowed value for a secondary key");
+   lookup_type = 2;
+   CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_lookup_fail", fc::raw::pack(lookup_type),
+                                           transaction_exception, "NaN is not an allowed value for a secondary key");
+
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 

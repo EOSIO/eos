@@ -90,47 +90,7 @@ struct secondary_index_db_functions<TYPE> {\
 WRAP_SECONDARY_SIMPLE_TYPE(idx64,  uint64_t)
 WRAP_SECONDARY_SIMPLE_TYPE(idx128, uint128_t)
 WRAP_SECONDARY_ARRAY_TYPE(idx256, key256)
-
-template<>
-struct secondary_index_db_functions<double> {
-   static int32_t db_idx_next( int32_t iterator, uint64_t* primary )          { return db_idx_double_next( iterator, primary ); }
-   static int32_t db_idx_previous( int32_t iterator, uint64_t* primary )      { return db_idx_double_previous( iterator, primary ); }
-   static void    db_idx_remove( int32_t iterator  )                          { db_idx_double_remove( iterator ); }
-   static int32_t db_idx_end( uint64_t code, uint64_t scope, uint64_t table ) { return db_idx_double_end( code, scope, table ); }
-   static int32_t db_idx_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, double secondary ) {
-      uint64_t val = *(uint64_t*)(&secondary); // Get uint64_t representation of double secondary
-      return db_idx_double_store( scope, table, payer, id, &val );
-   }
-   static void    db_idx_update( int32_t iterator, uint64_t payer, double secondary ) {
-      uint64_t val = *(uint64_t*)(&secondary); // Get uint64_t representation of double secondary
-      db_idx_double_update( iterator, payer, &val );
-   }
-   static int32_t db_idx_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary, double& secondary ) {
-      uint64_t val = 0;
-      auto itr = db_idx_double_find_primary( code, scope, table, &val, primary );
-      if( itr >= 0 )
-         secondary = *(double*)(&val); // Store double secondary from uint64_t representation stored in val
-      return itr;
-   }
-   static int32_t db_idx_find_secondary( uint64_t code, uint64_t scope, uint64_t table, double secondary, uint64_t& primary ) {
-      uint64_t val = *(uint64_t*)(&secondary);
-      return db_idx_double_find_secondary( code, scope, table, &val, &primary );
-   }
-   static int32_t db_idx_lowerbound( uint64_t code, uint64_t scope, uint64_t table, double& secondary, uint64_t& primary ) {
-      uint64_t val = *(uint64_t*)(&secondary); // Get uint64_t representation of double secondary
-      auto itr = db_idx_double_lowerbound( code, scope, table, &val, &primary );
-      if( itr >= 0 )
-         secondary = *(double*)(&val); // Store double secondary from uint64_t representation stored in val
-      return itr;
-   }
-   static int32_t db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, double& secondary, uint64_t& primary ) {
-      uint64_t val = *(uint64_t*)(&secondary); // Get uint64_t representation of double secondary
-      auto itr = db_idx_double_upperbound( code, scope, table, &val, &primary );
-      if( itr >= 0 )
-         secondary = *(double*)(&val); // Store double secondary from uint64_t representation stored in val
-      return itr;
-   }
-};
+WRAP_SECONDARY_SIMPLE_TYPE(idx_double, double)
 
 template<uint64_t TableName, typename T, typename... Indices>
 class multi_index;

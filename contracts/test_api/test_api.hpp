@@ -90,6 +90,11 @@ struct test_db {
    static void idx64_upperbound(uint64_t receiver, uint64_t code, uint64_t action);
 
    static void test_invalid_access(uint64_t receiver, uint64_t code, uint64_t action);
+
+   static void idx_double_nan_create_fail(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx_double_nan_setup(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx_double_nan_modify_fail(uint64_t receiver, uint64_t code, uint64_t action);
+   static void idx_double_nan_lookup_fail(uint64_t receiver, uint64_t code, uint64_t action);
 };
 
 struct test_multi_index {
