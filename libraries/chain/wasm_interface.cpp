@@ -1030,14 +1030,12 @@ class console_api : public context_aware_api {
          return context.IDX.previous_secondary(iterator, primary);\
       }
 
-void set_softfloat_from_long_double( float128_t& out, const uint128_t& in ) {
-   out.v[0] = static_cast<uint64_t>(in >> 64);
-   out.v[1] = static_cast<uint64_t>( in & 0xFFFFFFFFFFFFFFFFULL );
+void set_softfloat_from_long_double( float128_t& out, const unsigned __int128& in ) {
+   out = *(float128_t*)(&in);
 }
 
-void set_long_double_from_softfloat( uint128_t& out, const float128_t& in ) {
-   out = static_cast<uint128_t>(in.v[0]) << 64;
-   out |= in.v[1];
+void set_long_double_from_softfloat( unsigned __int128& out, const float128_t& in ) {
+   out = *(unsigned __int128*)(&in);
 }
 
 class database_api : public context_aware_api {
