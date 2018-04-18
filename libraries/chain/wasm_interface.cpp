@@ -663,25 +663,11 @@ class softfloat_api : public context_aware_api {
       static double from_softfloat64( float64_t d ) {
          return *reinterpret_cast<double*>(&d);
       }
-
-   private:
-      inline float32_t to_softfloat32( float f ) {
-         return *reinterpret_cast<float32_t*>(&f);
-      }
-      inline float64_t to_softfloat64( double d ) {
-         return *reinterpret_cast<float64_t*>(&d);
-      }
-      inline float from_softfloat32( float32_t f ) {
-         return *reinterpret_cast<float*>(&f);
-      }
-      inline double from_softfloat64( float64_t d ) {
-         return *reinterpret_cast<double*>(&d);
-      }
       static constexpr uint32_t inv_float_eps = 0x4B000000;
       static constexpr uint64_t inv_double_eps = 0x4330000000000000;
 
-      inline bool sign_bit( float32_t f ) { return f.v >> 31; }
-      inline bool sign_bit( float64_t f ) { return f.v >> 63; }
+      static bool sign_bit( float32_t f ) { return f.v >> 31; }
+      static bool sign_bit( float64_t f ) { return f.v >> 63; }
       
 
 };
