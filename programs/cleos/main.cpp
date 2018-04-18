@@ -81,6 +81,7 @@ Options:
 #include <fc/io/json.hpp>
 #include <fc/io/console.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/variant_object.hpp>
 #include <eosio/utilities/key_conversion.hpp>
 
 #include <eosio/chain/config.hpp>
@@ -359,6 +360,51 @@ chain::action create_newaccount(const name& creator, const name& newaccount, pub
    };
 }
 
+void create_regproducer(const account_name& producer,
+                        public_key_type key,
+                        uint64_t max_storage_size,
+                        uint32_t percent_of_max_inflation_rate,
+                        uint32_t storage_reserve_ratio) {
+   fc::variant_object params = fc::mutable_variant_object()
+           ("base_per_transaction_net_usage", config::default_base_per_transaction_net_usage)
+           ("base_per_transaction_cpu_usage", config::default_base_per_transaction_cpu_usage)
+           ("base_per_action_cpu_usage", config::default_base_per_action_cpu_usage)
+           ("base_setcode_cpu_usage", config::default_base_setcode_cpu_usage)
+           ("per_signature_cpu_usage", config::default_per_signature_cpu_usage)
+           ("per_lock_net_usage", config::default_per_lock_net_usage)
+           ("context_free_discount_cpu_usage_num", config::default_context_free_discount_cpu_usage_num)
+           ("context_free_discount_cpu_usage_den", config::default_context_free_discount_cpu_usage_den)
+           ("max_transaction_cpu_usage", config::default_max_transaction_cpu_usage)
+           ("max_transaction_net_usage", config::default_max_transaction_net_usage)
+           ("max_block_cpu_usage", config::default_max_block_cpu_usage)
+           ("target_block_cpu_usage_pct", config::default_target_block_cpu_usage_pct)
+           ("max_block_net_usage", config::default_max_block_net_usage)
+           ("target_block_net_usage_pct", config::default_target_block_net_usage_pct)
+           ("max_transaction_lifetime", config::default_max_trx_lifetime)
+           ("max_transaction_exec_time", config::default_max_trx_runtime)
+           ("max_authority_depth", config::default_max_auth_depth)
+           ("max_inline_depth", config::default_max_inline_depth)
+           ("max_inline_action_size", config::default_max_inline_action_size)
+           ("max_generated_transaction_count", config::default_max_gen_trx_count)
+           ("max_storage_size", max_storage_size)
+           ("percent_of_max_inflation_rate", percent_of_max_inflation_rate)
+           ("storage_reserve_ratio", storage_reserve_ratio);
+   fc::variant act_payload = fc::mutable_variant_object()
+            ("producer", producer)
+            ("producer_key", fc::raw::pack(key))
+            ("prefs", params);
+
+   const auto code = name(config::system_account_name);
+   const auto act = name("regproducer");
+   auto arg = fc::mutable_variant_object()
+      ("code", code.to_string())
+      ("action", act.to_string())
+      ("args", act_payload);
+
+   auto result = call(json_to_bin_func, arg);
+   send_actions({chain::action{{permission_level{producer,config::active_name}}, code, act, result.get_object()["binargs"].as<bytes>()}});
+}
+
 chain::action create_transfer(const name& sender, const name& recipient, uint64_t amount, const string& memo ) {
 
    auto transfer = fc::mutable_variant_object
@@ -528,6 +574,61 @@ struct set_action_permission_subcommand {
    }
 };
 
+struct create_producer_subcommand {
+   string account_str;
+   string producer_key_str;
+   uint64_t max_storage_size = 10 * 1024 * 1024;
+   uint32_t percent_of_max_inflation_rate = 0;
+   uint32_t storage_reserve_ratio = 1000;
+
+   create_producer_subcommand(CLI::App* actionRoot) {
+      auto create_producer = actionRoot->add_subcommand("producer", localized("Register (create) a new producer"));
+      create_producer->add_option("account", account_str, localized("The account to register as a producer"))->required();
+      create_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
+      create_producer->add_option("max_storage_size", max_storage_size, localized("The max storage size"), true);
+      create_producer->add_option("percent_of_max_inflation_rate", percent_of_max_inflation_rate, localized("Percent of max inflation rate"), true);
+      create_producer->add_option("storage_reserve_ratio", storage_reserve_ratio, localized("Storage Reserve Ratio"), true);
+
+
+      create_producer->set_callback([this] {
+         name account = name(account_str);
+         public_key_type producer_key;
+         try {
+            producer_key = public_key_type(producer_key_str);
+         } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid producer public key: ${public_key}", ("public_key", producer_key_str))
+
+         create_regproducer(account, producer_key, max_storage_size, percent_of_max_inflation_rate, storage_reserve_ratio);
+      });
+   }
+};
+
+struct remove_producer_subcommand {
+   string account_str;
+
+   remove_producer_subcommand(CLI::App* actionRoot) {
+      auto remove_producer = actionRoot->add_subcommand("producer", localized("Register (create) a new producer"));
+      remove_producer->add_option("account", account_str, localized("The account to register as a producer"))->required();
+
+
+      remove_producer->set_callback([this] {
+         name producer = name(account_str);
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("producer", producer);
+         wlog("packing payload");
+
+         const auto code = name(config::system_account_name);
+         const auto act = name("unregprod");
+         auto arg = fc::mutable_variant_object()
+            ("code", code.to_string())
+            ("action", act.to_string())
+            ("args", act_payload);
+
+         auto result = call(json_to_bin_func, arg);
+         send_actions({chain::action{{permission_level{producer,config::active_name}}, code, act, result.get_object()["binargs"].as<bytes>()}});
+      });
+   }
+};
+
 int main( int argc, char** argv ) {
    fc::path binPath = argv[0];
    if (binPath.is_relative()) {
@@ -590,6 +691,9 @@ int main( int argc, char** argv ) {
       } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str))
       send_actions({create_newaccount(creator, account_name, owner_key, active_key)});
    });
+
+   // create producer
+   auto createProducer = create_producer_subcommand(create);
 
    // Get subcommand
    auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"), false);
@@ -1390,10 +1494,6 @@ int main( int argc, char** argv ) {
          executer = name(accountPermissions.at(0).actor).to_string();
       }
 
-      fc::variant perm_var;
-      abi_serializer abi;
-      abi.to_variant(accountPermissions, perm_var, resolver);
-
       auto arg = fc::mutable_variant_object()
          ("code", "eosio.msig")
          ("action", "exec")
@@ -1407,6 +1507,13 @@ int main( int argc, char** argv ) {
       send_actions({chain::action{accountPermissions, "eosio.msig", "exec", result.get_object()["binargs"].as<bytes>()}});
       }
    );
+
+   // remove subcommand
+   auto remove = app.add_subcommand("remove", localized("Remove various items, on and off the blockchain"), false);
+   remove->require_subcommand();
+
+   // remove producer
+   auto removeProducer = remove_producer_subcommand(remove);
 
    try {
        app.parse(argc, argv);

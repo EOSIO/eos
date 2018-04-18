@@ -84,7 +84,7 @@
          {"name":"storage_bytes", "type":"uint64"}
       ]
     },{
-      "name": "eosio_parameters",
+      "name": "blockchain_parameters",
       "base": "",
       "fields": [
          {"name":"base_per_transaction_net_usage", "type":"uint32"},
@@ -107,7 +107,12 @@
          {"name":"max_inline_depth", "type":"uint16"},
          {"name":"max_inline_action_size", "type":"uint32"},
          {"name":"max_generated_transaction_count", "type":"uint32"},
-         {"name":"max_transaction_delay", "type":"uint32"},
+         {"name":"max_transaction_delay", "type":"uint32"}
+      ]
+    },{
+      "name": "eosio_parameters",
+      "base": "blockchain_parameters",
+      "fields": [
          {"name":"max_storage_size", "type":"uint64"},
          {"name":"percent_of_max_inflation_rate", "type":"uint32"},
          {"name":"storage_reserve_ratio", "type":"uint32"}
@@ -239,7 +244,13 @@
       "ricardian_contract": ""
     }
   ],
-  "tables": [
+  "tables": [{
+      "name": "producerinfo",
+      "type": "producer_info",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    }
   ],
   "ricardian_clauses": []
 }
