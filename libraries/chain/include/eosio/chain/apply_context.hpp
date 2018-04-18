@@ -470,7 +470,9 @@ class apply_context {
        idx_double(*this),
        idx_long_double(*this),
        recurse_depth(depth)
-       {}
+      {
+         reset_console();
+      }
 
       void exec();
 
@@ -542,6 +544,8 @@ class apply_context {
 
       apply_results results;
 
+      std::ostringstream& get_console_stream() { return _pending_console_output; }
+
       template<typename T>
       void console_append(T val) {
          _pending_console_output << val;
@@ -592,6 +596,8 @@ class apply_context {
          fc::move_append(results.deferred_transaction_requests, std::move(other.deferred_transaction_requests));
          results.deferred_transactions_count += other.deferred_transactions_count;
       }
+
+      void reset_console();
 
       void exec_one();
 

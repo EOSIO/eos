@@ -48,7 +48,11 @@ struct test_print {
   static void test_printi();
   static void test_printui();
   static void test_printi128();
+  static void test_printui128();
   static void test_printn();
+  static void test_printsf();
+  static void test_printdf();
+  static void test_printqf();
 };
 
 struct test_action {

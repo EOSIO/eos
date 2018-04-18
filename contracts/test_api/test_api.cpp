@@ -92,7 +92,11 @@ extern "C" {
       WASM_TEST_HANDLER(test_print, test_printi);
       WASM_TEST_HANDLER(test_print, test_printui);
       WASM_TEST_HANDLER(test_print, test_printi128);
+      WASM_TEST_HANDLER(test_print, test_printui128);
       WASM_TEST_HANDLER(test_print, test_printn);
+      WASM_TEST_HANDLER(test_print, test_printsf);
+      WASM_TEST_HANDLER(test_print, test_printdf);
+      WASM_TEST_HANDLER(test_print, test_printqf);
 
       //test_math
       WASM_TEST_HANDLER(test_math, test_multeq);
