@@ -151,7 +151,7 @@ run `docker-compose up`
 
 ### Dawn3.0 Testnet
 
-We can easliy set up a dawn3.0 local testnet using the official docker hub images.
+We can easliy set up a dawn3.0 local testnet using the docker hub images.
 Just run the following commands:
 
 ```
@@ -167,4 +167,3 @@ curl http://127.0.0.1:8888/v1/chain/get_info
 # get logs
 docker-compose logs nodeosd
 ```
-
