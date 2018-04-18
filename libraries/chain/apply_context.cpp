@@ -35,7 +35,7 @@ action_trace apply_context::exec_one()
 
    action_receipt r;
    r.receiver        = receiver;
-   r.act             = act;
+   r.act_digest      = digest_type::hash(act);
    r.global_sequence = control.next_global_sequence();
    r.recv_sequence   = control.next_recv_sequence( receiver );
 
@@ -44,6 +44,7 @@ action_trace apply_context::exec_one()
    }
 
    action_trace t(r);
+   t.act = act;
    t.cpu_usage = cpu_usage;
    t.total_inline_cpu_usage = cpu_usage;
    t.console = _pending_console_output.str();

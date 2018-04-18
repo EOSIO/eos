@@ -1,5 +1,5 @@
 #include <eosio/chain/apply_context.hpp>
-#include <eosio/chain/context.hpp>
+#include <eosio/chain/transaction_context.hpp>
 
 
 namespace eosio { namespace chain {
@@ -26,8 +26,8 @@ namespace eosio { namespace chain {
 
       fc::move_append(executed, move(acontext.executed) );
 
-      trace.cpu_usage += acontext.trace.total_inline_cpu_usage;
-      trace.action_traces.emplace_back( move(acontext.trace) );
+      trace->cpu_usage += acontext.trace.total_inline_cpu_usage;
+      trace->action_traces.emplace_back( move(acontext.trace) );
    }
 
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <eosio/chain/controller.hpp>
+#include <eosio/chain/trace.hpp>
 
 namespace eosio { namespace chain {
 
@@ -11,6 +12,7 @@ namespace eosio { namespace chain {
           trx_meta(trx),
           undo_session(c.db().start_undo_session(true))
          {
+            trace = std::make_shared<transaction_trace>();
             executed.reserve( trx_meta->total_actions() );
          }
 
@@ -19,7 +21,7 @@ namespace eosio { namespace chain {
 
          vector<action_receipt>            executed;
 
-         transaction_trace                 trace;
+         transaction_trace_ptr             trace;
 
          controller&                       control;
          const transaction_metadata_ptr&   trx_meta;

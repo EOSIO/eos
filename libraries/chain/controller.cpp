@@ -1,5 +1,5 @@
 #include <eosio/chain/controller.hpp>
-#include <eosio/chain/context.hpp>
+#include <eosio/chain/transaction_context.hpp>
 
 #include <eosio/chain/block_log.hpp>
 #include <eosio/chain/fork_database.hpp>
@@ -329,13 +329,13 @@ struct controller_impl {
       pending.reset();
    }
 
-   transaction_trace push_transaction( const transaction_metadata_ptr& trx ) {
+   transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx ) {
       return db.with_write_lock( [&](){ 
          return apply_transaction( trx );
       });
    }
 
-   transaction_trace apply_transaction( const transaction_metadata_ptr& trx, bool implicit = false ) {
+   transaction_trace_ptr apply_transaction( const transaction_metadata_ptr& trx, bool implicit = false ) {
       transaction_context trx_context( self, trx );
       trx_context.exec();
 
@@ -666,8 +666,12 @@ void controller::start_block( block_timestamp_type when ) {
   my->pending = my->db.start_undo_session(true);
   my->pending->_pending_block_state = std::make_shared<block_state>( *my->head, when );
 
-  auto onbtrx = std::make_shared<transaction_metadata>( my->get_on_block_transaction() );
-  my->apply_transaction( onbtrx, true );
+  try {
+     auto onbtrx = std::make_shared<transaction_metadata>( my->get_on_block_transaction() );
+     my->apply_transaction( onbtrx, true );
+  } catch ( ... ) {
+     ilog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
+  }
 }
 
 void controller::finalize_block() {
@@ -749,16 +753,16 @@ void controller::push_block( const signed_block_ptr& b ) {
    }
 }
 
-transaction_trace controller::push_transaction( const transaction_metadata_ptr& trx ) { 
+transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx ) { 
    return my->push_transaction(trx);
 }
 
-transaction_trace controller::push_transaction() {
-   return transaction_trace();
+transaction_trace_ptr controller::push_next_scheduled_transaction() {
+   return transaction_trace_ptr();
 }
-transaction_trace controller::push_transaction( const transaction_id_type& trxid ) {
+transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid ) {
    /// lookup scheduled trx and then apply it...
-   return transaction_trace();
+   return transaction_trace_ptr();
 }
 
 uint32_t controller::head_block_num()const {

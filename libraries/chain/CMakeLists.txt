@@ -13,7 +13,7 @@ add_library( eosio_chain
              resource_limits.cpp
              block_log.cpp
              genesis_state.cpp
-             context.cpp
+             transaction_context.cpp
              eosio_contract.cpp
 
 #             chain_config.cpp

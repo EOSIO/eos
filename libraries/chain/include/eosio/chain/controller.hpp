@@ -1,5 +1,6 @@
 #pragma once
 #include <eosio/chain/block_state.hpp>
+#include <eosio/chain/trace.hpp>
 #include <eosio/chain/genesis_state.hpp>
 #include <boost/signals2/signal.hpp>
 
@@ -58,9 +59,20 @@ namespace eosio { namespace chain {
 
          vector<transaction_metadata_ptr> abort_block();
 
-         transaction_trace push_transaction( const transaction_metadata_ptr& trx  = transaction_metadata_ptr() );
-         transaction_trace push_transaction( const transaction_id_type& scheduled );
-         transaction_trace push_transaction();
+         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx  = transaction_metadata_ptr() );
+
+         /**
+          * Attempt to execute a specific transaction in our deferred trx database
+          *
+          */
+         transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled );
+
+         /**
+          * Attempt to execute the oldest unexecuted deferred transaction
+          *
+          * @return nullptr if there is nothing pending
+          */
+         transaction_trace_ptr push_next_scheduled_transaction();
 
          void finalize_block();
          void sign_block( std::function<signature_type( const digest_type& )> signer_callback );
