@@ -15,6 +15,134 @@ using namespace eosio::testing;
 
 BOOST_AUTO_TEST_SUITE(block_tests)
 
+BOOST_AUTO_TEST_CASE( block_too_old_test ) { try {
+   vector<TESTER> producers(5);
+
+   vector<account_name> producer_names;
+   for (char i = 'a'; i <= 'a'+producers.size(); i++) {
+      producer_names.emplace_back(std::string("init")+i);
+   }
+   producers[0].create_accounts(producer_names);
+   producers[0].set_producers(producer_names);
+
+   signed_block old_block;
+   for ( int i=0; i < 12; i++ ) {
+      for ( int j=0; j < producers.size(); j++ ) {
+         auto block = producers[j].produce_block();
+         old_block = block;
+         producers[j].push_block( block );
+      }
+   }
+
+   for ( int i=0; i < producers.size()*2; i++ ) {
+      producers[i%producers.size()].produce_block();
+   }
+   BOOST_REQUIRE_THROW( producers[1].push_block(old_block), block_too_old_exception);
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( last_irreversible_update_bug_test ) { try {
+   tester producers;
+   tester disconnected;
+   vector<account_name> producer_names = {N(inita), N(initb), N(initc), N(initd)};
+   producers.create_accounts(producer_names);
+   producers.set_producers(producer_names);
+   
+   auto block = producers.produce_block();
+   disconnected.push_block(block);
+   while (true) {
+      block = producers.produce_block();
+      disconnected.push_block(block);
+      if ( block.producer == N(inita) )
+         break;
+   }
+
+   auto produce_one_block = [&]( auto& t, int i, int offset, signed_block& sb ) {
+      signed_block new_block = t.control->generate_block( block_timestamp_type{sb.timestamp.slot + offset}, 
+                                                          producer_names[i],
+                                                          t.get_private_key( producer_names[i], "active" ) );
+      new_block.previous = sb.id();
+      t.push_block( new_block );
+      return new_block;
+   };
+
+   // lets start at inita
+   BOOST_CHECK_EQUAL( block.block_num(), 48 );
+   BOOST_CHECK_EQUAL( block.producer, N(inita) );
+   
+   block = produce_one_block( producers, 1, 12, block );
+   disconnected.push_block(block);
+   BOOST_CHECK_EQUAL( block.producer, N(initb) );
+
+   block = produce_one_block( producers, 2, 12, block );
+   disconnected.push_block(block);
+   BOOST_CHECK_EQUAL( block.producer, N(initc) );
+
+   block = produce_one_block( producers, 3, 12, block );
+   disconnected.push_block(block);
+   BOOST_CHECK_EQUAL( block.producer, N(initd) );
+   
+   // start here
+   block = produce_one_block( producers, 0, 12, block );
+   disconnected.push_block(block);
+   BOOST_CHECK_EQUAL( block.block_num(), 52 );
+   BOOST_CHECK_EQUAL( block.producer, N(inita) );
+   BOOST_CHECK_EQUAL( producers.control->last_irreversible_block_num(), 50 );
+
+   block = produce_one_block( producers, 1, 12, block );
+   disconnected.push_block(block);
+   BOOST_CHECK_EQUAL( block.block_num(), 53 );
+   BOOST_CHECK_EQUAL( block.producer, N(initb) );
+   BOOST_CHECK_EQUAL( producers.control->last_irreversible_block_num(), 51 );
+
+   block = produce_one_block( producers, 2, 12, block );
+   disconnected.push_block(block);
+   BOOST_CHECK_EQUAL( block.producer, N(initc) );
+   BOOST_CHECK_EQUAL( block.block_num(), 54 );
+   BOOST_CHECK_EQUAL( producers.control->last_irreversible_block_num(), 52 );
+
+   auto left_fork = block;
+   auto right_fork = block;
+
+   left_fork = produce_one_block( disconnected, 3, 12, left_fork );
+   BOOST_CHECK_EQUAL( left_fork.block_num(), 55 );
+   BOOST_CHECK_EQUAL( left_fork.producer, N(initd) );
+   BOOST_CHECK_EQUAL( disconnected.control->last_irreversible_block_num(), 53 );
+
+   right_fork = produce_one_block( producers, 1, 36, right_fork );
+   BOOST_CHECK_EQUAL( left_fork.block_num(), 55 );
+   BOOST_CHECK_EQUAL( right_fork.producer, N(initb) );
+   BOOST_CHECK_EQUAL( producers.control->last_irreversible_block_num(), 52 );
+
+   left_fork = produce_one_block( disconnected, 2, 36, left_fork );
+   BOOST_CHECK_EQUAL( left_fork.block_num(), 56 );
+   BOOST_CHECK_EQUAL( left_fork.producer, N(initc) );
+   BOOST_CHECK_EQUAL( disconnected.control->last_irreversible_block_num(), 53 );
+
+   left_fork = produce_one_block( disconnected, 3, 12, left_fork );
+   BOOST_CHECK_EQUAL( left_fork.block_num(), 57 );
+   BOOST_CHECK_EQUAL( left_fork.producer, N(initd) );
+   BOOST_CHECK_EQUAL( disconnected.control->last_irreversible_block_num(), 53 );
+
+   right_fork = produce_one_block( producers, 0, 36, right_fork );
+   BOOST_CHECK_EQUAL( right_fork.block_num(), 56 );
+   BOOST_CHECK_EQUAL( right_fork.producer, N(inita) );
+   BOOST_CHECK_EQUAL( producers.control->last_irreversible_block_num(), 54 );
+
+   right_fork = produce_one_block( producers, 2, 24, right_fork );
+   BOOST_CHECK_EQUAL( right_fork.block_num(), 57 );
+   BOOST_CHECK_EQUAL( right_fork.producer, N(initc) );
+   BOOST_CHECK_EQUAL( producers.control->last_irreversible_block_num(), 55 );
+
+   right_fork = produce_one_block( producers, 3, 12, right_fork );
+   BOOST_CHECK_EQUAL( right_fork.block_num(), 58 );
+   BOOST_CHECK_EQUAL( right_fork.producer, N(initd) );
+   BOOST_CHECK_EQUAL( producers.control->last_irreversible_block_num(), 56 );
+   
+
+   // TODO This should fail after chain_controller refactor, as this bug should not exist
+   BOOST_CHECK_THROW( producers.sync_with( disconnected ), assert_exception );
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_CASE( schedule_test ) { try {
   TESTER test;
 

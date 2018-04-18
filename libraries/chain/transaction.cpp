@@ -255,6 +255,13 @@ vector<bytes> packed_transaction::get_context_free_data()const
    } FC_CAPTURE_AND_RETHROW((compression)(packed_context_free_data))
 }
 
+transaction_id_type packed_transaction::id()const
+{
+   try {
+      return get_transaction().id();
+   } FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
+}
+
 transaction packed_transaction::get_transaction()const
 {
    try {

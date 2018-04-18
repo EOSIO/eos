@@ -140,22 +140,55 @@ namespace fc {
        usec = fc::microseconds(usec_as_int64);
     } FC_RETHROW_EXCEPTIONS( warn, "" ) }
 
-    template<typename Stream, typename T, size_t N>
+    template<typename Stream, typename T, size_t N,
+             std::enable_if_t<std::is_scalar<T>::value == false || std::is_pointer<T>::value == true, int>>
     inline void pack( Stream& s, const fc::array<T,N>& v) {
-      s.write((const char*)&v.data[0],N*sizeof(T));
+       for (uint64_t i = 0; i < N; ++i)
+         fc::raw::pack(s, v.data[i]);
     }
+
+    template<typename Stream, typename T, size_t N,
+             std::enable_if_t<std::is_scalar<T>::value == true && std::is_pointer<T>::value == false, int>>
+    inline void pack( Stream& s, const fc::array<T,N>& v) {
+       s.write((const char*)&v.data[0], N*sizeof(T));
+    }
+
+    template<typename Stream, typename T, size_t N,
+             std::enable_if_t<std::is_scalar<T>::value == false || std::is_pointer<T>::value == true, int>>
+    inline void unpack( Stream& s, fc::array<T,N>& v)
+    { try {
+       for (uint64_t i = 0; i < N; ++i)
+          fc::raw::unpack(s, v.data[i]);
+    } FC_RETHROW_EXCEPTIONS( warn, "fc::array<${type},${length}>", ("type",fc::get_typename<T>::name())("length",N) ) }
+
+    template<typename Stream, typename T, size_t N,
+             std::enable_if_t<std::is_scalar<T>::value == true && std::is_pointer<T>::value == false, int>>
+    inline void unpack( Stream& s, fc::array<T,N>& v)
+    { try {
+       s.read((char*)&v.data[0], N*sizeof(T));
+    } FC_RETHROW_EXCEPTIONS( warn, "fc::array<${type},${length}>", ("type",fc::get_typename<T>::name())("length",N) ) }
+
+    template<typename Stream, typename T, size_t N>
+    inline void pack( Stream& s, T (&v)[N]) {
+      fc::raw::pack( s, unsigned_int((uint32_t)N) );
+      for (uint64_t i = 0; i < N; ++i)
+         fc::raw::pack(s, v[i]);
+    }
+
+    template<typename Stream, typename T, size_t N>
+    inline void unpack( Stream& s, T (&v)[N])
+    { try {
+      unsigned_int size; fc::raw::unpack( s, size );
+      FC_ASSERT( size.value == N );
+      for (uint64_t i = 0; i < N; ++i)
+         fc::raw::unpack(s, v[i]);
+    } FC_RETHROW_EXCEPTIONS( warn, "${type} (&v)[${length}]", ("type",fc::get_typename<T>::name())("length",N) ) }
 
     template<typename Stream, typename T>
     inline void pack( Stream& s, const std::shared_ptr<T>& v)
     {
       fc::raw::pack( s, *v );
     }
-
-    template<typename Stream, typename T, size_t N>
-    inline void unpack( Stream& s, fc::array<T,N>& v)
-    { try {
-      s.read((char*)&v.data[0],N*sizeof(T));
-    } FC_RETHROW_EXCEPTIONS( warn, "fc::array<type,length>", ("type",fc::get_typename<T>::name())("length",N) ) }
 
     template<typename Stream, typename T>
     inline void unpack( Stream& s, std::shared_ptr<T>& v)

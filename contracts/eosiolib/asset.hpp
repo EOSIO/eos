@@ -199,7 +199,7 @@ namespace eosio {
 
       friend bool operator==( const asset& a, const asset& b ) {
          eosio_assert( a.symbol == b.symbol, "comparison of assets with different symbols is not allowed" );
-         return a.amount < b.amount;
+         return a.amount == b.amount;
       }
 
       friend bool operator!=( const asset& a, const asset& b ) {
