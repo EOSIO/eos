@@ -104,7 +104,19 @@
 	fi
 
 	if [[ $ENABLE_CODE_COVERAGE == true ]]; then
-		printf "\n\tChecking LCOV installation.\n"
+		printf "\n\tChecking perl installation."
+		perl_bin=$( which perl 2>/dev/null )
+		if [ $? -ne 0 ]; then
+			printf "\n\tInstalling perl."
+			yum -y install perl
+			if [ $? -ne 0 ]; then
+				printf "\n\tUnable to install perl at this time.\n"
+				printf "\n\tExiting now.\n"
+			fi
+		else
+			printf "\n\tPerl installation found at ${perl_bin}."
+		fi
+		printf "\n\tChecking LCOV installation."
 		if [ ! -e /usr/local/bin/lcov ]; then
 			printf "\n\tLCOV installation not found.\n"
 			printf "\tInstalling LCOV.\n"
@@ -128,7 +140,7 @@
 			printf "\n\tLCOV installation found @ /usr/local/bin/lcov.\n"
 		fi
 	fi
-	exit
+
 	printf "\n\tChecking CMAKE installation.\n"
     if [ ! -e ${CMAKE} ]; then
 		printf "\tInstalling CMAKE\n"
