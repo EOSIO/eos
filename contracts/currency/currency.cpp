@@ -1,3 +1,4 @@
+#if 0
 /**
  *  @file
  *  @copyright defined in eos/LICENSE.txt
@@ -11,3 +12,4 @@ extern "C" {
        eosio::currency(receiver).apply( code, action ); 
     }
 }
+#endif
