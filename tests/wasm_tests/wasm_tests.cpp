@@ -468,7 +468,6 @@ BOOST_FIXTURE_TEST_CASE( f32_f64_overflow_tests, tester ) try {
 BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
 
    create_accounts( {N(f_tests)} );
-   int limit = 100;
    bool pass = false;
 
    std::string code = R"=====(
@@ -491,7 +490,8 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
    set_code(N(f_tests), code.c_str());
    produce_blocks(10);
 
-   while (!pass && limit < 250) {
+   int limit = 190;
+   while (!pass && limit < 200) {
       signed_transaction trx;
 
       for (int i = 0; i < 100; ++i) {
@@ -518,7 +518,7 @@ BOOST_FIXTURE_TEST_CASE(cpu_usage_tests, tester ) try {
       BOOST_REQUIRE_EQUAL(true, validate());
    }
 // NOTE: limit is 197
-   BOOST_REQUIRE_EQUAL(true, limit > 101 && limit < 250);
+   BOOST_REQUIRE_EQUAL(true, limit > 190 && limit < 200);
 } FC_LOG_AND_RETHROW()
 
 
@@ -552,7 +552,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
 
    mgr.set_account_limits(N(f_tests), -1, -1, 1);
    int count = 0;
-   while (count < 12) {
+   while (count < 4) {
       signed_transaction trx;
 
       for (int i = 0; i < 100; ++i) {
@@ -578,11 +578,11 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
       } 
       BOOST_REQUIRE_EQUAL(true, validate());
 
-      if (count == 10) { // add a big weight on acc2, making f_tests out of resource
+      if (count == 2) { // add a big weight on acc2, making f_tests out of resource
         mgr.set_account_limits(N(acc2), -1, -1, 1000);
       }
    }
-   BOOST_ASSERT(count == 10);
+   BOOST_ASSERT(count == 2);
 } FC_LOG_AND_RETHROW()
 
 /**
