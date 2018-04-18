@@ -212,7 +212,7 @@ namespace eosio {
              "Filename with the certificate chain to present on https connections. PEM format. Required for https.")
 
             ("https-private-key-file", bpo::value<string>(),
-             "Filename with https private key in PEM format. Requested for https")
+             "Filename with https private key in PEM format. Required for https")
 
             ("access-control-allow-origin", bpo::value<string>()->notifier([this](const string& v) {
                 my->access_control_allow_origin = v;
