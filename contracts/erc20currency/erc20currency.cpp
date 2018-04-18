@@ -136,7 +136,7 @@ using namespace eosio;
 
     void currency::balanceOf(const balanceOfAct & boa){
         symbol_name sn = string_to_symbol(4, boa.symbol.c_str());
-        print("balanceOf[",boa.symbol.c_str(),"]", get_balance(boa.owner, sn));
+        print("balanceOf[",eosio::name(boa.owner),"]", get_balance(boa.owner, sn));
     }
 
     void currency::allowanceOf(const allowanceOfAct & aof){
@@ -148,17 +148,17 @@ using namespace eosio;
             while(approvetoPairIte != approSymIte.approved.end()){
 
                 if(approvetoPairIte->to == aof.spender){
-                    print("allowanceOf[", account_name(approvetoPairIte->to), "]=", approvetoPairIte->value);
+                    print("allowanceOf[", eosio::name(aof.owner), ",", eosio::name(approvetoPairIte->to), "]=", approvetoPairIte->value, " ",aof.symbol.c_str());
                     break;
                 }
                 approvetoPairIte++;
             }
             if(approvetoPairIte == approSymIte.approved.end()){
-                print("allowanceOf[", account_name(aof.spender), "]=", 0);
+                print("allowanceOf[",eosio::name(aof.owner), ",", eosio::name(aof.spender), "]=", 0);
             }
 
         }else{
-            print("allowanceOf[", (account_name)aof.spender, "]=", 0);
+            print("allowanceOf[", eosio::name(aof.owner), ",", eosio::name(aof.spender), "]=", 0);
         }
     }
 
