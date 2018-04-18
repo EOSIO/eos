@@ -376,13 +376,9 @@ namespace eosiosystem {
             }
 
             auto issue_quantity = parameters.blocks_per_cycle * (parameters.payment_per_block + parameters.payment_to_eos_bucket);
-            {
-               //               eosio::action act( eosio::permission_level{N(eosio),N(active)}, N(eosio.token), N(issue),
-               //                                  std::make_tuple( N(eosio), issue_quantity, std::string("producer pay") ) );
-               //               act.send();
-               eosio::inline_issue(eosio::permission_level{N(eosio),N(active)}, N(eosio.token),
-                                   { N(eosio), issue_quantity, std::string("producer pay") });
-            }
+            eosio::inline_issue(eosio::permission_level{N(eosio),N(active)}, N(eosio.token),
+                                { N(eosio), issue_quantity, std::string("producer pay") });
+
             set_blockchain_parameters(parameters);
             global_state_singleton::set(parameters);
          }
