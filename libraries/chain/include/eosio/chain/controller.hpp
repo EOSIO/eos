@@ -90,9 +90,6 @@ namespace eosio { namespace chain {
          block_state_ptr head_block_state()const;
          block_state_ptr pending_block_state()const;
 
-         uint64_t next_global_sequence();
-         uint64_t next_recv_sequence( account_name receiver );
-         uint64_t next_auth_sequence( account_name actor );
          void     record_transaction( const transaction_metadata_ptr& trx );
 
          const account_object&                 get_account( account_name n )const;

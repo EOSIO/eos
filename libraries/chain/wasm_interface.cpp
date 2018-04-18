@@ -167,7 +167,7 @@ class privileged_api : public context_aware_api {
          datastream<const char*> ds( packed_blockchain_parameters, datalen );
          chain::chain_config cfg;
          fc::raw::unpack(ds, cfg);
-         context.mutable_db.modify( context.control.get_global_properties(),
+         context.db.modify( context.control.get_global_properties(),
             [&]( auto& gprops ) {
                  gprops.configuration = cfg;
          });
@@ -179,7 +179,7 @@ class privileged_api : public context_aware_api {
 
       void set_privileged( account_name n, bool is_priv ) {
          const auto& a = context.db.get<account_object, by_name>( n );
-         context.mutable_db.modify( a, [&]( auto& ma ){
+         context.db.modify( a, [&]( auto& ma ){
             ma.privileged = is_priv;
          });
       }

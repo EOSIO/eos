@@ -185,14 +185,14 @@ class apply_context {
 
                const auto& tab = context.find_or_create_table( context.receiver, scope, table, payer );
 
-               const auto& obj = context.mutable_db.create<ObjectType>( [&]( auto& o ){
+               const auto& obj = context.db.create<ObjectType>( [&]( auto& o ){
                   o.t_id          = tab.id;
                   o.primary_key   = id;
                   secondary_key_helper_t::set(o.secondary_key, value);
                   o.payer         = payer;
                });
 
-               context.mutable_db.modify( tab, [&]( auto& t ) {
+               context.db.modify( tab, [&]( auto& t ) {
                  ++t.count;
                });
 
@@ -211,10 +211,10 @@ class apply_context {
 
 //               context.require_write_lock( table_obj.scope );
 
-               context.mutable_db.modify( table_obj, [&]( auto& t ) {
+               context.db.modify( table_obj, [&]( auto& t ) {
                   --t.count;
                });
-               context.mutable_db.remove( obj );
+               context.db.remove( obj );
 
                if (table_obj.count == 0) {
                   context.remove_table(table_obj);
@@ -240,7 +240,7 @@ class apply_context {
                   context.update_db_usage( payer, +(billing_size) );
                }
 
-               context.mutable_db.modify( obj, [&]( auto& o ) {
+               context.db.modify( obj, [&]( auto& o ) {
                  secondary_key_helper_t::set(o.secondary_key, secondary);
                  o.payer = payer;
                });
@@ -457,7 +457,6 @@ class apply_context {
        db(con.db()),
        act(a),
        mutable_controller(con),
-       mutable_db(con.db()),
        used_authorizations(act.authorization.size(), false),
        trx_meta(trx_meta),
        idx64(*this),
@@ -512,8 +511,8 @@ class apply_context {
 
       const bytes&         get_packed_transaction();
 
-      controller&          control;
-      const chainbase::database&    db;  ///< database where state is stored
+      controller&                   control;
+      chainbase::database&          db;  ///< database where state is stored
       const action&                 act; ///< message being applied
       account_name                  receiver; ///< the code that is currently running
       bool                          privileged   = false;
@@ -521,7 +520,6 @@ class apply_context {
       bool                          used_context_free_api = false;
 
       controller&                   mutable_controller;
-      chainbase::database&          mutable_db;
 
 
       ///< Parallel to act.authorization; tracks which permissions have been used while processing the message
@@ -588,6 +586,12 @@ class apply_context {
 
       uint64_t                                    cpu_usage;
       uint64_t                                    total_cpu_usage;
+
+
+      uint64_t next_global_sequence();
+      uint64_t next_recv_sequence( account_name receiver );
+      uint64_t next_auth_sequence( account_name actor );
+
    private:
       iterator_cache<key_value_object> keyval_cache;
 

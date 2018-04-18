@@ -7,6 +7,7 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/scope_sequence_object.hpp>
 #include <eosio/chain/account_object.hpp>
+#include <eosio/chain/global_property_object.hpp>
 #include <boost/container/flat_set.hpp>
 
 using boost::container::flat_set;
@@ -36,11 +37,11 @@ action_trace apply_context::exec_one()
    action_receipt r;
    r.receiver        = receiver;
    r.act_digest      = digest_type::hash(act);
-   r.global_sequence = control.next_global_sequence();
-   r.recv_sequence   = control.next_recv_sequence( receiver );
+   r.global_sequence = next_global_sequence();
+   r.recv_sequence   = next_recv_sequence( receiver );
 
    for( const auto& auth : act.authorization ) {
-      r.auth_sequence[auth.actor] = control.next_auth_sequence( auth.actor );
+      r.auth_sequence[auth.actor] = next_auth_sequence( auth.actor );
    }
 
    action_trace t(r);
@@ -313,7 +314,7 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
 
    update_db_usage(payer, config::billable_size_v<table_id_object>);
 
-   return mutable_db.create<table_id_object>([&](table_id_object &t_id){
+   return db.create<table_id_object>([&](table_id_object &t_id){
       t_id.code = code;
       t_id.scope = scope;
       t_id.table = table;
@@ -323,7 +324,7 @@ const table_id_object& apply_context::find_or_create_table( name code, name scop
 
 void apply_context::remove_table( const table_id_object& tid ) {
    update_db_usage(tid.payer, - config::billable_size_v<table_id_object>);
-   mutable_db.remove(tid);
+   db.remove(tid);
 }
 
 vector<account_name> apply_context::get_active_producers() const {
@@ -431,7 +432,7 @@ int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, 
 
    FC_ASSERT( payer != account_name(), "must specify a valid account to pay for new record" );
 
-   const auto& obj = mutable_db.create<key_value_object>( [&]( auto& o ) {
+   const auto& obj = db.create<key_value_object>( [&]( auto& o ) {
       o.t_id        = tableid;
       o.primary_key = id;
       o.value.resize( buffer_size );
@@ -439,7 +440,7 @@ int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, 
       memcpy( o.value.data(), buffer, buffer_size );
    });
 
-   mutable_db.modify( tab, [&]( auto& t ) {
+   db.modify( tab, [&]( auto& t ) {
      ++t.count;
    });
 
@@ -474,7 +475,7 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
       update_db_usage( obj.payer, new_size - old_size);
    }
 
-   mutable_db.modify( obj, [&]( auto& o ) {
+   db.modify( obj, [&]( auto& o ) {
      o.value.resize( buffer_size );
      memcpy( o.value.data(), buffer, buffer_size );
      o.payer = payer;
@@ -491,10 +492,10 @@ void apply_context::db_remove_i64( int iterator ) {
 
    update_db_usage( obj.payer,  -(obj.value.size() + config::billable_size_v<key_value_object>) );
 
-   mutable_db.modify( table_obj, [&]( auto& t ) {
+   db.modify( table_obj, [&]( auto& t ) {
       --t.count;
    });
-   mutable_db.remove( obj );
+   db.remove( obj );
 
    if (table_obj.count == 0) {
       remove_table(table_obj);
@@ -611,4 +612,22 @@ int apply_context::db_end_i64( uint64_t code, uint64_t scope, uint64_t table ) {
 
    return keyval_cache.cache_table( *tab );
 }
+
+
+uint64_t apply_context::next_global_sequence() {
+   const auto& p = control.get_dynamic_global_properties();
+   db.modify( p, [&]( auto& dgp ) {
+      ++dgp.global_action_sequence;
+   });
+   return p.global_action_sequence;
+}
+
+uint64_t apply_context::next_recv_sequence( account_name receiver ) {
+   return 0;
+}
+uint64_t apply_context::next_auth_sequence( account_name actor ) {
+   return 0;
+}
+
+
 } } /// eosio::chain

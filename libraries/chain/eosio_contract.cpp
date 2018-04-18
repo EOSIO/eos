@@ -26,7 +26,6 @@
 namespace eosio { namespace chain { 
 
 
-abi_def eos_contract_abi(const abi_def& eosio_system_abi);
 
 uint128_t transaction_id_to_sender_id( const transaction_id_type& tid ) {
    fc::uint128_t _id(tid._hash[3], tid._hash[2]);
@@ -54,7 +53,7 @@ void apply_eosio_newaccount(apply_context& context) {
    EOS_ASSERT( validate(create.active), action_validate_exception, "Invalid active authority");
    EOS_ASSERT( validate(create.recovery), action_validate_exception, "Invalid recovery authority");
 
-   auto& db = context.mutable_db;
+   auto& db = context.db;
 
    auto name_str = name(create.name).to_string();
 
@@ -111,7 +110,7 @@ void apply_eosio_newaccount(apply_context& context) {
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
 void apply_eosio_setcode(apply_context& context) {
-   auto& db = context.mutable_db;
+   auto& db = context.db;
    auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
    auto  act = context.act.data_as<setcode>();
    context.require_authorization(act.account);
@@ -154,7 +153,7 @@ void apply_eosio_setcode(apply_context& context) {
 }
 
 void apply_eosio_setabi(apply_context& context) {
-   auto& db = context.mutable_db;
+   auto& db = context.db;
    auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
    auto  act = context.act.data_as<setabi>();
 
@@ -162,7 +161,7 @@ void apply_eosio_setabi(apply_context& context) {
 
    // if system account append native abi
    if ( act.account == eosio::chain::config::system_account_name ) {
-      act.abi = eos_contract_abi(act.abi);
+      act.abi = eosio_contract_abi(act.abi);
    }
    /// if an ABI is specified make sure it is well formed and doesn't
    /// reference any undefined types
@@ -190,7 +189,7 @@ void apply_eosio_updateauth(apply_context& context) {
    auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
 //   context.require_write_lock( config::eosio_auth_scope );
 
-   auto& db = context.mutable_db;
+   auto& db = context.db;
 
    auto update = context.act.data_as<updateauth>();
    EOS_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
@@ -294,7 +293,7 @@ void apply_eosio_deleteauth(apply_context& context) {
    EOS_ASSERT(remove.permission != config::active_name, action_validate_exception, "Cannot delete active authority");
    EOS_ASSERT(remove.permission != config::owner_name, action_validate_exception, "Cannot delete owner authority");
 
-   auto& db = context.mutable_db;
+   auto& db = context.db;
    context.require_authorization(remove.account);
    // TODO/QUESTION:
    //   Inconsistency between permissions that can be satisfied to create/modify (via updateauth) a permission and the
@@ -331,7 +330,7 @@ void apply_eosio_linkauth(apply_context& context) {
 
       context.require_authorization(requirement.account);
 
-      auto& db = context.mutable_db;
+      auto& db = context.db;
       const auto *account = db.find<account_object, by_name>(requirement.account);
       EOS_ASSERT(account != nullptr, account_query_exception,
                  "Failed to retrieve account: ${account}", ("account", requirement.account)); // Redundant?
@@ -371,7 +370,7 @@ void apply_eosio_linkauth(apply_context& context) {
 
 void apply_eosio_unlinkauth(apply_context& context) {
    auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
-   auto& db = context.mutable_db;
+   auto& db = context.db;
    auto unlink = context.act.data_as<unlinkauth>();
 
    context.require_authorization(unlink.account);
@@ -396,7 +395,7 @@ void apply_eosio_onerror(apply_context& context) {
 static const abi_serializer& get_abi_serializer() {
    static optional<abi_serializer> _abi_serializer;
    if (!_abi_serializer) {
-      _abi_serializer.emplace(eos_contract_abi(abi_def()));
+      _abi_serializer.emplace(eosio_contract_abi(abi_def()));
    }
 
    return *_abi_serializer;
