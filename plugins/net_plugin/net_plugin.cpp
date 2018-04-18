@@ -306,9 +306,14 @@ namespace eosio {
     *  of the current build's git commit id. We are now replacing that with an integer protocol
     *  identifier. Based on historical analysis of all git commit identifiers, the larges gap
     *  between ajacent commit id values is shown below.
+    *  these numbers were found with the following commands on the master branch:
+    *
+    *  git log | grep "^commit" | awk '{print substr($2,4,4)}' | sort -u > sorted.txt
+    *  rm -f gap.txt; prev=0; for a in $(cat sorted.txt); do echo $prev $((0x$a - 0x$prev)) $a >> gap.txt; prev=$a; done; sort -k2 -n gap.txt | tail
+    *
     *  DO NOT EDIT net_version_base OR net_version_range!
     */
-   constexpr int16_t net_version_base = 0xb25b;
+   constexpr int16_t net_version_base = 0xb1d4;
    constexpr int16_t net_version_range = 133;
    /**
     *  If there is a change to network protocol or behavior, increment net version to identify
