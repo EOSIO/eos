@@ -923,15 +923,19 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
-   try {
+   BOOST_REQUIRE_EXCEPTION(
       chain.push_action(config::system_account_name, contracts::linkauth::get_name(), tester_account, fc::mutable_variant_object()
       ("account", "tester")
       ("code", "currency")
       ("type", "transfer")
       ("requirement", "second"),
-      30, 3);
-      BOOST_FAIL("linkauth should have a min delay set by previous linkauth");
-   } catch (...) { }
+      30, 3),
+      transaction_exception,
+      [] (const transaction_exception &e)->bool {
+         BOOST_REQUIRE_EQUAL(std::string("transaction validation exception"), e.what());
+         return true;
+      }
+   );
 
    // this transaction will be delayed 20 blocks
    chain.push_action(config::system_account_name, contracts::linkauth::get_name(), tester_account, fc::mutable_variant_object()
@@ -1121,14 +1125,18 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
-   try {
+   BOOST_REQUIRE_EXCEPTION(
       chain.push_action(config::system_account_name, contracts::unlinkauth::get_name(), tester_account, fc::mutable_variant_object()
       ("account", "tester")
       ("code", "currency")
       ("type", "transfer"),
-      30, 7);
-      BOOST_FAIL("unlink should have a min delay set by previous linkauth");
-   } catch (...) { }
+      30, 7),
+      transaction_exception,
+      [] (const transaction_exception &e)->bool {
+         BOOST_REQUIRE_EQUAL(std::string("transaction validation exception"), e.what());
+         return true;
+      }
+   );
 
    // this transaction will be delayed 20 blocks
    chain.push_action(config::system_account_name, contracts::unlinkauth::get_name(), tester_account, fc::mutable_variant_object()
@@ -1650,7 +1658,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    liquid_balance = get_currency_balance(chain, N(tester2));
    BOOST_REQUIRE_EQUAL(asset::from_string("0.0000 CUR"), liquid_balance);
 
-   try {
+   BOOST_REQUIRE_EXCEPTION(
       chain.push_action(config::system_account_name, contracts::updateauth::get_name(), tester_account, fc::mutable_variant_object()
             ("account", "tester")
             ("permission", "first")
@@ -1658,9 +1666,13 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
             ("data",  authority(chain.get_public_key(tester_account, "first")))
             ("delay", 0),
             30, 7
-      );
-      BOOST_FAIL("updateauth should have a min delay set by previous updateauth");
-   } catch (...) { } 
+      ),
+      transaction_exception,
+      [] (const transaction_exception &e)->bool {
+         BOOST_REQUIRE_EQUAL(std::string("transaction validation exception"), e.what());
+         return true;
+      }
+   );
 
    // this transaction will be delayed 20 blocks
    trace = chain.push_action(config::system_account_name, contracts::updateauth::get_name(), tester_account, fc::mutable_variant_object()
