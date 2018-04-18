@@ -1302,6 +1302,12 @@ class compiler_builtins : public context_aware_api {
       void __floatunsitf( float128_t& ret, uint32_t i ) {
          ret = ui32_to_f128(i); /// TODO: should be 128
       }
+      void __floatditf( float128_t& ret, uint64_t a ) {
+         ret = i64_to_f128( a );
+      }
+      void __floatunditf( float128_t& ret, uint64_t a ) {
+         ret = ui64_to_f128( a );
+      }
       void __extendsftf2( float128_t& ret, uint32_t f ) {
          float32_t in = { f };
          ret = f32_to_f128( in );
@@ -1443,10 +1449,13 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__getf2,       int(int64_t, int64_t, int64_t, int64_t)        )
    (__gttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
    (__lttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
+   (__letf2,       int(int64_t, int64_t, int64_t, int64_t)        )
    (__cmptf2,      int(int64_t, int64_t, int64_t, int64_t)        )
    (__unordtf2,    int(int64_t, int64_t, int64_t, int64_t)        )
    (__floatsitf,   void (int, int)                                )
    (__floatunsitf, void (int, int)                                )
+   (__floatditf,   void (int, int64_t)                            )
+   (__floatunditf, void (int, int64_t)                            )
    (__floatsidf,   double(int)                                    )
    (__extendsftf2, void(int, int)                                 )
    (__extenddftf2, void(int, double)                              )
