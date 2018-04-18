@@ -641,6 +641,28 @@ class softfloat_api : public context_aware_api {
          return from_softfloat64(ui64_to_f64( a ));
       }
 
+      static bool is_nan( const float32_t f ) {
+         return ((f.v & 0x7FFFFFFF) > 0x7F800000);
+      }
+      static bool is_nan( const float64_t f ) {
+         return ((f.v & 0x7FFFFFFFFFFFFFFF) > 0x7FF0000000000000);
+      }
+      static bool is_nan( const float128_t& f ) {
+         const uint32_t* iptr = (const uint32_t*)&f;
+         return softfloat_isNaNF128M( iptr );
+      }
+      static float32_t to_softfloat32( float f ) {
+         return *reinterpret_cast<float32_t*>(&f);
+      }
+      static float64_t to_softfloat64( double d ) {
+         return *reinterpret_cast<float64_t*>(&d);
+      }
+      static float from_softfloat32( float32_t f ) {
+         return *reinterpret_cast<float*>(&f);
+      }
+      static double from_softfloat64( float64_t d ) {
+         return *reinterpret_cast<double*>(&d);
+      }
 
    private:
       inline float32_t to_softfloat32( float f ) {
@@ -660,12 +682,7 @@ class softfloat_api : public context_aware_api {
 
       inline bool sign_bit( float32_t f ) { return f.v >> 31; }
       inline bool sign_bit( float64_t f ) { return f.v >> 63; }
-      inline bool is_nan( float32_t f ) {
-         return ((f.v & 0x7FFFFFFF) > 0x7F800000);
-      }
-      inline bool is_nan( float64_t f ) {
-         return ((f.v & 0x7FFFFFFFFFFFFFFF) > 0x7FF0000000000000);
-      }
+      
 
 };
 class producer_api : public context_aware_api {
