@@ -45,7 +45,7 @@
 	txtrst=$(tput sgr0)
 
 	if [ ! -d .git ]; then
-		printf "\nThis build script only works with sources cloned from git\n"
+		printf "\n\tThis build script only works with sources cloned from git\n"
 		printf "\tPlease clone a new eos directory with 'git clone https://github.com/EOSIO/eos --recursive'\n"
 		printf "\tSee the wiki for instructions: https://github.com/EOSIO/eos/wiki\n"
 		exit 1
@@ -153,10 +153,17 @@
 	COMPILE_EOS=1
 	COMPILE_CONTRACTS=1
 
-# 	export EOS_BUILD_TYPE=[Debug|Release|RelWithDebInfo|MinSizeRel] to enable
+# 	export EOS_BUILD_TYPE=[Debug|Release|RelWithDebInfo|MinSizeRel|CodeCoverage] to enable
 	CMAKE_BUILD_TYPE=Release
+	CODE_COVERAGE_OPTS=
+	export ENABLE_CODE_COVERAGE=false
 	if [ ! -z $EOS_BUILD_TYPE ]; then
-		CMAKE_BUILD_TYPE=$EOS_BUILD_TYPE
+            if [[ $EOS_BUILD_TYPE == "CodeCoverage" ]]; then
+                ENABLE_CODE_COVERAGE=true
+                EOS_BUILD_TYPE=Debug
+            fi
+
+	    CMAKE_BUILD_TYPE=$EOS_BUILD_TYPE
 	fi
 
 	cd ${WORK_DIR}
@@ -170,7 +177,7 @@
 	$CMAKE -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_CXX_COMPILER=${CXX_COMPILER} \
 	-DCMAKE_C_COMPILER=${C_COMPILER} -DWASM_ROOT=${WASM_ROOT} \
 	-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR} -DBUILD_MONGO_DB_PLUGIN=true \
-	-DBUILD_DOXYGEN=${DOXYGEN} \
+	-DENABLE_COVERAGE_TESTING=${ENABLE_CODE_COVERAGE} -DBUILD_DOXYGEN=${DOXYGEN} \
 	..
 	
 	if [ $? -ne 0 ]; then

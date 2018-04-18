@@ -58,7 +58,7 @@ class datastream {
       */
       inline bool write( const char* d, size_t s ) {
         eosio_assert( _end - _pos >= (int32_t)s, "write" );
-        memcpy( _pos, d, s );
+        memcpy( (void*)_pos, d, s );
         _pos += s;
         return true;
       }

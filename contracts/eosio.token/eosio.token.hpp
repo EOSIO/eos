@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include <eosiolib/eosio.hpp>
 #include <eosiolib/asset.hpp>
 #include <eosiolib/eosio.hpp>
 
@@ -28,13 +29,13 @@ namespace eosio {
          void create( account_name issuer,
                       asset        maximum_supply,
                       uint8_t      issuer_can_freeze,
-                      uint8_t      issuer_can_recall,  
+                      uint8_t      issuer_can_recall,
                       uint8_t      issuer_can_whitelist );
 
 
          void issue( account_name to, asset quantity, string memo );
 
-         void transfer( account_name from, 
+         void transfer( account_name from,
                         account_name to,
                         asset        quantity,
                         string       memo );
@@ -69,7 +70,7 @@ namespace eosio {
          typedef eosio::multi_index<N(stat), currency_stats> stats;
 
          void sub_balance( account_name owner, asset value, const currency_stats& st );
-         void add_balance( account_name owner, asset value, const currency_stats& st, 
+         void add_balance( account_name owner, asset value, const currency_stats& st,
                            account_name ram_payer );
    };
 
