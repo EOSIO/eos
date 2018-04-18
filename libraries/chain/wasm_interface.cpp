@@ -668,7 +668,7 @@ class softfloat_api : public context_aware_api {
 
       static bool sign_bit( float32_t f ) { return f.v >> 31; }
       static bool sign_bit( float64_t f ) { return f.v >> 63; }
-      
+
 
 };
 class producer_api : public context_aware_api {
@@ -1359,37 +1359,45 @@ class compiler_builtins : public context_aware_api {
       }
       int __eqtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          return f128_eq( a, b );
       }
       int __netf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          return !f128_eq( a, b );
       }
       int __getf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
-         return !f128_lt( a, b );
+         float128_t b = {{ lb, hb }};
+         auto res = !f128_lt( a, b );
+         idump((la)(ha)(lb)(hb)(res));
+         return res;
       }
       int __gttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
-         return !f128_lt( a, b ) && !f128_eq( a, b );
+         float128_t b = {{ lb, hb }};
+         auto res = !f128_lt( a, b ) && !f128_eq( a, b );
+         idump((la)(ha)(lb)(hb)(res));
+         return res;
       }
       int __letf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
-         return f128_le( a, b );
+         float128_t b = {{ lb, hb }};
+         auto res = f128_le( a, b );
+         idump((la)(ha)(lb)(hb)(res));
+         return res;
       }
       int __lttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
-         return f128_lt( a, b );
+         float128_t b = {{ lb, hb }};
+         auto res = f128_lt( a, b );
+         idump((la)(ha)(lb)(hb)(res));
+         return res;
       }
       int __cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          if ( f128_lt( a, b ) )
             return -1;
          if ( f128_eq( a, b ) )
@@ -1398,7 +1406,7 @@ class compiler_builtins : public context_aware_api {
       }
       int __unordtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          if ( f128_isSignalingNaN( a ) || f128_isSignalingNaN( b ) )
             return 1;
          return 0;
@@ -1639,6 +1647,7 @@ REGISTER_INTRINSICS( database_api,
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
    DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_double)
+   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_long_double)
 );
 
 REGISTER_INTRINSICS(crypto_api,

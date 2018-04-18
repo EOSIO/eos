@@ -569,6 +569,7 @@ void test_multi_index::idx_double_general(uint64_t receiver, uint64_t code, uint
    }
 
    double expected_product = 1.0 / 1000000.0;
+   print( "expected_product = ", expected_product, "\n" );
 
    uint64_t expected_key = 10;
    for( const auto& obj : secidx ) {
@@ -578,7 +579,8 @@ void test_multi_index::idx_double_general(uint64_t receiver, uint64_t code, uint
 
       print(" id = ", obj.id, ", sec = ", obj.sec, ", sec * id = ", prod, "\n");
 
-      eosio_assert( std::abs(prod - expected_product) <= tolerance, "idx_double_general - product of secondary and id not equal to 1.0 within tolerance" );
+      eosio_assert( std::abs(prod - expected_product) <= tolerance,
+                    "idx_double_general - product of secondary and id not equal to expected_product within tolerance" );
 
       --expected_key;
    }
@@ -611,7 +613,9 @@ void test_multi_index::idx_long_double_general(uint64_t receiver, uint64_t code,
 
    auto secidx = table.get_index<N(bysecondary)>();
 
-   long double tolerance = std::numeric_limits<long double>::epsilon();
+   long double tolerance = 1.0l; //std::numeric_limits<double>::epsilon();
+   auto* ptr = &tolerance;
+   print( (uint64_t)ptr, "\n" );
    print("tolerance = ", tolerance, "\n");
 
    long double f = 1.0l;
@@ -623,6 +627,7 @@ void test_multi_index::idx_long_double_general(uint64_t receiver, uint64_t code,
    }
 
    long double expected_product = 1.0l / 1000000.0l;
+   print( "expected_product = ", expected_product, "\n" );
 
    uint64_t expected_key = 10;
    for( const auto& obj : secidx ) {
@@ -632,7 +637,20 @@ void test_multi_index::idx_long_double_general(uint64_t receiver, uint64_t code,
 
       print(" id = ", obj.id, ", sec = ", obj.sec, ", sec * id = ", prod, "\n");
 
-      eosio_assert( prod <= tolerance, "idx_long_double_general - product of secondary and id not equal to 1.0 within tolerance" );
+      auto difference = std::abs(prod - expected_product);
+      print("difference = ", difference, "\n" );
+
+      bool test1 = difference < tolerance;
+      print("is difference < tolerance? ", test1, "\n");
+      bool test2 = tolerance > difference;
+      print("is tolerance > difference? ", test2, "\n");
+      bool test3 = difference <= tolerance;
+      print("is difference <= tolerance? ", test3, "\n" );
+      bool test4 = tolerance >= difference;
+      print("is tolerance >= difference? ", test4, "\n" );
+
+      eosio_assert( difference < tolerance,
+                    "idx_long_double_general - product of secondary and id not equal to expected_product within tolerance" );
 
       --expected_key;
    }
@@ -640,10 +658,10 @@ void test_multi_index::idx_long_double_general(uint64_t receiver, uint64_t code,
 
    {
       auto itr = secidx.lower_bound( expected_product / 5.5l );
-      eosio_assert( std::abs(1.0l / itr->sec - 5000000.0l) <= tolerance, "idx_long_double_general - lower_bound" );
+      eosio_assert( std::abs(1.0l / itr->sec - 5000000.0l) < tolerance, "idx_long_double_general - lower_bound" );
 
       itr = secidx.upper_bound( expected_product / 5.0l );
-      eosio_assert( std::abs(1.0l / itr->sec - 4000000.0l) <= tolerance, "idx_long_double_general - upper_bound" );
+      eosio_assert( std::abs(1.0l / itr->sec - 4000000.0l) > tolerance, "idx_long_double_general - upper_bound" );
 
    }
 }
