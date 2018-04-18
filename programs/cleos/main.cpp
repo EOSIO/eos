@@ -1113,7 +1113,11 @@ int main( int argc, char** argv ) {
    auto stopKeosd = wallet->add_subcommand("stop", localized("Stop keosd (doesn't work with nodeos)."), false);
    stopKeosd->set_callback([] {
       const auto& v = call(wallet_host, wallet_port, keosd_stop);
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
+      if ( !v.is_object() || v.get_object().size() != 0 ) { //on success keosd responds with empty object
+         std::cerr << fc::json::to_pretty_string(v) << std::endl;
+      } else {
+         std::cout << "OK" << std::endl;
+      }
    });
 
    // sign subcommand
