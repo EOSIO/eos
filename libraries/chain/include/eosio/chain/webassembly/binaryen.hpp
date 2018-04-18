@@ -3,6 +3,7 @@
 #include <eosio/chain/webassembly/common.hpp>
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/apply_context.hpp>
 #include <wasm-interpreter.h>
 #include <softfloat_types.h>
 
@@ -460,6 +461,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
          memcpy( (void*)copy_ptr, (void*)base, sizeof(T) );
+         interface->context.add_cpu_usage(1);
          return Then(interface, copy_ptr, rest..., args, offset - 1);
       }
       return Then(interface, base, rest..., args, offset - 1);
@@ -475,6 +477,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
          memcpy( (void*)&copy, (void*)base, sizeof(T) );
          Ret ret = Then(interface, &copy, rest..., args, offset - 1);
          memcpy( (void*)base, (void*)&copy, sizeof(T) );
+         interface->context.add_cpu_usage(2);
          return ret; 
       }
       return Then(interface, base, rest..., args, offset - 1);
@@ -563,6 +566,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
          memcpy( (void*)copy_ptr, (void*)base, sizeof(T) );
+         interface->context.add_cpu_usage(1);
          return Then(interface, *copy_ptr, rest..., args, offset - 1);
       }
       return Then(interface, *base, rest..., args, offset - 1);
@@ -580,6 +584,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
          memcpy( (void*)&copy, (void*)base, sizeof(T) );
          Ret ret = Then(interface, copy, rest..., args, offset - 1);
          memcpy( (void*)base, (void*)&copy, sizeof(T) );
+         interface->context.add_cpu_usage(2);
          return ret; 
       }
       return Then(interface, *base, rest..., args, offset - 1);

@@ -499,7 +499,8 @@ BOOST_FIXTURE_TEST_CASE(misaligned_tests, tester ) try {
    create_accounts( {N(aligncheck)} );
    produce_block();
    
-   auto check_aligned = [&]( auto wast ) { 
+   uint64_t usage = 0; 
+   auto check_aligned = [&]( auto wast, uint8_t penalty ) { 
       set_code(N(aligncheck), wast);
       produce_blocks(10);
 
@@ -513,18 +514,24 @@ BOOST_FIXTURE_TEST_CASE(misaligned_tests, tester ) try {
       set_transaction_headers(trx);
       trx.sign(get_private_key( N(aligncheck), "active" ), chain_id_type());
       push_transaction(trx);
-      produce_blocks(1);
+      auto sb = produce_block();
+      block_trace trace(sb);
+      
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
+      BOOST_TEST_MESSAGE("USAGE "+std::to_string(trace.calculate_cpu_usage())+"\n");
+      if ( penalty != 0 )
+         BOOST_REQUIRE_EQUAL( trace.calculate_cpu_usage(), usage+penalty);
+      else 
+         usage = trace.calculate_cpu_usage();
    };
 
-   CAPTURE( std::stderr, check_aligned(aligned_ref_wast) );
-   //std::cout << "CAPTURED {" << capture[0] << "\n";
-   check_aligned(misaligned_ref_wast);
-   check_aligned(aligned_const_ref_wast);
-   check_aligned(misaligned_const_ref_wast);
-   check_aligned(aligned_ptr_wast);
-   check_aligned(misaligned_ptr_wast);
-   check_aligned(misaligned_const_ptr_wast);
+   check_aligned(aligned_ref_wast, 0);
+   check_aligned(misaligned_ref_wast, 2);
+   check_aligned(aligned_const_ref_wast, 0);
+   check_aligned(misaligned_const_ref_wast, 1);
+   check_aligned(aligned_ptr_wast, 0);
+   check_aligned(misaligned_ptr_wast, 2);
+   check_aligned(misaligned_const_ptr_wast, 1);
 } FC_LOG_AND_RETHROW()
 
 // test cpu usage

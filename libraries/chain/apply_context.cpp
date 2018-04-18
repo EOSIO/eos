@@ -311,6 +311,11 @@ void apply_context::cancel_deferred( const uint128_t& sender_id ) {
    results.deferred_transaction_requests.push_back(deferred_reference(receiver, sender_id));
 }
 
+void apply_context::add_cpu_usage( const uint64_t usage ) {
+   // TODO for now just increase the usage, in the future check against some limit
+   _cpu_usage += usage;
+}
+
 const contracts::table_id_object* apply_context::find_table( name code, name scope, name table ) {
    require_read_lock(code, scope);
    return db.find<table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));
