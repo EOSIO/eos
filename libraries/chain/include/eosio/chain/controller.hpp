@@ -58,9 +58,9 @@ namespace eosio { namespace chain {
 
          vector<transaction_metadata_ptr> abort_block();
 
-         void push_transaction( const transaction_metadata_ptr& trx  = transaction_metadata_ptr() );
-         void push_transaction( const transaction_id_type& scheduled );
-         void push_transaction();
+         transaction_trace push_transaction( const transaction_metadata_ptr& trx  = transaction_metadata_ptr() );
+         transaction_trace push_transaction( const transaction_id_type& scheduled );
+         transaction_trace push_transaction();
 
          void finalize_block();
          void sign_block( std::function<signature_type( const digest_type& )> signer_callback );
@@ -77,11 +77,6 @@ namespace eosio { namespace chain {
 
          block_state_ptr head_block_state()const;
          block_state_ptr pending_block_state()const;
-
-
-
-
-
 
          uint64_t next_global_sequence();
          uint64_t next_recv_sequence( account_name receiver );
@@ -104,7 +99,8 @@ namespace eosio { namespace chain {
 
          uint32_t last_irreversible_block_num() const;
 
-         signed_block_ptr fetch_block_by_number( uint32_t block_num );
+         signed_block_ptr fetch_block_by_number( uint32_t block_num )const;
+         signed_block_ptr fetch_block_by_id( block_id_type id )const;
 
          /**
           * @param actions - the actions to check authorization across

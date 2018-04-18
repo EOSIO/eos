@@ -329,13 +329,13 @@ struct controller_impl {
       pending.reset();
    }
 
-   void push_transaction( const transaction_metadata_ptr& trx ) {
+   transaction_trace push_transaction( const transaction_metadata_ptr& trx ) {
       return db.with_write_lock( [&](){ 
          return apply_transaction( trx );
       });
    }
 
-   void apply_transaction( const transaction_metadata_ptr& trx, bool implicit = false ) {
+   transaction_trace apply_transaction( const transaction_metadata_ptr& trx, bool implicit = false ) {
       transaction_context trx_context( self, trx );
       trx_context.exec();
 
@@ -346,6 +346,8 @@ struct controller_impl {
          pending->_pending_block_state->block->transactions.emplace_back( trx->packed_trx );
          pending->_applied_transaction_metas.emplace_back( trx );
       }
+
+      return move(trx_context.trace);
    }
 
 
@@ -747,14 +749,16 @@ void controller::push_block( const signed_block_ptr& b ) {
    }
 }
 
-void controller::push_transaction( const transaction_metadata_ptr& trx ) { 
-   my->push_transaction(trx);
+transaction_trace controller::push_transaction( const transaction_metadata_ptr& trx ) { 
+   return my->push_transaction(trx);
 }
 
-void controller::push_transaction() {
+transaction_trace controller::push_transaction() {
+   return transaction_trace();
 }
-void controller::push_transaction( const transaction_id_type& trxid ) {
+transaction_trace controller::push_transaction( const transaction_id_type& trxid ) {
    /// lookup scheduled trx and then apply it...
+   return transaction_trace();
 }
 
 uint32_t controller::head_block_num()const {
@@ -819,7 +823,15 @@ void controller::log_irreversible_blocks() {
       }
    }
 }
-signed_block_ptr controller::fetch_block_by_number( uint32_t block_num ) {
+signed_block_ptr controller::fetch_block_by_id( block_id_type id )const {
+   auto state = my->fork_db.get_block(id);
+   if( state ) return state->block;
+   auto bptr = fetch_block_by_number( block_header::num_from_id(id) );
+   if( bptr->id() == id ) return bptr;
+   return signed_block_ptr();
+}
+
+signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  {
    optional<signed_block> b = my->blog.read_block_by_num(block_num);
    if( b ) return std::make_shared<signed_block>( move(*b) );
 

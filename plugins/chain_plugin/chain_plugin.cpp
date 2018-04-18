@@ -12,9 +12,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 
-#include <eosio/chain/contracts/chain_initializer.hpp>
-#include <eosio/chain/contracts/genesis_state.hpp>
-#include <eosio/chain/contracts/eos_contract.hpp>
+#include <eosio/chain/eosio_contract.hpp>
 
 #include <eosio/utilities/key_conversion.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
@@ -30,7 +28,7 @@ using namespace eosio::chain::config;
 using vm_type = wasm_interface::vm_type;
 using fc::flat_map;
 
-//using txn_msg_rate_limits = chain_controller::txn_msg_rate_limits;
+//using txn_msg_rate_limits = controller::txn_msg_rate_limits;
 
 
 class chain_plugin_impl {
@@ -38,14 +36,13 @@ public:
    bfs::path                        block_log_dir;
    bfs::path                        genesis_file;
    time_point                       genesis_timestamp;
-   uint32_t                         skip_flags = skip_nothing;
    bool                             readonly = false;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
    fc::optional<fork_database>      fork_db;
    fc::optional<block_log>          block_logger;
-   fc::optional<chain_controller::controller_config> chain_config = chain_controller::controller_config();
-   fc::optional<chain_controller>   chain;
+   fc::optional<controller::config> chain_config = controller::config();
+   fc::optional<controller>   chain;
    chain_id_type                    chain_id;
    int32_t                          max_reversible_block_time_ms;
    int32_t                          max_pending_transaction_time_ms;
@@ -90,8 +87,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "clear chain database and replay all blocks")
          ("resync-blockchain", bpo::bool_switch()->default_value(false),
           "clear chain database and block log")
-         ("skip-transaction-signatures", bpo::bool_switch()->default_value(false),
-          "Disable transaction signature verification. ONLY for TESTING.")
          ;
 }
 
@@ -138,20 +133,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       fc::remove_all(app().data_dir() / default_shared_memory_dir);
       fc::remove_all(my->block_log_dir);
    }
-   if (options.at("skip-transaction-signatures").as<bool>()) {
-      ilog("Setting skip_transaction_signatures");
-      elog("Setting skip_transaction_signatures\n"
-           "\n"
-           "**************************************\n"
-           "*                                    *\n"
-           "*   -- EOSD IGNORING SIGNATURES --   *\n"
-           "*   -         TEST MODE          -   *\n"
-           "*   ------------------------------   *\n"
-           "*                                    *\n"
-           "**************************************\n");
-
-      my->skip_flags |= skip_transaction_signatures;
-   }
 
    if(options.count("checkpoint"))
    {
@@ -176,13 +157,13 @@ void chain_plugin::plugin_startup()
 { try {
    if( !fc::exists( my->genesis_file ) ) {
       wlog( "\n generating default genesis file ${f}", ("f", my->genesis_file.generic_string() ) );
-      contracts::genesis_state_type default_genesis;
+      genesis_state default_genesis;
       fc::json::save_to_file( default_genesis, my->genesis_file, true );
    }
    my->chain_config->block_log_dir = my->block_log_dir;
    my->chain_config->shared_memory_dir = app().data_dir() / default_shared_memory_dir;
    my->chain_config->read_only = my->readonly;
-   my->chain_config->genesis = fc::json::from_file(my->genesis_file).as<contracts::genesis_state_type>();
+   my->chain_config->genesis = fc::json::from_file(my->genesis_file).as<genesis_state>();
    if (my->genesis_timestamp.sec_since_epoch() > 0) {
       my->chain_config->genesis.initial_timestamp = my->genesis_timestamp;
    }
@@ -206,7 +187,7 @@ void chain_plugin::plugin_startup()
 
    if(!my->readonly) {
       ilog("starting chain in read/write mode");
-      my->chain->add_checkpoints(my->loaded_checkpoints);
+      /// TODO: my->chain->add_checkpoints(my->loaded_checkpoints);
    }
 
    ilog("Blockchain started; head block is #${num}, genesis timestamp is ${ts}",
@@ -221,7 +202,7 @@ void chain_plugin::plugin_shutdown() {
 }
 
 chain_apis::read_write chain_plugin::get_read_write_api() {
-   return chain_apis::read_write(chain(), my->skip_flags);
+   return chain_apis::read_write(chain());
 }
 
 bool chain_plugin::accept_block(const signed_block& block, bool currently_syncing) {
@@ -233,33 +214,26 @@ bool chain_plugin::accept_block(const signed_block& block, bool currently_syncin
    }
 
 #warning TODO: This used to be sync now it isnt?
-   chain().push_block(block, my->skip_flags);
+   chain().push_block( std::make_shared<signed_block>(block) );
    return true;
 }
 
 void chain_plugin::accept_transaction(const packed_transaction& trx) {
-   chain().push_transaction(trx, my->skip_flags);
+   chain().push_transaction( std::make_shared<transaction_metadata>(trx) );
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
-   // If it's not known, it's not preferred.
-   if (!chain().is_known_block(block_id)) return false;
-   // Extract the block number from block_id, and fetch that block number's ID from the database.
-   // If the database's block ID matches block_id, then block_id is on the preferred chain. Otherwise, it's on a fork.
-   return chain().get_block_id_for_num(block_header::num_from_id(block_id)) == block_id;
+   auto b = chain().fetch_block_by_number( block_header::num_from_id(block_id) );
+   return b && b->id() == block_id;
 }
 
-bool chain_plugin::is_skipping_transaction_signatures() const {
-   return my->skip_flags & skip_transaction_signatures;
-}
-
-chain_controller::controller_config& chain_plugin::chain_config() {
+controller::config& chain_plugin::chain_config() {
    // will trigger optional assert if called before/after plugin_initialize()
    return *my->chain_config;
 }
 
-chain_controller& chain_plugin::chain() { return *my->chain; }
-const chain_controller& chain_plugin::chain() const { return *my->chain; }
+controller& chain_plugin::chain() { return *my->chain; }
+const controller& chain_plugin::chain() const { return *my->chain; }
 
   void chain_plugin::get_chain_id (chain_id_type &cid)const {
     memcpy (cid.data(), my->chain_id.data(), cid.data_size());
@@ -289,8 +263,8 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    };
 }
 
-abi_def get_abi( const chain_controller& db, const name& account ) {
-   const auto &d = db.get_database();
+abi_def get_abi( const controller& db, const name& account ) {
+   const auto &d = db.db();
    const account_object *code_accnt = d.find<account_object, by_name>(account);
    EOS_ASSERT(code_accnt != nullptr, chain::account_query_exception, "Fail to retrieve account for ${account}", ("account", account) );
    abi_def abi;
@@ -312,7 +286,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
    auto table_type = get_table_type( abi, p.table );
 
    if( table_type == KEYi64 ) {
-      return get_table_rows_ex<contracts::key_value_index, contracts::by_scope_primary>(p,abi);
+      return get_table_rows_ex<key_value_index, by_scope_primary>(p,abi);
    }
 
    EOS_ASSERT( false, chain::contract_table_query_exception,  "Invalid table type ${type}", ("type",table_type)("abi",abi));
@@ -320,7 +294,7 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
 
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
    vector<asset> results;
-   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.account, N(accounts), [&](const contracts::key_value_object& obj){
+   walk_table<key_value_index, by_scope_primary>(p.code, p.account, N(accounts), [&](const key_value_object& obj){
       share_type balance;
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
       fc::raw::unpack(ds, balance);
@@ -339,7 +313,7 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
 
 fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_params& p )const {
    fc::mutable_variant_object results;
-   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.code, N(stat), [&](const contracts::key_value_object& obj){
+   walk_table<key_value_index, by_scope_primary>(p.code, p.code, N(stat), [&](const key_value_object& obj){
       share_type balance;
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
       fc::raw::unpack(ds, balance);
@@ -358,7 +332,7 @@ template<typename Api>
 struct resolver_factory {
    static auto make(const Api *api) {
       return [api](const account_name &name) -> optional<abi_serializer> {
-         const auto *accnt = api->db.get_database().template find<account_object, by_name>(name);
+         const auto *accnt = api->db.db().template find<account_object, by_name>(name);
          if (accnt != nullptr) {
             abi_def abi;
             if (abi_serializer::to_abi(accnt->abi, abi)) {
@@ -402,7 +376,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
 }
 
 read_write::push_block_results read_write::push_block(const read_write::push_block_params& params) {
-   db.push_block(params, skip_nothing);
+   db.push_block( std::make_shared<signed_block>(params) );
    return read_write::push_block_results();
 }
 
@@ -413,7 +387,7 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
       abi_serializer::from_variant(params, pretty_input, resolver);
    } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-   auto result = db.push_transaction(pretty_input, skip_flags);
+   auto result = db.push_transaction( std::make_shared<transaction_metadata>(move(pretty_input)) );
 #warning TODO: get transaction results asynchronously
    fc::variant pretty_output;
    abi_serializer::to_variant(result, pretty_output, resolver);
@@ -439,7 +413,7 @@ read_write::push_transactions_results read_write::push_transactions(const read_w
 read_only::get_code_results read_only::get_code( const get_code_params& params )const {
    get_code_results result;
    result.account_name = params.account_name;
-   const auto& d = db.get_database();
+   const auto& d = db.db();
    const auto& accnt  = d.get<account_object,by_name>( params.account_name );
 
    if( accnt.code.size() ) {
@@ -456,12 +430,10 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
 }
 
 read_only::get_account_results read_only::get_account( const get_account_params& params )const {
-   using namespace eosio::contracts;
-
    get_account_results result;
    result.account_name = params.account_name;
 
-   const auto& d = db.get_database();
+   const auto& d = db.db();
 
    const auto& permissions = d.get_index<permission_index,by_owner>();
    auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );
@@ -488,7 +460,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
 
 read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::abi_json_to_bin_params& params )const try {
    abi_json_to_bin_result result;
-   const auto code_account = db.get_database().find<account_object,by_name>( params.code );
+   const auto code_account = db.db().find<account_object,by_name>( params.code );
    EOS_ASSERT(code_account != nullptr, contract_query_exception, "Contract can't be found ${contract}", ("contract", params.code));
 
    abi_def abi;
@@ -505,7 +477,7 @@ read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::a
 
 read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::abi_bin_to_json_params& params )const {
    abi_bin_to_json_result result;
-   const auto& code_account = db.get_database().get<account_object,by_name>( params.code );
+   const auto& code_account = db.db().get<account_object,by_name>( params.code );
    abi_def abi;
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
       abi_serializer abis( abi );

@@ -19,6 +19,8 @@ namespace eosio { namespace chain {
 
          vector<action_receipt>            executed;
 
+         transaction_trace                 trace;
+
          controller&                       control;
          const transaction_metadata_ptr&   trx_meta;
          chainbase::database::session      undo_session;

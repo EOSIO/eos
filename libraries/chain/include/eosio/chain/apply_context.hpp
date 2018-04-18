@@ -584,6 +584,7 @@ class apply_context {
       fc::time_point                              processing_deadline;
 
       vector<action_receipt>                      executed;
+      action_trace                                trace;
 
       uint64_t                                    cpu_usage;
       uint64_t                                    total_cpu_usage;
@@ -598,7 +599,7 @@ class apply_context {
       }
       */
 
-      void exec_one();
+      action_trace exec_one();
 
       const table_id_object* find_table( name code, name scope, name table );
       const table_id_object& find_or_create_table( name code, name scope, name table, const account_name &payer );

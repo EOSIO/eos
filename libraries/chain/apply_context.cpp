@@ -12,7 +12,7 @@
 using boost::container::flat_set;
 
 namespace eosio { namespace chain {
-void apply_context::exec_one()
+action_trace apply_context::exec_one()
 {
    auto start = fc::time_point::now();
    cpu_usage = 0;
@@ -42,14 +42,23 @@ void apply_context::exec_one()
    for( const auto& auth : act.authorization ) {
       r.auth_sequence[auth.actor] = control.next_auth_sequence( auth.actor );
    }
+
+   action_trace t(r);
+   t.cpu_usage = cpu_usage;
+   t.total_inline_cpu_usage = cpu_usage;
+   t.console = _pending_console_output.str();
+
    executed.emplace_back( move(r) );
    total_cpu_usage += cpu_usage;
 
 
-
    //results.applied_actions.emplace_back(action_trace {receiver, context_free, _cpu_usage, act, _pending_console_output.str(), move(data_access)});
+
+
    _pending_console_output = std::ostringstream();
-   // results.applied_actions.back()._profiling_us = fc::time_point::now() - start;
+
+   t.ellapsed = fc::time_point::now() - start;
+   return t;
 }
 
 void apply_context::exec()
@@ -57,17 +66,22 @@ void apply_context::exec()
    _notified.push_back(act.account);
    for( uint32_t i = 0; i < _notified.size(); ++i ) {
       receiver = _notified[i];
-      exec_one();
+      if( i == 0 ) { /// first one is the root, of this trace
+         trace = exec_one();
+      }
    }
 
    for( uint32_t i = 0; i < _cfa_inline_actions.size(); ++i ) {
       EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
       apply_context ncontext( mutable_controller, _cfa_inline_actions[i], trx_meta, recurse_depth + 1 );
       ncontext.context_free = true;
+
       ncontext.exec();
       fc::move_append( executed, move(ncontext.executed) );
       total_cpu_usage += ncontext.total_cpu_usage;
-      //append_results(move(ncontext.results));
+
+      trace.total_inline_cpu_usage += ncontext.trace.total_inline_cpu_usage;
+      trace.inline_traces.emplace_back(ncontext.trace);
    }
 
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
@@ -76,7 +90,9 @@ void apply_context::exec()
       ncontext.exec();
       fc::move_append( executed, move(ncontext.executed) );
       total_cpu_usage += ncontext.total_cpu_usage;
-      //append_results(move(ncontext.results));
+
+      trace.total_inline_cpu_usage += ncontext.trace.total_inline_cpu_usage;
+      trace.inline_traces.emplace_back(ncontext.trace);
    }
 
 } /// exec()

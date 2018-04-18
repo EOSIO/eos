@@ -25,6 +25,9 @@ namespace eosio { namespace chain {
       acontext.exec();
 
       fc::move_append(executed, move(acontext.executed) );
+
+      trace.cpu_usage += acontext.trace.total_inline_cpu_usage;
+      trace.action_traces.emplace_back( move(acontext.trace) );
    }
 
 
