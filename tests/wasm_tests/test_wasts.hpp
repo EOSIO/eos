@@ -16,6 +16,82 @@ static const char f32_add_wast[] = R"=====(
  )
 )=====";
 */
+static const char aligned_ref_wast[] = R"=====(
+(module
+ (import "env" "sha256" (func $sha256 (param i32 i32 i32)))
+ (table 0 anyfunc)
+ (memory $0 32)
+ (data (i32.const 4) "hello")
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+  (call $sha256
+   (i32.const 4)
+   (i32.const 5)
+   (i32.const 16)
+  )
+ )
+)
+)=====";
+
+static const char aligned_const_ref_wast[] = R"=====(
+(module
+ (import "env" "sha256" (func $sha256 (param i32 i32 i32)))
+ (import "env" "assert_sha256" (func $assert_sha256 (param i32 i32 i32)))
+ (table 0 anyfunc)
+ (memory $0 32)
+ (data (i32.const 4) "hello")
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+  (local $0 i32)
+  (call $sha256
+   (i32.const 4)
+   (i32.const 5)
+   (get_local $0)
+  )
+  (call $assert_sha256
+   (i32.const 4)
+   (i32.const 5)
+   (get_local $0)
+  )
+ )
+)
+)=====";
+
+static const char misaligned_ref_wast[] = R"=====(
+(module
+ (import "env" "sha256" (func $sha256 (param i32 i32 i32)))
+ (table 0 anyfunc)
+ (memory $0 32)
+ (data (i32.const 4) "hello")
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+  (call $sha256
+   (i32.const 4)
+   (i32.const 5)
+   (i32.const 5)
+  )
+ )
+)
+)=====";
+
+static const char misaligned_const_ref_wast[] = R"=====(
+(module
+ (import "env" "assert_sha256" (func $assert_sha256 (param i32 i32 i32)))
+ (table 0 anyfunc)
+ (memory $0 32)
+ (data (i32.const 4) "hello")
+ (data (i32.const 23) "5891B5B522D5DF086D0FF0B110FBD9D21BB4FC7163AF34D08286A2E846F6BE03")
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+  (call $assert_sha256
+   (i32.const 4)
+   (i32.const 5)
+   (i32.const 5)
+  )
+ )
+)
+)=====";
+
 static const char entry_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))

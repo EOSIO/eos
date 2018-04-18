@@ -685,7 +685,6 @@ class crypto_api : public context_aware_api {
    public:
       explicit crypto_api( apply_context& ctx )
       :context_aware_api(ctx,true){}
-
       /**
        * This method can be optimized out during replay as it has
        * no possible side effects other than "passing".
@@ -736,7 +735,6 @@ class crypto_api : public context_aware_api {
          auto result = fc::ripemd160::hash( data, datalen );
          FC_ASSERT( result == hash_val, "hash miss match" );
       }
-
 
       void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
          hash_val = fc::sha1::hash( data, datalen );

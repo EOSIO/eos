@@ -73,6 +73,7 @@ namespace _test_multi_index {
       multi_index<TableName, record,
          indexed_by< N(bysecondary), const_mem_fun<record, uint64_t, &record::get_secondary> >
       > table( receiver, receiver );
+
       auto payer = receiver;
 
       for (size_t i = 0; i < num_records; ++i) {
@@ -125,6 +126,7 @@ namespace _test_multi_index {
          ++itr;
          eosio_assert(itr == secondary_index.end(), "idx64_general - increment secondary iterator to end");
       }
+
       // iterate backward starting with second bob
       {
          auto pk_itr = table.find(781);
@@ -178,7 +180,7 @@ namespace _test_multi_index {
          eosio_assert( itr2 == table.end(), "idx64_general - table.erase()");
       }
    }
-  
+
    template<uint64_t TableName>
    void idx128_store_only(uint64_t receiver)
    {

@@ -478,7 +478,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Transl
    template<then_type Then>
    static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) {
       T* base = array_ptr_impl<T>(ctx, ptr, 1);
-      //FC_ASSERT( reinterpret_cast<uintptr_t>(base) % alignof(T) == 0, "Misaligned pointer" );
+      FC_ASSERT( reinterpret_cast<uintptr_t>(base) % alignof(T) == 0, "Misaligned pointer" );
       return Then(ctx, base, rest..., translated...);
    };
 
@@ -540,7 +540,6 @@ struct intrinsic_invoker_impl<Ret, std::tuple<const fc::time_point_sec&, Inputs.
    }
 };
 
-
 /**
  * Specialization for transcribing  a reference type in the native method signature
  *    This type transcribes into an int32  pointer checks the validity of that memory
@@ -563,7 +562,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Transl
       if(!mem || ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
          Runtime::causeException(Exception::Cause::accessViolation);
       T &base = *(T*)(getMemoryBaseAddress(mem)+ptr);
-      //FC_ASSERT( reinterpret_cast<uintptr_t>(&base) % alignof(T) == 0, "Misaligned pointer" );
+      FC_ASSERT( reinterpret_cast<uintptr_t>(&base) % alignof(T) == 0, "Misaligned pointer" );
       return Then(ctx, base, rest..., translated...);
    }
 

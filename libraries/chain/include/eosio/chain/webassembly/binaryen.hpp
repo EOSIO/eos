@@ -451,17 +451,38 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
    using then_type = Ret (*)(interpreter_interface*, T *, Inputs..., LiteralList&, int);
 
-   template<then_type Then>
-   static Ret translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) {
+   template<then_type Then, typename U>
+   static auto translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) -> std::enable_if_t<std::is_const<U>::value, Ret> {
       uint32_t ptr = args.at(offset).geti32();
       T* base = array_ptr_impl<T>(interface, ptr, 1);
-      FC_ASSERT( reinterpret_cast<uintptr_t>(base) % alignof(T) == 0, "Misaligned pointer" );
+      if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
+         wlog( "misaligned const pointer" );
+         std::remove_const_t<T> copy;
+         T* copy_ptr = &copy;
+         memcpy( (void*)copy_ptr, (void*)base, sizeof(T) );
+         return Then(interface, copy_ptr, rest..., args, offset - 1);
+      }
+      return Then(interface, base, rest..., args, offset - 1);
+   };
+
+   template<then_type Then, typename U>
+   static auto translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
+      uint32_t ptr = args.at(offset).geti32();
+      T* base = array_ptr_impl<T>(interface, ptr, 1);
+      if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
+         wlog( "misaligned pointer" );
+         T copy;
+         memcpy( (void*)&copy, (void*)base, sizeof(T) );
+         Ret ret = Then(interface, &copy, rest..., args, offset - 1);
+         memcpy( (void*)base, (void*)&copy, sizeof(T) );
+         return ret; 
+      }
       return Then(interface, base, rest..., args, offset - 1);
    };
 
    template<then_type Then>
    static const auto fn() {
-      return next_step::template fn<translate_one<Then>>();
+      return next_step::template fn<translate_one<Then, T>>();
    }
 };
 
@@ -531,20 +552,43 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
    using then_type = Ret (*)(interpreter_interface*, T &, Inputs..., LiteralList&, int);
 
-   template<then_type Then>
-   static Ret translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) {
+   template<then_type Then, typename U>
+   static auto translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) -> std::enable_if_t<std::is_const<U>::value, Ret> {
       // references cannot be created for null pointers
       uint32_t ptr = args.at(offset).geti32();
       FC_ASSERT(ptr != 0);
       T* base = array_ptr_impl<T>(interface, ptr, 1);
-      std::cout << "TYPER " << typeid(T).name() << " " << alignof(T) << std::endl;
-      FC_ASSERT( reinterpret_cast<uintptr_t>(base) % alignof(T) == 0, "Misaligned pointer" );
+      if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
+         wlog( "misaligned const reference" );
+         std::remove_const_t<T> copy;
+         T* copy_ptr = &copy;
+         memcpy( (void*)copy_ptr, (void*)base, sizeof(T) );
+         return Then(interface, *copy_ptr, rest..., args, offset - 1);
+      }
       return Then(interface, *base, rest..., args, offset - 1);
    }
 
+   template<then_type Then, typename U>
+   static auto translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
+      // references cannot be created for null pointers
+      uint32_t ptr = args.at(offset).geti32();
+      FC_ASSERT(ptr != 0);
+      T* base = array_ptr_impl<T>(interface, ptr, 1);
+      if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
+         wlog( "misaligned reference" );
+         T copy;
+         memcpy( (void*)&copy, (void*)base, sizeof(T) );
+         Ret ret = Then(interface, copy, rest..., args, offset - 1);
+         memcpy( (void*)base, (void*)&copy, sizeof(T) );
+         return ret; 
+      }
+      return Then(interface, *base, rest..., args, offset - 1);
+   }
+
+
    template<then_type Then>
    static const auto fn() {
-      return next_step::template fn<translate_one<Then>>();
+      return next_step::template fn<translate_one<Then, T>>();
    }
 };
 

@@ -1191,7 +1191,6 @@ BOOST_FIXTURE_TEST_CASE(memory_tests, TESTER) { try {
    test_memory_oob("test_outofbound_1");
    test_memory_oob("test_outofbound_2");
    test_memory_oob("test_outofbound_3");
-   return;
    test_memory_oob("test_outofbound_4");
    test_memory_oob("test_outofbound_5");
    test_memory_oob("test_outofbound_6");
