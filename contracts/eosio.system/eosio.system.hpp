@@ -150,7 +150,7 @@ namespace eosiosystem {
                if( global_state_singleton::exists() ) {
                   auto parameters = global_state_singleton::get();
                   // This will be improved in the future when total_votes becomes a double type.
-                  auto share_of_eos_bucket = eosio::asset( static_cast<int64_t>( (prod->total_votes * parameters.eos_bucket.amount) / total_producer_votes ) );
+                  auto share_of_eos_bucket = eosio::asset( static_cast<int64_t>( (prod->total_votes * uint64_t(parameters.eos_bucket.amount) ) / total_producer_votes ) );
                   rewards += share_of_eos_bucket;
                   parameters.eos_bucket -= share_of_eos_bucket;
                   global_state_singleton::set(parameters);

@@ -117,7 +117,7 @@ namespace eosiosystem {
             require_auth( del.from );
 
             //eosio_assert( is_account( del.receiver ), "can only delegate resources to an existing account" );
-            uint64_t storage_bytes = 0;
+            int64_t storage_bytes = 0;
             if ( 0 < del.stake_storage_quantity.amount ) {
                auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
                   : common<SystemAccount>::get_default_parameters();
@@ -127,17 +127,17 @@ namespace eosiosystem {
                const eosio::asset token_supply = st.supply;
 
                //make sure that there is no posibility of overflow here
-               uint64_t storage_bytes_estimated = ( parameters.max_storage_size - parameters.total_storage_bytes_reserved )
-                  * parameters.storage_reserve_ratio * del.stake_storage_quantity
+               int64_t storage_bytes_estimated = int64_t( parameters.max_storage_size - parameters.total_storage_bytes_reserved )
+                  * int64_t(parameters.storage_reserve_ratio) * del.stake_storage_quantity
                   / ( token_supply - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient */;
 
-               storage_bytes = ( parameters.max_storage_size - parameters.total_storage_bytes_reserved - storage_bytes_estimated )
-                  * parameters.storage_reserve_ratio * del.stake_storage_quantity
+               storage_bytes = ( int64_t(parameters.max_storage_size) - int64_t(parameters.total_storage_bytes_reserved) - storage_bytes_estimated )
+                  * int64_t(parameters.storage_reserve_ratio) * del.stake_storage_quantity
                   / ( token_supply - del.stake_storage_quantity - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient */;
 
                eosio_assert( 0 < storage_bytes, "stake is too small to increase storage even by 1 byte" );
 
-               parameters.total_storage_bytes_reserved += storage_bytes;
+               parameters.total_storage_bytes_reserved += uint64_t(storage_bytes);
                parameters.total_storage_stake += del.stake_storage_quantity;
                global_state_singleton::set(parameters);
             }
@@ -151,7 +151,7 @@ namespace eosiosystem {
                   dbo.net_weight    = del.stake_net_quantity;
                   dbo.cpu_weight    = del.stake_cpu_quantity;
                   dbo.storage_stake = del.stake_storage_quantity;
-                  dbo.storage_bytes = storage_bytes;
+                  dbo.storage_bytes = uint64_t(storage_bytes);
                });
             }
             else {
@@ -159,7 +159,7 @@ namespace eosiosystem {
                   dbo.net_weight    += del.stake_net_quantity;
                   dbo.cpu_weight    += del.stake_cpu_quantity;
                   dbo.storage_stake += del.stake_storage_quantity;
-                  dbo.storage_bytes += storage_bytes;
+                  dbo.storage_bytes += uint64_t(storage_bytes);
                });
             }
 
@@ -171,14 +171,14 @@ namespace eosiosystem {
                   tot.net_weight    = del.stake_net_quantity;
                   tot.cpu_weight    = del.stake_cpu_quantity;
                   tot.storage_stake = del.stake_storage_quantity;
-                  tot.storage_bytes = storage_bytes;
+                  tot.storage_bytes = uint64_t(storage_bytes);
                });
             } else {
                totals_tbl.modify( tot_itr, del.from == del.receiver ? del.from : 0, [&]( auto& tot ) {
                   tot.net_weight    += del.stake_net_quantity;
                   tot.cpu_weight    += del.stake_cpu_quantity;
                   tot.storage_stake += del.stake_storage_quantity;
-                  tot.storage_bytes += storage_bytes;
+                  tot.storage_bytes += uint64_t(storage_bytes);
                });
             }
 
@@ -210,7 +210,7 @@ namespace eosiosystem {
             eosio::asset storage_stake_decrease(0, S(4,EOS));
             if ( 0 < del.unstake_storage_bytes ) {
                storage_stake_decrease = 0 < dbw.storage_bytes ?
-                                            dbw.storage_stake * del.unstake_storage_bytes / dbw.storage_bytes
+                                            dbw.storage_stake * int64_t(del.unstake_storage_bytes) / int64_t(dbw.storage_bytes)
                                             : eosio::asset(0, S(4,EOS));
 
                auto parameters = global_state_singleton::get();
