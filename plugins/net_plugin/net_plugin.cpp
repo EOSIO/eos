@@ -28,6 +28,7 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/intrusive/set.hpp>
 
+#include "old_versions.hpp"
 namespace fc {
    extern std::unordered_map<std::string,logger>& get_logger_map();
 }
@@ -2884,27 +2885,28 @@ namespace eosio {
    /*
     * this really should be in apputils
     */
-#include <eosio/net_plugin/old_versions.hpp>
+
+
    std::set<uint16_t> known_old;
    std::set<uint16_t> known_new;
 
    bool net_plugin_impl::is_old_version (uint16_t v) {
       if (known_old.find (v) != known_old.end()) {
-         fc_ilog (logger,"version ${v} is known to be old",("v",v));
+         fc_dlog (logger,"version ${v} is known to be old",("v",v));
          return true;
       }
       if (known_new.find (v) != known_new.end()) {
-         fc_ilog (logger,"version ${v} is known to be new",("v",v));
+         fc_dlog (logger,"version ${v} is known to be new",("v",v));
          return false;
       }
       for (auto old: old_versions) {
          if (v == (uint16_t)old) {
-            fc_ilog (logger,"adding version ${v} to the known old set",("v",v));
+            fc_dlog (logger,"adding version ${v} to the known old set",("v",v));
             known_old.insert(v);
             return true;
          }
       }
-      fc_ilog (logger,"adding version ${v} to the known new set",("v",v));
+      fc_dlog (logger,"adding version ${v} to the known new set",("v",v));
       known_new.insert(v);
       return false;
    }
