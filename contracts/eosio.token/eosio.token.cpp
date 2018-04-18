@@ -80,14 +80,6 @@ void token::transfer( account_name from,
     add_balance( to, quantity, st, from );
 }
 
-asset token::get_total_supply( const symbol_type& symbol )
-{
-   auto symbol_name = symbol.name();
-   stats statstable( _self, symbol_name );
-   const auto& st = statstable.get( symbol_name );
-   return st.supply;
-}
-
 void token::sub_balance( account_name owner, asset value, const currency_stats& st ) {
    accounts from_acnts( _self, owner );
 

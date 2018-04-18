@@ -36,7 +36,7 @@ public:
 
       produce_blocks( 2 );
 
-      create_accounts( { N(eosio.system), N(eosio.token) } );
+      create_accounts( { N(eosio.token) } );
       create_accounts( { N(alice), N(bob), N(carol) } );
       produce_blocks( 1000 );
 

@@ -39,8 +39,6 @@ namespace eosio {
                         asset        quantity,
                         string       memo );
 
-         asset get_total_supply( const symbol_type& symbol );
-
       private:
 
          friend eosiosystem::voting<N(eosio)>;
