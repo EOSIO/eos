@@ -94,7 +94,7 @@ uint32_t last_fnc_err = 0;
 #define CAPTURE(STREAM, EXEC) \
    {\
       capture.clear(); \
-      bio::stream_buffer<MySink> sb; sb.open(MySink()); \
+      boost::iostreams::stream_buffer<MySink> sb; sb.open(MySink()); \
       std::streambuf *oldbuf = std::STREAM.rdbuf(&sb); \
       EXEC; \
       std::STREAM.rdbuf(oldbuf); \
@@ -517,10 +517,14 @@ BOOST_FIXTURE_TEST_CASE(misaligned_tests, tester ) try {
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
    };
 
-   check_aligned(aligned_ref_wast);
+   CAPTURE( std::stderr, check_aligned(aligned_ref_wast) );
+   //std::cout << "CAPTURED {" << capture[0] << "\n";
    check_aligned(misaligned_ref_wast);
-   //check_aligned(aligned_const_ref_wast);
+   check_aligned(aligned_const_ref_wast);
    check_aligned(misaligned_const_ref_wast);
+   check_aligned(aligned_ptr_wast);
+   check_aligned(misaligned_ptr_wast);
+   check_aligned(misaligned_const_ptr_wast);
 } FC_LOG_AND_RETHROW()
 
 // test cpu usage
