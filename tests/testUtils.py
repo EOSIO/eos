@@ -147,12 +147,11 @@ class Account(object):
 ###########################################################################################
 class Node(object):
 
-    def __init__(self, host, port, pid=None, cmd=None, alive=None, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest"):
+    def __init__(self, host, port, pid=None, cmd=None, enableMongo=False, mongoHost="localhost", mongoPort=27017, mongoDb="EOStest"):
         self.host=host
         self.port=port
         self.pid=pid
         self.cmd=cmd
-        self.alive=alive
         self.killed=False # marks node as killed
         self.enableMongo=enableMongo
         self.mongoSyncTime=None if Utils.mongoSyncTime < 1 else Utils.mongoSyncTime
@@ -165,7 +164,7 @@ class Node(object):
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
 
     def __str__(self):
-        #return "Host: %s, Port:%d, Pid:%s, Alive:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.alive, self.cmd)
+        #return "Host: %s, Port:%d, Pid:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.cmd)
         return "Host: %s, Port:%d" % (self.host, self.port)
 
     @staticmethod
@@ -860,10 +859,8 @@ class Node(object):
     def checkPulse(self):
         info=self.getInfo(True)
         if info is not None:
-            self.alive=True
             return True
         else:
-            self.alive=False
             return False
 
     def getHeadBlockNum(self):
@@ -1475,7 +1472,7 @@ class Cluster(object):
             for n in range(0, count):
                 #Utils.Print("nextEosIdx: %d, n: %d" % (nextEosIdx, n))
                 nextEosIdx=(nextEosIdx + 1)%count
-                if self.nodes[nextEosIdx].alive:
+                if not self.nodes[nextEosIdx].killed:
                     #Utils.Print("nextEosIdx: %d" % (nextEosIdx))
                     nextInstanceFound=True
                     break
@@ -1519,7 +1516,7 @@ class Cluster(object):
 
     def validateSpreadFunds(self, expectedTotal):
         for node in self.nodes:
-            if node.alive:
+            if not node.killed:
                 Utils.Debug and Utils.Print("Validate funds on %s server port %d." %
                                             (Utils.EosServerName, node.port))
                 if node.validateSpreadFundsOnNode(self.initaAccount, self.accounts, expectedTotal) is False:
@@ -1836,7 +1833,7 @@ class Cluster(object):
             if m is None:
                 Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
                 break
-            instance=Node(self.host, self.port + i, pid=int(m.group(1)), cmd=m.group(2), alive=True, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
+            instance=Node(self.host, self.port + i, pid=int(m.group(1)), cmd=m.group(2), enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
             instance.setWalletEndpointArgs(self.walletEndpointArgs)
             Utils.Debug and Utils.Print("Node>", instance)
             nodes.append(instance)
