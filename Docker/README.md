@@ -166,4 +166,5 @@ docker-compose -f docker-compose-dawn3.0.yml up -d
 curl http://127.0.0.1:8888/v1/chain/get_info
 # get logs
 docker-compose logs nodeosd
+
 ```
