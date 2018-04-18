@@ -947,7 +947,6 @@ BOOST_FIXTURE_TEST_CASE(db_tests, TESTER) { try {
 
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_create_fail", {},
                                            transaction_exception, "NaN is not an allowed value for a secondary key");
-   CALL_TEST_FUNCTION( *this, "test_db", "idx_double_nan_setup", {});
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_db", "idx_double_nan_modify_fail", {},
                                            transaction_exception, "NaN is not an allowed value for a secondary key");
 

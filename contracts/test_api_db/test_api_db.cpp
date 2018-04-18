@@ -18,7 +18,6 @@ extern "C" {
       WASM_TEST_HANDLER_EX(test_db, idx64_upperbound);
       WASM_TEST_HANDLER_EX(test_db, test_invalid_access);
       WASM_TEST_HANDLER_EX(test_db, idx_double_nan_create_fail);
-      WASM_TEST_HANDLER_EX(test_db, idx_double_nan_setup);
       WASM_TEST_HANDLER_EX(test_db, idx_double_nan_modify_fail);
       WASM_TEST_HANDLER_EX(test_db, idx_double_nan_lookup_fail);
 

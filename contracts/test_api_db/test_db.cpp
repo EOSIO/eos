@@ -502,13 +502,9 @@ void test_db::idx_double_nan_create_fail(uint64_t receiver, uint64_t, uint64_t) 
    db_idx_double_store( N(nan), N(nan), receiver, 0, &x); // should fail
 }
 
-void test_db::idx_double_nan_setup(uint64_t receiver, uint64_t, uint64_t) {
+void test_db::idx_double_nan_modify_fail(uint64_t receiver, uint64_t, uint64_t) {
    double x = 0.0;
    db_idx_double_store( N(nan), N(nan), receiver, 0, &x);
-}
-
-void test_db::idx_double_nan_modify_fail(uint64_t receiver, uint64_t, uint64_t) {
-   double x;
    auto itr = db_idx_double_find_primary(receiver, N(nan), N(nan), &x, 0);
    x = 0.0;
    x = x / x; // create a NaN
@@ -521,6 +517,7 @@ void test_db::idx_double_nan_lookup_fail(uint64_t receiver, uint64_t, uint64_t) 
 
    uint64_t pk;
    double x = 0.0;
+   db_idx_double_store( N(nan), N(nan), receiver, 0, &x);
    x = x / x; // create a NaN
    switch( lookup_type ) {
       case 0: // find
