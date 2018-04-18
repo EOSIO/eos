@@ -260,6 +260,7 @@ void test_db::idx64_general(uint64_t receiver, uint64_t code, uint64_t action)
                        {976, N(emily)},
                        {110, N(joe)}
    };
+
    for (uint32_t i = 0; i < sizeof(records)/sizeof(records[0]); ++i) {
       db_idx64_store(receiver, table, receiver, records[i].ssn, &records[i].name);
    }
