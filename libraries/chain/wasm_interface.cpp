@@ -641,31 +641,34 @@ class softfloat_api : public context_aware_api {
          return from_softfloat64(ui64_to_f64( a ));
       }
 
-
-   private:
-      inline float32_t to_softfloat32( float f ) {
+      static bool is_nan( const float32_t f ) {
+         return ((f.v & 0x7FFFFFFF) > 0x7F800000);
+      }
+      static bool is_nan( const float64_t f ) {
+         return ((f.v & 0x7FFFFFFFFFFFFFFF) > 0x7FF0000000000000);
+      }
+      static bool is_nan( const float128_t& f ) {
+         const uint32_t* iptr = (const uint32_t*)&f;
+         return softfloat_isNaNF128M( iptr );
+      }
+      static float32_t to_softfloat32( float f ) {
          return *reinterpret_cast<float32_t*>(&f);
       }
-      inline float64_t to_softfloat64( double d ) {
+      static float64_t to_softfloat64( double d ) {
          return *reinterpret_cast<float64_t*>(&d);
       }
-      inline float from_softfloat32( float32_t f ) {
+      static float from_softfloat32( float32_t f ) {
          return *reinterpret_cast<float*>(&f);
       }
-      inline double from_softfloat64( float64_t d ) {
+      static double from_softfloat64( float64_t d ) {
          return *reinterpret_cast<double*>(&d);
       }
       static constexpr uint32_t inv_float_eps = 0x4B000000;
       static constexpr uint64_t inv_double_eps = 0x4330000000000000;
 
-      inline bool sign_bit( float32_t f ) { return f.v >> 31; }
-      inline bool sign_bit( float64_t f ) { return f.v >> 63; }
-      inline bool is_nan( float32_t f ) {
-         return ((f.v & 0x7FFFFFFF) > 0x7F800000);
-      }
-      inline bool is_nan( float64_t f ) {
-         return ((f.v & 0x7FFFFFFFFFFFFFFF) > 0x7FF0000000000000);
-      }
+      static bool sign_bit( float32_t f ) { return f.v >> 31; }
+      static bool sign_bit( float64_t f ) { return f.v >> 63; }
+      
 
 };
 class producer_api : public context_aware_api {
@@ -1302,6 +1305,12 @@ class compiler_builtins : public context_aware_api {
       void __floatunsitf( float128_t& ret, uint32_t i ) {
          ret = ui32_to_f128(i); /// TODO: should be 128
       }
+      void __floatditf( float128_t& ret, uint64_t a ) {
+         ret = i64_to_f128( a );
+      }
+      void __floatunditf( float128_t& ret, uint64_t a ) {
+         ret = ui64_to_f128( a );
+      }
       void __extendsftf2( float128_t& ret, uint32_t f ) {
          float32_t in = { f };
          ret = f32_to_f128( in );
@@ -1443,10 +1452,13 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__getf2,       int(int64_t, int64_t, int64_t, int64_t)        )
    (__gttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
    (__lttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
+   (__letf2,       int(int64_t, int64_t, int64_t, int64_t)        )
    (__cmptf2,      int(int64_t, int64_t, int64_t, int64_t)        )
    (__unordtf2,    int(int64_t, int64_t, int64_t, int64_t)        )
    (__floatsitf,   void (int, int)                                )
    (__floatunsitf, void (int, int)                                )
+   (__floatditf,   void (int, int64_t)                            )
+   (__floatunditf, void (int, int64_t)                            )
    (__floatsidf,   double(int)                                    )
    (__extendsftf2, void(int, int)                                 )
    (__extenddftf2, void(int, double)                              )
