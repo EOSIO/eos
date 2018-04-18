@@ -104,7 +104,7 @@ extern "C" {
           }
        } else if (code == receiver ) {
           if ( action == N(setowner)) {
-             apply_setowner(receiver, current_action_data<set_owner>());
+             apply_setowner(receiver, unpack_action_data<set_owner>());
           }
        }
     }
