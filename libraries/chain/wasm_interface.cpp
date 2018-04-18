@@ -1250,37 +1250,37 @@ class compiler_builtins : public context_aware_api {
       }
       int __eqtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          return f128_eq( a, b );
       }
       int __netf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          return !f128_eq( a, b );
       }
       int __getf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          return !f128_lt( a, b );
       }
       int __gttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          return !f128_lt( a, b ) && !f128_eq( a, b );
       }
       int __letf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          return f128_le( a, b );
       }
       int __lttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          return f128_lt( a, b );
       }
       int __cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          if ( f128_lt( a, b ) )
             return -1;
          if ( f128_eq( a, b ) )
@@ -1289,7 +1289,7 @@ class compiler_builtins : public context_aware_api {
       }
       int __unordtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          if ( f128_isSignalingNaN( a ) || f128_isSignalingNaN( b ) )
             return 1;
          return 0;
