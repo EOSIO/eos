@@ -69,11 +69,10 @@ Options:
   -p,--permission TEXT ...    An account and permission level to authorize, as in 'account@permission' (defaults to 'creator@active')
 ```
 */
+
 #include <string>
 #include <vector>
 #include <regex>
-#include <boost/asio.hpp>
-#include <boost/format.hpp>
 #include <iostream>
 #include <fc/crypto/hex.hpp>
 #include <fc/variant.hpp>
@@ -83,11 +82,21 @@ Options:
 #include <fc/exception/exception.hpp>
 #include <eosio/utilities/key_conversion.hpp>
 
+#include <eosio/chain/name.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/transaction_trace.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
+#pragma push_macro("N")
+#undef N
+
+#include <boost/asio.hpp>
+#include <boost/format.hpp>
+#include <boost/dll/runtime_symbol_info.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/process.hpp>
+#include <boost/process/spawn.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
 #include <boost/range/adaptor/transformed.hpp>
@@ -95,6 +104,8 @@ Options:
 #include <boost/algorithm/string/split.hpp>
 #include <boost/range/algorithm/copy.hpp>
 #include <boost/algorithm/string/classification.hpp>
+
+#pragma pop_macro("N")
 
 #include <Inline/BasicTypes.h>
 #include <IR/Module.h>
@@ -140,7 +151,7 @@ uint32_t port = 8888;
 
 // restricting use of wallet to localhost
 string wallet_host = "localhost";
-uint32_t wallet_port = 8888;
+uint16_t wallet_port = 8888;
 
 auto   tx_expiration = fc::seconds(30);
 string tx_ref_block_num_or_id;
@@ -528,12 +539,46 @@ struct set_action_permission_subcommand {
    }
 };
 
-int main( int argc, char** argv ) {
-   fc::path binPath = argv[0];
-   if (binPath.is_relative()) {
-      binPath = relative(binPath, current_path());
-   }
+bool port_busy( uint16_t port ) {
+   using namespace boost::asio;
+   
+   io_service ios;
+   ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
+   ip::tcp::socket socket(ios);
+   boost::system::error_code ec;
+   socket.connect(endpoint, ec);
+   /*do {
+      ios.run_one();
+      } while (ec == boost::asio::error::would_block);*/
+   return !socket.is_open();
+}
 
+void start_keosd( uint16_t wallet_port ) {
+   auto binPath = boost::dll::program_location();
+   boost::filesystem::path keosPath = binPath.parent_path().append("keosd");
+   if ( !boost::filesystem::exists(keosPath) ) {
+      keosPath = binPath.parent_path().parent_path().append("keosd").append("keosd");
+   }
+   keosPath = boost::filesystem::canonical( keosPath );
+
+   if ( boost::filesystem::exists( keosPath ) ) {
+      namespace bp = boost::process;
+      ::boost::process::child keos( keosPath, "--http-server-address=127.0.0.1:"+std::to_string(wallet_port),
+                                    bp::std_in.close(),
+                                    bp::std_out > bp::null, //so it can be written without anything
+                                    bp::std_err > bp::null);
+      if (keos.running()) {
+         std::cerr << keosPath << " launched" << std::endl;
+         keos.detach();
+      } else {
+         std::cerr << "Failed to launch " << keosPath << std::endl;
+      }
+   } else {
+      std::cerr << "keos not found" << std::endl;
+   }
+}
+
+int main( int argc, char** argv ) {
    setlocale(LC_ALL, "");
    bindtextdomain(locale_domain, locale_path);
    textdomain(locale_domain);
@@ -544,6 +589,14 @@ int main( int argc, char** argv ) {
    app.add_option( "-p,--port", port, localized("the port where nodeos is running"), true );
    app.add_option( "--wallet-host", wallet_host, localized("the host where keosd is running"), true );
    app.add_option( "--wallet-port", wallet_port, localized("the port where keosd is running"), true );
+
+   std::cout << "Wallet port: " << wallet_port << std::endl;
+   if ( !port_busy( wallet_port ) ) {
+      std::cout << "wallet port is not in use" << std::endl;
+      start_keosd( wallet_port );
+   } else {
+      std::cout << "wallet port is in use" << std::endl;
+   }
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
