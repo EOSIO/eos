@@ -28,7 +28,6 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/intrusive/set.hpp>
 
-#include "old_versions.hpp"
 namespace fc {
    extern std::unordered_map<std::string,logger>& get_logger_map();
 }
@@ -272,7 +271,7 @@ namespace eosio {
        */
       chain::signature_type sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const;
 
-      bool is_old_version (uint16_t v);
+      int16_t to_net_version(int16_t v);
    };
 
    const fc::string logger_name("net_plugin_impl");
@@ -301,6 +300,21 @@ namespace eosio {
    constexpr auto     def_send_whole_blocks = true;
 
    constexpr auto     message_header_size = 4;
+
+   /**
+    *  For a while, network version was a 16 bit value equal to the second set of 16 bits
+    *  of the current build's git commit id. We are now replacing that with an integer protocol
+    *  identifier. Based on historical analysis of all git commit identifiers, the larges gap
+    *  between ajacent commit id values is shown below.
+    *  DO NOT EDIT net_version_base OR net_version_range!
+    */
+   constexpr int16_t net_version_base = 0xb25b;
+   constexpr int16_t net_version_range = 133;
+   /**
+    *  If there is a change to network protocol or behavior, increment net version to identify
+    *  the need for compatibility hooks
+    */
+   constexpr int16_t net_version = 1;
 
    /**
     *  Index by id
@@ -2015,15 +2029,16 @@ namespace eosio {
             return;
          }
          if( msg.network_version != network_version) {
-            c->backwards_compatibility = is_old_version (msg.network_version);
+            int16_t mnv = to_net_version(msg.network_version);
+            c->backwards_compatibility = mnv < net_version;
             if (network_version_match) {
                elog("Peer network version does not match expected ${nv} but got ${mnv}",
-                    ("nv", network_version)("mnv", msg.network_version));
+                    ("nv", net_version)("mnv", mnv));
                c->enqueue(go_away_message(wrong_version));
                return;
             } else {
                ilog("Local network version: ${nv} Remote version: ${mnv}",
-                    ("nv", eosio::itoh(network_version))("mnv", eosio::itoh(msg.network_version)));
+                    ("nv", net_version)("mnv", mnv));
             }
          }
 
@@ -2689,7 +2704,7 @@ namespace eosio {
    void net_plugin::plugin_initialize( const variables_map& options ) {
       ilog("Initialize net plugin");
 
-      my->network_version = static_cast<uint16_t>(app().version());
+      my->network_version = net_version_base + net_version;
       my->network_version_match = options.at("network-version-match").as<bool>();
       my->send_whole_blocks = def_send_whole_blocks;
 
@@ -2891,32 +2906,11 @@ namespace eosio {
       return connection_ptr();
    }
 
-   /*
-    * this really should be in apputils
-    */
-
-
-   std::set<uint16_t> known_old;
-   std::set<uint16_t> known_new;
-
-   bool net_plugin_impl::is_old_version (uint16_t v) {
-      if (known_old.find (v) != known_old.end()) {
-         fc_dlog (logger,"version ${v} is known to be old",("v",v));
-         return true;
+   int16_t net_plugin_impl::to_net_version (int16_t v) {
+      if (v >= net_version_base) {
+         v -= net_version_base;
+         return (v > net_version_range) ? 0 : v;
       }
-      if (known_new.find (v) != known_new.end()) {
-         fc_dlog (logger,"version ${v} is known to be new",("v",v));
-         return false;
-      }
-      for (auto old: old_versions) {
-         if (v == (uint16_t)old) {
-            fc_dlog (logger,"adding version ${v} to the known old set",("v",v));
-            known_old.insert(v);
-            return true;
-         }
-      }
-      fc_dlog (logger,"adding version ${v} to the known new set",("v",v));
-      known_new.insert(v);
-      return false;
+      return 0;
    }
 }
