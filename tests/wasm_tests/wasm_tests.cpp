@@ -573,7 +573,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
          pass = true;
          count++;
       } catch (eosio::chain::tx_resource_exhausted &) {
-         BOOST_ASSERT(count == 10);
+         BOOST_REQUIRE_EQUAL(count, 3);
          break;
       } 
       BOOST_REQUIRE_EQUAL(true, validate());
@@ -582,7 +582,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
         mgr.set_account_limits(N(acc2), -1, -1, 1000);
       }
    }
-   BOOST_ASSERT(count == 2);
+   BOOST_REQUIRE_EQUAL(count, 3);
 } FC_LOG_AND_RETHROW()
 
 /**
