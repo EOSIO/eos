@@ -1357,57 +1357,42 @@ class compiler_builtins : public context_aware_api {
          float128_t b = {{ lb, hb }};
          ret = f128_div( a, b );
       }
-      int __eqtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+      int ___cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb, int return_value_if_nan ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ lb, hb }};
-         return f128_eq( a, b );
-      }
-      int __netf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ lb, hb }};
-         return !f128_eq( a, b );
-      }
-      int __getf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ lb, hb }};
-         auto res = !f128_lt( a, b );
-         idump((la)(ha)(lb)(hb)(res));
-         return res;
-      }
-      int __gttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ lb, hb }};
-         auto res = !f128_lt( a, b ) && !f128_eq( a, b );
-         idump((la)(ha)(lb)(hb)(res));
-         return res;
-      }
-      int __letf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ lb, hb }};
-         auto res = f128_le( a, b );
-         idump((la)(ha)(lb)(hb)(res));
-         return res;
-      }
-      int __lttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ lb, hb }};
-         auto res = f128_lt( a, b );
-         idump((la)(ha)(lb)(hb)(res));
-         return res;
-      }
-      int __cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ lb, hb }};
+         if ( __unordtf2(la, ha, lb, hb) )
+            return return_value_if_nan;
          if ( f128_lt( a, b ) )
             return -1;
          if ( f128_eq( a, b ) )
             return 0;
          return 1;
       }
+      int __eqtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 1);
+      }
+      int __netf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 1);
+      }
+      int __getf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, -1);
+      }
+      int __gttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 0);
+      }
+      int __letf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 1);
+      }
+      int __lttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 0);
+      }
+      int __cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 1);
+      }
       int __unordtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ lb, hb }};
-         if ( f128_isSignalingNaN( a ) || f128_isSignalingNaN( b ) )
+         if ( f128M_isSignalingNaN(&a) || f128M_isSignalingNaN(&b) ) // TODO/QUESTION: What about quiet NaNs? Would prefer to use softfloat_api::is_nan but there is a linker error regarding symbol _softfloat_isNaNF128M
             return 1;
          return 0;
       }
