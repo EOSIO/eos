@@ -160,7 +160,7 @@ docker pull eosio/eos:dawn3x
 docker volume create --name=nodeos-data-volume
 docker volume create --name=keosd-data-volume
 # start containers
-docker-compose -f docker-compose-dawn3.0.yml up -d
+docker-compose -f docker-compose-dawn3.0.yaml up -d
 # get chain info
 curl http://127.0.0.1:8888/v1/chain/get_info
 # get logs
