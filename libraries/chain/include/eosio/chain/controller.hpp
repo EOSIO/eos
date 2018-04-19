@@ -75,7 +75,7 @@ namespace eosio { namespace chain {
          transaction_trace_ptr push_next_scheduled_transaction();
 
          void finalize_block();
-         void sign_block( std::function<signature_type( const digest_type& )> signer_callback );
+         void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback );
          void commit_block();
          void log_irreversible_blocks();
          void pop_block();
@@ -139,6 +139,10 @@ namespace eosio { namespace chain {
 
          void set_active_producers( const producer_schedule_type& sch );
 
+         signal<void(const block_state_ptr&)> accepted_block_header;
+         signal<void(const block_state_ptr&)> accepted_block;
+         signal<void(const block_state_ptr&)> irreversible_block;
+
          /*
          signal<void()>                                  pre_apply_block;
          signal<void()>                                  post_apply_block;
@@ -154,7 +158,6 @@ namespace eosio { namespace chain {
 
       private:
          std::unique_ptr<controller_impl> my;
-         void apply_block( const signed_block_ptr& b );
 
    };
 

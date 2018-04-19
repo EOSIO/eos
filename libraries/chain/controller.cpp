@@ -278,47 +278,6 @@ struct controller_impl {
    }
 
 
-
-   /**
-    *  This method will backup all tranasctions in the current pending block,
-    *  undo the pending block, call f(), and then push the pending transactions
-    *  on top of the new state.
-    */
-   template<typename Function>
-   auto without_pending_transactions( Function&& f )
-   {
-#if 0
-      vector<transaction_metadata> old_input;
-
-      if( _pending_block )
-         old_input = move(_pending_transaction_metas);
-
-      clear_pending();
-
-      /** after applying f() push previously input transactions on top */
-      auto on_exit = fc::make_scoped_exit( [&](){
-         for( auto& t : old_input ) {
-            try {
-               if (!is_known_transaction(t.id))
-                  _push_transaction( std::move(t) );
-            } catch ( ... ){}
-         }
-      });
-#endif
-      pending.reset();
-      return f();
-   }
-
-
-
-   block_state_ptr push_block( const signed_block_ptr& b ) {
-      return without_pending_transactions( [&](){ 
-         return db.with_write_lock( [&](){ 
-            return push_block_impl( b );
-         });
-      });
-   }
-
    void commit_block( bool add_to_fork_db ) {
       if( add_to_fork_db ) {
          pending->_pending_block_state->validated = true;
@@ -326,6 +285,7 @@ struct controller_impl {
       } 
       pending->push();
       pending.reset();
+      self.accepted_block( head );
    }
 
    transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx ) {
@@ -361,63 +321,117 @@ struct controller_impl {
           EOS_ASSERT( false, transaction_exception,
                      "duplicate transaction ${id}", ("id", trx->id ) );
       }
-   }
+   } /// record_transaction
+
+   void start_block( block_timestamp_type when ) {
+     FC_ASSERT( !pending );
+
+     FC_ASSERT( db.revision() == head->block_num );
+
+     pending = db.start_undo_session(true);
+     pending->_pending_block_state = std::make_shared<block_state>( *head, when );
+
+     try {
+        auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
+        apply_transaction( onbtrx, true );
+     } catch ( ... ) {
+        ilog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
+     }
+   } // start_block
 
 
 
+   void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback ) {
+      auto p = pending->_pending_block_state;
+      p->header.sign( signer_callback, p->pending_schedule_hash );
+      FC_ASSERT( p->block_signing_key == p->header.signee( p->pending_schedule_hash ),
+                 "block was not signed by expected producer key" );
+      static_cast<signed_block_header&>(*p->block) = p->header;
+   } /// sign_block
 
-
-
-
-   block_state_ptr push_block_impl( const signed_block_ptr& b ) {
-#if  0
-      auto head_state = fork_db.add( b );
-      /// check to see if we entered a fork
-      if( head_state->header.previous != head_block_id() ) {
-          auto branches = fork_db.fetch_branch_from(head_state->id, head_block_id());
-          while (head_block_id() != branches.second.back()->header.previous)
-             pop_block();
-
-          /** apply all blocks from new fork */
-          for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
-             optional<fc::exception> except;
-             try {
-                apply_block( *ritr );
-             }
-             catch (const fc::exception& e) { except = e; }
-             if (except) {
-                wlog("exception thrown while switching forks ${e}", ("e",except->to_detail_string()));
-
-                while (ritr != branches.first.rend() ) {
-                   fork_db.set_validity( *ritr, false );
-                   ++ritr;
-                }
-
-                // pop all blocks from the bad fork
-                while( head_block_id() != branches.second.back()->header.previous )
-                   pop_block();
-                
-                // re-apply good blocks
-                for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
-                   apply_block( (*ritr) );
-                }
-                throw *except;
-             } // end if exception
-          } /// end for each block in branch
-
-          return head_state;
-      } /// end if fork
-
+   void apply_block( const signed_block_ptr& b ) { 
       try {
-         apply_block( head_state );
+         start_block( b->timestamp );
+
+         for( const auto& receipt : b->transactions ) {
+            if( receipt.trx.contains<packed_transaction>() ) {
+               auto& pt = receipt.trx.get<packed_transaction>();
+               auto mtrx = std::make_shared<transaction_metadata>(pt);
+               push_transaction( mtrx );
+            }
+         }
+
+         finalize_block();
+         sign_block( [&]( const auto& ){ return b->producer_signature; } );
+
+         FC_ASSERT( b->id() == pending->_pending_block_state->block->id(),
+                    "applying block didn't produce expected block id" );
+
+         commit_block(false);
+         return;
       } catch ( const fc::exception& e ) {
-         elog("Failed to push new block:\n${e}", ("e", e.to_detail_string()));
-         fork_db.set_validity( head_state, false );
+         edump((e.to_detail_string()));
+         abort_block();
          throw;
       }
-      return head;
-#endif
-   } /// push_block_impl
+   } /// apply_block
+
+   void push_block( const signed_block_ptr& b ) {
+      FC_ASSERT( !pending );
+
+      auto new_header_state = fork_db.add( b );
+      self.accepted_block_header( new_header_state );
+      auto new_head = fork_db.head();
+
+      if( new_head->header.previous == head->id ) {
+         try {
+            apply_block( b );
+            fork_db.set_validity( new_head, true );
+            head = new_head;
+         } catch ( const fc::exception& e ) {
+            fork_db.set_validity( new_head, false );
+            throw;
+         }
+      } else {
+         auto branches = fork_db.fetch_branch_from( new_head->id, head->id );
+
+         while( head_block_id() != branches.second.back()->header.previous )
+            pop_block();
+
+         for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
+            optional<fc::exception> except;
+            try {
+               apply_block( (*ritr)->block );
+            }
+            catch (const fc::exception& e) { except = e; }
+            if (except) {
+               wlog("exception thrown while switching forks ${e}", ("e",except->to_detail_string()));
+         
+               while (ritr != branches.first.rend() ) {
+                  fork_db.set_validity( *ritr, false );
+                  ++ritr;
+               }
+         
+               // pop all blocks from the bad fork
+               while( head_block_id() != branches.second.back()->header.previous )
+                  pop_block();
+               
+               // re-apply good blocks
+               for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
+                  apply_block( (*ritr)->block );
+               }
+               throw *except;
+            } // end if exception
+         } /// end for each block in branch
+      }
+   } /// push_block
+
+   vector<transaction_metadata_ptr> abort_block() {
+      vector<transaction_metadata_ptr> pushed = move(pending->_applied_transaction_metas);
+      pending.reset();
+      return pushed;
+   }
+
 
    bool should_enforce_runtime_limits()const {
       return false;
@@ -568,63 +582,7 @@ struct controller_impl {
       return trx;
    }
 
-
-   /**
-    *  apply_block 
-    *
-    *  This method starts an undo session, whose revision number should match 
-    *  the block number. 
-    *
-    *  It first does some parallel read-only sanity checks on all input transactions.
-    *
-    *  It then follows the transaction delivery schedule defined by the block_summary. 
-    *
-   void apply_block( block_state_ptr bstate ) {
-      try {
-         start_block();
-         for( const auto& receipt : bstate.block->transactions ) {
-            receipt.trx.visit( [&]( const auto& t ){ 
-               apply_transaction( t );
-            });
-         }
-         finalize_block();
-         validate_signature();
-         commit_block();
-      } catch ( const fc::exception& e ) {
-         abort_block();
-         edump((e.to_detail_string()));
-         throw;
-      }
-   }
-
-   void start_block( block_timestamp_type time ) {
-      FC_ASSERT( !pending );
-      pending = _db.start_undo_session();
-      /// TODO: FC_ASSERT( _db.revision() == blocknum );
-
-      auto trx = get_on_block_transaction();
-      apply_transaction( trx );
-
-   }
-
-   vector<transaction_metadata> abort_block() {
-      FC_ASSERT( pending.valid() );
-      self.abort_apply_block();
-      auto tmp = move( pending->_transaction_metas );
-      pending.reset();
-      return tmp;
-   }
-
-   void commit_block() {
-      FC_ASSERT( pending.valid() );
-
-      self.applied_block( pending->_pending_block_state );
-      pending->push();
-      pending.reset();
-   }
-    */
-
-};
+}; /// controller_impl
 
 const resource_limits_manager&   controller::get_resource_limits_manager()const 
 {
@@ -664,31 +622,15 @@ chainbase::database& controller::db()const { return my->db; }
 
 
 void controller::start_block( block_timestamp_type when ) {
-  FC_ASSERT( !my->pending );
-
-  FC_ASSERT( my->db.revision() == my->head->block_num );
-
-  my->pending = my->db.start_undo_session(true);
-  my->pending->_pending_block_state = std::make_shared<block_state>( *my->head, when );
-
-  try {
-     auto onbtrx = std::make_shared<transaction_metadata>( my->get_on_block_transaction() );
-     my->apply_transaction( onbtrx, true );
-  } catch ( ... ) {
-     ilog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
-  }
+   my->start_block(when);
 }
 
 void controller::finalize_block() {
    my->finalize_block();
 }
 
-void controller::sign_block( std::function<signature_type( const digest_type& )> signer_callback ) {
-   auto p = my->pending->_pending_block_state;
-   p->header.sign( signer_callback, p->pending_schedule_hash );
-   FC_ASSERT( p->block_signing_key == p->header.signee( p->pending_schedule_hash ),
-              "block was not signed by expected producer key" );
-   static_cast<signed_block_header&>(*p->block) = p->header;
+void controller::sign_block( const std::function<signature_type( const digest_type& )>& signer_callback ) {
+   my->sign_block( signer_callback );
 }
 
 void controller::commit_block() {
@@ -698,64 +640,18 @@ void controller::commit_block() {
 block_state_ptr controller::head_block_state()const {
    return my->head;
 }
+
 block_state_ptr controller::pending_block_state()const {
    if( my->pending ) return my->pending->_pending_block_state;
    return block_state_ptr();
 }
 
-
-void controller::apply_block( const signed_block_ptr& b ) {
-   try {
-      start_block( b->timestamp );
-
-      for( const auto& receipt : b->transactions ) {
-         if( receipt.trx.contains<packed_transaction>() ) {
-            auto& pt = receipt.trx.get<packed_transaction>();
-            auto mtrx = std::make_shared<transaction_metadata>(pt);
-            push_transaction( mtrx );
-         }
-      }
-
-      finalize_block();
-      sign_block( [&]( const auto& ){ return b->producer_signature; } );
-
-      FC_ASSERT( b->id() == my->pending->_pending_block_state->block->id(),
-                 "applying block didn't produce expected block id" );
-
-      my->commit_block(false);
-      return;
-   } catch ( const fc::exception& e ) {
-      edump((e.to_detail_string()));
-      abort_block();
-      throw;
-   }
-}
-
 vector<transaction_metadata_ptr> controller::abort_block() {
-   vector<transaction_metadata_ptr> pushed = move(my->pending->_applied_transaction_metas);
-   my->pending.reset();
-   return pushed;
+   return my->abort_block();
 }
 
 void controller::push_block( const signed_block_ptr& b ) {
-   FC_ASSERT( !my->pending );
-
-   auto new_head = my->fork_db.add( b );
-
-   edump((new_head->block_num));
-   if( new_head->header.previous == my->head->id ) {
-      try {
-         apply_block( b );
-         my->fork_db.set_validity( new_head, true );
-         my->head = new_head;
-      } catch ( const fc::exception& e ) {
-         my->fork_db.set_validity( new_head, false );
-         throw;
-      }
-   } else {
-      /// potential forking logic
-      elog( "new head??? not building on current head?" );
-   }
+   my->push_block( b );
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx ) { 
@@ -812,6 +708,7 @@ void controller::log_irreversible_blocks() {
          auto blk_id = my->get_block_id_for_num( lhead + 1 );
          auto blk = my->fork_db.get_block( blk_id );
          FC_ASSERT( blk, "unable to find block state", ("id",blk_id));
+         irreversible_block( blk );
          my->blog.append( *blk->block );
          my->fork_db.prune( blk );
          my->db.commit( lhead );

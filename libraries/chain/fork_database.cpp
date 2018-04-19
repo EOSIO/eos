@@ -5,6 +5,7 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
+#include <boost/multi_index/composite_key.hpp>
 #include <fc/io/fstream.hpp>
 #include <fstream>
 
@@ -15,15 +16,23 @@ namespace eosio { namespace chain {
 
    struct by_block_id;
    struct by_block_num;
+   struct by_lib_block_num;
    struct by_prev;
    typedef multi_index_container<
       block_state_ptr,
       indexed_by<
-         hashed_unique<tag<by_block_id>, member<block_header_state, block_id_type, &block_header_state::id>, std::hash<block_id_type>>,
-         hashed_non_unique<tag<by_prev>, const_mem_fun<block_header_state, 
+         hashed_unique< tag<by_block_id>, member<block_header_state, block_id_type, &block_header_state::id>, std::hash<block_id_type>>,
+         hashed_non_unique< tag<by_prev>, const_mem_fun<block_header_state, 
                                          const block_id_type&, &block_header_state::prev>, 
                                          std::hash<block_id_type>>,
-         ordered_non_unique<tag<by_block_num>, member<block_header_state,uint32_t,&block_header_state::block_num>>
+         ordered_non_unique< tag<by_block_num>, member<block_header_state,uint32_t,&block_header_state::block_num>>,
+         ordered_non_unique< tag<by_lib_block_num>, 
+            composite_key< block_header_state,
+                member<block_header_state,uint32_t,&block_header_state::dpos_last_irreversible_blocknum>,
+                member<block_header_state,uint32_t,&block_header_state::block_num>
+            >,
+            composite_key_compare< std::greater<uint32_t>, std::greater<uint32_t> >
+         >
       >
    > fork_multi_index_type;
 
@@ -96,11 +105,8 @@ namespace eosio { namespace chain {
       auto inserted = my->index.insert(n);
       FC_ASSERT( inserted.second, "duplicate block added?" );
 
-      if( n->block_num > my->head->block_num ) {
-         my->head = n;
-      }
-
-      return my->head;
+      my->head = *my->index.get<by_lib_block_num>().rbegin();
+      return n;
    }
 
    block_state_ptr fork_database::add( signed_block_ptr b ) {
