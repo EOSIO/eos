@@ -27,6 +27,10 @@ namespace eosio { namespace chain {
       /// weak_ptr prev_block_state....
       signed_block_ptr                                    block;
       bool                                                validated = false;
+
+      /// this data is redundant with the data stored in block, but facilitates 
+      /// recapturing transactions when we pop a block
+      vector<transaction_metadata_ptr>                    trxs;
    };
 
    typedef std::shared_ptr<block_state> block_state_ptr;

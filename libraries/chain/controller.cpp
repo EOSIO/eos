@@ -57,6 +57,13 @@ struct controller_impl {
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
 
+   /**
+    *  Transactions that were undone by pop_block or abort_block, transactions
+    *  are removed from this list if they are re-applied in other blocks. Producers
+    *  can query this list when scheduling new transactions into blocks.
+    */
+   map<transaction_id_type, transaction_metadata_ptr>     unapplied_transactions;
+
    block_id_type head_block_id()const {
       return head->id;
    }
@@ -68,8 +75,10 @@ struct controller_impl {
    }
 
    void pop_block() {
-      /// head = fork_db.get( head->previous );
-      /// db.undo();
+      for( const auto& t : head->trxs )
+         unapplied_transactions[t->id] = t;
+      head = fork_db.get( head->previous );
+      db.undo();
    }
 
 
@@ -312,7 +321,7 @@ struct controller_impl {
 
       if( !implicit ) {
          pending->_pending_block_state->block->transactions.emplace_back( trx->packed_trx );
-         pending->_applied_transaction_metas.emplace_back( trx );
+         pending->_pending_block_state->trxs.emplace_back(trx);
       }
 
       return move(trx_context.trace);
