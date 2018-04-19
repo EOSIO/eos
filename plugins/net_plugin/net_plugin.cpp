@@ -475,7 +475,7 @@ namespace eosio {
        *  Time message handling
        */
       /** @{ */
-      /** \brief Convert a std::chrono nanosecond rep to a human readable string
+      /** \brief Convert an std::chrono nanosecond rep to a human readable string
        */
       char* convert_tstamp(const tstamp& t);
       /**  \brief Populate and queue time_message
