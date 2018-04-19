@@ -84,7 +84,7 @@ struct secondary_index_db_functions<TYPE> {\
 #define MAKE_TRAITS_FOR_ARITHMETIC_SECONDARY_KEY(TYPE)\
 template<>\
 struct secondary_key_traits<TYPE> {\
-   static TYPE lowest() { return std::numeric_limits<TYPE>::lowest(); }\
+   static constexpr  TYPE lowest() { return std::numeric_limits<TYPE>::lowest(); }\
 };
 
 namespace _multi_index_detail {
@@ -109,7 +109,7 @@ namespace _multi_index_detail {
    WRAP_SECONDARY_ARRAY_TYPE(idx256, key256)
    template<>
    struct secondary_key_traits<key256> {
-      static key256 lowest() { return key256(); }
+      static constexpr key256 lowest() { return key256(); }
    };
 
 }
