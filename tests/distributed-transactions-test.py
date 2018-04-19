@@ -21,7 +21,6 @@ parser.add_argument("-s", type=str, help="topology", default="mesh")
 parser.add_argument("-v", help="verbose", action='store_true')
 parser.add_argument("--nodes-file", type=str, help="File containing nodes info in JSON format.")
 parser.add_argument("--seed", type=int, help="random seed", default=seed)
-parser.add_argument("--not-noon", help="This is not the Noon branch.", action='store_true')
 parser.add_argument("--dont-kill", help="Leave cluster running after test finishes", action='store_true')
 parser.add_argument("--dump-error-details",
                     help="Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout",
@@ -35,7 +34,6 @@ total_nodes = pnodes if args.n == 0 else args.n
 debug=args.v
 nodesFile=args.nodes_file
 seed=args.seed
-amINoon=not args.not_noon
 dontKill=args.dont_kill
 dumpErrorDetails=args.dump_error_details
 
@@ -46,9 +44,6 @@ if nodesFile is not None:
 
 testUtils.Utils.Debug=debug
 testSuccessful=False
-
-if not amINoon:
-    testUtils.Utils.iAmNotNoon()
 
 random.seed(seed) # Use a fixed seed for repeatability.
 cluster=testUtils.Cluster(walletd=True)
@@ -106,7 +101,7 @@ try:
     if not cluster.createAccounts(initaAccount):
         errorExit("Accounts creation failed.")
 
-    # TDB: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
+    # TBD: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
     #  Uncomment when functional
     # Print("Spread funds and validate")
     # if not cluster.spreadFundsAndValidate(10):
