@@ -79,7 +79,7 @@ struct secondary_index_db_functions<TYPE> {\
    static int32_t db_idx_upperbound( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t& primary ) {\
       return db_##IDX##_upperbound( code, scope, table, secondary.data(), TYPE::num_words(), &primary );\
    }\
-};\
+};
 
 #define MAKE_TRAITS_FOR_ARITHMETIC_SECONDARY_KEY(TYPE)\
 template<>\
@@ -111,6 +111,7 @@ namespace _multi_index_detail {
    struct secondary_key_traits<key256> {
       static key256 lowest() { return key256(); }
    };
+
 }
 
 template<uint64_t IndexName, typename Extractor>
@@ -314,6 +315,7 @@ class multi_index
                return get( secondary );
             }
 
+            // Gets the object with the smallest primary key in the case where the secondary key is not unique.
             const T& get( const secondary_key_type& secondary )const {
                auto result = find( secondary );
                eosio_assert( result != cend(), "unable to find secondary key" );
