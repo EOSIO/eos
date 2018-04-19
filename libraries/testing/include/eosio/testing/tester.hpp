@@ -79,12 +79,12 @@ namespace eosio { namespace testing {
          void                 produce_blocks( uint32_t n = 1 );
          void                 produce_blocks_until_end_of_round();
          signed_block_ptr     push_block(signed_block_ptr b);
-         transaction_trace    push_transaction( packed_transaction& trx, uint32_t skip_flag = 0/*skip_nothing */ );
-         transaction_trace    push_transaction( signed_transaction& trx, uint32_t skip_flag = 0/*skip_nothing*/  );
+         transaction_trace_ptr    push_transaction( packed_transaction& trx, uint32_t skip_flag = 0/*skip_nothing */ );
+         transaction_trace_ptr    push_transaction( signed_transaction& trx, uint32_t skip_flag = 0/*skip_nothing*/  );
          action_result        push_action(action&& cert_act, uint64_t authorizer);
 
-         transaction_trace    push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
-         transaction_trace    push_action( const account_name& code, const action_name& acttype, const vector<account_name>& actors, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
+         transaction_trace_ptr    push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
+         transaction_trace_ptr    push_action( const account_name& code, const action_name& acttype, const vector<account_name>& actors, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
 
          void                 set_tapos( signed_transaction& trx, uint32_t expiration = DEFAULT_EXPIRATION_DELTA ) const;
 
@@ -92,8 +92,8 @@ namespace eosio { namespace testing {
                                                       uint32_t expiration = DEFAULT_EXPIRATION_DELTA,
                                                       uint32_t delay_sec = 0)const;
 
-         vector<transaction_trace>  create_accounts( vector<account_name> names, bool multisig = false ) {
-            vector<transaction_trace> traces;
+         vector<transaction_trace_ptr>  create_accounts( vector<account_name> names, bool multisig = false ) {
+            vector<transaction_trace_ptr> traces;
             traces.reserve(names.size());
             for( auto n : names ) traces.emplace_back(create_account(n, config::system_account_name, multisig ));
             return traces;
@@ -111,15 +111,15 @@ namespace eosio { namespace testing {
          void delete_authority( account_name account, permission_name perm,  const vector<permission_level>& auths, const vector<private_key_type>& keys );
          void delete_authority( account_name account, permission_name perm );
 
-         transaction_trace create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
+         transaction_trace_ptr create_account( account_name name, account_name creator = config::system_account_name, bool multisig = false );
 
-         transaction_trace push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys );
-         transaction_trace push_reqauth(account_name from, string role, bool multi_sig = false);
+         transaction_trace_ptr push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys );
+         transaction_trace_ptr push_reqauth(account_name from, string role, bool multi_sig = false);
          // use when just want any old non-context free action
-         transaction_trace push_dummy(account_name from, const string& v = "blah");
-         transaction_trace transfer( account_name from, account_name to, asset amount, string memo, account_name currency );
-         transaction_trace transfer( account_name from, account_name to, string amount, string memo, account_name currency );
-         transaction_trace issue( account_name to, string amount, account_name currency );
+         transaction_trace_ptr push_dummy(account_name from, const string& v = "blah");
+         transaction_trace_ptr transfer( account_name from, account_name to, asset amount, string memo, account_name currency );
+         transaction_trace_ptr transfer( account_name from, account_name to, string amount, string memo, account_name currency );
+         transaction_trace_ptr issue( account_name to, string amount, account_name currency );
 
          template<typename ObjectType>
          const auto& get(const chainbase::oid< ObjectType >& key) {

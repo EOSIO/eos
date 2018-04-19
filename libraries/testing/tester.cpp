@@ -101,7 +101,8 @@ namespace eosio { namespace testing {
       auto head_time = control->head_block_time();
       auto next_time = head_time + skip_time;
 
-      control->start_block( next_time );
+      if( !control->pending_block_state() )
+         control->start_block( next_time );
 
       control->finalize_block();
       control->sign_block( [&]( digest_type d ) {
@@ -113,13 +114,6 @@ namespace eosio { namespace testing {
       control->log_irreversible_blocks();
 
       return control->head_block_state()->block;
-
-      /*
-      uint32_t slot  = control->get_slot_at_time( next_time );
-      auto sch_pro   = control->get_scheduled_producer(slot);
-
-      return control->generate_block( next_time, sch_pro, priv_key, skip_flag );
-      */
    }
 
    void base_tester::produce_blocks( uint32_t n ) {
@@ -145,7 +139,7 @@ namespace eosio { namespace testing {
   }
 
 
-   transaction_trace base_tester::create_account( account_name a, account_name creator, bool multisig ) {
+   transaction_trace_ptr base_tester::create_account( account_name a, account_name creator, bool multisig ) {
       signed_transaction trx;
       set_transaction_headers(trx);
 
@@ -171,16 +165,16 @@ namespace eosio { namespace testing {
       return push_transaction( trx );
    }
 
-   transaction_trace base_tester::push_transaction( packed_transaction& trx, uint32_t skip_flag ) { try {
-      control->push_transaction( std::make_shared<transaction_metadata>(trx) );
-      return transaction_trace(); /// TODO: restore this
+   transaction_trace_ptr base_tester::push_transaction( packed_transaction& trx, uint32_t skip_flag ) { try {
+      if( !control->pending_block_state() )
+         control->start_block();
+      return control->push_transaction( std::make_shared<transaction_metadata>(trx) );
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx.get_transaction())) ) }
 
-   transaction_trace base_tester::push_transaction( signed_transaction& trx, uint32_t skip_flag ) { try {
-      control->push_transaction( std::make_shared<transaction_metadata>(trx) );
-      //auto ptrx = packed_transaction(trx);
-      //return push_transaction( ptrx, skip_flag );
-      return transaction_trace(); /// TODO: restore this
+   transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx, uint32_t skip_flag ) { try {
+      if( !control->pending_block_state() )
+         control->start_block();
+      return control->push_transaction( std::make_shared<transaction_metadata>(trx) );
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
 
 
@@ -205,7 +199,7 @@ namespace eosio { namespace testing {
    }
 
 
-   transaction_trace base_tester::push_action( const account_name& code,
+   transaction_trace_ptr base_tester::push_action( const account_name& code,
                              const action_name& acttype,
                              const account_name& actor,
                              const variant_object& data,
@@ -217,7 +211,7 @@ namespace eosio { namespace testing {
    } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actor)(data)(expiration) ) }
 
 
-   transaction_trace base_tester::push_action( const account_name& code,
+   transaction_trace_ptr base_tester::push_action( const account_name& code,
                              const action_name& acttype,
                              const vector<account_name>& actors,
                              const variant_object& data,
@@ -253,7 +247,7 @@ namespace eosio { namespace testing {
    } FC_CAPTURE_AND_RETHROW( (code)(acttype)(actors)(data)(expiration) ) }
 
 
-   transaction_trace base_tester::push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys ) {
+   transaction_trace_ptr base_tester::push_reqauth( account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys ) {
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
@@ -276,7 +270,7 @@ namespace eosio { namespace testing {
    }
 
 
-    transaction_trace base_tester::push_reqauth(account_name from, string role, bool multi_sig) {
+    transaction_trace_ptr base_tester::push_reqauth(account_name from, string role, bool multi_sig) {
         if (!multi_sig) {
             return push_reqauth(from, vector<permission_level>{{from, config::owner_name}},
                                         {get_private_key(from, role)});
@@ -287,7 +281,7 @@ namespace eosio { namespace testing {
     }
 
 
-   transaction_trace base_tester::push_dummy(account_name from, const string& v) {
+   transaction_trace_ptr base_tester::push_dummy(account_name from, const string& v) {
       // use reqauth for a normal action, this could be anything
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
@@ -324,12 +318,12 @@ namespace eosio { namespace testing {
    }
 
 
-   transaction_trace base_tester::transfer( account_name from, account_name to, string amount, string memo, account_name currency ) {
+   transaction_trace_ptr base_tester::transfer( account_name from, account_name to, string amount, string memo, account_name currency ) {
       return transfer( from, to, asset::from_string(amount), memo, currency );
    }
 
 
-   transaction_trace base_tester::transfer( account_name from, account_name to, asset amount, string memo, account_name currency ) {
+   transaction_trace_ptr base_tester::transfer( account_name from, account_name to, asset amount, string memo, account_name currency ) {
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()
@@ -358,7 +352,7 @@ namespace eosio { namespace testing {
    }
 
 
-   transaction_trace base_tester::issue( account_name to, string amount, account_name currency ) {
+   transaction_trace_ptr base_tester::issue( account_name to, string amount, account_name currency ) {
       variant pretty_trx = fc::mutable_variant_object()
          ("actions", fc::variants({
             fc::mutable_variant_object()

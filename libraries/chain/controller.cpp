@@ -336,6 +336,7 @@ struct controller_impl {
 
    transaction_trace_ptr apply_transaction( const transaction_metadata_ptr& trx, bool implicit = false ) {
       transaction_context trx_context( self, trx );
+      trx_context.processing_deadline = fc::time_point::now() + conf.limits.max_push_transaction_us;
       trx_context.exec();
 
       auto& acts = pending->_actions;
@@ -455,7 +456,13 @@ struct controller_impl {
 
    void finalize_block() 
    { try {
-      ilog( "finalize block" );
+      ilog( "finalize block ${p} ${t} v: ${v} lib: ${lib} ${np}", 
+            ("p",pending->_pending_block_state->header.producer)
+            ("t",pending->_pending_block_state->header.timestamp)
+            ("v",pending->_pending_block_state->header.schedule_version)
+            ("lib",pending->_pending_block_state->dpos_last_irreversible_blocknum)
+            ("np",pending->_pending_block_state->header.new_producers)
+            );
 
       set_action_merkle();
       set_trx_merkle();
@@ -657,7 +664,6 @@ chainbase::database& controller::db()const { return my->db; }
 
 
 void controller::start_block( block_timestamp_type when ) {
-  wlog( "start_block" );
   FC_ASSERT( !my->pending );
 
   FC_ASSERT( my->db.revision() == my->head->block_num );
@@ -871,7 +877,7 @@ bool controller::check_authorization( account_name account, permission_name perm
 void controller::set_active_producers( const producer_schedule_type& sch ) {
    FC_ASSERT( !my->pending->_pending_block_state->header.new_producers, "this block has already set new producers" );
    FC_ASSERT( !my->pending->_pending_block_state->pending_schedule.producers.size(), "there is already a pending schedule, wait for it to become active" );
-   my->pending->_pending_block_state->header.new_producers = sch;
+   my->pending->_pending_block_state->set_new_producers( sch );
 }
 const producer_schedule_type& controller::active_producers()const {
    return my->pending->_pending_block_state->active_schedule;

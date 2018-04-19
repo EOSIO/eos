@@ -23,6 +23,7 @@ namespace eosio { namespace chain {
 
          transaction_trace_ptr             trace;
 
+         fc::time_point                    processing_deadline;
          controller&                       control;
          const transaction_metadata_ptr&   trx_meta;
          chainbase::database::session      undo_session;

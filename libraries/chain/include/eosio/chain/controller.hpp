@@ -30,9 +30,9 @@ namespace eosio { namespace chain {
       public:
          struct config {
             struct runtime_limits {
-               fc::microseconds     max_push_block_us = fc::microseconds(-1);
-               fc::microseconds     max_push_transaction_us = fc::microseconds(-1);
-               fc::microseconds     max_deferred_transactions_us = fc::microseconds(-1);
+               fc::microseconds     max_push_block_us = fc::microseconds(100000);
+               fc::microseconds     max_push_transaction_us = fc::microseconds(100000);
+               fc::microseconds     max_deferred_transactions_us = fc::microseconds(100000);
             };
 
             path         block_log_dir       =  chain::config::default_block_log_dir;

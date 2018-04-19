@@ -85,6 +85,10 @@ namespace eosio { namespace chain {
       built_in_types.emplace("int16",                     pack_unpack<int16_t>());
       built_in_types.emplace("int32",                     pack_unpack<int32_t>());
       built_in_types.emplace("int64",                     pack_unpack<int64_t>());
+      built_in_types.emplace("uint8",                     pack_unpack<uint8_t>());
+      built_in_types.emplace("uint16",                    pack_unpack<uint16_t>());
+      built_in_types.emplace("uint32",                    pack_unpack<uint32_t>());
+      built_in_types.emplace("uint64",                    pack_unpack<uint64_t>());
       built_in_types.emplace("varint32",                  pack_unpack<fc::signed_int>());
       built_in_types.emplace("float64",                   pack_unpack<double>());
       built_in_types.emplace("name",                      pack_unpack<name>());

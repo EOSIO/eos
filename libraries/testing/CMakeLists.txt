@@ -19,3 +19,7 @@ add_dependencies( eosio_testing eosio.bios )
 if(MSVC)
   set_source_files_properties( db_init.cpp db_block.cpp database.cpp block_log.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
 endif(MSVC)
+
+add_executable( chain_tester test.cpp )
+target_link_libraries( chain_tester 
+                       PRIVATE eosio_testing eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} )
