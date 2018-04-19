@@ -475,7 +475,7 @@ namespace eosio {
        *  Time message handling
        */
       /** @{ */
-      /** \brief Convert an std::chrono nanosecond rep to a human readable string
+      /** \brief Convert a std::chrono nanosecond rep to a human readable string
        */
       char* convert_tstamp(const tstamp& t);
       /**  \brief Populate and queue time_message
@@ -1309,7 +1309,7 @@ namespace eosio {
       //
       // 0. my head block id == peer head id means we are all caugnt up block wise
       // 1. my head block num < peer lib - start sync locally
-      // 2. my lib > peer head num - send an last_irr_catch_up notice if not the first generation
+      // 2. my lib > peer head num - send a last_irr_catch_up notice if not the first generation
       //
       // 3  my head block num <= peer head block num - update sync state and send a catchup request
       // 4  my head block num > peer block num ssend a notice catchup if this is not the first generation

@@ -82,7 +82,7 @@ public:
      * handshake.
      *
      * @param [in] location URI to open the connection to as a uri_ptr
-     * @param [out] ec An status code indicating failure reasons, if any
+     * @param [out] ec A status code indicating failure reasons, if any
      *
      * @return A connection_ptr to the new connection
      */
@@ -112,7 +112,7 @@ public:
      * default construction of the uri_ptr from a standard string.
      *
      * @param [in] u URI to open the connection to as a string
-     * @param [out] ec An status code indicating failure reasons, if any
+     * @param [out] ec A status code indicating failure reasons, if any
      *
      * @return A connection_ptr to the new connection
      */

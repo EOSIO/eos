@@ -23,7 +23,7 @@ namespace fc
 {
    /**
     * @defgroup serializable Serializable _types
-    * @brief Clas_ses that may be converted to/from an variant
+    * @brief Clas_ses that may be converted to/from a variant
     *
     * To make a class 'serializable' the following methods must be available
     * for your Serializable_type
