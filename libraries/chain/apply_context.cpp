@@ -424,12 +424,10 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
 
    if( buffer_size == 0 ) return s;
 
-   if( buffer_size < s )
-      memcpy( buffer, trx_meta.context_free_data[index].data(), buffer_size );
-   else
-      memcpy( buffer, trx_meta.context_free_data[index].data(), s );
+   auto copy_size = std::min( buffer_size, s );
+   memcpy( buffer, trx_meta.context_free_data[index].data(), copy_size );
 
-   return s;
+   return copy_size;
 }
 
 void apply_context::check_auth( const transaction& trx, const vector<permission_level>& perm ) {
