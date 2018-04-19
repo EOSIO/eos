@@ -43,7 +43,7 @@ struct signature {
    uint8_t data[66];
 };
 
-struct ALIGNED(checksum256 {
+struct ALIGNED(checksum256) {
    uint8_t hash[32];
 };
 
