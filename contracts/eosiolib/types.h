@@ -33,7 +33,8 @@ typedef int64_t share_type;
 typedef uint16_t weight_type;
 
 #define PACKED(X) __attribute((packed)) X
-#define ALIGNED(X, A) alignas(A) X
+/* macro to align/overalign a type to ensure calls to intrinsics with pointers/references are properly aligned */ 
+#define ALIGNED(X) alignas(16) X
 
 struct public_key {
    char data[34];
@@ -43,15 +44,15 @@ struct signature {
    uint8_t data[66];
 };
 
-struct ALIGNED(checksum256, 16) {
+struct alignas(8) checksum256 {
    uint8_t hash[32];
 };
 
-struct ALIGNED(checksum160, 16) {
+struct alignas(8) checksum160 {
    uint8_t hash[20];
 };
 
-struct ALIGNED(checksum512, 16) {
+struct alignas(8) checksum512 {
    uint8_t hash[64];
 };
 

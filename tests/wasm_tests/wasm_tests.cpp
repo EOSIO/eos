@@ -1,6 +1,4 @@
 #include <boost/test/unit_test.hpp>
-#include <boost/iostreams/concepts.hpp>
-#include <boost/iostreams/stream_buffer.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
 #include <eosio/testing/tester.hpp>
@@ -72,33 +70,6 @@ struct provereset {
 FC_REFLECT_EMPTY(provereset);
 
 BOOST_AUTO_TEST_SUITE(wasm_tests)
-
-/*
- * Print capturing stuff
- */
-std::vector<std::string> capture;
-
-struct MySink : public boost::iostreams::sink
-{
-
-   std::streamsize write(const char* s, std::streamsize n)
-   {
-      std::string tmp;
-      tmp.assign(s, n);
-      capture.push_back(tmp);
-      std::cout << "stream : [" << tmp << "]" << std::endl;
-      return n;
-   }
-};
-uint32_t last_fnc_err = 0;
-#define CAPTURE(STREAM, EXEC) \
-   {\
-      capture.clear(); \
-      boost::iostreams::stream_buffer<MySink> sb; sb.open(MySink()); \
-      std::streambuf *oldbuf = std::STREAM.rdbuf(&sb); \
-      EXEC; \
-      std::STREAM.rdbuf(oldbuf); \
-   }
 
 /**
  * Prove that action reading and assertions are working
@@ -499,8 +470,7 @@ BOOST_FIXTURE_TEST_CASE(misaligned_tests, tester ) try {
    create_accounts( {N(aligncheck)} );
    produce_block();
    
-   uint64_t usage = 0; 
-   auto check_aligned = [&]( auto wast, uint8_t penalty ) { 
+   auto check_aligned = [&]( auto wast ) { 
       set_code(N(aligncheck), wast);
       produce_blocks(10);
 
@@ -518,20 +488,15 @@ BOOST_FIXTURE_TEST_CASE(misaligned_tests, tester ) try {
       block_trace trace(sb);
       
       BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-      BOOST_TEST_MESSAGE("USAGE "+std::to_string(trace.calculate_cpu_usage())+"\n");
-      if ( penalty != 0 )
-         BOOST_REQUIRE_EQUAL( trace.calculate_cpu_usage(), usage+penalty);
-      else 
-         usage = trace.calculate_cpu_usage();
    };
 
-   check_aligned(aligned_ref_wast, 0);
-   check_aligned(misaligned_ref_wast, 2);
-   check_aligned(aligned_const_ref_wast, 0);
-   check_aligned(misaligned_const_ref_wast, 1);
-   check_aligned(aligned_ptr_wast, 0);
-   check_aligned(misaligned_ptr_wast, 2);
-   check_aligned(misaligned_const_ptr_wast, 1);
+   check_aligned(aligned_ref_wast);
+   check_aligned(misaligned_ref_wast);
+   check_aligned(aligned_const_ref_wast);
+   check_aligned(misaligned_const_ref_wast);
+   check_aligned(aligned_ptr_wast);
+   check_aligned(misaligned_ptr_wast);
+   check_aligned(misaligned_const_ptr_wast);
 } FC_LOG_AND_RETHROW()
 
 // test cpu usage

@@ -452,7 +452,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
    using then_type = Ret (*)(interpreter_interface*, T *, Inputs..., LiteralList&, int);
 
-   template<then_type Then, typename U>
+   template<then_type Then, typename U=T>
    static auto translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) -> std::enable_if_t<std::is_const<U>::value, Ret> {
       uint32_t ptr = args.at(offset).geti32();
       T* base = array_ptr_impl<T>(interface, ptr, 1);
@@ -461,13 +461,12 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
          memcpy( (void*)copy_ptr, (void*)base, sizeof(T) );
-         interface->context.add_cpu_usage(1);
          return Then(interface, copy_ptr, rest..., args, offset - 1);
       }
       return Then(interface, base, rest..., args, offset - 1);
    };
 
-   template<then_type Then, typename U>
+   template<then_type Then, typename U=T>
    static auto translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
       uint32_t ptr = args.at(offset).geti32();
       T* base = array_ptr_impl<T>(interface, ptr, 1);
@@ -477,7 +476,6 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
          memcpy( (void*)&copy, (void*)base, sizeof(T) );
          Ret ret = Then(interface, &copy, rest..., args, offset - 1);
          memcpy( (void*)base, (void*)&copy, sizeof(T) );
-         interface->context.add_cpu_usage(2);
          return ret; 
       }
       return Then(interface, base, rest..., args, offset - 1);
@@ -485,7 +483,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
 
    template<then_type Then>
    static const auto fn() {
-      return next_step::template fn<translate_one<Then, T>>();
+      return next_step::template fn<translate_one<Then>>();
    }
 };
 
@@ -555,7 +553,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
    using then_type = Ret (*)(interpreter_interface*, T &, Inputs..., LiteralList&, int);
 
-   template<then_type Then, typename U>
+   template<then_type Then, typename U=T>
    static auto translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) -> std::enable_if_t<std::is_const<U>::value, Ret> {
       // references cannot be created for null pointers
       uint32_t ptr = args.at(offset).geti32();
@@ -566,13 +564,12 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
          memcpy( (void*)copy_ptr, (void*)base, sizeof(T) );
-         interface->context.add_cpu_usage(1);
          return Then(interface, *copy_ptr, rest..., args, offset - 1);
       }
       return Then(interface, *base, rest..., args, offset - 1);
    }
 
-   template<then_type Then, typename U>
+   template<then_type Then, typename U=T>
    static auto translate_one(interpreter_interface* interface, Inputs... rest, LiteralList& args, int offset) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
       // references cannot be created for null pointers
       uint32_t ptr = args.at(offset).geti32();
@@ -584,7 +581,6 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
          memcpy( (void*)&copy, (void*)base, sizeof(T) );
          Ret ret = Then(interface, copy, rest..., args, offset - 1);
          memcpy( (void*)base, (void*)&copy, sizeof(T) );
-         interface->context.add_cpu_usage(2);
          return ret; 
       }
       return Then(interface, *base, rest..., args, offset - 1);
@@ -593,7 +589,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
 
    template<then_type Then>
    static const auto fn() {
-      return next_step::template fn<translate_one<Then, T>>();
+      return next_step::template fn<translate_one<Then>>();
    }
 };
 
