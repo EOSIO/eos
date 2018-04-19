@@ -1187,4 +1187,29 @@ BOOST_AUTO_TEST_CASE(account_ram_limit) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE(producer_r1_key) { try {
+
+   // Use validating_tester to check that the block is synced properly
+   validating_tester chain;
+
+   // Set new producer
+   account_name tester_producer_name = "tester";
+   chain.create_account(tester_producer_name);
+   auto producer_r1_priv_key = chain.get_private_key<fc::crypto::r1::private_key_shim>( tester_producer_name, "active" );
+   auto producer_r1_pub_key = producer_r1_priv_key.get_public_key();
+   chain.push_action(N(eosio), N(setprods), N(eosio),
+                     fc::mutable_variant_object()("version", 1)("producers", vector<producer_key>{{ tester_producer_name, producer_r1_pub_key }}));
+
+   // Add signing key to the tester object, so it can sign with the correct key
+   chain.block_signing_private_keys[producer_r1_pub_key] = producer_r1_priv_key;
+         
+   // Wait until the current round ends
+   chain.produce_blocks_until_end_of_round();
+
+   // The next set of producers will be producing starting in the middle of next round
+   // This round should not throw any exception
+   BOOST_CHECK_NO_THROW(chain.produce_blocks_until_end_of_round());
+         
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
