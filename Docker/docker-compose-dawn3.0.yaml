@@ -15,7 +15,7 @@ services:
 
   keosd:
     image: eosio/eos:dawn3x
-    command: /opt/eosio/bin/keosd
+    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir
     hostname: keosd
     links:
       - nodeosd
