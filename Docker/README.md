@@ -167,3 +167,4 @@ curl http://127.0.0.1:8888/v1/chain/get_info
 docker-compose logs nodeosd
 ```
 
+The `blocks` data are stored under `--data-dir` by default, and the wallet files are stored under `--wallet-dir` by default, of course you can change these as you want.
