@@ -648,8 +648,12 @@ class softfloat_api : public context_aware_api {
          return ((f.v & 0x7FFFFFFFFFFFFFFF) > 0x7FF0000000000000);
       }
       static bool is_nan( const float128_t& f ) {
+         // TODO: Re-enable proper is_nan implementation after figuring out linker error.
+         return f128M_isSignalingNaN(&f);
+         /*
          const uint32_t* iptr = (const uint32_t*)&f;
          return softfloat_isNaNF128M( iptr );
+         */
       }
       static float32_t to_softfloat32( float f ) {
          return *reinterpret_cast<float32_t*>(&f);
@@ -668,7 +672,6 @@ class softfloat_api : public context_aware_api {
 
       static bool sign_bit( float32_t f ) { return f.v >> 31; }
       static bool sign_bit( float64_t f ) { return f.v >> 63; }
-
 
 };
 class producer_api : public context_aware_api {
@@ -1033,13 +1036,42 @@ class console_api : public context_aware_api {
          return context.IDX.previous_secondary(iterator, primary);\
       }
 
-void set_softfloat_from_long_double( float128_t& out, const unsigned __int128& in ) {
-   out = *(float128_t*)(&in);
-}
-
-void set_long_double_from_softfloat( unsigned __int128& out, const float128_t& in ) {
-   out = *(unsigned __int128*)(&in);
-}
+#define DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(IDX, TYPE)\
+      int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
+         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         return context.IDX.store( scope, table, payer, id, secondary );\
+      }\
+      void db_##IDX##_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
+         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         return context.IDX.update( iterator, payer, secondary );\
+      }\
+      void db_##IDX##_remove( int iterator ) {\
+         return context.IDX.remove( iterator );\
+      }\
+      int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
+         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         return context.IDX.find_secondary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t primary ) {\
+         return context.IDX.find_primary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
+         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         return context.IDX.lowerbound_secondary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
+         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         return context.IDX.upperbound_secondary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_end( uint64_t code, uint64_t scope, uint64_t table ) {\
+         return context.IDX.end_secondary(code, scope, table);\
+      }\
+      int db_##IDX##_next( int iterator, uint64_t& primary  ) {\
+         return context.IDX.next_secondary(iterator, primary);\
+      }\
+      int db_##IDX##_previous( int iterator, uint64_t& primary ) {\
+         return context.IDX.previous_secondary(iterator, primary);\
+      }
 
 class database_api : public context_aware_api {
    public:
@@ -1079,52 +1111,8 @@ class database_api : public context_aware_api {
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx128, uint128_t)
       DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(idx256, 2, uint128_t)
-      DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx_double, float64_t)
-
-      int db_idx_long_double_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const uint128_t& secondary ) {
-         float128_t val;
-         set_softfloat_from_long_double(val, secondary);
-         return context.idx_long_double.store( scope, table, payer, id, val );
-      }
-      void db_idx_long_double_update( int iterator, uint64_t payer, const uint128_t& secondary ) {
-         float128_t val;
-         set_softfloat_from_long_double(val, secondary);
-         return context.idx_long_double.update( iterator, payer, val );
-      }
-      void db_idx_long_double_remove( int iterator ) {
-         return context.idx_long_double.remove( iterator );
-      }
-      int db_idx_long_double_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const uint128_t& secondary, uint64_t& primary ) {
-         float128_t val;
-         set_softfloat_from_long_double(val, secondary);
-         return context.idx_long_double.find_secondary(code, scope, table, val, primary);
-      }
-      int db_idx_long_double_find_primary( uint64_t code, uint64_t scope, uint64_t table, uint128_t& secondary, uint64_t primary ) {
-         float128_t val; val.v[0] = 0; val.v[1] = 0;
-         return context.idx_long_double.find_primary(code, scope, table, val, primary);
-         set_long_double_from_softfloat(secondary, val);
-      }
-      int db_idx_long_double_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  uint128_t& secondary, uint64_t& primary ) {
-         float128_t val;
-         set_softfloat_from_long_double(val, secondary);
-         return context.idx_long_double.lowerbound_secondary(code, scope, table, val, primary);
-         set_long_double_from_softfloat(secondary, val);
-      }
-      int db_idx_long_double_upperbound( uint64_t code, uint64_t scope, uint64_t table,  uint128_t& secondary, uint64_t& primary ) {
-         float128_t val;
-         set_softfloat_from_long_double(val, secondary);
-         return context.idx_long_double.upperbound_secondary(code, scope, table, val, primary);
-         set_long_double_from_softfloat(secondary, val);
-      }
-      int db_idx_long_double_end( uint64_t code, uint64_t scope, uint64_t table ) {
-         return context.idx_long_double.end_secondary(code, scope, table);
-      }
-      int db_idx_long_double_next( int iterator, uint64_t& primary  ) {
-         return context.idx_long_double.next_secondary(iterator, primary);
-      }
-      int db_idx_long_double_previous( int iterator, uint64_t& primary ) {
-         return context.idx_long_double.previous_secondary(iterator, primary);
-      }
+      DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(idx_double, float64_t)
+      DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(idx_long_double, float128_t)
 };
 
 class memory_api : public context_aware_api {
@@ -1392,7 +1380,7 @@ class compiler_builtins : public context_aware_api {
       int __unordtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ lb, hb }};
-         if ( f128M_isSignalingNaN(&a) || f128M_isSignalingNaN(&b) ) // TODO/QUESTION: What about quiet NaNs? Would prefer to use softfloat_api::is_nan but there is a linker error regarding symbol _softfloat_isNaNF128M
+         if ( softfloat_api::is_nan(a) || softfloat_api::is_nan(b) )
             return 1;
          return 0;
       }
