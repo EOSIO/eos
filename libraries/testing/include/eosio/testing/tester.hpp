@@ -79,9 +79,10 @@ namespace eosio { namespace testing {
          void                 produce_blocks( uint32_t n = 1 );
          void                 produce_blocks_until_end_of_round();
          signed_block_ptr     push_block(signed_block_ptr b);
+
          transaction_trace_ptr    push_transaction( packed_transaction& trx, uint32_t skip_flag = 0/*skip_nothing */ );
          transaction_trace_ptr    push_transaction( signed_transaction& trx, uint32_t skip_flag = 0/*skip_nothing*/  );
-         action_result        push_action(action&& cert_act, uint64_t authorizer);
+         action_result            push_action(action&& cert_act, uint64_t authorizer);
 
          transaction_trace_ptr    push_action( const account_name& code, const action_name& acttype, const account_name& actor, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
          transaction_trace_ptr    push_action( const account_name& code, const action_name& acttype, const vector<account_name>& actors, const variant_object& data, uint32_t expiration = DEFAULT_EXPIRATION_DELTA, uint32_t delay_sec = 0 );
@@ -206,7 +207,7 @@ namespace eosio { namespace testing {
    protected:
          signed_block_ptr _produce_block( fc::microseconds skip_time, uint32_t skip_flag = 0);
          fc::temp_directory                            tempdir;
-         controller::config           cfg;
+         controller::config                            cfg;
          map<transaction_id_type, transaction_receipt> chain_transactions;
    };
 
@@ -280,7 +281,6 @@ namespace eosio { namespace testing {
                hbh.timestamp == vn_hbh.timestamp &&
                hbh.transaction_mroot == vn_hbh.transaction_mroot &&
                hbh.action_mroot == vn_hbh.action_mroot &&
-               hbh.block_mroot == vn_hbh.block_mroot &&
                hbh.producer == vn_hbh.producer;
       }
 

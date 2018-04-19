@@ -12,7 +12,7 @@ namespace eosio { namespace chain {
 
       checksum256_type                 transaction_mroot; /// mroot of cycles_summary
       checksum256_type                 action_mroot; /// mroot of all delivered action receipts
-      checksum256_type                 block_mroot; /// mroot of all block ids
+//      checksum256_type                 block_mroot; /// mroot of all block ids
 
       account_name                     producer;
 
@@ -33,22 +33,13 @@ namespace eosio { namespace chain {
    struct signed_block_header : public block_header
    {
       block_id_type              id() const;
-      public_key_type            signee( const digest_type& schedule_digest ) const;
-
-
-      void                       sign(const private_key_type& signer, const digest_type& pending_producer_schedule_hash );
-      void                       sign( std::function<signature_type(const digest_type&)> signer, const digest_type& pending_producer_schedule_hash );
-
-      bool                       validate_signee(const public_key_type& expected_signee, const digest_type& pending_producer_schedule_hash ) const;
-      digest_type                signed_digest( const digest_type& pending_producer_schedule_hash )const;
-
       signature_type             producer_signature;
    };
 
 } } /// namespace eosio::chain
 
 FC_REFLECT(eosio::chain::block_header, (previous)(timestamp)
-           (transaction_mroot)(action_mroot)(block_mroot)
+           (transaction_mroot)(action_mroot)
            (producer)(schedule_version)(new_producers))
 
 FC_REFLECT_DERIVED(eosio::chain::signed_block_header, (eosio::chain::block_header), (producer_signature))

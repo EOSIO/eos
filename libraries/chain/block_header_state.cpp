@@ -36,20 +36,22 @@ namespace eosio { namespace chain {
    *  are derived from chain state.
    */
   block_header_state block_header_state::generate_next( block_timestamp_type when )const {
-     block_header_state result;
+    block_header_state result;
 
-     if( when != block_timestamp_type() ) {
-        FC_ASSERT( when > header.timestamp, "next block must be in the future" );
-     } else {
-        (when = header.timestamp).slot++;
-     }
-     result.header.timestamp = when;
-     result.header.previous  = id;
-
+    if( when != block_timestamp_type() ) {
+       FC_ASSERT( when > header.timestamp, "next block must be in the future" );
+    } else {
+       (when = header.timestamp).slot++;
+    }
+    result.header.timestamp                      = when;
+    result.header.previous                       = id;
+    result.header.schedule_version               = active_schedule.version;
 
     auto prokey                                  = scheduled_producer(when);
     result.block_signing_key                     = prokey.block_signing_key;
     result.header.producer                       = prokey.producer_name;
+
+
     result.prior_pending_schedule_hash           = pending_schedule_hash;
     result.pending_schedule_hash                 = pending_schedule_hash;
     result.block_num                             = block_num + 1;
@@ -58,7 +60,8 @@ namespace eosio { namespace chain {
     result.producer_to_last_produced[prokey.producer_name] = result.block_num;
     result.blockroot_merkle = blockroot_merkle;
     result.blockroot_merkle.append( id );
-    result.header.block_mroot = result.blockroot_merkle.get_root();
+
+    auto block_mroot = result.blockroot_merkle.get_root();
 
     result.active_schedule  = active_schedule;
     result.pending_schedule = pending_schedule;
@@ -113,9 +116,9 @@ namespace eosio { namespace chain {
     FC_ASSERT( h.timestamp > header.timestamp, "block must be later in time" );
 
     FC_ASSERT( result.header.producer   == h.producer, "producer is not scheduled for this time slot" );
-    FC_ASSERT( result.block_signing_key == h.signee( pending_schedule_hash ), "block not signed by expected key" );
 
-    FC_ASSERT( result.header.block_mroot == h.block_mroot, "mistmatch block merkle root" );
+
+    // FC_ASSERT( result.header.block_mroot == h.block_mroot, "mistmatch block merkle root" );
 
      /// below this point is state changes that cannot be validated with headers alone, but never-the-less, 
      /// must result in header state changes
@@ -128,7 +131,27 @@ namespace eosio { namespace chain {
     result.header.producer_signature = h.producer_signature;
     result.id                        = h.id();
 
+    FC_ASSERT( result.block_signing_key == result.signee(), "block not signed by expected key",
+               ("result.block_signing_key", result.block_signing_key)("signee", result.signee() ) );
+
     return result;
   } /// next
+
+  digest_type   block_header_state::sig_digest()const {
+     auto header_bmroot = digest_type::hash( std::make_pair( header.digest(), blockroot_merkle.get_root() ) );
+     return digest_type::hash( std::make_pair(header_bmroot, pending_schedule_hash) );
+  }
+
+  void block_header_state::sign( const std::function<signature_type(const digest_type&)>& signer ) {
+     auto d = sig_digest();
+     header.producer_signature = signer( d );
+     FC_ASSERT( block_signing_key == fc::crypto::public_key( header.producer_signature, d ) );
+  }
+
+  public_key_type block_header_state::signee()const {
+    return fc::crypto::public_key( header.producer_signature, sig_digest(), true );
+  }
+
+
 
 } } /// namespace eosio::chain

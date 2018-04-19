@@ -22,38 +22,11 @@ namespace eosio { namespace chain {
    block_id_type signed_block_header::id()const
    {
       // Do not include signed_block_header attributes in id, specifically exclude producer_signature.
-      block_id_type result = fc::sha256::hash(*static_cast<const block_header*>(this));
+      block_id_type result = digest(); //fc::sha256::hash(*static_cast<const block_header*>(this));
       result._hash[0] &= 0xffffffff00000000;
       result._hash[0] += fc::endian_reverse_u32(block_num()); // store the block num in the ID, 160 bits is plenty for the hash
       return result;
    }
 
-   public_key_type signed_block_header::signee( const digest_type& schedule_digest )const
-   {
-      return fc::crypto::public_key(producer_signature, signed_digest( schedule_digest ), true/*enforce canonical*/);
-   }
-
-   digest_type signed_block_header::signed_digest( const digest_type& schedule_digest )const {
-      digest_type::encoder enc;
-      fc::raw::pack( enc, schedule_digest );
-      fc::raw::pack( enc, digest() );
-      return enc.result();
-   }
-
-   void signed_block_header::sign(const private_key_type& signer, const fc::sha256& pending_producer_schedule_hash )
-   {
-      /// wrap the private key in lambda to pass to sign function
-      sign( [&]( const auto& d ){ return signer.sign( d ); }, pending_producer_schedule_hash );
-   }
-
-   void  signed_block_header::sign( std::function<signature_type(const digest_type&)> signer, const digest_type& pending_producer_schedule_hash ) 
-   {
-      producer_signature = signer( signed_digest( pending_producer_schedule_hash ) );
-   }
-
-   bool signed_block_header::validate_signee(const public_key_type& expected_signee, const fc::sha256& schedule_digest )const
-   {
-      return signee( schedule_digest ) == expected_signee;
-   }
 
 } }

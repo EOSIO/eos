@@ -351,9 +351,7 @@ struct controller_impl {
 
    void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback ) {
       auto p = pending->_pending_block_state;
-      p->header.sign( signer_callback, p->pending_schedule_hash );
-      FC_ASSERT( p->block_signing_key == p->header.signee( p->pending_schedule_hash ),
-                 "block was not signed by expected producer key" );
+      p->sign( signer_callback );
       static_cast<signed_block_header&>(*p->block) = p->header;
    } /// sign_block
 
@@ -372,8 +370,9 @@ struct controller_impl {
          finalize_block();
          sign_block( [&]( const auto& ){ return b->producer_signature; } );
 
-         FC_ASSERT( b->id() == pending->_pending_block_state->block->id(),
-                    "applying block didn't produce expected block id" );
+         // this is implied by the signature passing
+         //FC_ASSERT( b->id() == pending->_pending_block_state->block->id(),
+         //           "applying block didn't produce expected block id" );
 
          commit_block(false);
          return;
@@ -385,14 +384,15 @@ struct controller_impl {
    } /// apply_block
 
    void push_block( const signed_block_ptr& b ) {
-      FC_ASSERT( !pending );
 
       auto new_header_state = fork_db.add( b );
       self.accepted_block_header( new_header_state );
+
       auto new_head = fork_db.head();
 
       if( new_head->header.previous == head->id ) {
          try {
+            abort_block();
             apply_block( b );
             fork_db.set_validity( new_head, true );
             head = new_head;
@@ -435,8 +435,11 @@ struct controller_impl {
    } /// push_block
 
    vector<transaction_metadata_ptr> abort_block() {
-      vector<transaction_metadata_ptr> pushed = move(pending->_applied_transaction_metas);
-      pending.reset();
+      vector<transaction_metadata_ptr> pushed;
+      if( pending ) {
+         pushed = move(pending->_applied_transaction_metas);
+         pending.reset();
+      }
       return pushed;
    }
 
@@ -478,12 +481,13 @@ struct controller_impl {
 
    void finalize_block() 
    { try {
-      ilog( "finalize block ${p} ${t} v: ${v} lib: ${lib} ${np}", 
+      ilog( "finalize block ${p} ${t} schedule_version: ${v} lib: ${lib} ${np}  ${signed}", 
             ("p",pending->_pending_block_state->header.producer)
             ("t",pending->_pending_block_state->header.timestamp)
             ("v",pending->_pending_block_state->header.schedule_version)
             ("lib",pending->_pending_block_state->dpos_last_irreversible_blocknum)
             ("np",pending->_pending_block_state->header.new_producers)
+            ("signed", pending->_pending_block_state->block_signing_key) 
             );
 
       set_action_merkle();
