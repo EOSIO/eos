@@ -11,11 +11,7 @@
 #include <string>
 
 namespace eosiosystem {
-   template <account_name Account>
-   class voting;
-
-   template <account_name Account>
-   class delegate_bandwidth;
+   class system_contract;
 }
 
 namespace eosio {
@@ -42,8 +38,7 @@ namespace eosio {
 
       private:
 
-         friend eosiosystem::voting<N(eosio)>;
-         friend eosiosystem::delegate_bandwidth<N(eosio)>;
+         friend eosiosystem::system_contract;
 
          struct account {
             asset    balance;

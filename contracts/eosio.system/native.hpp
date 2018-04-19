@@ -4,13 +4,15 @@
  */
 #pragma once
 
+#include <eosiolib/action.hpp>
+#include <eosiolib/public_key.hpp>
 #include <eosiolib/types.hpp>
 
 namespace eosiosystem {
+   using eosio::permission_level;
+   using eosio::public_key;
 
    typedef std::vector<char> bytes;
-   typedef std::string type_name;
-   typedef std::string field_name;
 
    struct permission_level_weight {
       permission_level  permission;
@@ -34,112 +36,42 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE( authority, (threshold)(keys)(accounts) )
    };
 
-   template <account_name SystemAccount>
    class native {
       public:
-         ACTION( SystemAccount, newaccount ) {
-            account_name                     creator;
-            account_name                     name;
-            authority                        owner;
-            authority                        active;
-            authority                        recovery;
 
-            EOSLIB_SERIALIZE( newaccount, (creator)(name)(owner)(active)(recovery) )
-         };
+      static void newaccount( account_name     creator,
+                              account_name     name,
+                              const authority& owner,
+                              const authority& active,
+                              const authority& recovery ) {}
 
-         static void on( const newaccount& ) {
-         }
+      static void updateauth( account_name     account,
+                              permission_name  permission,
+                              permission_name  parent,
+                              const authority& data ) {}
 
-         ACTION( SystemAccount, updateauth ) {
-            account_name                      account;
-            permission_name                   permission;
-            permission_name                   parent;
-            authority                         data;
+      static void deleteauth( account_name account, permission_name permission ) {}
 
-            EOSLIB_SERIALIZE( updateauth, (account)(permission)(parent)(data) )
-         };
+      static void linkauth( account_name    account,
+                            account_name    code,
+                            action_name     type,
+                            permission_name requirement ) {}
 
-         static void on( const updateauth& ) {
-         }
+      static void unlinkauth( account_name account,
+                              account_name code,
+                              action_name  type ) {}
 
-         ACTION( SystemAccount, deleteauth ) {
-            account_name                      account;
-            permission_name                   permission;
+      static void postrecovery( account_name       account,
+                                const authority&   data,
+                                const std::string& memo ) {}
 
-            EOSLIB_SERIALIZE( deleteauth, (account)(permission) )
-         };
+      static void passrecovery( account_name account ) {}
 
-         static void on( const deleteauth& ) {
-         }
+      static void vetorecovery( account_name   account ) {}
 
-         ACTION( SystemAccount, linkauth ) {
-            account_name                      account;
-            account_name                      code;
-            action_name                       type;
-            permission_name                   requirement;
+      static void onerror( const bytes& ) {}
 
-            EOSLIB_SERIALIZE( linkauth, (account)(code)(type)(requirement) )
-         };
-
-         static void on( const linkauth& ) {
-         }
-
-         ACTION( SystemAccount, unlinkauth ) {
-            account_name                      account;
-            account_name                      code;
-            action_name                       type;
-
-            EOSLIB_SERIALIZE( unlinkauth, (account)(code)(type) )
-         };
-
-         static void on( const unlinkauth& ) {
-         }
-
-         ACTION( SystemAccount, postrecovery ) {
-            account_name       account;
-            authority          data;
-            std::string        memo;
-
-            EOSLIB_SERIALIZE( postrecovery, (account)(data)(memo) )
-         };
-
-         static void on( const postrecovery& ) {
-         }
-
-         ACTION( SystemAccount, passrecovery ) {
-            account_name   account;
-
-            EOSLIB_SERIALIZE( passrecovery, (account) )
-         };
-
-         static void on( const passrecovery& ) {
-         }
-
-         ACTION( SystemAccount, vetorecovery ) {
-            account_name   account;
-
-            EOSLIB_SERIALIZE( vetorecovery, (account) )
-         };
-
-         static void on( const vetorecovery& ) {
-         }
-
-         struct onerror: eosio::action_meta<SystemAccount, N(onerror)>, bytes {
-            EOSLIB_SERIALIZE_DERIVED( onerror, bytes, BOOST_PP_SEQ_NIL )
-         };
-
-         static void on( const onerror& ) {
-         }
-
-         ACTION( SystemAccount, canceldelay ) {
-            permission_level      canceling_auth;
-            transaction_id_type   trx_id;
-
-            EOSLIB_SERIALIZE( canceldelay, (canceling_auth)(trx_id) )
-         };
-
-         static void on( const canceldelay& ) {
-         }
+      static void canceldelay( permission_level canceling_auth, transaction_id_type trx_id ) {}
 
    };
 }
