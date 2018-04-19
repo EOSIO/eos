@@ -76,10 +76,15 @@ void apply_eosio_newaccount(apply_context& context) {
       validate_authority_precondition( context, auth );
    }
 
-   const auto& new_account = db.create<account_object>([&create, &context](account_object& a) {
+   const auto& new_account = db.create<account_object>([&](auto& a) {
       a.name = create.name;
       a.creation_date = context.control.head_block_time();
    });
+
+   db.create<account_sequence_object>([&](auto& a) {
+      a.name = create.name;
+   });
+
    resources.initialize_account(create.name);
    resources.add_pending_account_ram_usage(
       create.creator,

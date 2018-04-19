@@ -134,6 +134,7 @@ struct controller_impl {
 
    void initialize_indicies() {
       db.add_index<account_index>();
+      db.add_index<account_sequence_index>();
       db.add_index<permission_index>();
       db.add_index<permission_usage_index>();
       db.add_index<permission_link_index>();
@@ -210,7 +211,7 @@ struct controller_impl {
    }
 
    void create_native_account( account_name name ) {
-      db.create<account_object>([this, &name](account_object& a) {
+      db.create<account_object>([&](auto& a) {
          a.name = name;
          a.creation_date = conf.genesis.initial_timestamp;
          a.privileged = true;
@@ -219,13 +220,17 @@ struct controller_impl {
             a.set_abi(eosio_contract_abi(abi_def()));
          }
       });
-      const auto& owner = db.create<permission_object>([&](permission_object& p) {
+      db.create<account_sequence_object>([&](auto & a) {
+        a.name = name;
+      });
+
+      const auto& owner = db.create<permission_object>([&](auto& p) {
          p.owner = name;
          p.name = "owner";
          p.auth.threshold = 1;
          p.auth.keys.push_back( key_weight{ .key = conf.genesis.initial_key, .weight = 1 } );
       });
-      db.create<permission_object>([&](permission_object& p) {
+      db.create<permission_object>([&](auto& p) {
          p.owner = name;
          p.parent = owner.id;
          p.name = "active";
@@ -254,6 +259,9 @@ struct controller_impl {
          db.create<account_object>([&](account_object& a) {
             a.name = name;
             a.creation_date = conf.genesis.initial_timestamp;
+         });
+         db.create<account_sequence_object>([&](auto & a) {
+           a.name = name;
          });
          const auto& owner_permission = db.create<permission_object>([&](permission_object& p) {
             p.name = config::owner_name;

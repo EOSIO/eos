@@ -105,7 +105,7 @@ namespace eosio { namespace chain {
       auto inserted = my->index.insert(n);
       FC_ASSERT( inserted.second, "duplicate block added?" );
 
-      my->head = *my->index.get<by_lib_block_num>().rbegin();
+      my->head = *my->index.get<by_lib_block_num>().begin();
       return n;
    }
 

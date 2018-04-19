@@ -115,6 +115,7 @@ namespace eosio { namespace chain {
    {
       null_object_type,
       account_object_type,
+      account_sequence_object_type,
       permission_object_type,
       permission_usage_object_type,
       permission_link_object_type,
@@ -173,6 +174,7 @@ namespace eosio { namespace chain {
 FC_REFLECT_ENUM(eosio::chain::object_type,
                 (null_object_type)
                 (account_object_type)
+                (account_sequence_object_type)
                 (permission_object_type)
                 (permission_usage_object_type)
                 (permission_link_object_type)

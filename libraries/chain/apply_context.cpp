@@ -623,10 +623,18 @@ uint64_t apply_context::next_global_sequence() {
 }
 
 uint64_t apply_context::next_recv_sequence( account_name receiver ) {
-   return 0;
+   const auto& rs = db.get<account_sequence_object,by_name>( receiver );
+   db.modify( rs, [&]( auto& mrs ) {
+      ++mrs.recv_sequence;
+   });
+   return rs.recv_sequence;
 }
 uint64_t apply_context::next_auth_sequence( account_name actor ) {
-   return 0;
+   const auto& rs = db.get<account_sequence_object,by_name>( actor );
+   db.modify( rs, [&](auto& mrs ){
+      ++mrs.auth_sequence;
+   });
+   return rs.auth_sequence;
 }
 
 
