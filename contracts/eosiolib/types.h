@@ -33,7 +33,7 @@ typedef int64_t share_type;
 typedef uint16_t weight_type;
 
 /* macro to align/overalign a type to ensure calls to intrinsics with pointers/references are properly aligned */ 
-#define ALIGNED(X) alignas(16) X
+#define ALIGNED(X) __attribute__ ((aligned (16))) X
 
 struct public_key {
    char data[34];
