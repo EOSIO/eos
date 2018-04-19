@@ -1202,9 +1202,13 @@ BOOST_AUTO_TEST_CASE(producer_r1_key) { try {
 
    // Add signing key to the tester object, so it can sign with the correct key
    chain.block_signing_private_keys[producer_r1_pub_key] = producer_r1_priv_key;
+         
+   // Wait until the current round ends
+   chain.produce_blocks_until_end_of_round();
 
-   // Produce blocks, it should not throw any exception
-   BOOST_CHECK_NO_THROW(chain.produce_blocks(1000));
+   // The next set of producers will be producing starting in the middle of next round
+   // This round should not throw any exception
+   BOOST_CHECK_NO_THROW(chain.produce_blocks_until_end_of_round());
          
 } FC_LOG_AND_RETHROW() }
 
