@@ -459,7 +459,7 @@ namespace fc {
    /**
     * It is slightly unclean tight coupling to have this method in the api class.
     * It breaks encapsulation by requiring an api class method to have a pointer
-    * to an binary_api_connection.  The reason this is necessary is we have a goal of being
+    * to a binary_api_connection.  The reason this is necessary is we have a goal of being
     * able to call register_api() on an api<T> through its base class api_base.  But
     * register_api() must know the template parameters!
     *

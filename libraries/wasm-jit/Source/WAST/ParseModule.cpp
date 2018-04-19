@@ -477,7 +477,7 @@ static void parseTable(ModuleParseState& state)
 			const TableElementType elementType = TableElementType::anyfunc;
 			require(state,t_anyfunc);
 
-			// If we couldn't parse an explicit size constraints, the table definition must contain an table segment that implicitly defines the size.
+			// If we couldn't parse an explicit size constraints, the table definition must contain a table segment that implicitly defines the size.
 			if(!hasSizeConstraints)
 			{
 				parseParenthesized(state,[&]

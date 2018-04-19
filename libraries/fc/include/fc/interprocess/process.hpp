@@ -6,7 +6,7 @@ namespace fc {
   fc::path find_executable_in_path( const fc::string name );
 
   /**
-   *  @brief start and manage an local process
+   *  @brief start and manage a local process
    *  @note this class implements reference semantics.
    */
   class process  : public iprocess

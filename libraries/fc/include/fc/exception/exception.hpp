@@ -48,7 +48,7 @@ namespace fc
     *  new log_message is added to the exception.
     *
     *  exception's are designed to be serialized to a variant and
-    *  deserialized from an variant.
+    *  deserialized from a variant.
     *
     *  @see FC_THROW_EXCEPTION
     *  @see FC_RETHROW_EXCEPTION
@@ -285,7 +285,7 @@ namespace fc
   FC_DECLARE_EXCEPTION( invalid_operation_exception,
                         invalid_operation_exception_code,
                         "Invalid Operation" );
-  /** @brief if an host name can not be resolved this may be thrown */
+  /** @brief if a host name can not be resolved this may be thrown */
   FC_DECLARE_EXCEPTION( unknown_host_exception,
                          unknown_host_exception_code,
                          "Unknown Host" );

@@ -215,7 +215,7 @@ Float parseFloat(const char*& nextChar,ParseState& state)
 	return (Float)f64;
 }
 
-// Tries to parse an numeric literal token as an integer, advancing state.nextToken.
+// Tries to parse a numeric literal token as an integer, advancing state.nextToken.
 // Returns true if it matched a token.
 template<typename UnsignedInt>
 bool tryParseInt(ParseState& state,UnsignedInt& outUnsignedInt,I64 minSignedValue,U64 maxUnsignedValue)

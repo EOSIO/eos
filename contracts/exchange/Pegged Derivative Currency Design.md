@@ -31,7 +31,7 @@ in a speculative market. They also generate money by earning interest on persona
 
 The Setup Process
 -----------------
-An initial user deposits a Collateral Currency (C) into an smart contract and provides the initial
+An initial user deposits a Collateral Currency (C) into a smart contract and provides the initial
 price feed. A new Debt token (D) is issued based upon the price feed and a 1.5:1 C:D ratio and the
 issued tokens are deposited into the **Bancor market maker**. At this point in time there is 0 leverage by
 the market maker because no D have been sold. The initial user is also issued exchange tokens (E) in the

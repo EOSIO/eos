@@ -83,7 +83,7 @@ inline void move_nodes(Container& to, Container&& from) {
  * appended to without triggering the reconstruction of inner nodes that
  * represent a complete subset of previous nodes.
  *
- * to achieve this new nodes can either imply an set of future nodes
+ * to achieve this new nodes can either imply a set of future nodes
  * that achieve a balanced tree OR realize one of these future nodes.
  *
  * Once a sub-tree contains only realized nodes its sub-root will never
@@ -186,7 +186,7 @@ class incremental_merkle_impl {
                top = DigestType::hash(make_canonical_pair(top, top));
                partial = true;
             } else {
-               // we are collapsing from a "right" value and an fully-realized "left"
+               // we are collapsing from a "right" value and a fully-realized "left"
 
                // pull a "left" value from the previous active nodes
                const auto& left_value = *active_iter;
