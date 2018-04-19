@@ -296,7 +296,7 @@ namespace eosio {
    constexpr auto     def_txn_expire_wait = std::chrono::seconds(3);
    constexpr auto     def_resp_expected_wait = std::chrono::seconds(5);
    constexpr auto     def_sync_fetch_span = 100;
-   constexpr auto     def_max_just_send = 1500; // "mtu" * 1
+   constexpr uint32_t    def_max_just_send = 0xFFFFFFFF; //1500; // "mtu" * 1
    constexpr auto     def_send_whole_blocks = true;
 
    constexpr auto     message_header_size = 4;
@@ -2698,6 +2698,7 @@ namespace eosio {
          ( "network-version-match", bpo::value<bool>()->default_value(false),
            "True to require exact match of peer network version.")
          ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
+         ( "max-implicit-request", bpo::value<uint32_t>()->default_value(def_max_just_send), "maximum sizes of transaction or block messages that are set wothout first sending a notice")
          ;
    }
 
@@ -2719,7 +2720,7 @@ namespace eosio {
       my->connector_period = std::chrono::seconds(options.at("connection-cleanup-period").as<int>());
       my->txn_exp_period = def_txn_expire_wait;
       my->resp_expected_period = def_resp_expected_wait;
-      my->big_msg_master->just_send_it_max = def_max_just_send;
+      my->big_msg_master->just_send_it_max = options.at("max-implicit-request").as<uint32_t>();
       my->max_client_count = options.at("max-clients").as<int>();
 
       my->num_clients = 0;
