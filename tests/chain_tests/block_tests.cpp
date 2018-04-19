@@ -1170,11 +1170,11 @@ BOOST_AUTO_TEST_CASE(account_ram_limit) { try {
 
    transaction_trace trace = chain.create_account(N(acc2), acc1);
    chain.produce_block();
-   BOOST_ASSERT(trace.status == transaction_trace::executed);
+   BOOST_REQUIRE_EQUAL(trace.status, transaction_trace::executed);
 
    trace = chain.create_account(N(acc3), acc1);
    chain.produce_block();
-   BOOST_ASSERT(trace.status == transaction_trace::executed);
+      BOOST_REQUIRE_EQUAL(trace.status, transaction_trace::executed);
    
    BOOST_REQUIRE_EXCEPTION(
       chain.create_account(N(acc4), acc1), 
