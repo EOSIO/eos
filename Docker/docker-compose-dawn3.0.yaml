@@ -1,15 +1,8 @@
 version: "3"
 
 services:
-  builder:
-    build:
-      context: builder
-    image: eosio/builder
-
   nodeosd:
-    build:
-      context: .
-    image: eosio/eos
+    image: eosio/eos:dawn3x
     command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir
     hostname: nodeosd
     ports:
@@ -21,7 +14,7 @@ services:
       - nodeos-data-volume:/opt/eosio/bin/data-dir
 
   keosd:
-    image: eosio/eos
+    image: eosio/eos:dawn3x
     command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir
     hostname: keosd
     links:
@@ -30,7 +23,7 @@ services:
       - keosd-data-volume:/opt/eosio/bin/data-dir
 
 volumes:
-  nodeos-data-volume:
-    external: true
-  keosd-data-volume:
-    external: true
+ nodeos-data-volume:
+   external: true
+ keosd-data-volume:
+   external: true

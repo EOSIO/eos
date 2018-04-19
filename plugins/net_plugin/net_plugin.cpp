@@ -28,6 +28,7 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/intrusive/set.hpp>
 
+#include "old_versions.hpp"
 namespace fc {
    extern std::unordered_map<std::string,logger>& get_logger_map();
 }
@@ -58,6 +59,15 @@ namespace eosio {
    using socket_ptr = std::shared_ptr<tcp::socket>;
 
    using net_message_ptr = shared_ptr<net_message>;
+
+   template<typename I>
+   std::string itoh(I n, size_t hlen = sizeof(I)<<1) {
+      static const char* digits = "0123456789abcdef";
+      std::string r(hlen, '0');
+      for(size_t i = 0, j = (hlen - 1) * 4 ; i < hlen; ++i, j -= 4)
+         r[i] = digits[(n>>j) & 0x0f];
+      return r;
+   }
 
    struct node_transaction_state {
       transaction_id_type id;
@@ -262,6 +272,7 @@ namespace eosio {
        */
       chain::signature_type sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const;
 
+      bool is_old_version (uint16_t v);
    };
 
    const fc::string logger_name("net_plugin_impl");
@@ -419,6 +430,7 @@ namespace eosio {
       int16_t                 sent_handshake_count;
       bool                    connecting;
       bool                    syncing;
+      bool                    backwards_compatibility;
       int                     write_depth;
       string                  peer_addr;
       unique_ptr<boost::asio::steady_timer> response_expected;
@@ -610,6 +622,7 @@ namespace eosio {
         sent_handshake_count(0),
         connecting(false),
         syncing(false),
+        backwards_compatibility(false),
         write_depth(0),
         peer_addr(endpoint),
         response_expected(),
@@ -633,6 +646,7 @@ namespace eosio {
         sent_handshake_count(0),
         connecting(true),
         syncing(false),
+        backwards_compatibility(false),
         write_depth(0),
         peer_addr(),
         response_expected(),
@@ -1317,16 +1331,21 @@ namespace eosio {
       if (head < peer_lib) {
          fc_dlog(logger, "sync check state 1");
          // wait for receipt of a notice message before initiating sync
+         if (c->backwards_compatibility) {
+            start_sync( c, peer_lib);
+         }
          return;
       }
       if (lib_num > msg.head_num ) {
          fc_dlog(logger, "sync check state 2");
-         notice_message note;
-         note.known_trx.pending = lib_num;
-         note.known_trx.mode = last_irr_catch_up;
-         note.known_blocks.mode = last_irr_catch_up;
-         note.known_blocks.pending = head;
-         c->enqueue( note );
+         if (msg.generation > 1 || !c->backwards_compatibility) {
+            notice_message note;
+            note.known_trx.pending = lib_num;
+            note.known_trx.mode = last_irr_catch_up;
+            note.known_blocks.mode = last_irr_catch_up;
+            note.known_blocks.pending = head;
+            c->enqueue( note );
+         }
          c->syncing = true;
          return;
       }
@@ -1338,12 +1357,14 @@ namespace eosio {
       }
       else {
          fc_dlog(logger, "sync check state 4");
-         notice_message note;
-         note.known_trx.mode = none;
-         note.known_blocks.mode = catch_up;
-         note.known_blocks.pending = head;
-         note.known_blocks.ids.push_back(head_id);
-         c->enqueue( note );
+         if (msg.generation > 1 || !c->backwards_compatibility) {
+            notice_message note;
+            note.known_trx.mode = none;
+            note.known_blocks.mode = catch_up;
+            note.known_blocks.pending = head;
+            note.known_blocks.ids.push_back(head_id);
+            c->enqueue( note );
+         }
          c->syncing = true;
          return;
       }
@@ -1994,14 +2015,15 @@ namespace eosio {
             return;
          }
          if( msg.network_version != network_version) {
+            c->backwards_compatibility = is_old_version (msg.network_version);
             if (network_version_match) {
                elog("Peer network version does not match expected ${nv} but got ${mnv}",
                     ("nv", network_version)("mnv", msg.network_version));
                c->enqueue(go_away_message(wrong_version));
                return;
             } else {
-               wlog("Peer network version does not match expected ${nv} but got ${mnv}",
-                    ("nv", network_version)("mnv", msg.network_version));
+               ilog("Local network version: ${nv} Remote version: ${mnv}",
+                    ("nv", eosio::itoh(network_version))("mnv", eosio::itoh(msg.network_version)));
             }
          }
 
@@ -2096,6 +2118,7 @@ namespace eosio {
       // notices of previously unknown blocks or txns,
       //
       fc_dlog(logger, "got a notice_message from ${p}", ("p",c->peer_name()));
+      c->connecting = false;
       request_message req;
       bool send_req = false;
       if (msg.known_trx.mode != none) {
@@ -2866,5 +2889,34 @@ namespace eosio {
       for( const auto& c : connections )
          if( c->peer_addr == host ) return c;
       return connection_ptr();
+   }
+
+   /*
+    * this really should be in apputils
+    */
+
+
+   std::set<uint16_t> known_old;
+   std::set<uint16_t> known_new;
+
+   bool net_plugin_impl::is_old_version (uint16_t v) {
+      if (known_old.find (v) != known_old.end()) {
+         fc_dlog (logger,"version ${v} is known to be old",("v",v));
+         return true;
+      }
+      if (known_new.find (v) != known_new.end()) {
+         fc_dlog (logger,"version ${v} is known to be new",("v",v));
+         return false;
+      }
+      for (auto old: old_versions) {
+         if (v == (uint16_t)old) {
+            fc_dlog (logger,"adding version ${v} to the known old set",("v",v));
+            known_old.insert(v);
+            return true;
+         }
+      }
+      fc_dlog (logger,"adding version ${v} to the known new set",("v",v));
+      known_new.insert(v);
+      return false;
    }
 }

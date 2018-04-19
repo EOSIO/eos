@@ -494,8 +494,7 @@ void test_multi_index::idx256_general(uint64_t receiver, uint64_t code, uint64_t
 
    print("Items sorted by secondary key (key256):\n");
    for( const auto& item : secidx ) {
-      print(" ID=", item.primary_key(), ", secondary=");
-      cout << item.sec << "\n";
+      print(" ID=", item.primary_key(), ", secondary=", item.sec, "\n");
    }
 
    {
@@ -513,6 +512,7 @@ void test_multi_index::idx256_general(uint64_t receiver, uint64_t code, uint64_t
 
    print("First entry with a secondary key greater than 42 has ID=", upper->id, ".\n");
    eosio_assert( upper->id == 2, "idx256_general - upper_bound" );
+   eosio_assert( upper->id == secidx.get(onetwothreefour).id, "idx256_general - secondary index get" );
 
    print("Removed entry with ID=", lower1->id, ".\n");
    secidx.erase( lower1 );
@@ -770,4 +770,3 @@ void test_multi_index::idx64_pk_cache_sk_lookup(uint64_t receiver, uint64_t code
 }
 
 #pragma GCC diagnostic pop
-

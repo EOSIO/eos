@@ -32,7 +32,6 @@ typedef uint64_t asset_symbol;
 typedef int64_t share_type;
 typedef uint16_t weight_type;
 
-#define PACKED(X) __attribute((packed)) X
 /* macro to align/overalign a type to ensure calls to intrinsics with pointers/references are properly aligned */ 
 #define ALIGNED(X) alignas(16) X
 
