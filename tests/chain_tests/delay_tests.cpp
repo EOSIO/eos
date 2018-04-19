@@ -932,7 +932,8 @@ BOOST_AUTO_TEST_CASE( link_delay_link_change_test ) { try {
       30, 3),
       transaction_exception,
       [] (const transaction_exception &e)->bool {
-         BOOST_REQUIRE_EQUAL(std::string("transaction validation exception"), e.what());
+         std::string check_str = "3030000 transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (3 sec)";
+         BOOST_REQUIRE_EQUAL(check_str, e.to_detail_string().substr(0, check_str.length()));
          return true;
       }
    );
@@ -1133,7 +1134,8 @@ BOOST_AUTO_TEST_CASE( link_delay_unlink_test ) { try {
       30, 7),
       transaction_exception,
       [] (const transaction_exception &e)->bool {
-         BOOST_REQUIRE_EQUAL(std::string("transaction validation exception"), e.what());
+         std::string check_str = "3030000 transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (7 sec)";
+         BOOST_REQUIRE_EQUAL(check_str, e.to_detail_string().substr(0, check_str.length()));
          return true;
       }
    );
@@ -1669,7 +1671,8 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
       ),
       transaction_exception,
       [] (const transaction_exception &e)->bool {
-         BOOST_REQUIRE_EQUAL(std::string("transaction validation exception"), e.what());
+         std::string check_str = "3030000 transaction_exception: transaction validation exception\nauthorization imposes a delay (10 sec) greater than the delay specified in transaction header (7 sec)";
+         BOOST_REQUIRE_EQUAL(check_str, e.to_detail_string().substr(0, check_str.length()));
          return true;
       }
    );
