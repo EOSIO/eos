@@ -182,6 +182,12 @@ namespace eosiosystem {
       }
    }
 
+   eosio_global_state system_contract::get_default_parameters() {
+      eosio_global_state dp;
+      get_blockchain_parameters(dp);
+      return dp;
+   }
+
    eosio::asset system_contract::payment_per_block(uint32_t percent_of_max_inflation_rate) {
       eosio::symbol_name sym = eosio::symbol_type(S(4,EOS)).name();
       eosio::token::stats stats_tbl(N(eosio.token), sym);
@@ -291,9 +297,9 @@ namespace eosiosystem {
       bytes packed_schedule = pack(schedule);
       set_active_producers( packed_schedule.data(),  packed_schedule.size() );
       size_t median = n/2;
-      /* XXX
-      auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
-         : get_default_parameters();
+
+      global_state_singleton gs( _self, _self );
+      auto parameters = gs.exists() ? gs.get() : get_default_parameters();
 
       parameters.base_per_transaction_net_usage = base_per_transaction_net_usage[median];
       parameters.base_per_transaction_cpu_usage = base_per_transaction_cpu_usage[median];
@@ -337,9 +343,8 @@ namespace eosiosystem {
       eosio::inline_issue(eosio::permission_level{N(eosio),N(active)}, N(eosio.token),
                           { N(eosio), issue_quantity, std::string("producer pay") });
 
-      set_blockchain_parameters(parameters);
-      global_state_singleton::set(parameters);
-      */
+      set_blockchain_parameters( parameters );
+      gs.set( parameters, _self );
    }
 
    /**

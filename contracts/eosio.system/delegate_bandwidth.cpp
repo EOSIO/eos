@@ -26,11 +26,8 @@ namespace eosiosystem {
    using std::map;
    using std::pair;
 
-   //static constexpr account_name system_account = SystemAccount;
    static constexpr time refund_delay = 3*24*3600;
    static constexpr time refund_expiration_time = 3600;
-   //using eosio_parameters = typename common<SystemAccount>::eosio_parameters;
-   //using global_state_singleton = typename common<SystemAccount>::global_state_singleton;
 
    struct total_resources {
       account_name  owner;
@@ -92,9 +89,8 @@ namespace eosiosystem {
       //eosio_assert( is_account( receiver ), "can only delegate resources to an existing account" );
       int64_t storage_bytes = 0;
       if ( 0 < stake_storage_quantity.amount ) {
-         /* XXX
-         auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
-            : common<SystemAccount>::get_default_parameters();
+         global_state_singleton gs( _self, _self );
+         auto parameters = gs.exists() ? gs.get() : get_default_parameters();
          eosio::symbol_name sym = eosio::symbol_type(S(4,EOS)).name();
          eosio::token::stats stats_tbl(N(eosio.token), sym);
          const auto& st = stats_tbl.get(sym);
@@ -103,18 +99,17 @@ namespace eosiosystem {
          //make sure that there is no posibility of overflow here
          int64_t storage_bytes_estimated = int64_t( parameters.max_storage_size - parameters.total_storage_bytes_reserved )
             * int64_t(parameters.storage_reserve_ratio) * stake_storage_quantity
-            / ( token_supply - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient * /;
+            / ( token_supply - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient */;
 
          storage_bytes = ( int64_t(parameters.max_storage_size) - int64_t(parameters.total_storage_bytes_reserved) - storage_bytes_estimated )
             * int64_t(parameters.storage_reserve_ratio) * stake_storage_quantity
-            / ( token_supply - stake_storage_quantity - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient * /;
+            / ( token_supply - stake_storage_quantity - parameters.total_storage_stake ) / 1000 /* reserve ratio coefficient */;
 
          eosio_assert( 0 < storage_bytes, "stake is too small to increase storage even by 1 byte" );
 
          parameters.total_storage_bytes_reserved += uint64_t(storage_bytes);
          parameters.total_storage_stake += stake_storage_quantity;
-         global_state_singleton::set(parameters);
-         */
+         gs.set( parameters, _self );
       }
 
       del_bandwidth_table     del_tbl( _self, from );
@@ -191,12 +186,11 @@ namespace eosiosystem {
          storage_stake_decrease = 0 < dbw.storage_bytes ?
                                       dbw.storage_stake * int64_t(unstake_storage_bytes) / int64_t(dbw.storage_bytes)
                                       : eosio::asset(0, S(4,EOS));
-         /* XXX
-         auto parameters = global_state_singleton::get();
+         global_state_singleton gs( _self, _self );
+         auto parameters = gs.get(); //it should exist if user staked for bandwith
          parameters.total_storage_bytes_reserved -= unstake_storage_bytes;
          parameters.total_storage_stake -= storage_stake_decrease;
-         global_state_singleton::set( parameters );
-         */
+         gs.set( parameters, _self );
       }
 
       eosio::asset total_refund = unstake_cpu_quantity + unstake_net_quantity + storage_stake_decrease;

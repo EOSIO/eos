@@ -80,7 +80,7 @@ namespace eosiosystem {
                                indexed_by<N(prototalvote), const_mem_fun<producer_info, uint128_t, &producer_info::by_votes>  >
                                >  producers_table;
 
-   //typedef eosio::singleton<N(inflation), SystemAccount, eosio_global_state> global_state_singleton;
+   typedef eosio::singleton<N(global), eosio_global_state> global_state_singleton;
 
    static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
    static constexpr uint32_t     seconds_per_day = 24 * 3600;
@@ -111,6 +111,8 @@ namespace eosiosystem {
 
       void decrease_voting_power( account_name acnt, const eosio::asset& amount );
 
+      static eosio_global_state get_default_parameters();
+
       eosio::asset payment_per_block(uint32_t percent_of_max_inflation_rate);
 
       void update_elected_producers(time cycle_time);
@@ -134,3 +136,12 @@ namespace eosiosystem {
    };
 
 } /// eosiosystem
+
+//hack to prevent linker from removing apply function
+extern "C" {
+   void apply( uint64_t receiver, uint64_t code, uint64_t action );
+}
+
+void call_apply() {
+   apply( 0, 0, 0 );
+}

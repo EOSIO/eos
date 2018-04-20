@@ -7,14 +7,13 @@ namespace eosiosystem {
 static const uint32_t num_of_payed_producers = 121;
 
 bool system_contract::update_cycle(time block_time) {
-   /* XXX
-   auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
-      : get_default_parameters();
+   global_state_singleton gs( _self, _self );
+   auto parameters = gs.exists() ? gs.get() : get_default_parameters();
    if (parameters.first_block_time_in_cycle == 0) {
       // This is the first time onblock is called in the blockchain.
       parameters.last_bucket_fill_time = block_time;
-      global_state_singleton::set(parameters);
-      update_elected_producers(block_time);
+      gs.set( parameters, _self );
+      update_elected_producers( block_time );
       return true;
    }
 
@@ -25,7 +24,6 @@ bool system_contract::update_cycle(time block_time) {
       update_elected_producers(beginning_of_cycle);
       return true;
    }
-   */
    return false;
 }
 
@@ -35,9 +33,9 @@ void system_contract::onblock(const block_header& header) {
 
    producers_table producers_tbl( _self, _self );
    account_name producer = header.producer;
-   /* XXX
-   auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
-      : get_default_parameters();
+
+   global_state_singleton gs( _self, _self );
+   auto parameters = gs.exists() ? gs.get() : get_default_parameters();
    //            const system_token_type block_payment = parameters.payment_per_block;
    const asset block_payment = parameters.payment_per_block;
    auto prod = producers_tbl.find(producer);
@@ -53,8 +51,7 @@ void system_contract::onblock(const block_header& header) {
    const asset to_eos_bucket = num_of_payments * parameters.payment_to_eos_bucket;
    parameters.last_bucket_fill_time = header.timestamp;
    parameters.eos_bucket += to_eos_bucket;
-   global_state_singleton::set(parameters);
-   */
+   gs.set( parameters, _self );
 }
 
 void system_contract::claimrewards(const account_name& owner) {
@@ -91,16 +88,15 @@ void system_contract::claimrewards(const account_name& owner) {
    }
 
    if (is_among_payed_producers && total_producer_votes > 0) {
-      /*
-      if( global_state_singleton::exists() ) {
-         auto parameters = global_state_singleton::get();
+      global_state_singleton gs( _self, _self );
+      if( gs.exists() ) {
+         auto parameters = gs.get();
          //                  auto share_of_eos_bucket = system_token_type( static_cast<uint64_t>( (prod->total_votes * parameters.eos_bucket.quantity) / total_producer_votes ) ); // This will be improved in the future when total_votes becomes a double type.
          auto share_of_eos_bucket = eosio::asset( static_cast<int64_t>( (prod->total_votes * parameters.eos_bucket.amount) / total_producer_votes ) );
          rewards += share_of_eos_bucket;
          parameters.eos_bucket -= share_of_eos_bucket;
-         global_state_singleton::set(parameters);
+         gs.set( parameters, _self );
       }
-      */
    }
 
    //            eosio_assert( rewards > system_token_type(), "no rewards available to claim" );

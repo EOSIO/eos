@@ -11,6 +11,7 @@ EOSIO_ABI( eosiosystem::system_contract,
            // producer_pay.cpp
            (claimrewards)
            // native.hpp
+           //XXX
            //(newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(postrecovery)(passrecovery)(vetorecovery)(onerror)(canceldelay)
            // defined in eosio.system.hpp
            (nonce)
