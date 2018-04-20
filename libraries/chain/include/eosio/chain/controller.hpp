@@ -150,6 +150,7 @@ namespace eosio { namespace chain {
          void validate_referenced_accounts( const transaction& t )const;
          void validate_expiration( const transaction& t )const;
          void validate_tapos( const transaction& t )const;
+         uint64_t validate_net_usage( const transaction_metadata_ptr& trx )const;
 
          void set_active_producers( const producer_schedule_type& sch );
 

@@ -858,12 +858,15 @@ void controller::validate_referenced_accounts( const transaction& trx )const {
       get_account( a.account );
       FC_ASSERT( a.authorization.size() == 0 );
    }
+   bool one_auth = false;
    for( const auto& a : trx.actions ) {
       get_account( a.account );
       for( const auto& auth : a.authorization ) { 
+         one_auth = true;
          get_account( auth.actor );
       }
    }
+   EOS_ASSERT( one_auth, tx_no_auths, "transaction must have at least one authorization" );
 }
 
 void controller::validate_expiration( const transaction& trx )const { try {
@@ -877,6 +880,21 @@ void controller::validate_expiration( const transaction& trx )const { try {
                ("trx.expiration",trx.expiration)("reference_time",pending_block_time())
                ("max_til_exp",chain_configuration.max_transaction_lifetime) );
 } FC_CAPTURE_AND_RETHROW((trx)) }
+
+uint64_t controller::validate_net_usage( const transaction_metadata_ptr& trx )const {
+   const auto& cfg = get_global_properties().configuration;
+
+   auto actual_net_usage = cfg.base_per_transaction_net_usage + trx->packed_trx.get_billable_size();
+
+   actual_net_usage = ((actual_net_usage + 7)/8) * 8; // Round up to nearest multiple of 8
+
+   uint32_t net_usage_limit = trx->trx.max_net_usage_words.value * 8UL; // overflow checked in validate_transaction_without_state
+   EOS_ASSERT( net_usage_limit == 0 || actual_net_usage <= net_usage_limit, tx_resource_exhausted,
+               "declared net usage limit of transaction is too low: ${actual_net_usage} > ${declared_limit}",
+               ("actual_net_usage", actual_net_usage)("declared_limit",net_usage_limit) );
+
+   return actual_net_usage;
+}
 
 void controller::validate_tapos( const transaction& trx )const { try {
    const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)trx.ref_block_num);
