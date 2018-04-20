@@ -6,6 +6,9 @@ namespace eosio { namespace chain {
 
    void transaction_context::exec() {
       control.record_transaction( trx_meta );
+      control.validate_tapos( trx_meta->trx );
+      control.validate_referenced_accounts( trx_meta->trx );
+      control.validate_expiration( trx_meta->trx );
 
       for( const auto& act : trx_meta->trx.context_free_actions ) {
          dispatch_action( act, act.account, true );

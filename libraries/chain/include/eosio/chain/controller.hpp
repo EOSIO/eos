@@ -57,7 +57,15 @@ namespace eosio { namespace chain {
           */
          void start_block( block_timestamp_type time = block_timestamp_type() );
 
-         vector<transaction_metadata_ptr> abort_block();
+         void  abort_block();
+
+         /**
+          *  These transactions were previously pushed by have since been unapplied, recalling push_transaction
+          *  with the transaction_metadata_ptr will remove them from this map whether it fails or succeeds.
+          *
+          *  @return map of the hash of a signed transaction (with context free data) to a transaction metadata
+          */
+         const map<digest_type, transaction_metadata_ptr>&  unapplied_transactions()const;
 
          transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx  = transaction_metadata_ptr() );
 
@@ -85,7 +93,9 @@ namespace eosio { namespace chain {
          chainbase::database& db()const;
 
          uint32_t   head_block_num()const;
+
          time_point head_block_time()const;
+         time_point pending_block_time()const;
 
          block_state_ptr head_block_state()const;
          block_state_ptr pending_block_state()const;
@@ -137,11 +147,16 @@ namespace eosio { namespace chain {
                                    flat_set<public_key_type> provided_keys,
                                    bool allow_unused_signatures )const;
 
+         void validate_referenced_accounts( const transaction& t )const;
+         void validate_expiration( const transaction& t )const;
+         void validate_tapos( const transaction& t )const;
+
          void set_active_producers( const producer_schedule_type& sch );
 
-         signal<void(const block_state_ptr&)> accepted_block_header;
-         signal<void(const block_state_ptr&)> accepted_block;
-         signal<void(const block_state_ptr&)> irreversible_block;
+         signal<void(const block_state_ptr&)>          accepted_block_header;
+         signal<void(const block_state_ptr&)>          accepted_block;
+         signal<void(const block_state_ptr&)>          irreversible_block;
+         signal<void(const transaction_metadata_ptr&)> accepted_transaction;
 
          /*
          signal<void()>                                  pre_apply_block;
