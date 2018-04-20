@@ -29,8 +29,8 @@ namespace eosiosystem {
    template<account_name SystemAccount>
    class contract : eosio::contract, public delegate_bandwidth<SystemAccount>, public native<SystemAccount> {
       public:
-         
-         contract(account_name self = SystemAccount): 
+
+         contract(account_name self = SystemAccount):
             eosio::contract(self)
          {
          }
@@ -164,8 +164,8 @@ namespace eosiosystem {
                   p.per_block_payments.amount = 0;
                });
 
-            eosio::inline_transfer(eosio::permission_level{N(eosio),N(active)}, N(eosio.token),
-                                   { N(eosio), cr.owner, rewards, std::string("producer claiming rewards") } );
+            INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+                                                          { N(eosio), cr.owner, rewards, std::string("producer claiming rewards") } );
          }
 
          static void apply( account_name receiver, account_name code, action_name act ) {
