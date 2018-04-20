@@ -1880,10 +1880,18 @@ class Cluster(object):
     def dumpErrorDetailImpl(self,fileName):
         Utils.Print("=================================================================")
         Utils.Print("Contents of %s:" % (fileName))
-        with open(fileName, "r") as f:
-            shutil.copyfileobj(f, sys.stdout)
+        if os.path.exists(fileName):
+            with open(fileName, "r") as f:
+                shutil.copyfileobj(f, sys.stdout)
+        else:
+            Utils.Print("File %s not found." % (fileName))
 
     def dumpErrorDetails(self):
+        fileName="etc/eosio/node_bios/config.ini"
+        self.dumpErrorDetailImpl(fileName)
+        fileName="var/lib/node_bios/stderr.txt"
+        self.dumpErrorDetailImpl(fileName)
+
         for i in range(0, len(self.nodes)):
             fileName="etc/eosio/node_%02d/config.ini" % (i)
             self.dumpErrorDetailImpl(fileName)
