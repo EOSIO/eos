@@ -60,7 +60,7 @@ namespace eosio {
       symbol_name value;
 
       symbol_type() { }
-      symbol_type(const symbol_name& s): value(s) { }
+      symbol_type(symbol_name s): value(s) { }
       bool     is_valid()const  { return is_valid_symbol( value ); }
       uint64_t precision()const { return value & 0xff; }
       uint64_t name()const      { return value >> 8;   }

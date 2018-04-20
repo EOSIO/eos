@@ -495,3 +495,41 @@ void test_db::test_invalid_access(uint64_t receiver, uint64_t code, uint64_t act
       eosio_assert( value == ia.val, "test_invalid_access: value did not match" );
    }
 }
+
+void test_db::idx_double_nan_create_fail(uint64_t receiver, uint64_t, uint64_t) {
+   double x = 0.0;
+   x = x / x; // create a NaN
+   db_idx_double_store( N(nan), N(nan), receiver, 0, &x); // should fail
+}
+
+void test_db::idx_double_nan_modify_fail(uint64_t receiver, uint64_t, uint64_t) {
+   double x = 0.0;
+   db_idx_double_store( N(nan), N(nan), receiver, 0, &x);
+   auto itr = db_idx_double_find_primary(receiver, N(nan), N(nan), &x, 0);
+   x = 0.0;
+   x = x / x; // create a NaN
+   db_idx_double_update(itr, 0, &x); // should fail
+}
+
+void test_db::idx_double_nan_lookup_fail(uint64_t receiver, uint64_t, uint64_t) {
+   auto act = eosio::get_action(1, 0);
+   auto lookup_type = eosio::unpack<uint32_t>(act.data);
+
+   uint64_t pk;
+   double x = 0.0;
+   db_idx_double_store( N(nan), N(nan), receiver, 0, &x);
+   x = x / x; // create a NaN
+   switch( lookup_type ) {
+      case 0: // find
+         db_idx_double_find_secondary(receiver, N(nan), N(nan), &x, &pk);
+      break;
+      case 1: // lower bound
+         db_idx_double_lowerbound(receiver, N(nan), N(nan), &x, &pk);
+      break;
+      case 2: // upper bound
+         db_idx_double_upperbound(receiver, N(nan), N(nan), &x, &pk);
+      break;
+      default:
+         eosio_assert( false, "idx_double_nan_lookup_fail: unexpected lookup_type" );
+   }
+}

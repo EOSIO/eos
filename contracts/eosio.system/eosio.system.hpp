@@ -84,7 +84,8 @@ namespace eosiosystem {
 
    static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
    static constexpr uint32_t     seconds_per_day = 24 * 3600;
-   
+   static constexpr uint64_t     system_token_symbol = S(4,EOS);
+
    class system_contract : public native, private eosio::contract {
    public:
 

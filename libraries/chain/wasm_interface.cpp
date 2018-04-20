@@ -641,31 +641,35 @@ class softfloat_api : public context_aware_api {
          return from_softfloat64(ui64_to_f64( a ));
       }
 
-
-   private:
-      inline float32_t to_softfloat32( float f ) {
+      static bool is_nan( const float32_t f ) {
+         return ((f.v & 0x7FFFFFFF) > 0x7F800000);
+      }
+      static bool is_nan( const float64_t f ) {
+         return ((f.v & 0x7FFFFFFFFFFFFFFF) > 0x7FF0000000000000);
+      }
+      static bool is_nan( const float128_t& f ) {
+         const uint32_t* iptr = (const uint32_t*)&f;
+         return softfloat_isNaNF128M( iptr );
+      }
+      static float32_t to_softfloat32( float f ) {
          return *reinterpret_cast<float32_t*>(&f);
       }
-      inline float64_t to_softfloat64( double d ) {
+      static float64_t to_softfloat64( double d ) {
          return *reinterpret_cast<float64_t*>(&d);
       }
-      inline float from_softfloat32( float32_t f ) {
+      static float from_softfloat32( float32_t f ) {
          return *reinterpret_cast<float*>(&f);
       }
-      inline double from_softfloat64( float64_t d ) {
+      static double from_softfloat64( float64_t d ) {
          return *reinterpret_cast<double*>(&d);
       }
       static constexpr uint32_t inv_float_eps = 0x4B000000;
       static constexpr uint64_t inv_double_eps = 0x4330000000000000;
 
-      inline bool sign_bit( float32_t f ) { return f.v >> 31; }
-      inline bool sign_bit( float64_t f ) { return f.v >> 63; }
-      inline bool is_nan( float32_t f ) {
-         return ((f.v & 0x7FFFFFFF) > 0x7F800000);
-      }
-      inline bool is_nan( float64_t f ) {
-         return ((f.v & 0x7FFFFFFFFFFFFFFF) > 0x7FF0000000000000);
-      }
+      static bool sign_bit( float32_t f ) { return f.v >> 31; }
+      static bool sign_bit( float64_t f ) { return f.v >> 63; }
+
+
 
 };
 class producer_api : public context_aware_api {
@@ -973,6 +977,42 @@ class console_api : public context_aware_api {
          return context.IDX.previous_secondary(iterator, primary);\
       }
 
+#define DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(IDX, TYPE)\
+      int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
+         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         return context.IDX.store( scope, table, payer, id, secondary );\
+      }\
+      void db_##IDX##_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
+         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         return context.IDX.update( iterator, payer, secondary );\
+      }\
+      void db_##IDX##_remove( int iterator ) {\
+         return context.IDX.remove( iterator );\
+      }\
+      int db_##IDX##_find_secondary( uint64_t code, uint64_t scope, uint64_t table, const TYPE& secondary, uint64_t& primary ) {\
+         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         return context.IDX.find_secondary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_find_primary( uint64_t code, uint64_t scope, uint64_t table, TYPE& secondary, uint64_t primary ) {\
+         return context.IDX.find_primary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_lowerbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
+         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         return context.IDX.lowerbound_secondary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_upperbound( uint64_t code, uint64_t scope, uint64_t table,  TYPE& secondary, uint64_t& primary ) {\
+         EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
+         return context.IDX.upperbound_secondary(code, scope, table, secondary, primary);\
+      }\
+      int db_##IDX##_end( uint64_t code, uint64_t scope, uint64_t table ) {\
+         return context.IDX.end_secondary(code, scope, table);\
+      }\
+      int db_##IDX##_next( int iterator, uint64_t& primary  ) {\
+         return context.IDX.next_secondary(iterator, primary);\
+      }\
+      int db_##IDX##_previous( int iterator, uint64_t& primary ) {\
+         return context.IDX.previous_secondary(iterator, primary);\
+      }
 
 class database_api : public context_aware_api {
    public:
@@ -1012,7 +1052,7 @@ class database_api : public context_aware_api {
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx128, uint128_t)
       DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(idx256, 2, uint128_t)
-      DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx_double, uint64_t)
+      DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(idx_double, float64_t)
 };
 
 class memory_api : public context_aware_api {
@@ -1247,37 +1287,37 @@ class compiler_builtins : public context_aware_api {
       }
       int __eqtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          return f128_eq( a, b );
       }
       int __netf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          return !f128_eq( a, b );
       }
       int __getf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          return !f128_lt( a, b );
       }
       int __gttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          return !f128_lt( a, b ) && !f128_eq( a, b );
       }
       int __letf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          return f128_le( a, b );
       }
       int __lttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          return f128_lt( a, b );
       }
       int __cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          if ( f128_lt( a, b ) )
             return -1;
          if ( f128_eq( a, b ) )
@@ -1286,7 +1326,7 @@ class compiler_builtins : public context_aware_api {
       }
       int __unordtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
-         float128_t b = {{ la, ha }};
+         float128_t b = {{ lb, hb }};
          if ( f128_isSignalingNaN( a ) || f128_isSignalingNaN( b ) )
             return 1;
          return 0;
@@ -1301,6 +1341,12 @@ class compiler_builtins : public context_aware_api {
       }
       void __floatunsitf( float128_t& ret, uint32_t i ) {
          ret = ui32_to_f128(i); /// TODO: should be 128
+      }
+      void __floatditf( float128_t& ret, uint64_t a ) {
+         ret = i64_to_f128( a );
+      }
+      void __floatunditf( float128_t& ret, uint64_t a ) {
+         ret = ui64_to_f128( a );
       }
       void __extendsftf2( float128_t& ret, uint32_t f ) {
          float32_t in = { f };
@@ -1443,10 +1489,13 @@ REGISTER_INTRINSICS(compiler_builtins,
    (__getf2,       int(int64_t, int64_t, int64_t, int64_t)        )
    (__gttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
    (__lttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
+   (__letf2,       int(int64_t, int64_t, int64_t, int64_t)        )
    (__cmptf2,      int(int64_t, int64_t, int64_t, int64_t)        )
    (__unordtf2,    int(int64_t, int64_t, int64_t, int64_t)        )
    (__floatsitf,   void (int, int)                                )
    (__floatunsitf, void (int, int)                                )
+   (__floatditf,   void (int, int64_t)                            )
+   (__floatunditf, void (int, int64_t)                            )
    (__floatsidf,   double(int)                                    )
    (__extendsftf2, void(int, int)                                 )
    (__extenddftf2, void(int, double)                              )

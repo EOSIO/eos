@@ -83,7 +83,7 @@ namespace eosio {
          *
          * @details Default constructor to fixed_key object which initializes all bytes to zero
          */
-         fixed_key() : _data() {}
+         constexpr fixed_key() : _data() {}
 
          /**
          * @brief Constructor to fixed_key object from std::array of num_words() words

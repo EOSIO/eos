@@ -9,7 +9,7 @@
 #include "test_memory.cpp"
 
 extern "C" {
-   void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
+   void apply( uint64_t /*receiver*/, uint64_t code, uint64_t action ) {
       require_auth(code);
 
       //test_extended_memory

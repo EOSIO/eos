@@ -189,14 +189,11 @@ namespace eosiosystem {
    }
 
    eosio::asset system_contract::payment_per_block(uint32_t percent_of_max_inflation_rate) {
-      eosio::symbol_name sym = eosio::symbol_type(S(4,EOS)).name();
-      eosio::token::stats stats_tbl(N(eosio.token), sym);
-      const auto& st = stats_tbl.get(sym);
-      const eosio::asset token_supply = st.supply;
+      const eosio::asset token_supply = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name());
       const double annual_rate = double(max_inflation_rate * percent_of_max_inflation_rate) / double(10000);
-      double continuous_rate = std::log1p(annual_rate);
+      const double continuous_rate = std::log1p(annual_rate);
       int64_t payment = static_cast<int64_t>((continuous_rate * double(token_supply.amount)) / double(blocks_per_year));
-      return eosio::asset(payment, S(4,EOS));
+      return eosio::asset(payment, system_token_symbol);
    }
 
    void system_contract::update_elected_producers(time cycle_time) {
@@ -340,8 +337,8 @@ namespace eosiosystem {
       }
 
       auto issue_quantity = parameters.blocks_per_cycle * (parameters.payment_per_block + parameters.payment_to_eos_bucket);
-      eosio::inline_issue(eosio::permission_level{N(eosio),N(active)}, N(eosio.token),
-                          { N(eosio), issue_quantity, std::string("producer pay") });
+      INLINE_ACTION_SENDER(eosio::token, issue)( N(eosio.token), {{N(eosio),N(active)}},
+                                                 {N(eosio), issue_quantity, std::string("producer pay")} );
 
       set_blockchain_parameters( parameters );
       gs.set( parameters, _self );

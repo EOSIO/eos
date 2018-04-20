@@ -107,8 +107,8 @@ void system_contract::claimrewards(const account_name& owner) {
          p.per_block_payments.amount = 0;
       });
 
-   eosio::inline_transfer(eosio::permission_level{N(eosio),N(active)}, N(eosio.token),
-                          { N(eosio), owner, rewards, std::string("producer claiming rewards") } );
+   INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+                                                 { N(eosio), owner, rewards, std::string("producer claiming rewards") } );
 }
 
 } //namespace eosiosystem

@@ -40,6 +40,11 @@ namespace eosio {
 
          friend eosiosystem::system_contract;
 
+         inline asset get_supply( symbol_name sym )const;
+         
+         inline asset get_balance( account_name owner, symbol_name sym )const;
+
+      private:
          struct account {
             asset    balance;
             bool     frozen    = false;
@@ -69,18 +74,18 @@ namespace eosio {
                            account_name ram_payer );
    };
 
-   typedef std::tuple<account_name, account_name, asset, string> transfer_args;
-   void inline_transfer( permission_level permissions, account_name code, transfer_args args )
+   asset token::get_supply( symbol_name sym )const
    {
-      action act( permissions, code, N(transfer), args );
-      act.send();
+      stats statstable( _self, sym );
+      const auto& st = statstable.get( sym );
+      return st.supply;
    }
 
-   typedef std::tuple<account_name, asset, string> issue_args;
-   void inline_issue( permission_level permissions, account_name code, issue_args args )
+   asset token::get_balance( account_name owner, symbol_name sym )const
    {
-      action act( permissions, code, N(issue), args );
-      act.send();
+      accounts accountstable( _self, owner );
+      const auto& ac = accountstable.get( sym );
+      return ac.balance;
    }
 
 } /// namespace eosio

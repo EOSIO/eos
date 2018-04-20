@@ -12,6 +12,7 @@
 
 #include <fc/utility.hpp>
 #include <fc/io/json.hpp>
+#include <eosio/chain/producer_object.hpp>
 
 #include "WAST/WAST.h"
 #include "WASM/WASM.h"
@@ -71,16 +72,6 @@ namespace eosio { namespace testing {
    }
 
 
-   public_key_type  base_tester::get_public_key( name keyname, string role ) const {
-      return get_private_key( keyname, role ).get_public_key();
-   }
-
-
-   private_key_type base_tester::get_private_key( name keyname, string role ) const {
-      return private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(string(keyname)+role));
-   }
-
-
    void base_tester::close() {
       control.reset();
       chain_transactions.clear();
@@ -112,8 +103,18 @@ namespace eosio { namespace testing {
       auto head_time = control->head_block_time();
       auto next_time = head_time + skip_time;
       uint32_t slot  = control->get_slot_at_time( next_time );
-      auto sch_pro   = control->get_scheduled_producer(slot);
-      auto priv_key  = get_private_key( sch_pro, "active" );
+      auto sch_pro = control->get_scheduled_producer(slot);
+      const auto& sch_pro_signing_key = control->get_producer(sch_pro).signing_key;
+
+      private_key_type priv_key;
+      // Check if signing private key exist in the list
+      auto private_key_itr = block_signing_private_keys.find( sch_pro_signing_key );
+      if( private_key_itr == block_signing_private_keys.end() ) {
+         // If it's not found, default to active k1 key
+         priv_key = get_private_key( sch_pro, "active" );
+      } else {
+         priv_key = private_key_itr->second;
+      }
 
       return control->generate_block( next_time, sch_pro, priv_key, skip_flag );
    }
@@ -536,7 +537,7 @@ namespace eosio { namespace testing {
       if (tbl) {
          const auto *obj = db.template find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, asset_symbol.to_symbol_code().value));
          if (obj) {
-            //balance is the second field after symbol, so skip the symbol
+            //balance is the first field in the serialization
             fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
             fc::raw::unpack(ds, result);
          }
