@@ -35,11 +35,13 @@ namespace eosiosystem {
          using eosio_parameters = typename common<SystemAccount>::eosio_parameters;
          using global_state_singleton = typename common<SystemAccount>::global_state_singleton;
 
+         using voting<SystemAccount>::system_token_symbol;
+
          struct total_resources {
             account_name  owner;
             asset         net_weight;
             asset         cpu_weight;
-            asset         storage_stake;   
+            asset         storage_stake;
             uint64_t      storage_bytes = 0;
 
             uint64_t primary_key()const { return owner; }
@@ -121,11 +123,7 @@ namespace eosiosystem {
             if ( 0 < del.stake_storage_quantity.amount ) {
                auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
                   : common<SystemAccount>::get_default_parameters();
-               eosio::symbol_name sym = eosio::symbol_type(S(4,EOS)).name();
-               eosio::token::stats stats_tbl(N(eosio.token), sym);
-               const auto& st = stats_tbl.get(sym);
-               const eosio::asset token_supply = st.supply;
-
+               const eosio::asset token_supply = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name());
                //make sure that there is no posibility of overflow here
                int64_t storage_bytes_estimated = int64_t( parameters.max_storage_size - parameters.total_storage_bytes_reserved )
                   * int64_t(parameters.storage_reserve_ratio) * del.stake_storage_quantity
@@ -183,9 +181,9 @@ namespace eosiosystem {
             }
 
             //set_resource_limits( tot_itr->owner, tot_itr->storage_bytes, tot_itr->net_weight.quantity, tot_itr->cpu_weight.quantity );
-            
-            eosio::inline_transfer(eosio::permission_level{del.from,N(active)}, N(eosio.token),
-                                   { del.from, N(eosio), total_stake, std::string("stake bandwidth") } );
+
+            INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {del.from,N(active)},
+                                                          { del.from, N(eosio), total_stake, std::string("stake bandwidth") } );
 
             if ( asset(0) < del.stake_net_quantity + del.stake_cpu_quantity ) {
                voting<SystemAccount>::increase_voting_power( del.from, del.stake_net_quantity + del.stake_cpu_quantity );
@@ -207,11 +205,11 @@ namespace eosiosystem {
             eosio_assert( dbw.cpu_weight >= del.unstake_cpu_quantity, "insufficient staked cpu bandwidth" );
             eosio_assert( dbw.storage_bytes >= del.unstake_storage_bytes, "insufficient staked storage" );
 
-            eosio::asset storage_stake_decrease(0, S(4,EOS));
+            eosio::asset storage_stake_decrease(0, system_token_symbol);
             if ( 0 < del.unstake_storage_bytes ) {
                storage_stake_decrease = 0 < dbw.storage_bytes ?
                                             dbw.storage_stake * int64_t(del.unstake_storage_bytes) / int64_t(dbw.storage_bytes)
-                                            : eosio::asset(0, S(4,EOS));
+                                            : eosio::asset(0, system_token_symbol);
 
                auto parameters = global_state_singleton::get();
                parameters.total_storage_bytes_reserved -= del.unstake_storage_bytes;
@@ -282,8 +280,8 @@ namespace eosiosystem {
             // allow people to get their tokens earlier than the 3 day delay if the unstake happened immediately after many
             // consecutive missed blocks.
 
-            eosio::inline_transfer( eosio::permission_level{N(eosio),N(active)}, N(eosio.token),
-                                    { N(eosio), req->owner, req->amount, std::string("unstake") });
+            INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)},
+                                                          { N(eosio), req->owner, req->amount, std::string("unstake") } );
 
             refunds_tbl.erase( req );
          }

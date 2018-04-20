@@ -237,7 +237,7 @@ try:
         errorExit("Failed to transfer funds %d from account %s to %s" % (
             transferAmount, initaAccount.name, testeraAccount.name))
 
-    # TDB: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
+    # TBD: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
     #  Uncomment when functional
     # expectedAmount=transferAmount
     # Print("Verify transfer, Expected: %d" % (expectedAmount))
@@ -254,7 +254,7 @@ try:
         errorExit("Failed to force transfer funds %d from account %s to %s" % (
             transferAmount, initaAccount.name, testeraAccount.name))
 
-    # TDB: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
+    # TBD: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
     #  Uncomment when functional
     # expectedAmount=975421
     # Print("Verify transfer, Expected: %d" % (expectedAmount))
@@ -295,7 +295,7 @@ try:
             transferAmount, initaAccount.name, testeraAccount.name))
     transId=testUtils.Node.getTransId(trans)
 
-    # TDB: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
+    # TBD: Known issue (Issue 2043) that 'get currency balance' doesn't return balance.
     #  Uncomment when functional
     # expectedAmount=975311+5000 # 5000 initial deposit
     # Print("Verify transfer, Expected: %d" % (expectedAmount))
@@ -418,7 +418,7 @@ try:
         abiActionName=account["abi"]["actions"][0]["name"]
         abiType=account["abi"]["actions"][0]["type"]
         if abiName != "transfer" or abiActionName != "transfer" or abiType != "transfer":
-            errorExit("FAILURE - get table currency account failed", raw=True)
+            errorExit("FAILURE - get EOS account failed", raw=True)
 
     Print("push create action to currency contract")
     contract="currency"
@@ -437,35 +437,37 @@ try:
     if trans is None or not trans[0]:
         errorExit("FAILURE - issue action to currency contract failed", raw=True)
 
-    # TODO need to update eosio.system contract to use new currency and update cleos and chain_plugin for interaction
-    # Print("Verify currency contract has proper initial balance (via get table)")
-    # contract="currency"
-    # table="accounts"
-    # row0=node.getTableRow(currencyAccount.name, contract, table, 0)
-    # if row0 is None:
-    #     cmdError("%s get table currency account" % (ClientName))
-    #     errorExit("Failed to retrieve contract %s table %s" % (contract, table))
-    #
-    # balanceKey="balance"
-    # keyKey="key"
-    # if row0[balanceKey] != 1000000000:
-    #     errorExit("FAILURE - get table currency account failed", raw=True)
-    #
-    # Print("Verify currency contract has proper initial balance (via get currency balance)")
-    # res=node.getCurrencyBalance(contract, currencyAccount.name, "CUR")
-    # if res is None:
-    #     cmdError("%s get currency balance" % (ClientName))
-    #     errorExit("Failed to retrieve CUR balance from contract %s account %s" % (contract, currencyAccount.name))
-    #
-    # if res.strip()[1:-1] != "100000.0000 CUR":
-    #     errorExit("FAILURE - get currency balance failed", raw=True)
-    #
+    Print("Verify currency contract has proper initial balance (via get table)")
+    contract="currency"
+    table="accounts"
+    row0=node.getTableRow(contract, currencyAccount.name, table, 0)
+    if row0 is None:
+        cmdError("%s get currency table currency account" % (ClientName))
+        errorExit("Failed to retrieve contract %s table %s" % (contract, table))
+
+    balanceKey="balance"
+    keyKey="key"
+    if row0[balanceKey] != "100000.0000 CUR":
+        errorExit("FAILURE - Wrong currency balance", raw=True)
+
+    Print("Verify currency contract has proper initial balance (via get currency balance)")
+    res=node.getCurrencyBalance(contract, currencyAccount.name, "CUR")
+    if res is None:
+        cmdError("%s get currency balance" % (ClientName))
+        errorExit("Failed to retrieve CUR balance from contract %s account %s" % (contract, currencyAccount.name))
+
+    expected="100000.0000 CUR"
+    actual=res.strip()
+    if actual != expected:
+        errorExit("FAILURE - get currency balance failed. Recieved response: <%s>" % (res), raw=True)
+
+    # TBD: "get currency stats is still not working. Enable when ready.
     # Print("Verify currency contract has proper total supply of CUR (via get currency stats)")
     # res=node.getCurrencyStats(contract, "CUR")
     # if res is None or not ("supply" in res):
     #     cmdError("%s get currency stats" % (ClientName))
-    #     errorExit("Failed to retrieve CUR stats from contract" % (contract))
-    #
+    #     errorExit("Failed to retrieve CUR stats from contract %s" % (contract))
+    
     # if res["supply"] != "100000.0000 CUR":
     #     errorExit("FAILURE - get currency stats failed", raw=True)
 
@@ -487,26 +489,30 @@ try:
         errorExit("Failed to verify push message transaction id.")
 
     # TODO need to update eosio.system contract to use new currency and update cleos and chain_plugin for interaction
-    # Print("read current contract balance")
-    # contract="currency"
-    # table="accounts"
-    # row0=node.getTableRow(initaAccount.name, contract, table, 0)
-    # if row0 is None:
-    #     cmdError("%s get table currency account" % (ClientName))
-    #     errorExit("Failed to retrieve contract %s table %s" % (contract, table))
-    #
-    # balanceKey="balance"
-    # keyKey="key"
-    # if row0[balanceKey] != 50:
-    #     errorExit("FAILURE - get table currency account failed", raw=True)
-    #
-    # row0=node.getTableRow(currencyAccount.name, contract, table, 0)
-    # if row0 is None:
-    #     cmdError("%s get table currency account" % (ClientName))
-    #     errorExit("Failed to retrieve contract %s table %s" % (contract, table))
-    #
-    # if row0[balanceKey] != 999999950:
-    #     errorExit("FAILURE - get table currency account failed", raw=True)
+    Print("read current contract balance")
+    contract="currency"
+    table="accounts"
+    row0=node.getTableRow(contract, initaAccount.name, table, 0)
+    if row0 is None:
+        cmdError("%s get currency table inita account" % (ClientName))
+        errorExit("Failed to retrieve contract %s table %s" % (contract, table))
+
+    balanceKey="balance"
+    keyKey="key"
+    expected="0.0050 CUR"
+    actual=row0[balanceKey]
+    if actual != expected:
+        errorExit("FAILURE - Wrong currency balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
+
+    row0=node.getTableRow(contract, currencyAccount.name, table, 0)
+    if row0 is None:
+        cmdError("%s get currency table currency account" % (ClientName))
+        errorExit("Failed to retrieve contract %s table %s" % (contract, table))
+
+    expected="99999.9950 CUR"
+    actual=row0[balanceKey]
+    if actual != expected:
+        errorExit("FAILURE - Wrong currency balance (expected=%s, actual=%s)" % (str(expected), str(actual)), raw=True)
 
     Print("Exchange Contract Tests")
     Print("upload exchange contract")
@@ -577,7 +583,7 @@ try:
     for blockNum in range(1, currentBlockNum+1):
         block=node.getBlock(blockNum, retry=False, silentErrors=True)
         if block is None:
-            # TDB: Known issue (Issue 2099) that the block containing setprods isn't retrievable.
+            # TBD: Known issue (Issue 2099) that the block containing setprods isn't retrievable.
             #  Enable errorExit() once that is resolved.
             Print("WARNING: Failed to get block %d (probably issue 2099). Report and keep going..." % (blockNum))
             # cmdError("%s get block" % (ClientName))

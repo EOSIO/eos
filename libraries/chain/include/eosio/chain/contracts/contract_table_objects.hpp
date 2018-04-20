@@ -133,10 +133,8 @@ namespace eosio { namespace chain { namespace contracts {
    typedef secondary_index<key256_t,index256_object_type>::index_index  index256_index;
 
    struct soft_double_less {
-      bool operator()( uint64_t a, uint64_t b )const {
-         float64_t x; x.v = a;
-         float64_t y; y.v = b;
-         return f64_lt(x, y);
+      bool operator()( const float64_t& lhs, const float64_t& rhs )const {
+         return f64_lt(lhs, rhs);
       }
    };
 
@@ -145,8 +143,8 @@ namespace eosio { namespace chain { namespace contracts {
     *
     *  The software double implementation is using the Berkeley softfloat library (release 3).
     */
-   typedef secondary_index<uint64_t,index_double_object_type,soft_double_less>::index_object  index_double_object;
-   typedef secondary_index<uint64_t,index_double_object_type,soft_double_less>::index_index   index_double_index;
+   typedef secondary_index<float64_t,index_double_object_type,soft_double_less>::index_object  index_double_object;
+   typedef secondary_index<float64_t,index_double_object_type,soft_double_less>::index_index   index_double_index;
 
 } // ::contracts
 

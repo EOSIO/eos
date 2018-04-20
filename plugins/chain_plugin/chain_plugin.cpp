@@ -319,19 +319,27 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
 }
 
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
+
+   const abi_def abi = get_abi( db, p.code );
+   auto table_type = get_table_type( abi, "accounts" );
+
    vector<asset> results;
    walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.account, N(accounts), [&](const contracts::key_value_object& obj){
-      share_type balance;
-      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
-      fc::raw::unpack(ds, balance);
-      auto cursor = asset(balance, symbol(obj.primary_key));
 
-      if( !p.symbol || cursor.symbol_name().compare(*p.symbol) == 0 ) {
-         results.emplace_back(balance, symbol(obj.primary_key));
+      EOS_ASSERT( obj.value.size() >= sizeof(asset), chain::asset_type_exception, "Invalid data on table");
+
+      asset cursor;
+      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
+      fc::raw::unpack(ds, cursor);
+
+      EOS_ASSERT( cursor.get_symbol().valid(), chain::asset_type_exception, "Invalid asset");
+
+      if( !p.symbol || boost::iequals(cursor.symbol_name(), *p.symbol) ) {
+        results.emplace_back(cursor);
       }
 
       // return false if we are looking for one and found it, true otherwise
-      return !p.symbol || cursor.symbol_name().compare(*p.symbol) != 0;
+      return !(p.symbol && boost::iequals(cursor.symbol_name(), *p.symbol));
    });
 
    return results;
@@ -339,15 +347,24 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
 
 fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_params& p )const {
    fc::mutable_variant_object results;
-   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.code, N(stat), [&](const contracts::key_value_object& obj){
-      share_type balance;
-      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
-      fc::raw::unpack(ds, balance);
-      auto cursor = asset(balance, symbol(obj.primary_key));
 
+   const abi_def abi = get_abi( db, p.code );
+   auto table_type = get_table_type( abi, "stat" );
+
+   uint64_t scope = ( eosio::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
+
+   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, scope, N(stat), [&](const contracts::key_value_object& obj){
+
+      EOS_ASSERT( obj.value.size() >= sizeof(read_only::get_currency_stats_result), chain::asset_type_exception, "Invalid data on table");
+
+      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
       read_only::get_currency_stats_result result;
-      result.supply = cursor;
-      results[cursor.symbol_name()] = result;
+
+      fc::raw::unpack(ds, result.supply);
+      fc::raw::unpack(ds, result.max_supply);
+      fc::raw::unpack(ds, result.issuer);
+
+      results[result.supply.symbol_name()] = result;
       return true;
    });
 

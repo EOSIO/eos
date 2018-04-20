@@ -689,45 +689,30 @@ int main( int argc, char** argv ) {
    get_balance->add_option( "account", accountName, localized("The account to query balances for") )->required();
    get_balance->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
    get_balance->set_callback([&] {
-      auto result = call(get_currency_balance_func, fc::mutable_variant_object("json", false)
+      auto result = call(get_currency_balance_func, fc::mutable_variant_object
          ("account", accountName)
          ("code", code)
-         ("symbol", symbol=="*" ? fc::variant(symbol) : fc::variant() )
+         ("symbol", symbol.empty() ? fc::variant() : symbol)
       );
 
       const auto& rows = result.get_array();
-      if (symbol.empty()) {
-         for( const auto& r : rows ) {
-            std::cout << r.as_string()
-                      << std::endl;
-         }
-         /*
-         std::cout << fc::json::to_pretty_string(rows)
-                   << std::endl;
-                   */
-      } else if ( rows.size() > 0 ){
-         std::cout << rows[0].as_string()
+      for( const auto& r : rows ) {
+         std::cout << r.as_string()
                    << std::endl;
       }
    });
 
    auto get_currency_stats = get_currency->add_subcommand( "stats", localized("Retrieve the stats of for a given currency"), false);
    get_currency_stats->add_option( "contract", code, localized("The contract that operates the currency") )->required();
-   get_currency_stats->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
+   get_currency_stats->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") )->required();
    get_currency_stats->set_callback([&] {
       auto result = call(get_currency_stats_func, fc::mutable_variant_object("json", false)
          ("code", code)
          ("symbol", symbol)
       );
 
-      if (symbol.empty()) {
-         std::cout << fc::json::to_pretty_string(result)
-                   << std::endl;
-      } else {
-         const auto& mapping = result.get_object();
-         std::cout << fc::json::to_pretty_string(mapping[symbol])
-                   << std::endl;
-      }
+      std::cout << fc::json::to_pretty_string(result)
+                << std::endl;
    });
 
    // get accounts
