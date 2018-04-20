@@ -1,4 +1,11 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE.txt
+ */
 #pragma once
+
+#include <eosio/chain/action.hpp>
+#include <eosio/chain/action_receipt.hpp>
 
 namespace eosio { namespace chain {
 
@@ -32,5 +39,5 @@ namespace eosio { namespace chain {
 
 } }  /// namespace eosio::chain
 
-FC_REFLECT_DERIVED( eosio::chain::action_trace, (eosio::chain::action_receipt), 
+FC_REFLECT_DERIVED( eosio::chain::action_trace, (eosio::chain::action_receipt),
                     (ellapsed)(cpu_usage)(console)(total_inline_cpu_usage)(inline_traces) )
