@@ -59,7 +59,7 @@ action_trace apply_context::exec_one()
 
    _pending_console_output = std::ostringstream();
 
-   t.ellapsed = fc::time_point::now() - start;
+   t.elapsed = fc::time_point::now() - start;
    return t;
 }
 
