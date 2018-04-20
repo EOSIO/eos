@@ -77,9 +77,9 @@ public:
       return push_action( name(from), N(delegatebw), mvo()
                           ("from",     from)
                           ("receiver", to)
-                          ("stake_net", net)
-                          ("stake_cpu", cpu)
-                          ("stake_storage", storage)
+                          ("stake_net_quantity", net)
+                          ("stake_cpu_quantity", cpu)
+                          ("stake_storage_quantity", storage)
       );
    }
 
@@ -91,9 +91,9 @@ public:
       return push_action( name(from), N(undelegatebw), mvo()
                           ("from",     from)
                           ("receiver", to)
-                          ("unstake_net", net)
-                          ("unstake_cpu", cpu)
-                          ("unstake_bytes", bytes)
+                          ("unstake_net_quantity", net)
+                          ("unstake_cpu_quantity", cpu)
+                          ("unstake_storage_bytes", bytes)
       );
    }
 

@@ -42,9 +42,9 @@
       "fields": [
          {"name":"from", "type":"account_name"},
          {"name":"receiver", "type":"account_name"},
-         {"name":"stake_net", "type":"asset"},
-         {"name":"stake_cpu", "type":"asset"},
-         {"name":"stake_storage", "type":"asset"}
+         {"name":"stake_net_quantity", "type":"asset"},
+         {"name":"stake_cpu_quantity", "type":"asset"},
+         {"name":"stake_storage_quantity", "type":"asset"}
       ]
     },{
       "name": "undelegatebw",
@@ -52,9 +52,9 @@
       "fields": [
          {"name":"from", "type":"account_name"},
          {"name":"receiver", "type":"account_name"},
-         {"name":"unstake_net", "type":"asset"},
-         {"name":"unstake_cpu", "type":"asset"},
-         {"name":"unstake_bytes", "type":"uint64"}
+         {"name":"unstake_net_quantity", "type":"asset"},
+         {"name":"unstake_cpu_quantity", "type":"asset"},
+         {"name":"unstake_storage_bytes", "type":"uint64"}
       ]
     },{
       "name": "refund",
