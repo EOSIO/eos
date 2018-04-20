@@ -829,11 +829,14 @@ class action_api : public context_aware_api {
    action_api( apply_context& ctx )
       :context_aware_api(ctx,true){}
 
-      int read_action_data(array_ptr<char> memory, size_t size) {
-         FC_ASSERT(size > 0);
-         int minlen = std::min<size_t>(context.act.data.size(), size);
-         memcpy((void *)memory, context.act.data.data(), minlen);
-         return minlen;
+      int read_action_data(array_ptr<char> memory, size_t buffer_size) {
+         auto s = context.act.data.size();
+         if( buffer_size == 0 ) return s;
+
+         auto copy_size = std::min( buffer_size, s );
+         memcpy( memory, context.act.data.data(), copy_size );
+
+         return copy_size;
       }
 
       int action_data_size() {
