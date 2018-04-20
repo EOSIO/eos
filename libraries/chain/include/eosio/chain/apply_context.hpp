@@ -594,6 +594,8 @@ class apply_context {
 
    private:
       iterator_cache<key_value_object> keyval_cache;
+      void validate_referenced_accounts( const transaction& t )const;
+      void validate_expiration( const transaction& t )const;
 
       /*
       void append_results(apply_results &&other) {

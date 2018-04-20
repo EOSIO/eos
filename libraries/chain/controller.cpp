@@ -62,7 +62,7 @@ struct controller_impl {
     *  are removed from this list if they are re-applied in other blocks. Producers
     *  can query this list when scheduling new transactions into blocks.
     */
-   map<transaction_id_type, transaction_metadata_ptr>     unapplied_transactions;
+   map<digest_type, transaction_metadata_ptr>     unapplied_transactions;
 
    block_id_type head_block_id()const {
       return head->id;
@@ -76,7 +76,7 @@ struct controller_impl {
 
    void pop_block() {
       for( const auto& t : head->trxs )
-         unapplied_transactions[t->id] = t;
+         unapplied_transactions[t->signed_id] = t;
       head = fork_db.get_block( head->header.previous );
       db.undo();
    }
@@ -255,9 +255,11 @@ struct controller_impl {
       for (int i = 0; i < 0x10000; i++)
          db.create<block_summary_object>([&](block_summary_object&) {});
 
-      db.create<global_property_object>([](auto){});
-      db.create<dynamic_global_property_object>([](auto){});
-      db.create<permission_object>([](auto){}); /// reserve perm 0 (used else where)
+      db.create<global_property_object>([&](auto& gpo ){
+        gpo.configuration = conf.genesis.initial_configuration;
+      });
+      db.create<dynamic_global_property_object>([](auto&){});
+      db.create<permission_object>([](auto&){}); /// reserve perm 0 (used else where)
 
       resource_limits.initialize_chain();
 
@@ -292,23 +294,46 @@ struct controller_impl {
 
       create_special_account(config::nobody_account_name, empty_authority, empty_authority);
       create_special_account(config::producers_account_name, empty_authority, active_producers_authority);
+
+      const auto& tapos_block_summary = db.get<block_summary_object>(1);
+      db.modify( tapos_block_summary, [&]( auto& bs ) {
+        bs.block_id = head->id;
+      });
    }
 
+
+   void set_pending_tapos() {
+      const auto& tapos_block_summary = db.get<block_summary_object>((uint16_t)pending->_pending_block_state->block_num);
+      db.modify( tapos_block_summary, [&]( auto& bs ) {
+        bs.block_id = pending->_pending_block_state->id;
+      });
+   }
 
    void commit_block( bool add_to_fork_db ) {
       if( add_to_fork_db ) {
          pending->_pending_block_state->validated = true;
          head = fork_db.add( pending->_pending_block_state );
       } 
+
+      set_pending_tapos();
+
       pending->push();
       pending.reset();
       self.accepted_block( head );
    }
 
    transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx ) {
-      return db.with_write_lock( [&](){ 
+      unapplied_transactions.erase( trx->signed_id );
+
+      auto r = db.with_write_lock( [&](){ 
          return apply_transaction( trx );
       });
+
+      pending->_pending_block_state->block->transactions.emplace_back( trx->packed_trx );
+      pending->_pending_block_state->trxs.emplace_back(trx);
+      self.accepted_transaction(trx);
+
+      return r;
    }
 
    transaction_trace_ptr apply_transaction( const transaction_metadata_ptr& trx, bool implicit = false ) {
@@ -318,11 +343,6 @@ struct controller_impl {
 
       auto& acts = pending->_actions;
       fc::move_append( acts, move(trx_context.executed) );
-
-      if( !implicit ) {
-         pending->_pending_block_state->block->transactions.emplace_back( trx->packed_trx );
-         pending->_pending_block_state->trxs.emplace_back(trx);
-      }
 
       return move(trx_context.trace);
    }
@@ -443,13 +463,12 @@ struct controller_impl {
       }
    } /// push_block
 
-   vector<transaction_metadata_ptr> abort_block() {
-      vector<transaction_metadata_ptr> pushed;
+   void abort_block() {
       if( pending ) {
-         pushed = move(pending->_applied_transaction_metas);
+         for( const auto& t : pending->_applied_transaction_metas )
+            unapplied_transactions[t->signed_id] = t;
          pending.reset();
       }
-      return pushed;
    }
 
 
@@ -667,8 +686,8 @@ block_state_ptr controller::pending_block_state()const {
    return block_state_ptr();
 }
 
-vector<transaction_metadata_ptr> controller::abort_block() {
-   return my->abort_block();
+void controller::abort_block() {
+   my->abort_block();
 }
 
 void controller::push_block( const signed_block_ptr& b ) {
@@ -695,7 +714,12 @@ block_id_type controller::head_block_id()const {
 }
 
 time_point controller::head_block_time()const {
-   return my->head->header.timestamp;
+   return my->head_block_time();
+}
+
+time_point controller::pending_block_time()const {
+   FC_ASSERT( my->pending, "no pending block" );
+   return my->pending->_pending_block_state->header.timestamp;
 }
 
 void     controller::record_transaction( const transaction_metadata_ptr& trx ) {
@@ -823,6 +847,63 @@ const account_object& controller::get_account( account_name name )const
 { try {
    return my->db.get<account_object, by_name>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
+
+const map<digest_type, transaction_metadata_ptr>&  controller::unapplied_transactions()const {
+   return my->unapplied_transactions;
+}
+
+
+void controller::validate_referenced_accounts( const transaction& trx )const {
+   for( const auto& a : trx.context_free_actions ) {
+      get_account( a.account );
+      FC_ASSERT( a.authorization.size() == 0 );
+   }
+   bool one_auth = false;
+   for( const auto& a : trx.actions ) {
+      get_account( a.account );
+      for( const auto& auth : a.authorization ) { 
+         one_auth = true;
+         get_account( auth.actor );
+      }
+   }
+   EOS_ASSERT( one_auth, tx_no_auths, "transaction must have at least one authorization" );
+}
+
+void controller::validate_expiration( const transaction& trx )const { try {
+   const auto& chain_configuration = get_global_properties().configuration;
+
+   EOS_ASSERT( time_point(trx.expiration) >= pending_block_time(), expired_tx_exception, "transaction has expired" );
+   EOS_ASSERT( time_point(trx.expiration) <= pending_block_time() + fc::seconds(chain_configuration.max_transaction_lifetime),
+               tx_exp_too_far_exception,
+               "Transaction expiration is too far in the future relative to the reference time of ${reference_time}, "
+               "expiration is ${trx.expiration} and the maximum transaction lifetime is ${max_til_exp} seconds",
+               ("trx.expiration",trx.expiration)("reference_time",pending_block_time())
+               ("max_til_exp",chain_configuration.max_transaction_lifetime) );
+} FC_CAPTURE_AND_RETHROW((trx)) }
+
+uint64_t controller::validate_net_usage( const transaction_metadata_ptr& trx )const {
+   const auto& cfg = get_global_properties().configuration;
+
+   auto actual_net_usage = cfg.base_per_transaction_net_usage + trx->packed_trx.get_billable_size();
+
+   actual_net_usage = ((actual_net_usage + 7)/8) * 8; // Round up to nearest multiple of 8
+
+   uint32_t net_usage_limit = trx->trx.max_net_usage_words.value * 8UL; // overflow checked in validate_transaction_without_state
+   EOS_ASSERT( net_usage_limit == 0 || actual_net_usage <= net_usage_limit, tx_resource_exhausted,
+               "declared net usage limit of transaction is too low: ${actual_net_usage} > ${declared_limit}",
+               ("actual_net_usage", actual_net_usage)("declared_limit",net_usage_limit) );
+
+   return actual_net_usage;
+}
+
+void controller::validate_tapos( const transaction& trx )const { try {
+   const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)trx.ref_block_num);
+
+   //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
+   EOS_ASSERT(trx.verify_reference_block(tapos_block_summary.block_id), invalid_ref_block_exception,
+              "Transaction's reference block did not match. Is this transaction from a different fork?",
+              ("tapos_summary", tapos_block_summary));
+} FC_CAPTURE_AND_RETHROW() } 
 
    
 } } /// eosio::chain

@@ -15,6 +15,7 @@ namespace eosio { namespace chain {
 class transaction_metadata {
    public:
       transaction_id_type                   id;
+      transaction_id_type                   signed_id;
       signed_transaction                    trx;
       packed_transaction                    packed_trx;
       bytes                                 raw_packed; /// fc::raw::pack(trx)
@@ -25,12 +26,14 @@ class transaction_metadata {
       :trx(t),packed_trx(t,packed_transaction::zlib) {
          id = trx.id();
          raw_packed = fc::raw::pack( static_cast<const transaction&>(trx) );
+         signed_id = digest_type::hash(raw_packed_with_cfd);
       }
 
       transaction_metadata( const packed_transaction& ptrx )
       :trx( ptrx.get_signed_transaction() ), packed_trx(ptrx) {
          raw_packed = fc::raw::pack( static_cast<const transaction&>(trx) );
          id = trx.id();
+         signed_id = digest_type::hash(raw_packed_with_cfd);
       }
 
       void recover_keys( chain_id_type cid = chain_id_type() ) {

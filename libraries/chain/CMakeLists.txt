@@ -49,9 +49,6 @@ target_include_directories( eosio_chain
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../../externals/binaryen/src"
                             )
 
-add_executable( chaintest main.cpp )
-target_link_libraries( chaintest 
-                       PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} )
 #if(MSVC)
 #  set_source_files_properties( db_init.cpp db_block.cpp database.cpp block_log.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
 #endif(MSVC)

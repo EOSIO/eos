@@ -228,7 +228,23 @@ void apply_context::execute_context_free_inline( action&& a ) {
    _cfa_inline_actions.emplace_back( move(a) );
 }
 
+
+/// TODO: rename this schedule_deferred it is not actually executed here
 void apply_context::execute_deferred( deferred_transaction&& trx ) {
+   trx.sender = receiver;
+   EOS_ASSERT( trx.execute_after < trx.expiration,
+               transaction_exception,
+               "Transaction expires at ${trx.expiration} which is before the first allowed time to execute at ${trx.execute_after}",
+               ("trx.expiration",trx.expiration)("trx.execute_after",trx.execute_after) );
+   control.validate_referenced_accounts( trx ); 
+   control.validate_expiration( trx ); 
+
+   if( !privileged ) {
+      if (trx.payer != receiver) {
+         require_authorization(trx.payer); /// uses payer's storage
+      }
+   }
+
 #if 0
    try {
       trx.set_reference_block(controller.head_block_id()); // No TaPoS check necessary
@@ -236,10 +252,6 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
       controller.validate_transaction_without_state(trx);
       // transaction_api::send_deferred guarantees that trx.execute_after is at least head block time, so no need to check expiration.
       // Any other called of this function needs to similarly meet that precondition.
-      EOS_ASSERT( trx.execute_after < trx.expiration,
-                  transaction_exception,
-                  "Transaction expires at ${trx.expiration} which is before the first allowed time to execute at ${trx.execute_after}",
-                  ("trx.expiration",trx.expiration)("trx.execute_after",trx.execute_after) );
 
       controller.validate_expiration_not_too_far(trx, trx.execute_after);
       controller.validate_referenced_accounts(trx);
@@ -254,14 +266,6 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
       // privileged accounts can do anything, no need to check auth
       if( !privileged ) {
          // check to make sure the payer has authorized this deferred transaction's storage in RAM
-         if (trx.payer != receiver) {
-            require_authorization(trx.payer);
-         }
-
-         if (trx.payer != receiver) {
-            require_authorization(trx.payer);
-         }
-
          // if a contract is deferring only actions to itself then there is no need
          // to check permissions, it could have done everything anyway.
          bool check_auth = false;
