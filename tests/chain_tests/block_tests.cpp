@@ -231,6 +231,34 @@ BOOST_AUTO_TEST_CASE( push_invalid_block ) { try {
    BOOST_REQUIRE_THROW(chain.control->push_block(new_block), tx_empty_shard);
 } FC_LOG_AND_RETHROW() }/// push_invalid_block
 
+BOOST_AUTO_TEST_CASE( push_unexpected_signature_block ) { try {
+   vector<tester> producers(5);
+
+   char a = 'a';
+   vector<account_name> producer_names;
+   for( ; a <= 'a'+producers.size()-1; ++a) {
+      producer_names.emplace_back(std::string("init")+a);
+   }
+   producers[0].create_accounts(producer_names);
+   producers[0].set_producers(producer_names);
+
+   auto block = producers[0].produce_block();
+   producers[0].push_block(block);
+   block = producers[1].produce_block();
+   producers[1].push_block(block);
+
+   auto head_id = producers[0].control->head_block_num();
+
+   tester unscheduled_producer;
+   block = unscheduled_producer.produce_block();
+   unscheduled_producer.push_block(block);
+   BOOST_CHECK_EQUAL(head_id, producers[0].control->head_block_num());
+   block = producers[2].produce_block();
+   producers[2].push_block(block);
+   BOOST_CHECK_PREDICATE(std::not_equal_to<decltype(head_id)>(),
+                         (head_id)(producers[3].control->head_block_num()));
+} FC_LOG_AND_RETHROW() }/// push_unexpected_signature_block
+
 
 // Utility function to check expected irreversible block
 uint32_t calc_exp_last_irr_block_num(const base_tester& chain, const uint32_t& head_block_num) {
