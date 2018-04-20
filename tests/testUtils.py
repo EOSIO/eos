@@ -1826,7 +1826,7 @@ class Cluster(object):
             Utils.Print("ERROR: No nodes discovered.")
             return nodes
 
-        Utils.Debug and Utils.Print("pgrep: \"%s\"" % psOut)
+        Utils.Debug and Utils.Print("pgrep output: \"%s\"" % psOut)
         for i in range(0, totalNodes):
             pattern="[\n]?(\d+) (.* --data-dir var/lib/node_%02d)" % (i)
             m=re.search(pattern, psOut, re.MULTILINE)
