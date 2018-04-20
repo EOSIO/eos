@@ -16,6 +16,48 @@ static const char f32_add_wast[] = R"=====(
  )
 )=====";
 */
+
+static const char start_index_wast[] = R"=====(
+(module
+ (import "env" "require_auth" (func $require_auth (param i64)))
+ (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+ (import "env" "now" (func $now (result i32)))
+ (table 0 anyfunc)
+ (memory $0 1)
+ (export "memory" (memory $0))
+ (export "entry" (func $entry))
+ (export "apply" (func $apply))
+ (func $entry
+  (block
+  (call $eosio_assert
+   (i32.eq
+    (i32.load offset=4
+     (i32.const 0)
+    )
+    (call $now)
+   )
+   (i32.const 0)
+  )
+  )
+ )
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+  (call $require_auth (i64.const 6121376101093867520))
+  (block
+  (call $eosio_assert
+   (i32.eq
+    (i32.load offset=4
+     (i32.const 0)
+    )
+    (call $now)
+   )
+   (i32.const 0)
+  )
+  )
+ )
+ (start $entry)
+)
+)=====";
+
 static const char entry_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))

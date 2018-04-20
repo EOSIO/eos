@@ -79,6 +79,9 @@ namespace eosio { namespace chain { namespace wasm_injections {
                if ( module.exports[i].kind == IR::ObjectKind::function )
                   module.exports[i].index++;
             }
+            // shift the start index by 1
+            module.startFunctionIndex++;
+
             // shift all table entries for call indirect
             for(TableSegment& ts : module.tableSegments) {
                for(auto& idx : ts.indices)
@@ -90,7 +93,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
          }
       }
    };
-
+   
    struct noop_injection_visitor {
       static void inject( IR::Module& m );
       static void initializer();
@@ -189,6 +192,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          wasm_ops::op_types<>::call_t* call_inst = reinterpret_cast<wasm_ops::op_types<>::call_t*>(inst);
          auto mapped_index = injector_utils::injected_index_mapping.find(call_inst->field);
+
          if ( mapped_index != injector_utils::injected_index_mapping.end() )  {
             call_inst->field = mapped_index->second;
          }
