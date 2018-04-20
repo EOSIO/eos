@@ -43,7 +43,9 @@ class binaryen_instantiated_module : public wasm_instantiated_module_interface {
          memset(_shared_linear_memory.data, 0, initial_memory_size);
          //copy back in the initial data
          memcpy(_shared_linear_memory.data, _initial_memory.data(), _initial_memory.size());
-
+         //std::cout << "_module start " << _module->start << std::endl; 
+         //_module->addStart("apply");
+         //std::cout << "_module start " << _module->start << std::endl; 
          //be aware that construction of the ModuleInstance implictly fires the start function
          ModuleInstance instance(*_module.get(), &local_interface);
          instance.callExport(Name(entry_point), args);
