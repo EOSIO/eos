@@ -10,14 +10,6 @@
 
 #include <string>
 
-namespace eosiosystem {
-   template <account_name Account>
-   class voting;
-
-   template <account_name Account>
-   class delegate_bandwidth;
-}
-
 namespace eosio {
 
    using std::string;
@@ -40,11 +32,11 @@ namespace eosio {
                         asset        quantity,
                         string       memo );
 
+         inline asset get_supply( symbol_type symbol )const;
+         
+         inline asset get_balance( account_name owner, symbol_type symbol )const;
+
       private:
-
-         friend eosiosystem::voting<N(eosio)>;
-         friend eosiosystem::delegate_bandwidth<N(eosio)>;
-
          struct account {
             asset    balance;
             bool     frozen    = false;
@@ -73,5 +65,19 @@ namespace eosio {
          void add_balance( account_name owner, asset value, const currency_stats& st,
                            account_name ram_payer );
    };
+
+   asset token::get_supply( symbol_type symbol )const
+   {
+      stats statstable( _self, symbol.name() );
+      const auto& st = statstable.get( symbol.name() );
+      return st.supply;
+   }
+
+   asset token::get_balance( account_name owner, symbol_type symbol )const
+   {
+      accounts accountstable( _self, owner );
+      const auto& ac = accountstable.get( symbol.name() );
+      return ac.balance;
+   }
 
 } /// namespace eosio

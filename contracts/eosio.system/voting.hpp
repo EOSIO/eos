@@ -229,14 +229,12 @@ namespace eosiosystem {
          }
 
          static eosio::asset payment_per_block(uint32_t percent_of_max_inflation_rate) {
-            eosio::symbol_name sym = eosio::symbol_type(S(4,EOS)).name();
-            eosio::token::stats stats_tbl(N(eosio.token), sym);
-            const auto& st = stats_tbl.get(sym);
-            const eosio::asset token_supply = st.supply;
+            eosio::symbol_type sym(S(4,EOS));
+            const eosio::asset token_supply = eosio::token(N(eosio.token)).get_supply(sym);
             const double annual_rate = double(max_inflation_rate * percent_of_max_inflation_rate) / double(10000);
-            double continuous_rate = std::log1p(annual_rate);
+            const double continuous_rate = std::log1p(annual_rate);
             int64_t payment = static_cast<int64_t>((continuous_rate * double(token_supply.amount)) / double(blocks_per_year));
-            return eosio::asset(payment, S(4,EOS));
+            return eosio::asset(payment, sym);
          }
 
          static void update_elected_producers(time cycle_time) {

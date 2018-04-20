@@ -121,10 +121,8 @@ namespace eosiosystem {
             if ( 0 < del.stake_storage_quantity.amount ) {
                auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
                   : common<SystemAccount>::get_default_parameters();
-               eosio::symbol_name sym = eosio::symbol_type(S(4,EOS)).name();
-               eosio::token::stats stats_tbl(N(eosio.token), sym);
-               const auto& st = stats_tbl.get(sym);
-               const eosio::asset token_supply = st.supply;
+
+               const eosio::asset token_supply = eosio::token(N(eosio.token)).get_supply(S(4,EOS));
 
                //make sure that there is no posibility of overflow here
                int64_t storage_bytes_estimated = int64_t( parameters.max_storage_size - parameters.total_storage_bytes_reserved )
