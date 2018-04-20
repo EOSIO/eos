@@ -1884,6 +1884,9 @@ class Cluster(object):
             shutil.copyfileobj(f, sys.stdout)
 
     def dumpErrorDetails(self):
+        self.dumpErrorDetailImpl("etc/eosio/node_bios/config.ini")
+        self.dumpErrorDetailImpl("var/lib/node_bios/stderr.txt")
+
         for i in range(0, len(self.nodes)):
             fileName="etc/eosio/node_%02d/config.ini" % (i)
             self.dumpErrorDetailImpl(fileName)
