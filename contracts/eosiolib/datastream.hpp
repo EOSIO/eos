@@ -466,44 +466,6 @@ bytes pack( const T& value ) {
   return result;
 }
 
-template<typename T>
-size_t _pack_size( T&& a ) {
-   return pack_size(std::forward<T>(a));
-}
-
-template<typename Arg, typename... Args>
-size_t _pack_size( Arg&& a, Args&&... args ) {
-    return pack_size(std::forward<Arg>(a)) + _pack_size(std::forward<Args>(args)...);
-}
-
-template<typename T>
-size_t __pack( char* result, size_t size, const T& a ) {
-   datastream<char*> ds( result, size );
-   auto start = ds.tellp();
-   ds << a;
-   return ds.tellp() - start;
-}
-
-template<typename Arg>
-void _pack( char* result, size_t size, Arg&& a ) {
-   __pack(result, size, std::forward<Arg>(a));
-}
-
-template<typename Arg, typename... Args>
-void _pack( char* result, size_t size, Arg&& a, Args&&... args ) {
-   auto size_of_a = __pack(result, size, std::forward<Arg>(a));
-   _pack(result + size_of_a, size, std::forward<Args>(args)...);
-}
-
-template<typename... Args>
-bytes pack( Args&&... args ) {
-   bytes result;
-   auto size = _pack_size(std::forward<Args>(args)...);
-   result.resize(size);
-   _pack(result.data(), size, std::forward<Args>(args)...);
-   return result;
-}
-
 template<typename Stream>
 inline datastream<Stream>& operator<<(datastream<Stream>& ds, const checksum160& cs) {
    ds.write((const char*)&cs, sizeof(cs));
