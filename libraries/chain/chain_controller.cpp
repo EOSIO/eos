@@ -180,9 +180,15 @@ bool chain_controller::_push_block(const signed_block& new_block)
 { try {
    uint32_t skip = _skip_flags;
    if (!(skip&skip_fork_db)) {
-      /// TODO: if the block is greater than the head block and before the next maintenance interval
-      // verify that the block signer is in the current set of active producers.
-
+      if(new_block.block_num() > head_block_num()) {
+         if(!is_start_of_round(new_block.block_num())) {
+            auto schedule = get_global_properties().active_producers.producers;
+            if(std::find(schedule.begin(), schedule.end(),
+                         producer_key{new_block.producer, new_block.signee()}) == schedule.end()) {
+               return false; // Not forking and not pushing block with unexpected signature
+            }
+         }
+      }
       shared_ptr<fork_item> new_head = _fork_db.push_block(new_block);
       //If the head block from the longest chain does not build off of the current head, we need to switch forks.
       if (new_head->data.previous != head_block_id()) {
@@ -1552,7 +1558,7 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
    }
 
    auto expected_schedule_version = get_global_properties().active_producers.version;
-   EOS_ASSERT( next_block.schedule_version == expected_schedule_version , block_validate_exception,"wrong producer schedule version specified ${x} expectd ${y}",
+   EOS_ASSERT( next_block.schedule_version == expected_schedule_version , block_validate_exception,"wrong producer schedule version specified ${x} expected ${y}",
                ("x", next_block.schedule_version)("y",expected_schedule_version) );
 
    return producer;
@@ -2069,7 +2075,7 @@ uint32_t chain_controller::get_slot_at_time( block_timestamp_type when )const
    auto first_slot_time = get_slot_time(1);
    if( when < first_slot_time )
       return 0;
-   return block_timestamp_type(when).slot - first_slot_time.slot + 1;
+   return when.slot - first_slot_time.slot + 1;
 }
 
 uint32_t chain_controller::producer_participation_rate()const

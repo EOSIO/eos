@@ -130,6 +130,11 @@ namespace eosio {
       printhex(static_cast<const void*>(arr.data()), arr.size());
    }
 
+   template<size_t Size>
+   inline void print( fixed_key<Size>& val ) {
+      print(static_cast<const fixed_key<Size>&>(val));
+   }
+
    /**
     * Prints a 64 bit names as base32 encoded string
     * @brief Prints a 64 bit names as base32 encoded string
