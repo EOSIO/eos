@@ -231,7 +231,7 @@ namespace eosiosystem {
          }
 
          static eosio::asset payment_per_block(uint32_t percent_of_max_inflation_rate) {
-            const eosio::asset token_supply = eosio::token(N(eosio.token)).get_supply(system_token_symbol);
+            const eosio::asset token_supply = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name());
             const double annual_rate = double(max_inflation_rate * percent_of_max_inflation_rate) / double(10000);
             const double continuous_rate = std::log1p(annual_rate);
             int64_t payment = static_cast<int64_t>((continuous_rate * double(token_supply.amount)) / double(blocks_per_year));

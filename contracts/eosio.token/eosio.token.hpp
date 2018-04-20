@@ -32,9 +32,9 @@ namespace eosio {
                         asset        quantity,
                         string       memo );
 
-         inline asset get_supply( symbol_type symbol )const;
+         inline asset get_supply( symbol_name sym )const;
          
-         inline asset get_balance( account_name owner, symbol_type symbol )const;
+         inline asset get_balance( account_name owner, symbol_name sym )const;
 
       private:
          struct account {
@@ -66,17 +66,17 @@ namespace eosio {
                            account_name ram_payer );
    };
 
-   asset token::get_supply( symbol_type symbol )const
+   asset token::get_supply( symbol_name sym )const
    {
-      stats statstable( _self, symbol.name() );
-      const auto& st = statstable.get( symbol.name() );
+      stats statstable( _self, sym );
+      const auto& st = statstable.get( sym );
       return st.supply;
    }
 
-   asset token::get_balance( account_name owner, symbol_type symbol )const
+   asset token::get_balance( account_name owner, symbol_name sym )const
    {
       accounts accountstable( _self, owner );
-      const auto& ac = accountstable.get( symbol.name() );
+      const auto& ac = accountstable.get( sym );
       return ac.balance;
    }
 
