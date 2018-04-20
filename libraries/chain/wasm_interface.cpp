@@ -648,7 +648,7 @@ class softfloat_api : public context_aware_api {
          return ((f.v & 0x7FFFFFFFFFFFFFFF) > 0x7FF0000000000000);
       }
       static bool is_nan( const float128_t& f ) {
-         return isNaNF128(&f);
+         return (((~(f.v[1]) & uint64_t( 0x7FFF000000000000 )) == 0) && (f.v[0] || ((f.v[1]) & uint64_t( 0x0000FFFFFFFFFFFF ))));
       }
       static float32_t to_softfloat32( float f ) {
          return *reinterpret_cast<float32_t*>(&f);
