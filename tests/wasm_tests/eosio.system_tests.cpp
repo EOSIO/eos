@@ -150,9 +150,9 @@ public:
 
       // the balance is implied to be 0 if either the table or row does not exist
       if (tbl) {
-         const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, symbol(SY(4,EOS)).value() >> 8));
+         const auto *obj = db.find<contracts::key_value_object, contracts::by_scope_primary>(boost::make_tuple(tbl->id, symbol(SY(4,EOS)).to_symbol_code()));
          if (obj) {
-            //balance is the second field after symbol, so skip the symbol
+            // balance is the first field in the serialization
             fc::datastream<const char *> ds(obj->value.data(), obj->value.size());
             fc::raw::unpack(ds, result);
          }
@@ -182,7 +182,7 @@ public:
          ("can_freeze", 0)
          ("can_recall", 0)
          ("can_whitelist", 0);
-      
+
       base_tester::push_action(contract, N(create), contract, act );
    }
 
@@ -1106,14 +1106,14 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
    vector<char> key = fc::raw::pack(get_public_key(N(alice), "active"));
 
    // 1 block produced
-   
+
    BOOST_REQUIRE_EQUAL(success(), push_action(N(alice), N(regproducer), mvo()
                                               ("producer",  "alice")
                                               ("producer_key", key )
                                               ("prefs", params)
                                               )
                        );
-   
+
    auto prod = get_producer_info( N(alice) );
 
    BOOST_REQUIRE_EQUAL("alice", prod["owner"].as_string());
@@ -1129,7 +1129,7 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester) try {
    // 1 block produced
 
    BOOST_REQUIRE_EQUAL(success(), stake("bob", "11.0000 EOS", "10.1111 EOS", "10.1111 EOS"));
-   
+
    // bob votes for alice
    // 1 block produced
    BOOST_REQUIRE_EQUAL(success(), push_action(N(bob), N(voteproducer), mvo()

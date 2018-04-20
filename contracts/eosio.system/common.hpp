@@ -24,6 +24,8 @@ namespace eosiosystem {
          static constexpr uint32_t     seconds_per_day = 24 * 3600;
          static constexpr uint32_t     days_per_4years = 1461;
 
+         static constexpr uint64_t system_token_symbol = S(4,EOS);
+
          struct eosio_parameters : eosio::blockchain_parameters {
             uint64_t          max_storage_size = 10 * 1024 * 1024;
             uint32_t          percent_of_max_inflation_rate = 0;

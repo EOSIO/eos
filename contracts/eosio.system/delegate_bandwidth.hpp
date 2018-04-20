@@ -35,6 +35,8 @@ namespace eosiosystem {
          using eosio_parameters = typename common<SystemAccount>::eosio_parameters;
          using global_state_singleton = typename common<SystemAccount>::global_state_singleton;
 
+         using voting<SystemAccount>::system_token_symbol;
+
          struct total_resources {
             account_name  owner;
             asset         net_weight;
@@ -121,9 +123,7 @@ namespace eosiosystem {
             if ( 0 < del.stake_storage_quantity.amount ) {
                auto parameters = global_state_singleton::exists() ? global_state_singleton::get()
                   : common<SystemAccount>::get_default_parameters();
-
                const eosio::asset token_supply = eosio::token(N(eosio.token)).get_supply(S(4,EOS));
-
                //make sure that there is no posibility of overflow here
                int64_t storage_bytes_estimated = int64_t( parameters.max_storage_size - parameters.total_storage_bytes_reserved )
                   * int64_t(parameters.storage_reserve_ratio) * del.stake_storage_quantity
@@ -205,11 +205,11 @@ namespace eosiosystem {
             eosio_assert( dbw.cpu_weight >= del.unstake_cpu_quantity, "insufficient staked cpu bandwidth" );
             eosio_assert( dbw.storage_bytes >= del.unstake_storage_bytes, "insufficient staked storage" );
 
-            eosio::asset storage_stake_decrease(0, S(4,EOS));
+            eosio::asset storage_stake_decrease(0, system_token_symbol);
             if ( 0 < del.unstake_storage_bytes ) {
                storage_stake_decrease = 0 < dbw.storage_bytes ?
                                             dbw.storage_stake * int64_t(del.unstake_storage_bytes) / int64_t(dbw.storage_bytes)
-                                            : eosio::asset(0, S(4,EOS));
+                                            : eosio::asset(0, system_token_symbol);
 
                auto parameters = global_state_singleton::get();
                parameters.total_storage_bytes_reserved -= del.unstake_storage_bytes;
