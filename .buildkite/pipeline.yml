@@ -77,7 +77,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        ln -s "$(pwd)" /data/job && cd /data/job/build && make test
+        ln -s "$(pwd)" /data/job && cd /data/job/build && ctest --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -87,9 +87,7 @@ steps:
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
-      - "build/etc/eosio/node_00/config.ini"
-      - "build/var/lib/node_00/stderr.txt"
-      - "build/test_walletd_output.log"
+      - "build/config.ini"
     timeout: 30
     
   - command: |
@@ -99,7 +97,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && make test
+        cd /data/job/build && ctest --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -109,9 +107,7 @@ steps:
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
-      - "build/etc/eosio/node_00/config.ini"
-      - "build/var/lib/node_00/stderr.txt"
-      - "build/test_walletd_output.log"
+      - "build/config.ini"
     plugins:
       docker#v1.1.1:
         image: "eosio/ci:ubuntu"
@@ -124,7 +120,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && make test
+        cd /data/job/build && ctest --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -134,9 +130,7 @@ steps:
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
-      - "build/etc/eosio/node_00/config.ini"
-      - "build/var/lib/node_00/stderr.txt"
-      - "build/test_walletd_output.log"
+      - "build/config.ini"
     plugins:
       docker#v1.1.1:
         image: "eosio/ci:fedora"
@@ -149,7 +143,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && make test
+        cd /data/job/build && ctest --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -159,9 +153,7 @@ steps:
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
-      - "build/etc/eosio/node_00/config.ini"
-      - "build/var/lib/node_00/stderr.txt"
-      - "build/test_walletd_output.log"
+      - "build/config.ini"
     plugins:
       docker#v1.1.1:
         image: "eosio/ci:centos"
@@ -174,7 +166,7 @@ steps:
         echo "--- :m: Starting MongoDB" && \
         $(which mongod) --fork --logpath "$(pwd)"/mongod.log && \
         echo "+++ :microscope: Running tests" && \
-        cd /data/job/build && make test
+        cd /data/job/build && ctest --output-on-failure
     retry:
       automatic:
         limit: 1
@@ -184,9 +176,7 @@ steps:
     artifact_paths:
       - "mongod.log"
       - "build/genesis.json"
-      - "build/etc/eosio/node_00/config.ini"
-      - "build/var/lib/node_00/stderr.txt"
-      - "build/test_walletd_output.log"
+      - "build/config.ini"
     plugins:
       docker#v1.1.1:
         image: "eosio/ci:amazonlinux"
