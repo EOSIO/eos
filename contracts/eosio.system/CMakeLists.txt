@@ -3,6 +3,6 @@ configure_file("${ABI_FILES}" "${CMAKE_CURRENT_BINARY_DIR}" COPYONLY)
 
 add_wast_executable(TARGET eosio.system
   INCLUDE_FOLDERS ${STANDARD_INCLUDE_FOLDERS}
-  LIBRARIES libc++ libc eosiolib
+  LIBRARIES libc++ libc eosiolib eosio.token
   DESTINATION_FOLDER ${CMAKE_CURRENT_BINARY_DIR}
 )

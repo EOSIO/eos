@@ -3,13 +3,11 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
+
 #include "common.hpp"
 
 #include <eosiolib/eosio.hpp>
-#include <eosiolib/token.hpp>
 #include <eosiolib/print.hpp>
-
-#include <eosiolib/generic_currency.hpp>
 #include <eosiolib/datastream.hpp>
 #include <eosiolib/serialize.hpp>
 #include <eosiolib/multi_index.hpp>
@@ -34,20 +32,20 @@ namespace eosiosystem {
    class voting {
       public:
          static constexpr account_name system_account = SystemAccount;
-         using currency = typename common<SystemAccount>::currency;
-         using system_token_type = typename common<SystemAccount>::system_token_type;
          using eosio_parameters = typename common<SystemAccount>::eosio_parameters;
          using global_state_singleton = typename common<SystemAccount>::global_state_singleton;
 
          static constexpr uint32_t max_inflation_rate = common<SystemAccount>::max_inflation_rate;
          static constexpr uint32_t blocks_per_year = 52*7*24*2*3600; // half seconds per year
 
+         static constexpr uint64_t system_token_symbol = common<SystemAccount>::system_token_symbol;
+
          struct producer_info {
             account_name      owner;
             uint128_t         total_votes = 0;
             eosio_parameters  prefs;
             eosio::bytes      packed_key; /// a packed public key object
-            system_token_type per_block_payments;
+            eosio::asset      per_block_payments;
             time              last_rewards_claim = 0;
             time              time_became_active = 0;
             time              last_produced_block_time = 0;
@@ -71,9 +69,9 @@ namespace eosiosystem {
             account_name                proxy = 0;
             time                        last_update = 0;
             uint32_t                    is_proxy = 0;
-            system_token_type           staked;
-            system_token_type           unstaking;
-            system_token_type           unstake_per_week;
+            eosio::asset                staked;
+            eosio::asset                unstaking;
+            eosio::asset                unstake_per_week;
             uint128_t                   proxied_votes = 0;
             std::vector<account_name>   producers;
             uint32_t                    deferred_trx_id = 0;
@@ -141,9 +139,11 @@ namespace eosiosystem {
                });
          }
 
-         static void increase_voting_power( account_name acnt, system_token_type amount ) {
+         static void increase_voting_power( account_name acnt, const eosio::asset& amount ) {
             voters_table voters_tbl( SystemAccount, SystemAccount );
             auto voter = voters_tbl.find( acnt );
+
+            eosio_assert( 0 <= amount.amount, "negative asset" );
 
             if( voter == voters_tbl.end() ) {
                voter = voters_tbl.emplace( acnt, [&]( voter_info& a ) {
@@ -162,7 +162,7 @@ namespace eosiosystem {
             if ( voter->proxy ) {
                auto proxy = voters_tbl.find( voter->proxy );
                eosio_assert( proxy != voters_tbl.end(), "selected proxy not found" ); //data corruption
-               voters_tbl.modify( proxy, 0, [&](voter_info& a) { a.proxied_votes += amount.quantity; } );
+               voters_tbl.modify( proxy, 0, [&](voter_info& a) { a.proxied_votes += uint64_t(amount.amount); } );
                if ( proxy->is_proxy ) { //only if proxy is still active. if proxy has been unregistered, we update proxied_votes, but don't propagate to producers
                   producers = &proxy->producers;
                }
@@ -176,19 +176,19 @@ namespace eosiosystem {
                   auto prod = producers_tbl.find( p );
                   eosio_assert( prod != producers_tbl.end(), "never existed producer" ); //data corruption
                   producers_tbl.modify( prod, 0, [&]( auto& v ) {
-                        v.total_votes += amount.quantity;
+                        v.total_votes += uint64_t(amount.amount);
                      });
                }
             }
          }
 
-         static void decrease_voting_power( account_name acnt, system_token_type amount ) {
+         static void decrease_voting_power( account_name acnt, const eosio::asset& amount ) {
             require_auth( acnt );
             voters_table voters_tbl( SystemAccount, SystemAccount );
             auto voter = voters_tbl.find( acnt );
             eosio_assert( voter != voters_tbl.end(), "stake not found" );
 
-            if ( 0 < amount.quantity ) {
+            if ( 0 < amount.amount ) {
                eosio_assert( amount <= voter->staked, "cannot unstake more than total stake amount" );
                voters_tbl.modify( voter, 0, [&](voter_info& a) {
                      a.staked -= amount;
@@ -198,7 +198,7 @@ namespace eosiosystem {
                const std::vector<account_name>* producers = nullptr;
                if ( voter->proxy ) {
                   auto proxy = voters_tbl.find( voter->proxy );
-                  voters_tbl.modify( proxy, 0, [&](voter_info& a) { a.proxied_votes -= amount.quantity; } );
+                  voters_tbl.modify( proxy, 0, [&](voter_info& a) { a.proxied_votes -= uint64_t(amount.amount); } );
                   if ( proxy->is_proxy ) { //only if proxy is still active. if proxy has been unregistered, we update proxied_votes, but don't propagate to producers
                      producers = &proxy->producers;
                   }
@@ -212,7 +212,7 @@ namespace eosiosystem {
                      auto prod = producers_tbl.find( p );
                      eosio_assert( prod != producers_tbl.end(), "never existed producer" ); //data corruption
                      producers_tbl.modify( prod, 0, [&]( auto& v ) {
-                           v.total_votes -= amount.quantity;
+                           v.total_votes -= uint64_t(amount.amount);
                         });
                   }
                }
@@ -222,20 +222,20 @@ namespace eosiosystem {
                }
                voters_tbl.modify( voter, 0, [&](voter_info& a) {
                      a.staked += a.unstaking;
-                     a.unstaking.quantity = 0;
-                     a.unstake_per_week.quantity = 0;
+                     a.unstaking.amount = 0;
+                     a.unstake_per_week.amount = 0;
                      a.deferred_trx_id = 0;
                      a.last_update = now();
                   });
             }
          }
 
-         static system_token_type payment_per_block(uint32_t percent_of_max_inflation_rate) {
-            const system_token_type token_supply = currency::get_total_supply();
+         static eosio::asset payment_per_block(uint32_t percent_of_max_inflation_rate) {
+            const eosio::asset token_supply = eosio::token(N(eosio.token)).get_supply(eosio::symbol_type(system_token_symbol).name());
             const double annual_rate = double(max_inflation_rate * percent_of_max_inflation_rate) / double(10000);
-            double continuous_rate = std::log1p(annual_rate);
-            uint64_t payment = static_cast<uint64_t>((continuous_rate * double(token_supply.quantity)) / double(blocks_per_year));
-            return (system_token_type(payment));
+            const double continuous_rate = std::log1p(annual_rate);
+            int64_t payment = static_cast<int64_t>((continuous_rate * double(token_supply.amount)) / double(blocks_per_year));
+            return eosio::asset(payment, system_token_symbol);
          }
 
          static void update_elected_producers(time cycle_time) {
@@ -375,7 +375,9 @@ namespace eosiosystem {
             }
 
             auto issue_quantity = parameters.blocks_per_cycle * (parameters.payment_per_block + parameters.payment_to_eos_bucket);
-            currency::inline_issue(SystemAccount, issue_quantity);
+            INLINE_ACTION_SENDER(eosio::token, issue)( N(eosio.token), {{N(eosio),N(active)}},
+                                                       {N(eosio), issue_quantity, std::string("producer pay")} );
+
             set_blockchain_parameters(parameters);
             global_state_singleton::set(parameters);
          }
@@ -412,7 +414,8 @@ namespace eosiosystem {
             voters_table voters_tbl( SystemAccount, SystemAccount );
             auto voter = voters_tbl.find( vp.voter );
 
-            eosio_assert( voter != voters_tbl.end() && ( 0 < voter->staked.quantity || ( voter->is_proxy && 0 < voter->proxied_votes ) ), "no stake to vote" );
+            eosio_assert( 0 <= voter->staked.amount, "negative stake" );
+            eosio_assert( voter != voters_tbl.end() && ( 0 < voter->staked.amount || ( voter->is_proxy && 0 < voter->proxied_votes ) ), "no stake to vote" );
             if ( voter->is_proxy ) {
                eosio_assert( vp.proxy == 0 , "account registered as a proxy is not allowed to use a proxy" );
             }
@@ -425,7 +428,7 @@ namespace eosiosystem {
                }
                auto old_proxy = voters_tbl.find( voter->proxy );
                eosio_assert( old_proxy != voters_tbl.end(), "old proxy not found" ); //data corruption
-               voters_tbl.modify( old_proxy, 0, [&](auto& a) { a.proxied_votes -= voter->staked.quantity; } );
+               voters_tbl.modify( old_proxy, 0, [&](auto& a) { a.proxied_votes -= uint64_t(voter->staked.amount); } );
                if ( old_proxy->is_proxy ) { //if proxy stoped being proxy, the votes were already taken back from producers by on( const unregister_proxy& )
                   old_producers = &old_proxy->producers;
                }
@@ -438,14 +441,14 @@ namespace eosiosystem {
             if ( vp.proxy ) {
                auto new_proxy = voters_tbl.find( vp.proxy );
                eosio_assert( new_proxy != voters_tbl.end() && new_proxy->is_proxy, "proxy not found" );
-               voters_tbl.modify( new_proxy, 0, [&](auto& a) { a.proxied_votes += voter->staked.quantity; } );
+               voters_tbl.modify( new_proxy, 0, [&](auto& a) { a.proxied_votes += uint64_t(voter->staked.amount); } );
                new_producers = &new_proxy->producers;
             } else {
                new_producers = &vp.producers;
             }
 
             producers_table producers_tbl( SystemAccount, SystemAccount );
-            uint128_t votes = voter->staked.quantity;
+            uint128_t votes = uint64_t(voter->staked.amount);
             if ( voter->is_proxy ) {
                votes += voter->proxied_votes;
             }
@@ -520,7 +523,7 @@ namespace eosiosystem {
                      a.proxy = 0;
                      a.is_proxy = 1;
                      a.proxied_votes = 0;
-                     a.staked.quantity = 0;
+                     a.staked.amount = 0;
                   });
             }
          }

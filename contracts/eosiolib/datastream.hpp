@@ -255,10 +255,31 @@ DataStream& operator >> ( DataStream& ds, std::array<T,N>& v ) {
    return ds;
 }
 
+namespace _datastream_detail {
+   template<typename T>
+   constexpr bool is_pointer() {
+      return std::is_pointer<T>::value ||
+             std::is_null_pointer<T>::value ||
+             std::is_member_pointer<T>::value;
+   }
+
+   template<typename T>
+   constexpr bool is_primitive() {
+      return std::is_arithmetic<T>::value ||
+             std::is_enum<T>::value;
+   }
+}
+
+template<typename DataStream, typename T, std::enable_if_t<_datastream_detail::is_pointer<T>()>* = nullptr>
+DataStream& operator >> ( DataStream& ds, T ) {
+   static_assert(!_datastream_detail::is_pointer<T>(), "Pointers should not be serialized" );
+   return ds;
+}
+
 template<typename DataStream, typename T, std::size_t N,
-         std::enable_if_t<std::is_scalar<T>::value == false || std::is_pointer<T>::value == true, int> = 0>
+         std::enable_if_t<!_datastream_detail::is_primitive<T>() &&
+                          !_datastream_detail::is_pointer<T>()>* = nullptr>
 DataStream& operator << ( DataStream& ds, const T (&v)[N] ) {
-   static_assert(!std::is_pointer<T>::value, "Pointers should not be serialized" );
    ds << unsigned_int( N );
    for( uint32_t i = 0; i < N; ++i )
       ds << v[i];
@@ -266,7 +287,7 @@ DataStream& operator << ( DataStream& ds, const T (&v)[N] ) {
 }
 
 template<typename DataStream, typename T, std::size_t N,
-         std::enable_if_t<std::is_scalar<T>::value == true && std::is_pointer<T>::value == false, int> = 0>
+         std::enable_if_t<_datastream_detail::is_primitive<T>()>* = nullptr>
 DataStream& operator << ( DataStream& ds, const T (&v)[N] ) {
    ds << unsigned_int( N );
    ds.write((char*)&v[0], sizeof(v));
@@ -274,9 +295,9 @@ DataStream& operator << ( DataStream& ds, const T (&v)[N] ) {
 }
 
 template<typename DataStream, typename T, std::size_t N,
-         std::enable_if_t<std::is_scalar<T>::value == false || std::is_pointer<T>::value == true, int> = 0>
+         std::enable_if_t<!_datastream_detail::is_primitive<T>() &&
+                          !_datastream_detail::is_pointer<T>()>* = nullptr>
 DataStream& operator >> ( DataStream& ds, T (&v)[N] ) {
-   static_assert(!std::is_pointer<T>::value, "Pointers should not be serialized" );
    unsigned_int s;
    ds >> s;
    eosio_assert( N == s.value, "T[] size and unpacked size don't match");
@@ -286,7 +307,7 @@ DataStream& operator >> ( DataStream& ds, T (&v)[N] ) {
 }
 
 template<typename DataStream, typename T, std::size_t N,
-         std::enable_if_t<std::is_scalar<T>::value == true && std::is_pointer<T>::value == false, int> = 0>
+         std::enable_if_t<_datastream_detail::is_primitive<T>()>* = nullptr>
 DataStream& operator >> ( DataStream& ds, T (&v)[N] ) {
    unsigned_int s;
    ds >> s;
@@ -388,33 +409,29 @@ DataStream& operator>>( DataStream& ds, std::tuple<Args...>& t ) {
    return ds;
 }
 
-template<typename DataStream, typename T, std::enable_if_t<std::is_fundamental<T>::value == false, int> = 0>
+template<typename DataStream, typename T, std::enable_if_t<std::is_class<T>::value>* = nullptr>
 DataStream& operator<<( DataStream& ds, const T& v ) {
-   static_assert(!std::is_pointer<T>::value, "Pointers should not be serialized" );
    boost::pfr::for_each_field(v, [&](const auto& field) {
       ds << field;
    });
    return ds;
 }
-template<typename DataStream, typename T, std::enable_if_t<std::is_fundamental<T>::value == false, int> = 0>
+template<typename DataStream, typename T, std::enable_if_t<std::is_class<T>::value>* = nullptr>
 DataStream& operator>>( DataStream& ds, T& v ) {
-   static_assert(!std::is_pointer<T>::value, "Pointers should not be serialized" );
    boost::pfr::for_each_field(v, [&](auto& field) {
       ds >> field;
    });
    return ds;
 }
 
-template<typename DataStream, typename T, std::enable_if_t<std::is_fundamental<T>::value == true, int> = 0>
+template<typename DataStream, typename T, std::enable_if_t<_datastream_detail::is_primitive<T>()>* = nullptr>
 DataStream& operator<<( DataStream& ds, const T& v ) {
-   static_assert(!std::is_pointer<T>::value, "Pointers should not be serialized" );
    ds.write( (const char*)&v, sizeof(T) );
    return ds;
 }
 
-template<typename DataStream, typename T, std::enable_if_t<std::is_fundamental<T>::value == true, int> = 0>
+template<typename DataStream, typename T, std::enable_if_t<_datastream_detail::is_primitive<T>()>* = nullptr>
 DataStream& operator>>( DataStream& ds, T& v ) {
-   static_assert(!std::is_pointer<T>::value, "Pointers should not be serialized" );
    ds.read( (char*)&v, sizeof(T) );
    return ds;
 }
