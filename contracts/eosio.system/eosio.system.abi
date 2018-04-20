@@ -68,9 +68,9 @@
       "fields": [
          {"name":"from", "type":"account_name"},
          {"name":"to", "type":"account_name"},
-         {"name":"net_weight", "type":"asset"},
-         {"name":"cpu_weight", "type":"asset"},
-         {"name":"storage_stake", "type":"asset"},
+         {"name":"net_weight", "type":"uint64"},
+         {"name":"cpu_weight", "type":"uint64"},
+         {"name":"storage_stake", "type":"uint64"},
          {"name":"storage_bytes", "type":"uint64"}
       ]
     },{
@@ -82,6 +82,14 @@
          {"name":"cpu_weight", "type":"asset"},
          {"name":"storage_stake", "type":"asset"},
          {"name":"storage_bytes", "type":"uint64"}
+      ]
+    },{
+      "name": "refund_request",
+      "base": "",
+      "fields": [
+         {"name":"owner", "type":"account_name"},
+         {"name":"request_time", "type":"time"},
+         {"name":"amount", "type":"uint64"}
       ]
     },{
       "name": "blockchain_parameters",
@@ -247,6 +255,24 @@
   "tables": [{
       "name": "producerinfo",
       "type": "producer_info",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "totalband",
+      "type": "total_resources",
+      "index_type": "i64",
+      "key_names" : ["owner"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "delband",
+      "type": "delegated_bandwidth",
+      "index_type": "i64",
+      "key_names" : ["to"],
+      "key_types" : ["uint64"]
+    },{
+      "name": "refunds",
+      "type": "refund_request",
       "index_type": "i64",
       "key_names" : ["owner"],
       "key_types" : ["uint64"]
