@@ -366,7 +366,7 @@ BOOST_FIXTURE_TEST_CASE(test_symbol, TESTER) try {
    }
 
 } FC_LOG_AND_RETHROW() /// test_symbol
-#if 0
+
 BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
    produce_blocks(2);
 
@@ -420,8 +420,7 @@ BOOST_FIXTURE_TEST_CASE( test_proxy, currency_tester ) try {
    BOOST_REQUIRE_EQUAL(get_balance( N(alice)),   asset::from_string("5.0000 CUR"));
 
 } FC_LOG_AND_RETHROW() /// test_currency
-#endif
-#if 0
+
 BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    produce_blocks(2);
 
@@ -518,6 +517,5 @@ BOOST_FIXTURE_TEST_CASE( test_deferred_failure, currency_tester ) try {
    BOOST_REQUIRE_EQUAL(get_balance( N(bob)),   asset::from_string("0.0000 CUR"));
 
 } FC_LOG_AND_RETHROW() /// test_currency
-#endif
 
 BOOST_AUTO_TEST_SUITE_END()

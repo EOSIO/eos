@@ -53,7 +53,7 @@ namespace proxy {
          configs::store(code_config, self);
 
          transaction out;
-         out.actions.emplace_back(permission_level{self, N(active)}, N(currency), N(transfer), new_transfer);
+         out.actions.emplace_back(permission_level{self, N(active)}, N(eosio.token), N(transfer), new_transfer);
          out.delay_sec = code_config.delay;
          out.send(id, self);
       }
@@ -90,6 +90,13 @@ namespace proxy {
 using namespace proxy;
 using namespace eosio;
 
+struct transfer_args {
+   account_name from;
+   account_name to;
+   asset        quantity;
+   string       memo;
+};
+
 extern "C" {
 
     /// The apply method implements the dispatch of events to this contract
@@ -101,9 +108,9 @@ extern "C" {
              // Comment this out for now so that the contract compiles, this will change with refactoring to use eosio.token
              //        apply_transfer(receiver, code, unpack_action_data<eosiosystem::contract<N(eosio.system)>::currency::transfer_memo>());
           }
-       } else if ( code == N(currency) ) {
+       } else if ( code == N(eosio.token) ) {
           if( action == N(transfer) ) {
-             //             apply_transfer(receiver, code, unpack_action_data<eosio::currency::transfer>());
+             apply_transfer(receiver, code, unpack_action_data<transfer_args>());
           }
        } else if (code == receiver ) {
           if ( action == N(setowner)) {
