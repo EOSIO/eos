@@ -69,7 +69,7 @@ namespace eosiosystem {
 
       uint64_t    primary_key()const { return owner;       }
       uint128_t   by_votes()const    { return total_votes; }
-      bool active() const { return packed_key.size() == sizeof(public_key); }
+      bool active() const { return 0 < packed_key.size(); }
 
       EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(prefs)(packed_key)
                         (per_block_payments)(last_rewards_claim)

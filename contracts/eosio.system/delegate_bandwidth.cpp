@@ -227,14 +227,13 @@ namespace eosiosystem {
             });
       }
       //create or replace deferred transaction
-      /* XXX
-      refund act;
-      act.owner = from;
+      //refund act;
+      //act.owner = from;
       eosio::transaction out( now() + refund_delay + refund_expiration_time );
-      out.actions.emplace_back( permission_level{ from, N(active) }, _self, N(refund), act );
+      out.actions.emplace_back( permission_level{ from, N(active) }, _self, N(refund), from );
       out.delay_sec = refund_delay;
       out.send( from, receiver );
-      */
+
       if ( asset(0) < unstake_net_quantity + unstake_cpu_quantity ) {
          decrease_voting_power( from, unstake_net_quantity + unstake_cpu_quantity );
       }

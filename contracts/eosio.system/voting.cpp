@@ -58,23 +58,27 @@ namespace eosiosystem {
     *  @pre authority of producer to register
     *
     */
-   void system_contract::regproducer( const account_name producer, const bytes& producer_key, const eosio_parameters& prefs ) {
+   void system_contract::regproducer( const account_name producer, const bytes& packed_producer_key, const eosio_parameters& prefs ) {
+      //eosio::print("produce_key: ", producer_key.size(), ", sizeof(public_key): ", sizeof(public_key), "\n");
       require_auth( producer );
 
       producers_table producers_tbl( _self, _self );
       auto prod = producers_tbl.find( producer );
 
+      //check that we can unpack producer key
+      public_key producer_key = eosio::unpack<public_key>( packed_producer_key );
+
       if ( prod != producers_tbl.end() ) {
          producers_tbl.modify( prod, producer, [&]( producer_info& info ){
                info.prefs = prefs;
-               info.packed_key = producer_key;
+               info.packed_key = eosio::pack<public_key>( producer_key );
             });
       } else {
          producers_tbl.emplace( producer, [&]( producer_info& info ){
                info.owner       = producer;
                info.total_votes = 0;
                info.prefs       = prefs;
-               info.packed_key  = producer_key;
+               info.packed_key  = eosio::pack<public_key>( producer_key );
             });
       }
    }
@@ -232,7 +236,8 @@ namespace eosiosystem {
             schedule.producers.emplace_back();
             schedule.producers.back().producer_name = it->owner;
             eosio_assert( sizeof(schedule.producers.back().block_signing_key) == it->packed_key.size(), "size mismatch" );
-            std::copy( it->packed_key.begin(), it->packed_key.end(), schedule.producers.back().block_signing_key.data.data() );
+            schedule.producers.back().block_signing_key = eosio::unpack<public_key>( it->packed_key );
+            //std::copy( it->packed_key.begin(), it->packed_key.end(), schedule.producers.back().block_signing_key.data.data() );
 
             base_per_transaction_net_usage[n] = it->prefs.base_per_transaction_net_usage;
             base_per_transaction_cpu_usage[n] = it->prefs.base_per_transaction_cpu_usage;
