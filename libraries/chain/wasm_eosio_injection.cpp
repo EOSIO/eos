@@ -37,4 +37,5 @@ void max_memory_injection_visitor::initializer() {}
 
 uint32_t instruction_counter::icnt = 0;
 int32_t  checktime_injector::checktime_idx = -1;
+
 }}} // namespace eosio, chain, injectors
