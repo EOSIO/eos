@@ -77,7 +77,7 @@ struct controller_impl {
    void pop_block() {
       for( const auto& t : head->trxs )
          unapplied_transactions[t->id] = t;
-      head = fork_db.get( head->previous );
+      head = fork_db.get_block( head->header.previous );
       db.undo();
    }
 
