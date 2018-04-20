@@ -360,11 +360,22 @@ chain::action create_newaccount(const name& creator, const name& newaccount, pub
    };
 }
 
-void create_regproducer(const account_name& producer,
-                        public_key_type key,
-                        uint64_t max_storage_size,
-                        uint32_t percent_of_max_inflation_rate,
-                        uint32_t storage_reserve_ratio) {
+chain::action create_action(const vector<permission_level>& authorization, const account_name& code, const action_name& act, const fc::variant& args) {
+   auto arg = fc::mutable_variant_object()
+      ("code", code)
+      ("action", act)
+      ("args", args);
+
+   auto result = call(json_to_bin_func, arg);
+   wlog("result=${r}",("r",result));
+   return chain::action{authorization, code, act, result.get_object()["binargs"].as<bytes>()};
+}
+
+fc::variant regproducer_variant(const account_name& producer,
+                                public_key_type key,
+                                uint64_t max_storage_size,
+                                uint32_t percent_of_max_inflation_rate,
+                                uint32_t storage_reserve_ratio) {
    fc::variant_object params = fc::mutable_variant_object()
            ("base_per_transaction_net_usage", config::default_base_per_transaction_net_usage)
            ("base_per_transaction_cpu_usage", config::default_base_per_transaction_cpu_usage)
@@ -389,20 +400,11 @@ void create_regproducer(const account_name& producer,
            ("max_storage_size", max_storage_size)
            ("percent_of_max_inflation_rate", percent_of_max_inflation_rate)
            ("storage_reserve_ratio", storage_reserve_ratio);
-   fc::variant act_payload = fc::mutable_variant_object()
+
+   return fc::mutable_variant_object()
             ("producer", producer)
             ("producer_key", fc::raw::pack(key))
             ("prefs", params);
-
-   const auto code = name(config::system_account_name);
-   const auto act = name("regproducer");
-   auto arg = fc::mutable_variant_object()
-      ("code", code.to_string())
-      ("action", act.to_string())
-      ("args", act_payload);
-
-   auto result = call(json_to_bin_func, arg);
-   send_actions({chain::action{{permission_level{producer,config::active_name}}, code, act, result.get_object()["binargs"].as<bytes>()}});
 }
 
 chain::action create_transfer(const name& sender, const name& recipient, uint64_t amount, const string& memo ) {
@@ -478,6 +480,22 @@ fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_
    }
 }
 
+authority parse_json_authority(const std::string& authorityJsonOrFile) {
+   try {
+      return json_from_file_or_string(authorityJsonOrFile).as<authority>();
+   } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON '${data}'", ("data",authorityJsonOrFile))
+}
+
+authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
+   if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
+      try {
+         return authority(public_key_type(authorityJsonOrFile));
+      } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
+   } else {
+      return parse_json_authority(authorityJsonOrFile);
+   }
+}
+
 struct set_account_permission_subcommand {
    string accountStr;
    string permissionStr;
@@ -488,7 +506,7 @@ struct set_account_permission_subcommand {
       auto permissions = accountCmd->add_subcommand("permission", localized("set parmaters dealing with account permissions"));
       permissions->add_option("account", accountStr, localized("The account to set/delete a permission authority for"))->required();
       permissions->add_option("permission", permissionStr, localized("The permission name to set/delete an authority for"))->required();
-      permissions->add_option("authority", authorityJsonOrFile, localized("[delete] NULL, [create/update] JSON string or filename defining the authority"))->required();
+      permissions->add_option("authority", authorityJsonOrFile, localized("[delete] NULL, [create/update] public key, JSON string, or filename defining the authority"))->required();
       permissions->add_option("parent", parentStr, localized("[create] The permission name of this parents permission (Defaults to: \"Active\")"));
 
       add_standard_transaction_options(permissions, "account@active");
@@ -501,17 +519,7 @@ struct set_account_permission_subcommand {
          if (is_delete) {
             send_actions({create_deleteauth(account, permission)});
          } else {
-            authority auth;
-            if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
-               try {
-                  auth = authority(public_key_type(authorityJsonOrFile));
-               } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", authorityJsonOrFile))
-            } else {
-               try {
-                  auth = json_from_file_or_string(authorityJsonOrFile).as<authority>();
-               } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON '${data}'", ("data",authorityJsonOrFile))
-
-            }
+            authority auth = parse_json_authority_or_key(authorityJsonOrFile);
 
             name parent;
             if (parentStr.size() == 0 && permissionStr != "owner") {
@@ -574,57 +582,251 @@ struct set_action_permission_subcommand {
    }
 };
 
-struct create_producer_subcommand {
-   string account_str;
+struct register_producer_subcommand {
+   string producer_str;
    string producer_key_str;
    uint64_t max_storage_size = 10 * 1024 * 1024;
    uint32_t percent_of_max_inflation_rate = 0;
    uint32_t storage_reserve_ratio = 1000;
 
-   create_producer_subcommand(CLI::App* actionRoot) {
-      auto create_producer = actionRoot->add_subcommand("producer", localized("Register (create) a new producer"));
-      create_producer->add_option("account", account_str, localized("The account to register as a producer"))->required();
-      create_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
-      create_producer->add_option("max_storage_size", max_storage_size, localized("The max storage size"), true);
-      create_producer->add_option("percent_of_max_inflation_rate", percent_of_max_inflation_rate, localized("Percent of max inflation rate"), true);
-      create_producer->add_option("storage_reserve_ratio", storage_reserve_ratio, localized("Storage Reserve Ratio"), true);
+   register_producer_subcommand(CLI::App* actionRoot) {
+      auto register_producer = actionRoot->add_subcommand("regproducer", localized("Register a new producer"));
+      register_producer->add_option("account", producer_str, localized("The account to register as a producer"))->required();
+      register_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
+      register_producer->add_option("max_storage_size", max_storage_size, localized("The max storage size"), true);
+      register_producer->add_option("percent_of_max_inflation_rate", percent_of_max_inflation_rate, localized("Percent of max inflation rate"), true);
+      register_producer->add_option("storage_reserve_ratio", storage_reserve_ratio, localized("Storage Reserve Ratio"), true);
 
 
-      create_producer->set_callback([this] {
-         name account = name(account_str);
+      register_producer->set_callback([this] {
          public_key_type producer_key;
          try {
             producer_key = public_key_type(producer_key_str);
          } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid producer public key: ${public_key}", ("public_key", producer_key_str))
 
-         create_regproducer(account, producer_key, max_storage_size, percent_of_max_inflation_rate, storage_reserve_ratio);
+         auto regprod_var = regproducer_variant(producer_str, producer_key, max_storage_size, percent_of_max_inflation_rate, storage_reserve_ratio);
+         send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, N(regproducer), regprod_var)});
       });
    }
 };
 
-struct remove_producer_subcommand {
-   string account_str;
+struct unregister_producer_subcommand {
+   string producer_str;
 
-   remove_producer_subcommand(CLI::App* actionRoot) {
-      auto remove_producer = actionRoot->add_subcommand("producer", localized("Register (create) a new producer"));
-      remove_producer->add_option("account", account_str, localized("The account to register as a producer"))->required();
+   unregister_producer_subcommand(CLI::App* actionRoot) {
+      auto unregister_producer = actionRoot->add_subcommand("unregprod", localized("Unregister an existing producer"));
+      unregister_producer->add_option("account", producer_str, localized("The account to unregister as a producer"))->required();
 
 
-      remove_producer->set_callback([this] {
-         name producer = name(account_str);
+      unregister_producer->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
-                  ("producer", producer);
-         wlog("packing payload");
+                  ("producer", producer_str);
 
-         const auto code = name(config::system_account_name);
-         const auto act = name("unregprod");
-         auto arg = fc::mutable_variant_object()
-            ("code", code.to_string())
-            ("action", act.to_string())
-            ("args", act_payload);
+         send_actions({create_action({permission_level{producer_str,config::active_name}}, config::system_account_name, N(unregprod), act_payload)});
+      });
+   }
+};
 
-         auto result = call(json_to_bin_func, arg);
-         send_actions({chain::action{{permission_level{producer,config::active_name}}, code, act, result.get_object()["binargs"].as<bytes>()}});
+struct vote_producer_proxy_subcommand {
+   string voter_str;
+   string proxy_str;
+
+   vote_producer_proxy_subcommand(CLI::App* actionRoot) {
+      auto vote_proxy = actionRoot->add_subcommand("proxy", localized("Vote using a proxy"));
+      vote_proxy->add_option("voter", voter_str, localized("The voting account"))->required();
+      vote_proxy->add_option("proxy", proxy_str, localized("The proxy account"))->required();
+
+
+      vote_proxy->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("voter", voter_str)
+                  ("proxy", proxy_str)
+                  ("producers", std::vector<account_name>{});
+         send_actions({create_action({permission_level{voter_str,config::active_name}}, config::system_account_name, N(voteproducer), act_payload)});
+      });
+   }
+};
+
+struct vote_producers_subcommand {
+   string voter_str;
+   std::vector<std::string> producers;
+
+   vote_producers_subcommand(CLI::App* actionRoot) {
+      auto vote_producers = actionRoot->add_subcommand("prods", localized("Vote for one or more producers"));
+      vote_producers->add_option("voter", voter_str, localized("The voting account"))->required();
+      vote_producers->add_option("producers", producers, localized("The account(s) to vote for"))->required();
+
+
+      vote_producers->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("voter", voter_str)
+                  ("proxy", "")
+                  ("producers", producers);
+         send_actions({create_action({permission_level{voter_str,config::active_name}}, config::system_account_name, N(voteproducer), act_payload)});
+      });
+   }
+};
+
+struct delegate_bandwidth_subcommand {
+   string from_str;
+   string receiver_str;
+   string stake_net_amount;
+   string stake_cpu_amount;
+   string stake_storage_amount;
+
+   delegate_bandwidth_subcommand(CLI::App* actionRoot) {
+      auto delegate_bandwidth = actionRoot->add_subcommand("delegatebw", localized("Delegate bandwidth"));
+      delegate_bandwidth->add_option("from", from_str, localized("The account to delegate bandwidth from"))->required();
+      delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receiver the delegate bandwidth"))->required();
+      delegate_bandwidth->add_option("stake_net_quantity", stake_net_amount, localized("The amount of EOS to stake for network bandwidth"))->required();
+      delegate_bandwidth->add_option("stake_cpu_quantity", stake_cpu_amount, localized("The amount of EOS to stake for CPU bandwidth"))->required();
+      delegate_bandwidth->add_option("stake_storage_quantity", stake_storage_amount, localized("The amount of EOS to stake for storage"))->required();
+
+
+      delegate_bandwidth->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("from", from_str)
+                  ("receiver", receiver_str)
+                  ("stake_net_quantity", stake_net_amount + " EOS")
+                  ("stake_cpu_quantity", stake_cpu_amount + " EOS")
+                  ("stake_storage_quantity", stake_storage_amount + " EOS");
+         send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(delegatebw), act_payload)});
+      });
+   }
+};
+
+struct undelegate_bandwidth_subcommand {
+   string from_str;
+   string receiver_str;
+   string unstake_net_amount;
+   string unstake_cpu_amount;
+   uint64_t unstake_storage_bytes;
+
+   undelegate_bandwidth_subcommand(CLI::App* actionRoot) {
+      auto undelegate_bandwidth = actionRoot->add_subcommand("undelegatebw", localized("Undelegate bandwidth"));
+      undelegate_bandwidth->add_option("from", from_str, localized("The account to undelegate bandwidth from"))->required();
+      undelegate_bandwidth->add_option("receiver", receiver_str, localized("The account to undelegate bandwidth from"))->required();
+      undelegate_bandwidth->add_option("unstake_net_quantity", unstake_net_amount, localized("The amount of EOS to unstake for network bandwidth"))->required();
+      undelegate_bandwidth->add_option("unstake_cpu_quantity", unstake_cpu_amount, localized("The amount of EOS to unstake for CPU bandwidth"))->required();
+      undelegate_bandwidth->add_option("unstake_storage_bytes", unstake_storage_bytes, localized("The amount of byte storage to unstake"))->required();
+
+
+      undelegate_bandwidth->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("from", from_str)
+                  ("receiver", receiver_str)
+                  ("unstake_net_quantity", unstake_net_amount + " EOS")
+                  ("unstake_cpu_quantity", unstake_cpu_amount + " EOS")
+                  ("unstake_storage_bytes", unstake_storage_bytes);
+         send_actions({create_action({permission_level{from_str,config::active_name}}, config::system_account_name, N(undelegatebw), act_payload)});
+      });
+   }
+};
+
+struct claimrewards_subcommand {
+   string owner;
+
+   claimrewards_subcommand(CLI::App* actionRoot) {
+      auto claim_rewards = actionRoot->add_subcommand("claimrewards", localized("Claim producer rewards"));
+      claim_rewards->add_option("owner", owner, localized("The account to claim rewards for"))->required();
+
+
+      claim_rewards->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("owner", owner);
+         send_actions({create_action({permission_level{owner,config::active_name}}, config::system_account_name, N(claimrewards), act_payload)});
+      });
+   }
+};
+
+struct regproxy_subcommand {
+   string proxy;
+
+   regproxy_subcommand(CLI::App* actionRoot) {
+      auto register_proxy = actionRoot->add_subcommand("regproxy", localized("Register proxy account"));
+      register_proxy->add_option("proxy", proxy, localized("The proxy account to register"))->required();
+
+
+      register_proxy->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("proxy", proxy);
+         send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, N(regproxy), act_payload)});
+      });
+   }
+};
+
+struct unregproxy_subcommand {
+   string proxy;
+
+   unregproxy_subcommand(CLI::App* actionRoot) {
+      auto unregister_proxy = actionRoot->add_subcommand("unregproxy", localized("Register proxy account"));
+      unregister_proxy->add_option("proxy", proxy, localized("The proxy account to register"))->required();
+
+
+      unregister_proxy->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("proxy", proxy);
+         send_actions({create_action({permission_level{proxy,config::active_name}}, config::system_account_name, N(unregproxy), act_payload)});
+      });
+   }
+};
+
+struct postrecovery_subcommand {
+   string account;
+   string json_str_or_file;
+   string memo;
+
+   postrecovery_subcommand(CLI::App* actionRoot) {
+      auto post_recovery = actionRoot->add_subcommand("postrecovery", localized("Post recovery request"));
+      post_recovery->add_option("account", account, localized("The account to post the recovery for"))->required();
+      post_recovery->add_option("data", json_str_or_file, localized("The authority to post the recovery with as EOS public key, JSON string, or filename"))->required();
+      post_recovery->add_option("memo", memo, localized("A memo describing the post recovery request"))->required();
+
+
+      post_recovery->set_callback([this] {
+         authority data_auth = parse_json_authority_or_key(json_str_or_file);
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("account", account)
+                  ("data", data_auth)
+                  ("memo", memo);
+         send_actions({create_action({permission_level{account,config::active_name}}, config::system_account_name, N(postrecovery), act_payload)});
+      });
+   }
+};
+
+struct vetorecovery_subcommand {
+   string account;
+
+   vetorecovery_subcommand(CLI::App* actionRoot) {
+      auto veto_recovery = actionRoot->add_subcommand("vetorecovery", localized("Veto a posted recovery"));
+      veto_recovery->add_option("account", account, localized("The account to veto the recovery for"))->required();
+
+
+      veto_recovery->set_callback([this] {
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("account", account);
+         send_actions({create_action({permission_level{account,config::active_name}}, config::system_account_name, N(vetorecovery), act_payload)});
+      });
+   }
+};
+
+struct canceldelay_subcommand {
+   string cancelling_account;
+   string cancelling_permission;
+   string trx_id;
+
+   canceldelay_subcommand(CLI::App* actionRoot) {
+      auto cancel_delay = actionRoot->add_subcommand("canceldelay", localized("Cancel a delayed transaction"));
+      cancel_delay->add_option("cancelling_account", cancelling_account, localized("Account from authorization on the original delayed transaction"))->required();
+      cancel_delay->add_option("cancelling_permission", cancelling_permission, localized("Permission from authorization on the original delayed transaction"))->required();
+      cancel_delay->add_option("trx_id", trx_id, localized("The transaction id of the original delayed transaction"))->required();
+
+      cancel_delay->set_callback([this] {
+         const auto cancelling_auth = permission_level{cancelling_account, cancelling_permission};
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("cancelling_auth", cancelling_auth)
+                  ("trx_id", trx_id);
+         send_actions({create_action({cancelling_auth}, config::system_account_name, N(canceldelay), act_payload)});
       });
    }
 };
@@ -691,9 +893,6 @@ int main( int argc, char** argv ) {
       } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str))
       send_actions({create_newaccount(creator, account_name, owner_key, active_key)});
    });
-
-   // create producer
-   auto createProducer = create_producer_subcommand(create);
 
    // Get subcommand
    auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"), false);
@@ -1273,8 +1472,8 @@ int main( int argc, char** argv ) {
    //auto propose_action = msig->add_subcommand("action", localized("Propose action"));
    add_standard_transaction_options(propose_action);
    propose_action->add_option("proposal_name", proposal_name, localized("proposal name (string)"))->required();
-   propose_action->add_option("requested_permissions", requested_perm, localized("The JSON string of filename defining requested permissions"))->required();
-   propose_action->add_option("trx_permissions", transaction_perm, localized("The JSON string of filename defining transaction permissions"))->required();
+   propose_action->add_option("requested_permissions", requested_perm, localized("The JSON string or filename defining requested permissions"))->required();
+   propose_action->add_option("trx_permissions", transaction_perm, localized("The JSON string or filename defining transaction permissions"))->required();
    propose_action->add_option("contract", proposed_contract, localized("contract to wich deferred transaction should be delivered"))->required();
    propose_action->add_option("action", proposed_action, localized("action of deferred transaction"))->required();
    propose_action->add_option("data", proposed_transaction, localized("The JSON string or filename defining the action to propose"))->required();
@@ -1508,12 +1707,30 @@ int main( int argc, char** argv ) {
       }
    );
 
-   // remove subcommand
-   auto remove = app.add_subcommand("remove", localized("Remove various items, on and off the blockchain"), false);
-   remove->require_subcommand();
+   // system subcommand
+   auto system = app.add_subcommand("system", localized("Send eosio.system contract action to the blockchain."), false);
+   system->require_subcommand();
 
-   // remove producer
-   auto removeProducer = remove_producer_subcommand(remove);
+   auto registerProducer = register_producer_subcommand(system);
+   auto unregisterProducer = unregister_producer_subcommand(system);
+
+   auto voteProducer = system->add_subcommand("voteproducer", localized("Vote for a producer"));
+   system->require_subcommand();
+   auto voteProxy = vote_producer_proxy_subcommand(voteProducer);
+   auto voteProducers = vote_producers_subcommand(voteProducer);
+
+   auto delegateBandwitdh = delegate_bandwidth_subcommand(system);
+   auto undelegateBandwitdh = undelegate_bandwidth_subcommand(system);
+
+   auto claimRewards = claimrewards_subcommand(system);
+
+   auto regProxy = regproxy_subcommand(system);
+   auto unregProxy = unregproxy_subcommand(system);
+
+   auto postRecovery = postrecovery_subcommand(system);
+   auto vetoRecovery = vetorecovery_subcommand(system);
+
+   auto cancelDelay = canceldelay_subcommand(system);
 
    try {
        app.parse(argc, argv);
