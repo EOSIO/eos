@@ -67,7 +67,7 @@ extern "C" {
     * access a copy of the currently executing transaction
     *
     * @param buffer - a buffer to write the current transaction to
-    * @param size - the size of the buffer
+    * @param size - the size of the buffer, 0 to return required size
     * @return the size of the transaction written to the buffer
     */
    size_t read_transaction(char *buffer, size_t size);

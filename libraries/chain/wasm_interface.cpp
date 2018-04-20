@@ -1131,12 +1131,16 @@ class context_free_transaction_api : public context_aware_api {
       context_free_transaction_api( apply_context& ctx )
       :context_aware_api(ctx,true){}
 
-      int read_transaction( array_ptr<char> data, size_t data_len ) {
+      int read_transaction( array_ptr<char> data, size_t buffer_size ) {
          bytes trx = context.get_packed_transaction();
-         if (data_len >= trx.size()) {
-            memcpy(data, trx.data(), trx.size());
-         }
-         return trx.size();
+
+         auto s = trx.size();
+         if( buffer_size == 0) return s;
+
+         auto copy_size = std::min( buffer_size, s );
+         memcpy( data, trx.data(), copy_size );
+
+         return copy_size;
       }
 
       int transaction_size() {
