@@ -578,7 +578,6 @@ class apply_context {
 
       uint32_t                                    recurse_depth;  // how deep inline actions can recurse
       fc::time_point_sec                          published_time;
-      account_name                                sender;
       fc::time_point                              processing_deadline;
 
       vector<action_receipt>                      executed;

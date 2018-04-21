@@ -41,6 +41,7 @@ namespace eosio { namespace chain {
       acontext.context_free         = context_free;
       acontext.receiver             = receiver;
       acontext.processing_deadline  = processing_deadline;
+      acontext.published_time       = published;
       acontext.exec();
 
       fc::move_append(executed, move(acontext.executed) );
