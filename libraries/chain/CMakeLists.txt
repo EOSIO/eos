@@ -10,6 +10,7 @@ add_library( eosio_chain
              block_state.cpp
              fork_database.cpp
              controller.cpp
+             authorization_manager.cpp
              resource_limits.cpp
              block_log.cpp
              genesis_state.cpp
@@ -41,7 +42,7 @@ add_library( eosio_chain
              )
 
 target_link_libraries( eosio_chain eos_utilities fc chainbase Logging IR WAST WASM Runtime
-      wasm asmjs passes cfg ast emscripten-optimizer support softfloat 
+      wasm asmjs passes cfg ast emscripten-optimizer support softfloat
                      )
 target_include_directories( eosio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
@@ -52,5 +53,3 @@ target_include_directories( eosio_chain
 #if(MSVC)
 #  set_source_files_properties( db_init.cpp db_block.cpp database.cpp block_log.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
 #endif(MSVC)
-
-

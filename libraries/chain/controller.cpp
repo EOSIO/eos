@@ -9,11 +9,10 @@
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
-#include <eosio/chain/action_objects.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
-#include <eosio/chain/permission_link_object.hpp>
 
+#include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
 
 #include <chainbase/chainbase.hpp>
@@ -44,6 +43,7 @@ struct pending_state {
 };
 
 struct controller_impl {
+   controller&                    self;
    chainbase::database            db;
    block_log                      blog;
    optional<pending_state>        pending;
@@ -51,8 +51,8 @@ struct controller_impl {
    fork_database                  fork_db;
    wasm_interface                 wasmif;
    resource_limits_manager        resource_limits;
+   authorization_manager          authorization;
    controller::config             conf;
-   controller&                    self;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -87,15 +87,16 @@ struct controller_impl {
    }
 
    controller_impl( const controller::config& cfg, controller& s  )
-   :db( cfg.shared_memory_dir,
+   :self(s),
+    db( cfg.shared_memory_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.shared_memory_size ),
     blog( cfg.block_log_dir ),
     fork_db( cfg.shared_memory_dir ),
     wasmif( cfg.wasm_runtime ),
     resource_limits( db ),
-    conf( cfg ),
-    self( s )
+    authorization( s, db ),
+    conf( cfg )
    {
       head = fork_db.head();
 
@@ -120,11 +121,26 @@ struct controller_impl {
 
    void init() {
       // ilog( "${c}", ("c",fc::json::to_pretty_string(cfg)) );
-      initialize_indicies();
+      add_indices();
 
-      initialize_fork_db();
       /**
-       * The undable state contains state transitions from blocks
+      *  The fork database needs an initial block_state to be set before
+      *  it can accept any new blocks. This initial block state can be found
+      *  in the database (whose head block state should be irreversible) or
+      *  it would be the genesis state.
+      */
+      if( !head ) {
+         initialize_fork_db(); // set head to genesis state
+#warning What if head is empty because the user deleted forkdb.dat? Will this not corrupt the database?
+         db.set_revision( head->block_num );
+         initialize_database();
+      }
+
+      FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistent with shared memory",
+                 ("db",db.revision())("head",head->block_num) );
+
+      /**
+       * The undoable state contains state transitions from blocks
        * in the fork database that could be reversed. Because this
        * is a new startup and the fork database is empty, we must
        * unwind that pending state. This state will be regenerated
@@ -141,13 +157,9 @@ struct controller_impl {
       db.flush();
    }
 
-   void initialize_indicies() {
+   void add_indices() {
       db.add_index<account_index>();
       db.add_index<account_sequence_index>();
-      db.add_index<permission_index>();
-      db.add_index<permission_usage_index>();
-      db.add_index<permission_link_index>();
-      db.add_index<action_permission_index>();
 
       db.add_index<table_id_multi_index>();
       db.add_index<key_value_index>();
@@ -163,7 +175,8 @@ struct controller_impl {
       db.add_index<generated_transaction_multi_index>();
       db.add_index<scope_sequence_multi_index>();
 
-      resource_limits.initialize_database();
+      authorization.add_indices();
+      resource_limits.add_indices();
    }
 
    void abort_pending_block() {
@@ -183,47 +196,36 @@ struct controller_impl {
    }
 
    /**
-    *  The fork database needs an initial block_state to be set before
-    *  it can accept any new blocks. This initial block state can be found
-    *  in the database (whose head block state should be irreversible) or
-    *  it would be the genesis state.
+    *  Sets fork database head to the genesis state.
     */
    void initialize_fork_db() {
-      head = fork_db.head();
-      if( !head ) {
-         wlog( " Initializing new blockchain with genesis state                  " );
-         producer_schedule_type initial_schedule{ 0, {{N(eosio), conf.genesis.initial_key}} };
+      wlog( " Initializing new blockchain with genesis state                  " );
+      producer_schedule_type initial_schedule{ 0, {{N(eosio), conf.genesis.initial_key}} };
 
-         block_header_state genheader;
-         genheader.active_schedule       = initial_schedule;
-         genheader.pending_schedule      = initial_schedule;
-         genheader.pending_schedule_hash = fc::sha256::hash(initial_schedule);
-         genheader.header.timestamp      = conf.genesis.initial_timestamp;
-         genheader.header.action_mroot   = conf.genesis.compute_chain_id();
-         genheader.id                    = genheader.header.id();
-         genheader.block_num             = genheader.header.block_num();
+      block_header_state genheader;
+      genheader.active_schedule       = initial_schedule;
+      genheader.pending_schedule      = initial_schedule;
+      genheader.pending_schedule_hash = fc::sha256::hash(initial_schedule);
+      genheader.header.timestamp      = conf.genesis.initial_timestamp;
+      genheader.header.action_mroot   = conf.genesis.compute_chain_id();
+      genheader.id                    = genheader.header.id();
+      genheader.block_num             = genheader.header.block_num();
 
-         head = std::make_shared<block_state>( genheader );
-         signed_block genblock(genheader.header);
+      head = std::make_shared<block_state>( genheader );
+      signed_block genblock(genheader.header);
 
-         edump((genheader.header));
-         edump((genblock));
-         blog.append( genblock );
+      edump((genheader.header));
+      edump((genblock));
+      blog.append( genblock );
 
-         db.set_revision( head->block_num );
-         fork_db.set( head );
-
-         initialize_database();
-      }
-      FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistant with shared memory",
-                 ("db",db.revision())("head",head->block_num) );
+      fork_db.set( head );
    }
 
-   void create_native_account( account_name name ) {
+   void create_native_account( account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
       db.create<account_object>([&](auto& a) {
          a.name = name;
          a.creation_date = conf.genesis.initial_timestamp;
-         a.privileged = true;
+         a.privileged = is_privileged;
 
          if( name == config::system_account_name ) {
             a.set_abi(eosio_contract_abi(abi_def()));
@@ -233,21 +235,20 @@ struct controller_impl {
         a.name = name;
       });
 
-      const auto& owner = db.create<permission_object>([&](auto& p) {
-         p.owner = name;
-         p.name = "owner";
-         p.auth.threshold = 1;
-         p.auth.keys.push_back( key_weight{ .key = conf.genesis.initial_key, .weight = 1 } );
-      });
-      db.create<permission_object>([&](auto& p) {
-         p.owner = name;
-         p.parent = owner.id;
-         p.name = "active";
-         p.auth.threshold = 1;
-         p.auth.keys.push_back( key_weight{ .key = conf.genesis.initial_key, .weight = 1 } );
-      });
+      const auto& owner_permission  = authorization.create_permission(name, config::owner_name, 0,
+                                                                      owner, conf.genesis.initial_timestamp );
+      const auto& active_permission = authorization.create_permission(name, config::active_name, owner_permission.id,
+                                                                      active, conf.genesis.initial_timestamp );
 
       resource_limits.initialize_account(name);
+      resource_limits.add_pending_account_ram_usage(
+         name,
+         (int64_t)(config::billable_size_v<permission_object> + owner_permission.auth.get_billable_size())
+      );
+      resource_limits.add_pending_account_ram_usage(
+         name,
+         (int64_t)(config::billable_size_v<permission_object> + active_permission.auth.get_billable_size())
+      );
    }
 
    void initialize_database() {
@@ -255,52 +256,29 @@ struct controller_impl {
       for (int i = 0; i < 0x10000; i++)
          db.create<block_summary_object>([&](block_summary_object&) {});
 
+      const auto& tapos_block_summary = db.get<block_summary_object>(1);
+      db.modify( tapos_block_summary, [&]( auto& bs ) {
+        bs.block_id = head->id;
+      });
+
       db.create<global_property_object>([&](auto& gpo ){
         gpo.configuration = conf.genesis.initial_configuration;
       });
       db.create<dynamic_global_property_object>([](auto&){});
-      db.create<permission_object>([](auto&){}); /// reserve perm 0 (used else where)
 
-      resource_limits.initialize_chain();
+      authorization.initialize_database();
+      resource_limits.initialize_database();
 
-      create_native_account( config::system_account_name );
-
-      // Create special accounts
-      auto create_special_account = [&](account_name name, const auto& owner, const auto& active) {
-         db.create<account_object>([&](account_object& a) {
-            a.name = name;
-            a.creation_date = conf.genesis.initial_timestamp;
-         });
-         db.create<account_sequence_object>([&](auto & a) {
-           a.name = name;
-         });
-         const auto& owner_permission = db.create<permission_object>([&](permission_object& p) {
-            p.name = config::owner_name;
-            p.parent = 0;
-            p.owner = name;
-            p.auth = move(owner);
-         });
-         db.create<permission_object>([&](permission_object& p) {
-            p.name = config::active_name;
-            p.parent = owner_permission.id;
-            p.owner = owner_permission.owner;
-            p.auth = move(active);
-         });
-      };
+      authority system_auth(conf.genesis.initial_key);
+      create_native_account( config::system_account_name, system_auth, system_auth, true );
 
       auto empty_authority = authority(0, {}, {});
       auto active_producers_authority = authority(0, {}, {});
       active_producers_authority.accounts.push_back({{config::system_account_name, config::active_name}, 1});
 
-      create_special_account(config::nobody_account_name, empty_authority, empty_authority);
-      create_special_account(config::producers_account_name, empty_authority, active_producers_authority);
-
-      const auto& tapos_block_summary = db.get<block_summary_object>(1);
-      db.modify( tapos_block_summary, [&]( auto& bs ) {
-        bs.block_id = head->id;
-      });
+      create_native_account( config::nobody_account_name, empty_authority, empty_authority );
+      create_native_account( config::producers_account_name, empty_authority, active_producers_authority );
    }
-
 
    void set_pending_tapos() {
       const auto& tapos_block_summary = db.get<block_summary_object>((uint16_t)pending->_pending_block_state->block_num);
@@ -650,6 +628,14 @@ resource_limits_manager&         controller::get_mutable_resource_limits_manager
    return my->resource_limits;
 }
 
+const authorization_manager&   controller::get_authorization_manager()const
+{
+   return my->authorization;
+}
+authorization_manager&         controller::get_mutable_authorization_manager()
+{
+   return my->authorization;
+}
 
 controller::controller( const controller::config& cfg )
 :my( new controller_impl( cfg, *this ) )
@@ -806,36 +792,6 @@ void controller::pop_block() {
    my->head = prev;
 }
 
-
-/**
- * @param actions - the actions to check authorization across
- * @param provided_keys - the set of public keys which have authorized the transaction
- * @param allow_unused_signatures - true if method should not assert on unused signatures
- * @param provided_accounts - the set of accounts which have authorized the transaction (presumed to be owner)
- *
- * @return fc::microseconds set to the max delay that this authorization requires to complete
- */
-fc::microseconds controller::check_authorization( const vector<action>& actions,
-                                      const flat_set<public_key_type>& provided_keys,
-                                      bool                             allow_unused_signatures,
-                                      flat_set<account_name>           provided_accounts,
-                                      flat_set<permission_level>       provided_levels
-                                    )const {
-   return fc::microseconds();
-}
-
-/**
- * @param account - the account owner of the permission
- * @param permission - the permission name to check for authorization
- * @param provided_keys - a set of public keys
- *
- * @return true if the provided keys are sufficient to authorize the account permission
- */
-bool controller::check_authorization( account_name account, permission_name permission,
-                       flat_set<public_key_type> provided_keys,
-                       bool allow_unused_signatures)const {
-   return true;
-}
 
 void controller::set_active_producers( const producer_schedule_type& sch ) {
    FC_ASSERT( !my->pending->_pending_block_state->header.new_producers, "this block has already set new producers" );

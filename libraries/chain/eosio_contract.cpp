@@ -21,9 +21,10 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 
+#include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
 
-namespace eosio { namespace chain { 
+namespace eosio { namespace chain {
 
 
 
@@ -35,7 +36,7 @@ uint128_t transaction_id_to_sender_id( const transaction_id_type& tid ) {
 void validate_authority_precondition( const apply_context& context, const authority& auth ) {
    for(const auto& a : auth.accounts) {
       context.db.get<account_object, by_name>(a.permission.actor);
-      context.db.get<permission_object, by_owner>(boost::make_tuple(a.permission.actor, a.permission.permission));
+      context.mutable_controller.get_authorization_manager().get_permission({a.permission.actor, a.permission.permission});
    }
 }
 
@@ -47,7 +48,8 @@ void apply_eosio_newaccount(apply_context& context) {
    try {
    context.require_authorization(create.creator);
 //   context.require_write_lock( config::eosio_auth_scope );
-   auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
+   auto& resources     = context.mutable_controller.get_mutable_resource_limits_manager();
+   auto& authorization = context.mutable_controller.get_mutable_authorization_manager();
 
    EOS_ASSERT( validate(create.owner), action_validate_exception, "Invalid owner authority");
    EOS_ASSERT( validate(create.active), action_validate_exception, "Invalid active authority");
@@ -85,32 +87,25 @@ void apply_eosio_newaccount(apply_context& context) {
       a.name = create.name;
    });
 
-   resources.initialize_account(create.name);
+   const auto& owner_permission  = authorization.create_permission( create.name, config::owner_name, 0,
+                                                                    std::move(create.owner) );
+   const auto& active_permission = authorization.create_permission( create.name, config::active_name, owner_permission.id,
+                                                                    std::move(create.active) );
+
    resources.add_pending_account_ram_usage(
       create.creator,
       (int64_t)config::overhead_per_account_ram_bytes
    );
 
-   auto create_permission = [owner=create.name, &db, &context, &resources](const permission_name& name, permission_object::id_type parent, authority &&auth) {
-      const auto& result = db.create<permission_object>([&](permission_object& p) {
-         p.name = name;
-         p.parent = parent;
-         p.owner = owner;
-         p.auth = std::move(auth);
-      });
-
-      resources.add_pending_account_ram_usage(
-         owner,
-         (int64_t)(config::billable_size_v<permission_object> + result.auth.get_billable_size())
-      );
-
-      return result;
-   };
-
-   // If a parent_id of 0 is going to be used to indicate the absence of a parent, then we need to make sure that the chain
-   // initializes permission_index with a dummy object that reserves the id of 0.
-   const auto& owner_permission = create_permission(config::owner_name, 0, std::move(create.owner));
-   create_permission(config::active_name, owner_permission.id, std::move(create.active));
+   resources.initialize_account(create.name);
+   resources.add_pending_account_ram_usage(
+      create.name,
+      (int64_t)(config::billable_size_v<permission_object> + owner_permission.auth.get_billable_size())
+   );
+   resources.add_pending_account_ram_usage(
+      create.name,
+      (int64_t)(config::billable_size_v<permission_object> + active_permission.auth.get_billable_size())
+   );
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
@@ -191,12 +186,15 @@ void apply_eosio_setabi(apply_context& context) {
 }
 
 void apply_eosio_updateauth(apply_context& context) {
-   auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
 //   context.require_write_lock( config::eosio_auth_scope );
 
+   auto update = context.act.data_as<updateauth>();
+   context.require_authorization(update.account); // only here to mark the single authority on this action as used
+
+   auto& authorization = context.mutable_controller.get_mutable_authorization_manager();
+   auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
    auto& db = context.db;
 
-   auto update = context.act.data_as<updateauth>();
    EOS_ASSERT(!update.permission.empty(), action_validate_exception, "Cannot create authority with empty name");
    EOS_ASSERT( update.permission.to_string().find( "eosio." ) != 0, action_validate_exception,
                "Permission names that start with 'eosio.' are reserved" );
@@ -211,54 +209,25 @@ void apply_eosio_updateauth(apply_context& context) {
    else
       EOS_ASSERT(!update.parent.empty(), action_validate_exception, "Only owner permission can have empty parent" );
 
-   FC_ASSERT(context.act.authorization.size(), "updateauth can only have one action authorization");
-   const auto& act_auth = context.act.authorization.front();
-   // lazy evaluating loop
-   auto permission_is_valid_for_update = [&](){
-      if (act_auth.permission == config::owner_name || act_auth.permission == update.permission) {
-         return true;
-      }
-      const permission_object *current = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
-      // Permission doesn't exist yet, check parent permission
-      if (current == nullptr) current = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.parent));
-      // Ensure either the permission or parent's permission exists
-      EOS_ASSERT(current != nullptr, permission_query_exception,
-                 "Failed to retrieve permission for: {\"actor\": \"${actor}\", \"permission\": \"${permission}\" }",
-                 ("actor", update.account)("permission", update.parent));
-
-      while(current->name != config::owner_name) {
-         if (current->name == act_auth.permission) {
-            return true;
-         }
-         current = &db.get<permission_object>(current->parent);
-      }
-
-      return false;
-   };
-
-   FC_ASSERT(act_auth.actor == update.account && permission_is_valid_for_update(), "updateauth must carry a permission equal to or in the ancestery of permission it updates");
-
    validate_authority_precondition(context, update.auth);
 
-   auto permission = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
+   auto permission = authorization.find_permission({update.account, update.permission});
 
    // If a parent_id of 0 is going to be used to indicate the absence of a parent, then we need to make sure that the chain
    // initializes permission_index with a dummy object that reserves the id of 0.
-   permission_object::id_type parent_id = 0;
-   if(update.permission != config::owner_name) {
-      auto& parent = db.get<permission_object, by_owner>(boost::make_tuple(update.account, update.parent));
+   authorization_manager::permission_id_type parent_id = 0;
+   if( update.permission != config::owner_name ) {
+      auto& parent = authorization.get_permission({update.account, update.parent});
       parent_id = parent.id;
    }
 
-   if (permission) {
+   if( permission ) {
       EOS_ASSERT(parent_id == permission->parent, action_validate_exception,
                  "Changing parent authority is not currently supported");
 
 
       int64_t old_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
 
-      // TODO/QUESTION: If we are updating an existing permission, should we check if the message declared
-      // permission satisfies the permission we want to modify?
       db.modify(*permission, [&update, &parent_id, &context](permission_object& po) {
          po.auth = update.auth;
          po.parent = parent_id;
@@ -273,38 +242,29 @@ void apply_eosio_updateauth(apply_context& context) {
          new_size - old_size
       );
    } else {
-      // TODO/QUESTION: If we are creating a new permission, should we check if the message declared
-      // permission satisfies the parent permission?
-      const auto& p = db.create<permission_object>([&update, &parent_id, &context](permission_object& po) {
-         po.name = update.permission;
-         po.owner = update.account;
-         po.auth = update.auth;
-         po.parent = parent_id;
-         po.last_updated = context.control.head_block_time();
-         po.delay = fc::seconds(update.auth.delay_sec);
-      });
+      const auto& p = authorization.create_permission( update.account, update.permission, parent_id, update.auth );
 
       resources.add_pending_account_ram_usage(
-         p.owner,
+         update.account,
          (int64_t)(config::billable_size_v<permission_object> + p.auth.get_billable_size())
       );
-
    }
 }
 
 void apply_eosio_deleteauth(apply_context& context) {
-   auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
+//   context.require_write_lock( config::eosio_auth_scope );
+
    auto remove = context.act.data_as<deleteauth>();
+   context.require_authorization(remove.account); // only here to mark the single authority on this action as used
+
    EOS_ASSERT(remove.permission != config::active_name, action_validate_exception, "Cannot delete active authority");
    EOS_ASSERT(remove.permission != config::owner_name, action_validate_exception, "Cannot delete owner authority");
 
+   auto& authorization = context.mutable_controller.get_authorization_manager();
+   auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
    auto& db = context.db;
-   context.require_authorization(remove.account);
-   // TODO/QUESTION:
-   //   Inconsistency between permissions that can be satisfied to create/modify (via updateauth) a permission and the
-   //   stricter requirements for deleting the permission using deleteauth.
-   //   If a permission can be updated, shouldn't it also be allowed to delete it without higher permissions required?
-   const auto& permission = db.get<permission_object, by_owner>(boost::make_tuple(remove.account, remove.permission));
+
+   const auto& permission = authorization.get_permission({remove.account, remove.permission});
 
    { // Check for children
       const auto& index = db.get_index<permission_index, by_parent>();
@@ -328,12 +288,14 @@ void apply_eosio_deleteauth(apply_context& context) {
 }
 
 void apply_eosio_linkauth(apply_context& context) {
+//   context.require_write_lock( config::eosio_auth_scope );
+
    auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
    auto requirement = context.act.data_as<linkauth>();
    try {
       EOS_ASSERT(!requirement.requirement.empty(), action_validate_exception, "Required permission cannot be empty");
 
-      context.require_authorization(requirement.account);
+      context.require_authorization(requirement.account); // only here to mark the single authority on this action as used
 
       auto& db = context.db;
       const auto *account = db.find<account_object, by_name>(requirement.account);
@@ -374,11 +336,13 @@ void apply_eosio_linkauth(apply_context& context) {
 }
 
 void apply_eosio_unlinkauth(apply_context& context) {
+//   context.require_write_lock( config::eosio_auth_scope );
+
    auto& resources = context.mutable_controller.get_mutable_resource_limits_manager();
    auto& db = context.db;
    auto unlink = context.act.data_as<unlinkauth>();
 
-   context.require_authorization(unlink.account);
+   context.require_authorization(unlink.account); // only here to mark the single authority on this action as used
 
    auto link_key = boost::make_tuple(unlink.account, unlink.code, unlink.type);
    auto link = db.find<permission_link_object, by_action_name>(link_key);
@@ -390,7 +354,6 @@ void apply_eosio_unlinkauth(apply_context& context) {
 
    db.remove(*link);
 }
-
 
 void apply_eosio_onerror(apply_context& context) {
    FC_ASSERT(context.sender != account_name(), "onerror action cannot be called directly");
@@ -567,6 +530,8 @@ void apply_eosio_vetorecovery(apply_context& context) {
 
 void apply_eosio_canceldelay(apply_context& context) {
    auto cancel = context.act.data_as<canceldelay>();
+   context.require_authorization(cancel.canceling_auth.actor); // only here to mark the single authority on this action as used
+
    const auto& trx_id = cancel.trx_id;
 
    const auto& generated_transaction_idx = context.control.db().get_index<generated_transaction_multi_index>();
@@ -576,23 +541,18 @@ void apply_eosio_canceldelay(apply_context& context) {
               "cannot cancel trx_id=${tid}, there is no deferred transaction with that transaction id",("tid", trx_id));
 
    auto dtrx = fc::raw::unpack<deferred_transaction>(itr->packed_trx.data(), itr->packed_trx.size());
-   set<account_name> accounts;
-   for (const auto& act : dtrx.actions) {
-      for (const auto& auth : act.authorization) {
-         accounts.insert(auth.actor);
-      }
-   }
-
    bool found = false;
-   for (const auto& auth : context.act.authorization) {
-      if (auth.permission == config::active_name && accounts.count(auth.actor)) {
-         found = true;
-         break;
+   for( const auto& act : dtrx.actions ) {
+      for( const auto& auth : act.authorization ) {
+         if( auth == cancel.canceling_auth ) {
+            found = true;
+            break;
+         }
       }
+      if( found ) break;
    }
 
-   FC_ASSERT (found, "canceldelay action must be signed with the \"active\" permission for one of the actors"
-                     " provided in the authorizations on the original transaction");
+   FC_ASSERT (found, "canceling_auth in canceldelay action was not found as authorization in the original delayed transaction");
 
    context.cancel_deferred_transaction(transaction_id_to_sender_id(trx_id));
 }

@@ -31,8 +31,8 @@ namespace eosio { namespace chain { namespace resource_limits {
          {
          }
 
+         void add_indices();
          void initialize_database();
-         void initialize_chain();
          void initialize_account( const account_name& account );
          void set_block_parameters( const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters );
 
@@ -61,4 +61,3 @@ namespace eosio { namespace chain { namespace resource_limits {
          chainbase::database& _db;
    };
 } } } /// eosio::chain
-

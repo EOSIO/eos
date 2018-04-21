@@ -78,6 +78,7 @@ BOOST_AUTO_TEST_CASE(update_auths) {
 try {
    TESTER chain;
    chain.create_account("alice");
+   chain.create_account("bob");
 
    // Deleting active or owner should fail
    BOOST_CHECK_THROW(chain.delete_authority("alice", "active"), action_validate_exception);
@@ -131,6 +132,11 @@ try {
    auto spending_pub_key = spending_priv_key.get_public_key();
    auto trading_priv_key = chain.get_private_key("alice", "trading");
    auto trading_pub_key = trading_priv_key.get_public_key();
+
+   // Bob attempts to create new spending auth for Alice
+   BOOST_CHECK_THROW( chain.set_authority( "alice", "spending", authority(spending_pub_key), "active",
+                                           { permission_level{"bob", "active"} }, { chain.get_private_key("bob", "active") } ),
+                      transaction_exception );
 
    // Create new spending auth
    chain.set_authority("alice", "spending", authority(spending_pub_key), "active",

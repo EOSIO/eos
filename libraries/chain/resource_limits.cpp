@@ -26,14 +26,14 @@ void resource_limits_state_object::update_virtual_net_limit( const resource_limi
    virtual_net_limit = update_elastic_limit(virtual_net_limit, average_block_net_usage.average(), cfg.net_limit_parameters);
 }
 
-void resource_limits_manager::initialize_database() {
+void resource_limits_manager::add_indices() {
    _db.add_index<resource_limits_index>();
    _db.add_index<resource_usage_index>();
    _db.add_index<resource_limits_state_index>();
    _db.add_index<resource_limits_config_index>();
 }
 
-void resource_limits_manager::initialize_chain() {
+void resource_limits_manager::initialize_database() {
    const auto& config = _db.create<resource_limits_config_object>([](resource_limits_config_object& config){
       // see default settings in the declaration
    });
@@ -134,9 +134,9 @@ void resource_limits_manager::add_pending_account_ram_usage( const account_name 
 
    FC_ASSERT( usage.ram_usage >= 0, "cannot have negative usage!" );
 
-   EOS_ASSERT(ram_delta < 0 || UINT64_MAX - usage.ram_usage>= (uint64_t)ram_delta, transaction_exception, 
+   EOS_ASSERT(ram_delta < 0 || UINT64_MAX - usage.ram_usage>= (uint64_t)ram_delta, transaction_exception,
               "Ram usage delta would overflow UINT64_MAX");
-   EOS_ASSERT(ram_delta > 0 || usage.ram_usage >= (uint64_t)(-ram_delta), transaction_exception, 
+   EOS_ASSERT(ram_delta > 0 || usage.ram_usage >= (uint64_t)(-ram_delta), transaction_exception,
               "Ram usage delta would underflow UINT64_MAX");
 
    if( limits.ram_bytes >= 0 && usage.ram_usage > limits.ram_bytes ) {
