@@ -155,14 +155,18 @@ class privileged_api : public context_aware_api {
          });
       }
 
-      uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t datalen) {
+      uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t buffer_size) {
          auto& gpo = context.controller.get_global_properties();
-         auto size = fc::raw::pack_size( gpo.configuration );
-         if ( size <= datalen ) {
-            datastream<char*> ds( packed_blockchain_parameters, datalen );
+
+         auto s = fc::raw::pack_size( gpo.configuration );
+         if( buffer_size == 0 ) return s;
+
+         if ( s <= buffer_size ) {
+            datastream<char*> ds( packed_blockchain_parameters, s );
             fc::raw::pack(ds, gpo.configuration);
+            return s;
          }
-         return size;
+         return 0;
       }
 
 
