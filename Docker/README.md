@@ -158,6 +158,7 @@ Note: if you want to use the mongo db plugin, you have to enable it in your `dat
 ```
 # pull images
 docker pull eosio/eos:latest
+docker pull mongo:latest
 # create volume
 docker volume create --name=nodeos-data-volume
 docker volume create --name=keosd-data-volume
@@ -173,3 +174,7 @@ docker-compose -f docker-compose-dawn3.0.yaml down
 ```
 
 The `blocks` data are stored under `--data-dir` by default, and the wallet files are stored under `--wallet-dir` by default, of course you can change these as you want.
+
+### About MongoDB Plugin
+
+Currently, the mongodb plugin is disabled in `config.ini` by default, you have to change it manually in `config.ini` or you can mount a `config.ini` file to `/opt/eosio/bin/data-dir/config.ini` in the docker-compose file.
