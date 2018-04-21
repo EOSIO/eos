@@ -4,6 +4,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
+#include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/scope_sequence_object.hpp>
 #include <eosio/chain/account_object.hpp>
@@ -18,7 +19,7 @@ action_trace apply_context::exec_one()
    const auto& gpo = control.get_global_properties();
 
    auto start = fc::time_point::now();
-   cpu_usage = gpo.configuration.base_per_action_cpu_usage; 
+   cpu_usage = gpo.configuration.base_per_action_cpu_usage;
    try {
       const auto &a = control.get_account(receiver);
       privileged = a.privileged;
@@ -217,7 +218,7 @@ void apply_context::require_recipient( account_name recipient ) {
 void apply_context::execute_inline( action&& a ) {
    if ( !privileged ) {
       if( a.account != receiver ) {
-         const auto delay = control.check_authorization({a}, flat_set<public_key_type>(), false, {receiver});
+         const auto delay = control.get_authorization_manager().check_authorization({a}, flat_set<public_key_type>(), false, {receiver});
          FC_ASSERT( published_time + delay <= control.head_block_time(),
                     "inline action uses a permission that imposes a delay that is not met, set delay_sec in transaction header to at least ${delay} seconds",
                     ("delay", delay.to_seconds()) );
@@ -239,8 +240,8 @@ void apply_context::schedule_deferred_transaction( deferred_transaction&& trx ) 
                transaction_exception,
                "Transaction expires at ${trx.expiration} which is before the first allowed time to execute at ${trx.execute_after}",
                ("trx.expiration",trx.expiration)("trx.execute_after",trx.execute_after) );
-   control.validate_referenced_accounts( trx ); 
-   control.validate_expiration( trx ); 
+   control.validate_referenced_accounts( trx );
+   control.validate_expiration( trx );
 
    if( !privileged ) {
       if (trx.payer != receiver) {
@@ -265,7 +266,7 @@ void apply_context::schedule_deferred_transaction( deferred_transaction&& trx ) 
       fc::datastream<char*> ds( gtx.packed_trx.data(), trx_size );
       fc::raw::pack( ds, trx );
    });
-   
+
    auto& rl = control.get_mutable_resource_limits_manager();
    rl.add_pending_account_ram_usage( trx.payer, config::billable_size_v<generated_transaction_object> + trx_size );
    checktime( trx_size * 4 ); /// 4 instructions per byte of packed generated trx (estimated)
@@ -301,7 +302,7 @@ void apply_context::schedule_deferred_transaction( deferred_transaction&& trx ) 
             }
          }
          if( check_auth ) {
-            delay = controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
+            delay = controller..get_authorization_manager().check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
             FC_ASSERT( trx_meta.published + delay <= controller.head_block_time(),
                        "deferred transaction uses a permission that imposes a delay that is not met, set delay_sec in transaction header to at least ${delay} seconds",
                        ("delay", delay.to_seconds()) );
@@ -432,11 +433,11 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
 }
 
 void apply_context::check_auth( const transaction& trx, const vector<permission_level>& perm ) {
-   control.check_authorization( trx.actions,
-                                   {},
-                                   true,
-                                   {},
-                                   flat_set<permission_level>(perm.begin(), perm.end()) );
+   control.get_authorization_manager().check_authorization( trx.actions,
+                                                            {},
+                                                            true,
+                                                            {},
+                                                            flat_set<permission_level>(perm.begin(), perm.end()) );
 }
 
 int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {

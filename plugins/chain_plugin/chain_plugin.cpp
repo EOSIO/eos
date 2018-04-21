@@ -6,7 +6,7 @@
 #include <eosio/chain/fork_database.hpp>
 #include <eosio/chain/block_log.hpp>
 #include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/permission_object.hpp>
+#include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/producer_object.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/types.hpp>
@@ -487,7 +487,7 @@ read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::a
 read_only::get_required_keys_result read_only::get_required_keys( const get_required_keys_params& params )const {
    transaction pretty_input;
    from_variant(params.transaction, pretty_input);
-   auto required_keys_set = db.get_required_keys(pretty_input, params.available_keys);
+   auto required_keys_set = db.get_authorization_manager().get_required_keys(pretty_input, params.available_keys);
    get_required_keys_result result;
    result.required_keys = required_keys_set;
    return result;

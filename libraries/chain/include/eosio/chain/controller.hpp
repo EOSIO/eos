@@ -11,6 +11,8 @@ namespace chainbase {
 
 namespace eosio { namespace chain {
 
+   class authorization_manager;
+
    namespace resource_limits {
       class resource_limits_manager;
    };
@@ -87,7 +89,7 @@ namespace eosio { namespace chain {
          void commit_block();
          void log_irreversible_blocks();
          void pop_block();
-                             
+
          void push_block( const signed_block_ptr& b );
 
          chainbase::database& db()const;
@@ -108,6 +110,8 @@ namespace eosio { namespace chain {
          const permission_object&              get_permission( const permission_level& level )const;
          const resource_limits_manager&        get_resource_limits_manager()const;
          resource_limits_manager&              get_mutable_resource_limits_manager();
+         const authorization_manager&          get_authorization_manager()const;
+         authorization_manager&                get_mutable_authorization_manager();
 
          block_id_type        head_block_id()const;
          account_name         head_block_producer()const;
@@ -120,32 +124,6 @@ namespace eosio { namespace chain {
 
          signed_block_ptr fetch_block_by_number( uint32_t block_num )const;
          signed_block_ptr fetch_block_by_id( block_id_type id )const;
-
-         /**
-          * @param actions - the actions to check authorization across
-          * @param provided_keys - the set of public keys which have authorized the transaction
-          * @param allow_unused_signatures - true if method should not assert on unused signatures
-          * @param provided_accounts - the set of accounts which have authorized the transaction (presumed to be owner)
-          *
-          * @return fc::microseconds set to the max delay that this authorization requires to complete
-          */
-         fc::microseconds check_authorization( const vector<action>& actions,
-                                               const flat_set<public_key_type>& provided_keys,
-                                               bool                             allow_unused_signatures = false,
-                                               flat_set<account_name>           provided_accounts = flat_set<account_name>(),
-                                               flat_set<permission_level>       provided_levels = flat_set<permission_level>()
-                                             )const;
-
-         /**
-          * @param account - the account owner of the permission
-          * @param permission - the permission name to check for authorization
-          * @param provided_keys - a set of public keys
-          *
-          * @return true if the provided keys are sufficient to authorize the account permission
-          */
-         bool check_authorization( account_name account, permission_name permission,
-                                   flat_set<public_key_type> provided_keys,
-                                   bool allow_unused_signatures )const;
 
          void validate_referenced_accounts( const transaction& t )const;
          void validate_expiration( const transaction& t )const;
@@ -180,9 +158,9 @@ namespace eosio { namespace chain {
 } }  /// eosio::chain
 
 FC_REFLECT( eosio::chain::controller::config::runtime_limits, (max_push_block_us)(max_push_transaction_us)(max_deferred_transactions_us) )
-FC_REFLECT( eosio::chain::controller::config, 
+FC_REFLECT( eosio::chain::controller::config,
             (block_log_dir)
             (shared_memory_dir)(shared_memory_size)(read_only)
             (genesis)
-            (limits)(wasm_runtime) 
+            (limits)(wasm_runtime)
           )

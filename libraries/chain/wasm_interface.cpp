@@ -5,6 +5,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/multiprecision/cpp_bin_float.hpp>
+#include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/wasm_interface_private.hpp>
 #include <eosio/chain/wasm_eosio_validation.hpp>
@@ -766,7 +767,7 @@ class permission_api : public context_aware_api {
             pub_keys.emplace_back(pub);
          }
 
-         return context.control.check_authorization(
+         return context.control.get_authorization_manager().check_authorization(
             account, permission,
             {pub_keys.begin(), pub_keys.end()},
             false

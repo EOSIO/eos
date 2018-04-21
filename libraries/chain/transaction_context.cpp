@@ -13,10 +13,8 @@ namespace eosio { namespace chain {
       EOS_ASSERT( trx.max_kcpu_usage.value < UINT32_MAX / 1024UL, transaction_exception, "declared max_kcpu_usage overflows when expanded to max cpu usage" );
       EOS_ASSERT( trx.max_net_usage_words.value < UINT32_MAX / 8UL, transaction_exception, "declared max_net_usage_words overflows when expanded to max net usage" );
 
-
-
       control.record_transaction( trx_meta ); /// checks for dupes
-      control.validate_tapos( trx ); 
+      control.validate_tapos( trx );
       control.validate_referenced_accounts( trx );
       control.validate_expiration( trx );
 
