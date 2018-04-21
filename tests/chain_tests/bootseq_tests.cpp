@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
 #include <eosio.system/eosio.system.wast.hpp>
@@ -164,7 +164,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         ilog(".");
         // Set privileges for eosio.msig
-        auto trace = base_tester::push_action(config::system_account_name, N(setpriv), 
+        auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
                                               config::system_account_name,  mutable_variant_object()
                 ("account", "eosio.msig")
                 ("is_priv", 1)
@@ -182,7 +182,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         // Issue the genesis supply of 1 billion EOS tokens to eosio.system
         // Issue the genesis supply of 1 billion EOS tokens to eosio.system
-        issue(N(eosio.token), config::system_account_name, config::system_account_name, expected); 
+        issue(N(eosio.token), config::system_account_name, config::system_account_name, expected);
 
         ilog(".");
 

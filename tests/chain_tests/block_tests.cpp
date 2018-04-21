@@ -4,7 +4,6 @@
 
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 
 #ifdef NON_VALIDATING_TEST

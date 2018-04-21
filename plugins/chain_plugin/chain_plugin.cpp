@@ -351,7 +351,7 @@ auto make_resolver(const Api *api) {
 }
 
 fc::variant read_only::get_block(const read_only::get_block_params& params) const {
-   optional<signed_block> block;
+   signed_block_ptr block;
    try {
       block = db.fetch_block_by_id(fc::json::from_string(params.block_num_or_id).as<block_id_type>());
       if (!block) {
@@ -360,9 +360,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
 
    } EOS_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
 
-   if (!block)
-      FC_THROW_EXCEPTION(unknown_block_exception,
-                      "Could not find block: ${block}", ("block", params.block_num_or_id));
+   EOS_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
 
    fc::variant pretty_output;
    abi_serializer::to_variant(*block, pretty_output, make_resolver(this));
@@ -387,11 +385,11 @@ read_write::push_transaction_results read_write::push_transaction(const read_wri
       abi_serializer::from_variant(params, pretty_input, resolver);
    } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-   auto result = db.push_transaction( std::make_shared<transaction_metadata>(move(pretty_input)) );
+   auto trx_trace_ptr = db.push_transaction( std::make_shared<transaction_metadata>(move(pretty_input)) );
 #warning TODO: get transaction results asynchronously
    fc::variant pretty_output;
-   abi_serializer::to_variant(result, pretty_output, resolver);
-   return read_write::push_transaction_results{ result.id, pretty_output };
+   abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
+   return read_write::push_transaction_results{ trx_trace_ptr->id, pretty_output };
 }
 
 read_write::push_transactions_results read_write::push_transactions(const read_write::push_transactions_params& params) {

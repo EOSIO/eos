@@ -32,7 +32,7 @@ BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
    // Calculate the block num of the next round first block
    // The new producer schedule will become effective when it's in the block of the next round first block
    // However, it won't be applied until the effective block num is deemed irreversible
-   uint64_t calc_block_num_of_next_round_first_block(const chain_controller& control){
+   uint64_t calc_block_num_of_next_round_first_block(const controller& control){
       auto res = control.get_dynamic_global_properties().head_block_number + 1;
       const auto blocks_per_round = control.get_global_properties().active_producers.producers.size() * config::producer_repetitions;
       while((res % blocks_per_round) != 0) {
@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
 
 
    BOOST_FIXTURE_TEST_CASE( verify_producers, TESTER ) try {
-      
+
       vector<account_name> valid_producers = {
          "inita", "initb", "initc", "initd", "inite", "initf", "initg",
          "inith", "initi", "initj", "initk", "initl", "initm", "initn",
@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_SUITE(producer_schedule_tests)
       // account initz does not exist
       vector<account_name> nonexisting_producer = { "initz" };
       BOOST_CHECK_THROW(set_producers(nonexisting_producer), wasm_execution_error);
-      
+
       // replace initg with inita, inita is now duplicate
       vector<account_name> invalid_producers = {
          "inita", "initb", "initc", "initd", "inite", "initf", "inita",

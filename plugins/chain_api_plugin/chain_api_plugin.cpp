@@ -15,10 +15,10 @@ using namespace eosio;
 
 class chain_api_plugin_impl {
 public:
-   chain_api_plugin_impl(chain_controller& db)
+   chain_api_plugin_impl(controller& db)
       : db(db) {}
 
-   chain_controller& db;
+   controller& db;
 };
 
 

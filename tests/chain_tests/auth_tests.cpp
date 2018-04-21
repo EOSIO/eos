@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
@@ -10,7 +10,6 @@
 
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 
 BOOST_AUTO_TEST_SUITE(auth_tests)
@@ -23,7 +22,7 @@ BOOST_FIXTURE_TEST_CASE( missing_sigs, TESTER ) { try {
    auto trace = push_reqauth(N(alice), "owner");
 
    produce_block();
-   BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace.id));
+   BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace->id));
 
 } FC_LOG_AND_RETHROW() } /// missing_sigs
 
@@ -36,7 +35,7 @@ BOOST_FIXTURE_TEST_CASE( missing_multi_sigs, TESTER ) { try {
     auto trace = push_reqauth(N(alice), "owner", true); // with multisig
 
     produce_block();
-    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace.id));
+    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace->id));
 
  } FC_LOG_AND_RETHROW() } /// missing_multi_sigs
 
@@ -70,7 +69,7 @@ BOOST_FIXTURE_TEST_CASE( delegate_auth, TESTER ) { try {
    auto trace = push_reqauth(N(alice), {permission_level{N(alice), config::active_name}}, { get_private_key(N(bob), "active") } );
 
    produce_block();
-   BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace.id));
+   BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trace->id));
 
 } FC_LOG_AND_RETHROW() }
 

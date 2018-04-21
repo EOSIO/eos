@@ -47,8 +47,8 @@ struct controller_impl {
    chainbase::database            db;
    block_log                      blog;
    optional<pending_state>        pending;
-   block_state_ptr                head; 
-   fork_database                  fork_db;            
+   block_state_ptr                head;
+   fork_database                  fork_db;
    wasm_interface                 wasmif;
    resource_limits_manager        resource_limits;
    controller::config             conf;
@@ -87,7 +87,7 @@ struct controller_impl {
    }
 
    controller_impl( const controller::config& cfg, controller& s  )
-   :db( cfg.shared_memory_dir, 
+   :db( cfg.shared_memory_dir,
         cfg.read_only ? database::read_only : database::read_write,
         cfg.shared_memory_size ),
     blog( cfg.block_log_dir ),
@@ -130,7 +130,7 @@ struct controller_impl {
        * unwind that pending state. This state will be regenerated
        * when we catch up to the head block later.
        */
-      //clear_all_undo(); 
+      //clear_all_undo();
    }
 
    ~controller_impl() {
@@ -175,7 +175,7 @@ struct controller_impl {
       db.with_write_lock([&] {
          db.undo_all();
          /*
-         FC_ASSERT(db.revision() == self.head_block_num(), 
+         FC_ASSERT(db.revision() == self.head_block_num(),
                    "Chainbase revision does not match head block num",
                    ("rev", db.revision())("head_block", self.head_block_num()));
                    */
@@ -212,7 +212,7 @@ struct controller_impl {
 
          db.set_revision( head->block_num );
          fork_db.set( head );
-  
+
          initialize_database();
       }
       FC_ASSERT( db.revision() == head->block_num, "fork database is inconsistant with shared memory",
@@ -313,7 +313,7 @@ struct controller_impl {
       if( add_to_fork_db ) {
          pending->_pending_block_state->validated = true;
          head = fork_db.add( pending->_pending_block_state );
-      } 
+      }
 
       set_pending_tapos();
 
@@ -325,11 +325,12 @@ struct controller_impl {
    transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx ) {
       unapplied_transactions.erase( trx->signed_id );
 
-      auto r = db.with_write_lock( [&](){ 
+      auto r = db.with_write_lock( [&](){
          return apply_transaction( trx );
       });
 
       pending->_pending_block_state->block->transactions.emplace_back( trx->packed_trx );
+      r->receipt = pending->_pending_block_state->block->transactions.back();
       pending->_pending_block_state->trxs.emplace_back(trx);
       self.accepted_transaction(trx);
 
@@ -384,7 +385,7 @@ struct controller_impl {
       static_cast<signed_block_header&>(*p->block) = p->header;
    } /// sign_block
 
-   void apply_block( const signed_block_ptr& b ) { 
+   void apply_block( const signed_block_ptr& b ) {
       try {
          start_block( b->timestamp );
 
@@ -443,16 +444,16 @@ struct controller_impl {
             catch (const fc::exception& e) { except = e; }
             if (except) {
                wlog("exception thrown while switching forks ${e}", ("e",except->to_detail_string()));
-         
+
                while (ritr != branches.first.rend() ) {
                   fork_db.set_validity( *ritr, false );
                   ++ritr;
                }
-         
+
                // pop all blocks from the bad fork
                while( head_block_id() != branches.second.back()->header.previous )
                   pop_block();
-               
+
                // re-apply good blocks
                for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
                   apply_block( (*ritr)->block );
@@ -507,15 +508,15 @@ struct controller_impl {
    }
 
 
-   void finalize_block() 
+   void finalize_block()
    { try {
-      ilog( "finalize block ${p} ${t} schedule_version: ${v} lib: ${lib} ${np}  ${signed}", 
+      ilog( "finalize block ${p} ${t} schedule_version: ${v} lib: ${lib} ${np}  ${signed}",
             ("p",pending->_pending_block_state->header.producer)
             ("t",pending->_pending_block_state->header.timestamp)
             ("v",pending->_pending_block_state->header.schedule_version)
             ("lib",pending->_pending_block_state->dpos_last_irreversible_blocknum)
             ("np",pending->_pending_block_state->header.new_producers)
-            ("signed", pending->_pending_block_state->block_signing_key) 
+            ("signed", pending->_pending_block_state->block_signing_key)
             );
 
       set_action_merkle();
@@ -527,7 +528,7 @@ struct controller_impl {
       create_block_summary();
 
 
-      /* TODO RESTORE 
+      /* TODO RESTORE
       const auto& b = trace.block;
       update_global_properties( b );
       update_global_dynamic_data( b );
@@ -624,11 +625,11 @@ struct controller_impl {
 
 }; /// controller_impl
 
-const resource_limits_manager&   controller::get_resource_limits_manager()const 
+const resource_limits_manager&   controller::get_resource_limits_manager()const
 {
    return my->resource_limits;
 }
-resource_limits_manager&         controller::get_mutable_resource_limits_manager() 
+resource_limits_manager&         controller::get_mutable_resource_limits_manager()
 {
    return my->resource_limits;
 }
@@ -694,7 +695,7 @@ void controller::push_block( const signed_block_ptr& b ) {
    my->push_block( b );
 }
 
-transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx ) { 
+transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx ) {
    return my->push_transaction(trx);
 }
 
@@ -736,14 +737,14 @@ const global_property_object& controller::get_global_properties()const {
 /**
  *  This method reads the current dpos_irreverible block number, if it is higher
  *  than the last block number of the log, it grabs the next block from the
- *  fork database, saves it to disk, then removes the block from the fork database. 
+ *  fork database, saves it to disk, then removes the block from the fork database.
  *
  *  Any forks built off of a different block with the same number are also pruned.
  */
 void controller::log_irreversible_blocks() {
-   if( !my->blog.head() ) 
+   if( !my->blog.head() )
       my->blog.read_head();
- 
+
    const auto& log_head = my->blog.head();
    auto lib = my->head->dpos_last_irreversible_blocknum;
 
@@ -843,7 +844,7 @@ wasm_interface& controller::get_wasm_interface() {
    return my->wasmif;
 }
 
-const account_object& controller::get_account( account_name name )const 
+const account_object& controller::get_account( account_name name )const
 { try {
    return my->db.get<account_object, by_name>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
@@ -861,7 +862,7 @@ void controller::validate_referenced_accounts( const transaction& trx )const {
    bool one_auth = false;
    for( const auto& a : trx.actions ) {
       get_account( a.account );
-      for( const auto& auth : a.authorization ) { 
+      for( const auto& auth : a.authorization ) {
          one_auth = true;
          get_account( auth.actor );
       }
@@ -903,7 +904,7 @@ void controller::validate_tapos( const transaction& trx )const { try {
    EOS_ASSERT(trx.verify_reference_block(tapos_block_summary.block_id), invalid_ref_block_exception,
               "Transaction's reference block did not match. Is this transaction from a different fork?",
               ("tapos_summary", tapos_block_summary));
-} FC_CAPTURE_AND_RETHROW() } 
+} FC_CAPTURE_AND_RETHROW() }
 
-   
+
 } } /// eosio::chain
