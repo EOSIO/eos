@@ -153,12 +153,15 @@ run `docker-compose up`
 
 We can easliy set up a dawn3.0 local testnet using docker images. Just run the following commands:
 
+Note: if you want to use the mongo db plugin, you have to enable it in your `data-dir/config.ini` first.
+
 ```
 # pull images
 docker pull eosio/eos:dawn3x
 # create volume
 docker volume create --name=nodeos-data-volume
 docker volume create --name=keosd-data-volume
+docker volume create --name=mongo-data-volume
 # start containers
 docker-compose -f docker-compose-dawn3.0.yaml up -d
 # get chain info
