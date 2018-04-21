@@ -485,7 +485,7 @@ void apply_eosio_postrecovery(apply_context& context) {
       .auth = recover_act.auth
    }, update);
 
-   const uint128_t request_id = transaction_id_to_sender_id(context.trx_meta.id);
+   const uint128_t request_id = transaction_id_to_sender_id(context.id);
    auto record_data = mutable_variant_object()
       ("account", account)
       ("request_id", request_id)

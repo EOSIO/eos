@@ -5,7 +5,6 @@
 #pragma once
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/transaction.hpp>
-#include <eosio/chain/transaction_metadata.hpp>
 #include <eosio/chain/contract_table_objects.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
@@ -451,14 +450,14 @@ class apply_context {
 
 
 
-      apply_context(controller& con, const action& a, const transaction_metadata& trx_meta, uint32_t depth=0)
+      apply_context(controller& con, const action& a, const signed_transaction& t, uint32_t depth=0)
 
       :control(con),
        db(con.db()),
        act(a),
        mutable_controller(con),
        used_authorizations(act.authorization.size(), false),
-       trx_meta(trx_meta),
+       trx(t),
        idx64(*this),
        idx128(*this),
        idx256(*this),
@@ -509,7 +508,7 @@ class apply_context {
 
       vector<account_name> get_active_producers() const;
 
-      const bytes&         get_packed_transaction();
+      bytes         get_packed_transaction();
 
       controller&                   control;
       chainbase::database&          db;  ///< database where state is stored
@@ -525,7 +524,8 @@ class apply_context {
       ///< Parallel to act.authorization; tracks which permissions have been used while processing the message
       vector<bool> used_authorizations;
 
-      const transaction_metadata&   trx_meta;
+      const signed_transaction&   trx;
+      transaction_id_type         id;
 
 /*
       struct apply_results {
@@ -571,10 +571,10 @@ class apply_context {
       int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id );
       int db_end_i64( uint64_t code, uint64_t scope, uint64_t table );
 
-      generic_index<index64_object>    idx64;
-      generic_index<index128_object>   idx128;
+      generic_index<index64_object>                                  idx64;
+      generic_index<index128_object>                                 idx128;
       generic_index<index256_object, uint128_t*, const uint128_t*>   idx256;
-      generic_index<index_double_object> idx_double;
+      generic_index<index_double_object>                             idx_double;
 
       uint32_t                                    recurse_depth;  // how deep inline actions can recurse
       fc::time_point_sec                          published_time;

@@ -61,6 +61,7 @@ namespace eosio { namespace chain {
                                                      const vector<bytes>& cfd = vector<bytes>(),
                                                      bool allow_duplicate_keys = false )const;
 
+      uint32_t total_actions()const { return context_free_actions.size() + actions.size(); }
    };
 
    struct signed_transaction : public transaction
@@ -134,7 +135,7 @@ namespace eosio { namespace chain {
     *  passed back to the sender if the transaction fails for some
     *  reason.
     */
-   struct deferred_transaction : public transaction
+   struct deferred_transaction : public signed_transaction
    {
       uint128_t      sender_id; /// ID assigned by sender of generated, accessible via WASM api when executing normal or error
       account_name   sender; /// receives error handler callback
@@ -143,8 +144,9 @@ namespace eosio { namespace chain {
 
       deferred_transaction() = default;
 
-      deferred_transaction(uint128_t sender_id, account_name sender, account_name payer,time_point_sec execute_after, const transaction& txn)
-      : transaction(txn),
+      deferred_transaction(uint128_t sender_id, account_name sender, account_name payer,time_point_sec execute_after, 
+                           const signed_transaction& txn)
+      : signed_transaction(txn),
         sender_id(sender_id),
         sender(sender),
         payer(payer),
@@ -169,5 +171,5 @@ FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures)(context_free_data) )
 FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
 FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(packed_context_free_data)(packed_trx) )
-FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(payer)(execute_after) )
+FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::signed_transaction), (sender_id)(sender)(payer)(execute_after) )
 FC_REFLECT( eosio::chain::deferred_reference, (sender)(sender_id) )

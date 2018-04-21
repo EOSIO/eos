@@ -324,30 +324,55 @@ struct controller_impl {
       self.accepted_block( head );
    }
 
-   transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx ) {
-      unapplied_transactions.erase( trx->signed_id );
-
-      auto r = db.with_write_lock( [&](){
-         return apply_transaction( trx );
-      });
-
-      pending->_pending_block_state->block->transactions.emplace_back( trx->packed_trx );
-      r->receipt = pending->_pending_block_state->block->transactions.back();
-      pending->_pending_block_state->trxs.emplace_back(trx);
-      self.accepted_transaction(trx);
-
-      return r;
-   }
-
-   transaction_trace_ptr apply_transaction( const transaction_metadata_ptr& trx, bool implicit = false ) {
-      transaction_context trx_context( self, trx );
+   transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto ) {
+      fc::datastream<const char*> ds( gto.packed_trx.data(), gto.packed_trx.size() );
+      deferred_transaction dtrx;
+      fc::raw::unpack(ds,dtrx);
+    
+      transaction_context trx_context( self, dtrx, gto.trx_id );
       trx_context.processing_deadline = fc::time_point::now() + conf.limits.max_push_transaction_us;
-      trx_context.exec();
+      trx_context.net_usage      = 0;
+      trx_context.sender         = gto.sender;
+      trx_context.published      = gto.published;
 
+      trx_context.exec();
       auto& acts = pending->_actions;
       fc::move_append( acts, move(trx_context.executed) );
 
       return move(trx_context.trace);
+   }
+
+   transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx ) {
+      unapplied_transactions.erase( trx->signed_id );
+      record_transaction( trx ); /// checks for dupes
+
+      auto trace = apply_transaction( trx );
+
+      pending->_pending_block_state->block->transactions.emplace_back( trx->packed_trx );
+      trace->receipt = pending->_pending_block_state->block->transactions.back();
+      pending->_pending_block_state->trxs.emplace_back(trx);
+      self.accepted_transaction(trx);
+
+      return trace;
+   }
+
+   transaction_trace_ptr apply_transaction( const signed_transaction& trx, 
+                                            const transaction_id_type& id, 
+                                            uint32_t net_usage = 0,
+                                            bool implicit = false ) {
+      transaction_context trx_context( self, trx, id );
+      trx_context.processing_deadline = fc::time_point::now() + conf.limits.max_push_transaction_us;
+      trx_context.net_usage = net_usage;
+
+      trx_context.exec();
+      auto& acts = pending->_actions;
+      fc::move_append( acts, move(trx_context.executed) );
+
+      return move(trx_context.trace);
+   }
+
+   transaction_trace_ptr apply_transaction( const transaction_metadata_ptr& trx, bool implicit = false ) {
+      return apply_transaction( trx->trx, trx->id, self.validate_net_usage(trx), implicit );
    }
 
 
@@ -478,17 +503,6 @@ struct controller_impl {
    bool should_enforce_runtime_limits()const {
       return false;
    }
-
-   /*
-   void validate_net_usage( const transaction& trx, uint32_t min_net_usage ) {
-      uint32_t net_usage_limit = trx.max_net_usage_words.value * 8; // overflow checked in validate_transaction_without_state
-      EOS_ASSERT( net_usage_limit == 0 || min_net_usage <= net_usage_limit,
-                  transaction_exception,
-                  "Packed transaction and associated data does not fit into the space committed to by the transaction's header! [usage=${usage},commitment=${commit}]",
-                  ("usage", min_net_usage)("commit", net_usage_limit));
-   } /// validate_net_usage
-   */
-
 
    void set_action_merkle() {
       vector<digest_type> action_digests;
@@ -702,6 +716,10 @@ transaction_trace_ptr controller::push_transaction( const transaction_metadata_p
 }
 
 transaction_trace_ptr controller::push_next_scheduled_transaction() {
+   const auto& idx = db().get_index<generated_transaction_multi_index,by_delay>();
+   //if( idx.begin() != idx.end() ) 
+      //return my->push_scheduled( *idx.begin() );
+
    return transaction_trace_ptr();
 }
 transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid ) {

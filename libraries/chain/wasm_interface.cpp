@@ -1089,14 +1089,14 @@ class context_free_transaction_api : public context_aware_api {
       }
 
       int expiration() {
-        return context.trx_meta.trx.expiration.sec_since_epoch();
+        return context.trx.expiration.sec_since_epoch();
       }
 
       int tapos_block_num() {
-        return context.trx_meta.trx.ref_block_num;
+        return context.trx.ref_block_num;
       }
       int tapos_block_prefix() {
-        return context.trx_meta.trx.ref_block_prefix;
+        return context.trx.ref_block_prefix;
       }
 
       int get_action( uint32_t type, uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {

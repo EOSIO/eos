@@ -75,8 +75,9 @@ void apply_context::exec()
 
    for( uint32_t i = 0; i < _cfa_inline_actions.size(); ++i ) {
       EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
-      apply_context ncontext( mutable_controller, _cfa_inline_actions[i], trx_meta, recurse_depth + 1 );
+      apply_context ncontext( mutable_controller, _cfa_inline_actions[i], trx, recurse_depth + 1 );
       ncontext.context_free = true;
+      ncontext.id = id;
 
       ncontext.processing_deadline = processing_deadline;
       ncontext.exec();
@@ -89,8 +90,9 @@ void apply_context::exec()
 
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
       EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
-      apply_context ncontext( mutable_controller, _inline_actions[i], trx_meta, recurse_depth + 1 );
+      apply_context ncontext( mutable_controller, _inline_actions[i], trx, recurse_depth + 1 );
       ncontext.processing_deadline = processing_deadline;
+      ncontext.id = id;
       ncontext.exec();
       fc::move_append( executed, move(ncontext.executed) );
       total_cpu_usage += ncontext.total_cpu_usage;
@@ -150,40 +152,6 @@ void apply_context::require_authorization(const account_name& account,
   EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}/${permission}",
               ("account",account)("permission",permission) );
 }
-
-/*
-static bool scopes_contain(const vector<scope_name>& scopes, const scope_name& scope) {
-   return std::find(scopes.begin(), scopes.end(), scope) != scopes.end();
-}
-
-static bool locks_contain(const vector<shard_lock>& locks, const account_name& account, const scope_name& scope) {
-   return std::find(locks.begin(), locks.end(), shard_lock{account, scope}) != locks.end();
-}
-
-void apply_context::require_write_lock(const scope_name& scope) {
-   if (trx_meta.allowed_write_locks) {
-      EOS_ASSERT( locks_contain(**trx_meta.allowed_write_locks, receiver, scope), block_lock_exception, "write lock \"${a}::${s}\" required but not provided", ("a", receiver)("s",scope) );
-   }
-
-   if (!scopes_contain(_write_scopes, scope)) {
-      _write_scopes.emplace_back(scope);
-   }
-}
-
-void apply_context::require_read_lock(const account_name& account, const scope_name& scope) {
-   if (trx_meta.allowed_read_locks || trx_meta.allowed_write_locks ) {
-      bool locked_for_read = trx_meta.allowed_read_locks && locks_contain(**trx_meta.allowed_read_locks, account, scope);
-      if (!locked_for_read && trx_meta.allowed_write_locks) {
-         locked_for_read = locks_contain(**trx_meta.allowed_write_locks, account, scope);
-      }
-      EOS_ASSERT( locked_for_read , block_lock_exception, "read lock \"${a}::${s}\" required but not provided", ("a", account)("s",scope) );
-   }
-
-   if (!locks_contain(_read_locks, account, scope)) {
-      _read_locks.emplace_back(shard_lock{account, scope});
-   }
-}
-*/
 
 bool apply_context::has_recipient( account_name code )const {
    for( auto a : _notified )
@@ -248,6 +216,8 @@ void apply_context::schedule_deferred_transaction( deferred_transaction&& trx ) 
       }
    }
    auto id = trx.id();
+
+   /// TODO: validate authority and delay 
 
    auto trx_size = fc::raw::pack_size(trx);
 
@@ -377,17 +347,17 @@ void apply_context::checktime(uint32_t instruction_count) {
 }
 
 
-const bytes& apply_context::get_packed_transaction() {
-   return trx_meta.raw_packed;
+bytes apply_context::get_packed_transaction() {
+   auto r = fc::raw::pack( static_cast<const transaction&>(trx) );
+   checktime( r.size() );
+   return r;
 }
 
 void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
-//   require_write_lock( payer );
    if( (delta > 0) ) {
-      if (!(privileged || payer == account_name(receiver))) {
+      if( !(privileged || payer == account_name(receiver)) ) {
          require_authorization( payer );
       }
-
       mutable_controller.get_mutable_resource_limits_manager().add_pending_account_ram_usage(payer, delta);
    }
 }
@@ -395,7 +365,6 @@ void apply_context::update_db_usage( const account_name& payer, int64_t delta ) 
 
 int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const
 {
-   const transaction& trx = trx_meta.trx;
    const action* act = nullptr;
    if( type == 0 ) {
       if( index >= trx.context_free_actions.size() )
@@ -417,16 +386,16 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
 }
 
 int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const {
-   if( index >= trx_meta.trx.context_free_data.size() ) return -1;
+   if( index >= trx.context_free_data.size() ) return -1;
 
-   auto s = trx_meta.trx.context_free_data[index].size();
+   auto s = trx.context_free_data[index].size();
 
    if( buffer_size == 0 ) return s;
 
    if( buffer_size < s )
-      memcpy( buffer, trx_meta.trx.context_free_data[index].data(), buffer_size );
+      memcpy( buffer, trx.context_free_data[index].data(), buffer_size );
    else
-      memcpy( buffer, trx_meta.trx.context_free_data[index].data(), s );
+      memcpy( buffer, trx.context_free_data[index].data(), s );
 
    return s;
 }
