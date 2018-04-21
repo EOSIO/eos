@@ -55,10 +55,6 @@ action_trace apply_context::exec_one()
    executed.emplace_back( move(r) );
    total_cpu_usage += cpu_usage;
 
-
-   //results.applied_actions.emplace_back(action_trace {receiver, context_free, _cpu_usage, act, _pending_console_output.str(), move(data_access)});
-
-
    _pending_console_output = std::ostringstream();
 
    t.elapsed = fc::time_point::now() - start;
@@ -237,7 +233,7 @@ void apply_context::execute_context_free_inline( action&& a ) {
 
 
 /// TODO: rename this schedule_deferred it is not actually executed here
-void apply_context::execute_deferred( deferred_transaction&& trx ) {
+void apply_context::schedule_deferred_transaction( deferred_transaction&& trx ) {
    trx.sender = receiver;
    EOS_ASSERT( trx.execute_after < trx.expiration,
                transaction_exception,
@@ -251,6 +247,28 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
          require_authorization(trx.payer); /// uses payer's storage
       }
    }
+   auto id = trx.id();
+
+   auto trx_size = fc::raw::pack_size(trx);
+
+   auto& d = control.db();
+   d.create<generated_transaction_object>( [&]( auto& gtx ) {
+      gtx.trx_id      = id;
+      gtx.sender      = trx.sender;
+      gtx.sender_id   = trx.sender_id;
+      gtx.payer       = trx.payer;
+      gtx.delay_until = trx.execute_after;
+      gtx.expiration  = trx.expiration;
+      gtx.published   = control.pending_block_time();
+
+      gtx.packed_trx.resize( trx_size );
+      fc::datastream<char*> ds( gtx.packed_trx.data(), trx_size );
+      fc::raw::pack( ds, trx );
+   });
+   
+   auto& rl = control.get_mutable_resource_limits_manager();
+   rl.add_pending_account_ram_usage( trx.payer, config::billable_size_v<generated_transaction_object> + trx_size );
+   checktime( trx_size * 4 ); /// 4 instructions per byte of packed generated trx (estimated)
 
 #if 0
    try {
@@ -305,23 +323,25 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
 #endif
 }
 
-void apply_context::cancel_deferred( const uint128_t& sender_id ) {
-   //results.deferred_transaction_requests.push_back(deferred_reference(receiver, sender_id));
+void apply_context::cancel_deferred_transaction( const uint128_t& sender_id ) {
+   auto& generated_transaction_idx = db.get_mutable_index<generated_transaction_multi_index>();
+   const auto& gto = db.get<generated_transaction_object,by_sender_id>(sender_id);
+   FC_ASSERT( gto.sender == receiver, "you can only cancel the transactions you send" );
+
+   control.get_mutable_resource_limits_manager().add_pending_account_ram_usage(gto.payer, -( config::billable_size_v<generated_transaction_object> + gto.packed_trx.size()));
+   generated_transaction_idx.remove(gto);
+   checktime( 100 );
 }
 
 const table_id_object* apply_context::find_table( name code, name scope, name table ) {
-//   require_read_lock(code, scope);
    return db.find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
 }
 
 const table_id_object& apply_context::find_or_create_table( name code, name scope, name table, const account_name &payer ) {
-//   require_read_lock(code, scope);
    const auto* existing_tid =  db.find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
    if (existing_tid != nullptr) {
       return *existing_tid;
    }
-
-//   require_write_lock(scope);
 
    update_db_usage(payer, config::billable_size_v<table_id_object>);
 
@@ -359,20 +379,6 @@ void apply_context::checktime(uint32_t instruction_count) {
 
 const bytes& apply_context::get_packed_transaction() {
    return trx_meta.raw_packed;
-   /*
-   if( !trx_meta.packed_trx.size() ) {
-      if (_cached_trx.empty()) {
-         auto size = fc::raw::pack_size(trx_meta.trx());
-         _cached_trx.resize(size);
-         fc::datastream<char *> ds(_cached_trx.data(), size);
-         fc::raw::pack(ds, trx_meta.trx());
-      }
-
-      return _cached_trx;
-   }
-
-   return trx_meta.packed_trx;
-   */
 }
 
 void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {

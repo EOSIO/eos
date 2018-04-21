@@ -125,39 +125,27 @@ void resource_limits_manager::add_pending_account_ram_usage( const account_name 
       return;
    }
 
-   const auto& usage = _db.get<resource_usage_object,by_owner>( account );
+   const auto& limits = _db.get<resource_limits_object,by_owner>( boost::make_tuple(false, account));
+   const auto& usage  = _db.get<resource_usage_object,by_owner>( account );
 
-   EOS_ASSERT(ram_delta < 0 || UINT64_MAX - usage.pending_ram_usage >= (uint64_t)ram_delta, transaction_exception, "Ram usage delta would overflow UINT64_MAX");
-   EOS_ASSERT(ram_delta > 0 || usage.pending_ram_usage >= (uint64_t)(-ram_delta), transaction_exception, "Ram usage delta would underflow UINT64_MAX");
-
-   _db.modify(usage, [&](resource_usage_object& o){
-      o.pending_ram_usage += ram_delta;
+   _db.modify( usage, [&]( auto& u ) {
+     u.ram_usage += ram_delta;
    });
-}
 
-void resource_limits_manager::synchronize_account_ram_usage( ) {
-   auto& multi_index = _db.get_mutable_index<resource_usage_index>();
-   auto& by_dirty_index = multi_index.indices().get<by_dirty>();
+   FC_ASSERT( usage.ram_usage >= 0, "cannot have negative usage!" );
 
-   while(!by_dirty_index.empty()) {
-      const auto& itr = by_dirty_index.lower_bound(boost::make_tuple(true));
-      if (itr == by_dirty_index.end() || itr->is_dirty() != true) {
-         break;
-      }
+   EOS_ASSERT(ram_delta < 0 || UINT64_MAX - usage.ram_usage>= (uint64_t)ram_delta, transaction_exception, 
+              "Ram usage delta would overflow UINT64_MAX");
+   EOS_ASSERT(ram_delta > 0 || usage.ram_usage >= (uint64_t)(-ram_delta), transaction_exception, 
+              "Ram usage delta would underflow UINT64_MAX");
 
-      const auto& limits = _db.get<resource_limits_object,by_owner>( boost::make_tuple(false, itr->owner));
-
-      if (limits.ram_bytes >= 0 && itr->pending_ram_usage > limits.ram_bytes) {
-         tx_resource_exhausted e(FC_LOG_MESSAGE(error, "account ${a} has insufficient ram bytes", ("a", itr->owner)));
-         e.append_log(FC_LOG_MESSAGE(error, "needs ${d} has ${m}", ("d",itr->pending_ram_usage)("m",limits.ram_bytes)));
-         throw e;
-      }
-
-      _db.modify(*itr, [&](resource_usage_object& o){
-         o.ram_usage = o.pending_ram_usage;
-      });
+   if( limits.ram_bytes >= 0 && usage.ram_usage > limits.ram_bytes ) {
+      tx_resource_exhausted e(FC_LOG_MESSAGE(error, "account ${a} has insufficient ram bytes", ("a", account)));
+      e.append_log(FC_LOG_MESSAGE(error, "needs ${d} has ${m}", ("d",usage.ram_usage)("m",limits.ram_bytes)));
+      throw e;
    }
 }
+
 
 void resource_limits_manager::set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight) {
    const auto& usage = _db.get<resource_usage_object,by_owner>( account );

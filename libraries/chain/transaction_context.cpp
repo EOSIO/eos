@@ -1,6 +1,7 @@
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/resource_limits.hpp>
 
 
 namespace eosio { namespace chain {
@@ -27,13 +28,23 @@ namespace eosio { namespace chain {
 
       for( const auto& act : trx_meta->trx.actions ) {
          dispatch_action( act, act.account, false );
+         for( const auto& auth : act.authorization )
+            bill_to_accounts.insert( auth.actor );
       }
+
+      auto& rl       = control.get_mutable_resource_limits_manager();
+      auto net_usage = trx_meta->packed_trx.get_billable_size();
+
+      vector<account_name> bta( bill_to_accounts.begin(), bill_to_accounts.end() );
+
+      rl.add_transaction_usage( bta, trace->cpu_usage, net_usage, block_timestamp_type(control.pending_block_time()).slot );
 
       undo_session.squash();
    }
 
    void transaction_context::dispatch_action( const action& a, account_name receiver, bool context_free ) {
       apply_context  acontext( control, a, *trx_meta );
+
       acontext.context_free = context_free;
       acontext.receiver     = receiver;
       acontext.processing_deadline = processing_deadline;

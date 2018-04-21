@@ -40,7 +40,6 @@ namespace eosio { namespace chain { namespace resource_limits {
 
 
          void add_pending_account_ram_usage( const account_name account, int64_t ram_delta );
-         void synchronize_account_ram_usage( );
 
          void set_account_limits( const account_name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight);
          void get_account_limits( const account_name& account, int64_t& ram_bytes, int64_t& net_weight, int64_t& cpu_weight) const;

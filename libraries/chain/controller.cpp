@@ -310,12 +310,14 @@ struct controller_impl {
    }
 
    void commit_block( bool add_to_fork_db ) {
+      set_pending_tapos();
+      resource_limits.process_account_limit_updates();
+      resource_limits.process_block_usage( pending->_pending_block_state->block_num );
+
       if( add_to_fork_db ) {
          pending->_pending_block_state->validated = true;
          head = fork_db.add( pending->_pending_block_state );
       }
-
-      set_pending_tapos();
 
       pending->push();
       pending.reset();

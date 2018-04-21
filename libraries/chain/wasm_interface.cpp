@@ -1060,13 +1060,13 @@ class transaction_api : public context_aware_api {
             dtrx.sender_id = sender_id;
             dtrx.execute_after = time_point_sec( (context.control.head_block_time() + fc::seconds(dtrx.delay_sec)) + fc::microseconds(999'999) ); // rounds up to nearest second
             dtrx.payer = payer;
-            context.execute_deferred(std::move(dtrx));
+            context.schedule_deferred_transaction(std::move(dtrx));
          } FC_CAPTURE_AND_RETHROW((fc::to_hex(data, data_len)));
       }
 
       void cancel_deferred( const unsigned __int128& val ) {
          fc::uint128_t sender_id(val>>64, uint64_t(val) );
-         context.cancel_deferred( (unsigned __int128)sender_id );
+         context.cancel_deferred_transaction( (unsigned __int128)sender_id );
       }
 };
 

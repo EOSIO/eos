@@ -502,7 +502,7 @@ void apply_eosio_postrecovery(apply_context& context) {
    dtrx.actions.emplace_back(vector<permission_level>{{account,config::active_name}},
                              passrecovery { account });
 
-   context.execute_deferred(std::move(dtrx));
+   context.schedule_deferred_transaction(std::move(dtrx));
 
    auto data = get_abi_serializer().variant_to_binary("pending_recovery", record_data);
    const uint64_t id = account;
@@ -559,7 +559,7 @@ void apply_eosio_vetorecovery(apply_context& context) {
    FC_ASSERT(maybe_recovery, "No pending recovery found for account ${account}", ("account", account));
    auto recovery = *maybe_recovery;
 
-   context.cancel_deferred(recovery["request_id"].as<uint128_t>());
+   context.cancel_deferred_transaction(recovery["request_id"].as<uint128_t>());
 
    remove_pending_recovery(context, account);
    context.console_append_formatted("Recovery for account ${account} vetoed!\n", mutable_variant_object()("account", account));
@@ -594,7 +594,7 @@ void apply_eosio_canceldelay(apply_context& context) {
    FC_ASSERT (found, "canceldelay action must be signed with the \"active\" permission for one of the actors"
                      " provided in the authorizations on the original transaction");
 
-   context.cancel_deferred(transaction_id_to_sender_id(trx_id));
+   context.cancel_deferred_transaction(transaction_id_to_sender_id(trx_id));
 }
 
 } } // namespace eosio::chain

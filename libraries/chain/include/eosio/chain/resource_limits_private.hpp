@@ -117,25 +117,13 @@ namespace eosio { namespace chain { namespace resource_limits {
       usage_accumulator        cpu_usage;
 
       uint64_t                 ram_usage = 0;
-      uint64_t                 pending_ram_usage = 0;
-
-      bool is_dirty() const {
-         // checks for ram_usage overflowing a signed int are maintained in the update step
-         return ram_usage != pending_ram_usage;
-      }
    };
 
    using resource_usage_index = chainbase::shared_multi_index_container<
       resource_usage_object,
       indexed_by<
          ordered_unique<tag<by_id>, member<resource_usage_object, resource_usage_object::id_type, &resource_usage_object::id>>,
-         ordered_unique<tag<by_owner>, member<resource_usage_object, account_name, &resource_usage_object::owner> >,
-         ordered_unique<tag<by_dirty>,
-            composite_key<resource_usage_object,
-               BOOST_MULTI_INDEX_CONST_MEM_FUN(resource_usage_object, bool, is_dirty),
-               BOOST_MULTI_INDEX_MEMBER(resource_usage_object, resource_usage_object::id_type, id)
-            >
-         >
+         ordered_unique<tag<by_owner>, member<resource_usage_object, account_name, &resource_usage_object::owner> >
       >
    >;
 

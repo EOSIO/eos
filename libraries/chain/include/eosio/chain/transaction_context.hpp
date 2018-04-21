@@ -28,6 +28,7 @@ namespace eosio { namespace chain {
          controller&                       control;
          const transaction_metadata_ptr&   trx_meta;
          chainbase::database::session      undo_session;
+         flat_set<account_name>            bill_to_accounts;
    };
 
 } }
