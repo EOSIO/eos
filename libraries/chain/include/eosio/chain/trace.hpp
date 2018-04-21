@@ -29,6 +29,7 @@ namespace eosio { namespace chain {
       transaction_receipt_header   receipt;
       fc::microseconds             elapsed;
       uint64_t                     cpu_usage = 0;
+      bool                         scheduled = false;
       vector<action_trace>         action_traces; ///< disposable
    };
    typedef std::shared_ptr<transaction_trace> transaction_trace_ptr;

@@ -81,6 +81,7 @@ void apply_context::exec()
       ncontext.id = id;
 
       ncontext.processing_deadline = processing_deadline;
+      ncontext.published_time      = published_time;
       ncontext.exec();
       fc::move_append( executed, move(ncontext.executed) );
       total_cpu_usage += ncontext.total_cpu_usage;
@@ -93,6 +94,7 @@ void apply_context::exec()
       EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
       apply_context ncontext( mutable_controller, _inline_actions[i], trx, recurse_depth + 1 );
       ncontext.processing_deadline = processing_deadline;
+      ncontext.published_time      = published_time;
       ncontext.id = id;
       ncontext.exec();
       fc::move_append( executed, move(ncontext.executed) );
@@ -219,8 +221,9 @@ void apply_context::schedule_deferred_transaction( deferred_transaction&& trx ) 
    auto id = trx.id();
 
    /// TODO: validate authority and delay 
+   const auto& tr = static_cast<const transaction&>(trx);
 
-   auto trx_size = fc::raw::pack_size(trx);
+   auto trx_size = fc::raw::pack_size(tr);
 
    auto& d = control.db();
    d.create<generated_transaction_object>( [&]( auto& gtx ) {
@@ -234,7 +237,7 @@ void apply_context::schedule_deferred_transaction( deferred_transaction&& trx ) 
 
       gtx.packed_trx.resize( trx_size );
       fc::datastream<char*> ds( gtx.packed_trx.data(), trx_size );
-      fc::raw::pack( ds, trx );
+      fc::raw::pack( ds, tr );
    });
 
    auto& rl = control.get_mutable_resource_limits_manager();

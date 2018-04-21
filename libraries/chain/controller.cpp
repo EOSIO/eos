@@ -302,23 +302,50 @@ struct controller_impl {
       self.accepted_block( head );
    }
 
+   void apply_onerror( const generated_transaction_object& gto ) {
+      /*
+      try {
+         signed_transaction etrx;
+         etrx.actions.emplace_back(vector<permission_level>{{gto.sender,config::active_name}},
+                                   contracts::onerror( gto.sender_id, gto.packed_trx.data(), gto.packed_trx.size()) );
+
+         db.remove( gto );
+      }
+      */
+   }
+
    transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto ) {
       fc::datastream<const char*> ds( gto.packed_trx.data(), gto.packed_trx.size() );
-      deferred_transaction dtrx;
-      fc::raw::unpack(ds,dtrx);
-    
-      transaction_context trx_context( self, dtrx, gto.trx_id );
-      trx_context.processing_deadline = fc::time_point::now() + conf.limits.max_push_transaction_us;
-      trx_context.net_usage      = 0;
-      trx_context.sender         = gto.sender;
-      trx_context.published      = gto.published;
 
-      trx_context.exec();
-      auto& acts = pending->_actions;
-      fc::move_append( acts, move(trx_context.executed) );
+      optional<fc::exception> except;
+      try {
+         signed_transaction dtrx;
+         fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
+       
+         transaction_context trx_context( self, dtrx, gto.trx_id );
+         trx_context.processing_deadline = fc::time_point::now() + conf.limits.max_push_transaction_us;
+         trx_context.published      = gto.published;
 
-      return move(trx_context.trace);
-   }
+         /*
+         trx_context.exec();
+         auto& acts = pending->_actions;
+         fc::move_append( acts, move(trx_context.executed) );
+
+         db.remove( gto );
+
+         pending->_pending_block_state->block->transactions.emplace_back( gto.trx_id );
+         pending->_pending_block_state->block->transactions.back().kcpu_usage = trx.total_cpu_usage;
+
+         return move(trx_context.trace);
+         */
+      } catch( const fc::exception& e ) {
+         except = e;
+      }
+      if( except ) {
+         apply_onerror( gto );
+      }
+      return transaction_trace_ptr();
+   } /// push_scheduled_transaction
 
    transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx ) {
       unapplied_transactions.erase( trx->signed_id );

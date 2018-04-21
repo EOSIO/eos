@@ -31,7 +31,6 @@ namespace eosio { namespace chain {
          controller&                       control;
          transaction_id_type               id;
 
-         account_name                      sender;
          fc::time_point                    published;
          const signed_transaction&         trx;
          uint32_t                          net_usage = 0;

@@ -356,8 +356,7 @@ void apply_eosio_unlinkauth(apply_context& context) {
 }
 
 void apply_eosio_onerror(apply_context& context) {
-   FC_ASSERT(context.sender != account_name(), "onerror action cannot be called directly");
-   context.require_recipient(context.sender);
+   context.require_authorization(config::system_account_name);
 }
 
 static const abi_serializer& get_abi_serializer() {
@@ -495,8 +494,9 @@ void apply_eosio_passrecovery(apply_context& context) {
 
    // ensure this is only processed if it is a deferred transaction from the system account
    // TODO: verify this works with any PRIVILEGED account
-   FC_ASSERT( context.sender == config::system_account_name );
+   // FC_ASSERT( context.sender == config::system_account_name );
    context.require_authorization(account);
+   context.require_authorization(config::system_account_name);
 
    auto maybe_recovery = get_pending_recovery(context, account);
    FC_ASSERT(maybe_recovery, "No pending recovery found for account ${account}", ("account", account));
