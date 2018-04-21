@@ -6,6 +6,7 @@
 
 #include <eosio/chain/action.hpp>
 #include <eosio/chain/action_receipt.hpp>
+#include <eosio/chain/block.hpp>
 
 namespace eosio { namespace chain {
 
@@ -24,9 +25,11 @@ namespace eosio { namespace chain {
    };
 
    struct transaction_trace {
-      fc::microseconds        elapsed;
-      uint64_t                cpu_usage = 0;
-      vector<action_trace>    action_traces; ///< disposable
+      transaction_id_type          id;
+      transaction_receipt_header   receipt;
+      fc::microseconds             elapsed;
+      uint64_t                     cpu_usage = 0;
+      vector<action_trace>         action_traces; ///< disposable
    };
    typedef std::shared_ptr<transaction_trace> transaction_trace_ptr;
 
@@ -39,5 +42,5 @@ namespace eosio { namespace chain {
 
 } }  /// namespace eosio::chain
 
-FC_REFLECT_DERIVED( eosio::chain::action_trace, (eosio::chain::action_receipt),
-                    (elapsed)(cpu_usage)(console)(total_inline_cpu_usage)(inline_traces) )
+FC_REFLECT( eosio::chain::action_trace, (receipt)(act)(elapsed)(cpu_usage)(console)(total_inline_cpu_usage)(inline_traces) )
+FC_REFLECT( eosio::chain::transaction_trace, (id)(receipt)(elapsed)(cpu_usage)(action_traces) )

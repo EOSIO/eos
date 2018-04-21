@@ -52,7 +52,7 @@ class producer_plugin_impl {
       producer_plugin* _self = nullptr;
 
       void on_block( const block_trace& bt ) {
-         chain::chain_controller& chain = app().get_plugin<chain_plugin>().chain();
+         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
 
          if( bt.block.timestamp <= _last_signed_block_time ) return;
          if( bt.block.timestamp <= _start_time ) return;

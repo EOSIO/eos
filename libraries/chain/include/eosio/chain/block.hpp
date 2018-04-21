@@ -8,7 +8,8 @@ namespace eosio { namespace chain {
     * When a transaction is referenced by a block it could imply one of several outcomes which
     * describe the state-transition undertaken by the block producer.
     */
-   struct transaction_receipt {
+
+   struct transaction_receipt_header {
       enum status_enum {
          executed  = 0, ///< succeed, no error handler executed
          soft_fail = 1, ///< objectively failed (not executed), error handler executed
@@ -17,19 +18,25 @@ namespace eosio { namespace chain {
          implicit  = 4  ///< transaction that is implied or implicit with the block generation (such as on block action)
       };
 
-      transaction_receipt() : status(hard_fail) {}
-      transaction_receipt( transaction_id_type tid ):status(executed),trx(tid){}
-      transaction_receipt( packed_transaction ptrx ):status(executed),trx(ptrx){}
+      transaction_receipt_header():status(hard_fail){}
+      transaction_receipt_header( status_enum s ):status(s){}
 
-      fc::enum_type<uint8_t,status_enum>                          status;
-      fc::unsigned_int                                            kcpu_usage; ///< total billed CPU usage 
-      fc::unsigned_int                                            net_usage_words; ///<  total billed NET usage, so we can reconstruct resource state when skipping context free data... hard failures...
+      fc::enum_type<uint8_t,status_enum>   status;
+      fc::unsigned_int                     kcpu_usage; ///< total billed CPU usage
+      fc::unsigned_int                     net_usage_words; ///<  total billed NET usage, so we can reconstruct resource state when skipping context free data... hard failures...
+   };
+
+   struct transaction_receipt : public transaction_receipt_header {
+
+      transaction_receipt():transaction_receipt_header(){}
+      transaction_receipt( transaction_id_type tid ):transaction_receipt_header(executed),trx(tid){}
+      transaction_receipt( packed_transaction ptrx ):transaction_receipt_header(executed),trx(ptrx){}
+
       fc::static_variant<transaction_id_type, packed_transaction> trx;
-
 
       digest_type digest()const {
          /* TODO
-         if( packed_trx ) { 
+         if( packed_trx ) {
             return hash(status, usage, packed.trx().id(), packed.packed_digest() )
          }
          */
@@ -53,8 +60,9 @@ namespace eosio { namespace chain {
 
 } } /// eosio::chain
 
-FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, 
+FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum,
                  (executed)(soft_fail)(hard_fail)(delayed)(implicit) )
 
-FC_REFLECT(eosio::chain::transaction_receipt, (status)(kcpu_usage)(net_usage_words)(trx) )
+FC_REFLECT(eosio::chain::transaction_receipt_header, (status)(kcpu_usage)(net_usage_words) )
+FC_REFLECT_DERIVED(eosio::chain::transaction_receipt, (eosio::chain::transaction_receipt_header), (trx) )
 FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_header), (transactions))

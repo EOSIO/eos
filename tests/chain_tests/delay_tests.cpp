@@ -14,7 +14,6 @@
 
 using namespace eosio;
 using namespace eosio::chain;
-using namespace eosio::chain::contracts;
 using namespace eosio::testing;
 
 
@@ -1296,7 +1295,7 @@ BOOST_AUTO_TEST_CASE( mindelay_test ) { try {
    // send transfer with delay_sec set to 10
    const auto& acnt = chain.control->get_database().get<account_object,by_name>(N(currency));
    const auto abi = acnt.get_abi();
-   chain::contracts::abi_serializer abis(abi);
+   chain::abi_serializer abis(abi);
    const auto a = chain.control->get_database().get<account_object,by_name>(N(currency)).get_abi();
 
    string action_type_name = abis.get_action_type(name("transfer"));
@@ -1495,7 +1494,7 @@ BOOST_AUTO_TEST_CASE( canceldelay_test ) { try {
    // send canceldelay for first delayed transaction
    signed_transaction trx;
    trx.actions.emplace_back(vector<permission_level>{{N(tester), config::active_name}},
-                            chain::contracts::canceldelay{ids[0]});
+                            chain::canceldelay{ids[0]});
    trx.actions.back().authorization.push_back({N(tester), config::active_name});
 
    chain.set_transaction_headers(trx);

@@ -7,12 +7,13 @@ namespace eosio { namespace chain {
 
    class transaction_context {
       public:
-         transaction_context( controller& c, const transaction_metadata_ptr& trx ) 
+         transaction_context( controller& c, const transaction_metadata_ptr& trx )
          :control(c),
           trx_meta(trx),
           undo_session(c.db().start_undo_session(true))
          {
             trace = std::make_shared<transaction_trace>();
+            trace->id = trx->id;
             executed.reserve( trx_meta->total_actions() );
          }
 
