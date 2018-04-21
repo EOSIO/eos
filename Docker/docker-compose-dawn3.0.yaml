@@ -6,6 +6,8 @@ services:
     hostname: mongo
     ports:
       - 27017:27017
+    volumes:
+      - mongo-data-volume:/data/db
 
   nodeosd:
     image: eosio/eos:latest
@@ -31,6 +33,8 @@ services:
       - keosd-data-volume:/opt/eosio/bin/data-dir
 
 volumes:
+ mongo-data-volume:
+   external: true
  nodeos-data-volume:
    external: true
  keosd-data-volume:
