@@ -168,6 +168,8 @@ docker-compose -f docker-compose-dawn3.0.yaml up -d
 curl http://127.0.0.1:8888/v1/chain/get_info
 # get logs
 docker-compose logs nodeosd
+# stop containers
+docker-compose -f docker-compose-dawn3.0.yaml down
 ```
 
 The `blocks` data are stored under `--data-dir` by default, and the wallet files are stored under `--wallet-dir` by default, of course you can change these as you want.
