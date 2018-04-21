@@ -157,7 +157,7 @@ Note: if you want to use the mongo db plugin, you have to enable it in your `dat
 
 ```
 # pull images
-docker pull eosio/eos:dawn3x
+docker pull eosio/eos:latest
 # create volume
 docker volume create --name=nodeos-data-volume
 docker volume create --name=keosd-data-volume
