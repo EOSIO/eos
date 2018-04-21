@@ -214,7 +214,7 @@ e.g.
 
 const char* error_advice_3130001 =  "Ensure that you have \033[2meosio::chain_api_plugin\033[0m\033[32m added to your node's configuration!";
 const char* error_advice_3130002 =  "Ensure that you have \033[2meosio::wallet_api_plugin\033[0m\033[32m added to your node's configuration!\n"\
-                                    "Otherwise specify your wallet location with \033[2m--wallet-host\033[0m\033[32m and \033[2m--wallet_port\033[0m\033[32m arguments!";
+                                    "Otherwise specify your wallet location with \033[2m--wallet-host\033[0m\033[32m and \033[2m--wallet-port\033[0m\033[32m arguments!";
 const char* error_advice_3130003 =  "Ensure that you have \033[2meosio::account_history_api_plugin\033[0m\033[32m added to your node's configuration!";
 const char* error_advice_3130004 =  "Ensure that you have \033[2meosio::net_api_plugin\033[0m\033[32m added to your node's configuration!";
 
