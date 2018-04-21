@@ -39,5 +39,7 @@ namespace eosio { namespace chain {
 
 } }  /// namespace eosio::chain
 
-FC_REFLECT_DERIVED( eosio::chain::action_trace, (eosio::chain::action_receipt),
-                    (elapsed)(cpu_usage)(console)(total_inline_cpu_usage)(inline_traces) )
+FC_REFLECT( eosio::chain::action_trace, 
+                    (receipt)(act)(elapsed)(cpu_usage)(console)(total_inline_cpu_usage)(inline_traces) )
+FC_REFLECT( eosio::chain::transaction_trace, (elapsed)(cpu_usage)(action_traces) )
+FC_REFLECT( eosio::chain::block_trace, (elapsed)(cpu_usage)(trx_traces) )

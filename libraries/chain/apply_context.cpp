@@ -15,10 +15,12 @@ using boost::container::flat_set;
 namespace eosio { namespace chain {
 action_trace apply_context::exec_one()
 {
+   const auto& gpo = control.get_global_properties();
+
    auto start = fc::time_point::now();
-   cpu_usage = 0;
+   cpu_usage = gpo.configuration.base_per_action_cpu_usage; 
    try {
-      const auto &a = control.get_account(receiver);// mutable_controller.db().get<account_object, by_name>(receiver);
+      const auto &a = control.get_account(receiver);
       privileged = a.privileged;
       auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
       if (native) {
@@ -70,6 +72,8 @@ void apply_context::exec()
       receiver = _notified[i];
       if( i == 0 ) { /// first one is the root, of this trace
          trace = exec_one();
+      } else {
+         trace.inline_traces.emplace_back( exec_one() );
       }
    }
 
@@ -78,6 +82,7 @@ void apply_context::exec()
       apply_context ncontext( mutable_controller, _cfa_inline_actions[i], trx_meta, recurse_depth + 1 );
       ncontext.context_free = true;
 
+      ncontext.processing_deadline = processing_deadline;
       ncontext.exec();
       fc::move_append( executed, move(ncontext.executed) );
       total_cpu_usage += ncontext.total_cpu_usage;
@@ -89,6 +94,7 @@ void apply_context::exec()
    for( uint32_t i = 0; i < _inline_actions.size(); ++i ) {
       EOS_ASSERT( recurse_depth < config::max_recursion_depth, transaction_exception, "inline action recursion depth reached" );
       apply_context ncontext( mutable_controller, _inline_actions[i], trx_meta, recurse_depth + 1 );
+      ncontext.processing_deadline = processing_deadline;
       ncontext.exec();
       fc::move_append( executed, move(ncontext.executed) );
       total_cpu_usage += ncontext.total_cpu_usage;
@@ -190,9 +196,10 @@ bool apply_context::has_recipient( account_name code )const {
    return false;
 }
 
-void apply_context::require_recipient( account_name code ) {
-   if( !has_recipient(code) )
-      _notified.push_back(code);
+void apply_context::require_recipient( account_name recipient ) {
+   if( !has_recipient(recipient) ) {
+      _notified.push_back(recipient);
+   }
 }
 
 
@@ -343,6 +350,7 @@ vector<account_name> apply_context::get_active_producers() const {
 
 void apply_context::checktime(uint32_t instruction_count) {
    if( fc::time_point::now() > processing_deadline ) {
+      wdump((processing_deadline)(fc::time_point::now()) );
       throw checktime_exceeded();
    }
    cpu_usage += instruction_count;

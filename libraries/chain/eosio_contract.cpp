@@ -202,8 +202,8 @@ void apply_eosio_updateauth(apply_context& context) {
                "Permission names that start with 'eosio.' are reserved" );
    EOS_ASSERT(update.permission != update.parent, action_validate_exception, "Cannot set an authority as its own parent");
    db.get<account_object, by_name>(update.account);
-   EOS_ASSERT(validate(update.data), action_validate_exception,
-              "Invalid authority: ${auth}", ("auth", update.data));
+   EOS_ASSERT(validate(update.auth), action_validate_exception,
+              "Invalid authority: ${auth}", ("auth", update.auth));
    if( update.permission == config::active_name )
       EOS_ASSERT(update.parent == config::owner_name, action_validate_exception, "Cannot change active authority's parent from owner", ("update.parent", update.parent) );
    if (update.permission == config::owner_name)
@@ -238,7 +238,7 @@ void apply_eosio_updateauth(apply_context& context) {
 
    FC_ASSERT(act_auth.actor == update.account && permission_is_valid_for_update(), "updateauth must carry a permission equal to or in the ancestery of permission it updates");
 
-   validate_authority_precondition(context, update.data);
+   validate_authority_precondition(context, update.auth);
 
    auto permission = db.find<permission_object, by_owner>(boost::make_tuple(update.account, update.permission));
 
@@ -260,10 +260,10 @@ void apply_eosio_updateauth(apply_context& context) {
       // TODO/QUESTION: If we are updating an existing permission, should we check if the message declared
       // permission satisfies the permission we want to modify?
       db.modify(*permission, [&update, &parent_id, &context](permission_object& po) {
-         po.auth = update.data;
+         po.auth = update.auth;
          po.parent = parent_id;
          po.last_updated = context.control.head_block_time();
-         po.delay = fc::seconds(update.delay);
+         po.delay = fc::seconds(update.auth.delay_sec);
       });
 
       int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
@@ -278,10 +278,10 @@ void apply_eosio_updateauth(apply_context& context) {
       const auto& p = db.create<permission_object>([&update, &parent_id, &context](permission_object& po) {
          po.name = update.permission;
          po.owner = update.account;
-         po.auth = update.data;
+         po.auth = update.auth;
          po.parent = parent_id;
          po.last_updated = context.control.head_block_time();
-         po.delay = fc::seconds(update.delay);
+         po.delay = fc::seconds(update.auth.delay_sec);
       });
 
       resources.add_pending_account_ram_usage(
@@ -482,7 +482,7 @@ void apply_eosio_postrecovery(apply_context& context) {
       .account = account,
       .permission = N(owner),
       .parent = 0,
-      .data = recover_act.data
+      .auth = recover_act.auth
    }, update);
 
    const uint128_t request_id = transaction_id_to_sender_id(context.trx_meta.id);

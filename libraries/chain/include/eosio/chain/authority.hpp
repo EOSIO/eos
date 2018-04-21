@@ -42,6 +42,7 @@ struct authority {
 
 
   uint32_t                          threshold = 0;
+  uint32_t                          delay_sec = 0;
   vector<key_weight>                keys;
   vector<permission_level_weight>   accounts;
 };
@@ -53,12 +54,14 @@ struct shared_authority {
 
    shared_authority& operator=(const authority& a) {
       threshold = a.threshold;
+      delay_sec = a.delay_sec;
       keys = decltype(keys)(a.keys.begin(), a.keys.end(), keys.get_allocator());
       accounts = decltype(accounts)(a.accounts.begin(), a.accounts.end(), accounts.get_allocator());
       return *this;
    }
 
    uint32_t                                   threshold = 0;
+   uint32_t                                   delay_sec = 0;
    shared_vector<key_weight>                  keys;
    shared_vector<permission_level_weight>     accounts;
 
@@ -66,6 +69,7 @@ struct shared_authority {
    authority to_authority()const {
       authority auth;
       auth.threshold = threshold;
+      auth.delay_sec = delay_sec;
       auth.keys.reserve(keys.size());
       auth.accounts.reserve(accounts.size());
       for( const auto& k : keys ) { auth.keys.emplace_back( k ); }
@@ -126,5 +130,5 @@ inline bool validate( const Authority& auth ) {
 
 FC_REFLECT(eosio::chain::permission_level_weight, (permission)(weight) )
 FC_REFLECT(eosio::chain::key_weight, (key)(weight) )
-FC_REFLECT(eosio::chain::authority, (threshold)(keys)(accounts))
-FC_REFLECT(eosio::chain::shared_authority, (threshold)(keys)(accounts))
+FC_REFLECT(eosio::chain::authority, (threshold)(delay_sec)(keys)(accounts))
+FC_REFLECT(eosio::chain::shared_authority, (threshold)(delay_sec)(keys)(accounts))

@@ -42,6 +42,8 @@ namespace eosio { namespace testing {
             cfg.wasm_runtime = chain::wasm_interface::vm_type::binaryen;
          else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
             cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
+         else
+            cfg.wasm_runtime = chain::wasm_interface::vm_type::binaryen;
       }
 
       open();
@@ -416,7 +418,7 @@ namespace eosio { namespace testing {
                                    .account    = account,
                                    .permission = perm,
                                    .parent     = parent,
-                                   .data       = move(auth),
+                                   .auth       = move(auth),
                                 });
 
          set_transaction_headers(trx);

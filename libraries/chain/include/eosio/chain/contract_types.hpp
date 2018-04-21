@@ -151,8 +151,7 @@ struct updateauth {
    account_name                      account;
    permission_name                   permission;
    permission_name                   parent;
-   authority                         data;
-   uint32_t                          delay;
+   authority                         auth;
 
    static account_name get_account() {
       return config::system_account_name;
@@ -234,7 +233,7 @@ struct onerror : bytes {
 
 struct postrecovery {
    account_name       account;
-   authority          data;
+   authority          auth;
    string             memo;
 
    static account_name get_account() {
@@ -296,11 +295,11 @@ FC_REFLECT( eosio::chain::abi_def                          , (types)(structs)(ac
 FC_REFLECT( eosio::chain::newaccount                       , (creator)(name)(owner)(active)(recovery) )
 FC_REFLECT( eosio::chain::setcode                          , (account)(vmtype)(vmversion)(code) ) //abi
 FC_REFLECT( eosio::chain::setabi                           , (account)(abi) )
-FC_REFLECT( eosio::chain::updateauth                       , (account)(permission)(parent)(data)(delay) )
+FC_REFLECT( eosio::chain::updateauth                       , (account)(permission)(parent)(auth) )
 FC_REFLECT( eosio::chain::deleteauth                       , (account)(permission) )
 FC_REFLECT( eosio::chain::linkauth                         , (account)(code)(type)(requirement) )
 FC_REFLECT( eosio::chain::unlinkauth                       , (account)(code)(type) )
-FC_REFLECT( eosio::chain::postrecovery                     , (account)(data)(memo) )
+FC_REFLECT( eosio::chain::postrecovery                     , (account)(auth)(memo) )
 FC_REFLECT( eosio::chain::passrecovery                     , (account) )
 FC_REFLECT( eosio::chain::vetorecovery                     , (account) )
 FC_REFLECT( eosio::chain::canceldelay                      , (trx_id) )
