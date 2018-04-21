@@ -1,10 +1,18 @@
 version: "3"
 
 services:
+  mongo:
+    image: mongo:latest
+    hostname: mongo
+    ports:
+      - 27017:27017
+
   nodeosd:
     image: eosio/eos:latest
-    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir
+    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir --resync --mongodb-uri mongodb://mongo:27017/EOS
     hostname: nodeosd
+    links:
+      - mongo
     ports:
       - 8888:8888
       - 9876:9876
