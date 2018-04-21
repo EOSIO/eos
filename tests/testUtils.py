@@ -890,12 +890,27 @@ class Node(object):
 
     def kill(self, killSignal):
         try:
+            Utils.Debug and Utils.Print("Killing node: %s" % (self.cmd))
             os.kill(self.pid, killSignal)
+
+            # wait for kill validation
+            def myFunc():
+                try:
+                    os.kill(self.pid, 0) #check if process with pid is running
+                except Exception as ex:
+                    return True
+                return False
+
+            lam = lambda: myFunc()
+            if not Utils.waitForBool(lam):
+                Utils.Print("ERROR: Failed to kill node (%s)." % (self.cmd), ex)
+                return False
+
             # mark node as killed
             self.killed=True
             return True
         except Exception as ex:
-            Utils.Print("ERROR: Failed to kill node (pid %d)." % (self.pid), ex)
+            Utils.Print("ERROR: Failed to kill node (%d)." % (self.cmd), ex)
 
         return False
 
@@ -1118,7 +1133,7 @@ class WalletMgr(object):
                 shutil.copyfileobj(f, sys.stdout)
 
     def killall(self):
-        cmd="pkill %s" % (Utils.EosWalletName)
+        cmd="pkill -9 %s" % (Utils.EosWalletName)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         subprocess.call(cmd.split())
 
@@ -1826,7 +1841,7 @@ class Cluster(object):
             Utils.Print("ERROR: No nodes discovered.")
             return nodes
 
-        Utils.Debug and Utils.Print("pgrep: \"%s\"" % psOut)
+        Utils.Debug and Utils.Print("pgrep output: \"%s\"" % psOut)
         for i in range(0, totalNodes):
             pattern="[\n]?(\d+) (.* --data-dir var/lib/node_%02d)" % (i)
             m=re.search(pattern, psOut, re.MULTILINE)
@@ -1905,7 +1920,7 @@ class Cluster(object):
             not silent and Utils.Print("Launcher failed to shut down eos cluster.")
 
         # ocassionally the launcher cannot kill the eos server
-        cmd="pkill %s" % (Utils.EosServerName)
+        cmd="pkill -9 %s" % (Utils.EosServerName)
         Utils.Debug and Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             not silent and Utils.Print("Failed to shut down eos cluster.")
