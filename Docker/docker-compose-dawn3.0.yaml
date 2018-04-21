@@ -2,7 +2,7 @@ version: "3"
 
 services:
   nodeosd:
-    image: eosio/eos:dawn3x
+    image: eosio/eos:latest
     command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir
     hostname: nodeosd
     ports:
@@ -14,7 +14,7 @@ services:
       - nodeos-data-volume:/opt/eosio/bin/data-dir
 
   keosd:
-    image: eosio/eos:dawn3x
+    image: eosio/eos:latest
     command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir
     hostname: keosd
     links:
