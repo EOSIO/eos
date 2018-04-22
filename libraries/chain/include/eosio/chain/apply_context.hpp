@@ -579,6 +579,7 @@ class apply_context {
       uint32_t                                    recurse_depth;  // how deep inline actions can recurse
       fc::time_point_sec                          published_time;
       fc::time_point                              processing_deadline;
+      uint64_t                                    max_cpu = uint64_t(-1);
 
       vector<action_receipt>                      executed;
       action_trace                                trace;

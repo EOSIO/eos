@@ -31,6 +31,8 @@ namespace eosio { namespace chain {
       uint64_t                     cpu_usage = 0;
       bool                         scheduled = false;
       vector<action_trace>         action_traces; ///< disposable
+
+      uint32_t  kcpu_usage()const { return (cpu_usage + 999)/1000; }
    };
    typedef std::shared_ptr<transaction_trace> transaction_trace_ptr;
 

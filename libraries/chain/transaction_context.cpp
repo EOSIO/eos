@@ -15,6 +15,12 @@ namespace eosio { namespace chain {
       control.validate_referenced_accounts( trx );
       control.validate_expiration( trx );
 
+      if( trx.max_kcpu_usage.value != 0 ) {
+         max_cpu = uint64_t(trx.max_kcpu_usage.value)*1000;
+      } else {
+         max_cpu = uint64_t(-1);
+      }
+
       for( const auto& act : trx.context_free_actions ) {
          dispatch_action( act, act.account, true );
       }
@@ -25,10 +31,11 @@ namespace eosio { namespace chain {
             bill_to_accounts.insert( auth.actor );
       }
 
+      FC_ASSERT( trace->cpu_usage <= max_cpu, "transaction consumed too many CPU cycles" );
+
       auto& rl       = control.get_mutable_resource_limits_manager();
 
       vector<account_name> bta( bill_to_accounts.begin(), bill_to_accounts.end() );
-
       rl.add_transaction_usage( bta, trace->cpu_usage, net_usage, block_timestamp_type(control.pending_block_time()).slot );
 
       undo_session.squash();
@@ -42,6 +49,7 @@ namespace eosio { namespace chain {
       acontext.receiver             = receiver;
       acontext.processing_deadline  = processing_deadline;
       acontext.published_time       = published;
+      acontext.max_cpu              = max_cpu - trace->cpu_usage;
       acontext.exec();
 
       fc::move_append(executed, move(acontext.executed) );

@@ -33,6 +33,7 @@ namespace eosio { namespace chain {
 
          fc::time_point                    published;
          const signed_transaction&         trx;
+         uint64_t                          max_cpu = 0; /// the maximum number of CPU cycles the transaction may consume
          uint32_t                          net_usage = 0;
          //const transaction_metadata_ptr&   trx_meta;
          chainbase::database::session      undo_session;
