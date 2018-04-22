@@ -302,7 +302,7 @@ struct controller_impl {
       self.accepted_block( head );
    }
 
-   void apply_onerror( const generated_transaction_object& gto ) {
+   void apply_onerror( const generated_transaction_object& gto, fc::time_point deadline ) {
       /*
       try {
          signed_transaction etrx;
@@ -314,7 +314,7 @@ struct controller_impl {
       */
    }
 
-   transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto ) {
+   transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline  ) {
       fc::datastream<const char*> ds( gto.packed_trx.data(), gto.packed_trx.size() );
 
       optional<fc::exception> except;
@@ -322,27 +322,25 @@ struct controller_impl {
          signed_transaction dtrx;
          fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
        
-         transaction_context trx_context( self, dtrx, gto.trx_id );
-         trx_context.processing_deadline = fc::time_point::now() + conf.limits.max_push_transaction_us;
-         trx_context.published      = gto.published;
+         auto trace = apply_transaction(  dtrx, gto.trx_id, gto.published, deadline, 0 );
+
+
+         /// TODO: push receit for scheduled
 
          /*
-         trx_context.exec();
-         auto& acts = pending->_actions;
-         fc::move_append( acts, move(trx_context.executed) );
-
-         db.remove( gto );
-
          pending->_pending_block_state->block->transactions.emplace_back( gto.trx_id );
          pending->_pending_block_state->block->transactions.back().kcpu_usage = trx.total_cpu_usage;
-
-         return move(trx_context.trace);
          */
+
+         trace->receipt = push_receipt( gto.trx_id, transaction_receipt::executed, trace->kcpu_usage(), 0 );
+
+         db.remove( gto );
+         return trace;
       } catch( const fc::exception& e ) {
          except = e;
       }
       if( except ) {
-         apply_onerror( gto );
+         apply_onerror( gto, deadline );
       }
       return transaction_trace_ptr();
    } /// push_scheduled_transaction
@@ -351,7 +349,8 @@ struct controller_impl {
    /**
     *  Adds the transaction receipt to the pending block and returns it.
     */
-   const transaction_receipt& push_receipt( const packed_transaction& trx, transaction_receipt_header::status_enum status,
+   template<typename T>
+   const transaction_receipt& push_receipt( const T& trx, transaction_receipt_header::status_enum status,
                       uint32_t kcpu_usage, uint32_t net_usage_words ) {
       pending->_pending_block_state->block->transactions.emplace_back( trx );
       transaction_receipt& r = pending->_pending_block_state->block->transactions.back();
@@ -360,6 +359,7 @@ struct controller_impl {
       r.status               = status;
       return r;
    }
+
 
    void apply_delayed_transaction( const transaction_metadata_ptr& trx, fc::microseconds delay ) {
       /// store this in generated transactions
@@ -411,10 +411,13 @@ struct controller_impl {
     */
    transaction_trace_ptr apply_transaction( const signed_transaction& trx, 
                                             const transaction_id_type& id, 
+                                            fc::time_point published,
                                             fc::time_point deadline = fc::time_point::maximum(),
-                                            uint32_t net_usage = 0 ) {
+                                            uint32_t net_usage = 0
+                                            ) {
       transaction_context trx_context( self, trx, id );
       trx_context.processing_deadline = deadline;
+      trx_context.published = published;
       trx_context.net_usage = net_usage;
 
       trx_context.exec();
@@ -426,7 +429,7 @@ struct controller_impl {
 
    transaction_trace_ptr apply_transaction( const transaction_metadata_ptr& trx, 
                                             fc::time_point deadline = fc::time_point::maximum(), uint32_t net_usage = 0) {
-      return apply_transaction( trx->trx, trx->id, deadline, net_usage );
+      return apply_transaction( trx->trx, trx->id, self.pending_block_time(), deadline, net_usage );
    }
 
 
@@ -779,8 +782,8 @@ transaction_trace_ptr controller::push_transaction( const transaction_metadata_p
 
 transaction_trace_ptr controller::push_next_scheduled_transaction( fc::time_point deadline ) {
    const auto& idx = db().get_index<generated_transaction_multi_index,by_delay>();
-   //if( idx.begin() != idx.end() ) 
-      //return my->push_scheduled( *idx.begin() );
+   if( idx.begin() != idx.end() ) 
+      return my->push_scheduled_transaction( *idx.begin(), deadline );
 
    return transaction_trace_ptr();
 }
