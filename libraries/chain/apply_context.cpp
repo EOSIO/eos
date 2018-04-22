@@ -343,11 +343,11 @@ vector<account_name> apply_context::get_active_producers() const {
 }
 
 void apply_context::checktime(uint32_t instruction_count) {
-   if( fc::time_point::now() > processing_deadline ) {
-      wdump((processing_deadline)(fc::time_point::now()) );
+   if( BOOST_UNLIKELY(fc::time_point::now() > processing_deadline) ) {
       throw checktime_exceeded();
    }
    cpu_usage += instruction_count;
+   FC_ASSERT( cpu_usage <= max_cpu, "contract consumed more cpu cycles than allowed" );
 }
 
 

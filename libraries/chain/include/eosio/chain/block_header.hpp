@@ -11,7 +11,6 @@ namespace eosio { namespace chain {
 
       checksum256_type                 transaction_mroot; /// mroot of cycles_summary
       checksum256_type                 action_mroot; /// mroot of all delivered action receipts
-//      checksum256_type                 block_mroot; /// mroot of all block ids
 
       account_name                     producer;
 
