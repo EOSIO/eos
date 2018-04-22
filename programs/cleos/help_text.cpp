@@ -105,7 +105,7 @@ const char* error_advice_3010004 =  "Most likely, the given contract doesnt' exi
 const char* error_advice_3030000 =  "Ensure that your transaction satisfy the contract's constraint!";
 const char* error_advice_3030001 =  R"=====(Ensure that you have the related authority inside your transaction!;
 If you are currently using 'cleos push action' command, try to add the relevant authority using -p option.)=====";
-const char* error_advice_3030002 =  "Ensure that you have the related private keys inside your wallet and you wallet is unlocked.";
+const char* error_advice_3030002 =  "Ensure that you have the related private keys inside your wallet and your wallet is unlocked.";
 const char* error_advice_3030003 =  "Please remove the unnecessary authority from your action!";
 const char* error_advice_3030004 =  "Please remove the unnecessary signature from your transaction!";
 const char* error_advice_3030011 =  "You can try embedding eosio nonce action inside your transaction to ensure uniqueness.";
