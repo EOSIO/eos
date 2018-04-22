@@ -57,7 +57,6 @@ class producer_plugin_impl {
          if( bsp->header.timestamp <= _last_signed_block_time ) return;
          if( bsp->header.timestamp <= _start_time ) return;
          if( bsp->block_num <= _last_signed_block_num ) return;
-         if( _producers.find( bsp->header.producer ) != _producers.end() ) return;
 
          const auto& active_producer_to_signing_key = bsp->active_schedule.producers;
 
@@ -67,18 +66,20 @@ class producer_plugin_impl {
                                 active_producers.begin(), active_producers.end(),
                                 boost::make_function_output_iterator( [&]( const chain::account_name& producer )
          {
-            auto itr = std::find_if( active_producer_to_signing_key.begin(), active_producer_to_signing_key.end(),
-                                     [&](const producer_key& k){ return k.producer_name == producer; } );
-            if( itr != active_producer_to_signing_key.end() ) {
-               auto private_key_itr = _private_keys.find( itr->block_signing_key );
-               if( private_key_itr != _private_keys.end() ) {
-                  auto d = bsp->sig_digest();
-                  auto sig = private_key_itr->second.sign( d );
-                  _last_signed_block_time = bsp->header.timestamp;
-                  _last_signed_block_num  = bsp->block_num;
+            if( producer != bsp->head.producer ) {
+               auto itr = std::find_if( active_producer_to_signing_key.begin(), active_producer_to_signing_key.end(),
+                                        [&](const producer_key& k){ return k.producer_name == producer; } );
+               if( itr != active_producer_to_signing_key.end() ) {
+                  auto private_key_itr = _private_keys.find( itr->block_signing_key );
+                  if( private_key_itr != _private_keys.end() ) {
+                     auto d = bsp->sig_digest();
+                     auto sig = private_key_itr->second.sign( d );
+                     _last_signed_block_time = bsp->header.timestamp;
+                     _last_signed_block_num  = bsp->block_num;
 
-//                  ilog( "${n} confirmed", ("n",name(producer)) );
-                  _self->confirmed_block( { bsp->id, d, producer, sig } );
+   //                  ilog( "${n} confirmed", ("n",name(producer)) );
+                     _self->confirmed_block( { bsp->id, d, producer, sig } );
+                  }
                }
             }
          } ) );
