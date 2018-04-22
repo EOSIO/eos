@@ -69,20 +69,26 @@ namespace eosio { namespace chain {
           */
          const map<digest_type, transaction_metadata_ptr>&  unapplied_transactions()const;
 
-         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx  = transaction_metadata_ptr() );
+
+         /**
+          *  
+          */
+         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx = transaction_metadata_ptr(),
+                                                 fc::time_point deadline = fc::time_point::maximum() );
 
          /**
           * Attempt to execute a specific transaction in our deferred trx database
           *
           */
-         transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled );
+         transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled,
+                                                           fc::time_point deadline = fc::time_point::maximum() );
 
          /**
           * Attempt to execute the oldest unexecuted deferred transaction
           *
           * @return nullptr if there is nothing pending
           */
-         transaction_trace_ptr push_next_scheduled_transaction();
+         transaction_trace_ptr push_next_scheduled_transaction( fc::time_point deadline = fc::time_point::maximum() );
 
          void finalize_block();
          void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback );
@@ -101,8 +107,6 @@ namespace eosio { namespace chain {
 
          block_state_ptr head_block_state()const;
          block_state_ptr pending_block_state()const;
-
-         void     record_transaction( const transaction_metadata_ptr& trx );
 
          const account_object&                 get_account( account_name n )const;
          const global_property_object&         get_global_properties()const;
