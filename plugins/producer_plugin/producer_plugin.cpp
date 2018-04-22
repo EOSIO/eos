@@ -66,7 +66,7 @@ class producer_plugin_impl {
                                 active_producers.begin(), active_producers.end(),
                                 boost::make_function_output_iterator( [&]( const chain::account_name& producer )
          {
-            if( producer != bsp->head.producer ) {
+            if( producer != bsp->header.producer ) {
                auto itr = std::find_if( active_producer_to_signing_key.begin(), active_producer_to_signing_key.end(),
                                         [&](const producer_key& k){ return k.producer_name == producer; } );
                if( itr != active_producer_to_signing_key.end() ) {
