@@ -294,7 +294,13 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
 { try {
    //edump((transaction_header(packed_trx.get_transaction())));
    auto start = fc::time_point::now();
-   transaction_metadata   mtrx( packed_trx, get_chain_id(), head_block_time());
+
+   optional<time_point> processing_deadline;
+   if (_limits.max_push_transaction_us.count() > 0) {
+      processing_deadline = start + _limits.max_push_transaction_us;
+   }
+
+   transaction_metadata   mtrx( packed_trx, get_chain_id(), head_block_time(), processing_deadline);
    //idump((transaction_header(mtrx.trx())));
 
    const transaction& trx = mtrx.trx();
