@@ -38,7 +38,11 @@ namespace eosio { namespace chain {
    }
 
    producer_key block_header_state::get_scheduled_producer( uint32_t slot_num )const {
-      auto index = (abs_slot_num + slot_num) % (active_schedule.producers.size() * config::producer_repetitions);
+      return get_scheduled_producer( get_slot_time(slot_num) );
+   }
+
+   producer_key block_header_state::get_scheduled_producer( block_timestamp_type t )const {
+      auto index = t.slot % (active_schedule.producers.size() * config::producer_repetitions);
       index /= config::producer_repetitions;
       return active_schedule.producers[index];
    }
@@ -62,14 +66,11 @@ namespace eosio { namespace chain {
     } else {
        (when = header.timestamp).slot++;
     }
-    auto slot_num = when.slot - header.timestamp.slot;
-    result.abs_slot_num = abs_slot_num + slot_num;
-
     result.header.timestamp                      = when;
     result.header.previous                       = id;
     result.header.schedule_version               = active_schedule.version;
 
-    auto prokey                                  = get_scheduled_producer(slot_num);
+    auto prokey                                  = get_scheduled_producer(when);
     result.block_signing_key                     = prokey.block_signing_key;
     result.header.producer                       = prokey.producer_name;
 

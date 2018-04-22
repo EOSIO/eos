@@ -12,7 +12,6 @@ struct block_header_state {
     block_id_type                     id;
     uint32_t                          block_num = 0;
     signed_block_header               header;
-    uint64_t                          abs_slot_num = 0;
     uint32_t                          dpos_last_irreversible_blocknum = 0;
     uint32_t                          pending_schedule_lib_num = 0; /// last irr block num
     digest_type                       prior_pending_schedule_hash;
@@ -34,6 +33,7 @@ struct block_header_state {
     block_timestamp_type get_slot_time( uint32_t slot_num )const;
     uint32_t             get_slot_at_time( block_timestamp_type t )const;
     producer_key         get_scheduled_producer( uint32_t slot_num )const;
+    producer_key         get_scheduled_producer( block_timestamp_type t )const;
     uint32_t             producer_participation_rate()const;
     const block_id_type& prev()const { return header.previous; }
     digest_type          sig_digest()const;
@@ -46,7 +46,7 @@ struct block_header_state {
 } } /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::block_header_state,
-            (id)(block_num)(header)(abs_slot_num)(dpos_last_irreversible_blocknum)
+            (id)(block_num)(header)(dpos_last_irreversible_blocknum)
             (pending_schedule_lib_num)(pending_schedule_hash)
             (pending_schedule)(active_schedule)(blockroot_merkle)
             (producer_to_last_produced) )
