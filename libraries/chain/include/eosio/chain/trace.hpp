@@ -31,6 +31,8 @@ namespace eosio { namespace chain {
       uint64_t                     cpu_usage = 0;
       bool                         scheduled = false;
       vector<action_trace>         action_traces; ///< disposable
+      fc::optional<fc::exception>  soft_except;
+      fc::optional<fc::exception>  hard_except;
 
       uint32_t  kcpu_usage()const { return (cpu_usage + 999)/1000; }
    };
@@ -47,5 +49,5 @@ namespace eosio { namespace chain {
 
 FC_REFLECT( eosio::chain::action_trace, 
                     (receipt)(act)(elapsed)(cpu_usage)(console)(total_inline_cpu_usage)(inline_traces) )
-FC_REFLECT( eosio::chain::transaction_trace, (id)(receipt)(elapsed)(cpu_usage)(action_traces) )
+FC_REFLECT( eosio::chain::transaction_trace, (id)(receipt)(elapsed)(cpu_usage)(action_traces)(soft_except)(hard_except) )
 FC_REFLECT( eosio::chain::block_trace, (elapsed)(cpu_usage)(trx_traces) )

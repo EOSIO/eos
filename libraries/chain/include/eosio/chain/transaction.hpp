@@ -62,6 +62,14 @@ namespace eosio { namespace chain {
                                                      bool allow_duplicate_keys = false )const;
 
       uint32_t total_actions()const { return context_free_actions.size() + actions.size(); }
+      account_name first_authorizor()const {
+         for( const auto& a : actions ) {
+            for( const auto& u : a.authorization )
+               return u.actor;
+         }
+         return account_name();
+      }
+
    };
 
    struct signed_transaction : public transaction
@@ -163,6 +171,9 @@ namespace eosio { namespace chain {
       account_name   sender;
       uint128_t      sender_id;
    };
+
+   uint128_t transaction_id_to_sender_id( const transaction_id_type& tid );
+
 } } /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix)

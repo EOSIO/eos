@@ -2,6 +2,8 @@
 #include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
+#include <eosio/chain/transaction_object.hpp>
 
 
 namespace eosio { namespace chain {
@@ -15,18 +17,31 @@ namespace eosio { namespace chain {
       control.validate_referenced_accounts( trx );
       control.validate_expiration( trx );
 
+      if( is_input ) {
+         record_transaction( id, trx.expiration ); /// checks for dupes
+      }
+
       if( trx.max_kcpu_usage.value != 0 ) {
          max_cpu = uint64_t(trx.max_kcpu_usage.value)*1000;
       } else {
          max_cpu = uint64_t(-1);
       }
 
-      for( const auto& act : trx.context_free_actions ) {
-         dispatch_action( act, act.account, true );
+      if( apply_context_free ) {
+         for( const auto& act : trx.context_free_actions ) {
+            dispatch_action( act, act.account, true );
+         }
+      }
+
+      if( delay == fc::microseconds() ) {
+         for( const auto& act : trx.actions ) {
+           dispatch_action( act, act.account, false );
+         }
+      } else {
+          schedule_transaction();
       }
 
       for( const auto& act : trx.actions ) {
-         dispatch_action( act, act.account, false );
          for( const auto& auth : act.authorization )
             bill_to_accounts.insert( auth.actor );
       }
@@ -38,6 +53,9 @@ namespace eosio { namespace chain {
       vector<account_name> bta( bill_to_accounts.begin(), bill_to_accounts.end() );
       rl.add_transaction_usage( bta, trace->cpu_usage, net_usage, block_timestamp_type(control.pending_block_time()).slot );
 
+   }
+
+   void transaction_context::squash() { 
       undo_session.squash();
    }
 
@@ -47,7 +65,7 @@ namespace eosio { namespace chain {
       acontext.id                   = id;
       acontext.context_free         = context_free;
       acontext.receiver             = receiver;
-      acontext.processing_deadline  = processing_deadline;
+      acontext.processing_deadline  = deadline;
       acontext.published_time       = published;
       acontext.max_cpu              = max_cpu - trace->cpu_usage;
       acontext.exec();
@@ -57,6 +75,36 @@ namespace eosio { namespace chain {
       trace->cpu_usage += acontext.trace.total_inline_cpu_usage;
       trace->action_traces.emplace_back( move(acontext.trace) );
    }
+
+   void transaction_context::schedule_transaction() {
+      auto first_auth = trx.first_authorizor();
+
+      const auto& cgto = control.db().create<generated_transaction_object>( [&]( auto& gto ) {
+        gto.trx_id      = id;
+        gto.payer       = first_auth;
+        gto.sender      = config::system_account_name;
+        gto.sender_id   = transaction_id_to_sender_id( gto.trx_id );
+        gto.expiration  = trx.expiration;
+        gto.published   = control.pending_block_time();
+        gto.delay_until = gto.published + delay;
+        gto.set( trx );
+      });
+
+      control.get_mutable_resource_limits_manager().add_pending_account_ram_usage(cgto.payer, 
+               (config::billable_size_v<generated_transaction_object> + cgto.packed_trx.size()));
+   }
+
+   void transaction_context::record_transaction( const transaction_id_type& id, fc::time_point_sec expire ) {
+      try {
+          control.db().create<transaction_object>([&](transaction_object& transaction) {
+              transaction.trx_id = id;
+              transaction.expiration = expire;
+          });
+      } catch ( ... ) {
+          EOS_ASSERT( false, transaction_exception,
+                     "duplicate transaction ${id}", ("id", id ) );
+      }
+   } /// record_transaction
 
 
 } } /// eosio::chain

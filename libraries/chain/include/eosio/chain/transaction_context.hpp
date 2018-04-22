@@ -21,13 +21,27 @@ namespace eosio { namespace chain {
          }
 
          void exec();
+         void squash();
+
+
+
          void dispatch_action( const action& a, account_name receiver, bool context_free = false );
+         void schedule_transaction();
+         void record_transaction( const transaction_id_type& id, fc::time_point_sec expire );
+
+         bool apply_context_free = true;
+         bool apply_actions      = true;
+         bool is_input           = true;
+
+         fc::microseconds   delay; 
 
          vector<action_receipt>            executed;
 
+
+
          transaction_trace_ptr             trace;
 
-         fc::time_point                    processing_deadline;
+         fc::time_point                    deadline;
          controller&                       control;
          transaction_id_type               id;
 

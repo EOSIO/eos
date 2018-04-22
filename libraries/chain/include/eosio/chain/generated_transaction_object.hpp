@@ -35,6 +35,13 @@ namespace eosio { namespace chain {
          time_point                    expiration; /// this generated transaction will not be applied after this time
          time_point                    published;
          shared_vector<char>           packed_trx;
+
+         void set( const transaction& trx ) {
+           auto trxsize = fc::raw::pack_size( static_cast<const transaction&>( trx ) );
+           packed_trx.resize(trxsize);
+           fc::datastream<char*> ds( packed_trx.data(), trxsize );
+           fc::raw::pack( ds, trx );
+         }
    };
 
    struct by_trx_id;
