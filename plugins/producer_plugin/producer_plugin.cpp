@@ -57,6 +57,7 @@ class producer_plugin_impl {
          if( bsp->header.timestamp <= _last_signed_block_time ) return;
          if( bsp->header.timestamp <= _start_time ) return;
          if( bsp->block_num <= _last_signed_block_num ) return;
+         if( _producers.find( bsp->header.producer ) != _producers.end() ) return;
 
          const auto& active_producer_to_signing_key = bsp->active_schedule.producers;
 
@@ -71,7 +72,7 @@ class producer_plugin_impl {
             if( itr != active_producer_to_signing_key.end() ) {
                auto private_key_itr = _private_keys.find( itr->block_signing_key );
                if( private_key_itr != _private_keys.end() ) {
-                  auto d = bsp->header.digest();
+                  auto d = bsp->sig_digest();
                   auto sig = private_key_itr->second.sign( d );
                   _last_signed_block_time = bsp->header.timestamp;
                   _last_signed_block_num  = bsp->block_num;
