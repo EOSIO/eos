@@ -12,15 +12,15 @@ namespace eosio { namespace chain {
       account_name      producer_name;
       public_key_type   block_signing_key;
 
-      friend bool operator == ( const producer_key& a, const producer_key& b ) { 
-         return tie( a.producer_name, a.block_signing_key ) == tie( b.producer_name,b.block_signing_key );
+      friend bool operator == ( const producer_key& lhs, const producer_key& rhs ) {
+         return tie( lhs.producer_name, lhs.block_signing_key ) == tie( rhs.producer_name, rhs.block_signing_key );
       }
-      friend bool operator != ( const producer_key& a, const producer_key& b ) { 
-         return tie( a.producer_name, a.block_signing_key ) != tie( b.producer_name,b.block_signing_key );
+      friend bool operator != ( const producer_key& lhs, const producer_key& rhs ) {
+         return tie( lhs.producer_name, lhs.block_signing_key ) != tie( rhs.producer_name, rhs.block_signing_key );
       }
    };
    /**
-    *  Defines both the order, account name, and signing keys of the active set of producers. 
+    *  Defines both the order, account name, and signing keys of the active set of producers.
     */
    struct producer_schedule_type {
       uint32_t                                       version = 0; ///< sequentially incrementing version number
@@ -54,7 +54,7 @@ namespace eosio { namespace chain {
    };
 
 
-   inline bool operator == ( const producer_schedule_type& a, const producer_schedule_type& b ) 
+   inline bool operator == ( const producer_schedule_type& a, const producer_schedule_type& b )
    {
       if( a.version != b.version ) return false;
       if ( a.producers.size() != b.producers.size() ) return false;

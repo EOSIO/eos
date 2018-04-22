@@ -323,15 +323,6 @@ struct controller_impl {
          fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
        
          auto trace = apply_transaction(  dtrx, gto.trx_id, gto.published, deadline, 0 );
-
-
-         /// TODO: push receit for scheduled
-
-         /*
-         pending->_pending_block_state->block->transactions.emplace_back( gto.trx_id );
-         pending->_pending_block_state->block->transactions.back().kcpu_usage = trx.total_cpu_usage;
-         */
-
          trace->receipt = push_receipt( gto.trx_id, transaction_receipt::executed, trace->kcpu_usage(), 0 );
 
          db.remove( gto );
@@ -401,7 +392,7 @@ struct controller_impl {
 
    /**
     *  This method will apply a transaction with a wall-clock deadline, after applying the transaction the
-    *  authorizing accounts are billed for CPU/Network usage. 
+    *  authorizing accounts are billed for CPU/Network usage.
     *
     *  Dispatched actions are added to the executed action receipt list, but no transaction receipt is generated
     *  because this method may be called from several different locations including:
@@ -427,7 +418,7 @@ struct controller_impl {
       return move(trx_context.trace);
    }
 
-   transaction_trace_ptr apply_transaction( const transaction_metadata_ptr& trx, 
+   transaction_trace_ptr apply_transaction( const transaction_metadata_ptr& trx,
                                             fc::time_point deadline = fc::time_point::maximum(), uint32_t net_usage = 0) {
       return apply_transaction( trx->trx, trx->id, self.pending_block_time(), deadline, net_usage );
    }
