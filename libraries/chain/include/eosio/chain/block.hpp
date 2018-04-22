@@ -53,9 +53,14 @@ namespace eosio { namespace chain {
 
       vector<transaction_receipt>   transactions; /// new or generated transactions
    };
-
    typedef std::shared_ptr<signed_block> signed_block_ptr;
 
+   struct producer_confirmation {
+      block_id_type   block_id;
+      digest_type     block_digest;
+      account_name    producer;
+      signature_type  sig;
+   };
 
 } } /// eosio::chain
 

@@ -321,7 +321,7 @@ struct controller_impl {
       try {
          signed_transaction dtrx;
          fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
-       
+
          transaction_context trx_context( self, dtrx, gto.trx_id );
          trx_context.processing_deadline = fc::time_point::now() + conf.limits.max_push_transaction_us;
          trx_context.published      = gto.published;
@@ -361,8 +361,8 @@ struct controller_impl {
       return trace;
    }
 
-   transaction_trace_ptr apply_transaction( const signed_transaction& trx, 
-                                            const transaction_id_type& id, 
+   transaction_trace_ptr apply_transaction( const signed_transaction& trx,
+                                            const transaction_id_type& id,
                                             uint32_t net_usage = 0,
                                             bool implicit = false ) {
       transaction_context trx_context( self, trx, id );
@@ -730,7 +730,7 @@ transaction_trace_ptr controller::push_transaction( const transaction_metadata_p
 
 transaction_trace_ptr controller::push_next_scheduled_transaction() {
    const auto& idx = db().get_index<generated_transaction_multi_index,by_delay>();
-   //if( idx.begin() != idx.end() ) 
+   //if( idx.begin() != idx.end() )
       //return my->push_scheduled( *idx.begin() );
 
    return transaction_trace_ptr();

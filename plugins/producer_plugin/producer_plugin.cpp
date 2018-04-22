@@ -14,6 +14,8 @@
 
 #include <iostream>
 #include <algorithm>
+#include <boost/range/adaptor/map.hpp>
+#include <boost/function_output_iterator.hpp>
 
 using std::string;
 using std::vector;
@@ -36,7 +38,7 @@ class producer_plugin_impl {
       boost::program_options::variables_map _options;
       bool     _production_enabled                 = false;
       uint32_t _required_producer_participation    = uint32_t(config::required_producer_participation);
-      uint32_t _production_skip_flags              = eosio::chain::skip_nothing;
+      uint32_t _production_skip_flags              = 0; //eosio::chain::skip_nothing;
 
       std::map<chain::public_key_type, chain::private_key_type> _private_keys;
       std::set<chain::account_name>                             _producers;
@@ -51,32 +53,38 @@ class producer_plugin_impl {
 
       producer_plugin* _self = nullptr;
 
-      void on_block( const block_trace& bt ) {
-         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+      void on_block( const block_state_ptr& bsp ) {
+         if( bsp->header.timestamp <= _last_signed_block_time ) return;
+         if( bsp->header.timestamp <= _start_time ) return;
+         if( bsp->block_num <= _last_signed_block_num ) return;
 
-         if( bt.block.timestamp <= _last_signed_block_time ) return;
-         if( bt.block.timestamp <= _start_time ) return;
-         if( bt.block.block_num() <= _last_signed_block_num ) return;
-         if( _producers.find( bt.block.producer ) != _producers.end() ) return;
+         const auto& active_producer_to_signing_key = bsp->active_schedule.producers;
 
-         const auto& active_pro = chain.get_global_properties().active_producers;
-         for( const auto& pro : active_pro.producers ) {
-            if( _producers.find( pro.producer_name ) != _producers.end() ) {
-               auto private_key_itr = _private_keys.find(pro.block_signing_key);
+         auto active_producers = boost::adaptors::keys( boost::make_iterator_range( bsp->producer_to_last_produced.begin(),
+                                                                                    bsp->producer_to_last_produced.end()   ) );
+         std::set_intersection( _producers.begin(), _producers.end(),
+                                active_producers.begin(), active_producers.end(),
+                                boost::make_function_output_iterator( [&]( const chain::account_name& producer )
+         {
+            auto itr = std::find_if( active_producer_to_signing_key.begin(), active_producer_to_signing_key.end(),
+                                     [&](const producer_key& k){ return k.producer_name == producer; } );
+            if( itr != active_producer_to_signing_key.end() ) {
+               auto private_key_itr = _private_keys.find( itr->block_signing_key );
                if( private_key_itr != _private_keys.end() ) {
-                  auto sig = private_key_itr->second.sign( bt.block.digest() );
-                  _last_signed_block_time = bt.block.timestamp;
-                  _last_signed_block_num  = bt.block.block_num();
+                  auto d = bsp->header.digest();
+                  auto sig = private_key_itr->second.sign( d );
+                  _last_signed_block_time = bsp->header.timestamp;
+                  _last_signed_block_num  = bsp->block_num;
 
-//                  ilog( "${n} confirmed", ("n",name(pro.producer_name)) );
-                  _self->confirmed_block( { bt.block.id(), bt.block.digest(), pro.producer_name, sig } );
+//                  ilog( "${n} confirmed", ("n",name(producer)) );
+                  _self->confirmed_block( { bsp->id, d, producer, sig } );
                }
             }
-         }
+         } ) );
       }
 };
 
-void new_chain_banner(const eosio::chain::chain_controller& db)
+void new_chain_banner(const eosio::chain::controller& db)
 {
    std::cerr << "\n"
       "*******************************\n"
@@ -87,7 +95,8 @@ void new_chain_banner(const eosio::chain::chain_controller& db)
       "*                             *\n"
       "*******************************\n"
       "\n";
-   if(db.get_slot_at_time(fc::time_point::now()) > 200)
+
+   if( db.head_block_state()->get_slot_at_time(fc::time_point::now()) > 200 )
    {
       std::cerr << "Your genesis seems to have an old timestamp\n"
          "Please consider using the --genesis-timestamp option to give your genesis a recent timestamp\n"
@@ -128,16 +137,6 @@ void producer_plugin::set_program_options(
           "Tuple of [public key, WIF private key] (may specify multiple times)")
          ;
    config_file_options.add(producer_options);
-}
-
-chain::public_key_type producer_plugin::first_producer_public_key() const
-{
-  chain::chain_controller& chain = app().get_plugin<chain_plugin>().chain();
-  try {
-    return chain.get_producer(*my->_producers.begin()).signing_key;
-  } catch(std::out_of_range) {
-    return chain::public_key_type();
-  }
 }
 
 bool producer_plugin::is_producer_key(const chain::public_key_type& key) const
@@ -191,8 +190,8 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 void producer_plugin::plugin_startup()
 { try {
    ilog("producer plugin:  plugin_startup() begin");
-   chain::chain_controller& chain = app().get_plugin<chain_plugin>().chain();
-   chain.applied_block.connect( [&]( const auto& btrace ){ my->on_block( btrace ); } );
+   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain.applied_block.connect( [&]( const auto& bsp ){ my->on_block( bsp ); } );
 
    if (!my->_producers.empty())
    {
@@ -201,7 +200,7 @@ void producer_plugin::plugin_startup()
       {
          if(chain.head_block_num() == 0)
             new_chain_banner(chain);
-         my->_production_skip_flags |= eosio::chain::skip_undo_history_check;
+         //my->_production_skip_flags |= eosio::chain::skip_undo_history_check;
       }
       my->schedule_production_loop();
    } else
@@ -300,26 +299,29 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
 }
 
 block_production_condition::block_production_condition_enum producer_plugin_impl::maybe_produce_block(fc::mutable_variant_object& capture) {
-   chain::chain_controller& chain = app().get_plugin<chain_plugin>().chain();
+   chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+   const auto& hbs = *chain.head_block_state();
    fc::time_point now = fc::time_point::now();
 
+   /*
    if (app().get_plugin<chain_plugin>().is_skipping_transaction_signatures()) {
       _production_skip_flags |= skip_transaction_signatures;
    }
+   */
    // If the next block production opportunity is in the present or future, we're synced.
    if( !_production_enabled )
    {
-      if( chain.get_slot_time(1) >= now )
+      if( hbs.get_slot_time(1) >= now )
          _production_enabled = true;
       else
          return block_production_condition::not_synced;
    }
 
    // is anyone scheduled to produce now or one second in the future?
-   uint32_t slot = chain.get_slot_at_time( now );
+   uint32_t slot = hbs.get_slot_at_time( now );
    if( slot == 0 )
    {
-      capture("next_time", chain.get_slot_time(1));
+      capture("next_time", hbs.get_slot_time(1));
       return block_production_condition::not_time_yet;
    }
 
@@ -333,25 +335,24 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    //
    assert( now > chain.head_block_time() );
 
-   auto scheduled_producer = chain.get_scheduled_producer( slot );
+   const auto& scheduled_producer = hbs.get_scheduled_producer( slot );
    // we must control the producer scheduled to produce the next block.
-   if( _producers.find( scheduled_producer ) == _producers.end() )
+   if( _producers.find( scheduled_producer.producer_name ) == _producers.end() )
    {
-      capture("scheduled_producer", scheduled_producer);
+      capture("scheduled_producer", scheduled_producer.producer_name);
       return block_production_condition::not_my_turn;
    }
 
-   auto scheduled_time = chain.get_slot_time( slot );
-   eosio::chain::public_key_type scheduled_key = chain.get_producer(scheduled_producer).signing_key;
-   auto private_key_itr = _private_keys.find( scheduled_key );
+   auto scheduled_time = hbs.get_slot_time( slot );
+   auto private_key_itr = _private_keys.find( scheduled_producer.block_signing_key );
 
    if( private_key_itr == _private_keys.end() )
    {
-      capture("scheduled_key", scheduled_key);
+      capture("scheduled_key", scheduled_producer.block_signing_key);
       return block_production_condition::no_private_key;
    }
 
-   uint32_t prate = chain.producer_participation_rate();
+   uint32_t prate = hbs.producer_participation_rate();
    if( prate < _required_producer_participation )
    {
       capture("pct", uint32_t(prate / config::percent_1));
@@ -367,7 +368,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
 
    auto block = chain.generate_block(
       scheduled_time,
-      scheduled_producer,
+      scheduled_producer.producer_name,
       private_key_itr->second,
       _production_skip_flags
       );
