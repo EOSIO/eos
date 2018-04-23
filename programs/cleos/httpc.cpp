@@ -99,7 +99,7 @@ namespace eosio { namespace client { namespace http {
       path_prefix = match[7];
    }
    if(scheme != "http" && scheme != "https")
-      FC_THROW("Unreconized URL scheme (${s}) in URL \"${u}\"", ("s", scheme)("u", server_url));
+      FC_THROW("Unrecognized URL scheme (${s}) in URL \"${u}\"", ("s", scheme)("u", server_url));
    if(server.empty())
       FC_THROW("No server parsed from URL \"${u}\"", ("u", server_url));
    if(port.empty())
