@@ -153,18 +153,28 @@ run `docker-compose up`
 
 We can easliy set up a dawn3.0 local testnet using docker images. Just run the following commands:
 
+Note: if you want to use the mongo db plugin, you have to enable it in your `data-dir/config.ini` first.
+
 ```
 # pull images
-docker pull eosio/eos:dawn3x
+docker pull eosio/eos:latest
+docker pull mongo:latest
 # create volume
 docker volume create --name=nodeos-data-volume
 docker volume create --name=keosd-data-volume
+docker volume create --name=mongo-data-volume
 # start containers
 docker-compose -f docker-compose-dawn3.0.yaml up -d
 # get chain info
 curl http://127.0.0.1:8888/v1/chain/get_info
 # get logs
 docker-compose logs nodeosd
+# stop containers
+docker-compose -f docker-compose-dawn3.0.yaml down
 ```
 
 The `blocks` data are stored under `--data-dir` by default, and the wallet files are stored under `--wallet-dir` by default, of course you can change these as you want.
+
+### About MongoDB Plugin
+
+Currently, the mongodb plugin is disabled in `config.ini` by default, you have to change it manually in `config.ini` or you can mount a `config.ini` file to `/opt/eosio/bin/data-dir/config.ini` in the docker-compose file.
