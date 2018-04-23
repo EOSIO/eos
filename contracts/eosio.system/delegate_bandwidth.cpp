@@ -74,8 +74,8 @@ namespace eosiosystem {
    typedef eosio::multi_index< N(refunds), refund_request>      refunds_table;
 
    void system_contract::delegatebw( const account_name from, const account_name receiver,
-                                            const asset stake_net_quantity, const asset stake_cpu_quantity,
-                                            const asset stake_storage_quantity )
+                                     const asset stake_net_quantity, const asset stake_cpu_quantity,
+                                     const asset stake_storage_quantity )
    {
       eosio_assert( stake_cpu_quantity.amount >= 0, "must stake a positive amount" );
       eosio_assert( stake_net_quantity.amount >= 0, "must stake a positive amount" );

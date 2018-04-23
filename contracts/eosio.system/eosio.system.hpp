@@ -87,52 +87,61 @@ namespace eosiosystem {
    static constexpr uint64_t     system_token_symbol = S(4,EOS);
 
    class system_contract : public native, private eosio::contract {
-   public:
+      public:
 
-      using eosio::contract::contract;
+         using eosio::contract::contract;
 
-      // functions defined in delegate_bandwidth.cpp
-      void delegatebw( const account_name from, const account_name receiver,
-                              const asset stake_net_quantity, const asset stake_cpu_quantity,
-                              const asset stake_storage_quantity );
+         // Actions:
 
-      void undelegatebw( const account_name from, const account_name receiver,
-                                const asset unstake_net_quantity, const asset unstake_cpu_quantity,
-                                const uint64_t unstake_storage_bytes );
+         // functions defined in delegate_bandwidth.cpp
+         void delegatebw( const account_name from, const account_name receiver,
+                          const asset stake_net_quantity, const asset stake_cpu_quantity,
+                          const asset stake_storage_quantity );
 
-      void refund( const account_name owner );
+         void undelegatebw( const account_name from, const account_name receiver,
+                            const asset unstake_net_quantity, const asset unstake_cpu_quantity,
+                            const uint64_t unstake_storage_bytes );
 
-      // functions defined in voting.cpp
+         void refund( const account_name owner );
 
-      void regproducer( const account_name producer, const bytes& producer_key, const eosio_parameters& prefs );
+         // functions defined in voting.cpp
 
-      void unregprod( const account_name producer );
+         void regproducer( const account_name producer, const bytes& producer_key, const eosio_parameters& prefs );
 
-      void increase_voting_power( account_name acnt, const eosio::asset& amount );
+         void unregprod( const account_name producer );
 
-      void decrease_voting_power( account_name acnt, const eosio::asset& amount );
+         eosio::asset payment_per_block(uint32_t percent_of_max_inflation_rate);
 
-      static eosio_global_state get_default_parameters();
+         void update_elected_producers(time cycle_time);
 
-      eosio::asset payment_per_block(uint32_t percent_of_max_inflation_rate);
+         void voteproducer( const account_name voter, const account_name proxy, const std::vector<account_name>& producers );
 
-      void update_elected_producers(time cycle_time);
+         void regproxy( const account_name proxy );
 
-      void voteproducer( const account_name voter, const account_name proxy, const std::vector<account_name>& producers );
+         void unregproxy( const account_name proxy );
 
-      void regproxy( const account_name proxy );
+         void nonce( const std::string& /*value*/ ) {}
 
-      void unregproxy( const account_name proxy );
+         // functions defined in producer_pay.cpp
 
-      void nonce( const std::string& /*value*/ ) {}
+         void onblock( const block_header& header );
 
-      // functions defined in producer_pay.cpp
+         void claimrewards( const account_name& owner );
 
-      bool update_cycle( time block_time );
+      private:
+         // Implementation details:
 
-      void onblock( const block_header& header );
+         //defined in voting.hpp
+         static eosio_global_state get_default_parameters();
 
-      void claimrewards( const account_name& owner );
+         // defined in voting.cpp
+         void increase_voting_power( account_name acnt, const eosio::asset& amount );
+
+         void decrease_voting_power( account_name acnt, const eosio::asset& amount );
+
+         // defined in producer_pay.cpp
+         bool update_cycle( time block_time );
+
    };
 
 } /// eosiosystem
