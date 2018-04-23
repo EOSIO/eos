@@ -23,8 +23,7 @@ class transaction_metadata {
       bytes                                 raw_packed_with_cfd; /// fc::raw::pack(trx)
       optional<flat_set<public_key_type>>   signing_keys;
 
-      optional<std::function<void()>>       on_result;
-      transaction_trace_ptr                 trace;
+      optional<std::function<void(const transaction_trace_ptr&)>>       on_result;
 
 
       transaction_metadata( const signed_transaction& t )
