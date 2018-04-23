@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosiolib/chain.h>
+#include <eosiolib/contract.hpp>
 #include <eosiolib/dispatcher.hpp>
 #include <eosiolib/singleton.hpp>
 #include <eosiolib/multi_index.hpp>
