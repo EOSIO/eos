@@ -82,7 +82,7 @@ namespace eosio { namespace chain {
       const auto& cgto = control.db().create<generated_transaction_object>( [&]( auto& gto ) {
         gto.trx_id      = id;
         gto.payer       = first_auth;
-        gto.sender      = config::system_account_name;
+        gto.sender      = account_name(); /// auto-boxed trxs have no sender
         gto.sender_id   = transaction_id_to_sender_id( gto.trx_id );
         gto.expiration  = trx.expiration;
         gto.published   = control.pending_block_time();

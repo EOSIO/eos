@@ -5,6 +5,7 @@
 #pragma once
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/block.hpp>
+#include <eosio/chain/trace.hpp>
 
 namespace eosio { namespace chain {
 
@@ -20,7 +21,11 @@ class transaction_metadata {
       packed_transaction                    packed_trx;
       bytes                                 raw_packed; /// fc::raw::pack(trx)
       bytes                                 raw_packed_with_cfd; /// fc::raw::pack(trx)
-      optional<flat_set<public_key_type>>  signing_keys;
+      optional<flat_set<public_key_type>>   signing_keys;
+
+      optional<std::function<void()>>       on_result;
+      transaction_trace_ptr                 trace;
+
 
       transaction_metadata( const signed_transaction& t )
       :trx(t),packed_trx(t,packed_transaction::zlib) {
