@@ -1456,7 +1456,7 @@ namespace eosio {
                   ("n", head_num + 1));
             last_repeated = 0;
             sync_last_requested_num = 0;
-            c->close();
+            my_impl->close(c);
          }
          return;
       }
@@ -1881,7 +1881,7 @@ namespace eosio {
                c->send_handshake ();
             } else {
                if( endpoint_itr != tcp::resolver::iterator() ) {
-                  c->close();
+                  close(c);
                   connect( c, endpoint_itr );
                }
                else {
@@ -1912,7 +1912,7 @@ namespace eosio {
             if( !ec ) {
                uint32_t visitors = 0;
                for (auto &conn : connections) {
-                  if(conn->current() && conn->peer_addr.empty()) {
+                  if(conn->socket->is_open() && conn->peer_addr.empty()) {
                      visitors++;
                   }
                }
@@ -2587,7 +2587,7 @@ namespace eosio {
                discards.push_back( c);
             }
          } else {
-            if( c->peer_addr.empty()) {
+            if( c->socket->is_open() && c->peer_addr.empty()) {
                num_clients++;
             }
          }
@@ -2601,11 +2601,16 @@ namespace eosio {
    }
 
    void net_plugin_impl::close( connection_ptr c ) {
-      if( c->peer_addr.empty( ) ) {
-         --num_clients;
+      if( c->peer_addr.empty( ) && c->socket->is_open() ) {
+         if (num_clients == 0) {
+            fc_wlog( logger, "num_clients already at 0");
+         }
+         else {
+            --num_clients;
+         }
       }
       c->close();
- }
+   }
 
    /**
     * This one is necessary to hook into the boost notifier api
