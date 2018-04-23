@@ -235,7 +235,7 @@ namespace eosiosystem {
          if ( it->active() ) {
             schedule.producers.emplace_back();
             schedule.producers.back().producer_name = it->owner;
-            eosio_assert( sizeof(schedule.producers.back().block_signing_key) == it->packed_key.size(), "size mismatch" );
+            //eosio_assert( sizeof(schedule.producers.back().block_signing_key) == it->packed_key.size(), "size mismatch" );
             schedule.producers.back().block_signing_key = eosio::unpack<public_key>( it->packed_key );
             //std::copy( it->packed_key.begin(), it->packed_key.end(), schedule.producers.back().block_signing_key.data.data() );
 
