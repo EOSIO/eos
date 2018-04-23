@@ -667,6 +667,7 @@ namespace LLVMJIT
 		void call_indirect(CallIndirectImm imm)
 		{
 			assert(imm.type.index < module.types.size());
+
 			auto calleeType = module.types[imm.type.index];
 			auto functionPointerType = asLLVMType(calleeType)->getPointerTo()->getPointerTo();
 
@@ -1505,11 +1506,6 @@ namespace LLVMJIT
 		pushControlStack(ControlContext::Type::function,functionType->ret,returnBlock,returnPHI);
 		pushBranchTarget(functionType->ret,returnBlock,returnPHI);
 
-      // create call depth error block
-      onCallDepthError = llvm::BasicBlock::Create(context, "on_call_depth_error", llvmFunction);
-      irBuilder.SetInsertPoint(onCallDepthError);
-      irBuilder.CreateStore(irBuilder.getInt8(0), irBuilder.getInt8(0), 0);
-      irBuilder.CreateBr(returnBlock);
 
 		// Create an initial basic block for the function.
 		auto entryBasicBlock = llvm::BasicBlock::Create(context,"entry",llvmFunction);
@@ -1579,7 +1575,13 @@ namespace LLVMJIT
 		// Emit the function return.
 		if(functionType->ret == ResultType::none) { irBuilder.CreateRetVoid(); }
 		else { irBuilder.CreateRet(pop()); }
-      
+
+      // create call depth error block
+      onCallDepthError = llvm::BasicBlock::Create(context, "on_call_depth_error", llvmFunction);
+      irBuilder.SetInsertPoint(onCallDepthError);
+      auto printI = emitRuntimeIntrinsic("wavmIntrinsics.callDepthLimitReached", FunctionType::get(ResultType::none,{}), {});
+      irBuilder.CreateUnreachable();
+
       std::vector<llvm::CallInst*> calls;
       for (auto& bb : *llvmFunction) {
          for (auto& inst : bb) {
@@ -1588,49 +1590,51 @@ namespace LLVMJIT
          }
       }
       for (auto call : calls) {
+         /*
          // split the bb to isolate the call
          auto callDepthInc = call->getParent()->splitBasicBlock(call, "call_depth_inc");
-         //auto callDepthInc = llvm::SplitBlock(call->getParent(), call);
          // insert the bb with increment and test of global
          irBuilder.SetInsertPoint(call);
          auto callDepth = llvmFunction->getParent()->getNamedGlobal("__wasm_call_depth");
          auto callDepthLoad = irBuilder.CreateLoad(callDepth);
-         auto callDepthStore = irBuilder.CreateStore(irBuilder.CreateAdd(irBuilder.getInt16(1), callDepthLoad), callDepth);
-         auto condition = irBuilder.CreateICmpULT(callDepthLoad, irBuilder.getInt16(3000));
-         auto newBr = irBuilder.CreateCondBr(condition, onCallDepthError, onCallDepthError);
+         auto callDepthStore = irBuilder.CreateStore(irBuilder.CreateAdd(irBuilder.getInt16(1), irBuilder.CreateLoad(callDepth)), callDepth);
+         auto printI = emitRuntimeIntrinsic("wavmIntrinsics.printt", FunctionType::get(ResultType::none,{ValueType::i64}), {callDepthLoad});
+         */
+         irBuilder.SetInsertPoint(call);
+         emitRuntimeIntrinsic("wavmIntrinsics.callDepthTest", FunctionType::get(ResultType::none, {}),{});
+         irBuilder.SetInsertPoint(call->getNextNode());
+         emitRuntimeIntrinsic("wavmIntrinsics.callDepthReset", FunctionType::get(ResultType::none, {}),{});
+
+#if 0
          // test and branch
-         //auto callDepthTest = llvm::BasicBlock::Create(context, "call_depth_test", llvmFunction);
-         //auto callDepthBr = irBuilder.CreateCondBr(condition, onCallDepthError, onCallDepthError);
+         auto condition = irBuilder.CreateICmpULT(callDepthLoad, irBuilder.getInt16(250));
+         auto newBr = irBuilder.CreateCondBr(condition, onCallDepthError, onCallDepthError, moduleContext.likelyTrueBranchWeights);
+         // split again to create a target
          auto onSuccess = call->getParent()->splitBasicBlock(call, "call_depth_on_success");
-         //irBuilder.SetInsertPoint(callDepthStore->getNextNode());
-         //irBuilder.SetInsertPoint(callDepthTest);
-         //auto onSuccess = llvm::SplitBlock(call->getParent(), call);
          llvm::BranchInst* oldBr = (llvm::BranchInst*)newBr->getNextNode();
-         //llvm::BranchInst* newBr = llvm::BranchInst::Create(onSuccess, onCallDepthError, condition, callDepthStore->getParent()); 
-         //oldBr->removeFromParent();
          oldBr->eraseFromParent();
-         //llvm::ReplaceInstWithInst(oldBr, newBr);
-         //onSuccess->insertInto(llvmFunction, callDepthTest);
-         //((llvm::BranchInst*)callDepthInc->getTerminator())->setSuccessor(1, callDepthTest);
-         // decrement the call depth
          newBr->setSuccessor(0, onSuccess);
+         // decrement the call depth
          irBuilder.SetInsertPoint(call->getNextNode());
          irBuilder.CreateStore(irBuilder.CreateSub(irBuilder.getInt16(1), irBuilder.CreateLoad(callDepth)), callDepth);
       }
-      llvmFunction->viewCFG();
+#endif
+      //llvmFunction->viewCFG();
 	}
 
 	llvm::Module* EmitModuleContext::emit()
 	{
 		Timing::Timer emitTimer;
+#if 1 
       // Create a global variable for call depth
       auto& module_ctx = llvmModule->getContext();
       auto  type       = llvm::IntegerType::get(module_ctx, 16);
       llvmModule->getOrInsertGlobal("__wasm_call_depth", type);
       auto callDepth = llvmModule->getNamedGlobal("__wasm_call_depth");
-      callDepth->setLinkage(llvm::GlobalValue::LinkageTypes::ExternalLinkage);
-      callDepth->setInitializer({0});
-
+      callDepth->setLinkage(llvm::GlobalValue::LinkageTypes::CommonLinkage);
+      auto constI = llvm::ConstantInt::get(type, 0, false);
+      //callDepth->setInitializer(constI);
+#endif
 		// Create literals for the default memory base and mask.
 		if(moduleInstance->defaultMemory)
 		{

@@ -344,13 +344,19 @@ namespace LLVMJIT
 	// Used to override LLVM's default behavior of looking up unresolved symbols in DLL exports.
 	struct NullResolver : llvm::JITSymbolResolver
 	{
+      NullResolver() {
+         __wasm_call_depth = std::make_unique<short>(0);
+      }
+
 		static NullResolver singleton;
 		virtual llvm::JITSymbol findSymbol(const std::string& name) override;
 		virtual llvm::JITSymbol findSymbolInLogicalDylib(const std::string& name) override;
+      std::unique_ptr<short> __wasm_call_depth;
 	};
 	
 	static std::map<std::string,const char*> runtimeSymbolMap =
 	{
+      {"__wasm_call_depth", "__wasm_call_depth"},
 		#ifdef _WIN32
 			// the LLVM X86 code generator calls __chkstk when allocating more than 4KB of stack space
 			{"__chkstk","__chkstk"},
@@ -380,6 +386,8 @@ namespace LLVMJIT
 		if(runtimeSymbolNameIt != runtimeSymbolMap.end())
 		{
 			const char* lookupName = runtimeSymbolNameIt->second;
+         if (std::string(lookupName).compare(std::string("__wasm_call_depth")) == 0)
+            return llvm::JITSymbol(reinterpret_cast<Uptr>(__wasm_call_depth.get()), llvm::JITSymbolFlags::None);
 			void *addr = llvm::sys::DynamicLibrary::SearchForAddressOfSymbol(lookupName);
 			if(!addr) { Errors::fatalf("LLVM generated code references undefined external symbol: %s\n",lookupName); }
 			return llvm::JITSymbol(reinterpret_cast<Uptr>(addr),llvm::JITSymbolFlags::None);

@@ -3,6 +3,7 @@
 #include "Logging/Logging.h"
 #include "Intrinsics.h"
 #include "RuntimePrivate.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include <math.h>
 
@@ -179,6 +180,38 @@ namespace Runtime
 	}
 
 	THREAD_LOCAL Uptr indentLevel = 0;
+
+	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,callDepthLimitReached,callDepthLimitReached,none)
+	{
+		//causeException(Exception::Cause::undefinedTableElement);
+      llvm::outs() << "REACHED CALL DEPTH LIMIT\n";
+	}
+   
+   THREAD_LOCAL uint16_t CallDepth = 0;
+
+	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,callDepthTest,callDepthTest,none)
+	{
+      if (CallDepth <= 250) {
+         CallDepth++;
+         return;
+      }
+		causeException(Exception::Cause::undefinedTableElement);
+	}
+
+	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,callDepthReset,callDepthReset,none)
+	{
+      if (CallDepth > 0) {
+         CallDepth--;
+         return;
+      }
+		causeException(Exception::Cause::undefinedTableElement);
+	}
+
+	DEFINE_INTRINSIC_FUNCTION1(wavmIntrinsics,printt,printt,none,i64,depth)
+	{
+		//Log::printf(Log::Category::debug,"CALL DEPTH: %d\n",depth);
+      llvm::outs() << "CALL DEPTH : " << &depth << " " << depth << "\n";
+	}
 
 	DEFINE_INTRINSIC_FUNCTION1(wavmIntrinsics,debugEnterFunction,debugEnterFunction,none,i64,functionInstanceBits)
 	{
