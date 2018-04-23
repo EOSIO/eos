@@ -34,7 +34,9 @@ namespace Runtime
 			calledUnimplementedIntrinsic,
 			outOfMemory,
 			invalidSegmentOffset,
-			misalignedAtomicMemoryAccess
+			misalignedAtomicMemoryAccess,
+         callDepthOverflow,
+         callDepthUnderflow,
 		};
 
 		Cause cause;
@@ -59,6 +61,8 @@ namespace Runtime
 		case Exception::Cause::outOfMemory: return "out of memory";
 		case Exception::Cause::invalidSegmentOffset: return "invalid segment offset";
 		case Exception::Cause::misalignedAtomicMemoryAccess: return "misaligned atomic memory access";
+		case Exception::Cause::callDepthOverflow: return "call depth overflowed";
+		case Exception::Cause::callDepthUnderflow: return "call depth underflowed";
 		default: return "unknown";
 		}
 	}

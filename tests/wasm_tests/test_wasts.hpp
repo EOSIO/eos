@@ -15,7 +15,7 @@ static const char call_depth_limit_wast[] = R"=====(
    (br_if $label$0
     (i32.eq
      (get_local $0)
-     (i32.const 251)
+     (i32.const 248)
     )
    )
    (call $_foo

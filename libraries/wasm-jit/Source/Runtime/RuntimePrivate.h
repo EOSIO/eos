@@ -33,6 +33,7 @@ namespace Runtime
 {
 	using namespace IR;
 	
+   void resetCallDepth();
 	// A private root for all runtime objects that handles garbage collection.
 	struct GCObject : ObjectInstance
 	{

@@ -189,28 +189,41 @@ namespace Runtime
    
    THREAD_LOCAL uint16_t CallDepth = 0;
 
-	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,callDepthTest,callDepthTest,none)
+   void resetCallDepth() {
+      CallDepth = 0;
+   }
+
+	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,callDepthPush,callDepthPush,none)
 	{
-      if (CallDepth <= 250) {
+      llvm::outs() << "Call Depth: " << CallDepth++ << "\n";
+      return;
+      if (CallDepth <= 250)
          CallDepth++;
-         return;
-      }
-		causeException(Exception::Cause::undefinedTableElement);
+      else
+         causeException(Exception::Cause::callDepthOverflow);
 	}
 
-	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,callDepthReset,callDepthReset,none)
+	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,callDepthPop,callDepthPop,none)
 	{
-      if (CallDepth > 0) {
+      llvm::outs() << "Call Depth': " << CallDepth-- << "\n";
+      return;
+
+      if (CallDepth > 0)
          CallDepth--;
-         return;
-      }
-		causeException(Exception::Cause::undefinedTableElement);
+      else
+         causeException(Exception::Cause::callDepthUnderflow);
+	}
+
+	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,callDepthLimit,callDepthLimit,none)
+	{
+      causeException(Exception::Cause::callDepthOverflow);
 	}
 
 	DEFINE_INTRINSIC_FUNCTION1(wavmIntrinsics,printt,printt,none,i64,depth)
 	{
 		//Log::printf(Log::Category::debug,"CALL DEPTH: %d\n",depth);
-      llvm::outs() << "CALL DEPTH : " << &depth << " " << depth << "\n";
+      int* ip = (int*)depth;
+      llvm::outs() << "CALL DEPTH : " << *ip << "\n";
 	}
 
 	DEFINE_INTRINSIC_FUNCTION1(wavmIntrinsics,debugEnterFunction,debugEnterFunction,none,i64,functionInstanceBits)
