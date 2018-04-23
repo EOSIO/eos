@@ -475,9 +475,31 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Transl
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
    using then_type = Ret (*)(running_instance_context&, T *, Inputs..., Translated...);
 
-   template<then_type Then>
-   static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) {
+   template<then_type Then, typename U=T>
+   static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<std::is_const<U>::value, Ret> {
       T* base = array_ptr_impl<T>(ctx, ptr, 1);
+      if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
+         wlog( "misaligned const pointer" );
+         std::remove_const_t<T> copy;
+         T* copy_ptr = &copy;
+         memcpy( (void*)copy_ptr, (void*)base, sizeof(T) );
+         return Then(ctx, copy_ptr, rest..., translated...);
+      }
+      return Then(ctx, base, rest..., translated...);
+   };
+
+   template<then_type Then, typename U=T>
+   static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
+      T* base = array_ptr_impl<T>(ctx, ptr, 1);
+      if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
+         wlog( "misaligned pointer" );
+         std::remove_const_t<T> copy;
+         T* copy_ptr = &copy;
+         memcpy( (void*)copy_ptr, (void*)base, sizeof(T) );
+         Ret ret = Then(ctx, copy_ptr, rest..., translated...);
+         memcpy( (void*)base, (void*)copy_ptr, sizeof(T) );
+         return ret;
+      }
       return Then(ctx, base, rest..., translated...);
    };
 
@@ -539,7 +561,6 @@ struct intrinsic_invoker_impl<Ret, std::tuple<const fc::time_point_sec&, Inputs.
    }
 };
 
-
 /**
  * Specialization for transcribing  a reference type in the native method signature
  *    This type transcribes into an int32  pointer checks the validity of that memory
@@ -554,14 +575,41 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Transl
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
    using then_type = Ret (*)(running_instance_context &, T &, Inputs..., Translated...);
 
-   template<then_type Then>
-   static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) {
+   template<then_type Then, typename U=T>
+   static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<std::is_const<U>::value, Ret> {
       // references cannot be created for null pointers
       FC_ASSERT(ptr != 0);
       MemoryInstance* mem = ctx.memory;
       if(!mem || ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
          Runtime::causeException(Exception::Cause::accessViolation);
       T &base = *(T*)(getMemoryBaseAddress(mem)+ptr);
+      if ( reinterpret_cast<uintptr_t>(&base) % alignof(T) != 0 ) {
+         wlog( "misaligned const reference" );
+         std::remove_const_t<T> copy;
+         T* copy_ptr = &copy;
+         memcpy( (void*)copy_ptr, (void*)&base, sizeof(T) );
+         return Then(ctx, *copy_ptr, rest..., translated...);
+      }
+      return Then(ctx, base, rest..., translated...);
+   }
+
+   template<then_type Then, typename U=T>
+   static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
+      // references cannot be created for null pointers
+      FC_ASSERT(ptr != 0);
+      MemoryInstance* mem = ctx.memory;
+      if(!mem || ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
+         Runtime::causeException(Exception::Cause::accessViolation);
+      T &base = *(T*)(getMemoryBaseAddress(mem)+ptr);
+      if ( reinterpret_cast<uintptr_t>(&base) % alignof(T) != 0 ) {
+         wlog( "misaligned reference" );
+         std::remove_const_t<T> copy;
+         T* copy_ptr = &copy;
+         memcpy( (void*)copy_ptr, (void*)&base, sizeof(T) );
+         Ret ret = Then(ctx, *copy_ptr, rest..., translated...);
+         memcpy( (void*)&base, (void*)copy_ptr, sizeof(T) );
+         return ret;
+      }
       return Then(ctx, base, rest..., translated...);
    }
 

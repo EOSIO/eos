@@ -648,8 +648,7 @@ class softfloat_api : public context_aware_api {
          return ((f.v & 0x7FFFFFFFFFFFFFFF) > 0x7FF0000000000000);
       }
       static bool is_nan( const float128_t& f ) {
-         const uint32_t* iptr = (const uint32_t*)&f;
-         return softfloat_isNaNF128M( iptr );
+         return (((~(f.v[1]) & uint64_t( 0x7FFF000000000000 )) == 0) && (f.v[0] || ((f.v[1]) & uint64_t( 0x0000FFFFFFFFFFFF ))));
       }
       static float32_t to_softfloat32( float f ) {
          return *reinterpret_cast<float32_t*>(&f);
@@ -669,8 +668,6 @@ class softfloat_api : public context_aware_api {
       static bool sign_bit( float32_t f ) { return f.v >> 31; }
       static bool sign_bit( float64_t f ) { return f.v >> 63; }
 
-
-
 };
 class producer_api : public context_aware_api {
    public:
@@ -689,7 +686,6 @@ class crypto_api : public context_aware_api {
    public:
       explicit crypto_api( apply_context& ctx )
       :context_aware_api(ctx,true){}
-
       /**
        * This method can be optimized out during replay as it has
        * no possible side effects other than "passing".
@@ -740,7 +736,6 @@ class crypto_api : public context_aware_api {
          auto result = fc::ripemd160::hash( data, datalen );
          FC_ASSERT( result == hash_val, "hash miss match" );
       }
-
 
       void sha1(array_ptr<char> data, size_t datalen, fc::sha1& hash_val) {
          hash_val = fc::sha1::hash( data, datalen );
@@ -865,25 +860,82 @@ class console_api : public context_aware_api {
          context.console_append(string(str, str_len));
       }
 
-      void printui(uint64_t val) {
-         context.console_append(val);
-      }
-
       void printi(int64_t val) {
          context.console_append(val);
       }
 
-      void printi128(const unsigned __int128& val) {
-         fc::uint128_t v(val>>64, uint64_t(val) );
+      void printui(uint64_t val) {
+         context.console_append(val);
+      }
+
+      void printi128(const __int128& val) {
+         bool is_negative = (val < 0);
+         unsigned __int128 val_magnitude;
+
+         if( is_negative )
+            val_magnitude = static_cast<unsigned __int128>(-val); // Works even if val is at the lowest possible value of a int128_t
+         else
+            val_magnitude = static_cast<unsigned __int128>(val);
+
+         fc::uint128_t v(val_magnitude>>64, static_cast<uint64_t>(val_magnitude) );
+
+         if( is_negative ) {
+            context.console_append("-");
+         }
+
          context.console_append(fc::variant(v).get_string());
       }
 
-      void printdf( double val ) {
-         context.console_append(val);
+      void printui128(const unsigned __int128& val) {
+         fc::uint128_t v(val>>64, static_cast<uint64_t>(val) );
+         context.console_append(fc::variant(v).get_string());
       }
 
-      void printff( float val ) {
+      void printsf( float val ) {
+         // Assumes float representation on native side is the same as on the WASM side
+         auto& console = context.get_console_stream();
+         auto orig_prec = console.precision();
+
+         console.precision( std::numeric_limits<float>::digits10 );
          context.console_append(val);
+
+         console.precision( orig_prec );
+      }
+
+      void printdf( double val ) {
+         // Assumes double representation on native side is the same as on the WASM side
+         auto& console = context.get_console_stream();
+         auto orig_prec = console.precision();
+
+         console.precision( std::numeric_limits<double>::digits10 );
+         context.console_append(val);
+
+         console.precision( orig_prec );
+      }
+
+      void printqf( const float128_t& val ) {
+         /*
+          * Native-side long double uses an 80-bit extended-precision floating-point number.
+          * The easiest solution for now was to use the Berkeley softfloat library to round the 128-bit
+          * quadruple-precision floating-point number to an 80-bit extended-precision floating-point number
+          * (losing precision) which then allows us to simply cast it into a long double for printing purposes.
+          *
+          * Later we might find a better solution to print the full quadruple-precision floating-point number.
+          * Maybe with some compilation flag that turns long double into a quadruple-precision floating-point number,
+          * or maybe with some library that allows us to print out quadruple-precision floating-point numbers without
+          * having to deal with long doubles at all.
+          */
+
+         auto& console = context.get_console_stream();
+         auto orig_prec = console.precision();
+
+         console.precision( std::numeric_limits<long double>::digits10 );
+
+         extFloat80_t val_approx;
+         f128M_to_extF80M(&val, &val_approx);
+         context.console_append( *(long double*)(&val_approx) );
+
+         console.precision( orig_prec );
       }
 
       void printn(const name& value) {
@@ -1053,6 +1105,7 @@ class database_api : public context_aware_api {
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx128, uint128_t)
       DB_API_METHOD_WRAPPERS_ARRAY_SECONDARY(idx256, 2, uint128_t)
       DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(idx_double, float64_t)
+      DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(idx_long_double, float128_t)
 };
 
 class memory_api : public context_aware_api {
@@ -1285,49 +1338,42 @@ class compiler_builtins : public context_aware_api {
          float128_t b = {{ lb, hb }};
          ret = f128_div( a, b );
       }
-      int __eqtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+      int ___cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb, int return_value_if_nan ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ lb, hb }};
-         return f128_eq( a, b );
-      }
-      int __netf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ lb, hb }};
-         return !f128_eq( a, b );
-      }
-      int __getf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ lb, hb }};
-         return !f128_lt( a, b );
-      }
-      int __gttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ lb, hb }};
-         return !f128_lt( a, b ) && !f128_eq( a, b );
-      }
-      int __letf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ lb, hb }};
-         return f128_le( a, b );
-      }
-      int __lttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ lb, hb }};
-         return f128_lt( a, b );
-      }
-      int __cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
-         float128_t a = {{ la, ha }};
-         float128_t b = {{ lb, hb }};
+         if ( __unordtf2(la, ha, lb, hb) )
+            return return_value_if_nan;
          if ( f128_lt( a, b ) )
             return -1;
          if ( f128_eq( a, b ) )
             return 0;
          return 1;
       }
+      int __eqtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 1);
+      }
+      int __netf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 1);
+      }
+      int __getf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, -1);
+      }
+      int __gttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 0);
+      }
+      int __letf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 1);
+      }
+      int __lttf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 0);
+      }
+      int __cmptf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
+         return ___cmptf2(la, ha, lb, hb, 1);
+      }
       int __unordtf2( uint64_t la, uint64_t ha, uint64_t lb, uint64_t hb ) {
          float128_t a = {{ la, ha }};
          float128_t b = {{ lb, hb }};
-         if ( f128_isSignalingNaN( a ) || f128_isSignalingNaN( b ) )
+         if ( softfloat_api::is_nan(a) || softfloat_api::is_nan(b) )
             return 1;
          return 0;
       }
@@ -1567,6 +1613,7 @@ REGISTER_INTRINSICS( database_api,
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
    DB_SECONDARY_INDEX_METHODS_ARRAY(idx256)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_double)
+   DB_SECONDARY_INDEX_METHODS_SIMPLE(idx_long_double)
 );
 
 REGISTER_INTRINSICS(crypto_api,
@@ -1617,15 +1664,17 @@ REGISTER_INTRINSICS(apply_context,
 
    //(printdi,               void(int64_t)   )
 REGISTER_INTRINSICS(console_api,
-   (prints,                void(int)       )
-   (prints_l,              void(int, int)  )
-   (printui,               void(int64_t)   )
-   (printi,                void(int64_t)   )
-   (printi128,             void(int)       )
-   (printdf,               void(double)    )
-   (printff,               void(float)     )
-   (printn,                void(int64_t)   )
-   (printhex,              void(int, int)  )
+   (prints,                void(int)      )
+   (prints_l,              void(int, int) )
+   (printi,                void(int64_t)  )
+   (printui,               void(int64_t)  )
+   (printi128,             void(int)      )
+   (printui128,            void(int)      )
+   (printsf,               void(float)    )
+   (printdf,               void(double)   )
+   (printqf,               void(int)      )
+   (printn,                void(int64_t)  )
+   (printhex,              void(int, int) )
 );
 
 REGISTER_INTRINSICS(context_free_transaction_api,

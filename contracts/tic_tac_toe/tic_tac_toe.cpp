@@ -19,8 +19,8 @@ struct impl {
    /**
     * @brief Check for valid movement
     * @detail Movement is considered valid if it is inside the board and done on empty cell
-    * @param movement - the movement made by the player
-    * @param game - the game on which the movement is being made
+    * @param mvt - the movement made by the player
+    * @param game_for_movement - the game on which the movement is being made
     * @return true if movement is valid
     */
    bool is_valid_movement(const movement& mvt, const game& game_for_movement) {
@@ -33,7 +33,7 @@ struct impl {
    /**
     * @brief Get winner of the game
     * @detail Winner of the game is the first player who made three consecutive aligned movement
-    * @param game - the game which we want to determine the winner of
+    * @param current_game - the game which we want to determine the winner of
     * @return winner of the game (can be either none/ draw/ account name of host/ account name of challenger)
     */
    account_name get_winner(const game& current_game) {
@@ -86,7 +86,7 @@ struct impl {
 
    /**
     * @brief Apply create action
-    * @param create - action to be applied
+    * @param c - action to be applied
     */
    void on(const create& c) {
       require_auth(c.host);
@@ -106,7 +106,7 @@ struct impl {
 
    /**
     * @brief Apply restart action
-    * @param restart - action to be applied
+    * @param r - action to be applied
     */
    void on(const restart& r) {
       require_auth(r.by);
@@ -127,7 +127,7 @@ struct impl {
 
    /**
     * @brief Apply close action
-    * @param close - action to be applied
+    * @param c - action to be applied
     */
    void on(const close& c) {
       require_auth(c.host);
@@ -143,7 +143,7 @@ struct impl {
 
    /**
     * @brief Apply move action
-    * @param move - action to be applied
+    * @param m - action to be applied
     */
    void on(const move& m) {
       require_auth(m.by);
@@ -165,7 +165,7 @@ struct impl {
       eosio_assert(is_valid_movement(m.mvt, *itr), "not a valid movement!");
 
       // Fill the cell, 1 for host, 2 for challenger
-      const auto cell_value = itr->turn == itr->host ? 1 : 2;
+      const uint8_t cell_value = itr->turn == itr->host ? 1 : 2;
       const auto turn = itr->turn == itr->host ? itr->challenger : itr->host;
       existing_host_games.modify(itr, itr->host, [&]( auto& g ) {
          g.board[m.mvt.row * 3 + m.mvt.column] = cell_value;
@@ -177,7 +177,7 @@ struct impl {
    }
 
    /// The apply method implements the dispatch of events to this contract
-   void apply( uint64_t receiver, uint64_t code, uint64_t action ) {
+   void apply( uint64_t /*receiver*/, uint64_t code, uint64_t action ) {
 
       if (code == code_account) {
          if (action == N(create)) {
