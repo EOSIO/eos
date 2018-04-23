@@ -1,6 +1,9 @@
 #include "eosio.system.hpp"
-
 #include <eosiolib/dispatcher.hpp>
+
+#include "delegate_bandwidth.cpp"
+#include "producer_pay.cpp"
+#include "voting.cpp"
 
 EOSIO_ABI( eosiosystem::system_contract,
            // delegate_bandwith.cpp
@@ -12,7 +15,7 @@ EOSIO_ABI( eosiosystem::system_contract,
            (claimrewards)
            // native.hpp
            //XXX
-           //(newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(postrecovery)(passrecovery)(vetorecovery)(onerror)(canceldelay)
+           (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(postrecovery)(passrecovery)(vetorecovery)(onerror)(canceldelay)
            // defined in eosio.system.hpp
            (nonce)
 )

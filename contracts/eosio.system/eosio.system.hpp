@@ -124,7 +124,7 @@ namespace eosiosystem {
 
       void unregproxy( const account_name proxy );
 
-      void nonce( const std::string& value ) {}
+      void nonce( const std::string& /*value*/ ) {}
 
       // functions defined in producer_pay.cpp
 
@@ -133,16 +133,6 @@ namespace eosiosystem {
       void onblock( const block_header& header );
 
       void claimrewards( const account_name& owner );
-
    };
 
 } /// eosiosystem
-
-//hack to prevent linker from removing apply function
-extern "C" {
-   void apply( uint64_t receiver, uint64_t code, uint64_t action );
-}
-
-void call_apply() {
-   apply( 0, 0, 0 );
-}

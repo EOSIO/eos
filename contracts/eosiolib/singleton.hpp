@@ -7,7 +7,6 @@ namespace  eosio {
    /**
     *  This wrapper uses a single table to store named objects various types.
     *
-    *  @tparam Code - the name of the code which has write permission
     *  @tparam SingletonName - the name of this singlton variable
     *  @tparam T - the type of the singleton
     */

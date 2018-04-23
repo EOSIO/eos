@@ -36,42 +36,46 @@ namespace eosiosystem {
       EOSLIB_SERIALIZE( authority, (threshold)(keys)(accounts) )
    };
 
+   /*
+    * Empty handlers for native messages.
+    * Method parameters commented out to prevent generation of code that parses input data.
+    */
    class native {
       public:
 
-      static void newaccount( account_name     creator,
+      void newaccount( /*account_name     creator,
                               account_name     name,
                               const authority& owner,
                               const authority& active,
-                              const authority& recovery ) {}
+                              const authority& recovery*/ ) {}
 
-      static void updateauth( account_name     account,
+      void updateauth( /*account_name     account,
                               permission_name  permission,
                               permission_name  parent,
-                              const authority& data ) {}
+                              const authority& data*/ ) {}
 
-      static void deleteauth( account_name account, permission_name permission ) {}
+      void deleteauth( /*account_name account, permission_name permission*/ ) {}
 
-      static void linkauth( account_name    account,
+      void linkauth( /*account_name    account,
                             account_name    code,
                             action_name     type,
-                            permission_name requirement ) {}
+                            permission_name requirement*/ ) {}
 
-      static void unlinkauth( account_name account,
+      void unlinkauth( /*account_name account,
                               account_name code,
-                              action_name  type ) {}
+                              action_name  type*/ ) {}
 
-      static void postrecovery( account_name       account,
+      void postrecovery( /*account_name       account,
                                 const authority&   data,
-                                const std::string& memo ) {}
+                                const std::string& memo*/ ) {}
 
-      static void passrecovery( account_name account ) {}
+      void passrecovery( /*account_name account*/ ) {}
 
-      static void vetorecovery( account_name   account ) {}
+      void vetorecovery( /*account_name account*/ ) {}
 
-      static void onerror( const bytes& ) {}
+      void onerror( /*const bytes&*/ ) {}
 
-      static void canceldelay( permission_level canceling_auth, transaction_id_type trx_id ) {}
+      void canceldelay( /*permission_level canceling_auth, transaction_id_type trx_id*/ ) {}
 
    };
 }
