@@ -55,8 +55,7 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
          {"account", "account_name"},
          {"permission", "permission_name"},
          {"parent", "permission_name"},
-         {"data", "authority"},
-         {"delay", "uint32"}
+         {"auth", "authority"}
       }
    });
 
@@ -97,7 +96,7 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.structs.emplace_back( struct_def {
       "postrecovery", "", {
          {"account", "account_name"},
-         {"data", "authority"},
+         {"auth", "authority"},
          {"memo", "string"},
       }
    });
@@ -184,7 +183,6 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.structs.emplace_back( struct_def {
       "transaction_header", "", {
          {"expiration", "time_point_sec"},
-         {"region", "uint16"},
          {"ref_block_num", "uint16"},
          {"ref_block_prefix", "uint32"},
          {"max_net_usage_words", "varuint32"},
@@ -258,7 +256,7 @@ abi_def eosio_contract_abi(const abi_def& eosio_system_abi)
          {"structs", "struct_def[]"},
          {"actions", "action_def[]"},
          {"tables", "table_def[]"},
-         {"ricardian_clauses", "clause_pair[]"}
+         {"clauses", "clause_pair[]"}
       }
    });
 
