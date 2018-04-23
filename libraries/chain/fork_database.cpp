@@ -123,7 +123,7 @@ namespace eosio { namespace chain {
       FC_ASSERT( existing == by_id_idx.end(), "we already know about this block" );
 
       auto prior = by_id_idx.find( b->previous );
-      FC_ASSERT( prior != by_id_idx.end(), "unlinkable block" );
+      FC_ASSERT( prior != by_id_idx.end(), "unlinkable block", ("id", b->id())("previous", b->previous) );
 
       auto result = std::make_shared<block_state>( **prior, move(b) );
       return add(result);

@@ -103,8 +103,13 @@ namespace eosio { namespace testing {
       auto head_time = control->head_block_time();
       auto next_time = head_time + skip_time;
 
-      if( !control->pending_block_state() )
+      if( !control->pending_block_state() ) {
          control->start_block( next_time );
+      } else if( control->pending_block_state()->header.timestamp != next_time ) {
+         control->abort_block();
+         control->start_block( next_time );
+         // TODO: Schedule all transactions in unapplied_transactions and deferred ones?
+      }
 
       control->finalize_block();
       control->sign_block( [&]( digest_type d ) {
@@ -170,13 +175,13 @@ namespace eosio { namespace testing {
    transaction_trace_ptr base_tester::push_transaction( packed_transaction& trx, uint32_t skip_flag ) { try {
       if( !control->pending_block_state() )
          control->start_block();
-      return control->push_transaction( std::make_shared<transaction_metadata>(trx) );
+      return control->sync_push( std::make_shared<transaction_metadata>(trx) );
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx.get_transaction())) ) }
 
    transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx, uint32_t skip_flag ) { try {
       if( !control->pending_block_state() )
          control->start_block();
-      return control->push_transaction( std::make_shared<transaction_metadata>(trx) );
+      return control->sync_push( std::make_shared<transaction_metadata>(trx) );
    } FC_CAPTURE_AND_RETHROW( (transaction_header(trx)) ) }
 
 

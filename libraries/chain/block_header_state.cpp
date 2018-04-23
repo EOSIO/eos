@@ -79,8 +79,8 @@ namespace eosio { namespace chain {
     result.pending_schedule_hash                 = pending_schedule_hash;
     result.block_num                             = block_num + 1;
     result.producer_to_last_produced             = producer_to_last_produced;
-    result.dpos_last_irreversible_blocknum       = result.calc_dpos_last_irreversible();
     result.producer_to_last_produced[prokey.producer_name] = result.block_num;
+    result.dpos_last_irreversible_blocknum       = result.calc_dpos_last_irreversible();
     result.blockroot_merkle = blockroot_merkle;
     result.blockroot_merkle.append( id );
 
