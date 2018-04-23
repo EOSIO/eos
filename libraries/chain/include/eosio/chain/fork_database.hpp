@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 #include <eosio/chain/block_state.hpp>
 #include <boost/signals2/signal.hpp>
 
@@ -17,7 +17,7 @@ namespace eosio { namespace chain {
     * As new blocks are received, they are pushed into the fork database. The fork
     * database tracks the longest chain and the last irreversible block number. All
     * blocks older than the last irreversible block are freed after emitting the
-    * irreversible signal. 
+    * irreversible signal.
     */
    class fork_database {
       public:
@@ -26,6 +26,7 @@ namespace eosio { namespace chain {
          ~fork_database();
 
          block_state_ptr  get_block(const block_id_type& id)const;
+         block_state_ptr  get_block_in_current_chain_by_num( uint32_t n )const;
 //         vector<block_state_ptr>    get_blocks_by_number(uint32_t n)const;
 
          /**
@@ -34,11 +35,11 @@ namespace eosio { namespace chain {
          void            set( block_state_ptr s );
 
          /** this method will attempt to append the block to an exsting
-          * block_state and will return a pointer to the head block or
+          * block_state and will return a pointer to the new block state or
           * throw on error.
           */
-         block_state_ptr add( signed_block_ptr b ); 
-         block_state_ptr add( block_state_ptr next_block ); 
+         block_state_ptr add( signed_block_ptr b );
+         block_state_ptr add( block_state_ptr next_block );
          void            remove( const block_id_type& id );
 
          const block_state_ptr& head()const;
@@ -56,6 +57,7 @@ namespace eosio { namespace chain {
           * than the LIB are pruned after emitting irreversible signal.
           */
          void set_validity( const block_state_ptr& h, bool valid );
+         void mark_in_current_chain( const block_state_ptr& h, bool in_current_chain );
          void prune( const block_state_ptr& h );
 
          /**

@@ -294,7 +294,9 @@ struct controller_impl {
 
       if( add_to_fork_db ) {
          pending->_pending_block_state->validated = true;
-         head = fork_db.add( pending->_pending_block_state );
+         auto new_bsp = fork_db.add( pending->_pending_block_state );
+         head = fork_db.head();
+         FC_ASSERT( new_bsp == head, "committed block did not become the new head in fork database" );
       }
 
       pending->push();
@@ -466,6 +468,7 @@ struct controller_impl {
 
      pending = db.start_undo_session(true);
      pending->_pending_block_state = std::make_shared<block_state>( *head, when );
+     pending->_pending_block_state->in_current_chain = true;
 
      try {
         auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
@@ -522,22 +525,28 @@ struct controller_impl {
          try {
             abort_block();
             apply_block( b );
+            fork_db.mark_in_current_chain( new_head, true );
             fork_db.set_validity( new_head, true );
             head = new_head;
          } catch ( const fc::exception& e ) {
-            fork_db.set_validity( new_head, false );
+            fork_db.set_validity( new_head, false ); // Removes new_head from fork_db index, so no need to mark it as not in the current chain.
             throw;
          }
-      } else {
+      } else if( new_head->id != head->id ) {
          auto branches = fork_db.fetch_branch_from( new_head->id, head->id );
 
-         while( head_block_id() != branches.second.back()->header.previous )
+         for( auto itr = branches.second.begin(); itr != branches.second.end(); ++itr ) {
+            fork_db.mark_in_current_chain( *itr , false );
             pop_block();
+         }
+         FC_ASSERT( head_block_id() == branches.second.back()->header.previous,
+                    "loss of sync between fork_db and chainbase during fork switch" ); // _should_ never fail
 
          for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
             optional<fc::exception> except;
             try {
                apply_block( (*ritr)->block );
+               fork_db.mark_in_current_chain( *ritr, true );
             }
             catch (const fc::exception& e) { except = e; }
             if (except) {
@@ -549,12 +558,17 @@ struct controller_impl {
                }
 
                // pop all blocks from the bad fork
-               while( head_block_id() != branches.second.back()->header.previous )
+               for( auto itr = (ritr + 1).base(); itr != branches.second.end(); ++itr ) {
+                  fork_db.mark_in_current_chain( *itr , false );
                   pop_block();
+               }
+               FC_ASSERT( head_block_id() == branches.second.back()->header.previous,
+                          "loss of sync between fork_db and chainbase during fork switch reversal" ); // _should_ never fail
 
                // re-apply good blocks
                for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
                   apply_block( (*ritr)->block );
+                  fork_db.mark_in_current_chain( *ritr, true );
                }
                throw *except;
             } // end if exception
@@ -644,18 +658,6 @@ struct controller_impl {
       db.modify( db.get<block_summary_object,by_id>(sid), [&](block_summary_object& bso ) {
           bso.block_id = p->id;
       });
-   }
-
-   /**
-    *  This method only works for blocks within the TAPOS range, (last 65K blocks). It
-    *  will return block_id_type() for older blocks.
-    */
-   block_id_type get_block_id_for_num( uint32_t block_num ) {
-      auto sid = block_num & 0xffff;
-      auto id  = db.get<block_summary_object,by_id>(sid).block_id;
-      auto num = block_header::num_from_id( id );
-      if( num == block_num ) return id;
-      return block_id_type();
    }
 
    void clear_expired_transactions() {
@@ -851,9 +853,8 @@ void controller::log_irreversible_blocks() {
    if( lib > 1 ) {
       while( log_head && log_head->block_num() < lib ) {
          auto lhead = log_head->block_num();
-         auto blk_id = my->get_block_id_for_num( lhead + 1 );
-         auto blk = my->fork_db.get_block( blk_id );
-         FC_ASSERT( blk, "unable to find block state", ("id",blk_id));
+         auto blk = my->fork_db.get_block_in_current_chain_by_num( lhead + 1 );
+         FC_ASSERT( blk, "unable to find block state", ("block_num",lhead+1));
          irreversible_block( blk );
          my->blog.append( *blk->block );
          my->fork_db.prune( blk );
@@ -873,8 +874,7 @@ signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  {
    optional<signed_block> b = my->blog.read_block_by_num(block_num);
    if( b ) return std::make_shared<signed_block>( move(*b) );
 
-   auto blk_id = my->get_block_id_for_num( block_num );
-   auto blk_state =  my->fork_db.get_block( blk_id );
+   auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
    if( blk_state ) return blk_state->block;
    return signed_block_ptr();
 }
