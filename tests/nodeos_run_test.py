@@ -393,9 +393,9 @@ try:
     if hashNum != 0:
         errorExit("FAILURE - get code currency failed", raw=True)
 
-    contractDir="contracts/currency"
-    wastFile="contracts/currency/currency.wast"
-    abiFile="contracts/currency/currency.abi"
+    contractDir="contracts/eosio.token"
+    wastFile="contracts/eosio.token/eosio.token.wast"
+    abiFile="contracts/eosio.token/eosio.token.abi"
     Print("Publish contract")
     trans=node.publishContract(currencyAccount.name, contractDir, wastFile, abiFile, waitForTransBlock=True)
     if trans is None:
