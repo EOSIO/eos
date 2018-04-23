@@ -22,11 +22,11 @@ namespace eosio { namespace chain {
       block_state_ptr,
       indexed_by<
          hashed_unique< tag<by_block_id>, member<block_header_state, block_id_type, &block_header_state::id>, std::hash<block_id_type>>,
-         hashed_non_unique< tag<by_prev>, const_mem_fun<block_header_state, 
-                                         const block_id_type&, &block_header_state::prev>, 
+         hashed_non_unique< tag<by_prev>, const_mem_fun<block_header_state,
+                                         const block_id_type&, &block_header_state::prev>,
                                          std::hash<block_id_type>>,
          ordered_non_unique< tag<by_block_num>, member<block_header_state,uint32_t,&block_header_state::block_num>>,
-         ordered_non_unique< tag<by_lib_block_num>, 
+         ordered_non_unique< tag<by_lib_block_num>,
             composite_key< block_header_state,
                 member<block_header_state,uint32_t,&block_header_state::dpos_last_irreversible_blocknum>,
                 member<block_header_state,uint32_t,&block_header_state::block_num>
@@ -187,7 +187,7 @@ namespace eosio { namespace chain {
 
    void fork_database::set_validity( const block_state_ptr& h, bool valid ) {
       if( !valid ) {
-         remove( h->id ); 
+         remove( h->id );
       } else {
          /// remove older than irreversible and mark block as valid
          h->validated = true;
@@ -195,14 +195,13 @@ namespace eosio { namespace chain {
    }
    void fork_database::prune( const block_state_ptr& h ) {
       auto num = h->block_num;
-      
+
       auto itr = my->index.find( h->id );
       if( itr != my->index.end() )
          my->index.erase(itr);
 
       auto& numidx = my->index.get<by_block_num>();
-      auto nitr = numidx.find( num );
-      if( nitr != numidx.end() ) {
+      for( auto nitr = numidx.lower_bound( num ); nitr != numidx.end() && (*nitr)->block_num == num; ++nitr ) {
          remove( (*nitr)->id );
       }
    }
@@ -210,7 +209,7 @@ namespace eosio { namespace chain {
 
    block_state_ptr   fork_database::get_block(const block_id_type& id)const {
       auto itr = my->index.find( id );
-      if( itr != my->index.end() ) 
+      if( itr != my->index.end() )
          return *itr;
       return block_state_ptr();
    }
