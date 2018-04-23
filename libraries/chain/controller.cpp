@@ -549,7 +549,7 @@ struct controller_impl {
                throw *except;
             } // end if exception
          } /// end for each block in branch
-         wlog("successfully switched fork to new head ${head_id}", ("new_head_id", new_head->id));
+         wlog("successfully switched fork to new head ${new_head_id}", ("new_head_id", new_head->id));
       }
    } /// push_block
 
