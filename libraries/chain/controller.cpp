@@ -75,9 +75,11 @@ struct controller_impl {
    }
 
    void pop_block() {
+      auto prev = fork_db.get_block( head->header.previous );
+      FC_ASSERT( prev, "attempt to pop beyond last irreversible block" );
       for( const auto& t : head->trxs )
          unapplied_transactions[t->signed_id] = t;
-      head = fork_db.get_block( head->header.previous );
+      head = prev;
       db.undo();
    }
 
@@ -522,6 +524,7 @@ struct controller_impl {
             optional<fc::exception> except;
             try {
                apply_block( (*ritr)->block );
+               head = *ritr;
                fork_db.mark_in_current_chain( *ritr, true );
             }
             catch (const fc::exception& e) { except = e; }
@@ -544,6 +547,7 @@ struct controller_impl {
                // re-apply good blocks
                for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
                   apply_block( (*ritr)->block );
+                  head = *ritr;
                   fork_db.mark_in_current_chain( *ritr, true );
                }
                throw *except;
@@ -854,12 +858,8 @@ signed_block_ptr controller::fetch_block_by_number( uint32_t block_num )const  {
 }
 
 void controller::pop_block() {
-   auto prev = my->fork_db.get_block( my->head->header.previous );
-   FC_ASSERT( prev, "attempt to pop beyond last irreversible block" );
-   my->db.undo();
-   my->head = prev;
+   my->pop_block();
 }
-
 
 void controller::set_active_producers( const producer_schedule_type& sch ) {
    FC_ASSERT( !my->pending->_pending_block_state->header.new_producers, "this block has already set new producers" );
