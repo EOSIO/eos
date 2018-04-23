@@ -468,8 +468,11 @@ class apply_context {
        idx128(*this),
        idx256(*this),
        idx_double(*this),
+       idx_long_double(*this),
        recurse_depth(depth)
-       {}
+      {
+         reset_console();
+      }
 
       void exec();
 
@@ -541,6 +544,8 @@ class apply_context {
 
       apply_results results;
 
+      std::ostringstream& get_console_stream() { return _pending_console_output; }
+
       template<typename T>
       void console_append(T val) {
          _pending_console_output << val;
@@ -579,6 +584,7 @@ class apply_context {
       generic_index<contracts::index128_object>   idx128;
       generic_index<contracts::index256_object, uint128_t*, const uint128_t*>   idx256;
       generic_index<contracts::index_double_object> idx_double;
+      generic_index<contracts::index_long_double_object> idx_long_double;
 
       uint32_t                                    recurse_depth;  // how deep inline actions can recurse
 
@@ -590,6 +596,8 @@ class apply_context {
          fc::move_append(results.deferred_transaction_requests, std::move(other.deferred_transaction_requests));
          results.deferred_transactions_count += other.deferred_transactions_count;
       }
+
+      void reset_console();
 
       void exec_one();
 

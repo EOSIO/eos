@@ -23,57 +23,67 @@ namespace eosio {
    }
 
    /**
-    * Prints 64 bit unsigned integer as a 64 bit unsigned integer
-    * @brief Prints integer 64 bit unsigned integer
-    * @param num to be printed
-    */
-   inline void print( uint64_t num ) {
-      printui(num);
-   }
-   inline void print( int64_t num ) {
-      printi(num);
-   }
-   inline void print( double d ) { printdf( d ); }
-   inline void print( float f ) { printff( f ); }
-
-   /**
-    * Prints 32 bit unsigned integer as a 64 bit unsigned integer
-    * @brief Prints integer  32 bit unsigned integer
-    * @param num to be printed
-    */
-   inline void print( uint32_t num ) {
-      printi(num);
-   }
-
-   /**
-    * Prints integer as a 64 bit unsigned integer
-    * @brief Prints integer
+    * Prints signed integer
+    * @brief Prints signed integer as a 64 bit signed integer
     * @param num to be printed
     */
    inline void print( int num ) {
       printi(num);
    }
 
-   inline void print( long num ) {
+   /**
+    * Prints 32 bit signed integer
+    * @brief Prints 32 bit signed integer as a 64 bit signed integer
+    * @param num to be printed
+    */
+   inline void print( int32_t num ) {
       printi(num);
    }
 
    /**
-    * Prints unsigned integer as a 64 bit unsigned integer
-    * @brief Prints unsigned integer
+    * Prints 64 bit signed integer
+    * @brief Prints 64 bit signed integer as a 64 bit signed integer
+    * @param num to be printed
+    */
+   inline void print( int64_t num ) {
+      printi(num);
+   }
+
+
+   /**
+    * Prints unsigned integer
+    * @brief Prints unsigned integer as a 64 bit unsigned integer
     * @param num to be printed
     */
    inline void print( unsigned int num ) {
-      printi(num);
+      printui(num);
    }
 
    /**
-    * Prints uint128 struct as 128 bit unsigned integer
-    * @brief Prints uint128 struct
+    * Prints 32 bit unsigned integer
+    * @brief Prints 32 bit unsigned integer as a 64 bit unsigned integer
     * @param num to be printed
     */
-   inline void print( uint128 num ) {
-      printi128((uint128_t*)&num);
+   inline void print( uint32_t num ) {
+      printui(num);
+   }
+
+   /**
+    * Prints 64 bit unsigned integer
+    * @brief Prints 64 bit unsigned integer as a 64 bit unsigned integer
+    * @param num to be printed
+    */
+   inline void print( uint64_t num ) {
+      printui(num);
+   }
+
+   /**
+    * Prints 128 bit signed integer
+    * @brief Prints 128 bit signed integer
+    * @param num to be printed
+    */
+   inline void print( int128_t num ) {
+      printi128(&num);
    }
 
    /**
@@ -82,8 +92,30 @@ namespace eosio {
     * @param num to be printed
     */
    inline void print( uint128_t num ) {
-      printi128(&num);
+      printui128(&num);
    }
+
+
+   /**
+    * Prints single-precision floating point number
+    * @brief Prints single-precision floating point number (i.e. float)
+    * @param num to be printed
+    */
+   inline void print( float num ) { printsf( num ); }
+
+   /**
+    * Prints double-precision floating point number
+    * @brief Prints double-precision floating point number (i.e. double)
+    * @param num to be printed
+    */
+   inline void print( double num ) { printdf( num ); }
+
+   /**
+    * Prints quadruple-precision floating point number
+    * @brief Prints quadruple-precision floating point number (i.e. long double)
+    * @param num to be printed
+    */
+   inline void print( long double num ) { printqf( &num ); }
 
 
    /**

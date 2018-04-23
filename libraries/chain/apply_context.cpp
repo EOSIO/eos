@@ -85,7 +85,7 @@ void apply_context::exec_one()
    }
 
    results.applied_actions.emplace_back(action_trace {receiver, context_free, _cpu_usage, act, _pending_console_output.str(), move(data_access)});
-   _pending_console_output = std::ostringstream();
+   reset_console();
    _read_locks.clear();
    _write_scopes.clear();
    results.applied_actions.back()._profiling_us = fc::time_point::now() - start;
@@ -347,6 +347,11 @@ vector<account_name> apply_context::get_active_producers() const {
       accounts.push_back(producer.producer_name);
 
    return accounts;
+}
+
+void apply_context::reset_console() {
+   _pending_console_output = std::ostringstream();
+   _pending_console_output.setf( std::ios::scientific, std::ios::floatfield );
 }
 
 void apply_context::checktime(uint32_t instruction_count) {
