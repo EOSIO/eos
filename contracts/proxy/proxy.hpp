@@ -5,7 +5,6 @@
 #pragma once
 
 #include <eosiolib/eosio.hpp>
-#include <eosiolib/asset.hpp>
 
 namespace proxy {
 
@@ -24,13 +23,6 @@ namespace proxy {
       account_name        owner = 0;
       uint32_t            delay = 0;
       uint32_t            next_id = 0;
-   };
-
-   struct transfer_args {
-      account_name  from;
-      account_name  to;
-      eosio::asset  quantity;
-      std::string   memo;
    };
 
 } /// namespace proxy

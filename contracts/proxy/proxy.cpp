@@ -97,7 +97,7 @@ extern "C" {
           }
        } else if ( code == N(eosio.token) ) {
           if( action == N(transfer) ) {
-             apply_transfer(receiver, code, unpack_action_data<transfer_args>());
+             apply_transfer(receiver, code, unpack_action_data<eosio::token::transfer_args>());
           }
        } else if (code == receiver ) {
           if ( action == N(setowner)) {
