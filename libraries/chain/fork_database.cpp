@@ -25,7 +25,13 @@ namespace eosio { namespace chain {
          hashed_non_unique< tag<by_prev>, const_mem_fun<block_header_state,
                                          const block_id_type&, &block_header_state::prev>,
                                          std::hash<block_id_type>>,
-         ordered_non_unique< tag<by_block_num>, member<block_header_state,uint32_t,&block_header_state::block_num>>,
+         ordered_non_unique< tag<by_block_num>,
+            composite_key< block_state,
+               member<block_header_state,uint32_t,&block_header_state::block_num>,
+               member<block_state,bool,&block_state::in_current_chain>
+            >,
+            composite_key_compare< std::less<uint32_t>, std::greater<bool> >
+         >,
          ordered_non_unique< tag<by_lib_block_num>,
             composite_key< block_header_state,
                 member<block_header_state,uint32_t,&block_header_state::dpos_last_irreversible_blocknum>,
@@ -135,7 +141,7 @@ namespace eosio { namespace chain {
       auto first_branch = get_block(first);
       auto second_branch = get_block(second);
 
-      while( first_branch->block_num> second_branch->block_num )
+      while( first_branch->block_num > second_branch->block_num )
       {
          result.first.push_back(first_branch);
          first_branch = get_block( first_branch->header.previous );
@@ -193,6 +199,20 @@ namespace eosio { namespace chain {
          h->validated = true;
       }
    }
+
+   void fork_database::mark_in_current_chain( const block_state_ptr& h, bool in_current_chain ) {
+      if( h->in_current_chain == in_current_chain )
+         return;
+
+      auto& by_id_idx = my->index.get<by_block_id>();
+      auto itr = by_id_idx.find( h->id );
+      FC_ASSERT( itr != by_id_idx.end(), "could not find block in fork database" );
+
+      by_id_idx.modify( itr, [&]( auto& bsp ) { // Need to modify this way rather than directly so that Boost MultiIndex can re-sort
+         bsp->in_current_chain = in_current_chain;
+      });
+   }
+
    void fork_database::prune( const block_state_ptr& h ) {
       auto num = h->block_num;
 
@@ -206,7 +226,6 @@ namespace eosio { namespace chain {
       }
    }
 
-
    block_state_ptr   fork_database::get_block(const block_id_type& id)const {
       auto itr = my->index.find( id );
       if( itr != my->index.end() )
@@ -214,6 +233,14 @@ namespace eosio { namespace chain {
       return block_state_ptr();
    }
 
-
+   block_state_ptr   fork_database::get_block_in_current_chain_by_num( uint32_t n )const {
+      const auto& numidx = my->index.get<by_block_num>();
+      auto nitr = numidx.lower_bound( n );
+      FC_ASSERT( nitr != numidx.end() && (*nitr)->block_num == n,
+                 "could not find block in fork database with block number ${block_num}", ("block_num", n) );
+      FC_ASSERT( (*nitr)->in_current_chain == true,
+                 "block (with block number ${block_num}) found in fork database is not in the current chain", ("block_num", n) );
+      return *nitr;
+   }
 
 } } /// eosio::chain

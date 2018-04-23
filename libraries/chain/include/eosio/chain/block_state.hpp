@@ -20,6 +20,7 @@ namespace eosio { namespace chain {
       /// weak_ptr prev_block_state....
       signed_block_ptr                                    block;
       bool                                                validated = false;
+      bool                                                in_current_chain = false;
 
       /// this data is redundant with the data stored in block, but facilitates
       /// recapturing transactions when we pop a block
