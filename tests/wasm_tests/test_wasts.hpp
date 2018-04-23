@@ -16,6 +16,7 @@ static const char f32_add_wast[] = R"=====(
  )
 )=====";
 */
+
 static const char aligned_ref_wast[] = R"=====(
 (module
  (import "env" "sha256" (func $sha256 (param i32 i32 i32)))
@@ -166,21 +167,25 @@ static const char entry_wast[] = R"=====(
  (export "entry" (func $entry))
  (export "apply" (func $apply))
  (func $entry
-  (i32.store offset=4
-   (i32.const 0)
-   (call $now)
+  (block
+   (i32.store offset=4
+    (i32.const 0)
+    (call $now)
+   )
   )
  )
  (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
-  (call $require_auth (i64.const 6121376101093867520))
-  (call $eosio_assert
-   (i32.eq
-    (i32.load offset=4
-     (i32.const 0)
+  (block
+   (call $require_auth (i64.const 6121376101093867520))
+   (call $eosio_assert
+    (i32.eq
+     (i32.load offset=4
+      (i32.const 0)
+     )
+     (call $now)
     )
-    (call $now)
+    (i32.const 0)
    )
-   (i32.const 0)
   )
  )
  (start $entry)
