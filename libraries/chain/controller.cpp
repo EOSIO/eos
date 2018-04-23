@@ -505,7 +505,7 @@ struct controller_impl {
             fork_db.set_validity( new_head, false ); // Removes new_head from fork_db index, so no need to mark it as not in the current chain.
             throw;
          }
-      } else {
+      } else if( new_head->id != head->id ) {
          auto branches = fork_db.fetch_branch_from( new_head->id, head->id );
 
          for( auto itr = branches.second.begin(); itr != branches.second.end(); ++itr ) {
