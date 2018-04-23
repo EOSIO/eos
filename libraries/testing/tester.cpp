@@ -103,8 +103,13 @@ namespace eosio { namespace testing {
       auto head_time = control->head_block_time();
       auto next_time = head_time + skip_time;
 
-      if( !control->pending_block_state() )
+      if( !control->pending_block_state() ) {
          control->start_block( next_time );
+      } else if( control->pending_block_state()->header.timestamp != next_time ) {
+         control->abort_block();
+         control->start_block( next_time );
+         // TODO: Schedule all transactions in unapplied_transactions and deferred ones?
+      }
 
       control->finalize_block();
       control->sign_block( [&]( digest_type d ) {

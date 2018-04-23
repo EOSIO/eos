@@ -437,7 +437,8 @@ struct controller_impl {
    void start_block( block_timestamp_type when ) {
      FC_ASSERT( !pending );
 
-     FC_ASSERT( db.revision() == head->block_num );
+     FC_ASSERT( db.revision() == head->block_num, "",
+                ("db_head_block", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
      pending = db.start_undo_session(true);
      pending->_pending_block_state = std::make_shared<block_state>( *head, when );
@@ -506,6 +507,8 @@ struct controller_impl {
             throw;
          }
       } else if( new_head->id != head->id ) {
+         wlog("switching forks from ${current_head_id} (block number ${current_head_num}) to ${new_head_id} (block number ${new_head_num})",
+              ("current_head_id", head->id)("current_head_num", head->block_num)("new_head_id", new_head->id)("new_head_num", new_head->block_num) );
          auto branches = fork_db.fetch_branch_from( new_head->id, head->id );
 
          for( auto itr = branches.second.begin(); itr != branches.second.end(); ++itr ) {
@@ -546,6 +549,7 @@ struct controller_impl {
                throw *except;
             } // end if exception
          } /// end for each block in branch
+         wlog("successfully switched fork to new head ${head_id}", ("new_head_id", new_head->id));
       }
    } /// push_block
 
@@ -584,13 +588,15 @@ struct controller_impl {
 
    void finalize_block()
    { try {
-      ilog( "finalize block ${p} ${t} schedule_version: ${v} lib: ${lib} ${np}  ${signed}",
-            ("p",pending->_pending_block_state->header.producer)
+      ilog( "finalize block ${n} (${id}) at ${t} by ${p} (${signing_key}); schedule_version: ${v} lib: ${lib} ${np}",
+            ("n",pending->_pending_block_state->block_num)
+            ("id",pending->_pending_block_state->header.id())
             ("t",pending->_pending_block_state->header.timestamp)
+            ("p",pending->_pending_block_state->header.producer)
+            ("signing_key", pending->_pending_block_state->block_signing_key)
             ("v",pending->_pending_block_state->header.schedule_version)
             ("lib",pending->_pending_block_state->dpos_last_irreversible_blocknum)
             ("np",pending->_pending_block_state->header.new_producers)
-            ("signed", pending->_pending_block_state->block_signing_key)
             );
 
       set_action_merkle();
