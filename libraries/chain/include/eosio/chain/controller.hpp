@@ -73,14 +73,18 @@ namespace eosio { namespace chain {
          /**
           *  
           */
-         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx = transaction_metadata_ptr(),
-                                                 fc::time_point deadline = fc::time_point::maximum() );
+         void push_transaction( const transaction_metadata_ptr& trx = transaction_metadata_ptr(),
+                                fc::time_point deadline = fc::time_point::maximum() );
+
+         void push_unapplied_transaction( fc::time_point deadline = fc::time_point::maximum() );
+
+         transaction_trace_ptr sync_push( const transaction_metadata_ptr& trx );
 
          /**
           * Attempt to execute a specific transaction in our deferred trx database
           *
           */
-         transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled,
+         void push_scheduled_transaction( const transaction_id_type& scheduled,
                                                            fc::time_point deadline = fc::time_point::maximum() );
 
          /**
@@ -88,7 +92,7 @@ namespace eosio { namespace chain {
           *
           * @return nullptr if there is nothing pending
           */
-         transaction_trace_ptr push_next_scheduled_transaction( fc::time_point deadline = fc::time_point::maximum() );
+         void push_next_scheduled_transaction( fc::time_point deadline = fc::time_point::maximum() );
 
          void finalize_block();
          void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback );
@@ -140,6 +144,7 @@ namespace eosio { namespace chain {
          signal<void(const block_state_ptr&)>          accepted_block;
          signal<void(const block_state_ptr&)>          irreversible_block;
          signal<void(const transaction_metadata_ptr&)> accepted_transaction;
+         signal<void(const transaction_trace_ptr&)>    applied_transaction;
 
          /*
          signal<void()>                                  pre_apply_block;
