@@ -269,7 +269,7 @@ namespace eosio {
        */
       chain::signature_type sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const;
 
-      int16_t to_protocol_version(int16_t v);
+      uint16_t to_protocol_version(uint16_t v);
    };
 
    const fc::string logger_name("net_plugin_impl");
@@ -305,21 +305,21 @@ namespace eosio {
     *  between ajacent commit id values is shown below.
     *  these numbers were found with the following commands on the master branch:
     *
-    *  git log | grep "^commit" | awk '{print substr($2,4,4)}' | sort -u > sorted.txt
+    *  git log | grep "^commit" | awk '{print substr($2,5,4)}' | sort -u > sorted.txt
     *  rm -f gap.txt; prev=0; for a in $(cat sorted.txt); do echo $prev $((0x$a - 0x$prev)) $a >> gap.txt; prev=$a; done; sort -k2 -n gap.txt | tail
     *
     *  DO NOT EDIT net_version_base OR net_version_range!
     */
-   constexpr int16_t net_version_base = 0xb1d4;
-   constexpr int16_t net_version_range = 133;
+   constexpr uint16_t net_version_base = 0x04b5;
+   constexpr uint16_t net_version_range = 106;
    /**
     *  If there is a change to network protocol or behavior, increment net version to identify
     *  the need for compatibility hooks
     */
-   constexpr int16_t proto_base = 0;
-   constexpr int16_t proto_explicit_sync = 1;
+   constexpr uint16_t proto_base = 0;
+   constexpr uint16_t proto_explicit_sync = 1;
 
-   constexpr int16_t net_version = proto_explicit_sync;
+   constexpr uint16_t net_version = proto_explicit_sync;
 
    /**
     *  Index by id
@@ -449,7 +449,7 @@ namespace eosio {
       int16_t                 sent_handshake_count;
       bool                    connecting;
       bool                    syncing;
-      int16_t                 protocol_version;
+      uint16_t                protocol_version;
       int                     write_depth;
       string                  peer_addr;
       unique_ptr<boost::asio::steady_timer> response_expected;
@@ -2984,7 +2984,7 @@ namespace eosio {
       return connection_ptr();
    }
 
-   int16_t net_plugin_impl::to_protocol_version (int16_t v) {
+   uint16_t net_plugin_impl::to_protocol_version (uint16_t v) {
       if (v >= net_version_base) {
          v -= net_version_base;
          return (v > net_version_range) ? 0 : v;
