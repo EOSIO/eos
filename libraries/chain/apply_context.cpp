@@ -85,7 +85,7 @@ void apply_context::exec_one()
    }
 
    results.applied_actions.emplace_back(action_trace {receiver, context_free, _cpu_usage, act, _pending_console_output.str(), move(data_access)});
-   _pending_console_output = std::ostringstream();
+   reset_console();
    _read_locks.clear();
    _write_scopes.clear();
    results.applied_actions.back()._profiling_us = fc::time_point::now() - start;
@@ -311,6 +311,11 @@ void apply_context::cancel_deferred( const uint128_t& sender_id ) {
    results.deferred_transaction_requests.push_back(deferred_reference(receiver, sender_id));
 }
 
+void apply_context::add_cpu_usage( const uint64_t usage ) {
+   // TODO for now just increase the usage, in the future check against some limit
+   _cpu_usage += usage;
+}
+
 const contracts::table_id_object* apply_context::find_table( name code, name scope, name table ) {
    require_read_lock(code, scope);
    return db.find<table_id_object, contracts::by_code_scope_table>(boost::make_tuple(code, scope, table));
@@ -347,6 +352,11 @@ vector<account_name> apply_context::get_active_producers() const {
       accounts.push_back(producer.producer_name);
 
    return accounts;
+}
+
+void apply_context::reset_console() {
+   _pending_console_output = std::ostringstream();
+   _pending_console_output.setf( std::ios::scientific, std::ios::floatfield );
 }
 
 void apply_context::checktime(uint32_t instruction_count) {

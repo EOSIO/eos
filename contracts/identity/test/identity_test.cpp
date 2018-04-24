@@ -33,16 +33,16 @@ namespace identity_test {
             EOSLIB_SERIALIZE( get_identity_for_account, (account) )
          };
 
-         typedef singleton<code, N(result), code, uint64_t> result_table;
+         typedef singleton<N(result), uint64_t> result_table;
 
          static void on( uint64_t receiver, const get_owner_for_identity& c ) {
             account_name owner = identity_contract::get_owner_for_identity(receiver, c.identity);
-            result_table::set(owner, 0); //use scope = 0 for simplicity
+            result_table( code, 0 ).set( owner, code ); //use scope = 0 for simplicity
          }
 
          static void on( uint64_t receiver, const get_identity_for_account& c ) {
             identity_name idnt = identity_contract::get_identity_for_account(receiver, c.account);
-            result_table::set(idnt, 0); //use scope = 0 for simplicity
+            result_table( code, 0 ).set(idnt, code ); //use scope = 0 for simplicity
          }
 
          static void apply( uint64_t receiver, account_name c, action_name act) {
