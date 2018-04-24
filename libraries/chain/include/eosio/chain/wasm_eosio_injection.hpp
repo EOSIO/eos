@@ -167,26 +167,107 @@ namespace eosio { namespace chain { namespace wasm_injections {
 
    struct checktime_injector {
       static constexpr bool kills = false;
-      static constexpr bool post = true;
+      static constexpr bool post = false;
       static void init() { checktime_idx = -1; }
       static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
          // first add the import for checktime
          injector_utils::add_import<ResultType::none, ValueType::i32>( *(arg.module), u8"checktime", checktime_idx );
 
-         wasm_ops::op_types<>::i32_const_t cnt; 
+         wasm_ops::op_types<>::i32_const_t cnt;
          cnt.field = instruction_counter::icnt;
 
-         wasm_ops::op_types<>::call_t chktm; 
+         wasm_ops::op_types<>::call_t chktm;
          chktm.field = checktime_idx;
          instruction_counter::icnt = 0;
    
          // pack the ops for insertion
          std::vector<U8> injected = cnt.pack();
-         std::vector<U8> tmp      = chktm.pack();
+         
+         std::vector<U8> tmp = chktm.pack();
          injected.insert( injected.end(), tmp.begin(), tmp.end() );
+
+         if( inst->get_code() == wasm_ops::end_code || inst->get_code() == wasm_ops::return__code ) {
+            wasm_ops::op_types<>::return__t ret;
+            tmp = ret.pack();
+            injected.insert( injected.end(), tmp.begin(), tmp.end() );
+         }
+
          arg.new_code->insert( arg.new_code->end(), injected.begin(), injected.end() );
+
+         // (set_global $0 (i64.add (get_global $0) (i64.const 1)))
+         
+         // get_global 0
+         // i64.const 1
+         // i64.add
+         // set_global 0
+
+         // wasm_ops::op_types<>::get_global_t gglobal;
+         // gglobal.field = 0;
+
+         // wasm_ops::op_types<>::i64_const_t const64;
+         // const64.field = instruction_counter::icnt;
+         // instruction_counter::icnt = 0;
+
+         // wasm_ops::op_types<>::i64_add_t i64add;
+         
+         // wasm_ops::op_types<>::set_global_t sglobal;
+         // sglobal.field = 0;
+
+         // wasm_ops::op_types<>::return__t ret;
+
+         // std::vector<U8> code;
+         // std::vector<U8> tmp;
+
+         // tmp = gglobal.pack();
+         // code.insert( code.end(), tmp.begin(), tmp.end() );
+
+         // tmp = const64.pack();
+         // code.insert( code.end(), tmp.begin(), tmp.end() );
+
+         // tmp = i64add.pack();
+         // code.insert( code.end(), tmp.begin(), tmp.end() );
+
+         // tmp = sglobal.pack();
+         // code.insert( code.end(), tmp.begin(), tmp.end() );
+
+         // tmp = ret.pack();
+         // code.insert( code.end(), tmp.begin(), tmp.end() );
+
+         // arg.new_code->insert( arg.new_code->end(), code.begin(), code.end() );
       }
       static int32_t checktime_idx;
+   };
+
+   struct track_new_block {
+      static constexpr bool kills = false;
+      static constexpr bool post = false;
+      static void init() { depth = 0; }
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         track_new_block::depth++;
+      }
+      static int32_t depth;
+   };
+
+   struct track_end_block {
+      static constexpr bool kills = false;
+      static constexpr bool post = false;
+      static void init() {}
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         if(track_new_block::depth == 0) {
+            checktime_injector::accept(inst, arg);
+         } else {
+            track_new_block::depth--;
+         }
+      }
+   };
+
+   struct checktime_injector_kill {
+      static constexpr bool kills = true;
+      static constexpr bool post = false;
+      static void init() { }
+      static void accept( wasm_ops::instr* inst, wasm_ops::visitor_arg& arg ) {
+         checktime_injector::accept(inst, arg);
+      }
    };
    
    struct fix_call_index {
@@ -563,17 +644,17 @@ namespace eosio { namespace chain { namespace wasm_injections {
    };
 
    struct pre_op_injectors : wasm_ops::op_types<pass_injector> {
-      using block_t           = wasm_ops::block                   <instruction_counter, checktime_injector>;
-      using loop_t            = wasm_ops::loop                    <instruction_counter, checktime_injector>;
-      using if__t             = wasm_ops::if_                     <instruction_counter>;
+      using block_t           = wasm_ops::block                   <instruction_counter, checktime_injector, track_new_block>;
+      using loop_t            = wasm_ops::loop                    <instruction_counter, checktime_injector, track_new_block>;
+      using if__t             = wasm_ops::if_                     <instruction_counter, track_new_block>;
       using else__t           = wasm_ops::else_                   <instruction_counter>;
       
-      using end_t             = wasm_ops::end                     <instruction_counter>;
+      using end_t             = wasm_ops::end                     <instruction_counter, track_end_block>;
       using unreachable_t     = wasm_ops::unreachable             <instruction_counter>;
-      using br_t              = wasm_ops::br                      <instruction_counter>;
-      using br_if_t           = wasm_ops::br_if                   <instruction_counter>;
-      using br_table_t        = wasm_ops::br_table                <instruction_counter>;
-      using return__t         = wasm_ops::return_                 <instruction_counter>;
+      using br_t              = wasm_ops::br                      <instruction_counter, checktime_injector>;
+      using br_if_t           = wasm_ops::br_if                   <instruction_counter, checktime_injector>;
+      using br_table_t        = wasm_ops::br_table                <instruction_counter, checktime_injector>;
+      using return__t         = wasm_ops::return_                 <instruction_counter, checktime_injector_kill>;
       using call_t            = wasm_ops::call                    <instruction_counter>;
       using call_indirect_t   = wasm_ops::call_indirect           <instruction_counter>;
       using drop_t            = wasm_ops::drop                    <instruction_counter>;
@@ -783,7 +864,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
  
    // inherit from this class and define your own injectors 
    class wasm_binary_injection {
-      using standard_module_injectors = module_injectors< max_memory_injection_visitor >;
+      using standard_module_injectors = module_injectors< max_memory_injection_visitor, globals_injection_visitor >;
 
       public:
          wasm_binary_injection( IR::Module& mod )  : _module( &mod ) { 
@@ -792,11 +873,13 @@ namespace eosio { namespace chain { namespace wasm_injections {
             injector_utils::init( mod );
             instruction_counter::init();
             checktime_injector::init();
+            track_new_block::init();
          }
 
          void inject() {
             _module_injectors.inject( *_module );
             for ( auto& fd : _module->functions.defs ) {
+               instruction_counter::icnt = 0;
                wasm_ops::EOSIO_OperatorDecoderStream<pre_op_injectors> pre_decoder(fd.code);
                std::vector<U8> new_code;
                while ( pre_decoder ) {

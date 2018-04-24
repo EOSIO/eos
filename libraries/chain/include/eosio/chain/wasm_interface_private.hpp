@@ -70,6 +70,16 @@ namespace eosio { namespace chain {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
 
+            //HACK:
+            FILE* pFile;
+            auto s = string("/tmp/contract.") + code_id.str();
+            std::cout << "EL FILE " << s << std::endl;
+            pFile = fopen(s.c_str(), "wb");
+            std::cout << pFile << std::endl;
+
+            fwrite(bytes.data(), 1, bytes.size(), pFile);
+            fclose(pFile);
+
             it = instantiation_cache.emplace(code_id, runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module))).first;
          }
          return it->second;

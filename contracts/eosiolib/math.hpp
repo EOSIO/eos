@@ -106,7 +106,6 @@ namespace eosio {
            return uint64_t(value);
         }
 
-     private:
         uint128_t value = 0;
   };
 

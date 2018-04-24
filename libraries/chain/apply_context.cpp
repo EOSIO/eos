@@ -84,6 +84,8 @@ void apply_context::exec_one()
       }
    }
 
+   std::cout << "Total CPU: " << _cpu_usage << std::endl;
+
    results.applied_actions.emplace_back(action_trace {receiver, context_free, _cpu_usage, act, _pending_console_output.str(), move(data_access)});
    reset_console();
    _read_locks.clear();

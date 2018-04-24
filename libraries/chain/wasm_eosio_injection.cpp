@@ -35,7 +35,16 @@ void max_memory_injection_visitor::inject( Module& m ) {
 }
 void max_memory_injection_visitor::initializer() {}
 
+void globals_injection_visitor::initializer() {
+
+}
+void globals_injection_visitor::inject( Module& m ) {
+   // std::cout << "globals_injection_visitor::inject" << std::endl;
+   // m.globals.defs.emplace_back(GlobalDef{GlobalType(ValueType::i64,false), InitializerExpression(I64(0))});
+}
+
 uint32_t instruction_counter::icnt = 0;
 int32_t  checktime_injector::checktime_idx = -1;
+int32_t  track_new_block::depth = 0;
 
 }}} // namespace eosio, chain, injectors

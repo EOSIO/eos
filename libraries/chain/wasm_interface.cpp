@@ -195,6 +195,7 @@ public:
    :context_aware_api(ctx,true){}
 
    void checktime(uint32_t instruction_count) {
+      std::cout << "checktime_api::checktime (" << instruction_count << ")" << std::endl;
       context.checktime(instruction_count);
    }
 };
