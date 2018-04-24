@@ -22,9 +22,7 @@ namespace eosio { namespace chain {
       block_state_ptr,
       indexed_by<
          hashed_unique< tag<by_block_id>, member<block_header_state, block_id_type, &block_header_state::id>, std::hash<block_id_type>>,
-         hashed_non_unique< tag<by_prev>, const_mem_fun<block_header_state,
-                                         const block_id_type&, &block_header_state::prev>,
-                                         std::hash<block_id_type>>,
+         ordered_non_unique< tag<by_prev>, const_mem_fun<block_header_state, const block_id_type&, &block_header_state::prev> >,
          ordered_non_unique< tag<by_block_num>,
             composite_key< block_state,
                member<block_header_state,uint32_t,&block_header_state::block_num>,
@@ -35,9 +33,10 @@ namespace eosio { namespace chain {
          ordered_non_unique< tag<by_lib_block_num>,
             composite_key< block_header_state,
                 member<block_header_state,uint32_t,&block_header_state::dpos_last_irreversible_blocknum>,
+                member<block_header_state,uint32_t,&block_header_state::bft_irreversible_blocknum>,
                 member<block_header_state,uint32_t,&block_header_state::block_num>
             >,
-            composite_key_compare< std::greater<uint32_t>, std::greater<uint32_t> >
+            composite_key_compare< std::greater<uint32_t>, std::greater<uint32_t>, std::greater<uint32_t> >
          >
       >
    > fork_multi_index_type;
@@ -241,6 +240,64 @@ namespace eosio { namespace chain {
       FC_ASSERT( (*nitr)->in_current_chain == true,
                  "block (with block number ${block_num}) found in fork database is not in the current chain", ("block_num", n) );
       return *nitr;
+   }
+
+   void fork_database::add( const header_confirmation& c ) {
+      auto b = get_block( c.block_id );
+      FC_ASSERT( b, "unable to find block id ${id}", ("id",c.block_id));
+      b->add_confirmation( c );
+
+      if( b->bft_irreversible_blocknum < b->block_num && 
+         b->confirmations.size() > ((b->active_schedule.producers.size() * 2) / 3) ) {
+         set_bft_irreversible( c.block_id );
+      }
+   }
+
+   /**
+    *  This method will set this block as being BFT irreversible and will update
+    *  all blocks which build off of it to have the same bft_irb if their existing
+    *  bft irb is less than this block num.
+    *
+    *  This will require a search over all forks
+    */
+   void fork_database::set_bft_irreversible( block_id_type id ) {
+      auto& idx = my->index.get<by_block_id>();
+      auto itr = idx.find(id);
+      uint32_t block_num = (*itr)->block_num;
+      idx.modify( itr, [&]( auto& bsp ) {
+           bsp->bft_irreversible_blocknum = bsp->block_num;
+      });
+
+      /** to prevent stack-overflow, we perform a bredth-first traversal of the
+       * fork database. At each stage we iterate over the leafs from the prior stage
+       * and find all nodes that link their previous. If we update the bft lib then we
+       * add it to a queue for the next layer.  This lambda takes one layer and returns
+       * all block ids that need to be iterated over for next layer.
+       */
+      auto update = [&]( const vector<block_id_type>& in ) {
+         vector<block_id_type> updated;
+
+         for( const auto& i : in ) {
+            auto& pidx = my->index.get<by_prev>();
+            auto pitr  = pidx.lower_bound( i );
+            auto epitr = pidx.upper_bound( i );
+            while( pitr != epitr ) {
+               pidx.modify( pitr, [&]( auto& bsp ) {
+                 if( bsp->bft_irreversible_blocknum < block_num ) {
+                    bsp->bft_irreversible_blocknum = block_num;
+                    updated.push_back( bsp->id );
+                 }
+               });
+               ++pitr;
+            }
+         }
+         return updated;
+      };
+
+      vector<block_id_type> queue{id};
+      while( queue.size() ) {
+         queue = update( queue );
+      }
    }
 
 } } /// eosio::chain

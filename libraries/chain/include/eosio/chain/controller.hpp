@@ -102,6 +102,12 @@ namespace eosio { namespace chain {
 
          void push_block( const signed_block_ptr& b );
 
+         /**
+          * Call this method when a producer confirmation is received, this might update
+          * the last bft irreversible block and/or cause a switch of forks
+          */
+         void push_confirmation( const header_confirmation& c );
+
          chainbase::database& db()const;
 
          uint32_t   head_block_num()const;
@@ -145,6 +151,7 @@ namespace eosio { namespace chain {
          signal<void(const block_state_ptr&)>          irreversible_block;
          signal<void(const transaction_metadata_ptr&)> accepted_transaction;
          signal<void(const transaction_trace_ptr&)>    applied_transaction;
+         signal<void(const header_confirmation&)>      accepted_confirmation;
 
          /*
          signal<void()>                                  pre_apply_block;

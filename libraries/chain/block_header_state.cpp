@@ -81,6 +81,8 @@ namespace eosio { namespace chain {
     result.producer_to_last_produced             = producer_to_last_produced;
     result.producer_to_last_produced[prokey.producer_name] = result.block_num;
     result.dpos_last_irreversible_blocknum       = result.calc_dpos_last_irreversible();
+    result.bft_irreversible_blocknum             = 
+                std::max(bft_irreversible_blocknum,result.dpos_last_irreversible_blocknum);
     result.blockroot_merkle = blockroot_merkle;
     result.blockroot_merkle.append( id );
 
@@ -175,6 +177,17 @@ namespace eosio { namespace chain {
     return fc::crypto::public_key( header.producer_signature, sig_digest(), true );
   }
 
+  void block_header_state::add_confirmation( const header_confirmation& conf ) {
+     for( const auto& c : confirmations )
+        FC_ASSERT( c.producer == conf.producer, "block already confirmed by this producer" );
+
+     auto key = active_schedule.get_producer_key( conf.producer );
+     FC_ASSERT( key != public_key_type(), "producer not in current schedule" );
+     auto signer = fc::crypto::public_key( conf.producer_signature, sig_digest(), true );
+     FC_ASSERT( signer == key, "confirmation not signed by expected key" );
+
+     confirmations.emplace_back( conf );
+  }
 
 
 } } /// namespace eosio::chain

@@ -517,17 +517,26 @@ struct controller_impl {
       }
    } /// apply_block
 
-   void push_block( const signed_block_ptr& b ) {
 
+   void push_block( const signed_block_ptr& b ) {
       auto new_header_state = fork_db.add( b );
       self.accepted_block_header( new_header_state );
+      maybe_switch_forks();
+   }
 
+   void push_confirmation( const header_confirmation& c ) {
+      fork_db.add( c );
+      self.accepted_confirmation( c );
+      maybe_switch_forks();
+   }
+
+   void maybe_switch_forks() {
       auto new_head = fork_db.head();
 
       if( new_head->header.previous == head->id ) {
          try {
             abort_block();
-            apply_block( b );
+            apply_block( new_head->block );
             fork_db.mark_in_current_chain( new_head, true );
             fork_db.set_validity( new_head, true );
             head = new_head;
@@ -800,6 +809,10 @@ void controller::abort_block() {
 
 void controller::push_block( const signed_block_ptr& b ) {
    my->push_block( b );
+}
+
+void controller::push_confirmation( const header_confirmation& c ) {
+   my->push_confirmation( c );
 }
 
 void controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline ) {

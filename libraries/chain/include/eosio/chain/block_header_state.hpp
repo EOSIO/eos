@@ -27,6 +27,12 @@ struct block_header_state {
 
     void set_new_producers( producer_schedule_type next_pending );
 
+
+    void add_confirmation( const header_confirmation& c );
+    uint32_t                     bft_irreversible_blocknum = 0;
+    vector<header_confirmation>  confirmations;
+
+
     bool                 has_pending_producers()const { return pending_schedule.producers.size(); }
     uint32_t             calc_dpos_last_irreversible()const;
     bool                 is_active_producer( account_name n )const;
