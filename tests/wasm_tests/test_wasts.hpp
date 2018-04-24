@@ -2,20 +2,49 @@
 #include <eosio/chain/webassembly/common.hpp>
 
 // These are handcrafted or otherwise tricky to generate with our tool chain
-/*
-static const char f32_add_wast[] = R"=====(
+
+static const char call_depth_limit_wast[] = R"=====(
 (module
- (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
+ (type (;0;) (func (param i64)))
+ (import "env" "printi" (func $printi (type 0)))
  (table 0 anyfunc)
  (memory $0 1)
+ (global $g0 (mut i32) (i32.const 2))
  (export "memory" (memory $0))
+ (export "_foo" (func $_foo))
+ (export "_bar" (func $_bar))
  (export "apply" (func $apply))
- (func $apply (param $0 i64) (param $1 i64)
-    (call $eosio_assert (i32.eq (i32.trunc_u/f32 (f32.const 0x3f800000)) (i32.const 0x0)) (i32.const 0))
+ (func $_foo (param $0 i32)
+  (block $label$0
+   (br_if $label$0
+    (i32.eq
+     (get_local $0)
+     (i32.const 200)
+    )
+   )
+   (set_global $g0
+      (i32.sub
+         (i32.const 1)
+         (get_global $g0)
+      )
+   )
+   (call $_foo
+    (i32.add
+      (get_local $0)
+     (i32.const 1)
+    )
+   )
   )
  )
+ (func $_bar)
+ (func $apply (param $a i64) (param $b i64) (param $c i64)
+   (call $_foo
+     (i32.const 0)
+   )
+ )
+)
 )=====";
-*/
+
 static const char entry_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))

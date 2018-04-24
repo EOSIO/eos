@@ -57,9 +57,20 @@ namespace eosio { namespace chain {
             } catch(Serialization::FatalSerializationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
-
             wasm_injections::wasm_binary_injection injector(module);
             injector.inject();
+            {
+               std::vector<U8> bytes;
+               static int ii=0;
+               Serialization::ArrayOutputStream outstream;
+               WASM::serialize(outstream, module);
+               bytes = outstream.getBytes();
+               char* buff = new char[bytes.size()];
+               memcpy(buff, bytes.data(), bytes.size());
+               std::ofstream output (std::string("wasm_")+std::to_string(ii)+std::string(".wasm"));
+               output.write(buff, bytes.size());
+               delete[] buff;
+            }
             
             std::vector<U8> bytes;
             try {

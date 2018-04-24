@@ -1505,6 +1505,18 @@ class math_api : public context_aware_api {
       }
 };
 
+class call_depth_api : public context_aware_api {
+   public:
+      call_depth_api( apply_context& ctx )
+      :context_aware_api(ctx,true){}
+      void call_depth_assert() { FC_ASSERT(false, "Error, call depth limit exceeded"); }
+   uint16_t call_depth;
+};
+
+REGISTER_INJECTED_INTRINSICS(call_depth_api,
+   (call_depth_assert, void()                )
+);
+
 REGISTER_INTRINSICS(math_api,
    (diveq_i128,    void(int, int)            )
    (multeq_i128,   void(int, int)            )
